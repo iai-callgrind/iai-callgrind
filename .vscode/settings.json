@@ -1,5 +1,9 @@
 {
   "cSpell.words": [
-    "callgrind"
+    "callgrind",
+    "dtolnay",
+    "MSRV",
+    "Swatinem",
+    "valgrind"
   ]
 }
