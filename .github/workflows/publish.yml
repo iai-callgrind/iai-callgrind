@@ -1,0 +1,16 @@
+name: Deploy
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2.2.0
+      - name: Publish
+        run: cargo publish --token ${{ secrets.CRATES_GITHUB_TOKEN }}
