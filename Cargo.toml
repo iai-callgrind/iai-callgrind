@@ -18,3 +18,8 @@ cfg-if = "1.0"
 [[bench]]
 name = "test_regular_bench"
 harness = false
+
+[[bench]]
+path = "benches/subdir/test_subdir_bench.rs"
+name = "test_subdir_bench"
+harness = false

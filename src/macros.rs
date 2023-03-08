@@ -21,16 +21,21 @@
 /// Since we've disabled the default benchmark harness, we need to add our own:
 ///
 /// ```ignore
+/// use iai_callgrind::main;
+///
+/// // `#[inline(never)]` is important! Without it there won't be any metrics
+/// #[inline(never)]
 /// fn bench_method1() {
 /// }
 ///
+/// #[inline(never)]
 /// fn bench_method2() {
 /// }
 ///
-/// iai::main!(bench_method1, bench_method2);
+/// main!(bench_method1, bench_method2);
 /// ```
 ///
-/// The `iai::main` macro expands to a `main` function which runs all of the
+/// The `iai_callgrind::main` macro expands to a `main` function which runs all of the
 /// benchmarks in the given groups.
 ///
 #[macro_export]
@@ -45,6 +50,10 @@ macro_rules! main {
         }
 
         fn main() {
+            let mut args_iter = std::env::args();
+            let executable = args_iter.next().unwrap();
+            let is_iai_run = args_iter.next().as_deref().map_or(false, |value| value == "--iai-run");
+            let index : Option<usize> = args_iter.next().and_then(|arg| arg.parse::<usize>().ok());
 
             let benchmarks : &[&(&'static str, fn())]= &[
 
@@ -53,7 +62,7 @@ macro_rules! main {
                 )+
             ];
 
-            $crate::runner(benchmarks);
+            $crate::runner(module_path!(), &executable, is_iai_run, benchmarks, index);
         }
     }
 }

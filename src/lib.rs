@@ -1,7 +1,6 @@
 use cfg_if::cfg_if;
 use std::{
     collections::HashMap,
-    env::args,
     fs::File,
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
@@ -25,7 +24,7 @@ pub fn black_box<T>(dummy: T) -> T {
 
 fn check_valgrind() -> bool {
     let result = Command::new("valgrind")
-        .arg("--tool=cachegrind")
+        .arg("--tool=callgrind")
         .arg("--version")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -92,14 +91,21 @@ cfg_if! {
 }
 
 fn run_bench(
+    module: &str,
     arch: &str,
     executable: &str,
-    i: isize,
+    index: usize,
     name: &str,
     allow_aslr: bool,
-) -> (CachegrindStats, Option<CachegrindStats>) {
-    let output_file = PathBuf::from(format!("target/iai/cachegrind.out.{}", name));
-    let old_file = output_file.with_file_name(format!("cachegrind.out.{}.old", name));
+) -> (CallgrindStats, Option<CallgrindStats>) {
+    let target = PathBuf::from("target/iai");
+    let module_path: PathBuf = module.split("::").collect();
+    let file_name = PathBuf::from(format!("callgrind.{}.out", name));
+
+    let mut output_file = target;
+    output_file.push(module_path);
+    output_file.push(file_name);
+    let old_file = output_file.with_extension("out.old");
     std::fs::create_dir_all(output_file.parent().unwrap()).expect("Failed to create directory");
 
     if output_file.exists() {
@@ -112,33 +118,42 @@ fn run_bench(
     } else {
         valgrind_without_aslr(arch)
     };
+
     let status = cmd
-        .arg("--tool=cachegrind")
         // Set some reasonable cache sizes. The exact sizes matter less than having fixed sizes,
-        // since otherwise cachegrind would take them from the CPU and make benchmark runs
+        // since otherwise callgrind would take them from the CPU and make benchmark runs
         // even more incomparable between machines.
+        .arg("--tool=callgrind")
         .arg("--I1=32768,8,64")
         .arg("--D1=32768,8,64")
         .arg("--LL=8388608,16,64")
-        .arg(format!("--cachegrind-out-file={}", output_file.display()))
+        .arg("--cache-sim=yes")
+        .arg("--collect-atstart=no")
+        .arg(format!("--toggle-collect=*{}::{}", module, name))
+        .arg("--compress-strings=no")
+        .arg("--compress-pos=no")
+        .arg(format!("--callgrind-out-file={}", output_file.display()))
         .arg(executable)
         .arg("--iai-run")
-        .arg(i.to_string())
+        .arg(index.to_string())
+        // Currently not used in iai-callgrind itself, but in `callgrind_annotate` this name is
+        // shown and makes it easier to identify the benchmark under test
+        .arg(format!("{}::{}", module, name))
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
-        .expect("Failed to run benchmark in cachegrind");
+        .expect("Failed to run benchmark in ");
 
     if !status.success() {
         panic!(
-            "Failed to run benchmark in cachegrind. Exit code: {}",
+            "Failed to run benchmark in callgrind. Exit code: {}",
             status
         );
     }
 
-    let new_stats = parse_cachegrind_output(&output_file);
+    let new_stats = parse_callgrind_output(&output_file);
     let old_stats = if old_file.exists() {
-        Some(parse_cachegrind_output(&old_file))
+        Some(parse_callgrind_output(&old_file))
     } else {
         None
     };
@@ -146,11 +161,11 @@ fn run_bench(
     (new_stats, old_stats)
 }
 
-fn parse_cachegrind_output(file: &Path) -> CachegrindStats {
+fn parse_callgrind_output(file: &Path) -> CallgrindStats {
     let mut events_line = None;
     let mut summary_line = None;
 
-    let file_in = File::open(file).expect("Unable to open cachegrind output file");
+    let file_in = File::open(file).expect("Unable to open callgrind output file");
 
     for line in BufReader::new(file_in).lines() {
         let line = line.unwrap();
@@ -168,28 +183,28 @@ fn parse_cachegrind_output(file: &Path) -> CachegrindStats {
                 .split_whitespace()
                 .zip(summary.split_whitespace().map(|s| {
                     s.parse::<u64>()
-                        .expect("Unable to parse summary line from cachegrind output file")
+                        .expect("Unable to parse summary line from callgrind output file")
                 }))
                 .collect();
 
-            CachegrindStats {
-                instruction_reads: events["Ir"],
-                instruction_l1_misses: events["I1mr"],
-                instruction_cache_misses: events["ILmr"],
-                data_reads: events["Dr"],
-                data_l1_read_misses: events["D1mr"],
-                data_cache_read_misses: events["DLmr"],
-                data_writes: events["Dw"],
-                data_l1_write_misses: events["D1mw"],
-                data_cache_write_misses: events["DLmw"],
+            CallgrindStats {
+                instruction_reads: *events.get("Ir").unwrap_or(&0),
+                instruction_l1_misses: *events.get("I1mr").unwrap_or(&0),
+                instruction_cache_misses: *events.get("ILmr").unwrap_or(&0),
+                data_reads: *events.get("Dr").unwrap_or(&0),
+                data_l1_read_misses: *events.get("D1mr").unwrap_or(&0),
+                data_cache_read_misses: *events.get("DLmr").unwrap_or(&0),
+                data_writes: *events.get("Dw").unwrap_or(&0),
+                data_l1_write_misses: *events.get("D1mw").unwrap_or(&0),
+                data_cache_write_misses: *events.get("DLmw").unwrap_or(&0),
             }
         }
-        _ => panic!("Unable to parse cachegrind output file"),
+        _ => panic!("Unable to parse callgrind output file"),
     }
 }
 
 #[derive(Clone, Debug)]
-struct CachegrindStats {
+struct CallgrindStats {
     instruction_reads: u64,
     instruction_l1_misses: u64,
     instruction_cache_misses: u64,
@@ -200,11 +215,11 @@ struct CachegrindStats {
     data_l1_write_misses: u64,
     data_cache_write_misses: u64,
 }
-impl CachegrindStats {
+impl CallgrindStats {
     pub fn ram_accesses(&self) -> u64 {
         self.instruction_cache_misses + self.data_cache_read_misses + self.data_cache_write_misses
     }
-    pub fn summarize(&self) -> CachegrindSummary {
+    pub fn summarize(&self) -> CallgrindSummary {
         let ram_hits = self.ram_accesses();
         let l3_accesses =
             self.instruction_l1_misses + self.data_l1_read_misses + self.data_l1_write_misses;
@@ -213,36 +228,21 @@ impl CachegrindStats {
         let total_memory_rw = self.instruction_reads + self.data_reads + self.data_writes;
         let l1_hits = total_memory_rw - (ram_hits + l3_hits);
 
-        CachegrindSummary {
+        CallgrindSummary {
             l1_hits,
             l3_hits,
             ram_hits,
         }
     }
-
-    #[rustfmt::skip]
-    pub fn subtract(&self, calibration: &CachegrindStats) -> CachegrindStats {
-        CachegrindStats {
-            instruction_reads: self.instruction_reads.saturating_sub(calibration.instruction_reads),
-            instruction_l1_misses: self.instruction_l1_misses.saturating_sub(calibration.instruction_l1_misses),
-            instruction_cache_misses: self.instruction_cache_misses.saturating_sub(calibration.instruction_cache_misses),
-            data_reads: self.data_reads.saturating_sub(calibration.data_reads),
-            data_l1_read_misses: self.data_l1_read_misses.saturating_sub(calibration.data_l1_read_misses),
-            data_cache_read_misses: self.data_cache_read_misses.saturating_sub(calibration.data_cache_read_misses),
-            data_writes: self.data_writes.saturating_sub(calibration.data_writes),
-            data_l1_write_misses: self.data_l1_write_misses.saturating_sub(calibration.data_l1_write_misses),
-            data_cache_write_misses: self.data_cache_write_misses.saturating_sub(calibration.data_cache_write_misses),
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
-struct CachegrindSummary {
+struct CallgrindSummary {
     l1_hits: u64,
     l3_hits: u64,
     ram_hits: u64,
 }
-impl CachegrindSummary {
+impl CallgrindSummary {
     fn cycles(&self) -> u64 {
         // Uses Itamar Turner-Trauring's formula from https://pythonspeed.com/articles/consistent-benchmarking-in-ci/
         self.l1_hits + (5 * self.l3_hits) + (35 * self.ram_hits)
@@ -251,24 +251,18 @@ impl CachegrindSummary {
 
 /// Custom-test-framework runner. Should not be called directly.
 #[doc(hidden)]
-pub fn runner(benches: &[&(&'static str, fn())]) {
-    let mut args_iter = args();
-    let executable = args_iter.next().unwrap();
-
-    if let Some("--iai-run") = args_iter.next().as_deref() {
-        // In this branch, we're running under cachegrind, so execute the benchmark as quickly as
+#[inline(never)]
+pub fn runner(
+    module: &str,
+    executable: &str,
+    is_iai_run: bool,
+    benches: &[&(&'static str, fn())],
+    current_index: Option<usize>,
+) {
+    if is_iai_run {
+        // In this branch, we're running under callgrind, so execute the benchmark as quickly as
         // possible and exit
-        let index: isize = args_iter.next().unwrap().parse().unwrap();
-
-        // -1 is used as a signal to do nothing and return. By recording an empty benchmark, we can
-        // subtract out the overhead from startup and dispatching to the right benchmark.
-        if index == -1 {
-            return;
-        }
-
-        let index = index as usize;
-
-        (benches[index].1)();
+        benches[current_index.unwrap()].1();
         return;
     }
 
@@ -281,21 +275,9 @@ pub fn runner(benches: &[&(&'static str, fn())]) {
 
     let allow_aslr = std::env::var_os("IAI_ALLOW_ASLR").is_some();
 
-    let (calibration, old_calibration) =
-        run_bench(&arch, &executable, -1, "iai_calibration", allow_aslr);
-
-    for (i, (name, _func)) in benches.iter().enumerate() {
+    for (index, (name, _func)) in benches.iter().enumerate() {
         println!("{}", name);
-        let (stats, old_stats) = run_bench(&arch, &executable, i as isize, name, allow_aslr);
-        let (stats, old_stats) = (
-            stats.subtract(&calibration),
-            match (&old_stats, &old_calibration) {
-                (Some(old_stats), Some(old_calibration)) => {
-                    Some(old_stats.subtract(old_calibration))
-                }
-                _ => None,
-            },
-        );
+        let (stats, old_stats) = run_bench(module, &arch, executable, index, name, allow_aslr);
 
         fn signed_short(n: f64) -> String {
             let n_abs = n.abs();
