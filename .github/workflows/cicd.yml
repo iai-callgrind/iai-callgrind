@@ -62,7 +62,7 @@ jobs:
       - name: Build
         run: cargo build --all-features
       - name: Format
-        run: cargo fmt --check
+        run: cargo fmt -- --check
       - name: Lint
         run: cargo +stable clippy --all-features --all-targets -- -D warnings
         env:
