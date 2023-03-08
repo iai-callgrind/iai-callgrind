@@ -1,0 +1,86 @@
+name: Build and Check
+
+on:
+  push:
+    branches: ["main", "cicd", "release", "develop"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
+
+jobs:
+  deny:
+    name: Check dependencies/ubuntu-latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: EmbarkStudios/cargo-deny-action@v1
+        with:
+          rust-version: "1.56.0"
+
+  base:
+    name: Build, check and test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        toolchain:
+          - "1.56.0" # MSRV
+          - stable
+          - nightly
+        include:
+          - toolchain: "1.56.0"
+            components: rustfmt
+          - toolchain: nightly
+            components: rustfmt
+          - toolchain: stable
+            components: rustfmt, clippy
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: ${{ matrix.components }}
+      - name: Prepare
+        if: matrix.toolchain != 'stable'
+        run: |
+          rustup toolchain install stable --no-self-update --component clippy
+      - uses: Swatinem/rust-cache@v2.2.0
+        with:
+          key: "${{ matrix.os }}_${{ matrix.toolchain }}"
+      - name: Info
+        run: |
+          set -x
+          uname -a
+          pwd
+          rustup --version
+          rustup show
+          rustup component list --installed
+      - name: Build
+        run: cargo build --all-features
+      - name: Format
+        run: cargo fmt --check
+      - name: Lint
+        run: cargo +stable clippy --all-features --all-targets -- -D warnings
+        env:
+          CARGO_REGISTRIES_CRATES_IO_PROTOCOL: git # unstable on 1.66 + 1.67
+      - name: Test
+        run: cargo test --all-features
+      - name: Bench
+        run: cargo bench --all-features
+
+  docs:
+    needs: [base]
+    name: Docs/ubuntu-latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2.2.0
+      - name: Run doc tests
+        run: cargo test --all-features --doc
+      - name: Check Documentation
+        run: cargo doc --all-features --no-deps --document-private-items
