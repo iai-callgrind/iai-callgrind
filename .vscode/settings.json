@@ -1,10 +1,16 @@
 {
   "cSpell.words": [
+    "aslr",
     "Brunner",
+    "cachegrind",
     "callgrind",
     "dtolnay",
+    "Itamar",
     "MSRV",
+    "proccontrol",
+    "setarch",
     "Swatinem",
+    "Trauring's",
     "valgrind"
   ]
 }
