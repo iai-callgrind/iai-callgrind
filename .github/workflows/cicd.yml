@@ -25,7 +25,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
         toolchain:
           - "1.56.0" # MSRV
           - stable
@@ -37,7 +36,7 @@ jobs:
             components: rustfmt
           - toolchain: stable
             components: rustfmt, clippy
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@master
@@ -50,7 +49,7 @@ jobs:
           rustup toolchain install stable --no-self-update --component clippy
       - uses: Swatinem/rust-cache@v2.2.0
         with:
-          key: "${{ matrix.os }}_${{ matrix.toolchain }}"
+          key: ubuntu-latest_${{ matrix.toolchain }}"
       - name: Install valgrind
         run: sudo apt-get -y update && sudo apt-get -y install valgrind
       - name: Info
@@ -61,6 +60,7 @@ jobs:
           rustup --version
           rustup show
           rustup component list --installed
+          valgrind --version
       - name: Build
         run: cargo build --all-features
       - name: Format
