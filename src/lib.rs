@@ -1,8 +1,3 @@
-#![cfg_attr(feature = "real_blackbox", feature(test))]
-
-#[cfg(feature = "real_blackbox")]
-extern crate test;
-
 use cfg_if::cfg_if;
 use std::{
     collections::HashMap,
@@ -13,26 +8,13 @@ use std::{
     process::{Command, Stdio},
 };
 
-#[cfg(feature = "macro")]
-pub use iai_macro::iai;
-
 mod macros;
-
-/// A function that is opaque to the optimizer, used to prevent the compiler from
-/// optimizing away computations in a benchmark.
-///
-/// This variant is backed by the (unstable) test::black_box function.
-#[cfg(feature = "real_blackbox")]
-pub fn black_box<T>(dummy: T) -> T {
-    test::black_box(dummy)
-}
 
 /// A function that is opaque to the optimizer, used to prevent the compiler from
 /// optimizing away computations in a benchmark.
 ///
 /// This variant is stable-compatible, but it may cause some performance overhead
 /// or fail to prevent code from being eliminated.
-#[cfg(not(feature = "real_blackbox"))]
 pub fn black_box<T>(dummy: T) -> T {
     unsafe {
         let ret = std::ptr::read_volatile(&dummy);

@@ -15,10 +15,6 @@ categories = ["development-tools::profiling", "development-tools::testing"]
 [dependencies]
 cfg-if = "1.0"
 
-[features]
-real_blackbox = []
-default = []
-
 [[bench]]
 name = "test_regular_bench"
 harness = false
