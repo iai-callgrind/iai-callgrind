@@ -1,4 +1,4 @@
-use iai::black_box;
+use iai_callgrind::{black_box, main};
 
 fn fibonacci(n: u64) -> u64 {
     match n {
@@ -19,4 +19,4 @@ fn bench_fibonacci_long() -> u64 {
     fibonacci(black_box(30))
 }
 
-iai::main!(bench_empty, bench_fibonacci, bench_fibonacci_long);
+main!(bench_empty, bench_fibonacci, bench_fibonacci_long);

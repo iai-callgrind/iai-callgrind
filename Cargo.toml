@@ -1,23 +1,22 @@
 [package]
-name = "iai"
-version = "0.1.1"
-authors = ["Brook Heisler <redattack34@gmail.com>"]
-edition = "2018"
-
-description = "One-shot benchmarking library"
-repository = "https://github.com/bheisler/iai"
+name = "iai-callgrind"
+version = "0.1.0"
+authors = ["Joining7943 <joining@posteo.de>", "Brook Heisler <redattack34@gmail.com>"]
+edition = "2021"
+rust-version = "1.45.0"
+description = "One-shot benchmarking library based on callgrind"
 readme = "README.md"
-keywords = ["iai", "benchmark"]
-categories = ["development-tools::profiling"]
-license = "Apache-2.0/MIT"
+homepage = "https://github.com/Joining7943/iai-callgrind"
+repository = "https://github.com/Joining7943/iai-callgrind"
+license = "Apache-2.0 AND MIT"
+keywords = ["iai", "benchmark", "callgrind", "valgrind"]
+categories = ["development-tools::profiling", "development-tools::testing"]
 
 [dependencies]
 cfg-if = "1.0"
-iai_macro = { version = "0.1.0", path = "macro", optional = true }
 
 [features]
 real_blackbox = []
-macro = ["iai_macro"]
 default = []
 
 [[bench]]
