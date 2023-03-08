@@ -336,7 +336,7 @@ pub fn runner(benches: &[&(&'static str, fn())]) {
             stats.instruction_reads,
             match &old_stats {
                 Some(old) => percentage_diff(stats.instruction_reads, old.instruction_reads),
-                None => "".to_owned(),
+                None => String::new(),
             }
         );
         let summary = stats.summarize();
@@ -346,7 +346,7 @@ pub fn runner(benches: &[&(&'static str, fn())]) {
             summary.l1_hits,
             match &old_summary {
                 Some(old) => percentage_diff(summary.l1_hits, old.l1_hits),
-                None => "".to_owned(),
+                None => String::new(),
             }
         );
         println!(
@@ -354,7 +354,7 @@ pub fn runner(benches: &[&(&'static str, fn())]) {
             summary.l3_hits,
             match &old_summary {
                 Some(old) => percentage_diff(summary.l3_hits, old.l3_hits),
-                None => "".to_owned(),
+                None => String::new(),
             }
         );
         println!(
@@ -362,7 +362,7 @@ pub fn runner(benches: &[&(&'static str, fn())]) {
             summary.ram_hits,
             match &old_summary {
                 Some(old) => percentage_diff(summary.ram_hits, old.ram_hits),
-                None => "".to_owned(),
+                None => String::new(),
             }
         );
         println!(
@@ -370,7 +370,7 @@ pub fn runner(benches: &[&(&'static str, fn())]) {
             summary.cycles(),
             match &old_summary {
                 Some(old) => percentage_diff(summary.cycles(), old.cycles()),
-                None => "".to_owned(),
+                None => String::new(),
             }
         );
         println!();

@@ -7,9 +7,7 @@ fn fibonacci(n: u64) -> u64 {
     }
 }
 
-fn bench_empty() {
-    return;
-}
+fn bench_empty() {}
 
 fn bench_fibonacci() -> u64 {
     fibonacci(black_box(10))
