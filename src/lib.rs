@@ -9,6 +9,41 @@ use std::{
 
 mod macros;
 
+fn warn(warning: &str) {
+    eprintln!("iai-callgrind: Warning: {}", warning);
+}
+
+#[derive(Debug)]
+pub struct Args {
+    executable: String,
+    module: String,
+    is_iai_run: bool,
+    index: Option<usize>,
+    callgrind_args: Option<Vec<String>>,
+}
+
+impl Args {
+    pub fn new_iai_run(executable: &str, module: &str, index: usize) -> Self {
+        Self {
+            executable: executable.to_string(),
+            module: module.to_string(),
+            is_iai_run: true,
+            index: Some(index),
+            callgrind_args: None,
+        }
+    }
+
+    pub fn new(executable: &str, module: &str, callgrind_args: Vec<String>) -> Self {
+        Self {
+            executable: executable.to_string(),
+            module: module.to_string(),
+            is_iai_run: false,
+            index: None,
+            callgrind_args: Some(callgrind_args),
+        }
+    }
+}
+
 /// A function that is opaque to the optimizer, used to prevent the compiler from
 /// optimizing away computations in a benchmark.
 ///
@@ -90,59 +125,142 @@ cfg_if! {
     }
 }
 
+#[derive(Debug)]
+struct CallgrindArgs {
+    i1: String,
+    d1: String,
+    ll: String,
+    cache_sim: String,
+    collect_atstart: String,
+    other: Vec<String>,
+    toggle_collect: Option<String>,
+    compress_strings: String,
+    compress_pos: String,
+    callgrind_out_file: Option<String>,
+}
+impl Default for CallgrindArgs {
+    fn default() -> Self {
+        Self {
+            i1: String::from("--I1=32768,8,64"),
+            d1: String::from("--D1=32768,8,64"),
+            ll: String::from("--LL=8388608,16,64"),
+            cache_sim: String::from("--cache-sim=yes"),
+            collect_atstart: String::from("--collect-atstart=no"),
+            toggle_collect: Default::default(),
+            compress_pos: String::from("--compress-pos=no"),
+            compress_strings: String::from("--compress-strings=no"),
+            callgrind_out_file: Default::default(),
+            other: Default::default(),
+        }
+    }
+}
+
+impl CallgrindArgs {
+    fn from_args(args: &Args) -> Self {
+        let mut default = Self::default();
+        for arg in args.callgrind_args.iter().flat_map(|a| a.iter()) {
+            if arg.starts_with("--I1=") {
+                default.i1 = arg.to_owned();
+            } else if arg.starts_with("--D1=") {
+                default.d1 = arg.to_owned();
+            } else if arg.starts_with("--LL=") {
+                default.ll = arg.to_owned();
+            } else if arg.starts_with("--cache-sim=") {
+                warn(&format!("Ignoring '{}'", arg));
+            } else if arg.starts_with("--collect-atstart=") {
+                default.collect_atstart = arg.to_owned();
+            } else if arg.starts_with("--compress-strings=") {
+                default.compress_strings = arg.to_owned();
+            } else if arg.starts_with("--compress-pos=") {
+                default.compress_pos = arg.to_owned();
+            } else if arg.starts_with("--toggle-collect=") {
+                warn(&format!(
+                    "This callgrind option '{}' will overwrite the default setting and may not work as expected.",
+                    arg
+                ));
+                default.toggle_collect = Some(arg.to_owned());
+            } else if arg.starts_with("--callgrind-out-file=") {
+                warn(&format!("Ignoring '{}'", arg));
+            } else {
+                default.other.push(arg.to_owned());
+            }
+        }
+        default
+    }
+
+    fn parse_with(&self, output_file: &Path, module: &str, function_name: &str) -> Vec<String> {
+        let mut args = vec![
+            self.i1.clone(),
+            self.d1.clone(),
+            self.ll.clone(),
+            self.cache_sim.clone(),
+            self.collect_atstart.clone(),
+            self.compress_strings.clone(),
+            self.compress_pos.clone(),
+        ];
+        args.extend(self.other.iter().cloned());
+        match &self.callgrind_out_file {
+            Some(arg) => args.push(arg.clone()),
+            None => args.push(format!("--callgrind-out-file={}", output_file.display())),
+        }
+        match &self.toggle_collect {
+            Some(arg) => args.push(arg.clone()),
+            None => args.push(format!("--toggle-collect=*{}::{}", module, function_name)),
+        }
+
+        args
+    }
+}
+
+#[inline(never)]
 fn run_bench(
     module: &str,
     arch: &str,
     executable: &str,
     index: usize,
-    name: &str,
+    function_name: &str,
     allow_aslr: bool,
+    callgrind_args: &CallgrindArgs,
 ) -> (CallgrindStats, Option<CallgrindStats>) {
+    let mut cmd = if allow_aslr {
+        basic_valgrind()
+    } else {
+        valgrind_without_aslr(arch)
+    };
+    // dbg!(function_name);
+
     let target = PathBuf::from("target/iai");
     let module_path: PathBuf = module.split("::").collect();
-    let file_name = PathBuf::from(format!("callgrind.{}.out", name));
+    let file_name = PathBuf::from(format!("callgrind.{}.out", function_name));
 
     let mut output_file = target;
     output_file.push(module_path);
     output_file.push(file_name);
+
     let old_file = output_file.with_extension("out.old");
+
     std::fs::create_dir_all(output_file.parent().unwrap()).expect("Failed to create directory");
 
     if output_file.exists() {
         // Already run this benchmark once; move last results to .old
         std::fs::copy(&output_file, &old_file).unwrap();
     }
-
-    let mut cmd = if allow_aslr {
-        basic_valgrind()
-    } else {
-        valgrind_without_aslr(arch)
-    };
-
     let status = cmd
         // Set some reasonable cache sizes. The exact sizes matter less than having fixed sizes,
         // since otherwise callgrind would take them from the CPU and make benchmark runs
         // even more incomparable between machines.
         .arg("--tool=callgrind")
-        .arg("--I1=32768,8,64")
-        .arg("--D1=32768,8,64")
-        .arg("--LL=8388608,16,64")
-        .arg("--cache-sim=yes")
-        .arg("--collect-atstart=no")
-        .arg(format!("--toggle-collect=*{}::{}", module, name))
-        .arg("--compress-strings=no")
-        .arg("--compress-pos=no")
-        .arg(format!("--callgrind-out-file={}", output_file.display()))
+        .args(callgrind_args.parse_with(&output_file, module, function_name))
         .arg(executable)
         .arg("--iai-run")
         .arg(index.to_string())
         // Currently not used in iai-callgrind itself, but in `callgrind_annotate` this name is
         // shown and makes it easier to identify the benchmark under test
-        .arg(format!("{}::{}", module, name))
+        .arg(format!("{}::{}", module, function_name))
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
-        .expect("Failed to run benchmark in ");
+        .expect("Failed to run benchmark");
 
     if !status.success() {
         panic!(
@@ -150,10 +268,20 @@ fn run_bench(
             status
         );
     }
+    // if !status.status.success() {
+    //     panic!(
+    //         "Failed to run benchmark in callgrind. Exit code: {:?}: stdout: '{}', stderr: '{}'",
+    //         status.status.code(),
+    //         String::from_utf8(status.stdout).unwrap(),
+    //         String::from_utf8(status.stderr).unwrap(),
+    //     );
+    // } else {
+    //     eprint!("{}", String::from_utf8(status.stderr).unwrap());
+    // }
 
-    let new_stats = parse_callgrind_output(&output_file, module, name);
+    let new_stats = parse_callgrind_output(&output_file, module, function_name);
     let old_stats = if old_file.exists() {
-        Some(parse_callgrind_output(&old_file, module, name))
+        Some(parse_callgrind_output(&old_file, module, function_name))
     } else {
         None
     };
@@ -299,6 +427,11 @@ impl CallgrindStats {
     }
 }
 
+#[inline(never)]
+fn run_func(func: fn()) {
+    func();
+}
+
 #[derive(Clone, Debug)]
 struct CallgrindSummary {
     l1_instructions: u64,
@@ -312,17 +445,11 @@ struct CallgrindSummary {
 /// Custom-test-framework runner. Should not be called directly.
 #[doc(hidden)]
 #[inline(never)]
-pub fn runner(
-    module: &str,
-    executable: &str,
-    is_iai_run: bool,
-    benches: &[&(&'static str, fn())],
-    current_index: Option<usize>,
-) {
-    if is_iai_run {
+pub fn runner(benches: &[&(&'static str, fn())], args: Args) {
+    if args.is_iai_run {
         // In this branch, we're running under callgrind, so execute the benchmark as quickly as
         // possible and exit
-        benches[current_index.unwrap()].1();
+        run_func(benches[args.index.unwrap()].1);
         return;
     }
 
@@ -335,9 +462,18 @@ pub fn runner(
 
     let allow_aslr = std::env::var_os("IAI_ALLOW_ASLR").is_some();
 
+    let callgrind_args = CallgrindArgs::from_args(&args);
     for (index, (name, _func)) in benches.iter().enumerate() {
         println!("{}", name);
-        let (stats, old_stats) = run_bench(module, &arch, executable, index, name, allow_aslr);
+        let (stats, old_stats) = run_bench(
+            &args.module,
+            &arch,
+            &args.executable,
+            index,
+            name,
+            allow_aslr,
+            &callgrind_args,
+        );
 
         fn signed_short(n: f64) -> String {
             let n_abs = n.abs();

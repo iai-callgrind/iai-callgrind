@@ -51,18 +51,26 @@ macro_rules! main {
 
         fn main() {
             let mut args_iter = std::env::args();
+            // dbg!(&args_iter);
             let executable = args_iter.next().unwrap();
-            let is_iai_run = args_iter.next().as_deref().map_or(false, |value| value == "--iai-run");
-            let index : Option<usize> = args_iter.next().and_then(|arg| arg.parse::<usize>().ok());
+            let arg = args_iter.next();
+            let iai_args = if arg.as_ref().map_or(false, |value| value == "--iai-run") {
+                let index = args_iter.next().map(|arg| arg.parse::<usize>()).unwrap().expect("Error parsing index");
+                $crate::Args::new_iai_run(&executable, module_path!(), index)
+            } else {
+                let mut args = vec![arg.unwrap()];
+                args.extend(args_iter);
+                args.pop(); // this is always --bench and we don't need it
+                $crate::Args::new(&executable, module_path!(), args)
+            };
 
             let benchmarks : &[&(&'static str, fn())]= &[
-
                 $(
                     &(stringify!($func_name), iai_wrappers::$func_name),
                 )+
             ];
 
-            $crate::runner(module_path!(), &executable, is_iai_run, benchmarks, index);
+            $crate::runner(benchmarks, iai_args);
         }
     }
 }
