@@ -1,6 +1,6 @@
 use cfg_if::cfg_if;
+use core::panic;
 use std::{
-    collections::HashMap,
     fs::File,
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
@@ -151,9 +151,9 @@ fn run_bench(
         );
     }
 
-    let new_stats = parse_callgrind_output(&output_file);
+    let new_stats = parse_callgrind_output(&output_file, module, name);
     let old_stats = if old_file.exists() {
-        Some(parse_callgrind_output(&old_file))
+        Some(parse_callgrind_output(&old_file, module, name))
     } else {
         None
     };
@@ -161,92 +161,152 @@ fn run_bench(
     (new_stats, old_stats)
 }
 
-fn parse_callgrind_output(file: &Path) -> CallgrindStats {
-    let mut events_line = None;
-    let mut summary_line = None;
+// A curated sample output which this function must be able to parse to CallgrindStats.
+// For more details see the format specification https://valgrind.org/docs/manual/cl-format.html
+//
+// # callgrind format
+// # ... a lot of lines which we're not interested in
+// fn=test_file::test_function
+// 0 4 1 2 1 1 0 1
+// cfn=some::library::function
+// calls=1 0
+// 0 3 1 0 1 0 0 1
+// 0 12 3 6 1 0 0 1
+// cfn=some::other::library::function
+// calls=1 0
+// 0 6789 593 463 72 37 18 72 37 18
+// 0 4 2 0 1 0 0 1
+//
+// # the empty line above or the end of file ends the parsing
+fn parse_callgrind_output(file: &Path, module: &str, function_name: &str) -> CallgrindStats {
+    let sentinel = format!("fn={}", [module, function_name].join("::"));
 
     let file_in = File::open(file).expect("Unable to open callgrind output file");
+    let mut iter = BufReader::new(file_in).lines().map(|l| l.unwrap());
+    if !iter
+        .by_ref()
+        .find(|l| !l.trim().is_empty())
+        .expect("Found empty file")
+        .contains("callgrind format")
+    {
+        println!("Warning: Missing file format specifier. Assuming callgrind format.");
+    };
 
-    for line in BufReader::new(file_in).lines() {
-        let line = line.unwrap();
-        if let Some(line) = line.strip_prefix("events: ") {
-            events_line = Some(line.trim().to_owned());
+    // Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
+    let mut counters: [u64; 9] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    let mut is_recording = false;
+    let mut has_counters = false;
+    for line in iter {
+        let line = line.trim_start();
+        if !is_recording {
+            if line.starts_with(&sentinel) {
+                is_recording = true;
+            }
+            continue;
         }
-        if let Some(line) = line.strip_prefix("summary: ") {
-            summary_line = Some(line.trim().to_owned());
+        // We're only interested in the counters for function calls within the benchmark function and
+        // ignore counters for the benchmark function itself.
+        if is_recording && line.starts_with("cfn=") {
+            has_counters = true;
+            continue;
+        }
+        if has_counters && line.starts_with(|c: char| c.is_ascii_digit()) {
+            // From the documentation of the callgrind format:
+            // > If a cost line specifies less event counts than given in the "events" line, the
+            // > rest is assumed to be zero.
+            for (index, counter) in line
+                .split_ascii_whitespace()
+                // skip the first number which is just the line number
+                .skip(1)
+                .map(|s| s.parse::<u64>().expect("Encountered non ascii digit"))
+                // we're only interested in the counters for instructions and the cache
+                .take(9)
+                .enumerate()
+            {
+                counters[index] += counter;
+            }
+        }
+        if is_recording && line.is_empty() {
+            break;
         }
     }
 
-    match (events_line, summary_line) {
-        (Some(events), Some(summary)) => {
-            let events: HashMap<_, _> = events
-                .split_whitespace()
-                .zip(summary.split_whitespace().map(|s| {
-                    s.parse::<u64>()
-                        .expect("Unable to parse summary line from callgrind output file")
-                }))
-                .collect();
-
-            CallgrindStats {
-                instruction_reads: *events.get("Ir").unwrap_or(&0),
-                instruction_l1_misses: *events.get("I1mr").unwrap_or(&0),
-                instruction_cache_misses: *events.get("ILmr").unwrap_or(&0),
-                data_reads: *events.get("Dr").unwrap_or(&0),
-                data_l1_read_misses: *events.get("D1mr").unwrap_or(&0),
-                data_cache_read_misses: *events.get("DLmr").unwrap_or(&0),
-                data_writes: *events.get("Dw").unwrap_or(&0),
-                data_l1_write_misses: *events.get("D1mw").unwrap_or(&0),
-                data_cache_write_misses: *events.get("DLmw").unwrap_or(&0),
-            }
-        }
-        _ => panic!("Unable to parse callgrind output file"),
+    CallgrindStats {
+        l1_instructions_cache_reads: counters[0],
+        total_data_cache_reads: counters[1],
+        total_data_cache_writes: counters[2],
+        l1_instructions_cache_read_misses: counters[3],
+        l1_data_cache_read_misses: counters[4],
+        l1_data_cache_write_misses: counters[5],
+        l3_instructions_cache_misses: counters[6],
+        l3_data_cache_read_misses: counters[7],
+        l3_data_cache_write_misses: counters[8],
     }
 }
 
 #[derive(Clone, Debug)]
 struct CallgrindStats {
-    instruction_reads: u64,
-    instruction_l1_misses: u64,
-    instruction_cache_misses: u64,
-    data_reads: u64,
-    data_l1_read_misses: u64,
-    data_cache_read_misses: u64,
-    data_writes: u64,
-    data_l1_write_misses: u64,
-    data_cache_write_misses: u64,
+    /// Ir: equals the number of instructions executed
+    l1_instructions_cache_reads: u64,
+    /// I1mr: I1 cache read misses
+    l1_instructions_cache_read_misses: u64,
+    /// ILmr: LL cache instruction read misses
+    l3_instructions_cache_misses: u64,
+    /// Dr: Memory reads
+    total_data_cache_reads: u64,
+    /// D1mr: D1 cache read misses
+    l1_data_cache_read_misses: u64,
+    /// DLmr: LL cache data read misses
+    l3_data_cache_read_misses: u64,
+    /// Dw: Memory writes
+    total_data_cache_writes: u64,
+    /// D1mw: D1 cache write misses
+    l1_data_cache_write_misses: u64,
+    /// DLmw: LL cache data write misses
+    l3_data_cache_write_misses: u64,
 }
 impl CallgrindStats {
-    pub fn ram_accesses(&self) -> u64 {
-        self.instruction_cache_misses + self.data_cache_read_misses + self.data_cache_write_misses
-    }
     pub fn summarize(&self) -> CallgrindSummary {
-        let ram_hits = self.ram_accesses();
-        let l3_accesses =
-            self.instruction_l1_misses + self.data_l1_read_misses + self.data_l1_write_misses;
+        let ram_hits = self.l3_instructions_cache_misses
+            + self.l3_data_cache_read_misses
+            + self.l3_data_cache_write_misses;
+        let l1_data_accesses = self.l1_data_cache_read_misses + self.l1_data_cache_write_misses;
+        let l1_miss = self.l1_instructions_cache_read_misses + l1_data_accesses;
+        let l3_accesses = l1_miss;
         let l3_hits = l3_accesses - ram_hits;
 
-        let total_memory_rw = self.instruction_reads + self.data_reads + self.data_writes;
-        let l1_hits = total_memory_rw - (ram_hits + l3_hits);
+        let total_memory_rw = self.l1_instructions_cache_reads
+            + self.total_data_cache_reads
+            + self.total_data_cache_writes;
+        let l1_data_hits =
+            total_memory_rw - self.l1_instructions_cache_reads - (ram_hits + l3_hits);
+        assert!(
+            total_memory_rw == l1_data_hits + self.l1_instructions_cache_reads + l3_hits + ram_hits
+        );
+
+        // Uses Itamar Turner-Trauring's formula from https://pythonspeed.com/articles/consistent-benchmarking-in-ci/
+        let cycles =
+            self.l1_instructions_cache_reads + l1_data_hits + (5 * l3_hits) + (35 * ram_hits);
 
         CallgrindSummary {
-            l1_hits,
+            l1_instructions: self.l1_instructions_cache_reads,
+            l1_data_hits,
             l3_hits,
             ram_hits,
+            total_memory_rw,
+            cycles,
         }
     }
 }
 
 #[derive(Clone, Debug)]
 struct CallgrindSummary {
-    l1_hits: u64,
+    l1_instructions: u64,
+    l1_data_hits: u64,
     l3_hits: u64,
     ram_hits: u64,
-}
-impl CallgrindSummary {
-    fn cycles(&self) -> u64 {
-        // Uses Itamar Turner-Trauring's formula from https://pythonspeed.com/articles/consistent-benchmarking-in-ci/
-        self.l1_hits + (5 * self.l3_hits) + (35 * self.ram_hits)
-    }
+    total_memory_rw: u64,
+    cycles: u64,
 }
 
 /// Custom-test-framework runner. Should not be called directly.
@@ -313,26 +373,26 @@ pub fn runner(
             format!(" ({:>+6}%)", signed_short(pct))
         }
 
-        println!(
-            "  Instructions:     {:>15}{}",
-            stats.instruction_reads,
-            match &old_stats {
-                Some(old) => percentage_diff(stats.instruction_reads, old.instruction_reads),
-                None => String::new(),
-            }
-        );
         let summary = stats.summarize();
         let old_summary = old_stats.map(|stat| stat.summarize());
         println!(
-            "  L1 Accesses:      {:>15}{}",
-            summary.l1_hits,
+            "  Instructions:     {:>15}{}",
+            summary.l1_instructions,
             match &old_summary {
-                Some(old) => percentage_diff(summary.l1_hits, old.l1_hits),
+                Some(old) => percentage_diff(summary.l1_instructions, old.l1_instructions),
                 None => String::new(),
             }
         );
         println!(
-            "  L2 Accesses:      {:>15}{}",
+            "  L1 Data Hits:     {:>15}{}",
+            summary.l1_data_hits,
+            match &old_summary {
+                Some(old) => percentage_diff(summary.l1_data_hits, old.l1_data_hits),
+                None => String::new(),
+            }
+        );
+        println!(
+            "  L2 Hits:          {:>15}{}",
             summary.l3_hits,
             match &old_summary {
                 Some(old) => percentage_diff(summary.l3_hits, old.l3_hits),
@@ -340,7 +400,7 @@ pub fn runner(
             }
         );
         println!(
-            "  RAM Accesses:     {:>15}{}",
+            "  RAM Hits:         {:>15}{}",
             summary.ram_hits,
             match &old_summary {
                 Some(old) => percentage_diff(summary.ram_hits, old.ram_hits),
@@ -348,10 +408,18 @@ pub fn runner(
             }
         );
         println!(
-            "  Estimated Cycles: {:>15}{}",
-            summary.cycles(),
+            "  Total read+write: {:>15}{}",
+            summary.total_memory_rw,
             match &old_summary {
-                Some(old) => percentage_diff(summary.cycles(), old.cycles()),
+                Some(old) => percentage_diff(summary.total_memory_rw, old.total_memory_rw),
+                None => String::new(),
+            }
+        );
+        println!(
+            "  Estimated Cycles: {:>15}{}",
+            summary.cycles,
+            match &old_summary {
+                Some(old) => percentage_diff(summary.cycles, old.cycles),
                 None => String::new(),
             }
         );
