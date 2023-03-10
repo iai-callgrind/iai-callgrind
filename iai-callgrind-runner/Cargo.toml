@@ -2,6 +2,16 @@
 name = "iai-callgrind-runner"
 version = "0.1.0"
 edition = "2021"
+authors = ["Joining7943 <joining@posteo.de>", "Brook Heisler <redattack34@gmail.com>"]
+rust-version = "1.56.0"
+description = "Binary packaged needed by the iai-callgrind library"
+readme = "README.md"
+homepage = "https://github.com/Joining7943/iai-callgrind"
+repository = "https://github.com/Joining7943/iai-callgrind"
+license = "Apache-2.0 AND MIT"
+keywords = ["iai", "benchmark", "callgrind", "valgrind"]
+categories = ["development-tools::profiling", "development-tools::testing"]
+
 
 [dependencies]
 cfg-if = "1.0"
