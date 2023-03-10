@@ -28,7 +28,7 @@ precise measurements of Rust code.
 
 This is a fork of the great [Iai](https://github.com/bheisler/iai) library rewritten to use
 Valgrind's [Callgrind](https://valgrind.org/docs/manual/cl-manual.html) instead of
-[Cachegrind](https://valgrind.org/docs/manual/cg-manual.html).
+[Cachegrind](https://valgrind.org/docs/manual/cg-manual.html) but also adds other improvements.
 
 ## Table of Contents
 
@@ -48,15 +48,16 @@ Valgrind's [Callgrind](https://valgrind.org/docs/manual/cl-manual.html) instead 
 - __Consistency__: Iai-Callgrind can take accurate measurements even in virtualized CI environments
 - __Performance__: Since Iai-Callgrind only executes a benchmark once, it is typically faster to run than statistical benchmarks
 - __Profiling__: Iai-Callgrind generates a Callgrind profile of your code while benchmarking, so you
-can use Callgrind-compatible tools like `callgrind_annotate` or the visualizer
-[kcachegrind](https://kcachegrind.github.io/html/Home.html) to
-analyze the results in detail
+can use Callgrind-compatible tools like
+[callgrind_annotate](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.callgrind_annotate-options)
+or the visualizer [kcachegrind](https://kcachegrind.github.io/html/Home.html) to analyze the results
+in detail
 - __Stable-compatible__: Benchmark your code without installing nightly Rust
 
 ### Installation
 
-In order to use Iai-Callgrind, you must have [Valgrind](https://www.valgrind.org) installed. This means that Iai-Callgrind
-cannot be used on platforms that are not supported by Valgrind.
+In order to use Iai-Callgrind, you must have [Valgrind](https://www.valgrind.org) installed. This
+means that Iai-Callgrind cannot be used on platforms that are not supported by Valgrind.
 
 To start with Iai-Callgrind, add the following to your `Cargo.toml` file:
 
@@ -64,6 +65,16 @@ To start with Iai-Callgrind, add the following to your `Cargo.toml` file:
 [dev-dependencies]
 iai-callgrind = "0.1.0"
 ```
+
+To be able to run the benchmarks you'll also need the `iai-callgrind-runner` binary installed
+somewhere in your `$PATH`, for example with
+
+```shell
+cargo install --version 0.1.0 iai-callgrind-runner 
+```
+
+When updating the library you'll most likely also need to update the binary or vice-versa. See the
+[Changelog](CHANGELOG.md) for such update notes.
 
 ### Quickstart
 
@@ -141,61 +152,77 @@ improvements. The biggest difference is, that it uses Callgrind under hood inste
 
 #### More stable metrics
 
-Iai-Callgrind has even more precise and stable metrics across different systems. Below a run of the
-benchmarks of this library on my local computer
+Iai-Callgrind has even more precise and stable metrics across different systems. It achieves this by
+
+- start counting the events when entering the benchmark function and stops counting when leaving the
+benchmark function. The call to the benchmark function itself is also subtracted (See `bench_empty`
+below). This behavior virtually encapsulates the benchmark function and (almost) completely
+separates the benchmark from the surrounding code.
+- separating the iai library with the main macro from the actual runner. This is why the extra
+installation step of `iai-callgrind-runner` is necessary but before this separation, even small
+changes in the iai library had effects on the benchmarks under test.
+
+Below a run of the benchmarks of this library on my local computer
 
 ```shell
 $ cd iai-callgrind
 $ cargo bench --bench test_regular_bench
 bench_empty
-  Instructions:                   1
-  L1 Accesses:                    1
-  L2 Accesses:                    0
-  RAM Accesses:                   1
-  Estimated Cycles:              36
+  Instructions:                   0
+  L1 Data Hits:                   0
+  L2 Hits:                        0
+  RAM Hits:                       0
+  Total read+write:               0
+  Estimated Cycles:               0
 
 bench_fibonacci
-  Instructions:                1732
-  L1 Accesses:                 2356
-  L2 Accesses:                    0
-  RAM Accesses:                   2
-  Estimated Cycles:            2426
+  Instructions:                1727
+  L1 Data Hits:                 621
+  L2 Hits:                        0
+  RAM Hits:                       1
+  Total read+write:            2349
+  Estimated Cycles:            2383
 
 bench_fibonacci_long
-  Instructions:            26214732
-  L1 Accesses:             35638615
-  L2 Accesses:                    1
-  RAM Accesses:                   2
-  Estimated Cycles:        35638690
+  Instructions:            26214727
+  L1 Data Hits:             9423880
+  L2 Hits:                        0
+  RAM Hits:                       2
+  Total read+write:        35638609
+  Estimated Cycles:        35638677
 ```
 
 For comparison here the output of the same benchmark but in the github CI:
 
 ```text
 bench_empty
-  Instructions:                   1
-  L1 Accesses:                    1
-  L2 Accesses:                    0
-  RAM Accesses:                   1
-  Estimated Cycles:              36
+  Instructions:                   0
+  L1 Data Hits:                   0
+  L2 Hits:                        0
+  RAM Hits:                       0
+  Total read+write:               0
+  Estimated Cycles:               0
 
 bench_fibonacci
-  Instructions:                1732
-  L1 Accesses:                 2356
-  L2 Accesses:                    0
-  RAM Accesses:                   2
-  Estimated Cycles:            2426
+  Instructions:                1727
+  L1 Data Hits:                 621
+  L2 Hits:                        0
+  RAM Hits:                       1
+  Total read+write:            2349
+  Estimated Cycles:            2383
 
 bench_fibonacci_long
-  Instructions:            26214732
-  L1 Accesses:             35638616
-  L2 Accesses:                    0
-  RAM Accesses:                   2
-  Estimated Cycles:        35638686
+  Instructions:            26214727
+  L1 Data Hits:             9423880
+  L2 Hits:                        0
+  RAM Hits:                       2
+  Total read+write:        35638609
+  Estimated Cycles:        35638677
 ```
 
-There's almost no difference what makes benchmark runs and performance improvements of the
-benchmarked code even more comparable across systems.
+There's no difference (in this example) what makes benchmark runs and performance improvements of
+the benchmarked code even more comparable across systems. However, the above benchmarks are pretty
+clean and you'll most likely see some small differences in your own benchmarks.
 
 #### Cleaner output of Valgrind's annotation tools
 
@@ -204,7 +231,83 @@ but the output of `cg_annotate` was still cluttered by the setup functions and m
 `callgrind_annotate` output produced by Iai-Callgrind is far cleaner and centered on the actual
 function under test.
 
-#### Other incomplete list of minor improvements
+#### Rework the metrics output
+
+The statistics of the benchmarks are mostly not compatible with the original Iai anymore although
+still related. They now also include some additional information:
+
+```text
+bench_fibonacci_long
+  Instructions:            26214732
+  L1 Data Hits:             9423880
+  L2 Hits:                        0
+  RAM Hits:                       2
+  Total read+write:        35638609
+  Estimated Cycles:        35638677
+```
+
+There is an additional line `Total read+write` which summarizes all event counters above it and the
+`L1 Accesses` line changed to `L1 Data Hits`. So, the (L1) `Instructions` (reads) and `L1 Data Hits` are now
+separately listed.
+
+In detail:
+
+`Total read+write = Instructions + L1 Data Hits + L2 Hits + RAM Hits`.
+
+The formula for the `Estimated Cycles` hasn't changed and uses Itamar Turner-Trauring's formula from
+<https://pythonspeed.com/articles/consistent-benchmarking-in-ci/>:
+
+`Estimated Cycles = (Instructions + L1 Data Hits) + 5 × (L2 Hits) + 35 × (RAM Hits)`
+
+For further details about how the caches are simulated and more, see the documentation of
+[Callgrind](https://valgrind.org/docs/manual/cg-manual.html)
+
+#### Passing arguments to Callgrind
+
+It's now possible to pass additional arguments to callgrind separated by `--`
+(`cargo bench -- CALLGRIND_ARGS`) or overwrite the defaults, which are:
+
+- `--I1=32768,8,64`
+- `--D1=32768,8,64`
+- `--LL=8388608,16,64`
+- `--cache-sim=yes` (can't be changed)
+- `--toggle-collect=*BENCHMARK_FILE::BENCHMARK_FUNCTION`
+- `--collect-atstart=no`
+- `--compress-pos=no`
+- `--compress-strings=no`
+
+Note that overwriting `--toggle-collect` is currently not recommended and may produce wrong results.
+
+See also [Callgrind Command-line Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options).
+
+#### Skipping setup code
+
+All setup code in the benchmark function itself is still attributed to the event counts, so it's
+still necessary to keep them as small as possible to avoid such influences. What you can do however
+is to pass `--fn-skip=SETUP_FUNCTION` to callgrind where the `SETUP_FUNCTION` is a setup function in
+the benchmark file (`my_bench`) like so:
+
+```rust
+fn costly_setup() -> Result {
+    // some costly setup code 
+}
+
+#[inline(never)]
+fn test() {
+    let result = costly_setup();
+    my_library::call_to_function(black_box(result));
+}
+
+main!(test);
+```
+
+and then run the benchmark for example with
+
+```shell
+cargo bench --bench my_bench -- --fn-skip='*my_bench::test::costly_setup'
+```
+
+#### Incomplete list of other minor improvements
 
 - The output files of Callgrind are now located under a subdirectory under `target/iai` to avoid
   overwriting them in case of multiple benchmark files.
@@ -213,9 +316,6 @@ function under test.
 
 Iai-Callgrind does not completely remove the influences of setup changes (like an additional
 benchmark function in the same file). However, these effects shouldn't be so large anymore.
-
-All setup code in the benchmark function itself is still accounted in the metrics, so it's still
-needed to keep it as small as possible to avoid such influences.
 
 ### See also
 
