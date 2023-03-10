@@ -7,53 +7,24 @@ use std::{
     process::{Command, Stdio},
 };
 
-mod macros;
-
 fn warn(warning: &str) {
     eprintln!("iai-callgrind: Warning: {}", warning);
 }
 
 #[derive(Debug)]
-pub struct Args {
+struct Args {
     executable: String,
     module: String,
-    is_iai_run: bool,
-    index: Option<usize>,
     callgrind_args: Option<Vec<String>>,
 }
 
 impl Args {
-    pub fn new_iai_run(executable: &str, module: &str, index: usize) -> Self {
+    fn new(executable: &str, module: &str, callgrind_args: Vec<String>) -> Self {
         Self {
             executable: executable.to_string(),
             module: module.to_string(),
-            is_iai_run: true,
-            index: Some(index),
-            callgrind_args: None,
-        }
-    }
-
-    pub fn new(executable: &str, module: &str, callgrind_args: Vec<String>) -> Self {
-        Self {
-            executable: executable.to_string(),
-            module: module.to_string(),
-            is_iai_run: false,
-            index: None,
             callgrind_args: Some(callgrind_args),
         }
-    }
-}
-
-/// A function that is opaque to the optimizer, used to prevent the compiler from
-/// optimizing away computations in a benchmark.
-///
-/// This variant is stable-compatible, but it may cause some performance overhead
-/// or fail to prevent code from being eliminated.
-pub fn black_box<T>(dummy: T) -> T {
-    unsafe {
-        let ret = std::ptr::read_volatile(&dummy);
-        std::mem::forget(dummy);
-        ret
     }
 }
 
@@ -227,7 +198,6 @@ fn run_bench(
     } else {
         valgrind_without_aslr(arch)
     };
-    // dbg!(function_name);
 
     let target = PathBuf::from("target/iai");
     let module_path: PathBuf = module.split("::").collect();
@@ -268,16 +238,6 @@ fn run_bench(
             status
         );
     }
-    // if !status.status.success() {
-    //     panic!(
-    //         "Failed to run benchmark in callgrind. Exit code: {:?}: stdout: '{}', stderr: '{}'",
-    //         status.status.code(),
-    //         String::from_utf8(status.stdout).unwrap(),
-    //         String::from_utf8(status.stderr).unwrap(),
-    //     );
-    // } else {
-    //     eprint!("{}", String::from_utf8(status.stderr).unwrap());
-    // }
 
     let new_stats = parse_callgrind_output(&output_file, module, function_name);
     let old_stats = if old_file.exists() {
@@ -394,7 +354,7 @@ struct CallgrindStats {
     l3_data_cache_write_misses: u64,
 }
 impl CallgrindStats {
-    pub fn summarize(&self) -> CallgrindSummary {
+    fn summarize(&self) -> CallgrindSummary {
         let ram_hits = self.l3_instructions_cache_misses
             + self.l3_data_cache_read_misses
             + self.l3_data_cache_write_misses;
@@ -427,11 +387,6 @@ impl CallgrindStats {
     }
 }
 
-#[inline(never)]
-fn run_func(func: fn()) {
-    func();
-}
-
 #[derive(Clone, Debug)]
 struct CallgrindSummary {
     l1_instructions: u64,
@@ -443,17 +398,23 @@ struct CallgrindSummary {
 }
 
 /// Custom-test-framework runner. Should not be called directly.
-#[doc(hidden)]
-#[inline(never)]
-pub fn runner(benches: &[&(&'static str, fn())], args: Args) {
-    if args.is_iai_run {
-        // In this branch, we're running under callgrind, so execute the benchmark as quickly as
-        // possible and exit
-        run_func(benches[args.index.unwrap()].1);
-        return;
-    }
+pub fn run() {
+    let mut args_iter = std::env::args().skip(1);
+    let module = args_iter.next().unwrap();
+    let mut benches = vec![];
+    let executable = loop {
+        if let Some(arg) = args_iter.next() {
+            match arg.split_once('=') {
+                Some((key, value)) if key == "--iai-bench" => benches.push(value.to_string()),
+                Some(_) | None => break arg,
+            }
+        }
+    };
 
-    // Otherwise we're running normally, under cargo
+    let mut args = args_iter.collect::<Vec<String>>();
+    args.pop(); // this is always --bench and we don't need it
+    let args = Args::new(&executable, &module, args);
+
     if !check_valgrind() {
         return;
     }
@@ -463,7 +424,7 @@ pub fn runner(benches: &[&(&'static str, fn())], args: Args) {
     let allow_aslr = std::env::var_os("IAI_ALLOW_ASLR").is_some();
 
     let callgrind_args = CallgrindArgs::from_args(&args);
-    for (index, (name, _func)) in benches.iter().enumerate() {
+    for (index, name) in benches.iter().enumerate() {
         println!("{}", name);
         let (stats, old_stats) = run_bench(
             &args.module,
