@@ -1,15 +1,13 @@
 use cfg_if::cfg_if;
+use colored::{ColoredString, Colorize};
 use core::panic;
+use log::{debug, warn};
 use std::{
     fs::File,
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
-
-fn warn(warning: &str) {
-    eprintln!("iai-callgrind: Warning: {}", warning);
-}
 
 #[derive(Debug)]
 struct Args {
@@ -38,14 +36,14 @@ fn check_valgrind() -> bool {
 
     match result {
         Err(e) => {
-            println!("Unexpected error while launching valgrind. Error: {}", e);
+            eprintln!("Unexpected error while launching valgrind. Error: {}", e);
             false
         }
         Ok(status) => {
             if status.success() {
                 true
             } else {
-                println!("Failed to launch valgrind. Error: {}. Please ensure that valgrind is installed and on the $PATH.", status);
+                eprintln!("Failed to launch valgrind. Error: {}. Please ensure that valgrind is installed and on the $PATH.", status);
                 false
             }
         }
@@ -137,7 +135,7 @@ impl CallgrindArgs {
             } else if arg.starts_with("--LL=") {
                 default.ll = arg.to_owned();
             } else if arg.starts_with("--cache-sim=") {
-                warn(&format!("Ignoring '{}'", arg));
+                warn!("Ignoring callgrind argument: '{}'", arg);
             } else if arg.starts_with("--collect-atstart=") {
                 default.collect_atstart = arg.to_owned();
             } else if arg.starts_with("--compress-strings=") {
@@ -145,13 +143,13 @@ impl CallgrindArgs {
             } else if arg.starts_with("--compress-pos=") {
                 default.compress_pos = arg.to_owned();
             } else if arg.starts_with("--toggle-collect=") {
-                warn(&format!(
-                    "This callgrind option '{}' will overwrite the default setting and may not work as expected.",
+                warn!(
+                    "The callgrind argument '{}' will overwrite the default setting and may produce wrong results.",
                     arg
-                ));
+                );
                 default.toggle_collect = Some(arg.to_owned());
             } else if arg.starts_with("--callgrind-out-file=") {
-                warn(&format!("Ignoring '{}'", arg));
+                warn!("Ignoring callgrind argument: '{}'", arg);
             } else {
                 default.other.push(arg.to_owned());
             }
@@ -215,12 +213,15 @@ fn run_bench(
         // Already run this benchmark once; move last results to .old
         std::fs::copy(&output_file, &old_file).unwrap();
     }
+
+    let callgrind_args = callgrind_args.parse_with(&output_file, module, function_name);
+    debug!("Callgrind arguments: {}", callgrind_args.join(" "));
     let status = cmd
         // Set some reasonable cache sizes. The exact sizes matter less than having fixed sizes,
         // since otherwise callgrind would take them from the CPU and make benchmark runs
         // even more incomparable between machines.
         .arg("--tool=callgrind")
-        .args(callgrind_args.parse_with(&output_file, module, function_name))
+        .args(callgrind_args)
         .arg(executable)
         .arg("--iai-run")
         .arg(index.to_string())
@@ -277,7 +278,7 @@ fn parse_callgrind_output(file: &Path, module: &str, function_name: &str) -> Cal
         .expect("Found empty file")
         .contains("callgrind format")
     {
-        println!("Warning: Missing file format specifier. Assuming callgrind format.");
+        warn!("Missing file format specifier. Assuming callgrind format.");
     };
 
     // Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
@@ -385,6 +386,109 @@ impl CallgrindStats {
             cycles,
         }
     }
+
+    fn signed_short(n: f64) -> String {
+        let n_abs = n.abs();
+
+        if n_abs < 10.0 {
+            format!("{:+.6}", n)
+        } else if n_abs < 100.0 {
+            format!("{:+.5}", n)
+        } else if n_abs < 1000.0 {
+            format!("{:+.4}", n)
+        } else if n_abs < 10000.0 {
+            format!("{:+.3}", n)
+        } else if n_abs < 100000.0 {
+            format!("{:+.2}", n)
+        } else if n_abs < 1000000.0 {
+            format!("{:+.1}", n)
+        } else {
+            format!("{:+.0}", n)
+        }
+    }
+
+    fn percentage_diff(new: u64, old: u64) -> ColoredString {
+        fn format(string: ColoredString) -> ColoredString {
+            ColoredString::from(format!(" ({})", string).as_str())
+        }
+
+        if new == old {
+            return format("No Change".bright_black());
+        }
+
+        let new = new as f64;
+        let old = old as f64;
+
+        let diff = (new - old) / old;
+        let pct = diff * 100.0;
+
+        if pct.is_sign_positive() {
+            format(
+                format!("{:>+6}%", Self::signed_short(pct))
+                    .bright_red()
+                    .bold(),
+            )
+        } else {
+            format(
+                format!("{:>+6}%", Self::signed_short(pct))
+                    .bright_green()
+                    .bold(),
+            )
+        }
+    }
+
+    fn print(&self, old: Option<CallgrindStats>) {
+        let summary = self.summarize();
+        let old_summary = old.map(|stat| stat.summarize());
+        println!(
+            "  Instructions:     {:>15}{}",
+            summary.l1_instructions.to_string().bold(),
+            match &old_summary {
+                Some(old) => Self::percentage_diff(summary.l1_instructions, old.l1_instructions),
+                None => String::new().normal(),
+            }
+        );
+        println!(
+            "  L1 Data Hits:     {:>15}{}",
+            summary.l1_data_hits.to_string().bold(),
+            match &old_summary {
+                Some(old) => Self::percentage_diff(summary.l1_data_hits, old.l1_data_hits),
+                None => String::new().normal(),
+            }
+        );
+        println!(
+            "  L2 Hits:          {:>15}{}",
+            summary.l3_hits.to_string().bold(),
+            match &old_summary {
+                Some(old) => Self::percentage_diff(summary.l3_hits, old.l3_hits),
+                None => String::new().normal(),
+            }
+        );
+        println!(
+            "  RAM Hits:         {:>15}{}",
+            summary.ram_hits.to_string().bold(),
+            match &old_summary {
+                Some(old) => Self::percentage_diff(summary.ram_hits, old.ram_hits),
+                None => String::new().normal(),
+            }
+        );
+        println!(
+            "  Total read+write: {:>15}{}",
+            summary.total_memory_rw.to_string().bold(),
+            match &old_summary {
+                Some(old) => Self::percentage_diff(summary.total_memory_rw, old.total_memory_rw),
+                None => String::new().normal(),
+            }
+        );
+        println!(
+            "  Estimated Cycles: {:>15}{}",
+            summary.cycles.to_string().bold(),
+            match &old_summary {
+                Some(old) => Self::percentage_diff(summary.cycles, old.cycles),
+                None => String::new().normal(),
+            }
+        );
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -397,7 +501,6 @@ struct CallgrindSummary {
     cycles: u64,
 }
 
-/// Custom-test-framework runner. Should not be called directly.
 pub fn run() {
     let mut args_iter = std::env::args().skip(1);
     let module = args_iter.next().unwrap();
@@ -429,7 +532,6 @@ pub fn run() {
 
     let callgrind_args = CallgrindArgs::from_args(&args);
     for (index, name) in benches.iter().enumerate() {
-        println!("{}", name);
         let (stats, old_stats) = run_bench(
             &args.module,
             &arch,
@@ -440,90 +542,7 @@ pub fn run() {
             &callgrind_args,
         );
 
-        fn signed_short(n: f64) -> String {
-            let n_abs = n.abs();
-
-            if n_abs < 10.0 {
-                format!("{:+.6}", n)
-            } else if n_abs < 100.0 {
-                format!("{:+.5}", n)
-            } else if n_abs < 1000.0 {
-                format!("{:+.4}", n)
-            } else if n_abs < 10000.0 {
-                format!("{:+.3}", n)
-            } else if n_abs < 100000.0 {
-                format!("{:+.2}", n)
-            } else if n_abs < 1000000.0 {
-                format!("{:+.1}", n)
-            } else {
-                format!("{:+.0}", n)
-            }
-        }
-
-        fn percentage_diff(new: u64, old: u64) -> String {
-            if new == old {
-                return " (No change)".to_owned();
-            }
-
-            let new: f64 = new as f64;
-            let old: f64 = old as f64;
-
-            let diff = (new - old) / old;
-            let pct = diff * 100.0;
-
-            format!(" ({:>+6}%)", signed_short(pct))
-        }
-
-        let summary = stats.summarize();
-        let old_summary = old_stats.map(|stat| stat.summarize());
-        println!(
-            "  Instructions:     {:>15}{}",
-            summary.l1_instructions,
-            match &old_summary {
-                Some(old) => percentage_diff(summary.l1_instructions, old.l1_instructions),
-                None => String::new(),
-            }
-        );
-        println!(
-            "  L1 Data Hits:     {:>15}{}",
-            summary.l1_data_hits,
-            match &old_summary {
-                Some(old) => percentage_diff(summary.l1_data_hits, old.l1_data_hits),
-                None => String::new(),
-            }
-        );
-        println!(
-            "  L2 Hits:          {:>15}{}",
-            summary.l3_hits,
-            match &old_summary {
-                Some(old) => percentage_diff(summary.l3_hits, old.l3_hits),
-                None => String::new(),
-            }
-        );
-        println!(
-            "  RAM Hits:         {:>15}{}",
-            summary.ram_hits,
-            match &old_summary {
-                Some(old) => percentage_diff(summary.ram_hits, old.ram_hits),
-                None => String::new(),
-            }
-        );
-        println!(
-            "  Total read+write: {:>15}{}",
-            summary.total_memory_rw,
-            match &old_summary {
-                Some(old) => percentage_diff(summary.total_memory_rw, old.total_memory_rw),
-                None => String::new(),
-            }
-        );
-        println!(
-            "  Estimated Cycles: {:>15}{}",
-            summary.cycles,
-            match &old_summary {
-                Some(old) => percentage_diff(summary.cycles, old.cycles),
-                None => String::new(),
-            }
-        );
-        println!();
+        println!("{}", format!("{}::{}", module, name).green());
+        stats.print(old_stats);
     }
 }
