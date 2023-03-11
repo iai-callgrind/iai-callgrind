@@ -411,8 +411,12 @@ pub fn run() {
         }
     };
 
-    let mut args = args_iter.collect::<Vec<String>>();
-    args.pop(); // this is always --bench and we don't need it
+    let mut args = args_iter
+        .filter(|a| a.starts_with("--"))
+        .collect::<Vec<String>>();
+    if args.last().map_or(false, |a| a == "--bench") {
+        args.pop();
+    }
     let args = Args::new(&executable, &module, args);
 
     if !check_valgrind() {
