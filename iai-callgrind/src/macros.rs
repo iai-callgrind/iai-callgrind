@@ -3,8 +3,23 @@
 
 /// Macro which expands to a benchmark harness.
 ///
-/// Currently, using Iai-callgrind requires disabling the benchmark harness generated automatically
-/// by rustc. This can be done like so:
+/// This macro has two forms:
+///
+/// ```rust
+/// main!(func1, func2)
+/// ```
+///
+/// or
+///
+/// ```rust
+/// main!(
+///     callgrind_args = "--arg-with-flags=yes", "arg-without-flags=is_ok_too"
+///     functions = func1, func2
+/// )
+/// ```
+///
+/// Using Iai-callgrind requires disabling the benchmark harness generated automatically by rustc.
+/// This can be done like so:
 ///
 /// ```toml
 /// [[bench]]
@@ -43,7 +58,7 @@
 /// The `iai_callgrind::main` macro expands to a `main` function which runs all of the benchmarks.
 #[macro_export]
 macro_rules! main {
-    ( $( $func_name:ident ),+ $(,)* ) => {
+    ( callgrind_args = $( $args:literal ),* $(,)*; functions = $( $func_name:ident ),+ $(,)* ) => {
         mod iai_wrappers {
             $(
                 pub fn $func_name() {
@@ -53,7 +68,7 @@ macro_rules! main {
         }
 
         #[inline(never)]
-        fn run(benchmarks: &[&(&'static str, fn())], this_args: std::env::Args) {
+        fn run(benchmarks: &[&(&'static str, fn())], mut this_args: std::env::Args) {
             let exe = option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner");
             let library_version = "0.2.0";
 
@@ -66,8 +81,24 @@ macro_rules! main {
                 cmd.arg(format!("--iai-bench={}", bench.0));
             }
 
-            let mut args = Vec::with_capacity(20);
-            args.extend(this_args);
+            let mut args = Vec::with_capacity(40);
+            args.push(this_args.next().unwrap()); // The executable
+            // Add the callgrind_args first so that arguments from the command line will overwrite
+            // those passed to this main macro
+            let callgrind_args : Vec<&str> = vec![
+                $(
+                    $args,
+                )*
+            ];
+            for arg in callgrind_args {
+                if arg.starts_with("--") {
+                    args.push(arg.to_owned());
+                } else {
+                    args.push(format!("--{}", arg))
+                }
+            }
+
+            args.extend(this_args); // The rest of the arguments
             let status = cmd
                 .args(args)
                 .status()
@@ -99,5 +130,8 @@ macro_rules! main {
                 run($crate::black_box(benchmarks), $crate::black_box(std::env::args()));
             };
         }
+    };
+    ( $( $func_name:ident ),+ $(,)* ) => {
+        main!(callgrind_args = ; functions = $( $func_name ),+  );
     }
 }
