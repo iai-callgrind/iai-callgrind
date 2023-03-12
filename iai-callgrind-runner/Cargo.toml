@@ -21,7 +21,7 @@ colored = "2.0.0"
 version-compare = "0.1.1"
 
 [dev-dependencies]
-iai-callgrind = { path = "../iai-callgrind", version = "0.2.0" }
+iai-callgrind = { path = "../iai-callgrind" }
 
 [[bin]]
 name = "iai-callgrind-runner"
