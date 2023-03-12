@@ -1,6 +1,6 @@
 <h1 align="center">Iai-Callgrind</h1>
 
-<div align="center">High-precision and consistent benchmarking framework and harness for Rust</div>
+<div align="center">High-precision and consistent benchmarking framework/harness for Rust</div>
 
 <div align="center">
     <a href="https://docs.rs/crate/iai-callgrind/">Released API Docs</a>
@@ -23,11 +23,14 @@
     </a>
 </div>
 
-Iai-Callgrind is a benchmarking framework and harness that uses Callgrind to provide extremely accurate and consistent measurements of Rust code, making it perfectly suited to run in environments like a CI.
+Iai-Callgrind is a benchmarking framework and harness that uses Callgrind to provide extremely
+accurate and consistent measurements of Rust code, making it perfectly suited to run in environments
+like a CI.
 
-This crate started as a fork of the great [Iai](https://github.com/bheisler/iai) crate rewritten to use
-Valgrind's [Callgrind](https://valgrind.org/docs/manual/cl-manual.html) instead of
-[Cachegrind](https://valgrind.org/docs/manual/cg-manual.html) but also adds a lot of other improvements and features.
+This crate started as a fork of the great [Iai](https://github.com/bheisler/iai) crate rewritten to
+use Valgrind's [Callgrind](https://valgrind.org/docs/manual/cl-manual.html) instead of
+[Cachegrind](https://valgrind.org/docs/manual/cg-manual.html) but also adds a lot of other
+improvements and features.
 
 ## Table of Contents
 
@@ -43,10 +46,13 @@ Valgrind's [Callgrind](https://valgrind.org/docs/manual/cl-manual.html) instead 
 
 ### Features
 
-- __Precision__: High-precision measurements allow you to reliably detect very small optimizations to your code
+- __Precision__: High-precision measurements allow you to reliably detect very small optimizations
+to your code
 - __Consistency__: Iai-Callgrind can take accurate measurements even in virtualized CI environments
-- __Performance__: Since Iai-Callgrind only executes a benchmark once, it is typically faster to run than benchmarks measuring the execution and wall time
-- __Regression__: Iai-Callgrind reports the difference between benchmark runs to make it easy to spot detailed performance regressions and improvements.
+- __Performance__: Since Iai-Callgrind only executes a benchmark once, it is typically faster to run
+than benchmarks measuring the execution and wall time
+- __Regression__: Iai-Callgrind reports the difference between benchmark runs to make it easy to
+spot detailed performance regressions and improvements.
 - __Profiling__: Iai-Callgrind generates a Callgrind profile of your code while benchmarking, so you
 can use Callgrind-compatible tools like
 [callgrind_annotate](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.callgrind_annotate-options)
@@ -141,7 +147,9 @@ my_benchmark::bench_fibonacci_long
 ```
 
 In addition, you'll find the callgrind output in `target/iai/my_benchmark`, if you want to
-investigate further with a tool like `callgrind_annotate`. Now, if running the same benchmark again, the output will report the differences between the current and the previous run. Say you've made change to the `fibonacci` function, then you might see something like this:
+investigate further with a tool like `callgrind_annotate`. Now, if running the same benchmark again,
+the output will report the differences between the current and the previous run. Say you've made
+change to the `fibonacci` function, then you might see something like this:
 
 ```text
 my_benchmark::bench_fibonacci_short
@@ -258,8 +266,8 @@ test_regular_bench::bench_fibonacci_long
 ```
 
 There is an additional line `Total read+write` which summarizes all event counters above it and the
-`L1 Accesses` line changed to `L1 Data Hits`. So, the (L1) `Instructions` (reads) and `L1 Data Hits` are now
-separately listed.
+`L1 Accesses` line changed to `L1 Data Hits`. So, the (L1) `Instructions` (reads) and `L1 Data Hits`
+are now separately listed.
 
 In detail:
 
