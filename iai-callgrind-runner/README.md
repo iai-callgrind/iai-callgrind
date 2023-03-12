@@ -23,8 +23,8 @@
     </a>
 </div>
 
-Iai-Callgrind is an experimental benchmarking harness that uses Callgrind to perform extremely
-precise measurements of Rust code.
+Iai-Callgrind is a benchmarking harness that uses Callgrind to perform extremely precise
+measurements of Rust code.
 
 This is the benchmark binary needed by the [Iai-callgrind
-library](https://github.com/Joining7943/iai-callgrind/). Please see there for further details.
+library](https://crates.io/crates/iai-callgrind). Please see there for further details.
