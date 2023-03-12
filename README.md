@@ -1,6 +1,6 @@
 <h1 align="center">Iai-Callgrind</h1>
 
-<div align="center">Experimental Benchmark Framework in Rust</div>
+<div align="center">High-precision and consistent benchmarking framework and harness for Rust</div>
 
 <div align="center">
     <a href="https://docs.rs/crate/iai-callgrind/">Released API Docs</a>
@@ -23,12 +23,11 @@
     </a>
 </div>
 
-Iai-Callgrind is an experimental benchmarking harness that uses Callgrind to perform extremely
-precise measurements of Rust code.
+Iai-Callgrind is a benchmarking framework and harness that uses Callgrind to provide extremely accurate and consistent measurements of Rust code, making it perfectly suited to run in environments like a CI.
 
-This is a fork of the great [Iai](https://github.com/bheisler/iai) library rewritten to use
+This crate started as a fork of the great [Iai](https://github.com/bheisler/iai) crate rewritten to use
 Valgrind's [Callgrind](https://valgrind.org/docs/manual/cl-manual.html) instead of
-[Cachegrind](https://valgrind.org/docs/manual/cg-manual.html) but also adds other improvements.
+[Cachegrind](https://valgrind.org/docs/manual/cg-manual.html) but also adds a lot of other improvements and features.
 
 ## Table of Contents
 
@@ -36,7 +35,7 @@ Valgrind's [Callgrind](https://valgrind.org/docs/manual/cl-manual.html) instead 
     - [Features](#features)
     - [Installation](#installation)
     - [Quickstart](#quickstart)
-    - [Motivation and differences to Iai](#motivation-and-differences-to-iai)
+    - [Features and differences to Iai](#features-and-differences-to-iai)
     - [What hasn't changed](#what-hasnt-changed)
     - [See also](#see-also)
     - [Credits](#credits)
@@ -46,7 +45,8 @@ Valgrind's [Callgrind](https://valgrind.org/docs/manual/cl-manual.html) instead 
 
 - __Precision__: High-precision measurements allow you to reliably detect very small optimizations to your code
 - __Consistency__: Iai-Callgrind can take accurate measurements even in virtualized CI environments
-- __Performance__: Since Iai-Callgrind only executes a benchmark once, it is typically faster to run than statistical benchmarks
+- __Performance__: Since Iai-Callgrind only executes a benchmark once, it is typically faster to run than benchmarks measuring the execution and wall time
+- __Regression__: Iai-Callgrind reports the difference between benchmark runs to make it easy to spot detailed performance regressions and improvements.
 - __Profiling__: Iai-Callgrind generates a Callgrind profile of your code while benchmarking, so you
 can use Callgrind-compatible tools like
 [callgrind_annotate](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.callgrind_annotate-options)
@@ -73,8 +73,8 @@ somewhere in your `$PATH`, for example with
 cargo install --version 0.2.0 iai-callgrind-runner
 ```
 
-When updating the library you'll most likely also need to update the binary or vice-versa. See the
-[Changelog](CHANGELOG.md) for such update notes.
+When updating the `iai-callgrind` library, you'll most likely also need to update the `iai-callgrind-runner` or vice-versa. See the
+[Changelog](CHANGELOG.md) for such update notes. However, it's best practice keeping both, the library and the binary, in line with the same version.
 
 ### Quickstart
 
@@ -111,7 +111,6 @@ fn iai_benchmark_long() -> u64 {
     fibonacci(black_box(30))
 }
 
-
 main!(iai_benchmark_short, iai_benchmark_long);
 ```
 
@@ -125,29 +124,45 @@ Now you can run this benchmark with `cargo bench --bench my_benchmark` in your p
 should see something like this:
 
 ```text
-iai_benchmark_short
-  Instructions:                1732
-  L1 Accesses:                 2356
-  L2 Accesses:                    0
-  RAM Accesses:                   2
-  Estimated Cycles:            2426
-
-iai_benchmark_long
-  Instructions:            26214732
-  L1 Accesses:             35638615
-  L2 Accesses:                    1
-  RAM Accesses:                   2
-  Estimated Cycles:        35638690
+my_benchmark::bench_fibonacci_short
+  Instructions:                1727
+  L1 Data Hits:                 621
+  L2 Hits:                        0
+  RAM Hits:                       1
+  Total read+write:            2349
+  Estimated Cycles:            2383
+my_benchmark::bench_fibonacci_long
+  Instructions:            26214727
+  L1 Data Hits:             9423880
+  L2 Hits:                        0
+  RAM Hits:                       2
+  Total read+write:        35638609
+  Estimated Cycles:        35638677
 ```
 
 In addition, you'll find the callgrind output in `target/iai/my_benchmark`, if you want to
-investigate further with a tool like `callgrind_annotate`.
+investigate further with a tool like `callgrind_annotate`. Now, if running the same benchmark again, the output will report the differences between the current and the previous run. Say you've made change to the `fibonacci` function, then you might see something like this:
 
-### Motivation and differences to Iai
+```text
+my_benchmark::bench_fibonacci_short
+  Instructions:                2798 (+62.01506%)
+  L1 Data Hits:                1006 (+61.99678%)
+  L2 Hits:                        0 (No Change)
+  RAM Hits:                       1 (No Change)
+  Total read+write:            3805 (+61.98382%)
+  Estimated Cycles:            3839 (+61.09945%)
+my_benchmark::bench_fibonacci_long
+  Instructions:            16201590 (-38.19661%)
+  L1 Data Hits:             5824277 (-38.19661%)
+  L2 Hits:                        0 (No Change)
+  RAM Hits:                       2 (No Change)
+  Total read+write:        22025869 (-38.19661%)
+  Estimated Cycles:        22025937 (-38.19654%)
+```
 
-`Iai` is a great tool with a good idea and I have used it in another rust project in the CI. While
-using it, I've encountered some problems, but the Iai github repo didn't look maintained anymore.
-So, the library is built on the same idea and most of the code of the original Iai, but applies some
+### Features and differences to Iai
+
+This crate is built on the same idea like the original Iai, but over the time applied a lot of
 improvements. The biggest difference is, that it uses Callgrind under hood instead of Cachegrind.
 
 #### More stable metrics
@@ -158,32 +173,30 @@ Iai-Callgrind has even more precise and stable metrics across different systems.
 benchmark function. The call to the benchmark function itself is also subtracted (See `bench_empty`
 below). This behavior virtually encapsulates the benchmark function and (almost) completely
 separates the benchmark from the surrounding code.
-- separating the iai library with the main macro from the actual runner. This is why the extra
-installation step of `iai-callgrind-runner` is necessary but before this separation, even small
-changes in the iai library had effects on the benchmarks under test.
+- separating the iai library with the main macro from the actual runner. This is the reason for the
+extra installation step of `iai-callgrind-runner` is necessary but before this separation even
+small changes in the iai library had effects on the benchmarks under test.
 
 Below a run of the benchmarks of this library on my local computer
 
 ```shell
 $ cd iai-callgrind
 $ cargo bench --bench test_regular_bench
-bench_empty
+test_regular_bench::bench_empty
   Instructions:                   0
   L1 Data Hits:                   0
   L2 Hits:                        0
   RAM Hits:                       0
   Total read+write:               0
   Estimated Cycles:               0
-
-bench_fibonacci
+test_regular_bench::bench_fibonacci
   Instructions:                1727
   L1 Data Hits:                 621
   L2 Hits:                        0
   RAM Hits:                       1
   Total read+write:            2349
   Estimated Cycles:            2383
-
-bench_fibonacci_long
+test_regular_bench::bench_fibonacci_long
   Instructions:            26214727
   L1 Data Hits:             9423880
   L2 Hits:                        0
@@ -195,23 +208,21 @@ bench_fibonacci_long
 For comparison here the output of the same benchmark but in the github CI:
 
 ```text
-bench_empty
+test_regular_bench::bench_empty
   Instructions:                   0
   L1 Data Hits:                   0
   L2 Hits:                        0
   RAM Hits:                       0
   Total read+write:               0
   Estimated Cycles:               0
-
-bench_fibonacci
+test_regular_bench::bench_fibonacci
   Instructions:                1727
   L1 Data Hits:                 621
   L2 Hits:                        0
   RAM Hits:                       1
   Total read+write:            2349
   Estimated Cycles:            2383
-
-bench_fibonacci_long
+test_regular_bench::bench_fibonacci_long
   Instructions:            26214727
   L1 Data Hits:             9423880
   L2 Hits:                        0
@@ -222,7 +233,7 @@ bench_fibonacci_long
 
 There's no difference (in this example) what makes benchmark runs and performance improvements of
 the benchmarked code even more comparable across systems. However, the above benchmarks are pretty
-clean and you'll most likely see some small differences in your own benchmarks.
+clean and you'll most likely see some very small differences in your own benchmarks.
 
 #### Cleaner output of Valgrind's annotation tools
 
@@ -237,7 +248,7 @@ The statistics of the benchmarks are mostly not compatible with the original Iai
 still related. They now also include some additional information:
 
 ```text
-bench_fibonacci_long
+test_regular_bench::bench_fibonacci_long
   Instructions:            26214732
   L1 Data Hits:             9423880
   L2 Hits:                        0
@@ -261,6 +272,18 @@ The formula for the `Estimated Cycles` hasn't changed and uses Itamar Turner-Tra
 
 For further details about how the caches are simulated and more, see the documentation of
 [Callgrind](https://valgrind.org/docs/manual/cg-manual.html)
+
+#### Colored output and logging
+
+The metrics output is colored per default but follows the value for the `CARGO_TERM_COLOR`
+environment variable. Disabling colors can be achieved with setting this environment variable to
+`CARGO_TERM_COLOR=never`.
+
+This library uses [env_logger](https://crates.io/crates/env_logger) and the default logging level
+`WARN`. Currently, `env_logger` is only used to print some warnings and debug output, but to set the
+logging level to something different set the environment variable `RUST_LOG` for example to
+`RUST_LOG=DEBUG`. The logging output is colored per default but follows the setting of
+`CARGO_TERM_COLOR`. See also the [documentation](https://docs.rs/env_logger/latest) of `env_logger`.
 
 #### Passing arguments to Callgrind
 
