@@ -1,12 +1,11 @@
 use cfg_if::cfg_if;
 use colored::{ColoredString, Colorize};
-use core::panic;
 use log::{debug, warn};
 use std::{
     fs::File,
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
-    process::{Command, Stdio},
+    process::{Command, ExitStatus, Stdio},
 };
 
 #[derive(Debug)]
@@ -26,30 +25,17 @@ impl Args {
     }
 }
 
-fn check_valgrind() -> bool {
-    let result = Command::new("valgrind")
+// TODO: show version number as info or debug
+fn check_valgrind() -> std::io::Result<ExitStatus> {
+    Command::new("valgrind")
         .arg("--tool=callgrind")
         .arg("--version")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .status();
-
-    match result {
-        Err(e) => {
-            eprintln!("Unexpected error while launching valgrind. Error: {}", e);
-            false
-        }
-        Ok(status) => {
-            if status.success() {
-                true
-            } else {
-                eprintln!("Failed to launch valgrind. Error: {}. Please ensure that valgrind is installed and on the $PATH.", status);
-                false
-            }
-        }
-    }
+        .status()
 }
 
+// TODO: Replace with platform_info or std::env::consts::ARCH??
 fn get_arch() -> String {
     let output = Command::new("uname")
         .arg("-m")
@@ -110,6 +96,9 @@ struct CallgrindArgs {
 impl Default for CallgrindArgs {
     fn default() -> Self {
         Self {
+            // Set some reasonable cache sizes. The exact sizes matter less than having fixed sizes,
+            // since otherwise callgrind would take them from the CPU and make benchmark runs
+            // even more incomparable between machines.
             i1: String::from("--I1=32768,8,64"),
             d1: String::from("--D1=32768,8,64"),
             ll: String::from("--LL=8388608,16,64"),
@@ -190,7 +179,7 @@ fn run_bench(
     function_name: &str,
     allow_aslr: bool,
     callgrind_args: &CallgrindArgs,
-) -> (CallgrindStats, Option<CallgrindStats>) {
+) -> Result<(CallgrindStats, Option<CallgrindStats>), IaiCallgrindError> {
     let mut cmd = if allow_aslr {
         basic_valgrind()
     } else {
@@ -216,11 +205,7 @@ fn run_bench(
 
     let callgrind_args = callgrind_args.parse_with(&output_file, module, function_name);
     debug!("Callgrind arguments: {}", callgrind_args.join(" "));
-    let status = cmd
-        // Set some reasonable cache sizes. The exact sizes matter less than having fixed sizes,
-        // since otherwise callgrind would take them from the CPU and make benchmark runs
-        // even more incomparable between machines.
-        .arg("--tool=callgrind")
+    cmd.arg("--tool=callgrind")
         .args(callgrind_args)
         .arg(executable)
         .arg("--iai-run")
@@ -231,14 +216,14 @@ fn run_bench(
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
-        .expect("Failed to run benchmark");
-
-    if !status.success() {
-        panic!(
-            "Failed to run benchmark in callgrind. Exit code: {}",
-            status
-        );
-    }
+        .map_err(IaiCallgrindError::LaunchError)
+        .and_then(|status| {
+            if status.success() {
+                Ok(())
+            } else {
+                Err(IaiCallgrindError::CallgrindLaunchError(status))
+            }
+        })?;
 
     let new_stats = parse_callgrind_output(&output_file, module, function_name);
     let old_stats = if old_file.exists() {
@@ -247,7 +232,7 @@ fn run_bench(
         None
     };
 
-    (new_stats, old_stats)
+    Ok((new_stats, old_stats))
 }
 
 // A curated sample output which this function must be able to parse to CallgrindStats.
@@ -501,8 +486,30 @@ struct CallgrindSummary {
     cycles: u64,
 }
 
-pub fn run() {
+pub enum IaiCallgrindError {
+    VersionMismatch(version_compare::Cmp, String, String),
+    LaunchError(std::io::Error),
+    CallgrindLaunchError(ExitStatus),
+}
+
+pub fn run() -> Result<(), IaiCallgrindError> {
     let mut args_iter = std::env::args().skip(1);
+
+    let library_version = args_iter.next().unwrap();
+    let runner_version = env!("CARGO_PKG_VERSION");
+    if let Ok(cmp) = version_compare::compare(runner_version, &library_version) {
+        match cmp {
+            version_compare::Cmp::Lt | version_compare::Cmp::Gt => {
+                return Err(IaiCallgrindError::VersionMismatch(
+                    cmp,
+                    runner_version.to_string(),
+                    library_version,
+                ));
+            }
+            _ => {}
+        }
+    }
+
     let module = args_iter.next().unwrap();
     let mut benches = vec![];
     let executable = loop {
@@ -522,9 +529,16 @@ pub fn run() {
     }
     let args = Args::new(&executable, &module, args);
 
-    if !check_valgrind() {
-        return;
-    }
+    // early check if valgrind is installed
+    check_valgrind()
+        .map_err(IaiCallgrindError::LaunchError)
+        .and_then(|status| {
+            if !status.success() {
+                Err(IaiCallgrindError::CallgrindLaunchError(status))
+            } else {
+                Ok(())
+            }
+        })?;
 
     let arch = get_arch();
 
@@ -540,9 +554,11 @@ pub fn run() {
             name,
             allow_aslr,
             &callgrind_args,
-        );
+        )?;
 
         println!("{}", format!("{}::{}", module, name).green());
         stats.print(old_stats);
     }
+
+    Ok(())
 }

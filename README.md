@@ -73,8 +73,8 @@ somewhere in your `$PATH`, for example with
 cargo install --version 0.2.0 iai-callgrind-runner
 ```
 
-When updating the `iai-callgrind` library, you'll most likely also need to update the `iai-callgrind-runner` or vice-versa. See the
-[Changelog](CHANGELOG.md) for such update notes. However, it's best practice keeping both, the library and the binary, in line with the same version.
+When updating the `iai-callgrind` library, you'll also need to update `iai-callgrind-runner` and
+vice-versa or else the benchmark runner will exit with an error.
 
 ### Quickstart
 
