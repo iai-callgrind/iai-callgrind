@@ -55,26 +55,26 @@ fn basic_valgrind() -> Command {
 // Invoke Valgrind, disabling ASLR if possible because ASLR could noise up the results a bit
 cfg_if! {
     if #[cfg(target_os = "linux")] {
-        fn valgrind_without_aslr(arch: &str) -> Command {
+        fn valgrind_without_aslr(arch: &str) -> Option<Command> {
             let mut cmd = Command::new("setarch");
             cmd.arg(arch)
                 .arg("-R")
                 .arg("valgrind");
-            cmd
+            Some(cmd)
         }
     } else if #[cfg(target_os = "freebsd")] {
-        fn valgrind_without_aslr(_arch: &str) -> Command {
+        fn valgrind_without_aslr(_arch: &str) -> Option<Command> {
             let mut cmd = Command::new("proccontrol");
             cmd.arg("-m")
                 .arg("aslr")
                 .arg("-s")
                 .arg("disable");
-            cmd
+            Some(cmd)
         }
     } else {
-        fn valgrind_without_aslr(_arch: &str) -> Command {
+        fn valgrind_without_aslr(_arch: &str) -> Option<Command> {
             // Can't disable ASLR on this platform
-            basic_valgrind()
+            None
         }
     }
 }
@@ -190,9 +190,19 @@ fn run_bench(
     callgrind_args: &CallgrindArgs,
 ) -> Result<(CallgrindStats, Option<CallgrindStats>), IaiCallgrindError> {
     let mut cmd = if allow_aslr {
+        debug!("Running with ASLR enabled");
         basic_valgrind()
     } else {
-        valgrind_without_aslr(arch)
+        match valgrind_without_aslr(arch) {
+            Some(cmd) => {
+                debug!("Running with ASLR disabled");
+                cmd
+            }
+            None => {
+                debug!("Running with ASLR enabled");
+                basic_valgrind()
+            }
+        }
     };
 
     let target = PathBuf::from("target/iai");
@@ -561,8 +571,10 @@ pub fn run() -> Result<(), IaiCallgrindError> {
         })?;
 
     let arch = get_arch();
+    debug!("Detected architecture: {}", arch);
 
     let allow_aslr = std::env::var_os("IAI_ALLOW_ASLR").is_some();
+    debug!("Found IA_ALLOW_ASLR environment variable");
 
     let callgrind_args = CallgrindArgs::from_args(&args);
     for (index, name) in benches.iter().enumerate() {
