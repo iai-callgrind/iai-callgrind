@@ -28,7 +28,6 @@ fn main() {
             record
                 .module_path()
                 .unwrap_or(record.module_path_static().unwrap_or("???")),
-            // .blue(),
             match record.level() {
                 log::Level::Error => "Error".red().bold(),
                 log::Level::Warn => "Warn".yellow().bold(),
@@ -54,14 +53,21 @@ fn main() {
                         "iai-callgrind-runner ({}) is newer than iai-callgrind ({}). Please update iai-callgrind",
                         runner_version, library_version
                     ),
+                    Cmp::Ne => error!(
+                        "No version information found for iai-callgrind but iai-callgrind-runner ({0}) is >= '0.3.0'. \
+                        Please update iai-callgrind to '{0}'", runner_version
+                    ),
                     _ => unreachable!(),
                 },
-                IaiCallgrindError::LaunchError(error) => error!("Unexpected error when launching valgrind: {}", error),
-                IaiCallgrindError::CallgrindLaunchError(status) => {
+                IaiCallgrindError::LaunchError(error) =>
                     error!(
-                        "Failed to launch callgrind. Exit status was: {}.\n\
-                         Please make sure Valgrind is installed and in your $PATH"
-                        , status.code().unwrap());
+                        "Unexpected error when launching valgrind: {}\n\
+                        Please make sure Valgrind is installed and in your $PATH", error),
+                IaiCallgrindError::CallgrindLaunchError(output) => {
+                    print!("{}", String::from_utf8_lossy(output.stderr.as_slice()));
+                    error!(
+                        "Error launching callgrind: Exit code was: {}",
+                        output.status.code().unwrap());
                 }
             }
             std::process::exit(1);

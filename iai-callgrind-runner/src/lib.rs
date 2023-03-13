@@ -1,11 +1,11 @@
 use cfg_if::cfg_if;
 use colored::{ColoredString, Colorize};
-use log::{debug, info, warn};
+use log::{debug, info, trace, warn};
 use std::{
     fs::File,
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
-    process::{Command, ExitStatus, Stdio},
+    process::{Command, Output, Stdio},
 };
 
 #[derive(Debug)]
@@ -25,14 +25,13 @@ impl Args {
     }
 }
 
-// TODO: show version number as info or debug
-fn check_valgrind() -> std::io::Result<ExitStatus> {
+fn check_valgrind() -> std::io::Result<Output> {
     Command::new("valgrind")
         .arg("--tool=callgrind")
         .arg("--version")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .status()
+        .output()
 }
 
 // TODO: Replace with platform_info or std::env::consts::ARCH??
@@ -56,26 +55,26 @@ fn basic_valgrind() -> Command {
 // Invoke Valgrind, disabling ASLR if possible because ASLR could noise up the results a bit
 cfg_if! {
     if #[cfg(target_os = "linux")] {
-        fn valgrind_without_aslr(arch: &str) -> Command {
+        fn valgrind_without_aslr(arch: &str) -> Option<Command> {
             let mut cmd = Command::new("setarch");
             cmd.arg(arch)
                 .arg("-R")
                 .arg("valgrind");
-            cmd
+            Some(cmd)
         }
     } else if #[cfg(target_os = "freebsd")] {
-        fn valgrind_without_aslr(_arch: &str) -> Command {
+        fn valgrind_without_aslr(_arch: &str) -> Option<Command> {
             let mut cmd = Command::new("proccontrol");
             cmd.arg("-m")
                 .arg("aslr")
                 .arg("-s")
                 .arg("disable");
-            cmd
+            Some(cmd)
         }
     } else {
-        fn valgrind_without_aslr(_arch: &str) -> Command {
+        fn valgrind_without_aslr(_arch: &str) -> Option<Command> {
             // Can't disable ASLR on this platform
-            basic_valgrind()
+            None
         }
     }
 }
@@ -163,7 +162,9 @@ impl CallgrindArgs {
             self.compress_strings.clone(),
             self.compress_pos.clone(),
         ];
-        args.extend(self.other.iter().cloned());
+
+        args.extend_from_slice(self.other.as_slice());
+
         match &self.callgrind_out_file {
             Some(arg) => args.push(arg.clone()),
             None => args.push(format!("--callgrind-out-file={}", output_file.display())),
@@ -171,7 +172,7 @@ impl CallgrindArgs {
 
         args.push(format!("--toggle-collect=*{}::{}", module, function_name));
         if let Some(arg) = &self.toggle_collect {
-            args.extend(arg.iter().cloned())
+            args.extend_from_slice(arg.as_slice())
         }
 
         args
@@ -189,9 +190,19 @@ fn run_bench(
     callgrind_args: &CallgrindArgs,
 ) -> Result<(CallgrindStats, Option<CallgrindStats>), IaiCallgrindError> {
     let mut cmd = if allow_aslr {
+        debug!("Running with ASLR enabled");
         basic_valgrind()
     } else {
-        valgrind_without_aslr(arch)
+        match valgrind_without_aslr(arch) {
+            Some(cmd) => {
+                debug!("Running with ASLR disabled");
+                cmd
+            }
+            None => {
+                debug!("Running with ASLR enabled");
+                basic_valgrind()
+            }
+        }
     };
 
     let target = PathBuf::from("target/iai");
@@ -213,7 +224,8 @@ fn run_bench(
 
     let callgrind_args = callgrind_args.parse_with(&output_file, module, function_name);
     debug!("Callgrind arguments: {}", callgrind_args.join(" "));
-    cmd.arg("--tool=callgrind")
+    let output = cmd
+        .arg("--tool=callgrind")
         .args(callgrind_args)
         .arg(executable)
         .arg("--iai-run")
@@ -221,17 +233,23 @@ fn run_bench(
         // Currently not used in iai-callgrind itself, but in `callgrind_annotate` this name is
         // shown and makes it easier to identify the benchmark under test
         .arg(format!("{}::{}", module, function_name))
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
+        // valgrind doesn't output anything on stdout
+        // .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .output()
         .map_err(IaiCallgrindError::LaunchError)
-        .and_then(|status| {
-            if status.success() {
-                Ok(())
+        .and_then(|output| {
+            if output.status.success() {
+                let stderr = String::from_utf8_lossy(output.stderr.as_slice());
+                Ok(stderr.trim_end().to_string())
             } else {
-                Err(IaiCallgrindError::CallgrindLaunchError(status))
+                Err(IaiCallgrindError::CallgrindLaunchError(output))
             }
         })?;
+
+    if !output.is_empty() {
+        info!("Callgrind output:\n{}", output);
+    }
 
     let new_stats = parse_callgrind_output(&output_file, module, function_name);
     let old_stats = if old_file.exists() {
@@ -261,7 +279,15 @@ fn run_bench(
 //
 // # the empty line above or the end of file ends the parsing
 fn parse_callgrind_output(file: &Path, module: &str, function_name: &str) -> CallgrindStats {
+    trace!(
+        "Parsing callgrind output file '{}' for '{}::{}'",
+        file.display(),
+        module,
+        function_name
+    );
+
     let sentinel = format!("fn={}", [module, function_name].join("::"));
+    trace!("Using sentinel: '{}'", &sentinel);
 
     let file_in = File::open(file).expect("Unable to open callgrind output file");
     let mut iter = BufReader::new(file_in).lines().map(|l| l.unwrap());
@@ -282,20 +308,30 @@ fn parse_callgrind_output(file: &Path, module: &str, function_name: &str) -> Cal
         let line = line.trim_start();
         if !is_recording {
             if line.starts_with(&sentinel) {
+                trace!("Found line with sentinel: '{}'", line);
                 is_recording = true;
             }
             continue;
         }
         // We're only interested in the counters for function calls within the benchmark function and
         // ignore counters for the benchmark function itself.
-        if is_recording && line.starts_with("cfn=") {
-            has_counters = true;
+        if is_recording && !has_counters {
+            if line.starts_with("cfn=") {
+                trace!("Found line with calling function: '{}'", line);
+                has_counters = true;
+            }
             continue;
         }
-        if has_counters && line.starts_with(|c: char| c.is_ascii_digit()) {
+        // We stop counting at the first empty line
+        if line.is_empty() {
+            trace!("Found empty line: '{}'. Stopping the recording", line);
+            break;
+        // else we check if it is a line with counters and summarize them
+        } else if line.starts_with(|c: char| c.is_ascii_digit()) {
             // From the documentation of the callgrind format:
             // > If a cost line specifies less event counts than given in the "events" line, the
             // > rest is assumed to be zero.
+            trace!("Found line with counters: '{}'", line);
             for (index, counter) in line
                 .split_ascii_whitespace()
                 // skip the first number which is just the line number
@@ -307,10 +343,9 @@ fn parse_callgrind_output(file: &Path, module: &str, function_name: &str) -> Cal
             {
                 counters[index] += counter;
             }
+            trace!("Updated counters to '{:?}'", &counters);
         }
-        if is_recording && line.is_empty() {
-            break;
-        }
+        // if this line doesn't contain counters we skip it
     }
 
     CallgrindStats {
@@ -497,7 +532,7 @@ struct CallgrindSummary {
 pub enum IaiCallgrindError {
     VersionMismatch(version_compare::Cmp, String, String),
     LaunchError(std::io::Error),
-    CallgrindLaunchError(ExitStatus),
+    CallgrindLaunchError(Output),
 }
 
 pub fn run() -> Result<(), IaiCallgrindError> {
@@ -505,8 +540,8 @@ pub fn run() -> Result<(), IaiCallgrindError> {
 
     let library_version = args_iter.next().unwrap();
     let runner_version = env!("CARGO_PKG_VERSION");
-    if let Ok(cmp) = version_compare::compare(runner_version, &library_version) {
-        match cmp {
+    match version_compare::compare(runner_version, &library_version) {
+        Ok(cmp) => match cmp {
             version_compare::Cmp::Lt | version_compare::Cmp::Gt => {
                 return Err(IaiCallgrindError::VersionMismatch(
                     cmp,
@@ -514,7 +549,17 @@ pub fn run() -> Result<(), IaiCallgrindError> {
                     library_version,
                 ));
             }
+            // version_compare::compare only returns Cmp::Lt, Cmp::Gt and Cmp::Eq so the versions
+            // are equal here
             _ => {}
+        },
+        // iai-callgrind versions before 0.3.0 don't submit the version
+        Err(_) => {
+            return Err(IaiCallgrindError::VersionMismatch(
+                version_compare::Cmp::Ne,
+                runner_version.to_string(),
+                library_version,
+            ));
         }
     }
 
@@ -540,17 +585,19 @@ pub fn run() -> Result<(), IaiCallgrindError> {
     // early check if valgrind is installed
     check_valgrind()
         .map_err(IaiCallgrindError::LaunchError)
-        .and_then(|status| {
-            if !status.success() {
-                Err(IaiCallgrindError::CallgrindLaunchError(status))
+        .and_then(|output| {
+            if !output.status.success() {
+                Err(IaiCallgrindError::CallgrindLaunchError(output))
             } else {
                 Ok(())
             }
         })?;
 
     let arch = get_arch();
+    debug!("Detected architecture: {}", arch);
 
     let allow_aslr = std::env::var_os("IAI_ALLOW_ASLR").is_some();
+    debug!("Found IA_ALLOW_ASLR environment variable");
 
     let callgrind_args = CallgrindArgs::from_args(&args);
     for (index, name) in benches.iter().enumerate() {
