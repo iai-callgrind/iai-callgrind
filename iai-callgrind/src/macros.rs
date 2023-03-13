@@ -5,13 +5,13 @@
 ///
 /// This macro has two forms:
 ///
-/// ```rust
+/// ```ignore
 /// main!(func1, func2)
 /// ```
 ///
 /// or
 ///
-/// ```rust
+/// ```ignore
 /// main!(
 ///     callgrind_args = "--arg-with-flags=yes", "arg-without-flags=is_ok_too"
 ///     functions = func1, func2
