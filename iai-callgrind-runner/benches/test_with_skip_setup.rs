@@ -40,14 +40,14 @@ fn bench_bubble_bad() -> Vec<i32> {
     bubble(array)
 }
 
-// Together with passing the `toggle-collect=__some_special_id::setup_array` argument to callgrind
+// Together with passing the `toggle-collect=some_special_id::setup_array` argument to callgrind
 // in the main! macro, this is the best solution to eliminate setup code from the benchmark event
 // counts.
 //
 // This is working because the default toggle is set to this benchmark function
 // (*test_with_skip_setup::bench_bubble_with_expensive setup), so callgrind starts counting events
 // when entering it and stops counting when leaving it. The additional toggle causes callgrind to
-// stop counting when entering `__some_special_id::setup_array` and start counting again when
+// stop counting when entering `some_special_id::setup_array` and start counting again when
 // leaving it.
 //
 // Additionally, it's needed to tell the rust compiler to not inline this benchmark function or else
