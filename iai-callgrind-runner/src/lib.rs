@@ -1,6 +1,6 @@
 use cfg_if::cfg_if;
 use colored::{ColoredString, Colorize};
-use log::{debug, warn};
+use log::{debug, info, warn};
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -88,7 +88,7 @@ struct CallgrindArgs {
     cache_sim: String,
     collect_atstart: String,
     other: Vec<String>,
-    toggle_collect: Option<String>,
+    toggle_collect: Option<Vec<String>>,
     compress_strings: String,
     compress_pos: String,
     callgrind_out_file: Option<String>,
@@ -132,11 +132,18 @@ impl CallgrindArgs {
             } else if arg.starts_with("--compress-pos=") {
                 default.compress_pos = arg.to_owned();
             } else if arg.starts_with("--toggle-collect=") {
-                warn!(
-                    "The callgrind argument '{}' will overwrite the default setting and may produce wrong results.",
+                info!(
+                    "The callgrind argument '{}' will be appended to the default setting.",
                     arg
                 );
-                default.toggle_collect = Some(arg.to_owned());
+                match default.toggle_collect.as_mut() {
+                    Some(toggle_arg) => {
+                        toggle_arg.push(arg.to_owned());
+                    }
+                    None => {
+                        default.toggle_collect = Some(vec![arg.to_owned()]);
+                    }
+                };
             } else if arg.starts_with("--callgrind-out-file=") {
                 warn!("Ignoring callgrind argument: '{}'", arg);
             } else {
@@ -161,9 +168,10 @@ impl CallgrindArgs {
             Some(arg) => args.push(arg.clone()),
             None => args.push(format!("--callgrind-out-file={}", output_file.display())),
         }
-        match &self.toggle_collect {
-            Some(arg) => args.push(arg.clone()),
-            None => args.push(format!("--toggle-collect=*{}::{}", module, function_name)),
+
+        args.push(format!("--toggle-collect=*{}::{}", module, function_name));
+        if let Some(arg) = &self.toggle_collect {
+            args.extend(arg.iter().cloned())
         }
 
         args
