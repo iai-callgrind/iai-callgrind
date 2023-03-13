@@ -288,11 +288,17 @@ fn parse_callgrind_output(file: &Path, module: &str, function_name: &str) -> Cal
         }
         // We're only interested in the counters for function calls within the benchmark function and
         // ignore counters for the benchmark function itself.
-        if is_recording && line.starts_with("cfn=") {
-            has_counters = true;
+        if is_recording && !has_counters {
+            if line.starts_with("cfn=") {
+                has_counters = true;
+            }
             continue;
         }
-        if has_counters && line.starts_with(|c: char| c.is_ascii_digit()) {
+        // We stop counting at the first empty line
+        if line.is_empty() {
+            break;
+        // else we check if it is a line with counters and summarize them
+        } else if line.starts_with(|c: char| c.is_ascii_digit()) {
             // From the documentation of the callgrind format:
             // > If a cost line specifies less event counts than given in the "events" line, the
             // > rest is assumed to be zero.
@@ -308,9 +314,7 @@ fn parse_callgrind_output(file: &Path, module: &str, function_name: &str) -> Cal
                 counters[index] += counter;
             }
         }
-        if is_recording && line.is_empty() {
-            break;
-        }
+        // if this line doesn't contain counters we skip this line
     }
 
     CallgrindStats {
