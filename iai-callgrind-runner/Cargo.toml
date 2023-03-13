@@ -34,6 +34,10 @@ name = "test_regular_bench"
 harness = false
 
 [[bench]]
+name = "test_with_skip_setup"
+harness = false
+
+[[bench]]
 path = "benches/subdir/test_subdir_bench.rs"
 name = "test_subdir_bench"
 harness = false
