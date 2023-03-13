@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### [0.3.1] - 2023-03-13
+
+### Added
+
+* Add output of Callgrind at `RUST_LOG=info` level but also more debug and trace output.
+
+### Fixes
+
+* The version mismatch check should cause an error when the library version is < 0.3.0
+
 ### [0.3.0] - 2023-03-13
 
 This version is incompatible to previous versions due to changes in the `main!` macro which is
