@@ -7,7 +7,32 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-### [0.2.0] 2023-03-10
+### [0.3.0] - 2023-03-13
+
+This version is incompatible to previous versions due to changes in the `main!` macro which is
+passing additional arguments to the runner. However, benchmarks written with a version before
+`v0.3.0` don't need any changes but can take advantage of some new features.
+
+### Changed
+
+* The `toggle-collect` callgrind argument now accumulates multiple occurrences instead of replacing
+them. The default `toggle-collect` for the benchmark function cannot be replaced anymore.
+* A version mismatch of the `iai-callgrind` library and the `iai-callgrind-runner` is now an error.
+* Fix, update and extend the README. Add more real-world examples.
+
+### Added
+
+* The `main!` macro has two forms now, with the first having the ability to pass arguments to
+callgrind.
+* More examples in the benches folder
+* Use the `RUST_LOG` environment variable to control the verbosity level of the runner.
+* Add colored output. The `CARGO_TERM_COLOR` variable can be used to disable colors.
+
+### Fixes
+
+* A cargo filter argument which is a positional argument resulted in the the runner to crash.
+
+### [0.2.0] - 2023-03-10
 
 This version is mostly compatible with `v0.1.0` but needs some additional setup. See
 [Installation](README.md#installation) in the README. Benchmarks created with `v0.1.0` should not
@@ -22,7 +47,7 @@ with the runner needed to run the benchmarks
 * The output of the collected event counters and metrics has changed
 * Other improvements to stabilize the metrics across different systems
 
-### [0.1.0] 2023-03-08
+### [0.1.0] - 2023-03-08
 
 ### Added
 
