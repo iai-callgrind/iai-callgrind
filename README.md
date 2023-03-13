@@ -38,6 +38,7 @@ improvements and features.
     - [Features](#features)
     - [Installation](#installation)
     - [Quickstart](#quickstart)
+    - [Examples](#examples)
     - [Features and differences to Iai](#features-and-differences-to-iai)
     - [What hasn't changed](#what-hasnt-changed)
     - [See also](#see-also)
@@ -168,24 +169,65 @@ my_benchmark::bench_fibonacci_long
   Estimated Cycles:        22025937 (-38.19654%)
 ```
 
+### Examples
+
+For examples see also the [benches](iai-callgrind-runner/benches) folder.
+
+#### Skipping setup code
+
+Usually, all setup code in the benchmark function itself is attributed to the event counts. It's
+possible to pass additional arguments to Callgrind and something like below will eliminate the setup
+code from the final metrics:
+
+```rust
+use iai_callgrind::{black_box, main};
+use my_library;
+
+#[export_name = "some_special_id::expensive_setup"]
+#[inline(never)]
+fn expensive_setup() -> Vec<u64> {
+    // some expensive setup code to produce a Vec<u64>
+}
+
+#[inline(never)]
+fn test() {
+    my_library::call_to_function(black_box(expensive_setup()));
+}
+
+main!(
+    callgrind_args = "toggle-collect=some_special_id::expensive_setup";
+    functions = test
+);
+```
+
+and then run the benchmark for example with
+
+```shell
+cargo bench --bench my_bench
+```
+
+See also [Skip setup code example](iai-callgrind-runner/benches/test_with_skip_setup.rs) for an
+in-depth explanation.
+
 ### Features and differences to Iai
 
 This crate is built on the same idea like the original Iai, but over the time applied a lot of
-improvements. The biggest difference is, that it uses Callgrind under hood instead of Cachegrind.
+improvements. The biggest difference is, that it uses Callgrind under the hood instead of
+Cachegrind.
 
 #### More stable metrics
 
 Iai-Callgrind has even more precise and stable metrics across different systems. It achieves this by
 
-- start counting the events when entering the benchmark function and stops counting when leaving the
+- start counting the events when entering the benchmark function and stop counting when leaving the
 benchmark function. The call to the benchmark function itself is also subtracted (See `bench_empty`
 below). This behavior virtually encapsulates the benchmark function and (almost) completely
 separates the benchmark from the surrounding code.
 - separating the iai library with the main macro from the actual runner. This is the reason for the
-extra installation step of `iai-callgrind-runner` is necessary but before this separation even
-small changes in the iai library had effects on the benchmarks under test.
+extra installation step of `iai-callgrind-runner` but before this separation even small changes in
+the iai library had effects on the benchmarks under test.
 
-Below a run of the benchmarks of this library on my local computer
+Below a run of one of the benchmarks of this library on my local computer
 
 ```shell
 $ cd iai-callgrind
@@ -307,36 +349,21 @@ It's now possible to pass additional arguments to callgrind separated by `--`
 - `--compress-pos=no`
 - `--compress-strings=no`
 
-Note that overwriting `--toggle-collect` is currently not recommended and may produce wrong results.
+Note that `toggle-collect` won't be overwritten by any additional `toggle-collect` argument but
+instead will be passed to Callgrind in addition to the default value. See the [Skipping setup
+code](#skipping-setup-code) section for an example of how to make use of this.
 
-See also [Callgrind Command-line Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options).
-
-#### Skipping setup code
-
-All setup code in the benchmark function itself is still attributed to the event counts, so it's
-still necessary to keep them as small as possible to avoid such influences. What you can do however
-is to pass `--fn-skip=SETUP_FUNCTION` to callgrind where the `SETUP_FUNCTION` is a setup function in
-the benchmark file (`my_bench`) like so:
+It's also possible to pass arguments to callgrind on a benchmark file level with the alternative
+form of the main macro
 
 ```rust
-fn costly_setup() -> Result {
-    // some costly setup code 
-}
-
-#[inline(never)]
-fn test() {
-    let result = costly_setup();
-    my_library::call_to_function(black_box(result));
-}
-
-main!(test);
+main!(
+    callgrind_args = "--arg-with-flags=yes", "arg-without-flags=is_ok_too"
+    functions = func1, func2
+)
 ```
 
-and then run the benchmark for example with
-
-```shell
-cargo bench --bench my_bench -- --fn-skip='*my_bench::test::costly_setup'
-```
+See also [Callgrind Command-line Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options).
 
 #### Incomplete list of other minor improvements
 
