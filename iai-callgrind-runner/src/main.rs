@@ -28,7 +28,6 @@ fn main() {
             record
                 .module_path()
                 .unwrap_or(record.module_path_static().unwrap_or("???")),
-            // .blue(),
             match record.level() {
                 log::Level::Error => "Error".red().bold(),
                 log::Level::Warn => "Warn".yellow().bold(),

@@ -1,6 +1,6 @@
 use cfg_if::cfg_if;
 use colored::{ColoredString, Colorize};
-use log::{debug, info, warn};
+use log::{debug, info, trace, warn};
 use std::{
     fs::File,
     io::{BufRead, BufReader},
@@ -279,7 +279,15 @@ fn run_bench(
 //
 // # the empty line above or the end of file ends the parsing
 fn parse_callgrind_output(file: &Path, module: &str, function_name: &str) -> CallgrindStats {
+    trace!(
+        "Parsing callgrind output file '{}' for '{}::{}'",
+        file.display(),
+        module,
+        function_name
+    );
+
     let sentinel = format!("fn={}", [module, function_name].join("::"));
+    trace!("Using sentinel: '{}'", &sentinel);
 
     let file_in = File::open(file).expect("Unable to open callgrind output file");
     let mut iter = BufReader::new(file_in).lines().map(|l| l.unwrap());
@@ -300,6 +308,7 @@ fn parse_callgrind_output(file: &Path, module: &str, function_name: &str) -> Cal
         let line = line.trim_start();
         if !is_recording {
             if line.starts_with(&sentinel) {
+                trace!("Found line with sentinel: '{}'", line);
                 is_recording = true;
             }
             continue;
@@ -308,18 +317,21 @@ fn parse_callgrind_output(file: &Path, module: &str, function_name: &str) -> Cal
         // ignore counters for the benchmark function itself.
         if is_recording && !has_counters {
             if line.starts_with("cfn=") {
+                trace!("Found line with calling function: '{}'", line);
                 has_counters = true;
             }
             continue;
         }
         // We stop counting at the first empty line
         if line.is_empty() {
+            trace!("Found empty line: '{}'. Stopping the recording", line);
             break;
         // else we check if it is a line with counters and summarize them
         } else if line.starts_with(|c: char| c.is_ascii_digit()) {
             // From the documentation of the callgrind format:
             // > If a cost line specifies less event counts than given in the "events" line, the
             // > rest is assumed to be zero.
+            trace!("Found line with counters: '{}'", line);
             for (index, counter) in line
                 .split_ascii_whitespace()
                 // skip the first number which is just the line number
@@ -331,8 +343,9 @@ fn parse_callgrind_output(file: &Path, module: &str, function_name: &str) -> Cal
             {
                 counters[index] += counter;
             }
+            trace!("Updated counters to '{:?}'", &counters);
         }
-        // if this line doesn't contain counters we skip this line
+        // if this line doesn't contain counters we skip it
     }
 
     CallgrindStats {
