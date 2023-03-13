@@ -540,8 +540,8 @@ pub fn run() -> Result<(), IaiCallgrindError> {
 
     let library_version = args_iter.next().unwrap();
     let runner_version = env!("CARGO_PKG_VERSION");
-    if let Ok(cmp) = version_compare::compare(runner_version, &library_version) {
-        match cmp {
+    match version_compare::compare(runner_version, &library_version) {
+        Ok(cmp) => match cmp {
             version_compare::Cmp::Lt | version_compare::Cmp::Gt => {
                 return Err(IaiCallgrindError::VersionMismatch(
                     cmp,
@@ -549,7 +549,17 @@ pub fn run() -> Result<(), IaiCallgrindError> {
                     library_version,
                 ));
             }
+            // version_compare::compare only returns Cmp::Lt, Cmp::Gt and Cmp::Eq so the versions
+            // are equal here
             _ => {}
+        },
+        // iai-callgrind versions before 0.3.0 don't submit the version
+        Err(_) => {
+            return Err(IaiCallgrindError::VersionMismatch(
+                version_compare::Cmp::Ne,
+                runner_version.to_string(),
+                library_version,
+            ));
         }
     }
 
