@@ -5,7 +5,7 @@ use std::{
     fs::File,
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
-    process::{Command, ExitStatus, Stdio},
+    process::{Command, Output, Stdio},
 };
 
 #[derive(Debug)]
@@ -25,14 +25,13 @@ impl Args {
     }
 }
 
-// TODO: show version number as info or debug
-fn check_valgrind() -> std::io::Result<ExitStatus> {
+fn check_valgrind() -> std::io::Result<Output> {
     Command::new("valgrind")
         .arg("--tool=callgrind")
         .arg("--version")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .status()
+        .output()
 }
 
 // TODO: Replace with platform_info or std::env::consts::ARCH??
@@ -163,7 +162,9 @@ impl CallgrindArgs {
             self.compress_strings.clone(),
             self.compress_pos.clone(),
         ];
-        args.extend(self.other.iter().cloned());
+
+        args.extend_from_slice(self.other.as_slice());
+
         match &self.callgrind_out_file {
             Some(arg) => args.push(arg.clone()),
             None => args.push(format!("--callgrind-out-file={}", output_file.display())),
@@ -171,7 +172,7 @@ impl CallgrindArgs {
 
         args.push(format!("--toggle-collect=*{}::{}", module, function_name));
         if let Some(arg) = &self.toggle_collect {
-            args.extend(arg.iter().cloned())
+            args.extend_from_slice(arg.as_slice())
         }
 
         args
@@ -213,7 +214,8 @@ fn run_bench(
 
     let callgrind_args = callgrind_args.parse_with(&output_file, module, function_name);
     debug!("Callgrind arguments: {}", callgrind_args.join(" "));
-    cmd.arg("--tool=callgrind")
+    let output = cmd
+        .arg("--tool=callgrind")
         .args(callgrind_args)
         .arg(executable)
         .arg("--iai-run")
@@ -221,17 +223,23 @@ fn run_bench(
         // Currently not used in iai-callgrind itself, but in `callgrind_annotate` this name is
         // shown and makes it easier to identify the benchmark under test
         .arg(format!("{}::{}", module, function_name))
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
+        // valgrind doesn't output anything on stdout
+        // .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .output()
         .map_err(IaiCallgrindError::LaunchError)
-        .and_then(|status| {
-            if status.success() {
-                Ok(())
+        .and_then(|output| {
+            if output.status.success() {
+                let stderr = String::from_utf8_lossy(output.stderr.as_slice());
+                Ok(stderr.trim_end().to_string())
             } else {
-                Err(IaiCallgrindError::CallgrindLaunchError(status))
+                Err(IaiCallgrindError::CallgrindLaunchError(output))
             }
         })?;
+
+    if !output.is_empty() {
+        info!("Callgrind output:\n{}", output);
+    }
 
     let new_stats = parse_callgrind_output(&output_file, module, function_name);
     let old_stats = if old_file.exists() {
@@ -501,7 +509,7 @@ struct CallgrindSummary {
 pub enum IaiCallgrindError {
     VersionMismatch(version_compare::Cmp, String, String),
     LaunchError(std::io::Error),
-    CallgrindLaunchError(ExitStatus),
+    CallgrindLaunchError(Output),
 }
 
 pub fn run() -> Result<(), IaiCallgrindError> {
@@ -544,9 +552,9 @@ pub fn run() -> Result<(), IaiCallgrindError> {
     // early check if valgrind is installed
     check_valgrind()
         .map_err(IaiCallgrindError::LaunchError)
-        .and_then(|status| {
-            if !status.success() {
-                Err(IaiCallgrindError::CallgrindLaunchError(status))
+        .and_then(|output| {
+            if !output.status.success() {
+                Err(IaiCallgrindError::CallgrindLaunchError(output))
             } else {
                 Ok(())
             }

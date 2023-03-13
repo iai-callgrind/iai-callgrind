@@ -56,12 +56,15 @@ fn main() {
                     ),
                     _ => unreachable!(),
                 },
-                IaiCallgrindError::LaunchError(error) => error!("Unexpected error when launching valgrind: {}", error),
-                IaiCallgrindError::CallgrindLaunchError(status) => {
+                IaiCallgrindError::LaunchError(error) =>
                     error!(
-                        "Failed to launch callgrind. Exit status was: {}.\n\
-                         Please make sure Valgrind is installed and in your $PATH"
-                        , status.code().unwrap());
+                        "Unexpected error when launching valgrind: {}\n\
+                        Please make sure Valgrind is installed and in your $PATH", error),
+                IaiCallgrindError::CallgrindLaunchError(output) => {
+                    print!("{}", String::from_utf8_lossy(output.stderr.as_slice()));
+                    error!(
+                        "Error launching callgrind: Exit code was: {}",
+                        output.status.code().unwrap());
                 }
             }
             std::process::exit(1);
