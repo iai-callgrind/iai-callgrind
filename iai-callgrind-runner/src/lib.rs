@@ -9,29 +9,62 @@ use std::{
 };
 
 #[derive(Debug)]
-struct Args {
-    executable: String,
+struct Config {
+    runner_version: String,
+    library_version: String,
+    benches: Vec<String>,
+    executable: PathBuf,
     module: String,
-    callgrind_args: Option<Vec<String>>,
+    callgrind_args: CallgrindArgs,
+    allow_aslr: bool,
+    arch: String,
 }
 
-impl Args {
-    fn new(executable: &str, module: &str, callgrind_args: Vec<String>) -> Self {
+impl Config {
+    fn new() -> Self {
+        let mut args_iter = std::env::args().skip(1);
+
+        let library_version = args_iter.next().unwrap();
+        let runner_version = env!("CARGO_PKG_VERSION").to_string();
+
+        let module = args_iter.next().unwrap();
+        let mut benches = vec![];
+        let executable = loop {
+            if let Some(arg) = args_iter.next() {
+                match arg.split_once('=') {
+                    Some((key, value)) if key == "--iai-bench" => benches.push(value.to_string()),
+                    Some(_) | None => break PathBuf::from(arg),
+                }
+            }
+        };
+
+        let mut callgrind_args = args_iter
+            .filter(|a| a.starts_with("--"))
+            .collect::<Vec<String>>();
+        if callgrind_args.last().map_or(false, |a| a == "--bench") {
+            callgrind_args.pop();
+        }
+        let callgrind_args = CallgrindArgs::from_args(callgrind_args);
+
+        let arch = get_arch();
+        debug!("Detected architecture: {}", arch);
+
+        let allow_aslr = std::env::var_os("IAI_ALLOW_ASLR").is_some();
+        if allow_aslr {
+            debug!("Found IAI_ALLOW_ASLR environment variable. Trying to run with ASLR enabled.");
+        }
+
         Self {
-            executable: executable.to_string(),
-            module: module.to_string(),
-            callgrind_args: Some(callgrind_args),
+            runner_version,
+            library_version,
+            benches,
+            executable,
+            module,
+            callgrind_args,
+            allow_aslr,
+            arch,
         }
     }
-}
-
-fn check_valgrind() -> std::io::Result<Output> {
-    Command::new("valgrind")
-        .arg("--tool=callgrind")
-        .arg("--version")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .output()
 }
 
 // TODO: Replace with platform_info or std::env::consts::ARCH??
@@ -40,10 +73,10 @@ fn get_arch() -> String {
         .arg("-m")
         .stdout(Stdio::piped())
         .output()
-        .expect("Failed to run `uname` to determine CPU architecture.");
+        .expect("Failed to run `uname` to determine machine architecture.");
 
     String::from_utf8(output.stdout)
-        .expect("`-uname -m` returned invalid unicode.")
+        .expect("`uname -m` returned invalid unicode.")
         .trim()
         .to_owned()
 }
@@ -92,6 +125,7 @@ struct CallgrindArgs {
     compress_pos: String,
     callgrind_out_file: Option<String>,
 }
+
 impl Default for CallgrindArgs {
     fn default() -> Self {
         Self {
@@ -113,9 +147,9 @@ impl Default for CallgrindArgs {
 }
 
 impl CallgrindArgs {
-    fn from_args(args: &Args) -> Self {
+    fn from_args(args: Vec<String>) -> Self {
         let mut default = Self::default();
-        for arg in args.callgrind_args.iter().flat_map(|a| a.iter()) {
+        for arg in args.iter() {
             if arg.starts_with("--I1=") {
                 default.i1 = arg.to_owned();
             } else if arg.starts_with("--D1=") {
@@ -181,19 +215,15 @@ impl CallgrindArgs {
 
 #[inline(never)]
 fn run_bench(
-    module: &str,
-    arch: &str,
-    executable: &str,
     index: usize,
     function_name: &str,
-    allow_aslr: bool,
-    callgrind_args: &CallgrindArgs,
+    config: &Config,
 ) -> Result<(CallgrindStats, Option<CallgrindStats>), IaiCallgrindError> {
-    let mut cmd = if allow_aslr {
+    let mut cmd = if config.allow_aslr {
         debug!("Running with ASLR enabled");
         basic_valgrind()
     } else {
-        match valgrind_without_aslr(arch) {
+        match valgrind_without_aslr(config.arch.as_str()) {
             Some(cmd) => {
                 debug!("Running with ASLR disabled");
                 cmd
@@ -206,7 +236,7 @@ fn run_bench(
     };
 
     let target = PathBuf::from("target/iai");
-    let module_path: PathBuf = module.split("::").collect();
+    let module_path: PathBuf = config.module.split("::").collect();
     let file_name = PathBuf::from(format!("callgrind.{}.out", function_name));
 
     let mut output_file = target;
@@ -222,17 +252,20 @@ fn run_bench(
         std::fs::copy(&output_file, &old_file).unwrap();
     }
 
-    let callgrind_args = callgrind_args.parse_with(&output_file, module, function_name);
+    let callgrind_args =
+        config
+            .callgrind_args
+            .parse_with(&output_file, config.module.as_str(), function_name);
     debug!("Callgrind arguments: {}", callgrind_args.join(" "));
     let output = cmd
         .arg("--tool=callgrind")
         .args(callgrind_args)
-        .arg(executable)
+        .arg(&config.executable)
         .arg("--iai-run")
         .arg(index.to_string())
         // Currently not used in iai-callgrind itself, but in `callgrind_annotate` this name is
         // shown and makes it easier to identify the benchmark under test
-        .arg(format!("{}::{}", module, function_name))
+        .arg(format!("{}::{}", config.module, function_name))
         // valgrind doesn't output anything on stdout
         // .stdout(Stdio::null())
         .stderr(Stdio::piped())
@@ -251,9 +284,13 @@ fn run_bench(
         info!("Callgrind output:\n{}", output);
     }
 
-    let new_stats = parse_callgrind_output(&output_file, module, function_name);
+    let new_stats = parse_callgrind_output(&output_file, &config.module, function_name);
     let old_stats = if old_file.exists() {
-        Some(parse_callgrind_output(&old_file, module, function_name))
+        Some(parse_callgrind_output(
+            &old_file,
+            &config.module,
+            function_name,
+        ))
     } else {
         None
     };
@@ -539,17 +576,15 @@ pub enum IaiCallgrindError {
 }
 
 pub fn run() -> Result<(), IaiCallgrindError> {
-    let mut args_iter = std::env::args().skip(1);
+    let config = Config::new();
 
-    let library_version = args_iter.next().unwrap();
-    let runner_version = env!("CARGO_PKG_VERSION");
-    match version_compare::compare(runner_version, &library_version) {
+    match version_compare::compare(&config.runner_version, &config.library_version) {
         Ok(cmp) => match cmp {
             version_compare::Cmp::Lt | version_compare::Cmp::Gt => {
                 return Err(IaiCallgrindError::VersionMismatch(
                     cmp,
-                    runner_version.to_string(),
-                    library_version,
+                    config.runner_version,
+                    config.library_version,
                 ));
             }
             // version_compare::compare only returns Cmp::Lt, Cmp::Gt and Cmp::Eq so the versions
@@ -560,61 +595,16 @@ pub fn run() -> Result<(), IaiCallgrindError> {
         Err(_) => {
             return Err(IaiCallgrindError::VersionMismatch(
                 version_compare::Cmp::Ne,
-                runner_version.to_string(),
-                library_version,
+                config.runner_version,
+                config.library_version,
             ));
         }
     }
 
-    let module = args_iter.next().unwrap();
-    let mut benches = vec![];
-    let executable = loop {
-        if let Some(arg) = args_iter.next() {
-            match arg.split_once('=') {
-                Some((key, value)) if key == "--iai-bench" => benches.push(value.to_string()),
-                Some(_) | None => break arg,
-            }
-        }
-    };
+    for (index, name) in config.benches.iter().enumerate() {
+        let (stats, old_stats) = run_bench(index, name, &config)?;
 
-    let mut args = args_iter
-        .filter(|a| a.starts_with("--"))
-        .collect::<Vec<String>>();
-    if args.last().map_or(false, |a| a == "--bench") {
-        args.pop();
-    }
-    let args = Args::new(&executable, &module, args);
-
-    // early check if valgrind is installed
-    check_valgrind()
-        .map_err(IaiCallgrindError::LaunchError)
-        .and_then(|output| {
-            if !output.status.success() {
-                Err(IaiCallgrindError::CallgrindLaunchError(output))
-            } else {
-                Ok(())
-            }
-        })?;
-
-    let arch = get_arch();
-    debug!("Detected architecture: {}", arch);
-
-    let allow_aslr = std::env::var_os("IAI_ALLOW_ASLR").is_some();
-    debug!("Found IA_ALLOW_ASLR environment variable");
-
-    let callgrind_args = CallgrindArgs::from_args(&args);
-    for (index, name) in benches.iter().enumerate() {
-        let (stats, old_stats) = run_bench(
-            &args.module,
-            &arch,
-            &args.executable,
-            index,
-            name,
-            allow_aslr,
-            &callgrind_args,
-        )?;
-
-        println!("{}", format!("{}::{}", module, name).green());
+        println!("{}", format!("{}::{}", config.module, name).green());
         stats.print(old_stats);
     }
 
