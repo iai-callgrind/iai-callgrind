@@ -302,23 +302,26 @@ fn parse_callgrind_output(file: &Path, module: &str, function_name: &str) -> Cal
 
     // Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
     let mut counters: [u64; 9] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-    let mut is_recording = false;
-    let mut has_counters = false;
+    let mut start_record = false;
+    let mut start_counting = false;
     for line in iter {
         let line = line.trim_start();
-        if !is_recording {
+        if !start_record {
             if line.starts_with(&sentinel) {
                 trace!("Found line with sentinel: '{}'", line);
-                is_recording = true;
+                start_record = true;
             }
             continue;
         }
-        // We're only interested in the counters for function calls within the benchmark function and
-        // ignore counters for the benchmark function itself.
-        if is_recording && !has_counters {
-            if line.starts_with("cfn=") {
-                trace!("Found line with calling function: '{}'", line);
-                has_counters = true;
+        // We're only interested in the counters for event counters within the benchmark function
+        // and ignore counters for the benchmark function itself.
+        if start_record && !start_counting {
+            if !line.starts_with(|c: char| c.is_ascii_digit()) {
+                trace!(
+                    "Found first line with non digit: '{}'. Starting the counting",
+                    line
+                );
+                start_counting = true;
             }
             continue;
         }
