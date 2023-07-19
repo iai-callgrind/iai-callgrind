@@ -12,6 +12,7 @@ use std::{
 struct Config {
     runner_version: String,
     library_version: String,
+    bench_file: PathBuf,
     benches: Vec<String>,
     executable: PathBuf,
     module: String,
@@ -27,6 +28,7 @@ impl Config {
         let library_version = args_iter.next().unwrap();
         let runner_version = env!("CARGO_PKG_VERSION").to_string();
 
+        let bench_file = PathBuf::from(args_iter.next().unwrap());
         let module = args_iter.next().unwrap();
         let mut benches = vec![];
         let executable = loop {
@@ -57,6 +59,7 @@ impl Config {
         Self {
             runner_version,
             library_version,
+            bench_file,
             benches,
             executable,
             module,
@@ -284,10 +287,16 @@ fn run_bench(
         info!("Callgrind output:\n{}", output);
     }
 
-    let new_stats = parse_callgrind_output(&output_file, &config.module, function_name);
+    let new_stats = parse_callgrind_output(
+        &output_file,
+        &config.bench_file,
+        &config.module,
+        function_name,
+    );
     let old_stats = if old_file.exists() {
         Some(parse_callgrind_output(
             &old_file,
+            &config.bench_file,
             &config.module,
             function_name,
         ))
@@ -315,7 +324,12 @@ fn run_bench(
 // 0 4 2 0 1 0 0 1
 //
 // # the empty line above or the end of file ends the parsing
-fn parse_callgrind_output(file: &Path, module: &str, function_name: &str) -> CallgrindStats {
+fn parse_callgrind_output(
+    file: &Path,
+    bench_file: &Path,
+    module: &str,
+    function_name: &str,
+) -> CallgrindStats {
     trace!(
         "Parsing callgrind output file '{}' for '{}::{}'",
         file.display(),
@@ -324,7 +338,11 @@ fn parse_callgrind_output(file: &Path, module: &str, function_name: &str) -> Cal
     );
 
     let sentinel = format!("fn={}", [module, function_name].join("::"));
-    trace!("Using sentinel: '{}'", &sentinel);
+    trace!(
+        "Using sentinel: '{}' for file name ending with: '{}'",
+        &sentinel,
+        bench_file.display()
+    );
 
     let file_in = File::open(file).expect("Unable to open callgrind output file");
     let mut iter = BufReader::new(file_in).lines().map(|l| l.unwrap());
@@ -339,10 +357,25 @@ fn parse_callgrind_output(file: &Path, module: &str, function_name: &str) -> Cal
 
     // Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
     let mut counters: [u64; 9] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    let mut maybe_record = false;
     let mut start_record = false;
+    let mut maybe_counting = false;
     let mut start_counting = false;
     for line in iter {
         let line = line.trim_start();
+        if line.is_empty() {
+            maybe_record = false;
+            start_record = false;
+            maybe_counting = false;
+            start_counting = false;
+        }
+        if !maybe_record {
+            if line.starts_with("fl=") && line.ends_with(bench_file.to_str().unwrap()) {
+                trace!("Found line with benchmark file: '{}'", line);
+                maybe_record = true;
+            }
+            continue;
+        }
         if !start_record {
             if line.starts_with(&sentinel) {
                 trace!("Found line with sentinel: '{}'", line);
@@ -352,22 +385,22 @@ fn parse_callgrind_output(file: &Path, module: &str, function_name: &str) -> Cal
         }
         // We're only interested in the counters for event counters within the benchmark function
         // and ignore counters for the benchmark function itself.
-        if start_record && !start_counting {
-            if !line.starts_with(|c: char| c.is_ascii_digit()) {
-                trace!(
-                    "Found first line with non digit: '{}'. Starting the counting",
-                    line
-                );
+        if !maybe_counting {
+            if line.starts_with("cfn=") {
+                trace!("Found line with a calling function: '{}'", line);
+                maybe_counting = true;
+            }
+            continue;
+        }
+        if !start_counting {
+            if line.starts_with("calls") {
+                trace!("Found line with calls: '{}'. Starting the counting", line);
                 start_counting = true;
             }
             continue;
         }
-        // We stop counting at the first empty line
-        if line.is_empty() {
-            trace!("Found empty line: '{}'. Stopping the recording", line);
-            break;
-        // else we check if it is a line with counters and summarize them
-        } else if line.starts_with(|c: char| c.is_ascii_digit()) {
+        // we check if it is a line with counters and summarize them
+        if line.starts_with(|c: char| c.is_ascii_digit()) {
             // From the documentation of the callgrind format:
             // > If a cost line specifies less event counts than given in the "events" line, the
             // > rest is assumed to be zero.
@@ -384,8 +417,11 @@ fn parse_callgrind_output(file: &Path, module: &str, function_name: &str) -> Cal
                 counters[index] += counter;
             }
             trace!("Updated counters to '{:?}'", &counters);
+        } else {
+            trace!("Pausing counting. End of a cfn record");
+            maybe_counting = false;
+            start_counting = false;
         }
-        // if this line doesn't contain counters we skip it
     }
 
     CallgrindStats {

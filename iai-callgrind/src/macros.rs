@@ -75,6 +75,7 @@ macro_rules! main {
             let mut cmd = std::process::Command::new(exe);
 
             cmd.arg(library_version);
+            cmd.arg(file!());
             cmd.arg(module_path!());
 
             for bench in benchmarks {
