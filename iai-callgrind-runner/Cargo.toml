@@ -15,9 +15,9 @@ categories = ["development-tools::profiling", "development-tools::testing"]
 
 [dependencies]
 cfg-if = "1.0"
-log = "0.4.17"
+log = "0.4.19"
 env_logger = "0.9.3"
-colored = "2.0.0"
+colored = "<=2.0.0"
 version-compare = "0.1.1"
 
 [dev-dependencies]
