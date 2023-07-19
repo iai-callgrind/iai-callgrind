@@ -357,27 +357,20 @@ fn parse_callgrind_output(
 
     // Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
     let mut counters: [u64; 9] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-    let mut maybe_record = false;
     let mut start_record = false;
     let mut maybe_counting = false;
     let mut start_counting = false;
     for line in iter {
         let line = line.trim_start();
         if line.is_empty() {
-            maybe_record = false;
             start_record = false;
             maybe_counting = false;
             start_counting = false;
         }
-        if !maybe_record {
+        if !start_record {
             if line.starts_with("fl=") && line.ends_with(bench_file.to_str().unwrap()) {
                 trace!("Found line with benchmark file: '{}'", line);
-                maybe_record = true;
-            }
-            continue;
-        }
-        if !start_record {
-            if line.starts_with(&sentinel) {
+            } else if line.starts_with(&sentinel) {
                 trace!("Found line with sentinel: '{}'", line);
                 start_record = true;
             }
@@ -417,6 +410,9 @@ fn parse_callgrind_output(
                 counters[index] += counter;
             }
             trace!("Updated counters to '{:?}'", &counters);
+        } else if line.starts_with("cfn=") {
+            trace!("Found line with a calling function: '{}'", line);
+            start_counting = false;
         } else {
             trace!("Pausing counting. End of a cfn record");
             maybe_counting = false;
