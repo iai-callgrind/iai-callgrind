@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### [0.4.0] - 2023-07-19
+
+BREAKING: Counting of events changed and therefore event counters are incompatible with versions
+before `0.4.0`. Usually, event counters are now lower and more precise than before.
+
+### Changed
+
+* Instead of counting all events within the benchmarking function, only events of function calls
+(cfn entries) within the benchmarking functions are attributed to the final event counts.
+* MSRV changed from v1.56.0 -> v1.60.0
+* Bump log dependency 0.4.17 -> 0.4.19
+
+### Fixes
+
+* Counting of events was sometimes summarizing the events of the `main` function instead of the
+benchmarking function
+
 ### [0.3.1] - 2023-03-13
 
 ### Added
