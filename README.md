@@ -70,14 +70,14 @@ To start with Iai-Callgrind, add the following to your `Cargo.toml` file:
 
 ```toml
 [dev-dependencies]
-iai-callgrind = "0.3.1"
+iai-callgrind = "0.4.0"
 ```
 
 To be able to run the benchmarks you'll also need the `iai-callgrind-runner` binary installed
 somewhere in your `$PATH`, for example with
 
 ```shell
-cargo install --version 0.3.1 iai-callgrind-runner
+cargo install --version 0.4.0 iai-callgrind-runner
 ```
 
 When updating the `iai-callgrind` library, you'll also need to update `iai-callgrind-runner` and
