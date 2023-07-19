@@ -1,9 +1,9 @@
 [package]
 name = "iai-callgrind-runner"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2021"
 authors = ["Joining7943 <joining@posteo.de>", "Brook Heisler <redattack34@gmail.com>"]
-rust-version = "1.56.0"
+rust-version = "1.60.0"
 description = "Binary package needed by the iai-callgrind library"
 readme = "README.md"
 homepage = "https://github.com/Joining7943/iai-callgrind"
@@ -15,9 +15,9 @@ categories = ["development-tools::profiling", "development-tools::testing"]
 
 [dependencies]
 cfg-if = "1.0"
-log = "0.4.17"
+log = "0.4.19"
 env_logger = "0.9.3"
-colored = "2.0.0"
+colored = "<=2.0.0"
 version-compare = "0.1.1"
 
 [dev-dependencies]

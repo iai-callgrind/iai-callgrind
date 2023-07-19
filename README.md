@@ -19,7 +19,7 @@
         <img src="https://docs.rs/iai-callgrind/badge.svg" alt="docs.rs"/>
     </a>
     <a href="https://github.com/rust-lang/rust">
-        <img src="https://img.shields.io/badge/MSRV-1.56.0-brightgreen" alt="MSRV"/>
+        <img src="https://img.shields.io/badge/MSRV-1.60.0-brightgreen" alt="MSRV"/>
     </a>
 </div>
 
@@ -36,6 +36,7 @@ improvements and features.
 
 - [Table of Contents](#table-of-contents)
     - [Features](#features)
+    - [Update notes](#update-notes)
     - [Installation](#installation)
     - [Quickstart](#quickstart)
     - [Examples](#examples)
@@ -61,6 +62,11 @@ or the visualizer [kcachegrind](https://kcachegrind.github.io/html/Home.html) to
 in detail
 - __Stable-compatible__: Benchmark your code without installing nightly Rust
 
+### Update notes
+
+Breaking change in `0.4.0`: In an effort to create more accurate event counts, the way of counting
+events changed and may produce different results. See also [CHANGELOG](CHANGELOG.md)
+
 ### Installation
 
 In order to use Iai-Callgrind, you must have [Valgrind](https://www.valgrind.org) installed. This
@@ -70,14 +76,14 @@ To start with Iai-Callgrind, add the following to your `Cargo.toml` file:
 
 ```toml
 [dev-dependencies]
-iai-callgrind = "0.3.1"
+iai-callgrind = "0.4.0"
 ```
 
 To be able to run the benchmarks you'll also need the `iai-callgrind-runner` binary installed
 somewhere in your `$PATH`, for example with
 
 ```shell
-cargo install --version 0.3.1 iai-callgrind-runner
+cargo install --version 0.4.0 iai-callgrind-runner
 ```
 
 When updating the `iai-callgrind` library, you'll also need to update `iai-callgrind-runner` and
@@ -123,9 +129,9 @@ main!(iai_benchmark_short, iai_benchmark_long);
 
 Note that it is important to annotate the benchmark functions with `#[inline(never)]` or else the
 rust compiler will most likely try to optimize this function and inline it. `Callgrind` is function
-(name) based and the collection of counter events starts when entering this function and ends when
-leaving it. Not inlining this function serves the additional purpose to reduce influences of the
-surrounding code on the benchmark function.
+(name) based and uses function calls within the benchmarking function to collect counter events. Not
+inlining this function serves the additional purpose to reduce influences of the surrounding code on
+the benchmark function.
 
 Now you can run this benchmark with `cargo bench --bench my_benchmark` in your project root and you
 should see something like this:
@@ -175,7 +181,7 @@ For examples see also the [benches](iai-callgrind-runner/benches) folder.
 
 #### Skipping setup code
 
-Usually, all setup code in the benchmark function itself is attributed to the event counts. It's
+Usually, all function calls in the benchmark function itself are attributed to the event counts. It's
 possible to pass additional arguments to Callgrind and something like below will eliminate the setup
 code from the final metrics:
 
@@ -219,15 +225,13 @@ Cachegrind.
 
 Iai-Callgrind has even more precise and stable metrics across different systems. It achieves this by
 
-- start counting the events when entering the benchmark function and stop counting when leaving the
-benchmark function. The call to the benchmark function itself is also subtracted (See `bench_empty`
-below). This behavior virtually encapsulates the benchmark function and (almost) completely
-separates the benchmark from the surrounding code.
+- only counting events of function calls within the benchmarking function. This behavior virtually
+encapsulates the benchmark function and separates the benchmark from the surrounding code.
 - separating the iai library with the main macro from the actual runner. This is the reason for the
 extra installation step of `iai-callgrind-runner` but before this separation even small changes in
 the iai library had effects on the benchmarks under test.
 
-Below a run of one of the benchmarks of this library on my local computer
+Below a local run of one of the benchmarks of this library
 
 ```shell
 $ cd iai-callgrind
@@ -372,8 +376,8 @@ See also [Callgrind Command-line Options](https://valgrind.org/docs/manual/cl-ma
 
 ### What hasn't changed
 
-Iai-Callgrind does not completely remove the influences of setup changes (like an additional
-benchmark function in the same file). However, these effects shouldn't be so large anymore.
+Iai-Callgrind cannot completely remove the influences of setup changes. However, these effects
+shouldn't be significant anymore.
 
 ### See also
 

@@ -1,9 +1,9 @@
 [package]
 name = "iai-callgrind"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["Joining7943 <joining@posteo.de>", "Brook Heisler <redattack34@gmail.com>"]
 edition = "2021"
-rust-version = "1.56.0"
+rust-version = "1.60.0"
 description = "High-precision and consistent benchmarking framework/harness for Rust"
 readme = "../README.md"
 homepage = "https://github.com/Joining7943/iai-callgrind"

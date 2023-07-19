@@ -6,6 +6,7 @@
     "Brunner",
     "cachegrind",
     "callgrind",
+    "canonicalize",
     "consts",
     "dtolnay",
     "Heisler",
