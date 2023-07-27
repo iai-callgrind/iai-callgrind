@@ -9,6 +9,7 @@
     "canonicalize",
     "consts",
     "dtolnay",
+    "funcs",
     "Heisler",
     "Ilmr",
     "Itamar",
