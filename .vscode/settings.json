@@ -8,6 +8,7 @@
     "callgrind",
     "canonicalize",
     "consts",
+    "Deque",
     "dtolnay",
     "funcs",
     "Heisler",
@@ -15,12 +16,15 @@
     "Itamar",
     "kcachegrind",
     "MSRV",
+    "peekable",
     "proccontrol",
     "Quickstart",
     "setarch",
     "Struct",
     "Swatinem",
+    "TMPDIR",
     "Trauring's",
-    "valgrind"
+    "valgrind",
+    "yesno"
   ]
 }

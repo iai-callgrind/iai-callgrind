@@ -2,7 +2,10 @@
 name = "iai-callgrind-runner"
 version = "0.4.0"
 edition = "2021"
-authors = ["Joining7943 <joining@posteo.de>", "Brook Heisler <redattack34@gmail.com>"]
+authors = [
+  "Joining7943 <joining@posteo.de>",
+  "Brook Heisler <redattack34@gmail.com>",
+]
 rust-version = "1.60.0"
 description = "Binary package needed by the iai-callgrind library"
 readme = "README.md"
@@ -16,9 +19,10 @@ categories = ["development-tools::profiling", "development-tools::testing"]
 [dependencies]
 cfg-if = "1.0"
 log = "0.4.19"
-env_logger = "0.9.3"
+env_logger = "<=0.9.3"
 colored = "<=2.0.0"
 version-compare = "0.1.1"
+sanitize-filename = "0.4.0"
 
 [dev-dependencies]
 iai-callgrind = { path = "../iai-callgrind" }
@@ -28,6 +32,10 @@ name = "iai-callgrind-runner"
 path = "src/main.rs"
 test = true
 bench = true
+
+[[bench]]
+name = "test_bin_bench"
+harness = false
 
 [[bench]]
 name = "test_regular_bench"

@@ -1,8 +1,9 @@
+use std::io::Write;
+
 use colored::{control, Colorize};
 use env_logger::Env;
 use iai_callgrind_runner::IaiCallgrindError;
 use log::error;
-use std::io::Write;
 use version_compare::Cmp;
 
 fn main() {
@@ -44,30 +45,51 @@ fn main() {
         Ok(_) => std::process::exit(0),
         Err(error) => {
             match error {
-                IaiCallgrindError::VersionMismatch(cmp, runner_version, library_version) => match cmp {
-                    Cmp::Lt => error!(
-                        "iai-callgrind-runner ({}) is older than iai-callgrind ({}). Please update iai-callgrind-runner",
-                        runner_version, library_version
-                    ),
-                    Cmp::Gt => error!(
-                        "iai-callgrind-runner ({}) is newer than iai-callgrind ({}). Please update iai-callgrind",
-                        runner_version, library_version
-                    ),
-                    Cmp::Ne => error!(
-                        "No version information found for iai-callgrind but iai-callgrind-runner ({0}) is >= '0.3.0'. \
-                        Please update iai-callgrind to '{0}'", runner_version
-                    ),
-                    _ => unreachable!(),
-                },
-                IaiCallgrindError::LaunchError(error) =>
-                    error!(
-                        "Unexpected error when launching valgrind: {}\n\
-                        Please make sure Valgrind is installed and in your $PATH", error),
+                IaiCallgrindError::VersionMismatch(cmp, runner_version, library_version) => {
+                    match cmp {
+                        Cmp::Lt => error!(
+                            "iai-callgrind-runner ({}) is older than iai-callgrind ({}). Please \
+                             update iai-callgrind-runner",
+                            runner_version, library_version
+                        ),
+                        Cmp::Gt => error!(
+                            "iai-callgrind-runner ({}) is newer than iai-callgrind ({}). Please \
+                             update iai-callgrind",
+                            runner_version, library_version
+                        ),
+                        Cmp::Ne => error!(
+                            "No version information found for iai-callgrind but \
+                             iai-callgrind-runner ({0}) is >= '0.3.0'. Please update \
+                             iai-callgrind to '{0}'",
+                            runner_version
+                        ),
+                        _ => unreachable!(),
+                    }
+                }
+                IaiCallgrindError::LaunchError(error) => error!(
+                    "Unexpected error when launching valgrind: {}\nPlease make sure Valgrind is \
+                     installed and in your $PATH",
+                    error
+                ),
                 IaiCallgrindError::CallgrindLaunchError(output) => {
-                    print!("{}", String::from_utf8_lossy(output.stderr.as_slice()));
+                    error!(
+                        "Captured stderr:\n{}",
+                        String::from_utf8_lossy(output.stderr.as_slice())
+                    );
                     error!(
                         "Error launching callgrind: Exit code was: {}",
-                        output.status.code().unwrap());
+                        output.status.code().unwrap()
+                    );
+                }
+                IaiCallgrindError::BenchmarkLaunchError(output) => {
+                    error!(
+                        "Captured stderr:\n{}",
+                        String::from_utf8_lossy(output.stderr.as_slice())
+                    );
+                    error!(
+                        "Error launching benchmark: Exit code was: {}",
+                        output.status.code().unwrap()
+                    );
                 }
             }
             std::process::exit(1);

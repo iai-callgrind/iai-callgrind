@@ -1,12 +1,11 @@
-use colored::Colorize;
-use std::{ffi::OsString, path::PathBuf};
+use std::ffi::OsString;
+use std::path::PathBuf;
 
+use colored::Colorize;
 use log::debug;
 
-use crate::{
-    callgrind::{CallgrindArgs, CallgrindCommand},
-    get_arch, IaiCallgrindError,
-};
+use crate::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput};
+use crate::{get_arch, IaiCallgrindError};
 
 #[derive(Debug)]
 struct Config {
@@ -36,14 +35,11 @@ impl Config {
             env_args_iter.next();
         }
 
-        let mut callgrind_args = env_args_iter
-            .map(|s| s.to_str().unwrap().to_owned())
-            .filter(|a| a.starts_with("--"))
-            .collect::<Vec<String>>();
+        let mut callgrind_args = env_args_iter.collect::<Vec<OsString>>();
         if callgrind_args.last().map_or(false, |a| a == "--bench") {
             callgrind_args.pop();
         }
-        let callgrind_args = CallgrindArgs::from_args(callgrind_args);
+        let callgrind_args = CallgrindArgs::from_args(&callgrind_args);
 
         let arch = get_arch();
         debug!("Detected architecture: {}", arch);
@@ -69,13 +65,21 @@ pub fn run(env_args: impl Iterator<Item = OsString>) -> Result<(), IaiCallgrindE
     let config = Config::with_env_args_iter(env_args);
     for (index, function_name) in config.benches.iter().enumerate() {
         let command = CallgrindCommand::new(config.allow_aslr, &config.arch);
-        let output = command.run(
-            &config.callgrind_args,
-            &config.executable,
-            &index.to_string(),
-            &config.module,
-            function_name,
-        )?;
+        let args = vec![
+            "--iai-run".to_owned(),
+            index.to_string(),
+            format!("{}::{}", config.module, function_name),
+        ];
+        let mut callgrind_args = config.callgrind_args.clone();
+        callgrind_args.insert_toggle_collect(&format!(
+            "--toggle-collect=*{}::{}",
+            &config.module, function_name
+        ));
+
+        let output = CallgrindOutput::create(&config.module, function_name);
+        callgrind_args.set_output_file(&output.file.display().to_string());
+
+        command.run(&callgrind_args, &config.executable, args)?;
 
         let new_stats = output.parse(&config.bench_file, &config.module, function_name);
 

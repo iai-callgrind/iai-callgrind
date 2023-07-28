@@ -1,13 +1,15 @@
+use std::collections::VecDeque;
+use std::ffi::{OsStr, OsString};
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+
 use cfg_if::cfg_if;
 use colored::{ColoredString, Colorize};
 use log::{debug, info, trace, warn};
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-    path::{Path, PathBuf},
-    process::{Command, Stdio},
-};
 
+use crate::util::{bool_to_yesno, concat_os_string, join_os_string, yesno_to_bool};
 use crate::IaiCallgrindError;
 
 // Invoke Valgrind, disabling ASLR if possible because ASLR could noise up the results a bit
@@ -65,48 +67,46 @@ impl CallgrindCommand {
         self,
         callgrind_args: &CallgrindArgs,
         executable: &Path,
-        target: &str,
-        module: &str,
-        function_name: &str,
-    ) -> Result<CallgrindOutput, IaiCallgrindError> {
+        executable_args: Vec<String>,
+    ) -> Result<(), IaiCallgrindError> {
         let mut command = self.command;
-        let output = CallgrindOutput::create(module, function_name);
-
-        let callgrind_args = callgrind_args.parse_with(&output.file, module, function_name);
-        debug!("Callgrind arguments: {}", callgrind_args.join(" "));
-        let command_output = command
+        let callgrind_args = callgrind_args.to_os_args();
+        debug!(
+            "Callgrind arguments: {}",
+            join_os_string(&callgrind_args, OsStr::new(" ")).to_string_lossy()
+        );
+        let (stdout, stderr) = command
             .arg("--tool=callgrind")
             .args(callgrind_args)
             .arg(executable)
-            .arg("--iai-run")
-            .arg(target)
-            // Currently not used in iai-callgrind itself, but in `callgrind_annotate` this name is
-            // shown and makes it easier to identify the benchmark under test
-            .arg(format!("{}::{}", module, function_name))
-            // valgrind doesn't output anything on stdout
-            // .stdout(Stdio::null())
+            .args(executable_args)
+            .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
             .map_err(IaiCallgrindError::LaunchError)
             .and_then(|output| {
                 if output.status.success() {
+                    let stdout = String::from_utf8_lossy(output.stdout.as_slice());
                     let stderr = String::from_utf8_lossy(output.stderr.as_slice());
-                    Ok(stderr.trim_end().to_string())
+                    Ok((stdout.trim_end().to_string(), stderr.trim_end().to_string()))
                 } else {
                     Err(IaiCallgrindError::CallgrindLaunchError(output))
                 }
             })?;
 
-        if !command_output.is_empty() {
-            info!("Callgrind output:\n{}", command_output);
+        if !stdout.is_empty() {
+            info!("Callgrind output on stdout:\n{}", stdout);
+        }
+        if !stderr.is_empty() {
+            info!("Callgrind output on stderr:\n{}", stderr);
         }
 
-        Ok(output)
+        Ok(())
     }
 }
 
 pub struct CallgrindOutput {
-    file: PathBuf,
+    pub file: PathBuf,
 }
 
 impl CallgrindOutput {
@@ -138,6 +138,75 @@ impl CallgrindOutput {
     pub fn old_output(&self) -> Self {
         CallgrindOutput {
             file: self.file.with_extension("out.old"),
+        }
+    }
+
+    pub fn parse_summary(&self) -> CallgrindStats {
+        trace!(
+            "Parsing callgrind output file '{}' for a summary or totals",
+            self.file.display(),
+        );
+
+        let file_in = File::open(&self.file).expect("Unable to open callgrind output file");
+        let mut iter = BufReader::new(file_in).lines().map(|l| l.unwrap());
+        if !iter
+            .by_ref()
+            .find(|l| !l.trim().is_empty())
+            .expect("Found empty file")
+            .contains("callgrind format")
+        {
+            warn!("Missing file format specifier. Assuming callgrind format.");
+        };
+
+        // Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
+        let mut counters: [u64; 9] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+        for line in iter {
+            if line.starts_with("summary:") {
+                trace!("Found line with summary: '{}'", line);
+                for (index, counter) in line
+                    .strip_prefix("summary:")
+                    .unwrap()
+                    .trim()
+                    .split_ascii_whitespace()
+                    .map(|s| s.parse::<u64>().expect("Encountered non ascii digit"))
+                    // we're only interested in the counters for instructions and the cache
+                    .take(9)
+                    .enumerate()
+                {
+                    counters[index] += counter;
+                }
+                trace!("Updated counters to '{:?}'", &counters);
+                break;
+            }
+            if line.starts_with("totals:") {
+                trace!("Found line with totals: '{}'", line);
+                for (index, counter) in line
+                    .strip_prefix("totals:")
+                    .unwrap()
+                    .trim()
+                    .split_ascii_whitespace()
+                    .map(|s| s.parse::<u64>().expect("Encountered non ascii digit"))
+                    // we're only interested in the counters for instructions and the cache
+                    .take(9)
+                    .enumerate()
+                {
+                    counters[index] += counter;
+                }
+                trace!("Updated counters to '{:?}'", &counters);
+                break;
+            }
+        }
+
+        CallgrindStats {
+            l1_instructions_cache_reads: counters[0],
+            total_data_cache_reads: counters[1],
+            total_data_cache_writes: counters[2],
+            l1_instructions_cache_read_misses: counters[3],
+            l1_data_cache_read_misses: counters[4],
+            l1_data_cache_write_misses: counters[5],
+            l3_instructions_cache_misses: counters[6],
+            l3_data_cache_read_misses: counters[7],
+            l3_data_cache_write_misses: counters[8],
         }
     }
 
@@ -188,8 +257,8 @@ impl CallgrindOutput {
                 }
                 continue;
             }
-            // We're only interested in the counters for event counters within the benchmark function
-            // and ignore counters for the benchmark function itself.
+            // We're only interested in the counters for event counters within the benchmark
+            // function and ignore counters for the benchmark function itself.
             if !maybe_counting {
                 if line.starts_with("cfn=") {
                     trace!("Found line with a calling function: '{}'", line);
@@ -245,20 +314,19 @@ impl CallgrindOutput {
         }
     }
 }
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CallgrindArgs {
     i1: String,
     d1: String,
     ll: String,
-    cache_sim: String,
-    collect_atstart: String,
-    other: Vec<String>,
-    toggle_collect: Option<Vec<String>>,
-    compress_strings: String,
-    compress_pos: String,
+    cache_sim: bool,
+    pub collect_atstart: bool,
+    other: Vec<OsString>,
+    toggle_collect: VecDeque<String>,
+    compress_strings: bool,
+    compress_pos: bool,
     // TODO: Should be a PathBuf
-    callgrind_out_file: Option<String>,
+    callgrind_out_file: Option<PathBuf>,
 }
 
 impl Default for CallgrindArgs {
@@ -267,14 +335,14 @@ impl Default for CallgrindArgs {
             // Set some reasonable cache sizes. The exact sizes matter less than having fixed sizes,
             // since otherwise callgrind would take them from the CPU and make benchmark runs
             // even more incomparable between machines.
-            i1: String::from("--I1=32768,8,64"),
-            d1: String::from("--D1=32768,8,64"),
-            ll: String::from("--LL=8388608,16,64"),
-            cache_sim: String::from("--cache-sim=yes"),
-            collect_atstart: String::from("--collect-atstart=no"),
+            i1: String::from("32768,8,64"),
+            d1: String::from("32768,8,64"),
+            ll: String::from("8388608,16,64"),
+            cache_sim: true,
+            collect_atstart: false,
             toggle_collect: Default::default(),
-            compress_pos: String::from("--compress-pos=no"),
-            compress_strings: String::from("--compress-strings=no"),
+            compress_pos: false,
+            compress_strings: false,
             callgrind_out_file: Default::default(),
             other: Default::default(),
         }
@@ -282,68 +350,85 @@ impl Default for CallgrindArgs {
 }
 
 impl CallgrindArgs {
-    pub fn from_args(args: Vec<String>) -> Self {
+    pub fn from_args(args: &[OsString]) -> Self {
         let mut default = Self::default();
         for arg in args.iter() {
-            if arg.starts_with("--I1=") {
-                default.i1 = arg.to_owned();
-            } else if arg.starts_with("--D1=") {
-                default.d1 = arg.to_owned();
-            } else if arg.starts_with("--LL=") {
-                default.ll = arg.to_owned();
-            } else if arg.starts_with("--cache-sim=") {
-                warn!("Ignoring callgrind argument: '{}'", arg);
-            } else if arg.starts_with("--collect-atstart=") {
-                default.collect_atstart = arg.to_owned();
-            } else if arg.starts_with("--compress-strings=") {
-                default.compress_strings = arg.to_owned();
-            } else if arg.starts_with("--compress-pos=") {
-                default.compress_pos = arg.to_owned();
-            } else if arg.starts_with("--toggle-collect=") {
-                info!(
-                    "The callgrind argument '{}' will be appended to the default setting.",
-                    arg
-                );
-                match default.toggle_collect.as_mut() {
-                    Some(toggle_arg) => {
-                        toggle_arg.push(arg.to_owned());
-                    }
-                    None => {
-                        default.toggle_collect = Some(vec![arg.to_owned()]);
-                    }
-                };
-            } else if arg.starts_with("--callgrind-out-file=") {
-                warn!("Ignoring callgrind argument: '{}'", arg);
-            } else {
-                default.other.push(arg.to_owned());
+            let string = arg.to_string_lossy();
+            match string.strip_prefix("--").and_then(|s| s.split_once('=')) {
+                Some(("I1", value)) => default.i1 = value.to_owned(),
+                Some(("D1", value)) => default.d1 = value.to_owned(),
+                Some(("LL", value)) => default.ll = value.to_owned(),
+                Some(("collect-atstart", value)) => default.collect_atstart = yesno_to_bool(value),
+                Some(("compress-strings", value)) => {
+                    default.compress_strings = yesno_to_bool(value)
+                }
+                Some(("compress-pos", value)) => default.compress_pos = yesno_to_bool(value),
+                Some(("toggle-collect", value)) => {
+                    default.toggle_collect.push_back(value.to_owned())
+                }
+                Some(("cache-sim", value)) => {
+                    warn!("Ignoring callgrind argument: '--cache-sim={}'", value)
+                }
+                Some(("callgrind-out-file", value)) => warn!(
+                    "Ignoring callgrind argument: '--callgrind-out-file={}'",
+                    value
+                ),
+                Some(_) => default.other.push(arg.to_owned()),
+                None => panic!("Error parsing callgrind arguments"),
             }
         }
         default
     }
 
-    pub fn parse_with(&self, output_file: &Path, module: &str, function_name: &str) -> Vec<String> {
+    pub fn insert_toggle_collect(&mut self, arg: &str) -> &mut Self {
+        self.toggle_collect.push_front(arg.to_owned());
+        self
+    }
+
+    pub fn set_output_file(&mut self, arg: &str) -> &mut Self {
+        self.callgrind_out_file = Some(PathBuf::from(arg));
+        self
+    }
+
+    pub fn to_os_args(&self) -> Vec<OsString> {
         let mut args = vec![
-            self.i1.clone(),
-            self.d1.clone(),
-            self.ll.clone(),
-            self.cache_sim.clone(),
-            self.collect_atstart.clone(),
-            self.compress_strings.clone(),
-            self.compress_pos.clone(),
+            concat_os_string(OsString::from("--I1="), &self.i1),
+            concat_os_string(OsString::from("--D1="), &self.d1),
+            concat_os_string(OsString::from("--LL="), &self.ll),
+            concat_os_string(
+                OsString::from("--cache-sim="),
+                bool_to_yesno(self.cache_sim),
+            ),
+            concat_os_string(
+                OsString::from("--collect-atstart="),
+                bool_to_yesno(self.collect_atstart),
+            ),
+            concat_os_string(
+                OsString::from("--compress-strings="),
+                bool_to_yesno(self.compress_strings),
+            ),
+            concat_os_string(
+                OsString::from("--compress-pos="),
+                bool_to_yesno(self.compress_pos),
+            ),
         ];
 
+        args.append(
+            &mut self
+                .toggle_collect
+                .iter()
+                .map(OsString::from)
+                .collect::<Vec<OsString>>(),
+        );
+
+        if let Some(output_file) = &self.callgrind_out_file {
+            args.push(concat_os_string(
+                OsString::from("--callgrind-out-file="),
+                output_file.as_os_str(),
+            ));
+        }
+
         args.extend_from_slice(self.other.as_slice());
-
-        match &self.callgrind_out_file {
-            Some(arg) => args.push(arg.clone()),
-            None => args.push(format!("--callgrind-out-file={}", output_file.display())),
-        }
-
-        args.push(format!("--toggle-collect=*{}::{}", module, function_name));
-        if let Some(arg) = &self.toggle_collect {
-            args.extend_from_slice(arg.as_slice())
-        }
-
         args
     }
 }

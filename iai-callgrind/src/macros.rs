@@ -58,6 +58,144 @@
 /// The `iai_callgrind::main` macro expands to a `main` function which runs all of the benchmarks.
 #[macro_export]
 macro_rules! main {
+    ( $( options = $( $options:literal ),+ $(,)*; )?
+      $( before = $before:ident; )?
+      $( after = $after:ident; )?
+      $( setup = $setup:ident; )?
+      $( teardown = $teardown:ident; )?
+      $( run = cmd = $cmd:literal, $( args = [$($args:literal),* $(,)*] ),+ $(,)* );+ $(;)*
+      ) => {
+        mod iai_wrappers {
+            $(
+                pub fn $before() {
+                    let _ = $crate::black_box(super::$before());
+                }
+            )?
+            $(
+                pub fn $after() {
+                    let _ = $crate::black_box(super::$after());
+                }
+            )?
+            $(
+                pub fn $setup() {
+                    let _ = $crate::black_box(super::$setup());
+                }
+            )?
+            $(
+                pub fn $teardown() {
+                    let _ = $crate::black_box(super::$teardown());
+                }
+            )?
+        }
+
+        #[inline(never)]
+        fn run(functions: &[&(&'static str, &'static str, fn())], mut this_args: std::env::Args) {
+            let exe =option_env!("IAI_CALLGRIND_RUNNER")
+                .unwrap_or_else(|| option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner"));
+
+            let library_version = "0.4.0";
+
+            let mut cmd = std::process::Command::new(exe);
+
+            cmd.arg(library_version);
+            cmd.arg("--bin-bench");
+            cmd.arg(file!());
+            cmd.arg(module_path!());
+            cmd.arg(this_args.next().unwrap()); // The executable benchmark binary
+
+            use std::fmt::Write;
+            use std::path::PathBuf;
+            $(
+                let command = option_env!(concat!("CARGO_BIN_EXE_", $cmd)).unwrap_or($cmd);
+                if PathBuf::from(command).exists() {
+                    $(
+                        let args : Vec<&str> = vec![$($args),*];
+                        if args.is_empty() {
+                            cmd.arg(format!("--run='{}'", command));
+                        } else {
+                            let arg = args
+                                .iter()
+                                .fold(String::new(), |mut a, s| {
+                                    write!(a, "'{}',", s).unwrap();
+                                    a
+                                })
+                                .trim_end_matches(',')
+                                .to_owned();
+                            cmd.arg(format!("--run='{}',{}", command, arg));
+                        }
+                    )+
+                } else {
+                    panic!("Command '{command}' does not exist");
+                }
+            )+
+
+            for func in functions {
+                cmd.arg(format!("--{}={}", func.0, func.1));
+            }
+
+            // Add the callgrind_args first so that arguments from the command line will overwrite
+            // those passed to this main macro
+            let options : Vec<&str> = vec![$($($options),+)?];
+
+            let mut args : Vec<String> = Vec::with_capacity(40);
+            for option in options {
+                if option.starts_with("--") {
+                    args.push(option.to_owned());
+                } else {
+                    args.push(format!("--{}", option))
+                }
+            }
+
+            args.extend(this_args); // The rest of the arguments
+            let status = cmd
+                .args(args)
+                .status()
+                .expect("Failed to run benchmarks. Is iai-callgrind-runner installed and iai-callgrind-runner in your $PATH?");
+
+            if !status.success() {
+                panic!(
+                    "Failed to run iai-callgrind-runner. Exit code: {}",
+                    status
+                );
+            }
+        }
+
+        fn main() {
+            let funcs : &[&(&'static str, &'static str, fn())]= $crate::black_box(&[
+                $(
+                    &("before", stringify!($before), iai_wrappers::$before),
+                )?
+                $(
+                    &("after", stringify!($after), iai_wrappers::$after),
+                )?
+                $(
+                    &("setup", stringify!($setup), iai_wrappers::$setup),
+                )?
+                $(
+                    &("teardown", stringify!($teardown), iai_wrappers::$teardown),
+                )?
+            ]);
+            let mut args_iter = $crate::black_box(std::env::args()).skip(1);
+            if args_iter
+                .next()
+                .as_ref()
+                .map_or(false, |value| value == "--iai-run")
+            {
+                let func_name = args_iter.next().expect("Expecting a function type");
+                let func = funcs.iter().find_map(|(t, _, f)| if *t == func_name {
+                    Some(f)
+                } else {
+                    None
+                }).expect("Invalid function");
+                func();
+            } else {
+                run(
+                    $crate::black_box(funcs),
+                    $crate::black_box(std::env::args()),
+                );
+            };
+        }
+    };
     ( callgrind_args = $( $args:literal ),* $(,)*; functions = $( $func_name:ident ),+ $(,)* ) => {
         mod iai_wrappers {
             $(
@@ -69,7 +207,9 @@ macro_rules! main {
 
         #[inline(never)]
         fn run(benchmarks: &[&(&'static str, fn())], mut this_args: std::env::Args) {
-            let exe = option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner");
+            let exe =option_env!("IAI_CALLGRIND_RUNNER")
+                .unwrap_or_else(|| option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner"));
+
             let library_version = "0.4.0";
 
             let mut cmd = std::process::Command::new(exe);

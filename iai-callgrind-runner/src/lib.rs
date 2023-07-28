@@ -1,6 +1,7 @@
 mod bin_bench;
 mod callgrind;
 mod lib_bench;
+mod util;
 
 use std::process::{Command, Output, Stdio};
 
@@ -22,6 +23,7 @@ pub enum IaiCallgrindError {
     VersionMismatch(version_compare::Cmp, String, String),
     LaunchError(std::io::Error),
     CallgrindLaunchError(Output),
+    BenchmarkLaunchError(Output),
 }
 
 pub fn run() -> Result<(), IaiCallgrindError> {
