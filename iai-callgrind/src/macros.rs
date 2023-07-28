@@ -75,15 +75,16 @@ macro_rules! main {
             let mut cmd = std::process::Command::new(exe);
 
             cmd.arg(library_version);
+            cmd.arg("--lib-bench");
             cmd.arg(file!());
             cmd.arg(module_path!());
+            cmd.arg(this_args.next().unwrap()); // The executable
 
             for bench in benchmarks {
                 cmd.arg(format!("--iai-bench={}", bench.0));
             }
 
             let mut args = Vec::with_capacity(40);
-            args.push(this_args.next().unwrap()); // The executable
             // Add the callgrind_args first so that arguments from the command line will overwrite
             // those passed to this main macro
             let callgrind_args : Vec<&str> = vec![
