@@ -60,10 +60,10 @@
 macro_rules! main {
     // TODO: before, after etc. should take a conf value like bench = false, true
     ( $( options = $( $options:literal ),+ $(,)*; )?
-      $( before = $before:ident; )?
-      $( after = $after:ident; )?
-      $( setup = $setup:ident; )?
-      $( teardown = $teardown:ident; )?
+      $( before = $before:ident $(, bench = $bench_before:expr )?; )?
+      $( after = $after:ident $(, bench = $bench_after:expr )?; )?
+      $( setup = $setup:ident $(, bench = $bench_setup:expr )?; )?
+      $( teardown = $teardown:ident $(, bench = $bench_teardown:expr )?; )?
       $( run = cmd = $cmd:literal $(,envs = [$($envs:literal),* $(,)*] )? $(,opts = $opt:expr )? ,
         $( args = [$($args:literal),* $(,)*]  ),+ $(,)*
       );+ $(;)*
@@ -156,9 +156,58 @@ macro_rules! main {
                 }
             )+
 
-            for func in functions {
-                cmd.arg(format!("--{}={}", func.0, func.1));
-            }
+            $(
+                let mut bench_before = false;
+                $(
+                    if $bench_before {
+                        bench_before = true;
+                    }
+                )?
+                if bench_before {
+                    cmd.arg(format!("--bench-before={}", stringify!($before)));
+                } else {
+                    cmd.arg(format!("--before={}", stringify!($before)));
+                }
+            )?
+            $(
+                let mut bench_after = false;
+                $(
+                    if $bench_after {
+                        bench_after = true;
+                    }
+                )?
+                if bench_after {
+                    cmd.arg(format!("--bench-after={}", stringify!($after)));
+                } else {
+                    cmd.arg(format!("--after={}", stringify!($after)));
+                }
+            )?
+            $(
+                let mut bench_setup = false;
+                $(
+                    if $bench_setup {
+                        bench_setup = true;
+                    }
+                )?
+                if bench_setup {
+                    cmd.arg(format!("--bench-setup={}", stringify!($setup)));
+                } else {
+                    cmd.arg(format!("--setup={}", stringify!($setup)));
+                }
+            )?
+            $(
+                let mut bench_teardown = false;
+                $(
+                    if $bench_teardown {
+                        bench_teardown = true;
+                    }
+                )?
+                if bench_teardown {
+                    cmd.arg(format!("--bench-teardown={}", stringify!($teardown)));
+                } else {
+                    cmd.arg(format!("--teardown={}", stringify!($teardown)));
+                }
+            )?
 
             // Add the callgrind_args first so that arguments from the command line will overwrite
             // those passed to this main macro

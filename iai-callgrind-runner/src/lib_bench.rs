@@ -72,10 +72,7 @@ pub fn run(env_args: impl Iterator<Item = OsString>) -> Result<(), IaiCallgrindE
             format!("{}::{}", config.module, function_name),
         ];
         let mut callgrind_args = config.callgrind_args.clone();
-        callgrind_args.insert_toggle_collect(&format!(
-            "--toggle-collect=*{}::{}",
-            &config.module, function_name
-        ));
+        callgrind_args.insert_toggle_collect(&format!("*{}::{}", &config.module, function_name));
 
         let output = CallgrindOutput::create(&config.module, function_name);
         callgrind_args.set_output_file(&output.file.display().to_string());

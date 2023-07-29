@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::ffi::OsString;
 use std::fmt::Display;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 use colored::Colorize;
@@ -118,7 +118,7 @@ impl Display for BinBench {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum AssistantKind {
     Setup,
     Teardown,
@@ -137,20 +137,55 @@ impl AssistantKind {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Assistant {
     name: String,
     kind: AssistantKind,
+    bench: bool,
 }
 
 impl Assistant {
-    fn new(name: String, kind: AssistantKind) -> Self {
-        Self { name, kind }
+    fn new(name: String, kind: AssistantKind, bench: bool) -> Self {
+        Self { name, kind, bench }
     }
 
-    fn run(&self, bench_bin: &Path) -> Result<(), IaiCallgrindError> {
+    fn run_bench(&self, config: &Config) -> Result<(), IaiCallgrindError> {
+        let command = CallgrindCommand::new(config.allow_aslr, &config.arch);
+        let executable_args = vec![
+            "--iai-run".to_owned(),
+            self.kind.id(),
+            format!("{}::{}", &config.module, &self.name),
+        ];
+        let mut callgrind_args = config.callgrind_args.clone();
+        // callgrind_args.collect_atstart = true;
+        callgrind_args.collect_atstart = false;
+        callgrind_args.insert_toggle_collect(&format!("*{}::{}", &config.module, &self.name));
+
+        let output = CallgrindOutput::create(&config.module, &self.name);
+        callgrind_args.set_output_file(&output.file.display().to_string());
+        command.run(
+            &callgrind_args,
+            &config.bench_bin,
+            executable_args,
+            vec![],
+            &Options::default().env_clear(false),
+        )?;
+
+        let new_stats = output.parse(&config.bench_file, &config.module, &self.name);
+
+        let old_output = output.old_output();
+        let old_stats = old_output
+            .exists()
+            .then(|| old_output.parse(&config.bench_file, &config.module, &self.name));
+
+        println!("{}", format!("{}::{}", &config.module, &self.name).green());
+        new_stats.print(old_stats);
+        Ok(())
+    }
+
+    fn run_plain(&self, config: &Config) -> Result<(), IaiCallgrindError> {
         let id = self.kind.id();
-        let mut command = Command::new(bench_bin);
+        let mut command = Command::new(&config.bench_bin);
         command.arg("--iai-run");
         command.arg(&id);
 
@@ -173,12 +208,23 @@ impl Assistant {
         if !stderr.is_empty() {
             info!("{} function '{}': stderr:\n{}", id, self.name, stderr);
         }
-
         Ok(())
+    }
+
+    fn run(&mut self, config: &Config) -> Result<(), IaiCallgrindError> {
+        if self.bench {
+            match self.kind {
+                AssistantKind::Setup | AssistantKind::Teardown => self.bench = false,
+                _ => {}
+            }
+            self.run_bench(config)
+        } else {
+            self.run_plain(config)
+        }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct BenchmarkAssistants {
     before: Option<Assistant>,
     after: Option<Assistant>,
@@ -229,9 +275,8 @@ impl Config {
                 Some(("--run", value)) => benches.push(BinBench::from_env_arg(value)),
                 Some(("--run-envs", value)) => benches.last_mut().unwrap().set_envs_from_arg(value),
                 Some(("--run-opts", value)) => {
-                    benches.last_mut().unwrap().opts = OptionsParser::new(Options::default())
-                        .from_arg(value)
-                        .unwrap();
+                    benches.last_mut().unwrap().opts =
+                        OptionsParser::default().from_arg(value).unwrap();
                 }
                 Some(_) | None => break,
             }
@@ -242,20 +287,60 @@ impl Config {
         while let Some(arg) = env_args_iter.peek() {
             match arg.to_str().unwrap().split_once('=') {
                 Some(("--setup", value)) => {
-                    bench_assists.setup =
-                        Some(Assistant::new(value.to_string(), AssistantKind::Setup))
+                    bench_assists.setup = Some(Assistant::new(
+                        value.to_string(),
+                        AssistantKind::Setup,
+                        false,
+                    ))
+                }
+                Some(("--bench-setup", value)) => {
+                    bench_assists.setup = Some(Assistant::new(
+                        value.to_string(),
+                        AssistantKind::Setup,
+                        true,
+                    ))
                 }
                 Some(("--teardown", value)) => {
-                    bench_assists.teardown =
-                        Some(Assistant::new(value.to_string(), AssistantKind::Teardown))
+                    bench_assists.teardown = Some(Assistant::new(
+                        value.to_string(),
+                        AssistantKind::Teardown,
+                        false,
+                    ))
+                }
+                Some(("--bench-teardown", value)) => {
+                    bench_assists.teardown = Some(Assistant::new(
+                        value.to_string(),
+                        AssistantKind::Teardown,
+                        true,
+                    ))
                 }
                 Some(("--before", value)) => {
-                    bench_assists.before =
-                        Some(Assistant::new(value.to_string(), AssistantKind::Before))
+                    bench_assists.before = Some(Assistant::new(
+                        value.to_string(),
+                        AssistantKind::Before,
+                        false,
+                    ))
+                }
+                Some(("--bench-before", value)) => {
+                    bench_assists.before = Some(Assistant::new(
+                        value.to_string(),
+                        AssistantKind::Before,
+                        true,
+                    ))
                 }
                 Some(("--after", value)) => {
-                    bench_assists.after =
-                        Some(Assistant::new(value.to_string(), AssistantKind::After))
+                    bench_assists.after = Some(Assistant::new(
+                        value.to_string(),
+                        AssistantKind::After,
+                        false,
+                    ))
+                }
+                Some(("--bench-after", value)) => {
+                    bench_assists.after = Some(Assistant::new(
+                        value.to_string(),
+                        AssistantKind::After,
+                        true,
+                    ))
                 }
                 Some(_) | None => break,
             }
@@ -293,22 +378,24 @@ pub fn run(
     env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug,
 ) -> Result<(), IaiCallgrindError> {
     let config = Config::from_env_args_iter(env_args_iter);
-    if let Some(before) = &config.bench_assists.before {
-        before.run(&config.bench_bin)?
+    let mut assists = config.bench_assists.clone();
+
+    if let Some(before) = assists.before.as_mut() {
+        before.run(&config)?
     }
     for (counter, bench) in config.benches.iter().enumerate() {
-        if let Some(setup) = &config.bench_assists.setup {
-            setup.run(&config.bench_bin)?
+        if let Some(setup) = assists.setup.as_mut() {
+            setup.run(&config)?
         }
 
         bench.run(counter, &config)?;
 
-        if let Some(teardown) = &config.bench_assists.teardown {
-            teardown.run(&config.bench_bin)?
+        if let Some(teardown) = assists.teardown.as_mut() {
+            teardown.run(&config)?
         }
     }
-    if let Some(after) = &config.bench_assists.after {
-        after.run(&config.bench_bin)?
+    if let Some(after) = assists.after.as_mut() {
+        after.run(&config)?
     }
     Ok(())
 }

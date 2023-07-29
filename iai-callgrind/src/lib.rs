@@ -54,6 +54,7 @@ impl Options {
     }
 }
 
+#[derive(Debug)]
 pub struct OptionsParser {
     pub options: Options,
 }
@@ -98,5 +99,11 @@ impl OptionsParser {
             }
         }
         Some(options)
+    }
+}
+
+impl Default for OptionsParser {
+    fn default() -> Self {
+        Self::new(Options::default())
     }
 }
