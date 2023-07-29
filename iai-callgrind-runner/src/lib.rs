@@ -3,6 +3,7 @@ mod callgrind;
 mod lib_bench;
 pub mod util;
 
+use std::path::PathBuf;
 use std::process::{Command, Output, Stdio};
 
 // TODO: Replace with platform_info or std::env::consts::ARCH??
@@ -21,8 +22,7 @@ fn get_arch() -> String {
 
 pub enum IaiCallgrindError {
     VersionMismatch(version_compare::Cmp, String, String),
-    LaunchError(std::io::Error),
-    CallgrindLaunchError(Output),
+    LaunchError(PathBuf, std::io::Error),
     BenchmarkLaunchError(Output),
 }
 

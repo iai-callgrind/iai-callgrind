@@ -50,6 +50,7 @@ pub fn write_all_to_stdout(bytes: &[u8]) {
         .write_all(trim(bytes))
         .and_then(|_| writer.flush())
         .unwrap();
+    println!();
 }
 
 pub fn write_all_to_stderr(bytes: &[u8]) {
@@ -60,4 +61,5 @@ pub fn write_all_to_stderr(bytes: &[u8]) {
         .write_all(trim(bytes))
         .and_then(|_| writer.flush())
         .unwrap();
+    println!();
 }

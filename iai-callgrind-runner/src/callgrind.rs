@@ -109,12 +109,12 @@ impl CallgrindCommand {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
-            .map_err(IaiCallgrindError::LaunchError)
+            .map_err(|error| IaiCallgrindError::LaunchError(PathBuf::from("valgrind"), error))
             .and_then(|output| {
                 if output.status.success() {
                     Ok((output.stdout, output.stderr))
                 } else {
-                    Err(IaiCallgrindError::CallgrindLaunchError(output))
+                    Err(IaiCallgrindError::BenchmarkLaunchError(output))
                 }
             })?;
 

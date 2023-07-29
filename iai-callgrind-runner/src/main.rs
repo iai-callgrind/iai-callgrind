@@ -7,7 +7,7 @@ use iai_callgrind_runner::IaiCallgrindError;
 use log::error;
 use version_compare::Cmp;
 
-fn main() -> ! {
+fn main() {
     // Configure the colored crate to respect CARGO_TERM_COLOR
     if let Some(var) = option_env!("CARGO_TERM_COLOR") {
         if var == "never" {
@@ -43,7 +43,7 @@ fn main() -> ! {
     .init();
 
     match iai_callgrind_runner::run() {
-        Ok(_) => std::process::exit(0),
+        Ok(_) => {}
         Err(error) => {
             match error {
                 IaiCallgrindError::VersionMismatch(cmp, runner_version, library_version) => {
@@ -67,21 +67,11 @@ fn main() -> ! {
                         _ => unreachable!(),
                     }
                 }
-                IaiCallgrindError::LaunchError(error) => error!(
-                    "Unexpected error when launching valgrind: {}\nPlease make sure Valgrind is \
-                     installed and in your $PATH",
-                    error
-                ),
-                IaiCallgrindError::CallgrindLaunchError(output) => {
-                    error!("Captured stderr:\n",);
-                    write_all_to_stderr(&output.stderr);
-                    error!(
-                        "Error launching callgrind: Exit code was: {}",
-                        output.status.code().unwrap()
-                    );
+                IaiCallgrindError::LaunchError(exec, error) => {
+                    error!("Error executing '{}': {}", exec.display(), error)
                 }
                 IaiCallgrindError::BenchmarkLaunchError(output) => {
-                    error!("Captured stderr:\n",);
+                    error!("Captured stderr:",);
                     write_all_to_stderr(&output.stderr);
                     error!(
                         "Error launching benchmark: Exit code was: {}",
@@ -89,7 +79,7 @@ fn main() -> ! {
                     );
                 }
             }
-            std::process::exit(1);
+            std::process::exit(1)
         }
     }
 }
