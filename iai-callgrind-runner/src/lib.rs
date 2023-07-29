@@ -1,7 +1,7 @@
 mod bin_bench;
 mod callgrind;
 mod lib_bench;
-mod util;
+pub mod util;
 
 use std::process::{Command, Output, Stdio};
 

@@ -10,6 +10,7 @@ use log::{debug, info};
 use sanitize_filename::Options as SanitizerOptions;
 
 use crate::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput};
+use crate::util::{write_all_to_stderr, write_all_to_stdout};
 use crate::{get_arch, IaiCallgrindError};
 
 #[derive(Debug)]
@@ -157,7 +158,6 @@ impl Assistant {
             format!("{}::{}", &config.module, &self.name),
         ];
         let mut callgrind_args = config.callgrind_args.clone();
-        // callgrind_args.collect_atstart = true;
         callgrind_args.collect_atstart = false;
         callgrind_args.insert_toggle_collect(&format!("*{}::{}", &config.module, &self.name));
 
@@ -194,19 +194,19 @@ impl Assistant {
             .map_err(IaiCallgrindError::LaunchError)
             .and_then(|output| {
                 if output.status.success() {
-                    let stdout = String::from_utf8_lossy(output.stdout.as_slice());
-                    let stderr = String::from_utf8_lossy(output.stderr.as_slice());
-                    Ok((stdout.trim_end().to_string(), stderr.trim_end().to_string()))
+                    Ok((output.stdout, output.stderr))
                 } else {
                     Err(IaiCallgrindError::BenchmarkLaunchError(output))
                 }
             })?;
 
         if !stdout.is_empty() {
-            info!("{} function '{}': stdout:\n{}", id, self.name, stdout);
+            info!("{} function '{}': stdout:", id, self.name);
+            write_all_to_stdout(&stdout);
         }
         if !stderr.is_empty() {
-            info!("{} function '{}': stderr:\n{}", id, self.name, stderr);
+            info!("{} function '{}': stderr:", id, self.name);
+            write_all_to_stderr(&stderr);
         }
         Ok(())
     }

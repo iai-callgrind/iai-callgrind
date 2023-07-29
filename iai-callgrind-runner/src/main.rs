@@ -2,11 +2,12 @@ use std::io::Write;
 
 use colored::{control, Colorize};
 use env_logger::Env;
+use iai_callgrind_runner::util::write_all_to_stderr;
 use iai_callgrind_runner::IaiCallgrindError;
 use log::error;
 use version_compare::Cmp;
 
-fn main() {
+fn main() -> ! {
     // Configure the colored crate to respect CARGO_TERM_COLOR
     if let Some(var) = option_env!("CARGO_TERM_COLOR") {
         if var == "never" {
@@ -72,20 +73,16 @@ fn main() {
                     error
                 ),
                 IaiCallgrindError::CallgrindLaunchError(output) => {
-                    error!(
-                        "Captured stderr:\n{}",
-                        String::from_utf8_lossy(output.stderr.as_slice())
-                    );
+                    error!("Captured stderr:\n",);
+                    write_all_to_stderr(&output.stderr);
                     error!(
                         "Error launching callgrind: Exit code was: {}",
                         output.status.code().unwrap()
                     );
                 }
                 IaiCallgrindError::BenchmarkLaunchError(output) => {
-                    error!(
-                        "Captured stderr:\n{}",
-                        String::from_utf8_lossy(output.stderr.as_slice())
-                    );
+                    error!("Captured stderr:\n",);
+                    write_all_to_stderr(&output.stderr);
                     error!(
                         "Error launching benchmark: Exit code was: {}",
                         output.status.code().unwrap()

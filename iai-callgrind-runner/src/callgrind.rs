@@ -10,7 +10,10 @@ use colored::{ColoredString, Colorize};
 use iai_callgrind::Options;
 use log::{debug, info, trace, warn};
 
-use crate::util::{bool_to_yesno, concat_os_string, join_os_string, yesno_to_bool};
+use crate::util::{
+    bool_to_yesno, concat_os_string, join_os_string, write_all_to_stderr, write_all_to_stdout,
+    yesno_to_bool,
+};
 use crate::IaiCallgrindError;
 
 // Invoke Valgrind, disabling ASLR if possible because ASLR could noise up the results a bit
@@ -109,19 +112,19 @@ impl CallgrindCommand {
             .map_err(IaiCallgrindError::LaunchError)
             .and_then(|output| {
                 if output.status.success() {
-                    let stdout = String::from_utf8_lossy(output.stdout.as_slice());
-                    let stderr = String::from_utf8_lossy(output.stderr.as_slice());
-                    Ok((stdout.trim_end().to_string(), stderr.trim_end().to_string()))
+                    Ok((output.stdout, output.stderr))
                 } else {
                     Err(IaiCallgrindError::CallgrindLaunchError(output))
                 }
             })?;
 
         if !stdout.is_empty() {
-            info!("Callgrind output on stdout:\n{}", stdout);
+            info!("Callgrind output on stdout:");
+            write_all_to_stdout(&stdout);
         }
         if !stderr.is_empty() {
-            info!("Callgrind output on stderr:\n{}", stderr);
+            info!("Callgrind output on stderr:");
+            write_all_to_stderr(&stderr)
         }
 
         Ok(())
