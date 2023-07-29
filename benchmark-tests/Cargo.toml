@@ -10,5 +10,5 @@ publish = false
 iai-callgrind = { path = "../iai-callgrind" }
 
 [[bench]]
-name = "bin_bench"
+name = "test_bin_bench"
 harness = false

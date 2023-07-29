@@ -17,6 +17,7 @@
     "kcachegrind",
     "MSRV",
     "peekable",
+    "printenv",
     "proccontrol",
     "Quickstart",
     "setarch",

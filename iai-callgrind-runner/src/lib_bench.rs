@@ -2,6 +2,7 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use colored::Colorize;
+use iai_callgrind::Options;
 use log::debug;
 
 use crate::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput};
@@ -78,8 +79,13 @@ pub fn run(env_args: impl Iterator<Item = OsString>) -> Result<(), IaiCallgrindE
 
         let output = CallgrindOutput::create(&config.module, function_name);
         callgrind_args.set_output_file(&output.file.display().to_string());
-
-        command.run(&callgrind_args, &config.executable, args)?;
+        command.run(
+            &callgrind_args,
+            &config.executable,
+            args,
+            vec![],
+            &Options::default().env_clear(false),
+        )?;
 
         let new_stats = output.parse(&config.bench_file, &config.module, function_name);
 

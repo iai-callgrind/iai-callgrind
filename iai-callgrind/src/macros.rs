@@ -58,13 +58,16 @@
 /// The `iai_callgrind::main` macro expands to a `main` function which runs all of the benchmarks.
 #[macro_export]
 macro_rules! main {
+    // TODO: before, after etc. should take a conf value like bench = false, true
     ( $( options = $( $options:literal ),+ $(,)*; )?
       $( before = $before:ident; )?
       $( after = $after:ident; )?
       $( setup = $setup:ident; )?
       $( teardown = $teardown:ident; )?
-      $( run = cmd = $cmd:literal, $( args = [$($args:literal),* $(,)*] ),+ $(,)* );+ $(;)*
-      ) => {
+      $( run = cmd = $cmd:literal $(,envs = [$($envs:literal),* $(,)*] )? $(,opts = $opt:expr )? ,
+        $( args = [$($args:literal),* $(,)*]  ),+ $(,)*
+      );+ $(;)*
+    ) => {
         mod iai_wrappers {
             $(
                 pub fn $before() {
@@ -88,6 +91,21 @@ macro_rules! main {
             )?
         }
 
+        fn to_arg(vec: &[&str]) -> String {
+            if let Some((first, remainder)) = vec.split_first() {
+                let sep = ",";
+                remainder.iter().fold(format!("'{}'", first), |mut a, b| {
+                    a.push_str(sep);
+                    a.push('\'');
+                    a.push_str(b);
+                    a.push('\'');
+                    a
+                })
+            } else {
+                String::new()
+            }
+        }
+
         #[inline(never)]
         fn run(functions: &[&(&'static str, &'static str, fn())], mut this_args: std::env::Args) {
             let exe =option_env!("IAI_CALLGRIND_RUNNER")
@@ -105,25 +123,34 @@ macro_rules! main {
 
             use std::fmt::Write;
             use std::path::PathBuf;
+            use std::ffi::OsString;
+            use $crate::{Options, OptionsParser};
             $(
-                let command = option_env!(concat!("CARGO_BIN_EXE_", $cmd)).unwrap_or($cmd);
+                let command : &str = option_env!(concat!("CARGO_BIN_EXE_", $cmd)).unwrap_or($cmd);
                 if PathBuf::from(command).exists() {
                     $(
                         let args : Vec<&str> = vec![$($args),*];
                         if args.is_empty() {
                             cmd.arg(format!("--run='{}'", command));
                         } else {
-                            let arg = args
-                                .iter()
-                                .fold(String::new(), |mut a, s| {
-                                    write!(a, "'{}',", s).unwrap();
-                                    a
-                                })
-                                .trim_end_matches(',')
-                                .to_owned();
-                            cmd.arg(format!("--run='{}',{}", command, arg));
+                            cmd.arg(format!("--run='{}',{}", command, to_arg(&args)));
                         }
                     )+
+                    $(
+                        let envs : Vec<&str> = vec![$($envs),*];
+                        if !envs.is_empty() {
+                            cmd.arg(format!("--run-envs={}", to_arg(&envs)));
+                        }
+                    )?
+                    $(
+                        let opt_arg = OptionsParser::new($opt).into_arg();
+                        if !opt_arg.is_empty() {
+                            let mut arg = OsString::new();
+                            arg.push("--run-opts=");
+                            arg.push(opt_arg);
+                            cmd.arg(arg);
+                        }
+                    )?
                 } else {
                     panic!("Command '{command}' does not exist");
                 }

@@ -7,6 +7,7 @@ use std::process::{Command, Stdio};
 
 use cfg_if::cfg_if;
 use colored::{ColoredString, Colorize};
+use iai_callgrind::Options;
 use log::{debug, info, trace, warn};
 
 use crate::util::{bool_to_yesno, concat_os_string, join_os_string, yesno_to_bool};
@@ -68,8 +69,29 @@ impl CallgrindCommand {
         callgrind_args: &CallgrindArgs,
         executable: &Path,
         executable_args: Vec<String>,
+        envs: Vec<(String, String)>,
+        options: &Options,
     ) -> Result<(), IaiCallgrindError> {
         let mut command = self.command;
+        debug!(
+            "Running callgrind with executable '{}'",
+            executable.display()
+        );
+        let Options {
+            env_clear,
+            current_dir,
+            entry_point: _,
+        } = options;
+
+        if *env_clear {
+            debug!("Clearing environment variables");
+            command.env_clear();
+        }
+        if let Some(dir) = current_dir {
+            debug!("Setting current directory to '{}'", dir.display());
+            command.current_dir(dir);
+        }
+
         let callgrind_args = callgrind_args.to_os_args();
         debug!(
             "Callgrind arguments: {}",
@@ -80,6 +102,7 @@ impl CallgrindCommand {
             .args(callgrind_args)
             .arg(executable)
             .args(executable_args)
+            .envs(envs)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
@@ -111,13 +134,12 @@ pub struct CallgrindOutput {
 
 impl CallgrindOutput {
     pub fn create(module: &str, name: &str) -> Self {
+        let current = std::env::current_dir().unwrap();
         let target = PathBuf::from("target/iai");
         let module_path: PathBuf = module.split("::").collect();
         let file_name = PathBuf::from(format!("callgrind.{}.out", name));
 
-        let mut file = target;
-        file.push(module_path);
-        file.push(file_name);
+        let file = current.join(target).join(module_path).join(file_name);
         let output = Self { file };
 
         std::fs::create_dir_all(output.file.parent().unwrap()).expect("Failed to create directory");
@@ -417,7 +439,7 @@ impl CallgrindArgs {
             &mut self
                 .toggle_collect
                 .iter()
-                .map(OsString::from)
+                .map(|s| concat_os_string(OsString::from("--toggle-collect="), s))
                 .collect::<Vec<OsString>>(),
         );
 
