@@ -226,13 +226,13 @@ macro_rules! main {
             let status = cmd
                 .args(args)
                 .status()
-                .expect("Failed to run benchmarks. Is iai-callgrind-runner installed and iai-callgrind-runner in your $PATH?");
+                .expect("Failed to run benchmarks. \
+                    Is iai-callgrind-runner installed and iai-callgrind-runner in your $PATH?. \
+                    You can also set the environment variable IAI_CALLGRIND_RUNNER to the \
+                    absolute path of the iai-callgrind-runner executable.");
 
             if !status.success() {
-                panic!(
-                    "Failed to run iai-callgrind-runner. Exit code: {}",
-                    status
-                );
+                std::process::exit(1);
             }
         }
 
@@ -320,13 +320,13 @@ macro_rules! main {
             let status = cmd
                 .args(args)
                 .status()
-                .expect("Failed to run benchmarks. Is iai-callgrind-runner installed and iai-callgrind-runner in your $PATH?");
+                .expect("Failed to run benchmarks. \
+                    Is iai-callgrind-runner installed and iai-callgrind-runner in your $PATH?. \
+                    You can set the environment variable IAI_CALLGRIND_RUNNER to the \
+                    absolute path of the iai-callgrind-runner executable.");
 
             if !status.success() {
-                panic!(
-                    "Failed to run iai-callgrind-runner. Exit code: {}",
-                    status
-                );
+                std::process::exit(1);
             }
         }
 
