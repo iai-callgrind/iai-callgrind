@@ -101,6 +101,20 @@ impl CallgrindCommand {
             "Callgrind arguments: {}",
             join_os_string(&callgrind_args, OsStr::new(" ")).to_string_lossy()
         );
+
+        let executable = if !executable.is_absolute() {
+            let e = which(executable).map_err(|error| {
+                IaiCallgrindError::Other(format!("{}: '{}'", error, executable.display()))
+            })?;
+            debug!(
+                "Found command '{}' in the PATH: '{}'",
+                executable.display(),
+                e.display()
+            );
+            e
+        } else {
+            executable.to_owned()
+        };
         let (stdout, stderr) = command
             .arg("--tool=callgrind")
             .args(callgrind_args)

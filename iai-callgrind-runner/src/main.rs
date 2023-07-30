@@ -2,8 +2,8 @@ use std::io::Write;
 
 use colored::{control, Colorize};
 use env_logger::Env;
+use iai_callgrind_runner::error::IaiCallgrindError;
 use iai_callgrind_runner::util::write_all_to_stderr;
-use iai_callgrind_runner::IaiCallgrindError;
 use log::error;
 use version_compare::Cmp;
 
@@ -77,6 +77,9 @@ fn main() {
                         "Error launching benchmark: Exit code was: {}",
                         output.status.code().unwrap()
                     );
+                }
+                IaiCallgrindError::Other(message) => {
+                    error!("{}", message);
                 }
             }
             std::process::exit(1)

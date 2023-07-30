@@ -1,10 +1,12 @@
 mod bin_bench;
 mod callgrind;
+pub mod error;
 mod lib_bench;
 pub mod util;
 
-use std::path::PathBuf;
-use std::process::{Command, Output, Stdio};
+use std::process::{Command, Stdio};
+
+use error::IaiCallgrindError;
 
 // TODO: Replace with platform_info or std::env::consts::ARCH??
 fn get_arch() -> String {
@@ -18,12 +20,6 @@ fn get_arch() -> String {
         .expect("`uname -m` returned invalid unicode.")
         .trim()
         .to_owned()
-}
-
-pub enum IaiCallgrindError {
-    VersionMismatch(version_compare::Cmp, String, String),
-    LaunchError(PathBuf, std::io::Error),
-    BenchmarkLaunchError(Output),
 }
 
 pub fn run() -> Result<(), IaiCallgrindError> {

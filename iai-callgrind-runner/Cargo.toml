@@ -24,6 +24,7 @@ colored = "<=2.0.0"
 version-compare = "0.1.1"
 sanitize-filename = "0.4.0"
 iai-callgrind = { path = "../iai-callgrind" }
+which = "4.4.0"
 
 [dev-dependencies]
 iai-callgrind = { path = "../iai-callgrind" }
