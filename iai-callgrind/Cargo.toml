@@ -1,12 +1,12 @@
 [package]
 name = "iai-callgrind"
 version = "0.4.0"
+edition = "2021"
+rust-version = "1.60.0"
 authors = [
   "Joining7943 <joining@posteo.de>",
   "Brook Heisler <redattack34@gmail.com>",
 ]
-edition = "2021"
-rust-version = "1.60.0"
 description = "High-precision and consistent benchmarking framework/harness for Rust"
 readme = "../README.md"
 homepage = "https://github.com/Joining7943/iai-callgrind"
@@ -14,3 +14,6 @@ repository = "https://github.com/Joining7943/iai-callgrind"
 license = "Apache-2.0 AND MIT"
 keywords = ["iai", "benchmark", "callgrind", "valgrind"]
 categories = ["development-tools::profiling", "development-tools::testing"]
+
+[package.metadata.docs.rs]
+rustdoc-args = ["--cfg", "docsrs"]
