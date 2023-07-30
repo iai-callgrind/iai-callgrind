@@ -6,7 +6,7 @@ use std::process::Command;
 
 use colored::Colorize;
 use iai_callgrind::{Options, OptionsParser};
-use log::{debug, info};
+use log::{debug, info, log_enabled, Level};
 use sanitize_filename::Options as SanitizerOptions;
 
 use crate::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput};
@@ -202,11 +202,15 @@ impl Assistant {
 
         if !stdout.is_empty() {
             info!("{} function '{}': stdout:", id, self.name);
-            write_all_to_stdout(&stdout);
+            if log_enabled!(Level::Info) {
+                write_all_to_stdout(&stdout);
+            }
         }
         if !stderr.is_empty() {
             info!("{} function '{}': stderr:", id, self.name);
-            write_all_to_stderr(&stderr);
+            if log_enabled!(Level::Info) {
+                write_all_to_stderr(&stderr);
+            }
         }
         Ok(())
     }

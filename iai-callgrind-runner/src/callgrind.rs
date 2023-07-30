@@ -8,7 +8,8 @@ use std::process::{Command, Stdio};
 use cfg_if::cfg_if;
 use colored::{ColoredString, Colorize};
 use iai_callgrind::Options;
-use log::{debug, info, trace, warn};
+use log::{debug, info, trace, warn, Level};
+use which::which;
 
 use crate::util::{
     bool_to_yesno, concat_os_string, join_os_string, write_all_to_stderr, write_all_to_stdout,
@@ -120,11 +121,15 @@ impl CallgrindCommand {
 
         if !stdout.is_empty() {
             info!("Callgrind output on stdout:");
-            write_all_to_stdout(&stdout);
+            if log::log_enabled!(Level::Info) {
+                write_all_to_stdout(&stdout);
+            }
         }
         if !stderr.is_empty() {
             info!("Callgrind output on stderr:");
-            write_all_to_stderr(&stderr)
+            if log::log_enabled!(Level::Info) {
+                write_all_to_stderr(&stderr)
+            }
         }
 
         Ok(())
