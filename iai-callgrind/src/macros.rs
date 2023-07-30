@@ -70,27 +70,32 @@ macro_rules! main {
     ) => {
         mod iai_wrappers {
             $(
+                #[inline(never)]
                 pub fn $before() {
                     let _ = $crate::black_box(super::$before());
                 }
             )?
             $(
+                #[inline(never)]
                 pub fn $after() {
                     let _ = $crate::black_box(super::$after());
                 }
             )?
             $(
+                #[inline(never)]
                 pub fn $setup() {
                     let _ = $crate::black_box(super::$setup());
                 }
             )?
             $(
+                #[inline(never)]
                 pub fn $teardown() {
                     let _ = $crate::black_box(super::$teardown());
                 }
             )?
         }
 
+        #[inline(never)]
         fn to_arg(vec: &[&str]) -> String {
             if let Some((first, remainder)) = vec.split_first() {
                 let sep = ",";
@@ -127,41 +132,35 @@ macro_rules! main {
             use $crate::{Options, OptionsParser};
             $(
                 let command : &str = option_env!(concat!("CARGO_BIN_EXE_", $cmd)).unwrap_or($cmd);
-                if PathBuf::from(command).exists() {
-                    $(
-                        let args : Vec<&str> = vec![$($args),*];
-                        if args.is_empty() {
-                            cmd.arg(format!("--run='{}'", command));
-                        } else {
-                            cmd.arg(format!("--run='{}',{}", command, to_arg(&args)));
-                        }
-                    )+
-                    $(
-                        let envs : Vec<&str> = vec![$($envs),*];
-                        if !envs.is_empty() {
-                            cmd.arg(format!("--run-envs={}", to_arg(&envs)));
-                        }
-                    )?
-                    $(
-                        let opt_arg = OptionsParser::new($opt).into_arg();
-                        if !opt_arg.is_empty() {
-                            let mut arg = OsString::new();
-                            arg.push("--run-opts=");
-                            arg.push(opt_arg);
-                            cmd.arg(arg);
-                        }
-                    )?
-                } else {
-                    panic!("Command '{command}' does not exist");
-                }
+                $(
+                    let args : Vec<&str> = vec![$($args),*];
+                    if args.is_empty() {
+                        cmd.arg(format!("--run='{}'", command));
+                    } else {
+                        cmd.arg(format!("--run='{}',{}", command, to_arg(&args)));
+                    }
+                )+
+                $(
+                    let envs : Vec<&str> = vec![$($envs),*];
+                    if !envs.is_empty() {
+                        cmd.arg(format!("--run-envs={}", to_arg(&envs)));
+                    }
+                )?
+                $(
+                    let opt_arg = OptionsParser::new($opt).into_arg();
+                    if !opt_arg.is_empty() {
+                        let mut arg = OsString::new();
+                        arg.push("--run-opts=");
+                        arg.push(opt_arg);
+                        cmd.arg(arg);
+                    }
+                )?
             )+
 
             $(
                 let mut bench_before = false;
                 $(
-                    if $bench_before {
-                        bench_before = true;
-                    }
+                    bench_before = $bench_before;
                 )?
                 if bench_before {
                     cmd.arg(format!("--bench-before={}", stringify!($before)));
@@ -172,9 +171,7 @@ macro_rules! main {
             $(
                 let mut bench_after = false;
                 $(
-                    if $bench_after {
-                        bench_after = true;
-                    }
+                    bench_after = $bench_after;
                 )?
                 if bench_after {
                     cmd.arg(format!("--bench-after={}", stringify!($after)));
@@ -185,9 +182,7 @@ macro_rules! main {
             $(
                 let mut bench_setup = false;
                 $(
-                    if $bench_setup {
-                        bench_setup = true;
-                    }
+                    bench_setup = $bench_setup;
                 )?
                 if bench_setup {
                     cmd.arg(format!("--bench-setup={}", stringify!($setup)));
@@ -198,9 +193,7 @@ macro_rules! main {
             $(
                 let mut bench_teardown = false;
                 $(
-                    if $bench_teardown {
-                        bench_teardown = true;
-                    }
+                    bench_teardown = $bench_teardown;
                 )?
                 if bench_teardown {
                     cmd.arg(format!("--bench-teardown={}", stringify!($teardown)));
