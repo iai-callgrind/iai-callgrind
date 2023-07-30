@@ -10,6 +10,10 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: "1"
 
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   deny:
     name: Check dependencies/ubuntu-latest
@@ -20,7 +24,18 @@ jobs:
         with:
           rust-version: "1.60.0"
 
+  format:
+    name: Check format with nightly rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
+      - run: cargo fmt --check
+
   base:
+    needs: [format]
     name: Build, check and test
     strategy:
       fail-fast: false
@@ -30,12 +45,8 @@ jobs:
           - stable
           - nightly
         include:
-          - toolchain: "1.60.0"
-            components: rustfmt
-          - toolchain: nightly
-            components: rustfmt
           - toolchain: stable
-            components: rustfmt, clippy
+            components: clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -62,17 +73,15 @@ jobs:
           rustup component list --installed
           valgrind --version
       - name: Build
-        run: cargo build --all-features
-      - name: Format
-        run: cargo fmt -- --check
+        run: cargo build --all-features --release
       - name: Lint
         run: cargo +stable clippy --all-features --all-targets -- -D warnings
-        env:
-          CARGO_REGISTRIES_CRATES_IO_PROTOCOL: git # unstable on 1.66 + 1.67
       - name: Test
         run: cargo test --all-features
       - name: Bench
         run: cargo bench --all-features
+        env:
+          "IAI_CALLGRIND_RUNNER": "/home/runner/work/iai-callgrind/iai-callgrind/target/release/iai-callgrind-runner"
 
   docs:
     needs: [base]
