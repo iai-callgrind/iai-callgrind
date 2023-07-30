@@ -38,8 +38,9 @@ improvements and features.
     - [Features](#features)
     - [Update notes](#update-notes)
     - [Installation](#installation)
-    - [Quickstart](#quickstart)
-    - [Examples](#examples)
+    - [Benchmarking](#benchmarking)
+        - [Library Benchmarks](#library-benchmarks)
+        - [Binary Benchmarks](#binary-benchmarks)
     - [Features and differences to Iai](#features-and-differences-to-iai)
     - [What hasn't changed](#what-hasnt-changed)
     - [See also](#see-also)
@@ -49,10 +50,10 @@ improvements and features.
 ### Features
 
 - __Precision__: High-precision measurements allow you to reliably detect very small optimizations
-to your code
+of your code
 - __Consistency__: Iai-Callgrind can take accurate measurements even in virtualized CI environments
-- __Performance__: Since Iai-Callgrind only executes a benchmark once, it is typically faster to run
-than benchmarks measuring the execution and wall time
+- __Performance__: Since Iai-Callgrind only executes a benchmark once, it is typically a lot faster
+to run than benchmarks measuring the execution and wall time
 - __Regression__: Iai-Callgrind reports the difference between benchmark runs to make it easy to
 spot detailed performance regressions and improvements.
 - __Profiling__: Iai-Callgrind generates a Callgrind profile of your code while benchmarking, so you
@@ -86,10 +87,33 @@ somewhere in your `$PATH`, for example with
 cargo install --version 0.4.0 iai-callgrind-runner
 ```
 
+There's also the possibility to install the binary somewhere else and point the
+`IAI_CALLGRIND_RUNNER` environment variable to the absolute path of the `iai-callgrind-runner`
+binary like so:
+
+```shell
+cargo install --version 0.4.0 --root /tmp iai-callgrind-runner
+IAI_CALLGRIND_RUNNER=/tmp/bin/iai-callgrind-runner cargo bench --bench my-bench
+```
+
 When updating the `iai-callgrind` library, you'll also need to update `iai-callgrind-runner` and
 vice-versa or else the benchmark runner will exit with an error.
 
-### Quickstart
+### Benchmarking
+
+`iai-callgrind` can be used to benchmark libraries or binaries. Library benchmarks benchmark
+functions and methods of a crate and binary benchmarks benchmark the executables of a crate. The
+different benchmark types cannot be intermixed in the same benchmark file but having different
+benchmark files for library and binary benchmarks is no problem. More on that in the following
+sections. For a quickstart and examples of benchmarking libraries see the [Library Benchmark
+Section](#library-benchmarks) and for executables see the [Binary Benchmark
+Section](#binary-benchmarks).
+
+#### Library Benchmarks
+
+Use this scheme if you want to micro-benchmark specific functions of your crate's library.
+
+##### Quickstart
 
 Add
 
@@ -113,13 +137,12 @@ fn fibonacci(n: u64) -> u64 {
     }
 }
 
-// Don't forget the `#[inline(never)]`
-#[inline(never)]
+#[inline(never)] // required for benchmarking functions
 fn iai_benchmark_short() -> u64 {
     fibonacci(black_box(10))
 }
 
-#[inline(never)]
+#[inline(never)] // required for benchmarking functions
 fn iai_benchmark_long() -> u64 {
     fibonacci(black_box(30))
 }
@@ -175,11 +198,11 @@ my_benchmark::bench_fibonacci_long
   Estimated Cycles:        22025937 (-38.19654%)
 ```
 
-### Examples
+##### Examples
 
 For examples see also the [benches](iai-callgrind-runner/benches) folder.
 
-#### Skipping setup code
+###### Skipping setup code
 
 Usually, all function calls in the benchmark function itself are attributed to the event counts. It's
 possible to pass additional arguments to Callgrind and something like below will eliminate the setup
@@ -214,6 +237,233 @@ cargo bench --bench my_bench
 
 See also [Skip setup code example](iai-callgrind-runner/benches/test_with_skip_setup.rs) for an
 in-depth explanation.
+
+### Binary Benchmarks
+
+Use this scheme to benchmark one or more binaries of your crate. If you really like to it's possible
+to benchmark any executable file in the `PATH` or any executable specified with an absolute path.
+
+It's also possible to run functions of the benchmark file before and after all benchmarks or to
+setup and teardown any benchmarked binary.
+
+#### Quickstart
+
+Assuming the name of the crate's binary is `benchmark-tests`, add
+
+```toml
+[[bench]]
+name = "my_binary_benchmark"
+harness = false
+```
+
+to your `Cargo.toml` file and then create a file with the same `name` in
+`benches/my_binary_benchmark.rs` with the following content:
+
+```rust
+use iai_callgrind::main;
+
+/// This method is run before a benchmark
+#[inline(never)] // required
+fn setup() {
+    println!("setup benchmark-tests")
+}
+
+/// This method is run after a benchmark
+#[inline(never)] // required
+fn teardown() {
+    println!("teardown benchmark-tests");
+}
+
+main!(
+    setup = setup;
+    teardown = teardown;
+    run = cmd = "benchmark-tests", args = ["one", "two"];
+);
+```
+
+You're ready to run the benchmark with `cargo bench --bench my_binary_benchmark`. The rest of the
+procedure is the same as with [Library Benchmarks](#library-benchmarks).
+
+#### Description
+
+The `main` macro for binary benchmarks allows the following top-level arguments:
+
+```rust
+main!(
+    options = "--callgrind-argument=yes";
+    before = function_running_before_all_benchmarks;
+    after = function_running_after_all_benchmarks;
+    setup = function_running_before_any_benchmark;
+    teardown = function_running_after_any_benchmark;
+    run = cmd = "benchmark-tests", args = [];
+)
+```
+
+Here, `benchmark-tests` is an example of the name of the binary of a crate and it is assumed that
+the `function_running_before_all_benchmarks` ... functions are defined somewhere in the same file of
+the `main` macro. All top-level arguments must be separated by a `;`. However, only `run` is
+mandatory. All other top-level arguments (like `options`, `setup` etc.) are optional.
+
+##### `run` (Mandatory)
+
+The `run` argument can be specified multiple times separated by a `;` but must be given at least
+once. It takes the following arguments:
+
+###### `cmd` (Mandatory)
+
+This argument is allowed only once and specifies the name of one of the executables of the
+benchmarked crate. The path of the executable is discovered automatically, so the name of the
+`[[bin]]` as specified in the crate's `Cargo.toml` file is sufficient. The auto discovery supports
+running the benchmarks with different profiles.
+
+Although not the main purpose of `iai-callgrind`, it's possible to benchmark any executable in the
+`PATH` or specified with an absolute path.
+
+###### `args` (Mandatory)
+
+The `args` argument must be specified at least once containing the arguments for the benchmarked
+`cmd`. It can be an empty array `[]` to run to the [`cmd`](#cmd-mandatory) without any arguments.
+Specifying `args` multiple times (separated by a `,`)
+
+```rust
+main!(
+    run = cmd = "benchmark-tests", args = ["something"], args = ["other"]
+)
+```
+
+is a short-hand for specifying [`run`](#run-mandatory) with the same [`cmd`](#cmd-mandatory),
+[`opts`](#opts-optional) and [`envs`](#envs-optional) arguments multiple times
+
+```rust
+main!(
+    run = cmd = "benchmark-tests", args = ["something"];
+    run = cmd = "benchmark-tests", args = ["other"]
+)
+```
+
+###### `opts` (Optional)
+
+`opts` is optional and can be specified once for every `run` and [`cmd`](#cmd-mandatory):
+
+```rust
+main!(
+    run = cmd = "benchmark-tests",
+        opts = Options::default().env_clear(false),
+        args = ["something"];
+)
+```
+
+Here, `env_clear(false)` specifies to keep the environment variables when running the `cmd` with
+`callgrind`.
+
+The currently available options are:
+
+- `env_clear`: If `true` clear the environment variables before running the benchmark (Default: `true`)
+- `current_dir`: Set the working directory of the `cmd` (Default: Unchanged)
+- `entry_point`: Per default the counting of events starts right at the start of the binary and
+stops when it finished execution. It may desirable to start the counting for example when entering
+the `main` function (but can be any function) and stop counting when leaving the `main` function of
+the executable. The `entry_point` could look like `benchmark_tests::main` for a binary with the name
+`benchmark-tests` (Note that hyphens are replaced with an underscore by `callgrind`). See also the
+documentation of
+[toggle-collect](https://valgrind.org/docs/manual/cl-manual.html#opt.toggle-collect) and
+[Limiting the range of collected
+events](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.limits)
+
+###### `envs` (Optional)
+
+`envs` may be used to set environment variables available in the `cmd`. This argument is optional
+and can be specified once for every [`cmd`](#cmd-mandatory). There must be at least one `KEY=VALUE`
+pair or `KEY` present in the array:
+
+```rust
+main!(
+    run = cmd = "benchmark-tests",
+        envs = ["MY_VAR=SOME_VALUE", "MY_OTHER_VAR=VALUE"],
+        args = ["something"];
+)
+```
+
+Environment variables specified in the `envs` array are usually `KEY=VALUE` pairs. But, if
+`env_clear` is true (what is the default), single `KEY`s are environment variables to pass-through
+to the `cmd`. The following will pass-through the `PATH` variable although the environment is
+cleared (here given explicitly with the `Options` although it is the default)
+
+```rust
+main!(
+    run = cmd = "benchmark-tests",
+        envs = ["PATH"],
+        opts = Options::default().env_clear(true),
+        args = [];
+)
+```
+
+Pass-through environment variables are ignored if they don't exist in the root environment.
+
+##### `options` (Optional)
+
+A `,` separated list of strings which contain options for all `callgrind` invocations and therefore
+benchmarked `cmd`s (Including benchmarked `before`, `after`, `setup` and `teardown` functions).
+
+```rust
+main!(
+    options = "--zero-before=benchmark_tests::main";
+    run = cmd = "benchmark-tests", args = [];
+)
+```
+
+See also [Passing arguments to callgrind](#passing-arguments-to-callgrind) and the documentation of
+[Callgrind](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options)
+
+##### `before`, `after`, `setup`, `teardown` (Optional)
+
+Each of the `before`, `after`, `setup` and `teardown` top-level arguments is optional. If given,
+this argument must specify a function of the benchmark file. These functions are meant to setup and
+cleanup the benchmarks. Each function is invoked at a different stage of the benchmarking process.
+
+- `before`: This function is run once before all benchmarked `cmd`s
+- `after`: This function is run once after all benchmarked `cmd`s
+- `setup`: This function is run once before any benchmarked `cmd`
+- `teardown`: This function is run once after any benchmarked `cmd`
+
+```rust
+use iai_callgrind::main;
+
+#[inline(never)] // necessary
+fn setup_my_benchmark() {
+    // For example, create a file
+}
+
+#[inline(never)] // necessary
+fn teardown_my_benchmark() {
+    // For example, delete a file
+}
+
+main!(
+    setup = setup_my_benchmark;
+    teardown = teardown_my_benchmark;
+    run = cmd = "benchmark-tests", args = [];
+)
+```
+
+Per default, these functions are not benchmarked, but this behavior can be changed by specifying the
+optional `bench` argument with a value of `true` after the function name.
+
+```rust
+main!(
+    setup = setup_my_benchmark, bench = true;
+    run = cmd = "benchmark-tests", args = [];
+)
+```
+
+Note that `setup` and `teardown` functions are benchmarked only once the first time they are
+invoked, like the `before` and `after` functions. However, these functions are run as usual before or after
+any benchmark. Benchmarked `before`, `after` etc. functions follow the same rules as benchmark
+functions of [library benchmarks](#library-benchmarks).
+
+#### Examples
+
+See the [test_bin_bench](benchmark-tests/benches/test_bin_bench.rs) benchmark file of this project for an example.
 
 ### Features and differences to Iai
 

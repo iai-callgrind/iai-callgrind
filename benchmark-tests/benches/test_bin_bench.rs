@@ -1,28 +1,35 @@
 use iai_callgrind::main;
 
-#[inline(never)]
+/// This method is run once before any binary benchmark
+#[inline(never)] // required
 fn before() {
     println!("before");
 }
 
-#[inline(never)]
+/// This method is run once after all binary benchmarks
+#[inline(never)] // required
 fn after() {
     println!("after")
 }
 
-#[inline(never)]
+/// This method is run before a binary benchmark
+#[inline(never)] // required
 fn setup() {
     println!("setup")
 }
 
-#[inline(never)]
+/// This method is run after a binary benchmark
+#[inline(never)] // required
 fn teardown() {
     println!("teardown");
 }
 
 main!(
-    before = before, bench = true;
-    after = after, bench = true;
+    // `before`, `after`, `setup` and `teardown` are optional arguments to run a function before or
+    // after a benchmark. Specify the optional `bench` argument to benchmark the `before`, `after`,
+    // `setup` or `teardown` function. If `bench` is not specified, the default is `false`.
+    before = before, bench = false;
+    after = after;
     setup = setup, bench = true;
     teardown = teardown, bench = true;
     run = cmd = "benchmark-tests", args = [];
@@ -30,7 +37,9 @@ main!(
     run = cmd = "benchmark-tests", args = ["one", "two"], args = ["three", "four"];
     run = cmd = "benchmark-tests", args = ["test", "entry_point", "0"];
     run = cmd = "benchmark-tests", opts = Options::default().entry_point("benchmark_tests::main"), args = ["test", "entry_point", "1"];
+    // command with an absolute path
     run = cmd = "/bin/echo", args = ["one", "two"], args = ["one two three four"];
+    // commands in the PATH are ok too
     run = cmd = "echo", args = ["one", "two"], args = ["one two three four"];
     run = cmd = "echo",
         opts = Options::new().current_dir(PathBuf::from("/tmp")),
