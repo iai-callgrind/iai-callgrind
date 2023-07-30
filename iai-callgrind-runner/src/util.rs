@@ -3,7 +3,7 @@ use std::io::{self, BufWriter, Write};
 
 pub fn join_os_string(slice: &[OsString], sep: &OsStr) -> OsString {
     if let Some((first, suffix)) = slice.split_first() {
-        suffix.iter().fold(first.to_owned(), |mut a, b| {
+        suffix.iter().fold(first.clone(), |mut a, b| {
             a.push(sep);
             a.push(b);
             a
@@ -42,6 +42,11 @@ fn trim(bytes: &[u8]) -> &[u8] {
     &bytes[from..=to]
 }
 
+/// TODO: DOCUMENT
+///
+/// # Panics
+///
+/// Panics if .
 pub fn write_all_to_stdout(bytes: &[u8]) {
     let stdout = io::stdout();
     let stdout = stdout.lock();
@@ -53,6 +58,11 @@ pub fn write_all_to_stdout(bytes: &[u8]) {
     println!();
 }
 
+/// TODO: DOCUMENT
+///
+/// # Panics
+///
+/// Panics if .
 pub fn write_all_to_stderr(bytes: &[u8]) {
     let stderr = io::stderr();
     let stderr = stderr.lock();

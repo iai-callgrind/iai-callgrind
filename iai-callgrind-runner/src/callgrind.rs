@@ -20,6 +20,7 @@ use crate::IaiCallgrindError;
 // Invoke Valgrind, disabling ASLR if possible because ASLR could noise up the results a bit
 cfg_if! {
     if #[cfg(target_os = "linux")] {
+        #[allow(clippy::unnecessary_wraps)]
         pub fn valgrind_without_aslr(arch: &str) -> Option<Command> {
             let mut cmd = Command::new("setarch");
             cmd.arg(arch)
@@ -53,22 +54,17 @@ impl CallgrindCommand {
         let command = if allow_aslr {
             debug!("Running with ASLR enabled");
             Command::new("valgrind")
+        } else if let Some(cmd) = valgrind_without_aslr(arch) {
+            debug!("Running with ASLR disabled");
+            cmd
         } else {
-            match valgrind_without_aslr(arch) {
-                Some(cmd) => {
-                    debug!("Running with ASLR disabled");
-                    cmd
-                }
-                None => {
-                    debug!("Running with ASLR enabled");
-                    Command::new("valgrind")
-                }
-            }
+            debug!("Running with ASLR enabled");
+            Command::new("valgrind")
         };
         Self { command }
     }
 
-    pub fn run(
+    pub(crate) fn run(
         self,
         callgrind_args: &CallgrindArgs,
         executable: &Path,
@@ -84,7 +80,7 @@ impl CallgrindCommand {
         let Options {
             env_clear,
             current_dir,
-            entry_point: _,
+            ..
         } = options;
 
         if *env_clear {
@@ -102,7 +98,9 @@ impl CallgrindCommand {
             join_os_string(&callgrind_args, OsStr::new(" ")).to_string_lossy()
         );
 
-        let executable = if !executable.is_absolute() {
+        let executable = if executable.is_absolute() {
+            executable.to_owned()
+        } else {
             let e = which(executable).map_err(|error| {
                 IaiCallgrindError::Other(format!("{}: '{}'", error, executable.display()))
             })?;
@@ -112,8 +110,6 @@ impl CallgrindCommand {
                 e.display()
             );
             e
-        } else {
-            executable.to_owned()
         };
         let (stdout, stderr) = command
             .arg("--tool=callgrind")
@@ -142,7 +138,7 @@ impl CallgrindCommand {
         if !stderr.is_empty() {
             info!("Callgrind output on stderr:");
             if log::log_enabled!(Level::Info) {
-                write_all_to_stderr(&stderr)
+                write_all_to_stderr(&stderr);
             }
         }
 
@@ -159,7 +155,7 @@ impl CallgrindOutput {
         let current = std::env::current_dir().unwrap();
         let target = PathBuf::from("target/iai");
         let module_path: PathBuf = module.split("::").collect();
-        let file_name = PathBuf::from(format!("callgrind.{}.out", name));
+        let file_name = PathBuf::from(format!("callgrind.{name}.out"));
 
         let file = current.join(target).join(module_path).join(file_name);
         let output = Self { file };
@@ -192,7 +188,9 @@ impl CallgrindOutput {
         );
 
         let file_in = File::open(&self.file).expect("Unable to open callgrind output file");
-        let mut iter = BufReader::new(file_in).lines().map(|l| l.unwrap());
+        let mut iter = BufReader::new(file_in)
+            .lines()
+            .map(std::result::Result::unwrap);
         if !iter
             .by_ref()
             .find(|l| !l.trim().is_empty())
@@ -270,7 +268,9 @@ impl CallgrindOutput {
         );
 
         let file_in = File::open(&self.file).expect("Unable to open callgrind output file");
-        let mut iter = BufReader::new(file_in).lines().map(|l| l.unwrap());
+        let mut iter = BufReader::new(file_in)
+            .lines()
+            .map(std::result::Result::unwrap);
         if !iter
             .by_ref()
             .find(|l| !l.trim().is_empty())
@@ -298,6 +298,8 @@ impl CallgrindOutput {
                 } else if line.starts_with(&sentinel) {
                     trace!("Found line with sentinel: '{}'", line);
                     start_record = true;
+                } else {
+                    // do nothing
                 }
                 continue;
             }
@@ -358,13 +360,15 @@ impl CallgrindOutput {
         }
     }
 }
+
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone)]
 pub struct CallgrindArgs {
     i1: String,
     d1: String,
     ll: String,
     cache_sim: bool,
-    pub collect_atstart: bool,
+    pub(crate) collect_atstart: bool,
     other: Vec<OsString>,
     toggle_collect: VecDeque<String>,
     compress_strings: bool,
@@ -384,11 +388,11 @@ impl Default for CallgrindArgs {
             ll: String::from("8388608,16,64"),
             cache_sim: true,
             collect_atstart: false,
-            toggle_collect: Default::default(),
+            toggle_collect: VecDeque::default(),
             compress_pos: false,
             compress_strings: false,
-            callgrind_out_file: Default::default(),
-            other: Default::default(),
+            callgrind_out_file: Option::default(),
+            other: Vec::default(),
         }
     }
 }
@@ -404,20 +408,20 @@ impl CallgrindArgs {
                 Some(("LL", value)) => default.ll = value.to_owned(),
                 Some(("collect-atstart", value)) => default.collect_atstart = yesno_to_bool(value),
                 Some(("compress-strings", value)) => {
-                    default.compress_strings = yesno_to_bool(value)
+                    default.compress_strings = yesno_to_bool(value);
                 }
                 Some(("compress-pos", value)) => default.compress_pos = yesno_to_bool(value),
                 Some(("toggle-collect", value)) => {
-                    default.toggle_collect.push_back(value.to_owned())
+                    default.toggle_collect.push_back(value.to_owned());
                 }
                 Some(("cache-sim", value)) => {
-                    warn!("Ignoring callgrind argument: '--cache-sim={}'", value)
+                    warn!("Ignoring callgrind argument: '--cache-sim={}'", value);
                 }
                 Some(("callgrind-out-file", value)) => warn!(
                     "Ignoring callgrind argument: '--callgrind-out-file={}'",
                     value
                 ),
-                Some(_) => default.other.push(arg.to_owned()),
+                Some(_) => default.other.push(arg.clone()),
                 None => panic!("Error parsing callgrind arguments"),
             }
         }
@@ -545,47 +549,49 @@ impl CallgrindStats {
     fn signed_short(n: f64) -> String {
         let n_abs = n.abs();
 
-        if n_abs < 10.0 {
-            format!("{:+.6}", n)
-        } else if n_abs < 100.0 {
-            format!("{:+.5}", n)
-        } else if n_abs < 1000.0 {
-            format!("{:+.4}", n)
-        } else if n_abs < 10000.0 {
-            format!("{:+.3}", n)
-        } else if n_abs < 100000.0 {
-            format!("{:+.2}", n)
-        } else if n_abs < 1000000.0 {
-            format!("{:+.1}", n)
+        if n_abs < 10.0f64 {
+            format!("{n:+.6}")
+        } else if n_abs < 100.0f64 {
+            format!("{n:+.5}")
+        } else if n_abs < 1000.0f64 {
+            format!("{n:+.4}")
+        } else if n_abs < 10000.0f64 {
+            format!("{n:+.3}")
+        } else if n_abs < 100_000.0_f64 {
+            format!("{n:+.2}")
+        } else if n_abs < 1_000_000.0_f64 {
+            format!("{n:+.1}")
         } else {
-            format!("{:+.0}", n)
+            format!("{n:+.0}")
         }
     }
 
     fn percentage_diff(new: u64, old: u64) -> ColoredString {
-        fn format(string: ColoredString) -> ColoredString {
-            ColoredString::from(format!(" ({})", string).as_str())
+        fn format(string: &ColoredString) -> ColoredString {
+            ColoredString::from(format!(" ({string})").as_str())
         }
 
         if new == old {
-            return format("No Change".bright_black());
+            return format(&"No Change".bright_black());
         }
 
+        #[allow(clippy::cast_precision_loss)]
         let new = new as f64;
+        #[allow(clippy::cast_precision_loss)]
         let old = old as f64;
 
         let diff = (new - old) / old;
-        let pct = diff * 100.0;
+        let pct = diff * 100.0f64;
 
         if pct.is_sign_positive() {
             format(
-                format!("{:>+6}%", Self::signed_short(pct))
+                &format!("{:>+6}%", Self::signed_short(pct))
                     .bright_red()
                     .bold(),
             )
         } else {
             format(
-                format!("{:>+6}%", Self::signed_short(pct))
+                &format!("{:>+6}%", Self::signed_short(pct))
                     .bright_green()
                     .bold(),
             )

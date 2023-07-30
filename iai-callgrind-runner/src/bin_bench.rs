@@ -29,7 +29,7 @@ impl BinBench {
             .strip_suffix('\'')
             .unwrap()
             .split("','")
-            .map(|s| s.to_owned())
+            .map(std::borrow::ToOwned::to_owned)
             .collect::<VecDeque<String>>();
         Self {
             command: PathBuf::from(args.pop_front().unwrap()),
@@ -245,16 +245,16 @@ impl Default for BenchmarkAssistants {
 impl BenchmarkAssistants {
     fn new() -> Self {
         Self {
-            before: Default::default(),
-            after: Default::default(),
-            setup: Default::default(),
-            teardown: Default::default(),
+            before: Option::default(),
+            after: Option::default(),
+            setup: Option::default(),
+            teardown: Option::default(),
         }
     }
 }
 
 #[derive(Debug)]
-pub struct Config {
+pub(crate) struct Config {
     bench_file: PathBuf,
     benches: Vec<BinBench>,
     bench_bin: PathBuf,
@@ -266,6 +266,7 @@ pub struct Config {
 }
 
 impl Config {
+    #[allow(clippy::too_many_lines)]
     fn from_env_args_iter(env_args_iter: impl Iterator<Item = OsString>) -> Self {
         let mut env_args_iter = env_args_iter.peekable();
 
@@ -292,59 +293,53 @@ impl Config {
             match arg.to_str().unwrap().split_once('=') {
                 Some(("--setup", value)) => {
                     bench_assists.setup = Some(Assistant::new(
-                        value.to_string(),
+                        value.to_owned(),
                         AssistantKind::Setup,
                         false,
-                    ))
+                    ));
                 }
                 Some(("--bench-setup", value)) => {
-                    bench_assists.setup = Some(Assistant::new(
-                        value.to_string(),
-                        AssistantKind::Setup,
-                        true,
-                    ))
+                    bench_assists.setup =
+                        Some(Assistant::new(value.to_owned(), AssistantKind::Setup, true));
                 }
                 Some(("--teardown", value)) => {
                     bench_assists.teardown = Some(Assistant::new(
-                        value.to_string(),
+                        value.to_owned(),
                         AssistantKind::Teardown,
                         false,
-                    ))
+                    ));
                 }
                 Some(("--bench-teardown", value)) => {
                     bench_assists.teardown = Some(Assistant::new(
-                        value.to_string(),
+                        value.to_owned(),
                         AssistantKind::Teardown,
                         true,
-                    ))
+                    ));
                 }
                 Some(("--before", value)) => {
                     bench_assists.before = Some(Assistant::new(
-                        value.to_string(),
+                        value.to_owned(),
                         AssistantKind::Before,
                         false,
-                    ))
+                    ));
                 }
                 Some(("--bench-before", value)) => {
                     bench_assists.before = Some(Assistant::new(
-                        value.to_string(),
+                        value.to_owned(),
                         AssistantKind::Before,
                         true,
-                    ))
+                    ));
                 }
                 Some(("--after", value)) => {
                     bench_assists.after = Some(Assistant::new(
-                        value.to_string(),
+                        value.to_owned(),
                         AssistantKind::After,
                         false,
-                    ))
+                    ));
                 }
                 Some(("--bench-after", value)) => {
-                    bench_assists.after = Some(Assistant::new(
-                        value.to_string(),
-                        AssistantKind::After,
-                        true,
-                    ))
+                    bench_assists.after =
+                        Some(Assistant::new(value.to_owned(), AssistantKind::After, true));
                 }
                 Some(_) | None => break,
             }
@@ -378,28 +373,28 @@ impl Config {
     }
 }
 
-pub fn run(
+pub(crate) fn run(
     env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug,
 ) -> Result<(), IaiCallgrindError> {
     let config = Config::from_env_args_iter(env_args_iter);
     let mut assists = config.bench_assists.clone();
 
     if let Some(before) = assists.before.as_mut() {
-        before.run(&config)?
+        before.run(&config)?;
     }
     for (counter, bench) in config.benches.iter().enumerate() {
         if let Some(setup) = assists.setup.as_mut() {
-            setup.run(&config)?
+            setup.run(&config)?;
         }
 
         bench.run(counter, &config)?;
 
         if let Some(teardown) = assists.teardown.as_mut() {
-            teardown.run(&config)?
+            teardown.run(&config)?;
         }
     }
     if let Some(after) = assists.after.as_mut() {
-        after.run(&config)?
+        after.run(&config)?;
     }
     Ok(())
 }

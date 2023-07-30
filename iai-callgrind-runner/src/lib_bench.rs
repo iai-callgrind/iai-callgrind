@@ -30,7 +30,7 @@ impl Config {
         let mut benches = vec![];
         while let Some(arg) = env_args_iter.peek() {
             match arg.to_str().unwrap().split_once('=') {
-                Some((key, value)) if key == "--iai-bench" => benches.push(value.to_string()),
+                Some((key, value)) if key == "--iai-bench" => benches.push(value.to_owned()),
                 Some(_) | None => break,
             }
             env_args_iter.next();
@@ -62,7 +62,7 @@ impl Config {
     }
 }
 
-pub fn run(env_args: impl Iterator<Item = OsString>) -> Result<(), IaiCallgrindError> {
+pub(crate) fn run(env_args: impl Iterator<Item = OsString>) -> Result<(), IaiCallgrindError> {
     let config = Config::with_env_args_iter(env_args);
     for (index, function_name) in config.benches.iter().enumerate() {
         let command = CallgrindCommand::new(config.allow_aslr, &config.arch);

@@ -2,8 +2,7 @@ use std::io::Write;
 
 use colored::{control, Colorize};
 use env_logger::Env;
-use iai_callgrind_runner::error::IaiCallgrindError;
-use iai_callgrind_runner::util::write_all_to_stderr;
+use iai_callgrind_runner::{write_all_to_stderr, IaiCallgrindError};
 use log::error;
 use version_compare::Cmp;
 

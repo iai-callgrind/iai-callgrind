@@ -3,6 +3,7 @@
     "aslr",
     "atstart",
     "bheisler",
+    "bools",
     "Brunner",
     "cachegrind",
     "callgrind",
