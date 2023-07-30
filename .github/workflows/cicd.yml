@@ -2,7 +2,7 @@ name: Build and Check
 
 on:
   push:
-    branches: ["main", "cicd", "release", "develop"]
+    branches: ["main", "cicd", "release", "develop", "[0-9]+-*"]
   pull_request:
     branches: ["main"]
 
