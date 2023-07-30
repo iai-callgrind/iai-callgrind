@@ -25,11 +25,11 @@ env_logger = "<=0.9.3"
 colored = "<=2.0.0"
 version-compare = "0.1.1"
 sanitize-filename = "0.4.0"
-iai-callgrind = { path = "../iai-callgrind" }
+iai-callgrind = { path = "../iai-callgrind", version = "0.4.0" }
 which = "4.4.0"
 
 [dev-dependencies]
-iai-callgrind = { path = "../iai-callgrind" }
+iai-callgrind = { path = "../iai-callgrind", version = "0.4.0" }
 
 [[bin]]
 name = "iai-callgrind-runner"
