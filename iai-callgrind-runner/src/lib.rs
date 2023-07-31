@@ -31,24 +31,13 @@ mod lib_bench;
 mod util;
 
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
 
 pub use error::IaiCallgrindError;
 use log::debug;
 pub use util::{write_all_to_stderr, write_all_to_stdout};
 
-// TODO: Replace with platform_info or std::env::consts::ARCH??
 fn get_arch() -> String {
-    let output = Command::new("uname")
-        .arg("-m")
-        .stdout(Stdio::piped())
-        .output()
-        .expect("Failed to run `uname` to determine machine architecture.");
-
-    String::from_utf8(output.stdout)
-        .expect("`uname -m` returned invalid unicode.")
-        .trim()
-        .to_owned()
+    std::env::consts::ARCH.to_owned()
 }
 
 /// TODO: DOCUMENT
