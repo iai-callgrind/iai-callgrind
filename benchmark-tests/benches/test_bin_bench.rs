@@ -33,9 +33,6 @@ main!(
     after = after;
     setup = setup, bench = true;
     teardown = teardown, bench = true;
-    // Copy the fixtures directory (not only the content) located in the benchmarks-tests package to
-    // the temporary workspace directory (for example: /tmp/.tmp12345678/fixtures)
-    fixtures = "fixtures";
     run = cmd = "benchmark-tests", args = [];
     run = cmd = "benchmark-tests", args = ["one", "two"];
     run = cmd = "benchmark-tests", args = ["one", "two"], args = ["three", "four"];

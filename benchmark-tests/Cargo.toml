@@ -14,6 +14,22 @@ license = "Apache-2.0 AND MIT"
 [dependencies]
 iai-callgrind = { path = "../iai-callgrind" }
 
+[[bin]]
+name = "benchmark-tests-printenv"
+path = "src/benchmark-tests-printenv.rs"
+
+[[bin]]
+name = "benchmark-tests-cat"
+path = "src/benchmark-tests-cat.rs"
+
 [[bench]]
 name = "test_bin_bench"
+harness = false
+
+[[bench]]
+name = "test_bin_bench_with_fixtures"
+harness = false
+
+[[bench]]
+name = "test_bin_bench_with_envs"
 harness = false

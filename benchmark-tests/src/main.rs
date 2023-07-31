@@ -1,8 +1,5 @@
 fn main() {
     println!("{}", fibonacci(30));
-    for (key, value) in std::env::vars() {
-        println!("{key}={value}");
-    }
 }
 
 #[inline(never)]
