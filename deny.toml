@@ -78,6 +78,7 @@ unlicensed = "deny"
 allow = [
     "MIT",
     "Apache-2.0",
+    "BSD-3-Clause",
 ]
 # List of explicitly disallowed licenses
 # See https://spdx.org/licenses/ for list of possible licenses
