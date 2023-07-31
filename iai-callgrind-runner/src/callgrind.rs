@@ -151,8 +151,8 @@ pub struct CallgrindOutput {
 }
 
 impl CallgrindOutput {
-    pub fn create(module: &str, name: &str) -> Self {
-        let current = std::env::current_dir().unwrap();
+    pub fn create(base_dir: &Path, module: &str, name: &str) -> Self {
+        let current = base_dir;
         let target = PathBuf::from("target/iai");
         let module_path: PathBuf = module.split("::").collect();
         let file_name = PathBuf::from(format!("callgrind.{name}.out"));

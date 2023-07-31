@@ -10,6 +10,7 @@ use crate::{get_arch, IaiCallgrindError};
 
 #[derive(Debug)]
 struct Config {
+    package_dir: PathBuf,
     bench_file: PathBuf,
     benches: Vec<String>,
     executable: PathBuf,
@@ -23,6 +24,7 @@ impl Config {
     fn with_env_args_iter(env_args_iter: impl Iterator<Item = OsString>) -> Self {
         let mut env_args_iter = env_args_iter.peekable();
 
+        let package_dir = PathBuf::from(env_args_iter.next().unwrap());
         let bench_file = PathBuf::from(env_args_iter.next().unwrap());
         let module = env_args_iter.next().unwrap().to_str().unwrap().to_owned();
         let executable = PathBuf::from(env_args_iter.next().unwrap());
@@ -51,6 +53,7 @@ impl Config {
         }
 
         Self {
+            package_dir,
             bench_file,
             benches,
             executable,
@@ -74,7 +77,7 @@ pub(crate) fn run(env_args: impl Iterator<Item = OsString>) -> Result<(), IaiCal
         let mut callgrind_args = config.callgrind_args.clone();
         callgrind_args.insert_toggle_collect(&format!("*{}::{}", &config.module, function_name));
 
-        let output = CallgrindOutput::create(&config.module, function_name);
+        let output = CallgrindOutput::create(&config.package_dir, &config.module, function_name);
         callgrind_args.set_output_file(&output.file.display().to_string());
         command.run(
             &callgrind_args,

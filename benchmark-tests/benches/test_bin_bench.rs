@@ -1,37 +1,41 @@
 use iai_callgrind::main;
 
-/// This method is run once before any binary benchmark
+/// This method is run once before all benchmark
 #[inline(never)] // required
 fn before() {
     println!("before");
 }
 
-/// This method is run once after all binary benchmarks
+/// This method is run once after all benchmarks
 #[inline(never)] // required
 fn after() {
     println!("after")
 }
 
-/// This method is run before a binary benchmark
+/// This method is run before any benchmark
 #[inline(never)] // required
 fn setup() {
     println!("setup")
 }
 
-/// This method is run after a binary benchmark
+/// This method is run after any benchmark
 #[inline(never)] // required
 fn teardown() {
     println!("teardown");
 }
 
 main!(
-    // `before`, `after`, `setup` and `teardown` are optional arguments to run a function before or
-    // after a benchmark. Specify the optional `bench` argument to benchmark the `before`, `after`,
-    // `setup` or `teardown` function. If `bench` is not specified, the default is `false`.
+    // `before`, `after`, `setup` and `teardown` are optional arguments. They specify a function
+    // which is run before or after all benchmarks or to setup and teardown every benchmark. Specify
+    // the optional `bench` argument to benchmark the `before`, `after`, `setup` or `teardown`
+    // function. If `bench` is not specified, the default is `false`.
     before = before, bench = false;
     after = after;
     setup = setup, bench = true;
     teardown = teardown, bench = true;
+    // Copy the fixtures directory (not only the content) located in the benchmarks-tests package to
+    // the temporary workspace directory (for example: /tmp/.tmp12345678/fixtures)
+    fixtures = "fixtures";
     run = cmd = "benchmark-tests", args = [];
     run = cmd = "benchmark-tests", args = ["one", "two"];
     run = cmd = "benchmark-tests", args = ["one", "two"], args = ["three", "four"];

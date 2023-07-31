@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use colored::Colorize;
+use fs_extra::dir;
 use iai_callgrind::{Options, OptionsParser};
 use log::{debug, info, log_enabled, Level};
 use sanitize_filename::Options as SanitizerOptions;
@@ -69,6 +70,7 @@ impl BinBench {
         }
 
         let output = CallgrindOutput::create(
+            &config.package_dir,
             &config.module,
             &format!("{}.{}", self.sanitized_command_string(), counter),
         );
@@ -161,7 +163,7 @@ impl Assistant {
         callgrind_args.collect_atstart = false;
         callgrind_args.insert_toggle_collect(&format!("*{}::{}", &config.module, &self.name));
 
-        let output = CallgrindOutput::create(&config.module, &self.name);
+        let output = CallgrindOutput::create(&config.package_dir, &config.module, &self.name);
         callgrind_args.set_output_file(&output.file.display().to_string());
         command.run(
             &callgrind_args,
@@ -255,11 +257,13 @@ impl BenchmarkAssistants {
 
 #[derive(Debug)]
 pub(crate) struct Config {
+    package_dir: PathBuf,
     bench_file: PathBuf,
-    benches: Vec<BinBench>,
-    bench_bin: PathBuf,
-    bench_assists: BenchmarkAssistants,
     module: String,
+    bench_bin: PathBuf,
+    fixtures: Option<PathBuf>,
+    benches: Vec<BinBench>,
+    bench_assists: BenchmarkAssistants,
     callgrind_args: CallgrindArgs,
     allow_aslr: bool,
     arch: String,
@@ -267,12 +271,27 @@ pub(crate) struct Config {
 
 impl Config {
     #[allow(clippy::too_many_lines)]
-    fn from_env_args_iter(env_args_iter: impl Iterator<Item = OsString>) -> Self {
+    fn from_env_args_iter(env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug) -> Self {
         let mut env_args_iter = env_args_iter.peekable();
 
+        let package_dir = PathBuf::from(env_args_iter.next().unwrap());
         let bench_file = PathBuf::from(env_args_iter.next().unwrap());
         let module = env_args_iter.next().unwrap().to_str().unwrap().to_owned();
         let bench_bin = PathBuf::from(env_args_iter.next().unwrap());
+
+        let mut fixtures = None;
+        if let Some(arg) = env_args_iter.peek() {
+            if let Some(("--fixtures", value)) = arg.to_str().unwrap().split_once('=') {
+                fixtures = Some(PathBuf::from(
+                    value
+                        .strip_prefix('\'')
+                        .unwrap()
+                        .strip_suffix('\'')
+                        .unwrap(),
+                ));
+                env_args_iter.next().unwrap();
+            }
+        }
 
         let mut benches = vec![];
         while let Some(arg) = env_args_iter.peek() {
@@ -361,11 +380,13 @@ impl Config {
         }
 
         Self {
+            package_dir,
             bench_file,
-            benches,
-            bench_bin,
-            bench_assists,
             module,
+            bench_bin,
+            fixtures,
+            benches,
+            bench_assists,
             callgrind_args,
             allow_aslr,
             arch,
@@ -377,6 +398,31 @@ pub(crate) fn run(
     env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug,
 ) -> Result<(), IaiCallgrindError> {
     let config = Config::from_env_args_iter(env_args_iter);
+
+    debug!("Creating temporary workspace directory");
+    let temp_dir = tempfile::tempdir().expect("Create temporary directory");
+    if let Some(fixtures) = &config.fixtures {
+        debug!(
+            "Copying fixtures from '{}' to '{}'",
+            fixtures.display(),
+            temp_dir.path().display()
+        );
+        if let Err(error) = dir::copy(fixtures, &temp_dir, &dir::CopyOptions::new()) {
+            panic!(
+                "Failed to copy fixtures from '{}' to '{}': {}",
+                &fixtures.display(),
+                temp_dir.path().display(),
+                error
+            );
+        }
+    }
+    debug!(
+        "Changing workspace to temporary directory: '{}'",
+        temp_dir.path().display()
+    );
+    std::env::set_current_dir(temp_dir.path())
+        .expect("Set current directory to temporary workspace directory");
+
     let mut assists = config.bench_assists.clone();
 
     if let Some(before) = assists.before.as_mut() {

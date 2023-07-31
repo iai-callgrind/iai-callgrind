@@ -64,6 +64,7 @@ macro_rules! main {
       $( after = $after:ident $(, bench = $bench_after:expr )?; )?
       $( setup = $setup:ident $(, bench = $bench_setup:expr )?; )?
       $( teardown = $teardown:ident $(, bench = $bench_teardown:expr )?; )?
+      $( fixtures = $fixtures:literal; )?
       $( run = cmd = $cmd:literal $(,envs = [$($envs:literal),* $(,)*] )? $(,opts = $opt:expr )? ,
         $( args = [$($args:literal),* $(,)*]  ),+ $(,)*
       );+ $(;)*
@@ -122,9 +123,14 @@ macro_rules! main {
 
             cmd.arg(library_version);
             cmd.arg("--bin-bench");
+            cmd.arg(env!("CARGO_MANIFEST_DIR"));
             cmd.arg(file!());
             cmd.arg(module_path!());
             cmd.arg(this_args.next().unwrap()); // The executable benchmark binary
+
+            $(
+                cmd.arg(format!("--fixtures='{}'", $fixtures));
+            )?
 
             use std::fmt::Write;
             use std::path::PathBuf;
@@ -202,6 +208,7 @@ macro_rules! main {
                 }
             )?
 
+
             // Add the callgrind_args first so that arguments from the command line will overwrite
             // those passed to this main macro
             let options : Vec<&str> = vec![$($($options),+)?];
@@ -216,6 +223,7 @@ macro_rules! main {
             }
 
             args.extend(this_args); // The rest of the arguments
+
             let status = cmd
                 .args(args)
                 .status()
@@ -285,6 +293,7 @@ macro_rules! main {
 
             cmd.arg(library_version);
             cmd.arg("--lib-bench");
+            cmd.arg(env!("CARGO_MANIFEST_DIR"));
             cmd.arg(file!());
             cmd.arg(module_path!());
             cmd.arg(this_args.next().unwrap()); // The executable

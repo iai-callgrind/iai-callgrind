@@ -242,9 +242,32 @@ in-depth explanation.
 
 Use this scheme to benchmark one or more binaries of your crate. If you really like to it's possible
 to benchmark any executable file in the `PATH` or any executable specified with an absolute path.
+This may be useful if you want to compare the runtime of your crate with an existing tool.
 
 It's also possible to run functions of the benchmark file before and after all benchmarks or to
 setup and teardown any benchmarked binary.
+
+#### Temporary Workspace
+
+For security purposes, all binary benchmarks and the `before`, `after`, `setup` and `teardown`
+functions are executed in a temporary directory. This directory will be created before the
+[`before`](#before-after-setup-teardown-optional) function is run and removed after the `after`
+function has finished. The [`fixtures`](#fixtures-optional) argument let's you copy your fixtures
+into that directory, so you have access to all fixtures. However, if you want to access other
+directories within the benchmarked package's directory, you need to specify absolute paths.
+
+This probably sounds a bit weird at first, but another reason for using a temporary directory as
+workspace is, that the length of the path where a benchmark is executed may have an influence on the
+benchmark results. For example, running the benchmark in your repository `/home/me/my/repository`
+and someone else's repository located under `/home/someone/else/repository` may produce different
+results only because the length of the first path is shorter. To run benchmarks as deterministic as
+possible across different systems, the length of the path should be the same wherever the benchmark
+is executed. This crate ensures this property by using the `tempfile` crate which creates the
+temporary directory in `/tmp` with a random name like `/tmp/.tmp12345678`. This ensures that the
+length of the directory will be the same on all unix hosts where the benchmarks are run.
+
+For the very same reasons, the environment variables of benchmarked binaries are cleared before the
+benchmark is run. See also [`opts`](#options-optional).
 
 #### Quickstart
 
@@ -286,6 +309,16 @@ procedure is the same as with [Library Benchmarks](#library-benchmarks).
 
 #### Description
 
+- [Binary Benchmark Arguments](#description)
+    - [run](#run-mandatory)
+        - [cmd](#cmd-mandatory)
+        - [args](#args-mandatory)
+        - [opts](#opts-optional)
+        - [envs](#envs-optional)
+    - [options](#options-optional)
+    - [before, after, setup, teardown](#before-after-setup-teardown-optional)
+    - [fixtures](#fixtures-optional)
+
 The `main` macro for binary benchmarks allows the following top-level arguments:
 
 ```rust
@@ -295,6 +328,7 @@ main!(
     after = function_running_after_all_benchmarks;
     setup = function_running_before_any_benchmark;
     teardown = function_running_after_any_benchmark;
+    fixtures = "path/to/fixtures";
     run = cmd = "benchmark-tests", args = [];
 )
 ```
@@ -457,9 +491,30 @@ main!(
 ```
 
 Note that `setup` and `teardown` functions are benchmarked only once the first time they are
-invoked, like the `before` and `after` functions. However, these functions are run as usual before or after
-any benchmark. Benchmarked `before`, `after` etc. functions follow the same rules as benchmark
-functions of [library benchmarks](#library-benchmarks).
+invoked, much like the `before` and `after` functions. However, these functions are run as usual
+before or after any benchmark. Benchmarked `before`, `after` etc. functions follow the same rules as
+benchmark functions of [library benchmarks](#library-benchmarks).
+
+##### `fixtures` (Optional)
+
+The `fixtures` argument specifies a path to a directory containing fixtures which you want to be
+available for all benchmarks and the `before`, `after`, `setup` and `teardown` functions. The
+fixtures directory will be copied as is into the workspace directory of the benchmark. Relative
+paths are interpreted relative to the benchmarked package. In a multi-package workspace this'll be
+the package name of the benchmark. Otherwise, it'll be the workspace root.
+
+```rust
+main!(
+    setup = setup_my_benchmark;
+    fixtures = "my_fixtures";
+    run = cmd = "benchmark-tests", args = [];
+)
+```
+
+Here, the directory `my_fixtures` in the root of the package under test will be copied into the
+[temporary workspace](#temporary-workspace) (for example `/tmp/.tmp12345678`). So, the setup
+function `setup_my_benchmark` and the benchmark of `benchmarks-tests` can access a fixture
+`test_1.txt` with a relative path like `my_fixtures/test_1.txt`
 
 #### Examples
 
