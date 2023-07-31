@@ -26,6 +26,8 @@
     "setarch",
     "Struct",
     "Swatinem",
+    "tempdir",
+    "tempfile",
     "TMPDIR",
     "Trauring's",
     "valgrind",
