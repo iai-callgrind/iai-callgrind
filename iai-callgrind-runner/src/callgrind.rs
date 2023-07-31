@@ -373,7 +373,6 @@ pub struct CallgrindArgs {
     toggle_collect: VecDeque<String>,
     compress_strings: bool,
     compress_pos: bool,
-    // TODO: Should be a PathBuf
     callgrind_out_file: Option<PathBuf>,
 }
 
@@ -422,7 +421,9 @@ impl CallgrindArgs {
                     value
                 ),
                 Some(_) => default.other.push(arg.clone()),
-                None => panic!("Error parsing callgrind arguments"),
+                // ignore positional arguments for now. It may be a filtering argument for cargo
+                // bench
+                None => {}
             }
         }
         default

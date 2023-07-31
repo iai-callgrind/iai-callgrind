@@ -21,7 +21,7 @@ struct Config {
 }
 
 impl Config {
-    fn with_env_args_iter(env_args_iter: impl Iterator<Item = OsString>) -> Self {
+    fn with_env_args_iter(env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug) -> Self {
         let mut env_args_iter = env_args_iter.peekable();
 
         let package_dir = PathBuf::from(env_args_iter.next().unwrap());
@@ -65,7 +65,9 @@ impl Config {
     }
 }
 
-pub(crate) fn run(env_args: impl Iterator<Item = OsString>) -> Result<(), IaiCallgrindError> {
+pub(crate) fn run(
+    env_args: impl Iterator<Item = OsString> + std::fmt::Debug,
+) -> Result<(), IaiCallgrindError> {
     let config = Config::with_env_args_iter(env_args);
     for (index, function_name) in config.benches.iter().enumerate() {
         let command = CallgrindCommand::new(config.allow_aslr, &config.arch);

@@ -58,7 +58,6 @@
 /// The `iai_callgrind::main` macro expands to a `main` function which runs all of the benchmarks.
 #[macro_export]
 macro_rules! main {
-    // TODO: before, after etc. should take a conf value like bench = false, true
     ( $( options = $( $options:literal ),+ $(,)*; )?
       $( before = $before:ident $(, bench = $bench_before:expr )?; )?
       $( after = $after:ident $(, bench = $bench_after:expr )?; )?

@@ -30,9 +30,11 @@ mod error;
 mod lib_bench;
 mod util;
 
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 pub use error::IaiCallgrindError;
+use log::debug;
 pub use util::{write_all_to_stderr, write_all_to_stdout};
 
 // TODO: Replace with platform_info or std::env::consts::ARCH??
@@ -59,7 +61,10 @@ fn get_arch() -> String {
 ///
 /// This function will return an error if .
 pub fn run() -> Result<(), IaiCallgrindError> {
-    let mut args_iter = std::env::args_os().skip(1);
+    let mut args_iter = std::env::args_os();
+
+    let runner = PathBuf::from(args_iter.next().unwrap());
+    debug!("Runner executable: '{}'", runner.display());
 
     let library_version = args_iter.next().unwrap().to_str().unwrap().to_owned();
     let runner_version = env!("CARGO_PKG_VERSION").to_owned();
