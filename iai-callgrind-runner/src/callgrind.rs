@@ -5,7 +5,6 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use cfg_if::cfg_if;
 use colored::{ColoredString, Colorize};
 use iai_callgrind::Options;
 use log::{debug, info, trace, warn, Level};
@@ -17,50 +16,31 @@ use crate::util::{
 };
 use crate::IaiCallgrindError;
 
-// Invoke Valgrind, disabling ASLR if possible because ASLR could noise up the results a bit
-cfg_if! {
-    if #[cfg(target_os = "linux")] {
-        #[allow(clippy::unnecessary_wraps)]
-        pub fn valgrind_without_aslr(arch: &str) -> Option<Command> {
-            let mut cmd = Command::new("setarch");
-            cmd.arg(arch)
-                .arg("-R")
-                .arg("valgrind");
-            Some(cmd)
-        }
-    } else if #[cfg(target_os = "freebsd")] {
-        pub fn valgrind_without_aslr(_arch: &str) -> Option<Command> {
-            let mut cmd = Command::new("proccontrol");
-            cmd.arg("-m")
-                .arg("aslr")
-                .arg("-s")
-                .arg("disable");
-            Some(cmd)
-        }
-    } else {
-        pub fn valgrind_without_aslr(_arch: &str) -> Option<Command> {
-            // Can't disable ASLR on this platform
-            None
-        }
-    }
-}
-
 pub struct CallgrindCommand {
     command: Command,
 }
 
 impl CallgrindCommand {
     pub fn new(allow_aslr: bool, arch: &str) -> Self {
+        // Invoke Valgrind, disabling ASLR if possible because ASLR could noise up the results a bit
         let command = if allow_aslr {
             debug!("Running with ASLR enabled");
             Command::new("valgrind")
-        } else if let Some(cmd) = valgrind_without_aslr(arch) {
+        } else if cfg!(target_os = "linux") {
             debug!("Running with ASLR disabled");
+            let mut cmd = Command::new("setarch");
+            cmd.args([arch, "-R", "valgrind"]);
+            cmd
+        } else if cfg!(target_os = "freebsd") {
+            debug!("Running with ASLR disabled");
+            let mut cmd = Command::new("proccontrol");
+            cmd.args(["-m", "aslr", "-s", "disable", "valgrind"]);
             cmd
         } else {
-            debug!("Running with ASLR enabled");
+            debug!("Could not switch ASLR off. Running with ASLR enabled");
             Command::new("valgrind")
         };
+
         Self { command }
     }
 

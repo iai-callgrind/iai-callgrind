@@ -19,7 +19,6 @@ categories = ["development-tools::profiling", "development-tools::testing"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-cfg-if = "1.0"
 log = "0.4.19"
 env_logger = "<=0.9.3"
 colored = "<=2.0.0"
