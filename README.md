@@ -256,15 +256,15 @@ function has finished. The [`fixtures`](#fixtures-optional) argument let's you c
 into that directory, so you have access to all fixtures. However, if you want to access other
 directories within the benchmarked package's directory, you need to specify absolute paths.
 
-This probably sounds a bit weird at first, but another reason for using a temporary directory as
-workspace is, that the length of the path where a benchmark is executed may have an influence on the
-benchmark results. For example, running the benchmark in your repository `/home/me/my/repository`
-and someone else's repository located under `/home/someone/else/repository` may produce different
-results only because the length of the first path is shorter. To run benchmarks as deterministic as
-possible across different systems, the length of the path should be the same wherever the benchmark
-is executed. This crate ensures this property by using the `tempfile` crate which creates the
-temporary directory in `/tmp` with a random name like `/tmp/.tmp12345678`. This ensures that the
-length of the directory will be the same on all unix hosts where the benchmarks are run.
+Another reason for using a temporary directory as workspace is, that the length of the path where a
+benchmark is executed may have an influence on the benchmark results. For example, running the
+benchmark in your repository `/home/me/my/repository` and someone else's repository located under
+`/home/someone/else/repository` may produce different results only because the length of the first
+path is shorter. To run benchmarks as deterministic as possible across different systems, the length
+of the path should be the same wherever the benchmark is executed. This crate ensures this property
+by using the `tempfile` crate which creates the temporary directory in `/tmp` with a random name
+like `/tmp/.tmp12345678`. This ensures that the length of the directory will be the same on all unix
+hosts where the benchmarks are run.
 
 For the very same reasons, the environment variables of benchmarked binaries are cleared before the
 benchmark is run. See also [`opts`](#options-optional).
