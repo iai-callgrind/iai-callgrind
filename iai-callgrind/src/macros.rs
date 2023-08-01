@@ -63,6 +63,7 @@ macro_rules! main {
       $( after = $after:ident $(, bench = $bench_after:expr )?; )?
       $( setup = $setup:ident $(, bench = $bench_setup:expr )?; )?
       $( teardown = $teardown:ident $(, bench = $bench_teardown:expr )?; )?
+      $( sandbox = $sandbox:literal; )?
       $( fixtures = $fixtures:literal; )?
       $( run = cmd = $cmd:literal $(,envs = [$($envs:literal),* $(,)*] )? $(,opts = $opt:expr )? ,
         $( args = [$($args:literal),* $(,)*]  ),+ $(,)*
@@ -128,7 +129,13 @@ macro_rules! main {
             cmd.arg(this_args.next().unwrap()); // The executable benchmark binary
 
             $(
-                cmd.arg(format!("--fixtures='{}'", $fixtures));
+                let sandbox : bool = $sandbox;
+                cmd.arg(format!("--sandbox='{}'", sandbox));
+            )?
+
+            $(
+                let fixtures : &str = $fixtures;
+                cmd.arg(format!("--fixtures='{}'", fixtures));
             )?
 
             use std::fmt::Write;

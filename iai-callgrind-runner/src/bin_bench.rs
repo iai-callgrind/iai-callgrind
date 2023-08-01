@@ -9,6 +9,7 @@ use fs_extra::dir;
 use iai_callgrind::{Options, OptionsParser};
 use log::{debug, info, log_enabled, Level};
 use sanitize_filename::Options as SanitizerOptions;
+use tempfile::TempDir;
 
 use crate::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput};
 use crate::util::{write_all_to_stderr, write_all_to_stdout};
@@ -261,6 +262,7 @@ pub(crate) struct Config {
     bench_file: PathBuf,
     module: String,
     bench_bin: PathBuf,
+    sandbox: bool,
     fixtures: Option<PathBuf>,
     benches: Vec<BinBench>,
     bench_assists: BenchmarkAssistants,
@@ -278,6 +280,20 @@ impl Config {
         let bench_file = PathBuf::from(env_args_iter.next().unwrap());
         let module = env_args_iter.next().unwrap().to_str().unwrap().to_owned();
         let bench_bin = PathBuf::from(env_args_iter.next().unwrap());
+
+        let mut sandbox = true;
+        if let Some(arg) = env_args_iter.peek() {
+            if let Some(("--sandbox", value)) = arg.to_str().unwrap().split_once('=') {
+                sandbox = value
+                    .strip_prefix('\'')
+                    .unwrap()
+                    .strip_suffix('\'')
+                    .unwrap()
+                    .parse::<bool>()
+                    .unwrap();
+                env_args_iter.next().unwrap();
+            }
+        }
 
         let mut fixtures = None;
         if let Some(arg) = env_args_iter.peek() {
@@ -384,6 +400,7 @@ impl Config {
             bench_file,
             module,
             bench_bin,
+            sandbox,
             fixtures,
             benches,
             bench_assists,
@@ -394,11 +411,7 @@ impl Config {
     }
 }
 
-pub(crate) fn run(
-    env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug,
-) -> Result<(), IaiCallgrindError> {
-    let config = Config::from_env_args_iter(env_args_iter);
-
+fn setup_sandbox(config: &Config) -> TempDir {
     debug!("Creating temporary workspace directory");
     let temp_dir = tempfile::tempdir().expect("Create temporary directory");
     if let Some(fixtures) = &config.fixtures {
@@ -417,11 +430,31 @@ pub(crate) fn run(
         }
     }
     debug!(
-        "Changing workspace to temporary directory: '{}'",
+        "Changing current directory to temporary directory: '{}'",
         temp_dir.path().display()
     );
     std::env::set_current_dir(temp_dir.path())
         .expect("Set current directory to temporary workspace directory");
+    temp_dir
+}
+
+pub(crate) fn run(
+    env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug,
+) -> Result<(), IaiCallgrindError> {
+    let config = Config::from_env_args_iter(env_args_iter);
+
+    // We need the temp_dir to exist within this function or else it's getting dropped and deleted
+    // too early.
+    let temp_dir = if config.sandbox {
+        debug!("Setting up sandbox");
+        Some(setup_sandbox(&config))
+    } else {
+        debug!(
+            "Sandbox switched off: Running benchmarks in the current directory: '{}'",
+            std::env::current_dir().unwrap().display()
+        );
+        None
+    };
 
     let mut assists = config.bench_assists.clone();
 
@@ -442,5 +475,8 @@ pub(crate) fn run(
     if let Some(after) = assists.after.as_mut() {
         after.run(&config)?;
     }
+
+    // Drop temp_dir and it's getting deleted
+    drop(temp_dir);
     Ok(())
 }
