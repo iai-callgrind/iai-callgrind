@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use iai_callgrind::main;
 
-const FILE_WITH_CONTENT: &str = "fixtures/file_with_content.txt";
+// This is a symlink in the `fixtures-with-symlinks` directory to the file_with_content.txt file
+const FILE_WITH_CONTENT: &str = "fixtures-with-symlinks/file_with_content.txt";
 
 /// This method is run once before all benchmark
 #[inline(never)] // required
@@ -53,7 +54,7 @@ main!(
     after = after;
     setup = setup, bench = true;
     teardown = teardown;
-    fixtures = "fixtures";
-    run = cmd = "benchmark-tests-cat", args = ["fixtures/file_with_content.txt"];
-    run = cmd = "cat", args = ["fixtures/file_with_content.txt"]
+    fixtures = "fixtures-with-symlinks", follow_symlinks = true;
+    run = cmd = "benchmark-tests-cat", args = ["fixtures-with-symlinks/file_with_content.txt"];
+    run = cmd = "cat", args = ["fixtures-with-symlinks/file_with_content.txt"]
 );

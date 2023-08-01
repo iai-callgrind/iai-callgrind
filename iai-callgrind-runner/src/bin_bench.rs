@@ -5,14 +5,13 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use colored::Colorize;
-use fs_extra::dir;
 use iai_callgrind::{Options, OptionsParser};
-use log::{debug, info, log_enabled, Level};
+use log::{debug, info, log_enabled, trace, Level};
 use sanitize_filename::Options as SanitizerOptions;
 use tempfile::TempDir;
 
 use crate::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput};
-use crate::util::{write_all_to_stderr, write_all_to_stdout};
+use crate::util::{copy_directory, write_all_to_stderr, write_all_to_stdout};
 use crate::{get_arch, IaiCallgrindError};
 
 #[derive(Debug)]
@@ -256,6 +255,21 @@ impl BenchmarkAssistants {
     }
 }
 
+#[derive(Debug, Clone)]
+struct Fixtures {
+    path: PathBuf,
+    follow_symlinks: bool,
+}
+
+impl Fixtures {
+    fn new(path: PathBuf, follow_symlinks: bool) -> Self {
+        Self {
+            path,
+            follow_symlinks,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Config {
     package_dir: PathBuf,
@@ -263,7 +277,7 @@ pub(crate) struct Config {
     module: String,
     bench_bin: PathBuf,
     sandbox: bool,
-    fixtures: Option<PathBuf>,
+    fixtures: Option<Fixtures>,
     benches: Vec<BinBench>,
     bench_assists: BenchmarkAssistants,
     callgrind_args: CallgrindArgs,
@@ -298,13 +312,19 @@ impl Config {
         let mut fixtures = None;
         if let Some(arg) = env_args_iter.peek() {
             if let Some(("--fixtures", value)) = arg.to_str().unwrap().split_once('=') {
-                fixtures = Some(PathBuf::from(
-                    value
-                        .strip_prefix('\'')
-                        .unwrap()
-                        .strip_suffix('\'')
-                        .unwrap(),
-                ));
+                let args = value
+                    .strip_prefix('\'')
+                    .unwrap()
+                    .strip_suffix('\'')
+                    .unwrap()
+                    .split("','")
+                    .map(std::borrow::ToOwned::to_owned)
+                    .collect::<VecDeque<String>>();
+                let follow_symlinks = args.get(1).map_or(false, |s| match s.split_once('=') {
+                    Some(("follow_symlinks", key)) => key.parse().unwrap(),
+                    Some(_) | None => false,
+                });
+                fixtures = Some(Fixtures::new(PathBuf::from(&args[0]), follow_symlinks));
                 env_args_iter.next().unwrap();
             }
         }
@@ -411,31 +431,24 @@ impl Config {
     }
 }
 
-fn setup_sandbox(config: &Config) -> TempDir {
+fn setup_sandbox(config: &Config) -> Result<TempDir, IaiCallgrindError> {
     debug!("Creating temporary workspace directory");
     let temp_dir = tempfile::tempdir().expect("Create temporary directory");
     if let Some(fixtures) = &config.fixtures {
         debug!(
             "Copying fixtures from '{}' to '{}'",
-            fixtures.display(),
+            &fixtures.path.display(),
             temp_dir.path().display()
         );
-        if let Err(error) = dir::copy(fixtures, &temp_dir, &dir::CopyOptions::new()) {
-            panic!(
-                "Failed to copy fixtures from '{}' to '{}': {}",
-                &fixtures.display(),
-                temp_dir.path().display(),
-                error
-            );
-        }
+        copy_directory(&fixtures.path, temp_dir.path(), fixtures.follow_symlinks)?;
     }
-    debug!(
+    trace!(
         "Changing current directory to temporary directory: '{}'",
         temp_dir.path().display()
     );
     std::env::set_current_dir(temp_dir.path())
         .expect("Set current directory to temporary workspace directory");
-    temp_dir
+    Ok(temp_dir)
 }
 
 pub(crate) fn run(
@@ -447,7 +460,7 @@ pub(crate) fn run(
     // too early.
     let temp_dir = if config.sandbox {
         debug!("Setting up sandbox");
-        Some(setup_sandbox(&config))
+        Some(setup_sandbox(&config)?)
     } else {
         debug!(
             "Sandbox switched off: Running benchmarks in the current directory: '{}'",

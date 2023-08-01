@@ -31,5 +31,9 @@ name = "test_bin_bench_with_fixtures"
 harness = false
 
 [[bench]]
+name = "test_bin_bench_with_fixtures_symlinks"
+harness = false
+
+[[bench]]
 name = "test_bin_bench_with_envs"
 harness = false

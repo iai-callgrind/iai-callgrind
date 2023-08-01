@@ -1,5 +1,12 @@
 use std::ffi::{OsStr, OsString};
 use std::io::{self, BufWriter, Write};
+use std::path::Path;
+use std::process::Command;
+
+use log::{log_enabled, trace, Level};
+use which::which;
+
+use crate::IaiCallgrindError;
 
 pub fn join_os_string(slice: &[OsString], sep: &OsStr) -> OsString {
     if let Some((first, suffix)) = slice.split_first() {
@@ -72,4 +79,51 @@ pub fn write_all_to_stderr(bytes: &[u8]) {
         .and_then(|_| writer.flush())
         .unwrap();
     println!();
+}
+
+pub fn copy_directory(
+    source: &Path,
+    into: &Path,
+    follow_symlinks: bool,
+) -> Result<(), IaiCallgrindError> {
+    let cp = which("cp").map_err(|error| {
+        IaiCallgrindError::Other(format!(
+            "Unable to locate 'cp' command to copy directories: '{error}'"
+        ))
+    })?;
+    let mut command = Command::new(&cp);
+    if follow_symlinks {
+        command.args(["-H", "--dereference"]);
+    }
+    command.args([
+        "--verbose",
+        "--recursive",
+        "--preserve=mode,ownership,timestamps",
+    ]);
+    command.arg(source);
+    command.arg(into);
+    let (stdout, stderr) = command
+        .output()
+        .map_err(|error| IaiCallgrindError::LaunchError(cp, error))
+        .and_then(|output| {
+            if output.status.success() {
+                Ok((output.stdout, output.stderr))
+            } else {
+                Err(IaiCallgrindError::BenchmarkLaunchError(output))
+            }
+        })?;
+
+    if !stdout.is_empty() {
+        trace!("copy fixtures: stdout:");
+        if log_enabled!(Level::Trace) {
+            write_all_to_stdout(&stdout);
+        }
+    }
+    if !stderr.is_empty() {
+        trace!("copy fixtures: stderr:");
+        if log_enabled!(Level::Trace) {
+            write_all_to_stderr(&stderr);
+        }
+    }
+    Ok(())
 }

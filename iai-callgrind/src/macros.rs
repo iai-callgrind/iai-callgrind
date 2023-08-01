@@ -64,7 +64,7 @@ macro_rules! main {
       $( setup = $setup:ident $(, bench = $bench_setup:expr )?; )?
       $( teardown = $teardown:ident $(, bench = $bench_teardown:expr )?; )?
       $( sandbox = $sandbox:literal; )?
-      $( fixtures = $fixtures:literal; )?
+      $( fixtures = $fixtures:literal $(, follow_symlinks = $follow_symlinks:literal)? ; )?
       $( run = cmd = $cmd:literal $(,envs = [$($envs:literal),* $(,)*] )? $(,opts = $opt:expr )? ,
         $( args = [$($args:literal),* $(,)*]  ),+ $(,)*
       );+ $(;)*
@@ -135,7 +135,15 @@ macro_rules! main {
 
             $(
                 let fixtures : &str = $fixtures;
-                cmd.arg(format!("--fixtures='{}'", fixtures));
+                let mut follow_symlinks : bool = false;
+                $(
+                    follow_symlinks = $follow_symlinks;
+                )?
+                if follow_symlinks {
+                    cmd.arg(format!("--fixtures='{}','follow_symlinks=true'", fixtures));
+                } else {
+                    cmd.arg(format!("--fixtures='{}'", fixtures));
+                }
             )?
 
             use std::fmt::Write;
