@@ -59,14 +59,16 @@
 #[macro_export]
 macro_rules! main {
     ( $( options = $( $options:literal ),+ $(,)*; )?
-      $( before = $before:ident $(, bench = $bench_before:expr )?; )?
-      $( after = $after:ident $(, bench = $bench_after:expr )?; )?
-      $( setup = $setup:ident $(, bench = $bench_setup:expr )?; )?
-      $( teardown = $teardown:ident $(, bench = $bench_teardown:expr )?; )?
+      $( before = $before:ident $(, bench = $bench_before:literal )? ; )?
+      $( after = $after:ident $(, bench = $bench_after:literal )? ; )?
+      $( setup = $setup:ident $(, bench = $bench_setup:literal )? ; )?
+      $( teardown = $teardown:ident $(, bench = $bench_teardown:literal )? ; )?
       $( sandbox = $sandbox:literal; )?
-      $( fixtures = $fixtures:literal $(, follow_symlinks = $follow_symlinks:literal)? ; )?
-      $( run = cmd = $cmd:literal $(,envs = [$($envs:literal),* $(,)*] )? $(,opts = $opt:expr )? ,
-        $( args = [$($args:literal),* $(,)*]  ),+ $(,)*
+      $( fixtures = $fixtures:literal $(, follow_symlinks = $follow_symlinks:literal )? ; )?
+      $( run = cmd = $cmd:expr
+            $(, envs = [ $( $envs:literal ),* $(,)* ] )?
+            $(, opts = $opt:expr )? ,
+            $( args = [ $( $args:literal ),* $(,)* ]  ),+ $(,)*
       );+ $(;)*
     ) => {
         mod iai_wrappers {
@@ -113,8 +115,9 @@ macro_rules! main {
         }
 
         #[inline(never)]
-        fn run(functions: &[&(&'static str, &'static str, fn())], mut this_args: std::env::Args) {
-            let exe =option_env!("IAI_CALLGRIND_RUNNER")
+        fn run() {
+            let mut this_args = std::env::args();
+            let exe = option_env!("IAI_CALLGRIND_RUNNER")
                 .unwrap_or_else(|| option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner"));
 
             let library_version = "0.4.0";
@@ -150,6 +153,7 @@ macro_rules! main {
             use std::path::PathBuf;
             use std::ffi::OsString;
             use $crate::{Options, OptionsParser};
+
             $(
                 let command : &str = option_env!(concat!("CARGO_BIN_EXE_", $cmd)).unwrap_or($cmd);
                 $(
@@ -227,7 +231,7 @@ macro_rules! main {
             // those passed to this main macro
             let options : Vec<&str> = vec![$($($options),+)?];
 
-            let mut args : Vec<String> = Vec::with_capacity(40);
+            let mut args : Vec<String> = Vec::with_capacity(10);
             for option in options {
                 if option.starts_with("--") {
                     args.push(option.to_owned());
@@ -252,38 +256,29 @@ macro_rules! main {
         }
 
         fn main() {
-            let funcs : &[&(&'static str, &'static str, fn())]= $crate::black_box(&[
-                $(
-                    &("before", stringify!($before), iai_wrappers::$before),
-                )?
-                $(
-                    &("after", stringify!($after), iai_wrappers::$after),
-                )?
-                $(
-                    &("setup", stringify!($setup), iai_wrappers::$setup),
-                )?
-                $(
-                    &("teardown", stringify!($teardown), iai_wrappers::$teardown),
-                )?
-            ]);
             let mut args_iter = $crate::black_box(std::env::args()).skip(1);
             if args_iter
                 .next()
                 .as_ref()
                 .map_or(false, |value| value == "--iai-run")
             {
-                let func_name = args_iter.next().expect("Expecting a function type");
-                let func = funcs.iter().find_map(|(t, _, f)| if *t == func_name {
-                    Some(f)
-                } else {
-                    None
-                }).expect("Invalid function");
-                func();
+                match $crate::black_box(args_iter.next().expect("Expecting a function type")).as_str() {
+                    $(
+                        "before" => (iai_wrappers::$before)(),
+                    )?
+                    $(
+                        "after" => (iai_wrappers::$after)(),
+                    )?
+                    $(
+                        "setup" => (iai_wrappers::$setup)(),
+                    )?
+                    $(
+                        "teardown" => (iai_wrappers::$teardown)(),
+                    )?
+                    name => panic!("function '{}' not found in this scope", name)
+                }
             } else {
-                run(
-                    $crate::black_box(funcs),
-                    $crate::black_box(std::env::args()),
-                );
+                $crate::black_box(run());
             };
         }
     };

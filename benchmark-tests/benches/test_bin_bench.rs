@@ -49,4 +49,5 @@ main!(
     run = cmd = "printenv", opts = Options::default().env_clear(false), args = ["PATH"];
     run = cmd = "printenv", envs = ["PATH"], opts = Options::default().env_clear(true), args = ["PATH"];
     run = cmd = "printenv", envs = ["HELLO=WORLD"], opts = Options::default().env_clear(true), args = ["HELLO"];
+    run = cmd = env!("CARGO_BIN_EXE_benchmark-tests"), args = [];
 );
