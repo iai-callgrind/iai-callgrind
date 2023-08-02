@@ -22,6 +22,10 @@ path = "src/benchmark-tests-printenv.rs"
 name = "benchmark-tests-cat"
 path = "src/benchmark-tests-cat.rs"
 
+[[bin]]
+name = "benchmark-tests-exit"
+path = "src/benchmark-tests-exit.rs"
+
 [[bench]]
 name = "test_bin_bench"
 harness = false
@@ -36,4 +40,8 @@ harness = false
 
 [[bench]]
 name = "test_bin_bench_with_envs"
+harness = false
+
+[[bench]]
+name = "test_bin_bench_with_exit"
 harness = false

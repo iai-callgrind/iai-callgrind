@@ -3,11 +3,11 @@ use std::ffi::{OsStr, OsString};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, Output, Stdio};
 
 use colored::{ColoredString, Colorize};
-use iai_callgrind::Options;
-use log::{debug, info, trace, warn, Level};
+use iai_callgrind::{ExitWith, Options};
+use log::{debug, error, info, trace, warn, Level};
 use which::which;
 
 use crate::util::{
@@ -42,6 +42,55 @@ impl CallgrindCommand {
         };
 
         Self { command }
+    }
+
+    fn check_exit(
+        executable: &Path,
+        output: Output,
+        exit_with: Option<&ExitWith>,
+    ) -> Result<(Vec<u8>, Vec<u8>), IaiCallgrindError> {
+        match (output.status.code().unwrap(), exit_with) {
+            (0i32, None | Some(ExitWith::Code(0i32) | ExitWith::Success)) => {
+                Ok((output.stdout, output.stderr))
+            }
+            (0i32, Some(ExitWith::Code(code))) => {
+                error!(
+                    "Expected benchmark '{}' to exit with '{}' but it succeeded",
+                    executable.display(),
+                    code
+                );
+                Err(IaiCallgrindError::BenchmarkLaunchError(output))
+            }
+            (0i32, Some(ExitWith::Failure)) => {
+                error!(
+                    "Expected benchmark '{}' to fail but it succeeded",
+                    executable.display(),
+                );
+                Err(IaiCallgrindError::BenchmarkLaunchError(output))
+            }
+            (_, Some(ExitWith::Failure)) => Ok((output.stdout, output.stderr)),
+            (code, Some(ExitWith::Success)) => {
+                error!(
+                    "Expected benchmark '{}' to succeed but it exited with '{}'",
+                    executable.display(),
+                    code
+                );
+                Err(IaiCallgrindError::BenchmarkLaunchError(output))
+            }
+            (actual_code, Some(ExitWith::Code(expected_code))) if actual_code == *expected_code => {
+                Ok((output.stdout, output.stderr))
+            }
+            (actual_code, Some(ExitWith::Code(expected_code))) => {
+                error!(
+                    "Expected benchmark '{}' to exit with '{}' but it exited with '{}'",
+                    executable.display(),
+                    expected_code,
+                    actual_code
+                );
+                Err(IaiCallgrindError::BenchmarkLaunchError(output))
+            }
+            _ => Err(IaiCallgrindError::BenchmarkLaunchError(output)),
+        }
     }
 
     pub(crate) fn run(
@@ -94,20 +143,14 @@ impl CallgrindCommand {
         let (stdout, stderr) = command
             .arg("--tool=callgrind")
             .args(callgrind_args)
-            .arg(executable)
+            .arg(&executable)
             .args(executable_args)
             .envs(envs)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
             .map_err(|error| IaiCallgrindError::LaunchError(PathBuf::from("valgrind"), error))
-            .and_then(|output| {
-                if output.status.success() {
-                    Ok((output.stdout, output.stderr))
-                } else {
-                    Err(IaiCallgrindError::BenchmarkLaunchError(output))
-                }
-            })?;
+            .and_then(|output| Self::check_exit(&executable, output, options.exit_with.as_ref()))?;
 
         if !stdout.is_empty() {
             info!("Callgrind output on stdout:");

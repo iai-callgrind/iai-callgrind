@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use std::ffi::OsString;
 use std::fmt::Display;
+use std::iter::Peekable;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -38,24 +39,6 @@ impl BinBench {
             envs: vec![],
             opts: Options::default(),
         }
-    }
-
-    fn set_envs_from_arg(&mut self, arg: &str) {
-        let args = arg
-            .strip_prefix('\'')
-            .unwrap()
-            .strip_suffix('\'')
-            .unwrap()
-            .split("','")
-            .filter_map(|s| match s.split_once('=') {
-                Some((key, value)) => Some((key.to_owned(), value.to_owned())),
-                None => match std::env::var(s) {
-                    Ok(value) => Some((s.to_owned(), value)),
-                    Err(_) => None,
-                },
-            })
-            .collect::<Vec<(String, String)>>();
-        self.envs = args;
     }
 
     fn run(&self, counter: usize, config: &Config) -> Result<(), IaiCallgrindError> {
@@ -286,6 +269,57 @@ pub(crate) struct Config {
 }
 
 impl Config {
+    fn parse_benches(
+        env_args_iter: &mut Peekable<impl Iterator<Item = OsString> + std::fmt::Debug>,
+    ) -> Vec<BinBench> {
+        let mut benches = vec![];
+        let mut opts = None;
+        let mut envs = None;
+        while let Some(arg) = env_args_iter.peek() {
+            match arg.to_str().unwrap().split_once('=') {
+                Some(("--run-envs", value)) if value.is_empty() => {
+                    envs = None;
+                }
+                Some(("--run-envs", value)) => {
+                    let args = value
+                        .strip_prefix('\'')
+                        .unwrap()
+                        .strip_suffix('\'')
+                        .unwrap()
+                        .split("','")
+                        .filter_map(|s| match s.split_once('=') {
+                            Some((key, value)) => Some((key.to_owned(), value.to_owned())),
+                            None => match std::env::var(s) {
+                                Ok(value) => Some((s.to_owned(), value)),
+                                Err(_) => None,
+                            },
+                        })
+                        .collect::<Vec<(String, String)>>();
+                    envs = Some(args);
+                }
+                Some(("--run-opts", value)) if value.is_empty() => {
+                    opts = None;
+                }
+                Some(("--run-opts", value)) => {
+                    opts = Some(OptionsParser::default().from_arg(value).unwrap());
+                }
+                Some(("--run", value)) => {
+                    let mut bench = BinBench::from_env_arg(value);
+                    if let Some(envs) = &envs {
+                        bench.envs = envs.clone();
+                    }
+                    if let Some(opts) = &opts {
+                        bench.opts = opts.clone();
+                    }
+                    benches.push(bench);
+                }
+                Some(_) | None => break,
+            }
+            env_args_iter.next();
+        }
+        benches
+    }
+
     #[allow(clippy::too_many_lines)]
     fn from_env_args_iter(env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug) -> Self {
         let mut env_args_iter = env_args_iter.peekable();
@@ -329,19 +363,7 @@ impl Config {
             }
         }
 
-        let mut benches = vec![];
-        while let Some(arg) = env_args_iter.peek() {
-            match arg.to_str().unwrap().split_once('=') {
-                Some(("--run", value)) => benches.push(BinBench::from_env_arg(value)),
-                Some(("--run-envs", value)) => benches.last_mut().unwrap().set_envs_from_arg(value),
-                Some(("--run-opts", value)) => {
-                    benches.last_mut().unwrap().opts =
-                        OptionsParser::default().from_arg(value).unwrap();
-                }
-                Some(_) | None => break,
-            }
-            env_args_iter.next();
-        }
+        let benches = Self::parse_benches(&mut env_args_iter);
 
         let mut bench_assists = BenchmarkAssistants::default();
         while let Some(arg) = env_args_iter.peek() {

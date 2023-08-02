@@ -44,7 +44,38 @@ pub fn black_box<T>(dummy: T) -> T {
 }
 
 /// TODO: DOCUMENT
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub enum ExitWith {
+    /// TODO: DOCUMENT
+    Success,
+    /// TODO: DOCUMENT
+    Failure,
+    /// TODO: DOCUMENT
+    Code(i32),
+}
+
+impl From<ExitWith> for String {
+    fn from(value: ExitWith) -> Self {
+        match value {
+            ExitWith::Success => "success".to_owned(),
+            ExitWith::Failure => "failure".to_owned(),
+            ExitWith::Code(code) => code.to_string(),
+        }
+    }
+}
+
+impl From<&str> for ExitWith {
+    fn from(value: &str) -> Self {
+        match value {
+            "success" => ExitWith::Success,
+            "failure" => ExitWith::Failure,
+            v => ExitWith::Code(v.parse().unwrap()),
+        }
+    }
+}
+
+/// TODO: DOCUMENT
+#[derive(Debug, Clone)]
 pub struct Options {
     /// TODO: DOCUMENT
     pub env_clear: bool,
@@ -52,6 +83,8 @@ pub struct Options {
     pub current_dir: Option<PathBuf>,
     /// TODO: DOCUMENT
     pub entry_point: Option<String>,
+    /// TODO: DOCUMENT
+    pub exit_with: Option<ExitWith>,
 }
 
 impl Default for Options {
@@ -67,6 +100,7 @@ impl Options {
             env_clear: true,
             current_dir: None,
             entry_point: None,
+            exit_with: None,
         }
     }
 
@@ -85,6 +119,12 @@ impl Options {
     /// TODO: DOCUMENT
     pub fn entry_point(mut self, value: &str) -> Self {
         self.entry_point = Some(value.to_owned());
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn exit_with(mut self, value: ExitWith) -> Self {
+        self.exit_with = Some(value);
         self
     }
 }
@@ -120,9 +160,13 @@ impl OptionsParser {
             if !arg.is_empty() {
                 arg.push(",");
             }
-            arg.push("'entry_point=");
-            arg.push(entry_point);
-            arg.push("'");
+            arg.push(format!("'entry_point={entry_point}'"));
+        }
+        if let Some(exit_with) = self.options.exit_with {
+            if !arg.is_empty() {
+                arg.push(",");
+            }
+            arg.push(format!("'exit_with={}'", Into::<String>::into(exit_with)));
         }
         arg
     }
@@ -137,6 +181,7 @@ impl OptionsParser {
                 Some(("env_clear", value)) => options.env_clear = value.parse().unwrap(),
                 Some(("current_dir", value)) => options.current_dir = Some(PathBuf::from(value)),
                 Some(("entry_point", value)) => options.entry_point = Some(value.to_owned()),
+                Some(("exit_with", value)) => options.exit_with = Some(ExitWith::from(value)),
                 Some(_) | None => return None,
             }
         }

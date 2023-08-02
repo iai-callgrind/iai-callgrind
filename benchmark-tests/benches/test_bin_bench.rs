@@ -1,4 +1,4 @@
-use iai_callgrind::main;
+use iai_callgrind::{main, ExitWith};
 
 /// This method is run once before all benchmark
 #[inline(never)] // required
@@ -50,4 +50,5 @@ main!(
     run = cmd = "printenv", envs = ["PATH"], opts = Options::default().env_clear(true), args = ["PATH"];
     run = cmd = "printenv", envs = ["HELLO=WORLD"], opts = Options::default().env_clear(true), args = ["HELLO"];
     run = cmd = env!("CARGO_BIN_EXE_benchmark-tests"), args = [];
+    run = cmd = "benchmark-tests", opts = Options::default().exit_with(ExitWith::Success), args = [];
 );

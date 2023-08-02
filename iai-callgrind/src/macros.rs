@@ -152,10 +152,24 @@ macro_rules! main {
             use std::fmt::Write;
             use std::path::PathBuf;
             use std::ffi::OsString;
+            use std::str::FromStr;
             use $crate::{Options, OptionsParser};
 
             $(
                 let command : &str = option_env!(concat!("CARGO_BIN_EXE_", $cmd)).unwrap_or($cmd);
+                let mut opt_arg = OsString::from_str("--run-opts=").unwrap();
+                $(
+                    opt_arg.push(OptionsParser::new($opt).into_arg());
+                )?
+                cmd.arg(opt_arg);
+
+                let mut env_arg = OsString::from_str("--run-envs=").unwrap();
+                $(
+                    let envs : Vec<&str> = vec![$($envs),*];
+                    env_arg.push(to_arg(&envs));
+                )?
+                cmd.arg(env_arg);
+
                 $(
                     let args : Vec<&str> = vec![$($args),*];
                     if args.is_empty() {
@@ -164,21 +178,6 @@ macro_rules! main {
                         cmd.arg(format!("--run='{}',{}", command, to_arg(&args)));
                     }
                 )+
-                $(
-                    let envs : Vec<&str> = vec![$($envs),*];
-                    if !envs.is_empty() {
-                        cmd.arg(format!("--run-envs={}", to_arg(&envs)));
-                    }
-                )?
-                $(
-                    let opt_arg = OptionsParser::new($opt).into_arg();
-                    if !opt_arg.is_empty() {
-                        let mut arg = OsString::new();
-                        arg.push("--run-opts=");
-                        arg.push(opt_arg);
-                        cmd.arg(arg);
-                    }
-                )?
             )+
 
             $(
