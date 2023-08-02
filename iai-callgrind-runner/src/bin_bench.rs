@@ -320,15 +320,9 @@ impl Config {
         benches
     }
 
-    #[allow(clippy::too_many_lines)]
-    fn from_env_args_iter(env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug) -> Self {
-        let mut env_args_iter = env_args_iter.peekable();
-
-        let package_dir = PathBuf::from(env_args_iter.next().unwrap());
-        let bench_file = PathBuf::from(env_args_iter.next().unwrap());
-        let module = env_args_iter.next().unwrap().to_str().unwrap().to_owned();
-        let bench_bin = PathBuf::from(env_args_iter.next().unwrap());
-
+    fn parse_sandbox(
+        env_args_iter: &mut Peekable<impl Iterator<Item = OsString> + std::fmt::Debug>,
+    ) -> bool {
         let mut sandbox = true;
         if let Some(arg) = env_args_iter.peek() {
             if let Some(("--sandbox", value)) = arg.to_str().unwrap().split_once('=') {
@@ -342,7 +336,12 @@ impl Config {
                 env_args_iter.next().unwrap();
             }
         }
+        sandbox
+    }
 
+    fn parse_fixtures(
+        env_args_iter: &mut Peekable<impl Iterator<Item = OsString> + std::fmt::Debug>,
+    ) -> Option<Fixtures> {
         let mut fixtures = None;
         if let Some(arg) = env_args_iter.peek() {
             if let Some(("--fixtures", value)) = arg.to_str().unwrap().split_once('=') {
@@ -362,9 +361,12 @@ impl Config {
                 env_args_iter.next().unwrap();
             }
         }
+        fixtures
+    }
 
-        let benches = Self::parse_benches(&mut env_args_iter);
-
+    fn parse_assists(
+        env_args_iter: &mut Peekable<impl Iterator<Item = OsString> + std::fmt::Debug>,
+    ) -> BenchmarkAssistants {
         let mut bench_assists = BenchmarkAssistants::default();
         while let Some(arg) = env_args_iter.peek() {
             match arg.to_str().unwrap().split_once('=') {
@@ -422,8 +424,27 @@ impl Config {
             }
             env_args_iter.next();
         }
+        bench_assists
+    }
+
+    #[allow(clippy::too_many_lines)]
+    fn from_env_args_iter(env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug) -> Self {
+        let mut env_args_iter = env_args_iter.peekable();
+
+        let package_dir = PathBuf::from(env_args_iter.next().unwrap());
+        let bench_file = PathBuf::from(env_args_iter.next().unwrap());
+        let module = env_args_iter.next().unwrap().to_str().unwrap().to_owned();
+        let bench_bin = PathBuf::from(env_args_iter.next().unwrap());
+
+        let sandbox = Self::parse_sandbox(&mut env_args_iter);
+        let fixtures = Self::parse_fixtures(&mut env_args_iter);
+        let benches = Self::parse_benches(&mut env_args_iter);
+        let bench_assists = Self::parse_assists(&mut env_args_iter);
 
         let mut callgrind_args = env_args_iter.collect::<Vec<OsString>>();
+
+        // The last argument is sometimes --bench. This argument comes from cargo and does not
+        // belong to the arguments passed from the main macro. So, we're removing it if it is there.
         if callgrind_args.last().map_or(false, |a| a == "--bench") {
             callgrind_args.pop();
         }
@@ -478,7 +499,7 @@ pub(crate) fn run(
 ) -> Result<(), IaiCallgrindError> {
     let config = Config::from_env_args_iter(env_args_iter);
 
-    // We need the temp_dir to exist within this function or else it's getting dropped and deleted
+    // We need the TempDir to exist within this function or else it's getting dropped and deleted
     // too early.
     let temp_dir = if config.sandbox {
         debug!("Setting up sandbox");
