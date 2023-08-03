@@ -1,4 +1,6 @@
-use iai_callgrind::{main, ExitWith};
+use std::path::PathBuf;
+
+use iai_callgrind::main;
 
 /// This method is run once before all benchmark
 #[inline(never)] // required

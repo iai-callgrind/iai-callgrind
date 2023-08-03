@@ -17,3 +17,7 @@ categories = ["development-tools::profiling", "development-tools::testing"]
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]
+
+[dependencies]
+serde = { version = "1.0.177", features = ["derive"] }
+bincode = "1.3.3"

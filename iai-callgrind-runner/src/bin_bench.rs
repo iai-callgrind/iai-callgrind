@@ -1,12 +1,11 @@
-use std::collections::VecDeque;
 use std::ffi::OsString;
 use std::fmt::Display;
-use std::iter::Peekable;
+use std::io::{stdin, Read};
 use std::path::PathBuf;
 use std::process::Command;
 
 use colored::Colorize;
-use iai_callgrind::{Options, OptionsParser};
+use iai_callgrind::{internal, Options};
 use log::{debug, info, log_enabled, trace, Level};
 use sanitize_filename::Options as SanitizerOptions;
 use tempfile::TempDir;
@@ -24,23 +23,6 @@ struct BinBench {
 }
 
 impl BinBench {
-    fn from_env_arg(arg: &str) -> Self {
-        let mut args = arg
-            .strip_prefix('\'')
-            .unwrap()
-            .strip_suffix('\'')
-            .unwrap()
-            .split("','")
-            .map(std::borrow::ToOwned::to_owned)
-            .collect::<VecDeque<String>>();
-        Self {
-            command: PathBuf::from(args.pop_front().unwrap()),
-            args: args.into(),
-            envs: vec![],
-            opts: Options::default(),
-        }
-    }
-
     fn run(&self, counter: usize, config: &Config) -> Result<(), IaiCallgrindError> {
         let command = CallgrindCommand::new(config.allow_aslr, &config.arch);
 
@@ -244,15 +226,6 @@ struct Fixtures {
     follow_symlinks: bool,
 }
 
-impl Fixtures {
-    fn new(path: PathBuf, follow_symlinks: bool) -> Self {
-        Self {
-            path,
-            follow_symlinks,
-        }
-    }
-}
-
 #[derive(Debug)]
 pub(crate) struct Config {
     package_dir: PathBuf,
@@ -269,185 +242,136 @@ pub(crate) struct Config {
 }
 
 impl Config {
-    fn parse_benches(
-        env_args_iter: &mut Peekable<impl Iterator<Item = OsString> + std::fmt::Debug>,
-    ) -> Vec<BinBench> {
+    fn receive_benchmark(bytes: usize) -> Result<internal::BinaryBenchmark, IaiCallgrindError> {
+        let mut encoded = vec![];
+        let mut stdin = stdin();
+        stdin.read_to_end(&mut encoded).map_err(|error| {
+            IaiCallgrindError::Other(format!("Failed to read encoded configuration: {error}"))
+        })?;
+        assert!(
+            encoded.len() == bytes,
+            "Bytes mismatch when decoding configuration: Expected {bytes} bytes but received: {} \
+             bytes",
+            encoded.len()
+        );
+
+        let benchmark: internal::BinaryBenchmark =
+            bincode::deserialize(&encoded).map_err(|error| {
+                IaiCallgrindError::Other(format!("Failed to decode configuration: {error}"))
+            })?;
+
+        Ok(benchmark)
+    }
+
+    fn parse_fixtures(fixtures: Option<internal::Fixtures>) -> Option<Fixtures> {
+        fixtures.map(|f| Fixtures {
+            path: PathBuf::from(f.path),
+            follow_symlinks: f.follow_symlinks,
+        })
+    }
+
+    fn parse_runs(runs: Vec<internal::Run>) -> Vec<BinBench> {
         let mut benches = vec![];
-        let mut opts = None;
-        let mut envs = None;
-        while let Some(arg) = env_args_iter.peek() {
-            match arg.to_str().unwrap().split_once('=') {
-                Some(("--run-envs", value)) if value.is_empty() => {
-                    envs = None;
-                }
-                Some(("--run-envs", value)) => {
-                    let args = value
-                        .strip_prefix('\'')
-                        .unwrap()
-                        .strip_suffix('\'')
-                        .unwrap()
-                        .split("','")
-                        .filter_map(|s| match s.split_once('=') {
-                            Some((key, value)) => Some((key.to_owned(), value.to_owned())),
-                            None => match std::env::var(s) {
-                                Ok(value) => Some((s.to_owned(), value)),
-                                Err(_) => None,
-                            },
-                        })
-                        .collect::<Vec<(String, String)>>();
-                    envs = Some(args);
-                }
-                Some(("--run-opts", value)) if value.is_empty() => {
-                    opts = None;
-                }
-                Some(("--run-opts", value)) => {
-                    opts = Some(OptionsParser::default().from_arg(value).unwrap());
-                }
-                Some(("--run", value)) => {
-                    let mut bench = BinBench::from_env_arg(value);
-                    if let Some(envs) = &envs {
-                        bench.envs = envs.clone();
-                    }
-                    if let Some(opts) = &opts {
-                        bench.opts = opts.clone();
-                    }
-                    benches.push(bench);
-                }
-                Some(_) | None => break,
+        for run in runs {
+            let command = PathBuf::from(run.cmd);
+            let opts = run.opts;
+            let envs: Option<Vec<(String, String)>> = run.envs.map(|envs| {
+                envs.iter()
+                    .filter_map(|e| match e.split_once('=') {
+                        Some((key, value)) => Some((key.to_owned(), value.to_owned())),
+                        None => std::env::var(e).ok().map(|v| (e.clone(), v)),
+                    })
+                    .collect()
+            });
+            for arg in run.args {
+                benches.push(BinBench {
+                    command: command.clone(),
+                    args: arg,
+                    envs: envs
+                        .as_ref()
+                        .map_or_else(std::vec::Vec::new, std::clone::Clone::clone),
+                    opts: opts
+                        .as_ref()
+                        .map_or_else(Options::default, std::clone::Clone::clone),
+                });
             }
-            env_args_iter.next();
         }
         benches
     }
 
-    fn parse_sandbox(
-        env_args_iter: &mut Peekable<impl Iterator<Item = OsString> + std::fmt::Debug>,
-    ) -> bool {
-        let mut sandbox = true;
-        if let Some(arg) = env_args_iter.peek() {
-            if let Some(("--sandbox", value)) = arg.to_str().unwrap().split_once('=') {
-                sandbox = value
-                    .strip_prefix('\'')
-                    .unwrap()
-                    .strip_suffix('\'')
-                    .unwrap()
-                    .parse::<bool>()
-                    .unwrap();
-                env_args_iter.next().unwrap();
-            }
-        }
-        sandbox
-    }
-
-    fn parse_fixtures(
-        env_args_iter: &mut Peekable<impl Iterator<Item = OsString> + std::fmt::Debug>,
-    ) -> Option<Fixtures> {
-        let mut fixtures = None;
-        if let Some(arg) = env_args_iter.peek() {
-            if let Some(("--fixtures", value)) = arg.to_str().unwrap().split_once('=') {
-                let args = value
-                    .strip_prefix('\'')
-                    .unwrap()
-                    .strip_suffix('\'')
-                    .unwrap()
-                    .split("','")
-                    .map(std::borrow::ToOwned::to_owned)
-                    .collect::<VecDeque<String>>();
-                let follow_symlinks = args.get(1).map_or(false, |s| match s.split_once('=') {
-                    Some(("follow_symlinks", key)) => key.parse().unwrap(),
-                    Some(_) | None => false,
-                });
-                fixtures = Some(Fixtures::new(PathBuf::from(&args[0]), follow_symlinks));
-                env_args_iter.next().unwrap();
-            }
-        }
-        fixtures
-    }
-
-    fn parse_assists(
-        env_args_iter: &mut Peekable<impl Iterator<Item = OsString> + std::fmt::Debug>,
-    ) -> BenchmarkAssistants {
+    fn parse_assists(assists: Vec<internal::Assistant>) -> BenchmarkAssistants {
         let mut bench_assists = BenchmarkAssistants::default();
-        while let Some(arg) = env_args_iter.peek() {
-            match arg.to_str().unwrap().split_once('=') {
-                Some(("--setup", value)) => {
-                    bench_assists.setup = Some(Assistant::new(
-                        value.to_owned(),
-                        AssistantKind::Setup,
-                        false,
-                    ));
-                }
-                Some(("--bench-setup", value)) => {
-                    bench_assists.setup =
-                        Some(Assistant::new(value.to_owned(), AssistantKind::Setup, true));
-                }
-                Some(("--teardown", value)) => {
-                    bench_assists.teardown = Some(Assistant::new(
-                        value.to_owned(),
-                        AssistantKind::Teardown,
-                        false,
-                    ));
-                }
-                Some(("--bench-teardown", value)) => {
-                    bench_assists.teardown = Some(Assistant::new(
-                        value.to_owned(),
-                        AssistantKind::Teardown,
-                        true,
-                    ));
-                }
-                Some(("--before", value)) => {
+        for assist in assists {
+            match assist.id.as_str() {
+                "before" => {
                     bench_assists.before = Some(Assistant::new(
-                        value.to_owned(),
+                        assist.name,
                         AssistantKind::Before,
-                        false,
+                        assist.bench,
                     ));
                 }
-                Some(("--bench-before", value)) => {
-                    bench_assists.before = Some(Assistant::new(
-                        value.to_owned(),
-                        AssistantKind::Before,
-                        true,
-                    ));
-                }
-                Some(("--after", value)) => {
+                "after" => {
                     bench_assists.after = Some(Assistant::new(
-                        value.to_owned(),
+                        assist.name,
                         AssistantKind::After,
-                        false,
+                        assist.bench,
                     ));
                 }
-                Some(("--bench-after", value)) => {
-                    bench_assists.after =
-                        Some(Assistant::new(value.to_owned(), AssistantKind::After, true));
+                "setup" => {
+                    bench_assists.setup = Some(Assistant::new(
+                        assist.name,
+                        AssistantKind::Setup,
+                        assist.bench,
+                    ));
                 }
-                Some(_) | None => break,
+                "teardown" => {
+                    bench_assists.teardown = Some(Assistant::new(
+                        assist.name,
+                        AssistantKind::Teardown,
+                        assist.bench,
+                    ));
+                }
+                name => panic!("Unknown assistant function: {name}"),
             }
-            env_args_iter.next();
         }
         bench_assists
     }
 
-    fn from_env_args_iter(env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug) -> Self {
-        let mut env_args_iter = env_args_iter.peekable();
-
-        let package_dir = PathBuf::from(env_args_iter.next().unwrap());
-        let bench_file = PathBuf::from(env_args_iter.next().unwrap());
-        let module = env_args_iter.next().unwrap().to_str().unwrap().to_owned();
-        let bench_bin = PathBuf::from(env_args_iter.next().unwrap());
-
-        let sandbox = Self::parse_sandbox(&mut env_args_iter);
-        let fixtures = Self::parse_fixtures(&mut env_args_iter);
-        let benches = Self::parse_benches(&mut env_args_iter);
-        let bench_assists = Self::parse_assists(&mut env_args_iter);
-
-        let mut callgrind_args = env_args_iter.collect::<Vec<OsString>>();
+    fn parse_callgrind_args(options: &[String]) -> CallgrindArgs {
+        let mut callgrind_args: Vec<OsString> = options.iter().map(OsString::from).collect();
 
         // The last argument is sometimes --bench. This argument comes from cargo and does not
         // belong to the arguments passed from the main macro. So, we're removing it if it is there.
         if callgrind_args.last().map_or(false, |a| a == "--bench") {
             callgrind_args.pop();
         }
-        let callgrind_args = CallgrindArgs::from_args(&callgrind_args);
+
+        CallgrindArgs::from_args(&callgrind_args)
+    }
+
+    fn generate(
+        mut env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug,
+    ) -> Result<Self, IaiCallgrindError> {
+        // The following unwraps are safe because these arguments are assuredly submitted by the
+        // iai_callgrind::main macro
+        let package_dir = PathBuf::from(env_args_iter.next().unwrap());
+        let bench_file = PathBuf::from(env_args_iter.next().unwrap());
+        let module = env_args_iter.next().unwrap().to_str().unwrap().to_owned();
+        let bench_bin = PathBuf::from(env_args_iter.next().unwrap());
+        let bytes = env_args_iter
+            .next()
+            .unwrap()
+            .to_string_lossy()
+            .parse::<usize>()
+            .unwrap();
+
+        let benchmark = Self::receive_benchmark(bytes)?;
+
+        let sandbox = benchmark.sandbox;
+        let fixtures = Self::parse_fixtures(benchmark.fixtures);
+        let benches = Self::parse_runs(benchmark.runs);
+        let bench_assists = Self::parse_assists(benchmark.assists);
+        let callgrind_args = Self::parse_callgrind_args(&benchmark.options);
 
         let arch = get_arch();
         debug!("Detected architecture: {}", arch);
@@ -457,7 +381,7 @@ impl Config {
             debug!("Found IAI_ALLOW_ASLR environment variable. Trying to run with ASLR enabled.");
         }
 
-        Self {
+        Ok(Self {
             package_dir,
             bench_file,
             module,
@@ -469,7 +393,7 @@ impl Config {
             callgrind_args,
             allow_aslr,
             arch,
-        }
+        })
     }
 }
 
@@ -496,7 +420,7 @@ fn setup_sandbox(config: &Config) -> Result<TempDir, IaiCallgrindError> {
 pub(crate) fn run(
     env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug,
 ) -> Result<(), IaiCallgrindError> {
-    let config = Config::from_env_args_iter(env_args_iter);
+    let config = Config::generate(env_args_iter)?;
 
     // We need the TempDir to exist within this function or else it's getting dropped and deleted
     // too early.

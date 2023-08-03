@@ -24,9 +24,12 @@
 #![allow(clippy::enum_glob_use)]
 #![allow(clippy::module_name_repetitions)]
 
+pub use bincode;
+pub use serde::{Deserialize, Serialize};
+
+pub mod internal;
 mod macros;
 
-use std::ffi::OsString;
 use std::path::PathBuf;
 
 /// A function that is opaque to the optimizer, used to prevent the compiler from
@@ -44,7 +47,7 @@ pub fn black_box<T>(dummy: T) -> T {
 }
 
 /// TODO: DOCUMENT
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ExitWith {
     /// TODO: DOCUMENT
     Success,
@@ -54,28 +57,8 @@ pub enum ExitWith {
     Code(i32),
 }
 
-impl From<ExitWith> for String {
-    fn from(value: ExitWith) -> Self {
-        match value {
-            ExitWith::Success => "success".to_owned(),
-            ExitWith::Failure => "failure".to_owned(),
-            ExitWith::Code(code) => code.to_string(),
-        }
-    }
-}
-
-impl From<&str> for ExitWith {
-    fn from(value: &str) -> Self {
-        match value {
-            "success" => ExitWith::Success,
-            "failure" => ExitWith::Failure,
-            v => ExitWith::Code(v.parse().unwrap()),
-        }
-    }
-}
-
 /// TODO: DOCUMENT
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Options {
     /// TODO: DOCUMENT
     pub env_clear: bool,
@@ -126,71 +109,5 @@ impl Options {
     pub fn exit_with(mut self, value: ExitWith) -> Self {
         self.exit_with = Some(value);
         self
-    }
-}
-
-/// TODO: DOCUMENT
-#[derive(Debug)]
-pub struct OptionsParser {
-    /// TODO: DOCUMENT
-    pub options: Options,
-}
-
-impl OptionsParser {
-    /// TODO: DOCUMENT
-    pub fn new(options: Options) -> Self {
-        Self { options }
-    }
-
-    /// TODO: DOCUMENT
-    pub fn into_arg(self) -> OsString {
-        let mut arg = OsString::new();
-        if !self.options.env_clear {
-            arg.push(format!("'env_clear={}'", self.options.env_clear));
-        }
-        if let Some(dir) = self.options.current_dir {
-            if !arg.is_empty() {
-                arg.push(",");
-            }
-            arg.push("'current_dir=");
-            arg.push(dir);
-            arg.push("'");
-        }
-        if let Some(entry_point) = self.options.entry_point {
-            if !arg.is_empty() {
-                arg.push(",");
-            }
-            arg.push(format!("'entry_point={entry_point}'"));
-        }
-        if let Some(exit_with) = self.options.exit_with {
-            if !arg.is_empty() {
-                arg.push(",");
-            }
-            arg.push(format!("'exit_with={}'", Into::<String>::into(exit_with)));
-        }
-        arg
-    }
-
-    /// TODO: DOCUMENT
-    ///
-    /// # Panics
-    pub fn from_arg(self, arg: &str) -> Option<Options> {
-        let mut options = Options::new();
-        for opt in arg.strip_prefix('\'')?.strip_suffix('\'')?.split("','") {
-            match opt.split_once('=') {
-                Some(("env_clear", value)) => options.env_clear = value.parse().unwrap(),
-                Some(("current_dir", value)) => options.current_dir = Some(PathBuf::from(value)),
-                Some(("entry_point", value)) => options.entry_point = Some(value.to_owned()),
-                Some(("exit_with", value)) => options.exit_with = Some(ExitWith::from(value)),
-                Some(_) | None => return None,
-            }
-        }
-        Some(options)
-    }
-}
-
-impl Default for OptionsParser {
-    fn default() -> Self {
-        Self::new(Options::default())
     }
 }

@@ -3,6 +3,7 @@
     "aslr",
     "atstart",
     "bheisler",
+    "bincode",
     "bools",
     "Brunner",
     "cachegrind",

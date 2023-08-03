@@ -99,22 +99,6 @@ macro_rules! main {
         }
 
         #[inline(never)]
-        fn to_arg(vec: &[&str]) -> String {
-            if let Some((first, remainder)) = vec.split_first() {
-                let sep = ",";
-                remainder.iter().fold(format!("'{}'", first), |mut a, b| {
-                    a.push_str(sep);
-                    a.push('\'');
-                    a.push_str(b);
-                    a.push('\'');
-                    a
-                })
-            } else {
-                String::new()
-            }
-        }
-
-        #[inline(never)]
         fn run() {
             let mut this_args = std::env::args();
             let exe = option_env!("IAI_CALLGRIND_RUNNER")
@@ -131,106 +115,109 @@ macro_rules! main {
             cmd.arg(module_path!());
             cmd.arg(this_args.next().unwrap()); // The executable benchmark binary
 
+            use $crate::internal::{BinaryBenchmark, Fixtures, Run, Assistant};
+            use $crate::{Options, ExitWith};
+            use $crate::bincode;
+            use std::process::Stdio;
+            use std::io::Write;
+
+            let mut benchmark = BinaryBenchmark::default();
             $(
-                let sandbox : bool = $sandbox;
-                cmd.arg(format!("--sandbox='{}'", sandbox));
+                benchmark.sandbox = $sandbox;
             )?
 
             $(
-                let fixtures : &str = $fixtures;
+                let path : &str = $fixtures;
                 let mut follow_symlinks : bool = false;
                 $(
                     follow_symlinks = $follow_symlinks;
                 )?
-                if follow_symlinks {
-                    cmd.arg(format!("--fixtures='{}','follow_symlinks=true'", fixtures));
-                } else {
-                    cmd.arg(format!("--fixtures='{}'", fixtures));
-                }
+                benchmark.fixtures = Some(Fixtures {
+                    path: path.to_owned(), follow_symlinks
+                });
             )?
 
-            use std::fmt::Write;
-            use std::path::PathBuf;
-            use std::ffi::OsString;
-            use std::str::FromStr;
-            use $crate::{Options, OptionsParser};
-
+            let mut runs : Vec<Run> = vec![];
             $(
                 let command : &str = option_env!(concat!("CARGO_BIN_EXE_", $cmd)).unwrap_or($cmd);
-                let mut opt_arg = OsString::from_str("--run-opts=").unwrap();
+                let mut opt_arg : Option<Options> = None;
                 $(
-                    opt_arg.push(OptionsParser::new($opt).into_arg());
+                    opt_arg = Some($opt);
                 )?
-                cmd.arg(opt_arg);
 
-                let mut env_arg = OsString::from_str("--run-envs=").unwrap();
+                let mut env_arg : Option<Vec<String>>= None;
                 $(
                     let envs : Vec<&str> = vec![$($envs),*];
-                    env_arg.push(to_arg(&envs));
+                    env_arg = Some(envs.into_iter().map(|s| s.to_owned()).collect());
                 )?
-                cmd.arg(env_arg);
 
+                let mut run_arg : Vec<Vec<String>> = vec![];
                 $(
                     let args : Vec<&str> = vec![$($args),*];
-                    if args.is_empty() {
-                        cmd.arg(format!("--run='{}'", command));
-                    } else {
-                        cmd.arg(format!("--run='{}',{}", command, to_arg(&args)));
-                    }
+                    run_arg.push(args.into_iter().map(|s| s.to_owned()).collect());
                 )+
+                let run = Run {
+                    cmd : command.to_owned(),
+                    opts : opt_arg,
+                    envs : env_arg,
+                    args : run_arg,
+                };
+                runs.push(run);
             )+
+            benchmark.runs = runs;
 
+            let mut assists : Vec<Assistant> = vec![];
             $(
                 let mut bench_before = false;
                 $(
                     bench_before = $bench_before;
                 )?
-                if bench_before {
-                    cmd.arg(format!("--bench-before={}", stringify!($before)));
-                } else {
-                    cmd.arg(format!("--before={}", stringify!($before)));
-                }
+                assists.push(Assistant {
+                    id: "before".to_owned(),
+                    name: stringify!($before).to_owned(),
+                    bench: bench_before
+                });
             )?
             $(
                 let mut bench_after = false;
                 $(
                     bench_after = $bench_after;
                 )?
-                if bench_after {
-                    cmd.arg(format!("--bench-after={}", stringify!($after)));
-                } else {
-                    cmd.arg(format!("--after={}", stringify!($after)));
-                }
+                assists.push(Assistant {
+                    id: "after".to_owned(),
+                    name: stringify!($after).to_owned(),
+                    bench: bench_after
+                });
             )?
             $(
                 let mut bench_setup = false;
                 $(
                     bench_setup = $bench_setup;
                 )?
-                if bench_setup {
-                    cmd.arg(format!("--bench-setup={}", stringify!($setup)));
-                } else {
-                    cmd.arg(format!("--setup={}", stringify!($setup)));
-                }
+                assists.push(Assistant {
+                    id: "setup".to_owned(),
+                    name: stringify!($setup).to_owned(),
+                    bench: bench_setup
+                });
             )?
             $(
                 let mut bench_teardown = false;
                 $(
                     bench_teardown = $bench_teardown;
                 )?
-                if bench_teardown {
-                    cmd.arg(format!("--bench-teardown={}", stringify!($teardown)));
-                } else {
-                    cmd.arg(format!("--teardown={}", stringify!($teardown)));
-                }
+                assists.push(Assistant {
+                    id: "teardown".to_owned(),
+                    name: stringify!($teardown).to_owned(),
+                    bench: bench_teardown
+                });
             )?
-
+            benchmark.assists = assists;
 
             // Add the callgrind_args first so that arguments from the command line will overwrite
             // those passed to this main macro
             let options : Vec<&str> = vec![$($($options),+)?];
 
-            let mut args : Vec<String> = Vec::with_capacity(10);
+            let mut args : Vec<String> = Vec::with_capacity(options.len() + 10);
             for option in options {
                 if option.starts_with("--") {
                     args.push(option.to_owned());
@@ -239,16 +226,25 @@ macro_rules! main {
                 }
             }
 
-            args.extend(this_args); // The rest of the arguments
+            args.extend(this_args); // The rest of the arguments from the command line
+            benchmark.options = args;
 
-            let status = cmd
-                .args(args)
-                .status()
+            let encoded = bincode::serialize(&benchmark).expect("Encoded benchmark");
+            let mut child = cmd
+                .arg(encoded.len().to_string())
+                .stdin(Stdio::piped())
+                .spawn()
                 .expect("Failed to run benchmarks. \
                     Is iai-callgrind-runner installed and iai-callgrind-runner in your $PATH?. \
                     You can also set the environment variable IAI_CALLGRIND_RUNNER to the \
                     absolute path of the iai-callgrind-runner executable.");
 
+            let mut stdin = child.stdin.take().expect("Opening stdin to submit encoded benchmark");
+            std::thread::spawn(move || {
+                stdin.write_all(&encoded).expect("Writing encoded benchmark to stdin");
+            });
+
+            let status = child.wait().expect("Wait for child process to exit");
             if !status.success() {
                 std::process::exit(1);
             }
