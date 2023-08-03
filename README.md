@@ -247,27 +247,14 @@ This may be useful if you want to compare the runtime of your crate with an exis
 It's also possible to run functions of the benchmark file before and after all benchmarks or to
 setup and teardown any benchmarked binary.
 
-#### Temporary Workspace
+#### Temporary Workspace and other important default behavior
 
-For security purposes, all binary benchmarks and the `before`, `after`, `setup` and `teardown`
-functions are executed in a temporary directory. This directory will be created before the
-[`before`](#before-after-setup-teardown-optional) function is run and removed after the `after`
-function has finished. The [`fixtures`](#fixtures-optional) argument let's you copy your fixtures
-into that directory, so you have access to all fixtures. However, if you want to access other
-directories within the benchmarked package's directory, you need to specify absolute paths.
+Per default, all binary benchmarks and the `before`, `after`, `setup` and `teardown` functions are
+executed in a temporary directory. See the [`sandbox`](#sandbox-optional) for a deeper explanation
+and how to control and change this behavior.
 
-Another reason for using a temporary directory as workspace is, that the length of the path where a
-benchmark is executed may have an influence on the benchmark results. For example, running the
-benchmark in your repository `/home/me/my/repository` and someone else's repository located under
-`/home/someone/else/repository` may produce different results only because the length of the first
-path is shorter. To run benchmarks as deterministic as possible across different systems, the length
-of the path should be the same wherever the benchmark is executed. This crate ensures this property
-by using the `tempfile` crate which creates the temporary directory in `/tmp` with a random name
-like `/tmp/.tmp12345678`. This ensures that the length of the directory will be the same on all unix
-hosts where the benchmarks are run.
-
-For the very same reasons, the environment variables of benchmarked binaries are cleared before the
-benchmark is run. See also [`opts`](#options-optional).
+Also, the environment variables of benchmarked binaries are cleared before the benchmark is run. See
+also [`opts`](#options-optional) how to change this behavior.
 
 #### Quickstart
 
@@ -300,12 +287,15 @@ fn teardown() {
 main!(
     setup = setup;
     teardown = teardown;
-    run = cmd = "benchmark-tests", args = ["one", "two"];
+    run = cmd = "benchmark-tests",
+          id = "two_args",
+          args = ["one", "two"];
 );
 ```
 
-You're ready to run the benchmark with `cargo bench --bench my_binary_benchmark`. The rest of the
-procedure is the same as with [Library Benchmarks](#library-benchmarks).
+You're ready to run the benchmark with `cargo bench --bench my_binary_benchmark`. Although an `id`
+is optional it is good practice to specify it. The rest of the procedure is the same as with
+[Library Benchmarks](#library-benchmarks).
 
 #### Description
 
@@ -315,6 +305,7 @@ procedure is the same as with [Library Benchmarks](#library-benchmarks).
         - [args](#args-mandatory)
         - [opts](#opts-optional)
         - [envs](#envs-optional)
+    - [sandbox](#sandbox-optional)
     - [options](#options-optional)
     - [before, after, setup, teardown](#before-after-setup-teardown-optional)
     - [fixtures](#fixtures-optional)
@@ -328,6 +319,7 @@ main!(
     after = function_running_after_all_benchmarks;
     setup = function_running_before_any_benchmark;
     teardown = function_running_after_any_benchmark;
+    sandbox = true;
     fixtures = "path/to/fixtures";
     run = cmd = "benchmark-tests", args = [];
 )
@@ -357,23 +349,50 @@ Although not the main purpose of `iai-callgrind`, it's possible to benchmark any
 
 The `args` argument must be specified at least once containing the arguments for the benchmarked
 `cmd`. It can be an empty array `[]` to run to the [`cmd`](#cmd-mandatory) without any arguments.
-Specifying `args` multiple times (separated by a `,`)
+Each `args` argument can optionally be named with an `id` and it is good practice to do so with a
+short and descriptive string.
+
+Specifying `args` multiple times (separated by a `,`) like so:
 
 ```rust
 main!(
-    run = cmd = "benchmark-tests", args = ["something"], args = ["other"]
+    run = cmd = "benchmark-tests",
+        id = "long", args = ["something"],
+        id = "short", args = ["other"]
 )
 ```
 
 is a short-hand for specifying [`run`](#run-mandatory) with the same [`cmd`](#cmd-mandatory),
-[`opts`](#opts-optional) and [`envs`](#envs-optional) arguments multiple times
+[`opts`](#opts-optional) and [`envs`](#envs-optional) arguments multiple times:
 
 ```rust
 main!(
-    run = cmd = "benchmark-tests", args = ["something"];
-    run = cmd = "benchmark-tests", args = ["other"]
+    run = cmd = "benchmark-tests", id = "long", args = ["something"];
+    run = cmd = "benchmark-tests", id = "short", args = ["other"]
 )
 ```
+
+The output of a bench run with ids could look like:
+
+```text
+test_bin_bench long:benchmark-tests something
+  Instructions:              322637 (No Change)
+  L1 Data Hits:              106807 (No Change)
+  L2 Hits:                      708 (No Change)
+  RAM Hits:                    3799 (No Change)
+  Total read+write:          433951 (No Change)
+  Estimated Cycles:          565949 (No Change)
+test_bin_bench short:benchmark-tests other
+  Instructions:              155637 (No Change)
+  L1 Data Hits:              106807 (No Change)
+  L2 Hits:                      708 (No Change)
+  RAM Hits:                    3799 (No Change)
+  Total read+write:          433951 (No Change)
+  Estimated Cycles:          565949 (No Change)
+```
+
+If no `ids` are specified each benchmark will be enumerated and shown with a simple number. The same
+is true for the file name of the output of callgrind.
 
 ###### `opts` (Optional)
 
@@ -392,17 +411,37 @@ Here, `env_clear(false)` specifies to keep the environment variables when runnin
 
 The currently available options are:
 
-- `env_clear`: If `true` clear the environment variables before running the benchmark (Default: `true`)
-- `current_dir`: Set the working directory of the `cmd` (Default: Unchanged)
-- `entry_point`: Per default the counting of events starts right at the start of the binary and
-stops when it finished execution. It may desirable to start the counting for example when entering
-the `main` function (but can be any function) and stop counting when leaving the `main` function of
-the executable. The `entry_point` could look like `benchmark_tests::main` for a binary with the name
-`benchmark-tests` (Note that hyphens are replaced with an underscore by `callgrind`). See also the
-documentation of
-[toggle-collect](https://valgrind.org/docs/manual/cl-manual.html#opt.toggle-collect) and
-[Limiting the range of collected
-events](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.limits)
+- `env_clear(bool)`: If `true` clear the environment variables before running the benchmark
+(Default: `true`)
+- `current_dir(path: PathBuf)`: Set the working directory of the `cmd` (Default: Unchanged). If
+running the benchmark with `sandbox = true`, and `path` is relative then this new directory must be
+contained in the `sandbox`.
+- `entry_point(&str)`: Per default the counting of events starts right at the start of the binary
+and stops when it finished execution. It may desirable to start the counting for example when
+entering the `main` function (but can be any function) and stop counting when leaving the `main`
+function of the executable. The `entry_point` could look like `benchmark_tests::main` for a binary
+with the name `benchmark-tests` (Note that hyphens are replaced with an underscore by `callgrind`).
+See also the documentation of
+[toggle-collect](https://valgrind.org/docs/manual/cl-manual.html#opt.toggle-collect) and [Limiting
+the range of collected events](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.limits)
+- `exit_with(ExitWith)`: Usually, if one benchmark exits with a non-zero exit code, the whole
+benchmark run fails and stops. If you expect the exit code of your benchmarked binary to be
+different from `0`, you can set the expected exit code with this option. This option takes an
+`ExitWith` enum:
+    - `ExitWith::Success`
+    - `ExitWith::Failure`
+    - `ExitWith::Code(i32)`
+
+For example `$ /bin/stat 'file does not exist'` exits with `1` if the path of the argument does not
+exist and specifying `ExitWith::Code(1)` (or `ExitWith::Failure`) let's the benchmark pass:
+
+```rust
+main!(
+    run = cmd = "/bin/stat",
+        opts = Options::default().exit_with(ExitWith::Code(1)),
+        args = ["file does not exist"];
+)
+```
 
 ###### `envs` (Optional)
 
@@ -433,6 +472,37 @@ main!(
 ```
 
 Pass-through environment variables are ignored if they don't exist in the root environment.
+
+##### `sandbox` (Optional)
+
+Per default, all binary benchmarks and the `before`, `after`, `setup` and `teardown` functions are
+executed in a temporary directory.
+
+```rust
+main!(
+    sandbox = true;
+    run = cmd = "benchmark-tests",
+        opts = Options::default().env_clear(false),
+        args = ["something"];
+)
+```
+
+This temporary directory will be created and selected before the
+[`before`](#before-after-setup-teardown-optional) function is run and removed after the `after`
+function has finished. The [`fixtures`](#fixtures-optional) argument let's you copy your fixtures
+into that directory, so you have access to your fixtures. If you want to access other directories
+within the benchmarked package's directory, you need to specify absolute paths or set the `sandbox`
+argument to `false`.
+
+Another reason for using a temporary directory as workspace is, that the length of the path where a
+benchmark is executed may have an influence on the benchmark results. For example, running the
+benchmark in your repository `/home/me/my/repository` and someone else's repository located under
+`/home/someone/else/repository` may produce different results only because the length of the first
+path is shorter. To run benchmarks as deterministic as possible across different systems, the length
+of the path should be the same wherever the benchmark is executed. This crate ensures this property
+by using the `tempfile` crate which creates the temporary directory in `/tmp` with a random name
+like `/tmp/.tmp12345678`. This ensures that the length of the directory will be the same on all unix
+hosts where the benchmarks are run.
 
 ##### `options` (Optional)
 
@@ -498,10 +568,15 @@ benchmark functions of [library benchmarks](#library-benchmarks).
 ##### `fixtures` (Optional)
 
 The `fixtures` argument specifies a path to a directory containing fixtures which you want to be
-available for all benchmarks and the `before`, `after`, `setup` and `teardown` functions. The
-fixtures directory will be copied as is into the workspace directory of the benchmark. Relative
-paths are interpreted relative to the benchmarked package. In a multi-package workspace this'll be
-the package name of the benchmark. Otherwise, it'll be the workspace root.
+available for all benchmarks and the `before`, `after`, `setup` and `teardown` functions. Per
+default, the fixtures directory will be copied as is into the workspace directory of the benchmark
+and following symlinks is switched off. The fixtures argument takes an additional argument
+`follow_symlinks = bool`. If set to `true` and your fixtures directory contains symlinks, these
+symlinks are resolved and instead of the symlink the target file or directory will be copied into
+the fixtures directory.
+
+Relative paths are interpreted relative to the benchmarked package. In a multi-package workspace
+this'll be the package name of the benchmark. Otherwise, it'll be the workspace root.
 
 ```rust
 main!(
@@ -512,9 +587,21 @@ main!(
 ```
 
 Here, the directory `my_fixtures` in the root of the package under test will be copied into the
-[temporary workspace](#temporary-workspace) (for example `/tmp/.tmp12345678`). So, the setup
-function `setup_my_benchmark` and the benchmark of `benchmarks-tests` can access a fixture
+[temporary workspace](#sandbox-optional) (for example `/tmp/.tmp12345678`). So,
+the setup function `setup_my_benchmark` and the benchmark of `benchmarks-tests` can access a fixture
 `test_1.txt` with a relative path like `my_fixtures/test_1.txt`
+
+An example with `follow_symlinks = true`:
+
+```rust
+main!(
+    setup = setup_my_benchmark;
+    fixtures = "my_fixtures", follow_symlinks = true;
+    run = cmd = "benchmark-tests", args = [];
+)
+```
+
+Note the `fixtures` argument will be ignored, if [`sandbox`](#sandbox-optional) is set to false.
 
 #### Examples
 
