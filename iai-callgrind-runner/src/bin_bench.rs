@@ -427,7 +427,6 @@ impl Config {
         bench_assists
     }
 
-    #[allow(clippy::too_many_lines)]
     fn from_env_args_iter(env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug) -> Self {
         let mut env_args_iter = env_args_iter.peekable();
 
