@@ -36,9 +36,16 @@ pub struct Assistant {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Args {
+    pub id: Option<String>,
+    pub args: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Run {
+    pub orig: String,
     pub cmd: String,
-    pub args: Vec<Vec<String>>,
+    pub args: Vec<Args>,
     pub opts: Option<Options>,
     pub envs: Option<Vec<String>>,
 }

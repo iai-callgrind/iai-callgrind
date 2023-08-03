@@ -16,6 +16,8 @@ use crate::{get_arch, IaiCallgrindError};
 
 #[derive(Debug)]
 struct BinBench {
+    id: String,
+    orig: String,
     command: PathBuf,
     args: Vec<String>,
     envs: Vec<(String, String)>,
@@ -23,7 +25,7 @@ struct BinBench {
 }
 
 impl BinBench {
-    fn run(&self, counter: usize, config: &Config) -> Result<(), IaiCallgrindError> {
+    fn run(&self, config: &Config) -> Result<(), IaiCallgrindError> {
         let command = CallgrindCommand::new(config.allow_aslr, &config.arch);
 
         let mut callgrind_args = config.callgrind_args.clone();
@@ -37,7 +39,7 @@ impl BinBench {
         let output = CallgrindOutput::create(
             &config.package_dir,
             &config.module,
-            &format!("{}.{}", self.sanitized_command_string(), counter),
+            &format!("{}.{}", self.id, self.sanitized_file_name()),
         );
         callgrind_args.set_output_file(&output.file.display().to_string());
 
@@ -55,18 +57,24 @@ impl BinBench {
         let old_stats = old_output.exists().then(|| old_output.parse_summary());
 
         println!(
-            "{}{}{}",
+            "{} {}{}{}",
             &config.module.green(),
-            "::".green(),
-            self.to_string().green()
+            &self.id.cyan(),
+            ":".cyan(),
+            self.to_string().blue().bold()
         );
         new_stats.print(old_stats);
         Ok(())
     }
 
-    fn sanitized_command_string(&self) -> String {
+    fn sanitized_file_name(&self) -> String {
+        let mut display_name = self.orig.clone();
+        if !self.args.is_empty() {
+            display_name.push('.');
+            display_name.push_str(&self.args.join(" "));
+        }
         sanitize_filename::sanitize_with_options(
-            self.command.display().to_string(),
+            display_name,
             SanitizerOptions {
                 windows: true,
                 truncate: true,
@@ -78,11 +86,7 @@ impl BinBench {
 
 impl Display for BinBench {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!(
-            "{} {}",
-            self.command.display(),
-            self.args.join(" ")
-        ))
+        f.write_str(&format!("{} {}", self.orig, self.args.join(" ")))
     }
 }
 
@@ -272,7 +276,9 @@ impl Config {
 
     fn parse_runs(runs: Vec<internal::Run>) -> Vec<BinBench> {
         let mut benches = vec![];
+        let mut counter: usize = 0;
         for run in runs {
+            let orig = run.orig;
             let command = PathBuf::from(run.cmd);
             let opts = run.opts;
             let envs: Option<Vec<(String, String)>> = run.envs.map(|envs| {
@@ -283,10 +289,19 @@ impl Config {
                     })
                     .collect()
             });
-            for arg in run.args {
+            for args in run.args {
+                let id = if let Some(id) = args.id {
+                    id
+                } else {
+                    let id = counter.to_string();
+                    counter += 1;
+                    id
+                };
                 benches.push(BinBench {
+                    id,
+                    orig: orig.clone(),
                     command: command.clone(),
-                    args: arg,
+                    args: args.args,
                     envs: envs
                         .as_ref()
                         .map_or_else(std::vec::Vec::new, std::clone::Clone::clone),
@@ -440,12 +455,12 @@ pub(crate) fn run(
     if let Some(before) = assists.before.as_mut() {
         before.run(&config)?;
     }
-    for (counter, bench) in config.benches.iter().enumerate() {
+    for bench in &config.benches {
         if let Some(setup) = assists.setup.as_mut() {
             setup.run(&config)?;
         }
 
-        bench.run(counter, &config)?;
+        bench.run(&config)?;
 
         if let Some(teardown) = assists.teardown.as_mut() {
             teardown.run(&config)?;

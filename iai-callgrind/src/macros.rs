@@ -68,7 +68,7 @@ macro_rules! main {
       $( run = cmd = $cmd:expr
             $(, envs = [ $( $envs:literal ),* $(,)* ] )?
             $(, opts = $opt:expr )? ,
-            $( args = [ $( $args:literal ),* $(,)* ]  ),+ $(,)*
+            $( $( id = $id:literal,)? args = [ $( $args:literal ),* $(,)* ]  ),+ $(,)*
       );+ $(;)*
     ) => {
         mod iai_wrappers {
@@ -115,7 +115,7 @@ macro_rules! main {
             cmd.arg(module_path!());
             cmd.arg(this_args.next().unwrap()); // The executable benchmark binary
 
-            use $crate::internal::{BinaryBenchmark, Fixtures, Run, Assistant};
+            use $crate::internal::{BinaryBenchmark, Fixtures, Run, Assistant, Args};
             use $crate::{Options, ExitWith};
             use $crate::bincode;
             use std::process::Stdio;
@@ -139,7 +139,8 @@ macro_rules! main {
 
             let mut runs : Vec<Run> = vec![];
             $(
-                let command : &str = option_env!(concat!("CARGO_BIN_EXE_", $cmd)).unwrap_or($cmd);
+                let orig : &str = $cmd;
+                let command : &str = option_env!(concat!("CARGO_BIN_EXE_", $cmd)).unwrap_or(orig);
                 let mut opt_arg : Option<Options> = None;
                 $(
                     opt_arg = Some($opt);
@@ -151,12 +152,21 @@ macro_rules! main {
                     env_arg = Some(envs.into_iter().map(|s| s.to_owned()).collect());
                 )?
 
-                let mut run_arg : Vec<Vec<String>> = vec![];
+                let mut run_arg : Vec<Args> = vec![];
                 $(
                     let args : Vec<&str> = vec![$($args),*];
-                    run_arg.push(args.into_iter().map(|s| s.to_owned()).collect());
+                    let mut id : Option<String> = None;
+                    $(
+                        let id_arg: &str = $id;
+                        id = Some(id_arg.to_owned());
+                    )?
+                    run_arg.push(Args {
+                        id,
+                        args: args.into_iter().map(|s| s.to_owned()).collect()
+                    });
                 )+
                 let run = Run {
+                    orig : orig.to_owned(),
                     cmd : command.to_owned(),
                     opts : opt_arg,
                     envs : env_arg,
