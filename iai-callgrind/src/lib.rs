@@ -1,7 +1,7 @@
-//! Iai-Callgrind is a high-precision and consistent benchmarking framework/harness which uses
-//! [Valgrind's Callgrind](https://valgrind.org/docs/manual/cl-manual.html) to provide extremely
-//! accurate and consistent measurements of Rust code, making it perfectly suited to run in
-//! environments like a CI.
+//! Iai-Callgrind is a benchmarking framework/harness which uses [Valgrind's
+//! Callgrind](https://valgrind.org/docs/manual/cl-manual.html) to provide extremely accurate and
+//! consistent measurements of Rust code, making it perfectly suited to run in environments like a
+//! CI.
 //!
 //! # Features
 //! - __Precision__: High-precision measurements allow you to reliably detect very small
