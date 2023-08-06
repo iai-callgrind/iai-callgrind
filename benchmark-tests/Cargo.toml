@@ -26,6 +26,10 @@ path = "src/benchmark-tests-cat.rs"
 name = "benchmark-tests-exit"
 path = "src/benchmark-tests-exit.rs"
 
+[[bin]]
+name = "benchmark-tests-echo"
+path = "src/benchmark-tests-echo.rs"
+
 [[bench]]
 name = "test_bin_bench"
 harness = false
@@ -44,4 +48,21 @@ harness = false
 
 [[bench]]
 name = "test_bin_bench_with_exit"
+harness = false
+
+[[bench]]
+name = "test_bin_bench_groups"
+harness = false
+
+[[bench]]
+name = "test_lib_bench"
+harness = false
+
+[[bench]]
+name = "test_lib_bench_with_skip_setup"
+harness = false
+
+[[bench]]
+path = "benches/subdir/test_lib_bench_in_subdir.rs"
+name = "test_lib_bench_in_subdir"
 harness = false

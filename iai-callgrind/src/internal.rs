@@ -1,57 +1,54 @@
-//! This module exists only for internal usage and does not contain structures which are directly
-//! usable in the main! macro.
-
+//! This module is only used for internal purposes and does not contain any publicly usable
+//! structs
 #![allow(missing_docs)]
 
-use serde::{Deserialize, Serialize};
+pub use iai_callgrind_runner::api::{
+    Arg as RunnerArg, Assistant as RunnerAssistant, BinaryBenchmark as RunnerBinaryBenchmark,
+    BinaryBenchmarkGroup as RunnerBinaryBenchmarkGroup, Cmd as RunnerCmd, Config as RunnerConfig,
+    ExitWith as RunnerExitWith, Fixtures as RunnerFixtures, Options as RunnerOptions,
+    Run as RunnerRun,
+};
 
-use crate::Options;
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct BinaryBenchmark {
-    pub sandbox: bool,
-    pub fixtures: Option<Fixtures>,
-    pub assists: Vec<Assistant>,
-    pub options: Vec<String>,
-    pub runs: Vec<Run>,
+#[derive(Debug, Default)]
+pub struct Config {
+    pub inner: RunnerConfig,
 }
 
-impl Default for BinaryBenchmark {
-    fn default() -> Self {
+impl From<Config> for RunnerConfig {
+    fn from(value: Config) -> Self {
+        value.inner
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct BinaryBenchmark {
+    pub inner: RunnerBinaryBenchmark,
+}
+
+impl From<BinaryBenchmark> for RunnerBinaryBenchmark {
+    fn from(value: BinaryBenchmark) -> Self {
+        value.inner
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Cmd {
+    pub inner: RunnerCmd,
+}
+
+impl Cmd {
+    pub fn new<T: AsRef<str>, U: AsRef<str>>(orig: T, cmd: U) -> Self {
         Self {
-            sandbox: true,
-            fixtures: Option::default(),
-            assists: Vec::default(),
-            options: Vec::default(),
-            runs: Vec::default(),
+            inner: RunnerCmd {
+                display: orig.as_ref().to_owned(),
+                cmd: cmd.as_ref().to_owned(),
+            },
         }
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Assistant {
-    pub id: String,
-    pub name: String,
-    pub bench: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Args {
-    pub id: Option<String>,
-    pub args: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Run {
-    pub orig: String,
-    pub cmd: String,
-    pub args: Vec<Args>,
-    pub opts: Option<Options>,
-    pub envs: Option<Vec<String>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Fixtures {
-    pub path: String,
-    pub follow_symlinks: bool,
+impl From<Cmd> for RunnerCmd {
+    fn from(value: Cmd) -> Self {
+        value.inner
+    }
 }

@@ -6,10 +6,10 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
 use colored::{ColoredString, Colorize};
-use iai_callgrind::{ExitWith, Options};
 use log::{debug, error, info, trace, warn, Level};
 use which::which;
 
+use crate::api::{ExitWith, Options};
 use crate::util::{
     bool_to_yesno, concat_os_string, join_os_string, write_all_to_stderr, write_all_to_stdout,
     yesno_to_bool,
@@ -97,7 +97,7 @@ impl CallgrindCommand {
         self,
         callgrind_args: &CallgrindArgs,
         executable: &Path,
-        executable_args: Vec<String>,
+        executable_args: &[OsString],
         envs: Vec<(String, String)>,
         options: &Options,
     ) -> Result<(), IaiCallgrindError> {
@@ -178,7 +178,7 @@ impl CallgrindOutput {
         let current = base_dir;
         let target = PathBuf::from("target/iai");
         let module_path: PathBuf = module.split("::").collect();
-        let file_name = PathBuf::from(format!("callgrind.{name}.out"));
+        let file_name = PathBuf::from(format!("callgrind.{name}.out",));
 
         let file = current.join(target).join(module_path).join(file_name);
         let output = Self { file };
@@ -457,8 +457,8 @@ impl CallgrindArgs {
         self
     }
 
-    pub fn set_output_file(&mut self, arg: &str) -> &mut Self {
-        self.callgrind_out_file = Some(PathBuf::from(arg));
+    pub fn set_output_file<T: AsRef<Path>>(&mut self, arg: T) -> &mut Self {
+        self.callgrind_out_file = Some(arg.as_ref().to_owned());
         self
     }
 

@@ -2,9 +2,9 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use colored::Colorize;
-use iai_callgrind::Options;
 use log::debug;
 
+use crate::api::Options;
 use crate::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput};
 use crate::{get_arch, IaiCallgrindError};
 
@@ -72,22 +72,22 @@ pub(crate) fn run(
     for (index, function_name) in config.benches.iter().enumerate() {
         let command = CallgrindCommand::new(config.allow_aslr, &config.arch);
         let args = vec![
-            "--iai-run".to_owned(),
-            index.to_string(),
-            format!("{}::{}", config.module, function_name),
+            OsString::from("--iai-run".to_owned()),
+            OsString::from(index.to_string()),
+            OsString::from(format!("{}::{}", config.module, function_name)),
         ];
         let mut callgrind_args = config.callgrind_args.clone();
         callgrind_args.insert_toggle_collect(&format!("*{}::{}", &config.module, function_name));
 
         let output = CallgrindOutput::create(&config.package_dir, &config.module, function_name);
         callgrind_args.set_output_file(&output.file.display().to_string());
-        command.run(
-            &callgrind_args,
-            &config.executable,
-            args,
-            vec![],
-            &Options::default().env_clear(false),
-        )?;
+
+        let options = Options {
+            env_clear: false,
+            ..Default::default()
+        };
+
+        command.run(&callgrind_args, &config.executable, &args, vec![], &options)?;
 
         let new_stats = output.parse(&config.bench_file, &config.module, function_name);
 

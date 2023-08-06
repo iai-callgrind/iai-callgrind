@@ -15,6 +15,11 @@ license = "Apache-2.0 AND MIT"
 keywords = ["iai", "benchmark", "callgrind", "valgrind"]
 categories = ["development-tools::profiling", "development-tools::testing"]
 
+[features]
+default = ["runner", "api"]
+runner = []
+api = []
+
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]
 
@@ -24,30 +29,14 @@ env_logger = "<=0.9.3"
 colored = "<=2.0.0"
 version-compare = "0.1.1"
 sanitize-filename = "0.5.0"
-iai-callgrind = { path = "../iai-callgrind", version = "=0.5.0" }
 which = "4.4.0"
 tempfile = "<=3.6.0"
 bincode = "1.3.3"
-serde = "1.0.177"
-
-[dev-dependencies]
-iai-callgrind = { path = "../iai-callgrind", version = "=0.5.0" }
+serde = { version = "1.0.177", features = ["derive"] }
+shlex = { version = "1.1.0" }
 
 [[bin]]
 name = "iai-callgrind-runner"
 path = "src/main.rs"
 test = true
 bench = true
-
-[[bench]]
-name = "test_regular_bench"
-harness = false
-
-[[bench]]
-name = "test_with_skip_setup"
-harness = false
-
-[[bench]]
-path = "benches/subdir/test_subdir_bench.rs"
-name = "test_subdir_bench"
-harness = false
