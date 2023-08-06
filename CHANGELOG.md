@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+* Benchmarking binaries of a crate. Add full description this benchmarking scheme in the README (#2)
+* IAI_CALLGRIND_RUNNER environment variable which may specify the path to the iai-callgrind-runner
+binary
+
+### Changed
+
+* The error output changed and double information was removed when running the
+`iai-callgrind-runner` fails
+* The architecture detection changed from using `uname -m` to use rust's `std::env::consts::ARCH`
+
+### Removed
+
+* The cfg_if dependency was removed
+
+### Fixed
+
+* If running with ASLR disabled, proccontrol on freebsd was missing to run the valgrind binary
+
 ### [0.4.0] - 2023-07-19
 
 BREAKING: Counting of events changed and therefore event counters are incompatible with versions
@@ -19,7 +39,7 @@ before `0.4.0`. Usually, event counters are now lower and more precise than befo
 * MSRV changed from v1.56.0 -> v1.60.0
 * Bump log dependency 0.4.17 -> 0.4.19
 
-### Fixes
+### Fixed
 
 * Counting of events was sometimes summarizing the events of the `main` function instead of the
 benchmarking function
@@ -30,7 +50,7 @@ benchmarking function
 
 * Add output of Callgrind at `RUST_LOG=info` level but also more debug and trace output.
 
-### Fixes
+### Fixed
 
 * The version mismatch check should cause an error when the library version is < 0.3.0
 
@@ -55,7 +75,7 @@ callgrind.
 * Use the `RUST_LOG` environment variable to control the verbosity level of the runner.
 * Add colored output. The `CARGO_TERM_COLOR` variable can be used to disable colors.
 
-### Fixes
+### Fixed
 
 * A cargo filter argument which is a positional argument resulted in the the runner to crash.
 

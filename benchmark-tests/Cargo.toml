@@ -1,0 +1,47 @@
+[package]
+name = "benchmark-tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+authors = ["Joining7943 <joining@posteo.de>"]
+rust-version = "1.60.0"
+description = "Tests for iai-callgrind"
+readme = "../README.md"
+homepage = "https://github.com/Joining7943/iai-callgrind"
+repository = "https://github.com/Joining7943/iai-callgrind"
+license = "Apache-2.0 AND MIT"
+
+[dependencies]
+iai-callgrind = { path = "../iai-callgrind" }
+
+[[bin]]
+name = "benchmark-tests-printenv"
+path = "src/benchmark-tests-printenv.rs"
+
+[[bin]]
+name = "benchmark-tests-cat"
+path = "src/benchmark-tests-cat.rs"
+
+[[bin]]
+name = "benchmark-tests-exit"
+path = "src/benchmark-tests-exit.rs"
+
+[[bench]]
+name = "test_bin_bench"
+harness = false
+
+[[bench]]
+name = "test_bin_bench_with_fixtures"
+harness = false
+
+[[bench]]
+name = "test_bin_bench_with_fixtures_symlinks"
+harness = false
+
+[[bench]]
+name = "test_bin_bench_with_envs"
+harness = false
+
+[[bench]]
+name = "test_bin_bench_with_exit"
+harness = false
