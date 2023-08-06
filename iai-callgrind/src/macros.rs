@@ -115,13 +115,7 @@ macro_rules! main {
             cmd.arg(module_path!());
             cmd.arg(this_args.next().unwrap()); // The executable benchmark binary
 
-            use $crate::internal::{BinaryBenchmark, Fixtures, Run, Assistant, Args};
-            use $crate::{Options, ExitWith};
-            use $crate::bincode;
-            use std::process::Stdio;
-            use std::io::Write;
-
-            let mut benchmark = BinaryBenchmark::default();
+            let mut benchmark = $crate::internal::BinaryBenchmark::default();
             $(
                 benchmark.sandbox = $sandbox;
             )?
@@ -132,16 +126,16 @@ macro_rules! main {
                 $(
                     follow_symlinks = $follow_symlinks;
                 )?
-                benchmark.fixtures = Some(Fixtures {
+                benchmark.fixtures = Some($crate::internal::Fixtures {
                     path: path.to_owned(), follow_symlinks
                 });
             )?
 
-            let mut runs : Vec<Run> = vec![];
+            let mut runs : Vec<$crate::internal::Run> = vec![];
             $(
                 let orig : &str = $cmd;
                 let command : &str = option_env!(concat!("CARGO_BIN_EXE_", $cmd)).unwrap_or(orig);
-                let mut opt_arg : Option<Options> = None;
+                let mut opt_arg : Option<$crate::Options> = None;
                 $(
                     opt_arg = Some($opt);
                 )?
@@ -152,7 +146,7 @@ macro_rules! main {
                     env_arg = Some(envs.into_iter().map(|s| s.to_owned()).collect());
                 )?
 
-                let mut run_arg : Vec<Args> = vec![];
+                let mut run_arg : Vec<$crate::internal::Args> = vec![];
                 $(
                     let args : Vec<&str> = vec![$($args),*];
                     let mut id : Option<String> = None;
@@ -160,12 +154,12 @@ macro_rules! main {
                         let id_arg: &str = $id;
                         id = Some(id_arg.to_owned());
                     )?
-                    run_arg.push(Args {
+                    run_arg.push($crate::internal::Args {
                         id,
                         args: args.into_iter().map(|s| s.to_owned()).collect()
                     });
                 )+
-                let run = Run {
+                let run = $crate::internal::Run {
                     orig : orig.to_owned(),
                     cmd : command.to_owned(),
                     opts : opt_arg,
@@ -176,13 +170,13 @@ macro_rules! main {
             )+
             benchmark.runs = runs;
 
-            let mut assists : Vec<Assistant> = vec![];
+            let mut assists : Vec<$crate::internal::Assistant> = vec![];
             $(
                 let mut bench_before = false;
                 $(
                     bench_before = $bench_before;
                 )?
-                assists.push(Assistant {
+                assists.push($crate::internal::Assistant {
                     id: "before".to_owned(),
                     name: stringify!($before).to_owned(),
                     bench: bench_before
@@ -193,7 +187,7 @@ macro_rules! main {
                 $(
                     bench_after = $bench_after;
                 )?
-                assists.push(Assistant {
+                assists.push($crate::internal::Assistant {
                     id: "after".to_owned(),
                     name: stringify!($after).to_owned(),
                     bench: bench_after
@@ -204,7 +198,7 @@ macro_rules! main {
                 $(
                     bench_setup = $bench_setup;
                 )?
-                assists.push(Assistant {
+                assists.push($crate::internal::Assistant {
                     id: "setup".to_owned(),
                     name: stringify!($setup).to_owned(),
                     bench: bench_setup
@@ -215,7 +209,7 @@ macro_rules! main {
                 $(
                     bench_teardown = $bench_teardown;
                 )?
-                assists.push(Assistant {
+                assists.push($crate::internal::Assistant {
                     id: "teardown".to_owned(),
                     name: stringify!($teardown).to_owned(),
                     bench: bench_teardown
@@ -239,10 +233,10 @@ macro_rules! main {
             args.extend(this_args); // The rest of the arguments from the command line
             benchmark.options = args;
 
-            let encoded = bincode::serialize(&benchmark).expect("Encoded benchmark");
+            let encoded = $crate::bincode::serialize(&benchmark).expect("Encoded benchmark");
             let mut child = cmd
                 .arg(encoded.len().to_string())
-                .stdin(Stdio::piped())
+                .stdin(std::process::Stdio::piped())
                 .spawn()
                 .expect("Failed to run benchmarks. \
                     Is iai-callgrind-runner installed and iai-callgrind-runner in your $PATH?. \
@@ -251,6 +245,7 @@ macro_rules! main {
 
             let mut stdin = child.stdin.take().expect("Opening stdin to submit encoded benchmark");
             std::thread::spawn(move || {
+                use std::io::Write;
                 stdin.write_all(&encoded).expect("Writing encoded benchmark to stdin");
             });
 

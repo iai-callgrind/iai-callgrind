@@ -1,4 +1,4 @@
-use iai_callgrind::main;
+use iai_callgrind::{main, ExitWith, Options};
 
 main!(
     run = cmd = "benchmark-tests-exit",

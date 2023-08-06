@@ -1,4 +1,4 @@
-use iai_callgrind::main;
+use iai_callgrind::{main, Options};
 
 #[export_name = "__iai::printenv"]
 #[inline(never)]
