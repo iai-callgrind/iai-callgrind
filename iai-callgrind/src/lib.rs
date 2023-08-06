@@ -53,8 +53,7 @@
 #![allow(clippy::enum_glob_use)]
 #![allow(clippy::module_name_repetitions)]
 
-pub use bincode;
-pub use serde::{Deserialize, Serialize};
+pub use {bincode, serde};
 
 pub mod internal;
 mod macros;
@@ -91,7 +90,7 @@ pub fn black_box<T>(dummy: T) -> T {
 ///        args = ["file does not exist"];
 /// );
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum ExitWith {
     /// Exit with success is similar to `ExitCode(0)`
     Success,
@@ -102,7 +101,7 @@ pub enum ExitWith {
 }
 
 /// The `Options`, applied to each benchmark `run` of a benchmarked binary
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Options {
     /// If false, don't clear the environment variables of a benchmarked binary (Default: true)
     pub env_clear: bool,
