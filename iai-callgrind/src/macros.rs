@@ -1,22 +1,12 @@
 //! Contains macros which together define a benchmark harness that can be used in place of the
 //! standard benchmark harness. This allows the user to run Iai benchmarks with `cargo bench`.
 
-/// Macro which expands to a benchmark harness.
+/// The `iai_callgrind::main` macro expands to a `main` function which runs all of the benchmarks.
 ///
-/// This macro has two forms:
+/// This macro is completely documented in the
+/// [README](https://github.com/Joining7943/iai-callgrind/) of `iai-callgrind`
 ///
-/// ```ignore
-/// main!(func1, func2)
-/// ```
-///
-/// or
-///
-/// ```ignore
-/// main!(
-///     callgrind_args = "--arg-with-flags=yes", "arg-without-flags=is_ok_too"
-///     functions = func1, func2
-/// )
-/// ```
+/// Here in short:
 ///
 /// Using Iai-callgrind requires disabling the benchmark harness generated automatically by rustc.
 /// This can be done like so:
@@ -38,24 +28,45 @@
 ///
 /// `benches/my_bench.rs`
 ///
-/// Since we've disabled the default benchmark harness, we need to add our own:
+/// # Library Benchmarks
+///
+/// This macro has two forms for library benchmarks:
 ///
 /// ```ignore
-/// use iai_callgrind::main;
-///
-/// // `#[inline(never)]` is important! Without it there won't be any metrics
-/// #[inline(never)]
-/// fn bench_method1() {
-/// }
-///
-/// #[inline(never)]
-/// fn bench_method2() {
-/// }
-///
-/// main!(bench_method1, bench_method2);
+/// main!(func1, func2)
 /// ```
 ///
-/// The `iai_callgrind::main` macro expands to a `main` function which runs all of the benchmarks.
+/// or
+///
+/// ```ignore
+/// main!(
+///     callgrind_args = "--arg-with-flags=yes", "arg-without-flags=is_ok_too"
+///     functions = func1, func2
+/// )
+/// ```
+///
+/// For a full description of library benchmarks see the [README#Library
+/// Benchmarks](https://github.com/Joining7943/iai-callgrind#library-benchmarks)
+///
+/// # Binary Benchmarks
+///
+/// The main macro for binary benchmarks allows the following top-level arguments:
+///
+/// ```rust,ignore
+/// iai_callgrind::main!(
+///    options = "--callgrind-argument=yes";
+///    before = function_running_before_all_benchmarks;
+///    after = function_running_after_all_benchmarks;
+///    setup = function_running_before_any_benchmark;
+///    teardown = function_running_after_any_benchmark;
+///    sandbox = true;
+///    fixtures = "path/to/fixtures";
+///    run = cmd = "benchmark-tests", args = [];
+/// )
+/// ```
+///
+/// For a full description of binary benchmarks see the
+/// [README#Binary Benchmarks](https://github.com/Joining7943/iai-callgrind#binary-benchmarks)
 #[macro_export]
 macro_rules! main {
     ( $( options = $( $options:literal ),+ $(,)*; )?
