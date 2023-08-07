@@ -36,7 +36,6 @@ improvements and features.
 
 - [Table of Contents](#table-of-contents)
     - [Features](#features)
-    - [Update notes](#update-notes)
     - [Installation](#installation)
     - [Benchmarking](#benchmarking)
         - [Library Benchmarks](#library-benchmarks)
@@ -63,11 +62,6 @@ or the visualizer [kcachegrind](https://kcachegrind.github.io/html/Home.html) to
 in detail
 - __Stable-compatible__: Benchmark your code without installing nightly Rust
 
-### Update notes
-
-Breaking change in `0.4.0`: In an effort to create more accurate event counts, the way of counting
-events changed and may produce different results. See also [CHANGELOG](CHANGELOG.md)
-
 ### Installation
 
 In order to use Iai-Callgrind, you must have [Valgrind](https://www.valgrind.org) installed. This
@@ -77,14 +71,14 @@ To start with Iai-Callgrind, add the following to your `Cargo.toml` file:
 
 ```toml
 [dev-dependencies]
-iai-callgrind = "0.4.0"
+iai-callgrind = "0.5.0"
 ```
 
 To be able to run the benchmarks you'll also need the `iai-callgrind-runner` binary installed
 somewhere in your `$PATH`, for example with
 
 ```shell
-cargo install --version 0.4.0 iai-callgrind-runner
+cargo install --version 0.5.0 iai-callgrind-runner
 ```
 
 There's also the possibility to install the binary somewhere else and point the
@@ -92,7 +86,7 @@ There's also the possibility to install the binary somewhere else and point the
 binary like so:
 
 ```shell
-cargo install --version 0.4.0 --root /tmp iai-callgrind-runner
+cargo install --version 0.5.0 --root /tmp iai-callgrind-runner
 IAI_CALLGRIND_RUNNER=/tmp/bin/iai-callgrind-runner cargo bench --bench my-bench
 ```
 

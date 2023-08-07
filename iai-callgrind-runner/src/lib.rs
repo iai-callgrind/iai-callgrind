@@ -3,7 +3,6 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![doc(test(attr(warn(unused))))]
 #![doc(test(attr(allow(unused_extern_crates))))]
-#![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![warn(clippy::default_numeric_fallback)]
 #![warn(clippy::else_if_without_else)]
@@ -23,6 +22,9 @@
 #![allow(clippy::return_self_not_must_use)]
 #![allow(clippy::enum_glob_use)]
 #![allow(clippy::module_name_repetitions)]
+#![allow(missing_docs)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::missing_errors_doc)]
 
 mod bin_bench;
 mod callgrind;
@@ -40,15 +42,6 @@ fn get_arch() -> String {
     std::env::consts::ARCH.to_owned()
 }
 
-/// TODO: DOCUMENT
-///
-/// # Panics
-///
-/// Panics if .
-///
-/// # Errors
-///
-/// This function will return an error if .
 pub fn run() -> Result<(), IaiCallgrindError> {
     let mut args_iter = std::env::args_os();
 
