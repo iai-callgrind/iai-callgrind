@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### [0.5.0] - 2023-08-07
+
 ### Added
 
-* Benchmarking binaries of a crate. Add full description this benchmarking scheme in the README (#2)
+* (#2) Benchmarking binaries of a crate. Add full description of this benchmarking scheme in the
+README
 * IAI_CALLGRIND_RUNNER environment variable which may specify the path to the iai-callgrind-runner
 binary
 
