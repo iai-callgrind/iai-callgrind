@@ -49,11 +49,6 @@ fn trim(bytes: &[u8]) -> &[u8] {
     &bytes[from..=to]
 }
 
-/// TODO: DOCUMENT
-///
-/// # Panics
-///
-/// Panics if .
 pub fn write_all_to_stdout(bytes: &[u8]) {
     let stdout = io::stdout();
     let stdout = stdout.lock();
@@ -65,11 +60,6 @@ pub fn write_all_to_stdout(bytes: &[u8]) {
     println!();
 }
 
-/// TODO: DOCUMENT
-///
-/// # Panics
-///
-/// Panics if .
 pub fn write_all_to_stderr(bytes: &[u8]) {
     let stderr = io::stderr();
     let stderr = stderr.lock();

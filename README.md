@@ -36,7 +36,6 @@ improvements and features.
 
 - [Table of Contents](#table-of-contents)
     - [Features](#features)
-    - [Update notes](#update-notes)
     - [Installation](#installation)
     - [Benchmarking](#benchmarking)
         - [Library Benchmarks](#library-benchmarks)
