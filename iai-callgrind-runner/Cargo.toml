@@ -23,7 +23,7 @@ log = "0.4.19"
 env_logger = "<=0.9.3"
 colored = "<=2.0.0"
 version-compare = "0.1.1"
-sanitize-filename = "0.4.0"
+sanitize-filename = "0.5.0"
 iai-callgrind = { path = "../iai-callgrind", version = "=0.5.0" }
 which = "4.4.0"
 tempfile = "<=3.6.0"
