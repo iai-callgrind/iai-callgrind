@@ -83,10 +83,10 @@
 /// )
 /// ```
 ///
-/// Here, `benchmark-tests` is an example of the name of the binary of a crate and it is assumed that
-/// the `function_running_before_all_benchmarks` ... functions are defined somewhere in the same file of
-/// the `main` macro. All top-level arguments must be separated by a `;`. However, only `run` is
-/// mandatory. All other top-level arguments (like `options`, `setup` etc.) are optional.
+/// Here, `benchmark-tests` is an example of the name of the binary of a crate and it is assumed
+/// that the `function_running_before_all_benchmarks` ... functions are defined somewhere in the
+/// same file of the `main` macro. All top-level arguments must be separated by a `;`. However, only
+/// `run` is mandatory. All other top-level arguments (like `options`, `setup` etc.) are optional.
 ///
 /// ##### `run` (Mandatory)
 ///
@@ -97,18 +97,18 @@
 ///
 /// This argument is allowed only once and specifies the name of one of the executables of the
 /// benchmarked crate. The path of the executable is discovered automatically, so the name of the
-/// `[[bin]]` as specified in the crate's `Cargo.toml` file is sufficient. The auto discovery supports
-/// running the benchmarks with different profiles.
+/// `[[bin]]` as specified in the crate's `Cargo.toml` file is sufficient. The auto discovery
+/// supports running the benchmarks with different profiles.
 ///
-/// Although not the main purpose of `iai-callgrind`, it's possible to benchmark any executable in the
-/// `PATH` or specified with an absolute path.
+/// Although not the main purpose of `iai-callgrind`, it's possible to benchmark any executable in
+/// the `PATH` or specified with an absolute path.
 ///
 /// ###### `args` (Mandatory)
 ///
 /// The `args` argument must be specified at least once containing the arguments for the benchmarked
-/// `cmd`. It can be an empty array `[]` to run to the [`cmd`](#cmd-mandatory) without any arguments.
-/// Each `args` argument can optionally be named with an `id` and it is good practice to do so with a
-/// short and descriptive string.
+/// `cmd`. It can be an empty array `[]` to run to the [`cmd`](#cmd-mandatory) without any
+/// arguments. Each `args` argument can optionally be named with an `id` and it is good practice to
+/// do so with a short and descriptive string.
 ///
 /// Specifying `args` multiple times (separated by a `,`) like so:
 ///
@@ -149,8 +149,8 @@
 ///   Estimated Cycles:          565949 (No Change)
 /// ```
 ///
-/// If no `ids` are specified each benchmark will be enumerated and shown with a simple number. The same
-/// is true for the file name of the output of callgrind.
+/// If no `ids` are specified each benchmark will be enumerated and shown with a simple number. The
+/// same is true for the file name of the output of callgrind.
 ///
 /// ###### `opts` (Optional)
 ///
@@ -172,14 +172,15 @@
 /// - `env_clear(bool)`: If `true` clear the environment variables before running the benchmark
 /// (Default: `true`)
 /// - `current_dir(path: PathBuf)`: Set the working directory of the `cmd` (Default: Unchanged). If
-/// running the benchmark with `sandbox = true`, and `path` is relative then this new directory must be
-/// contained in the `sandbox`.
-/// - `entry_point(&str)`: Per default the counting of events starts right at the start of the binary
+/// running the benchmark with `sandbox = true`, and `path` is relative then this new directory must
+/// be contained in the `sandbox`.
+/// - `entry_point(&str)`: Per default the counting of events starts right at the start of the
+///   binary
 /// and stops when it finished execution. It may desirable to start the counting for example when
 /// entering the `main` function (but can be any function) and stop counting when leaving the `main`
-/// function of the executable. The `entry_point` could look like `benchmark_tests::main` for a binary
-/// with the name `benchmark-tests` (Note that hyphens are replaced with an underscore by `callgrind`).
-/// See also the documentation of
+/// function of the executable. The `entry_point` could look like `benchmark_tests::main` for a
+/// binary with the name `benchmark-tests` (Note that hyphens are replaced with an underscore by
+/// `callgrind`). See also the documentation of
 /// [toggle-collect](https://valgrind.org/docs/manual/cl-manual.html#opt.toggle-collect) and [Limiting
 /// the range of collected events](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.limits)
 /// - `exit_with(ExitWith)`: Usually, if one benchmark exits with a non-zero exit code, the whole
@@ -190,8 +191,8 @@
 ///     - `ExitWith::Failure`
 ///     - `ExitWith::Code(i32)`
 ///
-/// For example `$ /bin/stat 'file does not exist'` exits with `1` if the path of the argument does not
-/// exist and specifying `ExitWith::Code(1)` (or `ExitWith::Failure`) let's the benchmark pass:
+/// For example `$ /bin/stat 'file does not exist'` exits with `1` if the path of the argument does
+/// not exist and specifying `ExitWith::Code(1)` (or `ExitWith::Failure`) let's the benchmark pass:
 ///
 /// ```rust,ignore
 /// main!(
@@ -203,9 +204,9 @@
 ///
 /// ###### `envs` (Optional)
 ///
-/// `envs` may be used to set environment variables available in the `cmd`. This argument is optional
-/// and can be specified once for every [`cmd`](#cmd-mandatory). There must be at least one `KEY=VALUE`
-/// pair or `KEY` present in the array:
+/// `envs` may be used to set environment variables available in the `cmd`. This argument is
+/// optional and can be specified once for every [`cmd`](#cmd-mandatory). There must be at least one
+/// `KEY=VALUE` pair or `KEY` present in the array:
 ///
 /// ```rust,ignore
 /// main!(
@@ -216,9 +217,9 @@
 /// ```
 ///
 /// Environment variables specified in the `envs` array are usually `KEY=VALUE` pairs. But, if
-/// `env_clear` is true (what is the default), single `KEY`s are environment variables to pass-through
-/// to the `cmd`. The following will pass-through the `PATH` variable although the environment is
-/// cleared (here given explicitly with the `Options` although it is the default)
+/// `env_clear` is true (what is the default), single `KEY`s are environment variables to
+/// pass-through to the `cmd`. The following will pass-through the `PATH` variable although the
+/// environment is cleared (here given explicitly with the `Options` although it is the default)
 ///
 /// ```rust,ignore
 /// main!(
@@ -233,8 +234,8 @@
 ///
 /// ##### `sandbox` (Optional)
 ///
-/// Per default, all binary benchmarks and the `before`, `after`, `setup` and `teardown` functions are
-/// executed in a temporary directory.
+/// Per default, all binary benchmarks and the `before`, `after`, `setup` and `teardown` functions
+/// are executed in a temporary directory.
 ///
 /// ```rust,ignore
 /// main!(
@@ -247,25 +248,26 @@
 ///
 /// This temporary directory will be created and selected before the
 /// [`before`](#before-after-setup-teardown-optional) function is run and removed after the `after`
-/// function has finished. The [`fixtures`](#fixtures-optional) argument let's you copy your fixtures
-/// into that directory, so you have access to your fixtures. If you want to access other directories
-/// within the benchmarked package's directory, you need to specify absolute paths or set the `sandbox`
-/// argument to `false`.
+/// function has finished. The [`fixtures`](#fixtures-optional) argument let's you copy your
+/// fixtures into that directory, so you have access to your fixtures. If you want to access other
+/// directories within the benchmarked package's directory, you need to specify absolute paths or
+/// set the `sandbox` argument to `false`.
 ///
-/// Another reason for using a temporary directory as workspace is, that the length of the path where a
-/// benchmark is executed may have an influence on the benchmark results. For example, running the
-/// benchmark in your repository `/home/me/my/repository` and someone else's repository located under
-/// `/home/someone/else/repository` may produce different results only because the length of the first
-/// path is shorter. To run benchmarks as deterministic as possible across different systems, the length
-/// of the path should be the same wherever the benchmark is executed. This crate ensures this property
-/// by using the `tempfile` crate which creates the temporary directory in `/tmp` with a random name
-/// like `/tmp/.tmp12345678`. This ensures that the length of the directory will be the same on all unix
-/// hosts where the benchmarks are run.
+/// Another reason for using a temporary directory as workspace is, that the length of the path
+/// where a benchmark is executed may have an influence on the benchmark results. For example,
+/// running the benchmark in your repository `/home/me/my/repository` and someone else's repository
+/// located under `/home/someone/else/repository` may produce different results only because the
+/// length of the first path is shorter. To run benchmarks as deterministic as possible across
+/// different systems, the length of the path should be the same wherever the benchmark is executed.
+/// This crate ensures this property by using the `tempfile` crate which creates the temporary
+/// directory in `/tmp` with a random name like `/tmp/.tmp12345678`. This ensures that the length of
+/// the directory will be the same on all unix hosts where the benchmarks are run.
 ///
 /// ##### `options` (Optional)
 ///
-/// A `,` separated list of strings which contain options for all `callgrind` invocations and therefore
-/// benchmarked `cmd`s (Including benchmarked `before`, `after`, `setup` and `teardown` functions).
+/// A `,` separated list of strings which contain options for all `callgrind` invocations and
+/// therefore benchmarked `cmd`s (Including benchmarked `before`, `after`, `setup` and `teardown`
+/// functions).
 ///
 /// ```rust,ignore
 /// main!(
@@ -274,14 +276,15 @@
 /// )
 /// ```
 ///
-/// See also [Passing arguments to callgrind](#passing-arguments-to-callgrind) and the documentation of
-/// [Callgrind](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options)
+/// See also [Passing arguments to callgrind](#passing-arguments-to-callgrind) and the documentation
+/// of [Callgrind](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options)
 ///
 /// ##### `before`, `after`, `setup`, `teardown` (Optional)
 ///
 /// Each of the `before`, `after`, `setup` and `teardown` top-level arguments is optional. If given,
-/// this argument must specify a function of the benchmark file. These functions are meant to setup and
-/// cleanup the benchmarks. Each function is invoked at a different stage of the benchmarking process.
+/// this argument must specify a function of the benchmark file. These functions are meant to setup
+/// and cleanup the benchmarks. Each function is invoked at a different stage of the benchmarking
+/// process.
 ///
 /// - `before`: This function is run once before all benchmarked `cmd`s
 /// - `after`: This function is run once after all benchmarked `cmd`s
@@ -308,8 +311,8 @@
 /// )
 /// ```
 ///
-/// Per default, these functions are not benchmarked, but this behavior can be changed by specifying the
-/// optional `bench` argument with a value of `true` after the function name.
+/// Per default, these functions are not benchmarked, but this behavior can be changed by specifying
+/// the optional `bench` argument with a value of `true` after the function name.
 ///
 /// ```rust,ignore
 /// main!(
@@ -320,18 +323,18 @@
 ///
 /// Note that `setup` and `teardown` functions are benchmarked only once the first time they are
 /// invoked, much like the `before` and `after` functions. However, these functions are run as usual
-/// before or after any benchmark. Benchmarked `before`, `after` etc. functions follow the same rules as
-/// benchmark functions of [library benchmarks](#library-benchmarks).
+/// before or after any benchmark. Benchmarked `before`, `after` etc. functions follow the same
+/// rules as benchmark functions of [library benchmarks](#library-benchmarks).
 ///
 /// ##### `fixtures` (Optional)
 ///
 /// The `fixtures` argument specifies a path to a directory containing fixtures which you want to be
 /// available for all benchmarks and the `before`, `after`, `setup` and `teardown` functions. Per
-/// default, the fixtures directory will be copied as is into the workspace directory of the benchmark
-/// and following symlinks is switched off. The fixtures argument takes an additional argument
-/// `follow_symlinks = bool`. If set to `true` and your fixtures directory contains symlinks, these
-/// symlinks are resolved and instead of the symlink the target file or directory will be copied into
-/// the fixtures directory.
+/// default, the fixtures directory will be copied as is into the workspace directory of the
+/// benchmark and following symlinks is switched off. The fixtures argument takes an additional
+/// argument `follow_symlinks = bool`. If set to `true` and your fixtures directory contains
+/// symlinks, these symlinks are resolved and instead of the symlink the target file or directory
+/// will be copied into the fixtures directory.
 ///
 /// Relative paths are interpreted relative to the benchmarked package. In a multi-package workspace
 /// this'll be the package name of the benchmark. Otherwise, it'll be the workspace root.
@@ -346,8 +349,8 @@
 ///
 /// Here, the directory `my_fixtures` in the root of the package under test will be copied into the
 /// [temporary workspace](#sandbox-optional) (for example `/tmp/.tmp12345678`). So,
-/// the setup function `setup_my_benchmark` and the benchmark of `benchmarks-tests` can access a fixture
-/// `test_1.txt` with a relative path like `my_fixtures/test_1.txt`
+/// the setup function `setup_my_benchmark` and the benchmark of `benchmarks-tests` can access a
+/// fixture `test_1.txt` with a relative path like `my_fixtures/test_1.txt`
 ///
 /// An example with `follow_symlinks = true`:
 ///
@@ -877,7 +880,10 @@ macro_rules! main {
 /// benchmark = |group: &mut BinaryBenchmarkGroup| {
 ///     // Usually, you should use `env!("CARGO_BIN_EXE_my-exe")` instead of an absolute path to a
 ///     // crate's binary
-///     group.bench(Run::with_cmd("/path/to/my-exe", Arg::new("some id", &["--foo=bar"])))
+///     group.bench(Run::with_cmd(
+///         "/path/to/my-exe",
+///         Arg::new("some id", &["--foo=bar"]),
+///     ))
 /// }
 /// # );
 /// # fn main() {
@@ -946,7 +952,9 @@ macro_rules! binary_benchmark_group {
             }
 
             #[inline(never)]
-            pub fn $name($group: &mut $crate::BinaryBenchmarkGroup) -> (Option<$crate::internal::RunnerCmd>, Vec<$crate::internal::RunnerAssistant>) {
+            pub fn $name($group: &mut $crate::BinaryBenchmarkGroup) ->
+                (Option<$crate::internal::RunnerCmd>, Vec<$crate::internal::RunnerAssistant>)
+            {
                 let cmd: &str = $cmd;
                 let cmd = (!cmd.is_empty()).then(|| $crate::internal::RunnerCmd {
                         display: cmd.to_owned(),
