@@ -409,7 +409,7 @@ binary_benchmark_group!(
 
 #### Examples
 
-See the [test_bin_bench_group](benchmark-tests/benches/test_bin_bench_group.rs) benchmark file of
+See the [test_bin_bench_groups](benchmark-tests/benches/test_bin_bench_groups.rs) benchmark file of
 this project for a working example.
 
 ### Features and differences to Iai
