@@ -23,13 +23,42 @@
 ///
 /// # Library Benchmarks
 ///
-/// This macro has two forms for library benchmarks:
+/// The [`crate::main`] macro has two forms to run library benchmarks:
 ///
 /// ```ignore
-/// main!(func1, func2)
+/// main!(func1, func2, ...);
 /// ```
 ///
-/// or
+/// which let's you specify benchmarking functions (func1, func2, ...) which are functions within
+/// the same file like so:
+///
+/// ```rust
+/// use iai_callgrind::{black_box, main};
+///
+/// fn fibonacci(n: u64) -> u64 {
+///     match n {
+///         0 => 1,
+///         1 => 1,
+///         n => fibonacci(n - 1) + fibonacci(n - 2),
+///     }
+/// }
+///
+/// #[inline(never)] // required for benchmarking functions
+/// fn iai_benchmark_short() -> u64 {
+///     fibonacci(black_box(10))
+/// }
+///
+/// #[inline(never)] // required for benchmarking functions
+/// fn iai_benchmark_long() -> u64 {
+///     fibonacci(black_box(30))
+/// }
+///
+/// # fn main() {
+/// main!(iai_benchmark_short, iai_benchmark_long);
+/// # }
+/// ```
+///
+/// The second form has and additional parameter `callgrind_args`:
 ///
 /// ```ignore
 /// main!(
@@ -38,8 +67,10 @@
 /// )
 /// ```
 ///
-/// For a full description of library benchmarks see the [README#Library
-/// Benchmarks](https://github.com/Joining7943/iai-callgrind#library-benchmarks)
+/// if you need to pass arguments to valgrind's callgrind. See also [Callgrind Command-line
+/// options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options). For an in-depth
+/// description of library benchmarks and more examples see the [README#Library
+/// Benchmarks](https://github.com/Joining7943/iai-callgrind#library-benchmarks) of this crate.
 ///
 /// # Binary Benchmarks
 ///
@@ -64,9 +95,8 @@
 ///
 /// See the documentation of [`crate::binary_benchmark_group`] for more details.
 ///
-/// The second way just uses the `main` macro. It may lack the convenience and also some features of
-/// the builder like api from above via the [`crate::binary_benchmark_group`] macro and may get
-/// deprecated in future releases.
+/// The second way uses just the `main` macro. It may lack the convenience and also some features of
+/// the builder like api from above via the [`crate::binary_benchmark_group`] macro.
 ///
 /// The `main` macro api for binary benchmarks allows the following top-level arguments:
 ///
@@ -88,12 +118,12 @@
 /// same file of the `main` macro. All top-level arguments must be separated by a `;`. However, only
 /// `run` is mandatory. All other top-level arguments (like `options`, `setup` etc.) are optional.
 ///
-/// ##### `run` (Mandatory)
+/// ### `run` (Mandatory)
 ///
 /// The `run` argument can be specified multiple times separated by a `;` but must be given at least
 /// once. It takes the following arguments:
 ///
-/// ###### `cmd` (Mandatory)
+/// #### `cmd` (Mandatory)
 ///
 /// This argument is allowed only once and specifies the name of one of the executables of the
 /// benchmarked crate. The path of the executable is discovered automatically, so the name of the
@@ -103,7 +133,7 @@
 /// Although not the main purpose of `iai-callgrind`, it's possible to benchmark any executable in
 /// the `PATH` or specified with an absolute path.
 ///
-/// ###### `args` (Mandatory)
+/// #### `args` (Mandatory)
 ///
 /// The `args` argument must be specified at least once containing the arguments for the benchmarked
 /// `cmd`. It can be an empty array `[]` to run to the [`cmd`](#cmd-mandatory) without any
@@ -164,45 +194,10 @@
 /// )
 /// ```
 ///
-/// Here, `env_clear(false)` specifies to keep the environment variables when running the `cmd` with
-/// `callgrind`.
+/// See the docs of [`crate::Options`] for more details.
 ///
-/// The currently available options are:
 ///
-/// - `env_clear(bool)`: If `true` clear the environment variables before running the benchmark
-/// (Default: `true`)
-/// - `current_dir(path: PathBuf)`: Set the working directory of the `cmd` (Default: Unchanged). If
-/// running the benchmark with `sandbox = true`, and `path` is relative then this new directory must
-/// be contained in the `sandbox`.
-/// - `entry_point(&str)`: Per default the counting of events starts right at the start of the
-///   binary
-/// and stops when it finished execution. It may desirable to start the counting for example when
-/// entering the `main` function (but can be any function) and stop counting when leaving the `main`
-/// function of the executable. The `entry_point` could look like `benchmark_tests::main` for a
-/// binary with the name `benchmark-tests` (Note that hyphens are replaced with an underscore by
-/// `callgrind`). See also the documentation of
-/// [toggle-collect](https://valgrind.org/docs/manual/cl-manual.html#opt.toggle-collect) and [Limiting
-/// the range of collected events](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.limits)
-/// - `exit_with(ExitWith)`: Usually, if one benchmark exits with a non-zero exit code, the whole
-/// benchmark run fails and stops. If you expect the exit code of your benchmarked binary to be
-/// different from `0`, you can set the expected exit code with this option. This option takes an
-/// `ExitWith` enum:
-///     - `ExitWith::Success`
-///     - `ExitWith::Failure`
-///     - `ExitWith::Code(i32)`
-///
-/// For example `$ /bin/stat 'file does not exist'` exits with `1` if the path of the argument does
-/// not exist and specifying `ExitWith::Code(1)` (or `ExitWith::Failure`) let's the benchmark pass:
-///
-/// ```rust,ignore
-/// main!(
-///     run = cmd = "/bin/stat",
-///         opts = Options::default().exit_with(ExitWith::Code(1)),
-///         args = ["file does not exist"];
-/// )
-/// ```
-///
-/// ###### `envs` (Optional)
+/// #### `envs` (Optional)
 ///
 /// `envs` may be used to set environment variables available in the `cmd`. This argument is
 /// optional and can be specified once for every [`cmd`](#cmd-mandatory). There must be at least one
@@ -216,21 +211,7 @@
 /// )
 /// ```
 ///
-/// Environment variables specified in the `envs` array are usually `KEY=VALUE` pairs. But, if
-/// `env_clear` is true (what is the default), single `KEY`s are environment variables to
-/// pass-through to the `cmd`. The following will pass-through the `PATH` variable although the
-/// environment is cleared (here given explicitly with the `Options` although it is the default)
-///
-/// ```rust,ignore
-/// main!(
-///     run = cmd = "benchmark-tests",
-///         envs = ["PATH"],
-///         opts = Options::default().env_clear(true),
-///         args = [];
-/// )
-/// ```
-///
-/// Pass-through environment variables are ignored if they don't exist in the root environment.
+/// See also the docs of [`crate::Run::env`] for more details.
 ///
 /// ##### `sandbox` (Optional)
 ///
@@ -246,22 +227,7 @@
 /// )
 /// ```
 ///
-/// This temporary directory will be created and selected before the
-/// [`before`](#before-after-setup-teardown-optional) function is run and removed after the `after`
-/// function has finished. The [`fixtures`](#fixtures-optional) argument let's you copy your
-/// fixtures into that directory, so you have access to your fixtures. If you want to access other
-/// directories within the benchmarked package's directory, you need to specify absolute paths or
-/// set the `sandbox` argument to `false`.
-///
-/// Another reason for using a temporary directory as workspace is, that the length of the path
-/// where a benchmark is executed may have an influence on the benchmark results. For example,
-/// running the benchmark in your repository `/home/me/my/repository` and someone else's repository
-/// located under `/home/someone/else/repository` may produce different results only because the
-/// length of the first path is shorter. To run benchmarks as deterministic as possible across
-/// different systems, the length of the path should be the same wherever the benchmark is executed.
-/// This crate ensures this property by using the `tempfile` crate which creates the temporary
-/// directory in `/tmp` with a random name like `/tmp/.tmp12345678`. This ensures that the length of
-/// the directory will be the same on all unix hosts where the benchmarks are run.
+/// See also the docs of [`crate::BinaryBenchmarkGroup::sandbox`] for more details.
 ///
 /// ##### `options` (Optional)
 ///
@@ -291,40 +257,7 @@
 /// - `setup`: This function is run once before any benchmarked `cmd`
 /// - `teardown`: This function is run once after any benchmarked `cmd`
 ///
-/// ```rust,ignore
-/// use iai_callgrind::main;
-///
-/// #[inline(never)] // necessary
-/// fn setup_my_benchmark() {
-///     // For example, create a file
-/// }
-///
-/// #[inline(never)] // necessary
-/// fn teardown_my_benchmark() {
-///     // For example, delete a file
-/// }
-///
-/// main!(
-///     setup = setup_my_benchmark;
-///     teardown = teardown_my_benchmark;
-///     run = cmd = "benchmark-tests", args = [];
-/// )
-/// ```
-///
-/// Per default, these functions are not benchmarked, but this behavior can be changed by specifying
-/// the optional `bench` argument with a value of `true` after the function name.
-///
-/// ```rust,ignore
-/// main!(
-///     setup = setup_my_benchmark, bench = true;
-///     run = cmd = "benchmark-tests", args = [];
-/// )
-/// ```
-///
-/// Note that `setup` and `teardown` functions are benchmarked only once the first time they are
-/// invoked, much like the `before` and `after` functions. However, these functions are run as usual
-/// before or after any benchmark. Benchmarked `before`, `after` etc. functions follow the same
-/// rules as benchmark functions of [library benchmarks](#library-benchmarks).
+/// See also the docs of [`crate::binary_benchmark_group`] for more details.
 ///
 /// ##### `fixtures` (Optional)
 ///
@@ -336,36 +269,18 @@
 /// symlinks, these symlinks are resolved and instead of the symlink the target file or directory
 /// will be copied into the fixtures directory.
 ///
-/// Relative paths are interpreted relative to the benchmarked package. In a multi-package workspace
-/// this'll be the package name of the benchmark. Otherwise, it'll be the workspace root.
-///
 /// ```rust,ignore
 /// main!(
-///     setup = setup_my_benchmark;
-///     fixtures = "my_fixtures";
+///     fixtures = "benches/fixtures", follow_symlinks = true;
 ///     run = cmd = "benchmark-tests", args = [];
 /// )
 /// ```
 ///
-/// Here, the directory `my_fixtures` in the root of the package under test will be copied into the
-/// [temporary workspace](#sandbox-optional) (for example `/tmp/.tmp12345678`). So,
-/// the setup function `setup_my_benchmark` and the benchmark of `benchmarks-tests` can access a
-/// fixture `test_1.txt` with a relative path like `my_fixtures/test_1.txt`
-///
-/// An example with `follow_symlinks = true`:
-///
-/// ```rust,ignore
-/// main!(
-///     setup = setup_my_benchmark;
-///     fixtures = "my_fixtures", follow_symlinks = true;
-///     run = cmd = "benchmark-tests", args = [];
-/// )
-/// ```
-///
-/// Note the `fixtures` argument will be ignored, if [`sandbox`](#sandbox-optional) is set to false.
+/// For more details about the functionality see the docs of [`crate::Fixtures`].
 #[macro_export]
 macro_rules! main {
-    // TODO: CHANGE TO USE CONFIG
+    // TODO: CHANGE options to config and use BinaryBenchmarkConfig
+    // TODO: MAKE ID MANDATORY
     ( $( options = $( $options:literal ),+ $(,)*; )?
       $( before = $before:ident $(, bench = $bench_before:literal )? ; )?
       $( after = $after:ident $(, bench = $bench_after:literal )? ; )?
@@ -376,7 +291,6 @@ macro_rules! main {
       $( run = cmd = $cmd:expr
             $(, envs = [ $( $envs:literal ),* $(,)* ] )?
             $(, opts = $opt:expr )? ,
-            // TODO: MAKE ID MANDATORY
             $( $( id = $id:literal,)? args = [ $( $args:literal ),* $(,)* ]  ),+ $(,)*
       );+ $(;)*
     ) => {
