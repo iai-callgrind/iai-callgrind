@@ -169,8 +169,8 @@ fn run_test_env_group(group: &mut BinaryBenchmarkGroup) {
                 .options(Options::default().env_clear(true)),
         )
         .bench(
-            Run::with_arg(Arg::new("does not exist", ["DOES_NOT=EXIST"]))
-                .arg(Arg::new("pwd does not exist", ["PWD"]))
+            Run::with_arg(Arg::new("does not exist", ["NOT=EXIST"]))
+                .arg(Arg::new("home does not exist", ["HOME"]))
                 .options(Options::default().exit_with(ExitWith::Failure)),
         )
         .bench(
