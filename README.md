@@ -194,13 +194,15 @@ my_benchmark::bench_fibonacci_long
 
 ##### Examples
 
-For examples see also the [benches](iai-callgrind-runner/benches) folder.
+For a fully documented and working benchmark see the
+[test_lib_bench_with_skip_setup](benchmark-tests/benches/test_lib_bench_with_skip_setup.rs)
+benchmark file.
 
 ###### Skipping setup code
 
-Usually, all function calls in the benchmark function itself are attributed to the event counts. It's
-possible to pass additional arguments to Callgrind and something like below will eliminate the setup
-code from the final metrics:
+Usually, all function calls in the benchmark function itself are attributed to the event counts.
+It's possible to pass additional arguments to Callgrind and something like below will eliminate the
+setup code from the final metrics:
 
 ```rust
 use iai_callgrind::{black_box, main};
@@ -229,154 +231,103 @@ and then run the benchmark for example with
 cargo bench --bench my_bench
 ```
 
-See also [Skip setup code example](iai-callgrind-runner/benches/test_with_skip_setup.rs) for an
+See also [Skip setup code example](benchmark-tests/benches/test_lib_bench_with_skip_setup.rs) for an
 in-depth explanation.
 
 ### Binary Benchmarks
 
-Use this scheme to benchmark one or more binaries of your crate. If you really like to it's possible
-to benchmark any executable file in the `PATH` or any executable specified with an absolute path.
-This may be useful if you want to compare the runtime of your crate with an existing tool.
+Use this scheme to benchmark one or more binaries of your crate. If you really like to, it's
+possible to benchmark any executable file in the `PATH` or any executable specified with an absolute
+path.
 
-It's also possible to run functions of the benchmark file before and after all benchmarks or to
-setup and teardown any benchmarked binary.
+It's also possible to run functions of the same benchmark file `before` and `after` all benchmarks
+or to `setup` and `teardown` any benchmarked binary.
+
+Unlike [Library Benchmarks](#library-benchmarks), there are no setup costs for binary benchmarks to
+pay attention at, since each benchmark run's command is passed directly to valgrind's callgrind.
 
 #### Temporary Workspace and other important default behavior
 
 Per default, all binary benchmarks and the `before`, `after`, `setup` and `teardown` functions are
-executed in a temporary directory. See the [`sandbox`](#sandbox-optional) for a deeper explanation
-and how to control and change this behavior.
+executed in a temporary directory. See the [Switching off the sandbox](#switching-off-the-sandbox)
+for changing this behavior.
 
 Also, the environment variables of benchmarked binaries are cleared before the benchmark is run. See
-also [`opts`](#options-optional) how to change this behavior.
+also [Environment variables](#environment-variables) for how to pass environment variables to the
+benchmarked binary.
 
 #### Quickstart
 
-Assuming the name of the crate's binary is `benchmark-tests`, add
-
-```toml
-[[bench]]
-name = "my_binary_benchmark"
-harness = false
-```
-
-to your `Cargo.toml` file and then create a file with the same `name` in
-`benches/my_binary_benchmark.rs` with the following content:
+Suppose your crate's binary is named `my-exe` and you have a fixtures directory in
+`benches/fixtures` with a file `test1.txt` in it:
 
 ```rust
-use iai_callgrind::main;
+use iai_callgrind::{main, binary_benchmark_group, BinaryBenchmarkGroup, Run, Arg, Fixtures};
 
-/// This method is run before a benchmark
-#[inline(never)] // required
-fn setup() {
-    println!("setup benchmark-tests")
+fn my_setup() {
+    println!("We can put code in here which will be run before each benchmark run");
 }
 
-/// This method is run after a benchmark
-#[inline(never)] // required
-fn teardown() {
-    println!("teardown benchmark-tests");
+// We specify a cmd `"my-exe"` for the whole group which is a binary of our crate. This
+// eliminates the need to specify a `cmd` for each `Run` later on and we can use the
+// auto-discovery of a crate's binary at group level. We'll also use the `setup` argument
+// to run a function before each of the benchmark runs.
+binary_benchmark_group!(
+    name = my_exe_group;
+    setup = my_setup;
+    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| setup_my_exe_group(group));
+
+// Working within a macro can be tedious sometimes so we moved the setup code into
+// this method
+fn setup_my_exe_group(group: &mut BinaryBenchmarkGroup) {
+    group
+        // This directory will be copied into the root of the sandbox (as `fixtures`)
+        .fixtures(Fixtures::new("benches/fixtures"))
+
+        // Setup our first run doing something with our fixture `test1.txt`. The
+        // id (here `do foo with test1`) of an `Arg` has to be unique within the
+        // same group
+        .bench(Run::with_arg(Arg::new(
+            "do foo with test1",
+            ["--foo=fixtures/test1.txt"],
+        )))
+
+        // Setup our second run with two positional arguments
+        .bench(Run::with_arg(Arg::new(
+            "positional arguments",
+            ["foo", "foo bar"],
+        )))
+
+        // Our last run doesn't take an argument at all.
+        .bench(Run::with_arg(Arg::empty("no argument")));
 }
 
-main!(
-    setup = setup;
-    teardown = teardown;
-    run = cmd = "benchmark-tests",
-          id = "two_args",
-          args = ["one", "two"];
-);
+// As last step specify all groups we want to benchmark in the main! macro argument
+// `binary_benchmark_groups`. The main macro is always needed and finally expands
+// to a benchmarking harness
+main!(binary_benchmark_groups = my_exe_group);
 ```
 
-You're ready to run the benchmark with `cargo bench --bench my_binary_benchmark`. Although an `id`
-is optional it is good practice to specify it. The rest of the procedure is the same as with
-[Library Benchmarks](#library-benchmarks).
+You're ready to run the benchmark with `cargo bench --bench my_binary_benchmark`.
 
-#### Description
-
-- [Binary Benchmark Arguments](#description)
-    - [run](#run-mandatory)
-        - [cmd](#cmd-mandatory)
-        - [args](#args-mandatory)
-        - [opts](#opts-optional)
-        - [envs](#envs-optional)
-    - [sandbox](#sandbox-optional)
-    - [options](#options-optional)
-    - [before, after, setup, teardown](#before-after-setup-teardown-optional)
-    - [fixtures](#fixtures-optional)
-
-The `main` macro for binary benchmarks allows the following top-level arguments:
-
-```rust
-main!(
-    options = "--callgrind-argument=yes";
-    before = function_running_before_all_benchmarks;
-    after = function_running_after_all_benchmarks;
-    setup = function_running_before_any_benchmark;
-    teardown = function_running_after_any_benchmark;
-    sandbox = true;
-    fixtures = "path/to/fixtures";
-    run = cmd = "benchmark-tests", args = [];
-)
-```
-
-Here, `benchmark-tests` is an example of the name of the binary of a crate and it is assumed that
-the `function_running_before_all_benchmarks` ... functions are defined somewhere in the same file of
-the `main` macro. All top-level arguments must be separated by a `;`. However, only `run` is
-mandatory. All other top-level arguments (like `options`, `setup` etc.) are optional.
-
-##### `run` (Mandatory)
-
-The `run` argument can be specified multiple times separated by a `;` but must be given at least
-once. It takes the following arguments:
-
-###### `cmd` (Mandatory)
-
-This argument is allowed only once and specifies the name of one of the executables of the
-benchmarked crate. The path of the executable is discovered automatically, so the name of the
-`[[bin]]` as specified in the crate's `Cargo.toml` file is sufficient. The auto discovery supports
-running the benchmarks with different profiles.
-
-Although not the main purpose of `iai-callgrind`, it's possible to benchmark any executable in the
-`PATH` or specified with an absolute path.
-
-###### `args` (Mandatory)
-
-The `args` argument must be specified at least once containing the arguments for the benchmarked
-`cmd`. It can be an empty array `[]` to run to the [`cmd`](#cmd-mandatory) without any arguments.
-Each `args` argument can optionally be named with an `id` and it is good practice to do so with a
-short and descriptive string.
-
-Specifying `args` multiple times (separated by a `,`) like so:
-
-```rust
-main!(
-    run = cmd = "benchmark-tests",
-        id = "long", args = ["something"],
-        id = "short", args = ["other"]
-)
-```
-
-is a short-hand for specifying [`run`](#run-mandatory) with the same [`cmd`](#cmd-mandatory),
-[`opts`](#opts-optional) and [`envs`](#envs-optional) arguments multiple times:
-
-```rust
-main!(
-    run = cmd = "benchmark-tests", id = "long", args = ["something"];
-    run = cmd = "benchmark-tests", id = "short", args = ["other"]
-)
-```
-
-The output of a bench run with ids could look like:
+The output of this benchmark run could look like this:
 
 ```text
-test_bin_bench long:benchmark-tests something
+my_binary_benchmark::my_exe_group do foo with test1:my-exe --foo=fixtures/test1.txt
   Instructions:              322637 (No Change)
   L1 Data Hits:              106807 (No Change)
   L2 Hits:                      708 (No Change)
   RAM Hits:                    3799 (No Change)
   Total read+write:          433951 (No Change)
   Estimated Cycles:          565949 (No Change)
-test_bin_bench short:benchmark-tests other
+my_binary_benchmark::my_exe_group positional arguments:my-exe foo "foo bar"
+  Instructions:              155637 (No Change)
+  L1 Data Hits:              106807 (No Change)
+  L2 Hits:                      708 (No Change)
+  RAM Hits:                    3799 (No Change)
+  Total read+write:          433951 (No Change)
+  Estimated Cycles:          565949 (No Change)
+my_binary_benchmark::my_exe_group no argument:my-exe
   Instructions:              155637 (No Change)
   L1 Data Hits:              106807 (No Change)
   L2 Hits:                      708 (No Change)
@@ -385,221 +336,81 @@ test_bin_bench short:benchmark-tests other
   Estimated Cycles:          565949 (No Change)
 ```
 
-If no `ids` are specified each benchmark will be enumerated and shown with a simple number. The same
-is true for the file name of the output of callgrind.
+You'll find the callgrind output files of each run of the benchmark `my_binary_benchmark` of the
+group `my_exe_group` in `target/iai/my_binary_benchmark/my_exe_group`.
 
-###### `opts` (Optional)
+#### Auto-discovery of a crate's binaries
 
-`opts` is optional and can be specified once for every `run` and [`cmd`](#cmd-mandatory):
+Auto-discovery of a crate's binary works only when specifying the name of it at group level.
 
 ```rust
-main!(
-    run = cmd = "benchmark-tests",
-        opts = Options::default().env_clear(false),
-        args = ["something"];
-)
+binary_benchmark_group!(
+    name = my_exe_group;
+    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
 ```
 
-Here, `env_clear(false)` specifies to keep the environment variables when running the `cmd` with
-`callgrind`.
-
-The currently available options are:
-
-- `env_clear(bool)`: If `true` clear the environment variables before running the benchmark
-(Default: `true`)
-- `current_dir(path: PathBuf)`: Set the working directory of the `cmd` (Default: Unchanged). If
-running the benchmark with `sandbox = true`, and `path` is relative then this new directory must be
-contained in the `sandbox`.
-- `entry_point(&str)`: Per default the counting of events starts right at the start of the binary
-and stops when it finished execution. It may desirable to start the counting for example when
-entering the `main` function (but can be any function) and stop counting when leaving the `main`
-function of the executable. The `entry_point` could look like `benchmark_tests::main` for a binary
-with the name `benchmark-tests` (Note that hyphens are replaced with an underscore by `callgrind`).
-See also the documentation of
-[toggle-collect](https://valgrind.org/docs/manual/cl-manual.html#opt.toggle-collect) and [Limiting
-the range of collected events](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.limits)
-- `exit_with(ExitWith)`: Usually, if one benchmark exits with a non-zero exit code, the whole
-benchmark run fails and stops. If you expect the exit code of your benchmarked binary to be
-different from `0`, you can set the expected exit code with this option. This option takes an
-`ExitWith` enum:
-    - `ExitWith::Success`
-    - `ExitWith::Failure`
-    - `ExitWith::Code(i32)`
-
-For example `$ /bin/stat 'file does not exist'` exits with `1` if the path of the argument does not
-exist and specifying `ExitWith::Code(1)` (or `ExitWith::Failure`) let's the benchmark pass:
+If you don't like specifying a default command at group level, you can use
+`env!("CARGO_BIN_EXE_name)` at `Run`-level like so:
 
 ```rust
-main!(
-    run = cmd = "/bin/stat",
-        opts = Options::default().exit_with(ExitWith::Code(1)),
-        args = ["file does not exist"];
-)
+binary_benchmark_group!(
+    name = my_exe_group;
+    benchmark = |group: &mut BinaryBenchmarkGroup| {
+        group.bench(Run::with_cmd(env!("CARGO_BIN_EXE_my-exe"), Arg::empty("some id")));
+    });
 ```
 
-###### `envs` (Optional)
+#### A benchmark run of a binary exits with error
 
-`envs` may be used to set environment variables available in the `cmd`. This argument is optional
-and can be specified once for every [`cmd`](#cmd-mandatory). There must be at least one `KEY=VALUE`
-pair or `KEY` present in the array:
+Usually, if a benchmark exits with a non-zero exit code, the whole benchmark run fails and stops.
+If you expect the exit code of your benchmarked binary to be different from `0`, you can set the
+expected exit code with `Options` at `Run`-level
 
 ```rust
-main!(
-    run = cmd = "benchmark-tests",
-        envs = ["MY_VAR=SOME_VALUE", "MY_OTHER_VAR=VALUE"],
-        args = ["something"];
-)
+binary_benchmark_group!(
+    name = my_exe_group;
+    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
+        group.bench(Run::with_arg(Arg::empty("some id")).options(Options::default().exit_with(ExitWith::Code(100))));
+    });
+```
+
+#### Environment variables
+
+Per default, the environment variables are cleared before running a benchmark.
+
+It's possible to specify environment variables at `Run`-level which should be available in the
+binary:
+
+```rust
+binary_benchmark_group!(
+    name = my_exe_group;
+    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
+        group.bench(Run::with_arg(Arg::empty("some id")).envs(["KEY=VALUE", "KEY"]));
+    });
 ```
 
 Environment variables specified in the `envs` array are usually `KEY=VALUE` pairs. But, if
 `env_clear` is true (what is the default), single `KEY`s are environment variables to pass-through
-to the `cmd`. The following will pass-through the `PATH` variable although the environment is
-cleared (here given explicitly with the `Options` although it is the default)
+to the `cmd`. Pass-through environment variables are ignored if they don't exist in the root
+environment.
 
-```rust
-main!(
-    run = cmd = "benchmark-tests",
-        envs = ["PATH"],
-        opts = Options::default().env_clear(true),
-        args = [];
-)
-```
-
-Pass-through environment variables are ignored if they don't exist in the root environment.
-
-##### `sandbox` (Optional)
+#### Switching off the sandbox
 
 Per default, all binary benchmarks and the `before`, `after`, `setup` and `teardown` functions are
-executed in a temporary directory.
+executed in a temporary directory. This behavior can be switched off at group-level:
 
 ```rust
-main!(
-    sandbox = true;
-    run = cmd = "benchmark-tests",
-        opts = Options::default().env_clear(false),
-        args = ["something"];
-)
+binary_benchmark_group!(
+    name = my_exe_group;
+    benchmark = |group: &mut BinaryBenchmarkGroup| {
+        group.sandbox(false);
+    });
 ```
-
-This temporary directory will be created and selected before the
-[`before`](#before-after-setup-teardown-optional) function is run and removed after the `after`
-function has finished. The [`fixtures`](#fixtures-optional) argument let's you copy your fixtures
-into that directory, so you have access to your fixtures. If you want to access other directories
-within the benchmarked package's directory, you need to specify absolute paths or set the `sandbox`
-argument to `false`.
-
-Another reason for using a temporary directory as workspace is, that the length of the path where a
-benchmark is executed may have an influence on the benchmark results. For example, running the
-benchmark in your repository `/home/me/my/repository` and someone else's repository located under
-`/home/someone/else/repository` may produce different results only because the length of the first
-path is shorter. To run benchmarks as deterministic as possible across different systems, the length
-of the path should be the same wherever the benchmark is executed. This crate ensures this property
-by using the `tempfile` crate which creates the temporary directory in `/tmp` with a random name
-like `/tmp/.tmp12345678`. This ensures that the length of the directory will be the same on all unix
-hosts where the benchmarks are run.
-
-##### `options` (Optional)
-
-A `,` separated list of strings which contain options for all `callgrind` invocations and therefore
-benchmarked `cmd`s (Including benchmarked `before`, `after`, `setup` and `teardown` functions).
-
-```rust
-main!(
-    options = "--zero-before=benchmark_tests::main";
-    run = cmd = "benchmark-tests", args = [];
-)
-```
-
-See also [Passing arguments to callgrind](#passing-arguments-to-callgrind) and the documentation of
-[Callgrind](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options)
-
-##### `before`, `after`, `setup`, `teardown` (Optional)
-
-Each of the `before`, `after`, `setup` and `teardown` top-level arguments is optional. If given,
-this argument must specify a function of the benchmark file. These functions are meant to setup and
-cleanup the benchmarks. Each function is invoked at a different stage of the benchmarking process.
-
-- `before`: This function is run once before all benchmarked `cmd`s
-- `after`: This function is run once after all benchmarked `cmd`s
-- `setup`: This function is run once before any benchmarked `cmd`
-- `teardown`: This function is run once after any benchmarked `cmd`
-
-```rust
-use iai_callgrind::main;
-
-#[inline(never)] // necessary
-fn setup_my_benchmark() {
-    // For example, create a file
-}
-
-#[inline(never)] // necessary
-fn teardown_my_benchmark() {
-    // For example, delete a file
-}
-
-main!(
-    setup = setup_my_benchmark;
-    teardown = teardown_my_benchmark;
-    run = cmd = "benchmark-tests", args = [];
-)
-```
-
-Per default, these functions are not benchmarked, but this behavior can be changed by specifying the
-optional `bench` argument with a value of `true` after the function name.
-
-```rust
-main!(
-    setup = setup_my_benchmark, bench = true;
-    run = cmd = "benchmark-tests", args = [];
-)
-```
-
-Note that `setup` and `teardown` functions are benchmarked only once the first time they are
-invoked, much like the `before` and `after` functions. However, these functions are run as usual
-before or after any benchmark. Benchmarked `before`, `after` etc. functions follow the same rules as
-benchmark functions of [library benchmarks](#library-benchmarks).
-
-##### `fixtures` (Optional)
-
-The `fixtures` argument specifies a path to a directory containing fixtures which you want to be
-available for all benchmarks and the `before`, `after`, `setup` and `teardown` functions. Per
-default, the fixtures directory will be copied as is into the workspace directory of the benchmark
-and following symlinks is switched off. The fixtures argument takes an additional argument
-`follow_symlinks = bool`. If set to `true` and your fixtures directory contains symlinks, these
-symlinks are resolved and instead of the symlink the target file or directory will be copied into
-the fixtures directory.
-
-Relative paths are interpreted relative to the benchmarked package. In a multi-package workspace
-this'll be the package name of the benchmark. Otherwise, it'll be the workspace root.
-
-```rust
-main!(
-    setup = setup_my_benchmark;
-    fixtures = "my_fixtures";
-    run = cmd = "benchmark-tests", args = [];
-)
-```
-
-Here, the directory `my_fixtures` in the root of the package under test will be copied into the
-[temporary workspace](#sandbox-optional) (for example `/tmp/.tmp12345678`). So,
-the setup function `setup_my_benchmark` and the benchmark of `benchmarks-tests` can access a fixture
-`test_1.txt` with a relative path like `my_fixtures/test_1.txt`
-
-An example with `follow_symlinks = true`:
-
-```rust
-main!(
-    setup = setup_my_benchmark;
-    fixtures = "my_fixtures", follow_symlinks = true;
-    run = cmd = "benchmark-tests", args = [];
-)
-```
-
-Note the `fixtures` argument will be ignored, if [`sandbox`](#sandbox-optional) is set to false.
 
 #### Examples
 
-See the [test_bin_bench](benchmark-tests/benches/test_bin_bench.rs) benchmark file of this project for an example.
+See the [test_bin_bench_group](benchmark-tests/benches/test_bin_bench_group.rs) benchmark file of
+this project for a working example.
 
 ### Features and differences to Iai
 
