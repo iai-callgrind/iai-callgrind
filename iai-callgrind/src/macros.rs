@@ -137,8 +137,7 @@
 ///
 /// The `args` argument must be specified at least once containing the arguments for the benchmarked
 /// `cmd`. It can be an empty array `[]` to run to the [`cmd`](#cmd-mandatory) without any
-/// arguments. Each `args` argument can optionally be named with an `id` and it is good practice to
-/// do so with a short and descriptive string.
+/// arguments. Each `args` must have a unique `id`.
 ///
 /// Specifying `args` multiple times (separated by a `,`) like so:
 ///
@@ -178,9 +177,6 @@
 ///   Total read+write:          433951 (No Change)
 ///   Estimated Cycles:          565949 (No Change)
 /// ```
-///
-/// If no `ids` are specified each benchmark will be enumerated and shown with a simple number. The
-/// same is true for the file name of the output of callgrind.
 ///
 /// ###### `opts` (Optional)
 ///
@@ -291,7 +287,7 @@ macro_rules! main {
       $( run = cmd = $cmd:expr
             $(, envs = [ $( $envs:literal ),* $(,)* ] )?
             $(, opts = $opt:expr )? ,
-            $( $( id = $id:literal,)? args = [ $( $args:literal ),* $(,)* ]  ),+ $(,)*
+            $( id = $id:literal, args = [ $( $args:literal ),* $(,)* ]  ),+ $(,)*
       );+ $(;)*
     ) => {
         mod iai_wrappers {
@@ -373,11 +369,8 @@ macro_rules! main {
                 let mut run_arg : Vec<$crate::internal::RunnerArg> = vec![];
                 $(
                     let args : Vec<&str> = vec![$($args),*];
-                    let mut id : Option<String> = None;
-                    $(
-                        let id_arg: &str = $id;
-                        id = Some(id_arg.to_owned());
-                    )?
+                    let id : &str = $id;
+                    let id : Option<String> = Some(id.to_owned());
                     run_arg.push($crate::internal::RunnerArg {
                         id, args: args.into_iter().map(|s| std::ffi::OsString::from(s)).collect()
                     });

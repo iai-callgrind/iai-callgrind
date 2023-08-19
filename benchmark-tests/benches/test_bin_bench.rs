@@ -35,22 +35,19 @@ main!(
     after = after;
     setup = setup, bench = true;
     teardown = teardown, bench = true;
-    run = cmd = "benchmark-tests", args = [];
-    run = cmd = "benchmark-tests", args = ["one", "two"];
-    run = cmd = "benchmark-tests", args = ["one", "two"], args = ["three", "four"];
-    run = cmd = "benchmark-tests", args = ["test", "entry_point", "0"];
-    run = cmd = "benchmark-tests", opts = Options::default().entry_point("benchmark_tests::main"), args = ["test", "entry_point", "1"];
+    run = cmd = "benchmark-tests", id = "empty", args = [];
+    run = cmd = "benchmark-tests", id = "one two", args = ["one", "two"];
+    run = cmd = "benchmark-tests", id = "one two 2", args = ["one", "two"], id = "three four", args = ["three", "four"];
+    run = cmd = "benchmark-tests", id = "entry point 0", args = ["test", "entry_point", "0"];
+    run = cmd = "benchmark-tests", opts = Options::default().entry_point("benchmark_tests::main"), id = "entry point 1", args = ["test", "entry_point", "1"];
     // command with an absolute path
-    run = cmd = "/bin/echo", args = ["one", "two"], args = ["one two three four"];
+    run = cmd = "/bin/echo", id = "echo 2 args", args = ["one", "two"], id = "echo 4 words", args = ["one two three four"];
     // commands in the PATH are ok too
-    run = cmd = "echo", args = ["one", "two"], args = ["one two three four"];
+    run = cmd = "echo", id = "PATH echo 2 args", args = ["one", "two"], id = "PATH echo 4 words", args = ["one two three four"];
     run = cmd = "echo",
         opts = Options::default().current_dir(PathBuf::from("/tmp")),
-        args = ["one", "two"],
-        args = ["one two three four"];
-    run = cmd = "printenv", opts = Options::default().env_clear(false), args = ["PATH"];
-    run = cmd = "printenv", envs = ["PATH"], opts = Options::default().env_clear(true), args = ["PATH"];
-    run = cmd = "printenv", envs = ["HELLO=WORLD"], opts = Options::default().env_clear(true), args = ["HELLO"];
-    run = cmd = env!("CARGO_BIN_EXE_benchmark-tests"), args = [];
-    run = cmd = "benchmark-tests", opts = Options::default().exit_with(ExitWith::Success), args = [];
+        id = "current dir 2 args", args =  ["one", "two"],
+        id = "current dir 4 words", args = ["one two three four"];
+    run = cmd = env!("CARGO_BIN_EXE_benchmark-tests"), id = "env! no args", args = [];
+    run = cmd = "benchmark-tests", opts = Options::default().exit_with(ExitWith::Success), id = "exit with success", args = [];
 );

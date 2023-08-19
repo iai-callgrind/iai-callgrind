@@ -55,6 +55,6 @@ main!(
     setup = setup, bench = true;
     teardown = teardown;
     fixtures = "fixtures-with-symlinks", follow_symlinks = true;
-    run = cmd = "benchmark-tests-cat", args = ["fixtures-with-symlinks/file_with_content.txt"];
-    run = cmd = "cat", args = ["fixtures-with-symlinks/file_with_content.txt"]
+    run = cmd = "benchmark-tests-cat", id = "benchmark-tests-cat with content", args = ["fixtures-with-symlinks/file_with_content.txt"];
+    run = cmd = "cat", id = "cat with content", args = ["fixtures-with-symlinks/file_with_content.txt"]
 );

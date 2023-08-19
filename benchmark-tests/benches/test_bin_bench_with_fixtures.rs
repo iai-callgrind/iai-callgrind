@@ -54,6 +54,6 @@ main!(
     setup = setup, bench = true;
     teardown = teardown;
     fixtures = "fixtures";
-    run = cmd = "benchmark-tests-cat", args = ["fixtures/file_with_content.txt"];
-    run = cmd = "cat", args = ["fixtures/file_with_content.txt"]
+    run = cmd = "benchmark-tests-cat", id = "benchmark-tests-cat with content", args = ["fixtures/file_with_content.txt"];
+    run = cmd = "cat", id = "cat with content", args = ["fixtures/file_with_content.txt"]
 );
