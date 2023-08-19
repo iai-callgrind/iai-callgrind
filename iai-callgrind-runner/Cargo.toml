@@ -22,6 +22,7 @@ api = []
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]
+all-features = true
 
 [dependencies]
 log = "0.4.19"
