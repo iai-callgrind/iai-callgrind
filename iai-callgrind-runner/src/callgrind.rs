@@ -318,14 +318,10 @@ impl CallgrindOutput {
         // Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
         let mut counters: [u64; 9] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
         let mut start_record = false;
-        let mut maybe_counting = false;
-        let mut start_counting = false;
         for line in iter {
             let line = line.trim_start();
             if line.is_empty() {
                 start_record = false;
-                maybe_counting = false;
-                start_counting = false;
             }
             if !start_record {
                 if line.starts_with("fl=") && line.ends_with(bench_file.to_str().unwrap()) {
@@ -338,22 +334,7 @@ impl CallgrindOutput {
                 }
                 continue;
             }
-            // We're only interested in the counters for event counters within the benchmark
-            // function and ignore counters for the benchmark function itself.
-            if !maybe_counting {
-                if line.starts_with("cfn=") {
-                    trace!("Found line with a calling function: '{}'", line);
-                    maybe_counting = true;
-                }
-                continue;
-            }
-            if !start_counting {
-                if line.starts_with("calls") {
-                    trace!("Found line with calls: '{}'. Starting the counting", line);
-                    start_counting = true;
-                }
-                continue;
-            }
+
             // we check if it is a line with counters and summarize them
             if line.starts_with(|c: char| c.is_ascii_digit()) {
                 // From the documentation of the callgrind format:
@@ -372,13 +353,8 @@ impl CallgrindOutput {
                     counters[index] += counter;
                 }
                 trace!("Updated counters to '{:?}'", &counters);
-            } else if line.starts_with("cfn=") {
-                trace!("Found line with a calling function: '{}'", line);
-                start_counting = false;
             } else {
-                trace!("Pausing counting. End of a cfn record");
-                maybe_counting = false;
-                start_counting = false;
+                trace!("Skipping line: '{}'", line);
             }
         }
 
