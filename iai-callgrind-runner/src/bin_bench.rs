@@ -6,7 +6,6 @@ use std::process::Command;
 
 use colored::Colorize;
 use log::{debug, info, log_enabled, trace, Level};
-use sanitize_filename::Options as SanitizerOptions;
 use tempfile::TempDir;
 
 use crate::api::{BinaryBenchmark, Options};
@@ -38,7 +37,7 @@ impl BinBench {
         let output = CallgrindOutput::create(
             &config.package_dir,
             &group.module_path,
-            &format!("{}.{}", self.id, self.sanitized_file_name()),
+            &format!("{}.{}", self.id, self.display),
         );
         callgrind_args.set_output_file(&output.file);
 
@@ -64,17 +63,6 @@ impl BinBench {
         );
         new_stats.print(old_stats);
         Ok(())
-    }
-
-    fn sanitized_file_name(&self) -> String {
-        sanitize_filename::sanitize_with_options(
-            &self.display,
-            SanitizerOptions {
-                windows: true,
-                truncate: true,
-                replacement: "_",
-            },
-        )
     }
 }
 

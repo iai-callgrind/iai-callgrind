@@ -11,8 +11,8 @@ use which::which;
 
 use crate::api::{ExitWith, Options};
 use crate::util::{
-    bool_to_yesno, concat_os_string, join_os_string, write_all_to_stderr, write_all_to_stdout,
-    yesno_to_bool,
+    bool_to_yesno, concat_os_string, join_os_string, truncate_str_utf8, write_all_to_stderr,
+    write_all_to_stdout, yesno_to_bool,
 };
 use crate::IaiCallgrindError;
 
@@ -178,7 +178,19 @@ impl CallgrindOutput {
         let current = base_dir;
         let target = PathBuf::from("target/iai");
         let module_path: PathBuf = module.split("::").collect();
-        let file_name = PathBuf::from(format!("callgrind.{name}.out",));
+        let sanitized_name = sanitize_filename::sanitize_with_options(
+            name,
+            sanitize_filename::Options {
+                windows: false,
+                truncate: false,
+                replacement: "_",
+            },
+        );
+        let file_name = PathBuf::from(format!(
+            "callgrind.{}.out",
+            truncate_str_utf8(&sanitized_name, 237) /* callgrind. + .out.old = 18 with max
+                                                     * length 255 */
+        ));
 
         let file = current.join(target).join(module_path).join(file_name);
         let output = Self { file };

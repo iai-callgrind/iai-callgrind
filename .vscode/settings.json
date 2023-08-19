@@ -24,6 +24,7 @@
     "proccontrol",
     "Quickstart",
     "rposition",
+    "rstest",
     "sandboxing",
     "setarch",
     "SHLEX",
