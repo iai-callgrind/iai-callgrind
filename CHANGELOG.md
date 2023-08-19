@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+* (#3) builder api for binary benchmarks
+
+### Changed
+
+* The filename for callgrind output files of binary benchmarks changed for setup, teardown, before
+and after functions to `callgrind.$id.$name.out` (id = `setup`, `teardown`, etc.; name = function
+name)
+* The filename for callgrind output files of binary benchmarks changed for each benchmark run. The
+arguments passed to the binary were removed from the file name.
+
+### Fixed
+
+* The filename for callgrind output files is now truncated to a maximum of 255 bytes
+
 ### [0.5.0] - 2023-08-07
 
 ### Added
