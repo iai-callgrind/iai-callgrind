@@ -39,10 +39,14 @@ mod lib_bench;
 #[cfg(feature = "runner")]
 mod util;
 
+#[cfg(feature = "runner")]
 use std::path::PathBuf;
 
+#[cfg(feature = "runner")]
 pub use error::IaiCallgrindError;
+#[cfg(feature = "runner")]
 use log::debug;
+#[cfg(feature = "runner")]
 pub use util::{write_all_to_stderr, write_all_to_stdout};
 
 #[cfg(feature = "runner")]
