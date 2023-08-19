@@ -5,30 +5,28 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use colored::Colorize;
-use iai_callgrind::{internal, Options};
 use log::{debug, info, log_enabled, trace, Level};
-use sanitize_filename::Options as SanitizerOptions;
 use tempfile::TempDir;
 
+use crate::api::{BinaryBenchmark, Options};
 use crate::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput};
 use crate::util::{copy_directory, write_all_to_stderr, write_all_to_stdout};
-use crate::{get_arch, IaiCallgrindError};
+use crate::{api, get_arch, IaiCallgrindError};
 
 #[derive(Debug)]
 struct BinBench {
     id: String,
-    orig: String,
+    display: String,
     command: PathBuf,
-    args: Vec<String>,
+    args: Vec<OsString>,
     envs: Vec<(String, String)>,
-    opts: Options,
+    opts: api::Options,
 }
 
 impl BinBench {
-    fn run(&self, config: &Config) -> Result<(), IaiCallgrindError> {
+    fn run(&self, config: &Config, group: &GroupConfig) -> Result<(), IaiCallgrindError> {
         let command = CallgrindCommand::new(config.allow_aslr, &config.arch);
-
-        let mut callgrind_args = config.callgrind_args.clone();
+        let mut callgrind_args = group.callgrind_args.clone();
         if let Some(entry_point) = &self.opts.entry_point {
             callgrind_args.collect_atstart = false;
             callgrind_args.insert_toggle_collect(entry_point);
@@ -38,15 +36,15 @@ impl BinBench {
 
         let output = CallgrindOutput::create(
             &config.package_dir,
-            &config.module,
-            &format!("{}.{}", self.id, self.sanitized_file_name()),
+            &group.module_path,
+            &format!("{}.{}", self.id, self.display),
         );
-        callgrind_args.set_output_file(&output.file.display().to_string());
+        callgrind_args.set_output_file(&output.file);
 
         command.run(
             &callgrind_args,
             &self.command,
-            self.args.clone(),
+            &self.args,
             self.envs.clone(),
             &self.opts,
         )?;
@@ -58,7 +56,7 @@ impl BinBench {
 
         println!(
             "{} {}{}{}",
-            &config.module.green(),
+            &group.module_path.green(),
             &self.id.cyan(),
             ":".cyan(),
             self.to_string().blue().bold()
@@ -66,27 +64,20 @@ impl BinBench {
         new_stats.print(old_stats);
         Ok(())
     }
-
-    fn sanitized_file_name(&self) -> String {
-        let mut display_name = self.orig.clone();
-        if !self.args.is_empty() {
-            display_name.push('.');
-            display_name.push_str(&self.args.join(" "));
-        }
-        sanitize_filename::sanitize_with_options(
-            display_name,
-            SanitizerOptions {
-                windows: true,
-                truncate: true,
-                replacement: "_",
-            },
-        )
-    }
 }
 
 impl Display for BinBench {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("{} {}", self.orig, self.args.join(" ")))
+        let args: Vec<String> = self
+            .args
+            .iter()
+            .map(|s| s.to_string_lossy().to_string())
+            .collect();
+        f.write_str(&format!(
+            "{} {}",
+            self.display,
+            shlex::join(args.iter().map(std::string::String::as_str))
+        ))
     }
 }
 
@@ -121,25 +112,36 @@ impl Assistant {
         Self { name, kind, bench }
     }
 
-    fn run_bench(&self, config: &Config) -> Result<(), IaiCallgrindError> {
+    fn run_bench(&self, config: &Config, group: &GroupConfig) -> Result<(), IaiCallgrindError> {
         let command = CallgrindCommand::new(config.allow_aslr, &config.arch);
+
+        let run_id = if let Some(id) = &group.id {
+            format!("{}::{}", id, self.kind.id())
+        } else {
+            self.kind.id()
+        };
         let executable_args = vec![
-            "--iai-run".to_owned(),
-            self.kind.id(),
-            format!("{}::{}", &config.module, &self.name),
+            OsString::from("--iai-run"),
+            OsString::from(run_id),
+            OsString::from(format!("{}::{}", &config.module, &self.name)),
         ];
-        let mut callgrind_args = config.callgrind_args.clone();
+
+        let mut callgrind_args = group.callgrind_args.clone();
         callgrind_args.collect_atstart = false;
         callgrind_args.insert_toggle_collect(&format!("*{}::{}", &config.module, &self.name));
 
-        let output = CallgrindOutput::create(&config.package_dir, &config.module, &self.name);
-        callgrind_args.set_output_file(&output.file.display().to_string());
+        let output = CallgrindOutput::create(
+            &config.package_dir,
+            &group.module_path,
+            &format!("{}.{}", self.kind.id(), &self.name),
+        );
+        callgrind_args.set_output_file(&output.file);
         command.run(
             &callgrind_args,
             &config.bench_bin,
-            executable_args,
+            &executable_args,
             vec![],
-            &Options::default().env_clear(false),
+            &api::Options::new(false, None, None, None),
         )?;
 
         let new_stats = output.parse(&config.bench_file, &config.module, &self.name);
@@ -149,13 +151,20 @@ impl Assistant {
             .exists()
             .then(|| old_output.parse(&config.bench_file, &config.module, &self.name));
 
-        println!("{}", format!("{}::{}", &config.module, &self.name).green());
+        println!(
+            "{}",
+            format!("{}::{}::{}", group.module_path, self.kind.id(), &self.name).green()
+        );
         new_stats.print(old_stats);
         Ok(())
     }
 
-    fn run_plain(&self, config: &Config) -> Result<(), IaiCallgrindError> {
-        let id = self.kind.id();
+    fn run_plain(&self, config: &Config, group: &GroupConfig) -> Result<(), IaiCallgrindError> {
+        let id = if let Some(id) = &group.id {
+            format!("{}::{}", id, self.kind.id())
+        } else {
+            self.kind.id()
+        };
         let mut command = Command::new(&config.bench_bin);
         command.arg("--iai-run");
         command.arg(&id);
@@ -186,15 +195,15 @@ impl Assistant {
         Ok(())
     }
 
-    fn run(&mut self, config: &Config) -> Result<(), IaiCallgrindError> {
+    fn run(&mut self, config: &Config, group: &GroupConfig) -> Result<(), IaiCallgrindError> {
         if self.bench {
             match self.kind {
                 AssistantKind::Setup | AssistantKind::Teardown => self.bench = false,
                 _ => {}
             }
-            self.run_bench(config)
+            self.run_bench(config, group)
         } else {
-            self.run_plain(config)
+            self.run_plain(config, group)
         }
     }
 }
@@ -224,29 +233,79 @@ impl BenchmarkAssistants {
     }
 }
 
-#[derive(Debug, Clone)]
-struct Fixtures {
-    path: PathBuf,
-    follow_symlinks: bool,
+#[derive(Debug)]
+struct Sandbox {
+    current_dir: PathBuf,
+    temp_dir: TempDir,
+}
+
+impl Sandbox {
+    fn setup(fixtures: &Option<api::Fixtures>) -> Result<Self, IaiCallgrindError> {
+        debug!("Creating temporary workspace directory");
+        let temp_dir = tempfile::tempdir().expect("Create temporary directory");
+
+        if let Some(fixtures) = &fixtures {
+            debug!(
+                "Copying fixtures from '{}' to '{}'",
+                &fixtures.path.display(),
+                temp_dir.path().display()
+            );
+            copy_directory(&fixtures.path, temp_dir.path(), fixtures.follow_symlinks)?;
+        }
+
+        let current_dir = std::env::current_dir().unwrap();
+        trace!(
+            "Changing current directory to temporary directory: '{}'",
+            temp_dir.path().display()
+        );
+        std::env::set_current_dir(temp_dir.path())
+            .expect("Set current directory to temporary workspace directory");
+
+        Ok(Self {
+            current_dir,
+            temp_dir,
+        })
+    }
+
+    fn reset(self) {
+        std::env::set_current_dir(&self.current_dir)
+            .expect("Reset current directory to package directory");
+
+        if log_enabled!(Level::Debug) {
+            debug!("Removing temporary workspace");
+            if let Err(error) = self.temp_dir.close() {
+                debug!("Error trying to delete temporary workspace: {error}");
+            }
+        } else {
+            _ = self.temp_dir.close();
+        }
+    }
 }
 
 #[derive(Debug)]
-pub(crate) struct Config {
+struct GroupConfig {
+    id: Option<String>,
+    module_path: String,
+    fixtures: Option<api::Fixtures>,
+    sandbox: bool,
+    benches: Vec<BinBench>,
+    assists: BenchmarkAssistants,
+    callgrind_args: CallgrindArgs,
+}
+
+#[derive(Debug)]
+struct Config {
     package_dir: PathBuf,
     bench_file: PathBuf,
     module: String,
     bench_bin: PathBuf,
-    sandbox: bool,
-    fixtures: Option<Fixtures>,
-    benches: Vec<BinBench>,
-    bench_assists: BenchmarkAssistants,
-    callgrind_args: CallgrindArgs,
+    groups: Vec<GroupConfig>,
     allow_aslr: bool,
     arch: String,
 }
 
 impl Config {
-    fn receive_benchmark(bytes: usize) -> Result<internal::BinaryBenchmark, IaiCallgrindError> {
+    fn receive_benchmark(bytes: usize) -> Result<api::BinaryBenchmark, IaiCallgrindError> {
         let mut encoded = vec![];
         let mut stdin = stdin();
         stdin.read_to_end(&mut encoded).map_err(|error| {
@@ -259,36 +318,47 @@ impl Config {
             encoded.len()
         );
 
-        let benchmark: internal::BinaryBenchmark =
-            bincode::deserialize(&encoded).map_err(|error| {
-                IaiCallgrindError::Other(format!("Failed to decode configuration: {error}"))
-            })?;
+        let benchmark: api::BinaryBenchmark = bincode::deserialize(&encoded).map_err(|error| {
+            IaiCallgrindError::Other(format!("Failed to decode configuration: {error}"))
+        })?;
 
         Ok(benchmark)
     }
 
-    fn parse_fixtures(fixtures: Option<internal::Fixtures>) -> Option<Fixtures> {
-        fixtures.map(|f| Fixtures {
-            path: PathBuf::from(f.path),
-            follow_symlinks: f.follow_symlinks,
-        })
-    }
-
-    fn parse_runs(runs: Vec<internal::Run>) -> Vec<BinBench> {
+    fn parse_runs(
+        module_path: &str,
+        cmd: &Option<api::Cmd>,
+        runs: Vec<api::Run>,
+    ) -> Result<Vec<BinBench>, IaiCallgrindError> {
         let mut benches = vec![];
         let mut counter: usize = 0;
         for run in runs {
-            let orig = run.orig;
-            let command = PathBuf::from(run.cmd);
+            if run.args.is_empty() {
+                return Err(IaiCallgrindError::Other(format!(
+                    "{module_path}: Found Run without an Argument. At least one argument must be \
+                     specified: {run:?}"
+                )));
+            }
+            let (orig, command) = if let Some(cmd) = run.cmd {
+                (cmd.display, PathBuf::from(cmd.cmd))
+            } else if let Some(command) = cmd {
+                (command.display.clone(), PathBuf::from(&command.cmd))
+            } else {
+                return Err(IaiCallgrindError::Other(format!(
+                    "{module_path}: Found Run without a command. A command must be specified \
+                     either at group level or run level: {run:?}"
+                )));
+            };
             let opts = run.opts;
-            let envs: Option<Vec<(String, String)>> = run.envs.map(|envs| {
-                envs.iter()
-                    .filter_map(|e| match e.split_once('=') {
-                        Some((key, value)) => Some((key.to_owned(), value.to_owned())),
-                        None => std::env::var(e).ok().map(|v| (e.clone(), v)),
-                    })
-                    .collect()
-            });
+            let envs: Vec<(String, String)> = run
+                .envs
+                .iter()
+                .filter_map(|e| match e.split_once('=') {
+                    Some((key, value)) => Some((key.to_owned(), value.to_owned())),
+                    None => std::env::var(e).ok().map(|v| (e.clone(), v)),
+                })
+                .collect();
+
             for args in run.args {
                 let id = if let Some(id) = args.id {
                     id
@@ -299,22 +369,20 @@ impl Config {
                 };
                 benches.push(BinBench {
                     id,
-                    orig: orig.clone(),
+                    display: orig.clone(),
                     command: command.clone(),
                     args: args.args,
-                    envs: envs
-                        .as_ref()
-                        .map_or_else(std::vec::Vec::new, std::clone::Clone::clone),
+                    envs: envs.clone(),
                     opts: opts
                         .as_ref()
                         .map_or_else(Options::default, std::clone::Clone::clone),
                 });
             }
         }
-        benches
+        Ok(benches)
     }
 
-    fn parse_assists(assists: Vec<internal::Assistant>) -> BenchmarkAssistants {
+    fn parse_assists(assists: Vec<crate::api::Assistant>) -> BenchmarkAssistants {
         let mut bench_assists = BenchmarkAssistants::default();
         for assist in assists {
             match assist.id.as_str() {
@@ -364,6 +432,32 @@ impl Config {
         CallgrindArgs::from_args(&callgrind_args)
     }
 
+    fn parse_groups(
+        module: &str,
+        benchmark: BinaryBenchmark,
+    ) -> Result<Vec<GroupConfig>, IaiCallgrindError> {
+        let args = Self::parse_callgrind_args(&benchmark.config.raw_callgrind_args);
+        let mut configs = vec![];
+        for group in benchmark.groups {
+            let module_path = if let Some(id) = group.id.as_ref() {
+                format!("{module}::{id}")
+            } else {
+                module.to_owned()
+            };
+            let config = GroupConfig {
+                id: group.id,
+                module_path: module_path.clone(),
+                fixtures: group.fixtures,
+                sandbox: group.sandbox,
+                benches: Self::parse_runs(&module_path, &group.cmd, group.benches)?,
+                assists: Self::parse_assists(group.assists),
+                callgrind_args: args.clone(),
+            };
+            configs.push(config);
+        }
+        Ok(configs)
+    }
+
     fn generate(
         mut env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug,
     ) -> Result<Self, IaiCallgrindError> {
@@ -381,12 +475,7 @@ impl Config {
             .unwrap();
 
         let benchmark = Self::receive_benchmark(bytes)?;
-
-        let sandbox = benchmark.sandbox;
-        let fixtures = Self::parse_fixtures(benchmark.fixtures);
-        let benches = Self::parse_runs(benchmark.runs);
-        let bench_assists = Self::parse_assists(benchmark.assists);
-        let callgrind_args = Self::parse_callgrind_args(&benchmark.options);
+        let groups = Self::parse_groups(&module, benchmark)?;
 
         let arch = get_arch();
         debug!("Detected architecture: {}", arch);
@@ -401,47 +490,17 @@ impl Config {
             bench_file,
             module,
             bench_bin,
-            sandbox,
-            fixtures,
-            benches,
-            bench_assists,
-            callgrind_args,
+            groups,
             allow_aslr,
             arch,
         })
     }
 }
 
-fn setup_sandbox(config: &Config) -> Result<TempDir, IaiCallgrindError> {
-    debug!("Creating temporary workspace directory");
-    let temp_dir = tempfile::tempdir().expect("Create temporary directory");
-    if let Some(fixtures) = &config.fixtures {
-        debug!(
-            "Copying fixtures from '{}' to '{}'",
-            &fixtures.path.display(),
-            temp_dir.path().display()
-        );
-        copy_directory(&fixtures.path, temp_dir.path(), fixtures.follow_symlinks)?;
-    }
-    trace!(
-        "Changing current directory to temporary directory: '{}'",
-        temp_dir.path().display()
-    );
-    std::env::set_current_dir(temp_dir.path())
-        .expect("Set current directory to temporary workspace directory");
-    Ok(temp_dir)
-}
-
-pub(crate) fn run(
-    env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug,
-) -> Result<(), IaiCallgrindError> {
-    let config = Config::generate(env_args_iter)?;
-
-    // We need the TempDir to exist within this function or else it's getting dropped and deleted
-    // too early.
-    let temp_dir = if config.sandbox {
+fn run_group(config: &Config, group: &GroupConfig) -> Result<(), IaiCallgrindError> {
+    let sandbox = if group.sandbox {
         debug!("Setting up sandbox");
-        Some(setup_sandbox(&config)?)
+        Some(Sandbox::setup(&group.fixtures)?)
     } else {
         debug!(
             "Sandbox switched off: Running benchmarks in the current directory: '{}'",
@@ -450,27 +509,44 @@ pub(crate) fn run(
         None
     };
 
-    let mut assists = config.bench_assists.clone();
+    let mut assists = group.assists.clone();
 
     if let Some(before) = assists.before.as_mut() {
-        before.run(&config)?;
+        before.run(config, group)?;
     }
-    for bench in &config.benches {
+
+    for bench in &group.benches {
         if let Some(setup) = assists.setup.as_mut() {
-            setup.run(&config)?;
+            setup.run(config, group)?;
         }
 
-        bench.run(&config)?;
+        bench.run(config, group)?;
 
         if let Some(teardown) = assists.teardown.as_mut() {
-            teardown.run(&config)?;
+            teardown.run(config, group)?;
         }
     }
+
     if let Some(after) = assists.after.as_mut() {
-        after.run(&config)?;
+        after.run(config, group)?;
     }
 
-    // Drop temp_dir and it's getting deleted
-    drop(temp_dir);
+    if let Some(sandbox) = sandbox {
+        debug!("Removing sandbox");
+        sandbox.reset();
+    }
+
+    Ok(())
+}
+
+pub fn run(
+    env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug,
+) -> Result<(), IaiCallgrindError> {
+    let config = Config::generate(env_args_iter)?;
+
+    for group in &config.groups {
+        run_group(&config, group)?;
+    }
+
     Ok(())
 }

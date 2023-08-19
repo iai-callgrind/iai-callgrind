@@ -2,8 +2,8 @@ use iai_callgrind::{main, ExitWith, Options};
 
 main!(
     run = cmd = "benchmark-tests-exit",
-          opts = Options::default().exit_with(ExitWith::Success),
-          id = "succeed", args = ["0"];
+    opts = Options::default().exit_with(ExitWith::Success),
+    id = "succeed", args = ["0"];
     run = cmd = "benchmark-tests-exit",
           opts = Options::default().exit_with(ExitWith::Failure),
           id = "fail_with_1", args = ["1"],

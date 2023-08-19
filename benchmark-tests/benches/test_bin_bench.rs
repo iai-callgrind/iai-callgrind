@@ -45,7 +45,7 @@ main!(
     // commands in the PATH are ok too
     run = cmd = "echo", args = ["one", "two"], args = ["one two three four"];
     run = cmd = "echo",
-        opts = Options::new().current_dir(PathBuf::from("/tmp")),
+        opts = Options::default().current_dir(PathBuf::from("/tmp")),
         args = ["one", "two"],
         args = ["one two three four"];
     run = cmd = "printenv", opts = Options::default().env_clear(false), args = ["PATH"];

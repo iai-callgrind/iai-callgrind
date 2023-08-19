@@ -1,0 +1,38 @@
+# https://editorconfig.org/
+# indent_style: set to "tab" or "space" to use hard tabs or soft tabs respectively.
+# indent_size: a whole number defining the number of columns used for each indentation level and the width of soft tabs (when supported). When set to "tab", the value of tab_width (if specified) will be used.
+# tab_width: a whole number defining the number of columns used to represent a tab character. This defaults to the value of indent_size and doesn't usually need to be specified.
+# end_of_line: set to "lf", "cr", or "crlf" to control how line breaks are represented.
+# charset: set to "latin1", "utf-8", "utf-8-bom", "utf-16be" or "utf-16le" to control the character set.
+# trim_trailing_whitespace: set to "true" to remove any whitespace characters preceding newline characters and "false" to ensure it doesn't.
+# insert_final_newline: set to "true" to ensure file ends with a newline when saving and "false" to ensure it doesn't.
+# root: special property that should be specified at the top of the file outside of any sections. Set to "true" to stop .editorconfig files search on current file.
+
+root=true
+
+[*]
+end_of_line = LF
+charset = utf-8
+indent_style=space
+indent_size=2
+max_line_length = 80
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.md]
+indent_size = 4
+trim_trailing_whitespace = false
+
+# follow the clang-format mozilla style
+[*.c]
+max_line_length = 79
+
+[*.rs]
+indent_size = 4
+max_line_length = 100
+
+[*.{asm,s}]
+max_line_length = 88
+
+[*.txt]
+insert_final_newline = false

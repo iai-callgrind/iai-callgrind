@@ -26,22 +26,35 @@
 #![allow(clippy::missing_panics_doc)]
 #![allow(clippy::missing_errors_doc)]
 
+#[cfg(feature = "api")]
+pub mod api;
+#[cfg(feature = "runner")]
 mod bin_bench;
+#[cfg(feature = "runner")]
 mod callgrind;
+#[cfg(feature = "runner")]
 mod error;
+#[cfg(feature = "runner")]
 mod lib_bench;
+#[cfg(feature = "runner")]
 mod util;
 
+#[cfg(feature = "runner")]
 use std::path::PathBuf;
 
+#[cfg(feature = "runner")]
 pub use error::IaiCallgrindError;
+#[cfg(feature = "runner")]
 use log::debug;
+#[cfg(feature = "runner")]
 pub use util::{write_all_to_stderr, write_all_to_stdout};
 
+#[cfg(feature = "runner")]
 fn get_arch() -> String {
     std::env::consts::ARCH.to_owned()
 }
 
+#[cfg(feature = "runner")]
 pub fn run() -> Result<(), IaiCallgrindError> {
     let mut args_iter = std::env::args_os();
 

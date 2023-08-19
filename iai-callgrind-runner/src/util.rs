@@ -37,7 +37,19 @@ pub fn yesno_to_bool(value: &str) -> bool {
     value == "yes"
 }
 
-fn trim(bytes: &[u8]) -> &[u8] {
+pub fn truncate_str_utf8(string: &str, len: usize) -> &str {
+    if let Some((pos, c)) = string
+        .char_indices()
+        .take_while(|(i, c)| i + c.len_utf8() <= len)
+        .last()
+    {
+        &string[..pos + c.len_utf8()]
+    } else {
+        &string[..0]
+    }
+}
+
+pub fn trim(bytes: &[u8]) -> &[u8] {
     let from = match bytes.iter().position(|x| !x.is_ascii_whitespace()) {
         Some(i) => i,
         None => return &bytes[0..0],
@@ -116,4 +128,44 @@ pub fn copy_directory(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use super::*;
+
+    #[rstest]
+    #[case::empty_0("", 0, "")]
+    #[case::empty_1("", 1, "")]
+    #[case::single_0("a", 0, "")]
+    #[case::single_1("a", 1, "a")]
+    #[case::single_2("a", 2, "a")]
+    #[case::two_0("ab", 0, "")]
+    #[case::two_1("ab", 1, "a")]
+    #[case::two_2("ab", 2, "ab")]
+    #[case::two_3("ab", 3, "ab")]
+    #[case::two_usize_max("ab", usize::MAX, "ab")]
+    #[case::hundred_0(&"a".repeat(100), 0, "")]
+    #[case::hundred_99(&"ab".repeat(50), 99, &"ab".repeat(50)[..99])]
+    #[case::hundred_100(&"a".repeat(100), 100, &"a".repeat(100))]
+    #[case::hundred_255(&"a".repeat(100), 255, &"a".repeat(100))]
+    #[case::multi_byte_0("µ", 0, "")]
+    #[case::multi_byte_1("µ", 1, "")]
+    #[case::multi_byte_2("µ", 2, "µ")]
+    #[case::multi_byte_3("µ", 3, "µ")]
+    #[case::uni_then_multi_byte_0("aµ", 0, "")]
+    #[case::uni_then_multi_byte_1("aµ", 1, "a")]
+    #[case::uni_then_multi_byte_2("aµ", 2, "a")]
+    #[case::uni_then_multi_byte_3("aµ", 3, "aµ")]
+    #[case::uni_then_multi_byte_4("aµ", 4, "aµ")]
+    #[case::multi_byte_then_uni_0("µa", 0, "")]
+    #[case::multi_byte_then_uni_1("µa", 1, "")]
+    #[case::multi_byte_then_uni_2("µa", 2, "µ")]
+    #[case::multi_byte_then_uni_3("µa", 3, "µa")]
+    #[case::multi_byte_then_uni_4("µa", 4, "µa")]
+    fn test_truncate_str(#[case] input: &str, #[case] len: usize, #[case] expected: &str) {
+        assert_eq!(truncate_str_utf8(input, len), expected);
+    }
 }
