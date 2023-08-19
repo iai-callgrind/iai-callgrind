@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+* (#3) Provide a builder like api for binary benchmarks in addition to the macro api
+
+### Changed
+
+* BREAKING: an id for args in the macro api is now mandatory
+* binary benchmarks: The filename of callgrind output for benchmarked `setup`, `teardown`, `before` and `after`
+functions changed to `callgrind.$id.$function.out`.  
+* binary benchmarks: The filename of callgrind output for benchmarked binaries does not include the arguments for the
+binary anymore.
+
+### Fixed
+
+* Truncate long filenames of callgrind output to a maximum of 255 bytes
+* library benchmarks: Fix event counting to include costs of inlined functions
+
 ### [0.5.0] - 2023-08-07
 
 ### Added
