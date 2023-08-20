@@ -13,15 +13,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 
-* The filename for callgrind output files of binary benchmarks changed for setup, teardown, before
-and after functions to `callgrind.$id.$name.out` (id = `setup`, `teardown`, etc.; name = function
-name)
-* The filename for callgrind output files of binary benchmarks changed for each benchmark run. The
-arguments passed to the binary were removed from the file name.
+* BREAKING: an id for args in the macro api is now mandatory
+* binary benchmarks: The filename of callgrind output for benchmarked `setup`, `teardown`, `before` and `after`
+functions changed to `callgrind.$id.$function.out`.  
+* binary benchmarks: The filename of callgrind output for benchmarked binaries does not include the arguments for the
+binary anymore.
 
 ### Fixed
 
 * The filename for callgrind output files is now truncated to a maximum of 255 bytes
+* library benchmarks: Fix event counting to include costs of inlined functions
 
 ### [0.5.0] - 2023-08-07
 
