@@ -71,14 +71,14 @@ To start with Iai-Callgrind, add the following to your `Cargo.toml` file:
 
 ```toml
 [dev-dependencies]
-iai-callgrind = "0.5.0"
+iai-callgrind = "0.6.0"
 ```
 
 To be able to run the benchmarks you'll also need the `iai-callgrind-runner` binary installed
 somewhere in your `$PATH`, for example with
 
 ```shell
-cargo install --version 0.5.0 iai-callgrind-runner
+cargo install --version 0.6.0 iai-callgrind-runner
 ```
 
 There's also the possibility to install the binary somewhere else and point the
@@ -86,7 +86,7 @@ There's also the possibility to install the binary somewhere else and point the
 binary like so:
 
 ```shell
-cargo install --version 0.5.0 --root /tmp iai-callgrind-runner
+cargo install --version 0.6.0 --root /tmp iai-callgrind-runner
 IAI_CALLGRIND_RUNNER=/tmp/bin/iai-callgrind-runner cargo bench --bench my-bench
 ```
 

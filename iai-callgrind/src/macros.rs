@@ -276,7 +276,6 @@
 #[macro_export]
 macro_rules! main {
     // TODO: CHANGE options to config and use BinaryBenchmarkConfig
-    // TODO: MAKE ID MANDATORY
     ( $( options = $( $options:literal ),+ $(,)*; )?
       $( before = $before:ident $(, bench = $bench_before:literal )? ; )?
       $( after = $after:ident $(, bench = $bench_after:literal )? ; )?
@@ -323,7 +322,7 @@ macro_rules! main {
             let exe = option_env!("IAI_CALLGRIND_RUNNER")
                 .unwrap_or_else(|| option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner"));
 
-            let library_version = "0.5.0";
+            let library_version = "0.6.0";
 
             let mut cmd = std::process::Command::new(exe);
 
@@ -511,7 +510,7 @@ macro_rules! main {
             let exe = option_env!("IAI_CALLGRIND_RUNNER")
                 .unwrap_or_else(|| option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner"));
 
-            let library_version = "0.5.0";
+            let library_version = "0.6.0";
 
             let mut cmd = std::process::Command::new(exe);
 
@@ -613,7 +612,7 @@ macro_rules! main {
             let exe =option_env!("IAI_CALLGRIND_RUNNER")
                 .unwrap_or_else(|| option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner"));
 
-            let library_version = "0.5.0";
+            let library_version = "0.6.0";
 
             let mut cmd = std::process::Command::new(exe);
 
