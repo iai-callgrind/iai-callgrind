@@ -1034,7 +1034,7 @@ impl From<BenchmarkId> for String {
 /// iai_callgrind::main!(
 ///    run = cmd = "/bin/stat",
 ///        opts = Options::default().exit_with(ExitWith::Code(1)),
-///        args = ["file does not exist"];
+///        id = "file not exist", args = ["file does not exist"];
 /// );
 /// ```
 #[derive(Debug, Clone)]
