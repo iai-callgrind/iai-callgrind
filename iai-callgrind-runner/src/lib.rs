@@ -37,6 +37,8 @@ mod error;
 #[cfg(feature = "runner")]
 mod lib_bench;
 #[cfg(feature = "runner")]
+mod meta;
+#[cfg(feature = "runner")]
 mod util;
 
 #[cfg(feature = "runner")]
