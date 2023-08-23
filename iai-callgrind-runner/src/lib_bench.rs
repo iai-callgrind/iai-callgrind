@@ -6,10 +6,13 @@ use log::debug;
 
 use crate::api::Options;
 use crate::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput};
-use crate::{get_arch, IaiCallgrindError};
+use crate::util::{get_arch, get_target_dir};
+use crate::IaiCallgrindError;
 
 #[derive(Debug)]
 struct Config {
+    target_dir: PathBuf,
+    #[allow(unused)]
     package_dir: PathBuf,
     bench_file: PathBuf,
     benches: Vec<String>,
@@ -28,6 +31,7 @@ impl Config {
         let bench_file = PathBuf::from(env_args_iter.next().unwrap());
         let module = env_args_iter.next().unwrap().to_str().unwrap().to_owned();
         let executable = PathBuf::from(env_args_iter.next().unwrap());
+        let target_dir = get_target_dir();
 
         let mut benches = vec![];
         while let Some(arg) = env_args_iter.peek() {
@@ -53,6 +57,7 @@ impl Config {
         }
 
         Self {
+            target_dir,
             package_dir,
             bench_file,
             benches,
@@ -79,7 +84,7 @@ pub(crate) fn run(
         let mut callgrind_args = config.callgrind_args.clone();
         callgrind_args.insert_toggle_collect(&format!("*{}::{}", &config.module, function_name));
 
-        let output = CallgrindOutput::create(&config.package_dir, &config.module, function_name);
+        let output = CallgrindOutput::create(&config.target_dir, &config.module, function_name);
         callgrind_args.set_output_file(&output.file.display().to_string());
 
         let options = Options {

@@ -1,6 +1,6 @@
 use std::ffi::{OsStr, OsString};
 use std::io::{self, BufWriter, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use log::{log_enabled, trace, Level};
@@ -128,6 +128,27 @@ pub fn copy_directory(
         }
     }
     Ok(())
+}
+
+pub fn get_arch() -> String {
+    std::env::consts::ARCH.to_owned()
+}
+
+pub fn get_target_dir() -> PathBuf {
+    std::env::var("CARGO_TARGET_DIR")
+        .map_or_else(
+            |_| {
+                cargo_metadata::MetadataCommand::new()
+                    .no_deps()
+                    .exec()
+                    .unwrap()
+                    .target_directory
+                    .into_std_path_buf()
+            },
+            PathBuf::from,
+        )
+        .join("iai-callgrind")
+        .join(std::env::var("CARGO_PKG_NAME").map_or_else(|_| PathBuf::new(), PathBuf::from))
 }
 
 #[cfg(test)]

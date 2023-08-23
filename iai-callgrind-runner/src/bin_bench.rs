@@ -10,8 +10,10 @@ use tempfile::TempDir;
 
 use crate::api::{BinaryBenchmark, Options};
 use crate::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput};
-use crate::util::{copy_directory, write_all_to_stderr, write_all_to_stdout};
-use crate::{api, get_arch, IaiCallgrindError};
+use crate::util::{
+    copy_directory, get_arch, get_target_dir, write_all_to_stderr, write_all_to_stdout,
+};
+use crate::{api, IaiCallgrindError};
 
 #[derive(Debug)]
 struct BinBench {
@@ -35,7 +37,7 @@ impl BinBench {
         }
 
         let output = CallgrindOutput::create(
-            &config.package_dir,
+            &config.target_dir,
             &group.module_path,
             &format!("{}.{}", self.id, self.display),
         );
@@ -131,7 +133,7 @@ impl Assistant {
         callgrind_args.insert_toggle_collect(&format!("*{}::{}", &config.module, &self.name));
 
         let output = CallgrindOutput::create(
-            &config.package_dir,
+            &config.target_dir,
             &group.module_path,
             &format!("{}.{}", self.kind.id(), &self.name),
         );
@@ -295,6 +297,8 @@ struct GroupConfig {
 
 #[derive(Debug)]
 struct Config {
+    target_dir: PathBuf,
+    #[allow(unused)]
     package_dir: PathBuf,
     bench_file: PathBuf,
     module: String,
@@ -474,6 +478,7 @@ impl Config {
             .parse::<usize>()
             .unwrap();
 
+        let target_dir = get_target_dir();
         let benchmark = Self::receive_benchmark(bytes)?;
         let groups = Self::parse_groups(&module, benchmark)?;
 
@@ -486,6 +491,7 @@ impl Config {
         }
 
         Ok(Self {
+            target_dir,
             package_dir,
             bench_file,
             module,
