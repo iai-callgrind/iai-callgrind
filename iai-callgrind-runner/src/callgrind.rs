@@ -176,7 +176,6 @@ pub struct CallgrindOutput {
 impl CallgrindOutput {
     pub fn create(base_dir: &Path, module: &str, name: &str) -> Self {
         let current = base_dir;
-        let target = PathBuf::from("target/iai");
         let module_path: PathBuf = module.split("::").collect();
         let sanitized_name = sanitize_filename::sanitize_with_options(
             name,
@@ -192,7 +191,7 @@ impl CallgrindOutput {
                                                      * length 255 */
         ));
 
-        let file = current.join(target).join(module_path).join(file_name);
+        let file = current.join(base_dir).join(module_path).join(file_name);
         let output = Self { file };
 
         std::fs::create_dir_all(output.file.parent().unwrap()).expect("Failed to create directory");

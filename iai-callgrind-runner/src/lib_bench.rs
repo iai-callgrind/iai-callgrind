@@ -2,22 +2,22 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use colored::Colorize;
-use log::debug;
 
 use crate::api::Options;
 use crate::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput};
-use crate::{get_arch, IaiCallgrindError};
+use crate::meta::Metadata;
+use crate::IaiCallgrindError;
 
 #[derive(Debug)]
 struct Config {
+    #[allow(unused)]
     package_dir: PathBuf,
     bench_file: PathBuf,
     benches: Vec<String>,
     executable: PathBuf,
     module: String,
     callgrind_args: CallgrindArgs,
-    allow_aslr: bool,
-    arch: String,
+    meta: Metadata,
 }
 
 impl Config {
@@ -43,14 +43,7 @@ impl Config {
             callgrind_args.pop();
         }
         let callgrind_args = CallgrindArgs::from_args(&callgrind_args);
-
-        let arch = get_arch();
-        debug!("Detected architecture: {}", arch);
-
-        let allow_aslr = std::env::var_os("IAI_ALLOW_ASLR").is_some();
-        if allow_aslr {
-            debug!("Found IAI_ALLOW_ASLR environment variable. Trying to run with ASLR enabled.");
-        }
+        let meta = Metadata::new();
 
         Self {
             package_dir,
@@ -59,8 +52,7 @@ impl Config {
             executable,
             module,
             callgrind_args,
-            allow_aslr,
-            arch,
+            meta,
         }
     }
 }
@@ -70,7 +62,7 @@ pub(crate) fn run(
 ) -> Result<(), IaiCallgrindError> {
     let config = Config::with_env_args_iter(env_args);
     for (index, function_name) in config.benches.iter().enumerate() {
-        let command = CallgrindCommand::new(config.allow_aslr, &config.arch);
+        let command = CallgrindCommand::new(config.meta.aslr, &config.meta.arch);
         let args = vec![
             OsString::from("--iai-run".to_owned()),
             OsString::from(index.to_string()),
@@ -79,7 +71,8 @@ pub(crate) fn run(
         let mut callgrind_args = config.callgrind_args.clone();
         callgrind_args.insert_toggle_collect(&format!("*{}::{}", &config.module, function_name));
 
-        let output = CallgrindOutput::create(&config.package_dir, &config.module, function_name);
+        let output =
+            CallgrindOutput::create(&config.meta.target_dir, &config.module, function_name);
         callgrind_args.set_output_file(&output.file.display().to_string());
 
         let options = Options {

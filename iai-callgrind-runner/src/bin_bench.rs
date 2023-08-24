@@ -10,8 +10,9 @@ use tempfile::TempDir;
 
 use crate::api::{BinaryBenchmark, Options};
 use crate::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput};
+use crate::meta::Metadata;
 use crate::util::{copy_directory, write_all_to_stderr, write_all_to_stdout};
-use crate::{api, get_arch, IaiCallgrindError};
+use crate::{api, IaiCallgrindError};
 
 #[derive(Debug)]
 struct BinBench {
@@ -25,7 +26,7 @@ struct BinBench {
 
 impl BinBench {
     fn run(&self, config: &Config, group: &GroupConfig) -> Result<(), IaiCallgrindError> {
-        let command = CallgrindCommand::new(config.allow_aslr, &config.arch);
+        let command = CallgrindCommand::new(config.meta.aslr, &config.meta.arch);
         let mut callgrind_args = group.callgrind_args.clone();
         if let Some(entry_point) = &self.opts.entry_point {
             callgrind_args.collect_atstart = false;
@@ -35,7 +36,7 @@ impl BinBench {
         }
 
         let output = CallgrindOutput::create(
-            &config.package_dir,
+            &config.meta.target_dir,
             &group.module_path,
             &format!("{}.{}", self.id, self.display),
         );
@@ -113,7 +114,7 @@ impl Assistant {
     }
 
     fn run_bench(&self, config: &Config, group: &GroupConfig) -> Result<(), IaiCallgrindError> {
-        let command = CallgrindCommand::new(config.allow_aslr, &config.arch);
+        let command = CallgrindCommand::new(config.meta.aslr, &config.meta.arch);
 
         let run_id = if let Some(id) = &group.id {
             format!("{}::{}", id, self.kind.id())
@@ -131,7 +132,7 @@ impl Assistant {
         callgrind_args.insert_toggle_collect(&format!("*{}::{}", &config.module, &self.name));
 
         let output = CallgrindOutput::create(
-            &config.package_dir,
+            &config.meta.target_dir,
             &group.module_path,
             &format!("{}.{}", self.kind.id(), &self.name),
         );
@@ -295,26 +296,26 @@ struct GroupConfig {
 
 #[derive(Debug)]
 struct Config {
+    #[allow(unused)]
     package_dir: PathBuf,
     bench_file: PathBuf,
     module: String,
     bench_bin: PathBuf,
     groups: Vec<GroupConfig>,
-    allow_aslr: bool,
-    arch: String,
+    meta: Metadata,
 }
 
 impl Config {
-    fn receive_benchmark(bytes: usize) -> Result<api::BinaryBenchmark, IaiCallgrindError> {
+    fn receive_benchmark(num_bytes: usize) -> Result<api::BinaryBenchmark, IaiCallgrindError> {
         let mut encoded = vec![];
         let mut stdin = stdin();
         stdin.read_to_end(&mut encoded).map_err(|error| {
             IaiCallgrindError::Other(format!("Failed to read encoded configuration: {error}"))
         })?;
         assert!(
-            encoded.len() == bytes,
-            "Bytes mismatch when decoding configuration: Expected {bytes} bytes but received: {} \
-             bytes",
+            encoded.len() == num_bytes,
+            "Bytes mismatch when decoding configuration: Expected {num_bytes} bytes but received: \
+             {} bytes",
             encoded.len()
         );
 
@@ -467,23 +468,16 @@ impl Config {
         let bench_file = PathBuf::from(env_args_iter.next().unwrap());
         let module = env_args_iter.next().unwrap().to_str().unwrap().to_owned();
         let bench_bin = PathBuf::from(env_args_iter.next().unwrap());
-        let bytes = env_args_iter
+        let num_bytes = env_args_iter
             .next()
             .unwrap()
             .to_string_lossy()
             .parse::<usize>()
             .unwrap();
 
-        let benchmark = Self::receive_benchmark(bytes)?;
+        let benchmark = Self::receive_benchmark(num_bytes)?;
         let groups = Self::parse_groups(&module, benchmark)?;
-
-        let arch = get_arch();
-        debug!("Detected architecture: {}", arch);
-
-        let allow_aslr = std::env::var_os("IAI_ALLOW_ASLR").is_some();
-        if allow_aslr {
-            debug!("Found IAI_ALLOW_ASLR environment variable. Trying to run with ASLR enabled.");
-        }
+        let meta = Metadata::new();
 
         Ok(Self {
             package_dir,
@@ -491,8 +485,7 @@ impl Config {
             module,
             bench_bin,
             groups,
-            allow_aslr,
-            arch,
+            meta,
         })
     }
 }

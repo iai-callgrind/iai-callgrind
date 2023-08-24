@@ -37,6 +37,8 @@ mod error;
 #[cfg(feature = "runner")]
 mod lib_bench;
 #[cfg(feature = "runner")]
+mod meta;
+#[cfg(feature = "runner")]
 mod util;
 
 #[cfg(feature = "runner")]
@@ -48,11 +50,6 @@ pub use error::IaiCallgrindError;
 use log::debug;
 #[cfg(feature = "runner")]
 pub use util::{write_all_to_stderr, write_all_to_stdout};
-
-#[cfg(feature = "runner")]
-fn get_arch() -> String {
-    std::env::consts::ARCH.to_owned()
-}
 
 #[cfg(feature = "runner")]
 pub fn run() -> Result<(), IaiCallgrindError> {
