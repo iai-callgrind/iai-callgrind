@@ -21,7 +21,7 @@ impl Metadata {
                         .no_deps()
                         .exec()
                         .map_or_else(
-                            |_| PathBuf::from("target/iai"),
+                            |_| PathBuf::from("target"),
                             |p| p.target_directory.into_std_path_buf(),
                         )
                 },
