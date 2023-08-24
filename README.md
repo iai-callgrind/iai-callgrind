@@ -170,10 +170,10 @@ my_benchmark::bench_fibonacci_long
   Estimated Cycles:        35638677
 ```
 
-In addition, you'll find the callgrind output in `target/iai/my_benchmark`, if you want to
-investigate further with a tool like `callgrind_annotate`. Now, if running the same benchmark again,
-the output will report the differences between the current and the previous run. Say you've made
-change to the `fibonacci` function, then you might see something like this:
+In addition, you'll find the callgrind output in `target/iai`, if you want to investigate further
+with a tool like `callgrind_annotate`. Now, if running the same benchmark again, the output will
+report the differences between the current and the previous run. Say you've made change to the
+`fibonacci` function, then you might see something like this:
 
 ```text
 my_benchmark::bench_fibonacci_short
@@ -337,7 +337,7 @@ my_binary_benchmark::my_exe_group no argument:my-exe
 ```
 
 You'll find the callgrind output files of each run of the benchmark `my_binary_benchmark` of the
-group `my_exe_group` in `target/iai/my_binary_benchmark/my_exe_group`.
+group `my_exe_group` in `target/iai/$CARGO_PKG_NAME/my_binary_benchmark/my_exe_group`.
 
 #### Auto-discovery of a crate's binaries
 
@@ -568,8 +568,8 @@ See also [Callgrind Command-line Options](https://valgrind.org/docs/manual/cl-ma
 
 #### Incomplete list of other minor improvements
 
-- The output files of Callgrind are now located under a subdirectory under `target/iai` to avoid
-  overwriting them in case of multiple benchmark files.
+- The output files of Callgrind are now located in a subdirectory under `target/iai` to avoid
+overwriting them in case of multiple benchmark files.
 
 ### What hasn't changed
 
