@@ -409,7 +409,7 @@ impl Default for CallgrindArgs {
 impl CallgrindArgs {
     pub fn from_args(args: &[OsString]) -> Self {
         let mut default = Self::default();
-        for arg in args.iter() {
+        for arg in args {
             let string = arg.to_string_lossy();
             match string.strip_prefix("--").and_then(|s| s.split_once('=')) {
                 Some(("I1", value)) => default.i1 = value.to_owned(),
