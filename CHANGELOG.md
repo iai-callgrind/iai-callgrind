@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
-* The destination directory of iai callgrind output files changes from
+* (#4) The destination directory of iai callgrind output files changes from
 `/workspace/$CARGO_PKG_NAME/target/iai` to `/workspace/target/iai/$CARGO_PKG_NAME` and respects the
 `CARGO_TARGET_DIR` environment variable
 
