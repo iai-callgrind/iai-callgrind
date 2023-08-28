@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use std::ffi::{OsStr, OsString};
+use std::fmt::Display;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
@@ -169,6 +170,47 @@ impl CallgrindCommand {
     }
 }
 
+pub struct Sentinel(String);
+
+impl Sentinel {
+    pub fn from_path(module: &str, function: &str) -> Self {
+        Self(format!("fn={module}::{function}"))
+    }
+
+    pub fn from_segments<I: AsRef<str>, T: AsRef<[I]>>(segments: T) -> Self {
+        let joined = if let Some((first, suffix)) = segments.as_ref().split_first() {
+            suffix.iter().fold(first.as_ref().to_owned(), |mut a, b| {
+                a.push_str("::");
+                a.push_str(b.as_ref());
+                a
+            })
+        } else {
+            String::new()
+        };
+        Self(format!("fn={joined}"))
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+
+    pub fn as_toggle(&self) -> &str {
+        self.0.strip_prefix("fn=").unwrap()
+    }
+}
+
+impl Display for Sentinel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl AsRef<Sentinel> for Sentinel {
+    fn as_ref(&self) -> &Sentinel {
+        self
+    }
+}
+
 pub struct CallgrindOutput {
     pub file: PathBuf,
 }
@@ -286,15 +328,14 @@ impl CallgrindOutput {
         }
     }
 
-    pub fn parse(&self, bench_file: &Path, module: &str, function_name: &str) -> CallgrindStats {
+    pub fn parse<T: AsRef<Sentinel>>(&self, bench_file: &Path, sentinel: T) -> CallgrindStats {
+        let sentinel = sentinel.as_ref();
         trace!(
-            "Parsing callgrind output file '{}' for '{}::{}'",
+            "Parsing callgrind output file '{}' for '{}'",
             self.file.display(),
-            module,
-            function_name
+            sentinel
         );
 
-        let sentinel = format!("fn={}", [module, function_name].join("::"));
         trace!(
             "Using sentinel: '{}' for file name ending with: '{}'",
             &sentinel,
@@ -325,7 +366,7 @@ impl CallgrindOutput {
             if !start_record {
                 if line.starts_with("fl=") && line.ends_with(bench_file.to_str().unwrap()) {
                     trace!("Found line with benchmark file: '{}'", line);
-                } else if line.starts_with(&sentinel) {
+                } else if line.starts_with(sentinel.as_str()) {
                     trace!("Found line with sentinel: '{}'", line);
                     start_record = true;
                 } else {

@@ -4,13 +4,13 @@ use std::io::{stdin, Read};
 use std::path::PathBuf;
 use std::process::Command;
 
-use colored::Colorize;
 use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
 use crate::api::{BinaryBenchmark, Options};
-use crate::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput};
+use crate::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput, Sentinel};
 use crate::meta::Metadata;
+use crate::print::Header;
 use crate::util::{copy_directory, write_all_to_stderr, write_all_to_stdout};
 use crate::{api, IaiCallgrindError};
 
@@ -55,13 +55,7 @@ impl BinBench {
         let old_output = output.old_output();
         let old_stats = old_output.exists().then(|| old_output.parse_summary());
 
-        println!(
-            "{} {}{}{}",
-            &group.module_path.green(),
-            &self.id.cyan(),
-            ":".cyan(),
-            self.to_string().blue().bold()
-        );
+        Header::new(&group.module_path, self.id.clone(), self.to_string()).print();
         new_stats.print(old_stats);
         Ok(())
     }
@@ -145,17 +139,21 @@ impl Assistant {
             &api::Options::new(false, None, None, None),
         )?;
 
-        let new_stats = output.parse(&config.bench_file, &config.module, &self.name);
+        let sentinel = Sentinel::from_path(&config.module, &self.name);
+        let new_stats = output.parse(&config.bench_file, &sentinel);
 
         let old_output = output.old_output();
         let old_stats = old_output
             .exists()
-            .then(|| old_output.parse(&config.bench_file, &config.module, &self.name));
+            .then(|| old_output.parse(&config.bench_file, sentinel));
 
-        println!(
-            "{}",
-            format!("{}::{}::{}", group.module_path, self.kind.id(), &self.name).green()
-        );
+        Header::from_segments(
+            [&group.module_path, &self.kind.id(), &self.name],
+            None,
+            None,
+        )
+        .print();
+
         new_stats.print(old_stats);
         Ok(())
     }
