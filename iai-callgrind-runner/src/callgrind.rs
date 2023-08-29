@@ -316,13 +316,13 @@ impl CallgrindOutput {
         }
 
         CallgrindStats {
-            l1_instructions_cache_reads: counters[0],
+            instructions_executed: counters[0],
             total_data_cache_reads: counters[1],
             total_data_cache_writes: counters[2],
             l1_instructions_cache_read_misses: counters[3],
             l1_data_cache_read_misses: counters[4],
             l1_data_cache_write_misses: counters[5],
-            l3_instructions_cache_misses: counters[6],
+            l3_instructions_cache_read_misses: counters[6],
             l3_data_cache_read_misses: counters[7],
             l3_data_cache_write_misses: counters[8],
         }
@@ -399,13 +399,13 @@ impl CallgrindOutput {
         }
 
         CallgrindStats {
-            l1_instructions_cache_reads: counters[0],
+            instructions_executed: counters[0],
             total_data_cache_reads: counters[1],
             total_data_cache_writes: counters[2],
             l1_instructions_cache_read_misses: counters[3],
             l1_data_cache_read_misses: counters[4],
             l1_data_cache_write_misses: counters[5],
-            l3_instructions_cache_misses: counters[6],
+            l3_instructions_cache_read_misses: counters[6],
             l3_data_cache_read_misses: counters[7],
             l3_data_cache_write_misses: counters[8],
         }
@@ -535,8 +535,8 @@ impl CallgrindArgs {
 
 #[derive(Clone, Debug)]
 pub struct CallgrindSummary {
-    l1_instructions: u64,
-    l1_data_hits: u64,
+    instructions: u64,
+    l1_hits: u64,
     l3_hits: u64,
     ram_hits: u64,
     total_memory_rw: u64,
@@ -546,11 +546,11 @@ pub struct CallgrindSummary {
 #[derive(Clone, Debug)]
 pub struct CallgrindStats {
     /// Ir: equals the number of instructions executed
-    l1_instructions_cache_reads: u64,
+    instructions_executed: u64,
     /// I1mr: I1 cache read misses
     l1_instructions_cache_read_misses: u64,
     /// ILmr: LL cache instruction read misses
-    l3_instructions_cache_misses: u64,
+    l3_instructions_cache_read_misses: u64,
     /// Dr: Memory reads
     total_data_cache_reads: u64,
     /// D1mr: D1 cache read misses
@@ -567,7 +567,7 @@ pub struct CallgrindStats {
 
 impl CallgrindStats {
     fn summarize(&self) -> CallgrindSummary {
-        let ram_hits = self.l3_instructions_cache_misses
+        let ram_hits = self.l3_instructions_cache_read_misses
             + self.l3_data_cache_read_misses
             + self.l3_data_cache_write_misses;
         let l1_data_accesses = self.l1_data_cache_read_misses + self.l1_data_cache_write_misses;
@@ -575,22 +575,16 @@ impl CallgrindStats {
         let l3_accesses = l1_miss;
         let l3_hits = l3_accesses - ram_hits;
 
-        let total_memory_rw = self.l1_instructions_cache_reads
-            + self.total_data_cache_reads
-            + self.total_data_cache_writes;
-        let l1_data_hits =
-            total_memory_rw - self.l1_instructions_cache_reads - (ram_hits + l3_hits);
-        assert!(
-            total_memory_rw == l1_data_hits + self.l1_instructions_cache_reads + l3_hits + ram_hits
-        );
+        let total_memory_rw =
+            self.instructions_executed + self.total_data_cache_reads + self.total_data_cache_writes;
+        let l1_hits = total_memory_rw - ram_hits - l3_hits;
 
         // Uses Itamar Turner-Trauring's formula from https://pythonspeed.com/articles/consistent-benchmarking-in-ci/
-        let cycles =
-            self.l1_instructions_cache_reads + l1_data_hits + (5 * l3_hits) + (35 * ram_hits);
+        let cycles = l1_hits + (5 * l3_hits) + (35 * ram_hits);
 
         CallgrindSummary {
-            l1_instructions: self.l1_instructions_cache_reads,
-            l1_data_hits,
+            instructions: self.instructions_executed,
+            l1_hits,
             l3_hits,
             ram_hits,
             total_memory_rw,
@@ -655,17 +649,17 @@ impl CallgrindStats {
         let old_summary = old.map(|stat| stat.summarize());
         println!(
             "  Instructions:     {:>15}{}",
-            summary.l1_instructions.to_string().bold(),
+            summary.instructions.to_string().bold(),
             match &old_summary {
-                Some(old) => Self::percentage_diff(summary.l1_instructions, old.l1_instructions),
+                Some(old) => Self::percentage_diff(summary.instructions, old.instructions),
                 None => String::new().normal(),
             }
         );
         println!(
-            "  L1 Data Hits:     {:>15}{}",
-            summary.l1_data_hits.to_string().bold(),
+            "  L1 Hits:          {:>15}{}",
+            summary.l1_hits.to_string().bold(),
             match &old_summary {
-                Some(old) => Self::percentage_diff(summary.l1_data_hits, old.l1_data_hits),
+                Some(old) => Self::percentage_diff(summary.l1_hits, old.l1_hits),
                 None => String::new().normal(),
             }
         );

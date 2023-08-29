@@ -156,14 +156,14 @@ should see something like this:
 ```text
 my_benchmark::bench_fibonacci_short
   Instructions:                1727
-  L1 Data Hits:                 621
+  L1 Hits:                      621
   L2 Hits:                        0
   RAM Hits:                       1
   Total read+write:            2349
   Estimated Cycles:            2383
 my_benchmark::bench_fibonacci_long
   Instructions:            26214727
-  L1 Data Hits:             9423880
+  L1 Hits:                  9423880
   L2 Hits:                        0
   RAM Hits:                       2
   Total read+write:        35638609
@@ -178,14 +178,14 @@ report the differences between the current and the previous run. Say you've made
 ```text
 my_benchmark::bench_fibonacci_short
   Instructions:                2798 (+62.01506%)
-  L1 Data Hits:                1006 (+61.99678%)
+  L1 Hits:                     1006 (+61.99678%)
   L2 Hits:                        0 (No Change)
   RAM Hits:                       1 (No Change)
   Total read+write:            3805 (+61.98382%)
   Estimated Cycles:            3839 (+61.09945%)
 my_benchmark::bench_fibonacci_long
   Instructions:            16201590 (-38.19661%)
-  L1 Data Hits:             5824277 (-38.19661%)
+  L1 Hits:                  5824277 (-38.19661%)
   L2 Hits:                        0 (No Change)
   RAM Hits:                       2 (No Change)
   Total read+write:        22025869 (-38.19661%)
@@ -315,21 +315,21 @@ The output of this benchmark run could look like this:
 ```text
 my_binary_benchmark::my_exe_group do foo with test1:my-exe --foo=fixtures/test1.txt
   Instructions:              322637 (No Change)
-  L1 Data Hits:              106807 (No Change)
+  L1 Hits:                   106807 (No Change)
   L2 Hits:                      708 (No Change)
   RAM Hits:                    3799 (No Change)
   Total read+write:          433951 (No Change)
   Estimated Cycles:          565949 (No Change)
 my_binary_benchmark::my_exe_group positional arguments:my-exe foo "foo bar"
   Instructions:              155637 (No Change)
-  L1 Data Hits:              106807 (No Change)
+  L1 Hits:                   106807 (No Change)
   L2 Hits:                      708 (No Change)
   RAM Hits:                    3799 (No Change)
   Total read+write:          433951 (No Change)
   Estimated Cycles:          565949 (No Change)
 my_binary_benchmark::my_exe_group no argument:my-exe
   Instructions:              155637 (No Change)
-  L1 Data Hits:              106807 (No Change)
+  L1 Hits:                   106807 (No Change)
   L2 Hits:                      708 (No Change)
   RAM Hits:                    3799 (No Change)
   Total read+write:          433951 (No Change)
@@ -435,21 +435,21 @@ $ cd iai-callgrind
 $ cargo bench --bench test_regular_bench
 test_regular_bench::bench_empty
   Instructions:                   0
-  L1 Data Hits:                   0
+  L1 Hits:                        0
   L2 Hits:                        0
   RAM Hits:                       0
   Total read+write:               0
   Estimated Cycles:               0
 test_regular_bench::bench_fibonacci
   Instructions:                1727
-  L1 Data Hits:                 621
+  L1 Hits:                      621
   L2 Hits:                        0
   RAM Hits:                       1
   Total read+write:            2349
   Estimated Cycles:            2383
 test_regular_bench::bench_fibonacci_long
   Instructions:            26214727
-  L1 Data Hits:             9423880
+  L1 Hits:                  9423880
   L2 Hits:                        0
   RAM Hits:                       2
   Total read+write:        35638609
@@ -461,21 +461,21 @@ For comparison here the output of the same benchmark but in the github CI:
 ```text
 test_regular_bench::bench_empty
   Instructions:                   0
-  L1 Data Hits:                   0
+  L1 Hits:                        0
   L2 Hits:                        0
   RAM Hits:                       0
   Total read+write:               0
   Estimated Cycles:               0
 test_regular_bench::bench_fibonacci
   Instructions:                1727
-  L1 Data Hits:                 621
+  L1 Hits:                      621
   L2 Hits:                        0
   RAM Hits:                       1
   Total read+write:            2349
   Estimated Cycles:            2383
 test_regular_bench::bench_fibonacci_long
   Instructions:            26214727
-  L1 Data Hits:             9423880
+  L1 Hits:                  9423880
   L2 Hits:                        0
   RAM Hits:                       2
   Total read+write:        35638609
@@ -501,25 +501,24 @@ still related. They now also include some additional information:
 ```text
 test_regular_bench::bench_fibonacci_long
   Instructions:            26214732
-  L1 Data Hits:             9423880
+  L1 Hits:                  9423880
   L2 Hits:                        0
   RAM Hits:                       2
   Total read+write:        35638609
   Estimated Cycles:        35638677
 ```
 
-There is an additional line `Total read+write` which summarizes all event counters above it and the
-`L1 Accesses` line changed to `L1 Data Hits`. So, the (L1) `Instructions` (reads) and `L1 Data Hits`
-are now separately listed.
+There is an additional line `Total read+write` which summarizes all event counters of the lines with
+`Hits` above it and the `L1 Accesses` line changed to `L1 Hits`.
 
 In detail:
 
-`Total read+write = Instructions + L1 Data Hits + L2 Hits + RAM Hits`.
+`Total read+write = L1 Hits + L2 Hits + RAM Hits`.
 
 The formula for the `Estimated Cycles` hasn't changed and uses Itamar Turner-Trauring's formula from
 <https://pythonspeed.com/articles/consistent-benchmarking-in-ci/>:
 
-`Estimated Cycles = (Instructions + L1 Data Hits) + 5 × (L2 Hits) + 35 × (RAM Hits)`
+`Estimated Cycles = L1 Hits + 5 × (L2 Hits) + 35 × (RAM Hits)`
 
 For further details about how the caches are simulated and more, see the documentation of
 [Callgrind](https://valgrind.org/docs/manual/cg-manual.html)

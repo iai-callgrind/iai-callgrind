@@ -15,6 +15,7 @@
 #![warn(clippy::str_to_string)]
 #![warn(clippy::string_to_string)]
 #![warn(clippy::todo)]
+#![warn(clippy::dbg_macro)]
 #![warn(clippy::try_err)]
 #![warn(clippy::undocumented_unsafe_blocks)]
 #![warn(clippy::unneeded_field_pattern)]

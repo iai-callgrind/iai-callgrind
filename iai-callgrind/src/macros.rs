@@ -164,14 +164,14 @@
 /// ```text
 /// test_bin_bench long:benchmark-tests something
 ///   Instructions:              322637 (No Change)
-///   L1 Data Hits:              106807 (No Change)
+///   L1 Data:              106807 (No Change)
 ///   L2 Hits:                      708 (No Change)
 ///   RAM Hits:                    3799 (No Change)
 ///   Total read+write:          433951 (No Change)
 ///   Estimated Cycles:          565949 (No Change)
 /// test_bin_bench short:benchmark-tests other
 ///   Instructions:              155637 (No Change)
-///   L1 Data Hits:              106807 (No Change)
+///   L1 Data:              106807 (No Change)
 ///   L2 Hits:                      708 (No Change)
 ///   RAM Hits:                    3799 (No Change)
 ///   Total read+write:          433951 (No Change)
