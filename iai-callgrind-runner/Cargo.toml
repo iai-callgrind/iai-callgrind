@@ -42,7 +42,7 @@ colored = { version = ">=1.6, <=2.0.0", optional = true }
 env_logger = { version = ">=0.6, <=0.9.3", optional = true }
 log = { version = "0.4.19", optional = true }
 sanitize-filename = { version = "0.5.0", optional = true }
-serde = { version = "1.0.177", features = ["derive"], optional = true }
+serde = { version = "1.0.188", features = ["derive"], optional = true }
 shlex = { version = "1.1.0", optional = true }
 tempfile = { version = ">=3, <=3.6.0", optional = true }
 version-compare = { version = "0.1.1", optional = true }
