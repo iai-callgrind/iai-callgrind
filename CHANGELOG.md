@@ -1,3 +1,4 @@
+<!-- spell-checker:ignore serde -->
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -6,6 +7,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Fixed
+
+* The `iai-callgrind` package was unnecessarily using all the dependencies of the
+`iai-callgrind-runner` although only dependent on the `api` feature of the runner. Also, the direct
+`serde` dependency was removed because `serde` is already part of the `api` feature of the runner.
 
 ### [0.6.1] - 2023-08-25
 
