@@ -162,7 +162,7 @@
 #![allow(clippy::enum_glob_use)]
 #![allow(clippy::module_name_repetitions)]
 
-pub use {bincode, serde};
+pub use bincode;
 
 pub mod internal;
 mod macros;
