@@ -1,3 +1,4 @@
+# spell-checker:ignore taiki
 name: Build and Check
 
 on:
@@ -23,6 +24,35 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@v1
         with:
           rust-version: "1.60.0"
+
+  minimal_versions:
+    name: Check minimal version requirements of dependencies
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain:
+          - "1.60.0" # MSRV
+          - stable
+          - nightly
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.toolchain }}
+      - uses: taiki-e/install-action@cargo-hack
+      - uses: taiki-e/install-action@cargo-minimal-versions
+      - name: Build
+        run: cargo minimal-versions build --workspace --release
+      - name: Lint
+        run: cargo minimal-versions check --workspace --all-targets
+      - name: Test
+        run: cargo minimal-versions test --workspace --no-run
+      - name: Bench
+        run: cargo minimal-versions bench --workspace --no-run
+        env:
+          IAI_CALLGRIND_RUNNER: /home/runner/work/iai-callgrind/iai-callgrind/target/release/iai-callgrind-runner
 
   format:
     name: Check format with nightly rustfmt

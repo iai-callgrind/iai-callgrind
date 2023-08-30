@@ -279,7 +279,6 @@ version = "0.6.1"
 dependencies = [
  "bincode",
  "iai-callgrind-runner",
- "serde",
 ]
 
 [[package]]
