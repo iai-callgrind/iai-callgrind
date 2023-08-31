@@ -51,7 +51,7 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
       - uses: Swatinem/rust-cache@v2.2.0
         with:
-          key: ubuntu-latest_${{ matrix.toolchain }}"
+          key: ubuntu-latest_${{ matrix.toolchain }}
       - uses: taiki-e/install-action@cargo-hack
       - uses: taiki-e/install-action@cargo-minimal-versions
       - name: Check build with minimal versions
@@ -93,7 +93,7 @@ jobs:
           rustup toolchain install stable --no-self-update --component clippy
       - uses: Swatinem/rust-cache@v2.2.0
         with:
-          key: ubuntu-latest_${{ matrix.toolchain }}"
+          key: ubuntu-latest_${{ matrix.toolchain }}
       - name: Install valgrind
         run: sudo apt-get -y update && sudo apt-get -y install valgrind
       - name: Info
