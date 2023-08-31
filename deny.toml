@@ -67,7 +67,7 @@ ignore = [
 # * Medium - CVSS Score 4.0 - 6.9
 # * High - CVSS Score 7.0 - 8.9
 # * Critical - CVSS Score 9.0 - 10.0
-#severity-threshold =
+severity-threshold = "None"
 
 # If this is true, then cargo deny will use the git executable to fetch advisory database.
 # If this is false, then it uses a built-in git library.
