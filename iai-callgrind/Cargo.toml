@@ -1,6 +1,6 @@
 [package]
 name = "iai-callgrind"
-version = "0.6.1"
+version = "0.6.2"
 edition = "2021"
 rust-version = "1.60.0"
 authors = [
@@ -20,6 +20,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 bincode = "1"
-iai-callgrind-runner = { path = "../iai-callgrind-runner/", version = "=0.6.1", default-features = false, features = [
+iai-callgrind-runner = { path = "../iai-callgrind-runner/", version = "=0.6.2", default-features = false, features = [
   "api",
 ] }

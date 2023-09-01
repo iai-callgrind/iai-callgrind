@@ -275,7 +275,7 @@ checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "iai-callgrind"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "bincode",
  "iai-callgrind-runner",
@@ -283,7 +283,7 @@ dependencies = [
 
 [[package]]
 name = "iai-callgrind-runner"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "bincode",
  "cargo_metadata",
