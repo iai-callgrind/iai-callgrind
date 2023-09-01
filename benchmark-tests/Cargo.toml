@@ -9,7 +9,7 @@ description = "Tests for iai-callgrind"
 readme = "../README.md"
 homepage = "https://github.com/Joining7943/iai-callgrind"
 repository = "https://github.com/Joining7943/iai-callgrind"
-license = "Apache-2.0 AND MIT"
+license = "Apache-2.0 OR MIT"
 
 [dependencies]
 iai-callgrind = { path = "../iai-callgrind" }

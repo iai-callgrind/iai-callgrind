@@ -11,7 +11,7 @@ description = "High-precision and consistent benchmarking framework/harness for 
 readme = "../README.md"
 homepage = "https://github.com/Joining7943/iai-callgrind"
 repository = "https://github.com/Joining7943/iai-callgrind"
-license = "Apache-2.0 AND MIT"
+license = "Apache-2.0 OR MIT"
 keywords = ["iai", "benchmark", "callgrind", "valgrind"]
 categories = ["development-tools::profiling", "development-tools::testing"]
 
