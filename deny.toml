@@ -48,7 +48,16 @@ notice = "warn"
 # A list of advisory IDs to ignore. Note that ignored advisories will still
 # output a note when they are encountered.
 ignore = [
-  #"RUSTSEC-0000-0000",
+  # This vulnaribility is ignored since only `windows` is affected and `iai-callgrind` doesn't run
+  # on windows
+  # Crate:     atty
+  # Version:   0.2.14
+  # Warning:   unsound
+  # Title:     Potential unaligned read
+  # Date:      2021-07-04
+  # ID:        RUSTSEC-2021-0145
+  # URL:       https://rustsec.org/advisories/RUSTSEC-2021-0145
+  "RUSTSEC-2021-0145",
 ]
 # Threshold for security vulnerabilities, any vulnerability with a CVSS score
 # lower than the range specified will be ignored. Note that ignored advisories
@@ -58,7 +67,7 @@ ignore = [
 # * Medium - CVSS Score 4.0 - 6.9
 # * High - CVSS Score 7.0 - 8.9
 # * Critical - CVSS Score 9.0 - 10.0
-#severity-threshold =
+severity-threshold = "None"
 
 # If this is true, then cargo deny will use the git executable to fetch advisory database.
 # If this is false, then it uses a built-in git library.
@@ -75,7 +84,7 @@ unlicensed = "deny"
 # List of explicitly allowed licenses
 # See https://spdx.org/licenses/ for list of possible licenses
 # [possible values: any SPDX 3.11 short identifier (+ optional exception)].
-allow = ["MIT", "Apache-2.0", "BSD-3-Clause", "Unicode-DFS-2016"]
+allow = ["MIT", "Apache-2.0", "BSD-3-Clause", "Unicode-DFS-2016", "MPL-2.0"]
 # List of explicitly disallowed licenses
 # See https://spdx.org/licenses/ for list of possible licenses
 # [possible values: any SPDX 3.11 short identifier (+ optional exception)].
