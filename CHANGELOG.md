@@ -8,11 +8,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+
+* The dependency version requirements in all packages are loosened and more openly formulated.
+Especially, the upper bounds were updated to include the latest versions.
+
 ### Fixed
 
 * The `iai-callgrind` package was unnecessarily using all the dependencies of the
 `iai-callgrind-runner` although only dependent on the `api` feature of the runner. Also, the direct
 `serde` dependency was removed because `serde` is already part of the `api` feature of the runner.
+* Changed the license from `Apache-2.0 AND MIT` to `Apache-2.0 OR MIT` in Cargo.toml
+files of all packages
 
 ### [0.6.1] - 2023-08-25
 
