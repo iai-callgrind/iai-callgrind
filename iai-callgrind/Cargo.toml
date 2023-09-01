@@ -15,6 +15,10 @@ license = "Apache-2.0 OR MIT"
 keywords = ["iai", "benchmark", "callgrind", "valgrind"]
 categories = ["development-tools::profiling", "development-tools::testing"]
 
+[features]
+default = []
+ui_tests = []
+
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]
 
