@@ -163,6 +163,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 pub use bincode;
+pub use iai_callgrind_macros::library_benchmark;
 
 pub mod internal;
 mod macros;
@@ -182,6 +183,34 @@ pub fn black_box<T>(dummy: T) -> T {
         let ret = std::ptr::read_volatile(&dummy);
         std::mem::forget(dummy);
         ret
+    }
+}
+
+/// TODO: DOCUMENT
+#[derive(Debug, Default)]
+pub struct LibraryBenchmarkConfig(internal::RunnerLibraryBenchmarkConfig);
+
+impl LibraryBenchmarkConfig {
+    /// TODO: DOCUMENT
+    pub fn with_raw_callgrind_args<I: AsRef<str>, T: AsRef<[I]>>(args: T) -> Self {
+        Self(internal::RunnerLibraryBenchmarkConfig {
+            raw_callgrind_args: internal::RunnerRawCallgrindArgs::new(args),
+        })
+    }
+
+    /// TODO: DOCUMENT
+    pub fn raw_callgrind_args<I: AsRef<str>, T: AsRef<[I]>>(&mut self, args: T) -> &mut Self {
+        self.raw_callgrind_args_iter(args.as_ref().iter());
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn raw_callgrind_args_iter<I: AsRef<str>, T: Iterator<Item = I>>(
+        &mut self,
+        args: T,
+    ) -> &mut Self {
+        self.0.raw_callgrind_args.raw_callgrind_args_iter(args);
+        self
     }
 }
 
@@ -235,14 +264,7 @@ impl BinaryBenchmarkConfig {
     pub fn raw_callgrind_args<I: AsRef<str>, T: AsRef<[I]>>(&mut self, args: T) -> &mut Self {
         self.0
             .raw_callgrind_args
-            .extend(args.as_ref().iter().map(|s| {
-                let string = s.as_ref();
-                if string.starts_with("--") {
-                    string.to_owned()
-                } else {
-                    format!("--{string}")
-                }
-            }));
+            .raw_callgrind_args_iter(args.as_ref().iter());
         self
     }
 }
@@ -1097,6 +1119,10 @@ macro_rules! impl_traits {
 
 impl_traits!(BinaryBenchmarkGroup, internal::RunnerBinaryBenchmarkGroup);
 impl_traits!(BinaryBenchmarkConfig, internal::RunnerConfig);
+impl_traits!(
+    LibraryBenchmarkConfig,
+    internal::RunnerLibraryBenchmarkConfig
+);
 impl_traits!(Options, internal::RunnerOptions);
 impl_traits!(Run, internal::RunnerRun);
 impl_traits!(Arg, internal::RunnerArg);

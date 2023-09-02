@@ -449,7 +449,7 @@ macro_rules! main {
 
             args.extend(this_args); // The rest of the arguments from the command line
             benchmark.config = $crate::internal::RunnerConfig {
-                raw_callgrind_args: args
+                raw_callgrind_args: $crate::internal::RunnerRawCallgrindArgs::new(args)
             };
 
             let encoded = $crate::bincode::serialize(&benchmark).expect("Encoded benchmark");
@@ -503,8 +503,15 @@ macro_rules! main {
     };
     (
         $( config = $config:expr; $(;)* )?
+        binary_benchmark_groups =
+    ) => {
+        compile_error!("The binary_benchmark_groups argument needs at least one `name` of a `binary_benchmark_group!`");
+    };
+    (
+        $( config = $config:expr; $(;)* )?
         binary_benchmark_groups = $( $group:ident ),+ $(,)*
     ) => {
+        #[inline(never)]
         fn run() {
             let mut this_args = std::env::args();
             let exe = option_env!("IAI_CALLGRIND_RUNNER")
@@ -546,12 +553,14 @@ macro_rules! main {
             $(
                 config = Some($config.into());
             )?
+
             benchmark.config = if let Some(mut config) = config {
-                config.raw_callgrind_args.extend(this_args);
+                config.raw_callgrind_args.raw_callgrind_args_iter(this_args);
                 config
             } else {
                 $crate::internal::RunnerConfig {
-                    raw_callgrind_args: Vec::from_iter(this_args)
+                    raw_callgrind_args:
+                        $crate::internal::RunnerRawCallgrindArgs::from_iter(this_args)
                 }
             };
 
@@ -598,8 +607,141 @@ macro_rules! main {
             };
         }
     };
-    ( callgrind_args = $( $args:literal ),* $(,)*; functions = $( $func_name:ident ),+ $(,)* ) => {
+    (
+        $( config = $config:expr; $(;)* )?
+        library_benchmark_groups =
+    ) => {
+        compile_error!("The library_benchmark_groups argument needs at least one `name` of a `library_benchmark_group!`");
+    };
+    (
+        $( config = $config:expr ; $(;)* )?
+        library_benchmark_groups = $( $group:ident ),+ $(,)*
+    ) => {
+        #[inline(never)]
+        fn run() {
+            let mut this_args = std::env::args();
+            let exe = option_env!("IAI_CALLGRIND_RUNNER")
+                .unwrap_or_else(|| option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner"));
+
+            let library_version = "0.6.2";
+
+            let mut cmd = std::process::Command::new(exe);
+
+            cmd.arg(library_version);
+            cmd.arg("--lib-bench");
+            cmd.arg(env!("CARGO_MANIFEST_DIR"));
+            cmd.arg(file!());
+            cmd.arg(module_path!());
+            cmd.arg(this_args.next().unwrap()); // The executable benchmark binary
+
+            let mut config: Option<$crate::internal::RunnerLibraryBenchmarkConfig> = None;
+            $(
+                config = Some($config.into());
+            )?
+
+            let config = if let Some(mut config) = config {
+                config.raw_callgrind_args.raw_callgrind_args_iter(this_args);
+                config
+            } else {
+                $crate::internal::RunnerLibraryBenchmarkConfig {
+                    raw_callgrind_args:
+                        $crate::internal::RunnerRawCallgrindArgs::from_iter(this_args)
+                }
+            };
+
+            let mut groups = vec![];
+            $(
+                let mut benches = vec![];
+                for (bench, funcs) in $group::FUNCTIONS {
+                    let mut bench_tmp = vec![];
+                    for (id, args, _) in funcs.iter() {
+                        bench_tmp.push($crate::internal::RunnerFunction {
+                            id: (!id.is_empty()).then(|| id.to_string()),
+                            args: (!args.is_empty()).then(|| args.to_string()),
+                            bench: bench.to_string(),
+                        });
+                    }
+                    benches.push(bench_tmp);
+                }
+
+                groups.push($crate::internal::RunnerLibraryBenchmarkGroup {
+                    id: Some(stringify!($group).to_owned()),
+                    benches
+                });
+            )+
+
+            let benchmark = $crate::internal::RunnerLibraryBenchmark {
+                config: config,
+                groups: groups
+            };
+
+            let encoded = $crate::bincode::serialize(&benchmark).expect("Encoded benchmark");
+            let mut child = cmd
+                .arg(encoded.len().to_string())
+                .stdin(std::process::Stdio::piped())
+                .spawn()
+                .expect("Failed to run benchmarks. \
+                    Is iai-callgrind-runner installed and iai-callgrind-runner in your $PATH?. \
+                    You can also set the environment variable IAI_CALLGRIND_RUNNER to the \
+                    absolute path of the iai-callgrind-runner executable.");
+
+            let mut stdin = child.stdin.take().expect("Opening stdin to submit encoded benchmark");
+            std::thread::spawn(move || {
+                use std::io::Write;
+                stdin.write_all(&encoded).expect("Writing encoded benchmark to stdin");
+            });
+
+            let status = child.wait().expect("Wait for child process to exit");
+            if !status.success() {
+                std::process::exit(1);
+            }
+        }
+
+        fn main() {
+            let mut args_iter = $crate::black_box(std::env::args()).skip(1);
+            if args_iter
+                .next()
+                .as_ref()
+                .map_or(false, |value| value == "--iai-run")
+            {
+                match $crate::black_box(args_iter.next().expect("Expecting a function type")).as_str() {
+                    $(
+                        stringify!($group) => {
+                            let group_index = $crate::black_box(
+                                args_iter
+                                    .next()
+                                    .expect("Expecting a group index")
+                                    .parse::<usize>()
+                                    .expect("Expecting a valid group index")
+                            );
+                            let bench_index = $crate::black_box(
+                                args_iter
+                                    .next()
+                                    .expect("Expecting a bench index")
+                                    .parse::<usize>()
+                                    .expect("Expecting a valid bench index")
+                            );
+                            $crate::black_box($group::run(group_index, bench_index));
+                        }
+                    )+
+                    name => panic!("function '{}' not found in this scope", name)
+                }
+            } else {
+                $crate::black_box(run());
+            };
+        }
+    };
+    (
+        $( config = $config:expr ; $(;)* )?
+        functions = $( $func_name:ident ),+ $(,)*
+    ) => {
         mod iai_wrappers {
+            pub const FUNCTIONS : &[&(&'static str, fn())]= &[
+                $(
+                    &(stringify!($func_name), $func_name),
+                )+
+            ];
+
             $(
                 pub fn $func_name() {
                     let _ = $crate::black_box(super::$func_name());
@@ -608,9 +750,10 @@ macro_rules! main {
         }
 
         #[inline(never)]
-        fn run(benchmarks: &[&(&'static str, fn())], mut this_args: std::env::Args) {
+        fn run() {
             let exe =option_env!("IAI_CALLGRIND_RUNNER")
                 .unwrap_or_else(|| option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner"));
+            let mut this_args = std::env::args();
 
             let library_version = "0.6.2";
 
@@ -623,58 +766,87 @@ macro_rules! main {
             cmd.arg(module_path!());
             cmd.arg(this_args.next().unwrap()); // The executable
 
-            for bench in benchmarks {
-                cmd.arg(format!("--iai-bench={}", bench.0));
-            }
+            let mut config: Option<$crate::internal::RunnerLibraryBenchmarkConfig> = None;
+            $(
+                config = Some($config.into());
+            )?
 
-            let mut args = Vec::with_capacity(40);
-            // Add the callgrind_args first so that arguments from the command line will overwrite
-            // those passed to this main macro
-            let callgrind_args : Vec<&str> = vec![
-                $(
-                    $args,
-                )*
-            ];
-            for arg in callgrind_args {
-                if arg.starts_with("--") {
-                    args.push(arg.to_owned());
-                } else {
-                    args.push(format!("--{}", arg))
+            let config = if let Some(mut config) = config {
+                config.raw_callgrind_args.raw_callgrind_args_iter(this_args);
+                config
+            } else {
+                $crate::internal::RunnerLibraryBenchmarkConfig {
+                    raw_callgrind_args:
+                        $crate::internal::RunnerRawCallgrindArgs::from_iter(this_args)
                 }
-            }
+            };
 
-            args.extend(this_args); // The rest of the arguments
-            let status = cmd
-                .args(args)
-                .status()
+            let benchmark = $crate::internal::RunnerLibraryBenchmark {
+                config: config,
+                groups: vec![$crate::internal::RunnerLibraryBenchmarkGroup {
+                    id: None,
+                    benches: vec![iai_wrappers::FUNCTIONS
+                        .iter()
+                        .map(|(name, _)| $crate::internal::RunnerFunction {
+                            id: None, args: None, bench: name.to_string()
+                        })
+                        .collect::<Vec<$crate::internal::RunnerFunction>>()]
+                }]
+            };
+
+            let encoded = $crate::bincode::serialize(&benchmark).expect("Encoded benchmark");
+            let mut child = cmd
+                .arg(encoded.len().to_string())
+                .stdin(std::process::Stdio::piped())
+                .spawn()
                 .expect("Failed to run benchmarks. \
                     Is iai-callgrind-runner installed and iai-callgrind-runner in your $PATH?. \
-                    You can set the environment variable IAI_CALLGRIND_RUNNER to the \
+                    You can also set the environment variable IAI_CALLGRIND_RUNNER to the \
                     absolute path of the iai-callgrind-runner executable.");
 
+            let mut stdin = child.stdin.take().expect("Opening stdin to submit encoded benchmark");
+            std::thread::spawn(move || {
+                use std::io::Write;
+                stdin.write_all(&encoded).expect("Writing encoded benchmark to stdin");
+            });
+
+            let status = child.wait().expect("Wait for child process to exit");
             if !status.success() {
                 std::process::exit(1);
             }
         }
 
         fn main() {
-            let benchmarks : &[&(&'static str, fn())]= $crate::black_box(&[
-                $(
-                    &(stringify!($func_name), iai_wrappers::$func_name),
-                )+
-            ]);
+            use $crate::black_box;
 
-            let mut args_iter = $crate::black_box(std::env::args()).skip(1);
-            if args_iter.next().as_ref().map_or(false, |value| value == "--iai-run") {
-                let index = $crate::black_box(args_iter
-                    .next()
-                    .and_then(|arg| arg.parse::<usize>().ok())
-                    .expect("Error parsing index"));
-                benchmarks[index].1();
+            let mut args_iter = black_box(black_box(std::env::args()).skip(1));
+            if black_box(black_box(black_box(args_iter.next()).as_ref()).map_or(false, |value| value == "--iai-run")) {
+                let index =
+                black_box(
+                    black_box(
+                        black_box(
+                            args_iter.next()
+                        ).and_then(|arg| arg.parse::<usize>().ok())
+                    ).expect("Error parsing index")
+                );
+                black_box(black_box(iai_wrappers::FUNCTIONS[index].1)());
             } else {
-                run($crate::black_box(benchmarks), $crate::black_box(std::env::args()));
+                black_box(run());
             };
         }
+    };
+    (
+        callgrind_args = $( $args:literal ),* $(,)*;
+        functions = $( $func_name:ident ),+ $(,)*
+    ) => {
+        main!(
+            config = $crate::black_box(
+                $crate::LibraryBenchmarkConfig::with_raw_callgrind_args::<&str, &[&str]>(
+                    $crate::black_box(&[$($args),*])
+                )
+            );
+            functions = $($func_name),+
+        );
     };
 
     ( $( $func_name:ident ),+ $(,)* ) => {
@@ -821,6 +993,27 @@ macro_rules! main {
 #[macro_export]
 macro_rules! binary_benchmark_group {
     (
+        benchmark = |$cmd:expr, $group:ident: &mut BinaryBenchmarkGroup| $body:expr
+    ) => {
+        compile_error!("A binary_benchmark_group! needs a name\n\nbinary_benchmark_group!(name = some_ident; benchmark = ...);");
+    };
+    (
+        benchmark = |$group:ident: &mut BinaryBenchmarkGroup| $body:expr
+    ) => {
+        compile_error!("A binary_benchmark_group! needs a name\n\nbinary_benchmark_group!(name = some_ident; benchmark = ...);");
+    };
+    (
+        name = $name:ident;
+        benchmark =
+    ) => {
+        compile_error!(
+            r#"A binary_benchmark_group! needs an expression specifying `BinaryBenchmarkGroup`:
+binary_benchmark_group!(name = some_ident; benchmark = |group: &mut BinaryBenchmarkGroup| ... );
+OR
+binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut BinaryBenchmarkGroup| ... );
+"#);
+    };
+    (
         name = $name:ident; $(;)*
         $(before = $before:ident $(,bench = $bench_before:literal)? ; $(;)*)?
         $(after = $after:ident $(,bench = $bench_after:literal)? ; $(;)*)?
@@ -937,5 +1130,44 @@ macro_rules! binary_benchmark_group {
             $(teardown = $teardown $(,bench = $bench_teardown)?;)?
             benchmark = |"", $group: &mut BinaryBenchmarkGroup| $body
         );
+    };
+}
+
+/// TODO: DOCUMENTATION
+/// TODO: Add config as argument
+#[macro_export]
+macro_rules! library_benchmark_group {
+    (
+        benchmarks = $( $function:ident ),+
+    ) => {
+        compile_error!("A library_benchmark_group! needs a name\n\nlibrary_benchmark_group!(name = some_ident; benchmarks = ...);");
+    };
+    (
+        name = $name:ident;
+        benchmarks =
+    ) => {
+        compile_error!(
+            "A library_benchmark_group! needs at least 1 benchmark function \
+            annotated with #[library_benchmark]\n\n\
+            library_benchmark_group!(name = some_ident; benchmarks = some_library_benchmark);");
+    };
+    (
+        name = $name:ident;
+        benchmarks = $( $function:ident ),+
+    ) => {
+        mod $name {
+            use super::*;
+
+            pub const FUNCTIONS: &[&(&'static str, &[&(&'static str, &'static str, fn())])]= &[
+                $(
+                    &(stringify!($function), super::$function::FUNCTIONS)
+                ),+
+            ];
+
+            #[inline(never)]
+            pub fn run(group_index: usize, bench_index: usize) {
+               FUNCTIONS[group_index].1[bench_index].2();
+            }
+        }
     };
 }

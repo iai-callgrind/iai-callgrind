@@ -4,8 +4,64 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RawCallgrindArgs(pub Vec<String>);
+
+impl RawCallgrindArgs {
+    pub fn new<I: AsRef<str>, T: AsRef<[I]>>(args: T) -> Self {
+        args.as_ref().iter().collect::<Self>()
+    }
+
+    pub fn raw_callgrind_args_iter<I: AsRef<str>, T: IntoIterator<Item = I>>(
+        &mut self,
+        args: T,
+    ) -> &mut Self {
+        self.0.extend(args.into_iter().map(|s| {
+            let string = s.as_ref();
+            if string.starts_with("--") {
+                string.to_owned()
+            } else {
+                format!("--{string}")
+            }
+        }));
+        self
+    }
+}
+
+impl<I: AsRef<str>> FromIterator<I> for RawCallgrindArgs {
+    fn from_iter<T: IntoIterator<Item = I>>(iter: T) -> Self {
+        let mut this = Self::default();
+        this.raw_callgrind_args_iter(iter);
+        this
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Config {
-    pub raw_callgrind_args: Vec<String>,
+    pub raw_callgrind_args: RawCallgrindArgs,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct LibraryBenchmarkConfig {
+    pub raw_callgrind_args: RawCallgrindArgs,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct LibraryBenchmark {
+    pub config: LibraryBenchmarkConfig,
+    pub groups: Vec<LibraryBenchmarkGroup>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct LibraryBenchmarkGroup {
+    pub id: Option<String>,
+    pub benches: Vec<Vec<Function>>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct Function {
+    pub id: Option<String>,
+    pub bench: String,
+    pub args: Option<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]

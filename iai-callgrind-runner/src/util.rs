@@ -33,6 +33,8 @@ pub fn bool_to_yesno(value: bool) -> String {
     }
 }
 
+// TODO: Match case insensitive and trim value
+// TODO: Return result if value was not understood?
 pub fn yesno_to_bool(value: &str) -> bool {
     value == "yes"
 }

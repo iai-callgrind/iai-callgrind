@@ -23,3 +23,7 @@ bincode = "1"
 iai-callgrind-runner = { path = "../iai-callgrind-runner/", version = "=0.6.2", default-features = false, features = [
   "api",
 ] }
+iai-callgrind-macros = { path = "../iai-callgrind-macros/", version = "=0.1.0" }
+
+[dev-dependencies]
+trybuild = "1"

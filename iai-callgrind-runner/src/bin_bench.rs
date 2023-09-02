@@ -435,7 +435,7 @@ impl Config {
         module: &str,
         benchmark: BinaryBenchmark,
     ) -> Result<Vec<GroupConfig>, IaiCallgrindError> {
-        let args = Self::parse_callgrind_args(&benchmark.config.raw_callgrind_args);
+        let args = Self::parse_callgrind_args(&benchmark.config.raw_callgrind_args.0);
         let mut configs = vec![];
         for group in benchmark.groups {
             let module_path = if let Some(id) = group.id.as_ref() {
