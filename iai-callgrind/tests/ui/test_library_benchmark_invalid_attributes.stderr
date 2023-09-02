@@ -1,0 +1,35 @@
+error: Invalid attribute: 'b'
+
+         = help: Only the 'bench' attribute is allowed
+         = note: #[bench::my_id()] or #[bench::my_id("with", "args")]
+
+ --> tests/ui/test_library_benchmark_invalid_attributes.rs:4:1
+  |
+4 | #[b]
+  | ^^^^
+
+error: Invalid attribute: 'inline'
+
+         = help: Only the 'bench' attribute is allowed
+         = note: #[bench::my_id()] or #[bench::my_id("with", "args")]
+
+ --> tests/ui/test_library_benchmark_invalid_attributes.rs:8:1
+  |
+8 | #[inline(never)]
+  | ^^^^^^^^^^^^^^^^
+
+error: Invalid attribute: 'inline'
+
+         = help: Only the 'bench' attribute is allowed
+         = note: #[bench::my_id()] or #[bench::my_id("with", "args")]
+
+  --> tests/ui/test_library_benchmark_invalid_attributes.rs:11:1
+   |
+11 | #[inline(never)]
+   | ^^^^^^^^^^^^^^^^
+
+error[E0433]: failed to resolve: use of undeclared crate or module `bench`
+  --> tests/ui/test_library_benchmark_invalid_attributes.rs:15:3
+   |
+15 | #[bench::id()]
+   |   ^^^^^ use of undeclared crate or module `bench`

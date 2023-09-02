@@ -1,0 +1,28 @@
+error: A library_benchmark_group! needs a name
+
+       library_benchmark_group!(name = some_ident; benchmarks = ...);
+ --> tests/ui/test_library_benchmark_group_when_invalid.rs:6:5
+  |
+6 |     library_benchmark_group!(benchmarks = some_func);
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the macro `library_benchmark_group` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: A library_benchmark_group! needs at least 1 benchmark function annotated with #[library_benchmark]
+
+       library_benchmark_group!(name = some_ident; benchmarks = some_library_benchmark);
+  --> tests/ui/test_library_benchmark_group_when_invalid.rs:12:5
+   |
+12 | /     library_benchmark_group!(
+13 | |         name = some_name;
+14 | |         benchmarks =
+15 | |     );
+   | |_____^
+   |
+   = note: this error originates in the macro `library_benchmark_group` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: no rules expected the token `something`
+  --> tests/ui/test_library_benchmark_group_when_invalid.rs:21:30
+   |
+21 |     library_benchmark_group!(something);
+   |                              ^^^^^^^^^ no rules expected this token in macro call
