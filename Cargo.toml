@@ -1,3 +1,8 @@
 [workspace]
-members = ["iai-callgrind", "iai-callgrind-runner", "benchmark-tests"]
+members = [
+  "iai-callgrind",
+  "iai-callgrind-runner",
+  "iai-callgrind-macros",
+  "benchmark-tests",
+]
 resolver = "2"

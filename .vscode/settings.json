@@ -14,6 +14,7 @@
     "dtolnay",
     "funcs",
     "Heisler",
+    "idents",
     "Ilmr",
     "Itamar",
     "kcachegrind",
@@ -22,6 +23,7 @@
     "printenv",
     "println",
     "proccontrol",
+    "Punct",
     "Quickstart",
     "rposition",
     "rstest",
@@ -34,6 +36,7 @@
     "tempfile",
     "TMPDIR",
     "Trauring's",
+    "trybuild",
     "valgrind",
     "walkdir",
     "yesno"
