@@ -6,7 +6,7 @@ use std::process::Command;
 use log::{log_enabled, trace, Level};
 use which::which;
 
-use crate::IaiCallgrindError;
+use crate::error::IaiCallgrindError;
 
 pub fn join_os_string(slice: &[OsString], sep: &OsStr) -> OsString {
     if let Some((first, suffix)) = slice.split_first() {

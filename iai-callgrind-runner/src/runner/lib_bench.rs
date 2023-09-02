@@ -3,10 +3,10 @@ use std::io::{stdin, Read};
 use std::path::PathBuf;
 
 use crate::api::{self, LibraryBenchmarkGroup, Options};
-use crate::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput, Sentinel};
-use crate::meta::Metadata;
-use crate::print::Header;
-use crate::IaiCallgrindError;
+use crate::error::IaiCallgrindError;
+use crate::runner::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput, Sentinel};
+use crate::runner::meta::Metadata;
+use crate::runner::print::Header;
 
 #[derive(Debug)]
 struct LibBench {

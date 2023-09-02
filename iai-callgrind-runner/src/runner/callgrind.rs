@@ -11,11 +11,11 @@ use log::{debug, error, info, trace, warn, Level};
 use which::which;
 
 use crate::api::{ExitWith, Options};
+use crate::error::IaiCallgrindError;
 use crate::util::{
     bool_to_yesno, concat_os_string, join_os_string, truncate_str_utf8, write_all_to_stderr,
     write_all_to_stdout, yesno_to_bool,
 };
-use crate::IaiCallgrindError;
 
 pub struct CallgrindCommand {
     command: Command,

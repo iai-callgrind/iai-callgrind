@@ -7,12 +7,12 @@ use std::process::Command;
 use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
-use crate::api::{BinaryBenchmark, Options};
-use crate::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput, Sentinel};
-use crate::meta::Metadata;
-use crate::print::Header;
+use crate::api::{self, BinaryBenchmark, Options};
+use crate::error::IaiCallgrindError;
+use crate::runner::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput, Sentinel};
+use crate::runner::meta::Metadata;
+use crate::runner::print::Header;
 use crate::util::{copy_directory, write_all_to_stderr, write_all_to_stdout};
-use crate::{api, IaiCallgrindError};
 
 #[derive(Debug)]
 struct BinBench {
