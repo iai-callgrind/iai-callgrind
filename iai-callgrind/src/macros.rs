@@ -13,7 +13,7 @@
 /// ```
 ///
 /// To be able to run any iai-callgrind benchmarks, you'll also need the `iai-callgrind-runner`
-/// installed with the binary somewhere in your $PATH for example with
+/// installed with the binary somewhere in your `$PATH` for example with
 ///
 /// ```shell
 /// cargo install iai-callgrind-runner
@@ -23,17 +23,34 @@
 ///
 /// # Library Benchmarks
 ///
-/// The [`crate::main`] macro has two forms to run library benchmarks:
-///
-/// ```ignore
-/// main!(func1, func2, ...);
-/// ```
-///
-/// which let's you specify benchmarking functions (func1, func2, ...) which are functions within
-/// the same file like so:
+/// The [`crate::main`] macro has one form to run library benchmarks:
 ///
 /// ```rust
-/// use iai_callgrind::{black_box, main};
+/// # use iai_callgrind::{black_box, main, library_benchmark_group, library_benchmark};
+/// # #[library_benchmark]
+/// # fn bench_fibonacci() { }
+/// # library_benchmark_group!(
+/// #    name = some_group;
+/// #    benchmarks = bench_fibonacci
+/// # )
+/// # fn main() {
+/// main!(library_benchmark_groups = some_group);
+/// # }
+/// ```
+///
+/// which accepts the following top-level arguments:
+///
+/// * __`library_benchmark_groups`__ (mandatory): The `name` of one or
+/// more [`library_benchmark_group!`](crate::library_benchmark_group) macros.
+/// * __`config`__ (optional): Optionally specify a [`crate::LibraryBenchmarkConfig`]
+/// valid for all benchmark groups
+///
+/// A library benchmark consists of
+/// [`library_benchmark_groups`](crate::library_benchmark_group) and  with
+/// [`#[library_benchmark]`](crate::library_benchmark) annotated benchmark functions.
+///
+/// ```rust
+/// use iai_callgrind::{black_box, main, library_benchmark_group, library_benchmark};
 ///
 /// fn fibonacci(n: u64) -> u64 {
 ///     match n {
@@ -43,34 +60,52 @@
 ///     }
 /// }
 ///
-/// #[inline(never)] // required for benchmarking functions
-/// fn iai_benchmark_short() -> u64 {
-///     fibonacci(black_box(10))
+/// #[library_benchmark]
+/// #[bench::short(10)]
+/// #[bench::long(30)]
+/// fn bench_fibonacci(value: u64) -> u64 {
+///     black_box(fibonacci(value))
 /// }
 ///
-/// #[inline(never)] // required for benchmarking functions
-/// fn iai_benchmark_long() -> u64 {
-///     fibonacci(black_box(30))
-/// }
+/// library_benchmark_group!(
+///     name = bench_fibonacci_group;
+///     benchmarks = bench_fibonacci
+/// )
 ///
 /// # fn main() {
-/// main!(iai_benchmark_short, iai_benchmark_long);
+/// main!(library_benchmark_groups = bench_fibonacci_group);
 /// # }
 /// ```
 ///
-/// The second form has and additional parameter `callgrind_args`:
+/// If you need to pass arguments to valgrind's callgrind, you can specify raw callgrind
+/// arguments via the [`crate::LibraryBenchmarkConfig`]:
 ///
-/// ```ignore
+/// ```rust
+/// # use iai_callgrind::{black_box, main, library_benchmark_group, library_benchmark};
+/// # #[library_benchmark]
+/// # fn bench_fibonacci() { }
+/// # library_benchmark_group!(
+/// #    name = some_group;
+/// #    benchmarks = bench_fibonacci
+/// # )
+/// # fn main() {
 /// main!(
-///     callgrind_args = "--arg-with-flags=yes", "arg-without-flags=is_ok_too"
-///     functions = func1, func2
-/// )
+///     config = LibraryBenchmarkConfig::default()
+///                 .raw_callgrind_args(
+///                     ["--arg-with-flags=yes", "arg-without-flags=is_ok_too"]
+///                 );
+///     library_benchmark_groups = some_group
+/// );
+/// # }
 /// ```
 ///
-/// if you need to pass arguments to valgrind's callgrind. See also [Callgrind Command-line
-/// options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options). For an in-depth
-/// description of library benchmarks and more examples see the [README#Library
-/// Benchmarks](https://github.com/Joining7943/iai-callgrind#library-benchmarks) of this crate.
+/// See also [Callgrind Command-line
+/// options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options).
+///
+/// For an in-depth description of library benchmarks and more examples see the
+/// [README#Library
+/// Benchmarks](https://github.com/Joining7943/iai-callgrind#library-benchmarks) of this
+/// crate.
 ///
 /// # Binary Benchmarks
 ///
@@ -1121,7 +1156,52 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
     };
 }
 
-/// TODO: DOCUMENTATION
+/// Macro used to define a group of library benchmarks
+///
+/// A small introductory example which shows the basic setup. This macro only accepts benchmarks
+/// annotated with `#[library_benchmark]` ([`crate::library_benchmark`]).
+///
+/// ```rust
+/// use iai_callgrind::{library_benchmark_group, library_benchmark};
+///
+/// #[library_benchmark]
+/// fn bench_something() -> u64 {
+///     42
+/// }
+///
+/// library_benchmark_group!(
+///     name = my_group;
+///     benchmarks = bench_something
+/// );
+///
+/// # fn main() {
+/// iai_callgrind::main!(library_benchmark_groups = my_group);
+/// # }
+/// ```
+///
+/// To be benchmarked a `library_benchmark_group` has to be added to the `main!` macro by adding its
+/// name to the `library_benchmark_groups` argument of the `main!` macro. See there for further
+/// details about the [`crate::main`] macro.
+///
+/// The following top-level arguments are accepted:
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// library_benchmark_group!(
+///     name = my_group;
+///     config = LibraryBenchmarkConfig::default();
+///     benchmarks = some_func
+/// );
+/// # fn main() {
+/// # }
+/// ```
+///
+/// * __name__ (mandatory): A unique name used to identify the group for the `main!` macro
+/// * __config__ (optional): A [`crate::LibraryBenchmarkConfig`] which is applied to all benchmarks
+///   within
+/// the same group.
 #[macro_export]
 macro_rules! library_benchmark_group {
     (

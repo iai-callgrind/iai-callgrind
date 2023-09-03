@@ -1,3 +1,5 @@
+//! The library of iai-callgrind-macros
+
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![doc(test(attr(warn(unused))))]
 #![doc(test(attr(allow(unused_extern_crates))))]
@@ -208,7 +210,125 @@ impl ToTokens for Arguments {
     }
 }
 
-/// TODO: DOCUMENTATION
+/// The `#[library_benchmark]` attribute let's you define a benchmark function which you can later
+/// use in the `library_benchmark_groups!` macro.
+///
+/// This attribute can be applied in two ways.
+///
+/// Using the `#[library_benchmark]` attribute as a standalone is fine for simple function calls
+/// without parameters.
+///
+/// However, we mostly need to benchmark cases which would need to be setup for example with a
+/// vector, but everything we setup within the benchmark function itself would be attributed to the
+/// event counts. The second form of this attribute macro uses the `bench` attribute to setup
+/// benchmarks with different cases. The main advantage is, that the setup costs and event counts
+/// aren't attributed to the benchmark (and opposed to the old api we don't have to deal with
+/// callgrind arguments, toggles, inline(never), ...)
+///
+/// The `bench` attribute consist of the attribute name itself, an unique id after `::` and
+/// optionally one or more arguments with expressions which are passed to the benchmark function as
+/// parameter as shown below:
+///
+/// ```rust
+/// # use iai_callgrind_macros::library_benchmark;
+/// # fn black_box<T>(arg: T) -> T {
+/// # arg
+/// # }
+/// # mod iai_callgrind {
+/// # pub fn black_box<T>(arg: T) -> T {
+/// # arg
+/// # }
+/// # }
+/// // Assume this is a more complicated function in your library which you want to benchmark
+/// fn some_func(value: u64) -> u64 {
+///     42
+/// }
+///
+/// #[library_benchmark]
+/// #[bench::some_id(42)]
+/// fn bench_some_func(value: u64) -> u64 {
+///     black_box(some_func(value))
+/// }
+/// # fn main() {}
+/// ```
+///
+/// # Examples
+///
+/// The `#[library_benchmark]` attribute as a standalone
+///
+/// ```rust
+/// # use iai_callgrind_macros::library_benchmark;
+/// # fn black_box<T>(arg: T) -> T {
+/// # arg
+/// # }
+/// # mod iai_callgrind {
+/// # pub fn black_box<T>(arg: T) -> T {
+/// # arg
+/// # }
+/// # }
+/// fn some_func() -> u64 {
+///     42
+/// }
+///
+/// #[library_benchmark]
+/// // If possible, it's best to return something from a benchmark function
+/// fn bench_my_library_function() -> u64 {
+///     // The `black_box` is needed to tell the compiler to not optimize what's inside the
+///     // black_box or else the benchmarks might return inaccurate results.
+///     black_box(some_function())
+/// }
+/// # fn main() {
+/// # }
+/// ```
+///
+///
+/// In the following example we pass a single argument with `Vec<i32>` type to the benchmark. All
+/// arguments are already wrapped in a black box and don't need to be put in a `black_box` again.
+///
+/// ```rust
+/// # use iai_callgrind_macros::library_benchmark;
+/// # fn black_box<T>(arg: T) -> T {
+/// # arg
+/// # }
+/// # mod iai_callgrind {
+/// # pub fn black_box<T>(arg: T) -> T {
+/// # arg
+/// # }
+/// # }
+/// // Our function we want to test. Just assume this is a public function in your
+/// // library.
+/// fn some_func_with_array(array: Vec<i32>) -> Vec<i32> {
+///     // do something with the array and return a new array
+///     # array
+/// }
+///
+/// // This function is used to create a worst case array for our `some_func_with_array`
+/// fn setup_worst_case_array(start: i32) -> Vec<i32> {
+///     if start.is_negative() {
+///         (start..0).rev().collect()
+///     } else {
+///         (0..start).rev().collect()
+///     }
+/// }
+///
+/// // This benchmark is setting up multiple benchmark cases with the advantage that the setup costs
+/// // for creating a vector (even if it is empty) aren't attributed to the benchmark and that the
+/// // `array` is already wrapped in a black_box.
+/// #[library_benchmark]
+/// #[bench::empty(vec![])]
+/// #[bench::worst_case_6(vec![6, 5, 4, 3, 2, 1])]
+/// // Function calls are fine too
+/// #[bench::worst_case_4000(setup_worst_case_array(4000))]
+/// // The argument of the benchmark function defines the type of the argument from the `bench`
+/// // cases.
+/// fn bench_some_func_with_array(array: Vec<i32>) -> Vec<i32> {
+///     // Note `array` does not need to be put in a `black_box` because that's already done for
+///     // you.
+///     black_box(some_func_with_array(array))
+/// }
+/// # fn main() {
+/// # }
+/// ```
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {

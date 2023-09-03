@@ -13,7 +13,7 @@ use iai_callgrind::{black_box, library_benchmark, library_benchmark_group, main}
 // bubble sort
 fn setup_worst_case_array(start: i32) -> Vec<i32> {
     if start.is_negative() {
-        (start..0).collect()
+        (start..0).rev().collect()
     } else {
         (0..start).rev().collect()
     }
@@ -23,7 +23,7 @@ fn setup_worst_case_array(start: i32) -> Vec<i32> {
 // bubble sort
 fn setup_best_case_array(start: i32) -> Vec<i32> {
     if start.is_negative() {
-        (start..0).rev().collect()
+        (start..0).collect()
     } else {
         (0..start).collect()
     }
