@@ -448,7 +448,7 @@ impl Default for CallgrindArgs {
 }
 
 impl CallgrindArgs {
-    pub fn from_args(args: &[OsString]) -> Self {
+    pub fn from_os_args(args: &[OsString]) -> Self {
         let mut default = Self::default();
         for arg in args {
             let string = arg.to_string_lossy();
@@ -472,6 +472,40 @@ impl CallgrindArgs {
                     value
                 ),
                 Some(_) => default.other.push(arg.clone()),
+                // ignore positional arguments for now. It may be a filtering argument for cargo
+                // bench
+                None => {}
+            }
+        }
+        default
+    }
+
+    pub fn from_args<T>(args: T) -> Self
+    where
+        T: Into<Vec<String>>,
+    {
+        let mut default = Self::default();
+        for arg in args.into() {
+            match arg.strip_prefix("--").and_then(|s| s.split_once('=')) {
+                Some(("I1", value)) => default.i1 = value.to_owned(),
+                Some(("D1", value)) => default.d1 = value.to_owned(),
+                Some(("LL", value)) => default.ll = value.to_owned(),
+                Some(("collect-atstart", value)) => default.collect_atstart = yesno_to_bool(value),
+                Some(("compress-strings", value)) => {
+                    default.compress_strings = yesno_to_bool(value);
+                }
+                Some(("compress-pos", value)) => default.compress_pos = yesno_to_bool(value),
+                Some(("toggle-collect", value)) => {
+                    default.toggle_collect.push_back(value.to_owned());
+                }
+                Some(("cache-sim", value)) => {
+                    warn!("Ignoring callgrind argument: '--cache-sim={}'", value);
+                }
+                Some(("callgrind-out-file", value)) => warn!(
+                    "Ignoring callgrind argument: '--callgrind-out-file={}'",
+                    value
+                ),
+                Some(_) => default.other.push(OsString::from(arg)),
                 // ignore positional arguments for now. It may be a filtering argument for cargo
                 // bench
                 None => {}

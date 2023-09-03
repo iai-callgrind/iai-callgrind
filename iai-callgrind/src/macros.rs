@@ -639,15 +639,7 @@ macro_rules! main {
                 config = Some($config.into());
             )?
 
-            let config = if let Some(mut config) = config {
-                config.raw_callgrind_args.raw_callgrind_args_iter(this_args);
-                config
-            } else {
-                $crate::internal::RunnerLibraryBenchmarkConfig {
-                    raw_callgrind_args:
-                        $crate::internal::RunnerRawCallgrindArgs::from_iter(this_args)
-                }
-            };
+            let config = config.unwrap_or_default();
 
             let mut groups = vec![];
             $(
@@ -666,13 +658,15 @@ macro_rules! main {
 
                 groups.push($crate::internal::RunnerLibraryBenchmarkGroup {
                     id: Some(stringify!($group).to_owned()),
+                    config: $group::get_config(),
                     benches
                 });
             )+
 
             let benchmark = $crate::internal::RunnerLibraryBenchmark {
                 config: config,
-                groups: groups
+                groups: groups,
+                command_line_args: this_args.collect()
             };
 
             let encoded = $crate::bincode::serialize(&benchmark).expect("Encoded benchmark");
@@ -771,27 +765,21 @@ macro_rules! main {
                 config = Some($config.into());
             )?
 
-            let config = if let Some(mut config) = config {
-                config.raw_callgrind_args.raw_callgrind_args_iter(this_args);
-                config
-            } else {
-                $crate::internal::RunnerLibraryBenchmarkConfig {
-                    raw_callgrind_args:
-                        $crate::internal::RunnerRawCallgrindArgs::from_iter(this_args)
-                }
-            };
+            let config = config.unwrap_or_default();
 
             let benchmark = $crate::internal::RunnerLibraryBenchmark {
                 config: config,
                 groups: vec![$crate::internal::RunnerLibraryBenchmarkGroup {
                     id: None,
+                    config: None,
                     benches: vec![iai_wrappers::FUNCTIONS
                         .iter()
                         .map(|(name, _)| $crate::internal::RunnerFunction {
                             id: None, args: None, bench: name.to_string()
                         })
                         .collect::<Vec<$crate::internal::RunnerFunction>>()]
-                }]
+                }],
+                command_line_args: this_args.collect()
             };
 
             let encoded = $crate::bincode::serialize(&benchmark).expect("Encoded benchmark");
@@ -836,7 +824,7 @@ macro_rules! main {
         }
     };
     (
-        callgrind_args = $( $args:literal ),* $(,)*;
+        callgrind_args = $( $args:literal ),* $(,)*; $(;)*
         functions = $( $func_name:ident ),+ $(,)*
     ) => {
         main!(
@@ -1134,7 +1122,6 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
 }
 
 /// TODO: DOCUMENTATION
-/// TODO: Add config as argument
 #[macro_export]
 macro_rules! library_benchmark_group {
     (
@@ -1152,8 +1139,9 @@ macro_rules! library_benchmark_group {
             library_benchmark_group!(name = some_ident; benchmarks = some_library_benchmark);");
     };
     (
-        name = $name:ident;
-        benchmarks = $( $function:ident ),+
+        name = $name:ident; $(;)*
+        $( config = $config:expr ; $(;)* )?
+        benchmarks = $( $function:ident ),+ $(,)*
     ) => {
         mod $name {
             use super::*;
@@ -1163,6 +1151,15 @@ macro_rules! library_benchmark_group {
                     &(stringify!($function), super::$function::FUNCTIONS)
                 ),+
             ];
+
+            pub fn get_config() -> Option<$crate::internal::RunnerLibraryBenchmarkConfig> {
+                let mut config: Option<$crate::internal::RunnerLibraryBenchmarkConfig> = None;
+                $(
+                    config = Some($config.into());
+                )?
+                config
+            }
+
 
             #[inline(never)]
             pub fn run(group_index: usize, bench_index: usize) {

@@ -42,18 +42,34 @@ pub struct Config {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct LibraryBenchmarkConfig {
+    pub env_clear: Option<bool>,
     pub raw_callgrind_args: RawCallgrindArgs,
+}
+
+impl LibraryBenchmarkConfig {
+    pub fn update(&mut self, other: &Self) -> &mut Self {
+        self.raw_callgrind_args
+            .raw_callgrind_args_iter(other.raw_callgrind_args.0.iter());
+        self.env_clear = match (self.env_clear, other.env_clear) {
+            (None, None) => None,
+            (None, Some(v)) | (Some(v), None) => Some(v),
+            (Some(_), Some(w)) => Some(w),
+        };
+        self
+    }
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct LibraryBenchmark {
     pub config: LibraryBenchmarkConfig,
     pub groups: Vec<LibraryBenchmarkGroup>,
+    pub command_line_args: Vec<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct LibraryBenchmarkGroup {
     pub id: Option<String>,
+    pub config: Option<LibraryBenchmarkConfig>,
     pub benches: Vec<Vec<Function>>,
 }
 

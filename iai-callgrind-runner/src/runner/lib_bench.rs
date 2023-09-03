@@ -2,7 +2,7 @@ use std::ffi::OsString;
 use std::io::{stdin, Read};
 use std::path::PathBuf;
 
-use crate::api::{self, LibraryBenchmarkGroup, Options};
+use crate::api::{self, LibraryBenchmark, Options};
 use crate::error::IaiCallgrindError;
 use crate::runner::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput, Sentinel};
 use crate::runner::meta::Metadata;
@@ -15,6 +15,7 @@ struct LibBench {
     id: Option<String>,
     function: String,
     args: Option<String>,
+    config: LibBenchConfig,
 }
 
 impl LibBench {
@@ -42,7 +43,7 @@ impl LibBench {
             )
         };
 
-        let mut callgrind_args = config.callgrind_args.clone();
+        let mut callgrind_args = group.callgrind_args.clone();
         callgrind_args.insert_toggle_collect(&format!("*{}", sentinel.as_toggle()));
 
         let output = if let Some(bench_id) = &self.id {
@@ -56,9 +57,8 @@ impl LibBench {
         };
         callgrind_args.set_output_file(&output.file);
 
-        // TODO: env_clear should be true
         let options = Options {
-            env_clear: false,
+            env_clear: self.config.env_clear,
             ..Default::default()
         };
 
@@ -85,10 +85,16 @@ impl LibBench {
 }
 
 #[derive(Debug)]
+struct LibBenchConfig {
+    env_clear: bool,
+}
+
+#[derive(Debug)]
 struct GroupConfig {
     id: Option<String>,
     benches: Vec<LibBench>,
     module: String,
+    callgrind_args: CallgrindArgs,
 }
 
 #[derive(Debug)]
@@ -99,7 +105,6 @@ struct Config {
     groups: Vec<GroupConfig>,
     executable: PathBuf,
     module: String,
-    callgrind_args: CallgrindArgs,
     meta: Metadata,
 }
 
@@ -124,47 +129,62 @@ impl Config {
         Ok(benchmark)
     }
 
-    fn parse_groups(module: &str, groups: &[LibraryBenchmarkGroup]) -> Vec<GroupConfig> {
-        groups
-            .iter()
+    fn parse_benchmark(module: &str, benchmark: LibraryBenchmark) -> Vec<GroupConfig> {
+        benchmark
+            .groups
+            .into_iter()
             .map(|group| {
                 let module_path = if let Some(group_id) = &group.id {
                     format!("{module}::{group_id}")
                 } else {
                     module.to_owned()
                 };
+                let config = if let Some(config) = group.config {
+                    benchmark.config.clone().update(&config).clone()
+                } else {
+                    benchmark.config.clone()
+                };
+                let callgrind_args = {
+                    let mut raw = config.raw_callgrind_args.0.clone();
+                    raw.extend(benchmark.command_line_args.iter().cloned());
+
+                    // The last argument is usually --bench. This argument comes from cargo and does
+                    // not belong to the arguments passed from the main macro. So, we're removing it
+                    // if it is there.
+                    if raw.last().map_or(false, |a| a == "--bench") {
+                        raw.pop();
+                    }
+
+                    CallgrindArgs::from_args(raw)
+                };
                 GroupConfig {
-                    id: group.id.clone(),
+                    id: group.id,
                     module: module_path,
                     benches: group
                         .benches
-                        .iter()
+                        .into_iter()
                         .enumerate()
                         .flat_map(|(bench_index, funcs)| {
-                            funcs.iter().enumerate().map(move |(index, f)| LibBench {
-                                bench_index,
-                                index,
-                                id: f.id.clone(),
-                                function: f.bench.clone(),
-                                args: f.args.clone(),
-                            })
+                            funcs
+                                .into_iter()
+                                .enumerate()
+                                .map(move |(index, f)| LibBench {
+                                    bench_index,
+                                    index,
+                                    id: f.id,
+                                    function: f.bench,
+                                    args: f.args,
+                                    config: LibBenchConfig {
+                                        // TODO: default env_clear should be true
+                                        env_clear: config.env_clear.unwrap_or_default(),
+                                    },
+                                })
                         })
                         .collect(),
+                    callgrind_args,
                 }
             })
             .collect::<Vec<GroupConfig>>()
-    }
-
-    fn parse_callgrind_args(value: &[String]) -> CallgrindArgs {
-        let mut callgrind_args: Vec<OsString> = value.iter().map(OsString::from).collect();
-
-        // The last argument is sometimes --bench. This argument comes from cargo and does not
-        // belong to the arguments passed from the main macro. So, we're removing it if it is there.
-        if callgrind_args.last().map_or(false, |a| a == "--bench") {
-            callgrind_args.pop();
-        }
-
-        CallgrindArgs::from_args(&callgrind_args)
     }
 
     fn generate(
@@ -182,8 +202,7 @@ impl Config {
             .unwrap();
 
         let benchmark = Self::receive_benchmark(num_bytes)?;
-        let groups = Self::parse_groups(&module, &benchmark.groups);
-        let callgrind_args = Self::parse_callgrind_args(&benchmark.config.raw_callgrind_args.0);
+        let groups = Self::parse_benchmark(&module, benchmark);
         let meta = Metadata::new();
 
         Ok(Self {
@@ -192,7 +211,6 @@ impl Config {
             groups,
             executable,
             module,
-            callgrind_args,
             meta,
         })
     }

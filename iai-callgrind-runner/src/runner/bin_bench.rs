@@ -428,7 +428,7 @@ impl Config {
             callgrind_args.pop();
         }
 
-        CallgrindArgs::from_args(&callgrind_args)
+        CallgrindArgs::from_os_args(&callgrind_args)
     }
 
     fn parse_groups(

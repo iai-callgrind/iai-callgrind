@@ -194,6 +194,7 @@ impl LibraryBenchmarkConfig {
     /// TODO: DOCUMENT
     pub fn with_raw_callgrind_args<I: AsRef<str>, T: AsRef<[I]>>(args: T) -> Self {
         Self(internal::RunnerLibraryBenchmarkConfig {
+            env_clear: None,
             raw_callgrind_args: internal::RunnerRawCallgrindArgs::new(args),
         })
     }
