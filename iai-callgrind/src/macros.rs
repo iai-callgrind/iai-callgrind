@@ -26,13 +26,13 @@
 /// The [`crate::main`] macro has one form to run library benchmarks:
 ///
 /// ```rust
-/// # use iai_callgrind::{black_box, main, library_benchmark_group, library_benchmark};
+/// # use iai_callgrind::{main, library_benchmark_group, library_benchmark};
 /// # #[library_benchmark]
 /// # fn bench_fibonacci() { }
 /// # library_benchmark_group!(
 /// #    name = some_group;
 /// #    benchmarks = bench_fibonacci
-/// # )
+/// # );
 /// # fn main() {
 /// main!(library_benchmark_groups = some_group);
 /// # }
@@ -70,7 +70,7 @@
 /// library_benchmark_group!(
 ///     name = bench_fibonacci_group;
 ///     benchmarks = bench_fibonacci
-/// )
+/// );
 ///
 /// # fn main() {
 /// main!(library_benchmark_groups = bench_fibonacci_group);
@@ -81,13 +81,13 @@
 /// arguments via the [`crate::LibraryBenchmarkConfig`]:
 ///
 /// ```rust
-/// # use iai_callgrind::{black_box, main, library_benchmark_group, library_benchmark};
+/// # use iai_callgrind::{main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig};
 /// # #[library_benchmark]
 /// # fn bench_fibonacci() { }
 /// # library_benchmark_group!(
 /// #    name = some_group;
 /// #    benchmarks = bench_fibonacci
-/// # )
+/// # );
 /// # fn main() {
 /// main!(
 ///     config = LibraryBenchmarkConfig::default()

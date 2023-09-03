@@ -275,7 +275,7 @@ impl ToTokens for Arguments {
 /// fn bench_my_library_function() -> u64 {
 ///     // The `black_box` is needed to tell the compiler to not optimize what's inside the
 ///     // black_box or else the benchmarks might return inaccurate results.
-///     black_box(some_function())
+///     black_box(some_func())
 /// }
 /// # fn main() {
 /// # }
