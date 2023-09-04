@@ -8,12 +8,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+The old api to setup library benchmarks using only the `main!` macro is deprecated and will be
+removed completely in the next minor version.
+
+### Added
+
+* ([#5](https://github.com/Joining7943/iai-callgrind/issues/5)): Use a new attribute macro
+(`#[library_benchmark]`) based api to setup library benchmarks. Also, bring the library benchmark
+api closer to the binary benchmark api and use a `library_benchmark_group!` macro together with
+`main!(library_benchmark_groups = ...)`
+
 ### [0.6.2] - 2023-09-01
 
 ### Changed
 
 * The dependency version requirements in all packages are loosened and more openly formulated.
-Especially, the upper bounds were updated to include the latest versions.
+Especially, the upper bounds were updated to include the latest versions. However, the `Cargo.lock`
+file locks the dependencies to versions which are compatible with the current MSRV `1.60.0`.
 
 ### Fixed
 
@@ -27,15 +38,15 @@ files of all packages
 
 ### Fixed
 
-* (#4) The destination directory of iai callgrind output files changes from
-`/workspace/$CARGO_PKG_NAME/target/iai` to `/workspace/target/iai/$CARGO_PKG_NAME` and respects the
-`CARGO_TARGET_DIR` environment variable
+* ([#4](https://github.com/Joining7943/iai-callgrind/issues/4)): The destination
+directory of iai callgrind output files changes from `/workspace/$CARGO_PKG_NAME/target/iai` to
+`/workspace/target/iai/$CARGO_PKG_NAME` and respects the `CARGO_TARGET_DIR` environment variable
 
 ### [0.6.0] - 2023-08-20
 
 ### Added
 
-* (#3) builder api for binary benchmarks
+* ([#3](https://github.com/Joining7943/iai-callgrind/issues/3)): builder api for binary benchmarks
 
 ### Changed
 
@@ -54,8 +65,8 @@ binary anymore.
 
 ### Added
 
-* (#2) Benchmarking binaries of a crate. Add full description of this benchmarking scheme in the
-README
+* ([#2](https://github.com/Joining7943/iai-callgrind/issues/2)): Benchmarking binaries of a crate.
+Added a full description of this benchmarking scheme in the README
 * IAI_CALLGRIND_RUNNER environment variable which may specify the path to the iai-callgrind-runner
 binary
 

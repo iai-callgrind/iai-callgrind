@@ -26,42 +26,81 @@
 //!
 //! ## Library Benchmarks
 //!
-//! Use this scheme of the [`main`] macro if you want to benchmark functions of your crate's
-//! library.
+//! Use this scheme of the [`main`] macro if you want to benchmark functions of your
+//! crate's library.
 //!
 //! ### Quickstart
 //!
 //! ```rust
-//! use iai_callgrind::{black_box, main};
+//! use iai_callgrind::{black_box, library_benchmark, library_benchmark_group, main};
 //!
-//! // Assume this function would be a public function of your library
-//! fn fibonacci(n: u64) -> u64 {
-//!     match n {
-//!         0 => 1,
-//!         1 => 1,
-//!         n => fibonacci(n - 1) + fibonacci(n - 2),
+//! // Our function we want to test. Just assume this is a public function in your
+//! // library.
+//! fn bubble_sort(mut array: Vec<i32>) -> Vec<i32> {
+//!     for i in 0..array.len() {
+//!         for j in 0..array.len() - i - 1 {
+//!             if array[j + 1] < array[j] {
+//!                 array.swap(j, j + 1);
+//!             }
+//!         }
+//!     }
+//!     array
+//! }
+//!
+//! // This function is used to create a worst case array we want to sort with our
+//! // implementation of bubble sort
+//! fn setup_worst_case_array(start: i32) -> Vec<i32> {
+//!     if start.is_negative() {
+//!         (start..0).rev().collect()
+//!     } else {
+//!         (0..start).rev().collect()
 //!     }
 //! }
 //!
-//! #[inline(never)] // required for benchmarking functions
-//! fn iai_benchmark_short() -> u64 {
-//!     fibonacci(black_box(10))
+//! // The #[library_benchmark] attribute let's you define a benchmark function which you
+//! // can later use in the `library_benchmark_groups!` macro.
+//! #[library_benchmark]
+//! fn bench_bubble_sort_empty() -> Vec<i32> {
+//!     // The `black_box` is needed to tell the compiler to not optimize what's inside
+//!     // black_box or else the benchmarks might return inaccurate results.
+//!     black_box(bubble_sort(black_box(vec![])))
 //! }
 //!
-//! #[inline(never)] // required for benchmarking functions
-//! fn iai_benchmark_long() -> u64 {
-//!     fibonacci(black_box(30))
+//! // This benchmark uses the `bench` attribute to setup benchmarks with different
+//! // setups. The big advantage is, that the setup costs and event counts aren't
+//! // attributed to the benchmark (and opposed to the old api we don't have to deal with
+//! // callgrind arguments, toggles, ...)
+//! #[library_benchmark]
+//! #[bench::empty(vec![])]
+//! #[bench::worst_case_6(vec![6, 5, 4, 3, 2, 1])]
+//! // Function calls are fine too
+//! #[bench::worst_case_4000(setup_worst_case_array(4000))]
+//! // The argument of the benchmark function defines the type of the argument from the
+//! // `bench` cases.
+//! fn bench_bubble_sort(array: Vec<i32>) -> Vec<i32> {
+//!     // Note `array` is not put in a `black_box` because that's already done for you.
+//!     black_box(bubble_sort(array))
 //! }
+//!
+//! // A group in which we can put all our benchmark functions
+//! library_benchmark_group!(
+//!     name = bubble_sort_group;
+//!     benchmarks = bench_bubble_sort_empty, bench_bubble_sort
+//! );
 //!
 //! # fn main() {
-//! main!(iai_benchmark_short, iai_benchmark_long);
+//! // Finally, the mandatory main! macro which collects all `library_benchmark_groups`.
+//! // The main! macro creates a benchmarking harness and runs all the benchmarks defined
+//! // in the groups and benches.
+//! main!(library_benchmark_groups = bubble_sort_group);
 //! # }
 //! ```
 //!
-//! Note that it is important to annotate the benchmark functions with `#[inline(never)]` or else
-//! the rust compiler will most likely try to optimize this function and inline it.
+//! Note that it is important to annotate the benchmark functions with
+//! [`#[library_benchmark]`](crate::library_benchmark).
 //!
-//! The [README](https://github.com/Joining7943/iai-callgrind) of this crate includes more
+//! See also the docs of [`crate::library_benchmark_group`]. The
+//! [README](https://github.com/Joining7943/iai-callgrind) of this crate includes more
 //! explanations, common recipes and some additional examples.
 //!
 //! ## Binary Benchmarks
@@ -83,7 +122,6 @@
 //!
 //! Suppose your crate's binary is named `my-exe` and you have a fixtures directory in
 //! `benches/fixtures` with a file `test1.txt` in it:
-//!
 //! ```rust
 //! use iai_callgrind::{main, binary_benchmark_group, BinaryBenchmarkGroup, Run, Arg, Fixtures};
 //!
@@ -163,6 +201,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 pub use bincode;
+pub use iai_callgrind_macros::library_benchmark;
 
 pub mod internal;
 mod macros;
@@ -182,6 +221,132 @@ pub fn black_box<T>(dummy: T) -> T {
         let ret = std::ptr::read_volatile(&dummy);
         std::mem::forget(dummy);
         ret
+    }
+}
+
+/// The main configuration of a library benchmark.
+///
+/// See [`LibraryBenchmarkConfig::raw_callgrind_args`] for more details.
+///
+/// # Examples
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///                 .raw_callgrind_args(["toggle-collect=something"]);
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
+#[derive(Debug, Default)]
+pub struct LibraryBenchmarkConfig(internal::RunnerLibraryBenchmarkConfig);
+
+impl LibraryBenchmarkConfig {
+    /// Create a new `LibraryBenchmarkConfig` with raw callgrind arguments
+    ///
+    /// See also [`LibraryBenchmarkConfig::raw_callgrind_args`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// main!(
+    ///     config =
+    ///         LibraryBenchmarkConfig::with_raw_callgrind_args(["toggle-collect=something"]);
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn with_raw_callgrind_args<I: AsRef<str>, T: AsRef<[I]>>(args: T) -> Self {
+        Self(internal::RunnerLibraryBenchmarkConfig {
+            env_clear: None,
+            raw_callgrind_args: internal::RunnerRawCallgrindArgs::new(args),
+        })
+    }
+
+    /// Add callgrind arguments to this `LibraryBenchmarkConfig`
+    ///
+    /// The arguments don't need to start with a flag: `--toggle-collect=some` or
+    /// `toggle-collect=some` are both understood.
+    ///
+    /// Not all callgrind arguments are understood by `iai-callgrind` or cause problems in
+    /// `iai-callgrind` if they would be applied. `iai-callgrind` will issue a warning in
+    /// such cases. Some of the defaults can be overwritten. The default settings are:
+    ///
+    /// * `--I1=32768,8,64`
+    /// * `--D1=32768,8,64`
+    /// * `--LL=8388608,16,64`
+    /// * `--cache-sim=yes` (can't be changed)
+    /// * `--toggle-collect=*BENCHMARK_FILE::BENCHMARK_FUNCTION` (this first toggle can't
+    /// be changed)
+    /// * `--collect-atstart=no` (overwriting this setting will have no effect)
+    /// * `--compress-pos=no`
+    /// * `--compress-strings=no`
+    ///
+    /// Note that `toggle-collect` is an array and the entry point for library benchmarks
+    /// is the benchmark function. This default toggle switches event counting on when
+    /// entering this benchmark function and off when leaving it. So, additional toggles
+    /// for example matching a function within the benchmark function will switch the
+    /// event counting off when entering the matched function and on again when leaving
+    /// it!
+    ///
+    /// See also [Callgrind Command-line
+    /// Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///                 .raw_callgrind_args(["toggle-collect=something"]);
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn raw_callgrind_args<I: AsRef<str>, T: AsRef<[I]>>(&mut self, args: T) -> &mut Self {
+        self.raw_callgrind_args_iter(args.as_ref().iter());
+        self
+    }
+
+    /// Add elements of an iterator over callgrind arguments to this `LibraryBenchmarkConfig`
+    ///
+    /// See also [`LibraryBenchmarkConfig::raw_callgrind_args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///                 .raw_callgrind_args_iter(["toggle-collect=something"].iter());
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn raw_callgrind_args_iter<I: AsRef<str>, T: Iterator<Item = I>>(
+        &mut self,
+        args: T,
+    ) -> &mut Self {
+        self.0.raw_callgrind_args.raw_callgrind_args_iter(args);
+        self
     }
 }
 
@@ -235,14 +400,7 @@ impl BinaryBenchmarkConfig {
     pub fn raw_callgrind_args<I: AsRef<str>, T: AsRef<[I]>>(&mut self, args: T) -> &mut Self {
         self.0
             .raw_callgrind_args
-            .extend(args.as_ref().iter().map(|s| {
-                let string = s.as_ref();
-                if string.starts_with("--") {
-                    string.to_owned()
-                } else {
-                    format!("--{string}")
-                }
-            }));
+            .raw_callgrind_args_iter(args.as_ref().iter());
         self
     }
 }
@@ -1097,6 +1255,10 @@ macro_rules! impl_traits {
 
 impl_traits!(BinaryBenchmarkGroup, internal::RunnerBinaryBenchmarkGroup);
 impl_traits!(BinaryBenchmarkConfig, internal::RunnerConfig);
+impl_traits!(
+    LibraryBenchmarkConfig,
+    internal::RunnerLibraryBenchmarkConfig
+);
 impl_traits!(Options, internal::RunnerOptions);
 impl_traits!(Run, internal::RunnerRun);
 impl_traits!(Arg, internal::RunnerArg);

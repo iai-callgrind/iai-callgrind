@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use std::ffi::{OsStr, OsString};
+use std::fmt::Display;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
@@ -10,11 +11,11 @@ use log::{debug, error, info, trace, warn, Level};
 use which::which;
 
 use crate::api::{ExitWith, Options};
+use crate::error::IaiCallgrindError;
 use crate::util::{
     bool_to_yesno, concat_os_string, join_os_string, truncate_str_utf8, write_all_to_stderr,
     write_all_to_stdout, yesno_to_bool,
 };
-use crate::IaiCallgrindError;
 
 pub struct CallgrindCommand {
     command: Command,
@@ -169,6 +170,47 @@ impl CallgrindCommand {
     }
 }
 
+pub struct Sentinel(String);
+
+impl Sentinel {
+    pub fn from_path(module: &str, function: &str) -> Self {
+        Self(format!("fn={module}::{function}"))
+    }
+
+    pub fn from_segments<I: AsRef<str>, T: AsRef<[I]>>(segments: T) -> Self {
+        let joined = if let Some((first, suffix)) = segments.as_ref().split_first() {
+            suffix.iter().fold(first.as_ref().to_owned(), |mut a, b| {
+                a.push_str("::");
+                a.push_str(b.as_ref());
+                a
+            })
+        } else {
+            String::new()
+        };
+        Self(format!("fn={joined}"))
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+
+    pub fn as_toggle(&self) -> &str {
+        self.0.strip_prefix("fn=").unwrap()
+    }
+}
+
+impl Display for Sentinel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl AsRef<Sentinel> for Sentinel {
+    fn as_ref(&self) -> &Sentinel {
+        self
+    }
+}
+
 pub struct CallgrindOutput {
     pub file: PathBuf,
 }
@@ -274,27 +316,26 @@ impl CallgrindOutput {
         }
 
         CallgrindStats {
-            l1_instructions_cache_reads: counters[0],
+            instructions_executed: counters[0],
             total_data_cache_reads: counters[1],
             total_data_cache_writes: counters[2],
             l1_instructions_cache_read_misses: counters[3],
             l1_data_cache_read_misses: counters[4],
             l1_data_cache_write_misses: counters[5],
-            l3_instructions_cache_misses: counters[6],
+            l3_instructions_cache_read_misses: counters[6],
             l3_data_cache_read_misses: counters[7],
             l3_data_cache_write_misses: counters[8],
         }
     }
 
-    pub fn parse(&self, bench_file: &Path, module: &str, function_name: &str) -> CallgrindStats {
+    pub fn parse<T: AsRef<Sentinel>>(&self, bench_file: &Path, sentinel: T) -> CallgrindStats {
+        let sentinel = sentinel.as_ref();
         trace!(
-            "Parsing callgrind output file '{}' for '{}::{}'",
+            "Parsing callgrind output file '{}' for '{}'",
             self.file.display(),
-            module,
-            function_name
+            sentinel
         );
 
-        let sentinel = format!("fn={}", [module, function_name].join("::"));
         trace!(
             "Using sentinel: '{}' for file name ending with: '{}'",
             &sentinel,
@@ -325,7 +366,7 @@ impl CallgrindOutput {
             if !start_record {
                 if line.starts_with("fl=") && line.ends_with(bench_file.to_str().unwrap()) {
                     trace!("Found line with benchmark file: '{}'", line);
-                } else if line.starts_with(&sentinel) {
+                } else if line.starts_with(sentinel.as_str()) {
                     trace!("Found line with sentinel: '{}'", line);
                     start_record = true;
                 } else {
@@ -358,13 +399,13 @@ impl CallgrindOutput {
         }
 
         CallgrindStats {
-            l1_instructions_cache_reads: counters[0],
+            instructions_executed: counters[0],
             total_data_cache_reads: counters[1],
             total_data_cache_writes: counters[2],
             l1_instructions_cache_read_misses: counters[3],
             l1_data_cache_read_misses: counters[4],
             l1_data_cache_write_misses: counters[5],
-            l3_instructions_cache_misses: counters[6],
+            l3_instructions_cache_read_misses: counters[6],
             l3_data_cache_read_misses: counters[7],
             l3_data_cache_write_misses: counters[8],
         }
@@ -407,7 +448,7 @@ impl Default for CallgrindArgs {
 }
 
 impl CallgrindArgs {
-    pub fn from_args(args: &[OsString]) -> Self {
+    pub fn from_os_args(args: &[OsString]) -> Self {
         let mut default = Self::default();
         for arg in args {
             let string = arg.to_string_lossy();
@@ -431,6 +472,40 @@ impl CallgrindArgs {
                     value
                 ),
                 Some(_) => default.other.push(arg.clone()),
+                // ignore positional arguments for now. It may be a filtering argument for cargo
+                // bench
+                None => {}
+            }
+        }
+        default
+    }
+
+    pub fn from_args<T>(args: T) -> Self
+    where
+        T: Into<Vec<String>>,
+    {
+        let mut default = Self::default();
+        for arg in args.into() {
+            match arg.strip_prefix("--").and_then(|s| s.split_once('=')) {
+                Some(("I1", value)) => default.i1 = value.to_owned(),
+                Some(("D1", value)) => default.d1 = value.to_owned(),
+                Some(("LL", value)) => default.ll = value.to_owned(),
+                Some(("collect-atstart", value)) => default.collect_atstart = yesno_to_bool(value),
+                Some(("compress-strings", value)) => {
+                    default.compress_strings = yesno_to_bool(value);
+                }
+                Some(("compress-pos", value)) => default.compress_pos = yesno_to_bool(value),
+                Some(("toggle-collect", value)) => {
+                    default.toggle_collect.push_back(value.to_owned());
+                }
+                Some(("cache-sim", value)) => {
+                    warn!("Ignoring callgrind argument: '--cache-sim={}'", value);
+                }
+                Some(("callgrind-out-file", value)) => warn!(
+                    "Ignoring callgrind argument: '--callgrind-out-file={}'",
+                    value
+                ),
+                Some(_) => default.other.push(OsString::from(arg)),
                 // ignore positional arguments for now. It may be a filtering argument for cargo
                 // bench
                 None => {}
@@ -494,8 +569,8 @@ impl CallgrindArgs {
 
 #[derive(Clone, Debug)]
 pub struct CallgrindSummary {
-    l1_instructions: u64,
-    l1_data_hits: u64,
+    instructions: u64,
+    l1_hits: u64,
     l3_hits: u64,
     ram_hits: u64,
     total_memory_rw: u64,
@@ -505,11 +580,11 @@ pub struct CallgrindSummary {
 #[derive(Clone, Debug)]
 pub struct CallgrindStats {
     /// Ir: equals the number of instructions executed
-    l1_instructions_cache_reads: u64,
+    instructions_executed: u64,
     /// I1mr: I1 cache read misses
     l1_instructions_cache_read_misses: u64,
     /// ILmr: LL cache instruction read misses
-    l3_instructions_cache_misses: u64,
+    l3_instructions_cache_read_misses: u64,
     /// Dr: Memory reads
     total_data_cache_reads: u64,
     /// D1mr: D1 cache read misses
@@ -526,7 +601,7 @@ pub struct CallgrindStats {
 
 impl CallgrindStats {
     fn summarize(&self) -> CallgrindSummary {
-        let ram_hits = self.l3_instructions_cache_misses
+        let ram_hits = self.l3_instructions_cache_read_misses
             + self.l3_data_cache_read_misses
             + self.l3_data_cache_write_misses;
         let l1_data_accesses = self.l1_data_cache_read_misses + self.l1_data_cache_write_misses;
@@ -534,22 +609,16 @@ impl CallgrindStats {
         let l3_accesses = l1_miss;
         let l3_hits = l3_accesses - ram_hits;
 
-        let total_memory_rw = self.l1_instructions_cache_reads
-            + self.total_data_cache_reads
-            + self.total_data_cache_writes;
-        let l1_data_hits =
-            total_memory_rw - self.l1_instructions_cache_reads - (ram_hits + l3_hits);
-        assert!(
-            total_memory_rw == l1_data_hits + self.l1_instructions_cache_reads + l3_hits + ram_hits
-        );
+        let total_memory_rw =
+            self.instructions_executed + self.total_data_cache_reads + self.total_data_cache_writes;
+        let l1_hits = total_memory_rw - ram_hits - l3_hits;
 
         // Uses Itamar Turner-Trauring's formula from https://pythonspeed.com/articles/consistent-benchmarking-in-ci/
-        let cycles =
-            self.l1_instructions_cache_reads + l1_data_hits + (5 * l3_hits) + (35 * ram_hits);
+        let cycles = l1_hits + (5 * l3_hits) + (35 * ram_hits);
 
         CallgrindSummary {
-            l1_instructions: self.l1_instructions_cache_reads,
-            l1_data_hits,
+            instructions: self.instructions_executed,
+            l1_hits,
             l3_hits,
             ram_hits,
             total_memory_rw,
@@ -614,17 +683,17 @@ impl CallgrindStats {
         let old_summary = old.map(|stat| stat.summarize());
         println!(
             "  Instructions:     {:>15}{}",
-            summary.l1_instructions.to_string().bold(),
+            summary.instructions.to_string().bold(),
             match &old_summary {
-                Some(old) => Self::percentage_diff(summary.l1_instructions, old.l1_instructions),
+                Some(old) => Self::percentage_diff(summary.instructions, old.instructions),
                 None => String::new().normal(),
             }
         );
         println!(
-            "  L1 Data Hits:     {:>15}{}",
-            summary.l1_data_hits.to_string().bold(),
+            "  L1 Hits:          {:>15}{}",
+            summary.l1_hits.to_string().bold(),
             match &old_summary {
-                Some(old) => Self::percentage_diff(summary.l1_data_hits, old.l1_data_hits),
+                Some(old) => Self::percentage_diff(summary.l1_hits, old.l1_hits),
                 None => String::new().normal(),
             }
         );

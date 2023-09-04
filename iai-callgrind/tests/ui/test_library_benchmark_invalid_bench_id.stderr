@@ -1,0 +1,27 @@
+error: An id is required
+
+         = help: bench followed by :: and an unique id
+         = note: bench::my_id
+
+ --> tests/ui/test_library_benchmark_invalid_bench_id.rs:5:1
+  |
+5 | #[bench]
+  | ^^^^^^^^
+
+error: expected attribute arguments in parentheses: #[bench::missing_parentheses(...)]
+ --> tests/ui/test_library_benchmark_invalid_bench_id.rs:9:3
+  |
+9 | #[bench::missing_parentheses]
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0428]: the name `same` is defined multiple times
+  --> tests/ui/test_library_benchmark_invalid_bench_id.rs:12:1
+   |
+12 | #[library_benchmark]
+   | ^^^^^^^^^^^^^^^^^^^^
+   | |
+   | `same` redefined here
+   | previous definition of the value `same` here
+   |
+   = note: `same` must be defined only once in the value namespace of this module
+   = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)

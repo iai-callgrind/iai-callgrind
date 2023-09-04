@@ -1,0 +1,54 @@
+error[E0425]: cannot find function `get_config` in module `some_func`
+ --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
+  |
+6 |     main!(library_benchmark_groups = some_func);
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in `some_func`
+  |
+  = note: this error originates in the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0603]: function import `run` is private
+ --> src/macros.rs
+  |
+  | ...                   $crate::black_box($group::run(group_index, bench_index));
+  |                                                 ^^^ private function import
+  |
+note: the function import `run` is defined here...
+ --> tests/ui/test_main_invalid_library_benchmark_groups.rs:3:5
+  |
+3 |     #[library_benchmark]
+  |     ^^^^^^^^^^^^^^^^^^^^
+note: ...and refers to the function `run` which is defined here
+ --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
+  |
+6 |     main!(library_benchmark_groups = some_func);
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+ --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
+  |
+6 |     main!(library_benchmark_groups = some_func);
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |     |
+  |     expected a tuple with 3 elements, found one with 2 elements
+  |     this expression has type `Option<&&(&str, &str, fn())>`
+  |
+  = note: expected tuple `(&str, &str, fn())`
+             found tuple `(_, _)`
+  = note: this error originates in the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0061]: this function takes 0 arguments but 2 arguments were supplied
+ --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
+  |
+6 |     main!(library_benchmark_groups = some_func);
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |     |
+  |     supplied 2 arguments
+  |     expected 0 arguments
+  |
+note: function defined here
+ --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
+  |
+6 |     main!(library_benchmark_groups = some_func);
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = note: this error originates in the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)

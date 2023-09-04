@@ -1,0 +1,30 @@
+error: The binary_benchmark_groups argument needs at least one `name` of a `binary_benchmark_group!`
+  --> tests/ui/test_main_invalid_binary_benchmark_groups.rs:27:5
+   |
+27 |     main!(binary_benchmark_groups = );
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: use of undeclared crate or module `some_func`
+ --> tests/ui/test_main_invalid_binary_benchmark_groups.rs:6:37
+  |
+6 |     main!(binary_benchmark_groups = some_func);
+  |                                     ^^^^^^^^^ use of undeclared crate or module `some_func`
+
+error[E0277]: the trait bound `RunnerConfig: From<&str>` is not satisfied
+  --> tests/ui/test_main_invalid_binary_benchmark_groups.rs:19:5
+   |
+19 | /     main!(
+20 | |         config = "some string";
+21 | |         binary_benchmark_groups = some
+22 | |     );
+   | |_____^ the trait `From<&str>` is not implemented for `RunnerConfig`
+   |
+   = help: the following implementations were found:
+             <RunnerConfig as From<&BinaryBenchmarkConfig>>
+             <RunnerConfig as From<&mut BinaryBenchmarkConfig>>
+             <RunnerConfig as From<BinaryBenchmarkConfig>>
+             <RunnerConfig as From<iai_callgrind::internal::Config>>
+   = note: required because of the requirements on the impl of `Into<RunnerConfig>` for `&str`
+   = note: this error originates in the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)

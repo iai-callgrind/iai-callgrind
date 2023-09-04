@@ -6,7 +6,7 @@ use std::process::Command;
 use log::{log_enabled, trace, Level};
 use which::which;
 
-use crate::IaiCallgrindError;
+use crate::error::IaiCallgrindError;
 
 pub fn join_os_string(slice: &[OsString], sep: &OsStr) -> OsString {
     if let Some((first, suffix)) = slice.split_first() {
@@ -33,6 +33,8 @@ pub fn bool_to_yesno(value: bool) -> String {
     }
 }
 
+// TODO: Match case insensitive and trim value
+// TODO: Return result if value was not understood?
 pub fn yesno_to_bool(value: &str) -> bool {
     value == "yes"
 }

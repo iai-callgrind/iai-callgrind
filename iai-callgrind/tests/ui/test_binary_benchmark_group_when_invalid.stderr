@@ -1,0 +1,23 @@
+error: A binary_benchmark_group! needs a name
+
+       binary_benchmark_group!(name = some_ident; benchmark = ...);
+ --> tests/ui/test_binary_benchmark_group_when_invalid.rs:3:5
+  |
+3 |     binary_benchmark_group!(benchmark = |_group: &mut BinaryBenchmarkGroup| {});
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the macro `binary_benchmark_group` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: A binary_benchmark_group! needs an expression specifying `BinaryBenchmarkGroup`:
+       binary_benchmark_group!(name = some_ident; benchmark = |group: &mut BinaryBenchmarkGroup| ... );
+       OR
+       binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut BinaryBenchmarkGroup| ... );
+  --> tests/ui/test_binary_benchmark_group_when_invalid.rs:8:5
+   |
+8  | /     binary_benchmark_group!(
+9  | |         name = some;
+10 | |         benchmark =
+11 | |     );
+   | |_____^
+   |
+   = note: this error originates in the macro `binary_benchmark_group` (in Nightly builds, run with -Z macro-backtrace for more info)

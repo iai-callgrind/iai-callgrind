@@ -5,8 +5,11 @@
 pub use iai_callgrind_runner::api::{
     Arg as RunnerArg, Assistant as RunnerAssistant, BinaryBenchmark as RunnerBinaryBenchmark,
     BinaryBenchmarkGroup as RunnerBinaryBenchmarkGroup, Cmd as RunnerCmd, Config as RunnerConfig,
-    ExitWith as RunnerExitWith, Fixtures as RunnerFixtures, Options as RunnerOptions,
-    Run as RunnerRun,
+    ExitWith as RunnerExitWith, Fixtures as RunnerFixtures, Function as RunnerFunction,
+    LibraryBenchmark as RunnerLibraryBenchmark,
+    LibraryBenchmarkConfig as RunnerLibraryBenchmarkConfig,
+    LibraryBenchmarkGroup as RunnerLibraryBenchmarkGroup, Options as RunnerOptions,
+    RawCallgrindArgs as RunnerRawCallgrindArgs, Run as RunnerRun,
 };
 
 #[derive(Debug, Default)]

@@ -99,9 +99,11 @@ vice-versa or else the benchmark runner will exit with an error.
 functions and methods of a crate and binary benchmarks benchmark the executables of a crate. The
 different benchmark types cannot be intermixed in the same benchmark file but having different
 benchmark files for library and binary benchmarks is no problem. More on that in the following
-sections. For a quickstart and examples of benchmarking libraries see the [Library Benchmark
+sections.
+
+For a quickstart and examples of benchmarking libraries see the [Library Benchmark
 Section](#library-benchmarks) and for executables see the [Binary Benchmark
-Section](#binary-benchmarks).
+Section](#binary-benchmarks). Read the [`docs`]!
 
 #### Library Benchmarks
 
@@ -121,118 +123,96 @@ to your `Cargo.toml` file and then create a file with the same `name` in `benche
 with the following content:
 
 ```rust
-use iai_callgrind::{black_box, main};
+use iai_callgrind::{black_box, main, library_benchmark_group, library_benchmark};
 
 fn fibonacci(n: u64) -> u64 {
     match n {
         0 => 1,
         1 => 1,
-        n => fibonacci(n-1) + fibonacci(n-2),
+        n => fibonacci(n - 1) + fibonacci(n - 2),
     }
 }
 
-#[inline(never)] // required for benchmarking functions
-fn iai_benchmark_short() -> u64 {
-    fibonacci(black_box(10))
+#[library_benchmark]
+#[bench::short(10)]
+#[bench::long(30)]
+fn bench_fibonacci(value: u64) -> u64 {
+    black_box(fibonacci(value))
 }
 
-#[inline(never)] // required for benchmarking functions
-fn iai_benchmark_long() -> u64 {
-    fibonacci(black_box(30))
-}
+library_benchmark_group!(
+    name = bench_fibonacci_group;
+    benchmarks = bench_fibonacci
+);
 
-main!(iai_benchmark_short, iai_benchmark_long);
+main!(library_benchmark_groups = bench_fibonacci_group);
 ```
 
-Note that it is important to annotate the benchmark functions with `#[inline(never)]` or else the
-rust compiler will most likely try to optimize this function and inline it. `Callgrind` is function
-(name) based and uses function calls within the benchmarking function to collect counter events. Not
-inlining this function serves the additional purpose to reduce influences of the surrounding code on
-the benchmark function.
+Note that it is important to annotate the benchmark functions with `#[library_benchmark]`. But,
+there's no need to annotate benchmark functions with `inline(never)` anymore. The `bench` attribute
+takes any expression what includes function calls. The following would have worked too and avoids
+setup code within the benchmark function eliminating the need to pass `toggle-collect` arguments to
+callgrind:
 
-Now you can run this benchmark with `cargo bench --bench my_benchmark` in your project root and you
+```rust
+fn some_setup_func(value: u64) -> u64 {
+    value
+}
+
+#[library_benchmark]
+#[bench::long(some_setup_func(30))]
+fn bench_fibonacci(value: u64) -> u64 {
+    black_box(fibonacci(value))
+}
+```
+
+Now, you can run this benchmark with `cargo bench --bench my_benchmark` in your project root and you
 should see something like this:
 
 ```text
-my_benchmark::bench_fibonacci_short
-  Instructions:                1727
-  L1 Data Hits:                 621
+my_benchmark::bench_fibonacci_group::bench_fibonacci short:10
+  Instructions:                1733
+  L1 Hits:                     2358
   L2 Hits:                        0
-  RAM Hits:                       1
-  Total read+write:            2349
-  Estimated Cycles:            2383
-my_benchmark::bench_fibonacci_long
-  Instructions:            26214727
-  L1 Data Hits:             9423880
+  RAM Hits:                       3
+  Total read+write:            2361
+  Estimated Cycles:            2463
+my_benchmark::bench_fibonacci_group::bench_fibonacci long:30
+  Instructions:            26214733
+  L1 Hits:                 35638617
   L2 Hits:                        0
-  RAM Hits:                       2
-  Total read+write:        35638609
-  Estimated Cycles:        35638677
+  RAM Hits:                       4
+  Total read+write:        35638621
+  Estimated Cycles:        35638757
 ```
 
 In addition, you'll find the callgrind output in `target/iai`, if you want to investigate further
-with a tool like `callgrind_annotate`. Now, if running the same benchmark again, the output will
+with a tool like `callgrind_annotate`. When running the same benchmark again, the output will
 report the differences between the current and the previous run. Say you've made change to the
-`fibonacci` function, then you might see something like this:
+`fibonacci` function, then you may see something like this:
 
 ```text
-my_benchmark::bench_fibonacci_short
-  Instructions:                2798 (+62.01506%)
-  L1 Data Hits:                1006 (+61.99678%)
+my_benchmark::bench_fibonacci_group::bench_fibonacci short:10
+  Instructions:                2804 (+61.80035%)
+  L1 Hits:                     3814 (+61.74724%)
   L2 Hits:                        0 (No Change)
-  RAM Hits:                       1 (No Change)
-  Total read+write:            3805 (+61.98382%)
-  Estimated Cycles:            3839 (+61.09945%)
-my_benchmark::bench_fibonacci_long
-  Instructions:            16201590 (-38.19661%)
-  L1 Data Hits:             5824277 (-38.19661%)
+  RAM Hits:                       3 (No Change)
+  Total read+write:            3817 (+61.66878%)
+  Estimated Cycles:            3919 (+59.11490%)
+my_benchmark::bench_fibonacci_group::bench_fibonacci long:30
+  Instructions:            16201596 (-38.19660%)
+  L1 Hits:                 22025877 (-38.19660%)
   L2 Hits:                        0 (No Change)
-  RAM Hits:                       2 (No Change)
-  Total read+write:        22025869 (-38.19661%)
-  Estimated Cycles:        22025937 (-38.19654%)
+  RAM Hits:                       4 (No Change)
+  Total read+write:        22025881 (-38.19660%)
+  Estimated Cycles:        22026017 (-38.19645%)
 ```
 
 ##### Examples
 
 For a fully documented and working benchmark see the
-[test_lib_bench_with_skip_setup](benchmark-tests/benches/test_lib_bench_with_skip_setup.rs)
-benchmark file.
-
-###### Skipping setup code
-
-Usually, all function calls in the benchmark function itself are attributed to the event counts.
-It's possible to pass additional arguments to Callgrind and something like below will eliminate the
-setup code from the final metrics:
-
-```rust
-use iai_callgrind::{black_box, main};
-use my_library;
-
-#[export_name = "some_special_id::expensive_setup"]
-#[inline(never)]
-fn expensive_setup() -> Vec<u64> {
-    // some expensive setup code to produce a Vec<u64>
-}
-
-#[inline(never)]
-fn test() {
-    my_library::call_to_function(black_box(expensive_setup()));
-}
-
-main!(
-    callgrind_args = "toggle-collect=some_special_id::expensive_setup";
-    functions = test
-);
-```
-
-and then run the benchmark for example with
-
-```shell
-cargo bench --bench my_bench
-```
-
-See also [Skip setup code example](benchmark-tests/benches/test_lib_bench_with_skip_setup.rs) for an
-in-depth explanation.
+[test_lib_bench_groups](benchmark-tests/benches/test_lib_bench_groups.rs) benchmark file and read
+the [`library documentation`]!
 
 ### Binary Benchmarks
 
@@ -315,21 +295,21 @@ The output of this benchmark run could look like this:
 ```text
 my_binary_benchmark::my_exe_group do foo with test1:my-exe --foo=fixtures/test1.txt
   Instructions:              322637 (No Change)
-  L1 Data Hits:              106807 (No Change)
+  L1 Hits:                   106807 (No Change)
   L2 Hits:                      708 (No Change)
   RAM Hits:                    3799 (No Change)
   Total read+write:          433951 (No Change)
   Estimated Cycles:          565949 (No Change)
 my_binary_benchmark::my_exe_group positional arguments:my-exe foo "foo bar"
   Instructions:              155637 (No Change)
-  L1 Data Hits:              106807 (No Change)
+  L1 Hits:                   106807 (No Change)
   L2 Hits:                      708 (No Change)
   RAM Hits:                    3799 (No Change)
   Total read+write:          433951 (No Change)
   Estimated Cycles:          565949 (No Change)
 my_binary_benchmark::my_exe_group no argument:my-exe
   Instructions:              155637 (No Change)
-  L1 Data Hits:              106807 (No Change)
+  L1 Hits:                   106807 (No Change)
   L2 Hits:                      708 (No Change)
   RAM Hits:                    3799 (No Change)
   Total read+write:          433951 (No Change)
@@ -435,21 +415,21 @@ $ cd iai-callgrind
 $ cargo bench --bench test_regular_bench
 test_regular_bench::bench_empty
   Instructions:                   0
-  L1 Data Hits:                   0
+  L1 Hits:                        0
   L2 Hits:                        0
   RAM Hits:                       0
   Total read+write:               0
   Estimated Cycles:               0
 test_regular_bench::bench_fibonacci
   Instructions:                1727
-  L1 Data Hits:                 621
+  L1 Hits:                      621
   L2 Hits:                        0
   RAM Hits:                       1
   Total read+write:            2349
   Estimated Cycles:            2383
 test_regular_bench::bench_fibonacci_long
   Instructions:            26214727
-  L1 Data Hits:             9423880
+  L1 Hits:                  9423880
   L2 Hits:                        0
   RAM Hits:                       2
   Total read+write:        35638609
@@ -461,21 +441,21 @@ For comparison here the output of the same benchmark but in the github CI:
 ```text
 test_regular_bench::bench_empty
   Instructions:                   0
-  L1 Data Hits:                   0
+  L1 Hits:                        0
   L2 Hits:                        0
   RAM Hits:                       0
   Total read+write:               0
   Estimated Cycles:               0
 test_regular_bench::bench_fibonacci
   Instructions:                1727
-  L1 Data Hits:                 621
+  L1 Hits:                      621
   L2 Hits:                        0
   RAM Hits:                       1
   Total read+write:            2349
   Estimated Cycles:            2383
 test_regular_bench::bench_fibonacci_long
   Instructions:            26214727
-  L1 Data Hits:             9423880
+  L1 Hits:                  9423880
   L2 Hits:                        0
   RAM Hits:                       2
   Total read+write:        35638609
@@ -501,25 +481,24 @@ still related. They now also include some additional information:
 ```text
 test_regular_bench::bench_fibonacci_long
   Instructions:            26214732
-  L1 Data Hits:             9423880
+  L1 Hits:                  9423880
   L2 Hits:                        0
   RAM Hits:                       2
   Total read+write:        35638609
   Estimated Cycles:        35638677
 ```
 
-There is an additional line `Total read+write` which summarizes all event counters above it and the
-`L1 Accesses` line changed to `L1 Data Hits`. So, the (L1) `Instructions` (reads) and `L1 Data Hits`
-are now separately listed.
+There is an additional line `Total read+write` which summarizes all event counters of the lines with
+`Hits` above it and the `L1 Accesses` line changed to `L1 Hits`.
 
 In detail:
 
-`Total read+write = Instructions + L1 Data Hits + L2 Hits + RAM Hits`.
+`Total read+write = L1 Hits + L2 Hits + RAM Hits`.
 
 The formula for the `Estimated Cycles` hasn't changed and uses Itamar Turner-Trauring's formula from
 <https://pythonspeed.com/articles/consistent-benchmarking-in-ci/>:
 
-`Estimated Cycles = (Instructions + L1 Data Hits) + 5 × (L2 Hits) + 35 × (RAM Hits)`
+`Estimated Cycles = L1 Hits + 5 × (L2 Hits) + 35 × (RAM Hits)`
 
 For further details about how the caches are simulated and more, see the documentation of
 [Callgrind](https://valgrind.org/docs/manual/cg-manual.html)
@@ -551,18 +530,9 @@ It's now possible to pass additional arguments to callgrind separated by `--`
 - `--compress-strings=no`
 
 Note that `toggle-collect` won't be overwritten by any additional `toggle-collect` argument but
-instead will be passed to Callgrind in addition to the default value. See the [Skipping setup
-code](#skipping-setup-code) section for an example of how to make use of this.
-
-It's also possible to pass arguments to callgrind on a benchmark file level with the alternative
-form of the main macro
-
-```rust
-main!(
-    callgrind_args = "--arg-with-flags=yes", "arg-without-flags=is_ok_too"
-    functions = func1, func2
-)
-```
+instead will be passed to Callgrind in addition to the default value in the case of [library
+benchmarks](#library-benchmarks). [Binary benchmarks](#binary-benchmarks) don't have a default
+toggle.
 
 See also [Callgrind Command-line Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options).
 
@@ -589,3 +559,6 @@ Heisler (@bheisler).
 ### License
 
 Iai-Callgrind is like Iai dual licensed under the Apache 2.0 license and the MIT license.
+
+[`library documentation`]: https://docs.rs/iai-callgrind/0.6.2/iai_callgrind/
+[`docs`]: https://docs.rs/iai-callgrind/0.6.2/iai_callgrind/

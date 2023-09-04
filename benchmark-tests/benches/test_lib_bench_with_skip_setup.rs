@@ -1,8 +1,5 @@
-//! This is an example for setting up a benchmark with expensive setup costs and a usage example for
-//! the alternative main! macro which allows passing arguments to callgrind.
-//!
-//! For a detailed explanation see the comments of `setup_array` and
-//! `bench_bubble_with_expensive_setup`
+//! !!! This example is deprecated. Use the new api instead as described in the README and
+//! have a look at an example in `test_lib_bench_groups`. !!!
 
 use iai_callgrind::{black_box, main};
 

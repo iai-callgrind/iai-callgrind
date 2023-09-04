@@ -15,6 +15,7 @@
 #![warn(clippy::str_to_string)]
 #![warn(clippy::string_to_string)]
 #![warn(clippy::todo)]
+#![warn(clippy::dbg_macro)]
 #![warn(clippy::try_err)]
 #![warn(clippy::undocumented_unsafe_blocks)]
 #![warn(clippy::unneeded_field_pattern)]
@@ -29,65 +30,8 @@
 #[cfg(feature = "api")]
 pub mod api;
 #[cfg(feature = "runner")]
-mod bin_bench;
+pub mod error;
 #[cfg(feature = "runner")]
-mod callgrind;
+pub mod runner;
 #[cfg(feature = "runner")]
-mod error;
-#[cfg(feature = "runner")]
-mod lib_bench;
-#[cfg(feature = "runner")]
-mod meta;
-#[cfg(feature = "runner")]
-mod util;
-
-#[cfg(feature = "runner")]
-use std::path::PathBuf;
-
-#[cfg(feature = "runner")]
-pub use error::IaiCallgrindError;
-#[cfg(feature = "runner")]
-use log::debug;
-#[cfg(feature = "runner")]
-pub use util::{write_all_to_stderr, write_all_to_stdout};
-
-#[cfg(feature = "runner")]
-pub fn run() -> Result<(), IaiCallgrindError> {
-    let mut args_iter = std::env::args_os();
-
-    let runner = PathBuf::from(args_iter.next().unwrap());
-    debug!("Runner executable: '{}'", runner.display());
-
-    let library_version = args_iter.next().unwrap().to_str().unwrap().to_owned();
-    let runner_version = env!("CARGO_PKG_VERSION").to_owned();
-
-    match version_compare::compare(&runner_version, &library_version) {
-        Ok(cmp) => match cmp {
-            version_compare::Cmp::Lt | version_compare::Cmp::Gt => {
-                return Err(IaiCallgrindError::VersionMismatch(
-                    cmp,
-                    runner_version,
-                    library_version,
-                ));
-            }
-            // version_compare::compare only returns Cmp::Lt, Cmp::Gt and Cmp::Eq so the versions
-            // are equal here
-            _ => {}
-        },
-        // iai-callgrind versions before 0.3.0 don't submit the version
-        Err(_) => {
-            return Err(IaiCallgrindError::VersionMismatch(
-                version_compare::Cmp::Ne,
-                runner_version,
-                library_version,
-            ));
-        }
-    }
-
-    if args_iter.next().unwrap() == "--lib-bench" {
-        lib_bench::run(args_iter)
-    // it has to be --bin-bench
-    } else {
-        bin_bench::run(args_iter)
-    }
-}
+pub mod util;
