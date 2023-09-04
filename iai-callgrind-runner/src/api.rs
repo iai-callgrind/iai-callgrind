@@ -7,14 +7,19 @@ use serde::{Deserialize, Serialize};
 pub struct RawCallgrindArgs(pub Vec<String>);
 
 impl RawCallgrindArgs {
-    pub fn new<I: AsRef<str>, T: AsRef<[I]>>(args: T) -> Self {
+    pub fn new<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: AsRef<[I]>,
+    {
         args.as_ref().iter().collect::<Self>()
     }
 
-    pub fn raw_callgrind_args_iter<I: AsRef<str>, T: IntoIterator<Item = I>>(
-        &mut self,
-        args: T,
-    ) -> &mut Self {
+    pub fn raw_callgrind_args_iter<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
         self.0.extend(args.into_iter().map(|s| {
             let string = s.as_ref();
             if string.starts_with("--") {
@@ -27,7 +32,10 @@ impl RawCallgrindArgs {
     }
 }
 
-impl<I: AsRef<str>> FromIterator<I> for RawCallgrindArgs {
+impl<I> FromIterator<I> for RawCallgrindArgs
+where
+    I: AsRef<str>,
+{
     fn from_iter<T: IntoIterator<Item = I>>(iter: T) -> Self {
         let mut this = Self::default();
         this.raw_callgrind_args_iter(iter);

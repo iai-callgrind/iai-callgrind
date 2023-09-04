@@ -1,12 +1,12 @@
 use std::ffi::OsString;
-use std::io::{stdin, Read};
 use std::path::PathBuf;
 
-use crate::api::{self, LibraryBenchmark, Options};
-use crate::error::IaiCallgrindError;
+use crate::api::{LibraryBenchmark, Options};
+use crate::error::Result;
 use crate::runner::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput, Sentinel};
 use crate::runner::meta::Metadata;
 use crate::runner::print::Header;
+use crate::util::receive_benchmark;
 
 #[derive(Debug)]
 struct LibBench {
@@ -19,7 +19,7 @@ struct LibBench {
 }
 
 impl LibBench {
-    fn run(&self, config: &Config, group: &GroupConfig) -> Result<(), IaiCallgrindError> {
+    fn run(&self, config: &Config, group: &Group) -> Result<()> {
         let command = CallgrindCommand::new(config.meta.aslr, &config.meta.arch);
         let (args, sentinel) = if let Some(group_id) = &group.id {
             (
@@ -62,7 +62,7 @@ impl LibBench {
             ..Default::default()
         };
 
-        command.run(&callgrind_args, &config.executable, &args, vec![], &options)?;
+        command.run(&callgrind_args, &config.bench_bin, &args, vec![], &options)?;
 
         let new_stats = output.parse(&config.bench_file, &sentinel);
 
@@ -90,7 +90,7 @@ struct LibBenchConfig {
 }
 
 #[derive(Debug)]
-struct GroupConfig {
+struct Group {
     id: Option<String>,
     benches: Vec<LibBench>,
     module: String,
@@ -98,39 +98,11 @@ struct GroupConfig {
 }
 
 #[derive(Debug)]
-struct Config {
-    #[allow(unused)]
-    package_dir: PathBuf,
-    bench_file: PathBuf,
-    groups: Vec<GroupConfig>,
-    executable: PathBuf,
-    module: String,
-    meta: Metadata,
-}
+struct Groups(Vec<Group>);
 
-impl Config {
-    fn receive_benchmark(num_bytes: usize) -> Result<api::LibraryBenchmark, IaiCallgrindError> {
-        let mut encoded = vec![];
-        let mut stdin = stdin();
-        stdin.read_to_end(&mut encoded).map_err(|error| {
-            IaiCallgrindError::Other(format!("Failed to read encoded configuration: {error}"))
-        })?;
-        assert!(
-            encoded.len() == num_bytes,
-            "Bytes mismatch when decoding configuration: Expected {num_bytes} bytes but received: \
-             {} bytes",
-            encoded.len()
-        );
-
-        let benchmark: api::LibraryBenchmark = bincode::deserialize(&encoded).map_err(|error| {
-            IaiCallgrindError::Other(format!("Failed to decode configuration: {error}"))
-        })?;
-
-        Ok(benchmark)
-    }
-
-    fn parse_benchmark(module: &str, benchmark: LibraryBenchmark) -> Vec<GroupConfig> {
-        benchmark
+impl Groups {
+    fn from_library_benchmark(module: &str, benchmark: LibraryBenchmark) -> Self {
+        let groups = benchmark
             .groups
             .into_iter()
             .map(|group| {
@@ -157,7 +129,7 @@ impl Config {
 
                     CallgrindArgs::from_args(raw)
                 };
-                GroupConfig {
+                Group {
                     id: group.id,
                     module: module_path,
                     benches: group
@@ -184,16 +156,46 @@ impl Config {
                     callgrind_args,
                 }
             })
-            .collect::<Vec<GroupConfig>>()
+            .collect::<Vec<Group>>();
+
+        Self(groups)
     }
 
-    fn generate(
-        mut env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug,
-    ) -> Result<Self, IaiCallgrindError> {
+    fn run(&self, config: &Config) -> Result<()> {
+        for group in &self.0 {
+            for bench in &group.benches {
+                bench.run(config, group)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+struct Config {
+    #[allow(unused)]
+    package_dir: PathBuf,
+    bench_file: PathBuf,
+    module: String,
+    bench_bin: PathBuf,
+    meta: Metadata,
+}
+
+#[derive(Debug)]
+struct Runner {
+    config: Config,
+    groups: Groups,
+}
+
+impl Runner {
+    fn generate<I>(mut env_args_iter: I) -> Result<Self>
+    where
+        I: Iterator<Item = OsString> + std::fmt::Debug,
+    {
         let package_dir = PathBuf::from(env_args_iter.next().unwrap());
         let bench_file = PathBuf::from(env_args_iter.next().unwrap());
         let module = env_args_iter.next().unwrap().to_str().unwrap().to_owned();
-        let executable = PathBuf::from(env_args_iter.next().unwrap());
+        let bench_bin = PathBuf::from(env_args_iter.next().unwrap());
         let num_bytes = env_args_iter
             .next()
             .unwrap()
@@ -201,29 +203,30 @@ impl Config {
             .parse::<usize>()
             .unwrap();
 
-        let benchmark = Self::receive_benchmark(num_bytes)?;
-        let groups = Self::parse_benchmark(&module, benchmark);
+        let benchmark = receive_benchmark(num_bytes)?;
+        let groups = Groups::from_library_benchmark(&module, benchmark);
         let meta = Metadata::new();
 
         Ok(Self {
-            package_dir,
-            bench_file,
+            config: Config {
+                package_dir,
+                bench_file,
+                module,
+                bench_bin,
+                meta,
+            },
             groups,
-            executable,
-            module,
-            meta,
         })
+    }
+
+    fn run(&self) -> Result<()> {
+        self.groups.run(&self.config)
     }
 }
 
-pub(crate) fn run(
-    env_args: impl Iterator<Item = OsString> + std::fmt::Debug,
-) -> Result<(), IaiCallgrindError> {
-    let config = Config::generate(env_args)?;
-    for group in &config.groups {
-        for bench in &group.benches {
-            bench.run(&config, group)?;
-        }
-    }
-    Ok(())
+pub fn run<I>(env_args_iter: I) -> Result<()>
+where
+    I: Iterator<Item = OsString> + std::fmt::Debug,
+{
+    Runner::generate(env_args_iter)?.run()
 }

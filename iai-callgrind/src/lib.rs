@@ -266,7 +266,11 @@ impl LibraryBenchmarkConfig {
     /// );
     /// # }
     /// ```
-    pub fn with_raw_callgrind_args<I: AsRef<str>, T: AsRef<[I]>>(args: T) -> Self {
+    pub fn with_raw_callgrind_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: AsRef<[I]>,
+    {
         Self(internal::RunnerLibraryBenchmarkConfig {
             env_clear: None,
             raw_callgrind_args: internal::RunnerRawCallgrindArgs::new(args),
@@ -317,7 +321,11 @@ impl LibraryBenchmarkConfig {
     /// );
     /// # }
     /// ```
-    pub fn raw_callgrind_args<I: AsRef<str>, T: AsRef<[I]>>(&mut self, args: T) -> &mut Self {
+    pub fn raw_callgrind_args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: AsRef<[I]>,
+    {
         self.raw_callgrind_args_iter(args.as_ref().iter());
         self
     }
@@ -341,10 +349,11 @@ impl LibraryBenchmarkConfig {
     /// );
     /// # }
     /// ```
-    pub fn raw_callgrind_args_iter<I: AsRef<str>, T: Iterator<Item = I>>(
-        &mut self,
-        args: T,
-    ) -> &mut Self {
+    pub fn raw_callgrind_args_iter<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: Iterator<Item = I>,
+    {
         self.0.raw_callgrind_args.raw_callgrind_args_iter(args);
         self
     }
@@ -397,7 +406,11 @@ impl BinaryBenchmarkConfig {
     /// let config = BinaryBenchmarkConfig::default()
     ///     .raw_callgrind_args(["collect-atstart=no", "toggle-collect=some::path"]);
     /// ```
-    pub fn raw_callgrind_args<I: AsRef<str>, T: AsRef<[I]>>(&mut self, args: T) -> &mut Self {
+    pub fn raw_callgrind_args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: AsRef<[I]>,
+    {
         self.0
             .raw_callgrind_args
             .raw_callgrind_args_iter(args.as_ref().iter());
@@ -426,7 +439,10 @@ impl BinaryBenchmarkGroup {
     /// }
     /// # func(&mut group);
     /// ```
-    pub fn fixtures<T: Into<internal::RunnerFixtures>>(&mut self, value: T) -> &mut Self {
+    pub fn fixtures<T>(&mut self, value: T) -> &mut Self
+    where
+        T: Into<internal::RunnerFixtures>,
+    {
         self.0.fixtures = Some(value.into());
         self
     }
@@ -511,7 +527,10 @@ impl BinaryBenchmarkGroup {
     /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
     /// # }
     /// ```
-    pub fn bench<T: Into<internal::RunnerRun>>(&mut self, run: T) -> &mut Self {
+    pub fn bench<T>(&mut self, run: T) -> &mut Self
+    where
+        T: Into<internal::RunnerRun>,
+    {
         self.0.benches.push(run.into());
         self
     }
@@ -555,7 +574,11 @@ impl Run {
     /// # fn main() {
     /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
     /// # }
-    pub fn with_cmd<T: AsRef<str>, U: Into<internal::RunnerArg>>(cmd: T, arg: U) -> Self {
+    pub fn with_cmd<T, U>(cmd: T, arg: U) -> Self
+    where
+        T: AsRef<str>,
+        U: Into<internal::RunnerArg>,
+    {
         let cmd = cmd.as_ref();
         Self(internal::RunnerRun {
             cmd: Some(internal::RunnerCmd {
@@ -589,7 +612,11 @@ impl Run {
     /// # fn main() {
     /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
     /// # }
-    pub fn with_cmd_args<T: AsRef<str>, U: AsRef<[Arg]>>(cmd: T, args: U) -> Self {
+    pub fn with_cmd_args<T, U>(cmd: T, args: U) -> Self
+    where
+        T: AsRef<str>,
+        U: AsRef<[Arg]>,
+    {
         let cmd = cmd.as_ref();
         let args = args.as_ref();
 
@@ -624,7 +651,10 @@ impl Run {
     /// # fn main() {
     /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
     /// # }
-    pub fn with_arg<T: Into<internal::RunnerArg>>(arg: T) -> Self {
+    pub fn with_arg<T>(arg: T) -> Self
+    where
+        T: Into<internal::RunnerArg>,
+    {
         Self(internal::RunnerRun {
             cmd: None,
             args: vec![arg.into()],
@@ -678,7 +708,11 @@ impl Run {
     /// # fn main() {
     /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
     /// # }
-    pub fn with_args<I: AsRef<Arg>, T: AsRef<[I]>>(args: T) -> Self {
+    pub fn with_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<Arg>,
+        T: AsRef<[I]>,
+    {
         let args = args.as_ref();
         Self(internal::RunnerRun {
             cmd: None,
@@ -710,7 +744,10 @@ impl Run {
     /// # fn main() {
     /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
     /// # }
-    pub fn arg<T: Into<internal::RunnerArg>>(&mut self, arg: T) -> &mut Self {
+    pub fn arg<T>(&mut self, arg: T) -> &mut Self
+    where
+        T: Into<internal::RunnerArg>,
+    {
         self.0.args.push(arg.into());
         self
     }
@@ -740,7 +777,11 @@ impl Run {
     /// # fn main() {
     /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
     /// # }
-    pub fn args<I: AsRef<Arg>, T: AsRef<[I]>>(&mut self, args: T) -> &mut Self {
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<Arg>,
+        T: AsRef<[I]>,
+    {
         self.0
             .args
             .extend(args.as_ref().iter().map(|a| a.as_ref().into()));
@@ -794,7 +835,10 @@ impl Run {
     /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
     /// # }
     /// ```
-    pub fn env<T: Into<String>>(&mut self, env: T) -> &mut Self {
+    pub fn env<T>(&mut self, env: T) -> &mut Self
+    where
+        T: Into<String>,
+    {
         self.0.envs.push(env.into());
         self
     }
@@ -820,7 +864,11 @@ impl Run {
     /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
     /// # }
     /// ```
-    pub fn envs<I: AsRef<str>, T: AsRef<[I]>>(&mut self, envs: T) -> &mut Self {
+    pub fn envs<I, T>(&mut self, envs: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: AsRef<[I]>,
+    {
         self.0
             .envs
             .extend(envs.as_ref().iter().map(|s| s.as_ref().to_owned()));
@@ -854,7 +902,10 @@ impl Run {
     /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
     /// # }
     /// ```
-    pub fn options<T: Into<internal::RunnerOptions>>(&mut self, options: T) -> &mut Self {
+    pub fn options<T>(&mut self, options: T) -> &mut Self
+    where
+        T: Into<internal::RunnerOptions>,
+    {
         self.0.opts = Some(options.into());
         self
     }
@@ -912,7 +963,12 @@ impl Arg {
     /// # fn main() {
     /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
     /// # }
-    pub fn new<T: Into<String>, I: AsRef<OsStr>, U: AsRef<[I]>>(id: T, args: U) -> Self {
+    pub fn new<T, I, U>(id: T, args: U) -> Self
+    where
+        T: Into<String>,
+        I: AsRef<OsStr>,
+        U: AsRef<[I]>,
+    {
         Self(internal::RunnerArg {
             id: Some(id.into()),
             args: args
@@ -941,7 +997,10 @@ impl Arg {
     /// # fn main() {
     /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
     /// # }
-    pub fn empty<T: Into<String>>(id: T) -> Self {
+    pub fn empty<T>(id: T) -> Self
+    where
+        T: Into<String>,
+    {
         Self(internal::RunnerArg {
             id: Some(id.into()),
             args: vec![],
@@ -993,7 +1052,10 @@ impl Options {
     ///
     /// let options: &mut Options = Options::default().current_dir("fixtures");
     /// ```
-    pub fn current_dir<T: Into<PathBuf>>(&mut self, value: T) -> &mut Self {
+    pub fn current_dir<T>(&mut self, value: T) -> &mut Self
+    where
+        T: Into<PathBuf>,
+    {
         self.0.current_dir = Some(value.into());
         self
     }
@@ -1035,7 +1097,10 @@ impl Options {
     /// counts of everything happening after entering the main function and before leaving it. If
     /// the counts are `0` (and the main function is not empty), something went wrong and you have
     /// to search the output file again for typos or similar.
-    pub fn entry_point<T: Into<String>>(&mut self, value: T) -> &mut Self {
+    pub fn entry_point<T>(&mut self, value: T) -> &mut Self
+    where
+        T: Into<String>,
+    {
         self.0.entry_point = Some(value.into());
         self
     }
@@ -1063,7 +1128,10 @@ impl Options {
     ///
     /// let options: &mut Options = Options::default().exit_with(ExitWith::Failure);
     /// ```
-    pub fn exit_with<T: Into<internal::RunnerExitWith>>(&mut self, value: T) -> &mut Self {
+    pub fn exit_with<T>(&mut self, value: T) -> &mut Self
+    where
+        T: Into<internal::RunnerExitWith>,
+    {
         self.0.exit_with = Some(value.into());
         self
     }
@@ -1104,7 +1172,10 @@ impl Fixtures {
     ///
     /// let fixtures: Fixtures = Fixtures::new("benches/my_fixtures");
     /// ```
-    pub fn new<T: Into<PathBuf>>(path: T) -> Self {
+    pub fn new<T>(path: T) -> Self
+    where
+        T: Into<PathBuf>,
+    {
         Self(internal::RunnerFixtures {
             path: path.into(),
             follow_symlinks: false,
@@ -1166,7 +1237,11 @@ impl BenchmarkId {
     /// # fn main() {
     /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
     /// # }
-    pub fn new<T: AsRef<str>, P: Display>(id: T, parameter: P) -> Self {
+    pub fn new<T, P>(id: T, parameter: P) -> Self
+    where
+        T: AsRef<str>,
+        P: Display,
+    {
         Self {
             id: format!("{}_{parameter}", id.as_ref()),
         }

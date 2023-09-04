@@ -1,6 +1,5 @@
 use std::ffi::OsString;
 use std::fmt::Display;
-use std::io::{stdin, Read};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -8,11 +7,11 @@ use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
 use crate::api::{self, BinaryBenchmark, Options};
-use crate::error::IaiCallgrindError;
+use crate::error::{IaiCallgrindError, Result};
 use crate::runner::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput, Sentinel};
 use crate::runner::meta::Metadata;
 use crate::runner::print::Header;
-use crate::util::{copy_directory, write_all_to_stderr, write_all_to_stdout};
+use crate::util::{copy_directory, receive_benchmark, write_all_to_stderr, write_all_to_stdout};
 
 #[derive(Debug)]
 struct BinBench {
@@ -25,7 +24,7 @@ struct BinBench {
 }
 
 impl BinBench {
-    fn run(&self, config: &Config, group: &GroupConfig) -> Result<(), IaiCallgrindError> {
+    fn run(&self, config: &Config, group: &Group) -> Result<()> {
         let command = CallgrindCommand::new(config.meta.aslr, &config.meta.arch);
         let mut callgrind_args = group.callgrind_args.clone();
         if let Some(entry_point) = &self.opts.entry_point {
@@ -107,7 +106,7 @@ impl Assistant {
         Self { name, kind, bench }
     }
 
-    fn run_bench(&self, config: &Config, group: &GroupConfig) -> Result<(), IaiCallgrindError> {
+    fn run_bench(&self, config: &Config, group: &Group) -> Result<()> {
         let command = CallgrindCommand::new(config.meta.aslr, &config.meta.arch);
 
         let run_id = if let Some(id) = &group.id {
@@ -158,7 +157,7 @@ impl Assistant {
         Ok(())
     }
 
-    fn run_plain(&self, config: &Config, group: &GroupConfig) -> Result<(), IaiCallgrindError> {
+    fn run_plain(&self, config: &Config, group: &Group) -> Result<()> {
         let id = if let Some(id) = &group.id {
             format!("{}::{}", id, self.kind.id())
         } else {
@@ -194,7 +193,7 @@ impl Assistant {
         Ok(())
     }
 
-    fn run(&mut self, config: &Config, group: &GroupConfig) -> Result<(), IaiCallgrindError> {
+    fn run(&mut self, config: &Config, group: &Group) -> Result<()> {
         if self.bench {
             match self.kind {
                 AssistantKind::Setup | AssistantKind::Teardown => self.bench = false,
@@ -239,7 +238,7 @@ struct Sandbox {
 }
 
 impl Sandbox {
-    fn setup(fixtures: &Option<api::Fixtures>) -> Result<Self, IaiCallgrindError> {
+    fn setup(fixtures: &Option<api::Fixtures>) -> Result<Self> {
         debug!("Creating temporary workspace directory");
         let temp_dir = tempfile::tempdir().expect("Create temporary directory");
 
@@ -282,7 +281,7 @@ impl Sandbox {
 }
 
 #[derive(Debug)]
-struct GroupConfig {
+struct Group {
     id: Option<String>,
     module_path: String,
     fixtures: Option<api::Fixtures>,
@@ -292,43 +291,59 @@ struct GroupConfig {
     callgrind_args: CallgrindArgs,
 }
 
-#[derive(Debug)]
-struct Config {
-    #[allow(unused)]
-    package_dir: PathBuf,
-    bench_file: PathBuf,
-    module: String,
-    bench_bin: PathBuf,
-    groups: Vec<GroupConfig>,
-    meta: Metadata,
+impl Group {
+    fn run(&self, config: &Config) -> Result<()> {
+        let sandbox = if self.sandbox {
+            debug!("Setting up sandbox");
+            Some(Sandbox::setup(&self.fixtures)?)
+        } else {
+            debug!(
+                "Sandbox switched off: Running benchmarks in the current directory: '{}'",
+                std::env::current_dir().unwrap().display()
+            );
+            None
+        };
+
+        let mut assists = self.assists.clone();
+
+        if let Some(before) = assists.before.as_mut() {
+            before.run(config, self)?;
+        }
+
+        for bench in &self.benches {
+            if let Some(setup) = assists.setup.as_mut() {
+                setup.run(config, self)?;
+            }
+
+            bench.run(config, self)?;
+
+            if let Some(teardown) = assists.teardown.as_mut() {
+                teardown.run(config, self)?;
+            }
+        }
+
+        if let Some(after) = assists.after.as_mut() {
+            after.run(config, self)?;
+        }
+
+        if let Some(sandbox) = sandbox {
+            debug!("Removing sandbox");
+            sandbox.reset();
+        }
+
+        Ok(())
+    }
 }
 
-impl Config {
-    fn receive_benchmark(num_bytes: usize) -> Result<api::BinaryBenchmark, IaiCallgrindError> {
-        let mut encoded = vec![];
-        let mut stdin = stdin();
-        stdin.read_to_end(&mut encoded).map_err(|error| {
-            IaiCallgrindError::Other(format!("Failed to read encoded configuration: {error}"))
-        })?;
-        assert!(
-            encoded.len() == num_bytes,
-            "Bytes mismatch when decoding configuration: Expected {num_bytes} bytes but received: \
-             {} bytes",
-            encoded.len()
-        );
+#[derive(Debug)]
+struct Groups(Vec<Group>);
 
-        let benchmark: api::BinaryBenchmark = bincode::deserialize(&encoded).map_err(|error| {
-            IaiCallgrindError::Other(format!("Failed to decode configuration: {error}"))
-        })?;
-
-        Ok(benchmark)
-    }
-
+impl Groups {
     fn parse_runs(
         module_path: &str,
         cmd: &Option<api::Cmd>,
         runs: Vec<api::Run>,
-    ) -> Result<Vec<BinBench>, IaiCallgrindError> {
+    ) -> Result<Vec<BinBench>> {
         let mut benches = vec![];
         let mut counter: usize = 0;
         for run in runs {
@@ -431,10 +446,7 @@ impl Config {
         CallgrindArgs::from_os_args(&callgrind_args)
     }
 
-    fn parse_groups(
-        module: &str,
-        benchmark: BinaryBenchmark,
-    ) -> Result<Vec<GroupConfig>, IaiCallgrindError> {
+    fn from_binary_benchmark(module: &str, benchmark: BinaryBenchmark) -> Result<Self> {
         let args = Self::parse_callgrind_args(&benchmark.config.raw_callgrind_args.0);
         let mut configs = vec![];
         for group in benchmark.groups {
@@ -443,7 +455,7 @@ impl Config {
             } else {
                 module.to_owned()
             };
-            let config = GroupConfig {
+            let config = Group {
                 id: group.id,
                 module_path: module_path.clone(),
                 fixtures: group.fixtures,
@@ -454,12 +466,38 @@ impl Config {
             };
             configs.push(config);
         }
-        Ok(configs)
+        Ok(Self(configs))
     }
 
-    fn generate(
-        mut env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug,
-    ) -> Result<Self, IaiCallgrindError> {
+    fn run(&self, config: &Config) -> Result<()> {
+        for group in &self.0 {
+            group.run(config)?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+struct Config {
+    #[allow(unused)]
+    package_dir: PathBuf,
+    bench_file: PathBuf,
+    module: String,
+    bench_bin: PathBuf,
+    meta: Metadata,
+}
+
+#[derive(Debug)]
+struct Runner {
+    groups: Groups,
+    config: Config,
+}
+
+impl Runner {
+    fn generate<I>(mut env_args_iter: I) -> Result<Self>
+    where
+        I: Iterator<Item = OsString> + std::fmt::Debug,
+    {
         // The following unwraps are safe because these arguments are assuredly submitted by the
         // iai_callgrind::main macro
         let package_dir = PathBuf::from(env_args_iter.next().unwrap());
@@ -473,71 +511,30 @@ impl Config {
             .parse::<usize>()
             .unwrap();
 
-        let benchmark = Self::receive_benchmark(num_bytes)?;
-        let groups = Self::parse_groups(&module, benchmark)?;
+        let benchmark = receive_benchmark(num_bytes)?;
+        let groups = Groups::from_binary_benchmark(&module, benchmark)?;
         let meta = Metadata::new();
 
         Ok(Self {
-            package_dir,
-            bench_file,
-            module,
-            bench_bin,
+            config: Config {
+                package_dir,
+                bench_file,
+                module,
+                bench_bin,
+                meta,
+            },
             groups,
-            meta,
         })
     }
+
+    fn run(&self) -> Result<()> {
+        self.groups.run(&self.config)
+    }
 }
 
-fn run_group(config: &Config, group: &GroupConfig) -> Result<(), IaiCallgrindError> {
-    let sandbox = if group.sandbox {
-        debug!("Setting up sandbox");
-        Some(Sandbox::setup(&group.fixtures)?)
-    } else {
-        debug!(
-            "Sandbox switched off: Running benchmarks in the current directory: '{}'",
-            std::env::current_dir().unwrap().display()
-        );
-        None
-    };
-
-    let mut assists = group.assists.clone();
-
-    if let Some(before) = assists.before.as_mut() {
-        before.run(config, group)?;
-    }
-
-    for bench in &group.benches {
-        if let Some(setup) = assists.setup.as_mut() {
-            setup.run(config, group)?;
-        }
-
-        bench.run(config, group)?;
-
-        if let Some(teardown) = assists.teardown.as_mut() {
-            teardown.run(config, group)?;
-        }
-    }
-
-    if let Some(after) = assists.after.as_mut() {
-        after.run(config, group)?;
-    }
-
-    if let Some(sandbox) = sandbox {
-        debug!("Removing sandbox");
-        sandbox.reset();
-    }
-
-    Ok(())
-}
-
-pub fn run(
-    env_args_iter: impl Iterator<Item = OsString> + std::fmt::Debug,
-) -> Result<(), IaiCallgrindError> {
-    let config = Config::generate(env_args_iter)?;
-
-    for group in &config.groups {
-        run_group(&config, group)?;
-    }
-
-    Ok(())
+pub fn run<I>(env_args_iter: I) -> Result<()>
+where
+    I: Iterator<Item = OsString> + std::fmt::Debug,
+{
+    Runner::generate(env_args_iter)?.run()
 }

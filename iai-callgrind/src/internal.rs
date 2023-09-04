@@ -40,7 +40,11 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn new<T: AsRef<str>, U: AsRef<str>>(orig: T, cmd: U) -> Self {
+    pub fn new<T, U>(orig: T, cmd: U) -> Self
+    where
+        T: AsRef<str>,
+        U: AsRef<str>,
+    {
         Self {
             inner: RunnerCmd {
                 display: orig.as_ref().to_owned(),

@@ -8,10 +8,10 @@ use std::path::PathBuf;
 
 use log::debug;
 
-pub use crate::error::IaiCallgrindError;
+pub use crate::error::{IaiCallgrindError, Result};
 pub use crate::util::{write_all_to_stderr, write_all_to_stdout};
 
-pub fn run() -> Result<(), IaiCallgrindError> {
+pub fn run() -> Result<()> {
     let mut args_iter = std::env::args_os();
 
     let runner = PathBuf::from(args_iter.next().unwrap());
