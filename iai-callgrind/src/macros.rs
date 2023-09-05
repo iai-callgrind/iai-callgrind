@@ -750,7 +750,7 @@ macro_rules! main {
                                     .parse::<usize>()
                                     .expect("Expecting a valid bench index")
                             );
-                            $crate::black_box($group::run(group_index, bench_index));
+                            $group::run(group_index, bench_index);
                         }
                     )+
                     name => panic!("function '{}' not found in this scope", name)
@@ -852,7 +852,7 @@ macro_rules! main {
                         ).and_then(|arg| arg.parse::<usize>().ok())
                     ).expect("Error parsing index")
                 );
-                black_box(black_box(iai_wrappers::FUNCTIONS[index].1)());
+                black_box(iai_wrappers::FUNCTIONS[index].1)();
             } else {
                 black_box(run());
             };
@@ -1240,10 +1240,9 @@ macro_rules! library_benchmark_group {
                 config
             }
 
-
             #[inline(never)]
             pub fn run(group_index: usize, bench_index: usize) {
-               FUNCTIONS[group_index].1[bench_index].2();
+                FUNCTIONS[group_index].1[bench_index].2();
             }
         }
     };

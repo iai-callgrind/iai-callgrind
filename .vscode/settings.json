@@ -30,6 +30,7 @@
     "sandboxing",
     "setarch",
     "SHLEX",
+    "splitn",
     "Struct",
     "Swatinem",
     "tempdir",

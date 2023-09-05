@@ -141,6 +141,7 @@ impl CallgrindCommand {
             );
             e
         };
+
         let (stdout, stderr) = command
             .arg("--tool=callgrind")
             .args(callgrind_args)
