@@ -43,10 +43,12 @@ pub fn join_os_string(slice: &[OsString], sep: &OsStr) -> OsString {
     }
 }
 
-pub fn concat_os_string<T>(mut first: OsString, second: T) -> OsString
+pub fn concat_os_string<T, U>(first: T, second: U) -> OsString
 where
-    T: AsRef<OsStr>,
+    T: Into<OsString>,
+    U: AsRef<OsStr>,
 {
+    let mut first = first.into();
     first.push(second);
     first
 }

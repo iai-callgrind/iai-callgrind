@@ -540,38 +540,26 @@ impl CallgrindArgs {
 
     pub fn to_os_args(&self) -> Vec<OsString> {
         let mut args = vec![
-            concat_os_string(OsString::from("--I1="), &self.i1),
-            concat_os_string(OsString::from("--D1="), &self.d1),
-            concat_os_string(OsString::from("--LL="), &self.ll),
-            concat_os_string(
-                OsString::from("--cache-sim="),
-                bool_to_yesno(self.cache_sim),
-            ),
-            concat_os_string(
-                OsString::from("--collect-atstart="),
-                bool_to_yesno(self.collect_atstart),
-            ),
-            concat_os_string(
-                OsString::from("--compress-strings="),
-                bool_to_yesno(self.compress_strings),
-            ),
-            concat_os_string(
-                OsString::from("--compress-pos="),
-                bool_to_yesno(self.compress_pos),
-            ),
+            concat_os_string("--I1=", &self.i1),
+            concat_os_string("--D1=", &self.d1),
+            concat_os_string("--LL=", &self.ll),
+            concat_os_string("--cache-sim=", bool_to_yesno(self.cache_sim)),
+            concat_os_string("--collect-atstart=", bool_to_yesno(self.collect_atstart)),
+            concat_os_string("--compress-strings=", bool_to_yesno(self.compress_strings)),
+            concat_os_string("--compress-pos=", bool_to_yesno(self.compress_pos)),
         ];
 
         args.append(
             &mut self
                 .toggle_collect
                 .iter()
-                .map(|s| concat_os_string(OsString::from("--toggle-collect="), s))
+                .map(|s| concat_os_string("--toggle-collect=", s))
                 .collect::<Vec<OsString>>(),
         );
 
         if let Some(output_file) = &self.callgrind_out_file {
             args.push(concat_os_string(
-                OsString::from("--callgrind-out-file="),
+                "--callgrind-out-file=",
                 output_file.as_os_str(),
             ));
         }
