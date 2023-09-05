@@ -62,7 +62,13 @@ impl LibBench {
             ..Default::default()
         };
 
-        command.run(&callgrind_args, &config.bench_bin, &args, vec![], &options)?;
+        command.run(
+            &callgrind_args,
+            &config.bench_bin,
+            &args,
+            self.config.envs.clone(),
+            &options,
+        )?;
 
         let new_stats = output.parse(&config.bench_file, &sentinel);
 
@@ -87,6 +93,7 @@ impl LibBench {
 #[derive(Debug)]
 struct LibBenchConfig {
     env_clear: bool,
+    envs: Vec<(OsString, OsString)>,
 }
 
 #[derive(Debug)]
@@ -129,6 +136,14 @@ impl Groups {
 
                     CallgrindArgs::from_args(raw)
                 };
+                let envs: &Vec<(OsString, OsString)> = &config
+                    .envs
+                    .iter()
+                    .filter_map(|(key, value)| match value {
+                        Some(value) => Some((key.clone(), value.clone())),
+                        None => std::env::var_os(key).map(|value| (key.clone(), value)),
+                    })
+                    .collect();
                 Group {
                     id: group.id,
                     module: module_path,
@@ -147,8 +162,8 @@ impl Groups {
                                     function: f.bench,
                                     args: f.args,
                                     config: LibBenchConfig {
-                                        // TODO: default env_clear should be true
-                                        env_clear: config.env_clear.unwrap_or_default(),
+                                        env_clear: config.env_clear.unwrap_or(true),
+                                        envs: envs.clone(),
                                     },
                                 })
                         })

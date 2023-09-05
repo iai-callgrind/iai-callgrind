@@ -206,7 +206,7 @@ pub use iai_callgrind_macros::library_benchmark;
 pub mod internal;
 mod macros;
 
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
 use std::path::PathBuf;
 
@@ -274,6 +274,7 @@ impl LibraryBenchmarkConfig {
         Self(internal::RunnerLibraryBenchmarkConfig {
             env_clear: None,
             raw_callgrind_args: internal::RunnerRawCallgrindArgs::new(args),
+            envs: vec![],
         })
     }
 
@@ -355,6 +356,150 @@ impl LibraryBenchmarkConfig {
         T: Iterator<Item = I>,
     {
         self.0.raw_callgrind_args.raw_callgrind_args_iter(args);
+        self
+    }
+
+    /// Clear the environment variables before running a benchmark (Default: true)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default().clear_env(false);
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn clear_env(&mut self, value: bool) -> &mut Self {
+        self.0.env_clear = Some(value);
+        self
+    }
+
+    /// Add an environment variables which will be available in library benchmarks
+    ///
+    /// These environment variables are available independently of the setting of
+    /// [`LibraryBenchmarkConfig::env_clear`].
+    ///
+    /// # Examples
+    ///
+    /// An example for a custom environment variable, available in all benchmarks:
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default().env("FOO", "BAR");
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn env<K, V>(&mut self, key: K, value: V) -> &mut Self
+    where
+        K: Into<OsString>,
+        V: Into<OsString>,
+    {
+        self.0.envs.push((key.into(), Some(value.into())));
+        self
+    }
+
+    /// Add multiple environment variables which will be available in library benchmarks
+    ///
+    /// See also [`LibraryBenchmarkConfig::env`] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// main!(
+    ///     config =
+    ///         LibraryBenchmarkConfig::default().envs([("MY_CUSTOM_VAR", "SOME_VALUE"), ("FOO", "BAR")]);
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn envs<K, V, T>(&mut self, envs: T) -> &mut Self
+    where
+        K: Into<OsString>,
+        V: Into<OsString>,
+        T: IntoIterator<Item = (K, V)>,
+    {
+        self.0
+            .envs
+            .extend(envs.into_iter().map(|(k, v)| (k.into(), Some(v.into()))));
+        self
+    }
+
+    /// Specify a pass-through environment variable
+    ///
+    /// Usually, the environment variables before running a library benchmark are cleared
+    /// but specifying pass-through variables makes this environment variable available to
+    /// the benchmark as it actually appeared in the root environment.
+    ///
+    /// Pass-through environment variables are ignored if they don't exist in the root
+    /// environment.
+    ///
+    /// # Examples
+    ///
+    /// Here, we chose to pass-through the original value of the `HOME` variable:
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default().pass_through_env("HOME");
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn pass_through_env<K>(&mut self, key: K) -> &mut Self
+    where
+        K: Into<OsString>,
+    {
+        self.0.envs.push((key.into(), None));
+        self
+    }
+
+    /// Specify multiple pass-through environment variables
+    ///
+    /// See also [`LibraryBenchmarkConfig::pass_through_env`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default().pass_through_envs(["HOME", "USER"]);
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn pass_through_envs<K, T>(&mut self, envs: T) -> &mut Self
+    where
+        K: Into<OsString>,
+        T: IntoIterator<Item = K>,
+    {
+        self.0
+            .envs
+            .extend(envs.into_iter().map(|k| (k.into(), None)));
         self
     }
 }

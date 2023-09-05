@@ -15,3 +15,22 @@ pub fn fibonacci(n: u64) -> u64 {
         n => fibonacci(n - 1) + fibonacci(n - 2),
     }
 }
+
+pub fn print_env(args: &[&str]) {
+    for arg in args {
+        let (key, value) = match arg.split_once('=') {
+            Some((key, value)) => {
+                let actual_value =
+                    std::env::var(key).expect("Environment variable must be present");
+                assert_eq!(&actual_value, value, "Environment variable value differs");
+                (key.to_owned(), actual_value)
+            }
+            None => {
+                let value =
+                    std::env::var(arg).expect("Pass-through environment variable must be present");
+                (arg.to_string(), value)
+            }
+        };
+        println!("{key}={value}");
+    }
+}

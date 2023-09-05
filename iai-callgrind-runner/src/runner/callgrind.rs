@@ -94,14 +94,17 @@ impl CallgrindCommand {
         }
     }
 
-    pub fn run(
+    pub fn run<E>(
         self,
         callgrind_args: &CallgrindArgs,
         executable: &Path,
         executable_args: &[OsString],
-        envs: Vec<(String, String)>,
+        envs: E,
         options: &Options,
-    ) -> Result<()> {
+    ) -> Result<()>
+    where
+        E: IntoIterator<Item = (OsString, OsString)>,
+    {
         let mut command = self.command;
         debug!(
             "Running callgrind with executable '{}'",

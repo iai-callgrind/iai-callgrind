@@ -52,6 +52,7 @@ pub struct Config {
 pub struct LibraryBenchmarkConfig {
     pub env_clear: Option<bool>,
     pub raw_callgrind_args: RawCallgrindArgs,
+    pub envs: Vec<(OsString, Option<OsString>)>,
 }
 
 impl LibraryBenchmarkConfig {
@@ -63,6 +64,7 @@ impl LibraryBenchmarkConfig {
             (None, Some(v)) | (Some(v), None) => Some(v),
             (Some(_), Some(w)) => Some(w),
         };
+        self.envs.extend_from_slice(&other.envs);
         self
     }
 }

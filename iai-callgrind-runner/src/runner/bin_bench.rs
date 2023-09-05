@@ -19,6 +19,7 @@ struct BinBench {
     display: String,
     command: PathBuf,
     args: Vec<OsString>,
+    // TODO: Should be (OsString, OsString)
     envs: Vec<(String, String)>,
     opts: api::Options,
 }
@@ -45,7 +46,9 @@ impl BinBench {
             &callgrind_args,
             &self.command,
             &self.args,
-            self.envs.clone(),
+            self.envs
+                .iter()
+                .map(|(k, v)| (OsString::from(k), OsString::from(v))),
             &self.opts,
         )?;
 
