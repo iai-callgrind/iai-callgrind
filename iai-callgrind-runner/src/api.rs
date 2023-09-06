@@ -56,15 +56,20 @@ pub struct LibraryBenchmarkConfig {
 }
 
 impl LibraryBenchmarkConfig {
-    pub fn update(&mut self, other: &Self) -> &mut Self {
-        self.raw_callgrind_args
-            .raw_callgrind_args_iter(other.raw_callgrind_args.0.iter());
-        self.env_clear = match (self.env_clear, other.env_clear) {
-            (None, None) => None,
-            (None, Some(v)) | (Some(v), None) => Some(v),
-            (Some(_), Some(w)) => Some(w),
-        };
-        self.envs.extend_from_slice(&other.envs);
+    pub fn update_from_all<'a, T>(mut self, others: T) -> Self
+    where
+        T: IntoIterator<Item = Option<&'a Self>>,
+    {
+        for other in others.into_iter().flatten() {
+            self.raw_callgrind_args
+                .raw_callgrind_args_iter(other.raw_callgrind_args.0.iter());
+            self.env_clear = match (self.env_clear, other.env_clear) {
+                (None, None) => None,
+                (None, Some(v)) | (Some(v), None) => Some(v),
+                (Some(_), Some(w)) => Some(w),
+            };
+            self.envs.extend_from_slice(&other.envs);
+        }
         self
     }
 }
@@ -80,14 +85,21 @@ pub struct LibraryBenchmark {
 pub struct LibraryBenchmarkGroup {
     pub id: Option<String>,
     pub config: Option<LibraryBenchmarkConfig>,
-    pub benches: Vec<Vec<Function>>,
+    pub benches: Vec<LibraryBenchmarkBenches>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub struct Function {
+pub struct LibraryBenchmarkBench {
     pub id: Option<String>,
     pub bench: String,
     pub args: Option<String>,
+    pub config: Option<LibraryBenchmarkConfig>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct LibraryBenchmarkBenches {
+    pub config: Option<LibraryBenchmarkConfig>,
+    pub benches: Vec<LibraryBenchmarkBench>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]

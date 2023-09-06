@@ -26,17 +26,144 @@
 
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use proc_macro_error::{abort, proc_macro_error};
-use quote::{quote, ToTokens, TokenStreamExt};
+use proc_macro_error::{abort, emit_error, proc_macro_error};
+use quote::{format_ident, quote, ToTokens, TokenStreamExt};
 use syn::parse::Parse;
-use syn::{parse2, parse_quote, Expr, Ident, ItemFn, Token};
+use syn::punctuated::Punctuated;
+use syn::spanned::Spanned;
+use syn::{
+    parse2, parse_quote, Attribute, Expr, ExprArray, ExprParen, ExprTuple, Ident, ItemFn,
+    MetaNameValue, Token,
+};
 
 #[derive(Debug, Default)]
 struct LibraryBenchmark {
-    benches: Vec<Bench>,
+    config: Option<Expr>,
+    benches: Vec<LibBenchAttribute>,
 }
 
 impl LibraryBenchmark {
+    #[allow(clippy::too_many_lines)]
+    fn parse_attribute(
+        &mut self,
+        item_fn: &ItemFn,
+        attr: &Attribute,
+        id: Ident,
+    ) -> syn::Result<()> {
+        let expected_num_args = item_fn.sig.inputs.len();
+        let meta = attr.meta.require_list()?;
+        if let Ok(pairs) =
+            meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
+        {
+            let mut args = None;
+            let mut config = None;
+            for pair in pairs {
+                if pair.path.segments.is_empty() {
+                    emit_error!(
+                        pair, "Missing key";
+                        help = "At least one argument must be given";
+                        note = r#"Valid arguments are: args, config"#
+                    );
+                } else if pair.path.is_ident("args") {
+                    if args.is_none() {
+                        let value = parse2::<ExprArray>(pair.value.to_token_stream()).map_or_else(
+                            |_| {
+                                parse2::<ExprTuple>(pair.value.to_token_stream()).map_or_else(
+                                    |error| {
+                                        if expected_num_args == 0 {
+                                            if parse2::<ExprParen>(pair.value.to_token_stream())
+                                                .is_ok()
+                                            {
+                                                abort!(pair, "Expected 0 arguments but found 1",);
+                                            } else {
+                                                Err(error)
+                                            }
+                                        } else if expected_num_args == 1 {
+                                            parse2::<ExprParen>(pair.value.to_token_stream()).map(
+                                                |paren| {
+                                                    let mut sequence =
+                                                        Punctuated::<Expr, Token![,]>::new();
+                                                    sequence.push(*paren.expr);
+                                                    sequence
+                                                },
+                                            )
+                                        } else {
+                                            Err(error)
+                                        }
+                                    },
+                                    |tuple| Ok(tuple.elems),
+                                )
+                            },
+                            |array| Ok(array.elems),
+                        )?;
+
+                        args = Some((pair.span(), parse2::<Arguments>(value.to_token_stream())?));
+                    } else {
+                        emit_error!(
+                            pair, "Duplicate argument: args";
+                            help = r#"args is allowed only once"#
+                        );
+                    }
+                } else if pair.path.is_ident("config") {
+                    if config.is_none() {
+                        config = Some(pair.value);
+                    } else {
+                        emit_error!(
+                            pair, "Duplicate argument: config";
+                            help = r#"config is allowed only once"#
+                        );
+                    }
+                } else {
+                    emit_error!(
+                        pair, "Invalid argument: {}", pair.path.get_ident().unwrap();
+                        help = r#"Valid arguments are: args, config"#
+                    );
+                }
+            }
+            match args {
+                Some((_, args)) if args.len() == expected_num_args => {
+                    self.benches.push(LibBenchAttribute { id, args, config });
+                }
+                Some((span, args)) => {
+                    emit_error!(
+                        span,
+                        "Expected {} arguments but found {}",
+                        expected_num_args,
+                        args.len()
+                    );
+                }
+                None if expected_num_args == 0 => {
+                    self.benches.push(LibBenchAttribute {
+                        id,
+                        args: Arguments(vec![]),
+                        config,
+                    });
+                }
+                None => emit_error!(
+                    attr, "Expected {} arguments but found none", expected_num_args;
+                    help = r#"Try passing arguments either with #[bench::some_id(arg1, ...)] or with #[bench::some_id(args = (arg1, ...))]"#
+                ),
+            }
+        } else {
+            let args = meta.parse_args::<Arguments>()?;
+            if args.len() == expected_num_args {
+                self.benches.push(LibBenchAttribute {
+                    id,
+                    args,
+                    config: None,
+                });
+            } else {
+                emit_error!(
+                    attr,
+                    "Expected {} arguments but found {}",
+                    expected_num_args,
+                    args.len()
+                );
+            }
+        }
+        Ok(())
+    }
+
     fn extract_benches(&mut self, item_fn: &ItemFn) -> syn::Result<()> {
         let bench: syn::PathSegment = parse_quote!(bench);
         for attr in &item_fn.attrs {
@@ -44,10 +171,10 @@ impl LibraryBenchmark {
             match path_segments.next() {
                 Some(segment) if segment == &bench => {
                     if attr.path().segments.len() > 2 {
-                        abort!(
+                        emit_error!(
                             attr, "Only one id is allowed";
                             help = "bench followed by :: and an single unique id";
-                            note = r#"#[bench::my_id()] or #[bench::my_id("with", "args")]"#
+                            note = r#"#[bench::my_id()] or #[bench::my_id("with", "args")] or #[bench::my_id(args = (arg1, ...), config = ...)]"#
                         );
                     }
                     let id = match path_segments.next().map(|p| p.ident.clone()) {
@@ -60,14 +187,13 @@ impl LibraryBenchmark {
                             );
                         }
                     };
-                    let args = attr.parse_args::<Arguments>()?;
-                    self.benches.push(Bench { id, args });
+                    self.parse_attribute(item_fn, attr, id)?;
                 }
                 Some(segment) => {
                     abort!(
                         attr, "Invalid attribute: '{}'", segment.ident;
                         help = "Only the 'bench' attribute is allowed";
-                        note = r#"#[bench::my_id()] or #[bench::my_id("with", "args")]"#
+                        note = r#"#[bench::my_id()] or #[bench::my_id("with", "args")] or #[bench::my_id(args = (arg1, ...), config = ...)]"#
                     );
                 }
                 None => {
@@ -80,7 +206,7 @@ impl LibraryBenchmark {
         Ok(())
     }
 
-    fn render_single(item_fn: &ItemFn) -> TokenStream2 {
+    fn render_single(self, item_fn: &ItemFn) -> TokenStream2 {
         let new_item_fn = ItemFn {
             attrs: vec![],
             vis: syn::Visibility::Inherited,
@@ -89,6 +215,23 @@ impl LibraryBenchmark {
         };
 
         let ident = &item_fn.sig.ident;
+        let config = if let Some(config) = self.config {
+            quote!(
+                #[inline(never)]
+                pub fn get_config() -> Option<iai_callgrind::internal::RunnerLibraryBenchmarkConfig>
+                {
+                    Some(#config.into())
+                }
+            )
+        } else {
+            quote!(
+                #[inline(never)]
+                pub fn get_config() -> Option<iai_callgrind::internal::RunnerLibraryBenchmarkConfig>
+                {
+                    None
+                }
+            )
+        };
         quote! {
             mod #ident {
                 use super::*;
@@ -96,12 +239,19 @@ impl LibraryBenchmark {
                 #[inline(never)]
                 #new_item_fn
 
-                pub const FUNCTIONS: &[&(&'static str, &'static str, fn())]= &[
-                    &("", "", wrapper),
+                pub const BENCHES: &[iai_callgrind::internal::MacroLibBench]= &[
+                    iai_callgrind::internal::MacroLibBench {
+                        id_display: None,
+                        args_display: None,
+                        func: wrapper,
+                        config: None
+                    },
                 ];
 
+                #config
+
                 #[inline(never)]
-                fn wrapper() {
+                pub fn wrapper() {
                     let _ = iai_callgrind::black_box(#ident());
                 }
             }
@@ -119,12 +269,29 @@ impl LibraryBenchmark {
         let mod_name = &item_fn.sig.ident;
         let callee = &item_fn.sig.ident;
         let mut funcs = TokenStream2::new();
-        let mut args = vec![];
+        let mut lib_benches = vec![];
         for bench in self.benches {
             funcs.append_all(bench.render_as_function(callee));
-            args.push(bench.render_as_arguments());
+            lib_benches.push(bench.render_as_lib_bench());
         }
 
+        let config = if let Some(config) = self.config {
+            quote!(
+                #[inline(never)]
+                pub fn get_config() -> Option<iai_callgrind::internal::RunnerLibraryBenchmarkConfig>
+                {
+                    Some(#config.into())
+                }
+            )
+        } else {
+            quote!(
+                #[inline(never)]
+                pub fn get_config() -> Option<iai_callgrind::internal::RunnerLibraryBenchmarkConfig>
+                {
+                    None
+                }
+            )
+        };
         quote! {
             mod #mod_name {
                 use super::*;
@@ -132,9 +299,11 @@ impl LibraryBenchmark {
                 #[inline(never)]
                 #new_item_fn
 
-                pub const FUNCTIONS: &[&(&'static str, &'static str, fn())]= &[
-                    #(&(#args),)*
+                pub const BENCHES: &[iai_callgrind::internal::MacroLibBench]= &[
+                    #(#lib_benches,)*
                 ];
+
+                #config
 
                 #funcs
             }
@@ -147,31 +316,67 @@ impl Parse for LibraryBenchmark {
         if input.is_empty() {
             Ok(Self::default())
         } else {
-            Err(input.error("No arguments allowed"))
+            let pairs = input.parse_terminated(MetaNameValue::parse, Token![,])?;
+            if pairs.len() > 1 {
+                abort!(
+                    pairs, "At most one argument is allowed";
+                    help = "#[library_benchmark] or #[library_benchmark(config = ....)]"
+                );
+            } else {
+                Ok(pairs.first().map_or_else(Self::default, |pair| {
+                    if pair.path.is_ident("config") {
+                        Self {
+                            config: Some(pair.value.clone()),
+                            ..Default::default()
+                        }
+                    } else {
+                        abort!(
+                            pair, "Only the config argument is allowed";
+                            help = "#[library_benchmark(config = ....)]"
+                        );
+                    }
+                }))
+            }
         }
     }
 }
 
 #[derive(Debug)]
-struct Bench {
+struct LibBenchAttribute {
     id: Ident,
     args: Arguments,
+    config: Option<Expr>,
 }
 
-impl Bench {
+impl LibBenchAttribute {
     fn render_as_function(&self, callee: &Ident) -> TokenStream2 {
         let id = &self.id;
         let args = &self.args;
 
-        quote! {
-            #[inline(never)]
-            pub fn #id() {
-                let _ = iai_callgrind::black_box(#callee(#args));
+        if let Some(config) = &self.config {
+            let config_ident = format_ident!("get_config_{}", id);
+            quote! {
+                #[inline(never)]
+                pub fn #config_ident() -> iai_callgrind::internal::RunnerLibraryBenchmarkConfig {
+                    #config.into()
+                }
+
+                #[inline(never)]
+                pub fn #id() {
+                    let _ = iai_callgrind::black_box(#callee(#args));
+                }
+            }
+        } else {
+            quote! {
+                #[inline(never)]
+                pub fn #id() {
+                    let _ = iai_callgrind::black_box(#callee(#args));
+                }
             }
         }
     }
 
-    fn render_as_arguments(&self) -> TokenStream2 {
+    fn render_as_lib_bench(&self) -> TokenStream2 {
         let id = &self.id;
         let id_str = self.id.to_string();
         let args = self
@@ -181,14 +386,37 @@ impl Bench {
             .map(|a| a.to_token_stream().to_string())
             .collect::<Vec<String>>()
             .join(", ");
-        quote! {
-            #id_str, #args, #id
+        if self.config.is_some() {
+            let conf_ident = format_ident!("get_config_{}", id);
+            quote! {
+                iai_callgrind::internal::MacroLibBench {
+                    id_display: Some(#id_str),
+                    args_display: Some(#args),
+                    func: #id,
+                    config: Some(#conf_ident)
+                }
+            }
+        } else {
+            quote! {
+                iai_callgrind::internal::MacroLibBench {
+                    id_display: Some(#id_str),
+                    args_display: Some(#args),
+                    func: #id,
+                    config: None
+                }
+            }
         }
     }
 }
 
 #[derive(Debug, Clone)]
 struct Arguments(Vec<Expr>);
+
+impl Arguments {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
 
 impl Parse for Arguments {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
@@ -235,8 +463,16 @@ impl ToTokens for Arguments {
 /// # arg
 /// # }
 /// # mod iai_callgrind {
-/// # pub fn black_box<T>(arg: T) -> T {
-/// # arg
+/// # pub fn black_box<T>(arg: T) -> T { arg }
+/// # pub struct LibraryBenchmarkConfig {}
+/// # pub mod internal {
+/// # pub struct MacroLibBench {
+/// #   pub id_display: Option<&'static str>,
+/// #   pub args_display: Option<&'static str>,
+/// #   pub func: fn(),
+/// #   pub config: Option<fn() -> RunnerLibraryBenchmarkConfig>
+/// # }
+/// # pub struct RunnerLibraryBenchmarkConfig {}
 /// # }
 /// # }
 /// // Assume this is a more complicated function in your library which you want to benchmark
@@ -262,8 +498,16 @@ impl ToTokens for Arguments {
 /// # arg
 /// # }
 /// # mod iai_callgrind {
-/// # pub fn black_box<T>(arg: T) -> T {
-/// # arg
+/// # pub fn black_box<T>(arg: T) -> T { arg }
+/// # pub struct LibraryBenchmarkConfig {}
+/// # pub mod internal {
+/// # pub struct MacroLibBench {
+/// #   pub id_display: Option<&'static str>,
+/// #   pub args_display: Option<&'static str>,
+/// #   pub func: fn(),
+/// #   pub config: Option<fn() -> RunnerLibraryBenchmarkConfig>
+/// # }
+/// # pub struct RunnerLibraryBenchmarkConfig {}
 /// # }
 /// # }
 /// fn some_func() -> u64 {
@@ -291,8 +535,16 @@ impl ToTokens for Arguments {
 /// # arg
 /// # }
 /// # mod iai_callgrind {
-/// # pub fn black_box<T>(arg: T) -> T {
-/// # arg
+/// # pub fn black_box<T>(arg: T) -> T { arg }
+/// # pub struct LibraryBenchmarkConfig {}
+/// # pub mod internal {
+/// # pub struct MacroLibBench {
+/// #   pub id_display: Option<&'static str>,
+/// #   pub args_display: Option<&'static str>,
+/// #   pub func: fn(),
+/// #   pub config: Option<fn() -> RunnerLibraryBenchmarkConfig>
+/// # }
+/// # pub struct RunnerLibraryBenchmarkConfig {}
 /// # }
 /// # }
 /// // Our function we want to test. Just assume this is a public function in your
@@ -344,8 +596,573 @@ fn render_library_benchmark(args: TokenStream2, input: TokenStream2) -> syn::Res
 
     library_benchmark.extract_benches(&item_fn)?;
     if library_benchmark.benches.is_empty() {
-        Ok(LibraryBenchmark::render_single(&item_fn))
+        Ok(library_benchmark.render_single(&item_fn))
     } else {
         Ok(library_benchmark.render_benches(&item_fn))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+    use syn::{ExprStruct, ItemMod};
+
+    use super::*;
+
+    #[derive(Debug, PartialEq, Eq)]
+    struct Model {
+        item: ItemMod,
+    }
+
+    impl Parse for Model {
+        fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+            Ok(Self {
+                item: input.parse::<ItemMod>()?,
+            })
+        }
+    }
+
+    fn expected_model(
+        func: &ItemFn,
+        benches: &[ExprStruct],
+        get_config: &Option<Expr>,
+        get_config_bench: &[(Ident, Expr)],
+        bench: &[(Ident, Vec<Expr>)],
+    ) -> Model {
+        let callee = &func.sig.ident;
+        let rendered_get_config = if let Some(expr) = get_config {
+            quote!(
+                #[inline(never)]
+                pub fn get_config() -> Option<iai_callgrind::internal::RunnerLibraryBenchmarkConfig>
+                {
+                    Some(#expr.into())
+                }
+            )
+        } else {
+            quote!(
+                #[inline(never)]
+                pub fn get_config() -> Option<iai_callgrind::internal::RunnerLibraryBenchmarkConfig>
+                {
+                    None
+                }
+            )
+        };
+        let mut rendered_benches = vec![];
+        for (ident, args) in bench {
+            let config = get_config_bench.iter().find_map(|(i, expr)| {
+                (i == ident).then(|| {
+                    let ident = format_ident!("get_config_{}", i);
+                    quote!(
+                        #[inline(never)]
+                        pub fn #ident() -> iai_callgrind::internal::RunnerLibraryBenchmarkConfig {
+                            #expr.into()
+                        }
+                    )
+                })
+            });
+            if let Some(config) = config {
+                rendered_benches.push(config);
+            }
+            rendered_benches.push(quote!(
+                #[inline(never)]
+                pub fn #ident() {
+                    let _ = iai_callgrind::black_box(#callee(
+                        #(iai_callgrind::black_box(#args)),*
+                    ));
+                }
+            ));
+        }
+        parse_quote!(
+            mod #callee {
+                use super::*;
+
+                #[inline(never)]
+                #func
+
+                pub const BENCHES: &[iai_callgrind::internal::MacroLibBench]= &[
+                    #(#benches),*,
+                ];
+
+                #rendered_get_config
+
+                #(#rendered_benches)*
+            }
+        )
+    }
+
+    #[test]
+    fn test_only_library_benchmark_attribute() {
+        let input = quote!(
+            fn some() -> u8 {
+                1 + 2
+            }
+        );
+
+        let expected = expected_model(
+            &parse_quote!(
+                fn some() -> u8 {
+                    1 + 2
+                }
+            ),
+            &[parse_quote!(iai_callgrind::internal::MacroLibBench {
+                id_display: None,
+                args_display: None,
+                func: wrapper,
+                config: None
+            })],
+            &None,
+            &[],
+            &[(parse_quote!(wrapper), vec![])],
+        );
+        let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_only_library_benchmark_attribute_with_config() {
+        let input = quote!(
+            fn some() -> u8 {
+                1 + 2
+            }
+        );
+
+        let expected = expected_model(
+            &parse_quote!(
+                fn some() -> u8 {
+                    1 + 2
+                }
+            ),
+            &[parse_quote!(iai_callgrind::internal::MacroLibBench {
+                id_display: None,
+                args_display: None,
+                func: wrapper,
+                config: None
+            })],
+            &Some(parse_quote!(LibraryBenchmarkConfig::default())),
+            &[],
+            &[(parse_quote!(wrapper), vec![])],
+        );
+        let actual: Model = parse2(
+            render_library_benchmark(quote!(config = LibraryBenchmarkConfig::default()), input)
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_bench_when_func_no_arg() {
+        for attribute in [
+            quote!(bench::my_id()),
+            quote!(bench::my_id(args = ())),
+            quote!(bench::my_id(args = [])),
+        ] {
+            dbg!(&attribute);
+            let input = quote!(
+                #[#attribute]
+                fn some() -> u8 {
+                    1 + 2
+                }
+            );
+
+            let expected = expected_model(
+                &parse_quote!(
+                    fn some() -> u8 {
+                        1 + 2
+                    }
+                ),
+                &[parse_quote!(iai_callgrind::internal::MacroLibBench {
+                    id_display: Some("my_id"),
+                    args_display: Some(""),
+                    func: my_id,
+                    config: None
+                })],
+                &None,
+                &[],
+                &[(parse_quote!(my_id), vec![])],
+            );
+            let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
+            assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn test_bench_when_func_one_arg() {
+        for attribute in [
+            quote!(bench::my_id(1)),
+            quote!(bench::my_id(args = (1,))),
+            quote!(bench::my_id(args = (1))),
+            quote!(bench::my_id(args = [1])),
+        ] {
+            dbg!(&attribute);
+            let input = quote!(
+                #[#attribute]
+                fn some(var: u8) -> u8 {
+                    var + 2
+                }
+            );
+
+            let expected = expected_model(
+                &parse_quote!(
+                    fn some(var: u8) -> u8 {
+                        var + 2
+                    }
+                ),
+                &[parse_quote!(iai_callgrind::internal::MacroLibBench {
+                    id_display: Some("my_id"),
+                    args_display: Some("1"),
+                    func: my_id,
+                    config: None
+                })],
+                &None,
+                &[],
+                &[(parse_quote!(my_id), vec![parse_quote!(1)])],
+            );
+            let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
+            assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn test_bench_when_func_two_args() {
+        for attribute in [
+            quote!(bench::my_id(1, 2)),
+            quote!(bench::my_id(args = (1, 2))),
+            quote!(bench::my_id(args = [1, 2])),
+        ] {
+            dbg!(&attribute);
+            let input = quote!(
+                #[#attribute]
+                fn some(one: u8, two: u8) -> u8 {
+                    one + two
+                }
+            );
+
+            let expected = expected_model(
+                &parse_quote!(
+                    fn some(one: u8, two: u8) -> u8 {
+                        one + two
+                    }
+                ),
+                &[parse_quote!(iai_callgrind::internal::MacroLibBench {
+                    id_display: Some("my_id"),
+                    args_display: Some("1, 2"),
+                    func: my_id,
+                    config: None
+                })],
+                &None,
+                &[],
+                &[(parse_quote!(my_id), vec![parse_quote!(1), parse_quote!(2)])],
+            );
+            let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
+            assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn test_bench_when_config_no_args() {
+        for attribute in [
+            quote!(bench::my_id(config = LibraryBenchmarkConfig::default())),
+            quote!(bench::my_id(
+                args = (),
+                config = LibraryBenchmarkConfig::default()
+            )),
+        ] {
+            dbg!(&attribute);
+            let input = quote!(
+                #[#attribute]
+                fn some() -> u8 {
+                    1 + 2
+                }
+            );
+
+            let expected = expected_model(
+                &parse_quote!(
+                    fn some() -> u8 {
+                        1 + 2
+                    }
+                ),
+                &[parse_quote!(iai_callgrind::internal::MacroLibBench {
+                    id_display: Some("my_id"),
+                    args_display: Some(""),
+                    func: my_id,
+                    config: Some(get_config_my_id)
+                })],
+                &None,
+                &[(
+                    parse_quote!(my_id),
+                    parse_quote!(LibraryBenchmarkConfig::default()),
+                )],
+                &[(parse_quote!(my_id), vec![])],
+            );
+            let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
+            assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn test_bench_when_config_and_library_benchmark_config() {
+        let attribute = quote!(bench::my_id(config = LibraryBenchmarkConfig::default()));
+        dbg!(&attribute);
+        let input = quote!(
+            #[#attribute]
+            fn some() -> u8 {
+                1 + 2
+            }
+        );
+
+        let expected = expected_model(
+            &parse_quote!(
+                fn some() -> u8 {
+                    1 + 2
+                }
+            ),
+            &[parse_quote!(iai_callgrind::internal::MacroLibBench {
+                id_display: Some("my_id"),
+                args_display: Some(""),
+                func: my_id,
+                config: Some(get_config_my_id)
+            })],
+            &Some(parse_quote!(LibraryBenchmarkConfig::new())),
+            &[(
+                parse_quote!(my_id),
+                parse_quote!(LibraryBenchmarkConfig::default()),
+            )],
+            &[(parse_quote!(my_id), vec![])],
+        );
+        let actual: Model = parse2(
+            render_library_benchmark(quote!(config = LibraryBenchmarkConfig::new()), input)
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_bench_when_multiple_no_args() {
+        let input = quote!(
+            #[bench::first()]
+            #[bench::second()]
+            fn some() -> u8 {
+                1 + 2
+            }
+        );
+
+        let expected = expected_model(
+            &parse_quote!(
+                fn some() -> u8 {
+                    1 + 2
+                }
+            ),
+            &[
+                parse_quote!(iai_callgrind::internal::MacroLibBench {
+                    id_display: Some("first"),
+                    args_display: Some(""),
+                    func: first,
+                    config: None
+                }),
+                parse_quote!(iai_callgrind::internal::MacroLibBench {
+                    id_display: Some("second"),
+                    args_display: Some(""),
+                    func: second,
+                    config: None
+                }),
+            ],
+            &None,
+            &[],
+            &[
+                (parse_quote!(first), vec![]),
+                (parse_quote!(second), vec![]),
+            ],
+        );
+        let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_bench_when_multiple_one_arg() {
+        let input = quote!(
+            #[bench::first(1)]
+            #[bench::second(2)]
+            fn some(var: u8) -> u8 {
+                var + 2
+            }
+        );
+
+        let expected = expected_model(
+            &parse_quote!(
+                fn some(var: u8) -> u8 {
+                    var + 2
+                }
+            ),
+            &[
+                parse_quote!(iai_callgrind::internal::MacroLibBench {
+                    id_display: Some("first"),
+                    args_display: Some("1"),
+                    func: first,
+                    config: None
+                }),
+                parse_quote!(iai_callgrind::internal::MacroLibBench {
+                    id_display: Some("second"),
+                    args_display: Some("2"),
+                    func: second,
+                    config: None
+                }),
+            ],
+            &None,
+            &[],
+            &[
+                (parse_quote!(first), vec![parse_quote!(1)]),
+                (parse_quote!(second), vec![parse_quote!(2)]),
+            ],
+        );
+        let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_bench_when_multiple_with_config_first() {
+        let input = quote!(
+            #[bench::first(args = (1), config = LibraryBenchmarkConfig::default())]
+            #[bench::second(2)]
+            fn some(var: u8) -> u8 {
+                var + 2
+            }
+        );
+
+        let expected = expected_model(
+            &parse_quote!(
+                fn some(var: u8) -> u8 {
+                    var + 2
+                }
+            ),
+            &[
+                parse_quote!(iai_callgrind::internal::MacroLibBench {
+                    id_display: Some("first"),
+                    args_display: Some("1"),
+                    func: first,
+                    config: Some(get_config_first)
+                }),
+                parse_quote!(iai_callgrind::internal::MacroLibBench {
+                    id_display: Some("second"),
+                    args_display: Some("2"),
+                    func: second,
+                    config: None
+                }),
+            ],
+            &None,
+            &[(
+                parse_quote!(first),
+                parse_quote!(LibraryBenchmarkConfig::default()),
+            )],
+            &[
+                (parse_quote!(first), vec![parse_quote!(1)]),
+                (parse_quote!(second), vec![parse_quote!(2)]),
+            ],
+        );
+        let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_bench_when_multiple_with_config_second() {
+        let input = quote!(
+            #[bench::first(1)]
+            #[bench::second(args = (2), config = LibraryBenchmarkConfig::default())]
+            fn some(var: u8) -> u8 {
+                var + 2
+            }
+        );
+
+        let expected = expected_model(
+            &parse_quote!(
+                fn some(var: u8) -> u8 {
+                    var + 2
+                }
+            ),
+            &[
+                parse_quote!(iai_callgrind::internal::MacroLibBench {
+                    id_display: Some("first"),
+                    args_display: Some("1"),
+                    func: first,
+                    config: None
+                }),
+                parse_quote!(iai_callgrind::internal::MacroLibBench {
+                    id_display: Some("second"),
+                    args_display: Some("2"),
+                    func: second,
+                    config: Some(get_config_second)
+                }),
+            ],
+            &None,
+            &[(
+                parse_quote!(second),
+                parse_quote!(LibraryBenchmarkConfig::default()),
+            )],
+            &[
+                (parse_quote!(first), vec![parse_quote!(1)]),
+                (parse_quote!(second), vec![parse_quote!(2)]),
+            ],
+        );
+        let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_bench_when_multiple_with_config_all() {
+        let input = quote!(
+            #[bench::first(args = (1), config = LibraryBenchmarkConfig::new())]
+            #[bench::second(args = (2), config = LibraryBenchmarkConfig::default())]
+            fn some(var: u8) -> u8 {
+                var + 2
+            }
+        );
+
+        let expected = expected_model(
+            &parse_quote!(
+                fn some(var: u8) -> u8 {
+                    var + 2
+                }
+            ),
+            &[
+                parse_quote!(iai_callgrind::internal::MacroLibBench {
+                    id_display: Some("first"),
+                    args_display: Some("1"),
+                    func: first,
+                    config: Some(get_config_first)
+                }),
+                parse_quote!(iai_callgrind::internal::MacroLibBench {
+                    id_display: Some("second"),
+                    args_display: Some("2"),
+                    func: second,
+                    config: Some(get_config_second)
+                }),
+            ],
+            &Some(parse_quote!(LibraryBenchmarkConfig::does_not_exist())),
+            &[
+                (
+                    parse_quote!(first),
+                    parse_quote!(LibraryBenchmarkConfig::new()),
+                ),
+                (
+                    parse_quote!(second),
+                    parse_quote!(LibraryBenchmarkConfig::default()),
+                ),
+            ],
+            &[
+                (parse_quote!(first), vec![parse_quote!(1)]),
+                (parse_quote!(second), vec![parse_quote!(2)]),
+            ],
+        );
+
+        let actual: Model = parse2(
+            render_library_benchmark(
+                quote!(config = LibraryBenchmarkConfig::does_not_exist()),
+                input,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(actual, expected);
     }
 }

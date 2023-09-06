@@ -1,4 +1,4 @@
-use iai_callgrind::library_benchmark;
+use iai_callgrind::{library_benchmark, LibraryBenchmarkConfig};
 
 #[library_benchmark]
 #[bench::id1(42)]
@@ -26,7 +26,7 @@ fn some_setup(my: u8) -> u64 {
     my as u64 + 1
 }
 
-// check that some_setup is accessible and executed
+// check that some_setup is accessible
 #[library_benchmark]
 #[bench::id1(some_setup(8))]
 pub fn bench5(my: u64) -> u64 {
@@ -37,16 +37,38 @@ pub fn bench5(my: u64) -> u64 {
     }
 }
 
-fn main() {
-    // quickly check that everything's set up correctly
-    assert_eq!(bench4::FUNCTIONS.len(), 1);
-
-    let (id, args, func) = bench4::FUNCTIONS[0];
-    assert_eq!(id, &"id1");
-    assert_eq!(args, &"55, 200");
-    assert_eq!(func(), ());
-    assert_eq!(bench4::id1(), ());
-
-    assert_eq!(bench5::FUNCTIONS[0].2(), ());
-    assert_eq!(bench5::id1(), ());
+#[library_benchmark]
+#[bench::id1(args = (some_setup(8)))]
+pub fn bench8(my: u64) -> u64 {
+    if my != 9 {
+        panic!("Should pass");
+    } else {
+        my
+    }
 }
+
+#[library_benchmark(config = LibraryBenchmarkConfig::default())]
+fn bench6() {}
+
+#[library_benchmark]
+#[bench::id1(config = LibraryBenchmarkConfig::default())]
+#[bench::id2(args = (), config = LibraryBenchmarkConfig::default())]
+fn bench7() {}
+
+#[library_benchmark]
+#[bench::id1(args = (8), config = LibraryBenchmarkConfig::default())]
+fn bench9(arg: u8) -> u8 {
+    arg
+}
+
+#[library_benchmark]
+#[bench::id1(args = (some_setup(8)), config = LibraryBenchmarkConfig::default())]
+pub fn bench10(my: u64) -> u64 {
+    if my != 9 {
+        panic!("Should pass");
+    } else {
+        my
+    }
+}
+
+fn main() {}

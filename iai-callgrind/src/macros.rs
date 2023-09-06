@@ -674,35 +674,36 @@ macro_rules! main {
                 config = Some($config.into());
             )?
 
-            let config = config.unwrap_or_default();
-
-            let mut groups = vec![];
-            $(
-                let mut benches = vec![];
-                for (bench, funcs) in $group::FUNCTIONS {
-                    let mut bench_tmp = vec![];
-                    for (id, args, _) in funcs.iter() {
-                        bench_tmp.push($crate::internal::RunnerFunction {
-                            id: (!id.is_empty()).then(|| id.to_string()),
-                            args: (!args.is_empty()).then(|| args.to_string()),
-                            bench: bench.to_string(),
-                        });
-                    }
-                    benches.push(bench_tmp);
-                }
-
-                groups.push($crate::internal::RunnerLibraryBenchmarkGroup {
-                    id: Some(stringify!($group).to_owned()),
-                    config: $group::get_config(),
-                    benches
-                });
-            )+
-
-            let benchmark = $crate::internal::RunnerLibraryBenchmark {
-                config: config,
-                groups: groups,
+            let mut benchmark = $crate::internal::RunnerLibraryBenchmark {
+                config: config.unwrap_or_default(),
+                groups: vec![],
                 command_line_args: this_args.collect()
             };
+            $(
+                let mut group = $crate::internal::RunnerLibraryBenchmarkGroup {
+                    id: Some(stringify!($group).to_owned()),
+                    config: $group::get_config(),
+                    benches: vec![]
+                };
+                for (bench_name, get_config, macro_lib_benches) in $group::BENCHES {
+                    let mut benches = $crate::internal::RunnerLibraryBenchmarkBenches {
+                        benches: vec![],
+                        config: get_config()
+                    };
+                    for macro_lib_bench in macro_lib_benches.iter() {
+                        let bench = $crate::internal::RunnerLibraryBenchmarkBench {
+                            id: macro_lib_bench.id_display.map(|i| i.to_string()),
+                            args: macro_lib_bench.args_display.map(|i| i.to_string()),
+                            bench: bench_name.to_string(),
+                            config: macro_lib_bench.config.map(|f| f()),
+                        };
+                        benches.benches.push(bench);
+                    }
+                    group.benches.push(benches);
+                }
+
+                benchmark.groups.push(group);
+            )+
 
             let encoded = $crate::bincode::serialize(&benchmark).expect("Encoded benchmark");
             let mut child = cmd
@@ -807,12 +808,15 @@ macro_rules! main {
                 groups: vec![$crate::internal::RunnerLibraryBenchmarkGroup {
                     id: None,
                     config: None,
-                    benches: vec![iai_wrappers::FUNCTIONS
+                    benches: vec![$crate::internal::RunnerLibraryBenchmarkBenches {
+                        config: None,
+                        benches: iai_wrappers::FUNCTIONS
                         .iter()
-                        .map(|(name, _)| $crate::internal::RunnerFunction {
-                            id: None, args: None, bench: name.to_string()
+                        .map(|(name, _)| $crate::internal::RunnerLibraryBenchmarkBench {
+                            id: None, args: None, bench: name.to_string(), config: None
                         })
-                        .collect::<Vec<$crate::internal::RunnerFunction>>()]
+                        .collect::<Vec<$crate::internal::RunnerLibraryBenchmarkBench>>()
+                    }]
                 }],
                 command_line_args: this_args.collect()
             };
@@ -1226,9 +1230,17 @@ macro_rules! library_benchmark_group {
         mod $name {
             use super::*;
 
-            pub const FUNCTIONS: &[&(&'static str, &[&(&'static str, &'static str, fn())])]= &[
+            pub const BENCHES: &[&(
+                &'static str,
+                fn() -> Option<$crate::internal::RunnerLibraryBenchmarkConfig>,
+                &[$crate::internal::MacroLibBench]
+            )]= &[
                 $(
-                    &(stringify!($function), super::$function::FUNCTIONS)
+                    &(
+                        stringify!($function),
+                        super::$function::get_config,
+                        super::$function::BENCHES
+                    )
                 ),+
             ];
 
@@ -1242,7 +1254,7 @@ macro_rules! library_benchmark_group {
 
             #[inline(never)]
             pub fn run(group_index: usize, bench_index: usize) {
-                FUNCTIONS[group_index].1[bench_index].2();
+                (BENCHES[group_index].2[bench_index].func)();
             }
         }
     };

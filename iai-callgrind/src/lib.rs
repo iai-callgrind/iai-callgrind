@@ -370,12 +370,12 @@ impl LibraryBenchmarkConfig {
     /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
     /// # fn main() {
     /// main!(
-    ///     config = LibraryBenchmarkConfig::default().clear_env(false);
+    ///     config = LibraryBenchmarkConfig::default().env_clear(false);
     ///     library_benchmark_groups = some_group
     /// );
     /// # }
     /// ```
-    pub fn clear_env(&mut self, value: bool) -> &mut Self {
+    pub fn env_clear(&mut self, value: bool) -> &mut Self {
         self.0.env_clear = Some(value);
         self
     }

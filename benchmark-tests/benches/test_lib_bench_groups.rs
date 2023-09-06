@@ -7,7 +7,9 @@
 
 // These two functions from the benchmark-tests library serve as functions we want to benchmark
 use benchmark_tests::{bubble_sort, fibonacci};
-use iai_callgrind::{black_box, library_benchmark, library_benchmark_group, main};
+use iai_callgrind::{
+    black_box, library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
+};
 
 // This function is used to create a worst case array we want to sort with our implementation of
 // bubble sort
@@ -80,13 +82,30 @@ fn bench_fibonacci_sum(first: u64, second: u64) -> u64 {
     black_box(black_box(fibonacci(first)) + black_box(fibonacci(second)))
 }
 
+// It's possible to specify a `LibraryBenchmarkConfig` valid for all benches of this
+// `library_benchmark`
+#[library_benchmark(config = LibraryBenchmarkConfig::default())]
+fn bench_fibonacci_with_config() -> u64 {
+    black_box(black_box(fibonacci(black_box(7))))
+}
+
+// A config per `bench` attribute is also possible using the alternative `bench` attribute with
+// key = value pairs. The example below shows all accepted keys. Note that `LibraryBenchmarkConfig`
+// is additive for callgrind arguments and environment variables and appends them to the variables
+// of `configs` of higher levels (like #[library_benchmark(config = ...)]). Other configuration
+// values are overwritten.
+#[library_benchmark]
+#[bench::fib_with_config(args = (3, 4), config = LibraryBenchmarkConfig::default())]
+fn bench_fibonacci_with_config_at_bench_level(first: u64, second: u64) -> u64 {
+    black_box(black_box(fibonacci(black_box(first + second))))
+}
+
 // Use the `benchmarks` argument of the `library_benchmark_group!` macro to collect all benchmarks
-// you want to put into the same group. The `name` is a unique identifier which is used in the
+// you want and put them into the same group. The `name` is a unique identifier which is used in the
 // `main!` macro to collect all `library_benchmark_groups`.
 //
-// Although not used here, this macro also accepts a `config` argument, which itself accepts a
-// `LibraryBenchmarkConfig`. See the docs of `iai_callgrind` for more details about the
-// `LibraryBenchmarkConfig`.
+// Although not used here, this macro also accepts a `config` argument after the `name argument. See
+// the docs of `iai_callgrind` for more details about the `LibraryBenchmarkConfig`.
 library_benchmark_group!(
     name = bubble_sort;
     benchmarks = bench_bubble_sort_empty, bench_bubble_sort
@@ -101,9 +120,13 @@ library_benchmark_group!(
 // put in separate folders for each group.
 library_benchmark_group!(
     name = fibonacci;
-    benchmarks = bench_fibonacci_sum
+    benchmarks =
+        bench_fibonacci_sum,
+        bench_fibonacci_with_config,
+        bench_fibonacci_with_config_at_bench_level
 );
 
-// Finally, the mandatory main! macro which collects all `library_benchmark_groups`. The main! macro
+// Finally, the mandatory main! macro which collects all `library_benchmark_groups` and optionally
+// accepts a `config = ...` argument before the `library_benchmark_groups` argument. The main! macro
 // creates a benchmarking harness and runs all the benchmarks defined in the groups and benches.
 main!(library_benchmark_groups = bubble_sort, fibonacci);

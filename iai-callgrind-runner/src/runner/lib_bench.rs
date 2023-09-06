@@ -43,7 +43,8 @@ impl LibBench {
             )
         };
 
-        let mut callgrind_args = group.callgrind_args.clone();
+        // TODO: REMOVE THIS CLONE
+        let mut callgrind_args = self.config.callgrind_args.clone();
         callgrind_args.insert_toggle_collect(&format!("*{}", sentinel.as_toggle()));
 
         let output = if let Some(bench_id) = &self.id {
@@ -94,6 +95,7 @@ impl LibBench {
 struct LibBenchConfig {
     env_clear: bool,
     envs: Vec<(OsString, OsString)>,
+    callgrind_args: CallgrindArgs,
 }
 
 #[derive(Debug)]
@@ -101,7 +103,6 @@ struct Group {
     id: Option<String>,
     benches: Vec<LibBench>,
     module: String,
-    callgrind_args: CallgrindArgs,
 }
 
 #[derive(Debug)]
@@ -109,69 +110,68 @@ struct Groups(Vec<Group>);
 
 impl Groups {
     fn from_library_benchmark(module: &str, benchmark: LibraryBenchmark) -> Self {
-        let groups = benchmark
-            .groups
-            .into_iter()
-            .map(|group| {
-                let module_path = if let Some(group_id) = &group.id {
-                    format!("{module}::{group_id}")
-                } else {
-                    module.to_owned()
-                };
-                let config = if let Some(config) = group.config {
-                    benchmark.config.clone().update(&config).clone()
-                } else {
-                    benchmark.config.clone()
-                };
-                let callgrind_args = {
-                    let mut raw = config.raw_callgrind_args.0.clone();
-                    raw.extend(benchmark.command_line_args.iter().cloned());
-
-                    // The last argument is usually --bench. This argument comes from cargo and does
-                    // not belong to the arguments passed from the main macro. So, we're removing it
-                    // if it is there.
-                    if raw.last().map_or(false, |a| a == "--bench") {
-                        raw.pop();
-                    }
-
-                    CallgrindArgs::from_args(raw)
-                };
-                let envs: &Vec<(OsString, OsString)> = &config
-                    .envs
-                    .iter()
-                    .filter_map(|(key, value)| match value {
-                        Some(value) => Some((key.clone(), value.clone())),
-                        None => std::env::var_os(key).map(|value| (key.clone(), value)),
-                    })
-                    .collect();
-                Group {
-                    id: group.id,
-                    module: module_path,
-                    benches: group
-                        .benches
-                        .into_iter()
-                        .enumerate()
-                        .flat_map(|(bench_index, funcs)| {
-                            funcs
-                                .into_iter()
-                                .enumerate()
-                                .map(move |(index, f)| LibBench {
-                                    bench_index,
-                                    index,
-                                    id: f.id,
-                                    function: f.bench,
-                                    args: f.args,
-                                    config: LibBenchConfig {
-                                        env_clear: config.env_clear.unwrap_or(true),
-                                        envs: envs.clone(),
-                                    },
-                                })
+        let global_config = &benchmark.config;
+        let mut groups = vec![];
+        for group in benchmark.groups {
+            let module_path = if let Some(group_id) = &group.id {
+                format!("{module}::{group_id}")
+            } else {
+                module.to_owned()
+            };
+            let mut lib_benches = vec![];
+            for (bench_index, library_benchmark_benches) in group.benches.into_iter().enumerate() {
+                for (index, library_benchmark_bench) in
+                    library_benchmark_benches.benches.into_iter().enumerate()
+                {
+                    let config = global_config.clone().update_from_all([
+                        group.config.as_ref(),
+                        library_benchmark_benches.config.as_ref(),
+                        library_benchmark_bench.config.as_ref(),
+                    ]);
+                    let envs: Vec<(OsString, OsString)> = config
+                        .envs
+                        .iter()
+                        .filter_map(|(key, value)| match value {
+                            Some(value) => Some((key.clone(), value.clone())),
+                            None => std::env::var_os(key).map(|value| (key.clone(), value)),
                         })
-                        .collect(),
-                    callgrind_args,
+                        .collect();
+                    let callgrind_args = {
+                        let mut raw = config.raw_callgrind_args.0.clone();
+                        raw.extend_from_slice(benchmark.command_line_args.as_slice());
+
+                        // The last argument is usually --bench. This argument comes
+                        // from cargo and does not belong to the arguments passed
+                        // from the main macro. So, we're removing it if it is
+                        // there.
+                        if raw.last().map_or(false, |a| a == "--bench") {
+                            raw.pop();
+                        }
+
+                        CallgrindArgs::from_args(raw)
+                    };
+                    let lib_bench = LibBench {
+                        bench_index,
+                        index,
+                        id: library_benchmark_bench.id,
+                        function: library_benchmark_bench.bench,
+                        args: library_benchmark_bench.args,
+                        config: LibBenchConfig {
+                            env_clear: config.env_clear.unwrap_or(true),
+                            envs,
+                            callgrind_args,
+                        },
+                    };
+                    lib_benches.push(lib_bench);
                 }
-            })
-            .collect::<Vec<Group>>();
+            }
+            let group = Group {
+                id: group.id,
+                module: module_path,
+                benches: lib_benches,
+            };
+            groups.push(group);
+        }
 
         Self(groups)
     }

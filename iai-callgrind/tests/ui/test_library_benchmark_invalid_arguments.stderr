@@ -1,0 +1,29 @@
+error: Only the config argument is allowed
+
+         = help: #[library_benchmark(config = ....)]
+
+ --> tests/ui/test_library_benchmark_invalid_arguments.rs:3:21
+  |
+3 | #[library_benchmark(wrong = LibraryBenchmarkConfig::default())]
+  |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unexpected end of input, expected an expression
+ --> tests/ui/test_library_benchmark_invalid_arguments.rs:9:1
+  |
+9 | #[library_benchmark(config = )]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `RunnerLibraryBenchmarkConfig: From<&str>` is not satisfied
+ --> tests/ui/test_library_benchmark_invalid_arguments.rs:6:1
+  |
+6 | #[library_benchmark(config = "wrong")]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `From<&str>` is not implemented for `RunnerLibraryBenchmarkConfig`
+  |
+  = help: the following implementations were found:
+            <RunnerLibraryBenchmarkConfig as From<&LibraryBenchmarkConfig>>
+            <RunnerLibraryBenchmarkConfig as From<&mut LibraryBenchmarkConfig>>
+            <RunnerLibraryBenchmarkConfig as From<LibraryBenchmarkConfig>>
+  = note: required because of the requirements on the impl of `Into<RunnerLibraryBenchmarkConfig>` for `&str`
+  = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)

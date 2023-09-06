@@ -8,7 +8,7 @@ error: An id is required
 5 | #[bench]
   | ^^^^^^^^
 
-error: expected attribute arguments in parentheses: #[bench::missing_parentheses(...)]
+error: expected attribute arguments in parentheses: `bench::missing_parentheses(...)`
  --> tests/ui/test_library_benchmark_invalid_bench_id.rs:9:3
   |
 9 | #[bench::missing_parentheses]

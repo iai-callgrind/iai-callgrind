@@ -1,3 +1,24 @@
+error: Expected 0 arguments but found 1
+ --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:5:1
+  |
+5 | #[bench::id(42)]
+  | ^^^^^^^^^^^^^^^^
+
+error: Expected 1 arguments but found none
+
+         = help: Try passing arguments either with #[bench::some_id(arg1, ...)] or with #[bench::some_id(args = (arg1, ...))]
+
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:10:1
+   |
+10 | #[bench::id()]
+   | ^^^^^^^^^^^^^^
+
+error: Expected 1 arguments but found 2
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:15:1
+   |
+15 | #[bench::id(42, 8)]
+   | ^^^^^^^^^^^^^^^^^^^
+
 error[E0603]: function `bench5` is private
   --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:39:13
    |
@@ -46,56 +67,6 @@ note: function defined here
   --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:26:4
    |
 26 | fn bench5(my: u8) -> String {
-   |    ^^^^^^-
-
-error[E0061]: this function takes 0 arguments but 1 argument was supplied
- --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:6:4
-  |
-4 | #[library_benchmark]
-  | -------------------- supplied 1 argument
-5 | #[bench::id(42)]
-6 | fn bench1() {}
-  |    ^^^^^^ expected 0 arguments
-  |
-note: function defined here
- --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:6:4
-  |
-6 | fn bench1() {}
-  |    ^^^^^^
-
-error[E0061]: this function takes 1 argument but 0 arguments were supplied
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:11:4
-   |
-9  |   #[library_benchmark]
-   |  _____________________-
-10 | | #[bench::id()]
-11 | | fn bench2(my: i32) {}
-   | |    ^^^^^-
-   | |____|____|
-   |      |    supplied 0 arguments
-   |      expected 1 argument
-   |
-note: function defined here
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:11:4
-   |
-11 | fn bench2(my: i32) {}
-   |    ^^^^^^-
-
-error[E0061]: this function takes 1 argument but 2 arguments were supplied
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:16:4
-   |
-14 | #[library_benchmark]
-   | --------------------
-   | |
-   | supplied 2 arguments
-15 | #[bench::id(42, 8)]
-16 | fn bench3(my: i32) {}
-   |    ^^^^^^ expected 1 argument
-   |
-note: function defined here
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:16:4
-   |
-16 | fn bench3(my: i32) {}
    |    ^^^^^^-
 
 error[E0308]: mismatched types

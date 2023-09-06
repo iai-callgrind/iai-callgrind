@@ -12,6 +12,7 @@
     "consts",
     "Deque",
     "dtolnay",
+    "elems",
     "funcs",
     "Heisler",
     "idents",

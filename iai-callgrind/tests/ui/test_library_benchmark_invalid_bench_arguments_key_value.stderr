@@ -1,0 +1,14 @@
+error: Invalid argument: invalid
+
+         = help: Valid arguments are: args, config
+
+ --> tests/ui/test_library_benchmark_invalid_bench_arguments_key_value.rs:4:13
+  |
+4 | #[bench::id(invalid = "value")]
+  |             ^^^^^^^^^^^^^^^^^
+
+error: expected tuple expression
+ --> tests/ui/test_library_benchmark_invalid_bench_arguments_key_value.rs:8:20
+  |
+8 | #[bench::id(args = "value")]
+  |                    ^^^^^^^
