@@ -21,31 +21,26 @@ struct LibBench {
 impl LibBench {
     fn run(&self, config: &Config, group: &Group) -> Result<()> {
         let command = CallgrindCommand::new(config.meta.aslr, &config.meta.arch);
-        let (args, sentinel) = if let Some(group_id) = &group.id {
-            (
-                vec![
-                    OsString::from("--iai-run".to_owned()),
-                    OsString::from(group_id),
-                    OsString::from(self.bench_index.to_string()),
-                    OsString::from(self.index.to_string()),
-                    OsString::from(format!("{}::{}", group.module, self.function)),
-                ],
-                Sentinel::from_segments([&config.module, &self.function, &self.function]),
-            )
+        let args = if let Some(group_id) = &group.id {
+            vec![
+                OsString::from("--iai-run".to_owned()),
+                OsString::from(group_id),
+                OsString::from(self.bench_index.to_string()),
+                OsString::from(self.index.to_string()),
+                OsString::from(format!("{}::{}", group.module, self.function)),
+            ]
         } else {
-            (
-                vec![
-                    OsString::from("--iai-run".to_owned()),
-                    OsString::from(self.index.to_string()),
-                    OsString::from(format!("{}::{}", group.module, self.function)),
-                ],
-                Sentinel::from_path(&config.module, &self.function),
-            )
+            vec![
+                OsString::from("--iai-run".to_owned()),
+                OsString::from(self.index.to_string()),
+                OsString::from(format!("{}::{}", group.module, self.function)),
+            ]
         };
 
+        let sentinel = Sentinel::new("iai_callgrind::bench::");
         // TODO: REMOVE THIS CLONE
         let mut callgrind_args = self.config.callgrind_args.clone();
-        callgrind_args.insert_toggle_collect(&format!("*{}", sentinel.as_toggle()));
+        callgrind_args.insert_toggle_collect(&format!("{}*", sentinel.as_toggle()));
 
         let output = if let Some(bench_id) = &self.id {
             CallgrindOutput::create(
@@ -191,6 +186,7 @@ struct Config {
     #[allow(unused)]
     package_dir: PathBuf,
     bench_file: PathBuf,
+    #[allow(unused)]
     module: String,
     bench_bin: PathBuf,
     meta: Metadata,
