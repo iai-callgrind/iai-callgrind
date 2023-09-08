@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RawCallgrindArgs(pub Vec<String>);
 
 impl RawCallgrindArgs {
@@ -48,7 +48,7 @@ pub struct Config {
     pub raw_callgrind_args: RawCallgrindArgs,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LibraryBenchmarkConfig {
     pub env_clear: Option<bool>,
     pub raw_callgrind_args: RawCallgrindArgs,
@@ -191,4 +191,60 @@ pub enum ExitWith {
     Success,
     Failure,
     Code(i32),
+}
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use super::*;
+
+    #[test]
+    fn test_library_benchmark_config_update_from_all_when_default() {
+        assert_eq!(
+            LibraryBenchmarkConfig::default()
+                .update_from_all([Some(&LibraryBenchmarkConfig::default())]),
+            LibraryBenchmarkConfig::default()
+        );
+    }
+
+    #[rstest]
+    #[case::all_none(None, &[None], None)]
+    #[case::default_is_overwritten_when_false(None, &[Some(false)], Some(false))]
+    #[case::default_is_overwritten_when_true(None, &[Some(true)], Some(true))]
+    #[case::some_is_overwritten_when_same_value(Some(true), &[Some(true)], Some(true))]
+    #[case::some_is_overwritten_when_false(Some(false), &[Some(true)], Some(true))]
+    #[case::some_is_not_overwritten_when_none(Some(true), &[None], Some(true))]
+    #[case::multiple_when_none_then_ignored(Some(true), &[None, Some(false)], Some(false))]
+    #[case::default_when_multiple_then_ignored(None, &[Some(true), None, Some(false)], Some(false))]
+    fn test_library_benchmark_config_update_from_all_when_env_clear(
+        #[case] base: Option<bool>,
+        #[case] others: &[Option<bool>],
+        #[case] expected: Option<bool>,
+    ) {
+        let base = LibraryBenchmarkConfig {
+            env_clear: base,
+            ..Default::default()
+        };
+        let others: Vec<LibraryBenchmarkConfig> = others
+            .iter()
+            .map(|o| LibraryBenchmarkConfig {
+                env_clear: *o,
+                ..Default::default()
+            })
+            .collect();
+
+        let others = others
+            .iter()
+            .map(Some)
+            .collect::<Vec<Option<&LibraryBenchmarkConfig>>>();
+
+        assert_eq!(
+            base.update_from_all(others),
+            LibraryBenchmarkConfig {
+                env_clear: expected,
+                ..Default::default()
+            }
+        );
+    }
 }
