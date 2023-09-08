@@ -127,7 +127,7 @@ jobs:
         run: cargo bench --all-features
         env:
           IAI_CALLGRIND_RUNNER: /home/runner/work/iai-callgrind/iai-callgrind/target/release/iai-callgrind-runner
-          # RUST_LOG: trace
+          # IAI_CALLGRIND_LOG: trace
 
   docs:
     needs: [base]

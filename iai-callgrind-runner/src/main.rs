@@ -3,13 +3,30 @@ use std::io::Write;
 use colored::{control, Colorize};
 use env_logger::Env;
 use iai_callgrind_runner::error::IaiCallgrindError;
+use iai_callgrind_runner::runner::envs;
 use iai_callgrind_runner::util::write_all_to_stderr;
-use log::error;
+use log::{error, warn};
 use version_compare::Cmp;
 
+fn print_warnings() {
+    if std::env::var("IAI_ALLOW_ASLR").is_ok() {
+        warn!("The IAI_ALLOW_ASLR environment variable changed to IAI_CALLGRIND_ALLOW_ASLR");
+    }
+
+    if std::env::var("RUST_LOG").is_ok() {
+        warn!(
+            "The RUST_LOG environment variable to set the log level changed to IAI_CALLGRIND_LOG"
+        );
+    }
+}
+
 fn main() {
-    // Configure the colored crate to respect CARGO_TERM_COLOR
-    if let Some(var) = option_env!("CARGO_TERM_COLOR") {
+    // Configure the colored crate to respect IAI_CALLGRIND_COLOR and CARGO_TERM_COLOR
+    let iai_callgrind_color = std::env::var(envs::IAI_CALLGRIND_COLOR).ok();
+    if let Some(var) = iai_callgrind_color
+        .as_ref()
+        .or(std::env::var(envs::CARGO_TERM_COLOR).ok().as_ref())
+    {
         if var == "never" {
             control::set_override(false);
         } else if var == "always" {
@@ -17,11 +34,14 @@ fn main() {
         }
     }
 
-    // Configure the env_logger crate to respect CARGO_TERM_COLOR
+    // Configure the env_logger crate to respect IAI_CALLGRIND_COLOR and CARGO_TERM_COLOR
     env_logger::Builder::from_env(
         Env::default()
-            .default_filter_or("warn")
-            .write_style("CARGO_TERM_COLOR"),
+            .filter_or(envs::IAI_CALLGRIND_LOG, "warn")
+            .write_style(
+                iai_callgrind_color
+                    .map_or_else(|| envs::CARGO_TERM_COLOR, |_| envs::IAI_CALLGRIND_COLOR),
+            ),
     )
     .format(|buf, record| {
         writeln!(
@@ -42,6 +62,7 @@ fn main() {
     })
     .init();
 
+    print_warnings();
     match iai_callgrind_runner::runner::run() {
         Ok(_) => {}
         Err(error) => {

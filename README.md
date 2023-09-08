@@ -40,6 +40,8 @@ improvements and features.
     - [Benchmarking](#benchmarking)
         - [Library Benchmarks](#library-benchmarks)
         - [Binary Benchmarks](#binary-benchmarks)
+    - [Iai-callgrind Environment variables](#environment-variables-colored-output-and-logging)
+    - [Iai-callgrind command line arguments](#command-line-passing-arguments-to-callgrind)
     - [Features and differences to Iai](#features-and-differences-to-iai)
     - [What hasn't changed](#what-hasnt-changed)
     - [See also](#see-also)
@@ -392,6 +394,41 @@ binary_benchmark_group!(
 See the [test_bin_bench_groups](benchmark-tests/benches/test_bin_bench_groups.rs) benchmark file of
 this project for a working example.
 
+### Environment variables: Colored output and logging
+
+The metrics output is colored per default but follows the value for the `IAI_CALLGRIND_COLOR`
+environment variable. If `IAI_CALLGRIND_COLOR` is not set, `CARGO_TERM_COLOR` is also tried.
+Accepted values are: `always`, `never`, `auto` (default). So, disabling colors can be achieved with
+setting `IAI_CALLGRIND_COLOR` or `CARGO_TERM_COLOR=never`.
+
+This library uses [env_logger](https://crates.io/crates/env_logger) and the default logging level
+`WARN`. To set the logging level to something different, set the environment variable
+`IAI_CALLGRIND_LOG` for example to `IAI_CALLGRIND_LOG=DEBUG`. Accepted values are: `error`, `warn`
+(default), `info`, `debug`, `trace`. The logging output is colored per default but follows the
+settings of `IAI_CALLGRIND_COLOR` and `CARGO_TERM_COLOR` (In this order). See also the
+[documentation](https://docs.rs/env_logger/latest) of `env_logger`.
+
+### Command-line: Passing arguments to Callgrind
+
+It's now possible to pass additional arguments to callgrind separated by `--` (`cargo bench --
+CALLGRIND_ARGS`) or overwrite the defaults, which are:
+
+- `--I1=32768,8,64`
+- `--D1=32768,8,64`
+- `--LL=8388608,16,64`
+- `--cache-sim=yes` (can't be changed)
+- `--toggle-collect` (additive)
+- `--collect-atstart=no`
+- `--compress-pos=no`
+- `--compress-strings=no`
+
+Note that `toggle-collect` won't be overwritten by any additional `toggle-collect` argument but
+instead will be passed to Callgrind in addition to the default value in the case of [library
+benchmarks](#library-benchmarks). [Binary benchmarks](#binary-benchmarks) don't have a default
+toggle.
+
+See also [Callgrind Command-line Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options).
+
 ### Features and differences to Iai
 
 This crate is built on the same idea like the original Iai, but over the time applied a lot of
@@ -502,39 +539,6 @@ The formula for the `Estimated Cycles` hasn't changed and uses Itamar Turner-Tra
 
 For further details about how the caches are simulated and more, see the documentation of
 [Callgrind](https://valgrind.org/docs/manual/cg-manual.html)
-
-#### Colored output and logging
-
-The metrics output is colored per default but follows the value for the `CARGO_TERM_COLOR`
-environment variable. Disabling colors can be achieved with setting this environment variable to
-`CARGO_TERM_COLOR=never`.
-
-This library uses [env_logger](https://crates.io/crates/env_logger) and the default logging level
-`WARN`. Currently, `env_logger` is only used to print some warnings and debug output, but to set the
-logging level to something different set the environment variable `RUST_LOG` for example to
-`RUST_LOG=DEBUG`. The logging output is colored per default but follows the setting of
-`CARGO_TERM_COLOR`. See also the [documentation](https://docs.rs/env_logger/latest) of `env_logger`.
-
-#### Passing arguments to Callgrind
-
-It's now possible to pass additional arguments to callgrind separated by `--`
-(`cargo bench -- CALLGRIND_ARGS`) or overwrite the defaults, which are:
-
-- `--I1=32768,8,64`
-- `--D1=32768,8,64`
-- `--LL=8388608,16,64`
-- `--cache-sim=yes` (can't be changed)
-- `--toggle-collect=*BENCHMARK_FILE::BENCHMARK_FUNCTION`
-- `--collect-atstart=no`
-- `--compress-pos=no`
-- `--compress-strings=no`
-
-Note that `toggle-collect` won't be overwritten by any additional `toggle-collect` argument but
-instead will be passed to Callgrind in addition to the default value in the case of [library
-benchmarks](#library-benchmarks). [Binary benchmarks](#binary-benchmarks) don't have a default
-toggle.
-
-See also [Callgrind Command-line Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options).
 
 #### Incomplete list of other minor improvements
 

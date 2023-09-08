@@ -2,6 +2,8 @@ use std::path::PathBuf;
 
 use log::debug;
 
+use crate::runner::envs;
+
 #[derive(Debug, Clone)]
 pub struct Metadata {
     pub arch: String,
@@ -14,7 +16,7 @@ impl Metadata {
         let arch = std::env::consts::ARCH.to_owned();
         debug!("Detected architecture: {}", arch);
 
-        let target_dir = std::env::var_os("CARGO_TARGET_DIR")
+        let target_dir = std::env::var_os(envs::CARGO_TARGET_DIR)
             .map_or_else(
                 || {
                     cargo_metadata::MetadataCommand::new()
@@ -28,12 +30,15 @@ impl Metadata {
                 PathBuf::from,
             )
             .join("iai")
-            .join(std::env::var_os("CARGO_PKG_NAME").map_or_else(PathBuf::new, PathBuf::from));
+            .join(std::env::var_os(envs::CARGO_PKG_NAME).map_or_else(PathBuf::new, PathBuf::from));
         debug!("Detected target directory: '{}'", target_dir.display());
 
-        let aslr = std::env::var_os("IAI_ALLOW_ASLR").is_some();
+        let aslr = std::env::var_os(envs::IAI_CALLGRIND_ALLOW_ASLR).is_some();
         if aslr {
-            debug!("Found IAI_ALLOW_ASLR environment variable. Trying to run with ASLR enabled.");
+            debug!(
+                "Found {} environment variable. Trying to run with ASLR enabled.",
+                envs::IAI_CALLGRIND_ALLOW_ASLR
+            );
         }
         Self {
             arch,
