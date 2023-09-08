@@ -761,6 +761,25 @@ macro_rules! main {
             };
         }
     };
+    (
+        callgrind_args = $( $args:literal ),* $(,)*; $(;)*
+        functions = $( $func_name:ident ),+ $(,)*
+    ) => {
+        compile_error!(
+            "You are using a deprecated syntax of the main! macro to set up library benchmarks. \
+            See the README (https://github.com/Joining7943/iai-callgrind) and \
+            docs (https://docs.rs/iai-callgrind/latest/iai_callgrind/) for further details."
+        );
+        pub fn main() {}
+    };
+    ( $( $func_name:ident ),+ $(,)* ) => {
+        compile_error!(
+            "You are using a deprecated syntax of the main! macro to set up library benchmarks. \
+            See the README (https://github.com/Joining7943/iai-callgrind) and \
+            docs (https://docs.rs/iai-callgrind/latest/iai_callgrind/) for further details."
+        );
+        pub fn main() {}
+    };
 }
 
 /// Macro used to define a group of binary benchmarks
