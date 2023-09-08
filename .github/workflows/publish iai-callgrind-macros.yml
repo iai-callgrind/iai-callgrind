@@ -1,0 +1,16 @@
+name: Deploy iai-callgrind-macros
+on:
+  push:
+    tags:
+      - "iai-callgrind-macros-v*"
+
+jobs:
+  publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2.2.0
+      - name: Publish iai-callgrind-macros
+        run: cargo publish -p iai-callgrind-macros --token ${{ secrets.CRATES_GITHUB_TOKEN }}
