@@ -215,6 +215,7 @@ impl LibraryBenchmark {
         };
 
         let ident = &item_fn.sig.ident;
+        let export_name = format!("iai_callgrind::bench::{}", &item_fn.sig.ident);
         let config = if let Some(config) = self.config {
             quote!(
                 #[inline(never)]
@@ -237,6 +238,7 @@ impl LibraryBenchmark {
                 use super::*;
 
                 #[inline(never)]
+                #[export_name = #export_name]
                 #new_item_fn
 
                 pub const BENCHES: &[iai_callgrind::internal::MacroLibBench]= &[
@@ -267,6 +269,7 @@ impl LibraryBenchmark {
         };
 
         let mod_name = &item_fn.sig.ident;
+        let export_name = format!("iai_callgrind::bench::{}", &item_fn.sig.ident);
         let callee = &item_fn.sig.ident;
         let mut funcs = TokenStream2::new();
         let mut lib_benches = vec![];
@@ -297,6 +300,7 @@ impl LibraryBenchmark {
                 use super::*;
 
                 #[inline(never)]
+                #[export_name = #export_name]
                 #new_item_fn
 
                 pub const BENCHES: &[iai_callgrind::internal::MacroLibBench]= &[
@@ -630,6 +634,7 @@ mod tests {
         bench: &[(Ident, Vec<Expr>)],
     ) -> Model {
         let callee = &func.sig.ident;
+        let export_name = format!("iai_callgrind::bench::{}", &func.sig.ident);
         let rendered_get_config = if let Some(expr) = get_config {
             quote!(
                 #[inline(never)]
@@ -677,6 +682,7 @@ mod tests {
                 use super::*;
 
                 #[inline(never)]
+                #[export_name = #export_name]
                 #func
 
                 pub const BENCHES: &[iai_callgrind::internal::MacroLibBench]= &[

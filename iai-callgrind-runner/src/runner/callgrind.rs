@@ -177,10 +177,15 @@ impl CallgrindCommand {
 pub struct Sentinel(String);
 
 impl Sentinel {
+    pub fn new(value: &str) -> Self {
+        Self(format!("fn={value}"))
+    }
+
     pub fn from_path(module: &str, function: &str) -> Self {
         Self(format!("fn={module}::{function}"))
     }
 
+    #[allow(unused)]
     pub fn from_segments<I, T>(segments: T) -> Self
     where
         I: AsRef<str>,
