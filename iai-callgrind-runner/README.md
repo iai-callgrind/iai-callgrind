@@ -1,6 +1,6 @@
 <h1 align="center">Iai-Callgrind</h1>
 
-<div align="center">Experimental Benchmark Framework in Rust</div>
+<div align="center">High-precision and consistent benchmarking framework/harness for Rust</div>
 
 <div align="center">
     <a href="https://docs.rs/crate/iai-callgrind/">Released API Docs</a>
