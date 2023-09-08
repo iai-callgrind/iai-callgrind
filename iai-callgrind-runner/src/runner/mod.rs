@@ -8,6 +8,16 @@ use std::path::PathBuf;
 
 use log::debug;
 
+pub mod envs {
+    pub const IAI_CALLGRIND_ALLOW_ASLR: &str = "IAI_CALLGRIND_ALLOW_ASLR";
+    pub const IAI_CALLGRIND_COLOR: &str = "IAI_CALLGRIND_COLOR";
+    pub const IAI_CALLGRIND_LOG: &str = "IAI_CALLGRIND_LOG";
+
+    pub const CARGO_PKG_NAME: &str = "CARGO_PKG_NAME";
+    pub const CARGO_TARGET_DIR: &str = "CARGO_TARGET_DIR";
+    pub const CARGO_TERM_COLOR: &str = "CARGO_TERM_COLOR";
+}
+
 pub use crate::error::{IaiCallgrindError, Result};
 pub use crate::util::{write_all_to_stderr, write_all_to_stdout};
 
