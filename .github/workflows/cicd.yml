@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: EmbarkStudios/cargo-deny-action@v1
         with:
-          rust-version: "1.60.0"
+          rust-version: "1.60.0" # MSRV
           command: check ${{ matrix.config.arguments }} ${{ matrix.config.checks }}
 
   minimal_versions:
@@ -78,7 +78,7 @@ jobs:
           - stable
           - nightly
         include:
-          - toolchain: "1.60.0"
+          - toolchain: "1.60.0" # MSRV
             ui_tests: --features ui_tests
           - toolchain: stable
             components: clippy

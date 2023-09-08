@@ -1,12 +1,35 @@
 use std::ffi::{OsStr, OsString};
-use std::io::{self, BufWriter, Write};
+use std::io::{self, stdin, BufWriter, Read, Write};
 use std::path::Path;
 use std::process::Command;
 
 use log::{log_enabled, trace, Level};
 use which::which;
 
-use crate::error::IaiCallgrindError;
+use crate::error::{IaiCallgrindError, Result};
+
+pub fn receive_benchmark<T>(num_bytes: usize) -> Result<T>
+where
+    T: serde::de::DeserializeOwned,
+{
+    let mut encoded = vec![];
+    let mut stdin = stdin();
+    stdin.read_to_end(&mut encoded).map_err(|error| {
+        IaiCallgrindError::Other(format!("Failed to read encoded configuration: {error}"))
+    })?;
+    assert!(
+        encoded.len() == num_bytes,
+        "Bytes mismatch when decoding configuration: Expected {num_bytes} bytes but received: {} \
+         bytes",
+        encoded.len()
+    );
+
+    let benchmark: T = bincode::deserialize(&encoded).map_err(|error| {
+        IaiCallgrindError::Other(format!("Failed to decode configuration: {error}"))
+    })?;
+
+    Ok(benchmark)
+}
 
 pub fn join_os_string(slice: &[OsString], sep: &OsStr) -> OsString {
     if let Some((first, suffix)) = slice.split_first() {
@@ -20,7 +43,12 @@ pub fn join_os_string(slice: &[OsString], sep: &OsStr) -> OsString {
     }
 }
 
-pub fn concat_os_string<T: AsRef<OsStr>>(mut first: OsString, second: T) -> OsString {
+pub fn concat_os_string<T, U>(first: T, second: U) -> OsString
+where
+    T: Into<OsString>,
+    U: AsRef<OsStr>,
+{
+    let mut first = first.into();
     first.push(second);
     first
 }
@@ -85,11 +113,7 @@ pub fn write_all_to_stderr(bytes: &[u8]) {
     println!();
 }
 
-pub fn copy_directory(
-    source: &Path,
-    into: &Path,
-    follow_symlinks: bool,
-) -> Result<(), IaiCallgrindError> {
+pub fn copy_directory(source: &Path, into: &Path, follow_symlinks: bool) -> Result<()> {
     let cp = which("cp").map_err(|error| {
         IaiCallgrindError::Other(format!(
             "Unable to locate 'cp' command to copy directories: '{error}'"

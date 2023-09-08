@@ -11,7 +11,7 @@ use log::{debug, error, info, trace, warn, Level};
 use which::which;
 
 use crate::api::{ExitWith, Options};
-use crate::error::IaiCallgrindError;
+use crate::error::{IaiCallgrindError, Result};
 use crate::util::{
     bool_to_yesno, concat_os_string, join_os_string, truncate_str_utf8, write_all_to_stderr,
     write_all_to_stdout, yesno_to_bool,
@@ -49,7 +49,7 @@ impl CallgrindCommand {
         executable: &Path,
         output: Output,
         exit_with: Option<&ExitWith>,
-    ) -> Result<(Vec<u8>, Vec<u8>), IaiCallgrindError> {
+    ) -> Result<(Vec<u8>, Vec<u8>)> {
         match (output.status.code().unwrap(), exit_with) {
             (0i32, None | Some(ExitWith::Code(0i32) | ExitWith::Success)) => {
                 Ok((output.stdout, output.stderr))
@@ -94,14 +94,17 @@ impl CallgrindCommand {
         }
     }
 
-    pub(crate) fn run(
+    pub fn run<E>(
         self,
         callgrind_args: &CallgrindArgs,
         executable: &Path,
         executable_args: &[OsString],
-        envs: Vec<(String, String)>,
+        envs: E,
         options: &Options,
-    ) -> Result<(), IaiCallgrindError> {
+    ) -> Result<()>
+    where
+        E: IntoIterator<Item = (OsString, OsString)>,
+    {
         let mut command = self.command;
         debug!(
             "Running callgrind with executable '{}'",
@@ -141,6 +144,7 @@ impl CallgrindCommand {
             );
             e
         };
+
         let (stdout, stderr) = command
             .arg("--tool=callgrind")
             .args(callgrind_args)
@@ -177,7 +181,11 @@ impl Sentinel {
         Self(format!("fn={module}::{function}"))
     }
 
-    pub fn from_segments<I: AsRef<str>, T: AsRef<[I]>>(segments: T) -> Self {
+    pub fn from_segments<I, T>(segments: T) -> Self
+    where
+        I: AsRef<str>,
+        T: AsRef<[I]>,
+    {
         let joined = if let Some((first, suffix)) = segments.as_ref().split_first() {
             suffix.iter().fold(first.as_ref().to_owned(), |mut a, b| {
                 a.push_str("::");
@@ -263,8 +271,8 @@ impl CallgrindOutput {
             self.file.display(),
         );
 
-        let file_in = File::open(&self.file).expect("Unable to open callgrind output file");
-        let mut iter = BufReader::new(file_in)
+        let file = File::open(&self.file).expect("Unable to open callgrind output file");
+        let mut iter = BufReader::new(file)
             .lines()
             .map(std::result::Result::unwrap);
         if !iter
@@ -328,7 +336,10 @@ impl CallgrindOutput {
         }
     }
 
-    pub fn parse<T: AsRef<Sentinel>>(&self, bench_file: &Path, sentinel: T) -> CallgrindStats {
+    pub fn parse<T>(&self, bench_file: &Path, sentinel: T) -> CallgrindStats
+    where
+        T: AsRef<Sentinel>,
+    {
         let sentinel = sentinel.as_ref();
         trace!(
             "Parsing callgrind output file '{}' for '{}'",
@@ -342,8 +353,8 @@ impl CallgrindOutput {
             bench_file.display()
         );
 
-        let file_in = File::open(&self.file).expect("Unable to open callgrind output file");
-        let mut iter = BufReader::new(file_in)
+        let file = File::open(&self.file).expect("Unable to open callgrind output file");
+        let mut iter = BufReader::new(file)
             .lines()
             .map(std::result::Result::unwrap);
         if !iter
@@ -519,45 +530,36 @@ impl CallgrindArgs {
         self
     }
 
-    pub fn set_output_file<T: AsRef<Path>>(&mut self, arg: T) -> &mut Self {
+    pub fn set_output_file<T>(&mut self, arg: T) -> &mut Self
+    where
+        T: AsRef<Path>,
+    {
         self.callgrind_out_file = Some(arg.as_ref().to_owned());
         self
     }
 
     pub fn to_os_args(&self) -> Vec<OsString> {
         let mut args = vec![
-            concat_os_string(OsString::from("--I1="), &self.i1),
-            concat_os_string(OsString::from("--D1="), &self.d1),
-            concat_os_string(OsString::from("--LL="), &self.ll),
-            concat_os_string(
-                OsString::from("--cache-sim="),
-                bool_to_yesno(self.cache_sim),
-            ),
-            concat_os_string(
-                OsString::from("--collect-atstart="),
-                bool_to_yesno(self.collect_atstart),
-            ),
-            concat_os_string(
-                OsString::from("--compress-strings="),
-                bool_to_yesno(self.compress_strings),
-            ),
-            concat_os_string(
-                OsString::from("--compress-pos="),
-                bool_to_yesno(self.compress_pos),
-            ),
+            concat_os_string("--I1=", &self.i1),
+            concat_os_string("--D1=", &self.d1),
+            concat_os_string("--LL=", &self.ll),
+            concat_os_string("--cache-sim=", bool_to_yesno(self.cache_sim)),
+            concat_os_string("--collect-atstart=", bool_to_yesno(self.collect_atstart)),
+            concat_os_string("--compress-strings=", bool_to_yesno(self.compress_strings)),
+            concat_os_string("--compress-pos=", bool_to_yesno(self.compress_pos)),
         ];
 
         args.append(
             &mut self
                 .toggle_collect
                 .iter()
-                .map(|s| concat_os_string(OsString::from("--toggle-collect="), s))
+                .map(|s| concat_os_string("--toggle-collect=", s))
                 .collect::<Vec<OsString>>(),
         );
 
         if let Some(output_file) = &self.callgrind_out_file {
             args.push(concat_os_string(
-                OsString::from("--callgrind-out-file="),
+                "--callgrind-out-file=",
                 output_file.as_os_str(),
             ));
         }

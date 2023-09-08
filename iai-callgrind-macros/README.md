@@ -26,5 +26,5 @@
 Iai-Callgrind is a benchmarking harness that uses Callgrind to perform extremely precise
 measurements of Rust code.
 
-This is the benchmark binary needed by the [Iai-callgrind
+This package provides the proc macros needed by the [Iai-callgrind
 library](https://crates.io/crates/iai-callgrind). Please see there for further details.

@@ -5,8 +5,10 @@
 pub use iai_callgrind_runner::api::{
     Arg as RunnerArg, Assistant as RunnerAssistant, BinaryBenchmark as RunnerBinaryBenchmark,
     BinaryBenchmarkGroup as RunnerBinaryBenchmarkGroup, Cmd as RunnerCmd, Config as RunnerConfig,
-    ExitWith as RunnerExitWith, Fixtures as RunnerFixtures, Function as RunnerFunction,
+    ExitWith as RunnerExitWith, Fixtures as RunnerFixtures,
     LibraryBenchmark as RunnerLibraryBenchmark,
+    LibraryBenchmarkBench as RunnerLibraryBenchmarkBench,
+    LibraryBenchmarkBenches as RunnerLibraryBenchmarkBenches,
     LibraryBenchmarkConfig as RunnerLibraryBenchmarkConfig,
     LibraryBenchmarkGroup as RunnerLibraryBenchmarkGroup, Options as RunnerOptions,
     RawCallgrindArgs as RunnerRawCallgrindArgs, Run as RunnerRun,
@@ -40,7 +42,11 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn new<T: AsRef<str>, U: AsRef<str>>(orig: T, cmd: U) -> Self {
+    pub fn new<T, U>(orig: T, cmd: U) -> Self
+    where
+        T: AsRef<str>,
+        U: AsRef<str>,
+    {
         Self {
             inner: RunnerCmd {
                 display: orig.as_ref().to_owned(),
@@ -54,4 +60,12 @@ impl From<Cmd> for RunnerCmd {
     fn from(value: Cmd) -> Self {
         value.inner
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct MacroLibBench {
+    pub id_display: Option<&'static str>,
+    pub args_display: Option<&'static str>,
+    pub func: fn(),
+    pub config: Option<fn() -> crate::internal::RunnerLibraryBenchmarkConfig>,
 }

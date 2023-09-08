@@ -2,12 +2,24 @@
 name = "iai-callgrind-macros"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.60.0"
+authors = ["Joining7943 <joining@posteo.de>"]
+description = "Proc macros for iai-callgrind, a high-precision and consistent benchmarking framework/harness for Rust"
+readme = "README.md"
+homepage = "https://github.com/Joining7943/iai-callgrind"
+repository = "https://github.com/Joining7943/iai-callgrind"
+license = "Apache-2.0 OR MIT"
+keywords = ["iai", "benchmark", "callgrind", "valgrind"]
+categories = ["development-tools::profiling", "development-tools::testing"]
 
 [lib]
 proc-macro = true
 
 [dependencies]
-proc-macro-error = "1.0"
-proc-macro2 = "1.0"
-quote = "1.0.33"
-syn = { version = "2.0.29", features = ["full", "extra-traits"] }
+proc-macro-error = "1"
+proc-macro2 = ">=1.0.60, <2"
+quote = "1"
+syn = { version = ">=2.0.1, <3", features = ["full", "extra-traits"] }
+
+[dev-dependencies]
+pretty_assertions = "1"
