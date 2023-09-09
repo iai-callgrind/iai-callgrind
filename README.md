@@ -216,6 +216,47 @@ For a fully documented and working benchmark see the
 [test_lib_bench_groups](benchmark-tests/benches/test_lib_bench_groups.rs) benchmark file and read
 the [`library documentation`]!
 
+##### Configuration
+
+It's possible to configure some of the behavior of `iai-callgrind`. See the [`docs`] of
+`LibraryBenchmarkConfig` for more details. At top-level with the `main!` macro:
+
+```rust
+main!(
+    config = LibraryBenchmarkConfig::default();
+    library_benchmark_groups = ...
+);
+```
+
+At group-level:
+
+```rust
+library_benchmark_groups!(
+    name = some_name;
+    config = LibraryBenchmarkConfig::default();
+    benchmarks = ...
+);
+```
+
+At `library_benchmark` level:
+
+```rust
+#[library_benchmark(config = LibraryBenchmarkConfig::default())]
+...
+```
+
+and at `bench` level:
+
+```rust
+#[library_benchmark]
+#[bench::some_id(args = (1, 2), config = LibraryBenchmarkConfig::default()]
+...
+```
+
+The config at `bench` level overwrites the config at `library_benchmark` level. The config at
+`library_benchmark` level overwrites the config at group level and so on. Note that configuration
+values like `envs` are additive and don't overwrite configuration values of higher levels.
+
 ### Binary Benchmarks
 
 Use this scheme to benchmark one or more binaries of your crate. If you really like to, it's
@@ -416,16 +457,22 @@ CALLGRIND_ARGS`) or overwrite the defaults, which are:
 - `--I1=32768,8,64`
 - `--D1=32768,8,64`
 - `--LL=8388608,16,64`
-- `--cache-sim=yes` (can't be changed)
 - `--toggle-collect` (additive)
 - `--collect-atstart=no`
 - `--compress-pos=no`
-- `--compress-strings=no`
 
 Note that `toggle-collect` won't be overwritten by any additional `toggle-collect` argument but
 instead will be passed to Callgrind in addition to the default value in the case of [library
 benchmarks](#library-benchmarks). [Binary benchmarks](#binary-benchmarks) don't have a default
 toggle.
+
+Some callgrind arguments don't play well with `iai-callgrind`'s defaults and are therefore ignored:
+
+- `--separate-threads`
+- `--callgrind-out-file`
+- `--cache-sim`
+- `--compress-strings`
+- `--combine-dumps`
 
 See also [Callgrind Command-line Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options).
 
