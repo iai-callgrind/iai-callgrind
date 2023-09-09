@@ -1,6 +1,8 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
+use log::log_enabled;
+
 use crate::api::{LibraryBenchmark, Options};
 use crate::error::Result;
 use crate::runner::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput, Sentinel};
@@ -38,8 +40,11 @@ impl LibBench {
         };
 
         let sentinel = Sentinel::new("iai_callgrind::bench::");
-        // TODO: REMOVE THIS CLONE
+        // TODO: REMOVE THIS CLONE ??
         let mut callgrind_args = self.config.callgrind_args.clone();
+        if log_enabled!(log::Level::Debug) {
+            callgrind_args.verbose = true;
+        }
         callgrind_args.insert_toggle_collect(&format!("{}*", sentinel.as_toggle()));
 
         let output = if let Some(bench_id) = &self.id {

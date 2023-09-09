@@ -34,6 +34,9 @@ impl BinBench {
         } else {
             callgrind_args.collect_atstart = true;
         }
+        if log_enabled!(log::Level::Debug) {
+            callgrind_args.verbose = true;
+        }
 
         let output = CallgrindOutput::create(
             &config.meta.target_dir,
@@ -126,6 +129,9 @@ impl Assistant {
         let mut callgrind_args = group.callgrind_args.clone();
         callgrind_args.collect_atstart = false;
         callgrind_args.insert_toggle_collect(&format!("*{}::{}", &config.module, &self.name));
+        if log_enabled!(log::Level::Debug) {
+            callgrind_args.verbose = true;
+        }
 
         let output = CallgrindOutput::create(
             &config.meta.target_dir,

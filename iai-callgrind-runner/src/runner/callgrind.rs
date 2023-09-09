@@ -440,6 +440,7 @@ pub struct CallgrindArgs {
     toggle_collect: VecDeque<String>,
     compress_strings: bool,
     compress_pos: bool,
+    pub(crate) verbose: bool,
     callgrind_out_file: Option<PathBuf>,
 }
 
@@ -457,6 +458,7 @@ impl Default for CallgrindArgs {
             toggle_collect: VecDeque::default(),
             compress_pos: false,
             compress_strings: false,
+            verbose: false,
             callgrind_out_file: Option::default(),
             other: Vec::default(),
         }
@@ -488,6 +490,7 @@ impl CallgrindArgs {
                     value
                 ),
                 Some(_) => default.other.push(arg.clone()),
+                None if arg == "--verbose" => default.verbose = true,
                 // ignore positional arguments for now. It may be a filtering argument for cargo
                 // bench
                 None => {}
@@ -498,10 +501,10 @@ impl CallgrindArgs {
 
     pub fn from_args<T>(args: T) -> Self
     where
-        T: Into<Vec<String>>,
+        T: IntoIterator<Item = String>,
     {
         let mut default = Self::default();
-        for arg in args.into() {
+        for arg in args {
             match arg.strip_prefix("--").and_then(|s| s.split_once('=')) {
                 Some(("I1", value)) => default.i1 = value.to_owned(),
                 Some(("D1", value)) => default.d1 = value.to_owned(),
@@ -522,6 +525,7 @@ impl CallgrindArgs {
                     value
                 ),
                 Some(_) => default.other.push(OsString::from(arg)),
+                None if arg == "--verbose" => default.verbose = true,
                 // ignore positional arguments for now. It may be a filtering argument for cargo
                 // bench
                 None => {}
@@ -553,6 +557,10 @@ impl CallgrindArgs {
             concat_os_string("--compress-strings=", bool_to_yesno(self.compress_strings)),
             concat_os_string("--compress-pos=", bool_to_yesno(self.compress_pos)),
         ];
+
+        if self.verbose {
+            args.push(OsString::from("--verbose"));
+        }
 
         args.append(
             &mut self
