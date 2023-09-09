@@ -268,7 +268,7 @@ impl LibraryBenchmarkConfig {
     /// ```
     pub fn with_raw_callgrind_args<I, T>(args: T) -> Self
     where
-        I: Into<String>,
+        I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
         Self(internal::RunnerLibraryBenchmarkConfig {
@@ -324,7 +324,7 @@ impl LibraryBenchmarkConfig {
     /// ```
     pub fn raw_callgrind_args<I, T>(&mut self, args: T) -> &mut Self
     where
-        I: Into<String>,
+        I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
         self.raw_callgrind_args_iter(args);
@@ -352,7 +352,7 @@ impl LibraryBenchmarkConfig {
     /// ```
     pub fn raw_callgrind_args_iter<I, T>(&mut self, args: T) -> &mut Self
     where
-        I: Into<String>,
+        I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
         self.0.raw_callgrind_args.extend(args);
@@ -553,7 +553,7 @@ impl BinaryBenchmarkConfig {
     /// ```
     pub fn raw_callgrind_args<I, T>(&mut self, args: T) -> &mut Self
     where
-        I: Into<String>,
+        I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
         self.0.raw_callgrind_args.extend(args);

@@ -9,7 +9,7 @@ pub struct RawCallgrindArgs(pub Vec<String>);
 impl RawCallgrindArgs {
     pub fn new<I, T>(args: T) -> Self
     where
-        I: Into<String>,
+        I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
         args.into_iter().collect::<Self>()
@@ -17,13 +17,13 @@ impl RawCallgrindArgs {
 
     pub fn extend<I, T>(&mut self, args: T) -> &mut Self
     where
-        I: Into<String>,
+        I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
         self.0.extend(args.into_iter().map(|s| {
-            let string = s.into();
+            let string = s.as_ref();
             if string.starts_with("--") {
-                string
+                string.to_owned()
             } else {
                 format!("--{string}")
             }
@@ -44,7 +44,7 @@ impl RawCallgrindArgs {
 
 impl<I> FromIterator<I> for RawCallgrindArgs
 where
-    I: Into<String>,
+    I: AsRef<str>,
 {
     fn from_iter<T: IntoIterator<Item = I>>(iter: T) -> Self {
         let mut this = Self::default();
