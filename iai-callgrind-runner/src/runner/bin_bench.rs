@@ -34,9 +34,6 @@ impl BinBench {
         } else {
             callgrind_args.collect_atstart = true;
         }
-        if log_enabled!(log::Level::Debug) {
-            callgrind_args.verbose = true;
-        }
 
         let output = CallgrindOutput::create(
             &config.meta.target_dir,
@@ -129,9 +126,6 @@ impl Assistant {
         let mut callgrind_args = group.callgrind_args.clone();
         callgrind_args.collect_atstart = false;
         callgrind_args.insert_toggle_collect(&format!("*{}::{}", &config.module, &self.name));
-        if log_enabled!(log::Level::Debug) {
-            callgrind_args.verbose = true;
-        }
 
         let output = CallgrindOutput::create(
             &config.meta.target_dir,
@@ -443,22 +437,10 @@ impl Groups {
         bench_assists
     }
 
-    fn parse_callgrind_args(options: &[String]) -> CallgrindArgs {
-        let mut callgrind_args: Vec<OsString> = options.iter().map(OsString::from).collect();
-
-        // The last argument is sometimes --bench. This argument comes from cargo and does not
-        // belong to the arguments passed from the main macro. So, we're removing it if it is there.
-        if callgrind_args.last().map_or(false, |a| a == "--bench") {
-            callgrind_args.pop();
-        }
-
-        CallgrindArgs::from_os_args(&callgrind_args)
-    }
-
     fn from_binary_benchmark(module: &str, benchmark: BinaryBenchmark) -> Result<Self> {
         // TODO: LIKE in lib_bench binary benchmarks should differentiate between command_line_args
         // and raw_callgrind_args
-        let args = Self::parse_callgrind_args(&benchmark.config.raw_callgrind_args.0);
+        let args = CallgrindArgs::from_raw_callgrind_args(benchmark.config.raw_callgrind_args);
         let mut configs = vec![];
         for group in benchmark.groups {
             let module_path = if let Some(id) = group.id.as_ref() {

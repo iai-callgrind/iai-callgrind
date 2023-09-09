@@ -590,7 +590,7 @@ macro_rules! main {
             )?
 
             benchmark.config = if let Some(mut config) = config {
-                config.raw_callgrind_args.raw_callgrind_args_iter(this_args);
+                config.raw_callgrind_args.extend(this_args);
                 config
             } else {
                 $crate::internal::RunnerConfig {
