@@ -3,10 +3,17 @@
 
 All notable changes to this project will be documented in this file.
 
+This is the combined CHANGELOG for all packages: `iai-callgrind`, `iai-callgrind-runner` and
+`iai-callgrind-macros`. `iai-callgrind` and `iai-callgrind-runner` use the same version which is the
+version used here. `iai-callgrind-macros` uses a different version number but is not a standalone
+package, so its changes are also listed here.
+
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### [0.7.0] - 2023-09-10
 
 The old api to setup library benchmarks using only the `main!` macro is deprecated and was removed.
 See the [README](./README.md) for a description of the new api.
