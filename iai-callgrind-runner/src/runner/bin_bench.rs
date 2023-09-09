@@ -6,11 +6,11 @@ use std::process::Command;
 use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
+use super::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput, Sentinel};
+use super::meta::Metadata;
+use super::print::Header;
 use crate::api::{self, BinaryBenchmark, Options};
 use crate::error::{IaiCallgrindError, Result};
-use crate::runner::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput, Sentinel};
-use crate::runner::meta::Metadata;
-use crate::runner::print::Header;
 use crate::util::{copy_directory, receive_benchmark, write_all_to_stderr, write_all_to_stdout};
 
 #[derive(Debug)]

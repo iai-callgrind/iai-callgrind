@@ -220,6 +220,24 @@ impl AsRef<Sentinel> for Sentinel {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum PositionsMode {
+    Instr,
+    Line,
+    InstrLine,
+}
+
+impl PositionsMode {
+    pub fn from_positions_line(line: &str) -> Option<Self> {
+        match line.trim().strip_prefix("positions: ") {
+            Some("instr line" | "line instr") => Some(Self::InstrLine),
+            Some("instr") => Some(Self::Instr),
+            Some("line") => Some(Self::Line),
+            Some(_) | None => None,
+        }
+    }
+}
+
 pub struct CallgrindOutput {
     pub file: PathBuf,
 }
@@ -367,6 +385,11 @@ impl CallgrindOutput {
             warn!("Missing file format specifier. Assuming callgrind format.");
         };
 
+        let mode = iter
+            .find_map(|line| PositionsMode::from_positions_line(&line))
+            .expect("Callgrind output line with mode for positions");
+        trace!("Using parsing mode: {:?}", mode);
+
         // Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
         let mut counters: [u64; 9] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
         let mut start_record = false;
@@ -395,8 +418,9 @@ impl CallgrindOutput {
                 trace!("Found line with counters: '{}'", line);
                 for (index, counter) in line
                     .split_ascii_whitespace()
-                    // skip the first number which is just the line number
-                    .skip(1)
+                    // skip the first number which is just the line number or instr number or in
+                    // case of `instr line` skip 2
+                    .skip(if mode == PositionsMode::InstrLine { 2 } else { 1 })
                     .map(|s| s.parse::<u64>().expect("Encountered non ascii digit"))
                     // we're only interested in the counters for instructions and the cache
                     .take(9)
@@ -437,6 +461,9 @@ pub struct CallgrindArgs {
     compress_strings: bool,
     compress_pos: bool,
     pub(crate) verbose: bool,
+    dump_instr: bool,
+    dump_line: bool,
+    combine_dumps: bool,
     callgrind_out_file: Option<PathBuf>,
 }
 
@@ -451,10 +478,13 @@ impl Default for CallgrindArgs {
             ll: String::from("8388608,16,64"),
             cache_sim: true,
             collect_atstart: false,
-            toggle_collect: VecDeque::default(),
             compress_pos: false,
             compress_strings: false,
+            combine_dumps: true,
             verbose: log_enabled!(log::Level::Debug),
+            dump_line: true,
+            dump_instr: false,
+            toggle_collect: VecDeque::default(),
             callgrind_out_file: Option::default(),
             other: Vec::default(),
         }
@@ -470,20 +500,23 @@ impl CallgrindArgs {
                 Some(("D1", value)) => default.d1 = value.to_owned(),
                 Some(("LL", value)) => default.ll = value.to_owned(),
                 Some(("collect-atstart", value)) => default.collect_atstart = yesno_to_bool(value),
-                Some(("compress-strings", value)) => {
-                    default.compress_strings = yesno_to_bool(value);
+                Some(("dump-instr", value)) => {
+                    default.dump_instr = yesno_to_bool(value);
+                }
+                Some(("dump-line", value)) => {
+                    default.dump_line = yesno_to_bool(value);
                 }
                 Some(("compress-pos", value)) => default.compress_pos = yesno_to_bool(value),
                 Some(("toggle-collect", value)) => {
                     default.toggle_collect.push_back(value.to_owned());
                 }
-                Some(("cache-sim", value)) => {
-                    warn!("Ignoring callgrind argument: '--cache-sim={}'", value);
+                Some((
+                    key @ ("separate-threads" | "cache-sim" | "callgrind-out-file"
+                    | "compress-strings" | "combine-dumps"),
+                    value,
+                )) => {
+                    warn!("Ignoring callgrind argument: '--{}={}'", key, value);
                 }
-                Some(("callgrind-out-file", value)) => warn!(
-                    "Ignoring callgrind argument: '--callgrind-out-file={}'",
-                    value
-                ),
                 Some(_) => default.other.push(arg.clone()),
                 None if arg == "--verbose" => default.verbose = true,
                 // ignore positional arguments for now. It may be a filtering argument for cargo
@@ -517,6 +550,9 @@ impl CallgrindArgs {
                 bool_to_yesno(self.compress_strings)
             ),
             format!("--compress-pos={}", bool_to_yesno(self.compress_pos)),
+            format!("--dump-line={}", bool_to_yesno(self.dump_line)),
+            format!("--dump-instr={}", bool_to_yesno(self.dump_instr)),
+            format!("--combine-dumps={}", bool_to_yesno(self.combine_dumps)),
         ];
 
         if self.verbose {

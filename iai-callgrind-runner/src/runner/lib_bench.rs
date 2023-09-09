@@ -1,11 +1,11 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
+use super::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput, Sentinel};
+use super::meta::Metadata;
+use super::print::Header;
 use crate::api::{LibraryBenchmark, Options};
 use crate::error::Result;
-use crate::runner::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput, Sentinel};
-use crate::runner::meta::Metadata;
-use crate::runner::print::Header;
 use crate::util::receive_benchmark;
 
 #[derive(Debug)]
