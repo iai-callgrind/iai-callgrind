@@ -111,6 +111,11 @@ Section](#binary-benchmarks). Read the [`docs`]!
 
 Use this scheme if you want to micro-benchmark specific functions of your crate's library.
 
+#### Important default behavior
+
+The environment variables are cleared before running a library benchmark. See also
+[Configuration](#configuration) if you need to change that behavior.
+
 ##### Quickstart
 
 Add
@@ -609,7 +614,8 @@ Heisler (@bheisler).
 
 ### License
 
-Iai-Callgrind is like Iai dual licensed under the Apache 2.0 license and the MIT license.
+Iai-Callgrind is like Iai dual licensed under the Apache 2.0 license and the MIT license at your
+option.
 
 [`library documentation`]: https://docs.rs/iai-callgrind/0.6.2/iai_callgrind/
 [`docs`]: https://docs.rs/iai-callgrind/0.6.2/iai_callgrind/
