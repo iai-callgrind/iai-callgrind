@@ -1,5 +1,5 @@
 use std::collections::VecDeque;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::fmt::Display;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -7,14 +7,13 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
 use colored::{ColoredString, Colorize};
-use log::{debug, error, info, trace, warn, Level};
+use log::{debug, error, info, log_enabled, trace, warn, Level};
 use which::which;
 
-use crate::api::{ExitWith, Options};
+use crate::api::{ExitWith, Options, RawCallgrindArgs};
 use crate::error::{IaiCallgrindError, Result};
 use crate::util::{
-    bool_to_yesno, concat_os_string, join_os_string, truncate_str_utf8, write_all_to_stderr,
-    write_all_to_stdout, yesno_to_bool,
+    bool_to_yesno, truncate_str_utf8, write_all_to_stderr, write_all_to_stdout, yesno_to_bool,
 };
 
 pub struct CallgrindCommand {
@@ -125,11 +124,8 @@ impl CallgrindCommand {
             command.current_dir(dir);
         }
 
-        let callgrind_args = callgrind_args.to_os_args();
-        debug!(
-            "Callgrind arguments: {}",
-            join_os_string(&callgrind_args, OsStr::new(" ")).to_string_lossy()
-        );
+        let callgrind_args = callgrind_args.to_vec();
+        debug!("Callgrind arguments: {}", &callgrind_args.join(" "));
 
         let executable = if executable.is_absolute() {
             executable.to_owned()
@@ -221,6 +217,24 @@ impl Display for Sentinel {
 impl AsRef<Sentinel> for Sentinel {
     fn as_ref(&self) -> &Sentinel {
         self
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum PositionsMode {
+    Instr,
+    Line,
+    InstrLine,
+}
+
+impl PositionsMode {
+    pub fn from_positions_line(line: &str) -> Option<Self> {
+        match line.trim().strip_prefix("positions: ") {
+            Some("instr line" | "line instr") => Some(Self::InstrLine),
+            Some("instr") => Some(Self::Instr),
+            Some("line") => Some(Self::Line),
+            Some(_) | None => None,
+        }
     }
 }
 
@@ -371,6 +385,11 @@ impl CallgrindOutput {
             warn!("Missing file format specifier. Assuming callgrind format.");
         };
 
+        let mode = iter
+            .find_map(|line| PositionsMode::from_positions_line(&line))
+            .expect("Callgrind output line with mode for positions");
+        trace!("Using parsing mode: {:?}", mode);
+
         // Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
         let mut counters: [u64; 9] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
         let mut start_record = false;
@@ -399,8 +418,9 @@ impl CallgrindOutput {
                 trace!("Found line with counters: '{}'", line);
                 for (index, counter) in line
                     .split_ascii_whitespace()
-                    // skip the first number which is just the line number
-                    .skip(1)
+                    // skip the first number which is just the line number or instr number or in
+                    // case of `instr line` skip 2
+                    .skip(if mode == PositionsMode::InstrLine { 2 } else { 1 })
                     .map(|s| s.parse::<u64>().expect("Encountered non ascii digit"))
                     // we're only interested in the counters for instructions and the cache
                     .take(9)
@@ -436,10 +456,14 @@ pub struct CallgrindArgs {
     ll: String,
     cache_sim: bool,
     pub(crate) collect_atstart: bool,
-    other: Vec<OsString>,
+    other: Vec<String>,
     toggle_collect: VecDeque<String>,
     compress_strings: bool,
     compress_pos: bool,
+    pub(crate) verbose: bool,
+    dump_instr: bool,
+    dump_line: bool,
+    combine_dumps: bool,
     callgrind_out_file: Option<PathBuf>,
 }
 
@@ -454,9 +478,13 @@ impl Default for CallgrindArgs {
             ll: String::from("8388608,16,64"),
             cache_sim: true,
             collect_atstart: false,
-            toggle_collect: VecDeque::default(),
             compress_pos: false,
             compress_strings: false,
+            combine_dumps: true,
+            verbose: log_enabled!(log::Level::Debug),
+            dump_line: true,
+            dump_instr: false,
+            toggle_collect: VecDeque::default(),
             callgrind_out_file: Option::default(),
             other: Vec::default(),
         }
@@ -464,64 +492,33 @@ impl Default for CallgrindArgs {
 }
 
 impl CallgrindArgs {
-    pub fn from_os_args(args: &[OsString]) -> Self {
+    pub fn from_raw_callgrind_args(args: RawCallgrindArgs) -> Self {
         let mut default = Self::default();
-        for arg in args {
-            let string = arg.to_string_lossy();
-            match string.strip_prefix("--").and_then(|s| s.split_once('=')) {
-                Some(("I1", value)) => default.i1 = value.to_owned(),
-                Some(("D1", value)) => default.d1 = value.to_owned(),
-                Some(("LL", value)) => default.ll = value.to_owned(),
-                Some(("collect-atstart", value)) => default.collect_atstart = yesno_to_bool(value),
-                Some(("compress-strings", value)) => {
-                    default.compress_strings = yesno_to_bool(value);
-                }
-                Some(("compress-pos", value)) => default.compress_pos = yesno_to_bool(value),
-                Some(("toggle-collect", value)) => {
-                    default.toggle_collect.push_back(value.to_owned());
-                }
-                Some(("cache-sim", value)) => {
-                    warn!("Ignoring callgrind argument: '--cache-sim={}'", value);
-                }
-                Some(("callgrind-out-file", value)) => warn!(
-                    "Ignoring callgrind argument: '--callgrind-out-file={}'",
-                    value
-                ),
-                Some(_) => default.other.push(arg.clone()),
-                // ignore positional arguments for now. It may be a filtering argument for cargo
-                // bench
-                None => {}
-            }
-        }
-        default
-    }
-
-    pub fn from_args<T>(args: T) -> Self
-    where
-        T: Into<Vec<String>>,
-    {
-        let mut default = Self::default();
-        for arg in args.into() {
+        for arg in args.0 {
             match arg.strip_prefix("--").and_then(|s| s.split_once('=')) {
                 Some(("I1", value)) => default.i1 = value.to_owned(),
                 Some(("D1", value)) => default.d1 = value.to_owned(),
                 Some(("LL", value)) => default.ll = value.to_owned(),
                 Some(("collect-atstart", value)) => default.collect_atstart = yesno_to_bool(value),
-                Some(("compress-strings", value)) => {
-                    default.compress_strings = yesno_to_bool(value);
+                Some(("dump-instr", value)) => {
+                    default.dump_instr = yesno_to_bool(value);
+                }
+                Some(("dump-line", value)) => {
+                    default.dump_line = yesno_to_bool(value);
                 }
                 Some(("compress-pos", value)) => default.compress_pos = yesno_to_bool(value),
                 Some(("toggle-collect", value)) => {
                     default.toggle_collect.push_back(value.to_owned());
                 }
-                Some(("cache-sim", value)) => {
-                    warn!("Ignoring callgrind argument: '--cache-sim={}'", value);
+                Some((
+                    key @ ("separate-threads" | "cache-sim" | "callgrind-out-file"
+                    | "compress-strings" | "combine-dumps"),
+                    value,
+                )) => {
+                    warn!("Ignoring callgrind argument: '--{}={}'", key, value);
                 }
-                Some(("callgrind-out-file", value)) => warn!(
-                    "Ignoring callgrind argument: '--callgrind-out-file={}'",
-                    value
-                ),
-                Some(_) => default.other.push(OsString::from(arg)),
+                Some(_) => default.other.push(arg.clone()),
+                None if arg == "--verbose" => default.verbose = true,
                 // ignore positional arguments for now. It may be a filtering argument for cargo
                 // bench
                 None => {}
@@ -530,42 +527,50 @@ impl CallgrindArgs {
         default
     }
 
-    pub fn insert_toggle_collect(&mut self, arg: &str) -> &mut Self {
+    pub fn insert_toggle_collect(&mut self, arg: &str) {
         self.toggle_collect.push_front(arg.to_owned());
-        self
     }
 
-    pub fn set_output_file<T>(&mut self, arg: T) -> &mut Self
+    pub fn set_output_file<T>(&mut self, arg: T)
     where
         T: AsRef<Path>,
     {
         self.callgrind_out_file = Some(arg.as_ref().to_owned());
-        self
     }
 
-    pub fn to_os_args(&self) -> Vec<OsString> {
+    pub fn to_vec(&self) -> Vec<String> {
         let mut args = vec![
-            concat_os_string("--I1=", &self.i1),
-            concat_os_string("--D1=", &self.d1),
-            concat_os_string("--LL=", &self.ll),
-            concat_os_string("--cache-sim=", bool_to_yesno(self.cache_sim)),
-            concat_os_string("--collect-atstart=", bool_to_yesno(self.collect_atstart)),
-            concat_os_string("--compress-strings=", bool_to_yesno(self.compress_strings)),
-            concat_os_string("--compress-pos=", bool_to_yesno(self.compress_pos)),
+            format!("--I1={}", &self.i1),
+            format!("--D1={}", &self.d1),
+            format!("--LL={}", &self.ll),
+            format!("--cache-sim={}", bool_to_yesno(self.cache_sim)),
+            format!("--collect-atstart={}", bool_to_yesno(self.collect_atstart)),
+            format!(
+                "--compress-strings={}",
+                bool_to_yesno(self.compress_strings)
+            ),
+            format!("--compress-pos={}", bool_to_yesno(self.compress_pos)),
+            format!("--dump-line={}", bool_to_yesno(self.dump_line)),
+            format!("--dump-instr={}", bool_to_yesno(self.dump_instr)),
+            format!("--combine-dumps={}", bool_to_yesno(self.combine_dumps)),
         ];
+
+        if self.verbose {
+            args.push(String::from("--verbose"));
+        }
 
         args.append(
             &mut self
                 .toggle_collect
                 .iter()
-                .map(|s| concat_os_string("--toggle-collect=", s))
-                .collect::<Vec<OsString>>(),
+                .map(|s| format!("--toggle-collect={s}"))
+                .collect::<Vec<String>>(),
         );
 
         if let Some(output_file) = &self.callgrind_out_file {
-            args.push(concat_os_string(
-                "--callgrind-out-file=",
-                output_file.as_os_str(),
+            args.push(format!(
+                "--callgrind-out-file={}",
+                output_file.to_string_lossy(),
             ));
         }
 

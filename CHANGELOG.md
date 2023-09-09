@@ -8,8 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-The old api to setup library benchmarks using only the `main!` macro is deprecated and will be
-removed completely in the next minor version.
+The old api to setup library benchmarks using only the `main!` macro is deprecated and was removed.
+See the [README](./README.md) for a description of the new api.
 
 ### Added
 
@@ -17,6 +17,40 @@ removed completely in the next minor version.
 (`#[library_benchmark]`) based api to setup library benchmarks. Also, bring the library benchmark
 api closer to the binary benchmark api and use a `library_benchmark_group!` macro together with
 `main!(library_benchmark_groups = ...)`
+* `IAI_CALLGRIND_COLOR` environment variable which controls the color output of iai-callgrind. This
+variable is now checked first before the usual `CARGO_TERM_COLOR`.
+
+### Changed
+
+* The output line `L1 Data Hits` changed to `L1 Hits` and in consequence now shows the event count
+for instruction and data hits
+* ([#7](https://github.com/Joining7943/iai-callgrind/issues/7)): Clear environment variables before
+running library benchmarks. With that change comes the possibility to influence that behavior with
+the `LibraryBenchmarkConfig::env_clear` method and set custom environment variables with
+`LibraryBenchmarkConfig::envs`.
+* ([15](https://github.com/Joining7943/iai-callgrind/issues/15)): Use `IAI_CALLGRIND` prefix for
+iai-callgrind environment variables. `IAI_ALLOW_ASLR` -> `IAI_CALLGRIND_ALLOW_ASLR`, `RUST_LOG` ->
+`IAI_CALLGRIND_LOG`.
+* Callgrind invocations, if `IAI_CALLGRIND_LOG` level is `DEBUG` now runs Callgrind with `--verbose`
+(This flag isn't documented in the official documentation of Callgrind)
+
+### Removed
+
+* The old api from before [#5] using only the `main!` is now deprecated and the functionality
+was removed. Using the old api produces a compile error. For migrating library benchmarks to the new
+api see the [README](./README.md).
+
+### Fixed
+
+* ([#19](https://github.com/Joining7943/iai-callgrind/issues/19)): Library benchmark functions with
+equal bodies produce event counts of zero.
+* If the Callgrind arguments `--dump-instr=yes` and `dump-line=yes` were used together, the event
+counters were summed up incorrectly.
+* The Callgrind argument `--dump-every-bb` and similar arguments causing multiple file outputs
+cannot be handled by `iai-callgrind` and therefore `--combine-dumps=yes` is now set per default.
+This flag cannot be unset.
+* `--compress-strings` is now ignored, because the parser needs the uncompressed strings or else
+produces event counts of zero.
 
 ### [0.6.2] - 2023-09-01
 

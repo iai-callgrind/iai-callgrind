@@ -10,12 +10,12 @@ impl RawCallgrindArgs {
     pub fn new<I, T>(args: T) -> Self
     where
         I: AsRef<str>,
-        T: AsRef<[I]>,
+        T: IntoIterator<Item = I>,
     {
-        args.as_ref().iter().collect::<Self>()
+        args.into_iter().collect::<Self>()
     }
 
-    pub fn raw_callgrind_args_iter<I, T>(&mut self, args: T) -> &mut Self
+    pub fn extend<I, T>(&mut self, args: T) -> &mut Self
     where
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
@@ -30,6 +30,16 @@ impl RawCallgrindArgs {
         }));
         self
     }
+
+    pub fn extend_from_command_line_args(&mut self, other: &[String]) {
+        // The last argument is usually --bench. This argument comes from cargo and does not belong
+        // to the arguments passed from the main macro. So, we're removing it if it is there.
+        if other.ends_with(&["--bench".to_owned()]) {
+            self.0.extend_from_slice(&other[..other.len() - 1]);
+        } else {
+            self.0.extend_from_slice(other);
+        }
+    }
 }
 
 impl<I> FromIterator<I> for RawCallgrindArgs
@@ -38,7 +48,7 @@ where
 {
     fn from_iter<T: IntoIterator<Item = I>>(iter: T) -> Self {
         let mut this = Self::default();
-        this.raw_callgrind_args_iter(iter);
+        this.extend(iter);
         this
     }
 }
@@ -62,7 +72,7 @@ impl LibraryBenchmarkConfig {
     {
         for other in others.into_iter().flatten() {
             self.raw_callgrind_args
-                .raw_callgrind_args_iter(other.raw_callgrind_args.0.iter());
+                .extend(other.raw_callgrind_args.0.iter());
             self.env_clear = match (self.env_clear, other.env_clear) {
                 (None, None) => None,
                 (None, Some(v)) | (Some(v), None) => Some(v),

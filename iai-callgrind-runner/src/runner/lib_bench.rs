@@ -1,11 +1,11 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
+use super::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput, Sentinel};
+use super::meta::Metadata;
+use super::print::Header;
 use crate::api::{LibraryBenchmark, Options};
 use crate::error::Result;
-use crate::runner::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput, Sentinel};
-use crate::runner::meta::Metadata;
-use crate::runner::print::Header;
 use crate::util::receive_benchmark;
 
 #[derive(Debug)]
@@ -38,7 +38,7 @@ impl LibBench {
         };
 
         let sentinel = Sentinel::new("iai_callgrind::bench::");
-        // TODO: REMOVE THIS CLONE
+
         let mut callgrind_args = self.config.callgrind_args.clone();
         callgrind_args.insert_toggle_collect(&format!("{}*", sentinel.as_toggle()));
 
@@ -107,19 +107,25 @@ impl Groups {
     fn from_library_benchmark(module: &str, benchmark: LibraryBenchmark) -> Self {
         let global_config = &benchmark.config;
         let mut groups = vec![];
-        for group in benchmark.groups {
-            let module_path = if let Some(group_id) = &group.id {
+        for library_benchmark_group in benchmark.groups {
+            let module_path = if let Some(group_id) = &library_benchmark_group.id {
                 format!("{module}::{group_id}")
             } else {
                 module.to_owned()
             };
-            let mut lib_benches = vec![];
-            for (bench_index, library_benchmark_benches) in group.benches.into_iter().enumerate() {
+            let mut group = Group {
+                id: library_benchmark_group.id,
+                module: module_path,
+                benches: vec![],
+            };
+            for (bench_index, library_benchmark_benches) in
+                library_benchmark_group.benches.into_iter().enumerate()
+            {
                 for (index, library_benchmark_bench) in
                     library_benchmark_benches.benches.into_iter().enumerate()
                 {
                     let config = global_config.clone().update_from_all([
-                        group.config.as_ref(),
+                        library_benchmark_group.config.as_ref(),
                         library_benchmark_benches.config.as_ref(),
                         library_benchmark_bench.config.as_ref(),
                     ]);
@@ -132,18 +138,9 @@ impl Groups {
                         })
                         .collect();
                     let callgrind_args = {
-                        let mut raw = config.raw_callgrind_args.0.clone();
-                        raw.extend_from_slice(benchmark.command_line_args.as_slice());
-
-                        // The last argument is usually --bench. This argument comes
-                        // from cargo and does not belong to the arguments passed
-                        // from the main macro. So, we're removing it if it is
-                        // there.
-                        if raw.last().map_or(false, |a| a == "--bench") {
-                            raw.pop();
-                        }
-
-                        CallgrindArgs::from_args(raw)
+                        let mut raw = config.raw_callgrind_args;
+                        raw.extend_from_command_line_args(benchmark.command_line_args.as_slice());
+                        CallgrindArgs::from_raw_callgrind_args(raw)
                     };
                     let lib_bench = LibBench {
                         bench_index,
@@ -157,14 +154,9 @@ impl Groups {
                             callgrind_args,
                         },
                     };
-                    lib_benches.push(lib_bench);
+                    group.benches.push(lib_bench);
                 }
             }
-            let group = Group {
-                id: group.id,
-                module: module_path,
-                benches: lib_benches,
-            };
             groups.push(group);
         }
 
