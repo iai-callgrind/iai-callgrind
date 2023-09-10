@@ -11,12 +11,33 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 The old api to setup library benchmarks using only the `main!` macro is deprecated and was removed.
 See the [README](./README.md) for a description of the new api.
 
+The scheme to setup binary benchmarks and specifying configuration options was reworked and is now
+closer to the scheme how library benchmarks are set up. It's now possible to specify a
+`BinaryBenchmarkConfig` at group level:
+
+```rust
+binary_benchmark_group!(
+    name = some_name;
+    config = BinaryBenchmarkConfig::default();
+    benchmark = ...
+)
+```
+
+`BinaryBenchmarkConfig` and `Run` received a lot of new methods to configure a binary benchmark run
+at all levels from top-level `main!` via `binary_benchmark_group` down to `Run`.
+
 ### Added
 
 * ([#5](https://github.com/Joining7943/iai-callgrind/issues/5)): Use a new attribute macro
 (`#[library_benchmark]`) based api to setup library benchmarks. Also, bring the library benchmark
 api closer to the binary benchmark api and use a `library_benchmark_group!` macro together with
 `main!(library_benchmark_groups = ...)`
+* `BinaryBenchmarkConfig` has new methods: `sandbox`, `fixtures`, `env`, `envs`, `pass_through_env`,
+`pass_through_envs`, `env_clear`, `entry_point`, `current_dir`, `exit_with`
+* `Run` has new methods: `pass_through_env`, `pass_through_envs`, `env_clear`, `entry_point`,
+`current_dir`, `exit_with`, `raw_callgrind_args`
+* It's now possible to specify a `BinaryBenchmarkConfig` at group level in the
+`binary_benchmark_group!` macro with the argument `config = ...`
 * `IAI_CALLGRIND_COLOR` environment variable which controls the color output of iai-callgrind. This
 variable is now checked first before the usual `CARGO_TERM_COLOR`.
 
@@ -33,12 +54,21 @@ iai-callgrind environment variables. `IAI_ALLOW_ASLR` -> `IAI_CALLGRIND_ALLOW_AS
 `IAI_CALLGRIND_LOG`.
 * Callgrind invocations, if `IAI_CALLGRIND_LOG` level is `DEBUG` now runs Callgrind with `--verbose`
 (This flag isn't documented in the official documentation of Callgrind)
+* The signature of `Run::env` changed from `env(var: ...)` to `env(key: ... , value: ...)`
+* The signature of `Run::envs` changed from `envs(vars: [String])` to
+`envs(vars: [(Into<OsString>, Into<OsString>)])`
+* The signatures of `Arg::new`, `Run::args`, `Run::with_args`, `Run::with_cmd_args` changed their
+usage of `AsRef<[...]>` to  [`IntoIterator<Item = ...>`]
 
 ### Removed
 
 * The old api from before [#5] using only the `main!` is now deprecated and the functionality
 was removed. Using the old api produces a compile error. For migrating library benchmarks to the new
 api see the [README](./README.md).
+* `Run::options` and the`Options` struct were removed and all methods of this struct moved into `Run`
+directly but are now also available in `BinaryBenchmarkConfig`.
+* `BinaryBenchmarkGroup::fixtures` and `BinaryBenchmarkGroup::sandbox` were removed and they moved
+to `BinaryBenchmarkConfig::fixtures` and `BinaryBenchmarkConfig::sandbox`
 
 ### Fixed
 
