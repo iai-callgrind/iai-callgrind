@@ -29,6 +29,11 @@
 //! Use this scheme of the [`main`] macro if you want to benchmark functions of your
 //! crate's library.
 //!
+//! ### Important default behavior
+//!
+//! The environment variables are cleared before running a library benchmark. See also the
+//! Configuration section below if you need to change that behavior.
+//!
 //! ### Quickstart
 //!
 //! ```rust
@@ -99,9 +104,34 @@
 //! Note that it is important to annotate the benchmark functions with
 //! [`#[library_benchmark]`](crate::library_benchmark).
 //!
+//! ### Configuration
+//!
+//! It's possible to configure some of the behavior of `iai-callgrind`. See the docs of
+//! [`crate::LibraryBenchmarkConfig`] for more details. Configure library benchmarks at
+//! top-level with the [`crate::main`] macro, at group level within the
+//! [`crate::library_benchmark_group`], at [`crate::library_benchmark`] level
+//!
+//! and at `bench` level:
+//!
+//! ```rust
+//! # use iai_callgrind::{LibraryBenchmarkConfig, library_benchmark};
+//! #[library_benchmark]
+//! #[bench::some_id(args = (1, 2), config = LibraryBenchmarkConfig::default())]
+//! // ...
+//! # fn some_func(first: u8, second: u8) -> u8 {
+//! #    key + value
+//! # }
+//! # fn main() {}
+//! ```
+//!
+//! The config at `bench` level overwrites the config at `library_benchmark` level. The config at
+//! `library_benchmark` level overwrites the config at group level and so on. Note that
+//! configuration values like `envs` are additive and don't overwrite configuration values of higher
+//! levels.
+//!
 //! See also the docs of [`crate::library_benchmark_group`]. The
-//! [README](https://github.com/Joining7943/iai-callgrind) of this crate includes more
-//! explanations, common recipes and some additional examples.
+//! [README](https://github.com/Joining7943/iai-callgrind) of this crate includes more explanations,
+//! common recipes and some examples.
 //!
 //! ## Binary Benchmarks
 //!
@@ -113,10 +143,10 @@
 //! ### Temporary Workspace and other important default behavior
 //!
 //! Per default, all binary benchmarks and the `before`, `after`, `setup` and `teardown` functions
-//! are executed in a temporary directory. See [`BinaryBenchmarkGroup::sandbox`] for a deeper
-//! explanation and how to control and change this behavior. Also, the environment variables of
-//! benchmarked binaries are cleared before the benchmark is run. See also [`Options::env_clear`]
-//! for how to change this behavior.
+//! are executed in a temporary directory. See [`crate::BinaryBenchmarkConfig::sandbox`] for a
+//! deeper explanation and how to control and change this behavior. Also, the environment variables
+//! of benchmarked binaries are cleared before the benchmark is run. See also
+//! [`crate::BinaryBenchmarkConfig::env_clear`] for how to change this behavior.
 //!
 //! ### Quickstart
 //!
@@ -125,7 +155,8 @@
 //!
 //! ```rust
 //! use iai_callgrind::{
-//!     main, binary_benchmark_group, BinaryBenchmarkConfig, BinaryBenchmarkGroup, Run, Arg, Fixtures
+//!     main, binary_benchmark_group, BinaryBenchmarkConfig, BinaryBenchmarkGroup,
+//!     Run, Arg, Fixtures
 //! };
 //!
 //! fn my_setup() {
@@ -172,9 +203,15 @@
 //! main!(binary_benchmark_groups = my_exe_group);
 //! # }
 //! ```
+//! ### Configuration
 //!
-//! For further details see the section about binary benchmarks of the [`crate::main`] docs and the
-//! docs of [`crate::binary_benchmark_group`]. Also, the
+//! Much like the configuration of library benchmarks (See above) it's possible to configure binary
+//! benchmarks at top-level in the `main!` macro and at group-level in the
+//! `binary_benchmark_groups!` with the `config = ...;` argument. In contrast to library benchmarks,
+//! binary benchmarks can be configured at a lower and last level within [`Run`] directly.
+//!
+//! For further details see the section about binary benchmarks of the [`crate::main`] docs the docs
+//! of [`crate::binary_benchmark_group`] and [`Run`]. Also, the
 //! [README](https://github.com/Joining7943/iai-callgrind) of this crate includes some introductory
 //! documentation with additional examples.
 
@@ -528,8 +565,8 @@ pub struct BinaryBenchmarkConfig(internal::InternalBinaryBenchmarkConfig);
 impl BinaryBenchmarkConfig {
     /// Copy [`Fixtures`] into the sandbox (if enabled)
     ///
-    /// See also [`Fixtures`] for details about fixtures and [`BinaryBenchmarkGroup::sandbox`] for
-    /// details about the sandbox.
+    /// See also [`Fixtures`] for details about fixtures and
+    /// [`BinaryBenchmarkConfig::sandbox`] for details about the sandbox.
     ///
     /// # Examples
     ///
@@ -560,8 +597,8 @@ impl BinaryBenchmarkConfig {
     /// Per default, all binary benchmarks and the `before`, `after`, `setup` and `teardown`
     /// functions are executed in a temporary directory. This temporary directory will be created
     /// and changed into before the `before` function is run and removed after the `after` function
-    /// has finished. [`BinaryBenchmarkGroup::fixtures`] let's you copy your fixtures into that
-    /// directory. If you want to access other directories within the benchmarked package's
+    /// has finished. [`BinaryBenchmarkConfig::fixtures`] let's you copy your fixtures into
+    /// that directory. If you want to access other directories within the benchmarked package's
     /// directory, you need to specify absolute paths or set the sandbox argument to `false`.
     ///
     /// Another reason for using a temporary directory as workspace is, that the length of the path
@@ -1119,7 +1156,7 @@ impl Run {
     /// Create a new `Run` with multiple [`Arg`]
     ///
     /// Specifying multiple [`Arg`] arguments is actually just a short-hand for specifying multiple
-    /// [`Run`]s with the same [`Options`] and environment variables.
+    /// [`Run`]s with the same configuration and environment variables.
     ///
     /// ```rust
     /// use iai_callgrind::{Arg, BinaryBenchmarkGroup, Run};

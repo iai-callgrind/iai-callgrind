@@ -225,9 +225,6 @@
 /// )
 /// ```
 ///
-/// See the docs of [`crate::Options`] for more details.
-///
-///
 /// #### `envs` (Optional)
 ///
 /// `envs` may be used to set environment variables available in the `cmd`. This argument is
@@ -258,7 +255,7 @@
 /// )
 /// ```
 ///
-/// See also the docs of [`crate::BinaryBenchmarkGroup::sandbox`] for more details.
+/// See also the docs of [`crate::BinaryBenchmarkConfig::sandbox`] for more details.
 ///
 /// ##### `options` (Optional)
 ///
@@ -802,7 +799,7 @@ macro_rules! main {
 ///
 /// This macro accepts two forms which slightly differ in the `benchmark` argument. In general, each
 /// group shares the same `before`, `after`, `setup` and `teardown` functions, [`crate::Fixtures`]
-/// and options for the sandbox. See also [`crate::BinaryBenchmarkGroup`] for more details.
+/// and [`crate::BinaryBenchmarkConfig`].
 ///
 /// The following top-level arguments are accepted:
 ///
@@ -818,6 +815,7 @@ macro_rules! main {
 ///     after = run_after;
 ///     setup = run_setup;
 ///     teardown = run_teardown;
+///     config = BinaryBenchmarkConfig::default();
 ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
 ///         // code to setup and configure the benchmarks in a group
 ///     }
@@ -832,6 +830,7 @@ macro_rules! main {
 /// * __after__ (optional): A function which is run after all benchmarks
 /// * __setup__ (optional): A function which is run before any benchmarks
 /// * __teardown__ (optional): A function which is run before any benchmarks
+/// * __config__ (optional): A [`crate::BinaryBenchmarkConfig`]
 ///
 /// The `before`, `after`, `setup` and `teardown` arguments accept an additional argument `bench =
 /// bool`

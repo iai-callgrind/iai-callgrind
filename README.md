@@ -290,7 +290,7 @@ Suppose your crate's binary is named `my-exe` and you have a fixtures directory 
 `benches/fixtures` with a file `test1.txt` in it:
 
 ```rust
-use iai_callgrind::{main, binary_benchmark_group, BinaryBenchmarkGroup, Run, Arg, Fixtures};
+use iai_callgrind::{main, binary_benchmark_group, BinaryBenchmarkConfig, BinaryBenchmarkGroup, Run, Arg, Fixtures};
 
 fn my_setup() {
     println!("We can put code in here which will be run before each benchmark run");
@@ -303,15 +303,13 @@ fn my_setup() {
 binary_benchmark_group!(
     name = my_exe_group;
     setup = my_setup;
+    // This directory will be copied into the root of the sandbox (as `fixtures`)
+    config = BinaryBenchmarkConfig::default().fixtures(Fixtures::new("benches/fixtures"));
     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| setup_my_exe_group(group));
 
-// Working within a macro can be tedious sometimes so we moved the setup code into
-// this method
+// Working within a macro can be tedious sometimes so we moved the setup code into this method
 fn setup_my_exe_group(group: &mut BinaryBenchmarkGroup) {
     group
-        // This directory will be copied into the root of the sandbox (as `fixtures`)
-        .fixtures(Fixtures::new("benches/fixtures"))
-
         // Setup our first run doing something with our fixture `test1.txt`. The
         // id (here `do foo with test1`) of an `Arg` has to be unique within the
         // same group
@@ -366,6 +364,13 @@ my_binary_benchmark::my_exe_group no argument:my-exe
 
 You'll find the callgrind output files of each run of the benchmark `my_binary_benchmark` of the
 group `my_exe_group` in `target/iai/$CARGO_PKG_NAME/my_binary_benchmark/my_exe_group`.
+
+#### Configuration
+
+Much like the configuration of [Library Benchmarks](#configuration) it's possible to configure
+binary benchmarks at top-level in the `main!` macro and at group-level in the
+`binary_benchmark_groups!` with the `config = ...;` argument. In contrast to library benchmarks,
+binary benchmarks can be configured at a lower and last level within `Run` directly.
 
 #### Auto-discovery of a crate's binaries
 
