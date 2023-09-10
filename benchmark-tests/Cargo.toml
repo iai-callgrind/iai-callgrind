@@ -31,19 +31,7 @@ name = "benchmark-tests-echo"
 path = "src/benchmark-tests-echo.rs"
 
 [[bench]]
-name = "test_bin_bench"
-harness = false
-
-[[bench]]
 name = "test_bin_bench_with_fixtures"
-harness = false
-
-[[bench]]
-name = "test_bin_bench_with_fixtures_symlinks"
-harness = false
-
-[[bench]]
-name = "test_bin_bench_with_envs"
 harness = false
 
 [[bench]]

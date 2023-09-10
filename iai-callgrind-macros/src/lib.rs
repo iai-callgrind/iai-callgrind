@@ -219,7 +219,8 @@ impl LibraryBenchmark {
         let config = if let Some(config) = self.config {
             quote!(
                 #[inline(never)]
-                pub fn get_config() -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
+                pub fn get_config()
+                    -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
                 {
                     Some(#config.into())
                 }
@@ -227,8 +228,8 @@ impl LibraryBenchmark {
         } else {
             quote!(
                 #[inline(never)]
-                pub fn get_config() -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
-                {
+                pub fn get_config()
+                -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig> {
                     None
                 }
             )
@@ -281,7 +282,8 @@ impl LibraryBenchmark {
         let config = if let Some(config) = self.config {
             quote!(
                 #[inline(never)]
-                pub fn get_config() -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
+                pub fn get_config()
+                -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
                 {
                     Some(#config.into())
                 }
@@ -289,8 +291,8 @@ impl LibraryBenchmark {
         } else {
             quote!(
                 #[inline(never)]
-                pub fn get_config() -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
-                {
+                pub fn get_config()
+                -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig> {
                     None
                 }
             )
@@ -638,7 +640,8 @@ mod tests {
         let rendered_get_config = if let Some(expr) = get_config {
             quote!(
                 #[inline(never)]
-                pub fn get_config() -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
+                pub fn get_config()
+                -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
                 {
                     Some(#expr.into())
                 }
@@ -646,8 +649,8 @@ mod tests {
         } else {
             quote!(
                 #[inline(never)]
-                pub fn get_config() -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
-                {
+                pub fn get_config()
+                -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig> {
                     None
                 }
             )
@@ -710,12 +713,14 @@ mod tests {
                     1 + 2
                 }
             ),
-            &[parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
-                id_display: None,
-                args_display: None,
-                func: wrapper,
-                config: None
-            })],
+            &[parse_quote!(
+                iai_callgrind::internal::InternalMacroLibBench {
+                    id_display: None,
+                    args_display: None,
+                    func: wrapper,
+                    config: None
+                }
+            )],
             &None,
             &[],
             &[(parse_quote!(wrapper), vec![])],
@@ -738,12 +743,14 @@ mod tests {
                     1 + 2
                 }
             ),
-            &[parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
-                id_display: None,
-                args_display: None,
-                func: wrapper,
-                config: None
-            })],
+            &[parse_quote!(
+                iai_callgrind::internal::InternalMacroLibBench {
+                    id_display: None,
+                    args_display: None,
+                    func: wrapper,
+                    config: None
+                }
+            )],
             &Some(parse_quote!(LibraryBenchmarkConfig::default())),
             &[],
             &[(parse_quote!(wrapper), vec![])],
@@ -777,12 +784,14 @@ mod tests {
                         1 + 2
                     }
                 ),
-                &[parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some("my_id"),
-                    args_display: Some(""),
-                    func: my_id,
-                    config: None
-                })],
+                &[parse_quote!(
+                    iai_callgrind::internal::InternalMacroLibBench {
+                        id_display: Some("my_id"),
+                        args_display: Some(""),
+                        func: my_id,
+                        config: None
+                    }
+                )],
                 &None,
                 &[],
                 &[(parse_quote!(my_id), vec![])],
@@ -814,12 +823,14 @@ mod tests {
                         var + 2
                     }
                 ),
-                &[parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some("my_id"),
-                    args_display: Some("1"),
-                    func: my_id,
-                    config: None
-                })],
+                &[parse_quote!(
+                    iai_callgrind::internal::InternalMacroLibBench {
+                        id_display: Some("my_id"),
+                        args_display: Some("1"),
+                        func: my_id,
+                        config: None
+                    }
+                )],
                 &None,
                 &[],
                 &[(parse_quote!(my_id), vec![parse_quote!(1)])],
@@ -850,12 +861,14 @@ mod tests {
                         one + two
                     }
                 ),
-                &[parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some("my_id"),
-                    args_display: Some("1, 2"),
-                    func: my_id,
-                    config: None
-                })],
+                &[parse_quote!(
+                    iai_callgrind::internal::InternalMacroLibBench {
+                        id_display: Some("my_id"),
+                        args_display: Some("1, 2"),
+                        func: my_id,
+                        config: None
+                    }
+                )],
                 &None,
                 &[],
                 &[(parse_quote!(my_id), vec![parse_quote!(1), parse_quote!(2)])],
@@ -888,12 +901,14 @@ mod tests {
                         1 + 2
                     }
                 ),
-                &[parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some("my_id"),
-                    args_display: Some(""),
-                    func: my_id,
-                    config: Some(get_config_my_id)
-                })],
+                &[parse_quote!(
+                    iai_callgrind::internal::InternalMacroLibBench {
+                        id_display: Some("my_id"),
+                        args_display: Some(""),
+                        func: my_id,
+                        config: Some(get_config_my_id)
+                    }
+                )],
                 &None,
                 &[(
                     parse_quote!(my_id),
@@ -923,12 +938,14 @@ mod tests {
                     1 + 2
                 }
             ),
-            &[parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
-                id_display: Some("my_id"),
-                args_display: Some(""),
-                func: my_id,
-                config: Some(get_config_my_id)
-            })],
+            &[parse_quote!(
+                iai_callgrind::internal::InternalMacroLibBench {
+                    id_display: Some("my_id"),
+                    args_display: Some(""),
+                    func: my_id,
+                    config: Some(get_config_my_id)
+                }
+            )],
             &Some(parse_quote!(LibraryBenchmarkConfig::new())),
             &[(
                 parse_quote!(my_id),

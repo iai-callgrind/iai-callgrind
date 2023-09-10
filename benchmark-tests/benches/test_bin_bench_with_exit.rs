@@ -1,28 +1,28 @@
-use iai_callgrind::{main, ExitWith, Options};
+use iai_callgrind::{
+    binary_benchmark_group, main, Arg, BenchmarkId, BinaryBenchmarkGroup, ExitWith, Run,
+};
 
-main!(
-    run = cmd = "benchmark-tests-exit",
-    opts = Options::default().exit_with(ExitWith::Success),
-    id = "succeed", args = ["0"];
-    run = cmd = "benchmark-tests-exit",
-          opts = Options::default().exit_with(ExitWith::Failure),
-          id = "fail_with_1", args = ["1"],
-          id = "fail_with_2", args = ["2"],
-          id = "fail_with_3", args = ["3"],
-          id = "fail_with_255", args = ["255"];
-    run = cmd = "benchmark-tests-exit",
-          opts = Options::default().exit_with(ExitWith::Code(0)),
-          id = "code_0", args = ["0"];
-    run = cmd = "benchmark-tests-exit",
-          opts = Options::default().exit_with(ExitWith::Code(1)),
-          id = "code_1", args = ["1"];
-    run = cmd = "benchmark-tests-exit",
-          opts = Options::default().exit_with(ExitWith::Code(2)),
-          id = "code_2", args = ["2"];
-    run = cmd = "benchmark-tests-exit",
-          opts = Options::default().exit_with(ExitWith::Code(3)),
-          id = "code_3", args = ["3"];
-    run = cmd = "benchmark-tests-exit",
-          opts = Options::default().exit_with(ExitWith::Code(255)),
-          id = "code_255", args = ["-1"];
+fn setup_group_tests_exits(group: &mut BinaryBenchmarkGroup) {
+    group.bench(Run::with_arg(Arg::new("succeed", ["0"])).exit_with(ExitWith::Success));
+    for i in 1..=3 {
+        group.bench(
+            Run::with_arg(Arg::new(BenchmarkId::new("fail_with", i), [i.to_string()]))
+                .exit_with(ExitWith::Failure),
+        );
+    }
+    group.bench(Run::with_arg(Arg::new("fail_with_255", ["255"])).exit_with(ExitWith::Failure));
+    for i in 0..=3 {
+        group.bench(
+            Run::with_arg(Arg::new(BenchmarkId::new("code", i), [i.to_string()]))
+                .exit_with(ExitWith::Code(i)),
+        );
+    }
+    group.bench(Run::with_arg(Arg::new("code_255", ["-1"])).exit_with(ExitWith::Code(255)));
+}
+
+binary_benchmark_group!(
+    name = test_exits;
+    benchmark = |"benchmark-tests-exit", group: &mut BinaryBenchmarkGroup| setup_group_tests_exits(group)
 );
+
+main!(binary_benchmark_groups = test_exits);

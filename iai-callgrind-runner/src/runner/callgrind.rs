@@ -10,11 +10,20 @@ use colored::{ColoredString, Colorize};
 use log::{debug, error, info, log_enabled, trace, warn, Level};
 use which::which;
 
-use crate::api::{ExitWith, Options, RawCallgrindArgs};
+use crate::api::{ExitWith, RawCallgrindArgs};
 use crate::error::{IaiCallgrindError, Result};
 use crate::util::{
     bool_to_yesno, truncate_str_utf8, write_all_to_stderr, write_all_to_stdout, yesno_to_bool,
 };
+
+#[derive(Debug, Default, Clone)]
+pub struct CallgrindOptions {
+    pub env_clear: bool,
+    pub current_dir: Option<PathBuf>,
+    pub entry_point: Option<String>,
+    pub exit_with: Option<ExitWith>,
+    pub envs: Vec<(OsString, OsString)>,
+}
 
 pub struct CallgrindCommand {
     command: Command,
@@ -93,29 +102,28 @@ impl CallgrindCommand {
         }
     }
 
-    pub fn run<E>(
+    pub fn run(
         self,
-        callgrind_args: &CallgrindArgs,
+        mut callgrind_args: CallgrindArgs,
         executable: &Path,
         executable_args: &[OsString],
-        envs: E,
-        options: &Options,
-    ) -> Result<()>
-    where
-        E: IntoIterator<Item = (OsString, OsString)>,
-    {
+        options: CallgrindOptions,
+        output_file: &Path,
+    ) -> Result<()> {
         let mut command = self.command;
         debug!(
             "Running callgrind with executable '{}'",
             executable.display()
         );
-        let Options {
+        let CallgrindOptions {
             env_clear,
             current_dir,
-            ..
+            exit_with,
+            entry_point,
+            envs,
         } = options;
 
-        if *env_clear {
+        if env_clear {
             debug!("Clearing environment variables");
             command.env_clear();
         }
@@ -123,6 +131,14 @@ impl CallgrindCommand {
             debug!("Setting current directory to '{}'", dir.display());
             command.current_dir(dir);
         }
+
+        if let Some(entry_point) = entry_point {
+            callgrind_args.collect_atstart = false;
+            callgrind_args.insert_toggle_collect(&entry_point);
+        } else {
+            callgrind_args.collect_atstart = true;
+        }
+        callgrind_args.set_output_file(output_file);
 
         let callgrind_args = callgrind_args.to_vec();
         debug!("Callgrind arguments: {}", &callgrind_args.join(" "));
@@ -151,7 +167,7 @@ impl CallgrindCommand {
             .stderr(Stdio::piped())
             .output()
             .map_err(|error| IaiCallgrindError::LaunchError(PathBuf::from("valgrind"), error))
-            .and_then(|output| Self::check_exit(&executable, output, options.exit_with.as_ref()))?;
+            .and_then(|output| Self::check_exit(&executable, output, exit_with.as_ref()))?;
 
         if !stdout.is_empty() {
             info!("Callgrind output on stdout:");
@@ -201,10 +217,6 @@ impl Sentinel {
 
     pub fn as_str(&self) -> &str {
         self.0.as_str()
-    }
-
-    pub fn as_toggle(&self) -> &str {
-        self.0.strip_prefix("fn=").unwrap()
     }
 }
 
@@ -492,9 +504,9 @@ impl Default for CallgrindArgs {
 }
 
 impl CallgrindArgs {
-    pub fn from_raw_callgrind_args(args: RawCallgrindArgs) -> Self {
+    pub fn from_raw_callgrind_args(args: &RawCallgrindArgs) -> Self {
         let mut default = Self::default();
-        for arg in args.0 {
+        for arg in &args.0 {
             match arg.strip_prefix("--").and_then(|s| s.split_once('=')) {
                 Some(("I1", value)) => default.i1 = value.to_owned(),
                 Some(("D1", value)) => default.d1 = value.to_owned(),

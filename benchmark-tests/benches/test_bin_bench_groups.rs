@@ -4,8 +4,8 @@
 use std::path::PathBuf;
 
 use iai_callgrind::{
-    binary_benchmark_group, main, Arg, BenchmarkId, BinaryBenchmarkGroup, ExitWith, Fixtures,
-    Options, Run,
+    binary_benchmark_group, main, Arg, BenchmarkId, BinaryBenchmarkConfig, BinaryBenchmarkGroup,
+    ExitWith, Fixtures, Run,
 };
 
 /// This function is run before all benchmarks of a group if the group argument `before =
@@ -65,17 +65,19 @@ binary_benchmark_group!(
     after = run_after, bench = true;
     setup = run_setup;
     teardown = run_teardown;
-    benchmark = |"benchmark-tests-echo", group: &mut BinaryBenchmarkGroup| echo_group(group));
+    // The fixtures directory will be copied into the root of the sandbox (as
+    // `test_bin_bench_groups.fixtures`)
+    config = BinaryBenchmarkConfig::default()
+        .fixtures(Fixtures::new("benches/test_bin_bench_groups.fixtures"));
+    benchmark = |"benchmark-tests-echo", group: &mut BinaryBenchmarkGroup| setup_echo_group(group));
 
 /// This function is setting up the `group_with_cmd` group from above
 ///
 /// Each `Arg` has a mandatory `id` which must be unique within the same group
-fn echo_group(group: &mut BinaryBenchmarkGroup) {
+fn setup_echo_group(group: &mut BinaryBenchmarkGroup) {
     group
-        // This directory will be copied into the root of the sandbox (as `test_bin_bench_groups.fixtures`)
-        .fixtures(Fixtures::new("benches/test_bin_bench_groups.fixtures"))
-        // We're overwriting the group command here (although using the same binary in the end) because
-        // auto-discovery of a crate's binary doesn't work with `Run::with_cmd`
+        // We're overwriting the group command here (although using the same binary in the end)
+        // because auto-discovery of a crate's binary doesn't work with `Run::with_cmd`
         .bench(Run::with_cmd(
             env!("CARGO_BIN_EXE_benchmark-tests-echo"),
             Arg::new(
@@ -109,8 +111,7 @@ fn echo_group(group: &mut BinaryBenchmarkGroup) {
             .arg(Arg::new(
                 "foo.foo bar@current",
                 ["foo", "foo bar", "benchmark-tests-echo.foo.foo bar.txt"],
-            ))
-            .options(Options::default().current_dir("test_bin_bench_groups.fixtures")),
+            )).current_dir("test_bin_bench_groups.fixtures")
         )
         .bench(
             Run::with_args([
@@ -123,11 +124,8 @@ fn echo_group(group: &mut BinaryBenchmarkGroup) {
                     ["foo", "foo bar", "benchmark-tests-echo.foo.foo bar.txt"],
                 ),
             ])
-            .options(
-                Options::default()
-                    .current_dir("test_bin_bench_groups.fixtures")
-                    .entry_point("benchmark_tests_echo::main"),
-            ),
+            .current_dir("test_bin_bench_groups.fixtures")
+            .entry_point("benchmark_tests_echo::main")
         );
 }
 
@@ -142,9 +140,10 @@ binary_benchmark_group!(
     after = run_after;
     setup = run_setup, bench = true;
     teardown = run_teardown, bench = true;
+    config = BinaryBenchmarkConfig::default()
+        .fixtures(Fixtures::new("benches/test_bin_bench_groups.fixtures"));
     benchmark = |group: &mut BinaryBenchmarkGroup| {
         group
-            .fixtures(Fixtures::new("benches/test_bin_bench_groups.fixtures"))
             // Auto-discovery of a crate's binary doesn't work with `Run::with_cmd` so we need to
             // use `env!("CARGO_BIN_EXE_name")`
             .bench(Run::with_cmd(
@@ -162,25 +161,26 @@ binary_benchmark_group!(
 
 fn run_test_env_group(group: &mut BinaryBenchmarkGroup) {
     group
-        .sandbox(false)
+        // .sandbox(false)
         .bench(
-            Run::with_arg(Arg::new("foo=bar", ["FOO=BAR"]))
-                .env("FOO=BAR")
-                .options(Options::default().env_clear(true)),
+            Run::with_arg(
+                    Arg::new("foo=bar", ["FOO=BAR"])
+                )
+                .env("FOO", "BAR").env_clear(true)
         )
         .bench(
-            Run::with_arg(Arg::new("does not exist", ["NOT=EXIST"]))
+            Run::with_arg(
+                    Arg::new("does not exist", ["NOT=EXIST"])
+                )
                 .arg(Arg::new("home does not exist", ["HOME"]))
-                .options(Options::default().exit_with(ExitWith::Failure)),
+                .exit_with(ExitWith::Failure)
         )
         .bench(
-            Run::with_arg(Arg::new("home", ["HOME"]))
-                .arg(Arg::new("pwd", ["PWD"]))
-                .options(
-                    Options::default()
-                        .env_clear(false)
-                        .exit_with(ExitWith::Success),
-                ),
+            Run::with_arg(
+                        Arg::new("home", ["HOME"])
+                    )
+                    .arg(Arg::new("pwd", ["PWD"]))
+                    .env_clear(false).exit_with(ExitWith::Success)
         );
 }
 
@@ -188,7 +188,9 @@ fn run_test_env_group(group: &mut BinaryBenchmarkGroup) {
 // `benchmark-tests-printenv` using the `run_test_env_group` function from above
 binary_benchmark_group!(
     name = group_test_env;
-    benchmark = |"benchmark-tests-printenv", group: &mut BinaryBenchmarkGroup| run_test_env_group(group));
+    benchmark = |"benchmark-tests-printenv", group: &mut BinaryBenchmarkGroup|
+        run_test_env_group(group)
+);
 
 // Here's a small example for how to make use of the parameter of `BenchmarkId` to create unique ids
 // for each `Arg`
@@ -197,7 +199,11 @@ binary_benchmark_group!(
     benchmark = |"benchmark-tests-printenv", group: &mut BinaryBenchmarkGroup| {
         for i in 0..10 {
             let env = format!("MY_ENV={i}");
-            group.bench(Run::with_arg(Arg::new(BenchmarkId::new("printenv", i), [&env])).env(env));
+            group.bench(
+                Run::with_arg(
+                    Arg::new(BenchmarkId::new("printenv", i), [&env])
+                )
+                .env("MY_ENV", i.to_string()));
         }
     }
 );

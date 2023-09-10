@@ -30,7 +30,10 @@ fn bench_print_env_custom_multiple(args: &[&str]) {
 }
 
 #[library_benchmark(config = LibraryBenchmarkConfig::default().env("FOO", "BAR"))]
-#[bench::multiple(args = (&["FOO=BAR", "BAR=BAZ"]), config = LibraryBenchmarkConfig::default().env("BAR", "BAZ"))]
+#[bench::multiple(
+    args = (&["FOO=BAR", "BAR=BAZ"]),
+    config = LibraryBenchmarkConfig::default().env("BAR", "BAZ")
+)]
 fn bench_print_env_when_config(args: &[&str]) {
     black_box(print_env(args))
 }
@@ -55,7 +58,8 @@ library_benchmark_group!(
 
 library_benchmark_group!(
     name = custom_multiple;
-    config = LibraryBenchmarkConfig::default().env_clear(true).envs([("FOO", "BAR"), ("BAR","BAZ")]);
+    config = LibraryBenchmarkConfig::default()
+        .env_clear(true).envs([("FOO", "BAR"), ("BAR","BAZ")]);
     benchmarks = bench_print_env_custom_multiple
 );
 

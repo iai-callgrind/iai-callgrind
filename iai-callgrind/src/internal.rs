@@ -4,15 +4,15 @@
 
 pub use iai_callgrind_runner::api::{
     Arg as InternalArg, Assistant as InternalAssistant, BinaryBenchmark as InternalBinaryBenchmark,
+    BinaryBenchmarkConfig as InternalBinaryBenchmarkConfig,
     BinaryBenchmarkGroup as InternalBinaryBenchmarkGroup, Cmd as InternalCmd,
-    Config as InternalBinaryBenchmarkConfig, ExitWith as InternalExitWith,
-    Fixtures as InternalFixtures, LibraryBenchmark as InternalLibraryBenchmark,
+    ExitWith as InternalExitWith, Fixtures as InternalFixtures,
+    LibraryBenchmark as InternalLibraryBenchmark,
     LibraryBenchmarkBench as InternalLibraryBenchmarkBench,
     LibraryBenchmarkBenches as InternalLibraryBenchmarkBenches,
     LibraryBenchmarkConfig as InternalLibraryBenchmarkConfig,
     LibraryBenchmarkGroup as InternalLibraryBenchmarkGroup,
-    Options as InternalBinaryBenchmarkOptions, RawCallgrindArgs as InternalRawCallgrindArgs,
-    Run as InternalRun,
+    RawCallgrindArgs as InternalRawCallgrindArgs, Run as InternalRun,
 };
 
 #[derive(Debug, Clone)]

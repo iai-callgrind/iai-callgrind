@@ -122,8 +122,11 @@
 //!
 //! Suppose your crate's binary is named `my-exe` and you have a fixtures directory in
 //! `benches/fixtures` with a file `test1.txt` in it:
+//!
 //! ```rust
-//! use iai_callgrind::{main, binary_benchmark_group, BinaryBenchmarkGroup, Run, Arg, Fixtures};
+//! use iai_callgrind::{
+//!     main, binary_benchmark_group, BinaryBenchmarkConfig, BinaryBenchmarkGroup, Run, Arg, Fixtures
+//! };
 //!
 //! fn my_setup() {
 //!     println!("We can put code in here which will be run before each benchmark run");
@@ -136,15 +139,14 @@
 //! binary_benchmark_group!(
 //!     name = my_exe_group;
 //!     setup = my_setup;
+//!     // This directory will be copied into the root of the sandbox (as `fixtures`)
+//!     config = BinaryBenchmarkConfig::default().fixtures(Fixtures::new("benches/fixtures"));
 //!     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| setup_my_exe_group(group));
 //!
 //! // Working within a macro can be tedious sometimes so we moved the setup code into
 //! // this method
 //! fn setup_my_exe_group(group: &mut BinaryBenchmarkGroup) {
 //!     group
-//!         // This directory will be copied into the root of the sandbox (as `fixtures`)
-//!         .fixtures(Fixtures::new("benches/fixtures"))
-//!
 //!         // Setup our first run doing something with our fixture `test1.txt`. The
 //!         // id (here `do foo with test1`) of an `Arg` has to be unique within the
 //!         // same group
@@ -206,7 +208,7 @@ pub use iai_callgrind_macros::library_benchmark;
 pub mod internal;
 mod macros;
 
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::fmt::Display;
 use std::path::PathBuf;
 
@@ -379,7 +381,6 @@ impl LibraryBenchmarkConfig {
         self.0.env_clear = Some(value);
         self
     }
-
     /// Add an environment variables which will be available in library benchmarks
     ///
     /// These environment variables are available independently of the setting of
@@ -525,47 +526,6 @@ impl LibraryBenchmarkConfig {
 pub struct BinaryBenchmarkConfig(internal::InternalBinaryBenchmarkConfig);
 
 impl BinaryBenchmarkConfig {
-    /// Pass arguments to valgrind's callgrind for all benchmarks within the same file
-    ///
-    /// It's not needed to pass the arguments with flags. Instead of `--collect-atstart=no` simply
-    /// write `collect-atstart=no`.
-    ///
-    /// It's possible to overwrite some of the defaults which currently are:
-    /// * --I1=32768,8,64
-    /// * --D1=32768,8,64
-    /// * --LL=8388608,16,64
-    /// * --cache-sim=yes (can't be changed)
-    /// * --collect-atstart=yes
-    /// * --compress-pos=no (not recommended)
-    /// * --compress-strings=no (not recommended)
-    ///
-    /// See also [Callgrind Command-line
-    /// Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for a full
-    /// overview of possible arguments.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use iai_callgrind::BinaryBenchmarkConfig;
-    ///
-    /// let config = BinaryBenchmarkConfig::default()
-    ///     .raw_callgrind_args(["collect-atstart=no", "toggle-collect=some::path"]);
-    /// ```
-    pub fn raw_callgrind_args<I, T>(&mut self, args: T) -> &mut Self
-    where
-        I: AsRef<str>,
-        T: IntoIterator<Item = I>,
-    {
-        self.0.raw_callgrind_args.extend(args);
-        self
-    }
-}
-
-/// The `BinaryBenchmarkGroup` lets you configure and execute benchmarks
-#[derive(Debug, Default, Clone)]
-pub struct BinaryBenchmarkGroup(internal::InternalBinaryBenchmarkGroup);
-
-impl BinaryBenchmarkGroup {
     /// Copy [`Fixtures`] into the sandbox (if enabled)
     ///
     /// See also [`Fixtures`] for details about fixtures and [`BinaryBenchmarkGroup::sandbox`] for
@@ -574,13 +534,18 @@ impl BinaryBenchmarkGroup {
     /// # Examples
     ///
     /// ```rust
-    /// use iai_callgrind::{BinaryBenchmarkGroup, Fixtures};
+    /// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    /// # binary_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig, Fixtures};
     ///
-    /// # let mut group: BinaryBenchmarkGroup = BinaryBenchmarkGroup::default();
-    /// fn func(group: &mut BinaryBenchmarkGroup) {
-    ///     group.fixtures(Fixtures::new("benches/fixtures"));
-    /// }
-    /// # func(&mut group);
+    /// # fn main() {
+    /// main!(
+    ///     config = BinaryBenchmarkConfig::default().fixtures(Fixtures::new("benches/fixtures"));
+    ///     binary_benchmark_groups = my_group
+    /// );
+    /// # }
     /// ```
     pub fn fixtures<T>(&mut self, value: T) -> &mut Self
     where
@@ -613,19 +578,361 @@ impl BinaryBenchmarkGroup {
     /// # Examples
     ///
     /// ```rust
-    /// use iai_callgrind::BinaryBenchmarkGroup;
+    /// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    /// # binary_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig};
     ///
-    /// # let mut group: BinaryBenchmarkGroup = BinaryBenchmarkGroup::default();
-    /// fn func(group: &mut BinaryBenchmarkGroup) {
-    ///     group.sandbox(false);
-    /// }
-    /// # func(&mut group);
+    /// # fn main() {
+    /// main!(
+    ///     config = BinaryBenchmarkConfig::default().sandbox(false);
+    ///     binary_benchmark_groups = my_group
+    /// );
+    /// # }
     /// ```
     pub fn sandbox(&mut self, value: bool) -> &mut Self {
-        self.0.sandbox = value;
+        self.0.sandbox = Some(value);
         self
     }
 
+    /// Pass arguments to valgrind's callgrind
+    ///
+    /// It's not needed to pass the arguments with flags. Instead of `--collect-atstart=no` simply
+    /// write `collect-atstart=no`.
+    ///
+    /// See also [Callgrind Command-line
+    /// Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for a full
+    /// overview of possible arguments.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::BinaryBenchmarkConfig;
+    ///
+    /// let config = BinaryBenchmarkConfig::default()
+    ///     .raw_callgrind_args(["collect-atstart=no", "toggle-collect=some::path"]);
+    /// ```
+    pub fn raw_callgrind_args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_callgrind_args.extend(args);
+        self
+    }
+
+    /// Add an environment variable
+    ///
+    /// These environment variables are available independently of the setting of
+    /// [`BinaryBenchmarkConfig::env_clear`].
+    ///
+    /// # Examples
+    ///
+    /// An example for a custom environment variable "FOO=BAR":
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    /// # binary_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = BinaryBenchmarkConfig::default().env("FOO", "BAR");
+    ///     binary_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
+    pub fn env<K, V>(&mut self, key: K, value: V) -> &mut Self
+    where
+        K: Into<OsString>,
+        V: Into<OsString>,
+    {
+        self.0.envs.push((key.into(), Some(value.into())));
+        self
+    }
+
+    /// Add multiple environment variable available in this `Run`
+    ///
+    /// See also [`Run::env`] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    /// # binary_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = BinaryBenchmarkConfig::default().envs([("FOO", "BAR"),("BAR", "BAZ")]);
+    ///     binary_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
+    pub fn envs<K, V, T>(&mut self, envs: T) -> &mut Self
+    where
+        K: Into<OsString>,
+        V: Into<OsString>,
+        T: IntoIterator<Item = (K, V)>,
+    {
+        self.0
+            .envs
+            .extend(envs.into_iter().map(|(k, v)| (k.into(), Some(v.into()))));
+        self
+    }
+
+    /// Specify a pass-through environment variable
+    ///
+    /// Usually, the environment variables before running a library benchmark are cleared
+    /// but specifying pass-through variables makes this environment variable available to
+    /// the benchmark as it actually appeared in the root environment.
+    ///
+    /// Pass-through environment variables are ignored if they don't exist in the root
+    /// environment.
+    ///
+    /// # Examples
+    ///
+    /// Here, we chose to pass-through the original value of the `HOME` variable:
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    /// # binary_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = BinaryBenchmarkConfig::default().pass_through_env("HOME");
+    ///     binary_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
+    pub fn pass_through_env<K>(&mut self, key: K) -> &mut Self
+    where
+        K: Into<OsString>,
+    {
+        self.0.envs.push((key.into(), None));
+        self
+    }
+
+    /// Specify multiple pass-through environment variables
+    ///
+    /// See also [`LibraryBenchmarkConfig::pass_through_env`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    /// # binary_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = BinaryBenchmarkConfig::default().pass_through_envs(["HOME", "USER"]);
+    ///     binary_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
+    pub fn pass_through_envs<K, T>(&mut self, envs: T) -> &mut Self
+    where
+        K: Into<OsString>,
+        T: IntoIterator<Item = K>,
+    {
+        self.0
+            .envs
+            .extend(envs.into_iter().map(|k| (k.into(), None)));
+        self
+    }
+
+    /// If false, don't clear the environment variables before running the benchmark (Default: true)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    /// # binary_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = BinaryBenchmarkConfig::default().env_clear(false);
+    ///     binary_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
+    pub fn env_clear(&mut self, value: bool) -> &mut Self {
+        self.0.env_clear = Some(value);
+        self
+    }
+
+    /// Set the directory of the benchmarked binary (Default: Unchanged)
+    ///
+    /// Unchanged means, in the case of running with the sandbox enabled, the root of the sandbox.
+    /// In the case of running without sandboxing enabled, this'll be the root of the package
+    /// directory of the benchmark. If running the benchmark within the sandbox, and the path is
+    /// relative then this new directory must be contained in the sandbox.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    /// # binary_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = BinaryBenchmarkConfig::default().current_dir("/tmp");
+    ///     binary_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
+    ///
+    /// and the following will change the current directory to `fixtures` assuming it is
+    /// contained in the root of the sandbox
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    /// # binary_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = BinaryBenchmarkConfig::default().current_dir("fixtures");
+    ///     binary_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
+    pub fn current_dir<T>(&mut self, value: T) -> &mut Self
+    where
+        T: Into<PathBuf>,
+    {
+        self.0.current_dir = Some(value.into());
+        self
+    }
+
+    /// Set the start and entry point for event counting of the binary benchmark run
+    ///
+    /// Per default, the counting of events starts right at the start of the binary and stops when
+    /// it finished execution. This'll include some os specific code which makes the executable
+    /// actually runnable. To focus on what is actually happening inside the benchmarked binary, it
+    /// may desirable to start the counting for example when entering the main function (but can be
+    /// any function) and stop counting when leaving the main function of the executable. The
+    /// following example will show how to do that.
+    ///
+    /// # Examples
+    ///
+    /// The `entry_point` could look like `my_exe::main` for a binary with the name `my-exe` (Note
+    /// that hyphens are replaced with an underscore).
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    /// # binary_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = BinaryBenchmarkConfig::default().entry_point("my_exe::main");
+    ///     binary_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
+    ///
+    /// # About: How to find the right entry point
+    ///
+    /// If unsure about the entry point, it is best to start without setting the entry point and
+    /// inspect the callgrind output file of the benchmark of interest. These are usually located
+    /// under `target/iai`. The file format is completely documented
+    /// [here](https://valgrind.org/docs/manual/cl-format.html). To focus on the lines of interest
+    /// for the entry point, these lines start with `fn=`.
+    ///
+    /// The example above would include a line which would look like `fn=my_exe::main` with
+    /// information about the events below it and maybe some information about the exact location of
+    /// this function above it.
+    ///
+    /// Now, you can set the entry point to what is following the `fn=` entry. To stick to the
+    /// example, this would be `my_exe::main`. Running the benchmark again should now show the event
+    /// counts of everything happening after entering the main function and before leaving it. If
+    /// the counts are `0` (and the main function is not empty), something went wrong and you have
+    /// to search the output file again for typos or similar.
+    pub fn entry_point<T>(&mut self, value: T) -> &mut Self
+    where
+        T: Into<String>,
+    {
+        self.0.entry_point = Some(value.into());
+        self
+    }
+
+    /// Set the expected exit status [`ExitWith`] of a benchmarked binary
+    ///
+    /// Per default, the benchmarked binary is expected to succeed which is the equivalent of
+    /// [`ExitWith::Success`]. But, if a benchmark is expected to fail, setting this option is
+    /// required.
+    ///
+    /// # Examples
+    ///
+    /// If the benchmark is expected to fail with a specific exit code, for example `100`:
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    /// # binary_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig, ExitWith};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = BinaryBenchmarkConfig::default().exit_with(ExitWith::Code(100));
+    ///     binary_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
+    ///
+    /// If a benchmark is expected to fail, but the exit code doesn't matter:
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    /// # binary_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig, ExitWith};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = BinaryBenchmarkConfig::default().exit_with(ExitWith::Failure);
+    ///     binary_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
+    pub fn exit_with<T>(&mut self, value: T) -> &mut Self
+    where
+        T: Into<internal::InternalExitWith>,
+    {
+        self.0.exit_with = Some(value.into());
+        self
+    }
+}
+
+/// The `BinaryBenchmarkGroup` lets you configure binary benchmark [`Run`]s
+#[derive(Debug, Default, Clone)]
+pub struct BinaryBenchmarkGroup(internal::InternalBinaryBenchmarkGroup);
+
+impl BinaryBenchmarkGroup {
     /// Specify a [`Run`] to benchmark a binary
     ///
     /// You can specify a crate's binary either at group level with the simple name of the binary
@@ -704,10 +1011,11 @@ impl Run {
     /// # Examples
     ///
     /// ```rust
+    /// # use iai_callgrind::main;
     /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
     ///
     /// binary_benchmark_group!(
-    ///     name = my_exe_group;
+    ///     name = my_group;
     ///     benchmark = |group: &mut BinaryBenchmarkGroup| {
     ///         // Usually you should use `env!("CARGO_BIN_EXE_my-exe")` if `my-exe` is a binary
     ///         // of your crate
@@ -715,8 +1023,9 @@ impl Run {
     ///     }
     /// );
     /// # fn main() {
-    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
+    /// # main!(binary_benchmark_groups = my_group);
     /// # }
+    /// ```
     pub fn with_cmd<T, U>(cmd: T, arg: U) -> Self
     where
         T: AsRef<str>,
@@ -729,8 +1038,7 @@ impl Run {
                 cmd: cmd.to_owned(),
             }),
             args: vec![arg.into()],
-            opts: None,
-            envs: Vec::default(),
+            config: internal::InternalBinaryBenchmarkConfig::default(),
         })
     }
 
@@ -741,10 +1049,11 @@ impl Run {
     /// # Examples
     ///
     /// ```rust
+    /// # use iai_callgrind::main;
     /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
     ///
     /// binary_benchmark_group!(
-    ///     name = my_exe_group;
+    ///     name = my_group;
     ///     benchmark = |group: &mut BinaryBenchmarkGroup| {
     ///         group.bench(Run::with_cmd_args("/path/to/my-exe", [
     ///             Arg::empty("empty foo"),
@@ -753,24 +1062,24 @@ impl Run {
     ///     }
     /// );
     /// # fn main() {
-    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
+    /// # main!(binary_benchmark_groups = my_group);
     /// # }
-    pub fn with_cmd_args<T, U>(cmd: T, args: U) -> Self
+    /// ```
+    pub fn with_cmd_args<T, I, U>(cmd: T, args: U) -> Self
     where
         T: AsRef<str>,
-        U: AsRef<[Arg]>,
+        I: Into<internal::InternalArg>,
+        U: IntoIterator<Item = I>,
     {
         let cmd = cmd.as_ref();
-        let args = args.as_ref();
 
         Self(internal::InternalRun {
             cmd: Some(internal::InternalCmd {
                 display: cmd.to_owned(),
                 cmd: cmd.to_owned(),
             }),
-            args: args.iter().map(std::convert::Into::into).collect(),
-            opts: None,
-            envs: Vec::default(),
+            args: args.into_iter().map(std::convert::Into::into).collect(),
+            config: internal::InternalBinaryBenchmarkConfig::default(),
         })
     }
 
@@ -783,17 +1092,19 @@ impl Run {
     /// # Examples
     ///
     /// ```rust
+    /// # use iai_callgrind::main;
     /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
     ///
     /// binary_benchmark_group!(
-    ///     name = my_exe_group;
+    ///     name = my_group;
     ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
     ///         group.bench(Run::with_arg(Arg::new("foo", &["foo"])));
     ///     }
     /// );
     /// # fn main() {
-    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
+    /// # main!(binary_benchmark_groups = my_group);
     /// # }
+    /// ```
     pub fn with_arg<T>(arg: T) -> Self
     where
         T: Into<internal::InternalArg>,
@@ -801,8 +1112,7 @@ impl Run {
         Self(internal::InternalRun {
             cmd: None,
             args: vec![arg.into()],
-            opts: None,
-            envs: Vec::default(),
+            config: internal::InternalBinaryBenchmarkConfig::default(),
         })
     }
 
@@ -837,10 +1147,11 @@ impl Run {
     /// # Examples
     ///
     /// ```rust
+    /// # use iai_callgrind::main;
     /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
     ///
     /// binary_benchmark_group!(
-    ///     name = my_exe_group;
+    ///     name = my_group;
     ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
     ///         group.bench(Run::with_args([
     ///             Arg::empty("empty foo"),
@@ -849,19 +1160,18 @@ impl Run {
     ///     }
     /// );
     /// # fn main() {
-    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
+    /// # main!(binary_benchmark_groups = my_group);
     /// # }
+    /// ```
     pub fn with_args<I, T>(args: T) -> Self
     where
-        I: AsRef<Arg>,
-        T: AsRef<[I]>,
+        I: Into<internal::InternalArg>,
+        T: IntoIterator<Item = I>,
     {
-        let args = args.as_ref();
         Self(internal::InternalRun {
             cmd: None,
-            args: args.iter().map(|a| a.as_ref().into()).collect(),
-            opts: None,
-            envs: Vec::default(),
+            args: args.into_iter().map(std::convert::Into::into).collect(),
+            config: internal::InternalBinaryBenchmarkConfig::default(),
         })
     }
 
@@ -873,10 +1183,11 @@ impl Run {
     /// # Examples
     ///
     /// ```rust
+    /// # use iai_callgrind::main;
     /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
     ///
     /// binary_benchmark_group!(
-    ///     name = my_exe_group;
+    ///     name = my_group;
     ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
     ///         group.bench(
     ///             Run::with_arg(Arg::empty("empty foo"))
@@ -885,8 +1196,9 @@ impl Run {
     ///     }
     /// );
     /// # fn main() {
-    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
+    /// # main!(binary_benchmark_groups = my_group);
     /// # }
+    /// ```
     pub fn arg<T>(&mut self, arg: T) -> &mut Self
     where
         T: Into<internal::InternalArg>,
@@ -903,10 +1215,11 @@ impl Run {
     /// # Examples
     ///
     /// ```rust
+    /// # use iai_callgrind::main;
     /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
     ///
     /// binary_benchmark_group!(
-    ///     name = my_exe_group;
+    ///     name = my_group;
     ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
     ///         group.bench(
     ///             Run::with_arg(Arg::empty("empty foo"))
@@ -918,138 +1231,349 @@ impl Run {
     ///     }
     /// );
     /// # fn main() {
-    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
+    /// # main!(binary_benchmark_groups = my_group);
     /// # }
+    /// ```
     pub fn args<I, T>(&mut self, args: T) -> &mut Self
     where
-        I: AsRef<Arg>,
-        T: AsRef<[I]>,
+        I: Into<internal::InternalArg>,
+        T: IntoIterator<Item = I>,
     {
         self.0
             .args
-            .extend(args.as_ref().iter().map(|a| a.as_ref().into()));
+            .extend(args.into_iter().map(std::convert::Into::into));
         self
     }
 
-    /// Add an environment variable available in the `cmd` of this `Run`
+    /// Add an environment variable available in this `Run`
     ///
-    /// An environment variable can be a `KEY=VALUE` pair or `KEY`. In the latter case this variable
-    /// is a pass-through environment variable. Usually, the environment of the `cmd` is cleared but
-    /// specifying pass-through variables makes this environment variable available to the `cmd` as
-    /// it actually appeared in the root environment. Pass-through environment variables are ignored
-    /// if they don't exist in the root environment.
+    /// These environment variables are available independently of the setting of
+    /// [`Run::env_clear`].
     ///
     /// # Examples
     ///
-    /// This'll define an environment variable `MY_ENV=42` which will be available in the `my-exe`
-    /// binary
+    /// An example for a custom environment variable "FOO=BAR":
     ///
     /// ```rust
+    /// # use iai_callgrind::main;
     /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
     ///
     /// binary_benchmark_group!(
-    ///     name = my_exe_group;
+    ///     name = my_group;
     ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
     ///         group.bench(
-    ///             Run::with_arg(Arg::empty("empty foo")).env("MY_ENV=42")
+    ///             Run::with_arg(Arg::empty("empty foo")).env("FOO", "BAR")
     ///         );
     ///     }
     /// );
     /// # fn main() {
-    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
+    /// # main!(binary_benchmark_groups = my_group);
     /// # }
-    /// ```
+    pub fn env<K, V>(&mut self, key: K, value: V) -> &mut Self
+    where
+        K: Into<OsString>,
+        V: Into<OsString>,
+    {
+        self.0.config.envs.push((key.into(), Some(value.into())));
+        self
+    }
+
+    /// Add multiple environment variable available in this `Run`
     ///
-    /// If the `HOME=/home/my` variable is present in the original environment, the following will
-    /// pass through the `HOME` variable to the `my-exe` binary with the original value `/home/my`
+    /// # Examples
     ///
     /// ```rust
+    /// # use iai_callgrind::main;
     /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
     ///
     /// binary_benchmark_group!(
-    ///     name = my_exe_group;
+    ///     name = my_group;
     ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
     ///         group.bench(
-    ///             Run::with_arg(Arg::empty("empty foo")).env("HOME")
+    ///             Run::with_arg(Arg::empty("empty foo"))
+    ///                 .envs([("FOO", "BAR"), ("BAR", "BAZ")])
     ///         );
     ///     }
     /// );
     /// # fn main() {
-    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
+    /// # main!(binary_benchmark_groups = my_group);
+    /// # }
+    pub fn envs<K, V, T>(&mut self, envs: T) -> &mut Self
+    where
+        K: Into<OsString>,
+        V: Into<OsString>,
+        T: IntoIterator<Item = (K, V)>,
+    {
+        self.0
+            .config
+            .envs
+            .extend(envs.into_iter().map(|(k, v)| (k.into(), Some(v.into()))));
+        self
+    }
+
+    /// Specify a pass-through environment variable
+    ///
+    /// See also [`BinaryBenchmarkConfig::pass_through_env`]
+    ///
+    /// # Examples
+    ///
+    /// Here, we chose to pass-through the original value of the `HOME` variable:
+    ///
+    /// ```rust
+    /// # use iai_callgrind::main;
+    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    ///
+    /// binary_benchmark_group!(
+    ///     name = my_group;
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
+    ///         group.bench(
+    ///             Run::with_arg(Arg::empty("empty foo"))
+    ///                 .pass_through_env("HOME")
+    ///         );
+    ///     }
+    /// );
+    /// # fn main() {
+    /// # main!(binary_benchmark_groups = my_group);
     /// # }
     /// ```
-    pub fn env<T>(&mut self, env: T) -> &mut Self
+    pub fn pass_through_env<K>(&mut self, key: K) -> &mut Self
+    where
+        K: Into<OsString>,
+    {
+        self.0.config.envs.push((key.into(), None));
+        self
+    }
+
+    /// Specify multiple pass-through environment variables
+    ///
+    /// See also [`BinaryBenchmarkConfig::pass_through_env`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::main;
+    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    ///
+    /// binary_benchmark_group!(
+    ///     name = my_group;
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
+    ///         group.bench(
+    ///             Run::with_arg(Arg::empty("empty foo"))
+    ///                 .pass_through_envs(["HOME", "USER"])
+    ///         );
+    ///     }
+    /// );
+    /// # fn main() {
+    /// # main!(binary_benchmark_groups = my_group);
+    /// # }
+    /// ```
+    pub fn pass_through_envs<K, T>(&mut self, envs: T) -> &mut Self
+    where
+        K: Into<OsString>,
+        T: IntoIterator<Item = K>,
+    {
+        self.0
+            .config
+            .envs
+            .extend(envs.into_iter().map(|k| (k.into(), None)));
+        self
+    }
+
+    /// If false, don't clear the environment variables before running the benchmark (Default: true)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::main;
+    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    ///
+    /// binary_benchmark_group!(
+    ///     name = my_group;
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
+    ///         group.bench(
+    ///             Run::with_arg(Arg::empty("empty foo"))
+    ///                 .env_clear(false)
+    ///         );
+    ///     }
+    /// );
+    /// # fn main() {
+    /// # main!(binary_benchmark_groups = my_group);
+    /// # }
+    /// ```
+    pub fn env_clear(&mut self, value: bool) -> &mut Self {
+        self.0.config.env_clear = Some(value);
+        self
+    }
+
+    /// Set the directory of the benchmarked binary (Default: Unchanged)
+    ///
+    /// See also [`BinaryBenchmarkConfig::current_dir`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::main;
+    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    ///
+    /// binary_benchmark_group!(
+    ///     name = my_group;
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
+    ///         group.bench(
+    ///             Run::with_arg(Arg::empty("empty foo"))
+    ///                 .current_dir("/tmp")
+    ///         );
+    ///     }
+    /// );
+    /// # fn main() {
+    /// # main!(binary_benchmark_groups = my_group);
+    /// # }
+    /// ```
+    ///
+    /// and the following will change the current directory to `fixtures` assuming it is
+    /// contained in the root of the sandbox
+    ///
+    /// ```rust
+    /// # use iai_callgrind::main;
+    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run, BinaryBenchmarkConfig, Fixtures};
+    ///
+    /// binary_benchmark_group!(
+    ///     name = my_group;
+    ///     config = BinaryBenchmarkConfig::default().fixtures(Fixtures::new("fixtures"));
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
+    ///         group.bench(
+    ///             Run::with_arg(Arg::empty("empty foo"))
+    ///                 .current_dir("fixtures")
+    ///         );
+    ///     }
+    /// );
+    /// # fn main() {
+    /// # main!(binary_benchmark_groups = my_group);
+    /// # }
+    /// ```
+    pub fn current_dir<T>(&mut self, value: T) -> &mut Self
+    where
+        T: Into<PathBuf>,
+    {
+        self.0.config.current_dir = Some(value.into());
+        self
+    }
+
+    /// Set the start and entry point for event counting of the binary benchmark run
+    ///
+    /// See also [`BinaryBenchmarkConfig::entry_point`].
+    ///
+    /// # Examples
+    ///
+    /// The `entry_point` could look like `my_exe::main` for a binary with the name `my-exe` (Note
+    /// that hyphens are replaced with an underscore).
+    ///
+    /// ```rust
+    /// # use iai_callgrind::main;
+    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    ///
+    /// binary_benchmark_group!(
+    ///     name = my_group;
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
+    ///         group.bench(
+    ///             Run::with_arg(Arg::empty("empty foo"))
+    ///                 .entry_point("my_exe::main")
+    ///         );
+    ///     }
+    /// );
+    /// # fn main() {
+    /// # main!(binary_benchmark_groups = my_group);
+    /// # }
+    /// ```
+    pub fn entry_point<T>(&mut self, value: T) -> &mut Self
     where
         T: Into<String>,
     {
-        self.0.envs.push(env.into());
+        self.0.config.entry_point = Some(value.into());
         self
     }
 
-    /// Add multiple environment variables available in the `cmd` of this `Run`
+    /// Set the expected exit status [`ExitWith`] of a benchmarked binary
     ///
-    /// See also [`Run::env`] for more details.
+    /// See also [`BinaryBenchmarkConfig::exit_with`]
+    ///
+    /// # Examples
+    ///
+    /// If the benchmark is expected to fail with a specific exit code, for example `100`:
+    ///
+    /// ```rust
+    /// # use iai_callgrind::main;
+    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run, ExitWith};
+    ///
+    /// binary_benchmark_group!(
+    ///     name = my_group;
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
+    ///         group.bench(
+    ///             Run::with_arg(Arg::empty("empty foo"))
+    ///                 .exit_with(ExitWith::Code(100))
+    ///         );
+    ///     }
+    /// );
+    /// # fn main() {
+    /// # main!(binary_benchmark_groups = my_group);
+    /// # }
+    /// ```
+    ///
+    /// If a benchmark is expected to fail, but the exit code doesn't matter:
+    ///
+    /// ```rust
+    /// # use iai_callgrind::main;
+    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run, ExitWith};
+    ///
+    /// binary_benchmark_group!(
+    ///     name = my_group;
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
+    ///         group.bench(
+    ///             Run::with_arg(Arg::empty("empty foo"))
+    ///                 .exit_with(ExitWith::Failure)
+    ///         );
+    ///     }
+    /// );
+    /// # fn main() {
+    /// # main!(binary_benchmark_groups = my_group);
+    /// # }
+    /// ```
+    pub fn exit_with<T>(&mut self, value: T) -> &mut Self
+    where
+        T: Into<internal::InternalExitWith>,
+    {
+        self.0.config.exit_with = Some(value.into());
+        self
+    }
+
+    /// Pass arguments to valgrind's callgrind at `Run` level
+    ///
+    /// See also [`BinaryBenchmarkConfig::raw_callgrind_args`]
     ///
     /// # Examples
     ///
     /// ```rust
+    /// # use iai_callgrind::main;
     /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
     ///
     /// binary_benchmark_group!(
-    ///     name = my_exe_group;
+    ///     name = my_group;
     ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
     ///         group.bench(
-    ///             Run::with_arg(Arg::empty("empty foo")).envs(["HOME", "MY_ENV=42"])
+    ///             Run::with_arg(Arg::empty("empty foo"))
+    ///                 .raw_callgrind_args(["collect-atstart=no", "toggle-collect=some::path"])
     ///         );
     ///     }
     /// );
     /// # fn main() {
-    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
+    /// # main!(binary_benchmark_groups = my_group);
     /// # }
     /// ```
-    pub fn envs<I, T>(&mut self, envs: T) -> &mut Self
+    pub fn raw_callgrind_args<I, T>(&mut self, args: T) -> &mut Self
     where
         I: AsRef<str>,
-        T: AsRef<[I]>,
+        T: IntoIterator<Item = I>,
     {
-        self.0
-            .envs
-            .extend(envs.as_ref().iter().map(|s| s.as_ref().to_owned()));
-        self
-    }
-
-    /// Change the default [`Options`] of this `Run`
-    ///
-    /// See also [`Options`] for more details and all possible options.
-    ///
-    /// # Examples
-    ///
-    /// The following would make the benchmark run of `my-exe` succeed if the benchmarked binary
-    /// `my-exe` fails with an error when running it with the argument `foo`.
-    ///
-    /// ```rust
-    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run, Options, ExitWith};
-    ///
-    /// binary_benchmark_group!(
-    ///     name = my_exe_group;
-    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
-    ///         group.bench(
-    ///             Run::with_arg(Arg::new("foo", &["foo"]))
-    ///                 .options(
-    ///                     Options::default().exit_with(ExitWith::Failure)
-    ///                 )
-    ///         );
-    ///     }
-    /// );
-    /// # fn main() {
-    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
-    /// # }
-    /// ```
-    pub fn options<T>(&mut self, options: T) -> &mut Self
-    where
-        T: Into<internal::InternalBinaryBenchmarkOptions>,
-    {
-        self.0.opts = Some(options.into());
+        self.0.config.raw_callgrind_args.extend(args);
         self
     }
 }
@@ -1109,16 +1633,12 @@ impl Arg {
     pub fn new<T, I, U>(id: T, args: U) -> Self
     where
         T: Into<String>,
-        I: AsRef<OsStr>,
-        U: AsRef<[I]>,
+        I: Into<OsString>,
+        U: IntoIterator<Item = I>,
     {
         Self(internal::InternalArg {
             id: Some(id.into()),
-            args: args
-                .as_ref()
-                .iter()
-                .map(|s| s.as_ref().to_owned())
-                .collect(),
+            args: args.into_iter().map(std::convert::Into::into).collect(),
         })
     }
 
@@ -1148,135 +1668,6 @@ impl Arg {
             id: Some(id.into()),
             args: vec![],
         })
-    }
-}
-
-/// A builder for `Options`, applied to each benchmark [`Run`] of a benchmarked binary
-#[derive(Debug, Default, Clone)]
-pub struct Options(internal::InternalBinaryBenchmarkOptions);
-
-impl Options {
-    /// If false, don't clear the environment variables before running the benchmark (Default: true)
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use iai_callgrind::Options;
-    ///
-    /// let options = Options::default().env_clear(false);
-    /// ```
-    pub fn env_clear(&mut self, value: bool) -> &mut Self {
-        self.0.env_clear = value;
-        self
-    }
-
-    /// Set the directory of the benchmarked binary (Default: Unchanged)
-    ///
-    /// Unchanged means, in the case of running with the sandbox enabled, the root of the sandbox.
-    /// In the case of running without sandboxing enabled, this'll be the root of the package
-    /// directory of the benchmark. If running the benchmark within the sandbox, and the path is
-    /// relative then this new directory must be contained in the sandbox.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use std::path::PathBuf;
-    ///
-    /// use iai_callgrind::Options;
-    ///
-    /// let options: &mut Options = Options::default().current_dir(PathBuf::from("/tmp"));
-    /// ```
-    ///
-    /// and the following will change the current directory to `fixtures` assuming it is
-    /// contained in the root of the sandbox
-    ///
-    /// ```rust
-    /// use iai_callgrind::Options;
-    ///
-    /// let options: &mut Options = Options::default().current_dir("fixtures");
-    /// ```
-    pub fn current_dir<T>(&mut self, value: T) -> &mut Self
-    where
-        T: Into<PathBuf>,
-    {
-        self.0.current_dir = Some(value.into());
-        self
-    }
-
-    /// Set the start and entry point for event counting of the binary benchmark run
-    ///
-    /// Per default, the counting of events starts right at the start of the binary and stops when
-    /// it finished execution. This'll include some os specific code which makes the executable
-    /// actually runnable. To focus on what is actually happening inside the benchmarked binary, it
-    /// may desirable to start the counting for example when entering the main function (but can be
-    /// any function) and stop counting when leaving the main function of the executable. The
-    /// following example will show how to do that.
-    ///
-    /// # Examples
-    ///
-    /// The `entry_point` could look like `my_exe::main` for a binary with the name `my-exe` (Note
-    /// that hyphens are replaced with an underscore).
-    ///
-    /// ```rust
-    /// use iai_callgrind::Options;
-    ///
-    /// let options: &mut Options = Options::default().entry_point("my_exe::main");
-    /// ```
-    ///
-    /// # About: How to find the right entry point
-    ///
-    /// If unsure about the entry point, it is best to start without setting the entry point and
-    /// inspect the callgrind output file of the benchmark of interest. These are usually located
-    /// under `target/iai`. The file format is completely documented
-    /// [here](https://valgrind.org/docs/manual/cl-format.html). To focus on the lines of interest
-    /// for the entry point, these lines start with `fn=`.
-    ///
-    /// The example above would include a line which would look like `fn=my_exe::main` with
-    /// information about the events below it and maybe some information about the exact location of
-    /// this function above it.
-    ///
-    /// Now, you can set the entry point to what is following the `fn=` entry. To stick to the
-    /// example, this would be `my_exe::main`. Running the benchmark again should now show the event
-    /// counts of everything happening after entering the main function and before leaving it. If
-    /// the counts are `0` (and the main function is not empty), something went wrong and you have
-    /// to search the output file again for typos or similar.
-    pub fn entry_point<T>(&mut self, value: T) -> &mut Self
-    where
-        T: Into<String>,
-    {
-        self.0.entry_point = Some(value.into());
-        self
-    }
-
-    /// Set the expected exit status [`ExitWith`] of a benchmarked binary
-    ///
-    /// Per default, the benchmarked binary is expected to succeed which is the equivalent of
-    /// [`ExitWith::Success`]. But, if a benchmark is expected to fail, setting this option is
-    /// required.
-    ///
-    /// # Examples
-    ///
-    /// If the benchmark is expected to fail with a specific exit code, for example `100`:
-    ///
-    /// ```rust
-    /// use iai_callgrind::{ExitWith, Options};
-    ///
-    /// let options: &mut Options = Options::default().exit_with(ExitWith::Code(100));
-    /// ```
-    ///
-    /// If a benchmark is expected to fail, but the exit code doesn't matter:
-    ///
-    /// ```rust
-    /// use iai_callgrind::{ExitWith, Options};
-    ///
-    /// let options: &mut Options = Options::default().exit_with(ExitWith::Failure);
-    /// ```
-    pub fn exit_with<T>(&mut self, value: T) -> &mut Self
-    where
-        T: Into<internal::InternalExitWith>,
-    {
-        self.0.exit_with = Some(value.into());
-        self
     }
 }
 
@@ -1397,7 +1788,7 @@ impl From<BenchmarkId> for String {
     }
 }
 
-/// Setting of [`Options::exit_with`] to set the expected exit status of a benchmarked binary
+/// Set the expected exit status of a binary benchmark
 ///
 /// Per default, the benchmarked binary is expected to succeed, but if a benchmark is expected to
 /// fail, setting this option is required.
@@ -1405,13 +1796,18 @@ impl From<BenchmarkId> for String {
 /// # Examples
 ///
 /// ```rust
-/// use iai_callgrind::{Options, ExitWith};
+/// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+/// # binary_benchmark_group!(
+/// #    name = my_group;
+/// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
+/// use iai_callgrind::{main, BinaryBenchmarkConfig, ExitWith};
 ///
-/// iai_callgrind::main!(
-///    run = cmd = "/bin/stat",
-///        opts = Options::default().exit_with(ExitWith::Code(1)),
-///        id = "file not exist", args = ["file does not exist"];
+/// # fn main() {
+/// main!(
+///     config = BinaryBenchmarkConfig::default().exit_with(ExitWith::Code(1));
+///     binary_benchmark_groups = my_group
 /// );
+/// # }
 /// ```
 #[derive(Debug, Clone)]
 pub enum ExitWith {
@@ -1480,7 +1876,6 @@ impl_traits!(
     LibraryBenchmarkConfig,
     internal::InternalLibraryBenchmarkConfig
 );
-impl_traits!(Options, internal::InternalBinaryBenchmarkOptions);
 impl_traits!(Run, internal::InternalRun);
 impl_traits!(Arg, internal::InternalArg);
 impl_traits!(Fixtures, internal::InternalFixtures);

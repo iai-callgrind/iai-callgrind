@@ -54,8 +54,55 @@ where
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Config {
+pub struct BinaryBenchmarkConfig {
+    pub sandbox: Option<bool>,
+    pub fixtures: Option<Fixtures>,
+    pub env_clear: Option<bool>,
+    pub current_dir: Option<PathBuf>,
+    pub entry_point: Option<String>,
+    pub exit_with: Option<ExitWith>,
     pub raw_callgrind_args: RawCallgrindArgs,
+    pub envs: Vec<(OsString, Option<OsString>)>,
+}
+
+impl BinaryBenchmarkConfig {
+    pub fn update_from_all<'a, T>(mut self, others: T) -> Self
+    where
+        T: IntoIterator<Item = Option<&'a Self>>,
+    {
+        fn update_option<T: Clone>(first: &Option<T>, other: &Option<T>) -> Option<T> {
+            match (first, other) {
+                (None, None) => None,
+                (None, Some(v)) | (Some(v), None) => Some(v.clone()),
+                (Some(_), Some(w)) => Some(w.clone()),
+            }
+        }
+
+        for other in others.into_iter().flatten() {
+            self.sandbox = update_option(&self.sandbox, &other.sandbox);
+            self.fixtures = update_option(&self.fixtures, &other.fixtures);
+            self.env_clear = update_option(&self.env_clear, &other.env_clear);
+            self.current_dir = update_option(&self.current_dir, &other.current_dir);
+            self.entry_point = update_option(&self.entry_point, &other.entry_point);
+            self.exit_with = update_option(&self.exit_with, &other.exit_with);
+
+            self.raw_callgrind_args
+                .extend(other.raw_callgrind_args.0.iter());
+
+            self.envs.extend_from_slice(&other.envs);
+        }
+        self
+    }
+
+    pub fn resolve_envs(&self) -> Vec<(OsString, OsString)> {
+        self.envs
+            .iter()
+            .filter_map(|(key, value)| match value {
+                Some(value) => Some((key.clone(), value.clone())),
+                None => std::env::var_os(key).map(|value| (key.clone(), value)),
+            })
+            .collect()
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -81,6 +128,16 @@ impl LibraryBenchmarkConfig {
             self.envs.extend_from_slice(&other.envs);
         }
         self
+    }
+
+    pub fn resolve_envs(&self) -> Vec<(OsString, OsString)> {
+        self.envs
+            .iter()
+            .filter_map(|(key, value)| match value {
+                Some(value) => Some((key.clone(), value.clone())),
+                None => std::env::var_os(key).map(|value| (key.clone(), value)),
+            })
+            .collect()
     }
 }
 
@@ -114,7 +171,7 @@ pub struct LibraryBenchmarkBenches {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct BinaryBenchmark {
-    pub config: Config,
+    pub config: BinaryBenchmarkConfig,
     pub groups: Vec<BinaryBenchmarkGroup>,
 }
 
@@ -122,8 +179,7 @@ pub struct BinaryBenchmark {
 pub struct BinaryBenchmarkGroup {
     pub id: Option<String>,
     pub cmd: Option<Cmd>,
-    pub fixtures: Option<Fixtures>,
-    pub sandbox: bool,
+    pub config: Option<BinaryBenchmarkConfig>,
     pub benches: Vec<Run>,
     pub assists: Vec<Assistant>,
 }
@@ -157,43 +213,7 @@ pub struct Cmd {
 pub struct Run {
     pub cmd: Option<Cmd>,
     pub args: Vec<Arg>,
-    pub opts: Option<Options>,
-    pub envs: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Options {
-    pub env_clear: bool,
-    pub current_dir: Option<PathBuf>,
-    pub entry_point: Option<String>,
-    pub exit_with: Option<ExitWith>,
-}
-
-impl Options {
-    pub fn new(
-        env_clear: bool,
-        current_dir: Option<PathBuf>,
-        entry_point: Option<String>,
-        exit_with: Option<ExitWith>,
-    ) -> Self {
-        Self {
-            env_clear,
-            current_dir,
-            entry_point,
-            exit_with,
-        }
-    }
-}
-
-impl Default for Options {
-    fn default() -> Self {
-        Self {
-            env_clear: true,
-            current_dir: Option::default(),
-            entry_point: Option::default(),
-            exit_with: Option::default(),
-        }
-    }
+    pub config: BinaryBenchmarkConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,8 +1,11 @@
 use std::path::PathBuf;
 
-use iai_callgrind::main;
+use iai_callgrind::{
+    binary_benchmark_group, main, Arg, BinaryBenchmarkConfig, ExitWith, Fixtures, Run,
+};
 
-const FILE_WITH_CONTENT: &str = "fixtures/file_with_content.txt";
+// This is a symlink in the `fixtures-with-symlinks` directory to the file_with_content.txt file
+const FILE_WITH_CONTENT: &str = "fixtures-with-symlinks/file_with_content.txt";
 
 /// This method is run once before all benchmark
 #[inline(never)] // required
@@ -48,12 +51,55 @@ fn teardown() {
     );
 }
 
-main!(
+binary_benchmark_group!(
+    name = test_fixtures_with_follow_symlinks;
     before = before;
     after = after;
     setup = setup, bench = true;
     teardown = teardown;
-    fixtures = "fixtures";
-    run = cmd = "benchmark-tests-cat", id = "benchmark-tests-cat with content", args = ["fixtures/file_with_content.txt"];
-    run = cmd = "cat", id = "cat with content", args = ["fixtures/file_with_content.txt"]
+    config = BinaryBenchmarkConfig::default()
+        .fixtures(
+            Fixtures::new("fixtures-with-symlinks").follow_symlinks(true)
+        );
+    benchmark = |"benchmark-tests-cat", group: &mut BinaryBenchmarkGroup| {
+        group.bench(
+            Run::with_arg(
+                Arg::new(
+                    "benchmark-tests-cat with content",
+                    ["fixtures-with-symlinks/file_with_content.txt"]
+                )
+            )
+        ).bench(
+            Run::with_cmd(
+                "cat",
+                Arg::new("cat with content", ["fixtures-with-symlinks/file_with_content.txt"])
+            )
+        )
+    }
+);
+
+binary_benchmark_group!(
+    name = test_fixtures_without_follow_symlinks;
+    config = BinaryBenchmarkConfig::default()
+        .fixtures(Fixtures::new("fixtures-with-symlinks").follow_symlinks(false));
+    benchmark = |"benchmark-tests-cat", group: &mut BinaryBenchmarkGroup| {
+        group.bench(
+            Run::with_arg(
+                Arg::new(
+                    "benchmark-tests-cat with content",
+                    ["fixtures-with-symlinks/file_with_content.txt"]
+                )
+            ).exit_with(ExitWith::Failure)
+        ).bench(
+            Run::with_cmd(
+                "cat",
+                Arg::new("cat with content", ["fixtures-with-symlinks/file_with_content.txt"])
+            ).exit_with(ExitWith::Failure)
+        )
+    }
+);
+
+main!(
+    binary_benchmark_groups = test_fixtures_with_follow_symlinks,
+    test_fixtures_without_follow_symlinks
 );

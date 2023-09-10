@@ -1,10 +1,12 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-use super::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput, Sentinel};
+use super::callgrind::{
+    CallgrindArgs, CallgrindCommand, CallgrindOptions, CallgrindOutput, Sentinel,
+};
 use super::meta::Metadata;
 use super::print::Header;
-use crate::api::{LibraryBenchmark, Options};
+use crate::api::LibraryBenchmark;
 use crate::error::Result;
 use crate::util::receive_benchmark;
 
@@ -15,7 +17,8 @@ struct LibBench {
     id: Option<String>,
     function: String,
     args: Option<String>,
-    config: LibBenchConfig,
+    opts: CallgrindOptions,
+    callgrind_args: CallgrindArgs,
 }
 
 impl LibBench {
@@ -38,10 +41,6 @@ impl LibBench {
         };
 
         let sentinel = Sentinel::new("iai_callgrind::bench::");
-
-        let mut callgrind_args = self.config.callgrind_args.clone();
-        callgrind_args.insert_toggle_collect(&format!("{}*", sentinel.as_toggle()));
-
         let output = if let Some(bench_id) = &self.id {
             CallgrindOutput::create(
                 &config.meta.target_dir,
@@ -51,19 +50,13 @@ impl LibBench {
         } else {
             CallgrindOutput::create(&config.meta.target_dir, &group.module, &self.function)
         };
-        callgrind_args.set_output_file(&output.file);
-
-        let options = Options {
-            env_clear: self.config.env_clear,
-            ..Default::default()
-        };
 
         command.run(
-            &callgrind_args,
+            self.callgrind_args.clone(),
             &config.bench_bin,
             &args,
-            self.config.envs.clone(),
-            &options,
+            self.opts.clone(),
+            &output.file,
         )?;
 
         let new_stats = output.parse(&config.bench_file, &sentinel);
@@ -84,13 +77,6 @@ impl LibBench {
 
         Ok(())
     }
-}
-
-#[derive(Debug)]
-struct LibBenchConfig {
-    env_clear: bool,
-    envs: Vec<(OsString, OsString)>,
-    callgrind_args: CallgrindArgs,
 }
 
 #[derive(Debug)]
@@ -129,18 +115,11 @@ impl Groups {
                         library_benchmark_benches.config.as_ref(),
                         library_benchmark_bench.config.as_ref(),
                     ]);
-                    let envs: Vec<(OsString, OsString)> = config
-                        .envs
-                        .iter()
-                        .filter_map(|(key, value)| match value {
-                            Some(value) => Some((key.clone(), value.clone())),
-                            None => std::env::var_os(key).map(|value| (key.clone(), value)),
-                        })
-                        .collect();
+                    let envs = config.resolve_envs();
                     let callgrind_args = {
                         let mut raw = config.raw_callgrind_args;
                         raw.extend_from_command_line_args(benchmark.command_line_args.as_slice());
-                        CallgrindArgs::from_raw_callgrind_args(raw)
+                        CallgrindArgs::from_raw_callgrind_args(&raw)
                     };
                     let lib_bench = LibBench {
                         bench_index,
@@ -148,11 +127,13 @@ impl Groups {
                         id: library_benchmark_bench.id,
                         function: library_benchmark_bench.bench,
                         args: library_benchmark_bench.args,
-                        config: LibBenchConfig {
+                        opts: CallgrindOptions {
                             env_clear: config.env_clear.unwrap_or(true),
+                            entry_point: Some("iai_callgrind::bench::*".to_owned()),
                             envs,
-                            callgrind_args,
+                            ..Default::default()
                         },
+                        callgrind_args,
                     };
                     group.benches.push(lib_bench);
                 }

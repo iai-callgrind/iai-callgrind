@@ -6,10 +6,12 @@ use std::process::Command;
 use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
-use super::callgrind::{CallgrindArgs, CallgrindCommand, CallgrindOutput, Sentinel};
+use super::callgrind::{
+    CallgrindArgs, CallgrindCommand, CallgrindOptions, CallgrindOutput, Sentinel,
+};
 use super::meta::Metadata;
 use super::print::Header;
-use crate::api::{self, BinaryBenchmark, Options};
+use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig};
 use crate::error::{IaiCallgrindError, Result};
 use crate::util::{copy_directory, receive_benchmark, write_all_to_stderr, write_all_to_stdout};
 
@@ -19,37 +21,25 @@ struct BinBench {
     display: String,
     command: PathBuf,
     args: Vec<OsString>,
-    // TODO: Should be (OsString, OsString)
-    envs: Vec<(String, String)>,
-    opts: api::Options,
+    opts: CallgrindOptions,
+    callgrind_args: CallgrindArgs,
 }
 
 impl BinBench {
     fn run(&self, config: &Config, group: &Group) -> Result<()> {
         let command = CallgrindCommand::new(config.meta.aslr, &config.meta.arch);
-        let mut callgrind_args = group.callgrind_args.clone();
-        if let Some(entry_point) = &self.opts.entry_point {
-            callgrind_args.collect_atstart = false;
-            callgrind_args.insert_toggle_collect(entry_point);
-        } else {
-            callgrind_args.collect_atstart = true;
-        }
-
         let output = CallgrindOutput::create(
             &config.meta.target_dir,
             &group.module_path,
             &format!("{}.{}", self.id, self.display),
         );
-        callgrind_args.set_output_file(&output.file);
 
         command.run(
-            &callgrind_args,
+            self.callgrind_args.clone(),
             &self.command,
             &self.args,
-            self.envs
-                .iter()
-                .map(|(k, v)| (OsString::from(k), OsString::from(v))),
-            &self.opts,
+            self.opts.clone(),
+            &output.file,
         )?;
 
         let new_stats = output.parse_summary();
@@ -102,11 +92,17 @@ struct Assistant {
     name: String,
     kind: AssistantKind,
     bench: bool,
+    callgrind_args: CallgrindArgs,
 }
 
 impl Assistant {
-    fn new(name: String, kind: AssistantKind, bench: bool) -> Self {
-        Self { name, kind, bench }
+    fn new(name: String, kind: AssistantKind, bench: bool, callgrind_args: CallgrindArgs) -> Self {
+        Self {
+            name,
+            kind,
+            bench,
+            callgrind_args,
+        }
     }
 
     fn run_bench(&self, config: &Config, group: &Group) -> Result<()> {
@@ -123,22 +119,23 @@ impl Assistant {
             OsString::from(format!("{}::{}", &config.module, &self.name)),
         ];
 
-        let mut callgrind_args = group.callgrind_args.clone();
-        callgrind_args.collect_atstart = false;
-        callgrind_args.insert_toggle_collect(&format!("*{}::{}", &config.module, &self.name));
-
         let output = CallgrindOutput::create(
             &config.meta.target_dir,
             &group.module_path,
             &format!("{}.{}", self.kind.id(), &self.name),
         );
-        callgrind_args.set_output_file(&output.file);
+        let options = CallgrindOptions {
+            env_clear: false,
+            entry_point: Some(format!("*{}::{}", &config.module, &self.name)),
+            ..Default::default()
+        };
+
         command.run(
-            &callgrind_args,
+            self.callgrind_args.clone(),
             &config.bench_bin,
             &executable_args,
-            vec![],
-            &api::Options::new(false, None, None, None),
+            options,
+            &output.file,
         )?;
 
         let sentinel = Sentinel::from_path(&config.module, &self.name);
@@ -291,7 +288,6 @@ struct Group {
     sandbox: bool,
     benches: Vec<BinBench>,
     assists: BenchmarkAssistants,
-    callgrind_args: CallgrindArgs,
 }
 
 impl Group {
@@ -346,6 +342,7 @@ impl Groups {
         module_path: &str,
         cmd: &Option<api::Cmd>,
         runs: Vec<api::Run>,
+        group_config: &BinaryBenchmarkConfig,
     ) -> Result<Vec<BinBench>> {
         let mut benches = vec![];
         let mut counter: usize = 0;
@@ -366,16 +363,8 @@ impl Groups {
                      either at group level or run level: {run:?}"
                 )));
             };
-            let opts = run.opts;
-            let envs: Vec<(String, String)> = run
-                .envs
-                .iter()
-                .filter_map(|e| match e.split_once('=') {
-                    Some((key, value)) => Some((key.to_owned(), value.to_owned())),
-                    None => std::env::var(e).ok().map(|v| (e.clone(), v)),
-                })
-                .collect();
-
+            let config = group_config.clone().update_from_all([Some(&run.config)]);
+            let envs = config.resolve_envs();
             for args in run.args {
                 let id = if let Some(id) = args.id {
                     id
@@ -389,17 +378,26 @@ impl Groups {
                     display: orig.clone(),
                     command: command.clone(),
                     args: args.args,
-                    envs: envs.clone(),
-                    opts: opts
-                        .as_ref()
-                        .map_or_else(Options::default, std::clone::Clone::clone),
+                    opts: CallgrindOptions {
+                        env_clear: config.env_clear.unwrap_or(true),
+                        current_dir: config.current_dir.clone(),
+                        entry_point: config.entry_point.clone(),
+                        exit_with: config.exit_with.clone(),
+                        envs: envs.clone(),
+                    },
+                    callgrind_args: CallgrindArgs::from_raw_callgrind_args(
+                        &config.raw_callgrind_args,
+                    ),
                 });
             }
         }
         Ok(benches)
     }
 
-    fn parse_assists(assists: Vec<crate::api::Assistant>) -> BenchmarkAssistants {
+    fn parse_assists(
+        assists: Vec<crate::api::Assistant>,
+        callgrind_args: &CallgrindArgs,
+    ) -> BenchmarkAssistants {
         let mut bench_assists = BenchmarkAssistants::default();
         for assist in assists {
             match assist.id.as_str() {
@@ -408,6 +406,7 @@ impl Groups {
                         assist.name,
                         AssistantKind::Before,
                         assist.bench,
+                        callgrind_args.clone(),
                     ));
                 }
                 "after" => {
@@ -415,6 +414,7 @@ impl Groups {
                         assist.name,
                         AssistantKind::After,
                         assist.bench,
+                        callgrind_args.clone(),
                     ));
                 }
                 "setup" => {
@@ -422,6 +422,7 @@ impl Groups {
                         assist.name,
                         AssistantKind::Setup,
                         assist.bench,
+                        callgrind_args.clone(),
                     ));
                 }
                 "teardown" => {
@@ -429,6 +430,7 @@ impl Groups {
                         assist.name,
                         AssistantKind::Teardown,
                         assist.bench,
+                        callgrind_args.clone(),
                     ));
                 }
                 name => panic!("Unknown assistant function: {name}"),
@@ -440,26 +442,32 @@ impl Groups {
     fn from_binary_benchmark(module: &str, benchmark: BinaryBenchmark) -> Result<Self> {
         // TODO: LIKE in lib_bench binary benchmarks should differentiate between command_line_args
         // and raw_callgrind_args
-        let args = CallgrindArgs::from_raw_callgrind_args(benchmark.config.raw_callgrind_args);
-        let mut configs = vec![];
+        let mut groups = vec![];
         for group in benchmark.groups {
             let module_path = if let Some(id) = group.id.as_ref() {
                 format!("{module}::{id}")
             } else {
                 module.to_owned()
             };
+            let group_config = benchmark
+                .config
+                .clone()
+                .update_from_all([group.config.as_ref()]);
+            let benches = Self::parse_runs(&module_path, &group.cmd, group.benches, &group_config)?;
             let config = Group {
                 id: group.id,
-                module_path: module_path.clone(),
-                fixtures: group.fixtures,
-                sandbox: group.sandbox,
-                benches: Self::parse_runs(&module_path, &group.cmd, group.benches)?,
-                assists: Self::parse_assists(group.assists),
-                callgrind_args: args.clone(),
+                module_path,
+                fixtures: group_config.fixtures,
+                sandbox: group_config.sandbox.unwrap_or(true),
+                benches,
+                assists: Self::parse_assists(
+                    group.assists,
+                    &CallgrindArgs::from_raw_callgrind_args(&group_config.raw_callgrind_args),
+                ),
             };
-            configs.push(config);
+            groups.push(config);
         }
-        Ok(Self(configs))
+        Ok(Self(groups))
     }
 
     fn run(&self, config: &Config) -> Result<()> {

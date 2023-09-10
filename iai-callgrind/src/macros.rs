@@ -310,7 +310,8 @@
 /// For more details about the functionality see the docs of [`crate::Fixtures`].
 #[macro_export]
 macro_rules! main {
-    // TODO: CHANGE options to config and use BinaryBenchmarkConfig
+    // TODO: REMOVE THIS USAGE OF THE MAIN MACRO
+    // TODO: CHANGE options to config and use BinaryBenchmarkConfig.
     ( $( options = $( $options:literal ),+ $(,)*; )?
       $( before = $before:ident $(, bench = $bench_before:literal )? ; )?
       $( after = $after:ident $(, bench = $bench_after:literal )? ; )?
@@ -319,8 +320,7 @@ macro_rules! main {
       $( sandbox = $sandbox:literal; )?
       $( fixtures = $fixtures:literal $(, follow_symlinks = $follow_symlinks:literal )? ; )?
       $( run = cmd = $cmd:expr
-            $(, envs = [ $( $envs:literal ),* $(,)* ] )?
-            $(, opts = $opt:expr )? ,
+            $(, envs = [ $( $envs:literal ),* $(,)* ] )?,
             $( id = $id:literal, args = [ $( $args:literal ),* $(,)* ]  ),+ $(,)*
       );+ $(;)*
     ) => {
@@ -371,8 +371,9 @@ macro_rules! main {
             let mut benchmark = $crate::internal::InternalBinaryBenchmark::default();
             let mut group = $crate::internal::InternalBinaryBenchmarkGroup::default();
 
+            let mut group_config = $crate::internal::InternalBinaryBenchmarkConfig::default();
             $(
-                group.sandbox = $sandbox;
+                group, Options_config.sandbox = Some($sandbox);
             )?
 
             $(
@@ -381,7 +382,7 @@ macro_rules! main {
                 $(
                     follow_symlinks = $follow_symlinks;
                 )?
-                group.fixtures = Some($crate::internal::InternalFixtures {
+                group_config.fixtures = Some($crate::internal::InternalFixtures {
                     path: path.into(), follow_symlinks
                 });
             )?
@@ -389,10 +390,6 @@ macro_rules! main {
             $(
                 let display : &str = $cmd;
                 let command : &str = option_env!(concat!("CARGO_BIN_EXE_", $cmd)).unwrap_or(display);
-                let mut opt_arg : Option<$crate::internal::InternalBinaryBenchmarkOptions> = None;
-                $(
-                    opt_arg = Some($opt.into());
-                )?
 
                 let mut env_arg : Vec<String> = vec![];
                 $(
@@ -414,8 +411,7 @@ macro_rules! main {
                         display: display.to_owned(), cmd: command.to_owned()
                     }),
                     args: run_arg,
-                    opts: opt_arg,
-                    envs: env_arg
+                    config: $crate::internal::InternalBinaryBenchmarkConfig::default(),
                 };
                 group.benches.push(run);
             )+
@@ -484,7 +480,8 @@ macro_rules! main {
 
             args.extend(this_args); // The rest of the arguments from the command line
             benchmark.config = $crate::internal::InternalBinaryBenchmarkConfig {
-                raw_callgrind_args: $crate::internal::InternalRawCallgrindArgs::new(args)
+                raw_callgrind_args: $crate::internal::InternalRawCallgrindArgs::new(args),
+                ..Default::default()
             };
 
             let encoded = $crate::bincode::serialize(&benchmark).expect("Encoded benchmark");
@@ -569,8 +566,7 @@ macro_rules! main {
                     $crate::internal::InternalBinaryBenchmarkGroup {
                         id: Some(stringify!($group).to_owned()),
                         cmd: None,
-                        fixtures: None,
-                        sandbox: true,
+                        config: $group::get_config(),
                         benches: Vec::default(),
                         assists: Vec::default(),
                     }
@@ -595,7 +591,8 @@ macro_rules! main {
             } else {
                 $crate::internal::InternalBinaryBenchmarkConfig {
                     raw_callgrind_args:
-                        $crate::internal::InternalRawCallgrindArgs::from_iter(this_args)
+                        $crate::internal::InternalRawCallgrindArgs::from_iter(this_args),
+                    ..Default::default()
                 }
             };
 
@@ -921,17 +918,20 @@ macro_rules! main {
 #[macro_export]
 macro_rules! binary_benchmark_group {
     (
+        $( config = $config:expr ; $(;)* )?
         benchmark = |$cmd:expr, $group:ident: &mut BinaryBenchmarkGroup| $body:expr
     ) => {
         compile_error!("A binary_benchmark_group! needs a name\n\nbinary_benchmark_group!(name = some_ident; benchmark = ...);");
     };
     (
+        $( config = $config:expr ; $(;)* )?
         benchmark = |$group:ident: &mut BinaryBenchmarkGroup| $body:expr
     ) => {
         compile_error!("A binary_benchmark_group! needs a name\n\nbinary_benchmark_group!(name = some_ident; benchmark = ...);");
     };
     (
         name = $name:ident;
+        $( config = $config:expr ; $(;)* )?
         benchmark =
     ) => {
         compile_error!(
@@ -947,6 +947,7 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
         $(after = $after:ident $(,bench = $bench_after:literal)? ; $(;)*)?
         $(setup = $setup:ident $(,bench = $bench_setup:literal)? ; $(;)*)?
         $(teardown = $teardown:ident $(,bench = $bench_teardown:literal)? ; $(;)*)?
+        $( config = $config:expr ; $(;)* )?
         benchmark = |$cmd:expr, $group:ident: &mut BinaryBenchmarkGroup| $body:expr
     ) => {
         pub mod $name {
@@ -976,6 +977,17 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
                 $(
                     let _ = $crate::black_box(super::$teardown());
                 )?
+            }
+
+            #[inline(never)]
+            pub fn get_config() -> Option<$crate::internal::InternalBinaryBenchmarkConfig> {
+                use super::*;
+
+                let mut config = None;
+                $(
+                    config = Some($config.into());
+                )?
+                config
             }
 
             #[inline(never)]
@@ -1048,6 +1060,7 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
         $(after = $after:ident $(,bench = $bench_after:literal)? ; $(;)*)?
         $(setup = $setup:ident $(,bench = $bench_setup:literal)? ; $(;)*)?
         $(teardown = $teardown:ident $(,bench = $bench_teardown:literal)? ; $(;)*)?
+        $( config = $config:expr ; $(;)* )?
         benchmark = |$group:ident: &mut BinaryBenchmarkGroup| $body:expr
     ) => {
         $crate::binary_benchmark_group!(
@@ -1056,6 +1069,7 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
             $(after = $after $(,bench = $bench_after)?;)?
             $(setup = $setup $(,bench = $bench_setup)?;)?
             $(teardown = $teardown $(,bench = $bench_teardown)?;)?
+            $( config = $config; )?
             benchmark = |"", $group: &mut BinaryBenchmarkGroup| $body
         );
     };
@@ -1110,12 +1124,14 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
 #[macro_export]
 macro_rules! library_benchmark_group {
     (
+        $( config = $config:expr ; $(;)* )?
         benchmarks = $( $function:ident ),+
     ) => {
         compile_error!("A library_benchmark_group! needs a name\n\nlibrary_benchmark_group!(name = some_ident; benchmarks = ...);");
     };
     (
         name = $name:ident;
+        $( config = $config:expr ; $(;)* )?
         benchmarks =
     ) => {
         compile_error!(
