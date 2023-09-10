@@ -244,7 +244,7 @@ pub fn black_box<T>(dummy: T) -> T {
 /// # }
 /// ```
 #[derive(Debug, Default)]
-pub struct LibraryBenchmarkConfig(internal::RunnerLibraryBenchmarkConfig);
+pub struct LibraryBenchmarkConfig(internal::InternalLibraryBenchmarkConfig);
 
 impl LibraryBenchmarkConfig {
     /// Create a new `LibraryBenchmarkConfig` with raw callgrind arguments
@@ -271,9 +271,9 @@ impl LibraryBenchmarkConfig {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(internal::RunnerLibraryBenchmarkConfig {
+        Self(internal::InternalLibraryBenchmarkConfig {
             env_clear: None,
-            raw_callgrind_args: internal::RunnerRawCallgrindArgs::new(args),
+            raw_callgrind_args: internal::InternalRawCallgrindArgs::new(args),
             envs: vec![],
         })
     }
@@ -522,7 +522,7 @@ impl LibraryBenchmarkConfig {
 /// );
 /// ```
 #[derive(Debug, Default, Clone)]
-pub struct BinaryBenchmarkConfig(internal::RunnerConfig);
+pub struct BinaryBenchmarkConfig(internal::InternalBinaryBenchmarkConfig);
 
 impl BinaryBenchmarkConfig {
     /// Pass arguments to valgrind's callgrind for all benchmarks within the same file
@@ -563,7 +563,7 @@ impl BinaryBenchmarkConfig {
 
 /// The `BinaryBenchmarkGroup` lets you configure and execute benchmarks
 #[derive(Debug, Default, Clone)]
-pub struct BinaryBenchmarkGroup(internal::RunnerBinaryBenchmarkGroup);
+pub struct BinaryBenchmarkGroup(internal::InternalBinaryBenchmarkGroup);
 
 impl BinaryBenchmarkGroup {
     /// Copy [`Fixtures`] into the sandbox (if enabled)
@@ -584,7 +584,7 @@ impl BinaryBenchmarkGroup {
     /// ```
     pub fn fixtures<T>(&mut self, value: T) -> &mut Self
     where
-        T: Into<internal::RunnerFixtures>,
+        T: Into<internal::InternalFixtures>,
     {
         self.0.fixtures = Some(value.into());
         self
@@ -672,22 +672,22 @@ impl BinaryBenchmarkGroup {
     /// ```
     pub fn bench<T>(&mut self, run: T) -> &mut Self
     where
-        T: Into<internal::RunnerRun>,
+        T: Into<internal::InternalRun>,
     {
         self.0.benches.push(run.into());
         self
     }
 }
 
-impl From<internal::RunnerBinaryBenchmarkGroup> for BinaryBenchmarkGroup {
-    fn from(value: internal::RunnerBinaryBenchmarkGroup) -> Self {
+impl From<internal::InternalBinaryBenchmarkGroup> for BinaryBenchmarkGroup {
+    fn from(value: internal::InternalBinaryBenchmarkGroup) -> Self {
         BinaryBenchmarkGroup(value)
     }
 }
 
 /// `Run` let's you set up and configure a benchmark run of a binary
 #[derive(Debug, Default, Clone)]
-pub struct Run(internal::RunnerRun);
+pub struct Run(internal::InternalRun);
 
 impl Run {
     /// Create a new `Run` with a `cmd` and [`Arg`]
@@ -720,11 +720,11 @@ impl Run {
     pub fn with_cmd<T, U>(cmd: T, arg: U) -> Self
     where
         T: AsRef<str>,
-        U: Into<internal::RunnerArg>,
+        U: Into<internal::InternalArg>,
     {
         let cmd = cmd.as_ref();
-        Self(internal::RunnerRun {
-            cmd: Some(internal::RunnerCmd {
+        Self(internal::InternalRun {
+            cmd: Some(internal::InternalCmd {
                 display: cmd.to_owned(),
                 cmd: cmd.to_owned(),
             }),
@@ -763,8 +763,8 @@ impl Run {
         let cmd = cmd.as_ref();
         let args = args.as_ref();
 
-        Self(internal::RunnerRun {
-            cmd: Some(internal::RunnerCmd {
+        Self(internal::InternalRun {
+            cmd: Some(internal::InternalCmd {
                 display: cmd.to_owned(),
                 cmd: cmd.to_owned(),
             }),
@@ -796,9 +796,9 @@ impl Run {
     /// # }
     pub fn with_arg<T>(arg: T) -> Self
     where
-        T: Into<internal::RunnerArg>,
+        T: Into<internal::InternalArg>,
     {
-        Self(internal::RunnerRun {
+        Self(internal::InternalRun {
             cmd: None,
             args: vec![arg.into()],
             opts: None,
@@ -857,7 +857,7 @@ impl Run {
         T: AsRef<[I]>,
     {
         let args = args.as_ref();
-        Self(internal::RunnerRun {
+        Self(internal::InternalRun {
             cmd: None,
             args: args.iter().map(|a| a.as_ref().into()).collect(),
             opts: None,
@@ -889,7 +889,7 @@ impl Run {
     /// # }
     pub fn arg<T>(&mut self, arg: T) -> &mut Self
     where
-        T: Into<internal::RunnerArg>,
+        T: Into<internal::InternalArg>,
     {
         self.0.args.push(arg.into());
         self
@@ -1047,7 +1047,7 @@ impl Run {
     /// ```
     pub fn options<T>(&mut self, options: T) -> &mut Self
     where
-        T: Into<internal::RunnerOptions>,
+        T: Into<internal::InternalBinaryBenchmarkOptions>,
     {
         self.0.opts = Some(options.into());
         self
@@ -1056,7 +1056,7 @@ impl Run {
 
 /// The arguments needed for [`Run`] which are passed to the benchmarked binary
 #[derive(Debug, Clone)]
-pub struct Arg(internal::RunnerArg);
+pub struct Arg(internal::InternalArg);
 
 impl Arg {
     /// Create a new `Arg`.
@@ -1112,7 +1112,7 @@ impl Arg {
         I: AsRef<OsStr>,
         U: AsRef<[I]>,
     {
-        Self(internal::RunnerArg {
+        Self(internal::InternalArg {
             id: Some(id.into()),
             args: args
                 .as_ref()
@@ -1144,7 +1144,7 @@ impl Arg {
     where
         T: Into<String>,
     {
-        Self(internal::RunnerArg {
+        Self(internal::InternalArg {
             id: Some(id.into()),
             args: vec![],
         })
@@ -1153,7 +1153,7 @@ impl Arg {
 
 /// A builder for `Options`, applied to each benchmark [`Run`] of a benchmarked binary
 #[derive(Debug, Default, Clone)]
-pub struct Options(internal::RunnerOptions);
+pub struct Options(internal::InternalBinaryBenchmarkOptions);
 
 impl Options {
     /// If false, don't clear the environment variables before running the benchmark (Default: true)
@@ -1273,7 +1273,7 @@ impl Options {
     /// ```
     pub fn exit_with<T>(&mut self, value: T) -> &mut Self
     where
-        T: Into<internal::RunnerExitWith>,
+        T: Into<internal::InternalExitWith>,
     {
         self.0.exit_with = Some(value.into());
         self
@@ -1289,7 +1289,7 @@ impl Options {
 /// let fixtures: Fixtures = Fixtures::new("benches/fixtures");
 /// ```
 #[derive(Debug, Clone)]
-pub struct Fixtures(internal::RunnerFixtures);
+pub struct Fixtures(internal::InternalFixtures);
 
 impl Fixtures {
     /// Create a new `Fixtures` struct
@@ -1319,7 +1319,7 @@ impl Fixtures {
     where
         T: Into<PathBuf>,
     {
-        Self(internal::RunnerFixtures {
+        Self(internal::InternalFixtures {
             path: path.into(),
             follow_symlinks: false,
         })
@@ -1423,7 +1423,7 @@ pub enum ExitWith {
     Code(i32),
 }
 
-impl From<ExitWith> for internal::RunnerExitWith {
+impl From<ExitWith> for internal::InternalExitWith {
     fn from(value: ExitWith) -> Self {
         match value {
             ExitWith::Success => Self::Success,
@@ -1433,7 +1433,7 @@ impl From<ExitWith> for internal::RunnerExitWith {
     }
 }
 
-impl From<&ExitWith> for internal::RunnerExitWith {
+impl From<&ExitWith> for internal::InternalExitWith {
     fn from(value: &ExitWith) -> Self {
         match value {
             ExitWith::Success => Self::Success,
@@ -1471,13 +1471,16 @@ macro_rules! impl_traits {
     };
 }
 
-impl_traits!(BinaryBenchmarkGroup, internal::RunnerBinaryBenchmarkGroup);
-impl_traits!(BinaryBenchmarkConfig, internal::RunnerConfig);
+impl_traits!(BinaryBenchmarkGroup, internal::InternalBinaryBenchmarkGroup);
+impl_traits!(
+    BinaryBenchmarkConfig,
+    internal::InternalBinaryBenchmarkConfig
+);
 impl_traits!(
     LibraryBenchmarkConfig,
-    internal::RunnerLibraryBenchmarkConfig
+    internal::InternalLibraryBenchmarkConfig
 );
-impl_traits!(Options, internal::RunnerOptions);
-impl_traits!(Run, internal::RunnerRun);
-impl_traits!(Arg, internal::RunnerArg);
-impl_traits!(Fixtures, internal::RunnerFixtures);
+impl_traits!(Options, internal::InternalBinaryBenchmarkOptions);
+impl_traits!(Run, internal::InternalRun);
+impl_traits!(Arg, internal::InternalArg);
+impl_traits!(Fixtures, internal::InternalFixtures);

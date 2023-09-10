@@ -368,8 +368,8 @@ macro_rules! main {
             cmd.arg(module_path!());
             cmd.arg(this_args.next().unwrap()); // The executable benchmark binary
 
-            let mut benchmark = $crate::internal::RunnerBinaryBenchmark::default();
-            let mut group = $crate::internal::RunnerBinaryBenchmarkGroup::default();
+            let mut benchmark = $crate::internal::InternalBinaryBenchmark::default();
+            let mut group = $crate::internal::InternalBinaryBenchmarkGroup::default();
 
             $(
                 group.sandbox = $sandbox;
@@ -381,7 +381,7 @@ macro_rules! main {
                 $(
                     follow_symlinks = $follow_symlinks;
                 )?
-                group.fixtures = Some($crate::internal::RunnerFixtures {
+                group.fixtures = Some($crate::internal::InternalFixtures {
                     path: path.into(), follow_symlinks
                 });
             )?
@@ -389,7 +389,7 @@ macro_rules! main {
             $(
                 let display : &str = $cmd;
                 let command : &str = option_env!(concat!("CARGO_BIN_EXE_", $cmd)).unwrap_or(display);
-                let mut opt_arg : Option<$crate::internal::RunnerOptions> = None;
+                let mut opt_arg : Option<$crate::internal::InternalBinaryBenchmarkOptions> = None;
                 $(
                     opt_arg = Some($opt.into());
                 )?
@@ -400,17 +400,17 @@ macro_rules! main {
                     env_arg = envs.into_iter().map(|s| s.to_owned()).collect();
                 )?
 
-                let mut run_arg : Vec<$crate::internal::RunnerArg> = vec![];
+                let mut run_arg : Vec<$crate::internal::InternalArg> = vec![];
                 $(
                     let args : Vec<&str> = vec![$($args),*];
                     let id : &str = $id;
                     let id : Option<String> = Some(id.to_owned());
-                    run_arg.push($crate::internal::RunnerArg {
+                    run_arg.push($crate::internal::InternalArg {
                         id, args: args.into_iter().map(|s| std::ffi::OsString::from(s)).collect()
                     });
                 )+
-                let run = $crate::internal::RunnerRun {
-                    cmd: Some($crate::internal::RunnerCmd {
+                let run = $crate::internal::InternalRun {
+                    cmd: Some($crate::internal::InternalCmd {
                         display: display.to_owned(), cmd: command.to_owned()
                     }),
                     args: run_arg,
@@ -420,13 +420,13 @@ macro_rules! main {
                 group.benches.push(run);
             )+
 
-            let mut assists : Vec<$crate::internal::RunnerAssistant> = vec![];
+            let mut assists : Vec<$crate::internal::InternalAssistant> = vec![];
             $(
                 let mut bench_before = false;
                 $(
                     bench_before = $bench_before;
                 )?
-                assists.push($crate::internal::RunnerAssistant {
+                assists.push($crate::internal::InternalAssistant {
                     id: "before".to_owned(),
                     name: stringify!($before).to_owned(),
                     bench: bench_before
@@ -437,7 +437,7 @@ macro_rules! main {
                 $(
                     bench_after = $bench_after;
                 )?
-                assists.push($crate::internal::RunnerAssistant {
+                assists.push($crate::internal::InternalAssistant {
                     id: "after".to_owned(),
                     name: stringify!($after).to_owned(),
                     bench: bench_after
@@ -448,7 +448,7 @@ macro_rules! main {
                 $(
                     bench_setup = $bench_setup;
                 )?
-                assists.push($crate::internal::RunnerAssistant {
+                assists.push($crate::internal::InternalAssistant {
                     id: "setup".to_owned(),
                     name: stringify!($setup).to_owned(),
                     bench: bench_setup
@@ -459,7 +459,7 @@ macro_rules! main {
                 $(
                     bench_teardown = $bench_teardown;
                 )?
-                assists.push($crate::internal::RunnerAssistant {
+                assists.push($crate::internal::InternalAssistant {
                     id: "teardown".to_owned(),
                     name: stringify!($teardown).to_owned(),
                     bench: bench_teardown
@@ -483,8 +483,8 @@ macro_rules! main {
             }
 
             args.extend(this_args); // The rest of the arguments from the command line
-            benchmark.config = $crate::internal::RunnerConfig {
-                raw_callgrind_args: $crate::internal::RunnerRawCallgrindArgs::new(args)
+            benchmark.config = $crate::internal::InternalBinaryBenchmarkConfig {
+                raw_callgrind_args: $crate::internal::InternalRawCallgrindArgs::new(args)
             };
 
             let encoded = $crate::bincode::serialize(&benchmark).expect("Encoded benchmark");
@@ -563,10 +563,10 @@ macro_rules! main {
             cmd.arg(module_path!());
             cmd.arg(this_args.next().unwrap()); // The executable benchmark binary
 
-            let mut benchmark = $crate::internal::RunnerBinaryBenchmark::default();
+            let mut benchmark = $crate::internal::InternalBinaryBenchmark::default();
             $(
                 let mut group = $crate::BinaryBenchmarkGroup::from(
-                    $crate::internal::RunnerBinaryBenchmarkGroup {
+                    $crate::internal::InternalBinaryBenchmarkGroup {
                         id: Some(stringify!($group).to_owned()),
                         cmd: None,
                         fixtures: None,
@@ -577,14 +577,14 @@ macro_rules! main {
                 );
                 let (prog, assists) = $group::$group(&mut group);
 
-                let mut group: $crate::internal::RunnerBinaryBenchmarkGroup = group.into();
+                let mut group: $crate::internal::InternalBinaryBenchmarkGroup = group.into();
                 group.cmd = prog;
                 group.assists = assists;
 
                 benchmark.groups.push(group);
             )+
 
-            let mut config: Option<$crate::internal::RunnerConfig> = None;
+            let mut config: Option<$crate::internal::InternalBinaryBenchmarkConfig> = None;
             $(
                 config = Some($config.into());
             )?
@@ -593,9 +593,9 @@ macro_rules! main {
                 config.raw_callgrind_args.extend(this_args);
                 config
             } else {
-                $crate::internal::RunnerConfig {
+                $crate::internal::InternalBinaryBenchmarkConfig {
                     raw_callgrind_args:
-                        $crate::internal::RunnerRawCallgrindArgs::from_iter(this_args)
+                        $crate::internal::InternalRawCallgrindArgs::from_iter(this_args)
                 }
             };
 
@@ -669,29 +669,29 @@ macro_rules! main {
             cmd.arg(module_path!());
             cmd.arg(this_args.next().unwrap()); // The executable benchmark binary
 
-            let mut config: Option<$crate::internal::RunnerLibraryBenchmarkConfig> = None;
+            let mut config: Option<$crate::internal::InternalLibraryBenchmarkConfig> = None;
             $(
                 config = Some($config.into());
             )?
 
-            let mut benchmark = $crate::internal::RunnerLibraryBenchmark {
+            let mut benchmark = $crate::internal::InternalLibraryBenchmark {
                 config: config.unwrap_or_default(),
                 groups: vec![],
                 command_line_args: this_args.collect()
             };
             $(
-                let mut group = $crate::internal::RunnerLibraryBenchmarkGroup {
+                let mut group = $crate::internal::InternalLibraryBenchmarkGroup {
                     id: Some(stringify!($group).to_owned()),
                     config: $group::get_config(),
                     benches: vec![]
                 };
                 for (bench_name, get_config, macro_lib_benches) in $group::BENCHES {
-                    let mut benches = $crate::internal::RunnerLibraryBenchmarkBenches {
+                    let mut benches = $crate::internal::InternalLibraryBenchmarkBenches {
                         benches: vec![],
                         config: get_config()
                     };
                     for macro_lib_bench in macro_lib_benches.iter() {
-                        let bench = $crate::internal::RunnerLibraryBenchmarkBench {
+                        let bench = $crate::internal::InternalLibraryBenchmarkBench {
                             id: macro_lib_bench.id_display.map(|i| i.to_string()),
                             args: macro_lib_bench.args_display.map(|i| i.to_string()),
                             bench: bench_name.to_string(),
@@ -980,22 +980,22 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
 
             #[inline(never)]
             pub fn $name($group: &mut $crate::BinaryBenchmarkGroup) ->
-                (Option<$crate::internal::RunnerCmd>, Vec<$crate::internal::RunnerAssistant>)
+                (Option<$crate::internal::InternalCmd>, Vec<$crate::internal::InternalAssistant>)
             {
                 let cmd: &str = $cmd;
-                let cmd = (!cmd.is_empty()).then(|| $crate::internal::RunnerCmd {
+                let cmd = (!cmd.is_empty()).then(|| $crate::internal::InternalCmd {
                         display: cmd.to_owned(),
                         cmd: option_env!(concat!("CARGO_BIN_EXE_", $cmd)).unwrap_or(cmd).to_owned()
                     }
                 );
 
-                let mut assists: Vec<$crate::internal::RunnerAssistant> = vec![];
+                let mut assists: Vec<$crate::internal::InternalAssistant> = vec![];
                 $(
                     let mut bench_before = false;
                     $(
                         bench_before = $bench_before;
                     )?
-                    assists.push($crate::internal::RunnerAssistant {
+                    assists.push($crate::internal::InternalAssistant {
                         id: "before".to_owned(),
                         name: stringify!($before).to_owned(),
                         bench: bench_before
@@ -1006,7 +1006,7 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
                     $(
                         bench_after = $bench_after;
                     )?
-                    assists.push($crate::internal::RunnerAssistant {
+                    assists.push($crate::internal::InternalAssistant {
                         id: "after".to_owned(),
                         name: stringify!($after).to_owned(),
                         bench: bench_after
@@ -1017,7 +1017,7 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
                     $(
                         bench_setup = $bench_setup;
                     )?
-                    assists.push($crate::internal::RunnerAssistant {
+                    assists.push($crate::internal::InternalAssistant {
                         id: "setup".to_owned(),
                         name: stringify!($setup).to_owned(),
                         bench: bench_setup
@@ -1028,7 +1028,7 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
                     $(
                         bench_teardown = $bench_teardown;
                     )?
-                    assists.push($crate::internal::RunnerAssistant {
+                    assists.push($crate::internal::InternalAssistant {
                         id: "teardown".to_owned(),
                         name: stringify!($teardown).to_owned(),
                         bench: bench_teardown
@@ -1133,8 +1133,8 @@ macro_rules! library_benchmark_group {
 
             pub const BENCHES: &[&(
                 &'static str,
-                fn() -> Option<$crate::internal::RunnerLibraryBenchmarkConfig>,
-                &[$crate::internal::MacroLibBench]
+                fn() -> Option<$crate::internal::InternalLibraryBenchmarkConfig>,
+                &[$crate::internal::InternalMacroLibBench]
             )]= &[
                 $(
                     &(
@@ -1145,8 +1145,8 @@ macro_rules! library_benchmark_group {
                 ),+
             ];
 
-            pub fn get_config() -> Option<$crate::internal::RunnerLibraryBenchmarkConfig> {
-                let mut config: Option<$crate::internal::RunnerLibraryBenchmarkConfig> = None;
+            pub fn get_config() -> Option<$crate::internal::InternalLibraryBenchmarkConfig> {
+                let mut config: Option<$crate::internal::InternalLibraryBenchmarkConfig> = None;
                 $(
                     config = Some($config.into());
                 )?
