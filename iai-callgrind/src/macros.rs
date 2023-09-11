@@ -109,17 +109,22 @@
 ///
 /// # Binary Benchmarks
 ///
-/// There are two different ways to setup binary benchmarks. The recommended way is to use
-/// [`crate::binary_benchmark_group`] and the main macro form with the `benchmark_binary_groups`
-/// argument roughly looking like this:
+/// The scheme to setup binary benchmarks makes use of [`crate::binary_benchmark_group`]
+/// and [`crate::BinaryBenchmarkGroup`] to set up benches with [`crate::Run`] roughly
+/// looking like this:
 ///
 /// ```rust
-/// use iai_callgrind::{main, binary_benchmark_group};
+/// use iai_callgrind::{main, binary_benchmark_group, Run, Arg};
 ///
 /// binary_benchmark_group!(
 ///     name = my_group;
 ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
-///         // code to setup benchmark runs goes here
+///         group
+///         .bench(Run::with_arg(Arg::new(
+///             "positional arguments",
+///             ["foo", "foo bar"],
+///         )))
+///         .bench(Run::with_arg(Arg::empty("no argument")));
 ///     }
 /// );
 ///
@@ -128,187 +133,10 @@
 /// # }
 /// ```
 ///
-/// See the documentation of [`crate::binary_benchmark_group`] for more details.
-///
-/// The second way uses just the `main` macro. It may lack the convenience and also some features of
-/// the builder like api from above via the [`crate::binary_benchmark_group`] macro.
-///
-/// The `main` macro api for binary benchmarks allows the following top-level arguments:
-///
-/// ```rust,ignore
-/// main!(
-///     options = "--callgrind-argument=yes";
-///     before = function_running_before_all_benchmarks;
-///     after = function_running_after_all_benchmarks;
-///     setup = function_running_before_any_benchmark;
-///     teardown = function_running_after_any_benchmark;
-///     sandbox = true;
-///     fixtures = "path/to/fixtures";
-///     run = cmd = "benchmark-tests", args = [];
-/// )
-/// ```
-///
-/// Here, `benchmark-tests` is an example of the name of the binary of a crate and it is assumed
-/// that the `function_running_before_all_benchmarks` ... functions are defined somewhere in the
-/// same file of the `main` macro. All top-level arguments must be separated by a `;`. However, only
-/// `run` is mandatory. All other top-level arguments (like `options`, `setup` etc.) are optional.
-///
-/// ### `run` (Mandatory)
-///
-/// The `run` argument can be specified multiple times separated by a `;` but must be given at least
-/// once. It takes the following arguments:
-///
-/// #### `cmd` (Mandatory)
-///
-/// This argument is allowed only once and specifies the name of one of the executables of the
-/// benchmarked crate. The path of the executable is discovered automatically, so the name of the
-/// `[[bin]]` as specified in the crate's `Cargo.toml` file is sufficient. The auto discovery
-/// supports running the benchmarks with different profiles.
-///
-/// Although not the main purpose of `iai-callgrind`, it's possible to benchmark any executable in
-/// the `PATH` or specified with an absolute path.
-///
-/// #### `args` (Mandatory)
-///
-/// The `args` argument must be specified at least once containing the arguments for the benchmarked
-/// `cmd`. It can be an empty array `[]` to run to the [`cmd`](#cmd-mandatory) without any
-/// arguments. Each `args` must have a unique `id`.
-///
-/// Specifying `args` multiple times (separated by a `,`) like so:
-///
-/// ```rust,ignore
-/// main!(
-///     run = cmd = "benchmark-tests",
-///         id = "long", args = ["something"],
-///         id = "short", args = ["other"]
-/// )
-/// ```
-///
-/// is a short-hand for specifying [`run`](#run-mandatory) with the same [`cmd`](#cmd-mandatory),
-/// [`opts`](#opts-optional) and [`envs`](#envs-optional) arguments multiple times:
-///
-/// ```rust,ignore
-/// main!(
-///     run = cmd = "benchmark-tests", id = "long", args = ["something"];
-///     run = cmd = "benchmark-tests", id = "short", args = ["other"]
-/// )
-/// ```
-///
-/// The output of a bench run with ids could look like:
-///
-/// ```text
-/// test_bin_bench long:benchmark-tests something
-///   Instructions:              322637 (No Change)
-///   L1 Data:              106807 (No Change)
-///   L2 Hits:                      708 (No Change)
-///   RAM Hits:                    3799 (No Change)
-///   Total read+write:          433951 (No Change)
-///   Estimated Cycles:          565949 (No Change)
-/// test_bin_bench short:benchmark-tests other
-///   Instructions:              155637 (No Change)
-///   L1 Data:              106807 (No Change)
-///   L2 Hits:                      708 (No Change)
-///   RAM Hits:                    3799 (No Change)
-///   Total read+write:          433951 (No Change)
-///   Estimated Cycles:          565949 (No Change)
-/// ```
-///
-/// ###### `opts` (Optional)
-///
-/// `opts` is optional and can be specified once for every `run` and [`cmd`](#cmd-mandatory):
-///
-/// ```rust,ignore
-/// main!(
-///     run = cmd = "benchmark-tests",
-///         opts = Options::default().env_clear(false),
-///         args = ["something"];
-/// )
-/// ```
-///
-/// #### `envs` (Optional)
-///
-/// `envs` may be used to set environment variables available in the `cmd`. This argument is
-/// optional and can be specified once for every [`cmd`](#cmd-mandatory). There must be at least one
-/// `KEY=VALUE` pair or `KEY` present in the array:
-///
-/// ```rust,ignore
-/// main!(
-///     run = cmd = "benchmark-tests",
-///         envs = ["MY_VAR=SOME_VALUE", "MY_OTHER_VAR=VALUE"],
-///         args = ["something"];
-/// )
-/// ```
-///
-/// See also the docs of [`crate::Run::env`] for more details.
-///
-/// ##### `sandbox` (Optional)
-///
-/// Per default, all binary benchmarks and the `before`, `after`, `setup` and `teardown` functions
-/// are executed in a temporary directory.
-///
-/// ```rust,ignore
-/// main!(
-///     sandbox = true;
-///     run = cmd = "benchmark-tests",
-///         opts = Options::default().env_clear(false),
-///         args = ["something"];
-/// )
-/// ```
-///
-/// See also the docs of [`crate::BinaryBenchmarkConfig::sandbox`] for more details.
-///
-/// ##### `options` (Optional)
-///
-/// A `,` separated list of strings which contain options for all `callgrind` invocations and
-/// therefore benchmarked `cmd`s (Including benchmarked `before`, `after`, `setup` and `teardown`
-/// functions).
-///
-/// ```rust,ignore
-/// main!(
-///     options = "--zero-before=benchmark_tests::main";
-///     run = cmd = "benchmark-tests", args = [];
-/// )
-/// ```
-///
-/// See also [Passing arguments to callgrind](#passing-arguments-to-callgrind) and the documentation
-/// of [Callgrind](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options)
-///
-/// ##### `before`, `after`, `setup`, `teardown` (Optional)
-///
-/// Each of the `before`, `after`, `setup` and `teardown` top-level arguments is optional. If given,
-/// this argument must specify a function of the benchmark file. These functions are meant to setup
-/// and cleanup the benchmarks. Each function is invoked at a different stage of the benchmarking
-/// process.
-///
-/// - `before`: This function is run once before all benchmarked `cmd`s
-/// - `after`: This function is run once after all benchmarked `cmd`s
-/// - `setup`: This function is run once before any benchmarked `cmd`
-/// - `teardown`: This function is run once after any benchmarked `cmd`
-///
-/// See also the docs of [`crate::binary_benchmark_group`] for more details.
-///
-/// ##### `fixtures` (Optional)
-///
-/// The `fixtures` argument specifies a path to a directory containing fixtures which you want to be
-/// available for all benchmarks and the `before`, `after`, `setup` and `teardown` functions. Per
-/// default, the fixtures directory will be copied as is into the workspace directory of the
-/// benchmark and following symlinks is switched off. The fixtures argument takes an additional
-/// argument `follow_symlinks = bool`. If set to `true` and your fixtures directory contains
-/// symlinks, these symlinks are resolved and instead of the symlink the target file or directory
-/// will be copied into the fixtures directory.
-///
-/// ```rust,ignore
-/// main!(
-///     fixtures = "benches/fixtures", follow_symlinks = true;
-///     run = cmd = "benchmark-tests", args = [];
-/// )
-/// ```
-///
-/// For more details about the functionality see the docs of [`crate::Fixtures`].
+/// See the documentation of [`crate::binary_benchmark_group`] and [`crate::Run`] for more
+/// details.
 #[macro_export]
 macro_rules! main {
-    // TODO: REMOVE THIS USAGE OF THE MAIN MACRO
-    // TODO: CHANGE options to config and use BinaryBenchmarkConfig.
     ( $( options = $( $options:literal ),+ $(,)*; )?
       $( before = $before:ident $(, bench = $bench_before:literal )? ; )?
       $( after = $after:ident $(, bench = $bench_after:literal )? ; )?
@@ -321,214 +149,12 @@ macro_rules! main {
             $( id = $id:literal, args = [ $( $args:literal ),* $(,)* ]  ),+ $(,)*
       );+ $(;)*
     ) => {
-        mod iai_wrappers {
-            $(
-                #[inline(never)]
-                pub fn $before() {
-                    let _ = $crate::black_box(super::$before());
-                }
-            )?
-            $(
-                #[inline(never)]
-                pub fn $after() {
-                    let _ = $crate::black_box(super::$after());
-                }
-            )?
-            $(
-                #[inline(never)]
-                pub fn $setup() {
-                    let _ = $crate::black_box(super::$setup());
-                }
-            )?
-            $(
-                #[inline(never)]
-                pub fn $teardown() {
-                    let _ = $crate::black_box(super::$teardown());
-                }
-            )?
-        }
-
-        #[inline(never)]
-        fn run() {
-            let mut this_args = std::env::args();
-            let exe = option_env!("IAI_CALLGRIND_RUNNER")
-                .unwrap_or_else(|| option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner"));
-
-            let library_version = "0.6.2";
-
-            let mut cmd = std::process::Command::new(exe);
-
-            cmd.arg(library_version);
-            cmd.arg("--bin-bench");
-            cmd.arg(env!("CARGO_MANIFEST_DIR"));
-            cmd.arg(file!());
-            cmd.arg(module_path!());
-            cmd.arg(this_args.next().unwrap()); // The executable benchmark binary
-
-            let mut benchmark = $crate::internal::InternalBinaryBenchmark::default();
-            let mut group = $crate::internal::InternalBinaryBenchmarkGroup::default();
-
-            let mut group_config = $crate::internal::InternalBinaryBenchmarkConfig::default();
-            $(
-                group, Options_config.sandbox = Some($sandbox);
-            )?
-
-            $(
-                let path : &str = $fixtures;
-                let mut follow_symlinks : bool = false;
-                $(
-                    follow_symlinks = $follow_symlinks;
-                )?
-                group_config.fixtures = Some($crate::internal::InternalFixtures {
-                    path: path.into(), follow_symlinks
-                });
-            )?
-
-            $(
-                let display : &str = $cmd;
-                let command : &str = option_env!(concat!("CARGO_BIN_EXE_", $cmd)).unwrap_or(display);
-
-                let mut env_arg : Vec<String> = vec![];
-                $(
-                    let envs : Vec<&str> = vec![$($envs),*];
-                    env_arg = envs.into_iter().map(|s| s.to_owned()).collect();
-                )?
-
-                let mut run_arg : Vec<$crate::internal::InternalArg> = vec![];
-                $(
-                    let args : Vec<&str> = vec![$($args),*];
-                    let id : &str = $id;
-                    let id : Option<String> = Some(id.to_owned());
-                    run_arg.push($crate::internal::InternalArg {
-                        id, args: args.into_iter().map(|s| std::ffi::OsString::from(s)).collect()
-                    });
-                )+
-                let run = $crate::internal::InternalRun {
-                    cmd: Some($crate::internal::InternalCmd {
-                        display: display.to_owned(), cmd: command.to_owned()
-                    }),
-                    args: run_arg,
-                    config: $crate::internal::InternalBinaryBenchmarkConfig::default(),
-                };
-                group.benches.push(run);
-            )+
-
-            let mut assists : Vec<$crate::internal::InternalAssistant> = vec![];
-            $(
-                let mut bench_before = false;
-                $(
-                    bench_before = $bench_before;
-                )?
-                assists.push($crate::internal::InternalAssistant {
-                    id: "before".to_owned(),
-                    name: stringify!($before).to_owned(),
-                    bench: bench_before
-                });
-            )?
-            $(
-                let mut bench_after = false;
-                $(
-                    bench_after = $bench_after;
-                )?
-                assists.push($crate::internal::InternalAssistant {
-                    id: "after".to_owned(),
-                    name: stringify!($after).to_owned(),
-                    bench: bench_after
-                });
-            )?
-            $(
-                let mut bench_setup = false;
-                $(
-                    bench_setup = $bench_setup;
-                )?
-                assists.push($crate::internal::InternalAssistant {
-                    id: "setup".to_owned(),
-                    name: stringify!($setup).to_owned(),
-                    bench: bench_setup
-                });
-            )?
-            $(
-                let mut bench_teardown = false;
-                $(
-                    bench_teardown = $bench_teardown;
-                )?
-                assists.push($crate::internal::InternalAssistant {
-                    id: "teardown".to_owned(),
-                    name: stringify!($teardown).to_owned(),
-                    bench: bench_teardown
-                });
-            )?
-
-            group.assists = assists;
-            benchmark.groups.push(group);
-
-            // Add the callgrind_args first so that arguments from the command line will overwrite
-            // those passed to this main macro
-            let options : Vec<&str> = vec![$($($options),+)?];
-
-            let mut args : Vec<String> = Vec::with_capacity(options.len() + 10);
-            for option in options {
-                if option.starts_with("--") {
-                    args.push(option.to_owned());
-                } else {
-                    args.push(format!("--{}", option))
-                }
-            }
-
-            args.extend(this_args); // The rest of the arguments from the command line
-            benchmark.config = $crate::internal::InternalBinaryBenchmarkConfig {
-                raw_callgrind_args: $crate::internal::InternalRawCallgrindArgs::new(args),
-                ..Default::default()
-            };
-
-            let encoded = $crate::bincode::serialize(&benchmark).expect("Encoded benchmark");
-            let mut child = cmd
-                .arg(encoded.len().to_string())
-                .stdin(std::process::Stdio::piped())
-                .spawn()
-                .expect("Failed to run benchmarks. \
-                    Is iai-callgrind-runner installed and iai-callgrind-runner in your $PATH?. \
-                    You can also set the environment variable IAI_CALLGRIND_RUNNER to the \
-                    absolute path of the iai-callgrind-runner executable.");
-
-            let mut stdin = child.stdin.take().expect("Opening stdin to submit encoded benchmark");
-            std::thread::spawn(move || {
-                use std::io::Write;
-                stdin.write_all(&encoded).expect("Writing encoded benchmark to stdin");
-            });
-
-            let status = child.wait().expect("Wait for child process to exit");
-            if !status.success() {
-                std::process::exit(1);
-            }
-        }
-
-        fn main() {
-            let mut args_iter = $crate::black_box(std::env::args()).skip(1);
-            if args_iter
-                .next()
-                .as_ref()
-                .map_or(false, |value| value == "--iai-run")
-            {
-                match $crate::black_box(args_iter.next().expect("Expecting a function type")).as_str() {
-                    $(
-                        "before" => (iai_wrappers::$before)(),
-                    )?
-                    $(
-                        "after" => (iai_wrappers::$after)(),
-                    )?
-                    $(
-                        "setup" => (iai_wrappers::$setup)(),
-                    )?
-                    $(
-                        "teardown" => (iai_wrappers::$teardown)(),
-                    )?
-                    name => panic!("function '{}' not found in this scope", name)
-                }
-            } else {
-                $crate::black_box(run());
-            };
-        }
+        compile_error!(
+            "You are using a deprecated syntax of the main! macro to set up binary benchmarks. \
+            See the README (https://github.com/Joining7943/iai-callgrind) and \
+            docs (https://docs.rs/iai-callgrind/latest/iai_callgrind/) for further details."
+        );
+        pub fn main() {}
     };
     (
         $( config = $config:expr; $(;)* )?
@@ -804,7 +430,7 @@ macro_rules! main {
 /// The following top-level arguments are accepted:
 ///
 /// ```rust
-/// # use iai_callgrind::{binary_benchmark_group, BinaryBenchmarkGroup};
+/// # use iai_callgrind::{binary_benchmark_group, BinaryBenchmarkGroup, BinaryBenchmarkConfig};
 /// # fn run_before() {}
 /// # fn run_after() {}
 /// # fn run_setup() {}

@@ -119,7 +119,7 @@
 //! #[bench::some_id(args = (1, 2), config = LibraryBenchmarkConfig::default())]
 //! // ...
 //! # fn some_func(first: u8, second: u8) -> u8 {
-//! #    key + value
+//! #    first + second
 //! # }
 //! # fn main() {}
 //! ```

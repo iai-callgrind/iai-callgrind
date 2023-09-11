@@ -11,9 +11,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 The old api to setup library benchmarks using only the `main!` macro is deprecated and was removed.
 See the [README](./README.md) for a description of the new api.
 
-The scheme to setup binary benchmarks and specifying configuration options was reworked and is now
-closer to the scheme how library benchmarks are set up. It's now possible to specify a
-`BinaryBenchmarkConfig` at group level:
+Also, the api to setup binary benchmarks only with the `main!` macro is now deprecated and was
+removed. Please use the builder api using the `binary_benchmark_groups!` and `Run`. The old binary
+benchmark api lacked the rich possibilities of the builder api and maintaining two such different
+apis adds a lot of unnecessary complexity.
+
+Additionally, the scheme to setup binary benchmarks and specifying configuration options was
+reworked and is now closer to the scheme how library benchmarks are set up. It's now possible to
+specify a `BinaryBenchmarkConfig` at group level:
 
 ```rust
 binary_benchmark_group!(
