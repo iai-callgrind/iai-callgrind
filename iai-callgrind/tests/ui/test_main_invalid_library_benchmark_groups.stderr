@@ -22,10 +22,10 @@ error[E0308]: mismatched types
 6 |     main!(library_benchmark_groups = some_func);
   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |     |
-  |     expected struct `MacroLibBench`, found tuple
-  |     this expression has type `Option<&MacroLibBench>`
+  |     expected struct `InternalMacroLibBench`, found tuple
+  |     this expression has type `Option<&InternalMacroLibBench>`
   |
-  = note: expected struct `MacroLibBench`
+  = note: expected struct `InternalMacroLibBench`
               found tuple `(_, _, _)`
   = note: this error originates in the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -45,18 +45,18 @@ note: function defined here
   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   = note: this error originates in the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: the trait bound `RunnerLibraryBenchmarkConfig: From<&str>` is not satisfied
+error[E0277]: the trait bound `InternalLibraryBenchmarkConfig: From<&str>` is not satisfied
   --> tests/ui/test_main_invalid_library_benchmark_groups.rs:19:5
    |
 19 | /     main!(
 20 | |         config = "some";
 21 | |         library_benchmark_groups = my_group
 22 | |     );
-   | |_____^ the trait `From<&str>` is not implemented for `RunnerLibraryBenchmarkConfig`
+   | |_____^ the trait `From<&str>` is not implemented for `InternalLibraryBenchmarkConfig`
    |
    = help: the following implementations were found:
-             <RunnerLibraryBenchmarkConfig as From<&LibraryBenchmarkConfig>>
-             <RunnerLibraryBenchmarkConfig as From<&mut LibraryBenchmarkConfig>>
-             <RunnerLibraryBenchmarkConfig as From<LibraryBenchmarkConfig>>
-   = note: required because of the requirements on the impl of `Into<RunnerLibraryBenchmarkConfig>` for `&str`
+             <InternalLibraryBenchmarkConfig as From<&LibraryBenchmarkConfig>>
+             <InternalLibraryBenchmarkConfig as From<&mut LibraryBenchmarkConfig>>
+             <InternalLibraryBenchmarkConfig as From<LibraryBenchmarkConfig>>
+   = note: required because of the requirements on the impl of `Into<InternalLibraryBenchmarkConfig>` for `&str`
    = note: this error originates in the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)

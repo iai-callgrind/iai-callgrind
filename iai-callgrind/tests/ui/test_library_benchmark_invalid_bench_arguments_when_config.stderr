@@ -13,15 +13,15 @@ error: unexpected end of input, expected an expression
 12 | #[bench::id(config = )]
    |                      ^
 
-error[E0277]: the trait bound `RunnerLibraryBenchmarkConfig: From<&str>` is not satisfied
+error[E0277]: the trait bound `InternalLibraryBenchmarkConfig: From<&str>` is not satisfied
  --> tests/ui/test_library_benchmark_invalid_bench_arguments_when_config.rs:3:1
   |
 3 | #[library_benchmark]
-  | ^^^^^^^^^^^^^^^^^^^^ the trait `From<&str>` is not implemented for `RunnerLibraryBenchmarkConfig`
+  | ^^^^^^^^^^^^^^^^^^^^ the trait `From<&str>` is not implemented for `InternalLibraryBenchmarkConfig`
   |
   = help: the following implementations were found:
-            <RunnerLibraryBenchmarkConfig as From<&LibraryBenchmarkConfig>>
-            <RunnerLibraryBenchmarkConfig as From<&mut LibraryBenchmarkConfig>>
-            <RunnerLibraryBenchmarkConfig as From<LibraryBenchmarkConfig>>
-  = note: required because of the requirements on the impl of `Into<RunnerLibraryBenchmarkConfig>` for `&str`
+            <InternalLibraryBenchmarkConfig as From<&LibraryBenchmarkConfig>>
+            <InternalLibraryBenchmarkConfig as From<&mut LibraryBenchmarkConfig>>
+            <InternalLibraryBenchmarkConfig as From<LibraryBenchmarkConfig>>
+  = note: required because of the requirements on the impl of `Into<InternalLibraryBenchmarkConfig>` for `&str`
   = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
