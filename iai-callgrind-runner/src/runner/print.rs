@@ -1,13 +1,13 @@
-use std::fmt::Display;
+use std::fmt::{Display, Write};
 
 use colored::Colorize;
 
 use crate::util::truncate_str_utf8;
 
 pub struct Header {
-    module_path: String,
-    id: Option<String>,
-    description: Option<String>,
+    pub module_path: String,
+    pub id: Option<String>,
+    pub description: Option<String>,
 }
 
 impl Header {
@@ -45,6 +45,29 @@ impl Header {
 
     pub fn print(&self) {
         println!("{self}");
+    }
+
+    pub fn to_title(&self) -> String {
+        let mut output = String::new();
+        write!(&mut output, "{}", self.module_path).unwrap();
+        if let Some(id) = &self.id {
+            if let Some(description) = &self.description {
+                let truncated = truncate_str_utf8(description, 37);
+                write!(
+                    &mut output,
+                    " {id}:{truncated}{}",
+                    if truncated.len() < description.len() {
+                        "..."
+                    } else {
+                        ""
+                    }
+                )
+                .unwrap();
+            } else {
+                write!(&mut output, " {id}").unwrap();
+            }
+        }
+        output
     }
 }
 

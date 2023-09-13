@@ -6,9 +6,8 @@ use std::process::Command;
 use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
-use super::callgrind::{
-    CallgrindArgs, CallgrindCommand, CallgrindOptions, CallgrindOutput, Sentinel,
-};
+use super::callgrind::args::CallgrindArgs;
+use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Sentinel};
 use super::meta::Metadata;
 use super::print::Header;
 use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig};

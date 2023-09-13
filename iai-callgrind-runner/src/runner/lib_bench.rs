@@ -1,8 +1,10 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
+use super::callgrind::args::CallgrindArgs;
+use super::callgrind::flamegraph::CallgrindFlamegraph;
 use super::callgrind::{
-    CallgrindArgs, CallgrindCommand, CallgrindOptions, CallgrindOutput, Sentinel,
+    CallgrindCommand, CallgrindOptions, CallgrindOutput, CallgrindParser, Sentinel,
 };
 use super::meta::Metadata;
 use super::print::Header;
@@ -59,6 +61,21 @@ impl LibBench {
             &output.file,
         )?;
 
+        let header = Header::from_segments(
+            [&group.module, &self.function],
+            self.id.clone(),
+            self.args.clone(),
+        );
+
+        let mut flamegraph = CallgrindFlamegraph::new(
+            header.to_title(),
+            Some(&sentinel),
+            &config.meta.project_root,
+        );
+        flamegraph.parse(&output)?;
+        flamegraph.create(output.file.with_extension("svg"))?;
+
+        // CallgrindFlamegraph::parse(&output);
         let new_stats = output.parse(&config.bench_file, &sentinel);
 
         let old_output = output.old_output();
@@ -66,13 +83,7 @@ impl LibBench {
             .exists()
             .then(|| old_output.parse(&config.bench_file, sentinel));
 
-        Header::from_segments(
-            [&group.module, &self.function],
-            self.id.clone(),
-            self.args.clone(),
-        )
-        .print();
-
+        header.print();
         new_stats.print(old_stats);
 
         Ok(())

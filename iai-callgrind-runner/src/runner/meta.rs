@@ -17,6 +17,7 @@ pub struct Cmd {
 pub struct Metadata {
     pub arch: String,
     pub aslr_enabled: bool,
+    pub project_root: PathBuf,
     pub target_dir: PathBuf,
     pub valgrind: Cmd,
     pub valgrind_wrapper: Option<Cmd>,
@@ -26,22 +27,19 @@ impl Metadata {
     pub fn new() -> Result<Self> {
         let arch = std::env::consts::ARCH.to_owned();
         debug!("Detected architecture: {}", arch);
+        let meta = cargo_metadata::MetadataCommand::new()
+            .no_deps()
+            .exec()
+            .expect("Querying metadata of cargo workspace succeeds");
+
+        let project_root = meta.workspace_root.into_std_path_buf();
+        debug!("Detected project root: '{}'", project_root.display());
 
         let target_dir = std::env::var_os(envs::CARGO_TARGET_DIR)
-            .map_or_else(
-                || {
-                    cargo_metadata::MetadataCommand::new()
-                        .no_deps()
-                        .exec()
-                        .map_or_else(
-                            |_| PathBuf::from("target"),
-                            |p| p.target_directory.into_std_path_buf(),
-                        )
-                },
-                PathBuf::from,
-            )
+            .map_or_else(|| meta.target_directory.into_std_path_buf(), PathBuf::from)
             .join("iai")
             .join(std::env::var_os(envs::CARGO_PKG_NAME).map_or_else(PathBuf::new, PathBuf::from));
+
         debug!("Detected target directory: '{}'", target_dir.display());
 
         let aslr_enabled = std::env::var_os(envs::IAI_CALLGRIND_ALLOW_ASLR).is_some();
@@ -108,6 +106,7 @@ impl Metadata {
                 args: vec![],
             },
             valgrind_wrapper,
+            project_root,
         })
     }
 }
