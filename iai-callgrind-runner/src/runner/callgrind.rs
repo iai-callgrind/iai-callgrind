@@ -504,21 +504,45 @@ impl Default for CallgrindArgs {
 }
 
 impl CallgrindArgs {
-    pub fn from_raw_callgrind_args(args: &RawCallgrindArgs) -> Self {
+    pub fn from_raw_callgrind_args(args: &RawCallgrindArgs) -> Result<Self> {
         let mut default = Self::default();
         for arg in &args.0 {
             match arg.strip_prefix("--").and_then(|s| s.split_once('=')) {
                 Some(("I1", value)) => default.i1 = value.to_owned(),
                 Some(("D1", value)) => default.d1 = value.to_owned(),
                 Some(("LL", value)) => default.ll = value.to_owned(),
-                Some(("collect-atstart", value)) => default.collect_atstart = yesno_to_bool(value),
-                Some(("dump-instr", value)) => {
-                    default.dump_instr = yesno_to_bool(value);
+                Some((key @ "collect-atstart", value)) => {
+                    default.collect_atstart = yesno_to_bool(value).ok_or_else(|| {
+                        IaiCallgrindError::InvalidCallgrindBoolArgument((
+                            key.to_owned(),
+                            value.to_owned(),
+                        ))
+                    })?;
                 }
-                Some(("dump-line", value)) => {
-                    default.dump_line = yesno_to_bool(value);
+                Some((key @ "dump-instr", value)) => {
+                    default.dump_instr = yesno_to_bool(value).ok_or_else(|| {
+                        IaiCallgrindError::InvalidCallgrindBoolArgument((
+                            key.to_owned(),
+                            value.to_owned(),
+                        ))
+                    })?;
                 }
-                Some(("compress-pos", value)) => default.compress_pos = yesno_to_bool(value),
+                Some((key @ "dump-line", value)) => {
+                    default.dump_line = yesno_to_bool(value).ok_or_else(|| {
+                        IaiCallgrindError::InvalidCallgrindBoolArgument((
+                            key.to_owned(),
+                            value.to_owned(),
+                        ))
+                    })?;
+                }
+                Some((key @ "compress-pos", value)) => {
+                    default.compress_pos = yesno_to_bool(value).ok_or_else(|| {
+                        IaiCallgrindError::InvalidCallgrindBoolArgument((
+                            key.to_owned(),
+                            value.to_owned(),
+                        ))
+                    })?;
+                }
                 Some(("toggle-collect", value)) => {
                     default.toggle_collect.push_back(value.to_owned());
                 }
@@ -536,7 +560,7 @@ impl CallgrindArgs {
                 None => {}
             }
         }
-        default
+        Ok(default)
     }
 
     pub fn insert_toggle_collect(&mut self, arg: &str) {

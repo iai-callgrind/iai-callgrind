@@ -90,7 +90,7 @@ struct Group {
 struct Groups(Vec<Group>);
 
 impl Groups {
-    fn from_library_benchmark(module: &str, benchmark: LibraryBenchmark) -> Self {
+    fn from_library_benchmark(module: &str, benchmark: LibraryBenchmark) -> Result<Self> {
         let global_config = &benchmark.config;
         let mut groups = vec![];
         for library_benchmark_group in benchmark.groups {
@@ -119,7 +119,7 @@ impl Groups {
                     let callgrind_args = {
                         let mut raw = config.raw_callgrind_args;
                         raw.extend_from_command_line_args(benchmark.command_line_args.as_slice());
-                        CallgrindArgs::from_raw_callgrind_args(&raw)
+                        CallgrindArgs::from_raw_callgrind_args(&raw)?
                     };
                     let lib_bench = LibBench {
                         bench_index,
@@ -141,7 +141,7 @@ impl Groups {
             groups.push(group);
         }
 
-        Self(groups)
+        Ok(Self(groups))
     }
 
     fn run(&self, config: &Config) -> Result<()> {
@@ -188,7 +188,7 @@ impl Runner {
             .unwrap();
 
         let benchmark = receive_benchmark(num_bytes)?;
-        let groups = Groups::from_library_benchmark(&module, benchmark);
+        let groups = Groups::from_library_benchmark(&module, benchmark)?;
         let meta = Metadata::new();
 
         Ok(Self {
