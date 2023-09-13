@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-### [0.7.0] - 2023-09-10
+### [0.7.0] - 2023-09-21
 
 The old api to setup library benchmarks using only the `main!` macro is deprecated and was removed.
 See the [README](./README.md) for a description of the new api.
@@ -61,7 +61,7 @@ for instruction and data hits
 running library benchmarks. With that change comes the possibility to influence that behavior with
 the `LibraryBenchmarkConfig::env_clear` method and set custom environment variables with
 `LibraryBenchmarkConfig::envs`.
-* ([15](https://github.com/Joining7943/iai-callgrind/issues/15)): Use `IAI_CALLGRIND` prefix for
+* ([#15](https://github.com/Joining7943/iai-callgrind/issues/15)): Use `IAI_CALLGRIND` prefix for
 iai-callgrind environment variables. `IAI_ALLOW_ASLR` -> `IAI_CALLGRIND_ALLOW_ASLR`, `RUST_LOG` ->
 `IAI_CALLGRIND_LOG`.
 * Callgrind invocations, if `IAI_CALLGRIND_LOG` level is `DEBUG` now runs Callgrind with `--verbose`
@@ -94,6 +94,9 @@ This flag cannot be unset.
 * `--compress-strings` is now ignored, because the parser needs the uncompressed strings or else
 produces event counts of zero.
 * Some debugging output was printed to stdout instead of stderr
+* Adjust parsing of yes/no values from `LibraryBenchmarkConfig` and `BinaryBenchmarkConfig` raw
+callgrind arguments to callgrind's parsing of command-line arguments. Now, only exact matches of
+`yes` and `no` are considered to be valid command-line arguments.
 
 ### [0.6.2] - 2023-09-01
 
