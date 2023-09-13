@@ -93,6 +93,7 @@ cannot be handled by `iai-callgrind` and therefore `--combine-dumps=yes` is now 
 This flag cannot be unset.
 * `--compress-strings` is now ignored, because the parser needs the uncompressed strings or else
 produces event counts of zero.
+* Some debugging output was printed to stdout instead of stderr
 
 ### [0.6.2] - 2023-09-01
 
