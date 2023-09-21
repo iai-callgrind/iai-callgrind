@@ -6,13 +6,7 @@
   "MD013": false,
   "no-hard-tabs": false,
   "MD033": {
-    "allowed_elements": [
-      "h1",
-      "div",
-      "a",
-      "br",
-      "img"
-    ]
+    "allowed_elements": ["h1", "div", "a", "br", "img"]
   },
   "MD024": false
 }

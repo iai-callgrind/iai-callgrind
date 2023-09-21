@@ -1,0 +1,11 @@
+exclude = ["**/Cargo.lock", "**/target/"]
+
+[formatting]
+allowed_blank_lines = 1
+
+[[rule]]
+include = ["**/Cargo.toml"]
+keys = ["dependencies", "dev-dependencies", "features"]
+
+[rule.formatting]
+reorder_keys = true
