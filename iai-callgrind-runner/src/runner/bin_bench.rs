@@ -387,7 +387,7 @@ impl Groups {
                     },
                     callgrind_args: CallgrindArgs::from_raw_callgrind_args(
                         &config.raw_callgrind_args,
-                    ),
+                    )?,
                 });
             }
         }
@@ -462,7 +462,7 @@ impl Groups {
                 benches,
                 assists: Self::parse_assists(
                     group.assists,
-                    &CallgrindArgs::from_raw_callgrind_args(&group_config.raw_callgrind_args),
+                    &CallgrindArgs::from_raw_callgrind_args(&group_config.raw_callgrind_args)?,
                 ),
             };
             groups.push(config);

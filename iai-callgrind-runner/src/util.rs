@@ -61,10 +61,12 @@ pub fn bool_to_yesno(value: bool) -> String {
     }
 }
 
-// TODO: Match case insensitive and trim value
-// TODO: Return result if value was not understood?
-pub fn yesno_to_bool(value: &str) -> bool {
-    value == "yes"
+pub fn yesno_to_bool(value: &str) -> Option<bool> {
+    match value.trim() {
+        "yes" => Some(true),
+        "no" => Some(false),
+        _ => None,
+    }
 }
 
 pub fn truncate_str_utf8(string: &str, len: usize) -> &str {
@@ -92,25 +94,33 @@ pub fn trim(bytes: &[u8]) -> &[u8] {
 }
 
 pub fn write_all_to_stdout(bytes: &[u8]) {
-    let stdout = io::stdout();
-    let stdout = stdout.lock();
-    let mut writer = BufWriter::new(stdout);
-    writer
-        .write_all(trim(bytes))
-        .and_then(|_| writer.flush())
-        .unwrap();
-    println!();
+    if !bytes.is_empty() {
+        let stdout = io::stdout();
+        let stdout = stdout.lock();
+        let mut writer = BufWriter::new(stdout);
+        writer
+            .write_all(bytes)
+            .and_then(|_| writer.flush())
+            .unwrap();
+        if !bytes.last().map_or(false, |l| *l == b'\n') {
+            println!();
+        }
+    }
 }
 
 pub fn write_all_to_stderr(bytes: &[u8]) {
-    let stderr = io::stderr();
-    let stderr = stderr.lock();
-    let mut writer = BufWriter::new(stderr);
-    writer
-        .write_all(trim(bytes))
-        .and_then(|_| writer.flush())
-        .unwrap();
-    println!();
+    if !bytes.is_empty() {
+        let stderr = io::stderr();
+        let stderr = stderr.lock();
+        let mut writer = BufWriter::new(stderr);
+        writer
+            .write_all(bytes)
+            .and_then(|_| writer.flush())
+            .unwrap();
+        if !bytes.last().map_or(false, |l| *l == b'\n') {
+            eprintln!();
+        }
+    }
 }
 
 pub fn copy_directory(source: &Path, into: &Path, follow_symlinks: bool) -> Result<()> {
@@ -144,7 +154,7 @@ pub fn copy_directory(source: &Path, into: &Path, follow_symlinks: bool) -> Resu
     if !stdout.is_empty() {
         trace!("copy fixtures: stdout:");
         if log_enabled!(Level::Trace) {
-            write_all_to_stdout(&stdout);
+            write_all_to_stderr(&stdout);
         }
     }
     if !stderr.is_empty() {

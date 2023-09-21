@@ -8,4 +8,5 @@ pub enum IaiCallgrindError {
     LaunchError(PathBuf, std::io::Error),
     BenchmarkLaunchError(Output),
     Other(String),
+    InvalidCallgrindBoolArgument((String, String)),
 }

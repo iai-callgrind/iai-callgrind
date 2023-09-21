@@ -102,6 +102,12 @@ fn main() {
                 IaiCallgrindError::Other(message) => {
                     error!("{}", message);
                 }
+                IaiCallgrindError::InvalidCallgrindBoolArgument((option, value)) => {
+                    error!(
+                        "Invalid callgrind argument for --{option}: '{value}'. Valid values are \
+                         'yes' or 'no'"
+                    );
+                }
             }
             std::process::exit(1)
         }
