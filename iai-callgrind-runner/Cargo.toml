@@ -16,6 +16,7 @@ keywords = ["iai", "benchmark", "callgrind", "valgrind"]
 categories = ["development-tools::profiling", "development-tools::testing"]
 
 [features]
+api = ["dep:serde"]
 default = ["runner", "api"]
 runner = [
   "dep:bincode",
@@ -29,7 +30,6 @@ runner = [
   "dep:version-compare",
   "dep:which",
 ]
-api = ["dep:serde"]
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]

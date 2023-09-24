@@ -1,7 +1,6 @@
 flamegraph.svg
 perf.data
 *.profraw
-.vscode/launch.json
 
 # Swap
 [._]*.s[a-v][a-z]
@@ -23,12 +22,12 @@ tags
 # Persistent undo
 [._]*.un~
 
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-# |.vscode/launch.json
-!.vscode/extensions.json
-!.vscode/*.code-snippets
+**/.vscode/*
+# !.vscode/settings.json
+# !.vscode/tasks.json
+# !.vscode/launch.json
+# !.vscode/extensions.json
+# !.vscode/*.code-snippets
 
 # Local History for Visual Studio Code
 .history/
