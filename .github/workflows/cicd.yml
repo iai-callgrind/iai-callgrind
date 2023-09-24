@@ -58,14 +58,19 @@ jobs:
         run: cargo minimal-versions build --workspace --all-targets
 
   format:
-    name: Check format with nightly rustfmt
+    name: Check format with nightly rustfmt, prettier and taplo
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - run: npm install prettier
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
+      - uses: taiki-e/install-action@cargo-binstall
+      - run: cargo binstall --no-confirm --no-symlinks taplo-cli
       - run: cargo fmt --check
+      - run: taplo fmt --check --verbose
+      - run: npx prettier --check --log-level warn '**/*.json' '**/*.yml'
 
   base:
     needs: [format]

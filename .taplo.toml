@@ -1,4 +1,4 @@
-exclude = ["**/Cargo.lock", "**/target/"]
+exclude = ["**/Cargo.lock", "**/target/**/*"]
 
 [formatting]
 allowed_blank_lines = 1
