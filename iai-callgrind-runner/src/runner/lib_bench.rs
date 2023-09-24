@@ -23,7 +23,7 @@ struct LibBench {
 
 impl LibBench {
     fn run(&self, config: &Config, group: &Group) -> Result<()> {
-        let command = CallgrindCommand::new(config.meta.aslr, &config.meta.arch);
+        let command = CallgrindCommand::new(&config.meta);
         let args = if let Some(group_id) = &group.id {
             vec![
                 OsString::from("--iai-run".to_owned()),
@@ -189,7 +189,7 @@ impl Runner {
 
         let benchmark = receive_benchmark(num_bytes)?;
         let groups = Groups::from_library_benchmark(&module, benchmark)?;
-        let meta = Metadata::new();
+        let meta = Metadata::new()?;
 
         Ok(Self {
             config: Config {

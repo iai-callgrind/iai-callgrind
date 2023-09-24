@@ -10,6 +10,7 @@ use colored::{ColoredString, Colorize};
 use log::{debug, error, info, log_enabled, trace, warn, Level};
 use which::which;
 
+use super::meta::Metadata;
 use crate::api::{ExitWith, RawCallgrindArgs};
 use crate::error::{IaiCallgrindError, Result};
 use crate::util::{
@@ -30,26 +31,20 @@ pub struct CallgrindCommand {
 }
 
 impl CallgrindCommand {
-    pub fn new(allow_aslr: bool, arch: &str) -> Self {
-        // Invoke Valgrind, disabling ASLR if possible because ASLR could noise up the results a bit
-        let command = if allow_aslr {
-            debug!("Running with ASLR enabled");
-            Command::new("valgrind")
-        } else if cfg!(target_os = "linux") {
-            debug!("Running with ASLR disabled");
-            let mut cmd = Command::new("setarch");
-            cmd.args([arch, "-R", "valgrind"]);
-            cmd
-        } else if cfg!(target_os = "freebsd") {
-            debug!("Running with ASLR disabled");
-            let mut cmd = Command::new("proccontrol");
-            cmd.args(["-m", "aslr", "-s", "disable", "valgrind"]);
-            cmd
-        } else {
-            debug!("Could not switch ASLR off. Running with ASLR enabled");
-            Command::new("valgrind")
-        };
-
+    pub fn new(meta: &Metadata) -> Self {
+        let command = meta.valgrind_wrapper.as_ref().map_or_else(
+            || {
+                let meta_cmd = &meta.valgrind;
+                let mut cmd = Command::new(&meta_cmd.bin);
+                cmd.args(&meta_cmd.args);
+                cmd
+            },
+            |meta_cmd| {
+                let mut cmd = Command::new(&meta_cmd.bin);
+                cmd.args(&meta_cmd.args);
+                cmd
+            },
+        );
         Self { command }
     }
 

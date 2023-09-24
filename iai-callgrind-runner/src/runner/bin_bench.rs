@@ -27,7 +27,7 @@ struct BinBench {
 
 impl BinBench {
     fn run(&self, config: &Config, group: &Group) -> Result<()> {
-        let command = CallgrindCommand::new(config.meta.aslr, &config.meta.arch);
+        let command = CallgrindCommand::new(&config.meta);
         let output = CallgrindOutput::create(
             &config.meta.target_dir,
             &group.module_path,
@@ -106,7 +106,7 @@ impl Assistant {
     }
 
     fn run_bench(&self, config: &Config, group: &Group) -> Result<()> {
-        let command = CallgrindCommand::new(config.meta.aslr, &config.meta.arch);
+        let command = CallgrindCommand::new(&config.meta);
 
         let run_id = if let Some(id) = &group.id {
             format!("{}::{}", id, self.kind.id())
@@ -514,7 +514,7 @@ impl Runner {
 
         let benchmark = receive_benchmark(num_bytes)?;
         let groups = Groups::from_binary_benchmark(&module, benchmark)?;
-        let meta = Metadata::new();
+        let meta = Metadata::new()?;
 
         Ok(Self {
             config: Config {
