@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+
+* ([#20](https://github.com/Joining7943/iai-callgrind/issues/20)): Clearing the
+  environment variables with `env_clear` may break finding valgrind.
+
 ### [0.7.0] - 2023-09-21
 
 The old api to setup library benchmarks using only the `main!` macro is deprecated and was removed.
