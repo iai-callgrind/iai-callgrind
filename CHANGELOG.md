@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### [0.7.1] - 2023-09-27
+
 ### Fixed
 
 * ([#20](https://github.com/Joining7943/iai-callgrind/issues/20)): Clearing the
