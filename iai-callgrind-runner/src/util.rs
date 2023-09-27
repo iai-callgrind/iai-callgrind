@@ -1,9 +1,9 @@
 use std::ffi::{OsStr, OsString};
 use std::io::{self, stdin, BufWriter, Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use log::{log_enabled, trace, Level};
+use log::{debug, log_enabled, trace, Level};
 use which::which;
 
 use crate::error::{IaiCallgrindError, Result};
@@ -124,11 +124,7 @@ pub fn write_all_to_stderr(bytes: &[u8]) {
 }
 
 pub fn copy_directory(source: &Path, into: &Path, follow_symlinks: bool) -> Result<()> {
-    let cp = which("cp").map_err(|error| {
-        IaiCallgrindError::Other(format!(
-            "Unable to locate 'cp' command to copy directories: '{error}'"
-        ))
-    })?;
+    let cp = get_absolute_path("cp")?;
     let mut command = Command::new(&cp);
     if follow_symlinks {
         command.args(["-H", "--dereference"]);
@@ -164,6 +160,23 @@ pub fn copy_directory(source: &Path, into: &Path, follow_symlinks: bool) -> Resu
         }
     }
     Ok(())
+}
+
+pub fn get_absolute_path<T>(binary: T) -> Result<PathBuf>
+where
+    T: AsRef<OsStr>,
+{
+    let binary = binary.as_ref();
+    match which(binary) {
+        Ok(path) => {
+            debug!("Found '{}': '{}'", binary.to_string_lossy(), path.display());
+            Ok(path)
+        }
+        Err(error) => Err(IaiCallgrindError::Other(format!(
+            "{error}: '{0}' could not be found. Is '{0}' installed and added to the PATH?",
+            binary.to_string_lossy()
+        ))),
+    }
 }
 
 #[cfg(test)]
