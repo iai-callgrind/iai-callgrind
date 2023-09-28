@@ -71,18 +71,18 @@ fn main() {
                     match cmp {
                         Cmp::Lt => error!(
                             "iai-callgrind-runner ({}) is older than iai-callgrind ({}). Please \
-                             update iai-callgrind-runner",
-                            runner_version, library_version
+                             update iai-callgrind-runner by calling 'cargo install --version {} iai-callgrind-runner'",
+                            runner_version, library_version, library_version
                         ),
                         Cmp::Gt => error!(
                             "iai-callgrind-runner ({}) is newer than iai-callgrind ({}). Please \
-                             update iai-callgrind",
-                            runner_version, library_version
+                             update iai-callgrind by calling 'cargo install --version {} iai-callgrind-runner'",
+                            runner_version, library_version, library_version
                         ),
                         Cmp::Ne => error!(
                             "No version information found for iai-callgrind but \
                              iai-callgrind-runner ({0}) is >= '0.3.0'. Please update \
-                             iai-callgrind to '{0}'",
+                             iai-callgrind to '{0}' by calling 'cargo install --version <latest version> iai-callgrind-runner'",
                             runner_version
                         ),
                         _ => unreachable!(),
