@@ -70,19 +70,19 @@ fn main() {
                 IaiCallgrindError::VersionMismatch(cmp, runner_version, library_version) => {
                     match cmp {
                         Cmp::Lt => error!(
-                            "iai-callgrind-runner ({}) is older than iai-callgrind ({}). Please \
-                             update iai-callgrind-runner by calling 'cargo install --version {} iai-callgrind-runner'",
-                            runner_version, library_version, library_version
+                            "iai-callgrind-runner ({0}) is older than iai-callgrind ({1}). Please \
+                             update iai-callgrind-runner by calling 'cargo install --version {1} iai-callgrind-runner'",
+                            runner_version, library_version
                         ),
                         Cmp::Gt => error!(
-                            "iai-callgrind-runner ({}) is newer than iai-callgrind ({}). Please \
-                             update iai-callgrind by calling 'cargo install --version {} iai-callgrind-runner'",
-                            runner_version, library_version, library_version
+                            "iai-callgrind-runner ({0}) is newer than iai-callgrind ({1}). Please \n
+                            update iai-callgrind to '{1}' in your Cargo.toml file",
+                            runner_version, library_version
                         ),
                         Cmp::Ne => error!(
                             "No version information found for iai-callgrind but \
                              iai-callgrind-runner ({0}) is >= '0.3.0'. Please update \
-                             iai-callgrind to '{0}' by calling 'cargo install --version <latest version> iai-callgrind-runner'",
+                             iai-callgrind to '{0}' in your Cargo.toml file",
                             runner_version
                         ),
                         _ => unreachable!(),
