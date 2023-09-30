@@ -75,7 +75,7 @@ fn main() {
                             runner_version, library_version
                         ),
                         Cmp::Gt => error!(
-                            "iai-callgrind-runner ({0}) is newer than iai-callgrind ({1}). Please \n
+                            "iai-callgrind-runner ({0}) is newer than iai-callgrind ({1}). Please \
                             update iai-callgrind to '{1}' in your Cargo.toml file",
                             runner_version, library_version
                         ),
