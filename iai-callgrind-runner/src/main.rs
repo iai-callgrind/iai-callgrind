@@ -109,6 +109,9 @@ fn main() {
                          'yes' or 'no'"
                     );
                 }
+                IaiCallgrindError::ParseError((path, message)) => {
+                    error!("Error parsing file '{}': {message}", path.display())
+                }
             }
             std::process::exit(1)
         }

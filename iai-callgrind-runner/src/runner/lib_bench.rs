@@ -72,8 +72,9 @@ impl LibBench {
             Some(&sentinel),
             &config.meta.project_root,
         );
-        flamegraph.parse(&output)?;
-        flamegraph.create(output.file.with_extension("svg"))?;
+        flamegraph
+            .parse(&output)
+            .and_then(|_| flamegraph.create(output.file.with_extension("svg")))?;
 
         // CallgrindFlamegraph::parse(&output);
         let new_stats = output.parse(&config.bench_file, &sentinel);

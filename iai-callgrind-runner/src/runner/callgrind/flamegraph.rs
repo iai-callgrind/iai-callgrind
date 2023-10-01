@@ -3,11 +3,11 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use inferno::flamegraph::Options;
-use log::trace;
+use log::{trace, warn};
 
 use super::hashmap_parser::{HashMapParser, Id};
 use super::{CallgrindOutput, CallgrindParser, Sentinel};
-use crate::error::Result;
+use crate::error::{IaiCallgrindError, Result};
 use crate::runner::callgrind::hashmap_parser::Record;
 
 #[derive(Debug)]
@@ -19,12 +19,16 @@ pub struct CallgrindFlamegraph {
 }
 
 impl CallgrindFlamegraph {
-    pub fn new(title: String, sentinel: Option<&Sentinel>, project_root: &Path) -> Self {
+    pub fn new<T, P>(title: T, sentinel: Option<&Sentinel>, project_root: P) -> Self
+    where
+        T: Into<String>,
+        P: Into<PathBuf>,
+    {
         Self {
-            title,
+            title: title.into(),
             sentinel: sentinel.cloned(),
             stacks: Vec::default(),
-            project_root: project_root.to_owned(),
+            project_root: project_root.into(),
         }
     }
 
@@ -44,18 +48,12 @@ impl CallgrindFlamegraph {
 
         // TODO: MAKE the choice of counts configurable. Currently uses only instruction counts.
         // Adjust the name for the counts in such cases.
-        // TODO: MAKE the choice of a title for the svg files configurable
+        // TODO: MAKE the choice of a title for the svg files configurable??
         // TODO: MAKE the choice of a name for the counts configurable??
         let stack = format!("{this} {}", value.self_costs.get_by_index(0).unwrap().cost);
-        if self.stacks.last().map_or(false, |last| {
-            last.rsplit_once(|c| c == ' ').unwrap().0 == this
-        }) {
-            let stack = format!("{last};spacer 0");
-            trace!("Pushing spacer to stack: {}", &stack);
-            self.stacks.push(stack);
-        }
         trace!("Pushing stack: {}", &stack);
         self.stacks.push(stack);
+
         for inline in &value.inlines {
             if let Some(value) = inline.fi.as_ref().or(inline.fe.as_ref()) {
                 let path = PathBuf::from(&value);
@@ -93,7 +91,14 @@ impl CallgrindFlamegraph {
     where
         T: AsRef<Path>,
     {
-        let output_file = File::create(dest).unwrap();
+        if self.stacks.is_empty() {
+            warn!("Unable to create a flamegraph: Callgrind didn't record any events");
+            return Ok(());
+        }
+
+        let output_file = File::create(dest).map_err(|error| {
+            IaiCallgrindError::Other(format!("Creating flamegraph file failed: {error}"))
+        })?;
 
         let mut options = Options::default();
         options.count_name = "Instructions".to_owned();
@@ -105,30 +110,39 @@ impl CallgrindFlamegraph {
             output_file,
         )
         .map_err(|error| {
-            crate::error::IaiCallgrindError::Other(format!("Error creating flamegraph: {error}"))
+            crate::error::IaiCallgrindError::Other(format!(
+                "Creating flamegraph file failed: {error}"
+            ))
         })
     }
 }
 
 impl CallgrindParser for CallgrindFlamegraph {
-    fn parse<T>(&mut self, file: T) -> Result<()>
+    fn parse<T>(&mut self, output: T) -> Result<()>
     where
         T: AsRef<CallgrindOutput>,
     {
+        let output = output.as_ref();
+
         let mut parser = HashMapParser {
             sentinel: self.sentinel.clone(),
             ..Default::default()
         };
-        parser.parse(file)?;
+        parser.parse(output)?;
         let map = parser.map;
+
+        if map.is_empty() {
+            return Ok(());
+        }
 
         // Let's find our entry point which defaults to "main"
         let (key, value) = if let Some(key) = parser.resolved_sentinel {
-            map.get_key_value(&key).unwrap()
+            map.get_key_value(&key)
+                .expect("Resolved sentinel must be present in map")
         } else {
             map.iter()
                 .find(|(k, _)| k.func == "main")
-                .expect("Key with sentinel must be present in callgrind output")
+                .expect("'main' function must be present in callgrind output")
         };
 
         self.fold(&map, key, value, "");

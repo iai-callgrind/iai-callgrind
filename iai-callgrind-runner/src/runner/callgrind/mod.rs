@@ -422,7 +422,7 @@ impl FromStr for PositionsMode {
             "instr line" | "line instr" => Self::InstrLine,
             "instr" => Self::Instr,
             "line" => Self::Line,
-            _ => return Err("Invalid positions mode".to_owned()),
+            mode => return Err(format!("Invalid positions mode: '{mode}'")),
         };
         std::result::Result::Ok(mode)
     }

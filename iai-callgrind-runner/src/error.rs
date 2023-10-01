@@ -10,4 +10,5 @@ pub enum IaiCallgrindError {
     BenchmarkLaunchError(Output),
     Other(String),
     InvalidCallgrindBoolArgument((String, String)),
+    ParseError((PathBuf, String)),
 }

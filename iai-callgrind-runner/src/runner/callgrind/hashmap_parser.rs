@@ -6,8 +6,10 @@ use std::str::FromStr;
 use log::{trace, warn};
 
 use super::{CallgrindParser, Sentinel};
-use crate::error::Result;
+use crate::error::{IaiCallgrindError, Result};
 use crate::runner::callgrind::{Costs, PositionsMode};
+
+type ErrorMessageResult<T> = std::result::Result<T, String>;
 
 #[derive(Debug, Default)]
 pub struct HashMapParser {
@@ -45,26 +47,22 @@ impl HashMapParser {
 }
 
 impl CallgrindParser for HashMapParser {
-    fn parse<T>(&mut self, file: T) -> Result<()>
+    fn parse<T>(&mut self, output: T) -> Result<()>
     where
         T: AsRef<super::CallgrindOutput>,
         Self: std::marker::Sized,
     {
-        let file = File::open(&file.as_ref().file).unwrap();
-        let mut iter = BufReader::new(file)
+        let output = output.as_ref();
+        let file = File::open(&output.file).map_err(|error| {
+            IaiCallgrindError::ParseError((output.file.clone(), error.to_string()))
+        })?;
+        let iter = BufReader::new(file)
             .lines()
             .map(std::result::Result::unwrap);
-        if !iter
-            .by_ref()
-            .find(|l| !l.trim().is_empty())
-            .expect("Non-empty file")
-            .contains("callgrind format")
-        {
-            warn!("Missing file format specifier. Assuming callgrind format.");
-        };
 
-        LinesParser::default().parse(self, iter);
-        Ok(())
+        LinesParser::default()
+            .parse(self, iter)
+            .map_err(|message| IaiCallgrindError::ParseError((output.file.clone(), message)))
     }
 }
 
@@ -185,10 +183,19 @@ impl LinesParser {
         self.current_state = self.old_state.expect("A saved state");
     }
 
-    fn parse_header<I>(&mut self, iter: &mut I)
+    fn parse_header<I>(&mut self, iter: &mut I) -> ErrorMessageResult<()>
     where
         I: Iterator<Item = String>,
     {
+        if !iter
+            .by_ref()
+            .find(|l| !l.trim().is_empty())
+            .ok_or("Empty file")?
+            .contains("callgrind format")
+        {
+            warn!("Missing file format specifier. Assuming callgrind format.");
+        };
+
         for line in iter {
             if line.is_empty() || line.starts_with('#') {
                 // skip empty lines or comments
@@ -200,7 +207,7 @@ impl LinesParser {
                     panic!("Can't read other versions than '1' but was '{version}'");
                 }
                 Some(("positions", mode)) => {
-                    self.positions_mode = PositionsMode::from_str(mode.trim()).unwrap();
+                    self.positions_mode = PositionsMode::from_str(mode.trim())?;
                     trace!("Using positions mode: '{:?}'", self.positions_mode);
                 }
                 // The events line is the last line in the header which is mandatory (according to
@@ -217,16 +224,22 @@ impl LinesParser {
                 }
             }
         }
+
+        Ok(())
     }
 
-    fn parse<I>(&mut self, hash_map_parser: &mut HashMapParser, iter: I)
+    fn parse<I>(
+        &mut self,
+        hash_map_parser: &mut HashMapParser,
+        iter: I,
+    ) -> std::result::Result<(), String>
     where
         I: IntoIterator<Item = String>,
     {
         let mut iter = iter.into_iter();
         // After calling this method, there might still be lines left in header format (like
         // `summary` or `totals`)
-        self.parse_header(iter.by_ref());
+        self.parse_header(iter.by_ref())?;
 
         for line in iter {
             if line.is_empty() && self.current_state != State::Header {
@@ -240,16 +253,21 @@ impl LinesParser {
             } else if self.current_state == State::Footer {
                 break;
             } else {
-                self.handle_state(&line, line.split_once('='));
+                self.handle_state(&line, line.split_once('='))?;
             }
         }
 
-        if let Some(record) = self.record.take() {
+        if let Some(mut record) = self.record.take() {
+            if let Some(inline_record) = self.inline_record.take() {
+                record.inlines.push(inline_record);
+            }
             hash_map_parser.insert_record(record);
         }
+
+        Ok(())
     }
 
-    fn handle_state(&mut self, line: &str, split: Split) {
+    fn handle_state(&mut self, line: &str, split: Split) -> ErrorMessageResult<()> {
         match self.current_state {
             State::Header => self.handle_header_state(line, split),
             State::None => self.handle_none_state(line, split),
@@ -257,25 +275,28 @@ impl LinesParser {
             State::CfnRecord => self.handle_cfn_record_state(line, split),
             State::InlineRecord => self.handle_inline_record_state(line, split),
             State::CostLine => self.handle_cost_line_state(line),
-            State::Footer => {}
+            State::Footer => Ok(()),
         }
     }
 
-    fn handle_header_state(&mut self, line: &str, split: Split) {
+    fn handle_header_state(&mut self, line: &str, split: Split) -> ErrorMessageResult<()> {
         if split.is_some() {
-            self.handle_record_state(line, split);
+            self.handle_record_state(line, split)
+        } else {
+            Ok(())
         }
     }
 
-    fn handle_none_state(&mut self, line: &str, split: Split) {
+    fn handle_none_state(&mut self, line: &str, split: Split) -> ErrorMessageResult<()> {
         if line.starts_with("totals:") {
             self.current_state = State::Footer;
+            Ok(())
         } else {
-            self.handle_record_state(line, split);
+            self.handle_record_state(line, split)
         }
     }
 
-    fn handle_record_state(&mut self, line: &str, split: Split) {
+    fn handle_record_state(&mut self, line: &str, split: Split) -> ErrorMessageResult<()> {
         match split {
             Some((key, value)) if key == "ob" => {
                 let record = self.record.get_or_insert(TemporaryRecord::default());
@@ -294,12 +315,14 @@ impl LinesParser {
                 record.func = Some(value.to_owned());
                 self.set_state(State::Record);
             }
-            Some(_) => self.handle_inline_record_state(line, split),
-            None => self.handle_cost_line_state(line),
+            Some(_) => return self.handle_inline_record_state(line, split),
+            None => return self.handle_cost_line_state(line),
         }
+
+        Ok(())
     }
 
-    fn handle_inline_record_state(&mut self, line: &str, split: Split) {
+    fn handle_inline_record_state(&mut self, line: &str, split: Split) -> ErrorMessageResult<()> {
         match split {
             Some((key, value)) if key == "fi" => {
                 let record = self
@@ -342,12 +365,14 @@ impl LinesParser {
                 }
                 self.target = Some((key.to_owned(), value.to_owned()));
             }
-            Some(_) => self.handle_cfn_record_state(line, split),
-            None => self.handle_cost_line_state(line),
+            Some(_) => return self.handle_cfn_record_state(line, split),
+            None => return self.handle_cost_line_state(line),
         }
+
+        Ok(())
     }
 
-    fn handle_cfn_record_state(&mut self, line: &str, split: Split) {
+    fn handle_cfn_record_state(&mut self, line: &str, split: Split) -> ErrorMessageResult<()> {
         match split {
             Some(("cob", value)) => {
                 let cfn_record = self.cfn_record.get_or_insert(CfnRecord::default());
@@ -373,7 +398,7 @@ impl LinesParser {
                 let cfn_record = self.cfn_record.get_or_insert(CfnRecord::default());
                 for (index, count) in value
                     .split_ascii_whitespace()
-                    .map(|s| s.parse::<u64>().unwrap())
+                    .map(|s| s.parse::<u64>().expect("Parsing number should be ok"))
                     .enumerate()
                 {
                     // TODO: OUT OF BOUNDS IF PositionMode IS InstrLine
@@ -385,21 +410,26 @@ impl LinesParser {
                 self.save_cfn_state();
                 self.set_state(State::CostLine);
             }
-            Some(_) => self.handle_unknown_state(line, &split),
-            None => self.handle_cost_line_state(line),
+            Some(_) => return self.handle_unknown_state(line, &split),
+            None => return self.handle_cost_line_state(line),
         }
+
+        Ok(())
     }
 
     // Doesn't set a state by itself so the next handled state is the state before ending up here
-    fn handle_unknown_state(&mut self, line: &str, split: &Split) {
+    fn handle_unknown_state(&mut self, line: &str, split: &Split) -> ErrorMessageResult<()> {
         if split.is_some() {
             trace!("Found unknown specification: {}. Skipping it ...", line);
+            Ok(())
         } else {
-            self.handle_cost_line_state(line);
+            self.handle_cost_line_state(line)
         }
     }
 
-    fn handle_cost_line_state(&mut self, line: &str) {
+    // keep the method's return value in line with the other methods
+    #[allow(clippy::unnecessary_wraps)]
+    fn handle_cost_line_state(&mut self, line: &str) -> ErrorMessageResult<()> {
         // We check if it is a line starting with a digit. If not, it is a misinterpretation of the
         // callgrind format so we panic here.
         assert!(
@@ -414,6 +444,11 @@ impl LinesParser {
                         // in case of `instr line` skip 2
                         .skip(if self.positions_mode == PositionsMode::InstrLine { 2 } else { 1 }));
 
+        let record = self
+            .record
+            .as_mut()
+            .expect("A record must be present at this state");
+
         // A cfn record takes precedence over an inline record (=fe/fi) and an inline record takes
         // precedence over a record.
         if let Some(mut cfn_record) = self.cfn_record.take() {
@@ -421,7 +456,6 @@ impl LinesParser {
                 !cfn_record.cfn.is_empty(),
                 "A cfn record must have an cfn entry"
             );
-            let record = self.record.as_mut().unwrap();
 
             cfn_record.costs = costs;
             record.inclusive_costs.add(&cfn_record.costs);
@@ -443,20 +477,18 @@ impl LinesParser {
             // An inline record can have multiple cost lines so we cannot end an `InlineRecord`
             // here. Only another inline record can end an inlinerecord.
         } else if let Some(inline_record) = self.inline_record.as_mut() {
-            let record = self.record.as_mut().unwrap();
-
             inline_record.costs.add(&costs);
             record.inclusive_costs.add(&costs);
 
             self.set_state(State::InlineRecord);
             // Much like inline records, a Record can have mulitple cost lines.
         } else {
-            let record = self.record.as_mut().unwrap();
-
             record.inclusive_costs.add(&costs);
             record.self_costs.add(&costs);
 
             self.set_state(State::Record);
         }
+
+        Ok(())
     }
 }
