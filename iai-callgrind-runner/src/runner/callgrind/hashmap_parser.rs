@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::str::FromStr;
 
 use log::{trace, warn};
 
 use super::{CallgrindParser, Sentinel};
 use crate::error::Result;
-use crate::runner::callgrind::PositionsMode;
+use crate::runner::callgrind::{Costs, PositionsMode};
 
 #[derive(Debug, Default)]
 pub struct HashMapParser {
@@ -43,6 +44,30 @@ impl HashMapParser {
     }
 }
 
+impl CallgrindParser for HashMapParser {
+    fn parse<T>(&mut self, file: T) -> Result<()>
+    where
+        T: AsRef<super::CallgrindOutput>,
+        Self: std::marker::Sized,
+    {
+        let file = File::open(&file.as_ref().file).unwrap();
+        let mut iter = BufReader::new(file)
+            .lines()
+            .map(std::result::Result::unwrap);
+        if !iter
+            .by_ref()
+            .find(|l| !l.trim().is_empty())
+            .expect("Non-empty file")
+            .contains("callgrind format")
+        {
+            warn!("Missing file format specifier. Assuming callgrind format.");
+        };
+
+        LinesParser::default().parse(self, iter);
+        Ok(())
+    }
+}
+
 /// The `TemporaryRecord` is used to collect all information until we can construct the key/value
 /// pair for the hash map
 #[derive(Debug, Default)]
@@ -51,8 +76,8 @@ struct TemporaryRecord {
     func: Option<String>,
     ob: Option<String>,
     fl: Option<String>,
-    inclusive_costs: [u64; 9],
-    self_costs: [u64; 9],
+    inclusive_costs: Costs,
+    self_costs: Costs,
     cfns: Vec<CfnRecord>,
     // fi and fe if the target of an fe entry is not the func itself
     inlines: Vec<InlineRecord>,
@@ -68,7 +93,7 @@ pub struct InlineRecord {
     pub file: Option<String>,
     pub fi: Option<String>,
     pub fe: Option<String>,
-    pub costs: [u64; 9],
+    pub costs: Costs,
 }
 
 #[derive(Debug, Default)]
@@ -81,14 +106,14 @@ pub struct CfnRecord {
     pub cfi: Option<String>,
     // doesn't this depend on the PositionMode??
     pub calls: [u64; 2],
-    pub costs: [u64; 9],
+    pub costs: Costs,
 }
 
 #[derive(Debug, Default)]
 pub struct Record {
     pub file: Option<String>,
-    pub inclusive_costs: [u64; 9],
-    pub self_costs: [u64; 9],
+    pub inclusive_costs: Costs,
+    pub self_costs: Costs,
     pub ob: Option<String>,
     pub cfns: Vec<CfnRecord>,
     pub inlines: Vec<InlineRecord>,
@@ -105,8 +130,11 @@ enum State {
     Footer,
 }
 
+type Split<'line> = Option<(&'line str, &'line str)>;
+
 struct LinesParser {
     positions_mode: PositionsMode,
+    costs_prototype: Costs,
     record: Option<TemporaryRecord>,
     cfn_record: Option<CfnRecord>,
     inline_record: Option<InlineRecord>,
@@ -116,7 +144,20 @@ struct LinesParser {
     target: Option<(String, String)>,
 }
 
-type Split<'line> = Option<(&'line str, &'line str)>;
+impl Default for LinesParser {
+    fn default() -> Self {
+        Self {
+            positions_mode: PositionsMode::default(),
+            costs_prototype: Costs::default(),
+            record: Option::default(),
+            cfn_record: Option::default(),
+            inline_record: Option::default(),
+            current_state: State::Header,
+            old_state: Option::default(),
+            target: Option::default(),
+        }
+    }
+}
 
 impl LinesParser {
     fn reset(&mut self) {
@@ -144,18 +185,55 @@ impl LinesParser {
         self.current_state = self.old_state.expect("A saved state");
     }
 
-    fn parse<I>(&mut self, hash_map_parser: &mut HashMapParser, mut iter: I)
+    fn parse_header<I>(&mut self, iter: &mut I)
     where
         I: Iterator<Item = String>,
     {
-        self.positions_mode = iter
-            .find_map(|line| PositionsMode::from_positions_line(&line))
-            .expect("Callgrind output line with mode for positions");
-        trace!("Using positions mode: {:?}", self.positions_mode);
+        for line in iter {
+            if line.is_empty() || line.starts_with('#') {
+                // skip empty lines or comments
+                continue;
+            }
+            // TODO: do not panic but return an IaiCallgrindParseError instead
+            match line.split_once(':').map(|(k, v)| (k.trim(), v.trim())) {
+                Some(("version", version)) if version != "1" => {
+                    panic!("Can't read other versions than '1' but was '{version}'");
+                }
+                Some(("positions", mode)) => {
+                    self.positions_mode = PositionsMode::from_str(mode.trim()).unwrap();
+                    trace!("Using positions mode: '{:?}'", self.positions_mode);
+                }
+                // The events line is the last line in the header which is mandatory (according to
+                // the source of callgrind_annotate). The summary line is usually the last line but
+                // is only optional. So, we break out of the loop here.
+                Some(("events", mode)) => {
+                    trace!("Using events from line: '{line}'");
+                    self.costs_prototype = mode.split_ascii_whitespace().collect::<Costs>();
+                    break;
+                }
+                // None is actually a malformed header line we just ignore here
+                None | Some(_) => {
+                    continue;
+                }
+            }
+        }
+    }
+
+    fn parse<I>(&mut self, hash_map_parser: &mut HashMapParser, iter: I)
+    where
+        I: IntoIterator<Item = String>,
+    {
+        let mut iter = iter.into_iter();
+        // After calling this method, there might still be lines left in header format (like
+        // `summary` or `totals`)
+        self.parse_header(iter.by_ref());
 
         for line in iter {
             if line.is_empty() && self.current_state != State::Header {
-                if let Some(record) = self.record.take() {
+                if let Some(mut record) = self.record.take() {
+                    if let Some(inline_record) = self.inline_record.take() {
+                        record.inlines.push(inline_record);
+                    }
                     hash_map_parser.insert_record(record);
                 }
                 self.reset();
@@ -329,36 +407,24 @@ impl LinesParser {
             "Costline must start with a digit"
         );
 
-        // From the documentation of the callgrind format:
-        // > If a cost line specifies less event counts than given in the "events" line, the
-        // > rest is assumed to be zero.
-        // TODO: WRAP COUNTS INTO STRUCT
-        let mut costs: [u64; 9] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-        for (index, counter) in line
+        let mut costs = self.costs_prototype.clone();
+        costs.add_iter_str(line
                         .split_ascii_whitespace()
                         // skip the first number which is just the line number or instr number or
-                          // in case of `instr line` skip 2
-                        .skip(if self.positions_mode == PositionsMode::InstrLine { 2 } else { 1 })
-                        .map(|s| s.parse::<u64>().expect("Encountered non ascii digit"))
-                        // we're only interested in the counters for instructions and the cache
-                        .take(9)
-                        .enumerate()
-        {
-            costs[index] = counter;
-        }
+                        // in case of `instr line` skip 2
+                        .skip(if self.positions_mode == PositionsMode::InstrLine { 2 } else { 1 }));
 
-        // A cfn record takes precedence over a inline record (=fe/fi)
+        // A cfn record takes precedence over an inline record (=fe/fi) and an inline record takes
+        // precedence over a record.
         if let Some(mut cfn_record) = self.cfn_record.take() {
             assert!(
                 !cfn_record.cfn.is_empty(),
                 "A cfn record must have an cfn entry"
             );
+            let record = self.record.as_mut().unwrap();
 
             cfn_record.costs = costs;
-            let record = self.record.as_mut().unwrap();
-            for (index, counter) in cfn_record.costs.iter().enumerate() {
-                record.inclusive_costs[index] += counter;
-            }
+            record.inclusive_costs.add(&cfn_record.costs);
 
             cfn_record.file = match cfn_record.cfi.as_deref() {
                 None | Some("???") => match cfn_record.cob.as_deref() {
@@ -371,65 +437,26 @@ impl LinesParser {
             record.cfns.push(cfn_record);
 
             // A cfn record has exactly 1 cost line, so we can restore the state from before the cfn
-            // state
+            // state here
             self.restore_cfn_state();
 
             // An inline record can have multiple cost lines so we cannot end an `InlineRecord`
             // here. Only another inline record can end an inlinerecord.
         } else if let Some(inline_record) = self.inline_record.as_mut() {
             let record = self.record.as_mut().unwrap();
-            for (index, counter) in costs.iter().enumerate() {
-                inline_record.costs[index] += counter;
-                record.inclusive_costs[index] += counter;
-            }
+
+            inline_record.costs.add(&costs);
+            record.inclusive_costs.add(&costs);
+
             self.set_state(State::InlineRecord);
             // Much like inline records, a Record can have mulitple cost lines.
         } else {
             let record = self.record.as_mut().unwrap();
-            for (index, counter) in costs.iter().enumerate() {
-                record.inclusive_costs[index] += counter;
-                record.self_costs[index] += counter;
-            }
+
+            record.inclusive_costs.add(&costs);
+            record.self_costs.add(&costs);
 
             self.set_state(State::Record);
         }
-    }
-}
-
-impl Default for LinesParser {
-    fn default() -> Self {
-        Self {
-            positions_mode: PositionsMode::Line,
-            record: Option::default(),
-            cfn_record: Option::default(),
-            inline_record: Option::default(),
-            current_state: State::Header,
-            old_state: Option::default(),
-            target: Option::default(),
-        }
-    }
-}
-
-impl CallgrindParser for HashMapParser {
-    fn parse<T>(&mut self, file: T) -> Result<()>
-    where
-        T: AsRef<super::CallgrindOutput>,
-        Self: std::marker::Sized,
-    {
-        let file = File::open(&file.as_ref().file).unwrap();
-        let mut iter = BufReader::new(file)
-            .lines()
-            .map(std::result::Result::unwrap);
-        if !iter
-            .by_ref()
-            .find(|l| !l.trim().is_empty())
-            .expect("Non-empty file")
-            .contains("callgrind format")
-        {
-            warn!("Missing file format specifier. Assuming callgrind format.");
-        };
-
-        LinesParser::default().parse(self, iter);
-        Ok(())
     }
 }

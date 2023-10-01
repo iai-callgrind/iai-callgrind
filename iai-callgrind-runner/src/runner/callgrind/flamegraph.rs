@@ -46,7 +46,7 @@ impl CallgrindFlamegraph {
         // Adjust the name for the counts in such cases.
         // TODO: MAKE the choice of a title for the svg files configurable
         // TODO: MAKE the choice of a name for the counts configurable??
-        let stack = format!("{this} {}", value.self_costs[0]);
+        let stack = format!("{this} {}", value.self_costs.get_by_index(0).unwrap().cost);
         if self.stacks.last().map_or(false, |last| {
             last.rsplit_once(|c| c == ' ').unwrap().0 == this
         }) {
@@ -61,17 +61,17 @@ impl CallgrindFlamegraph {
                 let path = PathBuf::from(&value);
                 let path = path.strip_prefix(&self.project_root).unwrap_or(&path);
 
-                let stack = format!("{this};[{}] {}", path.display(), inline.costs[0]);
+                let stack = format!(
+                    "{this};[{}] {}",
+                    path.display(),
+                    inline.costs.get_by_index(0).unwrap().cost
+                );
                 trace!("Pushing stack: {}", &stack);
                 self.stacks.push(stack);
             }
         }
 
         for cfn in &value.cfns {
-            // if cfn.cfn.is_empty() {
-            //     continue;
-            // }
-
             let query = Id {
                 func: cfn.cfn.clone(),
             };
