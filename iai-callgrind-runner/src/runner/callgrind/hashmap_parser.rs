@@ -4,18 +4,19 @@ use std::io::{BufRead, BufReader};
 use std::str::FromStr;
 
 use log::{trace, warn};
+use serde::{Deserialize, Serialize};
 
-use super::{CallgrindParser, Sentinel};
+use super::{CallgrindParser, EventType, Sentinel};
 use crate::error::{IaiCallgrindError, Result};
 use crate::runner::callgrind::{Costs, PositionsMode};
 
 type ErrorMessageResult<T> = std::result::Result<T, String>;
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HashMapParser {
     pub map: HashMap<Id, Record>,
     pub sentinel: Option<Sentinel>,
-    pub resolved_sentinel: Option<Id>,
+    pub sentinel_key: Option<Id>,
 }
 
 impl HashMapParser {
@@ -39,7 +40,7 @@ impl HashMapParser {
             .map_or(false, |sentinel| sentinel.matches(&key.func))
         {
             trace!("Found sentinel: {}", key.func);
-            self.resolved_sentinel = Some(key.clone());
+            self.sentinel_key = Some(key.clone());
         }
 
         self.map.insert(key, value);
@@ -81,12 +82,22 @@ struct TemporaryRecord {
     inlines: Vec<InlineRecord>,
 }
 
-#[derive(Debug, Hash, PartialEq, Eq, Clone)]
+impl TemporaryRecord {
+    pub fn from_prototype(costs: &Costs) -> Self {
+        Self {
+            inclusive_costs: costs.clone(),
+            self_costs: costs.clone(),
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Id {
     pub func: String,
 }
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InlineRecord {
     pub file: Option<String>,
     pub fi: Option<String>,
@@ -94,7 +105,16 @@ pub struct InlineRecord {
     pub costs: Costs,
 }
 
-#[derive(Debug, Default, PartialEq, Eq)]
+impl InlineRecord {
+    pub fn from_prototype(costs: &Costs) -> Self {
+        Self {
+            costs: costs.clone(),
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CfnRecord {
     pub file: Option<String>,
     // a cfn line must be present
@@ -107,7 +127,16 @@ pub struct CfnRecord {
     pub costs: Costs,
 }
 
-#[derive(Debug, Default, PartialEq, Eq)]
+impl CfnRecord {
+    pub fn from_prototype(costs: &Costs) -> Self {
+        Self {
+            costs: costs.clone(),
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Record {
     pub file: Option<String>,
     pub inclusive_costs: Costs,
@@ -115,6 +144,25 @@ pub struct Record {
     pub ob: Option<String>,
     pub cfns: Vec<CfnRecord>,
     pub inlines: Vec<InlineRecord>,
+}
+
+impl Record {
+    pub fn from_prototype(costs: &Costs) -> Self {
+        Self {
+            inclusive_costs: costs.clone(),
+            self_costs: costs.clone(),
+            ..Default::default()
+        }
+    }
+
+    pub fn with_event_types(types: &[EventType]) -> Self {
+        let costs = Costs::with_event_types(types);
+        Self {
+            inclusive_costs: costs.clone(),
+            self_costs: costs,
+            ..Default::default()
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -301,19 +349,25 @@ impl LinesParser {
     fn handle_record_state(&mut self, line: &str, split: Split) -> ErrorMessageResult<()> {
         match split {
             Some((key, value)) if key == "ob" => {
-                let record = self.record.get_or_insert(TemporaryRecord::default());
+                let record = self
+                    .record
+                    .get_or_insert(TemporaryRecord::from_prototype(&self.costs_prototype));
                 record.ob = Some(value.to_owned());
                 self.target = Some((key.to_owned(), value.to_owned()));
                 self.set_state(State::Record);
             }
             Some((key, value)) if key == "fl" => {
-                let record = self.record.get_or_insert(TemporaryRecord::default());
+                let record = self
+                    .record
+                    .get_or_insert(TemporaryRecord::from_prototype(&self.costs_prototype));
                 record.fl = Some(value.to_owned());
                 self.target = Some((key.to_owned(), value.to_owned()));
                 self.set_state(State::Record);
             }
             Some((key, value)) if key == "fn" => {
-                let record = self.record.get_or_insert(TemporaryRecord::default());
+                let record = self
+                    .record
+                    .get_or_insert(TemporaryRecord::from_prototype(&self.costs_prototype));
                 record.func = Some(value.to_owned());
                 self.set_state(State::Record);
             }
@@ -337,6 +391,7 @@ impl LinesParser {
                 self.inline_record = Some(InlineRecord {
                     fi: Some(value.to_owned()),
                     file: record.fl.clone(),
+                    costs: self.costs_prototype.clone(),
                     ..Default::default()
                 });
                 self.target = Some((key.to_owned(), value.to_owned()));
@@ -360,6 +415,7 @@ impl LinesParser {
                         self.inline_record = Some(InlineRecord {
                             fe: Some(value.to_owned()),
                             file: record.fl.clone(),
+                            costs: self.costs_prototype.clone(),
                             ..Default::default()
                         });
                         self.set_state(State::InlineRecord);
@@ -377,7 +433,9 @@ impl LinesParser {
     fn handle_cfn_record_state(&mut self, line: &str, split: Split) -> ErrorMessageResult<()> {
         match split {
             Some(("cob", value)) => {
-                let cfn_record = self.cfn_record.get_or_insert(CfnRecord::default());
+                let cfn_record = self
+                    .cfn_record
+                    .get_or_insert(CfnRecord::from_prototype(&self.costs_prototype));
                 cfn_record.cob = Some(value.to_owned());
                 self.save_cfn_state();
                 self.set_state(State::CfnRecord);
@@ -385,19 +443,25 @@ impl LinesParser {
             // `cfi` and `cfl` are the same, they are just written differently because of historical
             // reasons
             Some(("cfi" | "cfl", value)) => {
-                let cfn_record = self.cfn_record.get_or_insert(CfnRecord::default());
+                let cfn_record = self
+                    .cfn_record
+                    .get_or_insert(CfnRecord::from_prototype(&self.costs_prototype));
                 cfn_record.cfi = Some(value.to_owned());
                 self.save_cfn_state();
                 self.set_state(State::CfnRecord);
             }
             Some(("cfn", value)) => {
-                let cfn_record = self.cfn_record.get_or_insert(CfnRecord::default());
+                let cfn_record = self
+                    .cfn_record
+                    .get_or_insert(CfnRecord::from_prototype(&self.costs_prototype));
                 cfn_record.cfn = value.to_owned();
                 self.save_cfn_state();
                 self.set_state(State::CfnRecord);
             }
             Some(("calls", value)) => {
-                let cfn_record = self.cfn_record.get_or_insert(CfnRecord::default());
+                let cfn_record = self
+                    .cfn_record
+                    .get_or_insert(CfnRecord::from_prototype(&self.costs_prototype));
                 for (index, count) in value
                     .split_ascii_whitespace()
                     .map(|s| s.parse::<u64>().expect("Parsing number should be ok"))

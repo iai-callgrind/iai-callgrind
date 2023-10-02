@@ -13,6 +13,7 @@ use std::str::FromStr;
 
 use colored::{ColoredString, Colorize};
 use log::{debug, error, info, trace, warn, Level};
+use serde::{Deserialize, Serialize};
 use which::which;
 
 use super::callgrind::args::CallgrindArgs;
@@ -21,8 +22,9 @@ use crate::api::ExitWith;
 use crate::error::{IaiCallgrindError, Result};
 use crate::util::{truncate_str_utf8, write_all_to_stderr, write_all_to_stdout};
 
+// TODO: Use CamelCase for sysCount etc.
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EventType {
     // always on
     Ir,
@@ -98,16 +100,20 @@ impl Display for EventType {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Event {
     kind: EventType,
     cost: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Costs(Vec<Event>);
 
 impl Costs {
+    pub fn with_event_types(types: &[EventType]) -> Self {
+        Self(types.iter().map(|t| Event { kind: *t, cost: 0 }).collect())
+    }
+
     pub fn add_iter_str<I, T>(&mut self, iter: T)
     where
         I: AsRef<str>,
@@ -341,7 +347,7 @@ impl CallgrindCommand {
 }
 
 // TODO: Rename to needle
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Sentinel(String);
 
 impl Sentinel {

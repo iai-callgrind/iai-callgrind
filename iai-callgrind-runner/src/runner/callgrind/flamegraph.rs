@@ -136,7 +136,7 @@ impl CallgrindParser for CallgrindFlamegraph {
         }
 
         // Let's find our entry point which defaults to "main"
-        let (key, value) = if let Some(key) = parser.resolved_sentinel {
+        let (key, value) = if let Some(key) = parser.sentinel_key {
             map.get_key_value(&key)
                 .expect("Resolved sentinel must be present in map")
         } else {
