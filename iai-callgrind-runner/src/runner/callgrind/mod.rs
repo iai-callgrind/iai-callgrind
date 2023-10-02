@@ -98,13 +98,13 @@ impl Display for EventType {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Event {
     kind: EventType,
     cost: u64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Costs(Vec<Event>);
 
 impl Costs {
@@ -341,7 +341,7 @@ impl CallgrindCommand {
 }
 
 // TODO: Rename to needle
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Sentinel(String);
 
 impl Sentinel {
@@ -436,6 +436,13 @@ pub struct CallgrindOutput {
 }
 
 impl CallgrindOutput {
+    pub fn new<T>(path: T) -> Self
+    where
+        T: Into<PathBuf>,
+    {
+        Self { file: path.into() }
+    }
+
     pub fn create(base_dir: &Path, module: &str, name: &str) -> Self {
         let current = base_dir;
         let module_path: PathBuf = module.split("::").collect();

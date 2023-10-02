@@ -1,5 +1,5 @@
 mod bin_bench;
-mod callgrind;
+pub mod callgrind;
 mod lib_bench;
 mod meta;
 mod print;

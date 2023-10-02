@@ -11,7 +11,7 @@ use crate::runner::callgrind::{Costs, PositionsMode};
 
 type ErrorMessageResult<T> = std::result::Result<T, String>;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct HashMapParser {
     pub map: HashMap<Id, Record>,
     pub sentinel: Option<Sentinel>,
@@ -86,7 +86,7 @@ pub struct Id {
     pub func: String,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct InlineRecord {
     pub file: Option<String>,
     pub fi: Option<String>,
@@ -94,7 +94,7 @@ pub struct InlineRecord {
     pub costs: Costs,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct CfnRecord {
     pub file: Option<String>,
     // a cfn line must be present
@@ -107,7 +107,7 @@ pub struct CfnRecord {
     pub costs: Costs,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct Record {
     pub file: Option<String>,
     pub inclusive_costs: Costs,
@@ -204,7 +204,9 @@ impl LinesParser {
             // TODO: do not panic but return an IaiCallgrindParseError instead
             match line.split_once(':').map(|(k, v)| (k.trim(), v.trim())) {
                 Some(("version", version)) if version != "1" => {
-                    panic!("Can't read other versions than '1' but was '{version}'");
+                    return Err(format!(
+                        "Version mismatch: Requires version '1' but was '{version}'"
+                    ));
                 }
                 Some(("positions", mode)) => {
                     self.positions_mode = PositionsMode::from_str(mode.trim())?;
