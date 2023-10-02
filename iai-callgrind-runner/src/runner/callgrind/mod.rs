@@ -318,7 +318,9 @@ impl CallgrindCommand {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
-            .map_err(|error| IaiCallgrindError::LaunchError(PathBuf::from("valgrind"), error))
+            .map_err(|error| {
+                IaiCallgrindError::LaunchError(PathBuf::from("valgrind"), error.to_string())
+            })
             .and_then(|output| Self::check_exit(&executable, output, exit_with.as_ref()))?;
 
         if !stdout.is_empty() {

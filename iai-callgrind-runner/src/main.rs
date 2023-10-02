@@ -89,8 +89,8 @@ fn main() {
                         _ => unreachable!(),
                     }
                 }
-                IaiCallgrindError::LaunchError(exec, error) => {
-                    error!("Error executing '{}': {}", exec.display(), error)
+                IaiCallgrindError::LaunchError(exec, message) => {
+                    error!("Error executing '{}': {}", exec.display(), message)
                 }
                 IaiCallgrindError::BenchmarkLaunchError(output) => {
                     error!("Captured stderr:",);

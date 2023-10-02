@@ -138,7 +138,7 @@ pub fn copy_directory(source: &Path, into: &Path, follow_symlinks: bool) -> Resu
     command.arg(into);
     let (stdout, stderr) = command
         .output()
-        .map_err(|error| IaiCallgrindError::LaunchError(cp, error))
+        .map_err(|error| IaiCallgrindError::LaunchError(cp, error.to_string()))
         .and_then(|output| {
             if output.status.success() {
                 Ok((output.stdout, output.stderr))

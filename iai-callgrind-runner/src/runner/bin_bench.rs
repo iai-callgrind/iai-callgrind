@@ -168,7 +168,9 @@ impl Assistant {
 
         let (stdout, stderr) = command
             .output()
-            .map_err(|error| IaiCallgrindError::LaunchError(config.bench_bin.clone(), error))
+            .map_err(|error| {
+                IaiCallgrindError::LaunchError(config.bench_bin.clone(), error.to_string())
+            })
             .and_then(|output| {
                 if output.status.success() {
                     Ok((output.stdout, output.stderr))
