@@ -1,9 +1,8 @@
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 use log::trace;
 
-use super::hashmap_parser::{HashMapParser, Id};
+use super::hashmap_parser::{CallgrindMap, HashMapParser, Id};
 use super::parser::CallgrindParser;
 use super::{CallgrindOutput, Sentinel};
 use crate::error::Result;
@@ -30,7 +29,7 @@ impl FlamegraphParser {
 
     fn fold(
         &mut self,
-        map: &HashMap<Id, Record>,
+        map: &CallgrindMap,
         key: &Id,
         value: &Record,
         // WRAP &STR INTO Stack struct
@@ -92,21 +91,21 @@ impl FlamegraphParser {
 impl CallgrindParser for FlamegraphParser {
     type Output = Vec<String>;
 
-    fn parse(&mut self, output: &CallgrindOutput) -> Result<Self::Output> {
-        let mut parser = HashMapParser {
+    fn parse(mut self, output: &CallgrindOutput) -> Result<Self::Output> {
+        let parser = HashMapParser {
             sentinel: self.sentinel.clone(),
             ..Default::default()
         };
-        parser.parse(output)?;
-        let map = parser.map;
+
+        let map = parser.parse(output)?;
 
         if map.is_empty() {
             return Ok(vec![]);
         }
 
         // Let's find our entry point which defaults to "main"
-        let (key, value) = if let Some(key) = parser.sentinel_key {
-            map.get_key_value(&key)
+        let (key, value) = if let Some(key) = &map.sentinel_key {
+            map.get_key_value(key)
                 .expect("Resolved sentinel must be present in map")
         } else {
             map.iter()
@@ -115,7 +114,7 @@ impl CallgrindParser for FlamegraphParser {
         };
 
         self.fold(&map, key, value, "");
-        // TODO: NO CLONE
-        Ok(self.stacks.clone())
+
+        Ok(self.stacks)
     }
 }

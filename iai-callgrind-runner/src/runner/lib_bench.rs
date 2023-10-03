@@ -1,10 +1,11 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-// TODO: Remove all Callgrind prefixes for structs contained in the callgrind module
+// TODO: Remove all Callgrind prefixes for structs contained in the callgrind module??
 use super::callgrind::args::CallgrindArgs;
 use super::callgrind::flamegraph_parser::FlamegraphParser;
 use super::callgrind::parser::CallgrindParser;
+use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Sentinel};
 use super::flamegraph::{Flamegraph, FlamegraphOutput};
 use super::meta::Metadata;
@@ -69,26 +70,26 @@ impl LibBench {
             self.args.clone(),
         );
 
-        let mut flamegraph_parser =
-            FlamegraphParser::new(Some(&sentinel), &config.meta.project_root);
+        let flamegraph_parser = FlamegraphParser::new(Some(&sentinel), &config.meta.project_root);
 
         flamegraph_parser.parse(&output).and_then(|stacks| {
             FlamegraphOutput::create(&output).and_then(|flamegraph_output| {
                 let flamegraph = Flamegraph {
                     stacks,
+                    // TODO: This field should be part of a FlamegraphOptions (own not from inferno)
                     title: header.to_title(),
                 };
                 flamegraph.create(&flamegraph_output)
             })
         })?;
 
-        let new_stats = output.parse(&config.bench_file, &sentinel)?;
+        let new_stats = SentinelParser::new(&sentinel, &config.bench_file).parse(&output)?;
 
         let old_output = output.old_output();
 
         #[allow(clippy::if_then_some_else_none)]
         let old_stats = if old_output.exists() {
-            Some(old_output.parse(&config.bench_file, sentinel)?)
+            Some(SentinelParser::new(&sentinel, &config.bench_file).parse(&old_output)?)
         } else {
             None
         };

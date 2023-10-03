@@ -10,6 +10,7 @@ use crate::error::Result;
 
 pub struct Stack(String);
 
+// TODO: Use a Stacks struct instead of Vec<Stack>
 // pub struct Stacks(Vec<Stack>);
 // impl Stacks {
 //     fn is_empty(&self) -> bool {
@@ -17,14 +18,10 @@ pub struct Stack(String);
 //     }
 // }
 
-pub struct Flamegraph {
-    pub title: String,
-    pub stacks: Vec<String>,
-}
-
 pub struct FlamegraphOutput(pub PathBuf);
 
 impl FlamegraphOutput {
+    // TODO: rename to init()
     pub fn create(output: &CallgrindOutput) -> Result<Self> {
         let path = output.with_extension("svg").path;
         if path.exists() {
@@ -41,6 +38,7 @@ impl FlamegraphOutput {
         Ok(Self(path))
     }
 
+    // TODO: rename to create
     pub fn create_file(&self) -> Result<File> {
         File::create(&self.0).map_err(|error| {
             IaiCallgrindError::Other(format!("Creating flamegraph file failed: {error}"))
@@ -48,10 +46,15 @@ impl FlamegraphOutput {
     }
 }
 
+pub struct Flamegraph {
+    pub title: String,
+    pub stacks: Vec<String>,
+}
+
 impl Flamegraph {
     pub fn create(&self, dest: &FlamegraphOutput) -> Result<()> {
         if self.stacks.is_empty() {
-            warn!("Unable to create a flamegraph: Callgrind didn't record any events");
+            warn!("Unable to create a flamegraph: No stacks found");
             return Ok(());
         }
 

@@ -2,6 +2,8 @@ pub mod args;
 pub mod flamegraph_parser;
 pub mod hashmap_parser;
 pub mod parser;
+pub mod sentinel_parser;
+pub mod summary_parser;
 
 use std::convert::AsRef;
 use std::ffi::{OsStr, OsString};
@@ -12,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
 use colored::{ColoredString, Colorize};
-use log::{debug, error, info, trace, warn, Level};
+use log::{debug, error, info, Level};
 use serde::{Deserialize, Serialize};
 use which::which;
 
@@ -20,7 +22,6 @@ use super::callgrind::args::CallgrindArgs;
 use super::meta::Metadata;
 use crate::api::ExitWith;
 use crate::error::{IaiCallgrindError, Result};
-use crate::runner::callgrind::parser::PositionsMode;
 use crate::util::{truncate_str_utf8, write_all_to_stderr, write_all_to_stdout};
 
 #[derive(Debug, Default, Clone)]
@@ -325,185 +326,11 @@ impl CallgrindOutput {
             .lines()
             .map(std::result::Result::unwrap))
     }
-
-    // TODO: MOVE This into a SummaryParser
-    pub fn parse_summary(&self) -> CallgrindStats {
-        trace!(
-            "Parsing callgrind output file '{}' for a summary or totals",
-            self.path.display(),
-        );
-
-        // TODO: Use a HeaderParser instead
-        let file = File::open(&self.path).expect("Unable to open callgrind output file");
-        let mut iter = BufReader::new(file)
-            .lines()
-            .map(std::result::Result::unwrap);
-        if !iter
-            .by_ref()
-            .find(|l| !l.trim().is_empty())
-            .expect("Found empty file")
-            .contains("callgrind format")
-        {
-            warn!("Missing file format specifier. Assuming callgrind format.");
-        };
-
-        // Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
-        let mut counters: [u64; 9] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-        for line in iter {
-            if line.starts_with("summary:") {
-                trace!("Found line with summary: '{}'", line);
-                for (index, counter) in line
-                    .strip_prefix("summary:")
-                    .unwrap()
-                    .trim()
-                    .split_ascii_whitespace()
-                    .map(|s| s.parse::<u64>().expect("Encountered non ascii digit"))
-                    // we're only interested in the counters for instructions and the cache
-                    .take(9)
-                    .enumerate()
-                {
-                    counters[index] += counter;
-                }
-                trace!("Updated counters to '{:?}'", &counters);
-                break;
-            }
-            // TODO: If the summary line doesn't exist use the HashMapParser instead and then
-            // sum up the (self?) costs of each Record.
-            if line.starts_with("totals:") {
-                trace!("Found line with totals: '{}'", line);
-                for (index, counter) in line
-                    .strip_prefix("totals:")
-                    .unwrap()
-                    .trim()
-                    .split_ascii_whitespace()
-                    .map(|s| s.parse::<u64>().expect("Encountered non ascii digit"))
-                    // we're only interested in the counters for instructions and the cache
-                    .take(9)
-                    .enumerate()
-                {
-                    counters[index] += counter;
-                }
-                trace!("Updated counters to '{:?}'", &counters);
-                break;
-            }
-        }
-
-        CallgrindStats {
-            instructions_executed: counters[0],
-            total_data_cache_reads: counters[1],
-            total_data_cache_writes: counters[2],
-            l1_instructions_cache_read_misses: counters[3],
-            l1_data_cache_read_misses: counters[4],
-            l1_data_cache_write_misses: counters[5],
-            l3_instructions_cache_read_misses: counters[6],
-            l3_data_cache_read_misses: counters[7],
-            l3_data_cache_write_misses: counters[8],
-        }
-    }
-
-    // TODO: Parsing the header should be an own parser, The parsed result could be a
-    // CallgrindParserConfig or such. The configs stores the PositionsMode, CostsPrototype etc.
-    // TODO: MOVE this into a CallgrindSentinelParser
-    // Why not taking CallgrindOutput as parameter and add method CallgrindOutput::open with all the
-    // error handling to CallgrindOutput?
-    pub fn parse<T>(&self, bench_file: &Path, sentinel: T) -> Result<CallgrindStats>
-    where
-        T: AsRef<Sentinel>,
-    {
-        let sentinel = sentinel.as_ref();
-        trace!(
-            "Parsing callgrind output file '{}' for '{}'",
-            self.path.display(),
-            sentinel
-        );
-
-        trace!(
-            "Using sentinel: '{}' for file name ending with: '{}'",
-            &sentinel,
-            bench_file.display()
-        );
-
-        let file = self.open()?;
-        let mut iter = BufReader::new(file)
-            .lines()
-            .map(std::result::Result::unwrap);
-        if !iter
-            .by_ref()
-            .find(|l| !l.trim().is_empty())
-            .expect("Found empty file")
-            .contains("callgrind format")
-        {
-            warn!("Missing file format specifier. Assuming callgrind format.");
-        };
-
-        let mode = iter
-            .find_map(|line| PositionsMode::from_positions_line(&line))
-            .expect("Callgrind output line with mode for positions");
-        trace!("Using parsing mode: {:?}", mode);
-
-        let mut counters: [u64; 9] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-        // Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
-        let mut start_record = false;
-        // TODO: It's not needed to parse the whole file if the sentinel is a fn= method which is
-        // unique in the whole file.
-        for line in iter {
-            let line = line.trim_start();
-            if line.is_empty() {
-                start_record = false;
-            }
-            if !start_record {
-                if line.starts_with("fl=") && line.ends_with(bench_file.to_str().unwrap()) {
-                    trace!("Found line with benchmark file: '{}'", line);
-                } else if line.starts_with(&sentinel.to_fn()) {
-                    trace!("Found line with sentinel: '{}'", line);
-                    start_record = true;
-                } else {
-                    // do nothing
-                }
-                continue;
-            }
-
-            // we check if it is a line with counters and summarize them
-            if line.starts_with(|c: char| c.is_ascii_digit()) {
-                // From the documentation of the callgrind format:
-                // > If a cost line specifies less event counts than given in the "events" line, the
-                // > rest is assumed to be zero.
-                trace!("Found line with counters: '{}'", line);
-                for (index, counter) in line
-                    .split_ascii_whitespace()
-                    // skip the first number which is just the line number or instr number or in
-                    // case of `instr line` skip 2
-                    .skip(if mode == PositionsMode::InstrLine { 2 } else { 1 })
-                    .map(|s| s.parse::<u64>().expect("Encountered non ascii digit"))
-                    // we're only interested in the counters for instructions and the cache
-                    .take(9)
-                    .enumerate()
-                {
-                    counters[index] += counter;
-                }
-                trace!("Updated counters to '{:?}'", &counters);
-            } else {
-                trace!("Skipping line: '{}'", line);
-            }
-        }
-
-        Ok(CallgrindStats {
-            instructions_executed: counters[0],
-            total_data_cache_reads: counters[1],
-            total_data_cache_writes: counters[2],
-            l1_instructions_cache_read_misses: counters[3],
-            l1_data_cache_read_misses: counters[4],
-            l1_data_cache_write_misses: counters[5],
-            l3_instructions_cache_read_misses: counters[6],
-            l3_data_cache_read_misses: counters[7],
-            l3_data_cache_write_misses: counters[8],
-        })
-    }
 }
 
-impl AsRef<CallgrindOutput> for CallgrindOutput {
-    fn as_ref(&self) -> &Self {
-        self
+impl Display for CallgrindOutput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.path.display()))
     }
 }
 

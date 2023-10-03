@@ -1,26 +1,22 @@
 use std::collections::HashMap;
-use std::str::FromStr;
 
-use log::{trace, warn};
+use log::trace;
 use serde::{Deserialize, Serialize};
 
-use super::parser::{CallgrindParser, Costs, EventType, PositionsMode};
+use super::parser::{parse_header, CallgrindParser, Costs, EventType, PositionsMode};
 use super::{CallgrindOutput, Sentinel};
 use crate::error::{IaiCallgrindError, Result};
 
 type ErrorMessageResult<T> = std::result::Result<T, String>;
 
-// TODO: Create an own strcut CallgrindMap with all(? or just map and sentinel_key) the fields of
-// HashMapParser and return this struct from the parse method. Then move insert_record to the new
-// struct
 #[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct HashMapParser {
+pub struct CallgrindMap {
     pub map: HashMap<Id, Record>,
     pub sentinel: Option<Sentinel>,
     pub sentinel_key: Option<Id>,
 }
 
-impl HashMapParser {
+impl CallgrindMap {
     fn insert_record(&mut self, record: TemporaryRecord) {
         let func = record.func.expect("A record must have an fn entry");
         assert!(!func.is_empty(), "Expect the function to be not empty.");
@@ -46,14 +42,31 @@ impl HashMapParser {
 
         self.map.insert(key, value);
     }
+
+    pub fn get_key_value(&self, k: &Id) -> Option<(&Id, &Record)> {
+        self.map.get_key_value(k)
+    }
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&Id, &Record)> {
+        self.map.iter()
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HashMapParser {
+    pub map: CallgrindMap,
+    pub sentinel: Option<Sentinel>,
 }
 
 impl CallgrindParser for HashMapParser {
-    type Output = ();
+    type Output = CallgrindMap;
 
-    fn parse(&mut self, output: &CallgrindOutput) -> Result<Self::Output> {
+    fn parse(self, output: &CallgrindOutput) -> Result<Self::Output> {
         LinesParser::default()
-            .parse(self, output.lines()?)
+            .parse(self.map, output.lines()?)
             .map_err(|message| IaiCallgrindError::ParseError((output.path.clone(), message)))
     }
 }
@@ -222,67 +235,20 @@ impl LinesParser {
         self.current_state = self.old_state.expect("A saved state");
     }
 
-    // TODO: Move this into an Parser -> CallgrindHeaderParser
-    fn parse_header<I>(&mut self, iter: &mut I) -> ErrorMessageResult<()>
-    where
-        I: Iterator<Item = String>,
-    {
-        if !iter
-            .by_ref()
-            .find(|l| !l.trim().is_empty())
-            .ok_or("Empty file")?
-            .contains("callgrind format")
-        {
-            warn!("Missing file format specifier. Assuming callgrind format.");
-        };
-
-        for line in iter {
-            if line.is_empty() || line.starts_with('#') {
-                // skip empty lines or comments
-                continue;
-            }
-            match line.split_once(':').map(|(k, v)| (k.trim(), v.trim())) {
-                Some(("version", version)) if version != "1" => {
-                    return Err(format!(
-                        "Version mismatch: Requires version '1' but was '{version}'"
-                    ));
-                }
-                Some(("positions", mode)) => {
-                    self.positions_mode = PositionsMode::from_str(mode.trim())?;
-                    trace!("Using positions mode: '{:?}'", self.positions_mode);
-                }
-                // The events line is the last line in the header which is mandatory (according to
-                // the source of callgrind_annotate). The summary line is usually the last line but
-                // is only optional. So, we break out of the loop here.
-                Some(("events", mode)) => {
-                    trace!("Using events from line: '{line}'");
-                    self.costs_prototype = mode.split_ascii_whitespace().collect::<Costs>();
-                    break;
-                }
-                // None is actually a malformed header line we just ignore here
-                None | Some(_) => {
-                    continue;
-                }
-            }
-        }
-        // TODO: After parsing the header the PositionMode and costs_prototype must be present.
-        // Check that
-
-        Ok(())
-    }
-
     fn parse<I>(
         &mut self,
-        hash_map_parser: &mut HashMapParser,
+        mut callgrind_map: CallgrindMap,
         iter: I,
-    ) -> std::result::Result<(), String>
+    ) -> std::result::Result<CallgrindMap, String>
     where
         I: IntoIterator<Item = String>,
     {
         let mut iter = iter.into_iter();
         // After calling this method, there might still be lines left in header format (like
         // `summary` or `totals`)
-        self.parse_header(iter.by_ref())?;
+        let config = parse_header(&mut iter)?;
+        self.positions_mode = config.positions_mode;
+        self.costs_prototype = config.costs_prototype;
 
         for line in iter {
             if line.is_empty() && self.current_state != State::Header {
@@ -290,7 +256,7 @@ impl LinesParser {
                     if let Some(inline_record) = self.inline_record.take() {
                         record.inlines.push(inline_record);
                     }
-                    hash_map_parser.insert_record(record);
+                    callgrind_map.insert_record(record);
                 }
                 self.reset();
             } else if self.current_state == State::Footer {
@@ -304,10 +270,10 @@ impl LinesParser {
             if let Some(inline_record) = self.inline_record.take() {
                 record.inlines.push(inline_record);
             }
-            hash_map_parser.insert_record(record);
+            callgrind_map.insert_record(record);
         }
 
-        Ok(())
+        Ok(callgrind_map)
     }
 
     fn handle_state(&mut self, line: &str, split: Split) -> ErrorMessageResult<()> {

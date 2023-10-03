@@ -7,6 +7,9 @@ use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
 use super::callgrind::args::CallgrindArgs;
+use super::callgrind::parser::CallgrindParser;
+use super::callgrind::sentinel_parser::SentinelParser;
+use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Sentinel};
 use super::meta::Metadata;
 use super::print::Header;
@@ -41,10 +44,16 @@ impl BinBench {
             &output,
         )?;
 
-        let new_stats = output.parse_summary();
+        let new_stats = SummaryParser.parse(&output)?;
 
         let old_output = output.old_output();
-        let old_stats = old_output.exists().then(|| old_output.parse_summary());
+
+        #[allow(clippy::if_then_some_else_none)]
+        let old_stats = if old_output.exists() {
+            Some(SummaryParser.parse(&old_output)?)
+        } else {
+            None
+        };
 
         Header::new(&group.module_path, self.id.clone(), self.to_string()).print();
         new_stats.print(old_stats);
@@ -138,13 +147,13 @@ impl Assistant {
         )?;
 
         let sentinel = Sentinel::from_path(&config.module, &self.name);
-        let new_stats = output.parse(&config.bench_file, &sentinel)?;
+        let new_stats = SentinelParser::new(&sentinel, &config.bench_file).parse(&output)?;
 
         let old_output = output.old_output();
 
         #[allow(clippy::if_then_some_else_none)]
         let old_stats = if old_output.exists() {
-            Some(old_output.parse(&config.bench_file, sentinel)?)
+            Some(SentinelParser::new(&sentinel, &config.bench_file).parse(&old_output)?)
         } else {
             None
         };
