@@ -1,6 +1,7 @@
 use std::fmt::Display;
 use std::str::FromStr;
 
+use indexmap::{indexmap, IndexMap};
 use log::{trace, warn};
 use serde::{Deserialize, Serialize};
 
@@ -10,6 +11,7 @@ use crate::error::Result;
 pub trait CallgrindParser {
     type Output;
 
+    // TODO: Use &self instead of self if possible
     fn parse(self, output: &CallgrindOutput) -> Result<Self::Output>
     where
         Self: std::marker::Sized;
@@ -18,7 +20,7 @@ pub trait CallgrindParser {
 // TODO: Use CamelCase for sysCount etc.
 // TODO: Add derived event types like Cycles, L1Hits etc.
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EventType {
     // always on
     Ir,
@@ -94,18 +96,13 @@ impl Display for EventType {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Event {
-    pub kind: EventType,
-    pub cost: u64,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Costs(Vec<Event>);
+pub struct Costs(IndexMap<EventType, u64>);
 
 impl Costs {
+    // The order matters. The index is derived from the insertion order
     pub fn with_event_types(types: &[EventType]) -> Self {
-        Self(types.iter().map(|t| Event { kind: *t, cost: 0 }).collect())
+        Self(types.iter().map(|t| (*t, 0)).collect())
     }
 
     pub fn add_iter_str<I, T>(&mut self, iter: T)
@@ -116,43 +113,35 @@ impl Costs {
         // From the documentation of the callgrind format:
         // > If a cost line specifies less event counts than given in the "events" line, the
         // > rest is assumed to be zero.
-        for (event, cost) in self.0.iter_mut().zip(iter.into_iter()) {
-            event.cost += cost.as_ref().parse::<u64>().unwrap();
+        for ((_, old), cost) in self.0.iter_mut().zip(iter.into_iter()) {
+            *old += cost.as_ref().parse::<u64>().unwrap();
         }
     }
+
     pub fn add(&mut self, other: &Self) {
-        for (event, cost) in self
-            .0
-            .iter_mut()
-            .zip(other.0.iter().map(|event| event.cost))
-        {
-            event.cost += cost;
+        for ((_, old), cost) in self.0.iter_mut().zip(other.0.iter().map(|(_, c)| c)) {
+            *old += cost;
         }
     }
 
-    pub fn event_by_index(&self, index: usize) -> Option<&Event> {
-        self.0.get(index)
-    }
-
-    pub fn event_by_type(&self, kind: EventType) -> Option<&Event> {
-        self.0.iter().find(|e| e.kind == kind)
-    }
-
+    /// Return the cost of the event at index (of insertion order)
+    ///
+    /// This operation is O(1)
     pub fn cost_by_index(&self, index: usize) -> Option<u64> {
-        self.0.get(index).map(|e| e.cost)
+        self.0.get_index(index).map(|(_, c)| *c)
     }
 
-    pub fn cost_by_type(&self, kind: EventType) -> Option<u64> {
-        self.0.iter().find(|e| e.kind == kind).map(|e| e.cost)
+    /// Return the cost of the [`EventType`]
+    ///
+    /// This operation is O(1)
+    pub fn cost_by_type(&self, kind: &EventType) -> Option<u64> {
+        self.0.get_key_value(kind).map(|(_, c)| *c)
     }
 }
 
 impl Default for Costs {
     fn default() -> Self {
-        Self(vec![Event {
-            kind: EventType::Ir,
-            cost: 0,
-        }])
+        Self(indexmap! {EventType::Ir => 0})
     }
 }
 
@@ -166,11 +155,8 @@ where
     {
         Self(
             iter.into_iter()
-                .map(|s| Event {
-                    kind: EventType::from(s),
-                    cost: 0,
-                })
-                .collect::<Vec<_>>(),
+                .map(|s| (EventType::from(s), 0))
+                .collect::<IndexMap<_, _>>(),
         )
     }
 }

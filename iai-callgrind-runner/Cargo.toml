@@ -23,6 +23,7 @@ runner = [
   "dep:cargo_metadata",
   "dep:colored",
   "dep:env_logger",
+  "dep:indexmap",
   "dep:inferno",
   "dep:log",
   "dep:sanitize-filename",
@@ -41,6 +42,7 @@ bincode = { version = "1", optional = true }
 cargo_metadata = { version = "0.17", optional = true }
 colored = { version = ">=1.6, <3", optional = true }
 env_logger = { version = ">=0.7, <0.11", optional = true }
+indexmap = { version = "1.9", optional = true, features = ["serde"] }
 inferno = { version = "0.11.10", optional = true, default-features = false, features = [
   'multithreaded',
 ] }

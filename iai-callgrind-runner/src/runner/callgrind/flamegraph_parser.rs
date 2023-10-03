@@ -45,10 +45,7 @@ impl FlamegraphParser {
         // Adjust the name for the counts in such cases.
         // TODO: MAKE the choice of a title for the svg files configurable??
         // TODO: MAKE the choice of a name for the counts configurable??
-        let stack = format!(
-            "{this} {}",
-            value.self_costs.event_by_index(0).unwrap().cost
-        );
+        let stack = format!("{this} {}", value.self_costs.cost_by_index(0).unwrap());
         trace!("Pushing stack: {}", &stack);
         self.stacks.push(stack);
 
@@ -62,7 +59,7 @@ impl FlamegraphParser {
                 let stack = format!(
                     "{this};[{}] {}",
                     path.display(),
-                    inline.costs.event_by_index(0).unwrap().cost
+                    inline.costs.cost_by_index(0).unwrap()
                 );
                 trace!("Pushing stack: {}", &stack);
                 self.stacks.push(stack);
