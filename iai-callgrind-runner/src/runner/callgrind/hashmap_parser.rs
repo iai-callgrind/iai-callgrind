@@ -1,13 +1,12 @@
 use std::collections::HashMap;
-use std::io::{BufRead, BufReader};
 use std::str::FromStr;
 
 use log::{trace, warn};
 use serde::{Deserialize, Serialize};
 
-use super::{CallgrindParser, EventType, Sentinel};
+use super::parser::{CallgrindParser, Costs, EventType, PositionsMode};
+use super::{CallgrindOutput, Sentinel};
 use crate::error::{IaiCallgrindError, Result};
-use crate::runner::callgrind::{Costs, PositionsMode};
 
 type ErrorMessageResult<T> = std::result::Result<T, String>;
 
@@ -50,20 +49,11 @@ impl HashMapParser {
 }
 
 impl CallgrindParser for HashMapParser {
-    fn parse<T>(&mut self, output: T) -> Result<()>
-    where
-        T: AsRef<super::CallgrindOutput>,
-        Self: std::marker::Sized,
-    {
-        let output = output.as_ref();
-        let file = output.open()?;
+    type Output = ();
 
-        let iter = BufReader::new(file)
-            .lines()
-            .map(std::result::Result::unwrap);
-
+    fn parse(&mut self, output: &CallgrindOutput) -> Result<Self::Output> {
         LinesParser::default()
-            .parse(self, iter)
+            .parse(self, output.lines()?)
             .map_err(|message| IaiCallgrindError::ParseError((output.path.clone(), message)))
     }
 }
@@ -232,6 +222,7 @@ impl LinesParser {
         self.current_state = self.old_state.expect("A saved state");
     }
 
+    // TODO: Move this into an Parser -> CallgrindHeaderParser
     fn parse_header<I>(&mut self, iter: &mut I) -> ErrorMessageResult<()>
     where
         I: Iterator<Item = String>,
@@ -250,7 +241,6 @@ impl LinesParser {
                 // skip empty lines or comments
                 continue;
             }
-            // TODO: do not panic but return an IaiCallgrindParseError instead
             match line.split_once(':').map(|(k, v)| (k.trim(), v.trim())) {
                 Some(("version", version)) if version != "1" => {
                     return Err(format!(
@@ -275,6 +265,8 @@ impl LinesParser {
                 }
             }
         }
+        // TODO: After parsing the header the PositionMode and costs_prototype must be present.
+        // Check that
 
         Ok(())
     }

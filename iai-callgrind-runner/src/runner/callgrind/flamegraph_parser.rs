@@ -1,51 +1,27 @@
 use std::collections::HashMap;
-use std::fs::File;
 use std::path::PathBuf;
 
-use inferno::flamegraph::Options;
-use log::{trace, warn};
+use log::trace;
 
 use super::hashmap_parser::{HashMapParser, Id};
-use super::{CallgrindOutput, CallgrindParser, Sentinel};
-use crate::error::{IaiCallgrindError, Result};
+use super::parser::CallgrindParser;
+use super::{CallgrindOutput, Sentinel};
+use crate::error::Result;
 use crate::runner::callgrind::hashmap_parser::Record;
 
-pub struct FlamegraphOutput(PathBuf);
-
-impl FlamegraphOutput {
-    pub fn create(output: &CallgrindOutput) -> Result<Self> {
-        let path = output.with_extension("svg").path;
-        if path.exists() {
-            let old_svg = path.with_extension("svg.old");
-            std::fs::copy(&path, &old_svg).map_err(|error| {
-                IaiCallgrindError::Other(format!(
-                    "Error copying flamegraph file '{}' -> '{}' : {error}",
-                    &path.display(),
-                    &old_svg.display(),
-                ))
-            })?;
-        }
-
-        Ok(Self(path))
-    }
-}
-
 #[derive(Debug)]
-pub struct CallgrindFlamegraph {
+pub struct FlamegraphParser {
     stacks: Vec<String>,
     project_root: PathBuf,
     sentinel: Option<Sentinel>,
-    title: String,
 }
 
-impl CallgrindFlamegraph {
-    pub fn new<T, P>(title: T, sentinel: Option<&Sentinel>, project_root: P) -> Self
+impl FlamegraphParser {
+    pub fn new<P>(sentinel: Option<&Sentinel>, project_root: P) -> Self
     where
-        T: Into<String>,
         P: Into<PathBuf>,
     {
         Self {
-            title: title.into(),
             sentinel: sentinel.cloned(),
             stacks: Vec::default(),
             project_root: project_root.into(),
@@ -70,10 +46,15 @@ impl CallgrindFlamegraph {
         // Adjust the name for the counts in such cases.
         // TODO: MAKE the choice of a title for the svg files configurable??
         // TODO: MAKE the choice of a name for the counts configurable??
-        let stack = format!("{this} {}", value.self_costs.get_by_index(0).unwrap().cost);
+        let stack = format!(
+            "{this} {}",
+            value.self_costs.event_by_index(0).unwrap().cost
+        );
         trace!("Pushing stack: {}", &stack);
         self.stacks.push(stack);
 
+        // TODO: InlineRecord and CfnRecord should be have same type like RecordMember, to be able
+        // to iterate over them as they appeared in the source file
         for inline in &value.inlines {
             if let Some(value) = inline.fi.as_ref().or(inline.fe.as_ref()) {
                 let path = PathBuf::from(&value);
@@ -82,7 +63,7 @@ impl CallgrindFlamegraph {
                 let stack = format!(
                     "{this};[{}] {}",
                     path.display(),
-                    inline.costs.get_by_index(0).unwrap().cost
+                    inline.costs.event_by_index(0).unwrap().cost
                 );
                 trace!("Pushing stack: {}", &stack);
                 self.stacks.push(stack);
@@ -106,41 +87,12 @@ impl CallgrindFlamegraph {
             }
         }
     }
-
-    pub fn create(&self, dest: &FlamegraphOutput) -> Result<()> {
-        if self.stacks.is_empty() {
-            warn!("Unable to create a flamegraph: Callgrind didn't record any events");
-            return Ok(());
-        }
-
-        let output_file = File::create(&dest.0).map_err(|error| {
-            IaiCallgrindError::Other(format!("Creating flamegraph file failed: {error}"))
-        })?;
-
-        let mut options = Options::default();
-        options.count_name = "Instructions".to_owned();
-        options.title = self.title.clone();
-
-        inferno::flamegraph::from_lines(
-            &mut options,
-            self.stacks.iter().map(std::string::String::as_str),
-            output_file,
-        )
-        .map_err(|error| {
-            crate::error::IaiCallgrindError::Other(format!(
-                "Creating flamegraph file failed: {error}"
-            ))
-        })
-    }
 }
 
-impl CallgrindParser for CallgrindFlamegraph {
-    fn parse<T>(&mut self, output: T) -> Result<()>
-    where
-        T: AsRef<CallgrindOutput>,
-    {
-        let output = output.as_ref();
+impl CallgrindParser for FlamegraphParser {
+    type Output = Vec<String>;
 
+    fn parse(&mut self, output: &CallgrindOutput) -> Result<Self::Output> {
         let mut parser = HashMapParser {
             sentinel: self.sentinel.clone(),
             ..Default::default()
@@ -149,7 +101,7 @@ impl CallgrindParser for CallgrindFlamegraph {
         let map = parser.map;
 
         if map.is_empty() {
-            return Ok(());
+            return Ok(vec![]);
         }
 
         // Let's find our entry point which defaults to "main"
@@ -163,6 +115,7 @@ impl CallgrindParser for CallgrindFlamegraph {
         };
 
         self.fold(&map, key, value, "");
-        Ok(())
+        // TODO: NO CLONE
+        Ok(self.stacks.clone())
     }
 }

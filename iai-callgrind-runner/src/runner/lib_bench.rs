@@ -1,11 +1,12 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
+// TODO: Remove all Callgrind prefixes for structs contained in the callgrind module
 use super::callgrind::args::CallgrindArgs;
-use super::callgrind::flamegraph::{CallgrindFlamegraph, FlamegraphOutput};
-use super::callgrind::{
-    CallgrindCommand, CallgrindOptions, CallgrindOutput, CallgrindParser, Sentinel,
-};
+use super::callgrind::flamegraph_parser::FlamegraphParser;
+use super::callgrind::parser::CallgrindParser;
+use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Sentinel};
+use super::flamegraph::{Flamegraph, FlamegraphOutput};
 use super::meta::Metadata;
 use super::print::Header;
 use crate::api::LibraryBenchmark;
@@ -68,22 +69,29 @@ impl LibBench {
             self.args.clone(),
         );
 
-        let mut flamegraph = CallgrindFlamegraph::new(
-            header.to_title(),
-            Some(&sentinel),
-            &config.meta.project_root,
-        );
-        flamegraph.parse(&output).and_then(|_| {
-            FlamegraphOutput::create(&output)
-                .and_then(|flamegraph_output| flamegraph.create(&flamegraph_output))
+        let mut flamegraph_parser =
+            FlamegraphParser::new(Some(&sentinel), &config.meta.project_root);
+
+        flamegraph_parser.parse(&output).and_then(|stacks| {
+            FlamegraphOutput::create(&output).and_then(|flamegraph_output| {
+                let flamegraph = Flamegraph {
+                    stacks,
+                    title: header.to_title(),
+                };
+                flamegraph.create(&flamegraph_output)
+            })
         })?;
 
         let new_stats = output.parse(&config.bench_file, &sentinel)?;
 
         let old_output = output.old_output();
-        let old_stats = old_output
-            .exists()
-            .then_some(old_output.parse(&config.bench_file, sentinel)?);
+
+        #[allow(clippy::if_then_some_else_none)]
+        let old_stats = if old_output.exists() {
+            Some(old_output.parse(&config.bench_file, sentinel)?)
+        } else {
+            None
+        };
 
         header.print();
         new_stats.print(old_stats);

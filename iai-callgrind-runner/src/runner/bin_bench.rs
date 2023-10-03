@@ -141,9 +141,13 @@ impl Assistant {
         let new_stats = output.parse(&config.bench_file, &sentinel)?;
 
         let old_output = output.old_output();
-        let old_stats = old_output
-            .exists()
-            .then_some(old_output.parse(&config.bench_file, sentinel)?);
+
+        #[allow(clippy::if_then_some_else_none)]
+        let old_stats = if old_output.exists() {
+            Some(old_output.parse(&config.bench_file, sentinel)?)
+        } else {
+            None
+        };
 
         Header::from_segments(
             [&group.module_path, &self.kind.id(), &self.name],
