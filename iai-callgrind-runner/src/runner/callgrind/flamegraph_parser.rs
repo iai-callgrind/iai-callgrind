@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use log::trace;
 
-use super::hashmap_parser::{CallgrindMap, HashMapParser, Id};
+use super::hashmap_parser::{CallgrindMap, HashMapParser, Id, RecordMember};
 use super::parser::CallgrindParser;
 use super::{CallgrindOutput, Sentinel};
 use crate::error::Result;
@@ -49,37 +49,38 @@ impl FlamegraphParser {
         trace!("Pushing stack: {}", &stack);
         self.stacks.push(stack);
 
-        // TODO: InlineRecord and CfnRecord should be have same type like RecordMember, to be able
-        // to iterate over them as they appeared in the source file
-        for inline in &value.inlines {
-            if let Some(value) = inline.fi.as_ref().or(inline.fe.as_ref()) {
-                let path = PathBuf::from(&value);
-                let path = path.strip_prefix(&self.project_root).unwrap_or(&path);
+        for member in &value.members {
+            match member {
+                RecordMember::Cfn(record) => {
+                    let query = Id {
+                        func: record.cfn.clone(),
+                    };
 
-                let stack = format!(
-                    "{this};[{}] {}",
-                    path.display(),
-                    inline.costs.cost_by_index(0).unwrap()
-                );
-                trace!("Pushing stack: {}", &stack);
-                self.stacks.push(stack);
-            }
-        }
+                    let (cfn_key, cfn_value) = map
+                        .get_key_value(&query)
+                        .expect("A cfn record must have an fn record");
 
-        for cfn in &value.cfns {
-            let query = Id {
-                func: cfn.cfn.clone(),
-            };
+                    // TODO: What about nested recursion? A>B>A etc. This only detects A>A
+                    if cfn_key == key {
+                        // Inclusive costs of recursive functions are meaningless, so do nothing
+                    } else {
+                        self.fold(map, cfn_key, cfn_value, &this);
+                    }
+                }
+                RecordMember::Inline(record) => {
+                    if let Some(value) = record.fi.as_ref().or(record.fe.as_ref()) {
+                        let path = PathBuf::from(&value);
+                        let path = path.strip_prefix(&self.project_root).unwrap_or(&path);
 
-            let (cfn_key, cfn_value) = map
-                .get_key_value(&query)
-                .expect("A cfn record must have an fn record");
-
-            // TODO: What about nested recursion? A>B>A etc. This only detects A>A
-            if cfn_key == key {
-                // Inclusive costs of recursive functions are meaningless, so do nothing
-            } else {
-                self.fold(map, cfn_key, cfn_value, &this);
+                        let stack = format!(
+                            "{this};[{}] {}",
+                            path.display(),
+                            record.costs.cost_by_index(0).unwrap()
+                        );
+                        trace!("Pushing stack: {}", &stack);
+                        self.stacks.push(stack);
+                    }
+                }
             }
         }
     }

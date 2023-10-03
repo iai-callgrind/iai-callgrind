@@ -27,8 +27,7 @@ impl CallgrindMap {
             inclusive_costs: record.inclusive_costs,
             self_costs: record.self_costs,
             ob: record.ob,
-            cfns: record.cfns,
-            inlines: record.inlines,
+            members: record.members,
         };
 
         if self
@@ -81,9 +80,7 @@ struct TemporaryRecord {
     fl: Option<String>,
     inclusive_costs: Costs,
     self_costs: Costs,
-    cfns: Vec<CfnRecord>,
-    // fi and fe if the target of an fe entry is not the func itself
-    inlines: Vec<InlineRecord>,
+    members: Vec<RecordMember>,
 }
 
 impl TemporaryRecord {
@@ -146,8 +143,7 @@ pub struct Record {
     pub inclusive_costs: Costs,
     pub self_costs: Costs,
     pub ob: Option<String>,
-    pub cfns: Vec<CfnRecord>,
-    pub inlines: Vec<InlineRecord>,
+    pub members: Vec<RecordMember>,
 }
 
 impl Record {
@@ -167,6 +163,12 @@ impl Record {
             ..Default::default()
         }
     }
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RecordMember {
+    Cfn(CfnRecord),
+    Inline(InlineRecord),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -254,7 +256,7 @@ impl LinesParser {
             if line.is_empty() && self.current_state != State::Header {
                 if let Some(mut record) = self.record.take() {
                     if let Some(inline_record) = self.inline_record.take() {
-                        record.inlines.push(inline_record);
+                        record.members.push(RecordMember::Inline(inline_record));
                     }
                     callgrind_map.insert_record(record);
                 }
@@ -268,7 +270,7 @@ impl LinesParser {
 
         if let Some(mut record) = self.record.take() {
             if let Some(inline_record) = self.inline_record.take() {
-                record.inlines.push(inline_record);
+                record.members.push(RecordMember::Inline(inline_record));
             }
             callgrind_map.insert_record(record);
         }
@@ -345,7 +347,7 @@ impl LinesParser {
                     .as_mut()
                     .expect("A record must be present at this point");
                 if let Some(in_rec) = self.inline_record.take() {
-                    record.inlines.push(in_rec);
+                    record.members.push(RecordMember::Inline(in_rec));
                 }
                 self.inline_record = Some(InlineRecord {
                     fi: Some(value.to_owned()),
@@ -362,7 +364,7 @@ impl LinesParser {
                     .as_mut()
                     .expect("A record must be present at this point");
                 if let Some(in_rec) = self.inline_record.take() {
-                    record.inlines.push(in_rec);
+                    record.members.push(RecordMember::Inline(in_rec));
                 }
                 match record.fl.as_ref() {
                     Some(file) if value == file => {
@@ -493,7 +495,7 @@ impl LinesParser {
                 Some(value) => Some(value.to_owned()),
             };
 
-            record.cfns.push(cfn_record);
+            record.members.push(RecordMember::Cfn(cfn_record));
 
             // A cfn record has exactly 1 cost line, so we can restore the state from before the cfn
             // state here
