@@ -38,7 +38,7 @@ impl BinBench {
             &self.command,
             &self.args,
             self.opts.clone(),
-            &output.file,
+            &output,
         )?;
 
         let new_stats = output.parse_summary();
@@ -134,16 +134,16 @@ impl Assistant {
             &config.bench_bin,
             &executable_args,
             options,
-            &output.file,
+            &output,
         )?;
 
         let sentinel = Sentinel::from_path(&config.module, &self.name);
-        let new_stats = output.parse(&config.bench_file, &sentinel);
+        let new_stats = output.parse(&config.bench_file, &sentinel)?;
 
         let old_output = output.old_output();
         let old_stats = old_output
             .exists()
-            .then(|| old_output.parse(&config.bench_file, sentinel));
+            .then_some(old_output.parse(&config.bench_file, sentinel)?);
 
         Header::from_segments(
             [&group.module_path, &self.kind.id(), &self.name],

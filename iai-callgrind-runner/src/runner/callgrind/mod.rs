@@ -3,7 +3,7 @@ pub mod flamegraph;
 pub mod hashmap_parser;
 
 use std::convert::AsRef;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -23,6 +23,7 @@ use crate::error::{IaiCallgrindError, Result};
 use crate::util::{truncate_str_utf8, write_all_to_stderr, write_all_to_stdout};
 
 // TODO: Use CamelCase for sysCount etc.
+// TODO: Add derived event types like Cycles, L1Hits etc.
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EventType {
@@ -266,7 +267,7 @@ impl CallgrindCommand {
         executable: &Path,
         executable_args: &[OsString],
         options: CallgrindOptions,
-        output_file: &Path,
+        output: &CallgrindOutput,
     ) -> Result<()> {
         let mut command = self.command;
         debug!(
@@ -296,7 +297,7 @@ impl CallgrindCommand {
         } else {
             callgrind_args.collect_atstart = true;
         }
-        callgrind_args.set_output_file(output_file);
+        callgrind_args.set_output_file(&output.path);
 
         let callgrind_args = callgrind_args.to_vec();
         debug!("Callgrind arguments: {}", &callgrind_args.join(" "));
@@ -438,15 +439,21 @@ impl FromStr for PositionsMode {
 
 #[derive(Debug)]
 pub struct CallgrindOutput {
-    pub file: PathBuf,
+    pub path: PathBuf,
 }
 
 impl CallgrindOutput {
-    pub fn new<T>(path: T) -> Self
+    pub fn from_existing<T>(path: T) -> Result<Self>
     where
         T: Into<PathBuf>,
     {
-        Self { file: path.into() }
+        let path: PathBuf = path.into();
+        if !path.is_file() {
+            return Err(IaiCallgrindError::Other(
+                "The callgrind output file '{}' did not exist or is not a valid file".to_owned(),
+            ));
+        }
+        Ok(Self { path })
     }
 
     pub fn create(base_dir: &Path, module: &str, name: &str) -> Self {
@@ -462,41 +469,61 @@ impl CallgrindOutput {
         );
         let file_name = PathBuf::from(format!(
             "callgrind.{}.out",
-            truncate_str_utf8(&sanitized_name, 237) /* callgrind. + .out.old = 18 with max
-                                                     * length 255 */
+            // callgrind. + .out.old = 18 + 37 bytes headroom for extensions with more than 3
+            // bytes. max length is usually 255 bytes
+            truncate_str_utf8(&sanitized_name, 200)
         ));
 
-        let file = current.join(base_dir).join(module_path).join(file_name);
-        let output = Self { file };
+        let path = current.join(base_dir).join(module_path).join(file_name);
+        let output = Self { path };
 
-        std::fs::create_dir_all(output.file.parent().unwrap()).expect("Failed to create directory");
+        std::fs::create_dir_all(output.path.parent().unwrap()).expect("Failed to create directory");
 
-        if output.file.exists() {
+        if output.path.exists() {
             let old_output = output.old_output();
             // Already run this benchmark once; move last results to .old
-            std::fs::copy(&output.file, old_output.file).unwrap();
+            std::fs::copy(&output.path, old_output.path).unwrap();
         }
 
         output
     }
 
     pub fn exists(&self) -> bool {
-        self.file.exists()
+        self.path.exists()
+    }
+
+    pub fn with_extension<T>(&self, extension: T) -> Self
+    where
+        T: AsRef<OsStr>,
+    {
+        Self {
+            path: self.path.with_extension(extension),
+        }
     }
 
     pub fn old_output(&self) -> Self {
         CallgrindOutput {
-            file: self.file.with_extension("out.old"),
+            path: self.path.with_extension("out.old"),
         }
     }
 
+    pub fn open(&self) -> Result<File> {
+        File::open(&self.path).map_err(|error| {
+            IaiCallgrindError::Other(format!(
+                "Error opening callgrind output file '{}': {error}",
+                self.path.display()
+            ))
+        })
+    }
+
+    // TODO: MOVE This into a CallgrindSummaryParser
     pub fn parse_summary(&self) -> CallgrindStats {
         trace!(
             "Parsing callgrind output file '{}' for a summary or totals",
-            self.file.display(),
+            self.path.display(),
         );
 
-        let file = File::open(&self.file).expect("Unable to open callgrind output file");
+        let file = File::open(&self.path).expect("Unable to open callgrind output file");
         let mut iter = BufReader::new(file)
             .lines()
             .map(std::result::Result::unwrap);
@@ -561,14 +588,19 @@ impl CallgrindOutput {
         }
     }
 
-    pub fn parse<T>(&self, bench_file: &Path, sentinel: T) -> CallgrindStats
+    // TODO: Parsing the header should be an own parser, The parsed result could be a
+    // CallgrindParserConfig or such. The configs stores the PositionsMode, CostsPrototype etc.
+    // TODO: MOVE this into a CallgrindSentinelParser
+    // Why not taking CallgrindOutput as parameter and add method CallgrindOutput::open with all the
+    // error handling to CallgrindOutput?
+    pub fn parse<T>(&self, bench_file: &Path, sentinel: T) -> Result<CallgrindStats>
     where
         T: AsRef<Sentinel>,
     {
         let sentinel = sentinel.as_ref();
         trace!(
             "Parsing callgrind output file '{}' for '{}'",
-            self.file.display(),
+            self.path.display(),
             sentinel
         );
 
@@ -578,7 +610,7 @@ impl CallgrindOutput {
             bench_file.display()
         );
 
-        let file = File::open(&self.file).expect("Unable to open callgrind output file");
+        let file = self.open()?;
         let mut iter = BufReader::new(file)
             .lines()
             .map(std::result::Result::unwrap);
@@ -596,9 +628,11 @@ impl CallgrindOutput {
             .expect("Callgrind output line with mode for positions");
         trace!("Using parsing mode: {:?}", mode);
 
-        // Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
         let mut counters: [u64; 9] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+        // Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
         let mut start_record = false;
+        // TODO: It's not needed to parse the whole file if the sentinel is a fn= method which is
+        // unique in the whole file.
         for line in iter {
             let line = line.trim_start();
             if line.is_empty() {
@@ -640,7 +674,7 @@ impl CallgrindOutput {
             }
         }
 
-        CallgrindStats {
+        Ok(CallgrindStats {
             instructions_executed: counters[0],
             total_data_cache_reads: counters[1],
             total_data_cache_writes: counters[2],
@@ -650,7 +684,7 @@ impl CallgrindOutput {
             l3_instructions_cache_read_misses: counters[6],
             l3_data_cache_read_misses: counters[7],
             l3_data_cache_write_misses: counters[8],
-        }
+        })
     }
 }
 

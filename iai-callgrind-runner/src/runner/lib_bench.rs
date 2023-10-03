@@ -2,7 +2,7 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use super::callgrind::args::CallgrindArgs;
-use super::callgrind::flamegraph::CallgrindFlamegraph;
+use super::callgrind::flamegraph::{CallgrindFlamegraph, FlamegraphOutput};
 use super::callgrind::{
     CallgrindCommand, CallgrindOptions, CallgrindOutput, CallgrindParser, Sentinel,
 };
@@ -12,6 +12,7 @@ use crate::api::LibraryBenchmark;
 use crate::error::Result;
 use crate::util::receive_benchmark;
 
+/// A `LibBench` represents a single benchmark from the `#[library_benchmark]` attribute macro
 #[derive(Debug)]
 struct LibBench {
     bench_index: usize,
@@ -58,7 +59,7 @@ impl LibBench {
             &config.bench_bin,
             &args,
             self.opts.clone(),
-            &output.file,
+            &output,
         )?;
 
         let header = Header::from_segments(
@@ -72,17 +73,17 @@ impl LibBench {
             Some(&sentinel),
             &config.meta.project_root,
         );
-        flamegraph
-            .parse(&output)
-            .and_then(|_| flamegraph.create(output.file.with_extension("svg")))?;
+        flamegraph.parse(&output).and_then(|_| {
+            FlamegraphOutput::create(&output)
+                .and_then(|flamegraph_output| flamegraph.create(&flamegraph_output))
+        })?;
 
-        // CallgrindFlamegraph::parse(&output);
-        let new_stats = output.parse(&config.bench_file, &sentinel);
+        let new_stats = output.parse(&config.bench_file, &sentinel)?;
 
         let old_output = output.old_output();
         let old_stats = old_output
             .exists()
-            .then(|| old_output.parse(&config.bench_file, sentinel));
+            .then_some(old_output.parse(&config.bench_file, sentinel)?);
 
         header.print();
         new_stats.print(old_stats);
@@ -91,6 +92,7 @@ impl LibBench {
     }
 }
 
+// A `Group` is the organizational unit and counterpart of the `library_benchmark_group!` macro
 #[derive(Debug)]
 struct Group {
     id: Option<String>,
@@ -98,6 +100,7 @@ struct Group {
     module: String,
 }
 
+/// `Groups` is the top-level organizational unit of the `main!` macro for library benchmarks
 #[derive(Debug)]
 struct Groups(Vec<Group>);
 

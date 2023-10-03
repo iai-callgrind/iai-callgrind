@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use inferno::flamegraph::Options;
 use log::{trace, warn};
@@ -9,6 +9,26 @@ use super::hashmap_parser::{HashMapParser, Id};
 use super::{CallgrindOutput, CallgrindParser, Sentinel};
 use crate::error::{IaiCallgrindError, Result};
 use crate::runner::callgrind::hashmap_parser::Record;
+
+pub struct FlamegraphOutput(PathBuf);
+
+impl FlamegraphOutput {
+    pub fn create(output: &CallgrindOutput) -> Result<Self> {
+        let path = output.with_extension("svg").path;
+        if path.exists() {
+            let old_svg = path.with_extension("svg.old");
+            std::fs::copy(&path, &old_svg).map_err(|error| {
+                IaiCallgrindError::Other(format!(
+                    "Error copying flamegraph file '{}' -> '{}' : {error}",
+                    &path.display(),
+                    &old_svg.display(),
+                ))
+            })?;
+        }
+
+        Ok(Self(path))
+    }
+}
 
 #[derive(Debug)]
 pub struct CallgrindFlamegraph {
@@ -87,16 +107,13 @@ impl CallgrindFlamegraph {
         }
     }
 
-    pub fn create<T>(&self, dest: T) -> Result<()>
-    where
-        T: AsRef<Path>,
-    {
+    pub fn create(&self, dest: &FlamegraphOutput) -> Result<()> {
         if self.stacks.is_empty() {
             warn!("Unable to create a flamegraph: Callgrind didn't record any events");
             return Ok(());
         }
 
-        let output_file = File::create(dest).map_err(|error| {
+        let output_file = File::create(&dest.0).map_err(|error| {
             IaiCallgrindError::Other(format!("Creating flamegraph file failed: {error}"))
         })?;
 

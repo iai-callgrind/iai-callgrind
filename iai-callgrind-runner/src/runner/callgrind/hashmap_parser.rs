@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::str::FromStr;
 
@@ -12,6 +11,9 @@ use crate::runner::callgrind::{Costs, PositionsMode};
 
 type ErrorMessageResult<T> = std::result::Result<T, String>;
 
+// TODO: Create an own strcut CallgrindMap with all(? or just map and sentinel_key) the fields of
+// HashMapParser and return this struct from the parse method. Then move insert_record to the new
+// struct
 #[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HashMapParser {
     pub map: HashMap<Id, Record>,
@@ -54,16 +56,15 @@ impl CallgrindParser for HashMapParser {
         Self: std::marker::Sized,
     {
         let output = output.as_ref();
-        let file = File::open(&output.file).map_err(|error| {
-            IaiCallgrindError::ParseError((output.file.clone(), error.to_string()))
-        })?;
+        let file = output.open()?;
+
         let iter = BufReader::new(file)
             .lines()
             .map(std::result::Result::unwrap);
 
         LinesParser::default()
             .parse(self, iter)
-            .map_err(|message| IaiCallgrindError::ParseError((output.file.clone(), message)))
+            .map_err(|message| IaiCallgrindError::ParseError((output.path.clone(), message)))
     }
 }
 
