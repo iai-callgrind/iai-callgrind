@@ -5,7 +5,7 @@ use log::trace;
 use super::parser::{Parser, Sentinel};
 use super::{CallgrindOutput, CallgrindStats};
 use crate::error::{Error, Result};
-use crate::runner::callgrind::parser::{parse_header, PositionsMode};
+use crate::runner::callgrind::parser::parse_header;
 
 pub struct SentinelParser {
     sentinel: Sentinel,
@@ -44,12 +44,10 @@ impl Parser for SentinelParser {
         );
 
         let mut iter = output.lines()?;
-        let config = parse_header(&mut iter)
+        let properties = parse_header(&mut iter)
             .map_err(|message| Error::ParseError((output.path.clone(), message)))?;
 
-        let mut costs = config.costs_prototype;
-        let mode = config.positions_mode;
-
+        let mut costs = properties.costs_prototype;
         let mut start_record = false;
         // TODO: It's not needed to parse the whole file if the sentinel is a fn= method which is
         // unique in the whole file.
@@ -76,11 +74,12 @@ impl Parser for SentinelParser {
                 // > If a cost line specifies less event counts than given in the "events" line, the
                 // > rest is assumed to be zero.
                 trace!("Found line with counters: '{}'", line);
-                costs.add_iter_str(line
+                costs.add_iter_str(
+                    line
                     .split_ascii_whitespace()
-                    // skip the first number which is just the line number or instr number or in
-                    // case of `instr line` skip 2
-                    .skip(if mode == PositionsMode::InstrLine { 2 } else { 1 }));
+                    // skip the positions
+                    .skip(properties.positions_prototype.len()),
+                );
                 trace!("Updated counters to '{:?}'", &costs);
             } else {
                 trace!("Skipping line: '{}'", line);

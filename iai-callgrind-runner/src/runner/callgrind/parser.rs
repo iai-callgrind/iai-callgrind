@@ -1,10 +1,9 @@
 use std::fmt::Display;
-use std::str::FromStr;
 
 use log::{trace, warn};
 use serde::{Deserialize, Serialize};
 
-use super::model::Costs;
+use super::model::{Costs, Positions};
 use super::CallgrindOutput;
 use crate::error::Result;
 
@@ -20,7 +19,7 @@ pub trait Parser {
 #[derive(Debug, Default)]
 pub struct CallgrindProperties {
     pub costs_prototype: Costs,
-    pub positions_mode: PositionsMode,
+    pub positions_prototype: Positions,
 }
 
 pub fn parse_header(
@@ -35,7 +34,7 @@ pub fn parse_header(
         warn!("Missing file format specifier. Assuming callgrind format.");
     };
 
-    let mut positions_mode: Option<PositionsMode> = None;
+    let mut positions_prototype: Option<Positions> = None;
     let mut costs_prototype: Option<Costs> = None;
 
     for line in iter {
@@ -44,21 +43,21 @@ pub fn parse_header(
             continue;
         }
         match line.split_once(':').map(|(k, v)| (k.trim(), v.trim())) {
-            Some(("version", value)) if value != "1" => {
+            Some(("version", version)) if version != "1" => {
                 return Err(format!(
-                    "Version mismatch: Requires version '1' but was '{value}'"
+                    "Version mismatch: Requires callgrind format version '1' but was '{version}'"
                 ));
             }
-            Some(("positions", mode)) => {
-                positions_mode = Some(PositionsMode::from_str(mode)?);
-                trace!("Using positions mode: '{:?}'", positions_mode);
+            Some(("positions", positions)) => {
+                positions_prototype = Some(positions.split_ascii_whitespace().collect());
+                trace!("Using positions: '{:?}'", positions_prototype);
             }
             // The events line is the last line in the header which is mandatory (according to
             // the source code of callgrind_annotate). The summary line is usually the last line
             // but it is only optional. So, we break out of the loop here and stop the parsing.
-            Some(("events", mode)) => {
+            Some(("events", events)) => {
                 trace!("Using events from line: '{line}'");
-                costs_prototype = Some(mode.split_ascii_whitespace().collect::<Costs>());
+                costs_prototype = Some(events.split_ascii_whitespace().collect());
                 break;
             }
             // None is actually a malformed header line we just ignore here
@@ -71,7 +70,7 @@ pub fn parse_header(
     Ok(CallgrindProperties {
         costs_prototype: costs_prototype
             .ok_or_else(|| "Header field 'events' must be present".to_owned())?,
-        positions_mode: positions_mode.unwrap_or_default(),
+        positions_prototype: positions_prototype.unwrap_or_default(),
     })
 }
 
@@ -123,46 +122,5 @@ impl Display for Sentinel {
 impl AsRef<Sentinel> for Sentinel {
     fn as_ref(&self) -> &Sentinel {
         self
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum PositionsMode {
-    Instr,
-    Line,
-    InstrLine,
-}
-
-impl PositionsMode {
-    pub fn from_positions_line(line: &str) -> Option<Self> {
-        Self::from_str(line.strip_prefix("positions:")?).ok()
-    }
-}
-
-impl Default for PositionsMode {
-    fn default() -> Self {
-        Self::Line
-    }
-}
-
-impl FromStr for PositionsMode {
-    type Err = String;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        let mut instr = false;
-        let mut line = false;
-        for split in s.trim().split_ascii_whitespace() {
-            match split.to_lowercase().as_str() {
-                "instr" | "addr" => instr = true,
-                "line" => line = true,
-                _ => return Err(format!("Invalid positions mode: '{split}'")),
-            }
-        }
-        let mode = match (instr, line) {
-            (true, true) => Self::InstrLine,
-            (true, false) => Self::Instr,
-            (false, true | false) => Self::Line,
-        };
-        std::result::Result::Ok(mode)
     }
 }

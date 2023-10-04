@@ -73,7 +73,7 @@ where
             "AcCost2" => Self::AcCost2,
             "SpLoss1" => Self::SpLoss1,
             "SpLoss2" => Self::SpLoss2,
-            unknown => unreachable!("Unknown event type: {unknown}"),
+            unknown => panic!("Unknown event type: {unknown}"),
         }
     }
 }
@@ -144,6 +144,95 @@ where
         Self(
             iter.into_iter()
                 .map(|s| (EventType::from(s), 0))
+                .collect::<IndexMap<_, _>>(),
+        )
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Calls {
+    amount: u64,
+    positions: Positions,
+}
+
+impl Calls {
+    pub fn from<I>(mut iter: impl Iterator<Item = I>, positions: &Positions) -> Self
+    where
+        I: AsRef<str>,
+    {
+        let amount = iter.next().unwrap().as_ref().parse().unwrap();
+        let mut positions = positions.clone();
+        positions.set_iter_str(iter);
+        Self { amount, positions }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PositionType {
+    Instr,
+    Line,
+}
+
+impl<T> From<T> for PositionType
+where
+    T: AsRef<str>,
+{
+    fn from(value: T) -> Self {
+        let value = value.as_ref();
+        // "addr" is taken from the callgrind_annotate script although not officially documented
+        match value.to_lowercase().as_str() {
+            "instr" | "addr" => Self::Instr,
+            "line" => Self::Line,
+            _ => panic!("Unknown positions type: '{value}"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Positions(IndexMap<PositionType, u64>);
+
+impl Positions {
+    pub fn set_iter_str<I, T>(&mut self, iter: T)
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        for ((_, old), pos) in self.0.iter_mut().zip(iter.into_iter()) {
+            let pos = pos.as_ref();
+            *old = if let Some(hex) = pos.strip_prefix("0x") {
+                u64::from_str_radix(hex, 16).unwrap()
+            } else {
+                pos.parse::<u64>().unwrap()
+            }
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl Default for Positions {
+    fn default() -> Self {
+        Self(indexmap! {PositionType::Line => 0})
+    }
+}
+
+impl<I> FromIterator<I> for Positions
+where
+    I: AsRef<str>,
+{
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = I>,
+    {
+        Self(
+            iter.into_iter()
+                .map(|p| (PositionType::from(p), 0))
                 .collect::<IndexMap<_, _>>(),
         )
     }

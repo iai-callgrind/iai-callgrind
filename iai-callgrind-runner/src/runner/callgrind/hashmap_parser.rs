@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use log::trace;
 use serde::{Deserialize, Serialize};
 
-use super::model::{Costs, EventType};
-use super::parser::{parse_header, CallgrindProperties, Parser, PositionsMode, Sentinel};
+use super::model::{Calls, Costs, EventType};
+use super::parser::{parse_header, CallgrindProperties, Parser, Sentinel};
 use super::CallgrindOutput;
 use crate::error::{Error, Result};
 
@@ -131,7 +131,7 @@ pub struct CfnRecord {
     // and cfl
     pub cfi: Option<String>,
     // doesn't this depend on the PositionMode??
-    pub calls: [u64; 2],
+    pub calls: Calls,
     pub costs: Costs,
 }
 
@@ -426,14 +426,10 @@ impl LinesParser {
                 let cfn_record = self
                     .cfn_record
                     .get_or_insert(CfnRecord::from_prototype(&self.properties.costs_prototype));
-                for (index, count) in value
-                    .split_ascii_whitespace()
-                    .map(|s| s.parse::<u64>().expect("Parsing number should be ok"))
-                    .enumerate()
-                {
-                    // TODO: OUT OF BOUNDS IF PositionMode IS InstrLine
-                    cfn_record.calls[index] = count;
-                }
+                cfn_record.calls = Calls::from(
+                    value.split_ascii_whitespace(),
+                    &self.properties.positions_prototype,
+                );
 
                 // There must be a cost line directly after a `calls` line, so we can directly set
                 // the CostLine state
@@ -468,11 +464,13 @@ impl LinesParser {
         );
 
         let mut costs = self.properties.costs_prototype.clone();
-        costs.add_iter_str(line
+        costs.add_iter_str(
+            line
                         .split_ascii_whitespace()
                         // skip the first number which is just the line number or instr number or
                         // in case of `instr line` skip 2
-                        .skip(if self.properties.positions_mode == PositionsMode::InstrLine { 2 } else { 1 }));
+                        .skip(self.properties.positions_prototype.len()),
+        );
 
         let record = self
             .record

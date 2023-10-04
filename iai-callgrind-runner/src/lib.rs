@@ -27,6 +27,8 @@
 #![allow(clippy::missing_panics_doc)]
 #![allow(clippy::missing_errors_doc)]
 
+// TODO: GO THROUGH ALL MODULES AND CHECK Derive
+
 #[cfg(feature = "api")]
 pub mod api;
 #[cfg(feature = "runner")]
