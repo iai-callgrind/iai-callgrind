@@ -1,16 +1,15 @@
 use std::path::PathBuf;
 
-use log::trace;
-
 use super::hashmap_parser::{CallgrindMap, HashMapParser, Id, RecordMember};
 use super::parser::CallgrindParser;
 use super::{CallgrindOutput, Sentinel};
 use crate::error::Result;
 use crate::runner::callgrind::hashmap_parser::Record;
+use crate::runner::flamegraph::{Stack, Stacks};
 
 #[derive(Debug)]
 pub struct FlamegraphParser {
-    stacks: Vec<String>,
+    stacks: Stacks,
     project_root: PathBuf,
     sentinel: Option<Sentinel>,
 }
@@ -22,33 +21,23 @@ impl FlamegraphParser {
     {
         Self {
             sentinel: sentinel.cloned(),
-            stacks: Vec::default(),
+            stacks: Stacks::default(),
             project_root: project_root.into(),
         }
     }
 
-    fn fold(
-        &mut self,
-        map: &CallgrindMap,
-        key: &Id,
-        value: &Record,
-        // WRAP &STR INTO Stack struct
-        last: &str,
-    ) {
-        let this = if last.is_empty() {
-            key.func.clone()
-        } else {
-            format!("{last};{}", key.func)
-        };
+    // TODO: MAKE the choice of counts configurable. Currently uses only instruction counts.
+    // Adjust the name for the counts in such cases.
+    fn fold(&mut self, map: &CallgrindMap, key: &Id, value: &Record, last: Option<&Stack>) {
+        self.stacks
+            .add(&key.func, value.self_costs.clone(), false, last);
 
-        // TODO: MAKE the choice of counts configurable. Currently uses only instruction counts.
-        // Adjust the name for the counts in such cases.
-        // TODO: MAKE the choice of a title for the svg files configurable??
-        // TODO: MAKE the choice of a name for the counts configurable??
-        let stack = format!("{this} {}", value.self_costs.cost_by_index(0).unwrap());
-        trace!("Pushing stack: {}", &stack);
-        self.stacks.push(stack);
+        if value.members.is_empty() {
+            return;
+        }
 
+        // unwrap is fine here, because we just added a stack
+        let last = self.stacks.last().cloned().unwrap();
         for member in &value.members {
             match member {
                 RecordMember::Cfn(record) => {
@@ -60,11 +49,11 @@ impl FlamegraphParser {
                         .get_key_value(&query)
                         .expect("A cfn record must have an fn record");
 
-                    // TODO: What about nested recursion? A>B>A etc. This only detects A>A
-                    if cfn_key == key {
+                    // Check for recursion. Inlined records are ignored.
+                    if last.contains(&record.cfn, false) {
                         // Inclusive costs of recursive functions are meaningless, so do nothing
                     } else {
-                        self.fold(map, cfn_key, cfn_value, &this);
+                        self.fold(map, cfn_key, cfn_value, Some(&last));
                     }
                 }
                 RecordMember::Inline(record) => {
@@ -72,13 +61,12 @@ impl FlamegraphParser {
                         let path = PathBuf::from(&value);
                         let path = path.strip_prefix(&self.project_root).unwrap_or(&path);
 
-                        let stack = format!(
-                            "{this};[{}] {}",
-                            path.display(),
-                            record.costs.cost_by_index(0).unwrap()
+                        self.stacks.add(
+                            path.display().to_string(),
+                            record.costs.clone(),
+                            true,
+                            Some(&last),
                         );
-                        trace!("Pushing stack: {}", &stack);
-                        self.stacks.push(stack);
                     }
                 }
             }
@@ -87,18 +75,17 @@ impl FlamegraphParser {
 }
 
 impl CallgrindParser for FlamegraphParser {
-    type Output = Vec<String>;
+    type Output = Stacks;
 
     fn parse(mut self, output: &CallgrindOutput) -> Result<Self::Output> {
         let parser = HashMapParser {
             sentinel: self.sentinel.clone(),
-            ..Default::default()
         };
 
         let map = parser.parse(output)?;
 
         if map.is_empty() {
-            return Ok(vec![]);
+            return Ok(Stacks::default());
         }
 
         // Let's find our entry point which defaults to "main"
@@ -111,7 +98,7 @@ impl CallgrindParser for FlamegraphParser {
                 .expect("'main' function must be present in callgrind output")
         };
 
-        self.fold(&map, key, value, "");
+        self.fold(&map, key, value, None);
 
         Ok(self.stacks)
     }

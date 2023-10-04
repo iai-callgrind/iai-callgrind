@@ -52,11 +52,17 @@ impl CallgrindMap {
     pub fn iter(&self) -> impl Iterator<Item = (&Id, &Record)> {
         self.map.iter()
     }
+
+    fn new(sentinel: Option<&Sentinel>) -> CallgrindMap {
+        Self {
+            sentinel: sentinel.cloned(),
+            ..Default::default()
+        }
+    }
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HashMapParser {
-    pub map: CallgrindMap,
     pub sentinel: Option<Sentinel>,
 }
 
@@ -65,7 +71,7 @@ impl CallgrindParser for HashMapParser {
 
     fn parse(self, output: &CallgrindOutput) -> Result<Self::Output> {
         LinesParser::default()
-            .parse(self.map, output.lines()?)
+            .parse(CallgrindMap::new(self.sentinel.as_ref()), output.lines()?)
             .map_err(|message| IaiCallgrindError::ParseError((output.path.clone(), message)))
     }
 }

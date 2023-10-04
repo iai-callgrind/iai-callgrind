@@ -4,7 +4,7 @@ use std::path::PathBuf;
 // TODO: Remove all Callgrind prefixes for structs contained in the callgrind module??
 use super::callgrind::args::CallgrindArgs;
 use super::callgrind::flamegraph_parser::FlamegraphParser;
-use super::callgrind::parser::CallgrindParser;
+use super::callgrind::parser::{CallgrindParser, EventType};
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Sentinel};
 use super::flamegraph::{Flamegraph, FlamegraphOutput};
@@ -73,11 +73,12 @@ impl LibBench {
         let flamegraph_parser = FlamegraphParser::new(Some(&sentinel), &config.meta.project_root);
 
         flamegraph_parser.parse(&output).and_then(|stacks| {
-            FlamegraphOutput::create(&output).and_then(|flamegraph_output| {
+            FlamegraphOutput::init(&output).and_then(|flamegraph_output| {
                 let flamegraph = Flamegraph {
                     stacks,
                     // TODO: This field should be part of a FlamegraphOptions (own not from inferno)
                     title: header.to_title(),
+                    types: vec![EventType::Ir],
                 };
                 flamegraph.create(&flamegraph_output)
             })
