@@ -1,6 +1,7 @@
 pub mod args;
 pub mod flamegraph_parser;
 pub mod hashmap_parser;
+pub mod model;
 pub mod parser;
 pub mod sentinel_parser;
 pub mod summary_parser;
@@ -15,13 +16,12 @@ use std::process::{Command, Output, Stdio};
 
 use colored::{ColoredString, Colorize};
 use log::{debug, error, info, Level};
-use serde::{Deserialize, Serialize};
 use which::which;
 
-use super::callgrind::args::CallgrindArgs;
+use super::callgrind::args::Args;
 use super::meta::Metadata;
 use crate::api::ExitWith;
-use crate::error::{IaiCallgrindError, Result};
+use crate::error::{Error, Result};
 use crate::util::{truncate_str_utf8, write_all_to_stderr, write_all_to_stdout};
 
 #[derive(Debug, Default, Clone)]
@@ -70,14 +70,14 @@ impl CallgrindCommand {
                     executable.display(),
                     code
                 );
-                Err(IaiCallgrindError::BenchmarkLaunchError(output))
+                Err(Error::BenchmarkLaunchError(output))
             }
             (0i32, Some(ExitWith::Failure)) => {
                 error!(
                     "Expected benchmark '{}' to fail but it succeeded",
                     executable.display(),
                 );
-                Err(IaiCallgrindError::BenchmarkLaunchError(output))
+                Err(Error::BenchmarkLaunchError(output))
             }
             (_, Some(ExitWith::Failure)) => Ok((output.stdout, output.stderr)),
             (code, Some(ExitWith::Success)) => {
@@ -86,7 +86,7 @@ impl CallgrindCommand {
                     executable.display(),
                     code
                 );
-                Err(IaiCallgrindError::BenchmarkLaunchError(output))
+                Err(Error::BenchmarkLaunchError(output))
             }
             (actual_code, Some(ExitWith::Code(expected_code))) if actual_code == *expected_code => {
                 Ok((output.stdout, output.stderr))
@@ -98,15 +98,15 @@ impl CallgrindCommand {
                     expected_code,
                     actual_code
                 );
-                Err(IaiCallgrindError::BenchmarkLaunchError(output))
+                Err(Error::BenchmarkLaunchError(output))
             }
-            _ => Err(IaiCallgrindError::BenchmarkLaunchError(output)),
+            _ => Err(Error::BenchmarkLaunchError(output)),
         }
     }
 
     pub fn run(
         self,
-        mut callgrind_args: CallgrindArgs,
+        mut callgrind_args: Args,
         executable: &Path,
         executable_args: &[OsString],
         options: CallgrindOptions,
@@ -148,9 +148,8 @@ impl CallgrindCommand {
         let executable = if executable.is_absolute() {
             executable.to_owned()
         } else {
-            let e = which(executable).map_err(|error| {
-                IaiCallgrindError::Other(format!("{}: '{}'", error, executable.display()))
-            })?;
+            let e = which(executable)
+                .map_err(|error| Error::Other(format!("{}: '{}'", error, executable.display())))?;
             debug!(
                 "Found command '{}' in the PATH: '{}'",
                 executable.display(),
@@ -168,9 +167,7 @@ impl CallgrindCommand {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
-            .map_err(|error| {
-                IaiCallgrindError::LaunchError(PathBuf::from("valgrind"), error.to_string())
-            })
+            .map_err(|error| Error::LaunchError(PathBuf::from("valgrind"), error.to_string()))
             .and_then(|output| Self::check_exit(&executable, output, exit_with.as_ref()))?;
 
         if !stdout.is_empty() {
@@ -190,57 +187,6 @@ impl CallgrindCommand {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Sentinel(String);
-
-impl Sentinel {
-    pub fn new(value: &str) -> Self {
-        Self(value.to_owned())
-    }
-
-    pub fn from_path(module: &str, function: &str) -> Self {
-        Self(format!("{module}::{function}"))
-    }
-
-    #[allow(unused)]
-    pub fn from_segments<I, T>(segments: T) -> Self
-    where
-        I: AsRef<str>,
-        T: AsRef<[I]>,
-    {
-        let joined = if let Some((first, suffix)) = segments.as_ref().split_first() {
-            suffix.iter().fold(first.as_ref().to_owned(), |mut a, b| {
-                a.push_str("::");
-                a.push_str(b.as_ref());
-                a
-            })
-        } else {
-            String::new()
-        };
-        Self(joined)
-    }
-
-    pub fn to_fn(&self) -> String {
-        format!("fn={}", self.0)
-    }
-
-    pub fn matches(&self, string: &str) -> bool {
-        string.starts_with(self.0.as_str())
-    }
-}
-
-impl Display for Sentinel {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-impl AsRef<Sentinel> for Sentinel {
-    fn as_ref(&self) -> &Sentinel {
-        self
-    }
-}
-
 #[derive(Debug)]
 pub struct CallgrindOutput {
     pub path: PathBuf,
@@ -253,7 +199,7 @@ impl CallgrindOutput {
     {
         let path: PathBuf = path.into();
         if !path.is_file() {
-            return Err(IaiCallgrindError::Other(
+            return Err(Error::Other(
                 "The callgrind output file '{}' did not exist or is not a valid file".to_owned(),
             ));
         }
@@ -313,7 +259,7 @@ impl CallgrindOutput {
 
     pub fn open(&self) -> Result<File> {
         File::open(&self.path).map_err(|error| {
-            IaiCallgrindError::Other(format!(
+            Error::Other(format!(
                 "Error opening callgrind output file '{}': {error}",
                 self.path.display()
             ))

@@ -2,9 +2,9 @@ use std::path::PathBuf;
 
 use log::trace;
 
-use super::parser::CallgrindParser;
-use super::{CallgrindOutput, CallgrindStats, Sentinel};
-use crate::error::{IaiCallgrindError, Result};
+use super::parser::{Parser, Sentinel};
+use super::{CallgrindOutput, CallgrindStats};
+use crate::error::{Error, Result};
 use crate::runner::callgrind::parser::{parse_header, PositionsMode};
 
 pub struct SentinelParser {
@@ -24,7 +24,7 @@ impl SentinelParser {
     }
 }
 
-impl CallgrindParser for SentinelParser {
+impl Parser for SentinelParser {
     type Output = CallgrindStats;
 
     fn parse(self, output: &CallgrindOutput) -> Result<Self::Output>
@@ -45,7 +45,7 @@ impl CallgrindParser for SentinelParser {
 
         let mut iter = output.lines()?;
         let config = parse_header(&mut iter)
-            .map_err(|message| IaiCallgrindError::ParseError((output.path.clone(), message)))?;
+            .map_err(|message| Error::ParseError((output.path.clone(), message)))?;
 
         let mut costs = config.costs_prototype;
         let mode = config.positions_mode;

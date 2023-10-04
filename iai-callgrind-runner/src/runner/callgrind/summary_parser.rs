@@ -1,13 +1,13 @@
 use log::trace;
 
-use super::parser::CallgrindParser;
+use super::parser::Parser;
 use super::{CallgrindOutput, CallgrindStats};
-use crate::error::{IaiCallgrindError, Result};
+use crate::error::{Error, Result};
 use crate::runner::callgrind::parser::parse_header;
 
 pub struct SummaryParser;
 
-impl CallgrindParser for SummaryParser {
+impl Parser for SummaryParser {
     type Output = CallgrindStats;
 
     fn parse(self, output: &CallgrindOutput) -> Result<Self::Output>
@@ -21,7 +21,7 @@ impl CallgrindParser for SummaryParser {
 
         let mut iter = output.lines()?;
         let config = parse_header(&mut iter)
-            .map_err(|message| IaiCallgrindError::ParseError((output.path.clone(), message)))?;
+            .map_err(|message| Error::ParseError((output.path.clone(), message)))?;
 
         let mut costs = config.costs_prototype;
         for line in iter {

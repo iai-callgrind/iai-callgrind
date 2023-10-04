@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use super::hashmap_parser::{CallgrindMap, HashMapParser, Id, RecordMember};
-use super::parser::CallgrindParser;
-use super::{CallgrindOutput, Sentinel};
+use super::parser::{Parser, Sentinel};
+use super::CallgrindOutput;
 use crate::error::Result;
 use crate::runner::callgrind::hashmap_parser::Record;
 use crate::runner::flamegraph::{Stack, Stacks};
@@ -26,8 +26,6 @@ impl FlamegraphParser {
         }
     }
 
-    // TODO: MAKE the choice of counts configurable. Currently uses only instruction counts.
-    // Adjust the name for the counts in such cases.
     fn fold(&mut self, map: &CallgrindMap, key: &Id, value: &Record, last: Option<&Stack>) {
         self.stacks
             .add(&key.func, value.self_costs.clone(), false, last);
@@ -74,7 +72,7 @@ impl FlamegraphParser {
     }
 }
 
-impl CallgrindParser for FlamegraphParser {
+impl Parser for FlamegraphParser {
     type Output = Stacks;
 
     fn parse(mut self, output: &CallgrindOutput) -> Result<Self::Output> {

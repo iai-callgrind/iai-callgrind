@@ -1,15 +1,61 @@
 use std::fmt::{Display, Write};
 use std::fs::File;
-use std::iter::Map;
-use std::path::PathBuf;
+use std::io::{BufWriter, Write as IoWrite};
+use std::path::{Path, PathBuf};
 
 use inferno::flamegraph::Options;
 use log::{trace, warn};
 
-use super::callgrind::parser::{Costs, EventType};
-use super::callgrind::CallgrindOutput;
-use super::IaiCallgrindError;
+use super::callgrind::model::{Costs, EventType};
+use super::Error;
 use crate::error::Result;
+
+pub struct Flamegraph {
+    pub types: Vec<EventType>,
+    pub title: String,
+    pub stacks: Stacks,
+}
+
+impl Flamegraph {
+    pub fn create<T>(&self, path: T) -> Result<()>
+    where
+        T: AsRef<Path>,
+    {
+        if self.stacks.is_empty() {
+            warn!("Unable to create a flamegraph: No stacks found");
+            return Ok(());
+        }
+
+        let path = path.as_ref();
+        for event_type in &self.types {
+            let mut options = Options::default();
+            options.title = self.title.clone();
+            options.count_name = event_type.to_string();
+
+            let mut stacks = vec![];
+            for stack in self.stacks.iter() {
+                stacks.push(stack.to_string(event_type)?);
+            }
+
+            let output = Output::init(path, event_type)?;
+            let mut writer = BufWriter::new(output.create()?);
+            inferno::flamegraph::from_lines(
+                &mut options,
+                stacks.iter().map(std::string::String::as_str),
+                &mut writer,
+            )
+            .map_err(|error| {
+                crate::error::Error::Other(format!("Error creating flamegraph: {error}"))
+            })?;
+
+            writer
+                .flush()
+                .map_err(|error| Error::Other(format!("Error creating flamegraph: {error}")))?;
+        }
+
+        Ok(())
+    }
+}
 
 #[derive(Debug, Default, Clone)]
 pub struct StackEntry {
@@ -81,7 +127,7 @@ impl Stack {
                 " {}",
                 self.costs
                     .cost_by_type(event_type)
-                    .ok_or_else(|| IaiCallgrindError::Other(format!(
+                    .ok_or_else(|| Error::Other(format!(
                         "Error creating flamegraph: Event type '{event_type}' not found"
                     )))?
             )
@@ -129,15 +175,18 @@ impl Stacks {
     }
 }
 
-pub struct FlamegraphOutput(pub PathBuf);
+pub struct Output(pub PathBuf);
 
-impl FlamegraphOutput {
-    pub fn init(output: &CallgrindOutput) -> Result<Self> {
-        let path = output.with_extension("svg").path;
+impl Output {
+    pub fn init<T>(path: T, event_type: &EventType) -> Result<Self>
+    where
+        T: AsRef<Path>,
+    {
+        let path = path.as_ref().with_extension(format!("{event_type}.svg"));
         if path.exists() {
             let old_svg = path.with_extension("svg.old");
             std::fs::copy(&path, &old_svg).map_err(|error| {
-                IaiCallgrindError::Other(format!(
+                Error::Other(format!(
                     "Error copying flamegraph file '{}' -> '{}' : {error}",
                     &path.display(),
                     &old_svg.display(),
@@ -149,51 +198,7 @@ impl FlamegraphOutput {
     }
 
     pub fn create(&self) -> Result<File> {
-        File::create(&self.0).map_err(|error| {
-            IaiCallgrindError::Other(format!("Creating flamegraph file failed: {error}"))
-        })
-    }
-}
-
-// TODO: MAKE the choice of a title for the svg files configurable??
-// TODO: MAKE the choice of a name for the counts configurable??
-pub struct Flamegraph {
-    pub types: Vec<EventType>,
-    pub title: String,
-    pub stacks: Stacks,
-}
-
-impl Flamegraph {
-    pub fn create(&self, dest: &FlamegraphOutput) -> Result<()> {
-        if self.stacks.is_empty() {
-            warn!("Unable to create a flamegraph: No stacks found");
-            return Ok(());
-        }
-
-        let output_file = dest.create()?;
-
-        for event_type in &self.types {
-            let mut options = Options::default();
-            options.title = self.title.clone();
-            options.count_name = event_type.to_string();
-
-            let mut stacks = vec![];
-            for stack in self.stacks.iter() {
-                stacks.push(stack.to_string(event_type)?);
-            }
-
-            inferno::flamegraph::from_lines(
-                &mut options,
-                stacks.iter().map(std::string::String::as_str),
-                &output_file,
-            )
-            .map_err(|error| {
-                crate::error::IaiCallgrindError::Other(format!(
-                    "Creating flamegraph file failed: {error}"
-                ))
-            })?;
-        }
-
-        Ok(())
+        File::create(&self.0)
+            .map_err(|error| Error::Other(format!("Creating flamegraph file failed: {error}")))
     }
 }

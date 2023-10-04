@@ -6,15 +6,15 @@ use std::process::Command;
 use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
-use super::callgrind::args::CallgrindArgs;
-use super::callgrind::parser::CallgrindParser;
+use super::callgrind::args::Args;
+use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::summary_parser::SummaryParser;
-use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Sentinel};
+use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput};
 use super::meta::Metadata;
 use super::print::Header;
 use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig};
-use crate::error::{IaiCallgrindError, Result};
+use crate::error::{Error, Result};
 use crate::util::{copy_directory, receive_benchmark, write_all_to_stderr, write_all_to_stdout};
 
 #[derive(Debug)]
@@ -24,7 +24,7 @@ struct BinBench {
     command: PathBuf,
     args: Vec<OsString>,
     opts: CallgrindOptions,
-    callgrind_args: CallgrindArgs,
+    callgrind_args: Args,
 }
 
 impl BinBench {
@@ -100,11 +100,11 @@ struct Assistant {
     name: String,
     kind: AssistantKind,
     bench: bool,
-    callgrind_args: CallgrindArgs,
+    callgrind_args: Args,
 }
 
 impl Assistant {
-    fn new(name: String, kind: AssistantKind, bench: bool, callgrind_args: CallgrindArgs) -> Self {
+    fn new(name: String, kind: AssistantKind, bench: bool, callgrind_args: Args) -> Self {
         Self {
             name,
             kind,
@@ -181,14 +181,12 @@ impl Assistant {
 
         let (stdout, stderr) = command
             .output()
-            .map_err(|error| {
-                IaiCallgrindError::LaunchError(config.bench_bin.clone(), error.to_string())
-            })
+            .map_err(|error| Error::LaunchError(config.bench_bin.clone(), error.to_string()))
             .and_then(|output| {
                 if output.status.success() {
                     Ok((output.stdout, output.stderr))
                 } else {
-                    Err(IaiCallgrindError::BenchmarkLaunchError(output))
+                    Err(Error::BenchmarkLaunchError(output))
                 }
             })?;
 
@@ -362,7 +360,7 @@ impl Groups {
         let mut counter: usize = 0;
         for run in runs {
             if run.args.is_empty() {
-                return Err(IaiCallgrindError::Other(format!(
+                return Err(Error::Other(format!(
                     "{module_path}: Found Run without an Argument. At least one argument must be \
                      specified: {run:?}"
                 )));
@@ -372,7 +370,7 @@ impl Groups {
             } else if let Some(command) = cmd {
                 (command.display.clone(), PathBuf::from(&command.cmd))
             } else {
-                return Err(IaiCallgrindError::Other(format!(
+                return Err(Error::Other(format!(
                     "{module_path}: Found Run without a command. A command must be specified \
                      either at group level or run level: {run:?}"
                 )));
@@ -399,9 +397,7 @@ impl Groups {
                         exit_with: config.exit_with.clone(),
                         envs: envs.clone(),
                     },
-                    callgrind_args: CallgrindArgs::from_raw_callgrind_args(
-                        &config.raw_callgrind_args,
-                    )?,
+                    callgrind_args: Args::from_raw_callgrind_args(&config.raw_callgrind_args)?,
                 });
             }
         }
@@ -410,7 +406,7 @@ impl Groups {
 
     fn parse_assists(
         assists: Vec<crate::api::Assistant>,
-        callgrind_args: &CallgrindArgs,
+        callgrind_args: &Args,
     ) -> BenchmarkAssistants {
         let mut bench_assists = BenchmarkAssistants::default();
         for assist in assists {
@@ -476,7 +472,7 @@ impl Groups {
                 benches,
                 assists: Self::parse_assists(
                     group.assists,
-                    &CallgrindArgs::from_raw_callgrind_args(&group_config.raw_callgrind_args)?,
+                    &Args::from_raw_callgrind_args(&group_config.raw_callgrind_args)?,
                 ),
             };
             groups.push(config);

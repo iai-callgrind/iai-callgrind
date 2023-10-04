@@ -4,12 +4,12 @@ use std::path::{Path, PathBuf};
 use log::{log_enabled, warn};
 
 use crate::api::RawCallgrindArgs;
-use crate::error::{IaiCallgrindError, Result};
+use crate::error::{Error, Result};
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone)]
-pub struct CallgrindArgs {
+pub struct Args {
     i1: String,
     d1: String,
     ll: String,
@@ -26,7 +26,7 @@ pub struct CallgrindArgs {
     callgrind_out_file: Option<PathBuf>,
 }
 
-impl Default for CallgrindArgs {
+impl Default for Args {
     fn default() -> Self {
         Self {
             // Set some reasonable cache sizes. The exact sizes matter less than having fixed sizes,
@@ -50,7 +50,7 @@ impl Default for CallgrindArgs {
     }
 }
 
-impl CallgrindArgs {
+impl Args {
     pub fn from_raw_callgrind_args(args: &RawCallgrindArgs) -> Result<Self> {
         let mut default = Self::default();
         for arg in &args.0 {
@@ -60,34 +60,22 @@ impl CallgrindArgs {
                 Some(("LL", value)) => default.ll = value.to_owned(),
                 Some((key @ "collect-atstart", value)) => {
                     default.collect_atstart = yesno_to_bool(value).ok_or_else(|| {
-                        IaiCallgrindError::InvalidCallgrindBoolArgument((
-                            key.to_owned(),
-                            value.to_owned(),
-                        ))
+                        Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
                 Some((key @ "dump-instr", value)) => {
                     default.dump_instr = yesno_to_bool(value).ok_or_else(|| {
-                        IaiCallgrindError::InvalidCallgrindBoolArgument((
-                            key.to_owned(),
-                            value.to_owned(),
-                        ))
+                        Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
                 Some((key @ "dump-line", value)) => {
                     default.dump_line = yesno_to_bool(value).ok_or_else(|| {
-                        IaiCallgrindError::InvalidCallgrindBoolArgument((
-                            key.to_owned(),
-                            value.to_owned(),
-                        ))
+                        Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
                 Some((key @ "compress-pos", value)) => {
                     default.compress_pos = yesno_to_bool(value).ok_or_else(|| {
-                        IaiCallgrindError::InvalidCallgrindBoolArgument((
-                            key.to_owned(),
-                            value.to_owned(),
-                        ))
+                        Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
                 Some(("toggle-collect", value)) => {

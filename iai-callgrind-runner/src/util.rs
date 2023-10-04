@@ -6,7 +6,7 @@ use std::process::Command;
 use log::{debug, log_enabled, trace, Level};
 use which::which;
 
-use crate::error::{IaiCallgrindError, Result};
+use crate::error::{Error, Result};
 
 pub fn receive_benchmark<T>(num_bytes: usize) -> Result<T>
 where
@@ -14,9 +14,9 @@ where
 {
     let mut encoded = vec![];
     let mut stdin = stdin();
-    stdin.read_to_end(&mut encoded).map_err(|error| {
-        IaiCallgrindError::Other(format!("Failed to read encoded configuration: {error}"))
-    })?;
+    stdin
+        .read_to_end(&mut encoded)
+        .map_err(|error| Error::Other(format!("Failed to read encoded configuration: {error}")))?;
     assert!(
         encoded.len() == num_bytes,
         "Bytes mismatch when decoding configuration: Expected {num_bytes} bytes but received: {} \
@@ -24,9 +24,8 @@ where
         encoded.len()
     );
 
-    let benchmark: T = bincode::deserialize(&encoded).map_err(|error| {
-        IaiCallgrindError::Other(format!("Failed to decode configuration: {error}"))
-    })?;
+    let benchmark: T = bincode::deserialize(&encoded)
+        .map_err(|error| Error::Other(format!("Failed to decode configuration: {error}")))?;
 
     Ok(benchmark)
 }
@@ -138,12 +137,12 @@ pub fn copy_directory(source: &Path, into: &Path, follow_symlinks: bool) -> Resu
     command.arg(into);
     let (stdout, stderr) = command
         .output()
-        .map_err(|error| IaiCallgrindError::LaunchError(cp, error.to_string()))
+        .map_err(|error| Error::LaunchError(cp, error.to_string()))
         .and_then(|output| {
             if output.status.success() {
                 Ok((output.stdout, output.stderr))
             } else {
-                Err(IaiCallgrindError::BenchmarkLaunchError(output))
+                Err(Error::BenchmarkLaunchError(output))
             }
         })?;
 
@@ -172,7 +171,7 @@ where
             debug!("Found '{}': '{}'", binary.to_string_lossy(), path.display());
             Ok(path)
         }
-        Err(error) => Err(IaiCallgrindError::Other(format!(
+        Err(error) => Err(Error::Other(format!(
             "{error}: '{0}' could not be found. Is '{0}' installed and added to the PATH?",
             binary.to_string_lossy()
         ))),

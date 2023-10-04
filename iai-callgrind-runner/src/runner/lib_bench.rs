@@ -2,12 +2,13 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 // TODO: Remove all Callgrind prefixes for structs contained in the callgrind module??
-use super::callgrind::args::CallgrindArgs;
+use super::callgrind::args::Args;
 use super::callgrind::flamegraph_parser::FlamegraphParser;
-use super::callgrind::parser::{CallgrindParser, EventType};
+use super::callgrind::model::EventType;
+use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
-use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Sentinel};
-use super::flamegraph::{Flamegraph, FlamegraphOutput};
+use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput};
+use super::flamegraph::Flamegraph;
 use super::meta::Metadata;
 use super::print::Header;
 use crate::api::LibraryBenchmark;
@@ -23,7 +24,7 @@ struct LibBench {
     function: String,
     args: Option<String>,
     opts: CallgrindOptions,
-    callgrind_args: CallgrindArgs,
+    callgrind_args: Args,
 }
 
 impl LibBench {
@@ -70,19 +71,18 @@ impl LibBench {
             self.args.clone(),
         );
 
-        let flamegraph_parser = FlamegraphParser::new(Some(&sentinel), &config.meta.project_root);
-
-        flamegraph_parser.parse(&output).and_then(|stacks| {
-            FlamegraphOutput::init(&output).and_then(|flamegraph_output| {
+        FlamegraphParser::new(Some(&sentinel), &config.meta.project_root)
+            .parse(&output)
+            .and_then(|stacks| {
                 let flamegraph = Flamegraph {
                     stacks,
-                    // TODO: This field should be part of a FlamegraphOptions (own not from inferno)
+                    // TODO: These fields should be part of FlamegraphOptions (FlamegraphConfig)
+                    // (own not from inferno)
                     title: header.to_title(),
                     types: vec![EventType::Ir],
                 };
-                flamegraph.create(&flamegraph_output)
-            })
-        })?;
+                flamegraph.create(&output.path)
+            })?;
 
         let new_stats = SentinelParser::new(&sentinel, &config.bench_file).parse(&output)?;
 
@@ -144,7 +144,7 @@ impl Groups {
                     let callgrind_args = {
                         let mut raw = config.raw_callgrind_args;
                         raw.extend_from_command_line_args(benchmark.command_line_args.as_slice());
-                        CallgrindArgs::from_raw_callgrind_args(&raw)?
+                        Args::from_raw_callgrind_args(&raw)?
                     };
                     let lib_bench = LibBench {
                         bench_index,

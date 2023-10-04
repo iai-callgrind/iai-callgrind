@@ -3,9 +3,10 @@ use std::collections::HashMap;
 use log::trace;
 use serde::{Deserialize, Serialize};
 
-use super::parser::{parse_header, CallgrindParser, Costs, EventType, PositionsMode};
-use super::{CallgrindOutput, Sentinel};
-use crate::error::{IaiCallgrindError, Result};
+use super::model::{Costs, EventType};
+use super::parser::{parse_header, CallgrindProperties, Parser, PositionsMode, Sentinel};
+use super::CallgrindOutput;
+use crate::error::{Error, Result};
 
 type ErrorMessageResult<T> = std::result::Result<T, String>;
 
@@ -66,13 +67,13 @@ pub struct HashMapParser {
     pub sentinel: Option<Sentinel>,
 }
 
-impl CallgrindParser for HashMapParser {
+impl Parser for HashMapParser {
     type Output = CallgrindMap;
 
     fn parse(self, output: &CallgrindOutput) -> Result<Self::Output> {
         LinesParser::default()
             .parse(CallgrindMap::new(self.sentinel.as_ref()), output.lines()?)
-            .map_err(|message| IaiCallgrindError::ParseError((output.path.clone(), message)))
+            .map_err(|message| Error::ParseError((output.path.clone(), message)))
     }
 }
 
@@ -191,8 +192,7 @@ enum State {
 type Split<'line> = Option<(&'line str, &'line str)>;
 
 struct LinesParser {
-    positions_mode: PositionsMode,
-    costs_prototype: Costs,
+    properties: CallgrindProperties,
     record: Option<TemporaryRecord>,
     cfn_record: Option<CfnRecord>,
     inline_record: Option<InlineRecord>,
@@ -205,8 +205,7 @@ struct LinesParser {
 impl Default for LinesParser {
     fn default() -> Self {
         Self {
-            positions_mode: PositionsMode::default(),
-            costs_prototype: Costs::default(),
+            properties: CallgrindProperties::default(),
             record: Option::default(),
             cfn_record: Option::default(),
             inline_record: Option::default(),
@@ -254,9 +253,7 @@ impl LinesParser {
         let mut iter = iter.into_iter();
         // After calling this method, there might still be lines left in header format (like
         // `summary` or `totals`)
-        let config = parse_header(&mut iter)?;
-        self.positions_mode = config.positions_mode;
-        self.costs_prototype = config.costs_prototype;
+        self.properties = parse_header(&mut iter)?;
 
         for line in iter {
             if line.is_empty() && self.current_state != State::Header {
@@ -316,25 +313,25 @@ impl LinesParser {
     fn handle_record_state(&mut self, line: &str, split: Split) -> ErrorMessageResult<()> {
         match split {
             Some((key, value)) if key == "ob" => {
-                let record = self
-                    .record
-                    .get_or_insert(TemporaryRecord::from_prototype(&self.costs_prototype));
+                let record = self.record.get_or_insert(TemporaryRecord::from_prototype(
+                    &self.properties.costs_prototype.clone(),
+                ));
                 record.ob = Some(value.to_owned());
                 self.target = Some((key.to_owned(), value.to_owned()));
                 self.set_state(State::Record);
             }
             Some((key, value)) if key == "fl" => {
-                let record = self
-                    .record
-                    .get_or_insert(TemporaryRecord::from_prototype(&self.costs_prototype));
+                let record = self.record.get_or_insert(TemporaryRecord::from_prototype(
+                    &self.properties.costs_prototype.clone(),
+                ));
                 record.fl = Some(value.to_owned());
                 self.target = Some((key.to_owned(), value.to_owned()));
                 self.set_state(State::Record);
             }
             Some((key, value)) if key == "fn" => {
-                let record = self
-                    .record
-                    .get_or_insert(TemporaryRecord::from_prototype(&self.costs_prototype));
+                let record = self.record.get_or_insert(TemporaryRecord::from_prototype(
+                    &self.properties.costs_prototype.clone(),
+                ));
                 record.func = Some(value.to_owned());
                 self.set_state(State::Record);
             }
@@ -358,7 +355,7 @@ impl LinesParser {
                 self.inline_record = Some(InlineRecord {
                     fi: Some(value.to_owned()),
                     file: record.fl.clone(),
-                    costs: self.costs_prototype.clone(),
+                    costs: self.properties.costs_prototype.clone(),
                     ..Default::default()
                 });
                 self.target = Some((key.to_owned(), value.to_owned()));
@@ -382,7 +379,7 @@ impl LinesParser {
                         self.inline_record = Some(InlineRecord {
                             fe: Some(value.to_owned()),
                             file: record.fl.clone(),
-                            costs: self.costs_prototype.clone(),
+                            costs: self.properties.costs_prototype.clone(),
                             ..Default::default()
                         });
                         self.set_state(State::InlineRecord);
@@ -402,7 +399,7 @@ impl LinesParser {
             Some(("cob", value)) => {
                 let cfn_record = self
                     .cfn_record
-                    .get_or_insert(CfnRecord::from_prototype(&self.costs_prototype));
+                    .get_or_insert(CfnRecord::from_prototype(&self.properties.costs_prototype));
                 cfn_record.cob = Some(value.to_owned());
                 self.save_cfn_state();
                 self.set_state(State::CfnRecord);
@@ -412,7 +409,7 @@ impl LinesParser {
             Some(("cfi" | "cfl", value)) => {
                 let cfn_record = self
                     .cfn_record
-                    .get_or_insert(CfnRecord::from_prototype(&self.costs_prototype));
+                    .get_or_insert(CfnRecord::from_prototype(&self.properties.costs_prototype));
                 cfn_record.cfi = Some(value.to_owned());
                 self.save_cfn_state();
                 self.set_state(State::CfnRecord);
@@ -420,7 +417,7 @@ impl LinesParser {
             Some(("cfn", value)) => {
                 let cfn_record = self
                     .cfn_record
-                    .get_or_insert(CfnRecord::from_prototype(&self.costs_prototype));
+                    .get_or_insert(CfnRecord::from_prototype(&self.properties.costs_prototype));
                 cfn_record.cfn = value.to_owned();
                 self.save_cfn_state();
                 self.set_state(State::CfnRecord);
@@ -428,7 +425,7 @@ impl LinesParser {
             Some(("calls", value)) => {
                 let cfn_record = self
                     .cfn_record
-                    .get_or_insert(CfnRecord::from_prototype(&self.costs_prototype));
+                    .get_or_insert(CfnRecord::from_prototype(&self.properties.costs_prototype));
                 for (index, count) in value
                     .split_ascii_whitespace()
                     .map(|s| s.parse::<u64>().expect("Parsing number should be ok"))
@@ -470,12 +467,12 @@ impl LinesParser {
             "Costline must start with a digit"
         );
 
-        let mut costs = self.costs_prototype.clone();
+        let mut costs = self.properties.costs_prototype.clone();
         costs.add_iter_str(line
                         .split_ascii_whitespace()
                         // skip the first number which is just the line number or instr number or
                         // in case of `instr line` skip 2
-                        .skip(if self.positions_mode == PositionsMode::InstrLine { 2 } else { 1 }));
+                        .skip(if self.properties.positions_mode == PositionsMode::InstrLine { 2 } else { 1 }));
 
         let record = self
             .record
