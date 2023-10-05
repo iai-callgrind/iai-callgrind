@@ -363,7 +363,7 @@ impl Groups {
             if run.args.is_empty() {
                 return Err(anyhow!(
                     "{module_path}: Found Run without an Argument. At least one argument must be \
-                     specified: {run:?}"
+                     specified: {run:?}",
                 ));
             }
             let (orig, command) = if let Some(cmd) = run.cmd {
