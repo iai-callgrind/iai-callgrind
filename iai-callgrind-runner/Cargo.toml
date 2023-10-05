@@ -57,7 +57,10 @@ version-compare = { version = "0.1", optional = true }
 which = { version = "4", optional = true }
 
 [dev-dependencies]
+pretty_assertions = { version = "1" }
 rstest = ">=0.17, <0.19"
+serde_yaml = { version = "0.9" }
+tempfile = { version = "3" }
 
 [[bin]]
 name = "iai-callgrind-runner"
