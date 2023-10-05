@@ -1,7 +1,8 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-// TODO: Remove all Callgrind prefixes for structs contained in the callgrind module??
+use anyhow::Result;
+
 use super::callgrind::args::Args;
 use super::callgrind::flamegraph_parser::FlamegraphParser;
 use super::callgrind::model::EventType;
@@ -12,7 +13,6 @@ use super::flamegraph::Flamegraph;
 use super::meta::Metadata;
 use super::print::Header;
 use crate::api::LibraryBenchmark;
-use crate::error::Result;
 use crate::util::receive_benchmark;
 
 /// A `LibBench` represents a single benchmark from the `#[library_benchmark]` attribute macro

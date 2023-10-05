@@ -1,9 +1,9 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
+use anyhow::Result;
 use log::debug;
 
-use crate::error::Result;
 use crate::runner::envs;
 use crate::util::get_absolute_path;
 

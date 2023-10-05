@@ -1,10 +1,11 @@
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 
+use anyhow::Result;
 use log::{log_enabled, warn};
 
 use crate::api::RawCallgrindArgs;
-use crate::error::{Error, Result};
+use crate::error::Error;
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
 #[allow(clippy::struct_excessive_bools)]

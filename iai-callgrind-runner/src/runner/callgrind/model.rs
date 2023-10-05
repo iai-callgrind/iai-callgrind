@@ -125,6 +125,10 @@ impl Costs {
     pub fn cost_by_type(&self, kind: &EventType) -> Option<u64> {
         self.0.get_key_value(kind).map(|(_, c)| *c)
     }
+
+    pub fn event_types(&self) -> Vec<EventType> {
+        self.0.iter().map(|(k, _)| *k).collect()
+    }
 }
 
 impl Default for Costs {

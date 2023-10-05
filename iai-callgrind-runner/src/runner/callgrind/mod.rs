@@ -14,6 +14,7 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
+use anyhow::{anyhow, Context, Result};
 use colored::{ColoredString, Colorize};
 use log::{debug, error, info, Level};
 use which::which;
@@ -21,7 +22,7 @@ use which::which;
 use super::callgrind::args::Args;
 use super::meta::Metadata;
 use crate::api::ExitWith;
-use crate::error::{Error, Result};
+use crate::error::Error;
 use crate::util::{truncate_str_utf8, write_all_to_stderr, write_all_to_stdout};
 
 #[derive(Debug, Default, Clone)]
@@ -70,14 +71,14 @@ impl CallgrindCommand {
                     executable.display(),
                     code
                 );
-                Err(Error::BenchmarkLaunchError(output))
+                Err(Error::BenchmarkLaunchError(output).into())
             }
             (0i32, Some(ExitWith::Failure)) => {
                 error!(
                     "Expected benchmark '{}' to fail but it succeeded",
                     executable.display(),
                 );
-                Err(Error::BenchmarkLaunchError(output))
+                Err(Error::BenchmarkLaunchError(output).into())
             }
             (_, Some(ExitWith::Failure)) => Ok((output.stdout, output.stderr)),
             (code, Some(ExitWith::Success)) => {
@@ -86,7 +87,7 @@ impl CallgrindCommand {
                     executable.display(),
                     code
                 );
-                Err(Error::BenchmarkLaunchError(output))
+                Err(Error::BenchmarkLaunchError(output).into())
             }
             (actual_code, Some(ExitWith::Code(expected_code))) if actual_code == *expected_code => {
                 Ok((output.stdout, output.stderr))
@@ -98,9 +99,9 @@ impl CallgrindCommand {
                     expected_code,
                     actual_code
                 );
-                Err(Error::BenchmarkLaunchError(output))
+                Err(Error::BenchmarkLaunchError(output).into())
             }
-            _ => Err(Error::BenchmarkLaunchError(output)),
+            _ => Err(Error::BenchmarkLaunchError(output).into()),
         }
     }
 
@@ -148,8 +149,12 @@ impl CallgrindCommand {
         let executable = if executable.is_absolute() {
             executable.to_owned()
         } else {
-            let e = which(executable)
-                .map_err(|error| Error::Other(format!("{}: '{}'", error, executable.display())))?;
+            let e = which(executable).with_context(|| {
+                format!(
+                    "Failed to locate binary '{}'. Is executable and in your PATH?",
+                    executable.display()
+                )
+            })?;
             debug!(
                 "Found command '{}' in the PATH: '{}'",
                 executable.display(),
@@ -167,7 +172,9 @@ impl CallgrindCommand {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
-            .map_err(|error| Error::LaunchError(PathBuf::from("valgrind"), error.to_string()))
+            .map_err(|error| {
+                Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
+            })
             .and_then(|output| Self::check_exit(&executable, output, exit_with.as_ref()))?;
 
         if !stdout.is_empty() {
@@ -199,8 +206,9 @@ impl CallgrindOutput {
     {
         let path: PathBuf = path.into();
         if !path.is_file() {
-            return Err(Error::Other(
-                "The callgrind output file '{}' did not exist or is not a valid file".to_owned(),
+            return Err(anyhow!(
+                "The callgrind output file '{}' did not exist or is not a valid file",
+                path.display()
             ));
         }
         Ok(Self { path })
@@ -258,11 +266,11 @@ impl CallgrindOutput {
     }
 
     pub fn open(&self) -> Result<File> {
-        File::open(&self.path).map_err(|error| {
-            Error::Other(format!(
-                "Error opening callgrind output file '{}': {error}",
+        File::open(&self.path).with_context(|| {
+            format!(
+                "Error opening callgrind output file '{}'",
                 self.path.display()
-            ))
+            )
         })
     }
 

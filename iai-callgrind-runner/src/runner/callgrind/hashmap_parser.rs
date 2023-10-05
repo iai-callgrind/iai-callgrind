@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 
+use anyhow::Result;
 use log::trace;
 use serde::{Deserialize, Serialize};
 
 use super::model::{Calls, Costs, EventType};
 use super::parser::{parse_header, CallgrindProperties, Parser, Sentinel};
 use super::CallgrindOutput;
-use crate::error::{Error, Result};
-
-type ErrorMessageResult<T> = std::result::Result<T, String>;
+use crate::error::Error;
 
 #[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CallgrindMap {
@@ -73,7 +72,7 @@ impl Parser for HashMapParser {
     fn parse(self, output: &CallgrindOutput) -> Result<Self::Output> {
         LinesParser::default()
             .parse(CallgrindMap::new(self.sentinel.as_ref()), output.lines()?)
-            .map_err(|message| Error::ParseError((output.path.clone(), message)))
+            .map_err(|error| Error::ParseError((output.path.clone(), error.to_string())).into())
     }
 }
 
@@ -242,11 +241,7 @@ impl LinesParser {
         self.current_state = self.old_state.expect("A saved state");
     }
 
-    fn parse<I>(
-        &mut self,
-        mut callgrind_map: CallgrindMap,
-        iter: I,
-    ) -> std::result::Result<CallgrindMap, String>
+    fn parse<I>(&mut self, mut callgrind_map: CallgrindMap, iter: I) -> Result<CallgrindMap>
     where
         I: IntoIterator<Item = String>,
     {
@@ -281,7 +276,7 @@ impl LinesParser {
         Ok(callgrind_map)
     }
 
-    fn handle_state(&mut self, line: &str, split: Split) -> ErrorMessageResult<()> {
+    fn handle_state(&mut self, line: &str, split: Split) -> Result<()> {
         match self.current_state {
             State::Header => self.handle_header_state(line, split),
             State::None => self.handle_none_state(line, split),
@@ -293,7 +288,7 @@ impl LinesParser {
         }
     }
 
-    fn handle_header_state(&mut self, line: &str, split: Split) -> ErrorMessageResult<()> {
+    fn handle_header_state(&mut self, line: &str, split: Split) -> Result<()> {
         if split.is_some() {
             self.handle_record_state(line, split)
         } else {
@@ -301,7 +296,7 @@ impl LinesParser {
         }
     }
 
-    fn handle_none_state(&mut self, line: &str, split: Split) -> ErrorMessageResult<()> {
+    fn handle_none_state(&mut self, line: &str, split: Split) -> Result<()> {
         if line.starts_with("totals:") {
             self.current_state = State::Footer;
             Ok(())
@@ -310,7 +305,7 @@ impl LinesParser {
         }
     }
 
-    fn handle_record_state(&mut self, line: &str, split: Split) -> ErrorMessageResult<()> {
+    fn handle_record_state(&mut self, line: &str, split: Split) -> Result<()> {
         match split {
             Some((key, value)) if key == "ob" => {
                 let record = self.record.get_or_insert(TemporaryRecord::from_prototype(
@@ -342,7 +337,7 @@ impl LinesParser {
         Ok(())
     }
 
-    fn handle_inline_record_state(&mut self, line: &str, split: Split) -> ErrorMessageResult<()> {
+    fn handle_inline_record_state(&mut self, line: &str, split: Split) -> Result<()> {
         match split {
             Some((key, value)) if key == "fi" => {
                 let record = self
@@ -394,7 +389,7 @@ impl LinesParser {
         Ok(())
     }
 
-    fn handle_cfn_record_state(&mut self, line: &str, split: Split) -> ErrorMessageResult<()> {
+    fn handle_cfn_record_state(&mut self, line: &str, split: Split) -> Result<()> {
         match split {
             Some(("cob", value)) => {
                 let cfn_record = self
@@ -444,7 +439,7 @@ impl LinesParser {
     }
 
     // Doesn't set a state by itself so the next handled state is the state before ending up here
-    fn handle_unknown_state(&mut self, line: &str, split: &Split) -> ErrorMessageResult<()> {
+    fn handle_unknown_state(&mut self, line: &str, split: &Split) -> Result<()> {
         if split.is_some() {
             trace!("Found unknown specification: {}. Skipping it ...", line);
             Ok(())
@@ -455,7 +450,7 @@ impl LinesParser {
 
     // keep the method's return value in line with the other methods
     #[allow(clippy::unnecessary_wraps)]
-    fn handle_cost_line_state(&mut self, line: &str) -> ErrorMessageResult<()> {
+    fn handle_cost_line_state(&mut self, line: &str) -> Result<()> {
         // We check if it is a line starting with a digit. If not, it is a misinterpretation of the
         // callgrind format so we panic here.
         assert!(

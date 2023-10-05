@@ -3,12 +3,11 @@ use std::fs::File;
 use std::io::{BufWriter, Write as IoWrite};
 use std::path::{Path, PathBuf};
 
+use anyhow::{anyhow, Context, Result};
 use inferno::flamegraph::Options;
 use log::{trace, warn};
 
 use super::callgrind::model::{Costs, EventType};
-use super::Error;
-use crate::error::Result;
 
 pub struct Flamegraph {
     pub types: Vec<EventType>,
@@ -44,13 +43,11 @@ impl Flamegraph {
                 stacks.iter().map(std::string::String::as_str),
                 &mut writer,
             )
-            .map_err(|error| {
-                crate::error::Error::Other(format!("Error creating flamegraph: {error}"))
-            })?;
+            .with_context(|| format!("Failed creating a flamegraph at '{}'", path.display()))?;
 
             writer
                 .flush()
-                .map_err(|error| Error::Other(format!("Error creating flamegraph: {error}")))?;
+                .with_context(|| format!("Failed flushing content to '{}'", path.display()))?;
         }
 
         Ok(())
@@ -115,6 +112,10 @@ impl Stack {
             .any(|e| e.is_inline == is_inline && e.value == item)
     }
 
+    pub fn event_types(&self) -> Vec<EventType> {
+        self.costs.event_types()
+    }
+
     pub fn to_string(&self, event_type: &EventType) -> Result<String> {
         let mut result = String::new();
         if let Some((first, suffix)) = self.entries.split_first() {
@@ -125,11 +126,14 @@ impl Stack {
             write!(
                 &mut result,
                 " {}",
-                self.costs
-                    .cost_by_type(event_type)
-                    .ok_or_else(|| Error::Other(format!(
-                        "Error creating flamegraph: Event type '{event_type}' not found"
-                    )))?
+                self.costs.cost_by_type(event_type).ok_or_else(|| anyhow!(
+                    "Failed creating flamegraph stack: Missing event type '{event_type}'. \
+                     Possible event types are: '{}'",
+                    self.event_types().iter().fold(String::new(), |mut a, e| {
+                        write!(a, ", {e}").unwrap();
+                        a
+                    })
+                ))?
             )
             .unwrap();
         }
@@ -185,12 +189,12 @@ impl Output {
         let path = path.as_ref().with_extension(format!("{event_type}.svg"));
         if path.exists() {
             let old_svg = path.with_extension("svg.old");
-            std::fs::copy(&path, &old_svg).map_err(|error| {
-                Error::Other(format!(
-                    "Error copying flamegraph file '{}' -> '{}' : {error}",
+            std::fs::copy(&path, &old_svg).with_context(|| {
+                format!(
+                    "Failed copying flamegraph file '{}' -> '{}'",
                     &path.display(),
                     &old_svg.display(),
-                ))
+                )
             })?;
         }
 
@@ -199,6 +203,6 @@ impl Output {
 
     pub fn create(&self) -> Result<File> {
         File::create(&self.0)
-            .map_err(|error| Error::Other(format!("Creating flamegraph file failed: {error}")))
+            .with_context(|| format!("Failed creating flamegraph file '{}'", self.0.display()))
     }
 }

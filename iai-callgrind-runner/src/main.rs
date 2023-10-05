@@ -2,11 +2,8 @@ use std::io::Write;
 
 use colored::{control, Colorize};
 use env_logger::Env;
-use iai_callgrind_runner::error::Error;
 use iai_callgrind_runner::runner::envs;
-use iai_callgrind_runner::util::write_all_to_stderr;
 use log::{error, warn};
-use version_compare::Cmp;
 
 fn print_warnings() {
     if std::env::var("IAI_ALLOW_ASLR").is_ok() {
@@ -66,51 +63,7 @@ fn main() {
     match iai_callgrind_runner::runner::run() {
         Ok(_) => {}
         Err(error) => {
-            match error {
-                Error::VersionMismatch(cmp, runner_version, library_version) => match cmp {
-                    Cmp::Lt => error!(
-                        "iai-callgrind-runner ({0}) is older than iai-callgrind ({1}). Please \
-                         update iai-callgrind-runner by calling 'cargo install --version {1} \
-                         iai-callgrind-runner'",
-                        runner_version, library_version
-                    ),
-                    Cmp::Gt => error!(
-                        "iai-callgrind-runner ({0}) is newer than iai-callgrind ({1}). Please \
-                         update iai-callgrind to '{0}' in your Cargo.toml file",
-                        runner_version, library_version
-                    ),
-                    Cmp::Ne => error!(
-                        "No version information found for iai-callgrind but iai-callgrind-runner \
-                         ({0}) is >= '0.3.0'. Please update iai-callgrind to '{0}' in your \
-                         Cargo.toml file",
-                        runner_version
-                    ),
-                    _ => unreachable!(),
-                },
-                Error::LaunchError(exec, message) => {
-                    error!("Error executing '{}': {}", exec.display(), message)
-                }
-                Error::BenchmarkLaunchError(output) => {
-                    error!("Captured stderr:",);
-                    write_all_to_stderr(&output.stderr);
-                    error!(
-                        "Error launching benchmark: Exit code was: {}",
-                        output.status.code().unwrap()
-                    );
-                }
-                Error::Other(message) => {
-                    error!("{}", message);
-                }
-                Error::InvalidCallgrindBoolArgument((option, value)) => {
-                    error!(
-                        "Invalid callgrind argument for --{option}: '{value}'. Valid values are \
-                         'yes' or 'no'"
-                    );
-                }
-                Error::ParseError((path, message)) => {
-                    error!("Error parsing file '{}': {message}", path.display())
-                }
-            }
+            error!("{}", error.to_string());
             std::process::exit(1)
         }
     }

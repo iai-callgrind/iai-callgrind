@@ -3,10 +3,11 @@ use std::io::{self, stdin, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use anyhow::{anyhow, Context, Result};
 use log::{debug, log_enabled, trace, Level};
 use which::which;
 
-use crate::error::{Error, Result};
+use crate::error::Error;
 
 pub fn receive_benchmark<T>(num_bytes: usize) -> Result<T>
 where
@@ -16,7 +17,7 @@ where
     let mut stdin = stdin();
     stdin
         .read_to_end(&mut encoded)
-        .map_err(|error| Error::Other(format!("Failed to read encoded configuration: {error}")))?;
+        .with_context(|| "Failed to read encoded configuration")?;
     assert!(
         encoded.len() == num_bytes,
         "Bytes mismatch when decoding configuration: Expected {num_bytes} bytes but received: {} \
@@ -24,22 +25,10 @@ where
         encoded.len()
     );
 
-    let benchmark: T = bincode::deserialize(&encoded)
-        .map_err(|error| Error::Other(format!("Failed to decode configuration: {error}")))?;
+    let benchmark: T =
+        bincode::deserialize(&encoded).with_context(|| "Failed to decode configuration")?;
 
     Ok(benchmark)
-}
-
-pub fn join_os_string(slice: &[OsString], sep: &OsStr) -> OsString {
-    if let Some((first, suffix)) = slice.split_first() {
-        suffix.iter().fold(first.clone(), |mut a, b| {
-            a.push(sep);
-            a.push(b);
-            a
-        })
-    } else {
-        OsString::new()
-    }
 }
 
 pub fn concat_os_string<T, U>(first: T, second: U) -> OsString
@@ -171,10 +160,11 @@ where
             debug!("Found '{}': '{}'", binary.to_string_lossy(), path.display());
             Ok(path)
         }
-        Err(error) => Err(Error::Other(format!(
-            "{error}: '{0}' could not be found. Is '{0}' installed and added to the PATH?",
-            binary.to_string_lossy()
-        ))),
+        Err(error) => Err(
+            anyhow! {"{error}: '{0}' could not be found. Is '{0}' installed and added to the PATH?",
+                binary.to_string_lossy()
+            },
+        ),
     }
 }
 

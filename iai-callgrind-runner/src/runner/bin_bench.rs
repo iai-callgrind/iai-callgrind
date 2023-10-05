@@ -3,6 +3,7 @@ use std::fmt::Display;
 use std::path::PathBuf;
 use std::process::Command;
 
+use anyhow::{anyhow, Result};
 use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
@@ -14,7 +15,7 @@ use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput};
 use super::meta::Metadata;
 use super::print::Header;
 use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig};
-use crate::error::{Error, Result};
+use crate::error::Error;
 use crate::util::{copy_directory, receive_benchmark, write_all_to_stderr, write_all_to_stdout};
 
 #[derive(Debug)]
@@ -360,20 +361,20 @@ impl Groups {
         let mut counter: usize = 0;
         for run in runs {
             if run.args.is_empty() {
-                return Err(Error::Other(format!(
+                return Err(anyhow!(
                     "{module_path}: Found Run without an Argument. At least one argument must be \
                      specified: {run:?}"
-                )));
+                ));
             }
             let (orig, command) = if let Some(cmd) = run.cmd {
                 (cmd.display, PathBuf::from(cmd.cmd))
             } else if let Some(command) = cmd {
                 (command.display.clone(), PathBuf::from(&command.cmd))
             } else {
-                return Err(Error::Other(format!(
+                return Err(anyhow!(
                     "{module_path}: Found Run without a command. A command must be specified \
                      either at group level or run level: {run:?}"
-                )));
+                ));
             };
             let config = group_config.clone().update_from_all([Some(&run.config)]);
             let envs = config.resolve_envs();

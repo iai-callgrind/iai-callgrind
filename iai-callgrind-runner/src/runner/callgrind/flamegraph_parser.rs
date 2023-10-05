@@ -1,9 +1,10 @@
 use std::path::PathBuf;
 
+use anyhow::Result;
+
 use super::hashmap_parser::{CallgrindMap, HashMapParser, Id, RecordMember};
 use super::parser::{Parser, Sentinel};
 use super::CallgrindOutput;
-use crate::error::Result;
 use crate::runner::callgrind::hashmap_parser::Record;
 use crate::runner::flamegraph::{Stack, Stacks};
 

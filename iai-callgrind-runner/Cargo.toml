@@ -19,6 +19,7 @@ categories = ["development-tools::profiling", "development-tools::testing"]
 api = ["dep:serde"]
 default = ["runner", "api"]
 runner = [
+  "dep:anyhow",
   "dep:bincode",
   "dep:cargo_metadata",
   "dep:colored",
@@ -38,6 +39,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 all-features = true
 
 [dependencies]
+anyhow = { version = "1", optional = true }
 bincode = { version = "1", optional = true }
 cargo_metadata = { version = "0.17", optional = true }
 colored = { version = ">=1.6, <3", optional = true }

@@ -1,10 +1,11 @@
 use std::path::PathBuf;
 
+use anyhow::Result;
 use log::trace;
 
 use super::parser::{Parser, Sentinel};
 use super::{CallgrindOutput, CallgrindStats};
-use crate::error::{Error, Result};
+use crate::error::Error;
 use crate::runner::callgrind::parser::parse_header;
 
 pub struct SentinelParser {
@@ -45,7 +46,7 @@ impl Parser for SentinelParser {
 
         let mut iter = output.lines()?;
         let properties = parse_header(&mut iter)
-            .map_err(|message| Error::ParseError((output.path.clone(), message)))?;
+            .map_err(|error| Error::ParseError((output.path.clone(), error.to_string())))?;
 
         let mut costs = properties.costs_prototype;
         let mut start_record = false;

@@ -1,11 +1,11 @@
 use std::fmt::Display;
 
+use anyhow::{anyhow, Result};
 use log::{trace, warn};
 use serde::{Deserialize, Serialize};
 
 use super::model::{Costs, Positions};
 use super::CallgrindOutput;
-use crate::error::Result;
 
 pub trait Parser {
     type Output;
@@ -22,13 +22,11 @@ pub struct CallgrindProperties {
     pub positions_prototype: Positions,
 }
 
-pub fn parse_header(
-    iter: &mut impl Iterator<Item = String>,
-) -> std::result::Result<CallgrindProperties, String> {
+pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<CallgrindProperties> {
     if !iter
         .by_ref()
         .find(|l| !l.trim().is_empty())
-        .ok_or("Empty file")?
+        .ok_or(anyhow!("Empty file"))?
         .contains("callgrind format")
     {
         warn!("Missing file format specifier. Assuming callgrind format.");
@@ -44,7 +42,7 @@ pub fn parse_header(
         }
         match line.split_once(':').map(|(k, v)| (k.trim(), v.trim())) {
             Some(("version", version)) if version != "1" => {
-                return Err(format!(
+                return Err(anyhow!(
                     "Version mismatch: Requires callgrind format version '1' but was '{version}'"
                 ));
             }
@@ -69,7 +67,7 @@ pub fn parse_header(
 
     Ok(CallgrindProperties {
         costs_prototype: costs_prototype
-            .ok_or_else(|| "Header field 'events' must be present".to_owned())?,
+            .ok_or_else(|| anyhow!("Header field 'events' must be present"))?,
         positions_prototype: positions_prototype.unwrap_or_default(),
     })
 }
