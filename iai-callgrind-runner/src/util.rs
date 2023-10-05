@@ -1,4 +1,5 @@
-use std::ffi::{OsStr, OsString};
+//! This module provides common utility functions
+use std::ffi::OsStr;
 use std::io::{self, stdin, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -9,6 +10,10 @@ use which::which;
 
 use crate::error::Error;
 
+/// Method to read, decode and deserialize the data sent by iai-callgrind
+///
+/// iai-callgrind uses elements from the [`crate::api`], so the runner can understand which elements
+/// can be received by this method
 pub fn receive_benchmark<T>(num_bytes: usize) -> Result<T>
 where
     T: serde::de::DeserializeOwned,
@@ -31,16 +36,7 @@ where
     Ok(benchmark)
 }
 
-pub fn concat_os_string<T, U>(first: T, second: U) -> OsString
-where
-    T: Into<OsString>,
-    U: AsRef<OsStr>,
-{
-    let mut first = first.into();
-    first.push(second);
-    first
-}
-
+/// Convert a boolean value to a `yes` or `no` string
 pub fn bool_to_yesno(value: bool) -> String {
     if value {
         "yes".to_owned()
@@ -49,6 +45,10 @@ pub fn bool_to_yesno(value: bool) -> String {
     }
 }
 
+/// Convert a `yes` or `no` string to a boolean value
+///
+/// This method is the counterpart to [`bool_to_yesno`] and can fail if the string doesn't match
+/// exactly.
 pub fn yesno_to_bool(value: &str) -> Option<bool> {
     match value.trim() {
         "yes" => Some(true),
@@ -57,6 +57,7 @@ pub fn yesno_to_bool(value: &str) -> Option<bool> {
     }
 }
 
+/// Truncate a utf-8 [`std::str`] to a give `len`
 pub fn truncate_str_utf8(string: &str, len: usize) -> &str {
     if let Some((pos, c)) = string
         .char_indices()
@@ -69,6 +70,7 @@ pub fn truncate_str_utf8(string: &str, len: usize) -> &str {
     }
 }
 
+/// Trim a slice of `u8` from ascii whitespace
 pub fn trim(bytes: &[u8]) -> &[u8] {
     let from = match bytes.iter().position(|x| !x.is_ascii_whitespace()) {
         Some(i) => i,
@@ -81,6 +83,7 @@ pub fn trim(bytes: &[u8]) -> &[u8] {
     &bytes[from..=to]
 }
 
+/// Dump all bytes data to `stdout`
 pub fn write_all_to_stdout(bytes: &[u8]) {
     if !bytes.is_empty() {
         let stdout = io::stdout();
@@ -96,6 +99,7 @@ pub fn write_all_to_stdout(bytes: &[u8]) {
     }
 }
 
+/// Dump all bytes data to `stderr`
 pub fn write_all_to_stderr(bytes: &[u8]) {
     if !bytes.is_empty() {
         let stderr = io::stderr();
@@ -111,8 +115,11 @@ pub fn write_all_to_stderr(bytes: &[u8]) {
     }
 }
 
-pub fn copy_directory(source: &Path, into: &Path, follow_symlinks: bool) -> Result<()> {
-    let cp = get_absolute_path("cp")?;
+/// Copy a directory from `source` to `dest`
+///
+/// If `follow_symlinks` is true copy the symlinked file or directory instead of the symlink itself
+pub fn copy_directory(source: &Path, dest: &Path, follow_symlinks: bool) -> Result<()> {
+    let cp = resolve_binary_path("cp")?;
     let mut command = Command::new(&cp);
     if follow_symlinks {
         command.args(["-H", "--dereference"]);
@@ -123,7 +130,7 @@ pub fn copy_directory(source: &Path, into: &Path, follow_symlinks: bool) -> Resu
         "--preserve=mode,ownership,timestamps",
     ]);
     command.arg(source);
-    command.arg(into);
+    command.arg(dest);
     let (stdout, stderr) = command
         .output()
         .map_err(|error| Error::LaunchError(cp, error.to_string()))
@@ -150,7 +157,11 @@ pub fn copy_directory(source: &Path, into: &Path, follow_symlinks: bool) -> Resu
     Ok(())
 }
 
-pub fn get_absolute_path<T>(binary: T) -> Result<PathBuf>
+/// Try to resolve the absolute path of a binary from the `PATH` and relative paths
+///
+/// If the binary is a name without path separators the PATH is tried, otherwise if not absolute
+/// a relative path is tried. If the path is already absolute checks if it is executable.
+pub fn resolve_binary_path<T>(binary: T) -> Result<PathBuf>
 where
     T: AsRef<OsStr>,
 {
@@ -161,7 +172,7 @@ where
             Ok(path)
         }
         Err(error) => Err(
-            anyhow! {"{error}: '{0}' could not be found. Is '{0}' installed and added to the PATH?",
+            anyhow! {"{error}: '{0}' could not be found. Is '{0}' installed, executable and in the PATH?",
                 binary.to_string_lossy()
             },
         ),

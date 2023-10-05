@@ -17,13 +17,14 @@ use std::process::{Command, Output, Stdio};
 use anyhow::{anyhow, Context, Result};
 use colored::{ColoredString, Colorize};
 use log::{debug, error, info, Level};
-use which::which;
 
 use super::callgrind::args::Args;
 use super::meta::Metadata;
 use crate::api::ExitWith;
 use crate::error::Error;
-use crate::util::{truncate_str_utf8, write_all_to_stderr, write_all_to_stdout};
+use crate::util::{
+    resolve_binary_path, truncate_str_utf8, write_all_to_stderr, write_all_to_stdout,
+};
 
 #[derive(Debug, Default, Clone)]
 pub struct CallgrindOptions {
@@ -146,22 +147,7 @@ impl CallgrindCommand {
         let callgrind_args = callgrind_args.to_vec();
         debug!("Callgrind arguments: {}", &callgrind_args.join(" "));
 
-        let executable = if executable.is_absolute() {
-            executable.to_owned()
-        } else {
-            let e = which(executable).with_context(|| {
-                format!(
-                    "Failed to locate binary '{}'. Is executable and in your PATH?",
-                    executable.display()
-                )
-            })?;
-            debug!(
-                "Found command '{}' in the PATH: '{}'",
-                executable.display(),
-                e.display()
-            );
-            e
-        };
+        let executable = resolve_binary_path(executable)?;
 
         let (stdout, stderr) = command
             .arg("--tool=callgrind")
