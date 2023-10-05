@@ -6,7 +6,7 @@ use version_compare::Cmp;
 
 use crate::runner::write_all_to_stderr;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Error {
     VersionMismatch(version_compare::Cmp, String, String),
     LaunchError(PathBuf, String),

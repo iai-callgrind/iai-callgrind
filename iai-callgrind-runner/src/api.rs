@@ -1,3 +1,4 @@
+/// The api contains all elements which the `runner` can understand
 use std::ffi::OsString;
 use std::path::PathBuf;
 
@@ -63,6 +64,7 @@ pub struct BinaryBenchmarkConfig {
     pub exit_with: Option<ExitWith>,
     pub raw_callgrind_args: RawCallgrindArgs,
     pub envs: Vec<(OsString, Option<OsString>)>,
+    pub flamegraph: Option<FlamegraphConfig>,
 }
 
 impl BinaryBenchmarkConfig {
@@ -90,6 +92,7 @@ impl BinaryBenchmarkConfig {
                 .extend(other.raw_callgrind_args.0.iter());
 
             self.envs.extend_from_slice(&other.envs);
+            self.flamegraph = update_option(&self.flamegraph, &other.flamegraph);
         }
         self
     }
@@ -110,6 +113,7 @@ pub struct LibraryBenchmarkConfig {
     pub env_clear: Option<bool>,
     pub raw_callgrind_args: RawCallgrindArgs,
     pub envs: Vec<(OsString, Option<OsString>)>,
+    pub flamegraph: Option<FlamegraphConfig>,
 }
 
 impl LibraryBenchmarkConfig {
@@ -117,15 +121,20 @@ impl LibraryBenchmarkConfig {
     where
         T: IntoIterator<Item = Option<&'a Self>>,
     {
+        fn update_option<T: Clone>(first: &Option<T>, other: &Option<T>) -> Option<T> {
+            match (first, other) {
+                (None, None) => None,
+                (None, Some(v)) | (Some(v), None) => Some(v.clone()),
+                (Some(_), Some(w)) => Some(w.clone()),
+            }
+        }
+
         for other in others.into_iter().flatten() {
             self.raw_callgrind_args
                 .extend(other.raw_callgrind_args.0.iter());
-            self.env_clear = match (self.env_clear, other.env_clear) {
-                (None, None) => None,
-                (None, Some(v)) | (Some(v), None) => Some(v),
-                (Some(_), Some(w)) => Some(w),
-            };
+            self.env_clear = update_option(&self.env_clear, &other.env_clear);
             self.envs.extend_from_slice(&other.envs);
+            self.flamegraph = update_option(&self.flamegraph, &other.flamegraph);
         }
         self
     }
@@ -221,6 +230,89 @@ pub enum ExitWith {
     Success,
     Failure,
     Code(i32),
+}
+
+/// TODO: DOCUMENT
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Direction {
+    TopToBottom,
+    BottomToTop,
+}
+
+impl Default for Direction {
+    fn default() -> Self {
+        Self::BottomToTop
+    }
+}
+
+/// TODO: DOCUMENT
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EventType {
+    // always available
+    Ir,
+    // --cache-sim (always available)
+    Dr,
+    Dw,
+    I1mr,
+    ILmr,
+    D1mr,
+    DLmr,
+    D1mw,
+    DLmw,
+    // TODO: ENABLE THE ADDITIONAL TYPES
+    // By us
+    // L1Hits,
+    // LLHits,
+    // TotalRW,
+    // RamHits,
+    // EstimatedCycles,
+
+    // --collect-systime
+    SysCount,
+    SysTime,
+    SysCpuTime,
+    // --collect-bus
+    Ge,
+    // --branch-sim
+    Bc,
+    Bcm,
+    Bi,
+    Bim,
+    // --simulate-wb
+    ILdmr,
+    DLdmr,
+    DLdmw,
+    // --cachuse
+    AcCost1,
+    AcCost2,
+    SpLoss1,
+    SpLoss2,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FlamegraphConfig {
+    pub enable: bool,
+    pub event_types: Vec<EventType>,
+    pub ignore_missing: bool,
+    pub differential: bool,
+    pub direction: Direction,
+    pub title: Option<String>,
+    pub subtitle: Option<String>,
+}
+
+impl Default for FlamegraphConfig {
+    fn default() -> Self {
+        Self {
+            enable: true,
+            // TODO: CHANGE TO EstimatedCycles
+            event_types: vec![EventType::Ir],
+            ignore_missing: Default::default(),
+            differential: true,
+            direction: Direction::default(),
+            title: Option::default(),
+            subtitle: Option::default(),
+        }
+    }
 }
 
 #[cfg(test)]

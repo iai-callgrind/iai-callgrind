@@ -7,7 +7,7 @@ pub use iai_callgrind_runner::api::{
     BinaryBenchmarkConfig as InternalBinaryBenchmarkConfig,
     BinaryBenchmarkGroup as InternalBinaryBenchmarkGroup, Cmd as InternalCmd,
     ExitWith as InternalExitWith, Fixtures as InternalFixtures,
-    LibraryBenchmark as InternalLibraryBenchmark,
+    FlamegraphConfig as InternalFlamegraphConfig, LibraryBenchmark as InternalLibraryBenchmark,
     LibraryBenchmarkBench as InternalLibraryBenchmarkBench,
     LibraryBenchmarkBenches as InternalLibraryBenchmarkBenches,
     LibraryBenchmarkConfig as InternalLibraryBenchmarkConfig,

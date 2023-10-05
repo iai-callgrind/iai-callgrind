@@ -241,6 +241,7 @@
 
 pub use bincode;
 pub use iai_callgrind_macros::library_benchmark;
+pub use iai_callgrind_runner::api::{Direction, EventType};
 
 pub mod internal;
 mod macros;
@@ -314,6 +315,7 @@ impl LibraryBenchmarkConfig {
             env_clear: None,
             raw_callgrind_args: internal::InternalRawCallgrindArgs::new(args),
             envs: vec![],
+            flamegraph: None,
         })
     }
 
@@ -538,6 +540,15 @@ impl LibraryBenchmarkConfig {
         self.0
             .envs
             .extend(envs.into_iter().map(|k| (k.into(), None)));
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn flamegraph<T>(&mut self, config: T) -> &mut Self
+    where
+        T: Into<internal::InternalFlamegraphConfig>,
+    {
+        self.0.flamegraph = Some(config.into());
         self
     }
 }
@@ -961,6 +972,15 @@ impl BinaryBenchmarkConfig {
         T: Into<internal::InternalExitWith>,
     {
         self.0.exit_with = Some(value.into());
+        self
+    }
+    ///
+    /// TODO: DOCUMENT
+    pub fn flamegraph<T>(&mut self, config: T) -> &mut Self
+    where
+        T: Into<internal::InternalFlamegraphConfig>,
+    {
+        self.0.flamegraph = Some(config.into());
         self
     }
 }
@@ -1613,6 +1633,15 @@ impl Run {
         self.0.config.raw_callgrind_args.extend(args);
         self
     }
+
+    /// TODO: DOCUMENT
+    pub fn flamegraph<T>(&mut self, config: T) -> &mut Self
+    where
+        T: Into<internal::InternalFlamegraphConfig>,
+    {
+        self.0.config.flamegraph = Some(config.into());
+        self
+    }
 }
 
 /// The arguments needed for [`Run`] which are passed to the benchmarked binary
@@ -1876,6 +1905,57 @@ impl From<&ExitWith> for internal::InternalExitWith {
     }
 }
 
+/// TODO: DOCUMENT
+#[derive(Debug, Clone, Default)]
+pub struct FlamegraphConfig(internal::InternalFlamegraphConfig);
+
+impl FlamegraphConfig {
+    /// TODO: DOCUMENT
+    pub fn enable(&mut self, enable: bool) -> &mut Self {
+        self.0.enable = enable;
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn event_types<T>(&mut self, event_types: T) -> &mut Self
+    where
+        T: IntoIterator<Item = EventType>,
+    {
+        self.0.event_types = event_types.into_iter().collect();
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn ignore_missing(&mut self, ignore_missing: bool) -> &mut Self {
+        self.0.ignore_missing = ignore_missing;
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn differential(&mut self, differential: bool) -> &mut Self {
+        self.0.differential = differential;
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn direction(&mut self, direction: Direction) -> &mut Self {
+        self.0.direction = direction;
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn title(&mut self, title: String) -> &mut Self {
+        self.0.title = Some(title);
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn subtitle(&mut self, subtitle: Option<String>) -> &mut Self {
+        self.0.subtitle = subtitle;
+        self
+    }
+}
+
 macro_rules! impl_traits {
     ($src:ty, $dst:ty) => {
         impl From<$src> for $dst {
@@ -1916,3 +1996,4 @@ impl_traits!(
 impl_traits!(Run, internal::InternalRun);
 impl_traits!(Arg, internal::InternalArg);
 impl_traits!(Fixtures, internal::InternalFixtures);
+impl_traits!(FlamegraphConfig, internal::InternalFlamegraphConfig);
