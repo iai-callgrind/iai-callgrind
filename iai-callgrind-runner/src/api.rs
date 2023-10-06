@@ -304,7 +304,7 @@ impl Default for FlamegraphConfig {
     fn default() -> Self {
         Self {
             enable: true,
-            // TODO: CHANGE TO EstimatedCycles
+            // TODO: CHANGE TO EstimatedCycles ?
             event_types: vec![EventType::Ir],
             ignore_missing: Default::default(),
             differential: true,

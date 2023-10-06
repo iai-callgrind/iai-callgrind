@@ -29,9 +29,10 @@ struct BinBench {
 }
 
 impl BinBench {
+    // TODO:Add flamegraph
     fn run(&self, config: &Config, group: &Group) -> Result<()> {
         let command = CallgrindCommand::new(&config.meta);
-        let output = CallgrindOutput::create(
+        let output = CallgrindOutput::init(
             &config.meta.target_dir,
             &group.module_path,
             &format!("{}.{}", self.id, self.display),
@@ -47,7 +48,7 @@ impl BinBench {
 
         let new_stats = SummaryParser.parse(&output)?;
 
-        let old_output = output.old_output();
+        let old_output = output.to_old_output();
 
         #[allow(clippy::if_then_some_else_none)]
         let old_stats = if old_output.exists() {
@@ -128,7 +129,7 @@ impl Assistant {
             OsString::from(format!("{}::{}", &config.module, &self.name)),
         ];
 
-        let output = CallgrindOutput::create(
+        let output = CallgrindOutput::init(
             &config.meta.target_dir,
             &group.module_path,
             &format!("{}.{}", self.kind.id(), &self.name),
@@ -150,7 +151,7 @@ impl Assistant {
         let sentinel = Sentinel::from_path(&config.module, &self.name);
         let new_stats = SentinelParser::new(&sentinel, &config.bench_file).parse(&output)?;
 
-        let old_output = output.old_output();
+        let old_output = output.to_old_output();
 
         #[allow(clippy::if_then_some_else_none)]
         let old_stats = if old_output.exists() {

@@ -5,17 +5,16 @@ use std::fmt::Display;
 use indexmap::{indexmap, IndexMap};
 use serde::{Deserialize, Serialize};
 
-// TODO: Use CamelCase for sysCount etc.
-// TODO: Add derived event types like Cycles, L1Hits etc.
-#[allow(non_camel_case_types)]
+use crate::api;
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EventType {
     // always on
     Ir,
     // --collect-systime
-    sysCount,
-    sysTime,
-    sysCpuTime,
+    SysCount,
+    SysTime,
+    SysCpuTime,
     // --collect-bus
     Ge,
     // --cache-sim
@@ -43,6 +42,37 @@ pub enum EventType {
     SpLoss2,
 }
 
+impl From<api::EventType> for EventType {
+    fn from(value: api::EventType) -> Self {
+        match value {
+            api::EventType::Ir => EventType::Ir,
+            api::EventType::Dr => EventType::Dr,
+            api::EventType::Dw => EventType::Dw,
+            api::EventType::I1mr => EventType::I1mr,
+            api::EventType::ILmr => EventType::ILmr,
+            api::EventType::D1mr => EventType::D1mr,
+            api::EventType::DLmr => EventType::DLmr,
+            api::EventType::D1mw => EventType::D1mw,
+            api::EventType::DLmw => EventType::DLmw,
+            api::EventType::SysCount => EventType::SysCount,
+            api::EventType::SysTime => EventType::SysTime,
+            api::EventType::SysCpuTime => EventType::SysCpuTime,
+            api::EventType::Ge => EventType::Ge,
+            api::EventType::Bc => EventType::Bc,
+            api::EventType::Bcm => EventType::Bcm,
+            api::EventType::Bi => EventType::Bi,
+            api::EventType::Bim => EventType::Bim,
+            api::EventType::ILdmr => EventType::ILdmr,
+            api::EventType::DLdmr => EventType::DLdmr,
+            api::EventType::DLdmw => EventType::DLdmw,
+            api::EventType::AcCost1 => EventType::AcCost1,
+            api::EventType::AcCost2 => EventType::AcCost2,
+            api::EventType::SpLoss1 => EventType::SpLoss1,
+            api::EventType::SpLoss2 => EventType::SpLoss2,
+        }
+    }
+}
+
 impl<T> From<T> for EventType
 where
     T: AsRef<str>,
@@ -58,9 +88,9 @@ where
             "DLmr" => Self::DLmr,
             "D1mw" => Self::D1mw,
             "DLmw" => Self::DLmw,
-            "sysCount" => Self::sysCount,
-            "sysTime" => Self::sysTime,
-            "sysCpuTime" => Self::sysCpuTime,
+            "sysCount" => Self::SysCount,
+            "sysTime" => Self::SysTime,
+            "sysCpuTime" => Self::SysCpuTime,
             "Ge" => Self::Ge,
             "Bc" => Self::Bc,
             "Bcm" => Self::Bcm,

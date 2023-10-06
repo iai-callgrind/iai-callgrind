@@ -142,7 +142,7 @@ impl CallgrindCommand {
         } else {
             callgrind_args.collect_atstart = true;
         }
-        callgrind_args.set_output_file(&output.path);
+        callgrind_args.set_output_file(&output.0);
 
         let callgrind_args = callgrind_args.to_vec();
         debug!("Callgrind arguments: {}", &callgrind_args.join(" "));
@@ -181,9 +181,7 @@ impl CallgrindCommand {
 }
 
 #[derive(Debug)]
-pub struct CallgrindOutput {
-    pub path: PathBuf,
-}
+pub struct CallgrindOutput(PathBuf);
 
 impl CallgrindOutput {
     pub fn from_existing<T>(path: T) -> Result<Self>
@@ -197,10 +195,10 @@ impl CallgrindOutput {
                 path.display()
             ));
         }
-        Ok(Self { path })
+        Ok(Self(path))
     }
 
-    pub fn create(base_dir: &Path, module: &str, name: &str) -> Self {
+    pub fn init(base_dir: &Path, module: &str, name: &str) -> Self {
         let current = base_dir;
         let module_path: PathBuf = module.split("::").collect();
         let sanitized_name = sanitize_filename::sanitize_with_options(
@@ -219,45 +217,37 @@ impl CallgrindOutput {
         ));
 
         let path = current.join(base_dir).join(module_path).join(file_name);
-        let output = Self { path };
+        let output = Self(path);
 
-        std::fs::create_dir_all(output.path.parent().unwrap()).expect("Failed to create directory");
+        std::fs::create_dir_all(output.0.parent().unwrap()).expect("Failed to create directory");
 
-        if output.path.exists() {
-            let old_output = output.old_output();
+        if output.exists() {
+            let old_output = output.to_old_output();
             // Already run this benchmark once; move last results to .old
-            std::fs::copy(&output.path, old_output.path).unwrap();
+            std::fs::copy(&output.0, old_output.0).unwrap();
         }
 
         output
     }
 
     pub fn exists(&self) -> bool {
-        self.path.exists()
+        self.0.exists()
     }
 
     pub fn with_extension<T>(&self, extension: T) -> Self
     where
         T: AsRef<OsStr>,
     {
-        Self {
-            path: self.path.with_extension(extension),
-        }
+        Self(self.0.with_extension(extension))
     }
 
-    pub fn old_output(&self) -> Self {
-        CallgrindOutput {
-            path: self.path.with_extension("out.old"),
-        }
+    pub fn to_old_output(&self) -> Self {
+        Self(self.0.with_extension("out.old"))
     }
 
     pub fn open(&self) -> Result<File> {
-        File::open(&self.path).with_context(|| {
-            format!(
-                "Error opening callgrind output file '{}'",
-                self.path.display()
-            )
-        })
+        File::open(&self.0)
+            .with_context(|| format!("Error opening callgrind output file '{}'", self.0.display()))
     }
 
     pub fn lines(&self) -> Result<impl Iterator<Item = String>> {
@@ -266,11 +256,15 @@ impl CallgrindOutput {
             .lines()
             .map(std::result::Result::unwrap))
     }
+
+    pub fn as_path(&self) -> &Path {
+        &self.0
+    }
 }
 
 impl Display for CallgrindOutput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{}", self.path.display()))
+        f.write_fmt(format_args!("{}", self.0.display()))
     }
 }
 

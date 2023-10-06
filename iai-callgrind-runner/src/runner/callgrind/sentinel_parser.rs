@@ -46,7 +46,7 @@ impl Parser for SentinelParser {
 
         let mut iter = output.lines()?;
         let properties = parse_header(&mut iter)
-            .map_err(|error| Error::ParseError((output.path.clone(), error.to_string())))?;
+            .map_err(|error| Error::ParseError((output.0.clone(), error.to_string())))?;
 
         let mut costs = properties.costs_prototype;
         let mut start_record = false;

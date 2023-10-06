@@ -22,7 +22,7 @@ impl Parser for SummaryParser {
 
         let mut iter = output.lines()?;
         let config = parse_header(&mut iter)
-            .map_err(|error| Error::ParseError((output.path.clone(), error.to_string())))?;
+            .map_err(|error| Error::ParseError((output.0.clone(), error.to_string())))?;
 
         let mut costs = config.costs_prototype;
         for line in iter {

@@ -23,7 +23,7 @@ fn test_when_version_mismatch_then_should_return_error() {
     let parser = HashMapParser::default();
     let output = get_callgrind_output("callgrind.out/invalid.version_too_high.out");
     assert_parse_error(
-        &output.path,
+        output.as_path(),
         parser.parse(&output),
         "Version mismatch: Requires callgrind format version '1' but was '2'",
     );
@@ -33,7 +33,7 @@ fn test_when_version_mismatch_then_should_return_error() {
 fn test_when_empty_file_then_should_return_error() {
     let parser = HashMapParser::default();
     let output = get_callgrind_output("callgrind.out/empty.out");
-    assert_parse_error(&output.path, parser.parse(&output), "Empty file");
+    assert_parse_error(output.as_path(), parser.parse(&output), "Empty file");
 }
 
 #[test]

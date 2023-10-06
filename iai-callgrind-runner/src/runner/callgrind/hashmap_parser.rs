@@ -72,7 +72,7 @@ impl Parser for HashMapParser {
     fn parse(self, output: &CallgrindOutput) -> Result<Self::Output> {
         LinesParser::default()
             .parse(CallgrindMap::new(self.sentinel.as_ref()), output.lines()?)
-            .map_err(|error| Error::ParseError((output.path.clone(), error.to_string())).into())
+            .map_err(|error| Error::ParseError((output.0.clone(), error.to_string())).into())
     }
 }
 

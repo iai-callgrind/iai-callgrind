@@ -5,14 +5,13 @@ use anyhow::Result;
 
 use super::callgrind::args::Args;
 use super::callgrind::flamegraph_parser::FlamegraphParser;
-use super::callgrind::model::EventType;
 use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput};
 use super::flamegraph::Flamegraph;
 use super::meta::Metadata;
 use super::print::Header;
-use crate::api::LibraryBenchmark;
+use crate::api::{FlamegraphConfig, LibraryBenchmark};
 use crate::util::receive_benchmark;
 
 /// A `LibBench` represents a single benchmark from the `#[library_benchmark]` attribute macro
@@ -25,6 +24,7 @@ struct LibBench {
     args: Option<String>,
     opts: CallgrindOptions,
     callgrind_args: Args,
+    flamegraph: Option<FlamegraphConfig>,
 }
 
 impl LibBench {
@@ -48,13 +48,13 @@ impl LibBench {
 
         let sentinel = Sentinel::new("iai_callgrind::bench::");
         let output = if let Some(bench_id) = &self.id {
-            CallgrindOutput::create(
+            CallgrindOutput::init(
                 &config.meta.target_dir,
                 &group.module,
                 &format!("{}.{}", &self.function, bench_id),
             )
         } else {
-            CallgrindOutput::create(&config.meta.target_dir, &group.module, &self.function)
+            CallgrindOutput::init(&config.meta.target_dir, &group.module, &self.function)
         };
 
         command.run(
@@ -71,22 +71,23 @@ impl LibBench {
             self.args.clone(),
         );
 
-        FlamegraphParser::new(Some(&sentinel), &config.meta.project_root)
-            .parse(&output)
-            .and_then(|stacks| {
-                let flamegraph = Flamegraph {
-                    stacks,
-                    // TODO: These fields should be part of FlamegraphOptions (FlamegraphConfig)
-                    // (own not from inferno)
-                    title: header.to_title(),
-                    types: vec![EventType::Ir],
-                };
-                flamegraph.create(&output.path)
-            })?;
+        if let Some(flamegraph_config) = self.flamegraph.clone() {
+            if flamegraph_config.enable {
+                FlamegraphParser::new(Some(&sentinel), &config.meta.project_root)
+                    .parse(&output)
+                    .and_then(|stacks| {
+                        Flamegraph::new(header.to_title(), stacks, flamegraph_config).create(
+                            &output,
+                            Some(&sentinel),
+                            &config.meta.project_root,
+                        )
+                    })?;
+            }
+        }
 
         let new_stats = SentinelParser::new(&sentinel, &config.bench_file).parse(&output)?;
 
-        let old_output = output.old_output();
+        let old_output = output.to_old_output();
 
         #[allow(clippy::if_then_some_else_none)]
         let old_stats = if old_output.exists() {
@@ -146,6 +147,7 @@ impl Groups {
                         raw.extend_from_command_line_args(benchmark.command_line_args.as_slice());
                         Args::from_raw_callgrind_args(&raw)?
                     };
+                    let flamegraph = config.flamegraph;
                     let lib_bench = LibBench {
                         bench_index,
                         index,
@@ -159,6 +161,7 @@ impl Groups {
                             ..Default::default()
                         },
                         callgrind_args,
+                        flamegraph,
                     };
                     group.benches.push(lib_bench);
                 }
