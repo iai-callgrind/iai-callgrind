@@ -27,30 +27,6 @@ pub struct Args {
     callgrind_out_file: Option<PathBuf>,
 }
 
-impl Default for Args {
-    fn default() -> Self {
-        Self {
-            // Set some reasonable cache sizes. The exact sizes matter less than having fixed sizes,
-            // since otherwise callgrind would take them from the CPU and make benchmark runs
-            // even more incomparable between machines.
-            i1: String::from("32768,8,64"),
-            d1: String::from("32768,8,64"),
-            ll: String::from("8388608,16,64"),
-            cache_sim: true,
-            collect_atstart: false,
-            compress_pos: false,
-            compress_strings: false,
-            combine_dumps: true,
-            verbose: log_enabled!(log::Level::Debug),
-            dump_line: true,
-            dump_instr: false,
-            toggle_collect: VecDeque::default(),
-            callgrind_out_file: Option::default(),
-            other: Vec::default(),
-        }
-    }
-}
-
 impl Args {
     pub fn from_raw_callgrind_args(args: &RawCallgrindArgs) -> Result<Self> {
         let mut default = Self::default();
@@ -148,5 +124,29 @@ impl Args {
 
         args.extend_from_slice(self.other.as_slice());
         args
+    }
+}
+
+impl Default for Args {
+    fn default() -> Self {
+        Self {
+            // Set some reasonable cache sizes. The exact sizes matter less than having fixed sizes,
+            // since otherwise callgrind would take them from the CPU and make benchmark runs
+            // even more incomparable between machines.
+            i1: String::from("32768,8,64"),
+            d1: String::from("32768,8,64"),
+            ll: String::from("8388608,16,64"),
+            cache_sim: true,
+            collect_atstart: false,
+            compress_pos: false,
+            compress_strings: false,
+            combine_dumps: true,
+            verbose: log_enabled!(log::Level::Debug),
+            dump_line: true,
+            dump_instr: false,
+            toggle_collect: VecDeque::default(),
+            callgrind_out_file: Option::default(),
+            other: Vec::default(),
+        }
     }
 }

@@ -26,6 +26,10 @@ use crate::util::{
     resolve_binary_path, truncate_str_utf8, write_all_to_stderr, write_all_to_stdout,
 };
 
+pub struct CallgrindCommand {
+    command: Command,
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct CallgrindOptions {
     pub env_clear: bool,
@@ -35,8 +39,39 @@ pub struct CallgrindOptions {
     pub envs: Vec<(OsString, OsString)>,
 }
 
-pub struct CallgrindCommand {
-    command: Command,
+#[derive(Debug)]
+pub struct CallgrindOutput(PathBuf);
+
+#[derive(Clone, Debug)]
+pub struct CallgrindStats {
+    /// Ir: equals the number of instructions executed
+    instructions_executed: u64,
+    /// I1mr: I1 cache read misses
+    l1_instructions_cache_read_misses: u64,
+    /// ILmr: LL cache instruction read misses
+    l3_instructions_cache_read_misses: u64,
+    /// Dr: Memory reads
+    total_data_cache_reads: u64,
+    /// D1mr: D1 cache read misses
+    l1_data_cache_read_misses: u64,
+    /// DLmr: LL cache data read misses
+    l3_data_cache_read_misses: u64,
+    /// Dw: Memory writes
+    total_data_cache_writes: u64,
+    /// D1mw: D1 cache write misses
+    l1_data_cache_write_misses: u64,
+    /// DLmw: LL cache data write misses
+    l3_data_cache_write_misses: u64,
+}
+
+#[derive(Clone, Debug)]
+pub struct CallgrindSummary {
+    instructions: u64,
+    l1_hits: u64,
+    l3_hits: u64,
+    ram_hits: u64,
+    total_memory_rw: u64,
+    cycles: u64,
 }
 
 impl CallgrindCommand {
@@ -180,9 +215,6 @@ impl CallgrindCommand {
     }
 }
 
-#[derive(Debug)]
-pub struct CallgrindOutput(PathBuf);
-
 impl CallgrindOutput {
     pub fn from_existing<T>(path: T) -> Result<Self>
     where
@@ -266,38 +298,6 @@ impl Display for CallgrindOutput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.0.display()))
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct CallgrindSummary {
-    instructions: u64,
-    l1_hits: u64,
-    l3_hits: u64,
-    ram_hits: u64,
-    total_memory_rw: u64,
-    cycles: u64,
-}
-
-#[derive(Clone, Debug)]
-pub struct CallgrindStats {
-    /// Ir: equals the number of instructions executed
-    instructions_executed: u64,
-    /// I1mr: I1 cache read misses
-    l1_instructions_cache_read_misses: u64,
-    /// ILmr: LL cache instruction read misses
-    l3_instructions_cache_read_misses: u64,
-    /// Dr: Memory reads
-    total_data_cache_reads: u64,
-    /// D1mr: D1 cache read misses
-    l1_data_cache_read_misses: u64,
-    /// DLmr: LL cache data read misses
-    l3_data_cache_read_misses: u64,
-    /// Dw: Memory writes
-    total_data_cache_writes: u64,
-    /// D1mw: D1 cache write misses
-    l1_data_cache_write_misses: u64,
-    /// DLmw: LL cache data write misses
-    l3_data_cache_write_misses: u64,
 }
 
 impl CallgrindStats {

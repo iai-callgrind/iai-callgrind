@@ -14,6 +14,29 @@ use super::print::Header;
 use crate::api::{FlamegraphConfig, LibraryBenchmark};
 use crate::util::receive_benchmark;
 
+#[derive(Debug)]
+struct Config {
+    #[allow(unused)]
+    package_dir: PathBuf,
+    bench_file: PathBuf,
+    #[allow(unused)]
+    module: String,
+    bench_bin: PathBuf,
+    meta: Metadata,
+}
+
+// A `Group` is the organizational unit and counterpart of the `library_benchmark_group!` macro
+#[derive(Debug)]
+struct Group {
+    id: Option<String>,
+    benches: Vec<LibBench>,
+    module: String,
+}
+
+/// `Groups` is the top-level organizational unit of the `main!` macro for library benchmarks
+#[derive(Debug)]
+struct Groups(Vec<Group>);
+
 /// A `LibBench` represents a single benchmark from the `#[library_benchmark]` attribute macro
 #[derive(Debug)]
 struct LibBench {
@@ -25,6 +48,79 @@ struct LibBench {
     opts: CallgrindOptions,
     callgrind_args: Args,
     flamegraph: Option<FlamegraphConfig>,
+}
+
+#[derive(Debug)]
+struct Runner {
+    config: Config,
+    groups: Groups,
+}
+
+impl Groups {
+    fn from_library_benchmark(module: &str, benchmark: LibraryBenchmark) -> Result<Self> {
+        let global_config = &benchmark.config;
+        let mut groups = vec![];
+        for library_benchmark_group in benchmark.groups {
+            let module_path = if let Some(group_id) = &library_benchmark_group.id {
+                format!("{module}::{group_id}")
+            } else {
+                module.to_owned()
+            };
+            let mut group = Group {
+                id: library_benchmark_group.id,
+                module: module_path,
+                benches: vec![],
+            };
+            for (bench_index, library_benchmark_benches) in
+                library_benchmark_group.benches.into_iter().enumerate()
+            {
+                for (index, library_benchmark_bench) in
+                    library_benchmark_benches.benches.into_iter().enumerate()
+                {
+                    let config = global_config.clone().update_from_all([
+                        library_benchmark_group.config.as_ref(),
+                        library_benchmark_benches.config.as_ref(),
+                        library_benchmark_bench.config.as_ref(),
+                    ]);
+                    let envs = config.resolve_envs();
+                    let callgrind_args = {
+                        let mut raw = config.raw_callgrind_args;
+                        raw.extend_from_command_line_args(benchmark.command_line_args.as_slice());
+                        Args::from_raw_callgrind_args(&raw)?
+                    };
+                    let flamegraph = config.flamegraph;
+                    let lib_bench = LibBench {
+                        bench_index,
+                        index,
+                        id: library_benchmark_bench.id,
+                        function: library_benchmark_bench.bench,
+                        args: library_benchmark_bench.args,
+                        opts: CallgrindOptions {
+                            env_clear: config.env_clear.unwrap_or(true),
+                            entry_point: Some("iai_callgrind::bench::*".to_owned()),
+                            envs,
+                            ..Default::default()
+                        },
+                        callgrind_args,
+                        flamegraph,
+                    };
+                    group.benches.push(lib_bench);
+                }
+            }
+            groups.push(group);
+        }
+
+        Ok(Self(groups))
+    }
+
+    fn run(&self, config: &Config) -> Result<()> {
+        for group in &self.0 {
+            for bench in &group.benches {
+                bench.run(config, group)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 impl LibBench {
@@ -101,102 +197,6 @@ impl LibBench {
 
         Ok(())
     }
-}
-
-// A `Group` is the organizational unit and counterpart of the `library_benchmark_group!` macro
-#[derive(Debug)]
-struct Group {
-    id: Option<String>,
-    benches: Vec<LibBench>,
-    module: String,
-}
-
-/// `Groups` is the top-level organizational unit of the `main!` macro for library benchmarks
-#[derive(Debug)]
-struct Groups(Vec<Group>);
-
-impl Groups {
-    fn from_library_benchmark(module: &str, benchmark: LibraryBenchmark) -> Result<Self> {
-        let global_config = &benchmark.config;
-        let mut groups = vec![];
-        for library_benchmark_group in benchmark.groups {
-            let module_path = if let Some(group_id) = &library_benchmark_group.id {
-                format!("{module}::{group_id}")
-            } else {
-                module.to_owned()
-            };
-            let mut group = Group {
-                id: library_benchmark_group.id,
-                module: module_path,
-                benches: vec![],
-            };
-            for (bench_index, library_benchmark_benches) in
-                library_benchmark_group.benches.into_iter().enumerate()
-            {
-                for (index, library_benchmark_bench) in
-                    library_benchmark_benches.benches.into_iter().enumerate()
-                {
-                    let config = global_config.clone().update_from_all([
-                        library_benchmark_group.config.as_ref(),
-                        library_benchmark_benches.config.as_ref(),
-                        library_benchmark_bench.config.as_ref(),
-                    ]);
-                    let envs = config.resolve_envs();
-                    let callgrind_args = {
-                        let mut raw = config.raw_callgrind_args;
-                        raw.extend_from_command_line_args(benchmark.command_line_args.as_slice());
-                        Args::from_raw_callgrind_args(&raw)?
-                    };
-                    let flamegraph = config.flamegraph;
-                    let lib_bench = LibBench {
-                        bench_index,
-                        index,
-                        id: library_benchmark_bench.id,
-                        function: library_benchmark_bench.bench,
-                        args: library_benchmark_bench.args,
-                        opts: CallgrindOptions {
-                            env_clear: config.env_clear.unwrap_or(true),
-                            entry_point: Some("iai_callgrind::bench::*".to_owned()),
-                            envs,
-                            ..Default::default()
-                        },
-                        callgrind_args,
-                        flamegraph,
-                    };
-                    group.benches.push(lib_bench);
-                }
-            }
-            groups.push(group);
-        }
-
-        Ok(Self(groups))
-    }
-
-    fn run(&self, config: &Config) -> Result<()> {
-        for group in &self.0 {
-            for bench in &group.benches {
-                bench.run(config, group)?;
-            }
-        }
-        Ok(())
-    }
-}
-
-#[derive(Debug)]
-struct Config {
-    #[allow(unused)]
-    package_dir: PathBuf,
-    bench_file: PathBuf,
-    #[allow(unused)]
-    module: String,
-    bench_bin: PathBuf,
-    meta: Metadata,
-}
-
-#[derive(Debug)]
-struct Runner {
-    config: Config,
-    groups: Groups,
 }
 
 impl Runner {

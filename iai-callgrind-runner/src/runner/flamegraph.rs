@@ -13,15 +13,6 @@ use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::CallgrindOutput;
 use crate::api;
 
-impl From<api::Direction> for Direction {
-    fn from(value: api::Direction) -> Self {
-        match value {
-            api::Direction::TopToBottom => Direction::Inverted,
-            api::Direction::BottomToTop => Direction::Straight,
-        }
-    }
-}
-
 pub struct Config {
     pub title: String,
     pub subtitle: String,
@@ -34,6 +25,32 @@ pub struct Flamegraph {
     pub config: Config,
     pub event_types: Vec<EventType>,
     pub stacks: Stacks,
+}
+
+pub struct Output(PathBuf);
+
+#[derive(Debug, Default, Clone)]
+pub struct Stack {
+    pub entries: Vec<StackEntry>,
+    pub costs: Costs,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct StackEntry {
+    is_inline: bool,
+    value: String,
+}
+
+#[derive(Debug, Default)]
+pub struct Stacks(pub Vec<Stack>);
+
+impl From<api::Direction> for Direction {
+    fn from(value: api::Direction) -> Self {
+        match value {
+            api::Direction::TopToBottom => Direction::Inverted,
+            api::Direction::BottomToTop => Direction::Straight,
+        }
+    }
 }
 
 impl Flamegraph {
@@ -142,26 +159,38 @@ impl Flamegraph {
     }
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct StackEntry {
-    is_inline: bool,
-    value: String,
-}
-
-impl Display for StackEntry {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.is_inline {
-            f.write_fmt(format_args!("[{}]", self.value))
-        } else {
-            f.write_str(&self.value)
+impl Output {
+    pub fn init<T>(path: T, event_type: &EventType) -> Result<Self>
+    where
+        T: AsRef<Path>,
+    {
+        let path = path.as_ref().with_extension(format!("{event_type}.svg"));
+        if path.exists() {
+            let old_svg = path.with_extension("old.svg");
+            std::fs::copy(&path, &old_svg).with_context(|| {
+                format!(
+                    "Failed copying flamegraph file '{}' -> '{}'",
+                    &path.display(),
+                    &old_svg.display(),
+                )
+            })?;
         }
-    }
-}
 
-#[derive(Debug, Default, Clone)]
-pub struct Stack {
-    pub entries: Vec<StackEntry>,
-    pub costs: Costs,
+        Ok(Self(path))
+    }
+
+    pub fn create(&self) -> Result<File> {
+        File::create(&self.0)
+            .with_context(|| format!("Failed creating flamegraph file '{}'", self.0.display()))
+    }
+
+    pub fn exists(&self) -> bool {
+        self.0.exists()
+    }
+
+    pub fn to_diff_output(&self) -> Self {
+        Self(self.0.with_extension("diff.svg"))
+    }
 }
 
 impl Stack {
@@ -230,8 +259,15 @@ impl Stack {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct Stacks(pub Vec<Stack>);
+impl Display for StackEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.is_inline {
+            f.write_fmt(format_args!("[{}]", self.value))
+        } else {
+            f.write_str(&self.value)
+        }
+    }
+}
 
 impl Stacks {
     fn is_empty(&self) -> bool {
@@ -278,42 +314,6 @@ impl Stacks {
             stacks.push(s);
         }
         Ok(stacks)
-    }
-}
-
-pub struct Output(PathBuf);
-
-impl Output {
-    pub fn init<T>(path: T, event_type: &EventType) -> Result<Self>
-    where
-        T: AsRef<Path>,
-    {
-        let path = path.as_ref().with_extension(format!("{event_type}.svg"));
-        if path.exists() {
-            let old_svg = path.with_extension("old.svg");
-            std::fs::copy(&path, &old_svg).with_context(|| {
-                format!(
-                    "Failed copying flamegraph file '{}' -> '{}'",
-                    &path.display(),
-                    &old_svg.display(),
-                )
-            })?;
-        }
-
-        Ok(Self(path))
-    }
-
-    pub fn create(&self) -> Result<File> {
-        File::create(&self.0)
-            .with_context(|| format!("Failed creating flamegraph file '{}'", self.0.display()))
-    }
-
-    pub fn exists(&self) -> bool {
-        self.0.exists()
-    }
-
-    pub fn to_diff_output(&self) -> Self {
-        Self(self.0.with_extension("diff.svg"))
     }
 }
 

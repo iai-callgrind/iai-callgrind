@@ -16,6 +16,89 @@ pub struct CallgrindMap {
     pub sentinel_key: Option<Id>,
 }
 
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CfnRecord {
+    pub file: Option<String>,
+    // a cfn line must be present
+    pub cfn: String,
+    pub cob: Option<String>,
+    // and cfl
+    pub cfi: Option<String>,
+    // doesn't this depend on the PositionMode??
+    pub calls: Calls,
+    pub costs: Costs,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HashMapParser {
+    pub sentinel: Option<Sentinel>,
+}
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Serialize, Deserialize)]
+pub struct Id {
+    pub func: String,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InlineRecord {
+    pub file: Option<String>,
+    pub fi: Option<String>,
+    pub fe: Option<String>,
+    pub costs: Costs,
+}
+
+struct LinesParser {
+    properties: CallgrindProperties,
+    record: Option<TemporaryRecord>,
+    cfn_record: Option<CfnRecord>,
+    inline_record: Option<InlineRecord>,
+    current_state: State,
+    // The state before entering the cfn record
+    old_state: Option<State>,
+    target: Option<(String, String)>,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Record {
+    pub file: Option<String>,
+    pub inclusive_costs: Costs,
+    pub self_costs: Costs,
+    pub ob: Option<String>,
+    pub members: Vec<RecordMember>,
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RecordMember {
+    Cfn(CfnRecord),
+    Inline(InlineRecord),
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+enum State {
+    Header,
+    Record,
+    CfnRecord,
+    InlineRecord,
+    CostLine,
+    None,
+    Footer,
+}
+
+/// The `TemporaryRecord` is used to collect all information until we can construct the key/value
+/// pair for the hash map
+#[derive(Debug, Default)]
+struct TemporaryRecord {
+    // fn
+    func: Option<String>,
+    ob: Option<String>,
+    fl: Option<String>,
+    inclusive_costs: Costs,
+    self_costs: Costs,
+    members: Vec<RecordMember>,
+}
+
+type Split<'line> = Option<(&'line str, &'line str)>;
+
 impl CallgrindMap {
     fn insert_record(&mut self, record: TemporaryRecord) {
         let func = record.func.expect("A record must have an fn entry");
@@ -61,9 +144,13 @@ impl CallgrindMap {
     }
 }
 
-#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct HashMapParser {
-    pub sentinel: Option<Sentinel>,
+impl CfnRecord {
+    pub fn from_prototype(costs: &Costs) -> Self {
+        Self {
+            costs: costs.clone(),
+            ..Default::default()
+        }
+    }
 }
 
 impl Parser for HashMapParser {
@@ -76,42 +163,6 @@ impl Parser for HashMapParser {
     }
 }
 
-/// The `TemporaryRecord` is used to collect all information until we can construct the key/value
-/// pair for the hash map
-#[derive(Debug, Default)]
-struct TemporaryRecord {
-    // fn
-    func: Option<String>,
-    ob: Option<String>,
-    fl: Option<String>,
-    inclusive_costs: Costs,
-    self_costs: Costs,
-    members: Vec<RecordMember>,
-}
-
-impl TemporaryRecord {
-    pub fn from_prototype(costs: &Costs) -> Self {
-        Self {
-            inclusive_costs: costs.clone(),
-            self_costs: costs.clone(),
-            ..Default::default()
-        }
-    }
-}
-
-#[derive(Debug, Hash, PartialEq, Eq, Clone, Serialize, Deserialize)]
-pub struct Id {
-    pub func: String,
-}
-
-#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct InlineRecord {
-    pub file: Option<String>,
-    pub fi: Option<String>,
-    pub fe: Option<String>,
-    pub costs: Costs,
-}
-
 impl InlineRecord {
     pub fn from_prototype(costs: &Costs) -> Self {
         Self {
@@ -120,101 +171,6 @@ impl InlineRecord {
         }
     }
 }
-
-#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CfnRecord {
-    pub file: Option<String>,
-    // a cfn line must be present
-    pub cfn: String,
-    pub cob: Option<String>,
-    // and cfl
-    pub cfi: Option<String>,
-    // doesn't this depend on the PositionMode??
-    pub calls: Calls,
-    pub costs: Costs,
-}
-
-impl CfnRecord {
-    pub fn from_prototype(costs: &Costs) -> Self {
-        Self {
-            costs: costs.clone(),
-            ..Default::default()
-        }
-    }
-}
-
-#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Record {
-    pub file: Option<String>,
-    pub inclusive_costs: Costs,
-    pub self_costs: Costs,
-    pub ob: Option<String>,
-    pub members: Vec<RecordMember>,
-}
-
-impl Record {
-    pub fn from_prototype(costs: &Costs) -> Self {
-        Self {
-            inclusive_costs: costs.clone(),
-            self_costs: costs.clone(),
-            ..Default::default()
-        }
-    }
-
-    pub fn with_event_types(types: &[EventType]) -> Self {
-        let costs = Costs::with_event_types(types);
-        Self {
-            inclusive_costs: costs.clone(),
-            self_costs: costs,
-            ..Default::default()
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum RecordMember {
-    Cfn(CfnRecord),
-    Inline(InlineRecord),
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-enum State {
-    Header,
-    Record,
-    CfnRecord,
-    InlineRecord,
-    CostLine,
-    None,
-    Footer,
-}
-
-type Split<'line> = Option<(&'line str, &'line str)>;
-
-struct LinesParser {
-    properties: CallgrindProperties,
-    record: Option<TemporaryRecord>,
-    cfn_record: Option<CfnRecord>,
-    inline_record: Option<InlineRecord>,
-    current_state: State,
-    // The state before entering the cfn record
-    old_state: Option<State>,
-    target: Option<(String, String)>,
-}
-
-impl Default for LinesParser {
-    fn default() -> Self {
-        Self {
-            properties: CallgrindProperties::default(),
-            record: Option::default(),
-            cfn_record: Option::default(),
-            inline_record: Option::default(),
-            current_state: State::Header,
-            old_state: Option::default(),
-            target: Option::default(),
-        }
-    }
-}
-
 impl LinesParser {
     fn reset(&mut self) {
         self.record = None;
@@ -513,5 +469,48 @@ impl LinesParser {
         }
 
         Ok(())
+    }
+}
+
+impl Default for LinesParser {
+    fn default() -> Self {
+        Self {
+            properties: CallgrindProperties::default(),
+            record: Option::default(),
+            cfn_record: Option::default(),
+            inline_record: Option::default(),
+            current_state: State::Header,
+            old_state: Option::default(),
+            target: Option::default(),
+        }
+    }
+}
+
+impl Record {
+    pub fn from_prototype(costs: &Costs) -> Self {
+        Self {
+            inclusive_costs: costs.clone(),
+            self_costs: costs.clone(),
+            ..Default::default()
+        }
+    }
+
+    pub fn with_event_types(types: &[EventType]) -> Self {
+        let costs = Costs::with_event_types(types);
+        Self {
+            inclusive_costs: costs.clone(),
+            self_costs: costs,
+            ..Default::default()
+        }
+    }
+}
+
+impl TemporaryRecord {
+    pub fn from_prototype(costs: &Costs) -> Self {
+        Self {
+            inclusive_costs: costs.clone(),
+            self_costs: costs.clone(),
+            ..Default::default()
+        }
     }
 }
