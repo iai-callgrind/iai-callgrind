@@ -250,20 +250,113 @@ use std::ffi::OsString;
 use std::fmt::Display;
 use std::path::PathBuf;
 
-/// A function that is opaque to the optimizer, used to prevent the compiler from
-/// optimizing away computations in a benchmark.
-///
-/// This variant is stable-compatible, but it may cause some performance overhead
-/// or fail to prevent code from being eliminated.
-pub fn black_box<T>(dummy: T) -> T {
-    // SAFETY: The safety conditions for read_volatile and forget are satisfied
-    unsafe {
-        let ret = std::ptr::read_volatile(&dummy);
-        std::mem::forget(dummy);
-        ret
-    }
+macro_rules! impl_traits {
+    ($src:ty, $dst:ty) => {
+        impl From<$src> for $dst {
+            fn from(value: $src) -> Self {
+                value.0
+            }
+        }
+
+        impl From<&$src> for $dst {
+            fn from(value: &$src) -> Self {
+                value.0.clone()
+            }
+        }
+
+        impl From<&mut $src> for $dst {
+            fn from(value: &mut $src) -> Self {
+                value.0.clone()
+            }
+        }
+
+        impl AsRef<$src> for $src {
+            fn as_ref(&self) -> &$src {
+                self
+            }
+        }
+    };
 }
 
+/// The arguments needed for [`Run`] which are passed to the benchmarked binary
+#[derive(Debug, Clone)]
+pub struct Arg(internal::InternalArg);
+
+/// An id for an [`Arg`] which can be used to produce unique ids from parameters
+#[derive(Debug, Clone)]
+pub struct BenchmarkId {
+    id: String,
+}
+
+/// The main configuration of a binary benchmark.
+///
+/// Currently it's only possible to pass additional arguments to valgrind's callgrind for all
+/// benchmarks. See [`BinaryBenchmarkConfig::raw_callgrind_args`] for more details.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// # use iai_callgrind::binary_benchmark_group;
+/// # binary_benchmark_group!(name = some_group; benchmark = |group: &mut BinaryBenchmarkGroup| {});
+/// use iai_callgrind::BinaryBenchmarkConfig;
+///
+/// iai_callgrind::main!(
+///     config = BinaryBenchmarkConfig::default().raw_callgrind_args(["toggle-collect=something"]);
+///     binary_benchmark_groups = some_group
+/// );
+/// ```
+#[derive(Debug, Default, Clone)]
+pub struct BinaryBenchmarkConfig(internal::InternalBinaryBenchmarkConfig);
+
+/// The `BinaryBenchmarkGroup` lets you configure binary benchmark [`Run`]s
+#[derive(Debug, Default, Clone)]
+pub struct BinaryBenchmarkGroup(internal::InternalBinaryBenchmarkGroup);
+
+/// Set the expected exit status of a binary benchmark
+///
+/// Per default, the benchmarked binary is expected to succeed, but if a benchmark is expected to
+/// fail, setting this option is required.
+///
+/// # Examples
+///
+/// ```rust
+/// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+/// # binary_benchmark_group!(
+/// #    name = my_group;
+/// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
+/// use iai_callgrind::{main, BinaryBenchmarkConfig, ExitWith};
+///
+/// # fn main() {
+/// main!(
+///     config = BinaryBenchmarkConfig::default().exit_with(ExitWith::Code(1));
+///     binary_benchmark_groups = my_group
+/// );
+/// # }
+/// ```
+#[derive(Debug, Clone)]
+pub enum ExitWith {
+    /// Exit with success is similar to `ExitCode(0)`
+    Success,
+    /// Exit with failure is similar to setting the `ExitCode` to something different than `0`
+    Failure,
+    /// The exact `ExitCode` of the benchmark run
+    Code(i32),
+}
+
+/// A builder of `Fixtures` to specify the fixtures directory which will be copied into the sandbox
+///
+/// # Examples
+///
+/// ```rust
+/// use iai_callgrind::Fixtures;
+/// let fixtures: Fixtures = Fixtures::new("benches/fixtures");
+/// ```
+#[derive(Debug, Clone)]
+pub struct Fixtures(internal::InternalFixtures);
+
+/// TODO: DOCUMENT
+#[derive(Debug, Clone, Default)]
+pub struct FlamegraphConfig(internal::InternalFlamegraphConfig);
 /// The main configuration of a library benchmark.
 ///
 /// See [`LibraryBenchmarkConfig::raw_callgrind_args`] for more details.
@@ -286,292 +379,136 @@ pub fn black_box<T>(dummy: T) -> T {
 #[derive(Debug, Default)]
 pub struct LibraryBenchmarkConfig(internal::InternalLibraryBenchmarkConfig);
 
-impl LibraryBenchmarkConfig {
-    /// Create a new `LibraryBenchmarkConfig` with raw callgrind arguments
+/// `Run` let's you set up and configure a benchmark run of a binary
+#[derive(Debug, Default, Clone)]
+pub struct Run(internal::InternalRun);
+
+impl Arg {
+    /// Create a new `Arg`.
     ///
-    /// See also [`LibraryBenchmarkConfig::raw_callgrind_args`].
+    /// The `id` must be unique within the same group. It's also possible to use [`BenchmarkId`] as
+    /// an argument for the `id` if you want to create unique ids from a parameter.
+    ///
+    /// An `Arg` can contain multiple arguments which are passed to the benchmarked binary as is. In
+    /// the case of no arguments at all, it's more convenient to use [`Arg::empty`].
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
-    /// # #[library_benchmark]
-    /// # fn some_func() {}
-    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
-    /// # fn main() {
-    /// main!(
-    ///     config =
-    ///         LibraryBenchmarkConfig::with_raw_callgrind_args(["toggle-collect=something"]);
-    ///     library_benchmark_groups = some_group
+    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    /// use std::ffi::OsStr;
+    ///
+    /// binary_benchmark_group!(
+    ///     name = my_exe_group;
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
+    ///         group.bench(Run::with_arg(Arg::new("foo", &["foo"])));
+    ///         group.bench(Run::with_arg(Arg::new("foo bar", &["foo", "bar"])));
+    ///         group.bench(Run::with_arg(Arg::new("os str foo", &[OsStr::new("foo")])));
+    ///     }
     /// );
+    /// # fn main() {
+    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
     /// # }
     /// ```
-    pub fn with_raw_callgrind_args<I, T>(args: T) -> Self
+    ///
+    /// Here's a short example which makes use of the [`BenchmarkId`] to generate unique ids for
+    /// each `Arg`:
+    ///
+    /// ```rust
+    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run, BenchmarkId};
+    /// use std::ffi::OsStr;
+    ///
+    /// binary_benchmark_group!(
+    ///     name = my_exe_group;
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
+    ///         for i in 0..10 {
+    ///             group.bench(Run::with_arg(
+    ///                 Arg::new(BenchmarkId::new("foo with", i), [format!("--foo={i}")])
+    ///             ));
+    ///         }
+    ///     }
+    /// );
+    /// # fn main() {
+    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
+    /// # }
+    pub fn new<T, I, U>(id: T, args: U) -> Self
     where
-        I: AsRef<str>,
-        T: IntoIterator<Item = I>,
+        T: Into<String>,
+        I: Into<OsString>,
+        U: IntoIterator<Item = I>,
     {
-        Self(internal::InternalLibraryBenchmarkConfig {
-            env_clear: None,
-            raw_callgrind_args: internal::InternalRawCallgrindArgs::new(args),
-            envs: vec![],
-            flamegraph: None,
+        Self(internal::InternalArg {
+            id: Some(id.into()),
+            args: args.into_iter().map(std::convert::Into::into).collect(),
         })
     }
 
-    /// Add callgrind arguments to this `LibraryBenchmarkConfig`
+    /// Create a new `Arg` with no arguments for the benchmarked binary
     ///
-    /// The arguments don't need to start with a flag: `--toggle-collect=some` or
-    /// `toggle-collect=some` are both understood.
-    ///
-    /// Not all callgrind arguments are understood by `iai-callgrind` or cause problems in
-    /// `iai-callgrind` if they would be applied. `iai-callgrind` will issue a warning in
-    /// such cases. Some of the defaults can be overwritten. The default settings are:
-    ///
-    /// * `--I1=32768,8,64`
-    /// * `--D1=32768,8,64`
-    /// * `--LL=8388608,16,64`
-    /// * `--cache-sim=yes` (can't be changed)
-    /// * `--toggle-collect=*BENCHMARK_FILE::BENCHMARK_FUNCTION` (this first toggle can't
-    /// be changed)
-    /// * `--collect-atstart=no` (overwriting this setting will have no effect)
-    /// * `--compress-pos=no`
-    /// * `--compress-strings=no`
-    ///
-    /// Note that `toggle-collect` is an array and the entry point for library benchmarks
-    /// is the benchmark function. This default toggle switches event counting on when
-    /// entering this benchmark function and off when leaving it. So, additional toggles
-    /// for example matching a function within the benchmark function will switch the
-    /// event counting off when entering the matched function and on again when leaving
-    /// it!
-    ///
-    /// See also [Callgrind Command-line
-    /// Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options)
+    /// See also [`Arg::new`]
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
-    /// # #[library_benchmark]
-    /// # fn some_func() {}
-    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
-    /// # fn main() {
-    /// main!(
-    ///     config = LibraryBenchmarkConfig::default()
-    ///                 .raw_callgrind_args(["toggle-collect=something"]);
-    ///     library_benchmark_groups = some_group
+    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    ///
+    /// binary_benchmark_group!(
+    ///     name = my_exe_group;
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
+    ///         group.bench(Run::with_arg(Arg::empty("empty foo")));
+    ///     }
     /// );
-    /// # }
-    /// ```
-    pub fn raw_callgrind_args<I, T>(&mut self, args: T) -> &mut Self
-    where
-        I: AsRef<str>,
-        T: IntoIterator<Item = I>,
-    {
-        self.raw_callgrind_args_iter(args);
-        self
-    }
-
-    /// Add elements of an iterator over callgrind arguments to this `LibraryBenchmarkConfig`
-    ///
-    /// See also [`LibraryBenchmarkConfig::raw_callgrind_args`]
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
-    /// # #[library_benchmark]
-    /// # fn some_func() {}
-    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
     /// # fn main() {
-    /// main!(
-    ///     config = LibraryBenchmarkConfig::default()
-    ///                 .raw_callgrind_args_iter(["toggle-collect=something"].iter());
-    ///     library_benchmark_groups = some_group
-    /// );
+    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
     /// # }
-    /// ```
-    pub fn raw_callgrind_args_iter<I, T>(&mut self, args: T) -> &mut Self
+    pub fn empty<T>(id: T) -> Self
     where
-        I: AsRef<str>,
-        T: IntoIterator<Item = I>,
+        T: Into<String>,
     {
-        self.0.raw_callgrind_args.extend(args);
-        self
-    }
-
-    /// Clear the environment variables before running a benchmark (Default: true)
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
-    /// # #[library_benchmark]
-    /// # fn some_func() {}
-    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
-    /// # fn main() {
-    /// main!(
-    ///     config = LibraryBenchmarkConfig::default().env_clear(false);
-    ///     library_benchmark_groups = some_group
-    /// );
-    /// # }
-    /// ```
-    pub fn env_clear(&mut self, value: bool) -> &mut Self {
-        self.0.env_clear = Some(value);
-        self
-    }
-    /// Add an environment variables which will be available in library benchmarks
-    ///
-    /// These environment variables are available independently of the setting of
-    /// [`LibraryBenchmarkConfig::env_clear`].
-    ///
-    /// # Examples
-    ///
-    /// An example for a custom environment variable, available in all benchmarks:
-    ///
-    /// ```rust
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
-    /// # #[library_benchmark]
-    /// # fn some_func() {}
-    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
-    /// # fn main() {
-    /// main!(
-    ///     config = LibraryBenchmarkConfig::default().env("FOO", "BAR");
-    ///     library_benchmark_groups = some_group
-    /// );
-    /// # }
-    /// ```
-    pub fn env<K, V>(&mut self, key: K, value: V) -> &mut Self
-    where
-        K: Into<OsString>,
-        V: Into<OsString>,
-    {
-        self.0.envs.push((key.into(), Some(value.into())));
-        self
-    }
-
-    /// Add multiple environment variables which will be available in library benchmarks
-    ///
-    /// See also [`LibraryBenchmarkConfig::env`] for more details.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
-    /// # #[library_benchmark]
-    /// # fn some_func() {}
-    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
-    /// # fn main() {
-    /// main!(
-    ///     config =
-    ///         LibraryBenchmarkConfig::default().envs([("MY_CUSTOM_VAR", "SOME_VALUE"), ("FOO", "BAR")]);
-    ///     library_benchmark_groups = some_group
-    /// );
-    /// # }
-    /// ```
-    pub fn envs<K, V, T>(&mut self, envs: T) -> &mut Self
-    where
-        K: Into<OsString>,
-        V: Into<OsString>,
-        T: IntoIterator<Item = (K, V)>,
-    {
-        self.0
-            .envs
-            .extend(envs.into_iter().map(|(k, v)| (k.into(), Some(v.into()))));
-        self
-    }
-
-    /// Specify a pass-through environment variable
-    ///
-    /// Usually, the environment variables before running a library benchmark are cleared
-    /// but specifying pass-through variables makes this environment variable available to
-    /// the benchmark as it actually appeared in the root environment.
-    ///
-    /// Pass-through environment variables are ignored if they don't exist in the root
-    /// environment.
-    ///
-    /// # Examples
-    ///
-    /// Here, we chose to pass-through the original value of the `HOME` variable:
-    ///
-    /// ```rust
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
-    /// # #[library_benchmark]
-    /// # fn some_func() {}
-    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
-    /// # fn main() {
-    /// main!(
-    ///     config = LibraryBenchmarkConfig::default().pass_through_env("HOME");
-    ///     library_benchmark_groups = some_group
-    /// );
-    /// # }
-    /// ```
-    pub fn pass_through_env<K>(&mut self, key: K) -> &mut Self
-    where
-        K: Into<OsString>,
-    {
-        self.0.envs.push((key.into(), None));
-        self
-    }
-
-    /// Specify multiple pass-through environment variables
-    ///
-    /// See also [`LibraryBenchmarkConfig::pass_through_env`].
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
-    /// # #[library_benchmark]
-    /// # fn some_func() {}
-    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
-    /// # fn main() {
-    /// main!(
-    ///     config = LibraryBenchmarkConfig::default().pass_through_envs(["HOME", "USER"]);
-    ///     library_benchmark_groups = some_group
-    /// );
-    /// # }
-    /// ```
-    pub fn pass_through_envs<K, T>(&mut self, envs: T) -> &mut Self
-    where
-        K: Into<OsString>,
-        T: IntoIterator<Item = K>,
-    {
-        self.0
-            .envs
-            .extend(envs.into_iter().map(|k| (k.into(), None)));
-        self
-    }
-
-    /// TODO: DOCUMENT
-    pub fn flamegraph<T>(&mut self, config: T) -> &mut Self
-    where
-        T: Into<internal::InternalFlamegraphConfig>,
-    {
-        self.0.flamegraph = Some(config.into());
-        self
+        Self(internal::InternalArg {
+            id: Some(id.into()),
+            args: vec![],
+        })
     }
 }
 
-/// The main configuration of a binary benchmark.
-///
-/// Currently it's only possible to pass additional arguments to valgrind's callgrind for all
-/// benchmarks. See [`BinaryBenchmarkConfig::raw_callgrind_args`] for more details.
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// # use iai_callgrind::binary_benchmark_group;
-/// # binary_benchmark_group!(name = some_group; benchmark = |group: &mut BinaryBenchmarkGroup| {});
-/// use iai_callgrind::BinaryBenchmarkConfig;
-///
-/// iai_callgrind::main!(
-///     config = BinaryBenchmarkConfig::default().raw_callgrind_args(["toggle-collect=something"]);
-///     binary_benchmark_groups = some_group
-/// );
-/// ```
-#[derive(Debug, Default, Clone)]
-pub struct BinaryBenchmarkConfig(internal::InternalBinaryBenchmarkConfig);
+impl_traits!(Arg, internal::InternalArg);
+
+impl BenchmarkId {
+    /// Create a new `BenchmarkId`.
+    ///
+    /// Use [`BenchmarkId`] as an argument for the `id` of an [`Arg`] if you want to create unique
+    /// ids from a parameter.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run, BenchmarkId};
+    /// use std::ffi::OsStr;
+    ///
+    /// binary_benchmark_group!(
+    ///     name = my_exe_group;
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
+    ///         for i in 0..10 {
+    ///             group.bench(Run::with_arg(
+    ///                 Arg::new(BenchmarkId::new("foo with", i), [format!("--foo={i}")])
+    ///             ));
+    ///         }
+    ///     }
+    /// );
+    /// # fn main() {
+    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
+    /// # }
+    pub fn new<T, P>(id: T, parameter: P) -> Self
+    where
+        T: AsRef<str>,
+        P: Display,
+    {
+        Self {
+            id: format!("{}_{parameter}", id.as_ref()),
+        }
+    }
+}
 
 impl BinaryBenchmarkConfig {
     /// Copy [`Fixtures`] into the sandbox (if enabled)
@@ -985,9 +922,10 @@ impl BinaryBenchmarkConfig {
     }
 }
 
-/// The `BinaryBenchmarkGroup` lets you configure binary benchmark [`Run`]s
-#[derive(Debug, Default, Clone)]
-pub struct BinaryBenchmarkGroup(internal::InternalBinaryBenchmarkGroup);
+impl_traits!(
+    BinaryBenchmarkConfig,
+    internal::InternalBinaryBenchmarkConfig
+);
 
 impl BinaryBenchmarkGroup {
     /// Specify a [`Run`] to benchmark a binary
@@ -1049,9 +987,408 @@ impl From<internal::InternalBinaryBenchmarkGroup> for BinaryBenchmarkGroup {
     }
 }
 
-/// `Run` let's you set up and configure a benchmark run of a binary
-#[derive(Debug, Default, Clone)]
-pub struct Run(internal::InternalRun);
+impl_traits!(BinaryBenchmarkGroup, internal::InternalBinaryBenchmarkGroup);
+
+impl Fixtures {
+    /// Create a new `Fixtures` struct
+    ///
+    /// The fixtures argument specifies a path to a directory containing fixtures which you want to
+    /// be available for all benchmarks and the `before`, `after`, `setup` and `teardown` functions.
+    /// Per default, the fixtures directory will be copied as is into the sandbox directory of the
+    /// benchmark including symlinks. See [`Fixtures::follow_symlinks`] to change that behavior.
+    ///
+    /// Relative paths are interpreted relative to the benchmarked package. In a multi-package
+    /// workspace this'll be the package name of the benchmark. Otherwise, it'll be the workspace
+    /// root.
+    ///
+    /// # Examples
+    ///
+    /// Here, the directory `benches/my_fixtures` (with a file `test_1.txt` in it) in the root of
+    /// the package under test will be copied into the temporary workspace (for example
+    /// `/tmp/.tmp12345678`). So,the benchmarks can access a fixture `test_1.txt` with a relative
+    /// path like `my_fixtures/test_1.txt`
+    ///
+    /// ```rust
+    /// use iai_callgrind::Fixtures;
+    ///
+    /// let fixtures: Fixtures = Fixtures::new("benches/my_fixtures");
+    /// ```
+    pub fn new<T>(path: T) -> Self
+    where
+        T: Into<PathBuf>,
+    {
+        Self(internal::InternalFixtures {
+            path: path.into(),
+            follow_symlinks: false,
+        })
+    }
+
+    /// If set to `true`, resolve symlinks in the [`Fixtures`] source directory
+    ///
+    /// If set to `true` and the [`Fixtures`] directory contains symlinks, these symlinks are
+    /// resolved and instead of the symlink the target file or directory will be copied into the
+    /// fixtures directory.
+    ///
+    /// # Examples
+    ///
+    /// Here, the directory `benches/my_fixtures` (with a symlink `test_1.txt -> ../../test_1.txt`
+    /// in it) in the root of the package under test will be copied into the sandbox directory
+    /// (for example `/tmp/.tmp12345678`). Since `follow_symlink` is `true`, the benchmarks can
+    /// access a fixture `test_1.txt` with a relative path like `my_fixtures/test_1.txt`
+    ///
+    /// ```rust
+    /// use iai_callgrind::Fixtures;
+    ///
+    /// let fixtures: &mut Fixtures = Fixtures::new("benches/my_fixtures").follow_symlinks(true);
+    /// ```
+    pub fn follow_symlinks(&mut self, value: bool) -> &mut Self {
+        self.0.follow_symlinks = value;
+        self
+    }
+}
+
+impl_traits!(Fixtures, internal::InternalFixtures);
+
+impl FlamegraphConfig {
+    /// TODO: DOCUMENT
+    pub fn enable(&mut self, enable: bool) -> &mut Self {
+        self.0.enable = enable;
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn event_types<T>(&mut self, event_types: T) -> &mut Self
+    where
+        T: IntoIterator<Item = EventType>,
+    {
+        self.0.event_types = event_types.into_iter().collect();
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn ignore_missing(&mut self, ignore_missing: bool) -> &mut Self {
+        self.0.ignore_missing = ignore_missing;
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn differential(&mut self, differential: bool) -> &mut Self {
+        self.0.differential = differential;
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn direction(&mut self, direction: Direction) -> &mut Self {
+        self.0.direction = direction;
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn title(&mut self, title: String) -> &mut Self {
+        self.0.title = Some(title);
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn subtitle(&mut self, subtitle: Option<String>) -> &mut Self {
+        self.0.subtitle = subtitle;
+        self
+    }
+}
+
+impl_traits!(FlamegraphConfig, internal::InternalFlamegraphConfig);
+
+impl From<ExitWith> for internal::InternalExitWith {
+    fn from(value: ExitWith) -> Self {
+        match value {
+            ExitWith::Success => Self::Success,
+            ExitWith::Failure => Self::Failure,
+            ExitWith::Code(c) => Self::Code(c),
+        }
+    }
+}
+
+impl From<&ExitWith> for internal::InternalExitWith {
+    fn from(value: &ExitWith) -> Self {
+        match value {
+            ExitWith::Success => Self::Success,
+            ExitWith::Failure => Self::Failure,
+            ExitWith::Code(c) => Self::Code(*c),
+        }
+    }
+}
+
+impl LibraryBenchmarkConfig {
+    /// Create a new `LibraryBenchmarkConfig` with raw callgrind arguments
+    ///
+    /// See also [`LibraryBenchmarkConfig::raw_callgrind_args`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// main!(
+    ///     config =
+    ///         LibraryBenchmarkConfig::with_raw_callgrind_args(["toggle-collect=something"]);
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn with_raw_callgrind_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(internal::InternalLibraryBenchmarkConfig {
+            env_clear: None,
+            raw_callgrind_args: internal::InternalRawCallgrindArgs::new(args),
+            envs: vec![],
+            flamegraph: None,
+        })
+    }
+
+    /// Add callgrind arguments to this `LibraryBenchmarkConfig`
+    ///
+    /// The arguments don't need to start with a flag: `--toggle-collect=some` or
+    /// `toggle-collect=some` are both understood.
+    ///
+    /// Not all callgrind arguments are understood by `iai-callgrind` or cause problems in
+    /// `iai-callgrind` if they would be applied. `iai-callgrind` will issue a warning in
+    /// such cases. Some of the defaults can be overwritten. The default settings are:
+    ///
+    /// * `--I1=32768,8,64`
+    /// * `--D1=32768,8,64`
+    /// * `--LL=8388608,16,64`
+    /// * `--cache-sim=yes` (can't be changed)
+    /// * `--toggle-collect=*BENCHMARK_FILE::BENCHMARK_FUNCTION` (this first toggle can't
+    /// be changed)
+    /// * `--collect-atstart=no` (overwriting this setting will have no effect)
+    /// * `--compress-pos=no`
+    /// * `--compress-strings=no`
+    ///
+    /// Note that `toggle-collect` is an array and the entry point for library benchmarks
+    /// is the benchmark function. This default toggle switches event counting on when
+    /// entering this benchmark function and off when leaving it. So, additional toggles
+    /// for example matching a function within the benchmark function will switch the
+    /// event counting off when entering the matched function and on again when leaving
+    /// it!
+    ///
+    /// See also [Callgrind Command-line
+    /// Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///                 .raw_callgrind_args(["toggle-collect=something"]);
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn raw_callgrind_args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.raw_callgrind_args_iter(args);
+        self
+    }
+
+    /// Add elements of an iterator over callgrind arguments to this `LibraryBenchmarkConfig`
+    ///
+    /// See also [`LibraryBenchmarkConfig::raw_callgrind_args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///                 .raw_callgrind_args_iter(["toggle-collect=something"].iter());
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn raw_callgrind_args_iter<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_callgrind_args.extend(args);
+        self
+    }
+
+    /// Clear the environment variables before running a benchmark (Default: true)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default().env_clear(false);
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn env_clear(&mut self, value: bool) -> &mut Self {
+        self.0.env_clear = Some(value);
+        self
+    }
+    /// Add an environment variables which will be available in library benchmarks
+    ///
+    /// These environment variables are available independently of the setting of
+    /// [`LibraryBenchmarkConfig::env_clear`].
+    ///
+    /// # Examples
+    ///
+    /// An example for a custom environment variable, available in all benchmarks:
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default().env("FOO", "BAR");
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn env<K, V>(&mut self, key: K, value: V) -> &mut Self
+    where
+        K: Into<OsString>,
+        V: Into<OsString>,
+    {
+        self.0.envs.push((key.into(), Some(value.into())));
+        self
+    }
+
+    /// Add multiple environment variables which will be available in library benchmarks
+    ///
+    /// See also [`LibraryBenchmarkConfig::env`] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// main!(
+    ///     config =
+    ///         LibraryBenchmarkConfig::default().envs([("MY_CUSTOM_VAR", "SOME_VALUE"), ("FOO", "BAR")]);
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn envs<K, V, T>(&mut self, envs: T) -> &mut Self
+    where
+        K: Into<OsString>,
+        V: Into<OsString>,
+        T: IntoIterator<Item = (K, V)>,
+    {
+        self.0
+            .envs
+            .extend(envs.into_iter().map(|(k, v)| (k.into(), Some(v.into()))));
+        self
+    }
+
+    /// Specify a pass-through environment variable
+    ///
+    /// Usually, the environment variables before running a library benchmark are cleared
+    /// but specifying pass-through variables makes this environment variable available to
+    /// the benchmark as it actually appeared in the root environment.
+    ///
+    /// Pass-through environment variables are ignored if they don't exist in the root
+    /// environment.
+    ///
+    /// # Examples
+    ///
+    /// Here, we chose to pass-through the original value of the `HOME` variable:
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default().pass_through_env("HOME");
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn pass_through_env<K>(&mut self, key: K) -> &mut Self
+    where
+        K: Into<OsString>,
+    {
+        self.0.envs.push((key.into(), None));
+        self
+    }
+
+    /// Specify multiple pass-through environment variables
+    ///
+    /// See also [`LibraryBenchmarkConfig::pass_through_env`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default().pass_through_envs(["HOME", "USER"]);
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn pass_through_envs<K, T>(&mut self, envs: T) -> &mut Self
+    where
+        K: Into<OsString>,
+        T: IntoIterator<Item = K>,
+    {
+        self.0
+            .envs
+            .extend(envs.into_iter().map(|k| (k.into(), None)));
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn flamegraph<T>(&mut self, config: T) -> &mut Self
+    where
+        T: Into<internal::InternalFlamegraphConfig>,
+    {
+        self.0.flamegraph = Some(config.into());
+        self
+    }
+}
+
+impl_traits!(
+    LibraryBenchmarkConfig,
+    internal::InternalLibraryBenchmarkConfig
+);
 
 impl Run {
     /// Create a new `Run` with a `cmd` and [`Arg`]
@@ -1644,209 +1981,7 @@ impl Run {
     }
 }
 
-/// The arguments needed for [`Run`] which are passed to the benchmarked binary
-#[derive(Debug, Clone)]
-pub struct Arg(internal::InternalArg);
-
-impl Arg {
-    /// Create a new `Arg`.
-    ///
-    /// The `id` must be unique within the same group. It's also possible to use [`BenchmarkId`] as
-    /// an argument for the `id` if you want to create unique ids from a parameter.
-    ///
-    /// An `Arg` can contain multiple arguments which are passed to the benchmarked binary as is. In
-    /// the case of no arguments at all, it's more convenient to use [`Arg::empty`].
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
-    /// use std::ffi::OsStr;
-    ///
-    /// binary_benchmark_group!(
-    ///     name = my_exe_group;
-    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
-    ///         group.bench(Run::with_arg(Arg::new("foo", &["foo"])));
-    ///         group.bench(Run::with_arg(Arg::new("foo bar", &["foo", "bar"])));
-    ///         group.bench(Run::with_arg(Arg::new("os str foo", &[OsStr::new("foo")])));
-    ///     }
-    /// );
-    /// # fn main() {
-    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
-    /// # }
-    /// ```
-    ///
-    /// Here's a short example which makes use of the [`BenchmarkId`] to generate unique ids for
-    /// each `Arg`:
-    ///
-    /// ```rust
-    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run, BenchmarkId};
-    /// use std::ffi::OsStr;
-    ///
-    /// binary_benchmark_group!(
-    ///     name = my_exe_group;
-    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
-    ///         for i in 0..10 {
-    ///             group.bench(Run::with_arg(
-    ///                 Arg::new(BenchmarkId::new("foo with", i), [format!("--foo={i}")])
-    ///             ));
-    ///         }
-    ///     }
-    /// );
-    /// # fn main() {
-    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
-    /// # }
-    pub fn new<T, I, U>(id: T, args: U) -> Self
-    where
-        T: Into<String>,
-        I: Into<OsString>,
-        U: IntoIterator<Item = I>,
-    {
-        Self(internal::InternalArg {
-            id: Some(id.into()),
-            args: args.into_iter().map(std::convert::Into::into).collect(),
-        })
-    }
-
-    /// Create a new `Arg` with no arguments for the benchmarked binary
-    ///
-    /// See also [`Arg::new`]
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
-    ///
-    /// binary_benchmark_group!(
-    ///     name = my_exe_group;
-    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
-    ///         group.bench(Run::with_arg(Arg::empty("empty foo")));
-    ///     }
-    /// );
-    /// # fn main() {
-    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
-    /// # }
-    pub fn empty<T>(id: T) -> Self
-    where
-        T: Into<String>,
-    {
-        Self(internal::InternalArg {
-            id: Some(id.into()),
-            args: vec![],
-        })
-    }
-}
-
-/// A builder of `Fixtures` to specify the fixtures directory which will be copied into the sandbox
-///
-/// # Examples
-///
-/// ```rust
-/// use iai_callgrind::Fixtures;
-/// let fixtures: Fixtures = Fixtures::new("benches/fixtures");
-/// ```
-#[derive(Debug, Clone)]
-pub struct Fixtures(internal::InternalFixtures);
-
-impl Fixtures {
-    /// Create a new `Fixtures` struct
-    ///
-    /// The fixtures argument specifies a path to a directory containing fixtures which you want to
-    /// be available for all benchmarks and the `before`, `after`, `setup` and `teardown` functions.
-    /// Per default, the fixtures directory will be copied as is into the sandbox directory of the
-    /// benchmark including symlinks. See [`Fixtures::follow_symlinks`] to change that behavior.
-    ///
-    /// Relative paths are interpreted relative to the benchmarked package. In a multi-package
-    /// workspace this'll be the package name of the benchmark. Otherwise, it'll be the workspace
-    /// root.
-    ///
-    /// # Examples
-    ///
-    /// Here, the directory `benches/my_fixtures` (with a file `test_1.txt` in it) in the root of
-    /// the package under test will be copied into the temporary workspace (for example
-    /// `/tmp/.tmp12345678`). So,the benchmarks can access a fixture `test_1.txt` with a relative
-    /// path like `my_fixtures/test_1.txt`
-    ///
-    /// ```rust
-    /// use iai_callgrind::Fixtures;
-    ///
-    /// let fixtures: Fixtures = Fixtures::new("benches/my_fixtures");
-    /// ```
-    pub fn new<T>(path: T) -> Self
-    where
-        T: Into<PathBuf>,
-    {
-        Self(internal::InternalFixtures {
-            path: path.into(),
-            follow_symlinks: false,
-        })
-    }
-
-    /// If set to `true`, resolve symlinks in the [`Fixtures`] source directory
-    ///
-    /// If set to `true` and the [`Fixtures`] directory contains symlinks, these symlinks are
-    /// resolved and instead of the symlink the target file or directory will be copied into the
-    /// fixtures directory.
-    ///
-    /// # Examples
-    ///
-    /// Here, the directory `benches/my_fixtures` (with a symlink `test_1.txt -> ../../test_1.txt`
-    /// in it) in the root of the package under test will be copied into the sandbox directory
-    /// (for example `/tmp/.tmp12345678`). Since `follow_symlink` is `true`, the benchmarks can
-    /// access a fixture `test_1.txt` with a relative path like `my_fixtures/test_1.txt`
-    ///
-    /// ```rust
-    /// use iai_callgrind::Fixtures;
-    ///
-    /// let fixtures: &mut Fixtures = Fixtures::new("benches/my_fixtures").follow_symlinks(true);
-    /// ```
-    pub fn follow_symlinks(&mut self, value: bool) -> &mut Self {
-        self.0.follow_symlinks = value;
-        self
-    }
-}
-
-/// An id for an [`Arg`] which can be used to produce unique ids from parameters
-#[derive(Debug, Clone)]
-pub struct BenchmarkId {
-    id: String,
-}
-
-impl BenchmarkId {
-    /// Create a new `BenchmarkId`.
-    ///
-    /// Use [`BenchmarkId`] as an argument for the `id` of an [`Arg`] if you want to create unique
-    /// ids from a parameter.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run, BenchmarkId};
-    /// use std::ffi::OsStr;
-    ///
-    /// binary_benchmark_group!(
-    ///     name = my_exe_group;
-    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
-    ///         for i in 0..10 {
-    ///             group.bench(Run::with_arg(
-    ///                 Arg::new(BenchmarkId::new("foo with", i), [format!("--foo={i}")])
-    ///             ));
-    ///         }
-    ///     }
-    /// );
-    /// # fn main() {
-    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
-    /// # }
-    pub fn new<T, P>(id: T, parameter: P) -> Self
-    where
-        T: AsRef<str>,
-        P: Display,
-    {
-        Self {
-            id: format!("{}_{parameter}", id.as_ref()),
-        }
-    }
-}
+impl_traits!(Run, internal::InternalRun);
 
 impl From<BenchmarkId> for String {
     fn from(value: BenchmarkId) -> Self {
@@ -1854,146 +1989,16 @@ impl From<BenchmarkId> for String {
     }
 }
 
-/// Set the expected exit status of a binary benchmark
+/// A function that is opaque to the optimizer, used to prevent the compiler from
+/// optimizing away computations in a benchmark.
 ///
-/// Per default, the benchmarked binary is expected to succeed, but if a benchmark is expected to
-/// fail, setting this option is required.
-///
-/// # Examples
-///
-/// ```rust
-/// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
-/// # binary_benchmark_group!(
-/// #    name = my_group;
-/// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
-/// use iai_callgrind::{main, BinaryBenchmarkConfig, ExitWith};
-///
-/// # fn main() {
-/// main!(
-///     config = BinaryBenchmarkConfig::default().exit_with(ExitWith::Code(1));
-///     binary_benchmark_groups = my_group
-/// );
-/// # }
-/// ```
-#[derive(Debug, Clone)]
-pub enum ExitWith {
-    /// Exit with success is similar to `ExitCode(0)`
-    Success,
-    /// Exit with failure is similar to setting the `ExitCode` to something different than `0`
-    Failure,
-    /// The exact `ExitCode` of the benchmark run
-    Code(i32),
-}
-
-impl From<ExitWith> for internal::InternalExitWith {
-    fn from(value: ExitWith) -> Self {
-        match value {
-            ExitWith::Success => Self::Success,
-            ExitWith::Failure => Self::Failure,
-            ExitWith::Code(c) => Self::Code(c),
-        }
+/// This variant is stable-compatible, but it may cause some performance overhead
+/// or fail to prevent code from being eliminated.
+pub fn black_box<T>(dummy: T) -> T {
+    // SAFETY: The safety conditions for read_volatile and forget are satisfied
+    unsafe {
+        let ret = std::ptr::read_volatile(&dummy);
+        std::mem::forget(dummy);
+        ret
     }
 }
-
-impl From<&ExitWith> for internal::InternalExitWith {
-    fn from(value: &ExitWith) -> Self {
-        match value {
-            ExitWith::Success => Self::Success,
-            ExitWith::Failure => Self::Failure,
-            ExitWith::Code(c) => Self::Code(*c),
-        }
-    }
-}
-
-/// TODO: DOCUMENT
-#[derive(Debug, Clone, Default)]
-pub struct FlamegraphConfig(internal::InternalFlamegraphConfig);
-
-impl FlamegraphConfig {
-    /// TODO: DOCUMENT
-    pub fn enable(&mut self, enable: bool) -> &mut Self {
-        self.0.enable = enable;
-        self
-    }
-
-    /// TODO: DOCUMENT
-    pub fn event_types<T>(&mut self, event_types: T) -> &mut Self
-    where
-        T: IntoIterator<Item = EventType>,
-    {
-        self.0.event_types = event_types.into_iter().collect();
-        self
-    }
-
-    /// TODO: DOCUMENT
-    pub fn ignore_missing(&mut self, ignore_missing: bool) -> &mut Self {
-        self.0.ignore_missing = ignore_missing;
-        self
-    }
-
-    /// TODO: DOCUMENT
-    pub fn differential(&mut self, differential: bool) -> &mut Self {
-        self.0.differential = differential;
-        self
-    }
-
-    /// TODO: DOCUMENT
-    pub fn direction(&mut self, direction: Direction) -> &mut Self {
-        self.0.direction = direction;
-        self
-    }
-
-    /// TODO: DOCUMENT
-    pub fn title(&mut self, title: String) -> &mut Self {
-        self.0.title = Some(title);
-        self
-    }
-
-    /// TODO: DOCUMENT
-    pub fn subtitle(&mut self, subtitle: Option<String>) -> &mut Self {
-        self.0.subtitle = subtitle;
-        self
-    }
-}
-
-macro_rules! impl_traits {
-    ($src:ty, $dst:ty) => {
-        impl From<$src> for $dst {
-            fn from(value: $src) -> Self {
-                value.0
-            }
-        }
-
-        impl From<&$src> for $dst {
-            fn from(value: &$src) -> Self {
-                value.0.clone()
-            }
-        }
-
-        impl From<&mut $src> for $dst {
-            fn from(value: &mut $src) -> Self {
-                value.0.clone()
-            }
-        }
-
-        impl AsRef<$src> for $src {
-            fn as_ref(&self) -> &$src {
-                self
-            }
-        }
-    };
-}
-
-impl_traits!(BinaryBenchmarkGroup, internal::InternalBinaryBenchmarkGroup);
-impl_traits!(
-    BinaryBenchmarkConfig,
-    internal::InternalBinaryBenchmarkConfig
-);
-impl_traits!(
-    LibraryBenchmarkConfig,
-    internal::InternalLibraryBenchmarkConfig
-);
-impl_traits!(Run, internal::InternalRun);
-impl_traits!(Arg, internal::InternalArg);
-impl_traits!(Fixtures, internal::InternalFixtures);
-impl_traits!(FlamegraphConfig, internal::InternalFlamegraphConfig);
