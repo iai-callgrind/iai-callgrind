@@ -8,13 +8,15 @@ use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
 use super::callgrind::args::Args;
+use super::callgrind::flamegraph_parser::FlamegraphParser;
 use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput};
+use super::flamegraph::Flamegraph;
 use super::meta::Metadata;
 use super::print::Header;
-use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig};
+use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig, FlamegraphConfig};
 use crate::error::Error;
 use crate::util::{copy_directory, receive_benchmark, write_all_to_stderr, write_all_to_stdout};
 
@@ -26,10 +28,10 @@ struct BinBench {
     args: Vec<OsString>,
     opts: CallgrindOptions,
     callgrind_args: Args,
+    flamegraph: Option<FlamegraphConfig>,
 }
 
 impl BinBench {
-    // TODO:Add flamegraph
     fn run(&self, config: &Config, group: &Group) -> Result<()> {
         let command = CallgrindCommand::new(&config.meta);
         let output = CallgrindOutput::init(
@@ -46,6 +48,22 @@ impl BinBench {
             &output,
         )?;
 
+        let header = Header::new(&group.module_path, self.id.clone(), self.to_string());
+        let sentinel = self.opts.entry_point.as_ref().map(Sentinel::new);
+        if let Some(flamegraph_config) = self.flamegraph.clone() {
+            if flamegraph_config.enable {
+                FlamegraphParser::new(sentinel.as_ref(), &config.meta.project_root)
+                    .parse(&output)
+                    .and_then(|stacks| {
+                        Flamegraph::new(header.to_title(), stacks, flamegraph_config).create(
+                            &output,
+                            sentinel.as_ref(),
+                            &config.meta.project_root,
+                        )
+                    })?;
+            }
+        }
+
         let new_stats = SummaryParser.parse(&output)?;
 
         let old_output = output.to_old_output();
@@ -57,7 +75,7 @@ impl BinBench {
             None
         };
 
-        Header::new(&group.module_path, self.id.clone(), self.to_string()).print();
+        header.print();
         new_stats.print(old_stats);
         Ok(())
     }
@@ -400,6 +418,7 @@ impl Groups {
                         envs: envs.clone(),
                     },
                     callgrind_args: Args::from_raw_callgrind_args(&config.raw_callgrind_args)?,
+                    flamegraph: config.flamegraph.clone(),
                 });
             }
         }

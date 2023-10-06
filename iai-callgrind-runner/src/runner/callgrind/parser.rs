@@ -76,8 +76,11 @@ pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<Callgrind
 pub struct Sentinel(String);
 
 impl Sentinel {
-    pub fn new(value: &str) -> Self {
-        Self(value.to_owned())
+    pub fn new<T>(value: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self(value.into())
     }
 
     pub fn from_path(module: &str, function: &str) -> Self {
