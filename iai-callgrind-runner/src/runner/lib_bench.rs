@@ -4,14 +4,14 @@ use std::path::PathBuf;
 use anyhow::Result;
 
 use super::callgrind::args::Args;
+use super::callgrind::flamegraph::{Config as FlamegraphConfig, Flamegraph};
 use super::callgrind::flamegraph_parser::FlamegraphParser;
 use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput};
-use super::flamegraph::Flamegraph;
 use super::meta::Metadata;
 use super::print::Header;
-use crate::api::{FlamegraphConfig, LibraryBenchmark};
+use crate::api::LibraryBenchmark;
 use crate::util::receive_benchmark;
 
 #[derive(Debug)]
@@ -88,7 +88,7 @@ impl Groups {
                         raw.extend_from_command_line_args(benchmark.command_line_args.as_slice());
                         Args::from_raw_callgrind_args(&raw)?
                     };
-                    let flamegraph = config.flamegraph;
+                    let flamegraph = config.flamegraph.map(std::convert::Into::into);
                     let lib_bench = LibBench {
                         bench_index,
                         index,
@@ -171,8 +171,8 @@ impl LibBench {
             if flamegraph_config.enable {
                 FlamegraphParser::new(Some(&sentinel), &config.meta.project_root)
                     .parse(&output)
-                    .and_then(|stacks| {
-                        Flamegraph::new(header.to_title(), stacks, flamegraph_config).create(
+                    .and_then(|map| {
+                        Flamegraph::new(header.to_title(), map, flamegraph_config).create(
                             &output,
                             Some(&sentinel),
                             &config.meta.project_root,

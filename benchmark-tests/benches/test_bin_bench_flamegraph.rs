@@ -36,20 +36,20 @@ binary_benchmark_group!(
     name = flamegraph_configurations;
     benchmark = |"benchmark-tests-exit", group: &mut BinaryBenchmarkGroup| {
         group
-        // .bench(
-        //     Run::with_arg(Arg::new("ignore_missing_event_type", ["0"]))
-        //     .flamegraph(
-        //         FlamegraphConfig::default()
-        //         .event_types([EventType::SysCpuTime])
-        //         .ignore_missing(true)
-        //     )
-        // )
-        // .bench(
-        //     Run::with_arg(Arg::new("no_event_types_then_no_flamegraph", ["0"]))
-        //     .flamegraph(
-        //         FlamegraphConfig::default().event_types([])
-        //     )
-        // )
+        .bench(
+            Run::with_arg(Arg::new("ignore_missing_event_type", ["0"]))
+            .flamegraph(
+                FlamegraphConfig::default()
+                .event_types([EventType::SysCpuTime])
+                .ignore_missing(true)
+            )
+        )
+        .bench(
+            Run::with_arg(Arg::new("no_event_types_then_no_flamegraph", ["0"]))
+            .flamegraph(
+                FlamegraphConfig::default().event_types([])
+            )
+        )
         .bench(
             Run::with_arg(Arg::new("with_entry_point", ["0"]))
             .entry_point("benchmark_tests_exit::main")

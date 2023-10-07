@@ -1,4 +1,5 @@
 pub mod args;
+pub mod flamegraph;
 pub mod flamegraph_parser;
 pub mod hashmap_parser;
 pub mod model;
@@ -39,7 +40,7 @@ pub struct CallgrindOptions {
     pub envs: Vec<(OsString, OsString)>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CallgrindOutput(PathBuf);
 
 #[derive(Clone, Debug)]

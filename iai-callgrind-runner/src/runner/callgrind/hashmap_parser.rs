@@ -16,7 +16,7 @@ pub struct CallgrindMap {
     pub sentinel_key: Option<Id>,
 }
 
-#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub struct CfnRecord {
     pub file: Option<String>,
     // a cfn line must be present
@@ -39,7 +39,7 @@ pub struct Id {
     pub func: String,
 }
 
-#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub struct InlineRecord {
     pub file: Option<String>,
     pub fi: Option<String>,
@@ -58,7 +58,7 @@ struct LinesParser {
     target: Option<(String, String)>,
 }
 
-#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub struct Record {
     pub file: Option<String>,
     pub inclusive_costs: Costs,
@@ -67,7 +67,7 @@ pub struct Record {
     pub members: Vec<RecordMember>,
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub enum RecordMember {
     Cfn(CfnRecord),
     Inline(InlineRecord),

@@ -1052,7 +1052,31 @@ impl_traits!(Fixtures, internal::InternalFixtures);
 impl FlamegraphConfig {
     /// TODO: DOCUMENT
     pub fn enable(&mut self, enable: bool) -> &mut Self {
-        self.0.enable = enable;
+        self.0.enable = Some(enable);
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn enable_regular(&mut self, enable_regular: bool) -> &mut Self {
+        self.0.enable_regular = Some(enable_regular);
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn enable_differential(&mut self, enable_differential: bool) -> &mut Self {
+        self.0.enable_differential = Some(enable_differential);
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn negate_differential(&mut self, negate_differential: bool) -> &mut Self {
+        self.0.negate_differential = Some(negate_differential);
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn normalize_differential(&mut self, normalize_differential: bool) -> &mut Self {
+        self.0.normalize_differential = Some(normalize_differential);
         self
     }
 
@@ -1061,25 +1085,24 @@ impl FlamegraphConfig {
     where
         T: IntoIterator<Item = EventType>,
     {
-        self.0.event_types = event_types.into_iter().collect();
+        self.0.event_types = Some(event_types.into_iter().collect());
         self
     }
 
     /// TODO: DOCUMENT
     pub fn ignore_missing(&mut self, ignore_missing: bool) -> &mut Self {
-        self.0.ignore_missing = ignore_missing;
+        self.0.ignore_missing = Some(ignore_missing);
         self
     }
-
-    /// TODO: DOCUMENT
-    pub fn differential(&mut self, differential: bool) -> &mut Self {
-        self.0.differential = differential;
-        self
-    }
-
     /// TODO: DOCUMENT
     pub fn direction(&mut self, direction: Direction) -> &mut Self {
-        self.0.direction = direction;
+        self.0.direction = Some(direction);
+        self
+    }
+
+    /// TODO: DOCUMENT
+    pub fn flamechart(&mut self, flamechart: bool) -> &mut Self {
+        self.0.flamechart = Some(flamechart);
         self
     }
 

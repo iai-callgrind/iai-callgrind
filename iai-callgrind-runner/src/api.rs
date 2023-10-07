@@ -115,13 +115,17 @@ pub struct Fixtures {
     pub follow_symlinks: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct FlamegraphConfig {
-    pub enable: bool,
-    pub event_types: Vec<EventType>,
-    pub ignore_missing: bool,
-    pub differential: bool,
-    pub direction: Direction,
+    pub enable: Option<bool>,
+    pub enable_regular: Option<bool>,
+    pub enable_differential: Option<bool>,
+    pub negate_differential: Option<bool>,
+    pub normalize_differential: Option<bool>,
+    pub event_types: Option<Vec<EventType>>,
+    pub ignore_missing: Option<bool>,
+    pub direction: Option<Direction>,
+    pub flamechart: Option<bool>,
     pub title: Option<String>,
     pub subtitle: Option<String>,
 }
@@ -177,14 +181,6 @@ impl BinaryBenchmarkConfig {
     where
         T: IntoIterator<Item = Option<&'a Self>>,
     {
-        fn update_option<T: Clone>(first: &Option<T>, other: &Option<T>) -> Option<T> {
-            match (first, other) {
-                (None, None) => None,
-                (None, Some(v)) | (Some(v), None) => Some(v.clone()),
-                (Some(_), Some(w)) => Some(w.clone()),
-            }
-        }
-
         for other in others.into_iter().flatten() {
             self.sandbox = update_option(&self.sandbox, &other.sandbox);
             self.fixtures = update_option(&self.fixtures, &other.fixtures);
@@ -219,34 +215,11 @@ impl Default for Direction {
     }
 }
 
-impl Default for FlamegraphConfig {
-    fn default() -> Self {
-        Self {
-            enable: true,
-            // TODO: CHANGE TO EstimatedCycles ?
-            event_types: vec![EventType::Ir],
-            ignore_missing: Default::default(),
-            differential: true,
-            direction: Direction::default(),
-            title: Option::default(),
-            subtitle: Option::default(),
-        }
-    }
-}
-
 impl LibraryBenchmarkConfig {
     pub fn update_from_all<'a, T>(mut self, others: T) -> Self
     where
         T: IntoIterator<Item = Option<&'a Self>>,
     {
-        fn update_option<T: Clone>(first: &Option<T>, other: &Option<T>) -> Option<T> {
-            match (first, other) {
-                (None, None) => None,
-                (None, Some(v)) | (Some(v), None) => Some(v.clone()),
-                (Some(_), Some(w)) => Some(w.clone()),
-            }
-        }
-
         for other in others.into_iter().flatten() {
             self.raw_callgrind_args
                 .extend(other.raw_callgrind_args.0.iter());
@@ -312,6 +285,14 @@ where
         let mut this = Self::default();
         this.extend(iter);
         this
+    }
+}
+
+fn update_option<T: Clone>(first: &Option<T>, other: &Option<T>) -> Option<T> {
+    match (first, other) {
+        (None, None) => None,
+        (None, Some(v)) | (Some(v), None) => Some(v.clone()),
+        (Some(_), Some(w)) => Some(w.clone()),
     }
 }
 

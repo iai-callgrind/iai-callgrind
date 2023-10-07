@@ -8,15 +8,15 @@ use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
 use super::callgrind::args::Args;
+use super::callgrind::flamegraph::{Config as FlamegraphConfig, Flamegraph};
 use super::callgrind::flamegraph_parser::FlamegraphParser;
 use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput};
-use super::flamegraph::Flamegraph;
 use super::meta::Metadata;
 use super::print::Header;
-use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig, FlamegraphConfig};
+use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig};
 use crate::error::Error;
 use crate::util::{copy_directory, receive_benchmark, write_all_to_stderr, write_all_to_stdout};
 
@@ -256,8 +256,8 @@ impl BinBench {
             if flamegraph_config.enable {
                 FlamegraphParser::new(sentinel.as_ref(), &config.meta.project_root)
                     .parse(&output)
-                    .and_then(|stacks| {
-                        Flamegraph::new(header.to_title(), stacks, flamegraph_config).create(
+                    .and_then(|map| {
+                        Flamegraph::new(header.to_title(), map, flamegraph_config).create(
                             &output,
                             sentinel.as_ref(),
                             &config.meta.project_root,
@@ -370,6 +370,7 @@ impl Groups {
             };
             let config = group_config.clone().update_from_all([Some(&run.config)]);
             let envs = config.resolve_envs();
+            let flamegraph = config.flamegraph.map(std::convert::Into::into);
             for args in run.args {
                 let id = if let Some(id) = args.id {
                     id
@@ -391,7 +392,7 @@ impl Groups {
                         envs: envs.clone(),
                     },
                     callgrind_args: Args::from_raw_callgrind_args(&config.raw_callgrind_args)?,
-                    flamegraph: config.flamegraph.clone(),
+                    flamegraph: flamegraph.clone(),
                 });
             }
         }
