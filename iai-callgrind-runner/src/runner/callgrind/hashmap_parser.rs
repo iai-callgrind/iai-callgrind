@@ -263,7 +263,7 @@ impl LinesParser {
 
     fn handle_record_state(&mut self, line: &str, split: Split) -> Result<()> {
         match split {
-            Some((key, value)) if key == "ob" => {
+            Some((key @ "ob", value)) => {
                 let record = self.record.get_or_insert(TemporaryRecord::from_prototype(
                     &self.properties.costs_prototype.clone(),
                 ));
@@ -271,7 +271,7 @@ impl LinesParser {
                 self.target = Some((key.to_owned(), value.to_owned()));
                 self.set_state(State::Record);
             }
-            Some((key, value)) if key == "fl" => {
+            Some((key @ "fl", value)) => {
                 let record = self.record.get_or_insert(TemporaryRecord::from_prototype(
                     &self.properties.costs_prototype.clone(),
                 ));
@@ -279,7 +279,7 @@ impl LinesParser {
                 self.target = Some((key.to_owned(), value.to_owned()));
                 self.set_state(State::Record);
             }
-            Some((key, value)) if key == "fn" => {
+            Some(("fn", value)) => {
                 let record = self.record.get_or_insert(TemporaryRecord::from_prototype(
                     &self.properties.costs_prototype.clone(),
                 ));

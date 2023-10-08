@@ -42,7 +42,7 @@ pub fn run() -> Result<()> {
             _ => {}
         },
         // iai-callgrind versions before 0.3.0 don't submit the version
-        Err(_) => {
+        Err(()) => {
             return Err(Error::VersionMismatch(
                 version_compare::Cmp::Ne,
                 runner_version,

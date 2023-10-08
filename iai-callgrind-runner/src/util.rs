@@ -91,7 +91,7 @@ pub fn write_all_to_stdout(bytes: &[u8]) {
         let mut writer = BufWriter::new(stdout);
         writer
             .write_all(bytes)
-            .and_then(|_| writer.flush())
+            .and_then(|()| writer.flush())
             .unwrap();
         if !bytes.last().map_or(false, |l| *l == b'\n') {
             println!();
@@ -107,7 +107,7 @@ pub fn write_all_to_stderr(bytes: &[u8]) {
         let mut writer = BufWriter::new(stderr);
         writer
             .write_all(bytes)
-            .and_then(|_| writer.flush())
+            .and_then(|()| writer.flush())
             .unwrap();
         if !bytes.last().map_or(false, |l| *l == b'\n') {
             eprintln!();
