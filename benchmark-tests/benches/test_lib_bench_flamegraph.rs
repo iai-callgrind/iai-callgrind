@@ -49,7 +49,11 @@ fn function_with_many_stacks() {
 
 library_benchmark_group!(
     name = benches;
-    benchmarks = bench_bubble_sort, without_bench_attribute, main_level_flamegraph_config, function_with_many_stacks
+    benchmarks =
+        bench_bubble_sort,
+        without_bench_attribute,
+        main_level_flamegraph_config,
+        function_with_many_stacks
 );
 
 #[library_benchmark]
