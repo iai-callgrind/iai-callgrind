@@ -1,43 +1,27 @@
-use std::collections::{BinaryHeap, HashMap};
+use std::collections::BinaryHeap;
+use std::fmt::Write;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 use log::debug;
 
-use super::hashmap_parser::{CallgrindMap, HashMapParser, Id, RecordMember};
-use super::model::{Costs, EventType};
+use super::hashmap_parser::{CallgrindMap, HashMapParser};
+use super::model::EventType;
 use super::parser::{Parser, Sentinel};
 use super::CallgrindOutput;
-use crate::runner::callgrind::hashmap_parser::Record;
 
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct FlamegraphMap(HashMap<String, Value>);
+pub struct FlamegraphMap(CallgrindMap);
 
 #[derive(Debug)]
 pub struct FlamegraphParser {
-    map: FlamegraphMap,
     project_root: PathBuf,
     sentinel: Option<Sentinel>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct Value {
-    inclusive_costs: Costs,
-    exclusive_costs: Costs,
-    is_inline: bool,
-}
-
 impl FlamegraphMap {
-    pub fn insert(&mut self, id: String, value: Value) -> Option<Value> {
-        self.0.insert(id, value)
-    }
-
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
-    }
-
-    pub fn get(&self, key: &str) -> Option<&Value> {
-        self.0.get(key)
     }
 
     // Convert to stacks string format for this `EventType`
@@ -45,82 +29,127 @@ impl FlamegraphMap {
     // # Errors
     //
     // If the event type was not present in the stacks
+    #[allow(clippy::too_many_lines)]
     pub fn to_stack_format(&self, event_type: &EventType) -> Result<Vec<String>> {
         #[derive(Debug, Eq)]
-        struct HeapElem<'heap> {
-            source: &'heap str,
-            is_inline: bool,
-            ex_cost: u64,
-            in_cost: u64,
+        struct HeapElem {
+            source: String,
+            cost: u64,
+            obj: Option<PathBuf>,
         }
 
-        impl<'heap> Ord for HeapElem<'heap> {
+        impl Ord for HeapElem {
             fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-                match self.in_cost.cmp(&other.in_cost) {
-                    std::cmp::Ordering::Equal => self.source.cmp(other.source),
+                match self.cost.cmp(&other.cost) {
+                    std::cmp::Ordering::Equal => self.source.cmp(&other.source),
                     cmp => cmp.reverse(),
                 }
             }
         }
 
-        impl<'heap> PartialOrd for HeapElem<'heap> {
+        impl PartialOrd for HeapElem {
             fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
                 Some(self.cmp(other))
             }
         }
 
-        impl<'heap> PartialEq for HeapElem<'heap> {
+        impl PartialEq for HeapElem {
             fn eq(&self, other: &Self) -> bool {
-                self.in_cost == other.in_cost && self.source == other.source
+                self.cost == other.cost && self.source == other.source
             }
         }
+
+        if self.0.map.is_empty() {
+            return Ok(vec![]);
+        }
+
+        // Let's find our entry point which defaults to "main"
+        let reference_cost = if let Some(key) = &self.0.sentinel_key {
+            self.0
+                .map
+                .get(key)
+                .expect("Resolved sentinel must be present in map")
+                .costs
+                .cost_by_type(event_type)
+                .ok_or_else(|| {
+                    anyhow!("Failed creating flamegraph stack: Missing event type '{event_type}'")
+                })?
+        } else {
+            self.0
+                .map
+                .iter()
+                .find(|(k, _)| k.func == "main")
+                .expect("'main' function must be present in callgrind output")
+                .1
+                .costs
+                .cost_by_type(event_type)
+                .ok_or_else(|| {
+                    anyhow!("Failed creating flamegraph stack: Missing event type '{event_type}'")
+                })?
+        };
 
         let mut heap = BinaryHeap::new();
-        for (
-            id,
-            Value {
-                inclusive_costs,
-                exclusive_costs,
-                is_inline,
-            },
-        ) in &self.0
-        {
-            let in_cost = inclusive_costs.cost_by_type(event_type).ok_or_else(|| {
+        for (id, value) in &self.0.map {
+            let cost = value.costs.cost_by_type(event_type).ok_or_else(|| {
                 anyhow!("Failed creating flamegraph stack: Missing event type '{event_type}'")
             })?;
-            let ex_cost = exclusive_costs.cost_by_type(event_type).ok_or_else(|| {
-                anyhow!("Failed creating flamegraph stack: Missing event type '{event_type}'")
-            })?;
-            heap.push(HeapElem {
-                source: id,
-                is_inline: *is_inline,
-                ex_cost,
-                in_cost,
-            });
+            if cost <= reference_cost {
+                let source = if let Some(file) = &id.file {
+                    let display = file.display().to_string();
+                    if display == "???" {
+                        id.func.clone()
+                    } else {
+                        format!("{display}:{}", id.func)
+                    }
+                } else {
+                    id.func.clone()
+                };
+                heap.push(HeapElem {
+                    source,
+                    cost,
+                    obj: value.obj_path.clone(),
+                });
+            }
         }
-        // dbg!(&heap);
 
         let mut stacks: Vec<String> = vec![];
-        for HeapElem {
-            ex_cost,
-            source,
-            is_inline,
-            ..
-        } in heap.into_sorted_vec()
-        {
-            if let Some(last) = stacks.last() {
-                let (split, _) = last.rsplit_once(' ').unwrap();
-                let stack = if is_inline {
-                    format!("{split};[{source}] {ex_cost}")
-                } else {
-                    format!("{split};{source} {ex_cost}")
-                };
-                stacks.push(stack);
-            } else if is_inline {
-                stacks.push(format!("[{source}] {ex_cost}"));
-            } else {
-                stacks.push(format!("{source} {ex_cost}"));
+        let len = heap.len();
+        if len > 1 {
+            for window in heap.into_sorted_vec().windows(2) {
+                // There is only the slice size of 2 possible due to the windows size of 2
+                if let [h1, h2] = window {
+                    let mut stack = if let Some(last) = stacks.last() {
+                        let (split, _) = last.rsplit_once(' ').unwrap();
+                        format!("{split};{}", h1.source)
+                    } else {
+                        h1.source.clone()
+                    };
+                    if let Some(obj) = &h1.obj {
+                        write!(stack, " [{}]", obj.display()).unwrap();
+                    }
+                    write!(stack, " {}", h1.cost - h2.cost).unwrap();
+
+                    stacks.push(stack);
+
+                    // The last window needs to push the last element too
+                    if stacks.len() == len - 1 {
+                        let last = stacks.last().unwrap();
+                        let (split, _) = last.rsplit_once(' ').unwrap();
+
+                        let mut stack = format!("{split};{}", h2.source);
+                        if let Some(obj) = &h2.obj {
+                            write!(stack, " [{}]", obj.display()).unwrap();
+                        }
+                        write!(stack, " {}", h2.cost).unwrap();
+
+                        stacks.push(stack);
+                    }
+                }
             }
+        } else {
+            // unwrap is safe since heap.len() == 1 here
+            let elem = heap.pop().unwrap();
+            stacks.push(format!("{} {}", elem.source, elem.cost));
         }
         Ok(stacks)
     }
@@ -133,58 +162,7 @@ impl FlamegraphParser {
     {
         Self {
             sentinel: sentinel.cloned(),
-            map: FlamegraphMap::default(),
             project_root: project_root.into(),
-        }
-    }
-
-    fn fold<'map>(&mut self, map: &'map CallgrindMap, key: &'map Id, value: &'map Record) {
-        if self.map.get(&key.func).is_some() {
-            return;
-        }
-
-        self.map.insert(
-            key.func.clone(),
-            Value {
-                exclusive_costs: value.self_costs.clone(),
-                inclusive_costs: value.inclusive_costs.clone(),
-                is_inline: false,
-            },
-        );
-
-        for member in &value.members {
-            match member {
-                RecordMember::Cfn(record) => {
-                    let query = Id {
-                        func: record.cfn.clone(),
-                    };
-
-                    let (cfn_key, cfn_value) = map
-                        .get_key_value(&query)
-                        .expect("A cfn record must have an fn record");
-                    self.fold(map, cfn_key, cfn_value);
-                }
-
-                RecordMember::Inline(record) => {
-                    if let Some(value) = record.fi.as_ref().or(record.fe.as_ref()) {
-                        let path = PathBuf::from(&value);
-                        let path = path.strip_prefix(&self.project_root).unwrap_or(&path);
-
-                        self.map
-                            .0
-                            .entry(path.display().to_string())
-                            .and_modify(|e| {
-                                e.inclusive_costs.add(&record.costs);
-                                e.exclusive_costs.add(&record.costs);
-                            })
-                            .or_insert(Value {
-                                inclusive_costs: record.costs.clone(),
-                                exclusive_costs: record.costs.clone(),
-                                is_inline: true,
-                            });
-                    }
-                }
-            }
         }
     }
 }
@@ -192,31 +170,14 @@ impl FlamegraphParser {
 impl Parser for FlamegraphParser {
     type Output = FlamegraphMap;
 
-    fn parse(mut self, output: &CallgrindOutput) -> Result<Self::Output> {
+    fn parse(self, output: &CallgrindOutput) -> Result<Self::Output> {
         debug!("Parsing flamegraph from file '{}'", output);
 
         let parser = HashMapParser {
+            project_root: self.project_root,
             sentinel: self.sentinel.clone(),
         };
 
-        let map = parser.parse(output)?;
-
-        if map.is_empty() {
-            return Ok(self.map);
-        }
-
-        // Let's find our entry point which defaults to "main"
-        let (key, value) = if let Some(key) = &map.sentinel_key {
-            map.get_key_value(key)
-                .expect("Resolved sentinel must be present in map")
-        } else {
-            map.iter()
-                .find(|(k, _)| k.func == "main")
-                .expect("'main' function must be present in callgrind output")
-        };
-
-        self.fold(&map, key, value);
-
-        Ok(self.map)
+        parser.parse(output).map(FlamegraphMap)
     }
 }

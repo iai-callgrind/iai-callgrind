@@ -9,7 +9,6 @@ use tempfile::TempDir;
 
 use super::callgrind::args::Args;
 use super::callgrind::flamegraph::{Config as FlamegraphConfig, Flamegraph};
-use super::callgrind::flamegraph_parser::FlamegraphParser;
 use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::summary_parser::SummaryParser;
@@ -253,17 +252,11 @@ impl BinBench {
         let header = Header::new(&group.module_path, self.id.clone(), self.to_string());
         let sentinel = self.opts.entry_point.as_ref().map(Sentinel::new);
         if let Some(flamegraph_config) = self.flamegraph.clone() {
-            if flamegraph_config.enable {
-                FlamegraphParser::new(sentinel.as_ref(), &config.meta.project_root)
-                    .parse(&output)
-                    .and_then(|map| {
-                        Flamegraph::new(header.to_title(), map, flamegraph_config).create(
-                            &output,
-                            sentinel.as_ref(),
-                            &config.meta.project_root,
-                        )
-                    })?;
-            }
+            Flamegraph::new(header.to_title(), flamegraph_config).create(
+                &output,
+                sentinel.as_ref(),
+                &config.meta.project_root,
+            )?;
         }
 
         let new_stats = SummaryParser.parse(&output)?;

@@ -1,5 +1,6 @@
 use iai_callgrind::{
-    binary_benchmark_group, main, Arg, BinaryBenchmarkConfig, EventType, FlamegraphConfig, Run,
+    binary_benchmark_group, main, Arg, BinaryBenchmarkConfig, EventType, FlamegraphConfig,
+    FlamegraphKind, Run,
 };
 
 binary_benchmark_group!(
@@ -26,8 +27,32 @@ binary_benchmark_group!(
     name = run_level_flamegraph;
     benchmark = |"benchmark-tests-exit", group: &mut BinaryBenchmarkGroup| {
         group.bench(
-            Run::with_arg(Arg::new("foo", ["0"]))
-            .flamegraph(FlamegraphConfig::default().title("Run level flamegraph".to_owned()))
+            Run::with_arg(Arg::new("all_flamegraph_kinds", ["0"]))
+                .flamegraph(FlamegraphConfig::default()
+                    .title("Run level flamegraph all kinds".to_owned())
+                    .kind(FlamegraphKind::All)
+                )
+        )
+        .bench(
+            Run::with_arg(Arg::new("only_regular_kind", ["0"]))
+                .flamegraph(FlamegraphConfig::default()
+                    .title("Run level flamegraph regular kind".to_owned())
+                    .kind(FlamegraphKind::Regular)
+                )
+        )
+        .bench(
+            Run::with_arg(Arg::new("only_differential_kind", ["0"]))
+            .flamegraph(FlamegraphConfig::default()
+                .title("Run level flamegraph differential kind".to_owned())
+                .kind(FlamegraphKind::Differential)
+            )
+        )
+        .bench(
+            Run::with_arg(Arg::new("none_kind", ["0"]))
+            .flamegraph(FlamegraphConfig::default()
+                .title("Run level flamegraph no kind".to_owned())
+                .kind(FlamegraphKind::None)
+            )
         )
     }
 );
@@ -59,7 +84,14 @@ binary_benchmark_group!(
 );
 
 main!(
-    config = BinaryBenchmarkConfig::default().flamegraph(FlamegraphConfig::default().title("Main config flamegraph".to_owned()));
-    // binary_benchmark_groups = main_level_flamegraph, group_level_flamegraph, run_level_flamegraph, flamegraph_configurations
-    binary_benchmark_groups = flamegraph_configurations
+    config =
+        BinaryBenchmarkConfig::default()
+            .flamegraph(FlamegraphConfig::default()
+                .title("Main config flamegraph".to_owned())
+            );
+    binary_benchmark_groups =
+        main_level_flamegraph,
+        group_level_flamegraph,
+        run_level_flamegraph,
+        flamegraph_configurations,
 );

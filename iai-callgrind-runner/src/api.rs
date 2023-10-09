@@ -117,9 +117,7 @@ pub struct Fixtures {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct FlamegraphConfig {
-    pub enable: Option<bool>,
-    pub enable_regular: Option<bool>,
-    pub enable_differential: Option<bool>,
+    pub kind: Option<FlamegraphKind>,
     pub negate_differential: Option<bool>,
     pub normalize_differential: Option<bool>,
     pub event_types: Option<Vec<EventType>>,
@@ -128,6 +126,15 @@ pub struct FlamegraphConfig {
     pub flamechart: Option<bool>,
     pub title: Option<String>,
     pub subtitle: Option<String>,
+}
+///
+/// TODO: DOCUMENT
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FlamegraphKind {
+    Regular,
+    Differential,
+    All,
+    None,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]

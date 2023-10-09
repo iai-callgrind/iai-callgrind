@@ -6,18 +6,16 @@ use anyhow::{Context, Result};
 use inferno::flamegraph::{Direction, Options};
 use log::warn;
 
-use super::flamegraph_parser::{FlamegraphMap, FlamegraphParser};
+use super::flamegraph_parser::FlamegraphParser;
 use super::model::EventType;
 use super::parser::{Parser, Sentinel};
 use super::CallgrindOutput;
-use crate::api;
+use crate::api::{self, FlamegraphKind};
 
 #[derive(Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Config {
-    pub enable: bool,
-    pub enable_regular: bool,
-    pub enable_differential: bool,
+    pub kind: FlamegraphKind,
     pub negate_differential: bool,
     pub normalize_differential: bool,
     pub event_types: Vec<EventType>,
@@ -30,17 +28,15 @@ pub struct Config {
 
 pub struct Flamegraph {
     pub config: Config,
-    pub map: FlamegraphMap,
 }
 
 pub struct Output(PathBuf);
 
+//TODO: APPLY and make use of NEW CONFIGURATION VALUES (enable_regular)
 impl From<api::FlamegraphConfig> for Config {
     fn from(value: api::FlamegraphConfig) -> Self {
         Self {
-            enable: value.enable.unwrap_or(true),
-            enable_regular: value.enable_regular.unwrap_or(true),
-            enable_differential: value.enable_differential.unwrap_or(true),
+            kind: value.kind.unwrap_or(FlamegraphKind::All),
             negate_differential: value.negate_differential.unwrap_or_default(),
             normalize_differential: value.normalize_differential.unwrap_or(false),
             event_types: value.event_types.map_or_else(
@@ -50,7 +46,7 @@ impl From<api::FlamegraphConfig> for Config {
             ignore_missing: value.ignore_missing.unwrap_or(false),
             direction: value
                 .direction
-                .map_or_else(Direction::default, std::convert::Into::into),
+                .map_or_else(|| Direction::Inverted, std::convert::Into::into),
             flamechart: value.flamechart.unwrap_or(false),
             title: value.title.clone(),
             subtitle: value.subtitle.clone(),
@@ -68,7 +64,7 @@ impl From<api::Direction> for Direction {
 }
 
 impl Flamegraph {
-    pub fn new(heading: String, map: FlamegraphMap, mut config: Config) -> Self {
+    pub fn new(heading: String, mut config: Config) -> Self {
         let (title, subtitle) = match (config.title, config.subtitle) {
             (None, None) => heading.split_once(' ').map_or_else(
                 || (heading.clone(), None),
@@ -82,7 +78,7 @@ impl Flamegraph {
         config.title = Some(title);
         config.subtitle = subtitle;
 
-        Self { config, map }
+        Self { config }
     }
 
     pub fn create(
@@ -91,7 +87,13 @@ impl Flamegraph {
         sentinel: Option<&Sentinel>,
         project_root: &Path,
     ) -> Result<()> {
-        if self.map.is_empty() {
+        if self.config.kind == FlamegraphKind::None {
+            return Ok(());
+        }
+
+        // We need this map in all remaining cases of `FlamegraphKinds`
+        let map = FlamegraphParser::new(sentinel, project_root).parse(callgrind_output)?;
+        if map.is_empty() {
             warn!("Unable to create a flamegraph: No stacks found");
             return Ok(());
         }
@@ -111,7 +113,10 @@ impl Flamegraph {
         let old_output = callgrind_output.to_old_output();
 
         #[allow(clippy::if_then_some_else_none)]
-        let old_map = if self.config.enable_differential && old_output.exists() {
+        let old_map = if (self.config.kind == FlamegraphKind::Differential
+            || self.config.kind == FlamegraphKind::All)
+            && old_output.exists()
+        {
             Some(FlamegraphParser::new(sentinel, project_root).parse(&old_output)?)
         } else {
             None
@@ -120,19 +125,24 @@ impl Flamegraph {
         for event_type in &self.config.event_types {
             options.count_name = event_type.to_string();
 
-            let stacks_lines = match self.map.to_stack_format(event_type) {
+            let stacks_lines = match map.to_stack_format(event_type) {
                 Ok(s) => s,
                 Err(_) if self.config.ignore_missing => continue,
                 Err(error) => return Err(error),
             };
 
             let output = Output::init(callgrind_output.as_path(), event_type)?;
-            create_flamegraph(
-                &output,
-                &mut options,
-                stacks_lines.iter().map(std::string::String::as_str),
-            )?;
+            if self.config.kind == FlamegraphKind::Regular
+                || self.config.kind == FlamegraphKind::All
+            {
+                create_flamegraph(
+                    &output,
+                    &mut options,
+                    stacks_lines.iter().map(std::string::String::as_str),
+                )?;
+            }
 
+            // Is Some if FlamegraphKind::Differential or FlamegraphKind::Both
             if let Some(old_map) = old_map.as_ref() {
                 let old_stacks_lines = match old_map.to_stack_format(event_type) {
                     Ok(s) => s,

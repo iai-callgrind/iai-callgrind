@@ -5,7 +5,6 @@ use anyhow::Result;
 
 use super::callgrind::args::Args;
 use super::callgrind::flamegraph::{Config as FlamegraphConfig, Flamegraph};
-use super::callgrind::flamegraph_parser::FlamegraphParser;
 use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput};
@@ -168,17 +167,11 @@ impl LibBench {
         );
 
         if let Some(flamegraph_config) = self.flamegraph.clone() {
-            if flamegraph_config.enable {
-                FlamegraphParser::new(Some(&sentinel), &config.meta.project_root)
-                    .parse(&output)
-                    .and_then(|map| {
-                        Flamegraph::new(header.to_title(), map, flamegraph_config).create(
-                            &output,
-                            Some(&sentinel),
-                            &config.meta.project_root,
-                        )
-                    })?;
-            }
+            Flamegraph::new(header.to_title(), flamegraph_config).create(
+                &output,
+                Some(&sentinel),
+                &config.meta.project_root,
+            )?;
         }
 
         let new_stats = SentinelParser::new(&sentinel, &config.bench_file).parse(&output)?;

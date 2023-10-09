@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 use iai_callgrind_runner::runner::callgrind::CallgrindOutput;
@@ -37,4 +38,22 @@ where
 {
     let file = File::create(get_fixtures_path(name)).unwrap();
     serde_yaml::to_writer(file, value)
+}
+
+pub fn get_project_root() -> PathBuf {
+    let meta = cargo_metadata::MetadataCommand::new()
+        .no_deps()
+        .exec()
+        .expect("Querying metadata of cargo workspace succeeds");
+
+    meta.workspace_root.into_std_path_buf()
+}
+
+pub fn load_stacks<T>(path: T) -> Vec<String>
+where
+    T: AsRef<Path>,
+{
+    let path = get_fixtures_path(path);
+    let reader = BufReader::new(File::open(path).unwrap());
+    reader.lines().map(std::result::Result::unwrap).collect()
 }

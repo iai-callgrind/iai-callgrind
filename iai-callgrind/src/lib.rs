@@ -241,7 +241,7 @@
 
 pub use bincode;
 pub use iai_callgrind_macros::library_benchmark;
-pub use iai_callgrind_runner::api::{Direction, EventType};
+pub use iai_callgrind_runner::api::{Direction, EventType, FlamegraphKind};
 
 pub mod internal;
 mod macros;
@@ -1051,20 +1051,8 @@ impl_traits!(Fixtures, internal::InternalFixtures);
 
 impl FlamegraphConfig {
     /// TODO: DOCUMENT
-    pub fn enable(&mut self, enable: bool) -> &mut Self {
-        self.0.enable = Some(enable);
-        self
-    }
-
-    /// TODO: DOCUMENT
-    pub fn enable_regular(&mut self, enable_regular: bool) -> &mut Self {
-        self.0.enable_regular = Some(enable_regular);
-        self
-    }
-
-    /// TODO: DOCUMENT
-    pub fn enable_differential(&mut self, enable_differential: bool) -> &mut Self {
-        self.0.enable_differential = Some(enable_differential);
+    pub fn kind(&mut self, kind: FlamegraphKind) -> &mut Self {
+        self.0.kind = Some(kind);
         self
     }
 
