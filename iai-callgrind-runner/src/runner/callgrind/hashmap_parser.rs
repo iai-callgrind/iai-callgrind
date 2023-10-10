@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use super::model::Costs;
 use super::parser::{parse_header, Parser, Sentinel};
 use super::CallgrindOutput;
+use crate::error::Error;
 
 #[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CallgrindMap {
@@ -78,7 +79,8 @@ impl Parser for HashMapParser {
         }
 
         let mut iter = output.lines()?;
-        let config = parse_header(&mut iter)?;
+        let config = parse_header(&mut iter)
+            .map_err(|error| Error::ParseError((output.0.clone(), error.to_string())))?;
 
         // TODO: CLEANUP REDUNDANT VARS
         let mut curr_obj = None;
@@ -225,12 +227,14 @@ impl Parser for HashMapParser {
             }
         }
 
-        // Finish up
-        let id = Id {
-            file: curr_file,
-            func: curr_fn.take().unwrap(),
-        };
-        fn_totals.insert(id, curr_fn_costs);
+        // Finish up if we actually found records past the header
+        if !is_header {
+            let id = Id {
+                file: curr_file,
+                func: curr_fn.take().unwrap(),
+            };
+            fn_totals.insert(id, curr_fn_costs);
+        }
 
         // Correct inclusive totals
         for (key, value) in cfn_totals {
