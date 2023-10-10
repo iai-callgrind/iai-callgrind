@@ -40,7 +40,7 @@ fn test_when_empty_file_then_should_return_error() {
 fn test_valid_just_main() {
     let parser = HashMapParser::default();
     let output = get_callgrind_output("callgrind.out/valid.minimal_main.out");
-    let expected_map = load_serialized("callgrind.out/valid.minimal_main.expected_map").unwrap();
+    let expected_map = load_serialized("callgrind.out/valid.minimal_main.exp_map").unwrap();
 
     let actual_map = parser.parse(&output).unwrap();
 
