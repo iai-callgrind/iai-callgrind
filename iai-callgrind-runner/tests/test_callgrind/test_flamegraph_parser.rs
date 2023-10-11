@@ -1,7 +1,6 @@
 use iai_callgrind_runner::runner::callgrind::flamegraph_parser::FlamegraphParser;
 use iai_callgrind_runner::runner::callgrind::model::EventType;
 use iai_callgrind_runner::runner::callgrind::parser::{Parser, Sentinel};
-use pretty_assertions::assert_eq;
 use rstest::rstest;
 
 use crate::common::{get_callgrind_output, get_project_root, load_stacks};
@@ -21,11 +20,26 @@ fn test_flamegraph_parser_when_no_entry_point(
     let stacks = result.to_stack_format(&EventType::Ir).unwrap();
 
     assert_eq!(stacks.len(), expected_stacks.len());
-    // Assert line by line or else the output on error is unreadable
+    // Assert line by line or else the output on error is unreadable and provide an additional line
+    // of context
+    let mut failed = false;
     for (index, (stack, expected_stack)) in stacks.iter().zip(expected_stacks.iter()).enumerate() {
-        assert_eq!(
-            stack, expected_stack,
-            "Assertion failed at line index '{index}'"
-        );
+        if stack != expected_stack {
+            if failed {
+                print!(
+                    "{}",
+                    pretty_assertions::StrComparison::new(stack, expected_stack)
+                );
+                break;
+            }
+            failed = true;
+            println!("Failed at index '{index}'");
+            print!(
+                "{}",
+                pretty_assertions::StrComparison::new(stack, expected_stack)
+            );
+        }
     }
+
+    assert!(!failed);
 }

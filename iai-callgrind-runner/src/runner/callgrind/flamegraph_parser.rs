@@ -31,7 +31,7 @@ impl FlamegraphMap {
     // If the event type was not present in the stacks
     #[allow(clippy::too_many_lines)]
     pub fn to_stack_format(&self, event_type: &EventType) -> Result<Vec<String>> {
-        #[derive(Debug, Eq)]
+        #[derive(Debug, Eq, PartialEq)]
         struct HeapElem {
             source: String,
             cost: u64,
@@ -40,22 +40,17 @@ impl FlamegraphMap {
 
         impl Ord for HeapElem {
             fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-                match self.cost.cmp(&other.cost) {
-                    std::cmp::Ordering::Equal => self.source.cmp(&other.source),
-                    cmp => cmp.reverse(),
-                }
+                self.cost.cmp(&other.cost).reverse().then_with(|| {
+                    self.source
+                        .cmp(&other.source)
+                        .then_with(|| self.obj.cmp(&other.obj))
+                })
             }
         }
 
         impl PartialOrd for HeapElem {
             fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
                 Some(self.cmp(other))
-            }
-        }
-
-        impl PartialEq for HeapElem {
-            fn eq(&self, other: &Self) -> bool {
-                self.cost == other.cost && self.source == other.source
             }
         }
 
@@ -107,7 +102,7 @@ impl FlamegraphMap {
                 heap.push(HeapElem {
                     source,
                     cost,
-                    obj: value.obj_path.clone(),
+                    obj: id.obj.clone(),
                 });
             }
         }
@@ -170,11 +165,11 @@ impl FlamegraphParser {
 impl Parser for FlamegraphParser {
     type Output = FlamegraphMap;
 
-    fn parse(self, output: &CallgrindOutput) -> Result<Self::Output> {
+    fn parse(&self, output: &CallgrindOutput) -> Result<Self::Output> {
         debug!("Parsing flamegraph from file '{}'", output);
 
         let parser = HashMapParser {
-            project_root: self.project_root,
+            project_root: self.project_root.clone(),
             sentinel: self.sentinel.clone(),
         };
 

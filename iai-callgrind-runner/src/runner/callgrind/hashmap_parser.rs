@@ -30,15 +30,14 @@ pub struct HashMapParser {
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Id {
+    pub obj: Option<PathBuf>,
     pub file: Option<PathBuf>,
     pub func: String,
 }
 
-// TODO: TRY TO GIVE IT A BETTER NAME
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Value {
     pub costs: Costs,
-    pub obj_path: Option<PathBuf>,
 }
 
 impl CallgrindMap {
@@ -60,10 +59,11 @@ impl Parser for HashMapParser {
 
     #[allow(clippy::too_many_lines)]
     #[allow(clippy::similar_names)]
-    fn parse(self, output: &CallgrindOutput) -> Result<Self::Output> {
+    fn parse(&self, output: &CallgrindOutput) -> Result<Self::Output> {
         // Ignore 'cob'
         #[derive(Debug, Default)]
         struct CfnRecord {
+            obj: Option<PathBuf>,
             file: Option<PathBuf>,
             name: Option<Id>,
             calls: u64,
@@ -82,7 +82,6 @@ impl Parser for HashMapParser {
         let config = parse_header(&mut iter)
             .map_err(|error| Error::ParseError((output.0.clone(), error.to_string())))?;
 
-        // TODO: CLEANUP REDUNDANT VARS
         let mut curr_obj = None;
         let mut curr_file = None;
         let mut curr_fn = None;
@@ -93,13 +92,12 @@ impl Parser for HashMapParser {
         let mut curr_fn_costs = config.costs_prototype.clone();
 
         // These are global in the callgrind_annotate source !!
-        let mut cfn_totals = HashMap::<Id, Costs>::new();
-        let mut fn_totals = HashMap::<Id, Costs>::new();
-        let mut obj_name = HashMap::<Id, PathBuf>::new();
+        let mut cfn_totals = HashMap::<Id, Value>::new();
+        let mut fn_totals = HashMap::<Id, Value>::new();
 
         let mut sentinel_key = None;
 
-        // We start within the header
+        // We start within he header
         let mut is_header = true;
         for line in iter {
             let line = line.trim();
@@ -138,7 +136,12 @@ impl Parser for HashMapParser {
                             trace!("Found sentinel: {}", &id.func);
                             sentinel_key = Some(id.clone());
                         }
-                        fn_totals.insert(id, curr_fn_costs);
+                        fn_totals.insert(
+                            id,
+                            Value {
+                                costs: curr_fn_costs,
+                            },
+                        );
                     }
 
                     // Create new
@@ -146,30 +149,35 @@ impl Parser for HashMapParser {
                     let tmp = Id {
                         file: curr_file.as_ref().cloned(),
                         func: func.to_owned(),
+                        obj: curr_obj.clone(),
                     };
-                    curr_obj
-                        .as_ref()
-                        .and_then(|o: &PathBuf| obj_name.insert(tmp.clone(), o.clone()));
                     curr_fn_costs = fn_totals
                         .get(&tmp)
-                        .unwrap_or(&config.costs_prototype)
+                        .map_or(&config.costs_prototype, |value| &value.costs)
                         .clone();
                     curr_name = Some(tmp);
                 }
                 Some(("fi" | "fe", inline)) => {
                     fn_totals
                         .entry(curr_name.expect("Valid fi/fe line"))
-                        .and_modify(|e| *e = curr_fn_costs.clone())
-                        .or_insert(curr_fn_costs);
+                        .and_modify(|e| e.costs = curr_fn_costs.clone())
+                        .or_insert(Value {
+                            costs: curr_fn_costs,
+                        });
                     curr_file = Some(make_path(&self.project_root, inline));
                     curr_name = Some(Id {
+                        obj: curr_obj.as_ref().cloned(),
                         file: curr_file.as_ref().cloned(),
                         func: curr_fn.as_ref().unwrap().clone(),
                     });
                     curr_fn_costs = fn_totals
                         .get(curr_name.as_ref().unwrap())
-                        .unwrap_or(&config.costs_prototype)
+                        .map_or(&config.costs_prototype, |value| &value.costs)
                         .clone();
+                }
+                Some(("cob", cob)) => {
+                    let record = cfn_record.get_or_insert(CfnRecord::default());
+                    record.obj = Some(make_path(&self.project_root, cob));
                 }
                 Some(("cfi" | "cfl", inline)) => {
                     let record = cfn_record.get_or_insert(CfnRecord::default());
@@ -177,16 +185,11 @@ impl Parser for HashMapParser {
                 }
                 Some(("cfn", cfn)) => {
                     let record = cfn_record.get_or_insert(CfnRecord::default());
-                    record.name = Some(record.file.as_ref().map_or_else(
-                        || Id {
-                            func: cfn.to_owned(),
-                            file: curr_file.as_ref().map(std::borrow::ToOwned::to_owned),
-                        },
-                        |f| Id {
-                            func: cfn.to_owned(),
-                            file: Some(PathBuf::from(f)),
-                        },
-                    ));
+                    record.name = Some(Id {
+                        obj: record.obj.as_ref().or(curr_obj.as_ref()).cloned(),
+                        func: cfn.to_owned(),
+                        file: record.file.as_ref().or(curr_file.as_ref()).cloned(),
+                    });
                 }
                 Some(("calls", calls)) => {
                     let record = cfn_record.as_mut().unwrap();
@@ -213,11 +216,11 @@ impl Parser for HashMapParser {
                                     .expect("cfn entry must be present at this point")
                                     .clone(),
                             )
-                            .and_modify(|e| e.add(&costs))
-                            .or_insert(costs);
+                            .and_modify(|value| value.costs.add(&costs))
+                            .or_insert(Value { costs });
                     }
                 }
-                Some(("cob" | "jump" | "jcnd" | "jfi" | "jfn", _)) => {
+                Some(("jump" | "jcnd" | "jfi" | "jfn", _)) => {
                     // we ignore these
                 }
                 None if line.starts_with("totals:") || line.starts_with("summary:") => {
@@ -230,26 +233,25 @@ impl Parser for HashMapParser {
         // Finish up if we actually found records past the header
         if !is_header {
             let id = Id {
+                obj: curr_obj,
                 file: curr_file,
                 func: curr_fn.take().unwrap(),
             };
-            fn_totals.insert(id, curr_fn_costs);
+            fn_totals.insert(
+                id,
+                Value {
+                    costs: curr_fn_costs,
+                },
+            );
         }
 
         // Correct inclusive totals
         for (key, value) in cfn_totals {
             fn_totals.insert(key, value);
         }
-        let map = fn_totals
-            .into_iter()
-            .map(|(id, costs)| {
-                let obj_path = obj_name.get(&id).cloned();
-                (id, Value { costs, obj_path })
-            })
-            .collect();
 
         Ok(CallgrindMap {
-            map,
+            map: fn_totals,
             sentinel: self.sentinel.clone(),
             sentinel_key,
         })

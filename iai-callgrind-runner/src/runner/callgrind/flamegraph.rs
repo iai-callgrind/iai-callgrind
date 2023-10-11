@@ -12,6 +12,7 @@ use super::parser::{Parser, Sentinel};
 use super::CallgrindOutput;
 use crate::api::{self, FlamegraphKind};
 
+// TODO:Add min_width, factor and maybe other inferno options
 #[derive(Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Config {
@@ -32,7 +33,6 @@ pub struct Flamegraph {
 
 pub struct Output(PathBuf);
 
-//TODO: APPLY and make use of NEW CONFIGURATION VALUES (enable_regular)
 impl From<api::FlamegraphConfig> for Config {
     fn from(value: api::FlamegraphConfig) -> Self {
         Self {
@@ -91,8 +91,9 @@ impl Flamegraph {
             return Ok(());
         }
 
+        let parser = FlamegraphParser::new(sentinel, project_root);
         // We need this map in all remaining cases of `FlamegraphKinds`
-        let map = FlamegraphParser::new(sentinel, project_root).parse(callgrind_output)?;
+        let map = parser.parse(callgrind_output)?;
         if map.is_empty() {
             warn!("Unable to create a flamegraph: No stacks found");
             return Ok(());
@@ -109,6 +110,7 @@ impl Flamegraph {
             .expect("A title must be present at this point")
             .clone();
         options.subtitle = self.config.subtitle.clone();
+        options.min_width = 0.001f64;
 
         let old_output = callgrind_output.to_old_output();
 
@@ -117,7 +119,7 @@ impl Flamegraph {
             || self.config.kind == FlamegraphKind::All)
             && old_output.exists()
         {
-            Some(FlamegraphParser::new(sentinel, project_root).parse(&old_output)?)
+            Some(parser.parse(&old_output)?)
         } else {
             None
         };

@@ -11,7 +11,7 @@ pub struct SummaryParser;
 impl Parser for SummaryParser {
     type Output = CallgrindStats;
 
-    fn parse(self, output: &CallgrindOutput) -> Result<Self::Output>
+    fn parse(&self, output: &CallgrindOutput) -> Result<Self::Output>
     where
         Self: std::marker::Sized,
     {

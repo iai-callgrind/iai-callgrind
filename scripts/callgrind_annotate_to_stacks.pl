@@ -19,17 +19,36 @@ usage: callgind_annotate_to_stacks [options]
   printed to stdout.
 
   options for the user, with defaults in [ ], are:
-    -h --help             show this message
-    --sentinel=<string>   use this sentinel ['main']
+    -h --help                         show this message
+    --sentinel=<string>               use this sentinel ['main']
+    --insert='<pos> <string> <cost>'  insert <string> at <pos> with <cost>
+    --add-missing-ob=<string>         fill missing object files with <string>
+    --modify=<string> <cost>          modify a string to new <cost>
+    --replace=<string>==>><string>    replace occurrences of first <string> with second <string>
 END
 ;
 
 my $sentinel = "main";
+my @insert;
+my @replace;
+my $missing_ob;
+my @modify;
 
 for my $arg (@ARGV) {
   if ( $arg =~ /^-/ ) {
     if ( $arg =~ /^--sentinel=(.*)$/ ) {
       $sentinel = "$1";
+    } elsif ( $arg =~ /^--insert=(\d+) (.*) (\d+)$/ ) {
+      my @rec = ($1, $2, $3);
+      push (@insert, \@rec);
+    } elsif ( $arg =~ /^--replace=(.*)==>>(.*)$/ ) {
+      my @rec = ($1, $2);
+      push (@replace, \@rec);
+    } elsif ( $arg =~ /^--modify=(.*) (\d+)$/ ) {
+      my @rec = ($1, $2);
+      push (@modify, \@rec);
+    } elsif ( $arg =~ /^--add-missing-ob=(.*)$/ ) {
+      $missing_ob = "$1";
     } else {
       die($usage);
     }
@@ -83,10 +102,34 @@ while (<STDIN>) {
     print STDERR "Found sentinel: '$sentinel_source'\n";
   }
 
+  if (defined $missing_ob and not $source =~ / \[.*\]$/) {
+    $source .= " [$missing_ob]";
+  }
+
+  for my $i (@replace) {
+    if ("$i->[0]" eq "$source") {
+      $source = "$i->[1]";
+      last;
+    }
+  }
+
+  for my $i (@modify) {
+    if ("$i->[0]" eq "$source") {
+      $count = $i->[1];
+      last;
+    }
+  }
+
   my @rec = ($source, $count);
   push (@sources, \@rec);
 }
 
+if (@insert) {
+  for my $i (@insert) {
+    my @rec = ($i->[1], $i->[2]);
+    splice @sources, $i->[0], 0, \@rec;
+  }
+}
 
 # callgrind_annotate per default sorts by event 0 -> event 1 -> ... ->
 # lexicographically. We sort by the first event of choice (for example event 0)

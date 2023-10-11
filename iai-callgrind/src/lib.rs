@@ -243,6 +243,7 @@ pub use bincode;
 pub use iai_callgrind_macros::library_benchmark;
 pub use iai_callgrind_runner::api::{Direction, EventType, FlamegraphKind};
 
+#[doc(hidden)]
 pub mod internal;
 mod macros;
 

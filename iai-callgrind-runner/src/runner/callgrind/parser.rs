@@ -19,8 +19,7 @@ pub struct Sentinel(String);
 pub trait Parser {
     type Output;
 
-    // TODO: Use &self instead of self if possible
-    fn parse(self, output: &CallgrindOutput) -> Result<Self::Output>
+    fn parse(&self, output: &CallgrindOutput) -> Result<Self::Output>
     where
         Self: std::marker::Sized;
 }
