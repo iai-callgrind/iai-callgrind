@@ -19,6 +19,22 @@ pub struct CallgrindMap {
     pub sentinel: Option<Sentinel>,
     pub sentinel_key: Option<Id>,
 }
+//
+// Ignore 'cob'
+#[derive(Debug, Default)]
+struct CfnRecord {
+    obj: Option<SourcePath>,
+    file: Option<SourcePath>,
+    id: Option<Id>,
+    calls: u64,
+}
+
+#[derive(Debug, Default, Clone)]
+struct CurrentId {
+    obj: Option<SourcePath>,
+    file: Option<SourcePath>,
+    func: Option<String>,
+}
 
 /// Parse a callgrind outfile into a `HashMap`
 ///
@@ -64,61 +80,44 @@ impl CallgrindMap {
     }
 }
 
+impl From<Id> for CurrentId {
+    fn from(value: Id) -> Self {
+        CurrentId {
+            obj: value.obj,
+            file: value.file,
+            func: Some(value.func),
+        }
+    }
+}
+
+impl TryFrom<CurrentId> for Id {
+    type Error = String;
+
+    fn try_from(value: CurrentId) -> std::result::Result<Self, Self::Error> {
+        match value.func {
+            Some(func) => Ok(Id {
+                obj: value.obj,
+                file: value.file,
+                func,
+            }),
+            None => Err("Missing function".to_owned()),
+        }
+    }
+}
+
 impl Parser for HashMapParser {
     type Output = CallgrindMap;
 
     #[allow(clippy::too_many_lines)]
     #[allow(clippy::similar_names)]
     fn parse(&self, output: &CallgrindOutput) -> Result<Self::Output> {
-        // Ignore 'cob'
-        #[derive(Debug, Default)]
-        struct CfnRecord {
-            obj: Option<SourcePath>,
-            file: Option<SourcePath>,
-            name: Option<Id>,
-            calls: u64,
-        }
-
-        fn make_path(root: &Path, source: &str) -> SourcePath {
-            if source == "???" {
-                SourcePath::Unknown
-            } else {
-                let path = PathBuf::from(source);
-                match path.strip_prefix(root).ok() {
-                    Some(stripped) => SourcePath::Relative(stripped.to_owned()),
-                    None if path.is_absolute() => {
-                        let mut components = path.components().skip(1);
-                        if components.next() == Some(Component::Normal(OsStr::new("rustc"))) {
-                            let mut new_path = PathBuf::from("/rustc");
-                            if let Some(Component::Normal(string)) = components.next() {
-                                new_path.push(
-                                    string.to_string_lossy().chars().take(8).collect::<String>(),
-                                );
-                            }
-                            SourcePath::Rust(new_path.join(components.collect::<PathBuf>()))
-                        } else {
-                            SourcePath::Absolute(path)
-                        }
-                    }
-                    None => SourcePath::Relative(path),
-                }
-            }
-        }
-
         let mut iter = output.lines()?;
         let config = parse_header(&mut iter)
             .map_err(|error| Error::ParseError((output.0.clone(), error.to_string())))?;
 
-        let mut curr_obj = None;
-        let mut curr_file = None;
-        let mut curr_fn = None;
-        let mut curr_name: Option<Id> = None;
-
+        let mut current_id = CurrentId::default();
         let mut cfn_record = None;
 
-        let mut curr_fn_costs = config.costs_prototype.clone();
-
-        // These are global in the callgrind_annotate source !!
         let mut cfn_totals = HashMap::<Id, Value>::new();
         let mut fn_totals = HashMap::<Id, Value>::new();
 
@@ -147,60 +146,27 @@ impl Parser for HashMapParser {
 
             match split {
                 Some(("ob", obj)) => {
-                    curr_obj = Some(make_path(&self.project_root, obj));
+                    current_id.obj = Some(make_path(&self.project_root, obj));
                 }
                 Some(("fl", file)) => {
-                    curr_file = Some(make_path(&self.project_root, file));
+                    current_id.file = Some(make_path(&self.project_root, file));
                 }
                 Some(("fn", func)) => {
-                    // Commit result
-                    if let Some(id) = curr_name.take() {
+                    if let Some(func) = &current_id.func {
                         if self
                             .sentinel
                             .as_ref()
-                            .map_or(false, |sentinel| sentinel.matches(&id.func))
+                            .map_or(false, |sentinel| sentinel.matches(func))
                         {
-                            trace!("Found sentinel: {}", &id.func);
-                            sentinel_key = Some(id.clone());
+                            trace!("Found sentinel: {}", func);
+                            sentinel_key = Some(current_id.clone().try_into().expect("A valid id"));
                         }
-                        fn_totals.insert(
-                            id,
-                            Value {
-                                costs: curr_fn_costs,
-                            },
-                        );
                     }
 
-                    // Create new
-                    curr_fn = Some(func.to_owned());
-                    let tmp = Id {
-                        file: curr_file.as_ref().cloned(),
-                        func: func.to_owned(),
-                        obj: curr_obj.clone(),
-                    };
-                    curr_fn_costs = fn_totals
-                        .get(&tmp)
-                        .map_or(&config.costs_prototype, |value| &value.costs)
-                        .clone();
-                    curr_name = Some(tmp);
+                    current_id.func = Some(func.to_owned());
                 }
                 Some(("fi" | "fe", inline)) => {
-                    fn_totals
-                        .entry(curr_name.expect("Valid fi/fe line"))
-                        .and_modify(|e| e.costs = curr_fn_costs.clone())
-                        .or_insert(Value {
-                            costs: curr_fn_costs,
-                        });
-                    curr_file = Some(make_path(&self.project_root, inline));
-                    curr_name = Some(Id {
-                        obj: curr_obj.as_ref().cloned(),
-                        file: curr_file.as_ref().cloned(),
-                        func: curr_fn.as_ref().unwrap().clone(),
-                    });
-                    curr_fn_costs = fn_totals
-                        .get(curr_name.as_ref().unwrap())
-                        .map_or(&config.costs_prototype, |value| &value.costs)
-                        .clone();
+                    current_id.file = Some(make_path(&self.project_root, inline));
                 }
                 Some(("cob", cob)) => {
                     let record = cfn_record.get_or_insert(CfnRecord::default());
@@ -212,14 +178,14 @@ impl Parser for HashMapParser {
                 }
                 Some(("cfn", cfn)) => {
                     let record = cfn_record.get_or_insert(CfnRecord::default());
-                    record.name = Some(Id {
-                        obj: record.obj.as_ref().or(curr_obj.as_ref()).cloned(),
+                    record.id = Some(Id {
+                        obj: record.obj.take().or(current_id.obj.as_ref().cloned()),
                         func: cfn.to_owned(),
-                        file: record.file.as_ref().or(curr_file.as_ref()).cloned(),
+                        file: record.file.take().or(current_id.file.as_ref().cloned()),
                     });
                 }
                 Some(("calls", calls)) => {
-                    let record = cfn_record.as_mut().unwrap();
+                    let record = cfn_record.as_mut().expect("Valid calls line");
                     record.calls = calls
                         .split_ascii_whitespace()
                         .take(1)
@@ -233,19 +199,23 @@ impl Parser for HashMapParser {
                             .skip(config.positions_prototype.len()),
                     );
 
-                    curr_fn_costs.add(&costs);
                     if let Some(cfn_record) = cfn_record.take() {
                         cfn_totals
-                            .entry(
-                                cfn_record
-                                    .name
-                                    .as_ref()
-                                    .expect("cfn entry must be present at this point")
-                                    .clone(),
-                            )
+                            .entry(cfn_record.id.expect("cfn record id must be present"))
                             .and_modify(|value| value.costs.add(&costs))
-                            .or_insert(Value { costs });
+                            .or_insert(Value {
+                                costs: costs.clone(),
+                            });
                     }
+
+                    let id = current_id.try_into().expect("A valid id");
+                    match fn_totals.get_mut(&id) {
+                        Some(value) => value.costs.add(&costs),
+                        None => {
+                            fn_totals.insert(id.clone(), Value { costs });
+                        }
+                    }
+                    current_id = id.into();
                 }
                 Some(("jump" | "jcnd" | "jfi" | "jfn", _)) => {
                     // we ignore these
@@ -255,21 +225,6 @@ impl Parser for HashMapParser {
                 }
                 Some(_) | None => panic!("Malformed line: '{line}'"),
             }
-        }
-
-        // Finish up if we actually found records past the header
-        if !is_header {
-            let id = Id {
-                obj: curr_obj,
-                file: curr_file,
-                func: curr_fn.take().unwrap(),
-            };
-            fn_totals.insert(
-                id,
-                Value {
-                    costs: curr_fn_costs,
-                },
-            );
         }
 
         // Correct inclusive totals
@@ -304,5 +259,29 @@ impl Ord for SourcePath {
 impl PartialOrd for SourcePath {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+fn make_path(root: &Path, source: &str) -> SourcePath {
+    if source == "???" {
+        SourcePath::Unknown
+    } else {
+        let path = PathBuf::from(source);
+        match path.strip_prefix(root).ok() {
+            Some(stripped) => SourcePath::Relative(stripped.to_owned()),
+            None if path.is_absolute() => {
+                let mut components = path.components().skip(1);
+                if components.next() == Some(Component::Normal(OsStr::new("rustc"))) {
+                    let mut new_path = PathBuf::from("/rustc");
+                    if let Some(Component::Normal(string)) = components.next() {
+                        new_path.push(string.to_string_lossy().chars().take(8).collect::<String>());
+                    }
+                    SourcePath::Rust(new_path.join(components.collect::<PathBuf>()))
+                } else {
+                    SourcePath::Absolute(path)
+                }
+            }
+            None => SourcePath::Relative(path),
+        }
     }
 }

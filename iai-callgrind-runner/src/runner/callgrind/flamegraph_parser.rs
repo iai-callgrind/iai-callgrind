@@ -36,16 +36,14 @@ impl FlamegraphMap {
         struct HeapElem {
             source: String,
             cost: u64,
-            obj: Option<SourcePath>,
         }
 
         impl Ord for HeapElem {
             fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-                self.cost.cmp(&other.cost).reverse().then_with(|| {
-                    self.source
-                        .cmp(&other.source)
-                        .then_with(|| self.obj.cmp(&other.obj))
-                })
+                self.cost
+                    .cmp(&other.cost)
+                    .reverse()
+                    .then_with(|| self.source.cmp(&other.source))
             }
         }
 
@@ -90,23 +88,30 @@ impl FlamegraphMap {
                 anyhow!("Failed creating flamegraph stack: Missing event type '{event_type}'")
             })?;
             if cost <= reference_cost {
-                let source = if let Some(file) = &id.file {
+                let mut source = String::new();
+                if let Some(file) = &id.file {
                     match file {
-                        SourcePath::Unknown => id.func.clone(),
+                        SourcePath::Unknown => write!(source, "{}", id.func).unwrap(),
                         SourcePath::Rust(path)
                         | SourcePath::Relative(path)
                         | SourcePath::Absolute(path) => {
-                            format!("{}:{}", path.display(), id.func)
+                            write!(source, "{}:{}", path.display(), id.func).unwrap();
                         }
                     }
                 } else {
-                    id.func.clone()
+                    write!(source, "{}", id.func).unwrap();
                 };
-                heap.push(HeapElem {
-                    source,
-                    cost,
-                    obj: id.obj.clone(),
-                });
+                if let Some(path) = &id.obj {
+                    match path {
+                        SourcePath::Unknown => {}
+                        SourcePath::Rust(path)
+                        | SourcePath::Relative(path)
+                        | SourcePath::Absolute(path) => {
+                            write!(source, " [{}]", path.display()).unwrap();
+                        }
+                    }
+                }
+                heap.push(HeapElem { source, cost });
             }
         }
 
@@ -116,23 +121,12 @@ impl FlamegraphMap {
             for window in heap.into_sorted_vec().windows(2) {
                 // There is only the slice size of 2 possible due to the windows size of 2
                 if let [h1, h2] = window {
-                    let mut stack = if let Some(last) = stacks.last() {
+                    let stack = if let Some(last) = stacks.last() {
                         let (split, _) = last.rsplit_once(' ').unwrap();
-                        format!("{split};{}", h1.source)
+                        format!("{split};{} {}", h1.source, h1.cost - h2.cost)
                     } else {
-                        h1.source.clone()
+                        format!("{} {}", h1.source, h1.cost - h2.cost)
                     };
-                    if let Some(path) = &h1.obj {
-                        match path {
-                            SourcePath::Unknown => {}
-                            SourcePath::Rust(path)
-                            | SourcePath::Relative(path)
-                            | SourcePath::Absolute(path) => {
-                                write!(stack, " [{}]", path.display()).unwrap();
-                            }
-                        }
-                    }
-                    write!(stack, " {}", h1.cost - h2.cost).unwrap();
 
                     stacks.push(stack);
 
@@ -141,19 +135,7 @@ impl FlamegraphMap {
                         let last = stacks.last().unwrap();
                         let (split, _) = last.rsplit_once(' ').unwrap();
 
-                        let mut stack = format!("{split};{}", h2.source);
-                        if let Some(path) = &h2.obj {
-                            match path {
-                                SourcePath::Unknown => {}
-                                SourcePath::Rust(path)
-                                | SourcePath::Relative(path)
-                                | SourcePath::Absolute(path) => {
-                                    write!(stack, " [{}]", path.display()).unwrap();
-                                }
-                            }
-                        }
-                        write!(stack, " {}", h2.cost).unwrap();
-
+                        let stack = format!("{split};{} {}", h2.source, h2.cost);
                         stacks.push(stack);
                     }
                 }
