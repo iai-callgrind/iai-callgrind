@@ -83,11 +83,12 @@ while (<STDIN>) {
   my $count = "$1";
   my $source = "$2";
 
-  # We don't output show ???: for unknown filenames
+  # We don't output show ???:
   $source =~ s/^\?\?\?://;
   # callgrind_annotate doesn't make paths relative for all shown paths. But
   # since we do, we need to strip the pwd prefix from the absolute paths.
   $source =~ s/\Q$pwd\E//;
+  $source =~ s:^/rustc/([a-zA-Z0-9]{8})[a-zA-Z0-9]+/[/]?(.*)$:/rustc/$1/$2:;
 
   # Sometimes callgrind_annotate shows a '.' for a count instead of a 0
   $count =~ s/\./0/;
@@ -105,6 +106,8 @@ while (<STDIN>) {
   if (defined $missing_ob and not $source =~ / \[.*\]$/) {
     $source .= " [$missing_ob]";
   }
+  # We also don't show [???] for unknown elf object filenames
+  $source =~ s/ \[\?\?\?\]//;
 
   for my $i (@replace) {
     if ("$i->[0]" eq "$source") {

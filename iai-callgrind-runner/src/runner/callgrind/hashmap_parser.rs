@@ -1,6 +1,8 @@
+use std::cmp::Ordering;
 use std::collections::hash_map::Iter;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::ffi::OsStr;
+use std::path::{Component, Path, PathBuf};
 
 use anyhow::Result;
 use log::trace;
@@ -30,9 +32,17 @@ pub struct HashMapParser {
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Id {
-    pub obj: Option<PathBuf>,
-    pub file: Option<PathBuf>,
+    pub obj: Option<SourcePath>,
+    pub file: Option<SourcePath>,
     pub func: String,
+}
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Serialize, Deserialize)]
+pub enum SourcePath {
+    Unknown,
+    Rust(PathBuf),
+    Relative(PathBuf),
+    Absolute(PathBuf),
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -63,18 +73,35 @@ impl Parser for HashMapParser {
         // Ignore 'cob'
         #[derive(Debug, Default)]
         struct CfnRecord {
-            obj: Option<PathBuf>,
-            file: Option<PathBuf>,
+            obj: Option<SourcePath>,
+            file: Option<SourcePath>,
             name: Option<Id>,
             calls: u64,
         }
 
-        fn make_path(root: &Path, source: &str) -> PathBuf {
-            let path = PathBuf::from(source);
-            if let Ok(stripped) = path.strip_prefix(root) {
-                stripped.to_owned()
+        fn make_path(root: &Path, source: &str) -> SourcePath {
+            if source == "???" {
+                SourcePath::Unknown
             } else {
-                path
+                let path = PathBuf::from(source);
+                match path.strip_prefix(root).ok() {
+                    Some(stripped) => SourcePath::Relative(stripped.to_owned()),
+                    None if path.is_absolute() => {
+                        let mut components = path.components().skip(1);
+                        if components.next() == Some(Component::Normal(OsStr::new("rustc"))) {
+                            let mut new_path = PathBuf::from("/rustc");
+                            if let Some(Component::Normal(string)) = components.next() {
+                                new_path.push(
+                                    string.to_string_lossy().chars().take(8).collect::<String>(),
+                                );
+                            }
+                            SourcePath::Rust(new_path.join(components.collect::<PathBuf>()))
+                        } else {
+                            SourcePath::Absolute(path)
+                        }
+                    }
+                    None => SourcePath::Relative(path),
+                }
             }
         }
 
@@ -255,5 +282,27 @@ impl Parser for HashMapParser {
             sentinel: self.sentinel.clone(),
             sentinel_key,
         })
+    }
+}
+
+impl Ord for SourcePath {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (SourcePath::Unknown, SourcePath::Unknown) => Ordering::Equal,
+            (SourcePath::Unknown, _) => Ordering::Less,
+            (_, SourcePath::Unknown) => Ordering::Greater,
+            (
+                SourcePath::Rust(path) | SourcePath::Relative(path) | SourcePath::Absolute(path),
+                SourcePath::Rust(other_path)
+                | SourcePath::Relative(other_path)
+                | SourcePath::Absolute(other_path),
+            ) => path.cmp(other_path),
+        }
+    }
+}
+
+impl PartialOrd for SourcePath {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }

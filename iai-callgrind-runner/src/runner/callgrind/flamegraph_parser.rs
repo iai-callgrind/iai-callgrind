@@ -9,6 +9,7 @@ use super::hashmap_parser::{CallgrindMap, HashMapParser};
 use super::model::EventType;
 use super::parser::{Parser, Sentinel};
 use super::CallgrindOutput;
+use crate::runner::callgrind::hashmap_parser::SourcePath;
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct FlamegraphMap(CallgrindMap);
@@ -35,7 +36,7 @@ impl FlamegraphMap {
         struct HeapElem {
             source: String,
             cost: u64,
-            obj: Option<PathBuf>,
+            obj: Option<SourcePath>,
         }
 
         impl Ord for HeapElem {
@@ -90,11 +91,13 @@ impl FlamegraphMap {
             })?;
             if cost <= reference_cost {
                 let source = if let Some(file) = &id.file {
-                    let display = file.display().to_string();
-                    if display == "???" {
-                        id.func.clone()
-                    } else {
-                        format!("{display}:{}", id.func)
+                    match file {
+                        SourcePath::Unknown => id.func.clone(),
+                        SourcePath::Rust(path)
+                        | SourcePath::Relative(path)
+                        | SourcePath::Absolute(path) => {
+                            format!("{}:{}", path.display(), id.func)
+                        }
                     }
                 } else {
                     id.func.clone()
@@ -119,8 +122,15 @@ impl FlamegraphMap {
                     } else {
                         h1.source.clone()
                     };
-                    if let Some(obj) = &h1.obj {
-                        write!(stack, " [{}]", obj.display()).unwrap();
+                    if let Some(path) = &h1.obj {
+                        match path {
+                            SourcePath::Unknown => {}
+                            SourcePath::Rust(path)
+                            | SourcePath::Relative(path)
+                            | SourcePath::Absolute(path) => {
+                                write!(stack, " [{}]", path.display()).unwrap();
+                            }
+                        }
                     }
                     write!(stack, " {}", h1.cost - h2.cost).unwrap();
 
@@ -132,8 +142,15 @@ impl FlamegraphMap {
                         let (split, _) = last.rsplit_once(' ').unwrap();
 
                         let mut stack = format!("{split};{}", h2.source);
-                        if let Some(obj) = &h2.obj {
-                            write!(stack, " [{}]", obj.display()).unwrap();
+                        if let Some(path) = &h2.obj {
+                            match path {
+                                SourcePath::Unknown => {}
+                                SourcePath::Rust(path)
+                                | SourcePath::Relative(path)
+                                | SourcePath::Absolute(path) => {
+                                    write!(stack, " [{}]", path.display()).unwrap();
+                                }
+                            }
                         }
                         write!(stack, " {}", h2.cost).unwrap();
 

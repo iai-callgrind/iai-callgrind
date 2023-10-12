@@ -12,7 +12,7 @@ use super::parser::{Parser, Sentinel};
 use super::CallgrindOutput;
 use crate::api::{self, FlamegraphKind};
 
-// TODO:Add min_width, factor and maybe other inferno options
+// TODO:Add min_width and maybe other inferno options
 #[derive(Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Config {
@@ -110,7 +110,7 @@ impl Flamegraph {
             .expect("A title must be present at this point")
             .clone();
         options.subtitle = self.config.subtitle.clone();
-        options.min_width = 0.001f64;
+        options.min_width = 0f64;
 
         let old_output = callgrind_output.to_old_output();
 
