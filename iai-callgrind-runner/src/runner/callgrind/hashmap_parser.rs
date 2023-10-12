@@ -152,18 +152,16 @@ impl Parser for HashMapParser {
                     current_id.file = Some(make_path(&self.project_root, file));
                 }
                 Some(("fn", func)) => {
-                    if let Some(func) = &current_id.func {
-                        if self
-                            .sentinel
-                            .as_ref()
-                            .map_or(false, |sentinel| sentinel.matches(func))
-                        {
-                            trace!("Found sentinel: {}", func);
-                            sentinel_key = Some(current_id.clone().try_into().expect("A valid id"));
-                        }
-                    }
-
                     current_id.func = Some(func.to_owned());
+
+                    if self
+                        .sentinel
+                        .as_ref()
+                        .map_or(false, |sentinel| sentinel.matches(func))
+                    {
+                        trace!("Found sentinel: {}", func);
+                        sentinel_key = Some(current_id.clone().try_into().expect("A valid id"));
+                    }
                 }
                 Some(("fi" | "fe", inline)) => {
                     current_id.file = Some(make_path(&self.project_root, inline));
