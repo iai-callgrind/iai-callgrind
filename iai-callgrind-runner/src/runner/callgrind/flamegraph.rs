@@ -25,6 +25,7 @@ pub struct Config {
     pub flamechart: bool,
     pub title: Option<String>,
     pub subtitle: Option<String>,
+    pub min_width: f64,
 }
 
 pub struct Flamegraph {
@@ -50,6 +51,7 @@ impl From<api::FlamegraphConfig> for Config {
             flamechart: value.flamechart.unwrap_or(false),
             title: value.title.clone(),
             subtitle: value.subtitle.clone(),
+            min_width: value.min_width.unwrap_or(0.1f64),
         }
     }
 }
@@ -110,7 +112,7 @@ impl Flamegraph {
             .expect("A title must be present at this point")
             .clone();
         options.subtitle = self.config.subtitle.clone();
-        options.min_width = 0f64;
+        options.min_width = self.config.min_width;
 
         let old_output = callgrind_output.to_old_output();
 

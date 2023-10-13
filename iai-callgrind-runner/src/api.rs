@@ -115,7 +115,7 @@ pub struct Fixtures {
     pub follow_symlinks: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct FlamegraphConfig {
     pub kind: Option<FlamegraphKind>,
     pub negate_differential: Option<bool>,
@@ -126,8 +126,9 @@ pub struct FlamegraphConfig {
     pub flamechart: Option<bool>,
     pub title: Option<String>,
     pub subtitle: Option<String>,
+    pub min_width: Option<f64>,
 }
-///
+
 /// TODO: DOCUMENT
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FlamegraphKind {
@@ -158,7 +159,7 @@ pub struct LibraryBenchmarkBenches {
     pub benches: Vec<LibraryBenchmarkBench>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmarkConfig {
     pub env_clear: Option<bool>,
     pub raw_callgrind_args: RawCallgrindArgs,

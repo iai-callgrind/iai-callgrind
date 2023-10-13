@@ -1106,6 +1106,12 @@ impl FlamegraphConfig {
         self.0.subtitle = subtitle;
         self
     }
+
+    /// TODO: DOCUMENT
+    pub fn min_width(&mut self, min_width: f64) -> &mut Self {
+        self.0.min_width = Some(min_width);
+        self
+    }
 }
 
 impl_traits!(FlamegraphConfig, internal::InternalFlamegraphConfig);
