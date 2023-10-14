@@ -214,6 +214,21 @@
 //! of [`crate::binary_benchmark_group`] and [`Run`]. Also, the
 //! [README](https://github.com/Joining7943/iai-callgrind) of this crate includes some introductory
 //! documentation with additional examples.
+//!
+//! ### Flamegraphs
+//!
+//! Flamegraphs are opt-in and can be created if you pass a [`FlamegraphConfig`] to the
+//! [`BinaryBenchmarkConfig::flamegraph`], [`Run::flamegraph`] or
+//! [`LibraryBenchmarkConfig::flamegraph`]. Callgrind flamegraphs are meant as a complement to
+//! valgrind's visualization tools `callgrind_annotate` and `kcachegrind`.
+//!
+//! Callgrind flamegraphs show the inclusive costs for functions and a specific event type, much
+//! like `callgrind_annotate` does but in a nicer (and clickable) way. Especially, differential
+//! flamegraphs facilitate a deeper understanding of code sections which cause a bottleneck or a
+//! performance regressions etc.
+//!
+//! The produced flamegraph svg files are located next to the respective callgrind output file in
+//! the `target/iai` directory.
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![doc(test(attr(warn(unused))))]
