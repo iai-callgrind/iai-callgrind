@@ -7,19 +7,17 @@ use inferno::flamegraph::{Direction, Options};
 use log::warn;
 
 use super::flamegraph_parser::FlamegraphParser;
-use super::model::EventType;
 use super::parser::{Parser, Sentinel};
 use super::CallgrindOutput;
-use crate::api::{self, FlamegraphKind};
+use crate::api::{self, EventKind, FlamegraphKind};
 
-// TODO:Add min_width and maybe other inferno options
 #[derive(Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Config {
     pub kind: FlamegraphKind,
     pub negate_differential: bool,
     pub normalize_differential: bool,
-    pub event_types: Vec<EventType>,
+    pub event_kinds: Vec<EventKind>,
     pub ignore_missing: bool,
     pub direction: Direction,
     pub flamechart: bool,
@@ -40,10 +38,9 @@ impl From<api::FlamegraphConfig> for Config {
             kind: value.kind.unwrap_or(FlamegraphKind::All),
             negate_differential: value.negate_differential.unwrap_or_default(),
             normalize_differential: value.normalize_differential.unwrap_or(false),
-            event_types: value.event_types.map_or_else(
-                || vec![EventType::Ir],
-                |events| events.iter().map(|e| EventType::from(*e)).collect(),
-            ),
+            event_kinds: value
+                .event_kinds
+                .unwrap_or_else(|| vec![EventKind::EstimatedCycles]),
             ignore_missing: value.ignore_missing.unwrap_or(false),
             direction: value
                 .direction
@@ -92,10 +89,22 @@ impl Flamegraph {
         if self.config.kind == FlamegraphKind::None {
             return Ok(());
         }
+        let summarize_events = [
+            EventKind::L1hits,
+            EventKind::LLhits,
+            EventKind::RamHits,
+            EventKind::TotalRW,
+            EventKind::EstimatedCycles,
+        ];
+        let summarize = self
+            .config
+            .event_kinds
+            .iter()
+            .any(|e| summarize_events.contains(e));
 
         let parser = FlamegraphParser::new(sentinel, project_root);
         // We need this map in all remaining cases of `FlamegraphKinds`
-        let map = parser.parse(callgrind_output)?;
+        let mut map = parser.parse(callgrind_output)?;
         if map.is_empty() {
             warn!("Unable to create a flamegraph: No stacks found");
             return Ok(());
@@ -117,7 +126,7 @@ impl Flamegraph {
         let old_output = callgrind_output.to_old_output();
 
         #[allow(clippy::if_then_some_else_none)]
-        let old_map = if (self.config.kind == FlamegraphKind::Differential
+        let mut old_map = if (self.config.kind == FlamegraphKind::Differential
             || self.config.kind == FlamegraphKind::All)
             && old_output.exists()
         {
@@ -126,16 +135,22 @@ impl Flamegraph {
             None
         };
 
-        for event_type in &self.config.event_types {
-            options.count_name = event_type.to_string();
+        if summarize {
+            map.make_summary()?;
+            if let Some(map) = old_map.as_mut() {
+                map.make_summary()?;
+            }
+        }
 
-            let stacks_lines = match map.to_stack_format(event_type) {
+        for event_kind in &self.config.event_kinds {
+            options.count_name = event_kind.to_string();
+            let stacks_lines = match map.to_stack_format(event_kind) {
                 Ok(s) => s,
                 Err(_) if self.config.ignore_missing => continue,
                 Err(error) => return Err(error),
             };
 
-            let output = Output::init(callgrind_output.as_path(), event_type)?;
+            let output = Output::init(callgrind_output.as_path(), event_kind)?;
             if self.config.kind == FlamegraphKind::Regular
                 || self.config.kind == FlamegraphKind::All
             {
@@ -148,7 +163,7 @@ impl Flamegraph {
 
             // Is Some if FlamegraphKind::Differential or FlamegraphKind::Both
             if let Some(old_map) = old_map.as_ref() {
-                let old_stacks_lines = match old_map.to_stack_format(event_type) {
+                let old_stacks_lines = match old_map.to_stack_format(event_kind) {
                     Ok(s) => s,
                     Err(_) if self.config.ignore_missing => continue,
                     Err(error) => return Err(error),
@@ -184,11 +199,11 @@ impl Flamegraph {
 }
 
 impl Output {
-    pub fn init<T>(path: T, event_type: &EventType) -> Result<Self>
+    pub fn init<T>(path: T, event_kind: &EventKind) -> Result<Self>
     where
         T: AsRef<Path>,
     {
-        let path = path.as_ref().with_extension(format!("{event_type}.svg"));
+        let path = path.as_ref().with_extension(format!("{event_kind}.svg"));
         if path.exists() {
             let old_svg = path.with_extension("old.svg");
             std::fs::copy(&path, &old_svg).with_context(|| {

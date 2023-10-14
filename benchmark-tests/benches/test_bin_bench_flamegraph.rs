@@ -1,5 +1,5 @@
 use iai_callgrind::{
-    binary_benchmark_group, main, Arg, BinaryBenchmarkConfig, EventType, FlamegraphConfig,
+    binary_benchmark_group, main, Arg, BinaryBenchmarkConfig, EventKind, FlamegraphConfig,
     FlamegraphKind, Run,
 };
 
@@ -62,17 +62,17 @@ binary_benchmark_group!(
     benchmark = |"benchmark-tests-exit", group: &mut BinaryBenchmarkGroup| {
         group
         .bench(
-            Run::with_arg(Arg::new("ignore_missing_event_type", ["0"]))
+            Run::with_arg(Arg::new("ignore_missing_event_kind", ["0"]))
             .flamegraph(
                 FlamegraphConfig::default()
-                .event_types([EventType::SysCpuTime])
+                .event_kinds([EventKind::SysCpuTime])
                 .ignore_missing(true)
             )
         )
         .bench(
-            Run::with_arg(Arg::new("no_event_types_then_no_flamegraph", ["0"]))
+            Run::with_arg(Arg::new("no_event_kinds_then_no_flamegraph", ["0"]))
             .flamegraph(
-                FlamegraphConfig::default().event_types([])
+                FlamegraphConfig::default().event_kinds([])
             )
         )
         .bench(

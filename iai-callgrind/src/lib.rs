@@ -241,7 +241,7 @@
 
 pub use bincode;
 pub use iai_callgrind_macros::library_benchmark;
-pub use iai_callgrind_runner::api::{Direction, EventType, FlamegraphKind};
+pub use iai_callgrind_runner::api::{Direction, EventKind, FlamegraphKind};
 
 #[doc(hidden)]
 pub mod internal;
@@ -1070,11 +1070,11 @@ impl FlamegraphConfig {
     }
 
     /// TODO: DOCUMENT
-    pub fn event_types<T>(&mut self, event_types: T) -> &mut Self
+    pub fn event_kinds<T>(&mut self, event_kinds: T) -> &mut Self
     where
-        T: IntoIterator<Item = EventType>,
+        T: IntoIterator<Item = EventKind>,
     {
-        self.0.event_types = Some(event_types.into_iter().collect());
+        self.0.event_kinds = Some(event_kinds.into_iter().collect());
         self
     }
 

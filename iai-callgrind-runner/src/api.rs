@@ -1,6 +1,6 @@
-/// The api contains all elements which the `runner` can understand
-use std::ffi::OsString;
 use std::path::PathBuf;
+/// The api contains all elements which the `runner` can understand
+use std::{ffi::OsString, fmt::Display};
 
 use serde::{Deserialize, Serialize};
 
@@ -59,11 +59,17 @@ pub enum Direction {
 }
 
 /// TODO: DOCUMENT
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum EventType {
-    // always available
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EventKind {
+    // always there
     Ir,
-    // --cache-sim (always available)
+    // --collect-systime
+    SysCount,
+    SysTime,
+    SysCpuTime,
+    // --collect-bus
+    Ge,
+    // --cache-sim
     Dr,
     Dw,
     I1mr,
@@ -72,20 +78,6 @@ pub enum EventType {
     DLmr,
     D1mw,
     DLmw,
-    // TODO: ENABLE THE ADDITIONAL TYPES
-    // By us
-    // L1Hits,
-    // LLHits,
-    // TotalRW,
-    // RamHits,
-    // EstimatedCycles,
-
-    // --collect-systime
-    SysCount,
-    SysTime,
-    SysCpuTime,
-    // --collect-bus
-    Ge,
     // --branch-sim
     Bc,
     Bcm,
@@ -100,6 +92,12 @@ pub enum EventType {
     AcCost2,
     SpLoss1,
     SpLoss2,
+    // Defined by us
+    L1hits,
+    LLhits,
+    RamHits,
+    TotalRW,
+    EstimatedCycles,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -120,7 +118,7 @@ pub struct FlamegraphConfig {
     pub kind: Option<FlamegraphKind>,
     pub negate_differential: Option<bool>,
     pub normalize_differential: Option<bool>,
-    pub event_types: Option<Vec<EventType>>,
+    pub event_kinds: Option<Vec<EventKind>>,
     pub ignore_missing: Option<bool>,
     pub direction: Option<Direction>,
     pub flamechart: Option<bool>,
@@ -220,6 +218,47 @@ impl BinaryBenchmarkConfig {
 impl Default for Direction {
     fn default() -> Self {
         Self::BottomToTop
+    }
+}
+
+impl Display for EventKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{self:?}"))
+    }
+}
+
+impl<T> From<T> for EventKind
+where
+    T: AsRef<str>,
+{
+    fn from(value: T) -> Self {
+        match value.as_ref() {
+            "Ir" => Self::Ir,
+            "Dr" => Self::Dr,
+            "Dw" => Self::Dw,
+            "I1mr" => Self::I1mr,
+            "ILmr" => Self::ILmr,
+            "D1mr" => Self::D1mr,
+            "DLmr" => Self::DLmr,
+            "D1mw" => Self::D1mw,
+            "DLmw" => Self::DLmw,
+            "sysCount" => Self::SysCount,
+            "sysTime" => Self::SysTime,
+            "sysCpuTime" => Self::SysCpuTime,
+            "Ge" => Self::Ge,
+            "Bc" => Self::Bc,
+            "Bcm" => Self::Bcm,
+            "Bi" => Self::Bi,
+            "Bim" => Self::Bim,
+            "ILdmr" => Self::ILdmr,
+            "DLdmr" => Self::DLdmr,
+            "DLdmw" => Self::DLdmw,
+            "AcCost1" => Self::AcCost1,
+            "AcCost2" => Self::AcCost2,
+            "SpLoss1" => Self::SpLoss1,
+            "SpLoss2" => Self::SpLoss2,
+            unknown => panic!("Unknown event type: {unknown}"),
+        }
     }
 }
 

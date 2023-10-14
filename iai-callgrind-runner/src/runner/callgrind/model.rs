@@ -1,11 +1,10 @@
 //! This module includes all the structs to model the callgrind output
 
-use std::fmt::Display;
-
+use anyhow::{anyhow, Result};
 use indexmap::{indexmap, IndexMap};
 use serde::{Deserialize, Serialize};
 
-use crate::api;
+use crate::api::EventKind;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Calls {
@@ -14,42 +13,7 @@ pub struct Calls {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Costs(IndexMap<EventType, u64>);
-
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
-pub enum EventType {
-    // always on
-    Ir,
-    // --collect-systime
-    SysCount,
-    SysTime,
-    SysCpuTime,
-    // --collect-bus
-    Ge,
-    // --cache-sim
-    Dr,
-    Dw,
-    I1mr,
-    ILmr,
-    D1mr,
-    DLmr,
-    D1mw,
-    DLmw,
-    // --branch-sim
-    Bc,
-    Bcm,
-    Bi,
-    Bim,
-    // --simulate-wb
-    ILdmr,
-    DLdmr,
-    DLdmw,
-    // --cachuse
-    AcCost1,
-    AcCost2,
-    SpLoss1,
-    SpLoss2,
-}
+pub struct Costs(IndexMap<EventKind, u64>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PositionType {
@@ -74,8 +38,8 @@ impl Calls {
 
 impl Costs {
     // The order matters. The index is derived from the insertion order
-    pub fn with_event_types(types: &[EventType]) -> Self {
-        Self(types.iter().map(|t| (*t, 0)).collect())
+    pub fn with_event_kinds(kinds: &[EventKind]) -> Self {
+        Self(kinds.iter().map(|t| (*t, 0)).collect())
     }
 
     pub fn add_iter_str<I, T>(&mut self, iter: T)
@@ -97,28 +61,75 @@ impl Costs {
         }
     }
 
-    /// Return the cost of the event at index (of insertion order)
+    /// Return the cost of the event at index (of insertion order) if present
     ///
     /// This operation is O(1)
     pub fn cost_by_index(&self, index: usize) -> Option<u64> {
         self.0.get_index(index).map(|(_, c)| *c)
     }
 
-    /// Return the cost of the [`EventType`]
+    /// Return the cost of the [`EventType`] if present
     ///
     /// This operation is O(1)
-    pub fn cost_by_type(&self, kind: &EventType) -> Option<u64> {
+    pub fn cost_by_kind(&self, kind: &EventKind) -> Option<u64> {
         self.0.get_key_value(kind).map(|(_, c)| *c)
     }
 
-    pub fn event_types(&self) -> Vec<EventType> {
+    pub fn try_cost_by_kind(&self, kind: &EventKind) -> Result<u64> {
+        self.cost_by_kind(kind)
+            .ok_or_else(|| anyhow!("Missing event type '{kind}"))
+    }
+
+    pub fn event_kinds(&self) -> Vec<EventKind> {
         self.0.iter().map(|(k, _)| *k).collect()
+    }
+
+    /// Calculate summary events and estimated cycles in-place
+    ///
+    /// # Panics
+    ///
+    /// If the necessary cache simulation events (when running callgrind with --cache-sim) were not
+    /// present.
+    pub fn make_summary(&mut self) -> Result<()> {
+        //         0   1  2    3    4    5    6    7    8
+        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
+        let instructions = self.try_cost_by_kind(&EventKind::Ir)?;
+        let total_data_cache_reads = self.try_cost_by_kind(&EventKind::Dr)?;
+        let total_data_cache_writes = self.try_cost_by_kind(&EventKind::Dw)?;
+        let l1_instructions_cache_read_misses = self.try_cost_by_kind(&EventKind::I1mr)?;
+        let l1_data_cache_read_misses = self.try_cost_by_kind(&EventKind::D1mr)?;
+        let l1_data_cache_write_misses = self.try_cost_by_kind(&EventKind::D1mw)?;
+        let l3_instructions_cache_read_misses = self.try_cost_by_kind(&EventKind::ILmr)?;
+        let l3_data_cache_read_misses = self.try_cost_by_kind(&EventKind::DLmr)?;
+        let l3_data_cache_write_misses = self.try_cost_by_kind(&EventKind::DLmw)?;
+
+        let ram_hits = l3_instructions_cache_read_misses
+            + l3_data_cache_read_misses
+            + l3_data_cache_write_misses;
+        let l1_data_accesses = l1_data_cache_read_misses + l1_data_cache_write_misses;
+        let l1_miss = l1_instructions_cache_read_misses + l1_data_accesses;
+        let l3_accesses = l1_miss;
+        let l3_hits = l3_accesses - ram_hits;
+
+        let total_memory_rw = instructions + total_data_cache_reads + total_data_cache_writes;
+        let l1_hits = total_memory_rw - ram_hits - l3_hits;
+
+        // Uses Itamar Turner-Trauring's formula from https://pythonspeed.com/articles/consistent-benchmarking-in-ci/
+        let cycles = l1_hits + (5 * l3_hits) + (35 * ram_hits);
+
+        self.0.insert(EventKind::L1hits, l1_hits);
+        self.0.insert(EventKind::LLhits, l3_hits);
+        self.0.insert(EventKind::RamHits, ram_hits);
+        self.0.insert(EventKind::TotalRW, total_memory_rw);
+        self.0.insert(EventKind::EstimatedCycles, cycles);
+
+        Ok(())
     }
 }
 
 impl Default for Costs {
     fn default() -> Self {
-        Self(indexmap! {EventType::Ir => 0})
+        Self(indexmap! {EventKind::Ir => 0})
     }
 }
 
@@ -132,83 +143,12 @@ where
     {
         Self(
             iter.into_iter()
-                .map(|s| (EventType::from(s), 0))
+                .map(|s| (EventKind::from(s), 0))
                 .collect::<IndexMap<_, _>>(),
         )
     }
 }
 
-impl Display for EventType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{self:?}"))
-    }
-}
-
-impl From<api::EventType> for EventType {
-    fn from(value: api::EventType) -> Self {
-        match value {
-            api::EventType::Ir => EventType::Ir,
-            api::EventType::Dr => EventType::Dr,
-            api::EventType::Dw => EventType::Dw,
-            api::EventType::I1mr => EventType::I1mr,
-            api::EventType::ILmr => EventType::ILmr,
-            api::EventType::D1mr => EventType::D1mr,
-            api::EventType::DLmr => EventType::DLmr,
-            api::EventType::D1mw => EventType::D1mw,
-            api::EventType::DLmw => EventType::DLmw,
-            api::EventType::SysCount => EventType::SysCount,
-            api::EventType::SysTime => EventType::SysTime,
-            api::EventType::SysCpuTime => EventType::SysCpuTime,
-            api::EventType::Ge => EventType::Ge,
-            api::EventType::Bc => EventType::Bc,
-            api::EventType::Bcm => EventType::Bcm,
-            api::EventType::Bi => EventType::Bi,
-            api::EventType::Bim => EventType::Bim,
-            api::EventType::ILdmr => EventType::ILdmr,
-            api::EventType::DLdmr => EventType::DLdmr,
-            api::EventType::DLdmw => EventType::DLdmw,
-            api::EventType::AcCost1 => EventType::AcCost1,
-            api::EventType::AcCost2 => EventType::AcCost2,
-            api::EventType::SpLoss1 => EventType::SpLoss1,
-            api::EventType::SpLoss2 => EventType::SpLoss2,
-        }
-    }
-}
-
-impl<T> From<T> for EventType
-where
-    T: AsRef<str>,
-{
-    fn from(value: T) -> Self {
-        match value.as_ref() {
-            "Ir" => Self::Ir,
-            "Dr" => Self::Dr,
-            "Dw" => Self::Dw,
-            "I1mr" => Self::I1mr,
-            "ILmr" => Self::ILmr,
-            "D1mr" => Self::D1mr,
-            "DLmr" => Self::DLmr,
-            "D1mw" => Self::D1mw,
-            "DLmw" => Self::DLmw,
-            "sysCount" => Self::SysCount,
-            "sysTime" => Self::SysTime,
-            "sysCpuTime" => Self::SysCpuTime,
-            "Ge" => Self::Ge,
-            "Bc" => Self::Bc,
-            "Bcm" => Self::Bcm,
-            "Bi" => Self::Bi,
-            "Bim" => Self::Bim,
-            "ILdmr" => Self::ILdmr,
-            "DLdmr" => Self::DLdmr,
-            "DLdmw" => Self::DLdmw,
-            "AcCost1" => Self::AcCost1,
-            "AcCost2" => Self::AcCost2,
-            "SpLoss1" => Self::SpLoss1,
-            "SpLoss2" => Self::SpLoss2,
-            unknown => panic!("Unknown event type: {unknown}"),
-        }
-    }
-}
 impl<T> From<T> for PositionType
 where
     T: AsRef<str>,

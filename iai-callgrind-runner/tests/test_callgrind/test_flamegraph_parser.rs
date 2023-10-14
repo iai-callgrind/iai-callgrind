@@ -1,5 +1,5 @@
+use iai_callgrind_runner::api::EventKind;
 use iai_callgrind_runner::runner::callgrind::flamegraph_parser::FlamegraphParser;
-use iai_callgrind_runner::runner::callgrind::model::EventType;
 use iai_callgrind_runner::runner::callgrind::parser::{Parser, Sentinel};
 use rstest::rstest;
 
@@ -14,7 +14,7 @@ fn test_flamegraph_parser(#[case] fixture: &str, #[case] sentinel: Option<Sentin
     let parser = FlamegraphParser::new(sentinel.as_ref(), get_project_root());
 
     let result = parser.parse(&output).unwrap();
-    let stacks = result.to_stack_format(&EventType::Ir).unwrap();
+    let stacks = result.to_stack_format(&EventKind::Ir).unwrap();
 
     assert_eq!(stacks.len(), expected_stacks.len());
     // Assert line by line or else the output on error is unreadable. Also, provide an additional

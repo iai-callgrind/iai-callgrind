@@ -43,6 +43,7 @@ pub struct CallgrindOptions {
 #[derive(Debug, Clone)]
 pub struct CallgrindOutput(PathBuf);
 
+// TODO: CHANGE to use Costs directly
 #[derive(Clone, Debug)]
 pub struct CallgrindStats {
     /// Ir: equals the number of instructions executed

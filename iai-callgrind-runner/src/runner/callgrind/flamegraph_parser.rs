@@ -6,9 +6,9 @@ use anyhow::{anyhow, Result};
 use log::debug;
 
 use super::hashmap_parser::{CallgrindMap, HashMapParser};
-use super::model::EventType;
 use super::parser::{Parser, Sentinel};
 use super::CallgrindOutput;
+use crate::api::EventKind;
 use crate::runner::callgrind::hashmap_parser::SourcePath;
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -20,9 +20,25 @@ pub struct FlamegraphParser {
     sentinel: Option<Sentinel>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
+struct HeapElem {
+    source: String,
+    cost: u64,
+}
+
 impl FlamegraphMap {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    pub fn make_summary(&mut self) -> Result<()> {
+        for value in self.0.map.values_mut() {
+            value
+                .costs
+                .make_summary()
+                .map_err(|error| anyhow!("Failed calculating summary events: {error}"))?;
+        }
+        Ok(())
     }
 
     // Convert to stacks string format for this `EventType`
@@ -31,28 +47,7 @@ impl FlamegraphMap {
     //
     // If the event type was not present in the stacks
     #[allow(clippy::too_many_lines)]
-    pub fn to_stack_format(&self, event_type: &EventType) -> Result<Vec<String>> {
-        #[derive(Debug, Eq, PartialEq)]
-        struct HeapElem {
-            source: String,
-            cost: u64,
-        }
-
-        impl Ord for HeapElem {
-            fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-                self.cost
-                    .cmp(&other.cost)
-                    .reverse()
-                    .then_with(|| self.source.cmp(&other.source))
-            }
-        }
-
-        impl PartialOrd for HeapElem {
-            fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-                Some(self.cmp(other))
-            }
-        }
-
+    pub fn to_stack_format(&self, event_kind: &EventKind) -> Result<Vec<String>> {
         if self.0.map.is_empty() {
             return Ok(vec![]);
         }
@@ -64,9 +59,9 @@ impl FlamegraphMap {
                 .get(key)
                 .expect("Resolved sentinel must be present in map")
                 .costs
-                .cost_by_type(event_type)
+                .cost_by_kind(event_kind)
                 .ok_or_else(|| {
-                    anyhow!("Failed creating flamegraph stack: Missing event type '{event_type}'")
+                    anyhow!("Failed creating flamegraph stack: Missing event type '{event_kind}'")
                 })?
         } else {
             self.0
@@ -76,16 +71,16 @@ impl FlamegraphMap {
                 .expect("'main' function must be present in callgrind output")
                 .1
                 .costs
-                .cost_by_type(event_type)
+                .cost_by_kind(event_kind)
                 .ok_or_else(|| {
-                    anyhow!("Failed creating flamegraph stack: Missing event type '{event_type}'")
+                    anyhow!("Failed creating flamegraph stack: Missing event type '{event_kind}'")
                 })?
         };
 
         let mut heap = BinaryHeap::new();
         for (id, value) in &self.0.map {
-            let cost = value.costs.cost_by_type(event_type).ok_or_else(|| {
-                anyhow!("Failed creating flamegraph stack: Missing event type '{event_type}'")
+            let cost = value.costs.cost_by_kind(event_kind).ok_or_else(|| {
+                anyhow!("Failed creating flamegraph stack: Missing event type '{event_kind}'")
             })?;
             if cost <= reference_cost {
                 let mut source = String::new();
@@ -173,5 +168,20 @@ impl Parser for FlamegraphParser {
         };
 
         parser.parse(output).map(FlamegraphMap)
+    }
+}
+
+impl Ord for HeapElem {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.cost
+            .cmp(&other.cost)
+            .reverse()
+            .then_with(|| self.source.cmp(&other.source))
+    }
+}
+
+impl PartialOrd for HeapElem {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
