@@ -120,7 +120,6 @@ pub struct FlamegraphConfig {
     pub normalize_differential: Option<bool>,
     pub event_kinds: Option<Vec<EventKind>>,
     pub direction: Option<Direction>,
-    pub flamechart: Option<bool>,
     pub title: Option<String>,
     pub subtitle: Option<String>,
     pub min_width: Option<f64>,

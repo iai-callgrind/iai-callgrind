@@ -26,12 +26,11 @@ pub enum PositionType {
 pub struct Positions(IndexMap<PositionType, u64>);
 
 impl Calls {
-    pub fn from<I>(mut iter: impl Iterator<Item = I>, positions: &Positions) -> Self
+    pub fn from<I>(mut iter: impl Iterator<Item = I>, mut positions: Positions) -> Self
     where
         I: AsRef<str>,
     {
         let amount = iter.next().unwrap().as_ref().parse().unwrap();
-        let mut positions = positions.clone();
         positions.set_iter_str(iter);
         Self { amount, positions }
     }

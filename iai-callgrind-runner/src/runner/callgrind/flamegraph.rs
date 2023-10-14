@@ -19,7 +19,6 @@ pub struct Config {
     pub normalize_differential: bool,
     pub event_kinds: Vec<EventKind>,
     pub direction: Direction,
-    pub flamechart: bool,
     pub title: Option<String>,
     pub subtitle: Option<String>,
     pub min_width: f64,
@@ -43,7 +42,6 @@ impl From<api::FlamegraphConfig> for Config {
             direction: value
                 .direction
                 .map_or_else(|| Direction::Inverted, std::convert::Into::into),
-            flamechart: value.flamechart.unwrap_or(false),
             title: value.title.clone(),
             subtitle: value.subtitle.clone(),
             min_width: value.min_width.unwrap_or(0.1f64),
@@ -111,7 +109,6 @@ impl Flamegraph {
         let mut options = Options::default();
         options.negate_differentials = self.config.negate_differential;
         options.direction = self.config.direction;
-        options.flame_chart = self.config.flamechart;
         options.title = self
             .config
             .title

@@ -1084,13 +1084,15 @@ impl FlamegraphConfig {
         self
     }
 
-    /// TODO: DOCUMENT
-    pub fn flamechart(&mut self, flamechart: bool) -> &mut Self {
-        self.0.flamechart = Some(flamechart);
-        self
-    }
-
-    /// TODO: DOCUMENT
+    /// Overwrite the default title of the final flamegraph
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::{Direction, FlamegraphConfig};
+    ///
+    /// let config = FlamegraphConfig::default().title("My flamegraph title".to_owned());
+    /// ```
     pub fn title(&mut self, title: String) -> &mut Self {
         self.0.title = Some(title);
         self
