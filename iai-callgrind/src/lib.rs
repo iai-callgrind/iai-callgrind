@@ -1079,11 +1079,6 @@ impl FlamegraphConfig {
     }
 
     /// TODO: DOCUMENT
-    pub fn ignore_missing(&mut self, ignore_missing: bool) -> &mut Self {
-        self.0.ignore_missing = Some(ignore_missing);
-        self
-    }
-    /// TODO: DOCUMENT
     pub fn direction(&mut self, direction: Direction) -> &mut Self {
         self.0.direction = Some(direction);
         self

@@ -19,6 +19,7 @@ use anyhow::{anyhow, Context, Result};
 use colored::{ColoredString, Colorize};
 use log::{debug, error, info, Level};
 
+use self::model::Costs;
 use super::callgrind::args::Args;
 use super::meta::Metadata;
 use crate::api::ExitWith;
@@ -43,28 +44,8 @@ pub struct CallgrindOptions {
 #[derive(Debug, Clone)]
 pub struct CallgrindOutput(PathBuf);
 
-// TODO: CHANGE to use Costs directly
 #[derive(Clone, Debug)]
-pub struct CallgrindStats {
-    /// Ir: equals the number of instructions executed
-    instructions_executed: u64,
-    /// I1mr: I1 cache read misses
-    l1_instructions_cache_read_misses: u64,
-    /// ILmr: LL cache instruction read misses
-    l3_instructions_cache_read_misses: u64,
-    /// Dr: Memory reads
-    total_data_cache_reads: u64,
-    /// D1mr: D1 cache read misses
-    l1_data_cache_read_misses: u64,
-    /// DLmr: LL cache data read misses
-    l3_data_cache_read_misses: u64,
-    /// Dw: Memory writes
-    total_data_cache_writes: u64,
-    /// D1mw: D1 cache write misses
-    l1_data_cache_write_misses: u64,
-    /// DLmw: LL cache data write misses
-    l3_data_cache_write_misses: u64,
-}
+pub struct CallgrindStats(Costs);
 
 #[derive(Clone, Debug)]
 pub struct CallgrindSummary {
@@ -303,32 +284,6 @@ impl Display for CallgrindOutput {
 }
 
 impl CallgrindStats {
-    fn summarize(&self) -> CallgrindSummary {
-        let ram_hits = self.l3_instructions_cache_read_misses
-            + self.l3_data_cache_read_misses
-            + self.l3_data_cache_write_misses;
-        let l1_data_accesses = self.l1_data_cache_read_misses + self.l1_data_cache_write_misses;
-        let l1_miss = self.l1_instructions_cache_read_misses + l1_data_accesses;
-        let l3_accesses = l1_miss;
-        let l3_hits = l3_accesses - ram_hits;
-
-        let total_memory_rw =
-            self.instructions_executed + self.total_data_cache_reads + self.total_data_cache_writes;
-        let l1_hits = total_memory_rw - ram_hits - l3_hits;
-
-        // Uses Itamar Turner-Trauring's formula from https://pythonspeed.com/articles/consistent-benchmarking-in-ci/
-        let cycles = l1_hits + (5 * l3_hits) + (35 * ram_hits);
-
-        CallgrindSummary {
-            instructions: self.instructions_executed,
-            l1_hits,
-            l3_hits,
-            ram_hits,
-            total_memory_rw,
-            cycles,
-        }
-    }
-
     fn signed_short(n: f64) -> String {
         let n_abs = n.abs();
 
@@ -382,8 +337,8 @@ impl CallgrindStats {
     }
 
     pub fn print(&self, old: Option<CallgrindStats>) {
-        let summary = self.summarize();
-        let old_summary = old.map(|stat| stat.summarize());
+        let summary = self.0.to_callgrind_summary().unwrap();
+        let old_summary = old.map(|stat| stat.0.to_callgrind_summary().unwrap());
         println!(
             "  Instructions:     {:>15}{}",
             summary.instructions.to_string().bold(),

@@ -18,7 +18,6 @@ pub struct Config {
     pub negate_differential: bool,
     pub normalize_differential: bool,
     pub event_kinds: Vec<EventKind>,
-    pub ignore_missing: bool,
     pub direction: Direction,
     pub flamechart: bool,
     pub title: Option<String>,
@@ -41,7 +40,6 @@ impl From<api::FlamegraphConfig> for Config {
             event_kinds: value
                 .event_kinds
                 .unwrap_or_else(|| vec![EventKind::EstimatedCycles]),
-            ignore_missing: value.ignore_missing.unwrap_or(false),
             direction: value
                 .direction
                 .map_or_else(|| Direction::Inverted, std::convert::Into::into),
@@ -144,11 +142,7 @@ impl Flamegraph {
 
         for event_kind in &self.config.event_kinds {
             options.count_name = event_kind.to_string();
-            let stacks_lines = match map.to_stack_format(event_kind) {
-                Ok(s) => s,
-                Err(_) if self.config.ignore_missing => continue,
-                Err(error) => return Err(error),
-            };
+            let stacks_lines = map.to_stack_format(event_kind)?;
 
             let output = Output::init(callgrind_output.as_path(), event_kind)?;
             if self.config.kind == FlamegraphKind::Regular
@@ -163,11 +157,7 @@ impl Flamegraph {
 
             // Is Some if FlamegraphKind::Differential or FlamegraphKind::Both
             if let Some(old_map) = old_map.as_ref() {
-                let old_stacks_lines = match old_map.to_stack_format(event_kind) {
-                    Ok(s) => s,
-                    Err(_) if self.config.ignore_missing => continue,
-                    Err(error) => return Err(error),
-                };
+                let old_stacks_lines = old_map.to_stack_format(event_kind)?;
 
                 let cursor = Cursor::new(stacks_lines.join("\n"));
                 let old_cursor = Cursor::new(old_stacks_lines.join("\n"));

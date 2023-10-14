@@ -42,16 +42,6 @@ impl Parser for SummaryParser {
             }
         }
 
-        Ok(CallgrindStats {
-            instructions_executed: costs.cost_by_index(0).unwrap(),
-            total_data_cache_reads: costs.cost_by_index(1).unwrap(),
-            total_data_cache_writes: costs.cost_by_index(2).unwrap(),
-            l1_instructions_cache_read_misses: costs.cost_by_index(3).unwrap(),
-            l1_data_cache_read_misses: costs.cost_by_index(4).unwrap(),
-            l1_data_cache_write_misses: costs.cost_by_index(5).unwrap(),
-            l3_instructions_cache_read_misses: costs.cost_by_index(6).unwrap(),
-            l3_data_cache_read_misses: costs.cost_by_index(7).unwrap(),
-            l3_data_cache_write_misses: costs.cost_by_index(8).unwrap(),
-        })
+        Ok(CallgrindStats(costs))
     }
 }

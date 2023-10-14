@@ -119,7 +119,6 @@ pub struct FlamegraphConfig {
     pub negate_differential: Option<bool>,
     pub normalize_differential: Option<bool>,
     pub event_kinds: Option<Vec<EventKind>>,
-    pub ignore_missing: Option<bool>,
     pub direction: Option<Direction>,
     pub flamechart: Option<bool>,
     pub title: Option<String>,

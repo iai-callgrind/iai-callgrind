@@ -62,11 +62,10 @@ binary_benchmark_group!(
     benchmark = |"benchmark-tests-exit", group: &mut BinaryBenchmarkGroup| {
         group
         .bench(
-            Run::with_arg(Arg::new("ignore_missing_event_kind", ["0"]))
+            Run::with_arg(Arg::new("Ir event type", ["0"]))
             .flamegraph(
                 FlamegraphConfig::default()
-                .event_kinds([EventKind::SysCpuTime])
-                .ignore_missing(true)
+                .event_kinds([EventKind::Ir])
             )
         )
         .bench(

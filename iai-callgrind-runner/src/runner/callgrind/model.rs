@@ -4,6 +4,7 @@ use anyhow::{anyhow, Result};
 use indexmap::{indexmap, IndexMap};
 use serde::{Deserialize, Serialize};
 
+use super::CallgrindSummary;
 use crate::api::EventKind;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -38,8 +39,11 @@ impl Calls {
 
 impl Costs {
     // The order matters. The index is derived from the insertion order
-    pub fn with_event_kinds(kinds: &[EventKind]) -> Self {
-        Self(kinds.iter().map(|t| (*t, 0)).collect())
+    pub fn with_event_kinds<T>(kinds: T) -> Self
+    where
+        T: IntoIterator<Item = (EventKind, u64)>,
+    {
+        Self(kinds.into_iter().map(|(t, c)| (t, c)).collect())
     }
 
     pub fn add_iter_str<I, T>(&mut self, iter: T)
@@ -84,24 +88,19 @@ impl Costs {
         self.0.iter().map(|(k, _)| *k).collect()
     }
 
-    /// Calculate summary events and estimated cycles in-place
-    ///
-    /// # Panics
-    ///
-    /// If the necessary cache simulation events (when running callgrind with --cache-sim) were not
-    /// present.
-    pub fn make_summary(&mut self) -> Result<()> {
+    pub fn to_callgrind_summary(&self) -> Result<CallgrindSummary> {
+        use EventKind::*;
         //         0   1  2    3    4    5    6    7    8
         // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
-        let instructions = self.try_cost_by_kind(&EventKind::Ir)?;
-        let total_data_cache_reads = self.try_cost_by_kind(&EventKind::Dr)?;
-        let total_data_cache_writes = self.try_cost_by_kind(&EventKind::Dw)?;
-        let l1_instructions_cache_read_misses = self.try_cost_by_kind(&EventKind::I1mr)?;
-        let l1_data_cache_read_misses = self.try_cost_by_kind(&EventKind::D1mr)?;
-        let l1_data_cache_write_misses = self.try_cost_by_kind(&EventKind::D1mw)?;
-        let l3_instructions_cache_read_misses = self.try_cost_by_kind(&EventKind::ILmr)?;
-        let l3_data_cache_read_misses = self.try_cost_by_kind(&EventKind::DLmr)?;
-        let l3_data_cache_write_misses = self.try_cost_by_kind(&EventKind::DLmw)?;
+        let instructions = self.try_cost_by_kind(&Ir)?;
+        let total_data_cache_reads = self.try_cost_by_kind(&Dr)?;
+        let total_data_cache_writes = self.try_cost_by_kind(&Dw)?;
+        let l1_instructions_cache_read_misses = self.try_cost_by_kind(&I1mr)?;
+        let l1_data_cache_read_misses = self.try_cost_by_kind(&D1mr)?;
+        let l1_data_cache_write_misses = self.try_cost_by_kind(&D1mw)?;
+        let l3_instructions_cache_read_misses = self.try_cost_by_kind(&ILmr)?;
+        let l3_data_cache_read_misses = self.try_cost_by_kind(&DLmr)?;
+        let l3_data_cache_write_misses = self.try_cost_by_kind(&DLmw)?;
 
         let ram_hits = l3_instructions_cache_read_misses
             + l3_data_cache_read_misses
@@ -116,6 +115,32 @@ impl Costs {
 
         // Uses Itamar Turner-Trauring's formula from https://pythonspeed.com/articles/consistent-benchmarking-in-ci/
         let cycles = l1_hits + (5 * l3_hits) + (35 * ram_hits);
+
+        Ok(CallgrindSummary {
+            instructions,
+            l1_hits,
+            l3_hits,
+            ram_hits,
+            total_memory_rw,
+            cycles,
+        })
+    }
+
+    /// Calculate summary events and estimated cycles in-place
+    ///
+    /// # Panics
+    ///
+    /// If the necessary cache simulation events (when running callgrind with --cache-sim) were not
+    /// present.
+    pub fn make_summary(&mut self) -> Result<()> {
+        let CallgrindSummary {
+            l1_hits,
+            l3_hits,
+            ram_hits,
+            total_memory_rw,
+            cycles,
+            ..
+        } = self.to_callgrind_summary()?;
 
         self.0.insert(EventKind::L1hits, l1_hits);
         self.0.insert(EventKind::LLhits, l3_hits);
