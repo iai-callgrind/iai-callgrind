@@ -36,10 +36,107 @@ use syn::{
     MetaNameValue, Token,
 };
 
+#[derive(Debug, Clone)]
+struct Arguments(Vec<Expr>);
+
+#[derive(Debug)]
+struct LibBenchAttribute {
+    id: Ident,
+    args: Arguments,
+    config: Option<Expr>,
+}
+
 #[derive(Debug, Default)]
 struct LibraryBenchmark {
     config: Option<Expr>,
     benches: Vec<LibBenchAttribute>,
+}
+
+impl Arguments {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl Parse for Arguments {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let data = input
+            .parse_terminated(Parse::parse, Token![,])?
+            .into_iter()
+            .collect();
+        Ok(Self(data))
+    }
+}
+
+impl ToTokens for Arguments {
+    fn to_tokens(&self, tokens: &mut TokenStream2) {
+        let exprs = &self.0;
+        let this_tokens = quote! {
+            #(iai_callgrind::black_box(#exprs)),*
+        };
+        tokens.append_all(this_tokens);
+    }
+}
+
+impl LibBenchAttribute {
+    fn render_as_function(&self, callee: &Ident) -> TokenStream2 {
+        let id = &self.id;
+        let args = &self.args;
+
+        if let Some(config) = &self.config {
+            let config_ident = format_ident!("get_config_{}", id);
+            quote! {
+                #[inline(never)]
+                pub fn #config_ident() -> iai_callgrind::internal::InternalLibraryBenchmarkConfig {
+                    #config.into()
+                }
+
+                #[inline(never)]
+                pub fn #id() {
+                    let _ = iai_callgrind::black_box(#callee(#args));
+                }
+            }
+        } else {
+            quote! {
+                #[inline(never)]
+                pub fn #id() {
+                    let _ = iai_callgrind::black_box(#callee(#args));
+                }
+            }
+        }
+    }
+
+    fn render_as_lib_bench(&self) -> TokenStream2 {
+        let id = &self.id;
+        let id_str = self.id.to_string();
+        let args = self
+            .args
+            .0
+            .iter()
+            .map(|a| a.to_token_stream().to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        if self.config.is_some() {
+            let conf_ident = format_ident!("get_config_{}", id);
+            quote! {
+                iai_callgrind::internal::InternalMacroLibBench {
+                    id_display: Some(#id_str),
+                    args_display: Some(#args),
+                    func: #id,
+                    config: Some(#conf_ident)
+                }
+            }
+        } else {
+            quote! {
+                iai_callgrind::internal::InternalMacroLibBench {
+                    id_display: Some(#id_str),
+                    args_display: Some(#args),
+                    func: #id,
+                    config: None
+                }
+            }
+        }
+    }
 }
 
 impl LibraryBenchmark {
@@ -344,103 +441,6 @@ impl Parse for LibraryBenchmark {
                 }))
             }
         }
-    }
-}
-
-#[derive(Debug)]
-struct LibBenchAttribute {
-    id: Ident,
-    args: Arguments,
-    config: Option<Expr>,
-}
-
-impl LibBenchAttribute {
-    fn render_as_function(&self, callee: &Ident) -> TokenStream2 {
-        let id = &self.id;
-        let args = &self.args;
-
-        if let Some(config) = &self.config {
-            let config_ident = format_ident!("get_config_{}", id);
-            quote! {
-                #[inline(never)]
-                pub fn #config_ident() -> iai_callgrind::internal::InternalLibraryBenchmarkConfig {
-                    #config.into()
-                }
-
-                #[inline(never)]
-                pub fn #id() {
-                    let _ = iai_callgrind::black_box(#callee(#args));
-                }
-            }
-        } else {
-            quote! {
-                #[inline(never)]
-                pub fn #id() {
-                    let _ = iai_callgrind::black_box(#callee(#args));
-                }
-            }
-        }
-    }
-
-    fn render_as_lib_bench(&self) -> TokenStream2 {
-        let id = &self.id;
-        let id_str = self.id.to_string();
-        let args = self
-            .args
-            .0
-            .iter()
-            .map(|a| a.to_token_stream().to_string())
-            .collect::<Vec<String>>()
-            .join(", ");
-        if self.config.is_some() {
-            let conf_ident = format_ident!("get_config_{}", id);
-            quote! {
-                iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some(#id_str),
-                    args_display: Some(#args),
-                    func: #id,
-                    config: Some(#conf_ident)
-                }
-            }
-        } else {
-            quote! {
-                iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some(#id_str),
-                    args_display: Some(#args),
-                    func: #id,
-                    config: None
-                }
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-struct Arguments(Vec<Expr>);
-
-impl Arguments {
-    fn len(&self) -> usize {
-        self.0.len()
-    }
-}
-
-impl Parse for Arguments {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let data = input
-            .parse_terminated(Parse::parse, Token![,])?
-            .into_iter()
-            .collect();
-        Ok(Self(data))
-    }
-}
-
-impl ToTokens for Arguments {
-    fn to_tokens(&self, tokens: &mut TokenStream2) {
-        let exprs = &self.0;
-        let this_tokens = quote! {
-            #(iai_callgrind::black_box(#exprs)),*
-        };
-        tokens.append_all(this_tokens);
     }
 }
 

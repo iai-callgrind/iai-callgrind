@@ -1,4 +1,6 @@
-use iai_callgrind::{black_box, library_benchmark, library_benchmark_group, main};
+use iai_callgrind::{
+    black_box, library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
+};
 
 fn fibonacci(n: u64) -> u64 {
     match n {
@@ -20,4 +22,7 @@ library_benchmark_group!(
     benchmarks = bench_fibonacci
 );
 
-main!(library_benchmark_groups = bench_fibonacci_group);
+main!(
+    config = LibraryBenchmarkConfig::default().raw_callgrind_args(["collect-jumps=yes"]);
+    library_benchmark_groups = bench_fibonacci_group
+);

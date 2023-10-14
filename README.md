@@ -40,6 +40,7 @@ improvements and features.
     - [Benchmarking](#benchmarking)
         - [Library Benchmarks](#library-benchmarks)
         - [Binary Benchmarks](#binary-benchmarks)
+    - [Flamegraphs](#flamegraphs)
     - [Iai-callgrind Environment variables](#environment-variables-colored-output-and-logging)
     - [Iai-callgrind command line arguments](#command-line-passing-arguments-to-callgrind)
     - [Features and differences to Iai](#features-and-differences-to-iai)
@@ -62,6 +63,8 @@ can use Callgrind-compatible tools like
 [callgrind_annotate](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.callgrind_annotate-options)
 or the visualizer [kcachegrind](https://kcachegrind.github.io/html/Home.html) to analyze the results
 in detail
+- __Visualization__: Iai-Callgrind is capable of creating regular and
+  differential flamegraphs from the Callgrind output format.
 - __Stable-compatible__: Benchmark your code without installing nightly Rust
 
 ### Installation
@@ -444,6 +447,21 @@ binary_benchmark_group!(
 
 See the [test_bin_bench_groups](benchmark-tests/benches/test_bin_bench_groups.rs) benchmark file of
 this project for a working example.
+
+### Flamegraphs
+
+Flamegraphs are opt-in and can be created if you pass a `FlamegraphConfig` to
+the `BinaryBenchmarkConfig`, `Run` or `LibraryBenchmarkConfig`. Callgrind
+flamegraphs are meant as a complement to valgrind's visualization tools
+`callgrind_annotate` and `kcachegrind`.
+
+Callgrind flamegraphs show the inclusive costs for functions and a specific
+event type, much like `callgrind_annotate` does but in a nicer (and clickable)
+way. Especially, differential flamegraphs facilitate a deeper understanding of
+code sections which cause a bottleneck or a performance regressions etc.
+
+The produced flamegraph svg files are located next to the respective callgrind
+output file in the `target/iai` directory.
 
 ### Environment variables: Colored output and logging
 

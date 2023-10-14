@@ -1,5 +1,5 @@
 mod bin_bench;
-mod callgrind;
+pub mod callgrind;
 mod lib_bench;
 mod meta;
 mod print;
@@ -18,7 +18,9 @@ pub mod envs {
     pub const CARGO_TERM_COLOR: &str = "CARGO_TERM_COLOR";
 }
 
-pub use crate::error::{IaiCallgrindError, Result};
+use anyhow::Result;
+
+pub use crate::error::Error;
 pub use crate::util::{write_all_to_stderr, write_all_to_stdout};
 
 pub fn run() -> Result<()> {
@@ -33,23 +35,20 @@ pub fn run() -> Result<()> {
     match version_compare::compare(&runner_version, &library_version) {
         Ok(cmp) => match cmp {
             version_compare::Cmp::Lt | version_compare::Cmp::Gt => {
-                return Err(IaiCallgrindError::VersionMismatch(
-                    cmp,
-                    runner_version,
-                    library_version,
-                ));
+                return Err(Error::VersionMismatch(cmp, runner_version, library_version).into());
             }
             // version_compare::compare only returns Cmp::Lt, Cmp::Gt and Cmp::Eq so the versions
             // are equal here
             _ => {}
         },
         // iai-callgrind versions before 0.3.0 don't submit the version
-        Err(_) => {
-            return Err(IaiCallgrindError::VersionMismatch(
+        Err(()) => {
+            return Err(Error::VersionMismatch(
                 version_compare::Cmp::Ne,
                 runner_version,
                 library_version,
-            ));
+            )
+            .into());
         }
     }
 

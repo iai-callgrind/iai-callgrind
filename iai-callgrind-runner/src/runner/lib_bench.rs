@@ -1,15 +1,42 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-use super::callgrind::{
-    CallgrindArgs, CallgrindCommand, CallgrindOptions, CallgrindOutput, Sentinel,
-};
+use anyhow::Result;
+
+use super::callgrind::args::Args;
+use super::callgrind::flamegraph::{Config as FlamegraphConfig, Flamegraph};
+use super::callgrind::parser::{Parser, Sentinel};
+use super::callgrind::sentinel_parser::SentinelParser;
+use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput};
 use super::meta::Metadata;
 use super::print::Header;
 use crate::api::LibraryBenchmark;
-use crate::error::Result;
 use crate::util::receive_benchmark;
 
+#[derive(Debug)]
+struct Config {
+    #[allow(unused)]
+    package_dir: PathBuf,
+    bench_file: PathBuf,
+    #[allow(unused)]
+    module: String,
+    bench_bin: PathBuf,
+    meta: Metadata,
+}
+
+// A `Group` is the organizational unit and counterpart of the `library_benchmark_group!` macro
+#[derive(Debug)]
+struct Group {
+    id: Option<String>,
+    benches: Vec<LibBench>,
+    module: String,
+}
+
+/// `Groups` is the top-level organizational unit of the `main!` macro for library benchmarks
+#[derive(Debug)]
+struct Groups(Vec<Group>);
+
+/// A `LibBench` represents a single benchmark from the `#[library_benchmark]` attribute macro
 #[derive(Debug)]
 struct LibBench {
     bench_index: usize,
@@ -18,76 +45,15 @@ struct LibBench {
     function: String,
     args: Option<String>,
     opts: CallgrindOptions,
-    callgrind_args: CallgrindArgs,
-}
-
-impl LibBench {
-    fn run(&self, config: &Config, group: &Group) -> Result<()> {
-        let command = CallgrindCommand::new(&config.meta);
-        let args = if let Some(group_id) = &group.id {
-            vec![
-                OsString::from("--iai-run".to_owned()),
-                OsString::from(group_id),
-                OsString::from(self.bench_index.to_string()),
-                OsString::from(self.index.to_string()),
-                OsString::from(format!("{}::{}", group.module, self.function)),
-            ]
-        } else {
-            vec![
-                OsString::from("--iai-run".to_owned()),
-                OsString::from(self.index.to_string()),
-                OsString::from(format!("{}::{}", group.module, self.function)),
-            ]
-        };
-
-        let sentinel = Sentinel::new("iai_callgrind::bench::");
-        let output = if let Some(bench_id) = &self.id {
-            CallgrindOutput::create(
-                &config.meta.target_dir,
-                &group.module,
-                &format!("{}.{}", &self.function, bench_id),
-            )
-        } else {
-            CallgrindOutput::create(&config.meta.target_dir, &group.module, &self.function)
-        };
-
-        command.run(
-            self.callgrind_args.clone(),
-            &config.bench_bin,
-            &args,
-            self.opts.clone(),
-            &output.file,
-        )?;
-
-        let new_stats = output.parse(&config.bench_file, &sentinel);
-
-        let old_output = output.old_output();
-        let old_stats = old_output
-            .exists()
-            .then(|| old_output.parse(&config.bench_file, sentinel));
-
-        Header::from_segments(
-            [&group.module, &self.function],
-            self.id.clone(),
-            self.args.clone(),
-        )
-        .print();
-
-        new_stats.print(old_stats);
-
-        Ok(())
-    }
+    callgrind_args: Args,
+    flamegraph: Option<FlamegraphConfig>,
 }
 
 #[derive(Debug)]
-struct Group {
-    id: Option<String>,
-    benches: Vec<LibBench>,
-    module: String,
+struct Runner {
+    config: Config,
+    groups: Groups,
 }
-
-#[derive(Debug)]
-struct Groups(Vec<Group>);
 
 impl Groups {
     fn from_library_benchmark(module: &str, benchmark: LibraryBenchmark) -> Result<Self> {
@@ -119,8 +85,9 @@ impl Groups {
                     let callgrind_args = {
                         let mut raw = config.raw_callgrind_args;
                         raw.extend_from_command_line_args(benchmark.command_line_args.as_slice());
-                        CallgrindArgs::from_raw_callgrind_args(&raw)?
+                        Args::from_raw_callgrind_args(&raw)?
                     };
+                    let flamegraph = config.flamegraph.map(std::convert::Into::into);
                     let lib_bench = LibBench {
                         bench_index,
                         index,
@@ -134,6 +101,7 @@ impl Groups {
                             ..Default::default()
                         },
                         callgrind_args,
+                        flamegraph,
                     };
                     group.benches.push(lib_bench);
                 }
@@ -154,21 +122,74 @@ impl Groups {
     }
 }
 
-#[derive(Debug)]
-struct Config {
-    #[allow(unused)]
-    package_dir: PathBuf,
-    bench_file: PathBuf,
-    #[allow(unused)]
-    module: String,
-    bench_bin: PathBuf,
-    meta: Metadata,
-}
+impl LibBench {
+    fn run(&self, config: &Config, group: &Group) -> Result<()> {
+        let command = CallgrindCommand::new(&config.meta);
+        let args = if let Some(group_id) = &group.id {
+            vec![
+                OsString::from("--iai-run".to_owned()),
+                OsString::from(group_id),
+                OsString::from(self.bench_index.to_string()),
+                OsString::from(self.index.to_string()),
+                OsString::from(format!("{}::{}", group.module, self.function)),
+            ]
+        } else {
+            vec![
+                OsString::from("--iai-run".to_owned()),
+                OsString::from(self.index.to_string()),
+                OsString::from(format!("{}::{}", group.module, self.function)),
+            ]
+        };
 
-#[derive(Debug)]
-struct Runner {
-    config: Config,
-    groups: Groups,
+        let sentinel = Sentinel::new("iai_callgrind::bench::");
+        let output = if let Some(bench_id) = &self.id {
+            CallgrindOutput::init(
+                &config.meta.target_dir,
+                &group.module,
+                &format!("{}.{}", &self.function, bench_id),
+            )
+        } else {
+            CallgrindOutput::init(&config.meta.target_dir, &group.module, &self.function)
+        };
+
+        command.run(
+            self.callgrind_args.clone(),
+            &config.bench_bin,
+            &args,
+            self.opts.clone(),
+            &output,
+        )?;
+
+        let header = Header::from_segments(
+            [&group.module, &self.function],
+            self.id.clone(),
+            self.args.clone(),
+        );
+
+        if let Some(flamegraph_config) = self.flamegraph.clone() {
+            Flamegraph::new(header.to_title(), flamegraph_config).create(
+                &output,
+                Some(&sentinel),
+                &config.meta.project_root,
+            )?;
+        }
+
+        let new_stats = SentinelParser::new(&sentinel, &config.bench_file).parse(&output)?;
+
+        let old_output = output.to_old_output();
+
+        #[allow(clippy::if_then_some_else_none)]
+        let old_stats = if old_output.exists() {
+            Some(SentinelParser::new(&sentinel, &config.bench_file).parse(&old_output)?)
+        } else {
+            None
+        };
+
+        header.print();
+        new_stats.print(old_stats);
+
+        Ok(())
+    }
 }
 
 impl Runner {

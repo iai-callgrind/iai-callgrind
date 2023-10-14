@@ -1,0 +1,16 @@
+map:
+  ? file: null
+    func: main
+  : costs:
+      Ir: 1
+      Dr: 2
+      Dw: 3
+      I1mr: 4
+      D1mr: 5
+      D1mw: 6
+      ILmr: 7
+      DLmr: 8
+      DLmw: 9
+    obj_path: null
+sentinel: null
+sentinel_key: null

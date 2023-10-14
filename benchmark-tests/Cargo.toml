@@ -43,6 +43,14 @@ name = "test_bin_bench_groups"
 harness = false
 
 [[bench]]
+name = "test_bin_bench_flamegraph"
+harness = false
+
+[[bench]]
+name = "test_lib_bench_flamegraph"
+harness = false
+
+[[bench]]
 name = "test_lib_bench_groups"
 harness = false
 

@@ -3,69 +3,28 @@ use std::fmt::Display;
 use std::path::PathBuf;
 use std::process::Command;
 
+use anyhow::{anyhow, Result};
 use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
-use super::callgrind::{
-    CallgrindArgs, CallgrindCommand, CallgrindOptions, CallgrindOutput, Sentinel,
-};
+use super::callgrind::args::Args;
+use super::callgrind::flamegraph::{Config as FlamegraphConfig, Flamegraph};
+use super::callgrind::parser::{Parser, Sentinel};
+use super::callgrind::sentinel_parser::SentinelParser;
+use super::callgrind::summary_parser::SummaryParser;
+use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput};
 use super::meta::Metadata;
 use super::print::Header;
 use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig};
-use crate::error::{IaiCallgrindError, Result};
+use crate::error::Error;
 use crate::util::{copy_directory, receive_benchmark, write_all_to_stderr, write_all_to_stdout};
 
-#[derive(Debug)]
-struct BinBench {
-    id: String,
-    display: String,
-    command: PathBuf,
-    args: Vec<OsString>,
-    opts: CallgrindOptions,
-    callgrind_args: CallgrindArgs,
-}
-
-impl BinBench {
-    fn run(&self, config: &Config, group: &Group) -> Result<()> {
-        let command = CallgrindCommand::new(&config.meta);
-        let output = CallgrindOutput::create(
-            &config.meta.target_dir,
-            &group.module_path,
-            &format!("{}.{}", self.id, self.display),
-        );
-
-        command.run(
-            self.callgrind_args.clone(),
-            &self.command,
-            &self.args,
-            self.opts.clone(),
-            &output.file,
-        )?;
-
-        let new_stats = output.parse_summary();
-
-        let old_output = output.old_output();
-        let old_stats = old_output.exists().then(|| old_output.parse_summary());
-
-        Header::new(&group.module_path, self.id.clone(), self.to_string()).print();
-        new_stats.print(old_stats);
-        Ok(())
-    }
-}
-
-impl Display for BinBench {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let args: Vec<String> = self
-            .args
-            .iter()
-            .map(|s| s.to_string_lossy().to_string())
-            .collect();
-        f.write_str(&format!(
-            "{} {}",
-            self.display,
-            shlex::join(args.iter().map(std::string::String::as_str))
-        ))
-    }
+#[derive(Debug, Clone)]
+struct Assistant {
+    name: String,
+    kind: AssistantKind,
+    bench: bool,
+    callgrind_args: Args,
 }
 
 #[derive(Debug, Clone)]
@@ -76,27 +35,62 @@ enum AssistantKind {
     After,
 }
 
-impl AssistantKind {
-    fn id(&self) -> String {
-        match self {
-            AssistantKind::Setup => "setup".to_owned(),
-            AssistantKind::Teardown => "teardown".to_owned(),
-            AssistantKind::Before => "before".to_owned(),
-            AssistantKind::After => "after".to_owned(),
-        }
-    }
+#[derive(Debug, Clone)]
+struct BenchmarkAssistants {
+    before: Option<Assistant>,
+    after: Option<Assistant>,
+    setup: Option<Assistant>,
+    teardown: Option<Assistant>,
 }
 
-#[derive(Debug, Clone)]
-struct Assistant {
-    name: String,
-    kind: AssistantKind,
-    bench: bool,
-    callgrind_args: CallgrindArgs,
+#[derive(Debug)]
+struct BinBench {
+    id: String,
+    display: String,
+    command: PathBuf,
+    args: Vec<OsString>,
+    opts: CallgrindOptions,
+    callgrind_args: Args,
+    flamegraph: Option<FlamegraphConfig>,
+}
+
+#[derive(Debug)]
+struct Config {
+    #[allow(unused)]
+    package_dir: PathBuf,
+    bench_file: PathBuf,
+    module: String,
+    bench_bin: PathBuf,
+    meta: Metadata,
+}
+
+#[derive(Debug)]
+struct Group {
+    id: Option<String>,
+    module_path: String,
+    fixtures: Option<api::Fixtures>,
+    sandbox: bool,
+    benches: Vec<BinBench>,
+    assists: BenchmarkAssistants,
+}
+
+#[derive(Debug)]
+struct Groups(Vec<Group>);
+
+#[derive(Debug)]
+struct Runner {
+    groups: Groups,
+    config: Config,
+}
+
+#[derive(Debug)]
+struct Sandbox {
+    current_dir: PathBuf,
+    temp_dir: TempDir,
 }
 
 impl Assistant {
-    fn new(name: String, kind: AssistantKind, bench: bool, callgrind_args: CallgrindArgs) -> Self {
+    fn new(name: String, kind: AssistantKind, bench: bool, callgrind_args: Args) -> Self {
         Self {
             name,
             kind,
@@ -119,7 +113,7 @@ impl Assistant {
             OsString::from(format!("{}::{}", &config.module, &self.name)),
         ];
 
-        let output = CallgrindOutput::create(
+        let output = CallgrindOutput::init(
             &config.meta.target_dir,
             &group.module_path,
             &format!("{}.{}", self.kind.id(), &self.name),
@@ -135,16 +129,20 @@ impl Assistant {
             &config.bench_bin,
             &executable_args,
             options,
-            &output.file,
+            &output,
         )?;
 
         let sentinel = Sentinel::from_path(&config.module, &self.name);
-        let new_stats = output.parse(&config.bench_file, &sentinel);
+        let new_stats = SentinelParser::new(&sentinel, &config.bench_file).parse(&output)?;
 
-        let old_output = output.old_output();
-        let old_stats = old_output
-            .exists()
-            .then(|| old_output.parse(&config.bench_file, sentinel));
+        let old_output = output.to_old_output();
+
+        #[allow(clippy::if_then_some_else_none)]
+        let old_stats = if old_output.exists() {
+            Some(SentinelParser::new(&sentinel, &config.bench_file).parse(&old_output)?)
+        } else {
+            None
+        };
 
         Header::from_segments(
             [&group.module_path, &self.kind.id(), &self.name],
@@ -169,12 +167,12 @@ impl Assistant {
 
         let (stdout, stderr) = command
             .output()
-            .map_err(|error| IaiCallgrindError::LaunchError(config.bench_bin.clone(), error))
+            .map_err(|error| Error::LaunchError(config.bench_bin.clone(), error.to_string()))
             .and_then(|output| {
                 if output.status.success() {
                     Ok((output.stdout, output.stderr))
                 } else {
-                    Err(IaiCallgrindError::BenchmarkLaunchError(output))
+                    Err(Error::BenchmarkLaunchError(output))
                 }
             })?;
 
@@ -206,17 +204,14 @@ impl Assistant {
     }
 }
 
-#[derive(Debug, Clone)]
-struct BenchmarkAssistants {
-    before: Option<Assistant>,
-    after: Option<Assistant>,
-    setup: Option<Assistant>,
-    teardown: Option<Assistant>,
-}
-
-impl Default for BenchmarkAssistants {
-    fn default() -> Self {
-        Self::new()
+impl AssistantKind {
+    fn id(&self) -> String {
+        match self {
+            AssistantKind::Setup => "setup".to_owned(),
+            AssistantKind::Teardown => "teardown".to_owned(),
+            AssistantKind::Before => "before".to_owned(),
+            AssistantKind::After => "after".to_owned(),
+        }
     }
 }
 
@@ -231,63 +226,69 @@ impl BenchmarkAssistants {
     }
 }
 
-#[derive(Debug)]
-struct Sandbox {
-    current_dir: PathBuf,
-    temp_dir: TempDir,
+impl Default for BenchmarkAssistants {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
-impl Sandbox {
-    fn setup(fixtures: &Option<api::Fixtures>) -> Result<Self> {
-        debug!("Creating temporary workspace directory");
-        let temp_dir = tempfile::tempdir().expect("Create temporary directory");
-
-        if let Some(fixtures) = &fixtures {
-            debug!(
-                "Copying fixtures from '{}' to '{}'",
-                &fixtures.path.display(),
-                temp_dir.path().display()
-            );
-            copy_directory(&fixtures.path, temp_dir.path(), fixtures.follow_symlinks)?;
-        }
-
-        let current_dir = std::env::current_dir().unwrap();
-        trace!(
-            "Changing current directory to temporary directory: '{}'",
-            temp_dir.path().display()
+impl BinBench {
+    fn run(&self, config: &Config, group: &Group) -> Result<()> {
+        let command = CallgrindCommand::new(&config.meta);
+        let output = CallgrindOutput::init(
+            &config.meta.target_dir,
+            &group.module_path,
+            &format!("{}.{}", self.id, self.display),
         );
-        std::env::set_current_dir(temp_dir.path())
-            .expect("Set current directory to temporary workspace directory");
 
-        Ok(Self {
-            current_dir,
-            temp_dir,
-        })
-    }
+        command.run(
+            self.callgrind_args.clone(),
+            &self.command,
+            &self.args,
+            self.opts.clone(),
+            &output,
+        )?;
 
-    fn reset(self) {
-        std::env::set_current_dir(&self.current_dir)
-            .expect("Reset current directory to package directory");
-
-        if log_enabled!(Level::Debug) {
-            debug!("Removing temporary workspace");
-            if let Err(error) = self.temp_dir.close() {
-                debug!("Error trying to delete temporary workspace: {error}");
-            }
-        } else {
-            _ = self.temp_dir.close();
+        let header = Header::new(&group.module_path, self.id.clone(), self.to_string());
+        let sentinel = self.opts.entry_point.as_ref().map(Sentinel::new);
+        if let Some(flamegraph_config) = self.flamegraph.clone() {
+            Flamegraph::new(header.to_title(), flamegraph_config).create(
+                &output,
+                sentinel.as_ref(),
+                &config.meta.project_root,
+            )?;
         }
+
+        let new_stats = SummaryParser.parse(&output)?;
+
+        let old_output = output.to_old_output();
+
+        #[allow(clippy::if_then_some_else_none)]
+        let old_stats = if old_output.exists() {
+            Some(SummaryParser.parse(&old_output)?)
+        } else {
+            None
+        };
+
+        header.print();
+        new_stats.print(old_stats);
+        Ok(())
     }
 }
 
-#[derive(Debug)]
-struct Group {
-    id: Option<String>,
-    module_path: String,
-    fixtures: Option<api::Fixtures>,
-    sandbox: bool,
-    benches: Vec<BinBench>,
-    assists: BenchmarkAssistants,
+impl Display for BinBench {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let args: Vec<String> = self
+            .args
+            .iter()
+            .map(|s| s.to_string_lossy().to_string())
+            .collect();
+        f.write_str(&format!(
+            "{} {}",
+            self.display,
+            shlex::join(args.iter().map(std::string::String::as_str))
+        ))
+    }
 }
 
 impl Group {
@@ -334,9 +335,6 @@ impl Group {
     }
 }
 
-#[derive(Debug)]
-struct Groups(Vec<Group>);
-
 impl Groups {
     fn parse_runs(
         module_path: &str,
@@ -348,23 +346,24 @@ impl Groups {
         let mut counter: usize = 0;
         for run in runs {
             if run.args.is_empty() {
-                return Err(IaiCallgrindError::Other(format!(
+                return Err(anyhow!(
                     "{module_path}: Found Run without an Argument. At least one argument must be \
-                     specified: {run:?}"
-                )));
+                     specified: {run:?}",
+                ));
             }
             let (orig, command) = if let Some(cmd) = run.cmd {
                 (cmd.display, PathBuf::from(cmd.cmd))
             } else if let Some(command) = cmd {
                 (command.display.clone(), PathBuf::from(&command.cmd))
             } else {
-                return Err(IaiCallgrindError::Other(format!(
+                return Err(anyhow!(
                     "{module_path}: Found Run without a command. A command must be specified \
                      either at group level or run level: {run:?}"
-                )));
+                ));
             };
             let config = group_config.clone().update_from_all([Some(&run.config)]);
             let envs = config.resolve_envs();
+            let flamegraph = config.flamegraph.map(std::convert::Into::into);
             for args in run.args {
                 let id = if let Some(id) = args.id {
                     id
@@ -385,9 +384,8 @@ impl Groups {
                         exit_with: config.exit_with.clone(),
                         envs: envs.clone(),
                     },
-                    callgrind_args: CallgrindArgs::from_raw_callgrind_args(
-                        &config.raw_callgrind_args,
-                    )?,
+                    callgrind_args: Args::from_raw_callgrind_args(&config.raw_callgrind_args)?,
+                    flamegraph: flamegraph.clone(),
                 });
             }
         }
@@ -396,7 +394,7 @@ impl Groups {
 
     fn parse_assists(
         assists: Vec<crate::api::Assistant>,
-        callgrind_args: &CallgrindArgs,
+        callgrind_args: &Args,
     ) -> BenchmarkAssistants {
         let mut bench_assists = BenchmarkAssistants::default();
         for assist in assists {
@@ -462,7 +460,7 @@ impl Groups {
                 benches,
                 assists: Self::parse_assists(
                     group.assists,
-                    &CallgrindArgs::from_raw_callgrind_args(&group_config.raw_callgrind_args)?,
+                    &Args::from_raw_callgrind_args(&group_config.raw_callgrind_args)?,
                 ),
             };
             groups.push(config);
@@ -476,22 +474,6 @@ impl Groups {
         }
         Ok(())
     }
-}
-
-#[derive(Debug)]
-struct Config {
-    #[allow(unused)]
-    package_dir: PathBuf,
-    bench_file: PathBuf,
-    module: String,
-    bench_bin: PathBuf,
-    meta: Metadata,
-}
-
-#[derive(Debug)]
-struct Runner {
-    groups: Groups,
-    config: Config,
 }
 
 impl Runner {
@@ -530,6 +512,49 @@ impl Runner {
 
     fn run(&self) -> Result<()> {
         self.groups.run(&self.config)
+    }
+}
+
+impl Sandbox {
+    fn setup(fixtures: &Option<api::Fixtures>) -> Result<Self> {
+        debug!("Creating temporary workspace directory");
+        let temp_dir = tempfile::tempdir().expect("Create temporary directory");
+
+        if let Some(fixtures) = &fixtures {
+            debug!(
+                "Copying fixtures from '{}' to '{}'",
+                &fixtures.path.display(),
+                temp_dir.path().display()
+            );
+            copy_directory(&fixtures.path, temp_dir.path(), fixtures.follow_symlinks)?;
+        }
+
+        let current_dir = std::env::current_dir().unwrap();
+        trace!(
+            "Changing current directory to temporary directory: '{}'",
+            temp_dir.path().display()
+        );
+        std::env::set_current_dir(temp_dir.path())
+            .expect("Set current directory to temporary workspace directory");
+
+        Ok(Self {
+            current_dir,
+            temp_dir,
+        })
+    }
+
+    fn reset(self) {
+        std::env::set_current_dir(&self.current_dir)
+            .expect("Reset current directory to package directory");
+
+        if log_enabled!(Level::Debug) {
+            debug!("Removing temporary workspace");
+            if let Err(error) = self.temp_dir.close() {
+                debug!("Error trying to delete temporary workspace: {error}");
+            }
+        } else {
+            _ = self.temp_dir.close();
+        }
     }
 }
 
