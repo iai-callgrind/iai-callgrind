@@ -127,7 +127,7 @@ impl Costs {
 
     /// Calculate summary events and estimated cycles in-place
     ///
-    /// # Panics
+    /// # Errors
     ///
     /// If the necessary cache simulation events (when running callgrind with --cache-sim) were not
     /// present.

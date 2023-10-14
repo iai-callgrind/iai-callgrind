@@ -355,9 +355,32 @@ pub enum ExitWith {
 #[derive(Debug, Clone)]
 pub struct Fixtures(internal::InternalFixtures);
 
-/// TODO: DOCUMENT
+/// The `FlamegraphConfig` which allows the customization of the created flamegraphs
+///
+/// Callgrind flamegraphs are very similar to `callgrind_annotate` output. In contrast to
+/// `callgrind_annotate` text based output, the produced flamegraphs are svg files (located in the
+/// `target/iai` directory) which can be viewed in a browser.
+///
+///
+/// # Examples
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// use iai_callgrind::{LibraryBenchmarkConfig, FlamegraphConfig, main};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///                 .flamegraph(FlamegraphConfig::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
 #[derive(Debug, Clone, Default)]
 pub struct FlamegraphConfig(internal::InternalFlamegraphConfig);
+
 /// The main configuration of a library benchmark.
 ///
 /// See [`LibraryBenchmarkConfig::raw_callgrind_args`] for more details.
@@ -912,8 +935,25 @@ impl BinaryBenchmarkConfig {
         self.0.exit_with = Some(value.into());
         self
     }
+
+    /// Option to produce flamegraphs from callgrind output using the [`FlamegraphConfig`]
     ///
-    /// TODO: DOCUMENT
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    /// # binary_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig, FlamegraphConfig };
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = BinaryBenchmarkConfig::default().flamegraph(FlamegraphConfig::default());
+    ///     binary_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
     pub fn flamegraph<T>(&mut self, config: T) -> &mut Self
     where
         T: Into<internal::InternalFlamegraphConfig>,
@@ -1051,25 +1091,106 @@ impl Fixtures {
 impl_traits!(Fixtures, internal::InternalFixtures);
 
 impl FlamegraphConfig {
-    /// TODO: DOCUMENT
+    /// Option to change the [`FlamegraphKind`]
+    ///
+    /// The default is [`FlamegraphKind::All`].
+    ///
+    /// # Examples
+    ///
+    /// For example, to only create a differential flamegraph:
+    ///
+    /// ```
+    /// use iai_callgrind::{FlamegraphConfig, FlamegraphKind};
+    ///
+    /// let config = FlamegraphConfig::default().kind(FlamegraphKind::Differential);
+    /// ```
     pub fn kind(&mut self, kind: FlamegraphKind) -> &mut Self {
         self.0.kind = Some(kind);
         self
     }
 
-    /// TODO: DOCUMENT
+    /// Negate the differential flamegraph [`FlamegraphKind::Differential`]
+    ///
+    /// The default is `false`.
+    ///
+    /// Instead of showing the differential flamegraph from the viewing angle of what has happened
+    /// the negated differential flamegraph shows what will happen. Especially, this allows to see
+    /// vanished event lines (in blue) for example because the underlying code has improved and
+    /// removed an unnecessary function call.
+    ///
+    /// See also [Differential Flame
+    /// Graphs](https://www.brendangregg.com/blog/2014-11-09/differential-flame-graphs.html) from
+    /// Brendan Gregg's Blog.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::{FlamegraphConfig, FlamegraphKind};
+    ///
+    /// let config = FlamegraphConfig::default().negate_differential(true);
+    /// ```
     pub fn negate_differential(&mut self, negate_differential: bool) -> &mut Self {
         self.0.negate_differential = Some(negate_differential);
         self
     }
 
-    /// TODO: DOCUMENT
+    /// Normalize the differential flamegraph
+    ///
+    /// This'll make the first profile event count to match the second. This'll help in situations
+    /// when everything looks read (or blue) to get a balanced profile with the full red/blue
+    /// spectrum
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::{FlamegraphConfig, FlamegraphKind};
+    ///
+    /// let config = FlamegraphConfig::default().normalize_differential(true);
+    /// ```
     pub fn normalize_differential(&mut self, normalize_differential: bool) -> &mut Self {
         self.0.normalize_differential = Some(normalize_differential);
         self
     }
 
-    /// TODO: DOCUMENT
+    /// One or multiple [`EventKind`] for which a flamegraph is going to be created.
+    ///
+    /// The default is [`EventKind::EstimatedCycles`]
+    ///
+    /// Currently, flamegraph creation is limited to one flamegraph for each [`EventKind`] and
+    /// there's no way to merge all event kinds into a single flamegraph.
+    ///
+    /// Note it is an error to specify a [`EventKind`] which isn't recorded by callgrind. See the
+    /// docs of the variants of [`EventKind`] which callgrind option is needed to create a record
+    /// for it. See also the [Callgrind
+    /// Documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options). The
+    /// [`EventKind`]s recorded by callgrind which are always available:
+    ///
+    /// * [`EventKind::Ir`]
+    /// * [`EventKind::Dr`]
+    /// * [`EventKind::Dw`]
+    /// * [`EventKind::I1mr`]
+    /// * [`EventKind::ILmr`]
+    /// * [`EventKind::D1mr`]
+    /// * [`EventKind::DLmr`]
+    /// * [`EventKind::D1mw`]
+    /// * [`EventKind::DLmw`]
+    ///
+    /// Additionally, the following derived `EventKinds` are available:
+    ///
+    /// * [`EventKind::L1hits`]
+    /// * [`EventKind::LLhits`]
+    /// * [`EventKind::RamHits`]
+    /// * [`EventKind::TotalRW`]
+    /// * [`EventKind::EstimatedCycles`]
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::{EventKind, FlamegraphConfig};
+    ///
+    /// let config =
+    ///     FlamegraphConfig::default().event_kinds([EventKind::EstimatedCycles, EventKind::Ir]);
+    /// ```
     pub fn event_kinds<T>(&mut self, event_kinds: T) -> &mut Self
     where
         T: IntoIterator<Item = EventKind>,
@@ -1078,7 +1199,19 @@ impl FlamegraphConfig {
         self
     }
 
-    /// TODO: DOCUMENT
+    /// Set the [`Direction`] in which the flamegraph should grow.
+    ///
+    /// The default is [`Direction::TopToBottom`].
+    ///
+    /// # Examples
+    ///
+    /// For example to change the default
+    ///
+    /// ```
+    /// use iai_callgrind::{Direction, FlamegraphConfig};
+    ///
+    /// let config = FlamegraphConfig::default().direction(Direction::BottomToTop);
+    /// ```
     pub fn direction(&mut self, direction: Direction) -> &mut Self {
         self.0.direction = Some(direction);
         self
@@ -1098,13 +1231,33 @@ impl FlamegraphConfig {
         self
     }
 
-    /// TODO: DOCUMENT
-    pub fn subtitle(&mut self, subtitle: Option<String>) -> &mut Self {
-        self.0.subtitle = subtitle;
+    /// Overwrite the default subtitle of the final flamegraph
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::FlamegraphConfig;
+    ///
+    /// let config = FlamegraphConfig::default().subtitle("My flamegraph subtitle".to_owned());
+    /// ```
+    pub fn subtitle(&mut self, subtitle: String) -> &mut Self {
+        self.0.subtitle = Some(subtitle);
         self
     }
 
-    /// TODO: DOCUMENT
+    /// Set the minimum width (in pixels) for which event lines are going to be shown.
+    ///
+    /// The default is `0.1`
+    ///
+    /// To show all events, set the `min_width` to `0f64`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::FlamegraphConfig;
+    ///
+    /// let config = FlamegraphConfig::default().min_width(0f64);
+    /// ```
     pub fn min_width(&mut self, min_width: f64) -> &mut Self {
         self.0.min_width = Some(min_width);
         self
@@ -1390,7 +1543,23 @@ impl LibraryBenchmarkConfig {
         self
     }
 
-    /// TODO: DOCUMENT
+    /// Option to produce flamegraphs from callgrind output using the [`FlamegraphConfig`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+    /// use iai_callgrind::{LibraryBenchmarkConfig, main, FlamegraphConfig};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default().flamegraph(FlamegraphConfig::default());
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
     pub fn flamegraph<T>(&mut self, config: T) -> &mut Self
     where
         T: Into<internal::InternalFlamegraphConfig>,
@@ -1986,7 +2155,29 @@ impl Run {
         self
     }
 
-    /// TODO: DOCUMENT
+    /// Option to produce flamegraphs from callgrind output using the [`FlamegraphConfig`]
+    ///
+    /// See also [`BinaryBenchmarkConfig::flamegraph`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::main;
+    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run, FlamegraphConfig};
+    ///
+    /// binary_benchmark_group!(
+    ///     name = my_group;
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
+    ///         group.bench(
+    ///             Run::with_arg(Arg::empty("empty foo"))
+    ///                 .flamegraph(FlamegraphConfig::default())
+    ///         );
+    ///     }
+    /// );
+    /// # fn main() {
+    /// # main!(binary_benchmark_groups = my_group);
+    /// # }
+    /// ```
     pub fn flamegraph<T>(&mut self, config: T) -> &mut Self
     where
         T: Into<internal::InternalFlamegraphConfig>,

@@ -50,54 +50,83 @@ pub struct Cmd {
     pub display: String,
     pub cmd: String,
 }
+
+/// The `Direction` in which the flamegraph should grow.
 ///
-/// TODO: DOCUMENT
+/// The default is `TopToBottom`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Direction {
+    /// Grow from top to bottom with the highest event costs at the top
     TopToBottom,
+    /// Grow from bottom to top with the highest event costs at the bottom
     BottomToTop,
 }
 
-/// TODO: DOCUMENT
+/// All `EventKind`s callgrind produces and additionally some derived events
+///
+/// Depending on the options passed to Callgrind, these are the events that Callgrind can produce.
+/// See the [Callgrind
+/// documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EventKind {
-    // always there
+    /// The default event. I cache reads (which equals the number of instructions executed)
     Ir,
-    // --collect-systime
+    /// The number of system calls done (--collect-systime=yes)
     SysCount,
+    /// The elapsed time spent in system calls (--collect-systime=yes)
     SysTime,
+    /// The cpu time spent during system calls (--collect-systime=nsec)
     SysCpuTime,
-    // --collect-bus
+    /// The number of global bus events (--collect-bus=yes)
     Ge,
-    // --cache-sim
+    /// D Cache reads (which equals the number of memory reads) (--cache-sim=yes)
     Dr,
+    /// D Cache writes (which equals the number of memory writes) (--cache-sim=yes)
     Dw,
+    /// I1 cache read misses (--cache-sim=yes)
     I1mr,
+    /// LL cache instruction read misses (--cache-sim=yes)
     ILmr,
+    /// D1 cache read misses (--cache-sim=yes)
     D1mr,
+    /// LL cache data read misses (--cache-sim=yes)
     DLmr,
+    /// D1 cache write misses (--cache-sim=yes)
     D1mw,
+    /// LL cache data write misses (--cache-sim=yes)
     DLmw,
-    // --branch-sim
-    Bc,
-    Bcm,
-    Bi,
-    Bim,
-    // --simulate-wb
-    ILdmr,
-    DLdmr,
-    DLdmw,
-    // --cachuse
-    AcCost1,
-    AcCost2,
-    SpLoss1,
-    SpLoss2,
-    // Defined by us
+    /// Derived event showing the L1 hits (--cache-sim=yes)
     L1hits,
+    /// Derived event showing the LL hits (--cache-sim=yes)
     LLhits,
+    /// Derived event showing the RAM hits (--cache-sim=yes)
     RamHits,
+    /// Derived event showing the total amount of cache reads and writes (--cache-sim=yes)
     TotalRW,
+    /// Derived event showing estimated CPU cycles (--cache-sim=yes)
     EstimatedCycles,
+    /// Conditional branches executed (--branch-sim)
+    Bc,
+    /// Conditional branches mispredicted (--branch-sim=yes)
+    Bcm,
+    /// Indirect branches executed (--branch-sim=yes)
+    Bi,
+    /// Indirect branches mispredicted (--branch-sim=yes)
+    Bim,
+    /// Dirty miss because of instruction read (--simulate-wb=yes)
+    ILdmr,
+    /// Dirty miss because of data read (--simulate-wb=yes)
+    DLdmr,
+    /// Dirty miss because of data write (--simulate-wb=yes)
+    DLdmw,
+    /// Counter showing bad temporal locality for L1 caches (--cachuse=yes)
+    AcCost1,
+    /// Counter showing bad temporal locality for LL caches (--cachuse=yes)
+    AcCost2,
+    /// Counter showing bad spatial locality for L1 caches (--cachuse=yes)
+    SpLoss1,
+    /// Counter showing bad spatial locality for LL caches (--cachuse=yes)
+    SpLoss2,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -125,12 +154,17 @@ pub struct FlamegraphConfig {
     pub min_width: Option<f64>,
 }
 
-/// TODO: DOCUMENT
+/// The kind of `Flamegraph` which is going to be constructed
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FlamegraphKind {
+    /// The regular flamegraph for the new callgrind run
     Regular,
+    /// A differential flamegraph showing the differences between the new and old callgrind run
     Differential,
+    /// All flamegraph kinds that can be constructed (`Regular` and `Differential`). This
+    /// is the default.
     All,
+    /// Do not produce any flamegraphs
     None,
 }
 
