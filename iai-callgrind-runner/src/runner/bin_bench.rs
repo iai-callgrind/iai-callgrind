@@ -58,6 +58,7 @@ struct BinBench {
 struct Config {
     #[allow(unused)]
     package_dir: PathBuf,
+    #[allow(unused)]
     bench_file: PathBuf,
     module: String,
     bench_bin: PathBuf,
@@ -133,13 +134,13 @@ impl Assistant {
         )?;
 
         let sentinel = Sentinel::from_path(&config.module, &self.name);
-        let new_stats = SentinelParser::new(&sentinel, &config.bench_file).parse(&output)?;
+        let new_stats = SentinelParser::new(&sentinel).parse(&output)?;
 
         let old_output = output.to_old_output();
 
         #[allow(clippy::if_then_some_else_none)]
         let old_stats = if old_output.exists() {
-            Some(SentinelParser::new(&sentinel, &config.bench_file).parse(&old_output)?)
+            Some(SentinelParser::new(&sentinel).parse(&old_output)?)
         } else {
             None
         };

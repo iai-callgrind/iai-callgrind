@@ -17,6 +17,7 @@ use crate::util::receive_benchmark;
 struct Config {
     #[allow(unused)]
     package_dir: PathBuf,
+    #[allow(unused)]
     bench_file: PathBuf,
     #[allow(unused)]
     module: String,
@@ -174,13 +175,13 @@ impl LibBench {
             )?;
         }
 
-        let new_stats = SentinelParser::new(&sentinel, &config.bench_file).parse(&output)?;
+        let new_stats = SentinelParser::new(&sentinel).parse(&output)?;
 
         let old_output = output.to_old_output();
 
         #[allow(clippy::if_then_some_else_none)]
         let old_stats = if old_output.exists() {
-            Some(SentinelParser::new(&sentinel, &config.bench_file).parse(&old_output)?)
+            Some(SentinelParser::new(&sentinel).parse(&old_output)?)
         } else {
             None
         };
