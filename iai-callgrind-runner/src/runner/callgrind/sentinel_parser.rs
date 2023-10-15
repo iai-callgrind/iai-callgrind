@@ -1,5 +1,5 @@
 use anyhow::Result;
-use log::trace;
+use log::{debug, trace};
 
 use super::parser::{Parser, Sentinel};
 use super::{CallgrindOutput, CallgrindStats};
@@ -25,10 +25,9 @@ impl Parser for SentinelParser {
     where
         Self: std::marker::Sized,
     {
-        trace!(
-            "Parsing callgrind output file '{}' for '{}'",
-            output,
-            self.sentinel
+        debug!(
+            "Parsing callgrind output file '{}' for sentinel '{}'",
+            output, self.sentinel
         );
 
         let mut iter = output.lines()?;

@@ -40,6 +40,7 @@ fn test_sentinel_parser_when_not_found_then_error() {
     let callgrind_output = get_callgrind_output("callgrind.out/no_entry_point.out");
 
     let parser = SentinelParser::new(&Sentinel::new("doesnotexist"));
+
     assert_eq!(
         parser.parse(&callgrind_output).unwrap_err().to_string(),
         "Error parsing file 'tests/fixtures/callgrind.out/no_entry_point.out': Sentinel \
