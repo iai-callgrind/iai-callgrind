@@ -44,8 +44,8 @@ pub struct CallgrindOptions {
 #[derive(Debug, Clone)]
 pub struct CallgrindOutput(PathBuf);
 
-#[derive(Clone, Debug)]
-pub struct CallgrindStats(Costs);
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CallgrindStats(pub Costs);
 
 #[derive(Clone, Debug)]
 pub struct CallgrindSummary {
