@@ -1,0 +1,10 @@
+{
+  "dictionaries": ["custom"],
+  "dictionaryDefinitions": [
+    {
+      "name": "custom",
+      "path": "./.dicts/custom.txt",
+      "addWords": true
+    }
+  ]
+}
