@@ -13,10 +13,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### [0.7.2] - 2023-10-18
+
 ### Added
 
 * ([#23](https://github.com/Joining7943/iai-callgrind/issues/23)): Create
   regular and differential flamegraphs from callgrind output.
+
+### Fixed
+
+* ([#22](https://github.com/Joining7943/iai-callgrind/pull/22)): Clearify how
+  to update iai-callgrind-runner
+* Some small fixes of parsing callgrind output files in the event that no
+  records are present.
 
 ### [0.7.1] - 2023-09-27
 
