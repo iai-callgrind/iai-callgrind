@@ -5,12 +5,12 @@
 <div align="center">
     <a href="https://docs.rs/crate/iai-callgrind/">Released API Docs</a>
     |
-    <a href="https://github.com/Joining7943/iai-callgrind/blob/main/CHANGELOG.md">Changelog</a>
+    <a href="https://github.com/iai-callgrind/iai-callgrind/blob/main/CHANGELOG.md">Changelog</a>
 </div>
 <br>
 <div align="center">
-    <a href="https://github.com/Joining7943/iai-callgrind/actions/workflows/cicd.yml">
-        <img src="https://github.com/Joining7943/iai-callgrind/actions/workflows/cicd.yml/badge.svg" alt="GitHub branch checks state"/>
+    <a href="https://github.com/iai-callgrind/iai-callgrind/actions/workflows/cicd.yml">
+        <img src="https://github.com/iai-callgrind/iai-callgrind/actions/workflows/cicd.yml/badge.svg" alt="GitHub branch checks state"/>
     </a>
     <a href="https://crates.io/crates/iai-callgrind">
         <img src="https://img.shields.io/crates/v/iai-callgrind.svg" alt="Crates.io"/>

@@ -7,8 +7,8 @@ authors = ["Joining7943 <joining@posteo.de>"]
 rust-version = "1.60.0"
 description = "Tests for iai-callgrind"
 readme = "../README.md"
-homepage = "https://github.com/Joining7943/iai-callgrind"
-repository = "https://github.com/Joining7943/iai-callgrind"
+homepage = "https://github.com/iai-callgrind/iai-callgrind"
+repository = "https://github.com/iai-callgrind/iai-callgrind"
 license = "Apache-2.0 OR MIT"
 
 [dependencies]
