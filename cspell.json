@@ -13,7 +13,8 @@
   "enableGlobDot": true,
   "useGitignore": true,
   "ignorePaths": [
-    "**/.git*",
+    "**/.git/",
+    "**/.gitignore",
     "**/tests/fixtures/",
     "**/Cargo.lock",
     "*.stderr",
