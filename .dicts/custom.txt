@@ -3,6 +3,7 @@ ASLR
 Aparicio
 CALLGRIND
 Cachegrind
+cachesim
 Callgrind
 Clearify
 Deque

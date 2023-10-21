@@ -418,6 +418,9 @@ pub struct FlamegraphConfig(internal::InternalFlamegraphConfig);
 #[derive(Debug, Default)]
 pub struct LibraryBenchmarkConfig(internal::InternalLibraryBenchmarkConfig);
 
+#[derive(Debug, Default, Clone)]
+pub struct RegressionConfig(internal::InternalRegressionConfig);
+
 /// `Run` let's you set up and configure a benchmark run of a binary
 #[derive(Debug, Default, Clone)]
 pub struct Run(internal::InternalRun);
@@ -976,6 +979,14 @@ impl BinaryBenchmarkConfig {
         self.0.flamegraph = Some(config.into());
         self
     }
+
+    pub fn regression<T>(&mut self, config: T) -> &mut Self
+    where
+        T: Into<internal::InternalRegressionConfig>,
+    {
+        self.0.regression = Some(config.into());
+        self
+    }
 }
 
 impl_traits!(
@@ -1331,6 +1342,7 @@ impl LibraryBenchmarkConfig {
             raw_callgrind_args: internal::InternalRawCallgrindArgs::new(args),
             envs: vec![],
             flamegraph: None,
+            regression: None,
         })
     }
 
@@ -1582,12 +1594,47 @@ impl LibraryBenchmarkConfig {
         self.0.flamegraph = Some(config.into());
         self
     }
+
+    pub fn regression<T>(&mut self, config: T) -> &mut Self
+    where
+        T: Into<internal::InternalRegressionConfig>,
+    {
+        self.0.regression = Some(config.into());
+        self
+    }
 }
 
 impl_traits!(
     LibraryBenchmarkConfig,
     internal::InternalLibraryBenchmarkConfig
 );
+
+impl RegressionConfig {
+    pub fn new<T>(event_kinds: T, fail_fast: bool) -> Self
+    where
+        T: IntoIterator<Item = (EventKind, f64)>,
+    {
+        Self(internal::InternalRegressionConfig {
+            items: event_kinds.into_iter().collect(),
+            fail_fast: Some(fail_fast),
+        })
+    }
+
+    pub fn event_kinds<T>(&mut self, targets: T) -> &mut Self
+    where
+        T: IntoIterator<Item = (EventKind, f64)>,
+    {
+        self.0.items.extend(targets);
+        self
+    }
+
+    pub fn fail_fast(&mut self, value: bool) -> &mut Self {
+        self.0.fail_fast = Some(value);
+        self
+    }
+}
+
+impl_traits!(RegressionConfig, internal::InternalRegressionConfig);
 
 impl Run {
     /// Create a new `Run` with a `cmd` and [`Arg`]
@@ -2198,6 +2245,14 @@ impl Run {
         T: Into<internal::InternalFlamegraphConfig>,
     {
         self.0.config.flamegraph = Some(config.into());
+        self
+    }
+
+    pub fn regression<T>(&mut self, config: T) -> &mut Self
+    where
+        T: Into<internal::InternalRegressionConfig>,
+    {
+        self.0.config.regression = Some(config.into());
         self
     }
 }

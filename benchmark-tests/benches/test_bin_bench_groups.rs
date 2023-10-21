@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use iai_callgrind::{
     binary_benchmark_group, main, Arg, BenchmarkId, BinaryBenchmarkConfig, BinaryBenchmarkGroup,
-    ExitWith, Fixtures, Run,
+    EventKind, ExitWith, Fixtures, RegressionConfig, Run,
 };
 
 /// This function is run before all benchmarks of a group if the group argument `before =
@@ -126,6 +126,7 @@ fn setup_echo_group(group: &mut BinaryBenchmarkGroup) {
             ])
             .current_dir("test_bin_bench_groups.fixtures")
             .entry_point("benchmark_tests_echo::main")
+            .regression(RegressionConfig::default().fail_fast(true))
         );
 }
 
@@ -211,6 +212,13 @@ binary_benchmark_group!(
 // The main macro which creates a benchmarking harness with all group names from the above
 // `binary_benchmark_group!` macros
 main!(
+    config = BinaryBenchmarkConfig::default()
+        .regression(
+            RegressionConfig::new(
+                [(EventKind::Ir, 1.0), (EventKind::EstimatedCycles, 10.0)],
+                true
+            )
+        );
     binary_benchmark_groups = group_with_cmd,
     group_without_cmd,
     group_test_env,

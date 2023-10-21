@@ -34,6 +34,7 @@ pub struct BinaryBenchmarkConfig {
     pub raw_callgrind_args: RawCallgrindArgs,
     pub envs: Vec<(OsString, Option<OsString>)>,
     pub flamegraph: Option<FlamegraphConfig>,
+    pub regression: Option<RegressionConfig>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -105,7 +106,7 @@ pub enum EventKind {
     TotalRW,
     /// Derived event showing estimated CPU cycles (--cache-sim=yes)
     EstimatedCycles,
-    /// Conditional branches executed (--branch-sim)
+    /// Conditional branches executed (--branch-sim=yes)
     Bc,
     /// Conditional branches mispredicted (--branch-sim=yes)
     Bcm,
@@ -195,6 +196,7 @@ pub struct LibraryBenchmarkConfig {
     pub raw_callgrind_args: RawCallgrindArgs,
     pub envs: Vec<(OsString, Option<OsString>)>,
     pub flamegraph: Option<FlamegraphConfig>,
+    pub regression: Option<RegressionConfig>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -206,6 +208,12 @@ pub struct LibraryBenchmarkGroup {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RawCallgrindArgs(pub Vec<String>);
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct RegressionConfig {
+    pub items: Vec<(EventKind, f64)>,
+    pub fail_fast: Option<bool>,
+}
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Run {
@@ -232,6 +240,7 @@ impl BinaryBenchmarkConfig {
 
             self.envs.extend_from_slice(&other.envs);
             self.flamegraph = update_option(&self.flamegraph, &other.flamegraph);
+            self.regression = update_option(&self.regression, &other.regression);
         }
         self
     }
@@ -250,6 +259,19 @@ impl BinaryBenchmarkConfig {
 impl Default for Direction {
     fn default() -> Self {
         Self::BottomToTop
+    }
+}
+
+impl EventKind {
+    pub fn is_derived(&self) -> bool {
+        matches!(
+            self,
+            EventKind::L1hits
+                | EventKind::LLhits
+                | EventKind::RamHits
+                | EventKind::TotalRW
+                | EventKind::EstimatedCycles
+        )
     }
 }
 
@@ -290,6 +312,12 @@ where
             "SpLoss1" => Self::SpLoss1,
             "SpLoss2" => Self::SpLoss2,
             unknown => panic!("Unknown event type: {unknown}"),
+            // TODO: ADD MISSING EVENT TYPES
+            // L1hits,
+            // LLhits,
+            // RamHits,
+            // TotalRW,
+            // EstimatedCycles,
         }
     }
 }
@@ -305,6 +333,7 @@ impl LibraryBenchmarkConfig {
             self.env_clear = update_option(&self.env_clear, &other.env_clear);
             self.envs.extend_from_slice(&other.envs);
             self.flamegraph = update_option(&self.flamegraph, &other.flamegraph);
+            self.regression = update_option(&self.regression, &other.regression);
         }
         self
     }

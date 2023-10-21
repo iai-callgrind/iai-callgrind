@@ -125,7 +125,9 @@ impl Costs {
         })
     }
 
-    /// Calculate summary events and estimated cycles in-place
+    /// Calculate and add derived summary events (i.e. estimated cycles) in-place
+    ///
+    /// Additional calls to this function will overwrite the costs for derived summary events.
     ///
     /// # Errors
     ///
@@ -148,6 +150,13 @@ impl Costs {
         self.0.insert(EventKind::EstimatedCycles, cycles);
 
         Ok(())
+    }
+
+    /// Return true if costs are already summarized
+    ///
+    /// This method just probes for [`EventKind::EstimatedCycles`] to detect the summarized state.
+    pub fn is_summarized(&self) -> bool {
+        self.cost_by_kind(&EventKind::EstimatedCycles).is_some()
     }
 }
 

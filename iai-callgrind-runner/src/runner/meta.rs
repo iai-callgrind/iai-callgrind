@@ -24,6 +24,9 @@ pub struct Metadata {
 }
 
 impl Metadata {
+    // TODO: ADD IAI_CALLGRIND_REGRESSION=EVENT_KIND >|< PCT,... and
+    // IAI_CALLGRIND_REGRESSION_ADD=EVENT_KIND... and
+    // IAI_CALLGRIND_REGRESSION_FAIL_FAST=yes|no environment variable
     pub fn new() -> Result<Self> {
         let arch = std::env::consts::ARCH.to_owned();
         debug!("Detected architecture: {}", arch);
