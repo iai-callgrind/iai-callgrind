@@ -5,7 +5,7 @@ use iai_callgrind_runner::runner::callgrind::sentinel_parser::SentinelParser;
 use iai_callgrind_runner::runner::callgrind::CallgrindStats;
 use rstest::rstest;
 
-use crate::common::{assert_parse_error, get_callgrind_output};
+use crate::common::{assert_parse_error, Fixtures};
 
 // Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
 #[rstest]
@@ -27,7 +27,7 @@ fn test_sentinel_parser(#[case] sentinel: &str, #[case] costs: [u64; 9]) {
         (EventKind::DLmr, costs[7]),
         (EventKind::DLmw, costs[8]),
     ]));
-    let callgrind_output = get_callgrind_output("callgrind.out/no_entry_point.out");
+    let callgrind_output = Fixtures::get_callgrind_output("callgrind.out/no_entry_point.out");
 
     let parser = SentinelParser::new(&Sentinel::new(sentinel));
     let actual_stats = parser.parse(&callgrind_output).unwrap();
@@ -37,7 +37,7 @@ fn test_sentinel_parser(#[case] sentinel: &str, #[case] costs: [u64; 9]) {
 
 #[test]
 fn test_sentinel_parser_when_not_found_then_error() {
-    let callgrind_output = get_callgrind_output("callgrind.out/no_entry_point.out");
+    let callgrind_output = Fixtures::get_callgrind_output("callgrind.out/no_entry_point.out");
     let sentinel = Sentinel::new("doesnotexist");
 
     let result = SentinelParser::new(&sentinel).parse(&callgrind_output);
