@@ -5,7 +5,7 @@ use iai_callgrind_runner::runner::callgrind::summary_parser::SummaryParser;
 use iai_callgrind_runner::runner::callgrind::CallgrindStats;
 use rstest::rstest;
 
-use crate::common::get_callgrind_output;
+use crate::common::{assert_parse_error, get_callgrind_output};
 
 // Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
 #[rstest]
@@ -36,11 +36,10 @@ fn test_summary_parser_when_not_found_then_error() {
     let callgrind_output =
         get_callgrind_output("callgrind.out/no_records.no_summary_and_totals.out");
 
-    let parser = SummaryParser;
-    assert_eq!(
-        parser.parse(&callgrind_output).unwrap_err().to_string(),
-        "Error parsing file 'tests/fixtures/callgrind.out/no_records.no_summary_and_totals.out': \
-         No summary or totals line found"
-            .to_owned()
-    );
+    let result = SummaryParser.parse(&callgrind_output);
+    assert_parse_error(
+        callgrind_output.as_path(),
+        result,
+        "No summary or totals line found",
+    )
 }
