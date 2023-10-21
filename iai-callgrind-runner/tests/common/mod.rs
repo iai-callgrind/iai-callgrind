@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
+use anyhow::Result;
 use iai_callgrind_runner::runner::callgrind::CallgrindOutput;
 use serde::{Deserialize, Serialize};
 
@@ -11,7 +12,14 @@ pub fn get_fixtures_path<T>(name: T) -> PathBuf
 where
     T: AsRef<Path>,
 {
-    PathBuf::from(FIXTURES_ROOT).join(name.as_ref())
+    let root = get_project_root();
+    if root.ends_with("iai-callgrind-runner") {
+        root.join(FIXTURES_ROOT).join(name.as_ref())
+    } else {
+        root.join("iai-callgrind-runner")
+            .join(FIXTURES_ROOT)
+            .join(name.as_ref())
+    }
 }
 
 pub fn get_callgrind_output<T>(path: T) -> CallgrindOutput
@@ -56,4 +64,14 @@ where
     let path = get_fixtures_path(path);
     let reader = BufReader::new(File::open(path).unwrap());
     reader.lines().map(std::result::Result::unwrap).collect()
+}
+
+pub fn assert_parse_error<T>(file: &Path, result: Result<T>, message: &str)
+where
+    T: std::cmp::PartialEq + std::fmt::Debug,
+{
+    assert_eq!(
+        result.unwrap_err().to_string(),
+        format!("Error parsing file '{}': {message}", file.display())
+    );
 }

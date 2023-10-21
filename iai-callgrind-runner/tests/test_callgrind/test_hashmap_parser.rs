@@ -1,22 +1,9 @@
-use std::path::Path;
-
-use anyhow::Result;
 use iai_callgrind_runner::runner::callgrind::hashmap_parser::{CallgrindMap, HashMapParser};
 use iai_callgrind_runner::runner::callgrind::parser::Parser;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 
-use crate::common::{get_callgrind_output, load_serialized};
-
-fn assert_parse_error<T>(file: &Path, result: Result<T>, message: &str)
-where
-    T: std::cmp::PartialEq + std::fmt::Debug,
-{
-    assert_eq!(
-        result.unwrap_err().to_string(),
-        format!("Error parsing file '{}': {message}", file.display())
-    );
-}
+use crate::common::{assert_parse_error, get_callgrind_output, load_serialized};
 
 #[test]
 fn test_when_version_mismatch_then_should_return_error() {
