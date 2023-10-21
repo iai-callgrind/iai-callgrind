@@ -1,4 +1,5 @@
-# spell-checker:ignore taiki pipefail
+# spell-checker:ignore taiki rustfmt binstall clippy taplo rustup
+
 name: Build and Check
 
 on:

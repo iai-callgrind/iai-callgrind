@@ -1,18 +1,20 @@
 #!/usr/bin/env perl
 
+# cspell: ignore libc
+
 # A helper script to turn callgrind_annotate output into stack format as it is
 # required by inferno and returned by our FlamegraphParser ->
 # FlamegraphMap::to_stack_format.
 #
 # The output of this script is used for testing purposes to compare the stacks of the
-# FlamegraphMap with the output of callgrind_annote. This script is currently
+# FlamegraphMap with the output of callgrind_annotate. This script is currently
 # limited to create stacks from Ir events.
 
 use strict;
 use warnings;
 
 my $usage = <<END
-usage: callgind_annotate_to_stacks [options]
+usage: callgrind_annotate_to_stacks [options]
 
   This script expects callgrind_annotate output with --inclusive=yes
   and no tree or other options on stdin. The converted stacks are
