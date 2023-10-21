@@ -1,4 +1,5 @@
-# spell-checker:ignore taiki pipefail
+# spell-checker:ignore taiki rustfmt binstall clippy taplo rustup
+
 name: Build and Check
 
 on:
@@ -58,7 +59,7 @@ jobs:
         run: cargo minimal-versions build --workspace --all-targets
 
   format:
-    name: Check format with nightly rustfmt, prettier and taplo
+    name: Check format and spelling
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -71,6 +72,10 @@ jobs:
       - run: cargo fmt --check
       - run: taplo fmt --check --verbose
       - run: npx prettier --check --log-level warn '**/*.json' '**/*.yml'
+      - uses: streetsidesoftware/cspell-action@v3
+        with:
+          incremental_files_only: false
+          verbose: true
 
   base:
     needs: [format]

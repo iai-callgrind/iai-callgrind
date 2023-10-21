@@ -1,0 +1,25 @@
+{
+  "language": "en",
+  "enabledLanguageIds": ["yaml", "perl", "rust", "markdown", "toml", "json"],
+  "dictionaries": ["custom"],
+  "dictionaryDefinitions": [
+    {
+      "name": "custom",
+      "path": "./.dicts/custom.txt",
+      "addWords": true
+    }
+  ],
+  "readonly": true,
+  "enableGlobDot": true,
+  "useGitignore": true,
+  "ignorePaths": [
+    "**/.git/",
+    "**/.gitignore",
+    "**/tests/fixtures/",
+    "**/Cargo.lock",
+    "*.stderr",
+    "benchmark-tests/fixtures",
+    "benchmark-tests/fixtures-with-symlinks",
+    "benchmark-tests/benches/test_bin_bench_groups.fixtures"
+  ]
+}
