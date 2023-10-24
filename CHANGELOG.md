@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### [0.7.3] - 2023-10-24
+
+### Changed
+
+* Update repository to use github organization `iai-callgrind/iai-callgrind`
+* Lower the locked inferno dependency to `0.11.12` to workaround yanked `ahash`
+  version `0.8.3`
+
 ### [0.7.2] - 2023-10-18
 
 ### Added

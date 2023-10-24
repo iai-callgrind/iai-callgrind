@@ -1,3 +1,4 @@
+ahash
 ASLR
 Aparicio
 CALLGRIND
