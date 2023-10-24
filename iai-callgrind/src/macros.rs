@@ -104,7 +104,7 @@
 ///
 /// For an in-depth description of library benchmarks and more examples see the
 /// [README#Library
-/// Benchmarks](https://github.com/Joining7943/iai-callgrind#library-benchmarks) of this
+/// Benchmarks](https://github.com/iai-callgrind/iai-callgrind#library-benchmarks) of this
 /// crate.
 ///
 /// # Binary Benchmarks
@@ -151,7 +151,7 @@ macro_rules! main {
     ) => {
         compile_error!(
             "You are using a deprecated syntax of the main! macro to set up binary benchmarks. \
-            See the README (https://github.com/Joining7943/iai-callgrind) and \
+            See the README (https://github.com/iai-callgrind/iai-callgrind) and \
             docs (https://docs.rs/iai-callgrind/latest/iai_callgrind/) for further details."
         );
         pub fn main() {}
@@ -387,7 +387,7 @@ macro_rules! main {
     ) => {
         compile_error!(
             "You are using a deprecated syntax of the main! macro to set up library benchmarks. \
-            See the README (https://github.com/Joining7943/iai-callgrind) and \
+            See the README (https://github.com/iai-callgrind/iai-callgrind) and \
             docs (https://docs.rs/iai-callgrind/latest/iai_callgrind/) for further details."
         );
         pub fn main() {}
@@ -395,7 +395,7 @@ macro_rules! main {
     ( $( $func_name:ident ),+ $(,)* ) => {
         compile_error!(
             "You are using a deprecated syntax of the main! macro to set up library benchmarks. \
-            See the README (https://github.com/Joining7943/iai-callgrind) and \
+            See the README (https://github.com/iai-callgrind/iai-callgrind) and \
             docs (https://docs.rs/iai-callgrind/latest/iai_callgrind/) for further details."
         );
         pub fn main() {}

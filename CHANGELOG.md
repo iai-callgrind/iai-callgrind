@@ -17,12 +17,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
-* ([#23](https://github.com/Joining7943/iai-callgrind/issues/23)): Create
+* ([#23](https://github.com/iai-callgrind/iai-callgrind/issues/23)): Create
   regular and differential flamegraphs from callgrind output.
 
 ### Fixed
 
-* ([#22](https://github.com/Joining7943/iai-callgrind/pull/22)): Clearify how
+* ([#22](https://github.com/iai-callgrind/iai-callgrind/pull/22)): Clearify how
   to update iai-callgrind-runner
 * Some small fixes of parsing callgrind output files in the event that no
   records are present.
@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
-* ([#20](https://github.com/Joining7943/iai-callgrind/issues/20)): Clearing the
+* ([#20](https://github.com/iai-callgrind/iai-callgrind/issues/20)): Clearing the
   environment variables with `env_clear` may break finding valgrind.
 
 ### [0.7.0] - 2023-09-21
@@ -61,7 +61,7 @@ at all levels from top-level `main!` via `binary_benchmark_group` down to `Run`.
 
 ### Added
 
-* ([#5](https://github.com/Joining7943/iai-callgrind/issues/5)): Use a new attribute macro
+* ([#5](https://github.com/iai-callgrind/iai-callgrind/issues/5)): Use a new attribute macro
 (`#[library_benchmark]`) based api to setup library benchmarks. Also, bring the library benchmark
 api closer to the binary benchmark api and use a `library_benchmark_group!` macro together with
 `main!(library_benchmark_groups = ...)`
@@ -78,11 +78,11 @@ variable is now checked first before the usual `CARGO_TERM_COLOR`.
 
 * The output line `L1 Data Hits` changed to `L1 Hits` and in consequence now shows the event count
 for instruction and data hits
-* ([#7](https://github.com/Joining7943/iai-callgrind/issues/7)): Clear environment variables before
+* ([#7](https://github.com/iai-callgrind/iai-callgrind/issues/7)): Clear environment variables before
 running library benchmarks. With that change comes the possibility to influence that behavior with
 the `LibraryBenchmarkConfig::env_clear` method and set custom environment variables with
 `LibraryBenchmarkConfig::envs`.
-* ([#15](https://github.com/Joining7943/iai-callgrind/issues/15)): Use `IAI_CALLGRIND` prefix for
+* ([#15](https://github.com/iai-callgrind/iai-callgrind/issues/15)): Use `IAI_CALLGRIND` prefix for
 iai-callgrind environment variables. `IAI_ALLOW_ASLR` -> `IAI_CALLGRIND_ALLOW_ASLR`, `RUST_LOG` ->
 `IAI_CALLGRIND_LOG`.
 * Callgrind invocations, if `IAI_CALLGRIND_LOG` level is `DEBUG` now runs Callgrind with `--verbose`
@@ -105,7 +105,7 @@ to `BinaryBenchmarkConfig::fixtures` and `BinaryBenchmarkConfig::sandbox`
 
 ### Fixed
 
-* ([#19](https://github.com/Joining7943/iai-callgrind/issues/19)): Library benchmark functions with
+* ([#19](https://github.com/iai-callgrind/iai-callgrind/issues/19)): Library benchmark functions with
 equal bodies produce event counts of zero.
 * If the Callgrind arguments `--dump-instr=yes` and `dump-line=yes` were used together, the event
 counters were summed up incorrectly.
@@ -139,7 +139,7 @@ files of all packages
 
 ### Fixed
 
-* ([#4](https://github.com/Joining7943/iai-callgrind/issues/4)): The destination
+* ([#4](https://github.com/iai-callgrind/iai-callgrind/issues/4)): The destination
 directory of iai callgrind output files changes from `/workspace/$CARGO_PKG_NAME/target/iai` to
 `/workspace/target/iai/$CARGO_PKG_NAME` and respects the `CARGO_TARGET_DIR` environment variable
 
@@ -147,7 +147,7 @@ directory of iai callgrind output files changes from `/workspace/$CARGO_PKG_NAME
 
 ### Added
 
-* ([#3](https://github.com/Joining7943/iai-callgrind/issues/3)): builder api for binary benchmarks
+* ([#3](https://github.com/iai-callgrind/iai-callgrind/issues/3)): builder api for binary benchmarks
 
 ### Changed
 
@@ -166,7 +166,7 @@ binary anymore.
 
 ### Added
 
-* ([#2](https://github.com/Joining7943/iai-callgrind/issues/2)): Benchmarking binaries of a crate.
+* ([#2](https://github.com/iai-callgrind/iai-callgrind/issues/2)): Benchmarking binaries of a crate.
 Added a full description of this benchmarking scheme in the README
 * IAI_CALLGRIND_RUNNER environment variable which may specify the path to the iai-callgrind-runner
 binary

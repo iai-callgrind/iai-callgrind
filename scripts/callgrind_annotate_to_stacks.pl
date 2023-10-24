@@ -28,7 +28,7 @@ usage: callgrind_annotate_to_stacks [options]
     --modify=<string> <cost>          modify a string to new <cost>
     --replace=<string>==>><string>    replace occurrences of first <string> with second <string>
 END
-;
+  ;
 
 my $sentinel = "main";
 my @insert;
@@ -37,27 +37,32 @@ my $missing_ob;
 my @modify;
 
 for my $arg (@ARGV) {
-  if ( $arg =~ /^-/ ) {
-    if ( $arg =~ /^--sentinel=(.*)$/ ) {
-      $sentinel = "$1";
-    } elsif ( $arg =~ /^--insert=(\d+) (.*) (\d+)$/ ) {
-      my @rec = ($1, $2, $3);
-      push (@insert, \@rec);
-    } elsif ( $arg =~ /^--replace=(.*)==>>(.*)$/ ) {
-      my @rec = ($1, $2);
-      push (@replace, \@rec);
-    } elsif ( $arg =~ /^--modify=(.*) (\d+)$/ ) {
-      my @rec = ($1, $2);
-      push (@modify, \@rec);
-    } elsif ( $arg =~ /^--add-missing-ob=(.*)$/ ) {
-      $missing_ob = "$1";
-    } else {
-      die($usage);
+    if ( $arg =~ /^-/ ) {
+        if ( $arg =~ /^--sentinel=(.*)$/ ) {
+            $sentinel = "$1";
+        }
+        elsif ( $arg =~ /^--insert=(\d+) (.*) (\d+)$/ ) {
+            my @rec = ( $1, $2, $3 );
+            push( @insert, \@rec );
+        }
+        elsif ( $arg =~ /^--replace=(.*)==>>(.*)$/ ) {
+            my @rec = ( $1, $2 );
+            push( @replace, \@rec );
+        }
+        elsif ( $arg =~ /^--modify=(.*) (\d+)$/ ) {
+            my @rec = ( $1, $2 );
+            push( @modify, \@rec );
+        }
+        elsif ( $arg =~ /^--add-missing-ob=(.*)$/ ) {
+            $missing_ob = "$1";
+        }
+        else {
+            die($usage);
+        }
     }
-  }
 }
 
-my $pwd=`pwd`;
+my $pwd = `pwd`;
 chomp $pwd;
 $pwd .= '/';
 
@@ -80,60 +85,65 @@ my $sentinel_count;
 # 1,928 (55.51%)   547 (61.53%)   345 (61.72%)  88 (61.54%) 21 (70.00%)  4 (57.14%)  71 (61.21%) 3 (75.00%) 1 (25.00%)  ???:0x0000000000040b70 [/usr/lib/libc.so.6]
 # 1,198 (34.49%)   321 (36.11%)   202 (36.14%)  49 (34.27%) 13 (43.33%)  4 (57.14%)  32 (27.59%) 0          1 (25.00%)  ???:0x0000000000004d70 [/usr/lib/ld-linux-x86-64.so.2]
 while (<STDIN>) {
-  # Sort out the lines which are not in the format as shown above
-  /^\s*([0-9,]+).*?([\/\?].*)$/ or next;
-  my $count = "$1";
-  my $source = "$2";
 
-  # We don't output show ???:
-  $source =~ s/^\?\?\?://;
-  # callgrind_annotate doesn't make paths relative for all shown paths. But
-  # since we do, we need to strip the pwd prefix from the absolute paths.
-  $source =~ s/\Q$pwd\E//;
-  $source =~ s:^/rustc/([a-zA-Z0-9]{8})[a-zA-Z0-9]+/[/]?(.*)$:/rustc/$1/$2:;
+    # Sort out the lines which are not in the format as shown above
+    /^\s*([0-9,]+).*?([\/\?].*)$/ or next;
+    my $count  = "$1";
+    my $source = "$2";
 
-  # Sometimes callgrind_annotate shows a '.' for a count instead of a 0
-  $count =~ s/\./0/;
-  # The thousands separator needs be stripped, since we don't show these
-  $count =~ s/,//;
+    # We don't show '???:'
+    $source =~ s/^\?\?\?://;
 
-  # We do not show stack lines with costs higher than the sentinel's cost
-  if ($source =~ /^$sentinel / or /^[^:]+:$sentinel /) {
-    $sentinel_source = $source;
-    $sentinel_count = $count;
-    # Show some debugging output
-    print STDERR "Found sentinel: '$sentinel_source'\n";
-  }
+    # callgrind_annotate doesn't make paths relative for all shown paths. But
+    # since we do, we need to strip the pwd prefix from the absolute paths.
+    $source =~ s/\Q$pwd\E//;
+    $source =~ s:^/rustc/([a-zA-Z0-9]{8})[a-zA-Z0-9]+/[/]?(.*)$:/rustc/$1/$2:;
 
-  if (defined $missing_ob and not $source =~ / \[.*\]$/) {
-    $source .= " [$missing_ob]";
-  }
-  # We also don't show [???] for unknown elf object filenames
-  $source =~ s/ \[\?\?\?\]//;
+    # Sometimes callgrind_annotate shows a '.' for a count instead of a 0
+    $count =~ s/\./0/;
 
-  for my $i (@replace) {
-    if ("$i->[0]" eq "$source") {
-      $source = "$i->[1]";
-      last;
+    # The thousands separator needs be stripped, since we don't show these
+    $count =~ s/,//;
+
+    # We do not show stack lines with costs higher than the sentinel's cost
+    if ( $source =~ /^$sentinel / or /^[^:]+:$sentinel / ) {
+        $sentinel_source = $source;
+        $sentinel_count  = $count;
+
+        # Show some debugging output
+        print STDERR "Found sentinel: '$sentinel_source'\n";
     }
-  }
 
-  for my $i (@modify) {
-    if ("$i->[0]" eq "$source") {
-      $count = $i->[1];
-      last;
+    if ( defined $missing_ob and not $source =~ / \[.*\]$/ ) {
+        $source .= " [$missing_ob]";
     }
-  }
 
-  my @rec = ($source, $count);
-  push (@sources, \@rec);
+    # We also don't show [???] for unknown elf object filenames
+    $source =~ s/ \[\?\?\?\]//;
+
+    for my $i (@replace) {
+        if ( "$i->[0]" eq "$source" ) {
+            $source = "$i->[1]";
+            last;
+        }
+    }
+
+    for my $i (@modify) {
+        if ( "$i->[0]" eq "$source" ) {
+            $count = $i->[1];
+            last;
+        }
+    }
+
+    my @rec = ( $source, $count );
+    push( @sources, \@rec );
 }
 
 if (@insert) {
-  for my $i (@insert) {
-    my @rec = ($i->[1], $i->[2]);
-    splice @sources, $i->[0], 0, \@rec;
-  }
+    for my $i (@insert) {
+        my @rec = ( $i->[1], $i->[2] );
+        splice @sources, $i->[0], 0, \@rec;
+    }
 }
 
 # callgrind_annotate per default sorts by event 0 -> event 1 -> ... ->
@@ -141,41 +151,43 @@ if (@insert) {
 # and then lexicographically. So, we need to adjust the sorting of the
 # callgrind_annotate output a little bit. This mostly affects the sorting of
 # lines with equal costs.
-my @sorted_sources = sort {($b->[1] <=> $a->[1]) || ($a->[0] cmp $b->[0])} @sources;
+my @sorted_sources = sort { ( $b->[1] <=> $a->[1] ) || ( $a->[0] cmp $b->[0] ) } @sources;
 
 # Create the stacks in flamegraph stacks format from the sorted callgrind_annotate output lines
 if (@sources) {
-  if (@sources > 1) {
-    for my $i (0 .. @sorted_sources - 2) {
-      my $s1 = $sorted_sources[$i];
-      my $s2 = $sorted_sources[$i+1];
+    if ( @sources > 1 ) {
+        for my $i ( 0 .. @sorted_sources - 2 ) {
+            my $s1 = $sorted_sources[$i];
+            my $s2 = $sorted_sources[ $i + 1 ];
 
-      if (defined $sentinel_count and $s1->[1] > $sentinel_count) {
-        next;
-      }
+            if ( defined $sentinel_count and $s1->[1] > $sentinel_count ) {
+                next;
+            }
 
-      my $last = $stacks[-1];
-      my $count = $s1->[1] - $s2->[1];
-      if (defined $last) {
-        $last =~ s/ [0-9]+$//;
-        push @stacks, "$last;$s1->[0] $count";
-      } else {
-        push @stacks, "$s1->[0] $count";
-      }
+            my $last  = $stacks[-1];
+            my $count = $s1->[1] - $s2->[1];
+            if ( defined $last ) {
+                $last =~ s/ [0-9]+$//;
+                push @stacks, "$last;$s1->[0] $count";
+            }
+            else {
+                push @stacks, "$s1->[0] $count";
+            }
 
-      if ($i == @sources - 2) {
-        my $last = $stacks[-1];
-        my $count = $s2->[1];
-        $last =~ s/ [0-9]+$//;
-        push @stacks, "$last;$s2->[0] $count";
-      }
+            if ( $i == @sources - 2 ) {
+                my $last  = $stacks[-1];
+                my $count = $s2->[1];
+                $last =~ s/ [0-9]+$//;
+                push @stacks, "$last;$s2->[0] $count";
+            }
+        }
     }
-  } else {
-      push @stacks, "$sorted_sources[0]->[0] $sorted_sources[0]->[1]";
-  }
+    else {
+        push @stacks, "$sorted_sources[0]->[0] $sorted_sources[0]->[1]";
+    }
 }
 
 # Finally, print the stacks to stdout
 foreach my $stack (@stacks) {
-  print "$stack\n";
+    print "$stack\n";
 }

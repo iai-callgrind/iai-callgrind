@@ -130,7 +130,7 @@
 //! levels.
 //!
 //! See also the docs of [`crate::library_benchmark_group`]. The
-//! [README](https://github.com/Joining7943/iai-callgrind) of this crate includes more explanations,
+//! [README](https://github.com/iai-callgrind/iai-callgrind) of this crate includes more explanations,
 //! common recipes and some examples.
 //!
 //! ## Binary Benchmarks
@@ -212,7 +212,7 @@
 //!
 //! For further details see the section about binary benchmarks of the [`crate::main`] docs the docs
 //! of [`crate::binary_benchmark_group`] and [`Run`]. Also, the
-//! [README](https://github.com/Joining7943/iai-callgrind) of this crate includes some introductory
+//! [README](https://github.com/iai-callgrind/iai-callgrind) of this crate includes some introductory
 //! documentation with additional examples.
 //!
 //! ### Flamegraphs

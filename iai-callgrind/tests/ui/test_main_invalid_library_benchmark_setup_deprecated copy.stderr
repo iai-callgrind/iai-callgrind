@@ -1,4 +1,4 @@
-error: You are using a deprecated syntax of the main! macro to set up binary benchmarks. See the README (https://github.com/Joining7943/iai-callgrind) and docs (https://docs.rs/iai-callgrind/latest/iai_callgrind/) for further details.
+error: You are using a deprecated syntax of the main! macro to set up binary benchmarks. See the README (https://github.com/iai-callgrind/iai-callgrind) and docs (https://docs.rs/iai-callgrind/latest/iai_callgrind/) for further details.
  --> tests/ui/test_main_invalid_library_benchmark_setup_deprecated copy.rs:4:5
   |
 4 |     main!(run = cmd = "some", id = "id", args = []);
