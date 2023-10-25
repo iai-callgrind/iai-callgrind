@@ -46,6 +46,7 @@ improvements and features.
     - [Features and differences to Iai](#features-and-differences-to-iai)
     - [What hasn't changed](#what-hasnt-changed)
     - [See also](#see-also)
+    - [Contributing](#contributing)
     - [Credits](#credits)
     - [License](#license)
 
@@ -343,26 +344,26 @@ The output of this benchmark run could look like this:
 
 ```text
 my_binary_benchmark::my_exe_group do foo with test1:my-exe --foo=fixtures/test1.txt
-  Instructions:              322637 (No Change)
-  L1 Hits:                   106807 (No Change)
-  L2 Hits:                      708 (No Change)
-  RAM Hits:                    3799 (No Change)
-  Total read+write:          433951 (No Change)
-  Estimated Cycles:          565949 (No Change)
+  Instructions:              160346 (No Change)
+  L1 Hits:                   212787 (No Change)
+  L2 Hits:                      381 (No Change)
+  RAM Hits:                    2918 (No Change)
+  Total read+write:          216086 (No Change)
+  Estimated Cycles:          316822 (No Change)
 my_binary_benchmark::my_exe_group positional arguments:my-exe foo "foo bar"
-  Instructions:              155637 (No Change)
-  L1 Hits:                   106807 (No Change)
-  L2 Hits:                      708 (No Change)
-  RAM Hits:                    3799 (No Change)
-  Total read+write:          433951 (No Change)
-  Estimated Cycles:          565949 (No Change)
+  Instructions:              340937 (No Change)
+  L1 Hits:                   454995 (No Change)
+  L2 Hits:                      750 (No Change)
+  RAM Hits:                    4074 (No Change)
+  Total read+write:          459819 (No Change)
+  Estimated Cycles:          601335 (No Change)
 my_binary_benchmark::my_exe_group no argument:my-exe
-  Instructions:              155637 (No Change)
-  L1 Hits:                   106807 (No Change)
-  L2 Hits:                      708 (No Change)
-  RAM Hits:                    3799 (No Change)
-  Total read+write:          433951 (No Change)
-  Estimated Cycles:          565949 (No Change)
+  Instructions:              166491 (No Change)
+  L1 Hits:                   220756 (No Change)
+  L2 Hits:                      402 (No Change)
+  RAM Hits:                    3053 (No Change)
+  Total read+write:          224211 (No Change)
+  Estimated Cycles:          329621 (No Change)
 ```
 
 You'll find the callgrind output files of each run of the benchmark `my_binary_benchmark` of the
@@ -524,59 +525,46 @@ Below a local run of one of the benchmarks of this library
 
 ```shell
 $ cd iai-callgrind
-$ cargo bench --bench test_regular_bench
-test_regular_bench::bench_empty
-  Instructions:                   0
-  L1 Hits:                        0
-  L2 Hits:                        0
-  RAM Hits:                       0
-  Total read+write:               0
-  Estimated Cycles:               0
-test_regular_bench::bench_fibonacci
-  Instructions:                1727
-  L1 Hits:                      621
-  L2 Hits:                        0
-  RAM Hits:                       1
-  Total read+write:            2349
-  Estimated Cycles:            2383
-test_regular_bench::bench_fibonacci_long
-  Instructions:            26214727
-  L1 Hits:                  9423880
+$ cargo bench --bench test_lib_bench_readme_example_fibonacci
+test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci short:10
+  Instructions:                1733
+  L1 Hits:                     2359
   L2 Hits:                        0
   RAM Hits:                       2
-  Total read+write:        35638609
-  Estimated Cycles:        35638677
+  Total read+write:            2361
+  Estimated Cycles:            2429
+test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci long:30
+  Instructions:            26214733
+  L1 Hits:                 35638617
+  L2 Hits:                        0
+  RAM Hits:                       4
+  Total read+write:        35638621
+  Estimated Cycles:        35638757
 ```
 
-For comparison here the output of the same benchmark but in the github CI:
+For comparison, the output of the same benchmark but in the github CI, producing
+the exact same results:
 
 ```text
-test_regular_bench::bench_empty
-  Instructions:                   0
-  L1 Hits:                        0
-  L2 Hits:                        0
-  RAM Hits:                       0
-  Total read+write:               0
-  Estimated Cycles:               0
-test_regular_bench::bench_fibonacci
-  Instructions:                1727
-  L1 Hits:                      621
-  L2 Hits:                        0
-  RAM Hits:                       1
-  Total read+write:            2349
-  Estimated Cycles:            2383
-test_regular_bench::bench_fibonacci_long
-  Instructions:            26214727
-  L1 Hits:                  9423880
+test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci short:10
+  Instructions:                1733
+  L1 Hits:                     2359
   L2 Hits:                        0
   RAM Hits:                       2
-  Total read+write:        35638609
-  Estimated Cycles:        35638677
+  Total read+write:            2361
+  Estimated Cycles:            2429
+test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci long:30
+  Instructions:            26214733
+  L1 Hits:                 35638617
+  L2 Hits:                        0
+  RAM Hits:                       4
+  Total read+write:        35638621
+  Estimated Cycles:        35638757
 ```
 
-There's no difference (in this example) what makes benchmark runs and performance improvements of
-the benchmarked code even more comparable across systems. However, the above benchmarks are pretty
-clean and you'll most likely see some very small differences in your own benchmarks.
+There's no difference (or only very small differences) what makes benchmark runs
+and performance improvements of the benchmarked code even more comparable across
+systems.
 
 #### Cleaner output of Valgrind's annotation tools
 
@@ -591,13 +579,13 @@ The statistics of the benchmarks are mostly not compatible with the original Iai
 still related. They now also include some additional information:
 
 ```text
-test_regular_bench::bench_fibonacci_long
-  Instructions:            26214732
-  L1 Hits:                  9423880
+test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci long:30
+  Instructions:            26214733
+  L1 Hits:                 35638617
   L2 Hits:                        0
-  RAM Hits:                       2
-  Total read+write:        35638609
-  Estimated Cycles:        35638677
+  RAM Hits:                       4
+  Total read+write:        35638621
+  Estimated Cycles:        35638757
 ```
 
 There is an additional line `Total read+write` which summarizes all event counters of the lines with
@@ -624,6 +612,11 @@ overwriting them in case of multiple benchmark files.
 
 Iai-Callgrind cannot completely remove the influences of setup changes. However, these effects
 shouldn't be significant anymore.
+
+### Contributing
+
+A guideline about contributing to iai-callgrind can be found in the
+[CONTRIBUTING.md](./CONTRIBUTING.md) file.
 
 ### See also
 

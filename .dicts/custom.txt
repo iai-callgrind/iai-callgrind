@@ -54,6 +54,8 @@ rsplit
 rstest
 rustc
 rustdoc
+rustfmt
+rustup
 sandboxing
 serde
 setarch
