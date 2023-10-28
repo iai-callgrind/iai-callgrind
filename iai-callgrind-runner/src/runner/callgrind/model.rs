@@ -71,7 +71,7 @@ impl Costs {
         self.0.get_index(index).map(|(_, c)| *c)
     }
 
-    /// Return the cost of the [`EventType`] if present
+    /// Return the cost of the [`EventKind`] if present
     ///
     /// This operation is O(1)
     pub fn cost_by_kind(&self, kind: &EventKind) -> Option<u64> {

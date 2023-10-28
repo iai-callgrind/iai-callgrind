@@ -263,6 +263,16 @@ impl Default for Direction {
 }
 
 impl EventKind {
+    /// Return true if this `EventKind` is a derived event
+    ///
+    /// Derived events are calculated from Callgrind's native event types. See also
+    /// [`crate::runner::callgrind::model::Costs::make_summary`]. Currently all derived events are:
+    ///
+    /// * [`EventKind::L1hits`]
+    /// * [`EventKind::LLhits`]
+    /// * [`EventKind::RamHits`]
+    /// * [`EventKind::TotalRW`]
+    /// * [`EventKind::EstimatedCycles`]
     pub fn is_derived(&self) -> bool {
         matches!(
             self,
@@ -346,13 +356,12 @@ where
             "AcCost2" => Self::AcCost2,
             "SpLoss1" => Self::SpLoss1,
             "SpLoss2" => Self::SpLoss2,
+            "L1hits" => Self::L1hits,
+            "LLhits" => Self::LLhits,
+            "RamHits" => Self::RamHits,
+            "TotalRW" => Self::TotalRW,
+            "EstimatedCycles" => Self::EstimatedCycles,
             unknown => panic!("Unknown event type: {unknown}"),
-            // TODO: ADD MISSING EVENT TYPES
-            // L1hits,
-            // LLhits,
-            // RamHits,
-            // TotalRW,
-            // EstimatedCycles,
         }
     }
 }
