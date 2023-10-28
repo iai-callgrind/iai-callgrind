@@ -1,6 +1,7 @@
 flamegraph.svg
 perf.data
 *.profraw
+lcov.info
 
 # Swap
 [._]*.s[a-v][a-z]
