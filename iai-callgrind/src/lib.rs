@@ -314,9 +314,9 @@ pub struct BenchmarkId {
 /// ```rust,no_run
 /// # use iai_callgrind::binary_benchmark_group;
 /// # binary_benchmark_group!(name = some_group; benchmark = |group: &mut BinaryBenchmarkGroup| {});
-/// use iai_callgrind::BinaryBenchmarkConfig;
+/// use iai_callgrind::{BinaryBenchmarkConfig, main};
 ///
-/// iai_callgrind::main!(
+/// main!(
 ///     config = BinaryBenchmarkConfig::default().raw_callgrind_args(["toggle-collect=something"]);
 ///     binary_benchmark_groups = some_group
 /// );
@@ -403,7 +403,8 @@ pub struct FlamegraphConfig(internal::InternalFlamegraphConfig);
 /// # Examples
 ///
 /// ```rust
-/// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// use iai_callgrind::{LibraryBenchmarkConfig, main};
 /// # #[library_benchmark]
 /// # fn some_func() {}
 /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
@@ -418,6 +419,33 @@ pub struct FlamegraphConfig(internal::InternalFlamegraphConfig);
 #[derive(Debug, Default)]
 pub struct LibraryBenchmarkConfig(internal::InternalLibraryBenchmarkConfig);
 
+/// Configure performance regression checks and behavior
+///
+/// A performance regression check consists of an [`EventKind`] and a percentage over which a
+/// regression is assumed. If the percentage is negative, then a regression is assumed to be below
+/// this limit. The default [`EventKind`] is [`EventKind::EstimatedCycles`] with a value of
+/// `+10f64`
+///
+/// If `fail_fast` is set to true, then the whole benchmark run fails on the first encountered
+/// regression. Else, the default behavior is, that the benchmark run fails with a regression error
+/// after all benchmarks have been run.
+///
+/// # Examples
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// use iai_callgrind::{main, LibraryBenchmarkConfig, RegressionConfig};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///                 .regression(RegressionConfig::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
 #[derive(Debug, Default, Clone)]
 pub struct RegressionConfig(internal::InternalRegressionConfig);
 
@@ -980,6 +1008,24 @@ impl BinaryBenchmarkConfig {
         self
     }
 
+    /// Enable performance regression checks with a [`RegressionConfig`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    /// # binary_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig, RegressionConfig};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = BinaryBenchmarkConfig::default().regression(RegressionConfig::default());
+    ///     binary_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
     pub fn regression<T>(&mut self, config: T) -> &mut Self
     where
         T: Into<internal::InternalRegressionConfig>,
@@ -1320,11 +1366,13 @@ impl LibraryBenchmarkConfig {
     /// # Examples
     ///
     /// ```rust
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
     /// # #[library_benchmark]
     /// # fn some_func() {}
     /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
     /// # fn main() {
+    /// use iai_callgrind::{LibraryBenchmarkConfig, main};
+    ///
     /// main!(
     ///     config =
     ///         LibraryBenchmarkConfig::with_raw_callgrind_args(["toggle-collect=something"]);
@@ -1378,11 +1426,13 @@ impl LibraryBenchmarkConfig {
     /// # Examples
     ///
     /// ```rust
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
     /// # #[library_benchmark]
     /// # fn some_func() {}
     /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
     /// # fn main() {
+    /// use iai_callgrind::{LibraryBenchmarkConfig, main};
+    ///
     /// main!(
     ///     config = LibraryBenchmarkConfig::default()
     ///                 .raw_callgrind_args(["toggle-collect=something"]);
@@ -1406,10 +1456,12 @@ impl LibraryBenchmarkConfig {
     /// # Examples
     ///
     /// ```rust
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
     /// # #[library_benchmark]
     /// # fn some_func() {}
     /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// use iai_callgrind::{LibraryBenchmarkConfig, main};
+    ///
     /// # fn main() {
     /// main!(
     ///     config = LibraryBenchmarkConfig::default()
@@ -1432,10 +1484,12 @@ impl LibraryBenchmarkConfig {
     /// # Examples
     ///
     /// ```rust
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
     /// # #[library_benchmark]
     /// # fn some_func() {}
     /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// use iai_callgrind::{LibraryBenchmarkConfig, main};
+    ///
     /// # fn main() {
     /// main!(
     ///     config = LibraryBenchmarkConfig::default().env_clear(false);
@@ -1457,10 +1511,12 @@ impl LibraryBenchmarkConfig {
     /// An example for a custom environment variable, available in all benchmarks:
     ///
     /// ```rust
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
     /// # #[library_benchmark]
     /// # fn some_func() {}
     /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// use iai_callgrind::{LibraryBenchmarkConfig, main};
+    ///
     /// # fn main() {
     /// main!(
     ///     config = LibraryBenchmarkConfig::default().env("FOO", "BAR");
@@ -1484,10 +1540,12 @@ impl LibraryBenchmarkConfig {
     /// # Examples
     ///
     /// ```rust
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
     /// # #[library_benchmark]
     /// # fn some_func() {}
     /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// use iai_callgrind::{LibraryBenchmarkConfig, main};
+    ///
     /// # fn main() {
     /// main!(
     ///     config =
@@ -1522,10 +1580,12 @@ impl LibraryBenchmarkConfig {
     /// Here, we chose to pass-through the original value of the `HOME` variable:
     ///
     /// ```rust
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
     /// # #[library_benchmark]
     /// # fn some_func() {}
     /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// use iai_callgrind::{LibraryBenchmarkConfig, main};
+    ///
     /// # fn main() {
     /// main!(
     ///     config = LibraryBenchmarkConfig::default().pass_through_env("HOME");
@@ -1548,10 +1608,12 @@ impl LibraryBenchmarkConfig {
     /// # Examples
     ///
     /// ```rust
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, main};
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
     /// # #[library_benchmark]
     /// # fn some_func() {}
     /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// use iai_callgrind::{LibraryBenchmarkConfig, main};
+    ///
     /// # fn main() {
     /// main!(
     ///     config = LibraryBenchmarkConfig::default().pass_through_envs(["HOME", "USER"]);
@@ -1576,10 +1638,11 @@ impl LibraryBenchmarkConfig {
     ///
     /// ```rust
     /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
-    /// use iai_callgrind::{LibraryBenchmarkConfig, main, FlamegraphConfig};
     /// # #[library_benchmark]
     /// # fn some_func() {}
     /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// use iai_callgrind::{LibraryBenchmarkConfig, main, FlamegraphConfig};
+    ///
     /// # fn main() {
     /// main!(
     ///     config = LibraryBenchmarkConfig::default().flamegraph(FlamegraphConfig::default());
@@ -1595,6 +1658,24 @@ impl LibraryBenchmarkConfig {
         self
     }
 
+    /// Enable performance regression checks with a [`RegressionConfig`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// use iai_callgrind::{LibraryBenchmarkConfig, main, RegressionConfig};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default().regression(RegressionConfig::default());
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
     pub fn regression<T>(&mut self, config: T) -> &mut Self
     where
         T: Into<internal::InternalRegressionConfig>,
@@ -1609,25 +1690,71 @@ impl_traits!(
     internal::InternalLibraryBenchmarkConfig
 );
 
+/// Enable performance regression checks with a [`RegressionConfig`]
+///
+/// A performance regression check consists of an [`EventKind`] and a percentage over which a
+/// regression is assumed. If the percentage is negative, then a regression is assumed to be below
+/// this limit. The default [`EventKind`] is [`EventKind::EstimatedCycles`] with a value of
+/// `+10f64`
+///
+/// If `fail_fast` is set to true, then the whole benchmark run fails on the first encountered
+/// regression. Else, the default behavior is, that the benchmark run fails with a regression error
+/// after all benchmarks have been run.
+///
+/// # Examples
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// use iai_callgrind::{LibraryBenchmarkConfig, RegressionConfig};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///                 .regression(RegressionConfig::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
 impl RegressionConfig {
-    pub fn new<T>(event_kinds: T, fail_fast: bool) -> Self
+    /// Configure the limits percentages over/below which a performance regression can be assumed
+    ///
+    /// A performance regression check consists of an [`EventKind`] and a percentage over which a
+    /// regression is assumed. If the percentage is negative, then a regression is assumed to be
+    /// below this limit.
+    ///
+    /// If no `limits` or empty `targets` are specified with this function, the default
+    /// [`EventKind`] is [`EventKind::EstimatedCycles`] with a value of `+10f64`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::{EventKind, RegressionConfig};
+    ///
+    /// let config = RegressionConfig::default().limits([(EventKind::Ir, 5f64)]);
+    /// ```
+    pub fn limits<T>(&mut self, targets: T) -> &mut Self
     where
         T: IntoIterator<Item = (EventKind, f64)>,
     {
-        Self(internal::InternalRegressionConfig {
-            items: event_kinds.into_iter().collect(),
-            fail_fast: Some(fail_fast),
-        })
-    }
-
-    pub fn event_kinds<T>(&mut self, targets: T) -> &mut Self
-    where
-        T: IntoIterator<Item = (EventKind, f64)>,
-    {
-        self.0.items.extend(targets);
+        self.0.limits.extend(targets);
         self
     }
 
+    /// If set to true, then the benchmarks fail on the first encountered regression
+    ///
+    /// The default is `false` and the whole benchmark run fails with a regression error after all
+    /// benchmarks have been run.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::RegressionConfig;
+    ///
+    /// let config = RegressionConfig::default().fail_fast(true);
+    /// ```
     pub fn fail_fast(&mut self, value: bool) -> &mut Self {
         self.0.fail_fast = Some(value);
         self
@@ -2248,6 +2375,29 @@ impl Run {
         self
     }
 
+    /// Enable performance regression checks with a [`RegressionConfig`]
+    ///
+    /// See also [`BinaryBenchmarkConfig::regression`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::main;
+    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run, RegressionConfig};
+    ///
+    /// binary_benchmark_group!(
+    ///     name = my_group;
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
+    ///         group.bench(
+    ///             Run::with_arg(Arg::empty("empty foo"))
+    ///                 .regression(RegressionConfig::default())
+    ///         );
+    ///     }
+    /// );
+    /// # fn main() {
+    /// # main!(binary_benchmark_groups = my_group);
+    /// # }
+    /// ```
     pub fn regression<T>(&mut self, config: T) -> &mut Self
     where
         T: Into<internal::InternalRegressionConfig>,
