@@ -432,13 +432,7 @@ where
 }
 
 pub fn update_option<T: Clone>(first: &Option<T>, other: &Option<T>) -> Option<T> {
-    // TODO: Use alternative
-    // other.clone().or(first.clone())
-    match (first, other) {
-        (None, None) => None,
-        (None, Some(v)) | (Some(v), None) => Some(v.clone()),
-        (Some(_), Some(w)) => Some(w.clone()),
-    }
+    other.clone().or_else(|| first.clone())
 }
 
 #[cfg(test)]
@@ -494,5 +488,19 @@ mod tests {
                 ..Default::default()
             }
         );
+    }
+
+    #[rstest]
+    #[case::all_none(None, None, None)]
+    #[case::some_and_none(Some(true), None, Some(true))]
+    #[case::none_and_some(None, Some(true), Some(true))]
+    #[case::some_and_some(Some(false), Some(true), Some(true))]
+    #[case::some_and_some_value_does_not_matter(Some(true), Some(false), Some(false))]
+    fn test_update_option(
+        #[case] first: Option<bool>,
+        #[case] other: Option<bool>,
+        #[case] expected: Option<bool>,
+    ) {
+        assert_eq!(update_option(&first, &other), expected);
     }
 }
