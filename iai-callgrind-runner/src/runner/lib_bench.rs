@@ -11,7 +11,7 @@ use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Regr
 use super::meta::Metadata;
 use super::print::Header;
 use super::Error;
-use crate::api::LibraryBenchmark;
+use crate::api::{self, LibraryBenchmark, LibraryBenchmarkConfig};
 use crate::util::receive_benchmark;
 
 #[derive(Debug)]
@@ -59,8 +59,15 @@ struct Runner {
 }
 
 impl Groups {
-    fn from_library_benchmark(module: &str, benchmark: LibraryBenchmark) -> Result<Self> {
-        let global_config = &benchmark.config;
+    fn from_library_benchmark(
+        module: &str,
+        benchmark: LibraryBenchmark,
+        meta: &Metadata,
+    ) -> Result<Self> {
+        let global_config = LibraryBenchmarkConfig {
+            regression: api::update_option(&meta.regression_config, &benchmark.config.regression),
+            ..benchmark.config
+        };
         let mut groups = vec![];
         for library_benchmark_group in benchmark.groups {
             let module_path = if let Some(group_id) = &library_benchmark_group.id {
@@ -232,8 +239,8 @@ impl Runner {
             .unwrap();
 
         let benchmark = receive_benchmark(num_bytes)?;
-        let groups = Groups::from_library_benchmark(&module, benchmark)?;
         let meta = Metadata::new()?;
+        let groups = Groups::from_library_benchmark(&module, benchmark, &meta)?;
 
         Ok(Self {
             config: Config {

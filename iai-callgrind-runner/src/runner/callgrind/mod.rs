@@ -61,7 +61,7 @@ pub struct CallgrindSummary {
 
 #[derive(Debug, Clone)]
 pub struct Regression {
-    pub items: Vec<(EventKind, f64)>,
+    pub limits: Vec<(EventKind, f64)>,
     pub fail_fast: bool,
 }
 
@@ -444,7 +444,7 @@ impl Regression {
             let mut new_costs = Cow::Borrowed(&new.0);
             let mut old_costs = Cow::Borrowed(&old.0);
 
-            for (event_kind, limit) in &self.items {
+            for (event_kind, limit) in &self.limits {
                 if event_kind.is_derived() {
                     if !new_costs.is_summarized() {
                         _ = new_costs.to_mut().make_summary();
@@ -483,12 +483,12 @@ impl Regression {
 
 impl From<api::RegressionConfig> for Regression {
     fn from(value: api::RegressionConfig) -> Self {
-        let RegressionConfig { items, fail_fast } = value;
+        let RegressionConfig { limits, fail_fast } = value;
         Regression {
-            items: if items.is_empty() {
+            limits: if limits.is_empty() {
                 vec![(EventKind::EstimatedCycles, 10f64)]
             } else {
-                items
+                limits
             },
             fail_fast: fail_fast.unwrap_or(false),
         }
@@ -498,7 +498,7 @@ impl From<api::RegressionConfig> for Regression {
 impl Default for Regression {
     fn default() -> Self {
         Self {
-            items: vec![(EventKind::EstimatedCycles, 10f64)],
+            limits: vec![(EventKind::EstimatedCycles, 10f64)],
             fail_fast: Default::default(),
         }
     }
@@ -590,13 +590,13 @@ mod tests {
         vec![(EstimatedCycles, 410, 205, 100f64, 0f64)]
     )]
     fn test_regression_check_when_old_is_some(
-        #[case] checks: Vec<(EventKind, f64)>,
+        #[case] limits: Vec<(EventKind, f64)>,
         #[case] new: [u64; 9],
         #[case] old: [u64; 9],
         #[case] expected: Vec<(EventKind, u64, u64, f64, f64)>,
     ) {
         let regression = Regression {
-            items: checks,
+            limits,
             ..Default::default()
         };
 

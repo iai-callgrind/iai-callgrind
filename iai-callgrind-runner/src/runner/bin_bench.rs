@@ -496,9 +496,17 @@ impl Groups {
         bench_assists
     }
 
-    fn from_binary_benchmark(module: &str, benchmark: BinaryBenchmark) -> Result<Self> {
-        // TODO: LIKE in lib_bench binary benchmarks should differentiate between command_line_args
-        // and raw_callgrind_args
+    // TODO: LIKE in lib_bench binary benchmarks should differentiate between command_line_args
+    // and raw_callgrind_args
+    fn from_binary_benchmark(
+        module: &str,
+        benchmark: BinaryBenchmark,
+        meta: &Metadata,
+    ) -> Result<Self> {
+        let global_config = BinaryBenchmarkConfig {
+            regression: api::update_option(&meta.regression_config, &benchmark.config.regression),
+            ..benchmark.config
+        };
         let mut groups = vec![];
         for group in benchmark.groups {
             let module_path = if let Some(id) = group.id.as_ref() {
@@ -506,8 +514,7 @@ impl Groups {
             } else {
                 module.to_owned()
             };
-            let group_config = benchmark
-                .config
+            let group_config = global_config
                 .clone()
                 .update_from_all([group.config.as_ref()]);
             let benches = Self::parse_runs(&module_path, &group.cmd, group.benches, &group_config)?;
@@ -571,8 +578,8 @@ impl Runner {
             .unwrap();
 
         let benchmark = receive_benchmark(num_bytes)?;
-        let groups = Groups::from_binary_benchmark(&module, benchmark)?;
         let meta = Metadata::new()?;
+        let groups = Groups::from_binary_benchmark(&module, benchmark, &meta)?;
 
         Ok(Self {
             config: Config {

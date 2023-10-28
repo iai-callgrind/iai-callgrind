@@ -14,6 +14,7 @@ pub enum Error {
     InvalidCallgrindBoolArgument((String, String)),
     ParseError((PathBuf, String)),
     RegressionError(bool),
+    EnvironmentVariableError((String, String)),
 }
 
 impl std::error::Error for Error {}
@@ -69,6 +70,9 @@ impl Display for Error {
                 } else {
                     write!(f, "Performance has regressed.",)
                 }
+            }
+            Self::EnvironmentVariableError((var, reason)) => {
+                write!(f, "Failed parsing environment variable {var}: {reason}")
             }
         }
     }

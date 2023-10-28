@@ -48,7 +48,7 @@ pub fn bool_to_yesno(value: bool) -> String {
 /// Convert a `yes` or `no` string to a boolean value
 ///
 /// This method is the counterpart to [`bool_to_yesno`] and can fail if the string doesn't match
-/// exactly.
+/// exactly (case sensitive).
 pub fn yesno_to_bool(value: &str) -> Option<bool> {
     match value.trim() {
         "yes" => Some(true),

@@ -145,9 +145,7 @@ library_benchmark_group!(
 main!(
     config = LibraryBenchmarkConfig::default()
         .regression(
-            RegressionConfig::new(
-                [(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)],
-                false
-            )
+            RegressionConfig::default()
+                .limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
         );
     library_benchmark_groups = bubble_sort, fibonacci);

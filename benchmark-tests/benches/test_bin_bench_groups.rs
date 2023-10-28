@@ -214,10 +214,9 @@ binary_benchmark_group!(
 main!(
     config = BinaryBenchmarkConfig::default()
         .regression(
-            RegressionConfig::new(
-                [(EventKind::Ir, 1.0), (EventKind::EstimatedCycles, 10.0)],
-                true
-            )
+            RegressionConfig::default()
+                .limits([(EventKind::Ir, 1.0), (EventKind::EstimatedCycles, 10.0)])
+                .fail_fast(true)
         );
     binary_benchmark_groups = group_with_cmd,
     group_without_cmd,

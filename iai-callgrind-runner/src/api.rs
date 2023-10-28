@@ -211,7 +211,7 @@ pub struct RawCallgrindArgs(pub Vec<String>);
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct RegressionConfig {
-    pub items: Vec<(EventKind, f64)>,
+    pub limits: Vec<(EventKind, f64)>,
     pub fail_fast: Option<bool>,
 }
 
@@ -272,6 +272,41 @@ impl EventKind {
                 | EventKind::TotalRW
                 | EventKind::EstimatedCycles
         )
+    }
+
+    pub fn from_str_ignore_case(value: &str) -> Option<Self> {
+        match value.to_lowercase().as_str() {
+            "ir" => Some(Self::Ir),
+            "dr" => Some(Self::Dr),
+            "dw" => Some(Self::Dw),
+            "i1mr" => Some(Self::I1mr),
+            "ilmr" => Some(Self::ILmr),
+            "d1mr" => Some(Self::D1mr),
+            "dlmr" => Some(Self::DLmr),
+            "d1mw" => Some(Self::D1mw),
+            "dlmw" => Some(Self::DLmw),
+            "syscount" => Some(Self::SysCount),
+            "systime" => Some(Self::SysTime),
+            "syscputime" => Some(Self::SysCpuTime),
+            "ge" => Some(Self::Ge),
+            "bc" => Some(Self::Bc),
+            "bcm" => Some(Self::Bcm),
+            "bi" => Some(Self::Bi),
+            "bim" => Some(Self::Bim),
+            "ildmr" => Some(Self::ILdmr),
+            "dldmr" => Some(Self::DLdmr),
+            "dldmw" => Some(Self::DLdmw),
+            "accost1" => Some(Self::AcCost1),
+            "accost2" => Some(Self::AcCost2),
+            "sploss1" => Some(Self::SpLoss1),
+            "sploss2" => Some(Self::SpLoss2),
+            "l1hits" => Some(Self::L1hits),
+            "llhits" => Some(Self::LLhits),
+            "ramhits" => Some(Self::RamHits),
+            "totalrw" => Some(Self::TotalRW),
+            "estimatedcycles" => Some(Self::EstimatedCycles),
+            _ => None,
+        }
     }
 }
 
@@ -396,7 +431,9 @@ where
     }
 }
 
-fn update_option<T: Clone>(first: &Option<T>, other: &Option<T>) -> Option<T> {
+pub fn update_option<T: Clone>(first: &Option<T>, other: &Option<T>) -> Option<T> {
+    // TODO: Use alternative
+    // other.clone().or(first.clone())
     match (first, other) {
         (None, None) => None,
         (None, Some(v)) | (Some(v), None) => Some(v.clone()),
