@@ -126,6 +126,12 @@ fn setup_echo_group(group: &mut BinaryBenchmarkGroup) {
             ])
             .current_dir("test_bin_bench_groups.fixtures")
             .entry_point("benchmark_tests_echo::main")
+
+            // We want to check for performance regressions for this specific `Run` using the
+            // default (`EstimatedCycles` with a limit of `10%`) and fail the whole benchmark run if
+            // a regression occurs. See the description of the `main!` macro below for more details
+            // about regression checks. Note this `RegressionConfig` overwrites `RegressionConfigs`
+            // of higher-levels.
             .regression(RegressionConfig::default().fail_fast(true))
         );
 }
@@ -210,13 +216,19 @@ binary_benchmark_group!(
 );
 
 // The main macro which creates a benchmarking harness with all group names from the above
-// `binary_benchmark_group!` macros
+// `binary_benchmark_group!` macros.
+//
+// We configure the regression checks for all benchmark groups with a percentage limit of `1%` for
+// `Ir` (total instructions executed) and `10%` for `EstimatedCycles`. We also want to see all
+// performance regressions and set `fail_fast` to false explicitly (This wouldn't have been
+// necessary because the default is `false`). The whole benchmark still fails in the end if a
+// performance regression was detected.
 main!(
     config = BinaryBenchmarkConfig::default()
         .regression(
             RegressionConfig::default()
                 .limits([(EventKind::Ir, 1.0), (EventKind::EstimatedCycles, 10.0)])
-                .fail_fast(true)
+                .fail_fast(false)
         );
     binary_benchmark_groups = group_with_cmd,
     group_without_cmd,
