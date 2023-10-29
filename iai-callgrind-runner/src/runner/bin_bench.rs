@@ -392,6 +392,7 @@ impl Groups {
         cmd: &Option<api::Cmd>,
         runs: Vec<api::Run>,
         group_config: &BinaryBenchmarkConfig,
+        command_line_args: &[String],
     ) -> Result<Vec<BinBench>> {
         let mut benches = vec![];
         let mut counter: usize = 0;
@@ -416,6 +417,11 @@ impl Groups {
             let envs = config.resolve_envs();
             let flamegraph = config.flamegraph.map(std::convert::Into::into);
             let regression = config.regression.map(std::convert::Into::into);
+            let callgrind_args = {
+                let mut raw = config.raw_callgrind_args.clone();
+                raw.extend_from_command_line_args(command_line_args);
+                Args::from_raw_callgrind_args(&raw)?
+            };
             for args in run.args {
                 let id = if let Some(id) = args.id {
                     id
@@ -436,8 +442,7 @@ impl Groups {
                         exit_with: config.exit_with.clone(),
                         envs: envs.clone(),
                     },
-                    // TODO: DO THIS ONLY ONCE AND MOVE OUTSIDE OF THE LOOP
-                    callgrind_args: Args::from_raw_callgrind_args(&config.raw_callgrind_args)?,
+                    callgrind_args: callgrind_args.clone(),
                     flamegraph: flamegraph.clone(),
                     regression: regression.clone(),
                 });
@@ -496,14 +501,13 @@ impl Groups {
         bench_assists
     }
 
-    // TODO: LIKE in lib_bench binary benchmarks should differentiate between command_line_args
-    // and raw_callgrind_args
     fn from_binary_benchmark(
         module: &str,
         benchmark: BinaryBenchmark,
         meta: &Metadata,
     ) -> Result<Self> {
         let global_config = BinaryBenchmarkConfig {
+            // TODO: Change precedence order like in lib_bench
             regression: api::update_option(&meta.regression_config, &benchmark.config.regression),
             ..benchmark.config
         };
@@ -517,7 +521,18 @@ impl Groups {
             let group_config = global_config
                 .clone()
                 .update_from_all([group.config.as_ref()]);
-            let benches = Self::parse_runs(&module_path, &group.cmd, group.benches, &group_config)?;
+            let benches = Self::parse_runs(
+                &module_path,
+                &group.cmd,
+                group.benches,
+                &group_config,
+                benchmark.command_line_args.as_slice(),
+            )?;
+            let callgrind_args = {
+                let mut raw = group_config.raw_callgrind_args;
+                raw.extend_from_command_line_args(benchmark.command_line_args.as_slice());
+                Args::from_raw_callgrind_args(&raw)?
+            };
             let config = Group {
                 id: group.id,
                 module_path,
@@ -526,7 +541,7 @@ impl Groups {
                 benches,
                 assists: Self::parse_assists(
                     group.assists,
-                    &Args::from_raw_callgrind_args(&group_config.raw_callgrind_args)?,
+                    &callgrind_args,
                     group_config
                         .regression
                         .map(std::convert::Into::into)

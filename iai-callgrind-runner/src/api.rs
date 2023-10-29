@@ -21,6 +21,7 @@ pub struct Assistant {
 pub struct BinaryBenchmark {
     pub config: BinaryBenchmarkConfig,
     pub groups: Vec<BinaryBenchmarkGroup>,
+    pub command_line_args: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

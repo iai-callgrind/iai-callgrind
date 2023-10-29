@@ -65,6 +65,7 @@ impl Groups {
         meta: &Metadata,
     ) -> Result<Self> {
         let global_config = LibraryBenchmarkConfig {
+            // TODO: Change precedence of updating regression 1. env then 2. config
             regression: api::update_option(&meta.regression_config, &benchmark.config.regression),
             ..benchmark.config
         };
