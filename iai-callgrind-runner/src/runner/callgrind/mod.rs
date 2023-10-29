@@ -7,6 +7,7 @@ pub mod parser;
 pub mod sentinel_parser;
 pub mod summary_parser;
 
+use std::borrow::Cow;
 use std::convert::AsRef;
 use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
@@ -22,10 +23,11 @@ use log::{debug, error, info, Level};
 use self::model::Costs;
 use super::callgrind::args::Args;
 use super::meta::Metadata;
-use crate::api::ExitWith;
+use crate::api::{self, EventKind, ExitWith, RegressionConfig};
 use crate::error::Error;
 use crate::util::{
-    resolve_binary_path, truncate_str_utf8, write_all_to_stderr, write_all_to_stdout,
+    resolve_binary_path, to_string_signed_short, truncate_str_utf8, write_all_to_stderr,
+    write_all_to_stdout,
 };
 
 pub struct CallgrindCommand {
@@ -55,6 +57,12 @@ pub struct CallgrindSummary {
     ram_hits: u64,
     total_memory_rw: u64,
     cycles: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct Regression {
+    pub limits: Vec<(EventKind, f64)>,
+    pub fail_fast: bool,
 }
 
 impl CallgrindCommand {
@@ -213,6 +221,14 @@ impl CallgrindOutput {
         Ok(Self(path))
     }
 
+    /// Initialize and create the output directory and organize files
+    ///
+    /// This method moves the old output to `callgrind.*.out.old`
+    // TODO: Do not move the old output. Instead use a .tmp.out file until CallgrindOutput is
+    // closed. Organize files only on close. In case of (parse, regression, ...) errors no file
+    // movements should happen.
+    // TODO: Rename .out.old to .old.out
+    // TODO: Implement drop removing .tmp.out if it still exists ?
     pub fn init(base_dir: &Path, module: &str, name: &str) -> Self {
         let current = base_dir;
         let module_path: PathBuf = module.split("::").collect();
@@ -284,26 +300,6 @@ impl Display for CallgrindOutput {
 }
 
 impl CallgrindStats {
-    fn signed_short(n: f64) -> String {
-        let n_abs = n.abs();
-
-        if n_abs < 10.0f64 {
-            format!("{n:+.6}")
-        } else if n_abs < 100.0f64 {
-            format!("{n:+.5}")
-        } else if n_abs < 1000.0f64 {
-            format!("{n:+.4}")
-        } else if n_abs < 10000.0f64 {
-            format!("{n:+.3}")
-        } else if n_abs < 100_000.0_f64 {
-            format!("{n:+.2}")
-        } else if n_abs < 1_000_000.0_f64 {
-            format!("{n:+.1}")
-        } else {
-            format!("{n:+.0}")
-        }
-    }
-
     fn percentage_diff(new: u64, old: u64) -> ColoredString {
         fn format(string: &ColoredString) -> ColoredString {
             ColoredString::from(format!(" ({string})").as_str())
@@ -323,20 +319,20 @@ impl CallgrindStats {
 
         if pct.is_sign_positive() {
             format(
-                &format!("{:>+6}%", Self::signed_short(pct))
+                &format!("{:>+6}%", to_string_signed_short(pct))
                     .bright_red()
                     .bold(),
             )
         } else {
             format(
-                &format!("{:>+6}%", Self::signed_short(pct))
+                &format!("{:>+6}%", to_string_signed_short(pct))
                     .bright_green()
                     .bold(),
             )
         }
     }
 
-    pub fn print(&self, old: Option<CallgrindStats>) {
+    pub fn print(&self, old: Option<&CallgrindStats>) {
         let summary = self.0.to_callgrind_summary().unwrap();
         let old_summary = old.map(|stat| stat.0.to_callgrind_summary().unwrap());
         println!(
@@ -387,5 +383,226 @@ impl CallgrindStats {
                 None => String::new().normal(),
             }
         );
+    }
+}
+
+impl Regression {
+    /// Check regression of the [`CallgrindStats`] for the configured [`EventKind`]s and print it
+    ///
+    /// If the old `CallgrindStats` is None then no regression checks are performed and this method
+    /// returns [`Ok`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an [`anyhow::Error`] with the only source [`Error::RegressionError`] if a regression
+    /// error occurred
+    pub fn check_and_print(
+        &self,
+        new: &CallgrindStats,
+        old: Option<&CallgrindStats>,
+    ) -> Result<()> {
+        let regressions = self.check(new, old);
+        if regressions.is_empty() {
+            return Ok(());
+        }
+        for (event_kind, new_cost, old_cost, pct, limit) in regressions {
+            if limit.is_sign_positive() {
+                println!(
+                    "Performance has {0}: {1} ({new_cost} > {old_cost}) regressed by {2:>+6} \
+                     (>{3:>+6})",
+                    "regressed".bold().bright_red(),
+                    event_kind.to_string().bold(),
+                    format!("{}%", to_string_signed_short(pct))
+                        .bold()
+                        .bright_red(),
+                    to_string_signed_short(limit).bright_black()
+                );
+            } else {
+                println!(
+                    "Performance has {0}: {1} ({new_cost} < {old_cost}) regressed by {2:>+6} \
+                     (<{3:>+6})",
+                    "regressed".bold().bright_red(),
+                    event_kind.to_string().bold(),
+                    format!("{}%", to_string_signed_short(pct))
+                        .bold()
+                        .bright_red(),
+                    to_string_signed_short(limit).bright_black()
+                );
+            }
+        }
+
+        Err(Error::RegressionError(self.fail_fast).into())
+    }
+
+    fn check(
+        &self,
+        new: &CallgrindStats,
+        old: Option<&CallgrindStats>,
+    ) -> Vec<(EventKind, u64, u64, f64, f64)> {
+        let mut regressions = vec![];
+        if let Some(old) = old {
+            let mut new_costs = Cow::Borrowed(&new.0);
+            let mut old_costs = Cow::Borrowed(&old.0);
+
+            for (event_kind, limit) in &self.limits {
+                if event_kind.is_derived() {
+                    if !new_costs.is_summarized() {
+                        _ = new_costs.to_mut().make_summary();
+                    }
+                    if !old_costs.is_summarized() {
+                        _ = old_costs.to_mut().make_summary();
+                    }
+                }
+
+                if let (Some(new_cost), Some(old_cost)) = (
+                    new_costs.cost_by_kind(event_kind),
+                    old_costs.cost_by_kind(event_kind),
+                ) {
+                    #[allow(clippy::cast_precision_loss)]
+                    let new_cost_float = new_cost as f64;
+                    #[allow(clippy::cast_precision_loss)]
+                    let old_cost_float = old_cost as f64;
+
+                    let diff = (new_cost_float - old_cost_float) / old_cost_float;
+                    let pct = diff * 100.0f64;
+                    if limit.is_sign_positive() {
+                        if pct > *limit {
+                            regressions.push((*event_kind, new_cost, old_cost, pct, *limit));
+                        }
+                    } else if pct < *limit {
+                        regressions.push((*event_kind, new_cost, old_cost, pct, *limit));
+                    } else {
+                        // no regression
+                    }
+                }
+            }
+        }
+        regressions
+    }
+}
+
+impl From<api::RegressionConfig> for Regression {
+    fn from(value: api::RegressionConfig) -> Self {
+        let RegressionConfig { limits, fail_fast } = value;
+        Regression {
+            limits: if limits.is_empty() {
+                vec![(EventKind::EstimatedCycles, 10f64)]
+            } else {
+                limits
+            },
+            fail_fast: fail_fast.unwrap_or(false),
+        }
+    }
+}
+
+impl Default for Regression {
+    fn default() -> Self {
+        Self {
+            limits: vec![(EventKind::EstimatedCycles, 10f64)],
+            fail_fast: Default::default(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+    use EventKind::*;
+
+    use super::*;
+
+    fn cachesim_costs(costs: [u64; 9]) -> Costs {
+        Costs::with_event_kinds([
+            (Ir, costs[0]),
+            (Dr, costs[1]),
+            (Dw, costs[2]),
+            (I1mr, costs[3]),
+            (D1mr, costs[4]),
+            (D1mw, costs[5]),
+            (ILmr, costs[6]),
+            (DLmr, costs[7]),
+            (DLmw, costs[8]),
+        ])
+    }
+
+    #[rstest]
+    fn test_regression_check_when_old_is_none() {
+        let regression = Regression::default();
+        let new = CallgrindStats(cachesim_costs([0, 0, 0, 0, 0, 0, 0, 0, 0]));
+        let old = None;
+
+        assert!(regression.check(&new, old).is_empty());
+    }
+
+    #[rstest]
+    #[case::ir_all_zero(
+        vec![(Ir, 0f64)],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        vec![]
+    )]
+    #[case::ir_when_regression(
+        vec![(Ir, 0f64)],
+        [2, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0],
+        vec![(Ir, 2, 1, 100f64, 0f64)]
+    )]
+    #[case::ir_when_improved(
+        vec![(Ir, 0f64)],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0],
+        [2, 0, 0, 0, 0, 0, 0, 0, 0],
+        vec![]
+    )]
+    #[case::ir_when_negative_limit(
+        vec![(Ir, -49f64)],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0],
+        [2, 0, 0, 0, 0, 0, 0, 0, 0],
+        vec![(Ir, 1, 2, -50f64, -49f64)]
+    )]
+    #[case::derived_all_zero(
+        vec![(EstimatedCycles, 0f64)],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        vec![]
+    )]
+    #[case::derived_when_regression(
+        vec![(EstimatedCycles, 0f64)],
+        [2, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0],
+        vec![(EstimatedCycles, 2, 1, 100f64, 0f64)]
+    )]
+    #[case::derived_when_regression_multiple(
+        vec![(EstimatedCycles, 5f64), (Ir, 10f64)],
+        [2, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0],
+        vec![(EstimatedCycles, 2, 1, 100f64, 5f64), (Ir, 2, 1, 100f64, 10f64)]
+    )]
+    #[case::derived_when_improved(
+        vec![(EstimatedCycles, 0f64)],
+        [1, 0, 0, 0, 0, 0, 0, 0, 0],
+        [2, 0, 0, 0, 0, 0, 0, 0, 0],
+        vec![]
+    )]
+    #[case::derived_when_regression_mixed(
+        vec![(EstimatedCycles, 0f64)],
+        [96, 24, 18, 6, 0, 2, 6, 0, 2],
+        [48, 12, 9, 3, 0, 1, 3, 0, 1],
+        vec![(EstimatedCycles, 410, 205, 100f64, 0f64)]
+    )]
+    fn test_regression_check_when_old_is_some(
+        #[case] limits: Vec<(EventKind, f64)>,
+        #[case] new: [u64; 9],
+        #[case] old: [u64; 9],
+        #[case] expected: Vec<(EventKind, u64, u64, f64, f64)>,
+    ) {
+        let regression = Regression {
+            limits,
+            ..Default::default()
+        };
+
+        let new = CallgrindStats(cachesim_costs(new));
+        let old = Some(CallgrindStats(cachesim_costs(old)));
+
+        assert_eq!(regression.check(&new, old.as_ref()), expected);
     }
 }

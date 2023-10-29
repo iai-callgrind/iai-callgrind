@@ -12,7 +12,7 @@ use super::callgrind::flamegraph::{Config as FlamegraphConfig, Flamegraph};
 use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::summary_parser::SummaryParser;
-use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput};
+use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Regression};
 use super::meta::Metadata;
 use super::print::Header;
 use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig};
@@ -25,6 +25,7 @@ struct Assistant {
     kind: AssistantKind,
     bench: bool,
     callgrind_args: Args,
+    regression: Option<Regression>,
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +53,7 @@ struct BinBench {
     opts: CallgrindOptions,
     callgrind_args: Args,
     flamegraph: Option<FlamegraphConfig>,
+    regression: Option<Regression>,
 }
 
 #[derive(Debug)]
@@ -91,16 +93,25 @@ struct Sandbox {
 }
 
 impl Assistant {
-    fn new(name: String, kind: AssistantKind, bench: bool, callgrind_args: Args) -> Self {
+    /// Create a new [`Assistant`]
+    fn new(
+        name: String,
+        kind: AssistantKind,
+        bench: bool,
+        callgrind_args: Args,
+        regression: Option<Regression>,
+    ) -> Self {
         Self {
             name,
             kind,
             bench,
             callgrind_args,
+            regression,
         }
     }
 
-    fn run_bench(&self, config: &Config, group: &Group) -> Result<()> {
+    /// Run the assistant and benchmark this run
+    fn run_bench(&self, is_regressed: &mut bool, config: &Config, group: &Group) -> Result<()> {
         let command = CallgrindCommand::new(&config.meta);
 
         let run_id = if let Some(id) = &group.id {
@@ -152,10 +163,20 @@ impl Assistant {
         )
         .print();
 
-        new_stats.print(old_stats);
+        new_stats.print(old_stats.as_ref());
+
+        if let Some(regression) = &self.regression {
+            match regression.check_and_print(&new_stats, old_stats.as_ref()) {
+                Ok(()) => {}
+                Err(error) if regression.fail_fast => return Err(error),
+                Err(_) => *is_regressed = true,
+            }
+        }
+
         Ok(())
     }
 
+    /// Run the `Assistant` but don't benchmark it
     fn run_plain(&self, config: &Config, group: &Group) -> Result<()> {
         let id = if let Some(id) = &group.id {
             format!("{}::{}", id, self.kind.id())
@@ -192,13 +213,23 @@ impl Assistant {
         Ok(())
     }
 
-    fn run(&mut self, config: &Config, group: &Group) -> Result<()> {
+    /// Run the assistant
+    ///
+    /// If [`Assistant::bench`] is true then benchmark this run. This method sets `is_regressed` to
+    /// true if a non-fatal regression occurred (but doesn't return an [`Error::RegressionError`])
+    ///
+    /// # Errors
+    ///
+    /// This method returns an [`anyhow::Error`] with sources:
+    ///
+    /// * [`Error::RegressionError`] if the regression was fatal
+    fn run(&mut self, is_regressed: &mut bool, config: &Config, group: &Group) -> Result<()> {
         if self.bench {
             match self.kind {
                 AssistantKind::Setup | AssistantKind::Teardown => self.bench = false,
                 _ => {}
             }
-            self.run_bench(config, group)
+            self.run_bench(is_regressed, config, group)
         } else {
             self.run_plain(config, group)
         }
@@ -234,7 +265,17 @@ impl Default for BenchmarkAssistants {
 }
 
 impl BinBench {
-    fn run(&self, config: &Config, group: &Group) -> Result<()> {
+    /// Run the binary benchmark
+    ///
+    /// This method sets `is_regressed` to true if a non-fatal regression occurred (but doesn't
+    /// return an `Error::RegressionError`)
+    ///
+    /// # Errors
+    ///
+    /// Returns an `anyhow::Error` with sources:
+    /// `Error::RegressionError` if a fatal regression occurred.
+    /// `Error::ParsingError` if a parsing error occurred.
+    fn run(&self, is_regressed: &mut bool, config: &Config, group: &Group) -> Result<()> {
         let command = CallgrindCommand::new(&config.meta);
         let output = CallgrindOutput::init(
             &config.meta.target_dir,
@@ -272,7 +313,16 @@ impl BinBench {
         };
 
         header.print();
-        new_stats.print(old_stats);
+        new_stats.print(old_stats.as_ref());
+
+        if let Some(regression) = &self.regression {
+            match regression.check_and_print(&new_stats, old_stats.as_ref()) {
+                Ok(()) => {}
+                Err(error) if regression.fail_fast => return Err(error),
+                Err(_) => *is_regressed = true,
+            }
+        }
+
         Ok(())
     }
 }
@@ -293,7 +343,7 @@ impl Display for BinBench {
 }
 
 impl Group {
-    fn run(&self, config: &Config) -> Result<()> {
+    fn run(&self, is_regressed: &mut bool, config: &Config) -> Result<()> {
         let sandbox = if self.sandbox {
             debug!("Setting up sandbox");
             Some(Sandbox::setup(&self.fixtures)?)
@@ -308,23 +358,23 @@ impl Group {
         let mut assists = self.assists.clone();
 
         if let Some(before) = assists.before.as_mut() {
-            before.run(config, self)?;
+            before.run(is_regressed, config, self)?;
         }
 
         for bench in &self.benches {
             if let Some(setup) = assists.setup.as_mut() {
-                setup.run(config, self)?;
+                setup.run(is_regressed, config, self)?;
             }
 
-            bench.run(config, self)?;
+            bench.run(is_regressed, config, self)?;
 
             if let Some(teardown) = assists.teardown.as_mut() {
-                teardown.run(config, self)?;
+                teardown.run(is_regressed, config, self)?;
             }
         }
 
         if let Some(after) = assists.after.as_mut() {
-            after.run(config, self)?;
+            after.run(is_regressed, config, self)?;
         }
 
         if let Some(sandbox) = sandbox {
@@ -365,6 +415,7 @@ impl Groups {
             let config = group_config.clone().update_from_all([Some(&run.config)]);
             let envs = config.resolve_envs();
             let flamegraph = config.flamegraph.map(std::convert::Into::into);
+            let regression = config.regression.map(std::convert::Into::into);
             for args in run.args {
                 let id = if let Some(id) = args.id {
                     id
@@ -385,8 +436,10 @@ impl Groups {
                         exit_with: config.exit_with.clone(),
                         envs: envs.clone(),
                     },
+                    // TODO: DO THIS ONLY ONCE AND MOVE OUTSIDE OF THE LOOP
                     callgrind_args: Args::from_raw_callgrind_args(&config.raw_callgrind_args)?,
                     flamegraph: flamegraph.clone(),
+                    regression: regression.clone(),
                 });
             }
         }
@@ -396,6 +449,7 @@ impl Groups {
     fn parse_assists(
         assists: Vec<crate::api::Assistant>,
         callgrind_args: &Args,
+        regression: Option<&Regression>,
     ) -> BenchmarkAssistants {
         let mut bench_assists = BenchmarkAssistants::default();
         for assist in assists {
@@ -406,6 +460,7 @@ impl Groups {
                         AssistantKind::Before,
                         assist.bench,
                         callgrind_args.clone(),
+                        regression.cloned(),
                     ));
                 }
                 "after" => {
@@ -414,6 +469,7 @@ impl Groups {
                         AssistantKind::After,
                         assist.bench,
                         callgrind_args.clone(),
+                        regression.cloned(),
                     ));
                 }
                 "setup" => {
@@ -422,6 +478,7 @@ impl Groups {
                         AssistantKind::Setup,
                         assist.bench,
                         callgrind_args.clone(),
+                        regression.cloned(),
                     ));
                 }
                 "teardown" => {
@@ -430,6 +487,7 @@ impl Groups {
                         AssistantKind::Teardown,
                         assist.bench,
                         callgrind_args.clone(),
+                        regression.cloned(),
                     ));
                 }
                 name => panic!("Unknown assistant function: {name}"),
@@ -438,9 +496,17 @@ impl Groups {
         bench_assists
     }
 
-    fn from_binary_benchmark(module: &str, benchmark: BinaryBenchmark) -> Result<Self> {
-        // TODO: LIKE in lib_bench binary benchmarks should differentiate between command_line_args
-        // and raw_callgrind_args
+    // TODO: LIKE in lib_bench binary benchmarks should differentiate between command_line_args
+    // and raw_callgrind_args
+    fn from_binary_benchmark(
+        module: &str,
+        benchmark: BinaryBenchmark,
+        meta: &Metadata,
+    ) -> Result<Self> {
+        let global_config = BinaryBenchmarkConfig {
+            regression: api::update_option(&meta.regression_config, &benchmark.config.regression),
+            ..benchmark.config
+        };
         let mut groups = vec![];
         for group in benchmark.groups {
             let module_path = if let Some(id) = group.id.as_ref() {
@@ -448,8 +514,7 @@ impl Groups {
             } else {
                 module.to_owned()
             };
-            let group_config = benchmark
-                .config
+            let group_config = global_config
                 .clone()
                 .update_from_all([group.config.as_ref()]);
             let benches = Self::parse_runs(&module_path, &group.cmd, group.benches, &group_config)?;
@@ -462,6 +527,10 @@ impl Groups {
                 assists: Self::parse_assists(
                     group.assists,
                     &Args::from_raw_callgrind_args(&group_config.raw_callgrind_args)?,
+                    group_config
+                        .regression
+                        .map(std::convert::Into::into)
+                        .as_ref(),
                 ),
             };
             groups.push(config);
@@ -469,11 +538,24 @@ impl Groups {
         Ok(Self(groups))
     }
 
+    /// Run all [`Group`] benchmarks
+    ///
+    /// # Errors
+    ///
+    /// Return an [`anyhow::Error`] with sources:
+    ///
+    /// * [`Error::RegressionError`] if a regression occurred.
     fn run(&self, config: &Config) -> Result<()> {
+        let mut is_regressed = false;
         for group in &self.0 {
-            group.run(config)?;
+            group.run(&mut is_regressed, config)?;
         }
-        Ok(())
+
+        if is_regressed {
+            Err(Error::RegressionError(false).into())
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -496,8 +578,8 @@ impl Runner {
             .unwrap();
 
         let benchmark = receive_benchmark(num_bytes)?;
-        let groups = Groups::from_binary_benchmark(&module, benchmark)?;
         let meta = Metadata::new()?;
+        let groups = Groups::from_binary_benchmark(&module, benchmark, &meta)?;
 
         Ok(Self {
             config: Config {

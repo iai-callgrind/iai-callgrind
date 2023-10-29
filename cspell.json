@@ -1,6 +1,5 @@
 {
   "language": "en",
-  "enabledLanguageIds": ["yaml", "perl", "rust", "markdown", "toml", "json"],
   "dictionaries": ["custom"],
   "dictionaryDefinitions": [
     {

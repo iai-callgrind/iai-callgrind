@@ -7,10 +7,11 @@ use super::callgrind::args::Args;
 use super::callgrind::flamegraph::{Config as FlamegraphConfig, Flamegraph};
 use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
-use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput};
+use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Regression};
 use super::meta::Metadata;
 use super::print::Header;
-use crate::api::LibraryBenchmark;
+use super::Error;
+use crate::api::{self, LibraryBenchmark, LibraryBenchmarkConfig};
 use crate::util::receive_benchmark;
 
 #[derive(Debug)]
@@ -48,6 +49,7 @@ struct LibBench {
     opts: CallgrindOptions,
     callgrind_args: Args,
     flamegraph: Option<FlamegraphConfig>,
+    regression: Option<Regression>,
 }
 
 #[derive(Debug)]
@@ -57,8 +59,15 @@ struct Runner {
 }
 
 impl Groups {
-    fn from_library_benchmark(module: &str, benchmark: LibraryBenchmark) -> Result<Self> {
-        let global_config = &benchmark.config;
+    fn from_library_benchmark(
+        module: &str,
+        benchmark: LibraryBenchmark,
+        meta: &Metadata,
+    ) -> Result<Self> {
+        let global_config = LibraryBenchmarkConfig {
+            regression: api::update_option(&meta.regression_config, &benchmark.config.regression),
+            ..benchmark.config
+        };
         let mut groups = vec![];
         for library_benchmark_group in benchmark.groups {
             let module_path = if let Some(group_id) = &library_benchmark_group.id {
@@ -103,6 +112,7 @@ impl Groups {
                         },
                         callgrind_args,
                         flamegraph,
+                        regression: config.regression.map(std::convert::Into::into),
                     };
                     group.benches.push(lib_bench);
                 }
@@ -114,12 +124,27 @@ impl Groups {
     }
 
     fn run(&self, config: &Config) -> Result<()> {
+        let mut is_regressed = false;
         for group in &self.0 {
             for bench in &group.benches {
-                bench.run(config, group)?;
+                if let Err(error) = bench.run(config, group) {
+                    // We catch the regression error here and return immediately it if it is fatal.
+                    // Else, we return the regression error later which let's the main process fail
+                    // but in a non-fatal way
+                    if let Some(Error::RegressionError(false)) = error.downcast_ref::<Error>() {
+                        is_regressed = true;
+                    } else {
+                        return Err(error);
+                    }
+                }
             }
         }
-        Ok(())
+
+        if is_regressed {
+            Err(Error::RegressionError(false).into())
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -187,7 +212,11 @@ impl LibBench {
         };
 
         header.print();
-        new_stats.print(old_stats);
+        new_stats.print(old_stats.as_ref());
+
+        if let Some(regression) = &self.regression {
+            regression.check_and_print(&new_stats, old_stats.as_ref())?;
+        }
 
         Ok(())
     }
@@ -210,8 +239,8 @@ impl Runner {
             .unwrap();
 
         let benchmark = receive_benchmark(num_bytes)?;
-        let groups = Groups::from_library_benchmark(&module, benchmark)?;
         let meta = Metadata::new()?;
+        let groups = Groups::from_library_benchmark(&module, benchmark, &meta)?;
 
         Ok(Self {
             config: Config {

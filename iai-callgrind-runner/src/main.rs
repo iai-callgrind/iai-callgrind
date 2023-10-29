@@ -61,7 +61,7 @@ fn main() {
 
     print_warnings();
     match iai_callgrind_runner::runner::run() {
-        Ok(_) => {}
+        Ok(()) => {}
         Err(error) => {
             error!("{}", error.to_string());
             std::process::exit(1)

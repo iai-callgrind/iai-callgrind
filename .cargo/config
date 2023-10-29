@@ -1,0 +1,3 @@
+[profile.coverage]
+inherits = "test"
+debug = true

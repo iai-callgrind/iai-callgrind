@@ -6,13 +6,15 @@ use version_compare::Cmp;
 
 use crate::runner::write_all_to_stderr;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Error {
     VersionMismatch(version_compare::Cmp, String, String),
     LaunchError(PathBuf, String),
     BenchmarkLaunchError(Output),
     InvalidCallgrindBoolArgument((String, String)),
     ParseError((PathBuf, String)),
+    RegressionError(bool),
+    EnvironmentVariableError((String, String)),
 }
 
 impl std::error::Error for Error {}
@@ -61,6 +63,16 @@ impl Display for Error {
             }
             Self::ParseError((path, message)) => {
                 write!(f, "Error parsing file '{}': {message}", path.display())
+            }
+            Self::RegressionError(is_fatal) => {
+                if *is_fatal {
+                    write!(f, "Performance has regressed. Aborting ...",)
+                } else {
+                    write!(f, "Performance has regressed.",)
+                }
+            }
+            Self::EnvironmentVariableError((var, reason)) => {
+                write!(f, "Failed parsing environment variable {var}: {reason}")
             }
         }
     }

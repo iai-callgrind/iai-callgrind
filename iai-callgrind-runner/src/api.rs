@@ -34,6 +34,7 @@ pub struct BinaryBenchmarkConfig {
     pub raw_callgrind_args: RawCallgrindArgs,
     pub envs: Vec<(OsString, Option<OsString>)>,
     pub flamegraph: Option<FlamegraphConfig>,
+    pub regression: Option<RegressionConfig>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -105,7 +106,7 @@ pub enum EventKind {
     TotalRW,
     /// Derived event showing estimated CPU cycles (--cache-sim=yes)
     EstimatedCycles,
-    /// Conditional branches executed (--branch-sim)
+    /// Conditional branches executed (--branch-sim=yes)
     Bc,
     /// Conditional branches mispredicted (--branch-sim=yes)
     Bcm,
@@ -195,6 +196,7 @@ pub struct LibraryBenchmarkConfig {
     pub raw_callgrind_args: RawCallgrindArgs,
     pub envs: Vec<(OsString, Option<OsString>)>,
     pub flamegraph: Option<FlamegraphConfig>,
+    pub regression: Option<RegressionConfig>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -206,6 +208,12 @@ pub struct LibraryBenchmarkGroup {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RawCallgrindArgs(pub Vec<String>);
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct RegressionConfig {
+    pub limits: Vec<(EventKind, f64)>,
+    pub fail_fast: Option<bool>,
+}
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Run {
@@ -232,6 +240,7 @@ impl BinaryBenchmarkConfig {
 
             self.envs.extend_from_slice(&other.envs);
             self.flamegraph = update_option(&self.flamegraph, &other.flamegraph);
+            self.regression = update_option(&self.regression, &other.regression);
         }
         self
     }
@@ -250,6 +259,54 @@ impl BinaryBenchmarkConfig {
 impl Default for Direction {
     fn default() -> Self {
         Self::BottomToTop
+    }
+}
+
+impl EventKind {
+    pub fn is_derived(&self) -> bool {
+        matches!(
+            self,
+            EventKind::L1hits
+                | EventKind::LLhits
+                | EventKind::RamHits
+                | EventKind::TotalRW
+                | EventKind::EstimatedCycles
+        )
+    }
+
+    pub fn from_str_ignore_case(value: &str) -> Option<Self> {
+        match value.to_lowercase().as_str() {
+            "ir" => Some(Self::Ir),
+            "dr" => Some(Self::Dr),
+            "dw" => Some(Self::Dw),
+            "i1mr" => Some(Self::I1mr),
+            "ilmr" => Some(Self::ILmr),
+            "d1mr" => Some(Self::D1mr),
+            "dlmr" => Some(Self::DLmr),
+            "d1mw" => Some(Self::D1mw),
+            "dlmw" => Some(Self::DLmw),
+            "syscount" => Some(Self::SysCount),
+            "systime" => Some(Self::SysTime),
+            "syscputime" => Some(Self::SysCpuTime),
+            "ge" => Some(Self::Ge),
+            "bc" => Some(Self::Bc),
+            "bcm" => Some(Self::Bcm),
+            "bi" => Some(Self::Bi),
+            "bim" => Some(Self::Bim),
+            "ildmr" => Some(Self::ILdmr),
+            "dldmr" => Some(Self::DLdmr),
+            "dldmw" => Some(Self::DLdmw),
+            "accost1" => Some(Self::AcCost1),
+            "accost2" => Some(Self::AcCost2),
+            "sploss1" => Some(Self::SpLoss1),
+            "sploss2" => Some(Self::SpLoss2),
+            "l1hits" => Some(Self::L1hits),
+            "llhits" => Some(Self::LLhits),
+            "ramhits" => Some(Self::RamHits),
+            "totalrw" => Some(Self::TotalRW),
+            "estimatedcycles" => Some(Self::EstimatedCycles),
+            _ => None,
+        }
     }
 }
 
@@ -290,6 +347,12 @@ where
             "SpLoss1" => Self::SpLoss1,
             "SpLoss2" => Self::SpLoss2,
             unknown => panic!("Unknown event type: {unknown}"),
+            // TODO: ADD MISSING EVENT TYPES
+            // L1hits,
+            // LLhits,
+            // RamHits,
+            // TotalRW,
+            // EstimatedCycles,
         }
     }
 }
@@ -305,6 +368,7 @@ impl LibraryBenchmarkConfig {
             self.env_clear = update_option(&self.env_clear, &other.env_clear);
             self.envs.extend_from_slice(&other.envs);
             self.flamegraph = update_option(&self.flamegraph, &other.flamegraph);
+            self.regression = update_option(&self.regression, &other.regression);
         }
         self
     }
@@ -367,12 +431,8 @@ where
     }
 }
 
-fn update_option<T: Clone>(first: &Option<T>, other: &Option<T>) -> Option<T> {
-    match (first, other) {
-        (None, None) => None,
-        (None, Some(v)) | (Some(v), None) => Some(v.clone()),
-        (Some(_), Some(w)) => Some(w.clone()),
-    }
+pub fn update_option<T: Clone>(first: &Option<T>, other: &Option<T>) -> Option<T> {
+    other.clone().or_else(|| first.clone())
 }
 
 #[cfg(test)]
@@ -428,5 +488,19 @@ mod tests {
                 ..Default::default()
             }
         );
+    }
+
+    #[rstest]
+    #[case::all_none(None, None, None)]
+    #[case::some_and_none(Some(true), None, Some(true))]
+    #[case::none_and_some(None, Some(true), Some(true))]
+    #[case::some_and_some(Some(false), Some(true), Some(true))]
+    #[case::some_and_some_value_does_not_matter(Some(true), Some(false), Some(false))]
+    fn test_update_option(
+        #[case] first: Option<bool>,
+        #[case] other: Option<bool>,
+        #[case] expected: Option<bool>,
+    ) {
+        assert_eq!(update_option(&first, &other), expected);
     }
 }

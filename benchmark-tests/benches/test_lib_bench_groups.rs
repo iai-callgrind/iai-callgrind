@@ -8,7 +8,8 @@
 // These two functions from the benchmark-tests library serve as functions we want to benchmark
 use benchmark_tests::{bubble_sort, fibonacci};
 use iai_callgrind::{
-    black_box, library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
+    black_box, library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,
+    RegressionConfig,
 };
 
 // This function is used to create a worst case array we want to sort with our implementation of
@@ -60,7 +61,7 @@ fn bench_bubble_sort_empty() -> Vec<i32> {
 // to the benchmark and that the `array` is already wrapped in a black_box.
 #[bench::empty(vec![])]
 // Some other use cases to play around with
-#[bench::worst_case_6(vec![6, 5, 4, 3, 2, 1])]
+#[bench::worst_case_6(vec![7, 6, 5, 4, 3, 2, 1])]
 #[bench::best_case_6(vec![1, 2, 3, 4, 5, 6])]
 #[bench::best_case_20(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20])]
 // Function calls are fine too
@@ -83,10 +84,11 @@ fn bench_fibonacci_sum(first: u64, second: u64) -> u64 {
 }
 
 // It's possible to specify a `LibraryBenchmarkConfig` valid for all benches of this
-// `library_benchmark`
+// `library_benchmark`. Since we only use the default here for demonstration purposes actually
+// nothing changes. The default configuration is always applied.
 #[library_benchmark(config = LibraryBenchmarkConfig::default())]
 fn bench_fibonacci_with_config() -> u64 {
-    black_box(black_box(fibonacci(black_box(7))))
+    black_box(black_box(fibonacci(black_box(8))))
 }
 
 // A config per `bench` attribute is also possible using the alternative `bench` attribute with
@@ -104,10 +106,16 @@ fn bench_fibonacci_with_config_at_bench_level(first: u64, second: u64) -> u64 {
 // you want and put them into the same group. The `name` is a unique identifier which is used in the
 // `main!` macro to collect all `library_benchmark_groups`.
 //
-// Although not used here, this macro also accepts a `config` argument after the `name argument. See
-// the docs of `iai_callgrind` for more details about the `LibraryBenchmarkConfig`.
+// It's also possible to specify a `LibraryBenchmarkConfig` valid for all benchmarks of this
+// `library_benchmark_group`. We configure the regression checks to fail the whole benchmark run as
+// soon as a performance regression happens. This'll overwrite the `RegressionConfig` of the
+// configuration of the `main!` macro.
 library_benchmark_group!(
     name = bubble_sort;
+    config = LibraryBenchmarkConfig::default()
+        .regression(
+            RegressionConfig::default().fail_fast(false)
+        );
     benchmarks = bench_bubble_sort_empty, bench_bubble_sort
 );
 
@@ -129,4 +137,15 @@ library_benchmark_group!(
 // Finally, the mandatory main! macro which collects all `library_benchmark_groups` and optionally
 // accepts a `config = ...` argument before the `library_benchmark_groups` argument. The main! macro
 // creates a benchmarking harness and runs all the benchmarks defined in the groups and benches.
-main!(library_benchmark_groups = bubble_sort, fibonacci);
+//
+// We configure the regression checks to fail gracefully at the end of the whole benchmark run
+// (`fail-fast = false`) using `EventKind::Ir` (Total instructions executed) with a limit of `+5%`
+// and `EventKind::EstimatedCycles` with a limit of `+10%`. This `LibraryBenchmarkConfig` applies to
+// all benchmarks in all groups if it is not overwritten.
+main!(
+    config = LibraryBenchmarkConfig::default()
+        .regression(
+            RegressionConfig::default()
+                .limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
+        );
+    library_benchmark_groups = bubble_sort, fibonacci);

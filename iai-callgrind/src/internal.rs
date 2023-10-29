@@ -12,7 +12,8 @@ pub use iai_callgrind_runner::api::{
     LibraryBenchmarkBenches as InternalLibraryBenchmarkBenches,
     LibraryBenchmarkConfig as InternalLibraryBenchmarkConfig,
     LibraryBenchmarkGroup as InternalLibraryBenchmarkGroup,
-    RawCallgrindArgs as InternalRawCallgrindArgs, Run as InternalRun,
+    RawCallgrindArgs as InternalRawCallgrindArgs, RegressionConfig as InternalRegressionConfig,
+    Run as InternalRun,
 };
 
 #[derive(Debug, Clone)]
