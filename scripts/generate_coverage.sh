@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# spell-checker: ignore readelf Cdebuginfo Cinstrument Csplit bindir libdir
+
 # Helper script to generate coverage data with grcov using the coverage profile
 # from `.cargo/config` to simplify cleanup of stale coverage data.
 

@@ -13,6 +13,7 @@ Ldmr
 Ldmw
 MSRV
 Quickstart
+RUSTFLAGS
 RUSTSEC
 Swatinem
 Trauring's
@@ -44,11 +45,14 @@ estimatedcycles
 flamegraph
 flamegraphs
 funcs
+grcov
 ildmr
 ilmr
+iname
 indexmap
 jcnd
 kcachegrind
+lcov
 llhits
 mispredicted
 nsec
@@ -56,9 +60,11 @@ outfile
 pipefail
 printenv
 println
+profraw
 proccontrol
 quickstart
 ramhits
+realpath
 rposition
 rsplit
 rstest
