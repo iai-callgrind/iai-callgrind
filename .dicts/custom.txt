@@ -32,6 +32,7 @@ callgrind
 cicd
 clippy
 consts
+debuginfo
 dldmr
 dldmw
 dlmr
