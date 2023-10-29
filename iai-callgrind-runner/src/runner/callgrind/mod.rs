@@ -88,7 +88,13 @@ impl CallgrindCommand {
         output: Output,
         exit_with: Option<&ExitWith>,
     ) -> Result<(Vec<u8>, Vec<u8>)> {
-        match (output.status.code().unwrap(), exit_with) {
+        let status_code = if let Some(code) = output.status.code() {
+            code
+        } else {
+            return Err(Error::BenchmarkLaunchError(output).into());
+        };
+
+        match (status_code, exit_with) {
             (0i32, None | Some(ExitWith::Code(0i32) | ExitWith::Success)) => {
                 Ok((output.stdout, output.stderr))
             }
@@ -224,11 +230,10 @@ impl CallgrindOutput {
     /// Initialize and create the output directory and organize files
     ///
     /// This method moves the old output to `callgrind.*.out.old`
-    // TODO: Do not move the old output. Instead use a .tmp.out file until CallgrindOutput is
+    // TODO: Do not move the old output. Instead use a out.tmp file until CallgrindOutput is
     // closed. Organize files only on close. In case of (parse, regression, ...) errors no file
     // movements should happen.
-    // TODO: Rename .out.old to .old.out
-    // TODO: Implement drop removing .tmp.out if it still exists ?
+    // TODO: Implement drop removing out.tmp if it still exists ?
     pub fn init(base_dir: &Path, module: &str, name: &str) -> Self {
         let current = base_dir;
         let module_path: PathBuf = module.split("::").collect();
