@@ -11,7 +11,7 @@ use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Regr
 use super::meta::Metadata;
 use super::print::Header;
 use super::Error;
-use crate::api::{self, LibraryBenchmark, LibraryBenchmarkConfig};
+use crate::api::{self, LibraryBenchmark};
 use crate::util::receive_benchmark;
 
 #[derive(Debug)]
@@ -64,12 +64,9 @@ impl Groups {
         benchmark: LibraryBenchmark,
         meta: &Metadata,
     ) -> Result<Self> {
-        let global_config = LibraryBenchmarkConfig {
-            // TODO: Change precedence of updating regression 1. env then 2. config
-            regression: api::update_option(&meta.regression_config, &benchmark.config.regression),
-            ..benchmark.config
-        };
+        let global_config = benchmark.config;
         let mut groups = vec![];
+
         for library_benchmark_group in benchmark.groups {
             let module_path = if let Some(group_id) = &library_benchmark_group.id {
                 format!("{module}::{group_id}")
@@ -113,7 +110,8 @@ impl Groups {
                         },
                         callgrind_args,
                         flamegraph,
-                        regression: config.regression.map(std::convert::Into::into),
+                        regression: api::update_option(&config.regression, &meta.regression_config)
+                            .map(std::convert::Into::into),
                     };
                     group.benches.push(lib_bench);
                 }

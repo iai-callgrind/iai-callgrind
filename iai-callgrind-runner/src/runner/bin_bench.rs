@@ -393,6 +393,7 @@ impl Groups {
         runs: Vec<api::Run>,
         group_config: &BinaryBenchmarkConfig,
         command_line_args: &[String],
+        meta: &Metadata,
     ) -> Result<Vec<BinBench>> {
         let mut benches = vec![];
         let mut counter: usize = 0;
@@ -416,7 +417,8 @@ impl Groups {
             let config = group_config.clone().update_from_all([Some(&run.config)]);
             let envs = config.resolve_envs();
             let flamegraph = config.flamegraph.map(std::convert::Into::into);
-            let regression = config.regression.map(std::convert::Into::into);
+            let regression = api::update_option(&config.regression, &meta.regression_config)
+                .map(std::convert::Into::into);
             let callgrind_args = {
                 let mut raw = config.raw_callgrind_args.clone();
                 raw.extend_from_command_line_args(command_line_args);
@@ -506,12 +508,9 @@ impl Groups {
         benchmark: BinaryBenchmark,
         meta: &Metadata,
     ) -> Result<Self> {
-        let global_config = BinaryBenchmarkConfig {
-            // TODO: Change precedence order like in lib_bench
-            regression: api::update_option(&meta.regression_config, &benchmark.config.regression),
-            ..benchmark.config
-        };
+        let global_config = benchmark.config;
         let mut groups = vec![];
+
         for group in benchmark.groups {
             let module_path = if let Some(id) = group.id.as_ref() {
                 format!("{module}::{id}")
@@ -527,6 +526,7 @@ impl Groups {
                 group.benches,
                 &group_config,
                 benchmark.command_line_args.as_slice(),
+                meta,
             )?;
             let callgrind_args = {
                 let mut raw = group_config.raw_callgrind_args;
@@ -542,8 +542,7 @@ impl Groups {
                 assists: Self::parse_assists(
                     group.assists,
                     &callgrind_args,
-                    group_config
-                        .regression
+                    api::update_option(&group_config.regression, &meta.regression_config)
                         .map(std::convert::Into::into)
                         .as_ref(),
                 ),
