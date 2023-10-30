@@ -230,10 +230,6 @@ impl CallgrindOutput {
     /// Initialize and create the output directory and organize files
     ///
     /// This method moves the old output to `callgrind.*.out.old`
-    // TODO: Do not move the old output. Instead use a out.tmp file until CallgrindOutput is
-    // closed. Organize files only on close. In case of (parse, regression, ...) errors no file
-    // movements should happen.
-    // TODO: Implement drop removing out.tmp if it still exists ?
     pub fn init(base_dir: &Path, module: &str, name: &str) -> Self {
         let current = base_dir;
         let module_path: PathBuf = module.split("::").collect();
