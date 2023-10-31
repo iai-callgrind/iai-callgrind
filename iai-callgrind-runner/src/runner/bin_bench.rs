@@ -15,7 +15,7 @@ use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Regression};
 use super::meta::Metadata;
 use super::print::Header;
-use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig};
+use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig, RawCallgrindArgs};
 use crate::error::Error;
 use crate::util::{copy_directory, receive_benchmark, write_all_to_stderr, write_all_to_stdout};
 
@@ -392,7 +392,7 @@ impl Groups {
         cmd: &Option<api::Cmd>,
         runs: Vec<api::Run>,
         group_config: &BinaryBenchmarkConfig,
-        command_line_args: &[String],
+        command_line_args: &RawCallgrindArgs,
         meta: &Metadata,
     ) -> Result<Vec<BinBench>> {
         let mut benches = vec![];
@@ -419,11 +419,8 @@ impl Groups {
             let flamegraph = config.flamegraph.map(std::convert::Into::into);
             let regression = api::update_option(&config.regression, &meta.regression_config)
                 .map(std::convert::Into::into);
-            let callgrind_args = {
-                let mut raw = config.raw_callgrind_args.clone();
-                raw.extend_from_command_line_args(command_line_args);
-                Args::from_raw_callgrind_args(&raw)?
-            };
+            let callgrind_args =
+                Args::from_raw_callgrind_args(&[&config.raw_callgrind_args, command_line_args])?;
             for args in run.args {
                 let id = if let Some(id) = args.id {
                     id
@@ -510,6 +507,8 @@ impl Groups {
     ) -> Result<Self> {
         let global_config = benchmark.config;
         let mut groups = vec![];
+        let command_line_args =
+            RawCallgrindArgs::from_command_line_args(benchmark.command_line_args);
 
         for group in benchmark.groups {
             let module_path = if let Some(id) = group.id.as_ref() {
@@ -525,14 +524,13 @@ impl Groups {
                 &group.cmd,
                 group.benches,
                 &group_config,
-                benchmark.command_line_args.as_slice(),
+                &command_line_args,
                 meta,
             )?;
-            let callgrind_args = {
-                let mut raw = group_config.raw_callgrind_args;
-                raw.extend_from_command_line_args(benchmark.command_line_args.as_slice());
-                Args::from_raw_callgrind_args(&raw)?
-            };
+            let callgrind_args = Args::from_raw_callgrind_args(&[
+                &group_config.raw_callgrind_args,
+                &command_line_args,
+            ])?;
             let config = Group {
                 id: group.id,
                 module_path,

@@ -28,35 +28,44 @@ pub struct Args {
 }
 
 impl Args {
-    pub fn from_raw_callgrind_args(args: &RawCallgrindArgs) -> Result<Self> {
+    pub fn from_raw_callgrind_args(args: &[&RawCallgrindArgs]) -> Result<Self> {
         let mut default = Self::default();
-        for arg in &args.0 {
-            match arg.strip_prefix("--").and_then(|s| s.split_once('=')) {
-                Some(("I1", value)) => default.i1 = value.to_owned(),
-                Some(("D1", value)) => default.d1 = value.to_owned(),
-                Some(("LL", value)) => default.ll = value.to_owned(),
+        default.extend(args.iter().flat_map(|s| &s.0))?;
+        Ok(default)
+    }
+
+    pub fn extend<'a, T: Iterator<Item = &'a String>>(&mut self, args: T) -> Result<()> {
+        for arg in args {
+            match arg
+                .trim()
+                .strip_prefix("--")
+                .and_then(|s| s.split_once('=').map(|(k, v)| (k.trim(), v.trim())))
+            {
+                Some(("I1", value)) => self.i1 = value.to_owned(),
+                Some(("D1", value)) => self.d1 = value.to_owned(),
+                Some(("LL", value)) => self.ll = value.to_owned(),
                 Some((key @ "collect-atstart", value)) => {
-                    default.collect_atstart = yesno_to_bool(value).ok_or_else(|| {
+                    self.collect_atstart = yesno_to_bool(value).ok_or_else(|| {
                         Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
                 Some((key @ "dump-instr", value)) => {
-                    default.dump_instr = yesno_to_bool(value).ok_or_else(|| {
+                    self.dump_instr = yesno_to_bool(value).ok_or_else(|| {
                         Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
                 Some((key @ "dump-line", value)) => {
-                    default.dump_line = yesno_to_bool(value).ok_or_else(|| {
+                    self.dump_line = yesno_to_bool(value).ok_or_else(|| {
                         Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
                 Some((key @ "compress-pos", value)) => {
-                    default.compress_pos = yesno_to_bool(value).ok_or_else(|| {
+                    self.compress_pos = yesno_to_bool(value).ok_or_else(|| {
                         Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
                 Some(("toggle-collect", value)) => {
-                    default.toggle_collect.push_back(value.to_owned());
+                    self.toggle_collect.push_back(value.to_owned());
                 }
                 Some((
                     key @ ("separate-threads" | "cache-sim" | "callgrind-out-file"
@@ -65,14 +74,14 @@ impl Args {
                 )) => {
                     warn!("Ignoring callgrind argument: '--{}={}'", key, value);
                 }
-                Some(_) => default.other.push(arg.clone()),
-                None if arg == "--verbose" => default.verbose = true,
+                Some(_) => self.other.push(arg.clone()),
+                None if arg == "--verbose" => self.verbose = true,
                 // ignore positional arguments for now. It may be a filtering argument for cargo
                 // bench
                 None => {}
             }
         }
-        Ok(default)
+        Ok(())
     }
 
     pub fn insert_toggle_collect(&mut self, arg: &str) {

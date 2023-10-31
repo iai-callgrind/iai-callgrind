@@ -11,7 +11,7 @@ use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Regr
 use super::meta::Metadata;
 use super::print::Header;
 use super::Error;
-use crate::api::{self, LibraryBenchmark};
+use crate::api::{self, LibraryBenchmark, RawCallgrindArgs};
 use crate::util::receive_benchmark;
 
 #[derive(Debug)]
@@ -66,6 +66,8 @@ impl Groups {
     ) -> Result<Self> {
         let global_config = benchmark.config;
         let mut groups = vec![];
+        let command_line_args =
+            RawCallgrindArgs::from_command_line_args(benchmark.command_line_args);
 
         for library_benchmark_group in benchmark.groups {
             let module_path = if let Some(group_id) = &library_benchmark_group.id {
@@ -90,11 +92,10 @@ impl Groups {
                         library_benchmark_bench.config.as_ref(),
                     ]);
                     let envs = config.resolve_envs();
-                    let callgrind_args = {
-                        let mut raw = config.raw_callgrind_args;
-                        raw.extend_from_command_line_args(benchmark.command_line_args.as_slice());
-                        Args::from_raw_callgrind_args(&raw)?
-                    };
+                    let callgrind_args = Args::from_raw_callgrind_args(&[
+                        &config.raw_callgrind_args,
+                        &command_line_args,
+                    ])?;
                     let flamegraph = config.flamegraph.map(std::convert::Into::into);
                     let lib_bench = LibBench {
                         bench_index,

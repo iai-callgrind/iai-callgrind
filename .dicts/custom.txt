@@ -51,6 +51,7 @@ ildmr
 ilmr
 iname
 indexmap
+indexset
 jcnd
 kcachegrind
 lcov
