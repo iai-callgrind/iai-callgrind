@@ -116,7 +116,6 @@ impl Costs {
         let cycles = l1_hits + (5 * l3_hits) + (35 * ram_hits);
 
         Ok(CallgrindSummary {
-            instructions,
             l1_hits,
             l3_hits,
             ram_hits,
@@ -140,7 +139,6 @@ impl Costs {
             ram_hits,
             total_memory_rw,
             cycles,
-            ..
         } = self.to_callgrind_summary()?;
 
         self.0.insert(EventKind::L1hits, l1_hits);

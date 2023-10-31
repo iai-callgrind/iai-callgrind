@@ -9,7 +9,7 @@ use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Regression};
 use super::meta::Metadata;
-use super::print::Header;
+use super::print::{Formatter, Header, VerticalFormat};
 use super::Error;
 use crate::api::{self, LibraryBenchmark, RawCallgrindArgs};
 use crate::util::receive_benchmark;
@@ -212,7 +212,8 @@ impl LibBench {
         };
 
         header.print();
-        new_stats.print(old_stats.as_ref());
+        let string = VerticalFormat::default().format(&new_stats, old_stats.as_ref())?;
+        print!("{string}");
 
         if let Some(regression) = &self.regression {
             regression.check_and_print(&new_stats, old_stats.as_ref())?;

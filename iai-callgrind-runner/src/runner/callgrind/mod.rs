@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
 use anyhow::{anyhow, Context, Result};
-use colored::{ColoredString, Colorize};
+use colored::Colorize;
 use log::{debug, error, info, Level};
 
 use self::model::Costs;
@@ -51,7 +51,6 @@ pub struct CallgrindStats(pub Costs);
 
 #[derive(Clone, Debug)]
 pub struct CallgrindSummary {
-    instructions: u64,
     l1_hits: u64,
     l3_hits: u64,
     ram_hits: u64,
@@ -297,93 +296,6 @@ impl CallgrindOutput {
 impl Display for CallgrindOutput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.0.display()))
-    }
-}
-
-impl CallgrindStats {
-    fn percentage_diff(new: u64, old: u64) -> ColoredString {
-        fn format(string: &ColoredString) -> ColoredString {
-            ColoredString::from(format!(" ({string})").as_str())
-        }
-
-        if new == old {
-            return format(&"No Change".bright_black());
-        }
-
-        #[allow(clippy::cast_precision_loss)]
-        let new = new as f64;
-        #[allow(clippy::cast_precision_loss)]
-        let old = old as f64;
-
-        let diff = (new - old) / old;
-        let pct = diff * 100.0f64;
-
-        if pct.is_sign_positive() {
-            format(
-                &format!("{:>+6}%", to_string_signed_short(pct))
-                    .bright_red()
-                    .bold(),
-            )
-        } else {
-            format(
-                &format!("{:>+6}%", to_string_signed_short(pct))
-                    .bright_green()
-                    .bold(),
-            )
-        }
-    }
-
-    pub fn print(&self, old: Option<&CallgrindStats>) {
-        let summary = self.0.to_callgrind_summary().unwrap();
-        let old_summary = old.map(|stat| stat.0.to_callgrind_summary().unwrap());
-        println!(
-            "  Instructions:     {:>15}{}",
-            summary.instructions.to_string().bold(),
-            match &old_summary {
-                Some(old) => Self::percentage_diff(summary.instructions, old.instructions),
-                None => String::new().normal(),
-            }
-        );
-        println!(
-            "  L1 Hits:          {:>15}{}",
-            summary.l1_hits.to_string().bold(),
-            match &old_summary {
-                Some(old) => Self::percentage_diff(summary.l1_hits, old.l1_hits),
-                None => String::new().normal(),
-            }
-        );
-        println!(
-            "  L2 Hits:          {:>15}{}",
-            summary.l3_hits.to_string().bold(),
-            match &old_summary {
-                Some(old) => Self::percentage_diff(summary.l3_hits, old.l3_hits),
-                None => String::new().normal(),
-            }
-        );
-        println!(
-            "  RAM Hits:         {:>15}{}",
-            summary.ram_hits.to_string().bold(),
-            match &old_summary {
-                Some(old) => Self::percentage_diff(summary.ram_hits, old.ram_hits),
-                None => String::new().normal(),
-            }
-        );
-        println!(
-            "  Total read+write: {:>15}{}",
-            summary.total_memory_rw.to_string().bold(),
-            match &old_summary {
-                Some(old) => Self::percentage_diff(summary.total_memory_rw, old.total_memory_rw),
-                None => String::new().normal(),
-            }
-        );
-        println!(
-            "  Estimated Cycles: {:>15}{}",
-            summary.cycles.to_string().bold(),
-            match &old_summary {
-                Some(old) => Self::percentage_diff(summary.cycles, old.cycles),
-                None => String::new().normal(),
-            }
-        );
     }
 }
 

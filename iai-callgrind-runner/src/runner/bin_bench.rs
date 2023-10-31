@@ -14,7 +14,7 @@ use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Regression};
 use super::meta::Metadata;
-use super::print::Header;
+use super::print::{Formatter, Header, VerticalFormat};
 use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig, RawCallgrindArgs};
 use crate::error::Error;
 use crate::util::{copy_directory, receive_benchmark, write_all_to_stderr, write_all_to_stdout};
@@ -163,7 +163,8 @@ impl Assistant {
         )
         .print();
 
-        new_stats.print(old_stats.as_ref());
+        let output = VerticalFormat::default().format(&new_stats, old_stats.as_ref())?;
+        print!("{output}");
 
         if let Some(regression) = &self.regression {
             match regression.check_and_print(&new_stats, old_stats.as_ref()) {
@@ -313,7 +314,8 @@ impl BinBench {
         };
 
         header.print();
-        new_stats.print(old_stats.as_ref());
+        let output = VerticalFormat::default().format(&new_stats, old_stats.as_ref())?;
+        print!("{output}");
 
         if let Some(regression) = &self.regression {
             match regression.check_and_print(&new_stats, old_stats.as_ref()) {

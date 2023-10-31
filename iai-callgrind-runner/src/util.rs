@@ -183,16 +183,14 @@ pub fn to_string_signed_short(n: f64) -> String {
     let n_abs = n.abs();
 
     if n_abs < 10.0f64 {
-        format!("{n:+.6}")
-    } else if n_abs < 100.0f64 {
         format!("{n:+.5}")
-    } else if n_abs < 1000.0f64 {
+    } else if n_abs < 100.0f64 {
         format!("{n:+.4}")
-    } else if n_abs < 10000.0f64 {
+    } else if n_abs < 1000.0f64 {
         format!("{n:+.3}")
-    } else if n_abs < 100_000.0_f64 {
+    } else if n_abs < 10000.0f64 {
         format!("{n:+.2}")
-    } else if n_abs < 1_000_000.0_f64 {
+    } else if n_abs < 100_000.0_f64 {
         format!("{n:+.1}")
     } else {
         format!("{n:+.0}")

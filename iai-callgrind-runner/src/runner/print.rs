@@ -1,13 +1,30 @@
 use std::fmt::{Display, Write};
 
+use anyhow::Result;
 use colored::Colorize;
 
-use crate::util::truncate_str_utf8;
+use super::callgrind::model::Costs;
+use super::callgrind::CallgrindStats;
+use crate::api::EventKind;
+use crate::util::{to_string_signed_short, truncate_str_utf8};
 
 pub struct Header {
     pub module_path: String,
     pub id: Option<String>,
     pub description: Option<String>,
+}
+
+pub trait Formatter {
+    fn format(
+        &self,
+        new_stats: &CallgrindStats,
+        old_stats: Option<&CallgrindStats>,
+    ) -> Result<String>;
+}
+
+#[derive(Clone)]
+pub struct VerticalFormat {
+    event_kinds: Vec<EventKind>,
 }
 
 impl Header {
@@ -94,4 +111,124 @@ impl Display for Header {
         }
         Ok(())
     }
+}
+
+impl Default for VerticalFormat {
+    fn default() -> Self {
+        use EventKind::*;
+        Self {
+            event_kinds: vec![
+                Ir,
+                L1hits,
+                LLhits,
+                RamHits,
+                TotalRW,
+                EstimatedCycles,
+                SysCount,
+                SysTime,
+                SysCpuTime,
+                Ge,
+                Bc,
+                Bcm,
+                Bi,
+                Bim,
+                ILdmr,
+                DLdmr,
+                DLdmw,
+                AcCost1,
+                AcCost2,
+                SpLoss1,
+                SpLoss2,
+            ],
+        }
+    }
+}
+
+impl Formatter for VerticalFormat {
+    fn format(
+        &self,
+        new_stats: &CallgrindStats,
+        old_stats: Option<&CallgrindStats>,
+    ) -> Result<String> {
+        let mut new_costs = new_stats.0.clone();
+        let mut old_costs = old_stats.map(|c| c.0.clone());
+        let mut result = String::new();
+
+        for event_kind in &self.event_kinds {
+            if event_kind.is_derived() {
+                if !new_costs.is_summarized() {
+                    _ = new_costs.make_summary();
+                }
+                if !old_costs.as_ref().map_or(true, Costs::is_summarized) {
+                    _ = old_costs.as_mut().map(Costs::make_summary);
+                }
+            }
+            let description = match event_kind {
+                EventKind::Ir => "Instructions:".to_owned(),
+                EventKind::L1hits => "L1 Hits:".to_owned(),
+                EventKind::LLhits => "L2 Hits:".to_owned(),
+                EventKind::RamHits => "RAM Hits:".to_owned(),
+                EventKind::TotalRW => "Total read+write:".to_owned(),
+                EventKind::EstimatedCycles => "Estimated Cycles:".to_owned(),
+                event_kind => format!("{event_kind}:"),
+            };
+            match (
+                new_costs.cost_by_kind(event_kind),
+                old_costs.as_ref().and_then(|c| c.cost_by_kind(event_kind)),
+            ) {
+                (None, Some(old_cost)) => writeln!(
+                    result,
+                    "  {description:<18}{:>15}|{old_cost:<15} ({:^9})",
+                    "N/A".bold(),
+                    "???".bright_black()
+                )?,
+                (Some(new_cost), None) => writeln!(
+                    result,
+                    "  {description:<18}{:>15}|{:<15} ({:^9})",
+                    new_cost.to_string().bold(),
+                    "N/A",
+                    "???".bright_black()
+                )?,
+                (Some(new_cost), Some(old_cost)) if new_cost == old_cost => writeln!(
+                    result,
+                    "  {description:<18}{:>15}|{old_cost:<15} ({:^9})",
+                    new_cost.to_string().bold(),
+                    "No change".bright_black()
+                )?,
+                (Some(new_cost), Some(old_cost)) => {
+                    let pct = percentage_diff(new_cost, old_cost);
+                    let diff = if pct.is_sign_positive() {
+                        format!("{:>+8}%", to_string_signed_short(pct))
+                            .bright_red()
+                            .bold()
+                    } else {
+                        format!("{:>+8}%", to_string_signed_short(pct))
+                            .bright_green()
+                            .bold()
+                    };
+                    writeln!(
+                        result,
+                        "  {description:<18}{:>15}|{old_cost:<15} ({diff}:^9)",
+                        new_cost.to_string().bold(),
+                    )?;
+                }
+                _ => {}
+            }
+        }
+        Ok(result)
+    }
+}
+
+fn percentage_diff(new: u64, old: u64) -> f64 {
+    if new == old {
+        return 0f64;
+    }
+
+    #[allow(clippy::cast_precision_loss)]
+    let new = new as f64;
+    #[allow(clippy::cast_precision_loss)]
+    let old = old as f64;
+
+    let diff = (new - old) / old;
+    diff * 100.0f64
 }
