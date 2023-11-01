@@ -7,6 +7,10 @@
 
 root_dir="$(cd "$(dirname "$0")" && cd ..))" || exit 1
 
+just_clean=0
+if [[ "$1" == "--clean" ]]; then
+  just_clean=1
+fi
 # Valgrind sometimes exits in benchmarks with the error
 #
 # valgrind: m_debuginfo/readelf.c:718 (get_elf_symbol_info): Assertion 'in_rx' failed.
@@ -25,6 +29,11 @@ fi
 # Clean old coverage data
 rm -rfv 'target/coverage'
 find . -type f \( -iname '*.profraw' -o -iname 'lcov.info' \) -print0 | xargs -0 rm -fv
+
+if [[ $just_clean == 1 ]]; then
+  echo "Success cleaning coverage data"
+  exit 0
+fi
 
 cargo +nightly build --all-features --profile coverage --all-targets
 
