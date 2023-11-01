@@ -1,7 +1,8 @@
+use std::borrow::Cow;
 use std::fmt::{Display, Write};
 
 use anyhow::Result;
-use colored::Colorize;
+use colored::{ColoredString, Colorize};
 
 use super::callgrind::model::Costs;
 use crate::api::EventKind;
@@ -14,6 +15,20 @@ pub struct Header {
 }
 
 pub trait Formatter {
+    fn format_float(float: f64, unit: &str) -> ColoredString {
+        let signed_short = to_string_signed_short(float);
+        if float.is_infinite() {
+            if float.is_sign_positive() {
+                format!("{signed_short:+^9}").bright_red().bold()
+            } else {
+                format!("{signed_short:-^9}").bright_green().bold()
+            }
+        } else if float.is_sign_positive() {
+            format!("{signed_short:^+8}{unit}").bright_red().bold()
+        } else {
+            format!("{signed_short:^+8}{unit}").bright_green().bold()
+        }
+    }
     fn format(&self, new_costs: &Costs, old_costs: Option<&Costs>) -> Result<String>;
 }
 
@@ -141,17 +156,21 @@ impl Default for VerticalFormat {
 
 impl Formatter for VerticalFormat {
     fn format(&self, new_costs: &Costs, old_costs: Option<&Costs>) -> Result<String> {
-        let mut new_costs = new_costs.clone();
-        let mut old_costs = old_costs.cloned();
+        let mut new_costs = Cow::Borrowed(new_costs);
+        let mut old_costs = old_costs.map(Cow::Borrowed);
         let mut result = String::new();
+
+        let not_available = "N/A";
+        let unknown = "*********";
+        let no_change = "No change";
 
         for event_kind in &self.event_kinds {
             if event_kind.is_derived() {
                 if !new_costs.is_summarized() {
-                    _ = new_costs.make_summary();
+                    _ = new_costs.to_mut().make_summary();
                 }
-                if !old_costs.as_ref().map_or(true, Costs::is_summarized) {
-                    _ = old_costs.as_mut().map(Costs::make_summary);
+                if !old_costs.as_ref().map_or(true, |c| c.is_summarized()) {
+                    _ = old_costs.as_mut().map(|c| c.to_mut().make_summary());
                 }
             }
             let description = match event_kind {
@@ -170,42 +189,29 @@ impl Formatter for VerticalFormat {
                 (None, Some(old_cost)) => writeln!(
                     result,
                     "  {description:<18}{:>15}|{old_cost:<15} ({:^9})",
-                    "N/A".bold(),
-                    "???".bright_black()
+                    not_available.bold(),
+                    unknown.bright_black()
                 )?,
                 (Some(new_cost), None) => writeln!(
                     result,
-                    "  {description:<18}{:>15}|{:<15} ({:^9})",
+                    "  {description:<18}{:>15}|{not_available:<15} ({:^9})",
                     new_cost.to_string().bold(),
-                    "N/A",
-                    "???".bright_black()
+                    unknown.bright_black()
                 )?,
                 (Some(new_cost), Some(old_cost)) if new_cost == old_cost => writeln!(
                     result,
                     "  {description:<18}{:>15}|{old_cost:<15} ({:^9})",
                     new_cost.to_string().bold(),
-                    "No change".bright_black()
+                    no_change.bright_black()
                 )?,
                 (Some(new_cost), Some(old_cost)) => {
-                    let pct = percentage_diff(new_cost, old_cost);
-                    let pct_string = if pct.is_sign_positive() {
-                        format!("{:>+8}%", to_string_signed_short(pct))
-                            .bright_red()
-                            .bold()
-                    } else {
-                        format!("{:>+8}%", to_string_signed_short(pct))
-                            .bright_green()
-                            .bold()
+                    let pct_string = {
+                        let pct = percentage_diff(new_cost, old_cost);
+                        Self::format_float(pct, "%")
                     };
-                    let factor = factor_diff(new_cost, old_cost);
-                    let factor_string = if factor.is_sign_positive() {
-                        format!("{:>+8}x", to_string_signed_short(factor))
-                            .bright_red()
-                            .bold()
-                    } else {
-                        format!("{:>+8}x", to_string_signed_short(factor))
-                            .bright_green()
-                            .bold()
+                    let factor_string = {
+                        let factor = factor_diff(new_cost, old_cost);
+                        Self::format_float(factor, "x")
                     };
                     writeln!(
                         result,
