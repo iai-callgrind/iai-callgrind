@@ -20,6 +20,38 @@ pub enum ValgrindTool {
     Callgrind,
 }
 
+// TODO: CLEANUP
+// pub trait ValgrindCommand
+// where
+//     Self: std::marker::Sized,
+// {
+//     fn constructor(command: Command) -> Self;
+//     fn run(
+//         self,
+//         executable: &Path,
+//         executable_args: &[OsString],
+//         options: RunOptions,
+//         output: &ToolOutput,
+//     ) -> Result<()>;
+//
+//     fn new(meta: &Metadata) -> Self {
+//         let command = meta.valgrind_wrapper.as_ref().map_or_else(
+//             || {
+//                 let meta_cmd = &meta.valgrind;
+//                 let mut cmd = Command::new(&meta_cmd.bin);
+//                 cmd.args(&meta_cmd.args);
+//                 cmd
+//             },
+//             |meta_cmd| {
+//                 let mut cmd = Command::new(&meta_cmd.bin);
+//                 cmd.args(&meta_cmd.args);
+//                 cmd
+//             },
+//         );
+//         Self::constructor(command)
+//     }
+// }
+
 impl ToolOutput {
     pub fn new(tool: ValgrindTool, base_dir: &Path, module: &str, name: &str) -> Self {
         let current = base_dir;

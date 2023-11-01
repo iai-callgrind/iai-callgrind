@@ -33,7 +33,7 @@ pub struct BinaryBenchmarkConfig {
     pub current_dir: Option<PathBuf>,
     pub entry_point: Option<String>,
     pub exit_with: Option<ExitWith>,
-    pub raw_callgrind_args: RawCallgrindArgs,
+    pub raw_callgrind_args: RawArgs,
     pub envs: Vec<(OsString, Option<OsString>)>,
     pub flamegraph: Option<FlamegraphConfig>,
     pub regression: Option<RegressionConfig>,
@@ -52,6 +52,12 @@ pub struct BinaryBenchmarkGroup {
 pub struct Cmd {
     pub display: String,
     pub cmd: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DhatConfig {
+    pub enable: Option<bool>,
+    pub raw_args: RawArgs,
 }
 
 /// The `Direction` in which the flamegraph should grow.
@@ -195,7 +201,7 @@ pub struct LibraryBenchmarkBenches {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmarkConfig {
     pub env_clear: Option<bool>,
-    pub raw_callgrind_args: RawCallgrindArgs,
+    pub raw_callgrind_args: RawArgs,
     pub envs: Vec<(OsString, Option<OsString>)>,
     pub flamegraph: Option<FlamegraphConfig>,
     pub regression: Option<RegressionConfig>,
@@ -209,7 +215,7 @@ pub struct LibraryBenchmarkGroup {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RawCallgrindArgs(pub Vec<String>);
+pub struct RawArgs(pub Vec<String>);
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct RegressionConfig {
@@ -395,7 +401,7 @@ impl LibraryBenchmarkConfig {
     }
 }
 
-impl RawCallgrindArgs {
+impl RawArgs {
     pub fn new<I, T>(args: T) -> Self
     where
         I: AsRef<str>,
@@ -436,7 +442,7 @@ impl RawCallgrindArgs {
     }
 }
 
-impl<I> FromIterator<I> for RawCallgrindArgs
+impl<I> FromIterator<I> for RawArgs
 where
     I: AsRef<str>,
 {
@@ -526,13 +532,12 @@ mod tests {
     #[case::no_flags(vec![], &["a=yes"], vec!["--a=yes"])]
     #[case::already_exists_single(vec!["--a=yes"], &["--a=yes"], vec!["--a=yes","--a=yes"])]
     #[case::already_exists_when_multiple(vec!["--a=yes", "--b=yes"], &["--a=yes"], vec!["--a=yes", "--b=yes", "--a=yes"])]
-    fn test_raw_callgrind_args_extend_ignore_flags(
+    fn test_raw_args_extend_ignore_flags(
         #[case] base: Vec<&str>,
         #[case] data: &[&str],
         #[case] expected: Vec<&str>,
     ) {
-        let mut base =
-            RawCallgrindArgs(base.iter().map(std::string::ToString::to_string).collect());
+        let mut base = RawArgs(base.iter().map(std::string::ToString::to_string).collect());
         base.extend_ignore_flag(data.iter().map(std::string::ToString::to_string));
 
         assert_eq!(base.0.into_iter().collect::<Vec<String>>(), expected);

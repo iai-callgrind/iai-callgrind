@@ -34,3 +34,11 @@ pub fn print_env(args: &[&str]) {
         println!("{key}={value}");
     }
 }
+
+pub fn allocate_array_reverse(start: i32) -> Vec<i32> {
+    if start.is_negative() {
+        (start..0).rev().collect()
+    } else {
+        (0..start).rev().collect()
+    }
+}

@@ -359,6 +359,9 @@ pub enum ExitWith {
     Code(i32),
 }
 
+#[derive(Debug, Clone)]
+pub struct DhatConfig(internal::InternalDhatConfig);
+
 /// A builder of `Fixtures` to specify the fixtures directory which will be copied into the sandbox
 ///
 /// # Examples
@@ -1102,6 +1105,24 @@ impl From<internal::InternalBinaryBenchmarkGroup> for BinaryBenchmarkGroup {
 
 impl_traits!(BinaryBenchmarkGroup, internal::InternalBinaryBenchmarkGroup);
 
+impl DhatConfig {
+    pub fn enable(&mut self, value: bool) -> &mut Self {
+        self.0.enable = Some(value);
+        self
+    }
+
+    pub fn raw_dhat_args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_args.extend_ignore_flag(args);
+        self
+    }
+}
+
+impl_traits!(DhatConfig, internal::InternalDhatConfig);
+
 impl Fixtures {
     /// Create a new `Fixtures` struct
     ///
@@ -1681,6 +1702,13 @@ impl LibraryBenchmarkConfig {
         T: Into<internal::InternalRegressionConfig>,
     {
         self.0.regression = Some(config.into());
+        self
+    }
+
+    pub fn dhat<T>(&mut self, config: T) -> &mut Self
+    where
+        T: Into<internal::InternalDhatConfig>,
+    {
         self
     }
 }

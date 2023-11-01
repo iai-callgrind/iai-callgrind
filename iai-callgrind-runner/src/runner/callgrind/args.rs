@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use log::{log_enabled, warn};
 
-use crate::api::RawCallgrindArgs;
+use crate::api::RawArgs;
 use crate::error::Error;
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
@@ -28,7 +28,7 @@ pub struct Args {
 }
 
 impl Args {
-    pub fn from_raw_callgrind_args(args: &[&RawCallgrindArgs]) -> Result<Self> {
+    pub fn from_raw_callgrind_args(args: &[&RawArgs]) -> Result<Self> {
         let mut default = Self::default();
         default.extend(args.iter().flat_map(|s| &s.0))?;
         Ok(default)

@@ -12,10 +12,10 @@ use super::callgrind::flamegraph::{Config as FlamegraphConfig, Flamegraph};
 use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::summary_parser::SummaryParser;
-use super::callgrind::{CallgrindCommand, CallgrindOptions, Regression};
+use super::callgrind::{CallgrindCommand, Regression, RunOptions};
 use super::meta::Metadata;
 use super::print::{Formatter, Header, VerticalFormat};
-use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig, RawCallgrindArgs};
+use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig, RawArgs};
 use crate::error::Error;
 use crate::runner::common::{ToolOutput, ValgrindTool};
 use crate::util::{copy_directory, receive_benchmark, write_all_to_stderr, write_all_to_stdout};
@@ -51,7 +51,7 @@ struct BinBench {
     display: String,
     command: PathBuf,
     args: Vec<OsString>,
-    opts: CallgrindOptions,
+    opts: RunOptions,
     callgrind_args: Args,
     flamegraph: Option<FlamegraphConfig>,
     regression: Option<Regression>,
@@ -133,7 +133,7 @@ impl Assistant {
             &group.module_path,
             &format!("{}.{}", self.kind.id(), &self.name),
         );
-        let options = CallgrindOptions {
+        let options = RunOptions {
             env_clear: false,
             entry_point: Some(format!("*{}::{}", &config.module, &self.name)),
             ..Default::default()
@@ -397,7 +397,7 @@ impl Groups {
         cmd: &Option<api::Cmd>,
         runs: Vec<api::Run>,
         group_config: &BinaryBenchmarkConfig,
-        command_line_args: &RawCallgrindArgs,
+        command_line_args: &RawArgs,
         meta: &Metadata,
     ) -> Result<Vec<BinBench>> {
         let mut benches = vec![];
@@ -439,7 +439,7 @@ impl Groups {
                     display: orig.clone(),
                     command: command.clone(),
                     args: args.args,
-                    opts: CallgrindOptions {
+                    opts: RunOptions {
                         env_clear: config.env_clear.unwrap_or(true),
                         current_dir: config.current_dir.clone(),
                         entry_point: config.entry_point.clone(),
@@ -512,8 +512,7 @@ impl Groups {
     ) -> Result<Self> {
         let global_config = benchmark.config;
         let mut groups = vec![];
-        let command_line_args =
-            RawCallgrindArgs::from_command_line_args(benchmark.command_line_args);
+        let command_line_args = RawArgs::from_command_line_args(benchmark.command_line_args);
 
         for group in benchmark.groups {
             let module_path = if let Some(id) = group.id.as_ref() {

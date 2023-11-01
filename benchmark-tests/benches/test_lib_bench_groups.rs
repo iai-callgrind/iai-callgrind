@@ -6,7 +6,7 @@
 //! simplified.
 
 // These two functions from the benchmark-tests library serve as functions we want to benchmark
-use benchmark_tests::{bubble_sort, fibonacci};
+use benchmark_tests::{allocate_array_reverse, bubble_sort, fibonacci};
 use iai_callgrind::{
     black_box, library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,
     RegressionConfig,
@@ -119,6 +119,19 @@ library_benchmark_group!(
     benchmarks = bench_bubble_sort_empty, bench_bubble_sort
 );
 
+// TODO: FINISH DHAT EXAMPLE
+#[library_benchmark]
+fn bench_allocate() {
+    let vec = allocate_array_reverse(4000);
+    let sum: i32 = vec.iter().take(2000).sum();
+    println!("{sum}");
+}
+
+library_benchmark_group!(
+    name = allocate;
+    benchmarks = bench_allocate
+);
+
 // In our example file here, we could have put `bench_fibonacci` into the same group as the bubble
 // sort benchmarks and using a separate group merely serves as an example for having multiple
 // groups.
@@ -148,4 +161,4 @@ main!(
             RegressionConfig::default()
                 .limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
         );
-    library_benchmark_groups = bubble_sort, fibonacci);
+    library_benchmark_groups = bubble_sort, fibonacci, allocate);

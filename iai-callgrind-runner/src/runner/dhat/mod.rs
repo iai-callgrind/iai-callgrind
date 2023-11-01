@@ -5,8 +5,10 @@ use std::process::{Command, Stdio};
 use anyhow::Result;
 use log::{debug, info, Level};
 
+use super::common::ToolOutput;
 use super::meta::Metadata;
 use crate::error::Error;
+use crate::runner::callgrind::RunOptions;
 use crate::runner::{write_all_to_stderr, write_all_to_stdout};
 use crate::util::resolve_binary_path;
 
@@ -14,54 +16,30 @@ pub struct DhatCommand {
     command: Command,
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct DhatOptions {
-    pub env_clear: bool,
-    pub current_dir: Option<PathBuf>,
-    // pub exit_with: Option<ExitWith>,
-    pub envs: Vec<(OsString, OsString)>,
-}
-
-#[derive(Debug, Clone)]
-pub struct DhatOutput(PathBuf);
-
 impl DhatCommand {
     pub fn new(meta: &Metadata) -> Self {
-        let command = meta.valgrind_wrapper.as_ref().map_or_else(
-            || {
-                let meta_cmd = &meta.valgrind;
-                let mut cmd = Command::new(&meta_cmd.bin);
-                cmd.args(&meta_cmd.args);
-                cmd
-            },
-            |meta_cmd| {
-                let mut cmd = Command::new(&meta_cmd.bin);
-                cmd.args(&meta_cmd.args);
-                cmd
-            },
-        );
-        Self { command }
+        Self {
+            command: meta.into(),
+        }
     }
 
     pub fn run(
         self,
         executable: &Path,
         executable_args: &[OsString],
-        options: DhatOptions,
-        output: &DhatOutput,
+        options: RunOptions,
+        output: &ToolOutput,
     ) -> Result<()> {
         let mut command = self.command;
         // TODO: DhatArgs struct
         let mut dhat_args = vec![];
 
-        debug!(
-            "Running callgrind with executable '{}'",
-            executable.display()
-        );
-        let DhatOptions {
+        debug!("Running dhat with executable '{}'", executable.display());
+        let RunOptions {
             env_clear,
             current_dir,
             envs,
+            ..
         } = options;
 
         if env_clear {
@@ -72,11 +50,11 @@ impl DhatCommand {
             debug!("Setting current directory to '{}'", dir.display());
             command.current_dir(dir);
         }
-        dhat_args.push(format!("--dhat-out-file={}", output.0.display()));
+        dhat_args.push(format!("--dhat-out-file={}", output.path.display()));
 
         let executable = resolve_binary_path(executable)?;
 
-        // TODO: CHECK EXIT like in callgrind
+        // TODO: CHECK EXIT like in callgrind ??
         let (stdout, stderr) = command
             .arg("--tool=dhat")
             .args(dhat_args)

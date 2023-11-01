@@ -32,17 +32,13 @@ pub struct CallgrindCommand {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct CallgrindOptions {
+pub struct RunOptions {
     pub env_clear: bool,
     pub current_dir: Option<PathBuf>,
     pub entry_point: Option<String>,
     pub exit_with: Option<ExitWith>,
     pub envs: Vec<(OsString, OsString)>,
 }
-
-// TODO: CLEANUP
-// #[derive(Debug, Clone)]
-// pub struct CallgrindOutput(ToolOutput);
 
 #[derive(Clone, Debug)]
 pub struct CallgrindSummary {
@@ -61,20 +57,9 @@ pub struct Regression {
 
 impl CallgrindCommand {
     pub fn new(meta: &Metadata) -> Self {
-        let command = meta.valgrind_wrapper.as_ref().map_or_else(
-            || {
-                let meta_cmd = &meta.valgrind;
-                let mut cmd = Command::new(&meta_cmd.bin);
-                cmd.args(&meta_cmd.args);
-                cmd
-            },
-            |meta_cmd| {
-                let mut cmd = Command::new(&meta_cmd.bin);
-                cmd.args(&meta_cmd.args);
-                cmd
-            },
-        );
-        Self { command }
+        Self {
+            command: meta.into(),
+        }
     }
 
     fn check_exit(
@@ -137,7 +122,7 @@ impl CallgrindCommand {
         mut callgrind_args: Args,
         executable: &Path,
         executable_args: &[OsString],
-        options: CallgrindOptions,
+        options: RunOptions,
         output: &ToolOutput,
     ) -> Result<()> {
         let mut command = self.command;
@@ -145,7 +130,7 @@ impl CallgrindCommand {
             "Running callgrind with executable '{}'",
             executable.display()
         );
-        let CallgrindOptions {
+        let RunOptions {
             env_clear,
             current_dir,
             exit_with,
