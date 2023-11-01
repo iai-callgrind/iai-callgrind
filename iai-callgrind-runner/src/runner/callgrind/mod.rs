@@ -26,8 +26,8 @@ use super::meta::Metadata;
 use crate::api::{self, EventKind, ExitWith, RegressionConfig};
 use crate::error::Error;
 use crate::util::{
-    resolve_binary_path, to_string_signed_short, truncate_str_utf8, write_all_to_stderr,
-    write_all_to_stdout,
+    percentage_diff, resolve_binary_path, to_string_signed_short, truncate_str_utf8,
+    write_all_to_stderr, write_all_to_stdout,
 };
 
 pub struct CallgrindCommand {
@@ -401,13 +401,7 @@ impl Regression {
                     new_costs.cost_by_kind(event_kind),
                     old_costs.cost_by_kind(event_kind),
                 ) {
-                    #[allow(clippy::cast_precision_loss)]
-                    let new_cost_float = new_cost as f64;
-                    #[allow(clippy::cast_precision_loss)]
-                    let old_cost_float = old_cost as f64;
-
-                    let diff = (new_cost_float - old_cost_float) / old_cost_float;
-                    let pct = diff * 100.0f64;
+                    let pct = percentage_diff(new_cost, old_cost);
                     if limit.is_sign_positive() {
                         if pct > *limit {
                             regressions.push((*event_kind, new_cost, old_cost, pct, *limit));

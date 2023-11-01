@@ -5,7 +5,7 @@ use colored::Colorize;
 
 use super::callgrind::model::Costs;
 use crate::api::EventKind;
-use crate::util::{to_string_signed_short, truncate_str_utf8};
+use crate::util::{factor_diff, percentage_diff, to_string_signed_short, truncate_str_utf8};
 
 pub struct Header {
     pub module_path: String,
@@ -188,7 +188,7 @@ impl Formatter for VerticalFormat {
                 )?,
                 (Some(new_cost), Some(old_cost)) => {
                     let pct = percentage_diff(new_cost, old_cost);
-                    let diff = if pct.is_sign_positive() {
+                    let pct_string = if pct.is_sign_positive() {
                         format!("{:>+8}%", to_string_signed_short(pct))
                             .bright_red()
                             .bold()
@@ -197,9 +197,20 @@ impl Formatter for VerticalFormat {
                             .bright_green()
                             .bold()
                     };
+                    let factor = factor_diff(new_cost, old_cost);
+                    let factor_string = if factor.is_sign_positive() {
+                        format!("{:>+8}x", to_string_signed_short(factor))
+                            .bright_red()
+                            .bold()
+                    } else {
+                        format!("{:>+8}x", to_string_signed_short(factor))
+                            .bright_green()
+                            .bold()
+                    };
                     writeln!(
                         result,
-                        "  {description:<18}{:>15}|{old_cost:<15} ({diff}:^9)",
+                        "  {description:<18}{:>15}|{old_cost:<15} ({pct_string:^9}) \
+                         [{factor_string:^9}]",
                         new_cost.to_string().bold(),
                     )?;
                 }
@@ -208,18 +219,4 @@ impl Formatter for VerticalFormat {
         }
         Ok(result)
     }
-}
-
-fn percentage_diff(new: u64, old: u64) -> f64 {
-    if new == old {
-        return 0f64;
-    }
-
-    #[allow(clippy::cast_precision_loss)]
-    let new = new as f64;
-    #[allow(clippy::cast_precision_loss)]
-    let old = old as f64;
-
-    let diff = (new - old) / old;
-    diff * 100.0f64
 }
