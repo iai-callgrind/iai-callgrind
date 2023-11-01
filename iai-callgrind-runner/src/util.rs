@@ -214,7 +214,7 @@ pub fn percentage_diff(new: u64, old: u64) -> f64 {
 
 pub fn factor_diff(new: u64, old: u64) -> f64 {
     if new == old {
-        return 0f64;
+        return 1f64;
     }
 
     #[allow(clippy::cast_precision_loss)]
@@ -275,11 +275,12 @@ mod tests {
     }
 
     #[rstest]
-    #[case::zero(0, 0, 0f64)]
-    #[case::one_zero(1, 0, f64::INFINITY)]
-    #[case::zero_one(0, 1, f64::NEG_INFINITY)]
-    #[case::factor_two(1, 2, -2f64)]
-    #[case::factor_minus_two(2, 1, 2f64)]
+    #[case::zero(0, 0, 1f64)]
+    #[case::infinity(1, 0, f64::INFINITY)]
+    #[case::negative_infinity(0, 1, f64::NEG_INFINITY)]
+    #[case::factor_one(1, 1, 1f64)]
+    #[case::factor_minus_two(1, 2, -2f64)]
+    #[case::factor_two(2, 1, 2f64)]
     fn test_factor_diff_eq(#[case] a: u64, #[case] b: u64, #[case] expected: f64) {
         assert_eq!(factor_diff(a, b), expected);
     }
