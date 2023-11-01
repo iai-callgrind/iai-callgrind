@@ -1,4 +1,13 @@
 <!-- spell-checker:ignore serde -->
+<!--
+Added for new features.
+Changed for changes in existing functionality.
+Deprecated for soon-to-be removed features.
+Removed for now removed features.
+Fixed for any bug fixes.
+Security in case of vulnerabilities.
+-->
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -12,6 +21,35 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Added
+
+* ([#6](https://github.com/iai-callgrind/iai-callgrind/issues/6)): Show and fail
+  benchmarks on performance regressions. Configuration of regression checks can
+  be done with `RegressionConfig` or with the new environment variables
+  `IAI_CALLGRIND_REGRESSION` and `IAI_CALLGRIND_REGRESSION_FAIL_FAST`
+* ([#26](https://github.com/iai-callgrind/iai-callgrind/issues/26)): Show event
+  kinds which are not associated with callgrind's cache simulation if available.
+  For example, running callgrind with flags like `--collect-systime`
+  (`SysCount`, `SysTime`, `SysCpuTime`), ...
+
+### Changed
+
+* The output format was reworked and now shows the old event counts next to
+  the new event counts instead of just the new event counts.
+* The output format now shows the factor in addition to the percentage
+  difference when comparing the new benchmark run with the old benchmark run.
+  The factor can be more intuitive to estimate performance improvements.
+* The output format also received some small improvements in case a cost is not
+  recorded either in the new benchmark run or in the old benchmark run.
+* The percentage difference is now a digit shorter to equalize the widths of the
+  different other string outputs within the parentheses.
+
+### Fixed
+
+* Fix examples README to show the correct summary costs of events
+* Fix error handling if valgrind terminates abnormally or with a signal instead
+  of an exit code
 
 ### [0.7.3] - 2023-10-24
 
