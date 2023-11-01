@@ -3,9 +3,9 @@ use log::{debug, trace};
 
 use super::model::Costs;
 use super::parser::{Parser, Sentinel};
-use super::CallgrindOutput;
 use crate::error::Error;
 use crate::runner::callgrind::parser::parse_header;
+use crate::runner::common::ToolOutput;
 
 pub struct SentinelParser {
     sentinel: Sentinel,
@@ -22,7 +22,7 @@ impl SentinelParser {
 impl Parser for SentinelParser {
     type Output = Costs;
 
-    fn parse(&self, output: &CallgrindOutput) -> Result<Self::Output>
+    fn parse(&self, output: &ToolOutput) -> Result<Self::Output>
     where
         Self: std::marker::Sized,
     {
@@ -33,7 +33,7 @@ impl Parser for SentinelParser {
 
         let mut iter = output.lines()?;
         let properties = parse_header(&mut iter)
-            .map_err(|error| Error::ParseError((output.0.clone(), error.to_string())))?;
+            .map_err(|error| Error::ParseError((output.path.clone(), error.to_string())))?;
 
         let mut found = false;
         let mut costs = properties.costs_prototype;

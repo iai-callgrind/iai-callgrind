@@ -8,8 +8,8 @@ use log::warn;
 
 use super::flamegraph_parser::FlamegraphParser;
 use super::parser::{Parser, Sentinel};
-use super::CallgrindOutput;
 use crate::api::{self, EventKind, FlamegraphKind};
+use crate::runner::common::ToolOutput;
 
 #[derive(Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
@@ -78,7 +78,7 @@ impl Flamegraph {
 
     pub fn create(
         &self,
-        callgrind_output: &CallgrindOutput,
+        callgrind_output: &ToolOutput,
         sentinel: Option<&Sentinel>,
         project_root: &Path,
     ) -> Result<()> {

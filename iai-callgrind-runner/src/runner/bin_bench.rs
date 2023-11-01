@@ -12,11 +12,12 @@ use super::callgrind::flamegraph::{Config as FlamegraphConfig, Flamegraph};
 use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::summary_parser::SummaryParser;
-use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Regression};
+use super::callgrind::{CallgrindCommand, CallgrindOptions, Regression};
 use super::meta::Metadata;
 use super::print::{Formatter, Header, VerticalFormat};
 use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig, RawCallgrindArgs};
 use crate::error::Error;
+use crate::runner::common::{ToolOutput, ValgrindTool};
 use crate::util::{copy_directory, receive_benchmark, write_all_to_stderr, write_all_to_stdout};
 
 #[derive(Debug, Clone)]
@@ -111,6 +112,7 @@ impl Assistant {
     }
 
     /// Run the assistant and benchmark this run
+    /// TODO: CREATE FLAMEGRAPHS
     fn run_bench(&self, is_regressed: &mut bool, config: &Config, group: &Group) -> Result<()> {
         let command = CallgrindCommand::new(&config.meta);
 
@@ -125,7 +127,8 @@ impl Assistant {
             OsString::from(format!("{}::{}", &config.module, &self.name)),
         ];
 
-        let output = CallgrindOutput::init(
+        let output = ToolOutput::with_init(
+            ValgrindTool::Callgrind,
             &config.meta.target_dir,
             &group.module_path,
             &format!("{}.{}", self.kind.id(), &self.name),
@@ -277,14 +280,15 @@ impl BinBench {
     /// `Error::RegressionError` if a fatal regression occurred.
     /// `Error::ParsingError` if a parsing error occurred.
     fn run(&self, is_regressed: &mut bool, config: &Config, group: &Group) -> Result<()> {
-        let command = CallgrindCommand::new(&config.meta);
-        let output = CallgrindOutput::init(
+        let callgrind_command = CallgrindCommand::new(&config.meta);
+        let output = ToolOutput::with_init(
+            ValgrindTool::Callgrind,
             &config.meta.target_dir,
             &group.module_path,
             &format!("{}.{}", self.id, self.display),
         );
 
-        command.run(
+        callgrind_command.run(
             self.callgrind_args.clone(),
             &self.command,
             &self.args,
@@ -292,7 +296,21 @@ impl BinBench {
             &output,
         )?;
 
+        let new_costs = SummaryParser.parse(&output)?;
+
+        let old_output = output.to_old_output();
+        #[allow(clippy::if_then_some_else_none)]
+        let old_costs = if old_output.exists() {
+            Some(SummaryParser.parse(&old_output)?)
+        } else {
+            None
+        };
+
         let header = Header::new(&group.module_path, self.id.clone(), self.to_string());
+        header.print();
+        let output_format = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
+        print!("{output_format}");
+
         let sentinel = self.opts.entry_point.as_ref().map(Sentinel::new);
         if let Some(flamegraph_config) = self.flamegraph.clone() {
             Flamegraph::new(header.to_title(), flamegraph_config).create(
@@ -301,21 +319,6 @@ impl BinBench {
                 &config.meta.project_root,
             )?;
         }
-
-        let new_costs = SummaryParser.parse(&output)?;
-
-        let old_output = output.to_old_output();
-
-        #[allow(clippy::if_then_some_else_none)]
-        let old_costs = if old_output.exists() {
-            Some(SummaryParser.parse(&old_output)?)
-        } else {
-            None
-        };
-
-        header.print();
-        let output = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
-        print!("{output}");
 
         if let Some(regression) = &self.regression {
             match regression.check_and_print(&new_costs, old_costs.as_ref()) {

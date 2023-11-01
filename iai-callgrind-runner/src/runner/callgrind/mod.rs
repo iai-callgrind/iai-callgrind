@@ -8,26 +8,23 @@ pub mod sentinel_parser;
 pub mod summary_parser;
 
 use std::borrow::Cow;
-use std::convert::AsRef;
-use std::ffi::{OsStr, OsString};
-use std::fmt::Display;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::Result;
 use colored::Colorize;
 use log::{debug, error, info, Level};
 
 use self::model::Costs;
 use super::callgrind::args::Args;
+use super::common::ToolOutput;
 use super::meta::Metadata;
 use crate::api::{self, EventKind, ExitWith, RegressionConfig};
 use crate::error::Error;
 use crate::util::{
-    percentage_diff, resolve_binary_path, to_string_signed_short, truncate_str_utf8,
-    write_all_to_stderr, write_all_to_stdout,
+    percentage_diff, resolve_binary_path, to_string_signed_short, write_all_to_stderr,
+    write_all_to_stdout,
 };
 
 pub struct CallgrindCommand {
@@ -43,8 +40,9 @@ pub struct CallgrindOptions {
     pub envs: Vec<(OsString, OsString)>,
 }
 
-#[derive(Debug, Clone)]
-pub struct CallgrindOutput(PathBuf);
+// TODO: CLEANUP
+// #[derive(Debug, Clone)]
+// pub struct CallgrindOutput(ToolOutput);
 
 #[derive(Clone, Debug)]
 pub struct CallgrindSummary {
@@ -140,7 +138,7 @@ impl CallgrindCommand {
         executable: &Path,
         executable_args: &[OsString],
         options: CallgrindOptions,
-        output: &CallgrindOutput,
+        output: &ToolOutput,
     ) -> Result<()> {
         let mut command = self.command;
         debug!(
@@ -170,7 +168,7 @@ impl CallgrindCommand {
         } else {
             callgrind_args.collect_atstart = true;
         }
-        callgrind_args.set_output_file(&output.0);
+        callgrind_args.set_output_file(&output.path);
 
         let callgrind_args = callgrind_args.to_vec();
         debug!("Callgrind arguments: {}", &callgrind_args.join(" "));
@@ -208,93 +206,94 @@ impl CallgrindCommand {
     }
 }
 
-impl CallgrindOutput {
-    pub fn from_existing<T>(path: T) -> Result<Self>
-    where
-        T: Into<PathBuf>,
-    {
-        let path: PathBuf = path.into();
-        if !path.is_file() {
-            return Err(anyhow!(
-                "The callgrind output file '{}' did not exist or is not a valid file",
-                path.display()
-            ));
-        }
-        Ok(Self(path))
-    }
-
-    /// Initialize and create the output directory and organize files
-    ///
-    /// This method moves the old output to `callgrind.*.out.old`
-    pub fn init(base_dir: &Path, module: &str, name: &str) -> Self {
-        let current = base_dir;
-        let module_path: PathBuf = module.split("::").collect();
-        let sanitized_name = sanitize_filename::sanitize_with_options(
-            name,
-            sanitize_filename::Options {
-                windows: false,
-                truncate: false,
-                replacement: "_",
-            },
-        );
-        let file_name = PathBuf::from(format!(
-            "callgrind.{}.out",
-            // callgrind. + .out.old = 18 + 37 bytes headroom for extensions with more than 3
-            // bytes. max length is usually 255 bytes
-            truncate_str_utf8(&sanitized_name, 200)
-        ));
-
-        let path = current.join(base_dir).join(module_path).join(file_name);
-        let output = Self(path);
-
-        std::fs::create_dir_all(output.0.parent().unwrap()).expect("Failed to create directory");
-
-        if output.exists() {
-            let old_output = output.to_old_output();
-            // Already run this benchmark once; move last results to .old
-            std::fs::copy(&output.0, old_output.0).unwrap();
-        }
-
-        output
-    }
-
-    pub fn exists(&self) -> bool {
-        self.0.exists()
-    }
-
-    pub fn with_extension<T>(&self, extension: T) -> Self
-    where
-        T: AsRef<OsStr>,
-    {
-        Self(self.0.with_extension(extension))
-    }
-
-    pub fn to_old_output(&self) -> Self {
-        Self(self.0.with_extension("out.old"))
-    }
-
-    pub fn open(&self) -> Result<File> {
-        File::open(&self.0)
-            .with_context(|| format!("Error opening callgrind output file '{}'", self.0.display()))
-    }
-
-    pub fn lines(&self) -> Result<impl Iterator<Item = String>> {
-        let file = self.open()?;
-        Ok(BufReader::new(file)
-            .lines()
-            .map(std::result::Result::unwrap))
-    }
-
-    pub fn as_path(&self) -> &Path {
-        &self.0
-    }
-}
-
-impl Display for CallgrindOutput {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{}", self.0.display()))
-    }
-}
+// TODO: CLEANUP
+// impl CallgrindOutput {
+//     pub fn from_existing<T>(path: T) -> Result<Self>
+//     where
+//         T: Into<PathBuf>,
+//     {
+//         let path: PathBuf = path.into();
+//         if !path.is_file() {
+//             return Err(anyhow!(
+//                 "The callgrind output file '{}' did not exist or is not a valid file",
+//                 path.display()
+//             ));
+//         }
+//         Ok(Self(path))
+//     }
+//
+//     /// Initialize and create the output directory and organize files
+//     ///
+//     /// This method moves the old output to `callgrind.*.out.old`
+//     pub fn init(base_dir: &Path, module: &str, name: &str) -> Self {
+//         let current = base_dir;
+//         let module_path: PathBuf = module.split("::").collect();
+//         let sanitized_name = sanitize_filename::sanitize_with_options(
+//             name,
+//             sanitize_filename::Options {
+//                 windows: false,
+//                 truncate: false,
+//                 replacement: "_",
+//             },
+//         );
+//         let file_name = PathBuf::from(format!(
+//             "callgrind.{}.out",
+//             // callgrind. + .out.old = 18 + 37 bytes headroom for extensions with more than 3
+//             // bytes. max length is usually 255 bytes
+//             truncate_str_utf8(&sanitized_name, 200)
+//         ));
+//
+//         let path = current.join(base_dir).join(module_path).join(file_name);
+//         let output = Self(path);
+//
+//         std::fs::create_dir_all(output.0.parent().unwrap()).expect("Failed to create directory");
+//
+//         if output.exists() {
+//             let old_output = output.to_old_output();
+//             // Already run this benchmark once; move last results to .old
+//             std::fs::copy(&output.0, old_output.0).unwrap();
+//         }
+//
+//         output
+//     }
+//
+//     pub fn exists(&self) -> bool {
+//         self.0.exists()
+//     }
+//
+//     pub fn with_extension<T>(&self, extension: T) -> Self
+//     where
+//         T: AsRef<OsStr>,
+//     {
+//         Self(self.0.with_extension(extension))
+//     }
+//
+//     pub fn to_old_output(&self) -> Self {
+//         Self(self.0.with_extension("out.old"))
+//     }
+//
+//     pub fn open(&self) -> Result<File> {
+//         File::open(&self.0)
+//             .with_context(|| format!("Error opening callgrind output file '{}'",
+// self.0.display()))     }
+//
+//     pub fn lines(&self) -> Result<impl Iterator<Item = String>> {
+//         let file = self.open()?;
+//         Ok(BufReader::new(file)
+//             .lines()
+//             .map(std::result::Result::unwrap))
+//     }
+//
+//     pub fn as_path(&self) -> &Path {
+//         &self.0
+//     }
+// }
+//
+// impl Display for CallgrindOutput {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         f.write_fmt(format_args!("{}", self.0.display()))
+//     }
+// }
 
 impl TryFrom<&Costs> for CallgrindSummary {
     type Error = anyhow::Error;

@@ -5,7 +5,7 @@ use log::{trace, warn};
 use serde::{Deserialize, Serialize};
 
 use super::model::{Costs, Positions};
-use super::CallgrindOutput;
+use crate::runner::common::ToolOutput;
 
 #[derive(Debug, Default)]
 pub struct CallgrindProperties {
@@ -19,7 +19,7 @@ pub struct Sentinel(String);
 pub trait Parser {
     type Output;
 
-    fn parse(&self, output: &CallgrindOutput) -> Result<Self::Output>
+    fn parse(&self, output: &ToolOutput) -> Result<Self::Output>
     where
         Self: std::marker::Sized;
 }

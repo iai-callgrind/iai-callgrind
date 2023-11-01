@@ -3,16 +3,16 @@ use log::{debug, trace};
 
 use super::model::Costs;
 use super::parser::Parser;
-use super::CallgrindOutput;
 use crate::error::Error;
 use crate::runner::callgrind::parser::parse_header;
+use crate::runner::common::ToolOutput;
 
 pub struct SummaryParser;
 
 impl Parser for SummaryParser {
     type Output = Costs;
 
-    fn parse(&self, output: &CallgrindOutput) -> Result<Self::Output>
+    fn parse(&self, output: &ToolOutput) -> Result<Self::Output>
     where
         Self: std::marker::Sized,
     {
@@ -23,7 +23,7 @@ impl Parser for SummaryParser {
 
         let mut iter = output.lines()?;
         let config = parse_header(&mut iter)
-            .map_err(|error| Error::ParseError((output.0.clone(), error.to_string())))?;
+            .map_err(|error| Error::ParseError((output.path.clone(), error.to_string())))?;
 
         let mut found = false;
         let mut costs = config.costs_prototype;

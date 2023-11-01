@@ -33,6 +33,7 @@ cicd
 clippy
 consts
 debuginfo
+dhat
 dldmr
 dldmw
 dlmr
@@ -56,14 +57,15 @@ jcnd
 kcachegrind
 lcov
 llhits
+massif
 mispredicted
 nsec
 outfile
 pipefail
 printenv
 println
-profraw
 proccontrol
+profraw
 quickstart
 ramhits
 realpath

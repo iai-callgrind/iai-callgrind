@@ -7,11 +7,12 @@ use super::callgrind::args::Args;
 use super::callgrind::flamegraph::{Config as FlamegraphConfig, Flamegraph};
 use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
-use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Regression};
+use super::callgrind::{CallgrindCommand, CallgrindOptions, Regression};
 use super::meta::Metadata;
 use super::print::{Formatter, Header, VerticalFormat};
 use super::Error;
 use crate::api::{self, LibraryBenchmark, RawCallgrindArgs};
+use crate::runner::common::{ToolOutput, ValgrindTool};
 use crate::util::receive_benchmark;
 
 #[derive(Debug)]
@@ -150,7 +151,7 @@ impl Groups {
 
 impl LibBench {
     fn run(&self, config: &Config, group: &Group) -> Result<()> {
-        let command = CallgrindCommand::new(&config.meta);
+        let callgrind_command = CallgrindCommand::new(&config.meta);
         let args = if let Some(group_id) = &group.id {
             vec![
                 OsString::from("--iai-run".to_owned()),
@@ -169,16 +170,22 @@ impl LibBench {
 
         let sentinel = Sentinel::new("iai_callgrind::bench::");
         let output = if let Some(bench_id) = &self.id {
-            CallgrindOutput::init(
+            ToolOutput::with_init(
+                ValgrindTool::Callgrind,
                 &config.meta.target_dir,
                 &group.module,
                 &format!("{}.{}", &self.function, bench_id),
             )
         } else {
-            CallgrindOutput::init(&config.meta.target_dir, &group.module, &self.function)
+            ToolOutput::with_init(
+                ValgrindTool::Callgrind,
+                &config.meta.target_dir,
+                &group.module,
+                &self.function,
+            )
         };
 
-        command.run(
+        callgrind_command.run(
             self.callgrind_args.clone(),
             &config.bench_bin,
             &args,
@@ -191,14 +198,6 @@ impl LibBench {
             self.id.clone(),
             self.args.clone(),
         );
-
-        if let Some(flamegraph_config) = self.flamegraph.clone() {
-            Flamegraph::new(header.to_title(), flamegraph_config).create(
-                &output,
-                Some(&sentinel),
-                &config.meta.project_root,
-            )?;
-        }
 
         let new_costs = SentinelParser::new(&sentinel).parse(&output)?;
 
@@ -214,6 +213,14 @@ impl LibBench {
         header.print();
         let string = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
         print!("{string}");
+
+        if let Some(flamegraph_config) = self.flamegraph.clone() {
+            Flamegraph::new(header.to_title(), flamegraph_config).create(
+                &output,
+                Some(&sentinel),
+                &config.meta.project_root,
+            )?;
+        }
 
         if let Some(regression) = &self.regression {
             regression.check_and_print(&new_costs, old_costs.as_ref())?;
