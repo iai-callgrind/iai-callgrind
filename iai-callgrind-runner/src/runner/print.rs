@@ -4,7 +4,6 @@ use anyhow::Result;
 use colored::Colorize;
 
 use super::callgrind::model::Costs;
-use super::callgrind::CallgrindStats;
 use crate::api::EventKind;
 use crate::util::{to_string_signed_short, truncate_str_utf8};
 
@@ -15,11 +14,7 @@ pub struct Header {
 }
 
 pub trait Formatter {
-    fn format(
-        &self,
-        new_stats: &CallgrindStats,
-        old_stats: Option<&CallgrindStats>,
-    ) -> Result<String>;
+    fn format(&self, new_costs: &Costs, old_costs: Option<&Costs>) -> Result<String>;
 }
 
 #[derive(Clone)]
@@ -145,13 +140,9 @@ impl Default for VerticalFormat {
 }
 
 impl Formatter for VerticalFormat {
-    fn format(
-        &self,
-        new_stats: &CallgrindStats,
-        old_stats: Option<&CallgrindStats>,
-    ) -> Result<String> {
-        let mut new_costs = new_stats.0.clone();
-        let mut old_costs = old_stats.map(|c| c.0.clone());
+    fn format(&self, new_costs: &Costs, old_costs: Option<&Costs>) -> Result<String> {
+        let mut new_costs = new_costs.clone();
+        let mut old_costs = old_costs.cloned();
         let mut result = String::new();
 
         for event_kind in &self.event_kinds {

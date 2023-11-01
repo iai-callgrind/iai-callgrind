@@ -46,9 +46,6 @@ pub struct CallgrindOptions {
 #[derive(Debug, Clone)]
 pub struct CallgrindOutput(PathBuf);
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CallgrindStats(pub Costs);
-
 #[derive(Clone, Debug)]
 pub struct CallgrindSummary {
     l1_hits: u64,
@@ -299,21 +296,58 @@ impl Display for CallgrindOutput {
     }
 }
 
+impl TryFrom<&Costs> for CallgrindSummary {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &Costs) -> std::result::Result<Self, Self::Error> {
+        use EventKind::*;
+        //         0   1  2    3    4    5    6    7    8
+        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
+        let instructions = value.try_cost_by_kind(&Ir)?;
+        let total_data_cache_reads = value.try_cost_by_kind(&Dr)?;
+        let total_data_cache_writes = value.try_cost_by_kind(&Dw)?;
+        let l1_instructions_cache_read_misses = value.try_cost_by_kind(&I1mr)?;
+        let l1_data_cache_read_misses = value.try_cost_by_kind(&D1mr)?;
+        let l1_data_cache_write_misses = value.try_cost_by_kind(&D1mw)?;
+        let l3_instructions_cache_read_misses = value.try_cost_by_kind(&ILmr)?;
+        let l3_data_cache_read_misses = value.try_cost_by_kind(&DLmr)?;
+        let l3_data_cache_write_misses = value.try_cost_by_kind(&DLmw)?;
+
+        let ram_hits = l3_instructions_cache_read_misses
+            + l3_data_cache_read_misses
+            + l3_data_cache_write_misses;
+        let l1_data_accesses = l1_data_cache_read_misses + l1_data_cache_write_misses;
+        let l1_miss = l1_instructions_cache_read_misses + l1_data_accesses;
+        let l3_accesses = l1_miss;
+        let l3_hits = l3_accesses - ram_hits;
+
+        let total_memory_rw = instructions + total_data_cache_reads + total_data_cache_writes;
+        let l1_hits = total_memory_rw - ram_hits - l3_hits;
+
+        // Uses Itamar Turner-Trauring's formula from https://pythonspeed.com/articles/consistent-benchmarking-in-ci/
+        let cycles = l1_hits + (5 * l3_hits) + (35 * ram_hits);
+
+        Ok(Self {
+            l1_hits,
+            l3_hits,
+            ram_hits,
+            total_memory_rw,
+            cycles,
+        })
+    }
+}
+
 impl Regression {
-    /// Check regression of the [`CallgrindStats`] for the configured [`EventKind`]s and print it
+    /// Check regression of the [`Costs`] for the configured [`EventKind`]s and print it
     ///
-    /// If the old `CallgrindStats` is None then no regression checks are performed and this method
-    /// returns [`Ok`].
+    /// If the old `Costs` is None then no regression checks are performed and this method returns
+    /// [`Ok`].
     ///
     /// # Errors
     ///
     /// Returns an [`anyhow::Error`] with the only source [`Error::RegressionError`] if a regression
     /// error occurred
-    pub fn check_and_print(
-        &self,
-        new: &CallgrindStats,
-        old: Option<&CallgrindStats>,
-    ) -> Result<()> {
+    pub fn check_and_print(&self, new: &Costs, old: Option<&Costs>) -> Result<()> {
         let regressions = self.check(new, old);
         if regressions.is_empty() {
             return Ok(());
@@ -347,15 +381,11 @@ impl Regression {
         Err(Error::RegressionError(self.fail_fast).into())
     }
 
-    fn check(
-        &self,
-        new: &CallgrindStats,
-        old: Option<&CallgrindStats>,
-    ) -> Vec<(EventKind, u64, u64, f64, f64)> {
+    fn check(&self, new: &Costs, old: Option<&Costs>) -> Vec<(EventKind, u64, u64, f64, f64)> {
         let mut regressions = vec![];
         if let Some(old) = old {
-            let mut new_costs = Cow::Borrowed(&new.0);
-            let mut old_costs = Cow::Borrowed(&old.0);
+            let mut new_costs = Cow::Borrowed(new);
+            let mut old_costs = Cow::Borrowed(old);
 
             for (event_kind, limit) in &self.limits {
                 if event_kind.is_derived() {
@@ -441,7 +471,7 @@ mod tests {
     #[rstest]
     fn test_regression_check_when_old_is_none() {
         let regression = Regression::default();
-        let new = CallgrindStats(cachesim_costs([0, 0, 0, 0, 0, 0, 0, 0, 0]));
+        let new = cachesim_costs([0, 0, 0, 0, 0, 0, 0, 0, 0]);
         let old = None;
 
         assert!(regression.check(&new, old).is_empty());
@@ -513,8 +543,8 @@ mod tests {
             ..Default::default()
         };
 
-        let new = CallgrindStats(cachesim_costs(new));
-        let old = Some(CallgrindStats(cachesim_costs(old)));
+        let new = cachesim_costs(new);
+        let old = Some(cachesim_costs(old));
 
         assert_eq!(regression.check(&new, old.as_ref()), expected);
     }

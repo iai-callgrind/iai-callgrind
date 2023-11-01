@@ -145,12 +145,12 @@ impl Assistant {
         )?;
 
         let sentinel = Sentinel::from_path(&config.module, &self.name);
-        let new_stats = SentinelParser::new(&sentinel).parse(&output)?;
+        let new_costs = SentinelParser::new(&sentinel).parse(&output)?;
 
         let old_output = output.to_old_output();
 
         #[allow(clippy::if_then_some_else_none)]
-        let old_stats = if old_output.exists() {
+        let old_costs = if old_output.exists() {
             Some(SentinelParser::new(&sentinel).parse(&old_output)?)
         } else {
             None
@@ -163,11 +163,11 @@ impl Assistant {
         )
         .print();
 
-        let output = VerticalFormat::default().format(&new_stats, old_stats.as_ref())?;
+        let output = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
         print!("{output}");
 
         if let Some(regression) = &self.regression {
-            match regression.check_and_print(&new_stats, old_stats.as_ref()) {
+            match regression.check_and_print(&new_costs, old_costs.as_ref()) {
                 Ok(()) => {}
                 Err(error) if regression.fail_fast => return Err(error),
                 Err(_) => *is_regressed = true,
@@ -302,23 +302,23 @@ impl BinBench {
             )?;
         }
 
-        let new_stats = SummaryParser.parse(&output)?;
+        let new_costs = SummaryParser.parse(&output)?;
 
         let old_output = output.to_old_output();
 
         #[allow(clippy::if_then_some_else_none)]
-        let old_stats = if old_output.exists() {
+        let old_costs = if old_output.exists() {
             Some(SummaryParser.parse(&old_output)?)
         } else {
             None
         };
 
         header.print();
-        let output = VerticalFormat::default().format(&new_stats, old_stats.as_ref())?;
+        let output = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
         print!("{output}");
 
         if let Some(regression) = &self.regression {
-            match regression.check_and_print(&new_stats, old_stats.as_ref()) {
+            match regression.check_and_print(&new_costs, old_costs.as_ref()) {
                 Ok(()) => {}
                 Err(error) if regression.fail_fast => return Err(error),
                 Err(_) => *is_regressed = true,

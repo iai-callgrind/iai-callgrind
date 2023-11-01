@@ -200,23 +200,23 @@ impl LibBench {
             )?;
         }
 
-        let new_stats = SentinelParser::new(&sentinel).parse(&output)?;
+        let new_costs = SentinelParser::new(&sentinel).parse(&output)?;
 
         let old_output = output.to_old_output();
 
         #[allow(clippy::if_then_some_else_none)]
-        let old_stats = if old_output.exists() {
+        let old_costs = if old_output.exists() {
             Some(SentinelParser::new(&sentinel).parse(&old_output)?)
         } else {
             None
         };
 
         header.print();
-        let string = VerticalFormat::default().format(&new_stats, old_stats.as_ref())?;
+        let string = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
         print!("{string}");
 
         if let Some(regression) = &self.regression {
-            regression.check_and_print(&new_stats, old_stats.as_ref())?;
+            regression.check_and_print(&new_costs, old_costs.as_ref())?;
         }
 
         Ok(())
