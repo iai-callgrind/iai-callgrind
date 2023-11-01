@@ -183,7 +183,17 @@ macro_rules! main {
             cmd.arg(module_path!());
             cmd.arg(this_args.next().unwrap()); // The executable benchmark binary
 
-            let mut benchmark = $crate::internal::InternalBinaryBenchmark::default();
+            let mut config: Option<$crate::internal::InternalBinaryBenchmarkConfig> = None;
+            $(
+                config = Some($config.into());
+            )?
+
+            let mut benchmark = $crate::internal::InternalBinaryBenchmark {
+                config: config.unwrap_or_default(),
+                command_line_args: this_args.collect(),
+                ..Default::default()
+            };
+
             $(
                 let mut group = $crate::BinaryBenchmarkGroup::from(
                     $crate::internal::InternalBinaryBenchmarkGroup {
@@ -202,22 +212,6 @@ macro_rules! main {
 
                 benchmark.groups.push(group);
             )+
-
-            let mut config: Option<$crate::internal::InternalBinaryBenchmarkConfig> = None;
-            $(
-                config = Some($config.into());
-            )?
-
-            benchmark.config = if let Some(mut config) = config {
-                config.raw_callgrind_args.extend(this_args);
-                config
-            } else {
-                $crate::internal::InternalBinaryBenchmarkConfig {
-                    raw_callgrind_args:
-                        $crate::internal::InternalRawCallgrindArgs::from_iter(this_args),
-                    ..Default::default()
-                }
-            };
 
             let encoded = $crate::bincode::serialize(&benchmark).expect("Encoded benchmark");
             let mut child = cmd
@@ -296,9 +290,10 @@ macro_rules! main {
 
             let mut benchmark = $crate::internal::InternalLibraryBenchmark {
                 config: config.unwrap_or_default(),
-                groups: vec![],
-                command_line_args: this_args.collect()
+                command_line_args: this_args.collect(),
+                ..Default::default()
             };
+
             $(
                 let mut group = $crate::internal::InternalLibraryBenchmarkGroup {
                     id: Some(stringify!($group).to_owned()),

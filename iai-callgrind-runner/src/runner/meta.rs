@@ -183,9 +183,6 @@ fn try_regression_config_from_env() -> Result<Option<RegressionConfig>> {
 
             regression.fail_fast = Some(fail_fast);
         } else {
-            // TODO: Instead of issuing a warning it's maybe better to overwrite the value of
-            // fail_fast in subsequent RegressionConfigs from within benchmark files for example
-            // a config in the `main!` macro.
             warn!(
                 "Ignoring IAI_CALLGRIND_REGRESSION_FAIL_FAST: No IAI_CALLGRIND_REGRESSION \
                  environment variable found"

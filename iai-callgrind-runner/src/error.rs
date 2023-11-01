@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::os::unix::process::ExitStatusExt;
 use std::path::PathBuf;
 use std::process::Output;
 
@@ -48,11 +49,23 @@ impl Display for Error {
             }
             Self::BenchmarkLaunchError(output) => {
                 write_all_to_stderr(&output.stderr);
-                write!(
-                    f,
-                    "Error launching benchmark: Callgrind exit code was: {}",
-                    output.status.code().unwrap()
-                )
+                if let Some(code) = output.status.code() {
+                    write!(
+                        f,
+                        "Error launching benchmark: Callgrind exit code was: '{code}'"
+                    )
+                } else if let Some(signal) = output.status.signal() {
+                    write!(
+                        f,
+                        "Error launching benchmark: Callgrind was terminated by a signal \
+                         '{signal}'"
+                    )
+                } else {
+                    write!(
+                        f,
+                        "Error launching benchmark: Callgrind terminated abnormally"
+                    )
+                }
             }
             Self::InvalidCallgrindBoolArgument((option, value)) => {
                 write!(

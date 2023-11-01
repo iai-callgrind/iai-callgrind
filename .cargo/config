@@ -1,3 +1,5 @@
 [profile.coverage]
 inherits = "test"
+opt-level = 0
+split-debuginfo = "off"
 debug = true

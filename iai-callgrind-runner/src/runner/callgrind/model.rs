@@ -71,7 +71,7 @@ impl Costs {
         self.0.get_index(index).map(|(_, c)| *c)
     }
 
-    /// Return the cost of the [`EventType`] if present
+    /// Return the cost of the [`EventKind`] if present
     ///
     /// This operation is O(1)
     pub fn cost_by_kind(&self, kind: &EventKind) -> Option<u64> {
@@ -85,44 +85,6 @@ impl Costs {
 
     pub fn event_kinds(&self) -> Vec<EventKind> {
         self.0.iter().map(|(k, _)| *k).collect()
-    }
-
-    pub fn to_callgrind_summary(&self) -> Result<CallgrindSummary> {
-        use EventKind::*;
-        //         0   1  2    3    4    5    6    7    8
-        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
-        let instructions = self.try_cost_by_kind(&Ir)?;
-        let total_data_cache_reads = self.try_cost_by_kind(&Dr)?;
-        let total_data_cache_writes = self.try_cost_by_kind(&Dw)?;
-        let l1_instructions_cache_read_misses = self.try_cost_by_kind(&I1mr)?;
-        let l1_data_cache_read_misses = self.try_cost_by_kind(&D1mr)?;
-        let l1_data_cache_write_misses = self.try_cost_by_kind(&D1mw)?;
-        let l3_instructions_cache_read_misses = self.try_cost_by_kind(&ILmr)?;
-        let l3_data_cache_read_misses = self.try_cost_by_kind(&DLmr)?;
-        let l3_data_cache_write_misses = self.try_cost_by_kind(&DLmw)?;
-
-        let ram_hits = l3_instructions_cache_read_misses
-            + l3_data_cache_read_misses
-            + l3_data_cache_write_misses;
-        let l1_data_accesses = l1_data_cache_read_misses + l1_data_cache_write_misses;
-        let l1_miss = l1_instructions_cache_read_misses + l1_data_accesses;
-        let l3_accesses = l1_miss;
-        let l3_hits = l3_accesses - ram_hits;
-
-        let total_memory_rw = instructions + total_data_cache_reads + total_data_cache_writes;
-        let l1_hits = total_memory_rw - ram_hits - l3_hits;
-
-        // Uses Itamar Turner-Trauring's formula from https://pythonspeed.com/articles/consistent-benchmarking-in-ci/
-        let cycles = l1_hits + (5 * l3_hits) + (35 * ram_hits);
-
-        Ok(CallgrindSummary {
-            instructions,
-            l1_hits,
-            l3_hits,
-            ram_hits,
-            total_memory_rw,
-            cycles,
-        })
     }
 
     /// Calculate and add derived summary events (i.e. estimated cycles) in-place
@@ -140,8 +102,7 @@ impl Costs {
             ram_hits,
             total_memory_rw,
             cycles,
-            ..
-        } = self.to_callgrind_summary()?;
+        } = (&*self).try_into()?;
 
         self.0.insert(EventKind::L1hits, l1_hits);
         self.0.insert(EventKind::LLhits, l3_hits);

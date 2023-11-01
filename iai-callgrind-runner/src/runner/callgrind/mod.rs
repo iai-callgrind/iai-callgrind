@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
 use anyhow::{anyhow, Context, Result};
-use colored::{ColoredString, Colorize};
+use colored::Colorize;
 use log::{debug, error, info, Level};
 
 use self::model::Costs;
@@ -26,8 +26,8 @@ use super::meta::Metadata;
 use crate::api::{self, EventKind, ExitWith, RegressionConfig};
 use crate::error::Error;
 use crate::util::{
-    resolve_binary_path, to_string_signed_short, truncate_str_utf8, write_all_to_stderr,
-    write_all_to_stdout,
+    percentage_diff, resolve_binary_path, to_string_signed_short, truncate_str_utf8,
+    write_all_to_stderr, write_all_to_stdout,
 };
 
 pub struct CallgrindCommand {
@@ -46,12 +46,8 @@ pub struct CallgrindOptions {
 #[derive(Debug, Clone)]
 pub struct CallgrindOutput(PathBuf);
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CallgrindStats(pub Costs);
-
 #[derive(Clone, Debug)]
 pub struct CallgrindSummary {
-    instructions: u64,
     l1_hits: u64,
     l3_hits: u64,
     ram_hits: u64,
@@ -88,7 +84,13 @@ impl CallgrindCommand {
         output: Output,
         exit_with: Option<&ExitWith>,
     ) -> Result<(Vec<u8>, Vec<u8>)> {
-        match (output.status.code().unwrap(), exit_with) {
+        let status_code = if let Some(code) = output.status.code() {
+            code
+        } else {
+            return Err(Error::BenchmarkLaunchError(output).into());
+        };
+
+        match (status_code, exit_with) {
             (0i32, None | Some(ExitWith::Code(0i32) | ExitWith::Success)) => {
                 Ok((output.stdout, output.stderr))
             }
@@ -224,11 +226,6 @@ impl CallgrindOutput {
     /// Initialize and create the output directory and organize files
     ///
     /// This method moves the old output to `callgrind.*.out.old`
-    // TODO: Do not move the old output. Instead use a .tmp.out file until CallgrindOutput is
-    // closed. Organize files only on close. In case of (parse, regression, ...) errors no file
-    // movements should happen.
-    // TODO: Rename .out.old to .old.out
-    // TODO: Implement drop removing .tmp.out if it still exists ?
     pub fn init(base_dir: &Path, module: &str, name: &str) -> Self {
         let current = base_dir;
         let module_path: PathBuf = module.split("::").collect();
@@ -299,108 +296,58 @@ impl Display for CallgrindOutput {
     }
 }
 
-impl CallgrindStats {
-    fn percentage_diff(new: u64, old: u64) -> ColoredString {
-        fn format(string: &ColoredString) -> ColoredString {
-            ColoredString::from(format!(" ({string})").as_str())
-        }
+impl TryFrom<&Costs> for CallgrindSummary {
+    type Error = anyhow::Error;
 
-        if new == old {
-            return format(&"No Change".bright_black());
-        }
+    fn try_from(value: &Costs) -> std::result::Result<Self, Self::Error> {
+        use EventKind::*;
+        //         0   1  2    3    4    5    6    7    8
+        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
+        let instructions = value.try_cost_by_kind(&Ir)?;
+        let total_data_cache_reads = value.try_cost_by_kind(&Dr)?;
+        let total_data_cache_writes = value.try_cost_by_kind(&Dw)?;
+        let l1_instructions_cache_read_misses = value.try_cost_by_kind(&I1mr)?;
+        let l1_data_cache_read_misses = value.try_cost_by_kind(&D1mr)?;
+        let l1_data_cache_write_misses = value.try_cost_by_kind(&D1mw)?;
+        let l3_instructions_cache_read_misses = value.try_cost_by_kind(&ILmr)?;
+        let l3_data_cache_read_misses = value.try_cost_by_kind(&DLmr)?;
+        let l3_data_cache_write_misses = value.try_cost_by_kind(&DLmw)?;
 
-        #[allow(clippy::cast_precision_loss)]
-        let new = new as f64;
-        #[allow(clippy::cast_precision_loss)]
-        let old = old as f64;
+        let ram_hits = l3_instructions_cache_read_misses
+            + l3_data_cache_read_misses
+            + l3_data_cache_write_misses;
+        let l1_data_accesses = l1_data_cache_read_misses + l1_data_cache_write_misses;
+        let l1_miss = l1_instructions_cache_read_misses + l1_data_accesses;
+        let l3_accesses = l1_miss;
+        let l3_hits = l3_accesses - ram_hits;
 
-        let diff = (new - old) / old;
-        let pct = diff * 100.0f64;
+        let total_memory_rw = instructions + total_data_cache_reads + total_data_cache_writes;
+        let l1_hits = total_memory_rw - ram_hits - l3_hits;
 
-        if pct.is_sign_positive() {
-            format(
-                &format!("{:>+6}%", to_string_signed_short(pct))
-                    .bright_red()
-                    .bold(),
-            )
-        } else {
-            format(
-                &format!("{:>+6}%", to_string_signed_short(pct))
-                    .bright_green()
-                    .bold(),
-            )
-        }
-    }
+        // Uses Itamar Turner-Trauring's formula from https://pythonspeed.com/articles/consistent-benchmarking-in-ci/
+        let cycles = l1_hits + (5 * l3_hits) + (35 * ram_hits);
 
-    pub fn print(&self, old: Option<&CallgrindStats>) {
-        let summary = self.0.to_callgrind_summary().unwrap();
-        let old_summary = old.map(|stat| stat.0.to_callgrind_summary().unwrap());
-        println!(
-            "  Instructions:     {:>15}{}",
-            summary.instructions.to_string().bold(),
-            match &old_summary {
-                Some(old) => Self::percentage_diff(summary.instructions, old.instructions),
-                None => String::new().normal(),
-            }
-        );
-        println!(
-            "  L1 Hits:          {:>15}{}",
-            summary.l1_hits.to_string().bold(),
-            match &old_summary {
-                Some(old) => Self::percentage_diff(summary.l1_hits, old.l1_hits),
-                None => String::new().normal(),
-            }
-        );
-        println!(
-            "  L2 Hits:          {:>15}{}",
-            summary.l3_hits.to_string().bold(),
-            match &old_summary {
-                Some(old) => Self::percentage_diff(summary.l3_hits, old.l3_hits),
-                None => String::new().normal(),
-            }
-        );
-        println!(
-            "  RAM Hits:         {:>15}{}",
-            summary.ram_hits.to_string().bold(),
-            match &old_summary {
-                Some(old) => Self::percentage_diff(summary.ram_hits, old.ram_hits),
-                None => String::new().normal(),
-            }
-        );
-        println!(
-            "  Total read+write: {:>15}{}",
-            summary.total_memory_rw.to_string().bold(),
-            match &old_summary {
-                Some(old) => Self::percentage_diff(summary.total_memory_rw, old.total_memory_rw),
-                None => String::new().normal(),
-            }
-        );
-        println!(
-            "  Estimated Cycles: {:>15}{}",
-            summary.cycles.to_string().bold(),
-            match &old_summary {
-                Some(old) => Self::percentage_diff(summary.cycles, old.cycles),
-                None => String::new().normal(),
-            }
-        );
+        Ok(Self {
+            l1_hits,
+            l3_hits,
+            ram_hits,
+            total_memory_rw,
+            cycles,
+        })
     }
 }
 
 impl Regression {
-    /// Check regression of the [`CallgrindStats`] for the configured [`EventKind`]s and print it
+    /// Check regression of the [`Costs`] for the configured [`EventKind`]s and print it
     ///
-    /// If the old `CallgrindStats` is None then no regression checks are performed and this method
-    /// returns [`Ok`].
+    /// If the old `Costs` is None then no regression checks are performed and this method returns
+    /// [`Ok`].
     ///
     /// # Errors
     ///
     /// Returns an [`anyhow::Error`] with the only source [`Error::RegressionError`] if a regression
     /// error occurred
-    pub fn check_and_print(
-        &self,
-        new: &CallgrindStats,
-        old: Option<&CallgrindStats>,
-    ) -> Result<()> {
+    pub fn check_and_print(&self, new: &Costs, old: Option<&Costs>) -> Result<()> {
         let regressions = self.check(new, old);
         if regressions.is_empty() {
             return Ok(());
@@ -434,15 +381,11 @@ impl Regression {
         Err(Error::RegressionError(self.fail_fast).into())
     }
 
-    fn check(
-        &self,
-        new: &CallgrindStats,
-        old: Option<&CallgrindStats>,
-    ) -> Vec<(EventKind, u64, u64, f64, f64)> {
+    fn check(&self, new: &Costs, old: Option<&Costs>) -> Vec<(EventKind, u64, u64, f64, f64)> {
         let mut regressions = vec![];
         if let Some(old) = old {
-            let mut new_costs = Cow::Borrowed(&new.0);
-            let mut old_costs = Cow::Borrowed(&old.0);
+            let mut new_costs = Cow::Borrowed(new);
+            let mut old_costs = Cow::Borrowed(old);
 
             for (event_kind, limit) in &self.limits {
                 if event_kind.is_derived() {
@@ -458,13 +401,7 @@ impl Regression {
                     new_costs.cost_by_kind(event_kind),
                     old_costs.cost_by_kind(event_kind),
                 ) {
-                    #[allow(clippy::cast_precision_loss)]
-                    let new_cost_float = new_cost as f64;
-                    #[allow(clippy::cast_precision_loss)]
-                    let old_cost_float = old_cost as f64;
-
-                    let diff = (new_cost_float - old_cost_float) / old_cost_float;
-                    let pct = diff * 100.0f64;
+                    let pct = percentage_diff(new_cost, old_cost);
                     if limit.is_sign_positive() {
                         if pct > *limit {
                             regressions.push((*event_kind, new_cost, old_cost, pct, *limit));
@@ -528,7 +465,7 @@ mod tests {
     #[rstest]
     fn test_regression_check_when_old_is_none() {
         let regression = Regression::default();
-        let new = CallgrindStats(cachesim_costs([0, 0, 0, 0, 0, 0, 0, 0, 0]));
+        let new = cachesim_costs([0, 0, 0, 0, 0, 0, 0, 0, 0]);
         let old = None;
 
         assert!(regression.check(&new, old).is_empty());
@@ -600,8 +537,8 @@ mod tests {
             ..Default::default()
         };
 
-        let new = CallgrindStats(cachesim_costs(new));
-        let old = Some(CallgrindStats(cachesim_costs(old)));
+        let new = cachesim_costs(new);
+        let old = Some(cachesim_costs(old));
 
         assert_eq!(regression.check(&new, old.as_ref()), expected);
     }

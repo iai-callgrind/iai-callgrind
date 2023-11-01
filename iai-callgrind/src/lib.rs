@@ -673,7 +673,7 @@ impl BinaryBenchmarkConfig {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        self.0.raw_callgrind_args.extend(args);
+        self.0.raw_callgrind_args.extend_ignore_flag(args);
         self
     }
 
@@ -1475,7 +1475,7 @@ impl LibraryBenchmarkConfig {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        self.0.raw_callgrind_args.extend(args);
+        self.0.raw_callgrind_args.extend_ignore_flag(args);
         self
     }
 
@@ -2340,7 +2340,7 @@ impl Run {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        self.0.config.raw_callgrind_args.extend(args);
+        self.0.config.raw_callgrind_args.extend_ignore_flag(args);
         self
     }
 

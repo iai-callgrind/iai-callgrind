@@ -1,6 +1,7 @@
 //! This module provides common utility functions
 use std::ffi::OsStr;
 use std::io::{self, stdin, BufWriter, Read, Write};
+use std::ops::Neg;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -183,19 +184,54 @@ pub fn to_string_signed_short(n: f64) -> String {
     let n_abs = n.abs();
 
     if n_abs < 10.0f64 {
-        format!("{n:+.6}")
-    } else if n_abs < 100.0f64 {
         format!("{n:+.5}")
-    } else if n_abs < 1000.0f64 {
+    } else if n_abs < 100.0f64 {
         format!("{n:+.4}")
-    } else if n_abs < 10000.0f64 {
+    } else if n_abs < 1000.0f64 {
         format!("{n:+.3}")
-    } else if n_abs < 100_000.0_f64 {
+    } else if n_abs < 10000.0f64 {
         format!("{n:+.2}")
-    } else if n_abs < 1_000_000.0_f64 {
+    } else if n_abs < 100_000.0_f64 {
         format!("{n:+.1}")
     } else {
         format!("{n:+.0}")
+    }
+}
+
+pub fn percentage_diff(new: u64, old: u64) -> f64 {
+    if new == old {
+        return 0f64;
+    }
+
+    #[allow(clippy::cast_precision_loss)]
+    let new = new as f64;
+    #[allow(clippy::cast_precision_loss)]
+    let old = old as f64;
+
+    let diff = (new - old) / old;
+    diff * 100.0f64
+}
+
+pub fn factor_diff(new: u64, old: u64) -> f64 {
+    if new == old {
+        return 1f64;
+    }
+
+    #[allow(clippy::cast_precision_loss)]
+    let new_float = new as f64;
+    #[allow(clippy::cast_precision_loss)]
+    let old_float = old as f64;
+
+    if new > old {
+        if old == 0 {
+            f64::INFINITY
+        } else {
+            new_float / old_float
+        }
+    } else if new == 0 {
+        f64::NEG_INFINITY
+    } else {
+        (old_float / new_float).neg()
     }
 }
 
@@ -236,5 +272,16 @@ mod tests {
     #[case::multi_byte_then_uni_4("µa", 4, "µa")]
     fn test_truncate_str(#[case] input: &str, #[case] len: usize, #[case] expected: &str) {
         assert_eq!(truncate_str_utf8(input, len), expected);
+    }
+
+    #[rstest]
+    #[case::zero(0, 0, 1f64)]
+    #[case::infinity(1, 0, f64::INFINITY)]
+    #[case::negative_infinity(0, 1, f64::NEG_INFINITY)]
+    #[case::factor_one(1, 1, 1f64)]
+    #[case::factor_minus_two(1, 2, -2f64)]
+    #[case::factor_two(2, 1, 2f64)]
+    fn test_factor_diff_eq(#[case] a: u64, #[case] b: u64, #[case] expected: f64) {
+        assert_eq!(factor_diff(a, b), expected);
     }
 }

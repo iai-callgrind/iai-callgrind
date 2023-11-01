@@ -1,15 +1,16 @@
 use anyhow::Result;
 use log::{debug, trace};
 
+use super::model::Costs;
 use super::parser::Parser;
-use super::{CallgrindOutput, CallgrindStats};
+use super::CallgrindOutput;
 use crate::error::Error;
 use crate::runner::callgrind::parser::parse_header;
 
 pub struct SummaryParser;
 
 impl Parser for SummaryParser {
-    type Output = CallgrindStats;
+    type Output = Costs;
 
     fn parse(&self, output: &CallgrindOutput) -> Result<Self::Output>
     where
@@ -45,7 +46,7 @@ impl Parser for SummaryParser {
         }
 
         if found {
-            Ok(CallgrindStats(costs))
+            Ok(costs)
         } else {
             Err(Error::ParseError((
                 output.as_path().to_owned(),

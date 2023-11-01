@@ -1,6 +1,7 @@
+//! The api contains all elements which the `runner` can understand
+use std::ffi::OsString;
+use std::fmt::Display;
 use std::path::PathBuf;
-/// The api contains all elements which the `runner` can understand
-use std::{ffi::OsString, fmt::Display};
 
 use serde::{Deserialize, Serialize};
 
@@ -21,6 +22,7 @@ pub struct Assistant {
 pub struct BinaryBenchmark {
     pub config: BinaryBenchmarkConfig,
     pub groups: Vec<BinaryBenchmarkGroup>,
+    pub command_line_args: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -236,7 +238,7 @@ impl BinaryBenchmarkConfig {
             self.exit_with = update_option(&self.exit_with, &other.exit_with);
 
             self.raw_callgrind_args
-                .extend(other.raw_callgrind_args.0.iter());
+                .extend_ignore_flag(other.raw_callgrind_args.0.iter());
 
             self.envs.extend_from_slice(&other.envs);
             self.flamegraph = update_option(&self.flamegraph, &other.flamegraph);
@@ -263,6 +265,16 @@ impl Default for Direction {
 }
 
 impl EventKind {
+    /// Return true if this `EventKind` is a derived event
+    ///
+    /// Derived events are calculated from Callgrind's native event types. See also
+    /// [`crate::runner::callgrind::model::Costs::make_summary`]. Currently all derived events are:
+    ///
+    /// * [`EventKind::L1hits`]
+    /// * [`EventKind::LLhits`]
+    /// * [`EventKind::RamHits`]
+    /// * [`EventKind::TotalRW`]
+    /// * [`EventKind::EstimatedCycles`]
     pub fn is_derived(&self) -> bool {
         matches!(
             self,
@@ -346,13 +358,12 @@ where
             "AcCost2" => Self::AcCost2,
             "SpLoss1" => Self::SpLoss1,
             "SpLoss2" => Self::SpLoss2,
+            "L1hits" => Self::L1hits,
+            "LLhits" => Self::LLhits,
+            "RamHits" => Self::RamHits,
+            "TotalRW" => Self::TotalRW,
+            "EstimatedCycles" => Self::EstimatedCycles,
             unknown => panic!("Unknown event type: {unknown}"),
-            // TODO: ADD MISSING EVENT TYPES
-            // L1hits,
-            // LLhits,
-            // RamHits,
-            // TotalRW,
-            // EstimatedCycles,
         }
     }
 }
@@ -364,7 +375,7 @@ impl LibraryBenchmarkConfig {
     {
         for other in others.into_iter().flatten() {
             self.raw_callgrind_args
-                .extend(other.raw_callgrind_args.0.iter());
+                .extend_ignore_flag(other.raw_callgrind_args.0.iter());
             self.env_clear = update_option(&self.env_clear, &other.env_clear);
             self.envs.extend_from_slice(&other.envs);
             self.flamegraph = update_option(&self.flamegraph, &other.flamegraph);
@@ -393,7 +404,7 @@ impl RawCallgrindArgs {
         args.into_iter().collect::<Self>()
     }
 
-    pub fn extend<I, T>(&mut self, args: T) -> &mut Self
+    pub fn extend_ignore_flag<I, T>(&mut self, args: T)
     where
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
@@ -406,17 +417,22 @@ impl RawCallgrindArgs {
                 format!("--{string}")
             }
         }));
-        self
     }
 
-    pub fn extend_from_command_line_args(&mut self, other: &[String]) {
-        // The last argument is usually --bench. This argument comes from cargo and does not belong
-        // to the arguments passed from the main macro. So, we're removing it if it is there.
-        if other.ends_with(&["--bench".to_owned()]) {
-            self.0.extend_from_slice(&other[..other.len() - 1]);
-        } else {
-            self.0.extend_from_slice(other);
+    pub fn from_command_line_args(args: Vec<String>) -> Self {
+        let mut this = Self(Vec::default());
+        if !args.is_empty() {
+            let mut iter = args.into_iter();
+            let mut last = iter.next().unwrap();
+            for elem in iter {
+                this.0.push(last);
+                last = elem;
+            }
+            if last.as_str() != "--bench" {
+                this.0.push(last);
+            }
         }
+        this
     }
 }
 
@@ -426,7 +442,7 @@ where
 {
     fn from_iter<T: IntoIterator<Item = I>>(iter: T) -> Self {
         let mut this = Self::default();
-        this.extend(iter);
+        this.extend_ignore_flag(iter);
         this
     }
 }
@@ -502,5 +518,23 @@ mod tests {
         #[case] expected: Option<bool>,
     ) {
         assert_eq!(update_option(&first, &other), expected);
+    }
+
+    #[rstest]
+    #[case::empty(vec![], &[], vec![])]
+    #[case::empty_base(vec![], &["--a=yes"], vec!["--a=yes"])]
+    #[case::no_flags(vec![], &["a=yes"], vec!["--a=yes"])]
+    #[case::already_exists_single(vec!["--a=yes"], &["--a=yes"], vec!["--a=yes","--a=yes"])]
+    #[case::already_exists_when_multiple(vec!["--a=yes", "--b=yes"], &["--a=yes"], vec!["--a=yes", "--b=yes", "--a=yes"])]
+    fn test_raw_callgrind_args_extend_ignore_flags(
+        #[case] base: Vec<&str>,
+        #[case] data: &[&str],
+        #[case] expected: Vec<&str>,
+    ) {
+        let mut base =
+            RawCallgrindArgs(base.iter().map(std::string::ToString::to_string).collect());
+        base.extend_ignore_flag(data.iter().map(std::string::ToString::to_string));
+
+        assert_eq!(base.0.into_iter().collect::<Vec<String>>(), expected);
     }
 }

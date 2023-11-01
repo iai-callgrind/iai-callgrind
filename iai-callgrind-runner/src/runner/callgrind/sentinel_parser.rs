@@ -1,8 +1,9 @@
 use anyhow::Result;
 use log::{debug, trace};
 
+use super::model::Costs;
 use super::parser::{Parser, Sentinel};
-use super::{CallgrindOutput, CallgrindStats};
+use super::CallgrindOutput;
 use crate::error::Error;
 use crate::runner::callgrind::parser::parse_header;
 
@@ -19,7 +20,7 @@ impl SentinelParser {
 }
 
 impl Parser for SentinelParser {
-    type Output = CallgrindStats;
+    type Output = Costs;
 
     fn parse(&self, output: &CallgrindOutput) -> Result<Self::Output>
     where
@@ -76,7 +77,7 @@ impl Parser for SentinelParser {
         }
 
         if found {
-            Ok(CallgrindStats(costs))
+            Ok(costs)
         } else {
             Err(Error::ParseError((
                 output.as_path().to_owned(),

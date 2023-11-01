@@ -14,8 +14,8 @@ use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Regression};
 use super::meta::Metadata;
-use super::print::Header;
-use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig};
+use super::print::{Formatter, Header, VerticalFormat};
+use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig, RawCallgrindArgs};
 use crate::error::Error;
 use crate::util::{copy_directory, receive_benchmark, write_all_to_stderr, write_all_to_stdout};
 
@@ -145,12 +145,12 @@ impl Assistant {
         )?;
 
         let sentinel = Sentinel::from_path(&config.module, &self.name);
-        let new_stats = SentinelParser::new(&sentinel).parse(&output)?;
+        let new_costs = SentinelParser::new(&sentinel).parse(&output)?;
 
         let old_output = output.to_old_output();
 
         #[allow(clippy::if_then_some_else_none)]
-        let old_stats = if old_output.exists() {
+        let old_costs = if old_output.exists() {
             Some(SentinelParser::new(&sentinel).parse(&old_output)?)
         } else {
             None
@@ -163,10 +163,11 @@ impl Assistant {
         )
         .print();
 
-        new_stats.print(old_stats.as_ref());
+        let output = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
+        print!("{output}");
 
         if let Some(regression) = &self.regression {
-            match regression.check_and_print(&new_stats, old_stats.as_ref()) {
+            match regression.check_and_print(&new_costs, old_costs.as_ref()) {
                 Ok(()) => {}
                 Err(error) if regression.fail_fast => return Err(error),
                 Err(_) => *is_regressed = true,
@@ -301,22 +302,23 @@ impl BinBench {
             )?;
         }
 
-        let new_stats = SummaryParser.parse(&output)?;
+        let new_costs = SummaryParser.parse(&output)?;
 
         let old_output = output.to_old_output();
 
         #[allow(clippy::if_then_some_else_none)]
-        let old_stats = if old_output.exists() {
+        let old_costs = if old_output.exists() {
             Some(SummaryParser.parse(&old_output)?)
         } else {
             None
         };
 
         header.print();
-        new_stats.print(old_stats.as_ref());
+        let output = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
+        print!("{output}");
 
         if let Some(regression) = &self.regression {
-            match regression.check_and_print(&new_stats, old_stats.as_ref()) {
+            match regression.check_and_print(&new_costs, old_costs.as_ref()) {
                 Ok(()) => {}
                 Err(error) if regression.fail_fast => return Err(error),
                 Err(_) => *is_regressed = true,
@@ -392,6 +394,8 @@ impl Groups {
         cmd: &Option<api::Cmd>,
         runs: Vec<api::Run>,
         group_config: &BinaryBenchmarkConfig,
+        command_line_args: &RawCallgrindArgs,
+        meta: &Metadata,
     ) -> Result<Vec<BinBench>> {
         let mut benches = vec![];
         let mut counter: usize = 0;
@@ -415,7 +419,10 @@ impl Groups {
             let config = group_config.clone().update_from_all([Some(&run.config)]);
             let envs = config.resolve_envs();
             let flamegraph = config.flamegraph.map(std::convert::Into::into);
-            let regression = config.regression.map(std::convert::Into::into);
+            let regression = api::update_option(&config.regression, &meta.regression_config)
+                .map(std::convert::Into::into);
+            let callgrind_args =
+                Args::from_raw_callgrind_args(&[&config.raw_callgrind_args, command_line_args])?;
             for args in run.args {
                 let id = if let Some(id) = args.id {
                     id
@@ -436,8 +443,7 @@ impl Groups {
                         exit_with: config.exit_with.clone(),
                         envs: envs.clone(),
                     },
-                    // TODO: DO THIS ONLY ONCE AND MOVE OUTSIDE OF THE LOOP
-                    callgrind_args: Args::from_raw_callgrind_args(&config.raw_callgrind_args)?,
+                    callgrind_args: callgrind_args.clone(),
                     flamegraph: flamegraph.clone(),
                     regression: regression.clone(),
                 });
@@ -496,18 +502,16 @@ impl Groups {
         bench_assists
     }
 
-    // TODO: LIKE in lib_bench binary benchmarks should differentiate between command_line_args
-    // and raw_callgrind_args
     fn from_binary_benchmark(
         module: &str,
         benchmark: BinaryBenchmark,
         meta: &Metadata,
     ) -> Result<Self> {
-        let global_config = BinaryBenchmarkConfig {
-            regression: api::update_option(&meta.regression_config, &benchmark.config.regression),
-            ..benchmark.config
-        };
+        let global_config = benchmark.config;
         let mut groups = vec![];
+        let command_line_args =
+            RawCallgrindArgs::from_command_line_args(benchmark.command_line_args);
+
         for group in benchmark.groups {
             let module_path = if let Some(id) = group.id.as_ref() {
                 format!("{module}::{id}")
@@ -517,7 +521,18 @@ impl Groups {
             let group_config = global_config
                 .clone()
                 .update_from_all([group.config.as_ref()]);
-            let benches = Self::parse_runs(&module_path, &group.cmd, group.benches, &group_config)?;
+            let benches = Self::parse_runs(
+                &module_path,
+                &group.cmd,
+                group.benches,
+                &group_config,
+                &command_line_args,
+                meta,
+            )?;
+            let callgrind_args = Args::from_raw_callgrind_args(&[
+                &group_config.raw_callgrind_args,
+                &command_line_args,
+            ])?;
             let config = Group {
                 id: group.id,
                 module_path,
@@ -526,9 +541,8 @@ impl Groups {
                 benches,
                 assists: Self::parse_assists(
                     group.assists,
-                    &Args::from_raw_callgrind_args(&group_config.raw_callgrind_args)?,
-                    group_config
-                        .regression
+                    &callgrind_args,
+                    api::update_option(&group_config.regression, &meta.regression_config)
                         .map(std::convert::Into::into)
                         .as_ref(),
                 ),

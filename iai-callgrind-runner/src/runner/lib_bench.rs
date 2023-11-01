@@ -9,9 +9,9 @@ use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Regression};
 use super::meta::Metadata;
-use super::print::Header;
+use super::print::{Formatter, Header, VerticalFormat};
 use super::Error;
-use crate::api::{self, LibraryBenchmark, LibraryBenchmarkConfig};
+use crate::api::{self, LibraryBenchmark, RawCallgrindArgs};
 use crate::util::receive_benchmark;
 
 #[derive(Debug)]
@@ -64,11 +64,11 @@ impl Groups {
         benchmark: LibraryBenchmark,
         meta: &Metadata,
     ) -> Result<Self> {
-        let global_config = LibraryBenchmarkConfig {
-            regression: api::update_option(&meta.regression_config, &benchmark.config.regression),
-            ..benchmark.config
-        };
+        let global_config = benchmark.config;
         let mut groups = vec![];
+        let command_line_args =
+            RawCallgrindArgs::from_command_line_args(benchmark.command_line_args);
+
         for library_benchmark_group in benchmark.groups {
             let module_path = if let Some(group_id) = &library_benchmark_group.id {
                 format!("{module}::{group_id}")
@@ -92,11 +92,10 @@ impl Groups {
                         library_benchmark_bench.config.as_ref(),
                     ]);
                     let envs = config.resolve_envs();
-                    let callgrind_args = {
-                        let mut raw = config.raw_callgrind_args;
-                        raw.extend_from_command_line_args(benchmark.command_line_args.as_slice());
-                        Args::from_raw_callgrind_args(&raw)?
-                    };
+                    let callgrind_args = Args::from_raw_callgrind_args(&[
+                        &config.raw_callgrind_args,
+                        &command_line_args,
+                    ])?;
                     let flamegraph = config.flamegraph.map(std::convert::Into::into);
                     let lib_bench = LibBench {
                         bench_index,
@@ -112,7 +111,8 @@ impl Groups {
                         },
                         callgrind_args,
                         flamegraph,
-                        regression: config.regression.map(std::convert::Into::into),
+                        regression: api::update_option(&config.regression, &meta.regression_config)
+                            .map(std::convert::Into::into),
                     };
                     group.benches.push(lib_bench);
                 }
@@ -200,22 +200,23 @@ impl LibBench {
             )?;
         }
 
-        let new_stats = SentinelParser::new(&sentinel).parse(&output)?;
+        let new_costs = SentinelParser::new(&sentinel).parse(&output)?;
 
         let old_output = output.to_old_output();
 
         #[allow(clippy::if_then_some_else_none)]
-        let old_stats = if old_output.exists() {
+        let old_costs = if old_output.exists() {
             Some(SentinelParser::new(&sentinel).parse(&old_output)?)
         } else {
             None
         };
 
         header.print();
-        new_stats.print(old_stats.as_ref());
+        let string = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
+        print!("{string}");
 
         if let Some(regression) = &self.regression {
-            regression.check_and_print(&new_stats, old_stats.as_ref())?;
+            regression.check_and_print(&new_costs, old_costs.as_ref())?;
         }
 
         Ok(())

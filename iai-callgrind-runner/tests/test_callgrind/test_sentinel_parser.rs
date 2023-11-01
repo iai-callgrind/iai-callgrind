@@ -2,7 +2,6 @@ use iai_callgrind_runner::api::EventKind;
 use iai_callgrind_runner::runner::callgrind::model::Costs;
 use iai_callgrind_runner::runner::callgrind::parser::{Parser, Sentinel};
 use iai_callgrind_runner::runner::callgrind::sentinel_parser::SentinelParser;
-use iai_callgrind_runner::runner::callgrind::CallgrindStats;
 use rstest::rstest;
 
 use crate::common::{assert_parse_error, Fixtures};
@@ -16,7 +15,7 @@ use crate::common::{assert_parse_error, Fixtures};
 #[case::single_cost_line("strcpy", [11, 4, 0, 2, 0, 0, 2, 0, 0])]
 #[case::multiple_files_single_fn("__cpu_indicator_init@GCC_4.8.0", [346, 17, 33, 33, 4, 0, 33, 2, 0])]
 fn test_sentinel_parser(#[case] sentinel: &str, #[case] costs: [u64; 9]) {
-    let expected_stats = CallgrindStats(Costs::with_event_kinds([
+    let expected_costs = Costs::with_event_kinds([
         (EventKind::Ir, costs[0]),
         (EventKind::Dr, costs[1]),
         (EventKind::Dw, costs[2]),
@@ -26,13 +25,13 @@ fn test_sentinel_parser(#[case] sentinel: &str, #[case] costs: [u64; 9]) {
         (EventKind::ILmr, costs[6]),
         (EventKind::DLmr, costs[7]),
         (EventKind::DLmw, costs[8]),
-    ]));
+    ]);
     let callgrind_output = Fixtures::get_callgrind_output("callgrind.out/no_entry_point.out");
 
     let parser = SentinelParser::new(&Sentinel::new(sentinel));
-    let actual_stats = parser.parse(&callgrind_output).unwrap();
+    let actual_costs = parser.parse(&callgrind_output).unwrap();
 
-    assert_eq!(actual_stats, expected_stats);
+    assert_eq!(actual_costs, expected_costs);
 }
 
 #[test]
