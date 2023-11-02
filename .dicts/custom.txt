@@ -5,6 +5,7 @@ Cachegrind
 Callgrind
 Clearify
 Deque
+DEBUGINFOD
 Flamegraph
 Flamegraphs
 Heisler
@@ -93,6 +94,8 @@ tempdir
 tempfile
 totalrw
 trybuild
+xtleak
+xtree
 valgrind
 valgrind's
 vulnaribility

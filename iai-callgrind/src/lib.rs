@@ -1036,6 +1036,14 @@ impl BinaryBenchmarkConfig {
         self.0.regression = Some(config.into());
         self
     }
+
+    pub fn tool<T>(&mut self, tool: T) -> &mut Self
+    where
+        T: Into<internal::InternalTool>,
+    {
+        self.0.tools.push(tool.into());
+        self
+    }
 }
 
 impl_traits!(
@@ -1430,11 +1438,12 @@ impl LibraryBenchmarkConfig {
         T: IntoIterator<Item = I>,
     {
         Self(internal::InternalLibraryBenchmarkConfig {
-            env_clear: None,
+            env_clear: Option::default(),
             raw_callgrind_args: internal::InternalRawCallgrindArgs::new(args),
-            envs: vec![],
-            flamegraph: None,
-            regression: None,
+            envs: Vec::default(),
+            flamegraph: Option::default(),
+            regression: Option::default(),
+            tools: Vec::default(),
         })
     }
 
@@ -1728,14 +1737,13 @@ impl LibraryBenchmarkConfig {
         self
     }
 
-    // TODO: CLEANUP
-    // pub fn dhat<T>(&mut self, config: T) -> &mut Self
-    // where
-    //     T: Into<internal::InternalDhatConfig>,
-    // {
-    //     self.0.
-    //     self
-    // }
+    pub fn tool<T>(&mut self, tool: T) -> &mut Self
+    where
+        T: Into<internal::InternalTool>,
+    {
+        self.0.tools.push(tool.into());
+        self
+    }
 }
 
 impl_traits!(

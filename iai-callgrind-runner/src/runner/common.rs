@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
 
+use crate::api;
 use crate::util::truncate_str_utf8;
 
 pub struct ToolOutputPath {
@@ -16,41 +17,14 @@ pub struct ToolOutputPath {
 
 #[derive(Debug, Clone, Copy)]
 pub enum ValgrindTool {
-    Dhat,
     Callgrind,
+    Memcheck,
+    Helgrind,
+    DRD,
+    Massif,
+    DHAT,
+    BBV,
 }
-
-// TODO: CLEANUP
-// pub trait ValgrindCommand
-// where
-//     Self: std::marker::Sized,
-// {
-//     fn constructor(command: Command) -> Self;
-//     fn run(
-//         self,
-//         executable: &Path,
-//         executable_args: &[OsString],
-//         options: RunOptions,
-//         output: &ToolOutput,
-//     ) -> Result<()>;
-//
-//     fn new(meta: &Metadata) -> Self {
-//         let command = meta.valgrind_wrapper.as_ref().map_or_else(
-//             || {
-//                 let meta_cmd = &meta.valgrind;
-//                 let mut cmd = Command::new(&meta_cmd.bin);
-//                 cmd.args(&meta_cmd.args);
-//                 cmd
-//             },
-//             |meta_cmd| {
-//                 let mut cmd = Command::new(&meta_cmd.bin);
-//                 cmd.args(&meta_cmd.args);
-//                 cmd
-//             },
-//         );
-//         Self::constructor(command)
-//     }
-// }
 
 impl ToolOutputPath {
     pub fn new(tool: ValgrindTool, base_dir: &Path, module: &str, name: &str) -> Self {
@@ -92,7 +66,7 @@ impl ToolOutputPath {
 
     /// Initialize and create the output directory and organize files
     ///
-    /// This method moves the old output to `callgrind.*.out.old`
+    /// This method moves the old output to `$TOOL_ID.*.out.old`
     /// TODO: RETURN Result
     pub fn with_init(tool: ValgrindTool, base_dir: &Path, module: &str, name: &str) -> Self {
         let output = Self::new(tool, base_dir, module, name);
@@ -101,6 +75,7 @@ impl ToolOutputPath {
     }
 
     // TODO: RETURN Result
+    // TODO: MOVE all output files in case of a modifier
     pub fn init(&self) {
         std::fs::create_dir_all(self.path.parent().unwrap()).expect("Failed to create directory");
 
@@ -109,10 +84,6 @@ impl ToolOutputPath {
             // Already run this benchmark once; move last results to .old
             std::fs::copy(&self.path, old_output.path).unwrap();
         }
-    }
-
-    pub fn tool(&self) -> ValgrindTool {
-        self.tool
     }
 
     pub fn exists(&self) -> bool {
@@ -180,10 +151,36 @@ impl Display for ToolOutputPath {
 }
 
 impl ValgrindTool {
+    /// Return the id used by the `valgrind --tool` option
     pub fn id(&self) -> String {
         match self {
-            ValgrindTool::Dhat => "dhat".to_owned(),
+            ValgrindTool::DHAT => "dhat".to_owned(),
             ValgrindTool::Callgrind => "callgrind".to_owned(),
+            ValgrindTool::Memcheck => "memcheck".to_owned(),
+            ValgrindTool::Helgrind => "helgrind".to_owned(),
+            ValgrindTool::DRD => "drd".to_owned(),
+            ValgrindTool::Massif => "massif".to_owned(),
+            ValgrindTool::BBV => "exp-bbv".to_owned(),
+        }
+    }
+
+    pub fn has_output_file(&self) -> bool {
+        matches!(
+            self,
+            ValgrindTool::Callgrind | ValgrindTool::DHAT | ValgrindTool::BBV | ValgrindTool::Massif
+        )
+    }
+}
+
+impl From<api::ValgrindTool> for ValgrindTool {
+    fn from(value: api::ValgrindTool) -> Self {
+        match value {
+            api::ValgrindTool::Memcheck => ValgrindTool::Memcheck,
+            api::ValgrindTool::Helgrind => ValgrindTool::Helgrind,
+            api::ValgrindTool::DRD => ValgrindTool::DRD,
+            api::ValgrindTool::Massif => ValgrindTool::Massif,
+            api::ValgrindTool::DHAT => ValgrindTool::DHAT,
+            api::ValgrindTool::BBV => ValgrindTool::BBV,
         }
     }
 }

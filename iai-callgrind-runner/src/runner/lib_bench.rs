@@ -10,6 +10,7 @@ use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::{CallgrindCommand, Regression, RunOptions};
 use super::meta::Metadata;
 use super::print::{Formatter, Header, VerticalFormat};
+use super::tool::ToolConfig;
 use super::Error;
 use crate::api::{self, LibraryBenchmark, RawArgs};
 use crate::runner::common::{ToolOutputPath, ValgrindTool};
@@ -52,6 +53,7 @@ struct LibBench {
     callgrind_args: Args,
     flamegraph: Option<FlamegraphConfig>,
     regression: Option<Regression>,
+    tools: Vec<ToolConfig>,
 }
 
 #[derive(Debug)]
@@ -114,6 +116,11 @@ impl Groups {
                         flamegraph,
                         regression: api::update_option(&config.regression, &meta.regression_config)
                             .map(std::convert::Into::into),
+                        tools: config
+                            .tools
+                            .into_iter()
+                            .map(std::convert::Into::into)
+                            .collect(),
                     };
                     group.benches.push(lib_bench);
                 }
@@ -185,7 +192,7 @@ impl LibBench {
             )
         };
 
-        callgrind_command.run(
+        let output = callgrind_command.run(
             self.callgrind_args.clone(),
             &config.bench_bin,
             &args,
@@ -213,11 +220,7 @@ impl LibBench {
         let string = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
         print!("{string}");
 
-        let dhat_command = ToolCommand::new(&config.meta);
-
-        let dhat_output = output_path.to_tool_output(ValgrindTool::Dhat);
-        dhat_output.init();
-        dhat_command.run(&config.bench_bin, &args, self.options.clone(), &dhat_output)?;
+        output.dump_if(log::Level::Info);
 
         if let Some(flamegraph_config) = self.flamegraph.clone() {
             Flamegraph::new(header.to_title(), flamegraph_config).create(
@@ -225,6 +228,20 @@ impl LibBench {
                 Some(&sentinel),
                 &config.meta.project_root,
             )?;
+        }
+
+        for tool_config in self.tools.iter().filter(|t| t.is_enabled) {
+            let command = ToolCommand::new(tool_config.tool, &config.meta);
+            let output_path = output_path.to_tool_output(tool_config.tool);
+            output_path.init();
+            let output = command.run(
+                tool_config.clone(),
+                &config.bench_bin,
+                &args,
+                self.options.clone(),
+                &output_path,
+            )?;
+            output.dump_if(log::Level::Info);
         }
 
         if let Some(regression) = &self.regression {

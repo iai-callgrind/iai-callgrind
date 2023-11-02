@@ -37,6 +37,7 @@ pub struct BinaryBenchmarkConfig {
     pub envs: Vec<(OsString, Option<OsString>)>,
     pub flamegraph: Option<FlamegraphConfig>,
     pub regression: Option<RegressionConfig>,
+    pub tools: Vec<Tool>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -53,13 +54,6 @@ pub struct Cmd {
     pub display: String,
     pub cmd: String,
 }
-
-// TODO: CLEANUP
-// #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-// pub struct DhatConfig {
-//     pub enable: Option<bool>,
-//     pub raw_args: RawArgs,
-// }
 
 /// The `Direction` in which the flamegraph should grow.
 ///
@@ -206,6 +200,7 @@ pub struct LibraryBenchmarkConfig {
     pub envs: Vec<(OsString, Option<OsString>)>,
     pub flamegraph: Option<FlamegraphConfig>,
     pub regression: Option<RegressionConfig>,
+    pub tools: Vec<Tool>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -231,7 +226,7 @@ pub struct Run {
     pub config: BinaryBenchmarkConfig,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Tool {
     pub kind: ValgrindTool,
     pub enable: Option<bool>,
@@ -240,9 +235,7 @@ pub struct Tool {
     pub show_log: Option<bool>,
 }
 
-// TODO: MANAGE out files of
-// bb-out-file, massif-out-file, dhat-out-file
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ValgrindTool {
     Memcheck,
     Helgrind,
@@ -271,6 +264,10 @@ impl BinaryBenchmarkConfig {
             self.envs.extend_from_slice(&other.envs);
             self.flamegraph = update_option(&self.flamegraph, &other.flamegraph);
             self.regression = update_option(&self.regression, &other.regression);
+            // TODO: Clone or extend ?
+            if !other.tools.is_empty() {
+                self.tools = other.tools.clone();
+            }
         }
         self
     }
@@ -408,6 +405,10 @@ impl LibraryBenchmarkConfig {
             self.envs.extend_from_slice(&other.envs);
             self.flamegraph = update_option(&self.flamegraph, &other.flamegraph);
             self.regression = update_option(&self.regression, &other.regression);
+            // TODO: Clone or extend ?
+            if !other.tools.is_empty() {
+                self.tools = other.tools.clone();
+            }
         }
         self
     }

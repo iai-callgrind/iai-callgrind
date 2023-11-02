@@ -9,7 +9,7 @@
 use benchmark_tests::{allocate_array_reverse, bubble_sort, fibonacci};
 use iai_callgrind::{
     black_box, library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,
-    RegressionConfig,
+    RegressionConfig, Tool, ValgrindTool,
 };
 
 // This function is used to create a worst case array we want to sort with our implementation of
@@ -160,5 +160,11 @@ main!(
         .regression(
             RegressionConfig::default()
                 .limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
-        );
+        )
+        .tool(Tool::new(ValgrindTool::DHAT).args(["--log-file=woops"]))
+        .tool(Tool::new(ValgrindTool::Massif))
+        .tool(Tool::new(ValgrindTool::BBV))
+        .tool(Tool::new(ValgrindTool::DRD))
+        .tool(Tool::new(ValgrindTool::Memcheck))
+        .tool(Tool::new(ValgrindTool::Helgrind));
     library_benchmark_groups = bubble_sort, fibonacci, allocate);

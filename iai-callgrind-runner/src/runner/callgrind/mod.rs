@@ -14,7 +14,7 @@ use std::process::{Command, Output, Stdio};
 
 use anyhow::Result;
 use colored::Colorize;
-use log::{debug, error, info, Level};
+use log::{debug, error};
 
 use self::model::Costs;
 use super::callgrind::args::Args;
@@ -22,10 +22,9 @@ use super::common::ToolOutputPath;
 use super::meta::Metadata;
 use crate::api::{self, EventKind, ExitWith, RegressionConfig};
 use crate::error::Error;
-use crate::util::{
-    percentage_diff, resolve_binary_path, to_string_signed_short, write_all_to_stderr,
-    write_all_to_stdout,
-};
+use crate::runner::common::ValgrindTool;
+use crate::runner::tool::ToolOutput;
+use crate::util::{percentage_diff, resolve_binary_path, to_string_signed_short};
 
 pub struct CallgrindCommand {
     command: Command,
@@ -66,7 +65,7 @@ impl CallgrindCommand {
         executable: &Path,
         output: Output,
         exit_with: Option<&ExitWith>,
-    ) -> Result<(Vec<u8>, Vec<u8>)> {
+    ) -> Result<Output> {
         let status_code = if let Some(code) = output.status.code() {
             code
         } else {
@@ -74,9 +73,7 @@ impl CallgrindCommand {
         };
 
         match (status_code, exit_with) {
-            (0i32, None | Some(ExitWith::Code(0i32) | ExitWith::Success)) => {
-                Ok((output.stdout, output.stderr))
-            }
+            (0i32, None | Some(ExitWith::Code(0i32) | ExitWith::Success)) => Ok(output),
             (0i32, Some(ExitWith::Code(code))) => {
                 error!(
                     "Expected benchmark '{}' to exit with '{}' but it succeeded",
@@ -92,7 +89,7 @@ impl CallgrindCommand {
                 );
                 Err(Error::BenchmarkLaunchError(output).into())
             }
-            (_, Some(ExitWith::Failure)) => Ok((output.stdout, output.stderr)),
+            (_, Some(ExitWith::Failure)) => Ok(output),
             (code, Some(ExitWith::Success)) => {
                 error!(
                     "Expected benchmark '{}' to succeed but it exited with '{}'",
@@ -102,7 +99,7 @@ impl CallgrindCommand {
                 Err(Error::BenchmarkLaunchError(output).into())
             }
             (actual_code, Some(ExitWith::Code(expected_code))) if actual_code == *expected_code => {
-                Ok((output.stdout, output.stderr))
+                Ok(output)
             }
             (actual_code, Some(ExitWith::Code(expected_code))) => {
                 error!(
@@ -124,7 +121,7 @@ impl CallgrindCommand {
         executable_args: &[OsString],
         options: RunOptions,
         output_path: &ToolOutputPath,
-    ) -> Result<()> {
+    ) -> Result<ToolOutput> {
         let mut command = self.command;
         debug!(
             "Running callgrind with executable '{}'",
@@ -160,7 +157,7 @@ impl CallgrindCommand {
 
         let executable = resolve_binary_path(executable)?;
 
-        let (stdout, stderr) = command
+        let output = command
             .arg("--tool=callgrind")
             .args(callgrind_args)
             .arg(&executable)
@@ -174,111 +171,12 @@ impl CallgrindCommand {
             })
             .and_then(|output| Self::check_exit(&executable, output, exit_with.as_ref()))?;
 
-        if !stdout.is_empty() {
-            info!("Callgrind output on stdout:");
-            if log::log_enabled!(Level::Info) {
-                write_all_to_stdout(&stdout);
-            }
-        }
-        if !stderr.is_empty() {
-            info!("Callgrind output on stderr:");
-            if log::log_enabled!(Level::Info) {
-                write_all_to_stderr(&stderr);
-            }
-        }
-
-        Ok(())
+        Ok(ToolOutput {
+            tool: ValgrindTool::Callgrind,
+            output,
+        })
     }
 }
-
-// TODO: CLEANUP
-// impl CallgrindOutput {
-//     pub fn from_existing<T>(path: T) -> Result<Self>
-//     where
-//         T: Into<PathBuf>,
-//     {
-//         let path: PathBuf = path.into();
-//         if !path.is_file() {
-//             return Err(anyhow!(
-//                 "The callgrind output file '{}' did not exist or is not a valid file",
-//                 path.display()
-//             ));
-//         }
-//         Ok(Self(path))
-//     }
-//
-//     /// Initialize and create the output directory and organize files
-//     ///
-//     /// This method moves the old output to `callgrind.*.out.old`
-//     pub fn init(base_dir: &Path, module: &str, name: &str) -> Self {
-//         let current = base_dir;
-//         let module_path: PathBuf = module.split("::").collect();
-//         let sanitized_name = sanitize_filename::sanitize_with_options(
-//             name,
-//             sanitize_filename::Options {
-//                 windows: false,
-//                 truncate: false,
-//                 replacement: "_",
-//             },
-//         );
-//         let file_name = PathBuf::from(format!(
-//             "callgrind.{}.out",
-//             // callgrind. + .out.old = 18 + 37 bytes headroom for extensions with more than 3
-//             // bytes. max length is usually 255 bytes
-//             truncate_str_utf8(&sanitized_name, 200)
-//         ));
-//
-//         let path = current.join(base_dir).join(module_path).join(file_name);
-//         let output = Self(path);
-//
-//         std::fs::create_dir_all(output.0.parent().unwrap()).expect("Failed to create directory");
-//
-//         if output.exists() {
-//             let old_output = output.to_old_output();
-//             // Already run this benchmark once; move last results to .old
-//             std::fs::copy(&output.0, old_output.0).unwrap();
-//         }
-//
-//         output
-//     }
-//
-//     pub fn exists(&self) -> bool {
-//         self.0.exists()
-//     }
-//
-//     pub fn with_extension<T>(&self, extension: T) -> Self
-//     where
-//         T: AsRef<OsStr>,
-//     {
-//         Self(self.0.with_extension(extension))
-//     }
-//
-//     pub fn to_old_output(&self) -> Self {
-//         Self(self.0.with_extension("out.old"))
-//     }
-//
-//     pub fn open(&self) -> Result<File> {
-//         File::open(&self.0)
-//             .with_context(|| format!("Error opening callgrind output file '{}'",
-// self.0.display()))     }
-//
-//     pub fn lines(&self) -> Result<impl Iterator<Item = String>> {
-//         let file = self.open()?;
-//         Ok(BufReader::new(file)
-//             .lines()
-//             .map(std::result::Result::unwrap))
-//     }
-//
-//     pub fn as_path(&self) -> &Path {
-//         &self.0
-//     }
-// }
-//
-// impl Display for CallgrindOutput {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         f.write_fmt(format_args!("{}", self.0.display()))
-//     }
-// }
 
 impl TryFrom<&Costs> for CallgrindSummary {
     type Error = anyhow::Error;
