@@ -17,7 +17,7 @@ use super::meta::Metadata;
 use super::print::{Formatter, Header, VerticalFormat};
 use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig, RawArgs};
 use crate::error::Error;
-use crate::runner::common::{ToolOutput, ValgrindTool};
+use crate::runner::common::{ToolOutputPath, ValgrindTool};
 use crate::util::{copy_directory, receive_benchmark, write_all_to_stderr, write_all_to_stdout};
 
 #[derive(Debug, Clone)]
@@ -127,7 +127,7 @@ impl Assistant {
             OsString::from(format!("{}::{}", &config.module, &self.name)),
         ];
 
-        let output = ToolOutput::with_init(
+        let output_path = ToolOutputPath::with_init(
             ValgrindTool::Callgrind,
             &config.meta.target_dir,
             &group.module_path,
@@ -144,13 +144,13 @@ impl Assistant {
             &config.bench_bin,
             &executable_args,
             options,
-            &output,
+            &output_path,
         )?;
 
         let sentinel = Sentinel::from_path(&config.module, &self.name);
-        let new_costs = SentinelParser::new(&sentinel).parse(&output)?;
+        let new_costs = SentinelParser::new(&sentinel).parse(&output_path)?;
 
-        let old_output = output.to_old_output();
+        let old_output = output_path.to_old_output();
 
         #[allow(clippy::if_then_some_else_none)]
         let old_costs = if old_output.exists() {
@@ -281,7 +281,7 @@ impl BinBench {
     /// `Error::ParsingError` if a parsing error occurred.
     fn run(&self, is_regressed: &mut bool, config: &Config, group: &Group) -> Result<()> {
         let callgrind_command = CallgrindCommand::new(&config.meta);
-        let output = ToolOutput::with_init(
+        let output_path = ToolOutputPath::with_init(
             ValgrindTool::Callgrind,
             &config.meta.target_dir,
             &group.module_path,
@@ -293,12 +293,12 @@ impl BinBench {
             &self.command,
             &self.args,
             self.opts.clone(),
-            &output,
+            &output_path,
         )?;
 
-        let new_costs = SummaryParser.parse(&output)?;
+        let new_costs = SummaryParser.parse(&output_path)?;
 
-        let old_output = output.to_old_output();
+        let old_output = output_path.to_old_output();
         #[allow(clippy::if_then_some_else_none)]
         let old_costs = if old_output.exists() {
             Some(SummaryParser.parse(&old_output)?)
@@ -314,7 +314,7 @@ impl BinBench {
         let sentinel = self.opts.entry_point.as_ref().map(Sentinel::new);
         if let Some(flamegraph_config) = self.flamegraph.clone() {
             Flamegraph::new(header.to_title(), flamegraph_config).create(
-                &output,
+                &output_path,
                 sentinel.as_ref(),
                 &config.meta.project_root,
             )?;

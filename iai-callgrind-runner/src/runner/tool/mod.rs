@@ -1,22 +1,23 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, Output, Stdio};
 
 use anyhow::Result;
-use log::{debug, info, Level};
+use log::debug;
 
-use super::common::ToolOutput;
+use super::common::ToolOutputPath;
 use super::meta::Metadata;
 use crate::error::Error;
 use crate::runner::callgrind::RunOptions;
-use crate::runner::{write_all_to_stderr, write_all_to_stdout};
 use crate::util::resolve_binary_path;
 
-pub struct DhatCommand {
+pub struct ToolCommand {
     command: Command,
 }
 
-impl DhatCommand {
+pub struct ToolOutput(Output);
+
+impl ToolCommand {
     pub fn new(meta: &Metadata) -> Self {
         Self {
             command: meta.into(),
@@ -28,8 +29,8 @@ impl DhatCommand {
         executable: &Path,
         executable_args: &[OsString],
         options: RunOptions,
-        output: &ToolOutput,
-    ) -> Result<()> {
+        output_path: &ToolOutputPath,
+    ) -> Result<ToolOutput> {
         let mut command = self.command;
         // TODO: DhatArgs struct
         let mut dhat_args = vec![];
@@ -50,12 +51,12 @@ impl DhatCommand {
             debug!("Setting current directory to '{}'", dir.display());
             command.current_dir(dir);
         }
-        dhat_args.push(format!("--dhat-out-file={}", output.path.display()));
+        dhat_args.push(format!("--dhat-out-file={}", output_path.path.display()));
 
         let executable = resolve_binary_path(executable)?;
 
         // TODO: CHECK EXIT like in callgrind ??
-        let (stdout, stderr) = command
+        let output = command
             .arg("--tool=dhat")
             .args(dhat_args)
             .arg(&executable)
@@ -64,23 +65,23 @@ impl DhatCommand {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
-            .map(|output| (output.stdout, output.stderr))
             .map_err(|error| -> anyhow::Error {
                 Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
             })?;
 
-        if !stdout.is_empty() {
-            info!("Dhat output on stdout:");
-            if log::log_enabled!(Level::Info) {
-                write_all_to_stdout(&stdout);
-            }
-        }
-        if !stderr.is_empty() {
-            info!("Dhat output on stderr:");
-            if log::log_enabled!(Level::Info) {
-                write_all_to_stderr(&stderr);
-            }
-        }
-        Ok(())
+        // TODO: CLEANUP
+        // if !stdout.is_empty() {
+        //     info!("Dhat output on stdout:");
+        //     if log::log_enabled!(Level::Info) {
+        //         write_all_to_stdout(&stdout);
+        //     }
+        // }
+        // if !stderr.is_empty() {
+        //     info!("Dhat output on stderr:");
+        //     if log::log_enabled!(Level::Info) {
+        //         write_all_to_stderr(&stderr);
+        //     }
+        // }
+        Ok(ToolOutput(output))
     }
 }

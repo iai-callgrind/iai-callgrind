@@ -256,7 +256,8 @@
 
 pub use bincode;
 pub use iai_callgrind_macros::library_benchmark;
-pub use iai_callgrind_runner::api::{Direction, EventKind, FlamegraphKind};
+use iai_callgrind_runner::api::RawArgs;
+pub use iai_callgrind_runner::api::{Direction, EventKind, FlamegraphKind, ValgrindTool};
 
 #[doc(hidden)]
 pub mod internal;
@@ -359,9 +360,6 @@ pub enum ExitWith {
     Code(i32),
 }
 
-#[derive(Debug, Clone)]
-pub struct DhatConfig(internal::InternalDhatConfig);
-
 /// A builder of `Fixtures` to specify the fixtures directory which will be copied into the sandbox
 ///
 /// # Examples
@@ -455,6 +453,8 @@ pub struct RegressionConfig(internal::InternalRegressionConfig);
 /// `Run` let's you set up and configure a benchmark run of a binary
 #[derive(Debug, Default, Clone)]
 pub struct Run(internal::InternalRun);
+
+pub struct Tool(internal::InternalTool);
 
 impl Arg {
     /// Create a new `Arg`.
@@ -1105,13 +1105,23 @@ impl From<internal::InternalBinaryBenchmarkGroup> for BinaryBenchmarkGroup {
 
 impl_traits!(BinaryBenchmarkGroup, internal::InternalBinaryBenchmarkGroup);
 
-impl DhatConfig {
+impl Tool {
+    pub fn new(tool: ValgrindTool) -> Self {
+        Self(internal::InternalTool {
+            kind: tool,
+            enable: Option::default(),
+            outfile_modifier: Option::default(),
+            show_log: Option::default(),
+            raw_args: RawArgs::default(),
+        })
+    }
+
     pub fn enable(&mut self, value: bool) -> &mut Self {
         self.0.enable = Some(value);
         self
     }
 
-    pub fn raw_dhat_args<I, T>(&mut self, args: T) -> &mut Self
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
     where
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
@@ -1119,9 +1129,22 @@ impl DhatConfig {
         self.0.raw_args.extend_ignore_flag(args);
         self
     }
+
+    pub fn outfile_modifier<T>(&mut self, modifier: T) -> &mut Self
+    where
+        T: Into<String>,
+    {
+        self.0.outfile_modifier = Some(modifier.into());
+        self
+    }
+
+    pub fn show_log(&mut self, value: bool) -> &mut Self {
+        self.0.show_log = Some(value);
+        self
+    }
 }
 
-impl_traits!(DhatConfig, internal::InternalDhatConfig);
+impl_traits!(Tool, internal::InternalTool);
 
 impl Fixtures {
     /// Create a new `Fixtures` struct
@@ -1705,12 +1728,14 @@ impl LibraryBenchmarkConfig {
         self
     }
 
-    pub fn dhat<T>(&mut self, config: T) -> &mut Self
-    where
-        T: Into<internal::InternalDhatConfig>,
-    {
-        self
-    }
+    // TODO: CLEANUP
+    // pub fn dhat<T>(&mut self, config: T) -> &mut Self
+    // where
+    //     T: Into<internal::InternalDhatConfig>,
+    // {
+    //     self.0.
+    //     self
+    // }
 }
 
 impl_traits!(

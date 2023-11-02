@@ -12,8 +12,8 @@ use super::meta::Metadata;
 use super::print::{Formatter, Header, VerticalFormat};
 use super::Error;
 use crate::api::{self, LibraryBenchmark, RawArgs};
-use crate::runner::common::{ToolOutput, ValgrindTool};
-use crate::runner::dhat::DhatCommand;
+use crate::runner::common::{ToolOutputPath, ValgrindTool};
+use crate::runner::tool::ToolCommand;
 use crate::util::receive_benchmark;
 
 #[derive(Debug)]
@@ -169,15 +169,15 @@ impl LibBench {
         };
 
         let sentinel = Sentinel::new("iai_callgrind::bench::");
-        let output = if let Some(bench_id) = &self.id {
-            ToolOutput::with_init(
+        let output_path = if let Some(bench_id) = &self.id {
+            ToolOutputPath::with_init(
                 ValgrindTool::Callgrind,
                 &config.meta.target_dir,
                 &group.module,
                 &format!("{}.{}", &self.function, bench_id),
             )
         } else {
-            ToolOutput::with_init(
+            ToolOutputPath::with_init(
                 ValgrindTool::Callgrind,
                 &config.meta.target_dir,
                 &group.module,
@@ -190,12 +190,12 @@ impl LibBench {
             &config.bench_bin,
             &args,
             self.options.clone(),
-            &output,
+            &output_path,
         )?;
 
-        let new_costs = SentinelParser::new(&sentinel).parse(&output)?;
+        let new_costs = SentinelParser::new(&sentinel).parse(&output_path)?;
 
-        let old_output = output.to_old_output();
+        let old_output = output_path.to_old_output();
         #[allow(clippy::if_then_some_else_none)]
         let old_costs = if old_output.exists() {
             Some(SentinelParser::new(&sentinel).parse(&old_output)?)
@@ -213,15 +213,15 @@ impl LibBench {
         let string = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
         print!("{string}");
 
-        let dhat_command = DhatCommand::new(&config.meta);
+        let dhat_command = ToolCommand::new(&config.meta);
 
-        let dhat_output = output.to_tool_output(ValgrindTool::Dhat);
+        let dhat_output = output_path.to_tool_output(ValgrindTool::Dhat);
         dhat_output.init();
         dhat_command.run(&config.bench_bin, &args, self.options.clone(), &dhat_output)?;
 
         if let Some(flamegraph_config) = self.flamegraph.clone() {
             Flamegraph::new(header.to_title(), flamegraph_config).create(
-                &output,
+                &output_path,
                 Some(&sentinel),
                 &config.meta.project_root,
             )?;

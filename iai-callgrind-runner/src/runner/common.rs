@@ -9,7 +9,7 @@ use anyhow::{anyhow, Context, Result};
 
 use crate::util::truncate_str_utf8;
 
-pub struct ToolOutput {
+pub struct ToolOutputPath {
     pub tool: ValgrindTool,
     pub path: PathBuf,
 }
@@ -52,7 +52,7 @@ pub enum ValgrindTool {
 //     }
 // }
 
-impl ToolOutput {
+impl ToolOutputPath {
     pub fn new(tool: ValgrindTool, base_dir: &Path, module: &str, name: &str) -> Self {
         let current = base_dir;
         let module_path: PathBuf = module.split("::").collect();
@@ -173,7 +173,7 @@ impl ToolOutput {
     }
 }
 
-impl Display for ToolOutput {
+impl Display for ToolOutputPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.path.display()))
     }

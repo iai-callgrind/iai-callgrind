@@ -8,10 +8,13 @@ Deque
 Flamegraph
 Flamegraphs
 Heisler
+Helgrind
 Itamar
 Ldmr
 Ldmw
+Memcheck
 MSRV
+Nulgrind
 Quickstart
 RUSTFLAGS
 RUSTSEC

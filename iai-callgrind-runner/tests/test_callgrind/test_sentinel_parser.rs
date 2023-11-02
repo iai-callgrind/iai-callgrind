@@ -26,7 +26,7 @@ fn test_sentinel_parser(#[case] sentinel: &str, #[case] costs: [u64; 9]) {
         (EventKind::DLmr, costs[7]),
         (EventKind::DLmw, costs[8]),
     ]);
-    let callgrind_output = Fixtures::get_callgrind_output("callgrind.out/no_entry_point.out");
+    let callgrind_output = Fixtures::get_callgrind_output_path("callgrind.out/no_entry_point.out");
 
     let parser = SentinelParser::new(&Sentinel::new(sentinel));
     let actual_costs = parser.parse(&callgrind_output).unwrap();
@@ -36,7 +36,7 @@ fn test_sentinel_parser(#[case] sentinel: &str, #[case] costs: [u64; 9]) {
 
 #[test]
 fn test_sentinel_parser_when_not_found_then_error() {
-    let callgrind_output = Fixtures::get_callgrind_output("callgrind.out/no_entry_point.out");
+    let callgrind_output = Fixtures::get_callgrind_output_path("callgrind.out/no_entry_point.out");
     let sentinel = Sentinel::new("doesnotexist");
 
     let result = SentinelParser::new(&sentinel).parse(&callgrind_output);

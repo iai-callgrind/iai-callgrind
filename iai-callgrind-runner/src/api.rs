@@ -54,11 +54,12 @@ pub struct Cmd {
     pub cmd: String,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct DhatConfig {
-    pub enable: Option<bool>,
-    pub raw_args: RawArgs,
-}
+// TODO: CLEANUP
+// #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+// pub struct DhatConfig {
+//     pub enable: Option<bool>,
+//     pub raw_args: RawArgs,
+// }
 
 /// The `Direction` in which the flamegraph should grow.
 ///
@@ -228,6 +229,27 @@ pub struct Run {
     pub cmd: Option<Cmd>,
     pub args: Vec<Arg>,
     pub config: BinaryBenchmarkConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Tool {
+    pub kind: ValgrindTool,
+    pub enable: Option<bool>,
+    pub raw_args: RawArgs,
+    pub outfile_modifier: Option<String>,
+    pub show_log: Option<bool>,
+}
+
+// TODO: MANAGE out files of
+// bb-out-file, massif-out-file, dhat-out-file
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ValgrindTool {
+    Memcheck,
+    Helgrind,
+    DRD,
+    Massif,
+    DHAT,
+    BBV,
 }
 
 impl BinaryBenchmarkConfig {

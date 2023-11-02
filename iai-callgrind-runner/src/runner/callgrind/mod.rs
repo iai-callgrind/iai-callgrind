@@ -18,7 +18,7 @@ use log::{debug, error, info, Level};
 
 use self::model::Costs;
 use super::callgrind::args::Args;
-use super::common::ToolOutput;
+use super::common::ToolOutputPath;
 use super::meta::Metadata;
 use crate::api::{self, EventKind, ExitWith, RegressionConfig};
 use crate::error::Error;
@@ -123,7 +123,7 @@ impl CallgrindCommand {
         executable: &Path,
         executable_args: &[OsString],
         options: RunOptions,
-        output: &ToolOutput,
+        output_path: &ToolOutputPath,
     ) -> Result<()> {
         let mut command = self.command;
         debug!(
@@ -153,7 +153,7 @@ impl CallgrindCommand {
         } else {
             callgrind_args.collect_atstart = true;
         }
-        callgrind_args.set_output_file(&output.path);
+        callgrind_args.set_output_file(&output_path.path);
 
         let callgrind_args = callgrind_args.to_vec();
         debug!("Callgrind arguments: {}", &callgrind_args.join(" "));

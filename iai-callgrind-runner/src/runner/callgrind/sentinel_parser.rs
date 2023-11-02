@@ -5,7 +5,7 @@ use super::model::Costs;
 use super::parser::{Parser, Sentinel};
 use crate::error::Error;
 use crate::runner::callgrind::parser::parse_header;
-use crate::runner::common::ToolOutput;
+use crate::runner::common::ToolOutputPath;
 
 pub struct SentinelParser {
     sentinel: Sentinel,
@@ -22,18 +22,18 @@ impl SentinelParser {
 impl Parser for SentinelParser {
     type Output = Costs;
 
-    fn parse(&self, output: &ToolOutput) -> Result<Self::Output>
+    fn parse(&self, output_path: &ToolOutputPath) -> Result<Self::Output>
     where
         Self: std::marker::Sized,
     {
         debug!(
             "Parsing callgrind output file '{}' for sentinel '{}'",
-            output, self.sentinel
+            output_path, self.sentinel
         );
 
-        let mut iter = output.lines()?;
+        let mut iter = output_path.lines()?;
         let properties = parse_header(&mut iter)
-            .map_err(|error| Error::ParseError((output.path.clone(), error.to_string())))?;
+            .map_err(|error| Error::ParseError((output_path.path.clone(), error.to_string())))?;
 
         let mut found = false;
         let mut costs = properties.costs_prototype;
@@ -80,7 +80,7 @@ impl Parser for SentinelParser {
             Ok(costs)
         } else {
             Err(Error::ParseError((
-                output.as_path().to_owned(),
+                output_path.as_path().to_owned(),
                 format!("Sentinel '{}' not found", &self.sentinel),
             ))
             .into())

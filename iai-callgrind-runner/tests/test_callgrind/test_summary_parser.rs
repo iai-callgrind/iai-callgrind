@@ -22,7 +22,7 @@ fn test_sentinel_parser(#[case] fixture: &str, #[case] costs: [u64; 9]) {
         (EventKind::DLmr, costs[7]),
         (EventKind::DLmw, costs[8]),
     ]);
-    let callgrind_output = Fixtures::get_callgrind_output(format!("callgrind.out/{fixture}"));
+    let callgrind_output = Fixtures::get_callgrind_output_path(format!("callgrind.out/{fixture}"));
 
     let parser = SummaryParser;
     let actual_costs = parser.parse(&callgrind_output).unwrap();
@@ -33,7 +33,7 @@ fn test_sentinel_parser(#[case] fixture: &str, #[case] costs: [u64; 9]) {
 #[test]
 fn test_summary_parser_when_not_found_then_error() {
     let callgrind_output =
-        Fixtures::get_callgrind_output("callgrind.out/no_records.no_summary_and_totals.out");
+        Fixtures::get_callgrind_output_path("callgrind.out/no_records.no_summary_and_totals.out");
 
     let result = SummaryParser.parse(&callgrind_output);
     assert_parse_error(
