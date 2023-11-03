@@ -6,7 +6,7 @@
 //! simplified.
 
 // These two functions from the benchmark-tests library serve as functions we want to benchmark
-use benchmark_tests::{allocate_array_reverse, bubble_sort, fibonacci};
+use benchmark_tests::{bubble_sort, fibonacci};
 use iai_callgrind::{
     black_box, library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,
     RegressionConfig, Tool, ValgrindTool,
@@ -97,7 +97,13 @@ fn bench_fibonacci_with_config() -> u64 {
 // of `configs` of higher levels (like #[library_benchmark(config = ...)]). Other configuration
 // values are overwritten.
 #[library_benchmark]
-#[bench::fib_with_config(args = (3, 4), config = LibraryBenchmarkConfig::default())]
+#[bench::fib_with_config(
+    args = (3, 4),
+    config = LibraryBenchmarkConfig::default()
+        .tool_override(
+            Tool::new(ValgrindTool::Massif)
+        )
+)]
 fn bench_fibonacci_with_config_at_bench_level(first: u64, second: u64) -> u64 {
     black_box(black_box(fibonacci(black_box(first + second))))
 }
@@ -117,19 +123,6 @@ library_benchmark_group!(
             RegressionConfig::default().fail_fast(false)
         );
     benchmarks = bench_bubble_sort_empty, bench_bubble_sort
-);
-
-// TODO: FINISH DHAT EXAMPLE
-#[library_benchmark]
-fn bench_allocate() {
-    let vec = allocate_array_reverse(4000);
-    let sum: i32 = vec.iter().take(2000).sum();
-    println!("{sum}");
-}
-
-library_benchmark_group!(
-    name = allocate;
-    benchmarks = bench_allocate
 );
 
 // In our example file here, we could have put `bench_fibonacci` into the same group as the bubble
@@ -154,17 +147,13 @@ library_benchmark_group!(
 // We configure the regression checks to fail gracefully at the end of the whole benchmark run
 // (`fail-fast = false`) using `EventKind::Ir` (Total instructions executed) with a limit of `+5%`
 // and `EventKind::EstimatedCycles` with a limit of `+10%`. This `LibraryBenchmarkConfig` applies to
-// all benchmarks in all groups if it is not overwritten.
+// all benchmarks in all groups (specified below) if it is not overwritten.
+// TODO: ADD DOCS FOR SPECIFYING TOOLS
 main!(
     config = LibraryBenchmarkConfig::default()
         .regression(
             RegressionConfig::default()
                 .limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
         )
-        .tool(Tool::new(ValgrindTool::DHAT).args(["--log-file=woops"]))
-        .tool(Tool::new(ValgrindTool::Massif))
-        .tool(Tool::new(ValgrindTool::BBV))
-        .tool(Tool::new(ValgrindTool::DRD))
-        .tool(Tool::new(ValgrindTool::Memcheck))
-        .tool(Tool::new(ValgrindTool::Helgrind));
-    library_benchmark_groups = bubble_sort, fibonacci, allocate);
+        .tool(Tool::new(ValgrindTool::DHAT));
+    library_benchmark_groups = bubble_sort, fibonacci);

@@ -5,7 +5,7 @@ use log::warn;
 use crate::api::{self};
 use crate::runner::common::{ToolOutputPath, ValgrindTool};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolArgs {
     tool: ValgrindTool,
     output_paths: Vec<OsString>,

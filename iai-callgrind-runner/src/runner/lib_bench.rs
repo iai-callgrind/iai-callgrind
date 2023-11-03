@@ -99,7 +99,7 @@ impl Groups {
                         &config.raw_callgrind_args,
                         &command_line_args,
                     ])?;
-                    let flamegraph = config.flamegraph.map(std::convert::Into::into);
+                    let flamegraph = config.flamegraph.map(Into::into);
                     let lib_bench = LibBench {
                         bench_index,
                         index,
@@ -115,12 +115,8 @@ impl Groups {
                         callgrind_args,
                         flamegraph,
                         regression: api::update_option(&config.regression, &meta.regression_config)
-                            .map(std::convert::Into::into),
-                        tools: config
-                            .tools
-                            .into_iter()
-                            .map(std::convert::Into::into)
-                            .collect(),
+                            .map(Into::into),
+                        tools: config.tools.0.into_iter().map(Into::into).collect(),
                     };
                     group.benches.push(lib_bench);
                 }

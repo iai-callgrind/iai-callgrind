@@ -15,7 +15,7 @@ pub struct ToolOutputPath {
     pub path: PathBuf,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValgrindTool {
     Callgrind,
     Memcheck,

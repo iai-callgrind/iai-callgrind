@@ -37,7 +37,8 @@ pub struct BinaryBenchmarkConfig {
     pub envs: Vec<(OsString, Option<OsString>)>,
     pub flamegraph: Option<FlamegraphConfig>,
     pub regression: Option<RegressionConfig>,
-    pub tools: Vec<Tool>,
+    pub tools: Tools,
+    pub tools_override: Option<Tools>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -200,7 +201,8 @@ pub struct LibraryBenchmarkConfig {
     pub envs: Vec<(OsString, Option<OsString>)>,
     pub flamegraph: Option<FlamegraphConfig>,
     pub regression: Option<RegressionConfig>,
-    pub tools: Vec<Tool>,
+    pub tools: Tools,
+    pub tools_override: Option<Tools>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -226,7 +228,7 @@ pub struct Run {
     pub config: BinaryBenchmarkConfig,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tool {
     pub kind: ValgrindTool,
     pub enable: Option<bool>,
@@ -235,7 +237,10 @@ pub struct Tool {
     pub show_log: Option<bool>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Tools(pub Vec<Tool>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ValgrindTool {
     Memcheck,
     Helgrind,
@@ -264,9 +269,12 @@ impl BinaryBenchmarkConfig {
             self.envs.extend_from_slice(&other.envs);
             self.flamegraph = update_option(&self.flamegraph, &other.flamegraph);
             self.regression = update_option(&self.regression, &other.regression);
-            // TODO: Clone or extend ?
-            if !other.tools.is_empty() {
-                self.tools = other.tools.clone();
+            if let Some(other_tools) = &other.tools_override {
+                self.tools = other_tools.clone();
+            } else if !other.tools.is_empty() {
+                self.tools.update_from_other(&other.tools);
+            } else {
+                // do nothing
             }
         }
         self
@@ -405,9 +413,18 @@ impl LibraryBenchmarkConfig {
             self.envs.extend_from_slice(&other.envs);
             self.flamegraph = update_option(&self.flamegraph, &other.flamegraph);
             self.regression = update_option(&self.regression, &other.regression);
-            // TODO: Clone or extend ?
-            if !other.tools.is_empty() {
-                self.tools = other.tools.clone();
+            if let Some(other_tools) = &other.tools_override {
+                self.tools = other_tools.clone();
+            } else if !other.tools.is_empty() {
+                self.tools.update_from_other(&other.tools);
+                // for other_tool in &other.tools {
+                //     if let Some(pos) = self.tools.iter().position(|t| t.kind == other_tool.kind)
+                // {         self.tools.remove(pos);
+                //     }
+                //     self.tools.push(other_tool.clone());
+                // }
+            } else {
+                // do nothing
             }
         }
         self
@@ -473,6 +490,42 @@ where
         let mut this = Self::default();
         this.extend_ignore_flag(iter);
         this
+    }
+}
+
+impl Tools {
+    /// Return true if `Tools` is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Update `Tools`
+    ///
+    /// Adds the [`Tool`] to `Tools`. If a [`Tool`] is already present, it will be removed.
+    ///
+    /// This method is inefficient (computes in worst case O(n^2)) but since `Tools` has a
+    /// manageable size with a maximum of 6 members we can spare us an `IndexSet` or similar and the
+    /// dependency on it in `iai-callgrind`.
+    pub fn update(&mut self, tool: Tool) {
+        if let Some(pos) = self.0.iter().position(|t| t.kind == tool.kind) {
+            self.0.remove(pos);
+        }
+        self.0.push(tool);
+    }
+
+    /// Update `Tools` with all [`Tool`]s from an iterator
+    pub fn update_all<T>(&mut self, tools: T)
+    where
+        T: IntoIterator<Item = Tool>,
+    {
+        for tool in tools {
+            self.update(tool);
+        }
+    }
+
+    /// Update `Tools` with another `Tools`
+    pub fn update_from_other(&mut self, tools: &Tools) {
+        self.update_all(tools.0.iter().cloned());
     }
 }
 

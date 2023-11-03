@@ -8,8 +8,10 @@ Deque
 DEBUGINFOD
 Flamegraph
 Flamegraphs
+Hasher
 Heisler
 Helgrind
+IndexSet
 Itamar
 Ldmr
 Ldmw

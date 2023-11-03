@@ -1041,7 +1041,39 @@ impl BinaryBenchmarkConfig {
     where
         T: Into<internal::InternalTool>,
     {
-        self.0.tools.push(tool.into());
+        self.0.tools.update(tool.into());
+        self
+    }
+
+    pub fn tools<I, T>(&mut self, tools: T) -> &mut Self
+    where
+        I: Into<internal::InternalTool>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.tools.update_all(tools.into_iter().map(Into::into));
+        self
+    }
+
+    pub fn tool_override<T>(&mut self, tool: T) -> &mut Self
+    where
+        T: Into<internal::InternalTool>,
+    {
+        self.0
+            .tools_override
+            .get_or_insert(internal::InternalTools::default())
+            .update(tool.into());
+        self
+    }
+
+    pub fn tools_override<I, T>(&mut self, tools: T) -> &mut Self
+    where
+        I: Into<internal::InternalTool>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0
+            .tools_override
+            .get_or_insert(internal::InternalTools::default())
+            .update_all(tools.into_iter().map(Into::into));
         self
     }
 }
@@ -1443,7 +1475,8 @@ impl LibraryBenchmarkConfig {
             envs: Vec::default(),
             flamegraph: Option::default(),
             regression: Option::default(),
-            tools: Vec::default(),
+            tools: internal::InternalTools::default(),
+            tools_override: Option::default(),
         })
     }
 
@@ -1741,7 +1774,39 @@ impl LibraryBenchmarkConfig {
     where
         T: Into<internal::InternalTool>,
     {
-        self.0.tools.push(tool.into());
+        self.0.tools.update(tool.into());
+        self
+    }
+
+    pub fn tools<I, T>(&mut self, tools: T) -> &mut Self
+    where
+        I: Into<internal::InternalTool>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.tools.update_all(tools.into_iter().map(Into::into));
+        self
+    }
+
+    pub fn tool_override<T>(&mut self, tool: T) -> &mut Self
+    where
+        T: Into<internal::InternalTool>,
+    {
+        self.0
+            .tools_override
+            .get_or_insert(internal::InternalTools::default())
+            .update(tool.into());
+        self
+    }
+
+    pub fn tools_override<I, T>(&mut self, tools: T) -> &mut Self
+    where
+        I: Into<internal::InternalTool>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0
+            .tools_override
+            .get_or_insert(internal::InternalTools::default())
+            .update_all(tools.into_iter().map(Into::into));
         self
     }
 }

@@ -15,7 +15,7 @@ use crate::runner::callgrind::RunOptions;
 use crate::util::resolve_binary_path;
 use crate::{api, util};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolConfig {
     pub tool: ValgrindTool,
     pub is_enabled: bool,

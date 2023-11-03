@@ -1,3 +1,7 @@
+use std::ffi::OsStr;
+use std::io;
+use std::process::Output;
+
 pub fn bubble_sort(mut array: Vec<i32>) -> Vec<i32> {
     for i in 0..array.len() {
         for j in 0..array.len() - i - 1 {
@@ -7,6 +11,12 @@ pub fn bubble_sort(mut array: Vec<i32>) -> Vec<i32> {
         }
     }
     array
+}
+
+pub fn bubble_sort_allocate(start: i32, sum: usize) -> i32 {
+    let to_sort = allocate_array_reverse(start);
+    let sorted = bubble_sort(to_sort);
+    sorted.iter().take(sum).sum()
 }
 
 pub fn fibonacci(n: u64) -> u64 {
@@ -41,4 +51,11 @@ pub fn allocate_array_reverse(start: i32) -> Vec<i32> {
     } else {
         (0..start).rev().collect()
     }
+}
+
+pub fn subprocess<T>(exe: T) -> io::Result<Output>
+where
+    T: AsRef<OsStr>,
+{
+    std::process::Command::new(exe).output()
 }
