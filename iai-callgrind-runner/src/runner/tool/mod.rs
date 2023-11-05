@@ -34,8 +34,6 @@ pub struct ToolConfig {
     pub is_enabled: bool,
     pub args: ToolArgs,
     pub outfile_modifier: Option<String>,
-    // TODO: MAKE USE OF IT
-    pub show_log: bool,
 }
 
 pub struct ToolOutputPath {
@@ -169,7 +167,6 @@ impl From<api::Tool> for ToolConfig {
             is_enabled: value.enable.unwrap_or(true),
             args: ToolArgs::from_raw_args(tool, value.raw_args),
             outfile_modifier: value.outfile_modifier,
-            show_log: value.show_log.unwrap_or(false),
         }
     }
 }
