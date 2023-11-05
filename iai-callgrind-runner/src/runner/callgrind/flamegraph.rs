@@ -9,7 +9,7 @@ use log::warn;
 use super::flamegraph_parser::FlamegraphParser;
 use super::parser::{Parser, Sentinel};
 use crate::api::{self, EventKind, FlamegraphKind};
-use crate::runner::common::ToolOutputPath;
+use crate::runner::tool::ToolOutputPath;
 
 #[derive(Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]

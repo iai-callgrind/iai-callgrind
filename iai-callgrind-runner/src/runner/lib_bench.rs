@@ -13,7 +13,7 @@ use super::print::{Formatter, Header, VerticalFormat};
 use super::tool::{RunOptions, ToolConfigs};
 use super::Error;
 use crate::api::{self, LibraryBenchmark, RawArgs};
-use crate::runner::common::{ToolOutputPath, ValgrindTool};
+use crate::runner::tool::{ToolOutputPath, ValgrindTool};
 use crate::util::receive_benchmark;
 
 #[derive(Debug)]

@@ -2,8 +2,8 @@ use std::ffi::OsString;
 
 use log::warn;
 
+use super::{ToolOutputPath, ValgrindTool};
 use crate::api::{self};
-use crate::runner::common::{ToolOutputPath, ValgrindTool};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolArgs {

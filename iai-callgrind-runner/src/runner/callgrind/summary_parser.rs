@@ -5,7 +5,7 @@ use super::model::Costs;
 use super::parser::Parser;
 use crate::error::Error;
 use crate::runner::callgrind::parser::parse_header;
-use crate::runner::common::ToolOutputPath;
+use crate::runner::tool::ToolOutputPath;
 
 pub struct SummaryParser;
 

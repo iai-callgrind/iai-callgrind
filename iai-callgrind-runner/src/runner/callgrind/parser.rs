@@ -5,7 +5,7 @@ use log::{trace, warn};
 use serde::{Deserialize, Serialize};
 
 use super::model::{Costs, Positions};
-use crate::runner::common::ToolOutputPath;
+use crate::runner::tool::ToolOutputPath;
 
 #[derive(Debug, Default)]
 pub struct CallgrindProperties {

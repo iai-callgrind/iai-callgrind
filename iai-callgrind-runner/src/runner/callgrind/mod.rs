@@ -18,13 +18,11 @@ use log::debug;
 
 use self::model::Costs;
 use super::callgrind::args::Args;
-use super::common::ToolOutputPath;
 use super::meta::Metadata;
-use super::tool::RunOptions;
+use super::tool::{RunOptions, ToolOutputPath};
 use crate::api::{self, EventKind, RegressionConfig};
 use crate::error::Error;
-use crate::runner::common::ValgrindTool;
-use crate::runner::tool::{check_exit, ToolOutput};
+use crate::runner::tool::{check_exit, ToolOutput, ValgrindTool};
 use crate::util::{percentage_diff, resolve_binary_path, to_string_signed_short};
 
 pub struct CallgrindCommand {

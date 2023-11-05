@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use super::model::Costs;
 use super::parser::{parse_header, Parser, Sentinel};
 use crate::error::Error;
-use crate::runner::common::ToolOutputPath;
+use crate::runner::tool::ToolOutputPath;
 
 #[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CallgrindMap {

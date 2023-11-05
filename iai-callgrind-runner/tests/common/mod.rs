@@ -3,7 +3,7 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use iai_callgrind_runner::runner::common::{ToolOutputPath, ValgrindTool};
+use iai_callgrind_runner::runner::tool::{ToolOutputPath, ValgrindTool};
 use serde::{Deserialize, Serialize};
 
 pub const FIXTURES_ROOT: &str = "tests/fixtures";
