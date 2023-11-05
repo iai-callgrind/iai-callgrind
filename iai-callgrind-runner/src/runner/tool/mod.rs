@@ -5,15 +5,24 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
 use anyhow::Result;
-use log::{debug, Level};
+use log::{debug, error, Level};
 
 use self::args::ToolArgs;
 use super::common::{ToolOutputPath, ValgrindTool};
 use super::meta::Metadata;
+use crate::api::ExitWith;
 use crate::error::Error;
-use crate::runner::callgrind::RunOptions;
 use crate::util::resolve_binary_path;
 use crate::{api, util};
+
+#[derive(Debug, Default, Clone)]
+pub struct RunOptions {
+    pub env_clear: bool,
+    pub current_dir: Option<PathBuf>,
+    pub entry_point: Option<String>,
+    pub exit_with: Option<ExitWith>,
+    pub envs: Vec<(OsString, OsString)>,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolConfig {
@@ -87,6 +96,7 @@ impl ToolCommand {
         let RunOptions {
             env_clear,
             current_dir,
+            exit_with,
             envs,
             ..
         } = options;
@@ -108,7 +118,6 @@ impl ToolCommand {
 
         let executable = resolve_binary_path(executable)?;
 
-        // TODO: CHECK EXIT like in callgrind ??
         let output = self
             .command
             .args(tool_args.to_vec())
@@ -120,7 +129,8 @@ impl ToolCommand {
             .output()
             .map_err(|error| -> anyhow::Error {
                 Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
-            })?;
+            })
+            .and_then(|output| check_exit(&executable, output, exit_with.as_ref()))?;
 
         Ok(ToolOutput {
             tool: self.tool,
@@ -181,5 +191,58 @@ impl ToolOutput {
                 util::write_all_to_stderr(stderr);
             }
         }
+    }
+}
+
+pub fn check_exit(
+    executable: &Path,
+    output: Output,
+    exit_with: Option<&ExitWith>,
+) -> Result<Output> {
+    let status_code = if let Some(code) = output.status.code() {
+        code
+    } else {
+        return Err(Error::BenchmarkLaunchError(output).into());
+    };
+
+    match (status_code, exit_with) {
+        (0i32, None | Some(ExitWith::Code(0i32) | ExitWith::Success)) => Ok(output),
+        (0i32, Some(ExitWith::Code(code))) => {
+            error!(
+                "Expected benchmark '{}' to exit with '{}' but it succeeded",
+                executable.display(),
+                code
+            );
+            Err(Error::BenchmarkLaunchError(output).into())
+        }
+        (0i32, Some(ExitWith::Failure)) => {
+            error!(
+                "Expected benchmark '{}' to fail but it succeeded",
+                executable.display(),
+            );
+            Err(Error::BenchmarkLaunchError(output).into())
+        }
+        (_, Some(ExitWith::Failure)) => Ok(output),
+        (code, Some(ExitWith::Success)) => {
+            error!(
+                "Expected benchmark '{}' to succeed but it exited with '{}'",
+                executable.display(),
+                code
+            );
+            Err(Error::BenchmarkLaunchError(output).into())
+        }
+        (actual_code, Some(ExitWith::Code(expected_code))) if actual_code == *expected_code => {
+            Ok(output)
+        }
+        (actual_code, Some(ExitWith::Code(expected_code))) => {
+            error!(
+                "Expected benchmark '{}' to exit with '{}' but it exited with '{}'",
+                executable.display(),
+                expected_code,
+                actual_code
+            );
+            Err(Error::BenchmarkLaunchError(output).into())
+        }
+        _ => Err(Error::BenchmarkLaunchError(output).into()),
     }
 }

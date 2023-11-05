@@ -10,33 +10,25 @@ pub mod summary_parser;
 use std::borrow::Cow;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
+use std::process::{Command, Stdio};
 
 use anyhow::Result;
 use colored::Colorize;
-use log::{debug, error};
+use log::debug;
 
 use self::model::Costs;
 use super::callgrind::args::Args;
 use super::common::ToolOutputPath;
 use super::meta::Metadata;
-use crate::api::{self, EventKind, ExitWith, RegressionConfig};
+use super::tool::RunOptions;
+use crate::api::{self, EventKind, RegressionConfig};
 use crate::error::Error;
 use crate::runner::common::ValgrindTool;
-use crate::runner::tool::ToolOutput;
+use crate::runner::tool::{check_exit, ToolOutput};
 use crate::util::{percentage_diff, resolve_binary_path, to_string_signed_short};
 
 pub struct CallgrindCommand {
     command: Command,
-}
-
-#[derive(Debug, Default, Clone)]
-pub struct RunOptions {
-    pub env_clear: bool,
-    pub current_dir: Option<PathBuf>,
-    pub entry_point: Option<String>,
-    pub exit_with: Option<ExitWith>,
-    pub envs: Vec<(OsString, OsString)>,
 }
 
 #[derive(Clone, Debug)]
@@ -58,59 +50,6 @@ impl CallgrindCommand {
     pub fn new(meta: &Metadata) -> Self {
         Self {
             command: meta.into(),
-        }
-    }
-
-    fn check_exit(
-        executable: &Path,
-        output: Output,
-        exit_with: Option<&ExitWith>,
-    ) -> Result<Output> {
-        let status_code = if let Some(code) = output.status.code() {
-            code
-        } else {
-            return Err(Error::BenchmarkLaunchError(output).into());
-        };
-
-        match (status_code, exit_with) {
-            (0i32, None | Some(ExitWith::Code(0i32) | ExitWith::Success)) => Ok(output),
-            (0i32, Some(ExitWith::Code(code))) => {
-                error!(
-                    "Expected benchmark '{}' to exit with '{}' but it succeeded",
-                    executable.display(),
-                    code
-                );
-                Err(Error::BenchmarkLaunchError(output).into())
-            }
-            (0i32, Some(ExitWith::Failure)) => {
-                error!(
-                    "Expected benchmark '{}' to fail but it succeeded",
-                    executable.display(),
-                );
-                Err(Error::BenchmarkLaunchError(output).into())
-            }
-            (_, Some(ExitWith::Failure)) => Ok(output),
-            (code, Some(ExitWith::Success)) => {
-                error!(
-                    "Expected benchmark '{}' to succeed but it exited with '{}'",
-                    executable.display(),
-                    code
-                );
-                Err(Error::BenchmarkLaunchError(output).into())
-            }
-            (actual_code, Some(ExitWith::Code(expected_code))) if actual_code == *expected_code => {
-                Ok(output)
-            }
-            (actual_code, Some(ExitWith::Code(expected_code))) => {
-                error!(
-                    "Expected benchmark '{}' to exit with '{}' but it exited with '{}'",
-                    executable.display(),
-                    expected_code,
-                    actual_code
-                );
-                Err(Error::BenchmarkLaunchError(output).into())
-            }
-            _ => Err(Error::BenchmarkLaunchError(output).into()),
         }
     }
 
@@ -169,7 +108,7 @@ impl CallgrindCommand {
             .map_err(|error| {
                 Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
             })
-            .and_then(|output| Self::check_exit(&executable, output, exit_with.as_ref()))?;
+            .and_then(|output| check_exit(&executable, output, exit_with.as_ref()))?;
 
         Ok(ToolOutput {
             tool: ValgrindTool::Callgrind,
