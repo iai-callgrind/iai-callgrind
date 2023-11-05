@@ -3,7 +3,7 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use iai_callgrind_runner::runner::tool::{ToolOutputPath, ValgrindTool};
+use iai_callgrind_runner::runner::tool::ToolOutputPath;
 use serde::{Deserialize, Serialize};
 
 pub const FIXTURES_ROOT: &str = "tests/fixtures";
@@ -35,7 +35,7 @@ impl Fixtures {
     where
         T: AsRef<Path>,
     {
-        ToolOutputPath::from_existing(ValgrindTool::Callgrind, Fixtures::get_path_of(path)).unwrap()
+        ToolOutputPath::from_existing(Fixtures::get_path_of(path)).unwrap()
     }
 
     pub fn load_serialized<T, N>(name: N) -> Result<T, serde_yaml::Error>

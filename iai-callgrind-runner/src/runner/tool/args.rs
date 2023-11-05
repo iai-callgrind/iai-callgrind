@@ -41,7 +41,7 @@ impl ToolArgs {
             return;
         }
 
-        let path = &output_path.path;
+        let path = &output_path.to_path();
         let mut extension = path
             .extension()
             .expect("An extension must be present")

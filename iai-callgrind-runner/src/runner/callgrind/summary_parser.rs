@@ -23,7 +23,7 @@ impl Parser for SummaryParser {
 
         let mut iter = output_path.lines()?;
         let config = parse_header(&mut iter)
-            .map_err(|error| Error::ParseError((output_path.path.clone(), error.to_string())))?;
+            .map_err(|error| Error::ParseError((output_path.to_path(), error.to_string())))?;
 
         let mut found = false;
         let mut costs = config.costs_prototype;
@@ -49,7 +49,7 @@ impl Parser for SummaryParser {
             Ok(costs)
         } else {
             Err(Error::ParseError((
-                output_path.as_path().to_owned(),
+                output_path.to_path(),
                 "No summary or totals line found".to_owned(),
             ))
             .into())

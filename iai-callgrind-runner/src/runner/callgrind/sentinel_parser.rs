@@ -33,7 +33,7 @@ impl Parser for SentinelParser {
 
         let mut iter = output_path.lines()?;
         let properties = parse_header(&mut iter)
-            .map_err(|error| Error::ParseError((output_path.path.clone(), error.to_string())))?;
+            .map_err(|error| Error::ParseError((output_path.to_path(), error.to_string())))?;
 
         let mut found = false;
         let mut costs = properties.costs_prototype;
@@ -80,7 +80,7 @@ impl Parser for SentinelParser {
             Ok(costs)
         } else {
             Err(Error::ParseError((
-                output_path.as_path().to_owned(),
+                output_path.to_path(),
                 format!("Sentinel '{}' not found", &self.sentinel),
             ))
             .into())

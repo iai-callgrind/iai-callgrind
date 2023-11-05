@@ -1,15 +1,16 @@
 pub mod args;
 
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::fmt::Display;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::os::unix::prelude::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
 use anyhow::{anyhow, Context, Result};
+use glob::glob;
 use log::{debug, error, Level};
+use regex::Regex;
 
 use self::args::ToolArgs;
 use super::meta::Metadata;
@@ -39,7 +40,9 @@ pub struct ToolConfig {
 
 pub struct ToolOutputPath {
     pub tool: ValgrindTool,
-    pub path: PathBuf,
+    pub dir: PathBuf,
+    pub extension: String,
+    pub name: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -225,30 +228,55 @@ impl ToolOutputPath {
                 replacement: "_",
             },
         );
-        let file_name = PathBuf::from(format!(
-            "{}.{}.out",
-            // callgrind. + .out.old = 18 + 37 bytes headroom for extensions with more than 3
-            // bytes. max length is usually 255 bytes
-            tool.id(),
-            truncate_str_utf8(&sanitized_name, 200)
-        ));
-
-        let path = current.join(base_dir).join(module_path).join(file_name);
-        Self { tool, path }
+        let sanitized_name = truncate_str_utf8(&sanitized_name, 200);
+        Self {
+            tool,
+            dir: current
+                .join(base_dir)
+                .join(module_path)
+                .join(sanitized_name),
+            extension: "out".to_owned(),
+            name: sanitized_name.to_owned(),
+        }
     }
 
-    pub fn from_existing<T>(tool: ValgrindTool, path: T) -> Result<Self>
+    pub fn from_existing<T>(path: T) -> Result<Self>
     where
         T: Into<PathBuf>,
     {
         let path: PathBuf = path.into();
         if !path.is_file() {
             return Err(anyhow!(
-                "The callgrind output file '{}' did not exist or is not a valid file",
+                "The output file '{}' did not exist or is not a valid file",
                 path.display()
             ));
         }
-        Ok(Self { tool, path })
+        let file_name = path.file_name().unwrap().to_string_lossy();
+        let re = Regex::new(r"^(?<tool>.*?)[.](?<name>.*)[.](?<extension>out(\..*)?)$")
+            .expect("Regex should compile");
+        let caps = re
+            .captures(&file_name)
+            .ok_or_else(|| anyhow!("Illegal file name: {file_name}"))?;
+
+        Ok(Self {
+            tool: caps
+                .name("tool")
+                .ok_or_else(|| anyhow!("Illegal file name: {file_name}"))?
+                .as_str()
+                .try_into()
+                .unwrap(),
+            dir: path.parent().unwrap().to_owned(),
+            extension: caps
+                .name("extension")
+                .ok_or_else(|| anyhow!("Illegal file name: {file_name}"))?
+                .as_str()
+                .to_owned(),
+            name: caps
+                .name("name")
+                .ok_or_else(|| anyhow!("Illegal file name: {file_name}"))?
+                .as_str()
+                .to_owned(),
+        })
     }
 
     /// Initialize and create the output directory and organize files
@@ -262,61 +290,66 @@ impl ToolOutputPath {
     }
 
     // TODO: RETURN Result
-    // TODO: MOVE all output files in case of a modifier
     pub fn init(&self) {
-        std::fs::create_dir_all(self.path.parent().unwrap()).expect("Failed to create directory");
+        std::fs::create_dir_all(&self.dir).expect("Failed to create directory");
+        self.move_old();
+    }
 
-        if self.exists() {
-            let old_output = self.to_old_output();
-            // Already run this benchmark once; move last results to .old
-            std::fs::copy(&self.path, old_output.path).unwrap();
+    pub fn move_old(&self) {
+        let path = self.to_path();
+
+        // Cleanup old files
+        for entry in glob(&format!("{}*.old", path.display()))
+            .expect("Reading glob patterns should succeed")
+            .map(Result::unwrap)
+        {
+            std::fs::remove_file(entry).unwrap();
+        }
+
+        // Move existing files to *.old
+        for entry in glob(&format!("{}*", path.display()))
+            .expect("Reading glob patterns should succeed")
+            .map(Result::unwrap)
+        {
+            let mut extension = entry.extension().unwrap().to_owned();
+            extension.push(".old");
+            std::fs::rename(&entry, entry.with_extension(extension)).unwrap();
         }
     }
 
     pub fn exists(&self) -> bool {
-        self.path.exists()
-    }
-
-    pub fn with_extension<T>(&self, extension: T) -> Self
-    where
-        T: AsRef<OsStr>,
-    {
-        Self {
-            tool: self.tool,
-            path: self.path.with_extension(extension),
-        }
+        self.to_path().exists()
     }
 
     pub fn to_old_output(&self) -> Self {
+        let mut extension = self.extension.clone();
+        if !std::path::Path::new(&extension)
+            .extension()
+            .map_or(false, |ext| ext.eq_ignore_ascii_case("old"))
+        {
+            extension.push_str(".old");
+        }
         Self {
             tool: self.tool,
-            path: self.path.with_extension("out.old"),
+            name: self.name.clone(),
+            extension,
+            dir: self.dir.clone(),
         }
     }
 
     pub fn to_tool_output(&self, tool: ValgrindTool) -> Self {
-        let file_name: &str = std::str::from_utf8(
-            self.path
-                .file_name()
-                .unwrap()
-                .as_bytes()
-                .strip_prefix(self.tool.id().as_bytes())
-                .unwrap(),
-        )
-        .unwrap();
-        let path = self
-            .path
-            .with_file_name(format!("{}{file_name}", tool.id()));
-        Self { tool, path }
+        Self {
+            tool,
+            name: self.name.clone(),
+            extension: self.extension.clone(),
+            dir: self.dir.clone(),
+        }
     }
 
     pub fn open(&self) -> Result<File> {
-        File::open(&self.path).with_context(|| {
-            format!(
-                "Error opening callgrind output file '{}'",
-                self.path.display()
-            )
-        })
+        let path = self.to_path();
+        File::open(&path)
+            .with_context(|| format!("Error opening callgrind output file '{}'", path.display()))
     }
 
     pub fn lines(&self) -> Result<impl Iterator<Item = String>> {
@@ -326,14 +359,19 @@ impl ToolOutputPath {
             .map(std::result::Result::unwrap))
     }
 
-    pub fn as_path(&self) -> &Path {
-        &self.path
+    pub fn to_path(&self) -> PathBuf {
+        self.dir.join(format!(
+            "{}.{}.{}",
+            self.tool.id(),
+            self.name,
+            self.extension,
+        ))
     }
 }
 
 impl Display for ToolOutputPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{}", self.path.display()))
+        f.write_fmt(format_args!("{}", self.to_path().display()))
     }
 }
 
@@ -368,6 +406,23 @@ impl From<api::ValgrindTool> for ValgrindTool {
             api::ValgrindTool::Massif => ValgrindTool::Massif,
             api::ValgrindTool::DHAT => ValgrindTool::DHAT,
             api::ValgrindTool::BBV => ValgrindTool::BBV,
+        }
+    }
+}
+
+impl TryFrom<&str> for ValgrindTool {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        match value {
+            "dhat" => Ok(ValgrindTool::DHAT),
+            "callgrind" => Ok(ValgrindTool::Callgrind),
+            "memcheck" => Ok(ValgrindTool::Memcheck),
+            "helgrind" => Ok(ValgrindTool::Helgrind),
+            "drd" => Ok(ValgrindTool::DRD),
+            "massif" => Ok(ValgrindTool::Massif),
+            "exp-bbv" => Ok(ValgrindTool::BBV),
+            v => Err(anyhow!("Unknown tool '{}'", v)),
         }
     }
 }

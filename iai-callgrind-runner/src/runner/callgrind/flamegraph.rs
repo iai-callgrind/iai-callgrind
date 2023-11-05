@@ -141,7 +141,7 @@ impl Flamegraph {
             options.count_name = event_kind.to_string();
             let stacks_lines = map.to_stack_format(event_kind)?;
 
-            let output = Output::init(callgrind_output_path.as_path(), event_kind)?;
+            let output = Output::init(callgrind_output_path.to_path(), event_kind)?;
             if self.config.kind == FlamegraphKind::Regular
                 || self.config.kind == FlamegraphKind::All
             {

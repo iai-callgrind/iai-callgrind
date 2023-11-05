@@ -112,7 +112,7 @@ impl Parser for HashMapParser {
     fn parse(&self, output_path: &ToolOutputPath) -> Result<Self::Output> {
         let mut iter = output_path.lines()?;
         let config = parse_header(&mut iter)
-            .map_err(|error| Error::ParseError((output_path.path.clone(), error.to_string())))?;
+            .map_err(|error| Error::ParseError((output_path.to_path(), error.to_string())))?;
 
         let mut current_id = CurrentId::default();
         let mut cfn_record = None;

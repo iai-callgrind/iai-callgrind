@@ -101,4 +101,5 @@ xtree
 valgrind
 valgrind's
 vulnaribility
+walkdir
 yesno
