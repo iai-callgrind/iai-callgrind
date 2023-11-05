@@ -53,9 +53,11 @@ pub fn allocate_array_reverse(start: i32) -> Vec<i32> {
     }
 }
 
-pub fn subprocess<T>(exe: T) -> io::Result<Output>
+pub fn subprocess<I, T, U>(exe: T, args: U) -> io::Result<Output>
 where
     T: AsRef<OsStr>,
+    I: AsRef<OsStr>,
+    U: IntoIterator<Item = I>,
 {
-    std::process::Command::new(exe).output()
+    std::process::Command::new(exe).args(args).output()
 }

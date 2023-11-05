@@ -92,10 +92,21 @@ fn bench_fibonacci_with_config() -> u64 {
 }
 
 // A config per `bench` attribute is also possible using the alternative `bench` attribute with
-// key = value pairs. The example below shows all accepted keys. Note that `LibraryBenchmarkConfig`
-// is additive for callgrind arguments and environment variables and appends them to the variables
-// of `configs` of higher levels (like #[library_benchmark(config = ...)]). Other configuration
-// values are overwritten.
+// key = value pairs. The example below shows all accepted keys.
+//
+// Note that `LibraryBenchmarkConfig` is additive for callgrind arguments, tools and environment
+// variables and appends them to the variables of `configs` of higher levels (like
+// #[library_benchmark(config = ...)]). Only the last definition of a such configuration values is
+// taken into account. Other non-collection like configuration values (like `RegressionConfig`) are
+// overridden. In our example here: If `raw_callgrind_args(["--dump-instr=yes"])` would have been
+// specified in a higher level configuration, then specifying
+// `raw_callgrind_args(["--dump-instr=no")` in our configurations at this level would effectively
+// overwrite the value for `--dump-instr` and only `--dump-instr=no` is applied for the benchmark
+// run `fib_with_config`.
+//
+// Completely overriding previous definitions of valgrind tools instead of appending them with
+// `LibraryBenchmarkConfig::tool` or `LibraryBenchmarkConfig::tools` can be achieved with
+// `LibraryBenchmarkConfig::tool_override` or `LibraryBenchmarkConfig::tools_override`.
 #[library_benchmark]
 #[bench::fib_with_config(
     args = (3, 4),
@@ -148,7 +159,12 @@ library_benchmark_group!(
 // (`fail-fast = false`) using `EventKind::Ir` (Total instructions executed) with a limit of `+5%`
 // and `EventKind::EstimatedCycles` with a limit of `+10%`. This `LibraryBenchmarkConfig` applies to
 // all benchmarks in all groups (specified below) if it is not overwritten.
-// TODO: ADD DOCS FOR SPECIFYING TOOLS
+//
+// In addition to running `callgrind` it's possible to run other valgrind tools like DHAT, Massif,
+// (the experimental) BBV, Memcheck, Helgrind or DRD. Below we specify to run DHAT in addition to
+// callgrind for all benchmarks (if not specified otherwise and/or overridden in a lower-level
+// configuration). The output files of the profiling tools (DHAT, Massif, BBV) can be found next to
+// the output files of the callgrind runs in `target/iai/...`.
 main!(
     config = LibraryBenchmarkConfig::default()
         .regression(

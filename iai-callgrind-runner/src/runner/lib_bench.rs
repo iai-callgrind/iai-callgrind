@@ -10,11 +10,10 @@ use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::{CallgrindCommand, Regression, RunOptions};
 use super::meta::Metadata;
 use super::print::{Formatter, Header, VerticalFormat};
-use super::tool::ToolConfig;
+use super::tool::ToolConfigs;
 use super::Error;
 use crate::api::{self, LibraryBenchmark, RawArgs};
 use crate::runner::common::{ToolOutputPath, ValgrindTool};
-use crate::runner::tool::ToolCommand;
 use crate::util::receive_benchmark;
 
 #[derive(Debug)]
@@ -53,7 +52,7 @@ struct LibBench {
     callgrind_args: Args,
     flamegraph: Option<FlamegraphConfig>,
     regression: Option<Regression>,
-    tools: Vec<ToolConfig>,
+    tools: ToolConfigs,
 }
 
 #[derive(Debug)]
@@ -116,7 +115,7 @@ impl Groups {
                         flamegraph,
                         regression: api::update_option(&config.regression, &meta.regression_config)
                             .map(Into::into),
-                        tools: config.tools.0.into_iter().map(Into::into).collect(),
+                        tools: ToolConfigs(config.tools.0.into_iter().map(Into::into).collect()),
                     };
                     group.benches.push(lib_bench);
                 }
@@ -226,19 +225,13 @@ impl LibBench {
             )?;
         }
 
-        for tool_config in self.tools.iter().filter(|t| t.is_enabled) {
-            let command = ToolCommand::new(tool_config.tool, &config.meta);
-            let output_path = output_path.to_tool_output(tool_config.tool);
-            output_path.init();
-            let output = command.run(
-                tool_config.clone(),
-                &config.bench_bin,
-                &args,
-                self.options.clone(),
-                &output_path,
-            )?;
-            output.dump_if(log::Level::Info);
-        }
+        self.tools.run(
+            &config.meta,
+            &config.bench_bin,
+            &args,
+            &self.options,
+            &output_path,
+        )?;
 
         if let Some(regression) = &self.regression {
             regression.check_and_print(&new_costs, old_costs.as_ref())?;

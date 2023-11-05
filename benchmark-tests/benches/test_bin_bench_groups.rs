@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use iai_callgrind::{
     binary_benchmark_group, main, Arg, BenchmarkId, BinaryBenchmarkConfig, BinaryBenchmarkGroup,
-    EventKind, ExitWith, Fixtures, RegressionConfig, Run,
+    EventKind, ExitWith, Fixtures, RegressionConfig, Run, Tool, ValgrindTool,
 };
 
 /// This function is run before all benchmarks of a group if the group argument `before =
@@ -223,15 +223,23 @@ binary_benchmark_group!(
 // performance regressions and set `fail_fast` to false explicitly (This wouldn't have been
 // necessary because the default is `false`). The whole benchmark still fails in the end if a
 // performance regression was detected.
+//
+// In addition to running `callgrind` it's possible to run other valgrind tools like DHAT, Massif,
+// (the experimental) BBV, Memcheck, Helgrind or DRD. Below we specify to run DHAT in addition to
+// callgrind for all benchmarks (if not specified otherwise and/or overridden in a lower-level
+// configuration). The output files of the profiling tools (DHAT, Massif, BBV) can be found next to
+// the output files of the callgrind runs in `target/iai/...`.
 main!(
     config = BinaryBenchmarkConfig::default()
         .regression(
             RegressionConfig::default()
                 .limits([(EventKind::Ir, 1.0), (EventKind::EstimatedCycles, 10.0)])
                 .fail_fast(false)
-        );
-    binary_benchmark_groups = group_with_cmd,
-    group_without_cmd,
-    group_test_env,
-    group_test_benchmark_id
+        )
+        .tool(Tool::new(ValgrindTool::DHAT));
+    binary_benchmark_groups =
+        group_with_cmd,
+        group_without_cmd,
+        group_test_env,
+        group_test_benchmark_id
 );

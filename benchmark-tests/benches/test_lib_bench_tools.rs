@@ -37,7 +37,10 @@ fn bench_bubble_sort_allocate() -> i32 {
 )]
 fn bench_subprocess() -> io::Result<Output> {
     println!("Do something before calling subprocess");
-    subprocess(black_box(env!("CARGO_BIN_EXE_benchmark-tests-sort")))
+    subprocess(
+        black_box(env!("CARGO_BIN_EXE_benchmark-tests-sort")),
+        black_box(Vec::<std::ffi::OsString>::new()),
+    )
 }
 
 library_benchmark_group!(

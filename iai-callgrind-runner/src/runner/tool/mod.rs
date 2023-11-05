@@ -25,6 +25,9 @@ pub struct ToolConfig {
     pub show_log: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToolConfigs(pub Vec<ToolConfig>);
+
 pub struct ToolCommand {
     tool: ValgrindTool,
     command: Command,
@@ -136,6 +139,32 @@ impl From<api::Tool> for ToolConfig {
             outfile_modifier: value.outfile_modifier,
             show_log: value.show_log.unwrap_or(false),
         }
+    }
+}
+
+impl ToolConfigs {
+    pub fn run(
+        &self,
+        meta: &Metadata,
+        executable: &Path,
+        executable_args: &[OsString],
+        options: &RunOptions,
+        output_path: &ToolOutputPath,
+    ) -> Result<()> {
+        for tool_config in self.0.iter().filter(|t| t.is_enabled) {
+            let command = ToolCommand::new(tool_config.tool, meta);
+            let output_path = output_path.to_tool_output(tool_config.tool);
+            output_path.init();
+            let output = command.run(
+                tool_config.clone(),
+                executable,
+                executable_args,
+                options.clone(),
+                &output_path,
+            )?;
+            output.dump_if(log::Level::Info);
+        }
+        Ok(())
     }
 }
 

@@ -19,8 +19,7 @@ pub struct CallgrindMap {
     pub sentinel: Option<Sentinel>,
     pub sentinel_key: Option<Id>,
 }
-//
-// Ignore 'cob'
+
 #[derive(Debug, Default)]
 struct CfnRecord {
     obj: Option<SourcePath>,

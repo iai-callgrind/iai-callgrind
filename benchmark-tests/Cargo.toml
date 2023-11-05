@@ -34,6 +34,10 @@ path = "src/benchmark-tests-echo.rs"
 name = "benchmark-tests-sort"
 path = "src/benchmark-tests-sort.rs"
 
+[[bin]]
+name = "benchmark-tests-subprocess"
+path = "src/benchmark-tests-subprocess.rs"
+
 [[bench]]
 name = "test_bin_bench_with_fixtures"
 harness = false
@@ -48,6 +52,10 @@ harness = false
 
 [[bench]]
 name = "test_bin_bench_flamegraph"
+harness = false
+
+[[bench]]
+name = "test_bin_bench_tools"
 harness = false
 
 [[bench]]

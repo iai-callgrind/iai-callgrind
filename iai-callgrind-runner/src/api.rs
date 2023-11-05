@@ -417,12 +417,6 @@ impl LibraryBenchmarkConfig {
                 self.tools = other_tools.clone();
             } else if !other.tools.is_empty() {
                 self.tools.update_from_other(&other.tools);
-                // for other_tool in &other.tools {
-                //     if let Some(pos) = self.tools.iter().position(|t| t.kind == other_tool.kind)
-                // {         self.tools.remove(pos);
-                //     }
-                //     self.tools.push(other_tool.clone());
-                // }
             } else {
                 // do nothing
             }
@@ -535,6 +529,7 @@ pub fn update_option<T: Clone>(first: &Option<T>, other: &Option<T>) -> Option<T
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
     use rstest::rstest;
 
     use super::*;
@@ -548,44 +543,53 @@ mod tests {
         );
     }
 
-    #[rstest]
-    #[case::all_none(None, &[None], None)]
-    #[case::default_is_overwritten_when_false(None, &[Some(false)], Some(false))]
-    #[case::default_is_overwritten_when_true(None, &[Some(true)], Some(true))]
-    #[case::some_is_overwritten_when_same_value(Some(true), &[Some(true)], Some(true))]
-    #[case::some_is_overwritten_when_false(Some(false), &[Some(true)], Some(true))]
-    #[case::some_is_not_overwritten_when_none(Some(true), &[None], Some(true))]
-    #[case::multiple_when_none_then_ignored(Some(true), &[None, Some(false)], Some(false))]
-    #[case::default_when_multiple_then_ignored(None, &[Some(true), None, Some(false)], Some(false))]
-    fn test_library_benchmark_config_update_from_all_when_env_clear(
-        #[case] base: Option<bool>,
-        #[case] others: &[Option<bool>],
-        #[case] expected: Option<bool>,
-    ) {
-        let base = LibraryBenchmarkConfig {
-            env_clear: base,
-            ..Default::default()
+    #[test]
+    fn test_library_benchmark_config_update_from_all_when_no_tools_override() {
+        let base = LibraryBenchmarkConfig::default();
+        let other = LibraryBenchmarkConfig {
+            env_clear: Some(true),
+            raw_callgrind_args: RawArgs(vec!["--just-testing=yes".to_owned()]),
+            envs: vec![(OsString::from("MY_ENV"), Some(OsString::from("value")))],
+            flamegraph: Some(FlamegraphConfig::default()),
+            regression: Some(RegressionConfig::default()),
+            tools: Tools(vec![Tool {
+                kind: ValgrindTool::DHAT,
+                enable: None,
+                raw_args: RawArgs(vec![]),
+                outfile_modifier: None,
+                show_log: None,
+            }]),
+            tools_override: None,
         };
-        let others: Vec<LibraryBenchmarkConfig> = others
-            .iter()
-            .map(|o| LibraryBenchmarkConfig {
-                env_clear: *o,
-                ..Default::default()
-            })
-            .collect();
 
-        let others = others
-            .iter()
-            .map(Some)
-            .collect::<Vec<Option<&LibraryBenchmarkConfig>>>();
+        assert_eq!(base.update_from_all([Some(&other.clone())]), other);
+    }
 
-        assert_eq!(
-            base.update_from_all(others),
-            LibraryBenchmarkConfig {
-                env_clear: expected,
-                ..Default::default()
-            }
-        );
+    #[test]
+    fn test_library_benchmark_config_update_from_all_when_tools_override() {
+        let base = LibraryBenchmarkConfig::default();
+        let other = LibraryBenchmarkConfig {
+            env_clear: Some(true),
+            raw_callgrind_args: RawArgs(vec!["--just-testing=yes".to_owned()]),
+            envs: vec![(OsString::from("MY_ENV"), Some(OsString::from("value")))],
+            flamegraph: Some(FlamegraphConfig::default()),
+            regression: Some(RegressionConfig::default()),
+            tools: Tools(vec![Tool {
+                kind: ValgrindTool::DHAT,
+                enable: None,
+                raw_args: RawArgs(vec![]),
+                outfile_modifier: None,
+                show_log: None,
+            }]),
+            tools_override: Some(Tools(vec![])),
+        };
+        let expected = LibraryBenchmarkConfig {
+            tools: other.tools_override.as_ref().unwrap().clone(),
+            tools_override: None,
+            ..other.clone()
+        };
+
+        assert_eq!(base.update_from_all([Some(&other)]), expected);
     }
 
     #[rstest]
