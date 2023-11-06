@@ -451,7 +451,7 @@ impl RawArgs {
     {
         self.0.extend(args.into_iter().map(|s| {
             let string = s.as_ref();
-            if string.starts_with("--") {
+            if string.starts_with('-') {
                 string.to_owned()
             } else {
                 format!("--{string}")

@@ -16,13 +16,27 @@ impl ToolArgs {
     pub fn from_raw_args(tool: ValgrindTool, raw_args: api::RawArgs) -> Self {
         let mut other = vec![];
         for arg in raw_args.0 {
-            match arg.split_once('=') {
+            match arg
+                .trim()
+                .split_once('=')
+                .map(|(k, v)| (k.trim(), v.trim()))
+            {
                 Some((
                     "--dhat-out-file" | "--massif-out-file" | "--bb-out-file" | "--pc-out-file",
                     _,
-                )) => warn!("Ignoring {} argument: '{arg}'", tool.id()),
-                Some(_) => other.push(arg),
-                None => {}
+                )) => warn!(
+                    "Ignoring {} argument '{arg}': Output files of tools are managed by \
+                     iai-callgrind",
+                    tool.id()
+                ),
+                None if matches!(
+                    arg.as_str(),
+                    "-h" | "--help" | "--help-dyn-options" | "--help-debug" | "--version"
+                ) =>
+                {
+                    warn!("Ignoring {} argument '{arg}'", tool.id());
+                }
+                None | Some(_) => other.push(arg),
             }
         }
         Self {

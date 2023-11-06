@@ -462,7 +462,7 @@ impl Groups {
             let regression = api::update_option(&config.regression, &meta.regression_config)
                 .map(std::convert::Into::into);
             let callgrind_args =
-                Args::from_raw_callgrind_args(&[&config.raw_callgrind_args, command_line_args])?;
+                Args::from_raw_args(&[&config.raw_callgrind_args, command_line_args])?;
             let tools = ToolConfigs(config.tools.0.into_iter().map(Into::into).collect());
             for args in run.args {
                 let id = if let Some(id) = args.id {
@@ -580,10 +580,8 @@ impl Groups {
                 &command_line_args,
                 meta,
             )?;
-            let callgrind_args = Args::from_raw_callgrind_args(&[
-                &group_config.raw_callgrind_args,
-                &command_line_args,
-            ])?;
+            let callgrind_args =
+                Args::from_raw_args(&[&group_config.raw_callgrind_args, &command_line_args])?;
             let config = Group {
                 id: group.id,
                 module_path,

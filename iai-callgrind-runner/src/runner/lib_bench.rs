@@ -94,10 +94,8 @@ impl Groups {
                         library_benchmark_bench.config.as_ref(),
                     ]);
                     let envs = config.resolve_envs();
-                    let callgrind_args = Args::from_raw_callgrind_args(&[
-                        &config.raw_callgrind_args,
-                        &command_line_args,
-                    ])?;
+                    let callgrind_args =
+                        Args::from_raw_args(&[&config.raw_callgrind_args, &command_line_args])?;
                     let flamegraph = config.flamegraph.map(Into::into);
                     let lib_bench = LibBench {
                         bench_index,
