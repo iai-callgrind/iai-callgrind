@@ -28,6 +28,7 @@ struct Assistant {
     bench: bool,
     callgrind_args: Args,
     regression: Option<Regression>,
+    flamegraph: Option<FlamegraphConfig>,
     tools: ToolConfigs,
 }
 
@@ -104,6 +105,7 @@ impl Assistant {
         bench: bool,
         callgrind_args: Args,
         regression: Option<Regression>,
+        flamegraph: Option<FlamegraphConfig>,
         tools: ToolConfigs,
     ) -> Self {
         Self {
@@ -112,12 +114,12 @@ impl Assistant {
             bench,
             callgrind_args,
             regression,
+            flamegraph,
             tools,
         }
     }
 
     /// Run the assistant and benchmark this run
-    /// TODO: CREATE FLAMEGRAPHS
     fn run_bench(&self, is_regressed: &mut bool, config: &Config, group: &Group) -> Result<()> {
         let command = CallgrindCommand::new(&config.meta);
 
@@ -164,17 +166,26 @@ impl Assistant {
             None
         };
 
-        Header::from_segments(
+        let header = Header::from_segments(
             [&group.module_path, &self.kind.id(), &self.name],
             None,
             None,
-        )
-        .print();
+        );
+
+        header.print();
 
         let format = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
         print!("{format}");
 
         output.dump_if(log::Level::Info);
+
+        if let Some(flamegraph_config) = self.flamegraph.clone() {
+            Flamegraph::new(header.to_title(), flamegraph_config).create(
+                &output_path,
+                Some(&sentinel),
+                &config.meta.project_root,
+            )?;
+        }
 
         self.tools.run(
             &config.meta,
@@ -487,6 +498,7 @@ impl Groups {
         assists: Vec<crate::api::Assistant>,
         callgrind_args: &Args,
         regression: Option<&Regression>,
+        flamegraph: Option<&FlamegraphConfig>,
         tools: &ToolConfigs,
     ) -> BenchmarkAssistants {
         let mut bench_assists = BenchmarkAssistants::default();
@@ -499,6 +511,7 @@ impl Groups {
                         assist.bench,
                         callgrind_args.clone(),
                         regression.cloned(),
+                        flamegraph.cloned(),
                         tools.clone(),
                     ));
                 }
@@ -509,6 +522,7 @@ impl Groups {
                         assist.bench,
                         callgrind_args.clone(),
                         regression.cloned(),
+                        flamegraph.cloned(),
                         tools.clone(),
                     ));
                 }
@@ -519,6 +533,7 @@ impl Groups {
                         assist.bench,
                         callgrind_args.clone(),
                         regression.cloned(),
+                        flamegraph.cloned(),
                         tools.clone(),
                     ));
                 }
@@ -529,6 +544,7 @@ impl Groups {
                         assist.bench,
                         callgrind_args.clone(),
                         regression.cloned(),
+                        flamegraph.cloned(),
                         tools.clone(),
                     ));
                 }
@@ -580,6 +596,7 @@ impl Groups {
                     api::update_option(&group_config.regression, &meta.regression_config)
                         .map(std::convert::Into::into)
                         .as_ref(),
+                    group_config.flamegraph.map(Into::into).as_ref(),
                     &ToolConfigs(group_config.tools.0.into_iter().map(Into::into).collect()),
                 ),
             };

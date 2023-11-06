@@ -3,8 +3,21 @@ use iai_callgrind::{
     FlamegraphKind, Run,
 };
 
+#[inline(never)]
+pub fn run_before() {
+    std::fs::write("before", b"before").unwrap();
+}
+
+#[inline(never)]
+pub fn run_after() {
+    let string = std::fs::read_to_string("before").unwrap();
+    assert_eq!(string, "before");
+}
+
 binary_benchmark_group!(
     name = main_level_flamegraph;
+    before = run_before;
+    after = run_after, bench = true;
     benchmark = |"benchmark-tests-exit", group: &mut BinaryBenchmarkGroup| {
         group.bench(Run::with_arg(
             Arg::new("foo", ["0"]),
@@ -14,6 +27,8 @@ binary_benchmark_group!(
 
 binary_benchmark_group!(
     name = group_level_flamegraph;
+    before = run_before, bench = true;
+    after = run_after;
     config = BinaryBenchmarkConfig::default()
         .flamegraph(FlamegraphConfig::default().title("Group level flamegraph".to_owned()));
     benchmark = |"benchmark-tests-exit", group: &mut BinaryBenchmarkGroup| {
