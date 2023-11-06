@@ -8,8 +8,8 @@ use log::warn;
 
 use super::flamegraph_parser::FlamegraphParser;
 use super::parser::{Parser, Sentinel};
-use super::CallgrindOutput;
 use crate::api::{self, EventKind, FlamegraphKind};
+use crate::runner::tool::ToolOutputPath;
 
 #[derive(Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
@@ -78,7 +78,7 @@ impl Flamegraph {
 
     pub fn create(
         &self,
-        callgrind_output: &CallgrindOutput,
+        callgrind_output_path: &ToolOutputPath,
         sentinel: Option<&Sentinel>,
         project_root: &Path,
     ) -> Result<()> {
@@ -100,7 +100,7 @@ impl Flamegraph {
 
         let parser = FlamegraphParser::new(sentinel, project_root);
         // We need this map in all remaining cases of `FlamegraphKinds`
-        let mut map = parser.parse(callgrind_output)?;
+        let mut map = parser.parse(callgrind_output_path)?;
         if map.is_empty() {
             warn!("Unable to create a flamegraph: No stacks found");
             return Ok(());
@@ -118,7 +118,7 @@ impl Flamegraph {
         options.subtitle = self.config.subtitle.clone();
         options.min_width = self.config.min_width;
 
-        let old_output = callgrind_output.to_old_output();
+        let old_output = callgrind_output_path.to_old_output();
 
         #[allow(clippy::if_then_some_else_none)]
         let mut old_map = if (self.config.kind == FlamegraphKind::Differential
@@ -141,7 +141,7 @@ impl Flamegraph {
             options.count_name = event_kind.to_string();
             let stacks_lines = map.to_stack_format(event_kind)?;
 
-            let output = Output::init(callgrind_output.as_path(), event_kind)?;
+            let output = Output::init(callgrind_output_path.to_path(), event_kind)?;
             if self.config.kind == FlamegraphKind::Regular
                 || self.config.kind == FlamegraphKind::All
             {

@@ -7,11 +7,13 @@ use super::callgrind::args::Args;
 use super::callgrind::flamegraph::{Config as FlamegraphConfig, Flamegraph};
 use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
-use super::callgrind::{CallgrindCommand, CallgrindOptions, CallgrindOutput, Regression};
+use super::callgrind::{CallgrindCommand, Regression};
 use super::meta::Metadata;
 use super::print::{Formatter, Header, VerticalFormat};
+use super::tool::{RunOptions, ToolConfigs};
 use super::Error;
-use crate::api::{self, LibraryBenchmark, RawCallgrindArgs};
+use crate::api::{self, LibraryBenchmark, RawArgs};
+use crate::runner::tool::{ToolOutputPath, ValgrindTool};
 use crate::util::receive_benchmark;
 
 #[derive(Debug)]
@@ -46,10 +48,11 @@ struct LibBench {
     id: Option<String>,
     function: String,
     args: Option<String>,
-    opts: CallgrindOptions,
+    options: RunOptions,
     callgrind_args: Args,
     flamegraph: Option<FlamegraphConfig>,
     regression: Option<Regression>,
+    tools: ToolConfigs,
 }
 
 #[derive(Debug)]
@@ -66,8 +69,7 @@ impl Groups {
     ) -> Result<Self> {
         let global_config = benchmark.config;
         let mut groups = vec![];
-        let command_line_args =
-            RawCallgrindArgs::from_command_line_args(benchmark.command_line_args);
+        let command_line_args = RawArgs::from_command_line_args(benchmark.command_line_args);
 
         for library_benchmark_group in benchmark.groups {
             let module_path = if let Some(group_id) = &library_benchmark_group.id {
@@ -92,18 +94,16 @@ impl Groups {
                         library_benchmark_bench.config.as_ref(),
                     ]);
                     let envs = config.resolve_envs();
-                    let callgrind_args = Args::from_raw_callgrind_args(&[
-                        &config.raw_callgrind_args,
-                        &command_line_args,
-                    ])?;
-                    let flamegraph = config.flamegraph.map(std::convert::Into::into);
+                    let callgrind_args =
+                        Args::from_raw_args(&[&config.raw_callgrind_args, &command_line_args])?;
+                    let flamegraph = config.flamegraph.map(Into::into);
                     let lib_bench = LibBench {
                         bench_index,
                         index,
                         id: library_benchmark_bench.id,
                         function: library_benchmark_bench.bench,
                         args: library_benchmark_bench.args,
-                        opts: CallgrindOptions {
+                        options: RunOptions {
                             env_clear: config.env_clear.unwrap_or(true),
                             entry_point: Some("iai_callgrind::bench::*".to_owned()),
                             envs,
@@ -112,7 +112,8 @@ impl Groups {
                         callgrind_args,
                         flamegraph,
                         regression: api::update_option(&config.regression, &meta.regression_config)
-                            .map(std::convert::Into::into),
+                            .map(Into::into),
+                        tools: ToolConfigs(config.tools.0.into_iter().map(Into::into).collect()),
                     };
                     group.benches.push(lib_bench);
                 }
@@ -150,7 +151,7 @@ impl Groups {
 
 impl LibBench {
     fn run(&self, config: &Config, group: &Group) -> Result<()> {
-        let command = CallgrindCommand::new(&config.meta);
+        let callgrind_command = CallgrindCommand::new(&config.meta);
         let args = if let Some(group_id) = &group.id {
             vec![
                 OsString::from("--iai-run".to_owned()),
@@ -168,42 +169,33 @@ impl LibBench {
         };
 
         let sentinel = Sentinel::new("iai_callgrind::bench::");
-        let output = if let Some(bench_id) = &self.id {
-            CallgrindOutput::init(
+        let output_path = if let Some(bench_id) = &self.id {
+            ToolOutputPath::with_init(
+                ValgrindTool::Callgrind,
                 &config.meta.target_dir,
                 &group.module,
                 &format!("{}.{}", &self.function, bench_id),
             )
         } else {
-            CallgrindOutput::init(&config.meta.target_dir, &group.module, &self.function)
+            ToolOutputPath::with_init(
+                ValgrindTool::Callgrind,
+                &config.meta.target_dir,
+                &group.module,
+                &self.function,
+            )
         };
 
-        command.run(
+        let output = callgrind_command.run(
             self.callgrind_args.clone(),
             &config.bench_bin,
             &args,
-            self.opts.clone(),
-            &output,
+            self.options.clone(),
+            &output_path,
         )?;
 
-        let header = Header::from_segments(
-            [&group.module, &self.function],
-            self.id.clone(),
-            self.args.clone(),
-        );
+        let new_costs = SentinelParser::new(&sentinel).parse(&output_path)?;
 
-        if let Some(flamegraph_config) = self.flamegraph.clone() {
-            Flamegraph::new(header.to_title(), flamegraph_config).create(
-                &output,
-                Some(&sentinel),
-                &config.meta.project_root,
-            )?;
-        }
-
-        let new_costs = SentinelParser::new(&sentinel).parse(&output)?;
-
-        let old_output = output.to_old_output();
-
+        let old_output = output_path.to_old_output();
         #[allow(clippy::if_then_some_else_none)]
         let old_costs = if old_output.exists() {
             Some(SentinelParser::new(&sentinel).parse(&old_output)?)
@@ -211,9 +203,33 @@ impl LibBench {
             None
         };
 
+        let header = Header::from_segments(
+            [&group.module, &self.function],
+            self.id.clone(),
+            self.args.clone(),
+        );
+
         header.print();
         let string = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
         print!("{string}");
+
+        output.dump_if(log::Level::Info);
+
+        if let Some(flamegraph_config) = self.flamegraph.clone() {
+            Flamegraph::new(header.to_title(), flamegraph_config).create(
+                &output_path,
+                Some(&sentinel),
+                &config.meta.project_root,
+            )?;
+        }
+
+        self.tools.run(
+            &config.meta,
+            &config.bench_bin,
+            &args,
+            &self.options,
+            &output_path,
+        )?;
 
         if let Some(regression) = &self.regression {
             regression.check_and_print(&new_costs, old_costs.as_ref())?;

@@ -9,8 +9,10 @@ use crate::common::{get_project_root, Fixtures};
 #[case::when_entry_point("when_entry_point", Some(Sentinel::new("benchmark_tests_exit::main")))]
 #[case::no_entry_point("no_entry_point", None)]
 fn test_flamegraph_parser(#[case] fixture: &str, #[case] sentinel: Option<Sentinel>) {
-    let output = Fixtures::get_callgrind_output(format!("callgrind.out/{fixture}.out"));
-    let expected_stacks = Fixtures::load_stacks(format!("callgrind.out/{fixture}.exp_stacks"));
+    let output =
+        Fixtures::get_callgrind_output_path(format!("callgrind.out/callgrind.{fixture}.out"));
+    let expected_stacks =
+        Fixtures::load_stacks(format!("callgrind.out/callgrind.{fixture}.exp_stacks"));
     let parser = FlamegraphParser::new(sentinel.as_ref(), get_project_root());
 
     let result = parser.parse(&output).unwrap();

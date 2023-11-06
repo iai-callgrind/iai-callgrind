@@ -71,9 +71,10 @@ library_benchmark_group!(
 
 main!(
     config = LibraryBenchmarkConfig::default().env_clear(false);
-    library_benchmark_groups = pass_through_single,
-    pass_through_multiple,
-    custom_single,
-    custom_multiple,
-    configs
+    library_benchmark_groups =
+        pass_through_single,
+        pass_through_multiple,
+        custom_single,
+        custom_multiple,
+        configs
 );

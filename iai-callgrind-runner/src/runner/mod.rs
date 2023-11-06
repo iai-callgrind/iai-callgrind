@@ -3,6 +3,7 @@ pub mod callgrind;
 mod lib_bench;
 mod meta;
 mod print;
+pub mod tool;
 
 use std::path::PathBuf;
 

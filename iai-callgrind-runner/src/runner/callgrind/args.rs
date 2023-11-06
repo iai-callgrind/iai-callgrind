@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use log::{log_enabled, warn};
 
-use crate::api::RawCallgrindArgs;
+use crate::api::RawArgs;
 use crate::error::Error;
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
@@ -28,55 +28,66 @@ pub struct Args {
 }
 
 impl Args {
-    pub fn from_raw_callgrind_args(args: &[&RawCallgrindArgs]) -> Result<Self> {
+    pub fn from_raw_args(args: &[&RawArgs]) -> Result<Self> {
         let mut default = Self::default();
-        default.extend(args.iter().flat_map(|s| &s.0))?;
+        default.update(args.iter().flat_map(|s| &s.0))?;
         Ok(default)
     }
 
-    pub fn extend<'a, T: Iterator<Item = &'a String>>(&mut self, args: T) -> Result<()> {
+    pub fn update<'a, T: Iterator<Item = &'a String>>(&mut self, args: T) -> Result<()> {
         for arg in args {
             match arg
                 .trim()
-                .strip_prefix("--")
-                .and_then(|s| s.split_once('=').map(|(k, v)| (k.trim(), v.trim())))
+                .split_once('=')
+                .map(|(k, v)| (k.trim(), v.trim()))
             {
-                Some(("I1", value)) => self.i1 = value.to_owned(),
-                Some(("D1", value)) => self.d1 = value.to_owned(),
-                Some(("LL", value)) => self.ll = value.to_owned(),
-                Some((key @ "collect-atstart", value)) => {
+                Some(("--I1", value)) => self.i1 = value.to_owned(),
+                Some(("--D1", value)) => self.d1 = value.to_owned(),
+                Some(("--LL", value)) => self.ll = value.to_owned(),
+                Some((key @ "--collect-atstart", value)) => {
                     self.collect_atstart = yesno_to_bool(value).ok_or_else(|| {
                         Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
-                Some((key @ "dump-instr", value)) => {
+                Some((key @ "--dump-instr", value)) => {
                     self.dump_instr = yesno_to_bool(value).ok_or_else(|| {
                         Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
-                Some((key @ "dump-line", value)) => {
+                Some((key @ "--dump-line", value)) => {
                     self.dump_line = yesno_to_bool(value).ok_or_else(|| {
                         Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
-                Some((key @ "compress-pos", value)) => {
-                    self.compress_pos = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
-                    })?;
-                }
-                Some(("toggle-collect", value)) => {
+                Some(("--toggle-collect", value)) => {
                     self.toggle_collect.push_back(value.to_owned());
                 }
                 Some((
-                    key @ ("separate-threads" | "cache-sim" | "callgrind-out-file"
-                    | "compress-strings" | "combine-dumps"),
+                    key @ ("--separate-threads"
+                    | "--cache-sim"
+                    | "--callgrind-out-file"
+                    | "--compress-strings"
+                    | "--compress-pos"
+                    | "--combine-dumps"),
                     value,
                 )) => {
-                    warn!("Ignoring callgrind argument: '--{}={}'", key, value);
+                    warn!("Ignoring callgrind argument: '{}={}'", key, value);
                 }
                 Some(_) => self.other.push(arg.clone()),
-                None if arg == "--verbose" => self.verbose = true,
-                // ignore positional arguments for now. It may be a filtering argument for cargo
+                None if arg == "-v" || arg == "--verbose" => self.verbose = true,
+                None if arg == "-q" || arg == "--quiet" => {
+                    self.verbose = false;
+                    self.other.push(arg.clone());
+                }
+                None if matches!(
+                    arg.trim(),
+                    "-h" | "--help" | "--help-dyn-options" | "--help-debug" | "--version"
+                ) =>
+                {
+                    warn!("Ignoring callgrind argument: '{arg}'");
+                }
+                None if arg.starts_with('-') => self.other.push(arg.clone()),
+                // ignore positional arguments for now. It might be a filtering argument for cargo
                 // bench
                 None => {}
             }

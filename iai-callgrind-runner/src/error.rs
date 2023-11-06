@@ -70,7 +70,7 @@ impl Display for Error {
             Self::InvalidCallgrindBoolArgument((option, value)) => {
                 write!(
                     f,
-                    "Invalid callgrind argument for --{option}: '{value}'. Valid values are 'yes' \
+                    "Invalid callgrind argument for {option}: '{value}'. Valid values are 'yes' \
                      or 'no'"
                 )
             }

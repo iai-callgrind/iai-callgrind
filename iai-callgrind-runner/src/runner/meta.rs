@@ -1,5 +1,6 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
+use std::process::Command;
 
 use anyhow::Result;
 use log::{debug, warn};
@@ -112,6 +113,24 @@ impl Metadata {
             project_root,
             regression_config: try_regression_config_from_env()?,
         })
+    }
+}
+
+impl From<&Metadata> for Command {
+    fn from(meta: &Metadata) -> Self {
+        meta.valgrind_wrapper.as_ref().map_or_else(
+            || {
+                let meta_cmd = &meta.valgrind;
+                let mut cmd = Command::new(&meta_cmd.bin);
+                cmd.args(&meta_cmd.args);
+                cmd
+            },
+            |meta_cmd| {
+                let mut cmd = Command::new(&meta_cmd.bin);
+                cmd.args(&meta_cmd.args);
+                cmd
+            },
+        )
     }
 }
 

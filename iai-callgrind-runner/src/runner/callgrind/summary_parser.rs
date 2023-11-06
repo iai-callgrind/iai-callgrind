@@ -3,27 +3,27 @@ use log::{debug, trace};
 
 use super::model::Costs;
 use super::parser::Parser;
-use super::CallgrindOutput;
 use crate::error::Error;
 use crate::runner::callgrind::parser::parse_header;
+use crate::runner::tool::ToolOutputPath;
 
 pub struct SummaryParser;
 
 impl Parser for SummaryParser {
     type Output = Costs;
 
-    fn parse(&self, output: &CallgrindOutput) -> Result<Self::Output>
+    fn parse(&self, output_path: &ToolOutputPath) -> Result<Self::Output>
     where
         Self: std::marker::Sized,
     {
         debug!(
             "Parsing callgrind output file '{}' for a summary or totals",
-            output
+            output_path
         );
 
-        let mut iter = output.lines()?;
+        let mut iter = output_path.lines()?;
         let config = parse_header(&mut iter)
-            .map_err(|error| Error::ParseError((output.0.clone(), error.to_string())))?;
+            .map_err(|error| Error::ParseError((output_path.to_path(), error.to_string())))?;
 
         let mut found = false;
         let mut costs = config.costs_prototype;
@@ -49,7 +49,7 @@ impl Parser for SummaryParser {
             Ok(costs)
         } else {
             Err(Error::ParseError((
-                output.as_path().to_owned(),
+                output_path.to_path(),
                 "No summary or totals line found".to_owned(),
             ))
             .into())

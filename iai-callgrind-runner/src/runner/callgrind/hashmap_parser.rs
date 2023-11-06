@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 
 use super::model::Costs;
 use super::parser::{parse_header, Parser, Sentinel};
-use super::CallgrindOutput;
 use crate::error::Error;
+use crate::runner::tool::ToolOutputPath;
 
 #[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CallgrindMap {
@@ -19,8 +19,7 @@ pub struct CallgrindMap {
     pub sentinel: Option<Sentinel>,
     pub sentinel_key: Option<Id>,
 }
-//
-// Ignore 'cob'
+
 #[derive(Debug, Default)]
 struct CfnRecord {
     obj: Option<SourcePath>,
@@ -110,10 +109,10 @@ impl Parser for HashMapParser {
 
     #[allow(clippy::too_many_lines)]
     #[allow(clippy::similar_names)]
-    fn parse(&self, output: &CallgrindOutput) -> Result<Self::Output> {
-        let mut iter = output.lines()?;
+    fn parse(&self, output_path: &ToolOutputPath) -> Result<Self::Output> {
+        let mut iter = output_path.lines()?;
         let config = parse_header(&mut iter)
-            .map_err(|error| Error::ParseError((output.0.clone(), error.to_string())))?;
+            .map_err(|error| Error::ParseError((output_path.to_path(), error.to_string())))?;
 
         let mut current_id = CurrentId::default();
         let mut cfn_record = None;

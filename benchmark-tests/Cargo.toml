@@ -30,6 +30,14 @@ path = "src/benchmark-tests-exit.rs"
 name = "benchmark-tests-echo"
 path = "src/benchmark-tests-echo.rs"
 
+[[bin]]
+name = "benchmark-tests-sort"
+path = "src/benchmark-tests-sort.rs"
+
+[[bin]]
+name = "benchmark-tests-subprocess"
+path = "src/benchmark-tests-subprocess.rs"
+
 [[bench]]
 name = "test_bin_bench_with_fixtures"
 harness = false
@@ -47,6 +55,10 @@ name = "test_bin_bench_flamegraph"
 harness = false
 
 [[bench]]
+name = "test_bin_bench_tools"
+harness = false
+
+[[bench]]
 name = "test_lib_bench_flamegraph"
 harness = false
 
@@ -60,4 +72,8 @@ harness = false
 
 [[bench]]
 name = "test_lib_bench_readme_example_fibonacci"
+harness = false
+
+[[bench]]
+name = "test_lib_bench_tools"
 harness = false

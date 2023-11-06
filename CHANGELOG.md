@@ -32,6 +32,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   kinds which are not associated with callgrind's cache simulation if available.
   For example, running callgrind with flags like `--collect-systime`
   (`SysCount`, `SysTime`, `SysCpuTime`), ...
+* ([#18](https://github.com/iai-callgrind/iai-callgrind/issues/18)): Add support
+  for DHAT, Massif, BBV, Memcheck, Helgrind, DRD. It's now possible to run each
+  of these tools for each benchmark (in addition to callgrind). The output files
+  of the profiling tools DHAT, Massif and BBV can be found next to the usual
+  callgrind output files.
 
 ### Changed
 
@@ -44,12 +49,28 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   recorded either in the new benchmark run or in the old benchmark run.
 * The percentage difference is now a digit shorter to equalize the widths of the
   different other string outputs within the parentheses.
+* Due to the additional possible output files from tools like DHAT, Massif, etc.
+  (but also flamegraphs), the output of benchmark runs is now nested one level
+  deeper into a directory for each benchmark id instead of putting all output
+  files into the group directory.
+* Passing short options (like `-q`) to
+  `LibraryBenchmarkConfig::raw_callgrind_args`,
+  `BinaryBenchmarkConfig::raw_callgrind_args`, `Run::raw_callgrind_args`
+  `Tool::args` is now possible
 
 ### Fixed
 
 * Fix examples README to show the correct summary costs of events
 * Fix error handling if valgrind terminates abnormally or with a signal instead
   of an exit code
+* Fixed missing flamegraph creation when running setup, after, before and
+  teardown functions in binary benchmarks if `bench` is set to `true`.
+* Running callgrind with `--compress-pos=yes` is currently incompatible with
+  iai-callgrind's parsing of callgrind output files. If this option is given, it
+  will be ignored.
+* Running iai-callgrind with valgrind's options `--help`, `-h`, `--help-debug`,
+  `--help-dyn-options`, `--version` may cause problems and these arguments are now
+  ignored.
 
 ### [0.7.3] - 2023-10-24
 

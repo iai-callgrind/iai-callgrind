@@ -33,10 +33,12 @@ pub struct BinaryBenchmarkConfig {
     pub current_dir: Option<PathBuf>,
     pub entry_point: Option<String>,
     pub exit_with: Option<ExitWith>,
-    pub raw_callgrind_args: RawCallgrindArgs,
+    pub raw_callgrind_args: RawArgs,
     pub envs: Vec<(OsString, Option<OsString>)>,
     pub flamegraph: Option<FlamegraphConfig>,
     pub regression: Option<RegressionConfig>,
+    pub tools: Tools,
+    pub tools_override: Option<Tools>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -195,10 +197,12 @@ pub struct LibraryBenchmarkBenches {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmarkConfig {
     pub env_clear: Option<bool>,
-    pub raw_callgrind_args: RawCallgrindArgs,
+    pub raw_callgrind_args: RawArgs,
     pub envs: Vec<(OsString, Option<OsString>)>,
     pub flamegraph: Option<FlamegraphConfig>,
     pub regression: Option<RegressionConfig>,
+    pub tools: Tools,
+    pub tools_override: Option<Tools>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -209,7 +213,7 @@ pub struct LibraryBenchmarkGroup {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RawCallgrindArgs(pub Vec<String>);
+pub struct RawArgs(pub Vec<String>);
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct RegressionConfig {
@@ -222,6 +226,28 @@ pub struct Run {
     pub cmd: Option<Cmd>,
     pub args: Vec<Arg>,
     pub config: BinaryBenchmarkConfig,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Tool {
+    pub kind: ValgrindTool,
+    pub enable: Option<bool>,
+    pub raw_args: RawArgs,
+    pub outfile_modifier: Option<String>,
+    pub show_log: Option<bool>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Tools(pub Vec<Tool>);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ValgrindTool {
+    Memcheck,
+    Helgrind,
+    DRD,
+    Massif,
+    DHAT,
+    BBV,
 }
 
 impl BinaryBenchmarkConfig {
@@ -243,6 +269,13 @@ impl BinaryBenchmarkConfig {
             self.envs.extend_from_slice(&other.envs);
             self.flamegraph = update_option(&self.flamegraph, &other.flamegraph);
             self.regression = update_option(&self.regression, &other.regression);
+            if let Some(other_tools) = &other.tools_override {
+                self.tools = other_tools.clone();
+            } else if !other.tools.is_empty() {
+                self.tools.update_from_other(&other.tools);
+            } else {
+                // do nothing
+            }
         }
         self
     }
@@ -380,6 +413,13 @@ impl LibraryBenchmarkConfig {
             self.envs.extend_from_slice(&other.envs);
             self.flamegraph = update_option(&self.flamegraph, &other.flamegraph);
             self.regression = update_option(&self.regression, &other.regression);
+            if let Some(other_tools) = &other.tools_override {
+                self.tools = other_tools.clone();
+            } else if !other.tools.is_empty() {
+                self.tools.update_from_other(&other.tools);
+            } else {
+                // do nothing
+            }
         }
         self
     }
@@ -395,7 +435,7 @@ impl LibraryBenchmarkConfig {
     }
 }
 
-impl RawCallgrindArgs {
+impl RawArgs {
     pub fn new<I, T>(args: T) -> Self
     where
         I: AsRef<str>,
@@ -411,7 +451,7 @@ impl RawCallgrindArgs {
     {
         self.0.extend(args.into_iter().map(|s| {
             let string = s.as_ref();
-            if string.starts_with("--") {
+            if string.starts_with('-') {
                 string.to_owned()
             } else {
                 format!("--{string}")
@@ -436,7 +476,7 @@ impl RawCallgrindArgs {
     }
 }
 
-impl<I> FromIterator<I> for RawCallgrindArgs
+impl<I> FromIterator<I> for RawArgs
 where
     I: AsRef<str>,
 {
@@ -447,12 +487,49 @@ where
     }
 }
 
+impl Tools {
+    /// Return true if `Tools` is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Update `Tools`
+    ///
+    /// Adds the [`Tool`] to `Tools`. If a [`Tool`] is already present, it will be removed.
+    ///
+    /// This method is inefficient (computes in worst case O(n^2)) but since `Tools` has a
+    /// manageable size with a maximum of 6 members we can spare us an `IndexSet` or similar and the
+    /// dependency on it in `iai-callgrind`.
+    pub fn update(&mut self, tool: Tool) {
+        if let Some(pos) = self.0.iter().position(|t| t.kind == tool.kind) {
+            self.0.remove(pos);
+        }
+        self.0.push(tool);
+    }
+
+    /// Update `Tools` with all [`Tool`]s from an iterator
+    pub fn update_all<T>(&mut self, tools: T)
+    where
+        T: IntoIterator<Item = Tool>,
+    {
+        for tool in tools {
+            self.update(tool);
+        }
+    }
+
+    /// Update `Tools` with another `Tools`
+    pub fn update_from_other(&mut self, tools: &Tools) {
+        self.update_all(tools.0.iter().cloned());
+    }
+}
+
 pub fn update_option<T: Clone>(first: &Option<T>, other: &Option<T>) -> Option<T> {
     other.clone().or_else(|| first.clone())
 }
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
     use rstest::rstest;
 
     use super::*;
@@ -466,44 +543,53 @@ mod tests {
         );
     }
 
-    #[rstest]
-    #[case::all_none(None, &[None], None)]
-    #[case::default_is_overwritten_when_false(None, &[Some(false)], Some(false))]
-    #[case::default_is_overwritten_when_true(None, &[Some(true)], Some(true))]
-    #[case::some_is_overwritten_when_same_value(Some(true), &[Some(true)], Some(true))]
-    #[case::some_is_overwritten_when_false(Some(false), &[Some(true)], Some(true))]
-    #[case::some_is_not_overwritten_when_none(Some(true), &[None], Some(true))]
-    #[case::multiple_when_none_then_ignored(Some(true), &[None, Some(false)], Some(false))]
-    #[case::default_when_multiple_then_ignored(None, &[Some(true), None, Some(false)], Some(false))]
-    fn test_library_benchmark_config_update_from_all_when_env_clear(
-        #[case] base: Option<bool>,
-        #[case] others: &[Option<bool>],
-        #[case] expected: Option<bool>,
-    ) {
-        let base = LibraryBenchmarkConfig {
-            env_clear: base,
-            ..Default::default()
+    #[test]
+    fn test_library_benchmark_config_update_from_all_when_no_tools_override() {
+        let base = LibraryBenchmarkConfig::default();
+        let other = LibraryBenchmarkConfig {
+            env_clear: Some(true),
+            raw_callgrind_args: RawArgs(vec!["--just-testing=yes".to_owned()]),
+            envs: vec![(OsString::from("MY_ENV"), Some(OsString::from("value")))],
+            flamegraph: Some(FlamegraphConfig::default()),
+            regression: Some(RegressionConfig::default()),
+            tools: Tools(vec![Tool {
+                kind: ValgrindTool::DHAT,
+                enable: None,
+                raw_args: RawArgs(vec![]),
+                outfile_modifier: None,
+                show_log: None,
+            }]),
+            tools_override: None,
         };
-        let others: Vec<LibraryBenchmarkConfig> = others
-            .iter()
-            .map(|o| LibraryBenchmarkConfig {
-                env_clear: *o,
-                ..Default::default()
-            })
-            .collect();
 
-        let others = others
-            .iter()
-            .map(Some)
-            .collect::<Vec<Option<&LibraryBenchmarkConfig>>>();
+        assert_eq!(base.update_from_all([Some(&other.clone())]), other);
+    }
 
-        assert_eq!(
-            base.update_from_all(others),
-            LibraryBenchmarkConfig {
-                env_clear: expected,
-                ..Default::default()
-            }
-        );
+    #[test]
+    fn test_library_benchmark_config_update_from_all_when_tools_override() {
+        let base = LibraryBenchmarkConfig::default();
+        let other = LibraryBenchmarkConfig {
+            env_clear: Some(true),
+            raw_callgrind_args: RawArgs(vec!["--just-testing=yes".to_owned()]),
+            envs: vec![(OsString::from("MY_ENV"), Some(OsString::from("value")))],
+            flamegraph: Some(FlamegraphConfig::default()),
+            regression: Some(RegressionConfig::default()),
+            tools: Tools(vec![Tool {
+                kind: ValgrindTool::DHAT,
+                enable: None,
+                raw_args: RawArgs(vec![]),
+                outfile_modifier: None,
+                show_log: None,
+            }]),
+            tools_override: Some(Tools(vec![])),
+        };
+        let expected = LibraryBenchmarkConfig {
+            tools: other.tools_override.as_ref().unwrap().clone(),
+            tools_override: None,
+            ..other.clone()
+        };
+
+        assert_eq!(base.update_from_all([Some(&other)]), expected);
     }
 
     #[rstest]
@@ -526,13 +612,12 @@ mod tests {
     #[case::no_flags(vec![], &["a=yes"], vec!["--a=yes"])]
     #[case::already_exists_single(vec!["--a=yes"], &["--a=yes"], vec!["--a=yes","--a=yes"])]
     #[case::already_exists_when_multiple(vec!["--a=yes", "--b=yes"], &["--a=yes"], vec!["--a=yes", "--b=yes", "--a=yes"])]
-    fn test_raw_callgrind_args_extend_ignore_flags(
+    fn test_raw_args_extend_ignore_flags(
         #[case] base: Vec<&str>,
         #[case] data: &[&str],
         #[case] expected: Vec<&str>,
     ) {
-        let mut base =
-            RawCallgrindArgs(base.iter().map(std::string::ToString::to_string).collect());
+        let mut base = RawArgs(base.iter().map(std::string::ToString::to_string).collect());
         base.extend_ignore_flag(data.iter().map(std::string::ToString::to_string));
 
         assert_eq!(base.0.into_iter().collect::<Vec<String>>(), expected);
