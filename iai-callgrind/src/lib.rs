@@ -256,7 +256,6 @@
 
 pub use bincode;
 pub use iai_callgrind_macros::library_benchmark;
-use iai_callgrind_runner::api::RawArgs;
 pub use iai_callgrind_runner::api::{Direction, EventKind, FlamegraphKind, ValgrindTool};
 
 #[doc(hidden)]
@@ -1301,7 +1300,7 @@ impl Tool {
             enable: Option::default(),
             outfile_modifier: Option::default(),
             show_log: Option::default(),
-            raw_args: RawArgs::default(),
+            raw_args: internal::InternalRawArgs::default(),
         })
     }
 
@@ -1673,7 +1672,7 @@ impl LibraryBenchmarkConfig {
     {
         Self(internal::InternalLibraryBenchmarkConfig {
             env_clear: Option::default(),
-            raw_callgrind_args: internal::InternalRawCallgrindArgs::new(args),
+            raw_callgrind_args: internal::InternalRawArgs::new(args),
             envs: Vec::default(),
             flamegraph: Option::default(),
             regression: Option::default(),
