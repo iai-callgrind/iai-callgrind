@@ -1137,9 +1137,9 @@ impl BinaryBenchmarkConfig {
     ///
     /// binary_benchmark_group!(
     ///     name = my_group;
-    ///     benchmark = |group: &mut BinaryBenchmarkGroup| {
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
     ///         group.bench(
-    ///             Run::with_cmd("/path/to/my-exe", Arg::new("foo", &["foo"]))
+    ///             Run::with_arg(Arg::new("foo", &["foo"]))
     ///                 .tool_override(Tool::new(ValgrindTool::Memcheck))
     ///         );
     ///     }
@@ -1179,13 +1179,15 @@ impl BinaryBenchmarkConfig {
     /// `main!` besides for `foo` which will run `Massif` and `Memcheck` (and callgrind).
     ///
     /// ```rust
-    /// use iai_callgrind::{binary_benchmark_group, Run, BinaryBenchmarkConfig, main, Tool, ValgrindTool, Arg};
+    /// use iai_callgrind::{
+    ///     binary_benchmark_group, Run, BinaryBenchmarkConfig, main, Tool, ValgrindTool, Arg
+    /// };
     ///
     /// binary_benchmark_group!(
     ///     name = my_group;
-    ///     benchmark = |group: &mut BinaryBenchmarkGroup| {
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
     ///         group.bench(
-    ///             Run::with_cmd("/path/to/my-exe", Arg::new("foo", &["foo"]))
+    ///             Run::with_arg(Arg::new("foo", &["foo"]))
     ///                 .tools_override([
     ///                     Tool::new(ValgrindTool::Massif),
     ///                     Tool::new(ValgrindTool::Memcheck),
@@ -1369,7 +1371,7 @@ impl Tool {
     ///     config = LibraryBenchmarkConfig::default()
     ///         .tool(
     ///             Tool::new(ValgrindTool::DHAT)
-    ///                 .args(["--trace-children"])
+    ///                 .args(["--trace-children=yes"])
     ///                 .outfile_modifier("%p")
     ///         );
     ///     library_benchmark_groups = some_group
@@ -2047,7 +2049,10 @@ impl LibraryBenchmarkConfig {
     /// `main!` besides for `some_func` which will just run `Memcheck` (and callgrind).
     ///
     /// ```rust
-    /// use iai_callgrind::{library_benchmark, library_benchmark_group};
+    /// use iai_callgrind::{
+    ///     main, library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, Tool, ValgrindTool
+    /// };
+    ///
     /// #[library_benchmark(config = LibraryBenchmarkConfig::default()
     ///     .tool_override(
     ///         Tool::new(ValgrindTool::Memcheck)
@@ -2059,7 +2064,6 @@ impl LibraryBenchmarkConfig {
     ///     name = some_group;
     ///     benchmarks = some_func
     /// );
-    /// use iai_callgrind::{LibraryBenchmarkConfig, main, Tool, ValgrindTool};
     ///
     /// # fn main() {
     /// main!(
@@ -2095,7 +2099,10 @@ impl LibraryBenchmarkConfig {
     /// `main!` besides for `some_func` which will run `Massif` and `Memcheck` (and callgrind).
     ///
     /// ```rust
-    /// use iai_callgrind::{library_benchmark, library_benchmark_group};
+    /// use iai_callgrind::{
+    ///     main, library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, Tool, ValgrindTool
+    /// };
+    ///
     /// #[library_benchmark(config = LibraryBenchmarkConfig::default()
     ///     .tools_override([
     ///         Tool::new(ValgrindTool::Massif),
@@ -2108,7 +2115,6 @@ impl LibraryBenchmarkConfig {
     ///     name = some_group;
     ///     benchmarks = some_func
     /// );
-    /// use iai_callgrind::{LibraryBenchmarkConfig, main, Tool, ValgrindTool};
     ///
     /// # fn main() {
     /// main!(
@@ -2941,9 +2947,9 @@ impl Run {
     ///
     /// binary_benchmark_group!(
     ///     name = my_group;
-    ///     benchmark = |group: &mut BinaryBenchmarkGroup| {
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
     ///         group.bench(
-    ///             Run::with_cmd("/path/to/my-exe", Arg::new("foo", &["foo"]))
+    ///             Run::with_arg(Arg::new("foo", &["foo"]))
     ///                 .tool_override(Tool::new(ValgrindTool::Memcheck))
     ///         );
     ///     }
@@ -2984,13 +2990,15 @@ impl Run {
     /// `main!` besides for `foo` which will run `Massif` and `Memcheck` (and callgrind).
     ///
     /// ```rust
-    /// use iai_callgrind::{binary_benchmark_group, Run, BinaryBenchmarkConfig, main, Tool, ValgrindTool, Arg};
+    /// use iai_callgrind::{
+    ///     binary_benchmark_group, Run, BinaryBenchmarkConfig, main, Tool, ValgrindTool, Arg
+    /// };
     ///
     /// binary_benchmark_group!(
     ///     name = my_group;
-    ///     benchmark = |group: &mut BinaryBenchmarkGroup| {
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
     ///         group.bench(
-    ///             Run::with_cmd("/path/to/my-exe", Arg::new("foo", &["foo"]))
+    ///             Run::with_arg(Arg::new("foo", &["foo"]))
     ///                 .tools_override([
     ///                     Tool::new(ValgrindTool::Massif),
     ///                     Tool::new(ValgrindTool::Memcheck),
