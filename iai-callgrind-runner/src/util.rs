@@ -134,12 +134,15 @@ pub fn copy_directory(source: &Path, dest: &Path, follow_symlinks: bool) -> Resu
     command.arg(dest);
     let (stdout, stderr) = command
         .output()
-        .map_err(|error| Error::LaunchError(cp, error.to_string()))
+        .map_err(|error| Error::LaunchError(cp.clone(), error.to_string()))
         .and_then(|output| {
             if output.status.success() {
                 Ok((output.stdout, output.stderr))
             } else {
-                Err(Error::BenchmarkLaunchError(output))
+                Err(Error::ProcessError((
+                    cp.to_string_lossy().to_string(),
+                    output,
+                )))
             }
         })?;
 

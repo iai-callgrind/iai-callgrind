@@ -150,7 +150,7 @@ impl ToolCommand {
             .map_err(|error| -> anyhow::Error {
                 Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
             })
-            .and_then(|output| check_exit(&executable, output, exit_with.as_ref()))?;
+            .and_then(|output| check_exit(self.tool, &executable, output, exit_with.as_ref()))?;
 
         Ok(ToolOutput {
             tool: self.tool,
@@ -425,6 +425,7 @@ impl TryFrom<&str> for ValgrindTool {
 }
 
 pub fn check_exit(
+    tool: ValgrindTool,
     executable: &Path,
     output: Output,
     exit_with: Option<&ExitWith>,
@@ -432,47 +433,51 @@ pub fn check_exit(
     let status_code = if let Some(code) = output.status.code() {
         code
     } else {
-        return Err(Error::BenchmarkLaunchError(output).into());
+        return Err(Error::ProcessError((tool.id(), output)).into());
     };
 
     match (status_code, exit_with) {
         (0i32, None | Some(ExitWith::Code(0i32) | ExitWith::Success)) => Ok(output),
         (0i32, Some(ExitWith::Code(code))) => {
             error!(
-                "Expected benchmark '{}' to exit with '{}' but it succeeded",
+                "{}: Expected '{}' to exit with '{}' but it succeeded",
+                tool.id(),
                 executable.display(),
                 code
             );
-            Err(Error::BenchmarkLaunchError(output).into())
+            Err(Error::ProcessError((tool.id(), output)).into())
         }
         (0i32, Some(ExitWith::Failure)) => {
             error!(
-                "Expected benchmark '{}' to fail but it succeeded",
+                "{}: Expected '{}' to fail but it succeeded",
+                tool.id(),
                 executable.display(),
             );
-            Err(Error::BenchmarkLaunchError(output).into())
+            Err(Error::ProcessError((tool.id(), output)).into())
         }
         (_, Some(ExitWith::Failure)) => Ok(output),
         (code, Some(ExitWith::Success)) => {
             error!(
-                "Expected benchmark '{}' to succeed but it exited with '{}'",
+                "{}: Expected '{}' to succeed but it terminated with '{}'",
+                tool.id(),
                 executable.display(),
                 code
             );
-            Err(Error::BenchmarkLaunchError(output).into())
+            Err(Error::ProcessError((tool.id(), output)).into())
         }
         (actual_code, Some(ExitWith::Code(expected_code))) if actual_code == *expected_code => {
             Ok(output)
         }
         (actual_code, Some(ExitWith::Code(expected_code))) => {
             error!(
-                "Expected benchmark '{}' to exit with '{}' but it exited with '{}'",
+                "{}: Expected '{}' to exit with '{}' but it terminated with '{}'",
+                tool.id(),
                 executable.display(),
                 expected_code,
                 actual_code
             );
-            Err(Error::BenchmarkLaunchError(output).into())
+            Err(Error::ProcessError((tool.id(), output)).into())
         }
-        _ => Err(Error::BenchmarkLaunchError(output).into()),
+        _ => Err(Error::ProcessError((tool.id(), output)).into()),
     }
 }

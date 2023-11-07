@@ -11,7 +11,7 @@ use crate::runner::write_all_to_stderr;
 pub enum Error {
     VersionMismatch(version_compare::Cmp, String, String),
     LaunchError(PathBuf, String),
-    BenchmarkLaunchError(Output),
+    ProcessError((String, Output)),
     InvalidCallgrindBoolArgument((String, String)),
     ParseError((PathBuf, String)),
     RegressionError(bool),
@@ -45,26 +45,19 @@ impl Display for Error {
                 _ => unreachable!(),
             },
             Self::LaunchError(exec, message) => {
-                write!(f, "Error executing '{}': {message}", exec.display())
+                write!(f, "Error launching '{}': {message}", exec.display())
             }
-            Self::BenchmarkLaunchError(output) => {
+            Self::ProcessError((process, output)) => {
                 write_all_to_stderr(&output.stderr);
                 if let Some(code) = output.status.code() {
-                    write!(
-                        f,
-                        "Error launching benchmark: Callgrind exit code was: '{code}'"
-                    )
+                    write!(f, "Error running '{process}': Exit code was: '{code}'")
                 } else if let Some(signal) = output.status.signal() {
                     write!(
                         f,
-                        "Error launching benchmark: Callgrind was terminated by a signal \
-                         '{signal}'"
+                        "Error running '{process}': Terminated by a signal '{signal}'"
                     )
                 } else {
-                    write!(
-                        f,
-                        "Error launching benchmark: Callgrind terminated abnormally"
-                    )
+                    write!(f, "Error running '{process}': Terminated abnormally")
                 }
             }
             Self::InvalidCallgrindBoolArgument((option, value)) => {

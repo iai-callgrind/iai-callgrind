@@ -106,7 +106,14 @@ impl CallgrindCommand {
             .map_err(|error| {
                 Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
             })
-            .and_then(|output| check_exit(&executable, output, exit_with.as_ref()))?;
+            .and_then(|output| {
+                check_exit(
+                    ValgrindTool::Callgrind,
+                    &executable,
+                    output,
+                    exit_with.as_ref(),
+                )
+            })?;
 
         Ok(ToolOutput {
             tool: ValgrindTool::Callgrind,

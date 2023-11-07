@@ -224,7 +224,10 @@ impl Assistant {
                 if output.status.success() {
                     Ok((output.stdout, output.stderr))
                 } else {
-                    Err(Error::BenchmarkLaunchError(output))
+                    Err(Error::ProcessError((
+                        format!("{}:{id}::{}", &config.bench_bin.display(), self.name),
+                        output,
+                    )))
                 }
             })?;
 
