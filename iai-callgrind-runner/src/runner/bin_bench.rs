@@ -18,6 +18,7 @@ use super::print::{Formatter, Header, VerticalFormat};
 use super::tool::{RunOptions, ToolConfigs};
 use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig, RawArgs};
 use crate::error::Error;
+use crate::runner::print::tool_summary_header;
 use crate::runner::tool::{ToolOutputPath, ValgrindTool};
 use crate::util::{copy_directory, receive_benchmark, write_all_to_stderr, write_all_to_stdout};
 
@@ -173,6 +174,9 @@ impl Assistant {
         );
 
         header.print();
+        if self.tools.has_tools_enabled() {
+            println!("{}", tool_summary_header(ValgrindTool::Callgrind));
+        }
 
         let format = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
         print!("{format}");

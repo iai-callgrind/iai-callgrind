@@ -5,6 +5,7 @@ use anyhow::Result;
 use colored::{ColoredString, Colorize};
 
 use super::callgrind::model::Costs;
+use super::tool::ValgrindTool;
 use crate::api::EventKind;
 use crate::util::{factor_diff, percentage_diff, to_string_signed_short, truncate_str_utf8};
 
@@ -225,4 +226,13 @@ impl Formatter for VerticalFormat {
         }
         Ok(result)
     }
+}
+
+pub fn tool_summary_header(tool: ValgrindTool) -> String {
+    format!(
+        "  {} {} {}",
+        "==================================".bright_black(),
+        tool.id().to_ascii_uppercase(),
+        "=".repeat(37 - tool.id().len()).bright_black()
+    )
 }

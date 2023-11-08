@@ -15,6 +15,7 @@ IndexSet
 Itamar
 Ldmr
 Ldmw
+Logfile
 Memcheck
 MSRV
 Nulgrind

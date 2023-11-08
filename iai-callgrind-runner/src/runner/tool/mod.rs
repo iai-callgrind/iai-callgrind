@@ -8,14 +8,19 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
 use anyhow::{anyhow, Context, Result};
+use colored::Colorize;
 use glob::glob;
 use log::{debug, error, Level};
 use regex::Regex;
 
 use self::args::ToolArgs;
+use super::callgrind::parser::Parser;
+use super::dhat::logfile_parser::LogfileParser;
 use super::meta::Metadata;
 use crate::api::ExitWith;
 use crate::error::Error;
+use crate::runner::dhat::format::LogfileSummaryFormatter;
+use crate::runner::print::tool_summary_header;
 use crate::util::{resolve_binary_path, truncate_str_utf8};
 use crate::{api, util};
 
@@ -36,6 +41,7 @@ pub struct ToolConfig {
     pub outfile_modifier: Option<String>,
 }
 
+#[derive(Debug, Clone)]
 pub struct ToolOutputPath {
     pub tool: ValgrindTool,
     pub dir: PathBuf,
@@ -135,6 +141,7 @@ impl ToolCommand {
 
         let mut tool_args = config.args;
         tool_args.set_output_arg(output_path, config.outfile_modifier.as_ref());
+        tool_args.set_log_arg(output_path, config.outfile_modifier.as_ref());
 
         let executable = resolve_binary_path(executable)?;
 
@@ -172,6 +179,10 @@ impl From<api::Tool> for ToolConfig {
 }
 
 impl ToolConfigs {
+    pub fn has_tools_enabled(&self) -> bool {
+        self.0.iter().any(|t| t.is_enabled)
+    }
+
     pub fn run(
         &self,
         meta: &Metadata,
@@ -181,9 +192,15 @@ impl ToolConfigs {
         output_path: &ToolOutputPath,
     ) -> Result<()> {
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
-            let command = ToolCommand::new(tool_config.tool, meta);
-            let output_path = output_path.to_tool_output(tool_config.tool);
+            let tool = tool_config.tool;
+            let command = ToolCommand::new(tool, meta);
+
+            let output_path = output_path.to_tool_output(tool);
             output_path.init();
+
+            let log_path = output_path.to_log_output();
+            log_path.init();
+
             let output = command.run(
                 tool_config.clone(),
                 executable,
@@ -191,6 +208,46 @@ impl ToolConfigs {
                 options.clone(),
                 &output_path,
             )?;
+
+            if let ValgrindTool::DHAT = tool {
+                let parser = LogfileParser {
+                    root_dir: meta.project_root.clone(),
+                };
+                let summaries = parser.parse(&log_path)?;
+                println!("{}", tool_summary_header(tool));
+                for summary in summaries {
+                    print!("{}", LogfileSummaryFormatter::format(&summary));
+                }
+            } else {
+                println!("{}", tool_summary_header(tool));
+                if tool_config.tool.has_output_file() {
+                    for path in output_path.real_paths() {
+                        let path = if let Ok(relative) = path.strip_prefix(&meta.project_root) {
+                            relative
+                        } else {
+                            &path
+                        };
+                        println!(
+                            "  {:<18}{}",
+                            "Output:",
+                            path.display().to_string().blue().bold()
+                        );
+                    }
+                } else {
+                    for path in log_path.real_paths() {
+                        let path = if let Ok(relative) = path.strip_prefix(&meta.project_root) {
+                            relative
+                        } else {
+                            &path
+                        };
+                        println!(
+                            "  {:<18}{}",
+                            "Output:",
+                            path.display().to_string().blue().bold()
+                        );
+                    }
+                }
+            }
             output.dump_if(log::Level::Info);
         }
         Ok(())
@@ -343,10 +400,24 @@ impl ToolOutputPath {
         }
     }
 
+    pub fn to_log_output(&self) -> Self {
+        Self {
+            tool: self.tool,
+            name: self.name.clone(),
+            extension: "log".to_owned(),
+            dir: self.dir.clone(),
+        }
+    }
+
     pub fn open(&self) -> Result<File> {
         let path = self.to_path();
-        File::open(&path)
-            .with_context(|| format!("Error opening callgrind output file '{}'", path.display()))
+        File::open(&path).with_context(|| {
+            format!(
+                "Error opening {} output file '{}'",
+                self.tool.id(),
+                path.display()
+            )
+        })
     }
 
     pub fn lines(&self) -> Result<impl Iterator<Item = String>> {
@@ -363,6 +434,17 @@ impl ToolOutputPath {
             self.name,
             self.extension,
         ))
+    }
+
+    pub fn real_paths(&self) -> Vec<PathBuf> {
+        glob(&format!("{}*", self.to_path().display()))
+            .expect("Reading glob patterns should succeed")
+            .map(Result::unwrap)
+            .filter(|e| {
+                e.extension()
+                    .map_or(false, |e| !e.eq_ignore_ascii_case("old"))
+            })
+            .collect()
     }
 }
 

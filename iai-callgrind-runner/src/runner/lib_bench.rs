@@ -13,6 +13,7 @@ use super::print::{Formatter, Header, VerticalFormat};
 use super::tool::{RunOptions, ToolConfigs};
 use super::Error;
 use crate::api::{self, LibraryBenchmark, RawArgs};
+use crate::runner::print::tool_summary_header;
 use crate::runner::tool::{ToolOutputPath, ValgrindTool};
 use crate::util::receive_benchmark;
 
@@ -210,6 +211,10 @@ impl LibBench {
         );
 
         header.print();
+        if self.tools.has_tools_enabled() {
+            println!("{}", tool_summary_header(ValgrindTool::Callgrind));
+        }
+
         let string = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
         print!("{string}");
 
