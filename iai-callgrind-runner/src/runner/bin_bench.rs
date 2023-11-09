@@ -1,5 +1,6 @@
 use std::ffi::OsString;
 use std::fmt::Display;
+use std::io::stdout;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -185,7 +186,7 @@ impl Assistant {
         print!("{format}");
 
         output.dump_log(log::Level::Info);
-        log_path.dump_log(log::Level::Info)?;
+        log_path.dump_log(log::Level::Info, &mut stdout())?;
 
         if let Some(flamegraph_config) = self.flamegraph.clone() {
             Flamegraph::new(header.to_title(), flamegraph_config).create(
@@ -235,6 +236,7 @@ impl Assistant {
                     Err(Error::ProcessError((
                         format!("{}:{id}::{}", &config.bench_bin.display(), self.name),
                         output,
+                        None,
                     )))
                 }
             })?;
@@ -357,7 +359,7 @@ impl BinBench {
         print!("{output_format}");
 
         output.dump_log(log::Level::Info);
-        log_path.dump_log(log::Level::Info)?;
+        log_path.dump_log(log::Level::Info, &mut stdout())?;
 
         let sentinel = self.options.entry_point.as_ref().map(Sentinel::new);
         if let Some(flamegraph_config) = self.flamegraph.clone() {

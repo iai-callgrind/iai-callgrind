@@ -142,6 +142,7 @@ pub fn copy_directory(source: &Path, dest: &Path, follow_symlinks: bool) -> Resu
                 Err(Error::ProcessError((
                     cp.to_string_lossy().to_string(),
                     output,
+                    None,
                 )))
             }
         })?;

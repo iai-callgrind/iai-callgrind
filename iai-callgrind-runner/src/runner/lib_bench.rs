@@ -1,4 +1,5 @@
 use std::ffi::OsString;
+use std::io::stdout;
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -221,7 +222,7 @@ impl LibBench {
         print!("{string}");
 
         output.dump_log(log::Level::Info);
-        log_path.dump_log(log::Level::Info)?;
+        log_path.dump_log(log::Level::Info, &mut stdout())?;
 
         if let Some(flamegraph_config) = self.flamegraph.clone() {
             Flamegraph::new(header.to_title(), flamegraph_config).create(

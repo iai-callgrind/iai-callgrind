@@ -3,7 +3,7 @@ pub mod args;
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{stdout, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
@@ -41,7 +41,7 @@ pub struct ToolConfig {
     pub outfile_modifier: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolOutputPath {
     pub tool: ValgrindTool,
     pub dir: PathBuf,
@@ -157,7 +157,15 @@ impl ToolCommand {
             .map_err(|error| -> anyhow::Error {
                 Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
             })
-            .and_then(|output| check_exit(self.tool, &executable, output, exit_with.as_ref()))?;
+            .and_then(|output| {
+                check_exit(
+                    self.tool,
+                    &executable,
+                    output,
+                    &output_path.to_log_output(),
+                    exit_with.as_ref(),
+                )
+            })?;
 
         Ok(ToolOutput {
             tool: self.tool,
@@ -247,7 +255,7 @@ impl ToolConfigs {
                 }
             }
             output.dump_log(log::Level::Info);
-            log_path.dump_log(log::Level::Info)?;
+            log_path.dump_log(log::Level::Info, &mut stdout())?;
         }
         Ok(())
     }
@@ -426,7 +434,7 @@ impl ToolOutputPath {
             .map(std::result::Result::unwrap))
     }
 
-    pub fn dump_log(&self, log_level: log::Level) -> Result<()> {
+    pub fn dump_log(&self, log_level: log::Level, writer: &mut impl Write) -> Result<()> {
         if log_enabled!(log_level) {
             for path in self.real_paths() {
                 log::log!(
@@ -445,9 +453,7 @@ impl ToolOutputPath {
                 })?;
 
                 let mut reader = BufReader::new(file);
-                let out = std::io::stdout();
-                let mut writer = out.lock();
-                std::io::copy(&mut reader, &mut writer)?;
+                std::io::copy(&mut reader, writer)?;
             }
         }
         Ok(())
@@ -536,12 +542,13 @@ pub fn check_exit(
     tool: ValgrindTool,
     executable: &Path,
     output: Output,
+    output_path: &ToolOutputPath,
     exit_with: Option<&ExitWith>,
 ) -> Result<Output> {
     let status_code = if let Some(code) = output.status.code() {
         code
     } else {
-        return Err(Error::ProcessError((tool.id(), output)).into());
+        return Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into());
     };
 
     match (status_code, exit_with) {
@@ -553,7 +560,7 @@ pub fn check_exit(
                 executable.display(),
                 code
             );
-            Err(Error::ProcessError((tool.id(), output)).into())
+            Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into())
         }
         (0i32, Some(ExitWith::Failure)) => {
             error!(
@@ -561,7 +568,7 @@ pub fn check_exit(
                 tool.id(),
                 executable.display(),
             );
-            Err(Error::ProcessError((tool.id(), output)).into())
+            Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into())
         }
         (_, Some(ExitWith::Failure)) => Ok(output),
         (code, Some(ExitWith::Success)) => {
@@ -571,7 +578,7 @@ pub fn check_exit(
                 executable.display(),
                 code
             );
-            Err(Error::ProcessError((tool.id(), output)).into())
+            Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into())
         }
         (actual_code, Some(ExitWith::Code(expected_code))) if actual_code == *expected_code => {
             Ok(output)
@@ -584,8 +591,8 @@ pub fn check_exit(
                 expected_code,
                 actual_code
             );
-            Err(Error::ProcessError((tool.id(), output)).into())
+            Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into())
         }
-        _ => Err(Error::ProcessError((tool.id(), output)).into()),
+        _ => Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into()),
     }
 }

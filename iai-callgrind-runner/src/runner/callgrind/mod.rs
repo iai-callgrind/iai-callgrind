@@ -112,6 +112,7 @@ impl CallgrindCommand {
                     ValgrindTool::Callgrind,
                     &executable,
                     output,
+                    &output_path.to_log_output(),
                     exit_with.as_ref(),
                 )
             })?;
