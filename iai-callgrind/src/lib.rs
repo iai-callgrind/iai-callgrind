@@ -1306,7 +1306,7 @@ impl Tool {
         })
     }
 
-    /// If true, enable running this `Tool`
+    /// If true, enable running this `Tool` (Default: true)
     ///
     /// # Examples
     ///
@@ -1342,15 +1342,15 @@ impl Tool {
         self
     }
 
-    /// Add a output file modifier like `%p` or `%n`
+    /// Add an output and log file modifier like `%p` or `%n`
     ///
-    /// The `modifier` is appended to the file name's default extension `*.out`.
+    /// The `modifier` is appended to the file name's default extensions `*.out` and `*.log`
     ///
     /// All output file modifiers specified in the [Valgrind
     /// Documentation](https://valgrind.org/docs/manual/manual-core.html#manual-core.options) of
     /// `--log-file` can be used. If using `%q{ENV}` don't forget, that by default all environment
-    /// variables are cleared. Either specify to not clear the environment or better specify to
-    /// pass-through or define environment variables.
+    /// variables are cleared. Either specify to not clear the environment or to
+    /// pass-through/define environment variables.
     ///
     /// # Examples
     ///
