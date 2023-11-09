@@ -229,10 +229,12 @@ impl Formatter for VerticalFormat {
 }
 
 pub fn tool_summary_header(tool: ValgrindTool) -> String {
+    let id = tool.id();
     format!(
         "  {} {} {}",
-        "==================================".bright_black(),
-        tool.id().to_ascii_uppercase(),
-        "=".repeat(37 - tool.id().len()).bright_black()
+        "=======".bright_black(),
+        id.to_ascii_uppercase(),
+        "=".repeat(64 - id.len()).bright_black(),
+        // "=".repeat(34 - tool.id().len()).bright_black()
     )
 }

@@ -141,6 +141,20 @@ impl Assistant {
             &group.module_path,
             &format!("{}.{}", self.kind.id(), &self.name),
         );
+        let log_path = output_path.to_log_output();
+        log_path.init();
+
+        let header = Header::from_segments(
+            [&group.module_path, &self.kind.id(), &self.name],
+            None,
+            None,
+        );
+
+        header.print();
+        if self.tools.has_tools_enabled() {
+            println!("{}", tool_summary_header(ValgrindTool::Callgrind));
+        }
+
         let options = RunOptions {
             env_clear: false,
             entry_point: Some(format!("*{}::{}", &config.module, &self.name)),
@@ -167,21 +181,11 @@ impl Assistant {
             None
         };
 
-        let header = Header::from_segments(
-            [&group.module_path, &self.kind.id(), &self.name],
-            None,
-            None,
-        );
-
-        header.print();
-        if self.tools.has_tools_enabled() {
-            println!("{}", tool_summary_header(ValgrindTool::Callgrind));
-        }
-
         let format = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
         print!("{format}");
 
-        output.dump_if(log::Level::Info);
+        output.dump_log(log::Level::Info);
+        log_path.dump_log(log::Level::Info)?;
 
         if let Some(flamegraph_config) = self.flamegraph.clone() {
             Flamegraph::new(header.to_title(), flamegraph_config).create(
@@ -321,6 +325,16 @@ impl BinBench {
             &format!("{}.{}", self.id, self.display),
         );
 
+        let log_path = output_path.to_log_output();
+        log_path.init();
+
+        let header = Header::new(&group.module_path, self.id.clone(), self.to_string());
+        header.print();
+
+        if self.tools.has_tools_enabled() {
+            println!("{}", tool_summary_header(ValgrindTool::Callgrind));
+        }
+
         let output = callgrind_command.run(
             self.callgrind_args.clone(),
             &self.command,
@@ -339,13 +353,11 @@ impl BinBench {
             None
         };
 
-        let header = Header::new(&group.module_path, self.id.clone(), self.to_string());
-        header.print();
-
         let output_format = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
         print!("{output_format}");
 
-        output.dump_if(log::Level::Info);
+        output.dump_log(log::Level::Info);
+        log_path.dump_log(log::Level::Info)?;
 
         let sentinel = self.options.entry_point.as_ref().map(Sentinel::new);
         if let Some(flamegraph_config) = self.flamegraph.clone() {

@@ -10,7 +10,7 @@ use std::process::{Command, Output, Stdio};
 use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
 use glob::glob;
-use log::{debug, error, Level};
+use log::{debug, error, log_enabled, Level};
 use regex::Regex;
 
 use self::args::ToolArgs;
@@ -201,6 +201,8 @@ impl ToolConfigs {
             let log_path = output_path.to_log_output();
             log_path.init();
 
+            println!("{}", tool_summary_header(tool));
+
             let output = command.run(
                 tool_config.clone(),
                 executable,
@@ -214,48 +216,45 @@ impl ToolConfigs {
                     root_dir: meta.project_root.clone(),
                 };
                 let summaries = parser.parse(&log_path)?;
-                println!("{}", tool_summary_header(tool));
                 for summary in summaries {
                     print!("{}", LogfileSummaryFormatter::format(&summary));
                 }
+            } else if tool_config.tool.has_output_file() {
+                for path in output_path.real_paths() {
+                    let path = if let Ok(relative) = path.strip_prefix(&meta.project_root) {
+                        relative
+                    } else {
+                        &path
+                    };
+                    println!(
+                        "  {:<18}{}",
+                        "Output:",
+                        path.display().to_string().blue().bold()
+                    );
+                }
             } else {
-                println!("{}", tool_summary_header(tool));
-                if tool_config.tool.has_output_file() {
-                    for path in output_path.real_paths() {
-                        let path = if let Ok(relative) = path.strip_prefix(&meta.project_root) {
-                            relative
-                        } else {
-                            &path
-                        };
-                        println!(
-                            "  {:<18}{}",
-                            "Output:",
-                            path.display().to_string().blue().bold()
-                        );
-                    }
-                } else {
-                    for path in log_path.real_paths() {
-                        let path = if let Ok(relative) = path.strip_prefix(&meta.project_root) {
-                            relative
-                        } else {
-                            &path
-                        };
-                        println!(
-                            "  {:<18}{}",
-                            "Output:",
-                            path.display().to_string().blue().bold()
-                        );
-                    }
+                for path in log_path.real_paths() {
+                    let path = if let Ok(relative) = path.strip_prefix(&meta.project_root) {
+                        relative
+                    } else {
+                        &path
+                    };
+                    println!(
+                        "  {:<18}{}",
+                        "Output:",
+                        path.display().to_string().blue().bold()
+                    );
                 }
             }
-            output.dump_if(log::Level::Info);
+            output.dump_log(log::Level::Info);
+            log_path.dump_log(log::Level::Info)?;
         }
         Ok(())
     }
 }
 
 impl ToolOutput {
-    pub fn dump_if(&self, log_level: Level) {
+    pub fn dump_log(&self, log_level: Level) {
         if log::log_enabled!(log_level) {
             let (stdout, stderr) = (&self.output.stdout, &self.output.stderr);
             if !stdout.is_empty() {
@@ -425,6 +424,33 @@ impl ToolOutputPath {
         Ok(BufReader::new(file)
             .lines()
             .map(std::result::Result::unwrap))
+    }
+
+    pub fn dump_log(&self, log_level: log::Level) -> Result<()> {
+        if log_enabled!(log_level) {
+            for path in self.real_paths() {
+                log::log!(
+                    log_level,
+                    "{} log output '{}':",
+                    self.tool.id(),
+                    path.display()
+                );
+
+                let file = File::open(&path).with_context(|| {
+                    format!(
+                        "Error opening {} output file '{}'",
+                        self.tool.id(),
+                        path.display()
+                    )
+                })?;
+
+                let mut reader = BufReader::new(file);
+                let out = std::io::stdout();
+                let mut writer = out.lock();
+                std::io::copy(&mut reader, &mut writer)?;
+            }
+        }
+        Ok(())
     }
 
     pub fn to_path(&self) -> PathBuf {

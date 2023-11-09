@@ -185,6 +185,19 @@ impl LibBench {
                 &self.function,
             )
         };
+        let log_path = output_path.to_log_output();
+        log_path.init();
+
+        let header = Header::from_segments(
+            [&group.module, &self.function],
+            self.id.clone(),
+            self.args.clone(),
+        );
+
+        header.print();
+        if self.tools.has_tools_enabled() {
+            println!("{}", tool_summary_header(ValgrindTool::Callgrind));
+        }
 
         let output = callgrind_command.run(
             self.callgrind_args.clone(),
@@ -204,21 +217,11 @@ impl LibBench {
             None
         };
 
-        let header = Header::from_segments(
-            [&group.module, &self.function],
-            self.id.clone(),
-            self.args.clone(),
-        );
-
-        header.print();
-        if self.tools.has_tools_enabled() {
-            println!("{}", tool_summary_header(ValgrindTool::Callgrind));
-        }
-
         let string = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
         print!("{string}");
 
-        output.dump_if(log::Level::Info);
+        output.dump_log(log::Level::Info);
+        log_path.dump_log(log::Level::Info)?;
 
         if let Some(flamegraph_config) = self.flamegraph.clone() {
             Flamegraph::new(header.to_title(), flamegraph_config).create(
