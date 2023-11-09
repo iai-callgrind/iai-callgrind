@@ -3,19 +3,24 @@ pub mod args;
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{stdout, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
 use anyhow::{anyhow, Context, Result};
+use colored::Colorize;
 use glob::glob;
-use log::{debug, error, Level};
+use log::{debug, error, log_enabled, Level};
 use regex::Regex;
 
 use self::args::ToolArgs;
+use super::callgrind::parser::Parser;
+use super::dhat::logfile_parser::LogfileParser;
 use super::meta::Metadata;
 use crate::api::ExitWith;
 use crate::error::Error;
+use crate::runner::dhat::format::LogfileSummaryFormatter;
+use crate::runner::print::tool_summary_header;
 use crate::util::{resolve_binary_path, truncate_str_utf8};
 use crate::{api, util};
 
@@ -36,6 +41,7 @@ pub struct ToolConfig {
     pub outfile_modifier: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolOutputPath {
     pub tool: ValgrindTool,
     pub dir: PathBuf,
@@ -135,6 +141,7 @@ impl ToolCommand {
 
         let mut tool_args = config.args;
         tool_args.set_output_arg(output_path, config.outfile_modifier.as_ref());
+        tool_args.set_log_arg(output_path, config.outfile_modifier.as_ref());
 
         let executable = resolve_binary_path(executable)?;
 
@@ -150,7 +157,15 @@ impl ToolCommand {
             .map_err(|error| -> anyhow::Error {
                 Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
             })
-            .and_then(|output| check_exit(&executable, output, exit_with.as_ref()))?;
+            .and_then(|output| {
+                check_exit(
+                    self.tool,
+                    &executable,
+                    output,
+                    &output_path.to_log_output(),
+                    exit_with.as_ref(),
+                )
+            })?;
 
         Ok(ToolOutput {
             tool: self.tool,
@@ -172,6 +187,10 @@ impl From<api::Tool> for ToolConfig {
 }
 
 impl ToolConfigs {
+    pub fn has_tools_enabled(&self) -> bool {
+        self.0.iter().any(|t| t.is_enabled)
+    }
+
     pub fn run(
         &self,
         meta: &Metadata,
@@ -181,9 +200,17 @@ impl ToolConfigs {
         output_path: &ToolOutputPath,
     ) -> Result<()> {
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
-            let command = ToolCommand::new(tool_config.tool, meta);
-            let output_path = output_path.to_tool_output(tool_config.tool);
+            let tool = tool_config.tool;
+            let command = ToolCommand::new(tool, meta);
+
+            let output_path = output_path.to_tool_output(tool);
             output_path.init();
+
+            let log_path = output_path.to_log_output();
+            log_path.init();
+
+            println!("{}", tool_summary_header(tool));
+
             let output = command.run(
                 tool_config.clone(),
                 executable,
@@ -191,14 +218,51 @@ impl ToolConfigs {
                 options.clone(),
                 &output_path,
             )?;
-            output.dump_if(log::Level::Info);
+
+            if let ValgrindTool::DHAT = tool {
+                let parser = LogfileParser {
+                    root_dir: meta.project_root.clone(),
+                };
+                let summaries = parser.parse(&log_path)?;
+                for summary in summaries {
+                    print!("{}", LogfileSummaryFormatter::format(&summary));
+                }
+            } else if tool_config.tool.has_output_file() {
+                for path in output_path.real_paths() {
+                    let path = if let Ok(relative) = path.strip_prefix(&meta.project_root) {
+                        relative
+                    } else {
+                        &path
+                    };
+                    println!(
+                        "  {:<18}{}",
+                        "Output:",
+                        path.display().to_string().blue().bold()
+                    );
+                }
+            } else {
+                for path in log_path.real_paths() {
+                    let path = if let Ok(relative) = path.strip_prefix(&meta.project_root) {
+                        relative
+                    } else {
+                        &path
+                    };
+                    println!(
+                        "  {:<18}{}",
+                        "Output:",
+                        path.display().to_string().blue().bold()
+                    );
+                }
+            }
+            output.dump_log(log::Level::Info);
+            log_path.dump_log(log::Level::Info, &mut stdout())?;
         }
         Ok(())
     }
 }
 
 impl ToolOutput {
-    pub fn dump_if(&self, log_level: Level) {
+    pub fn dump_log(&self, log_level: Level) {
         if log::log_enabled!(log_level) {
             let (stdout, stderr) = (&self.output.stdout, &self.output.stderr);
             if !stdout.is_empty() {
@@ -343,10 +407,24 @@ impl ToolOutputPath {
         }
     }
 
+    pub fn to_log_output(&self) -> Self {
+        Self {
+            tool: self.tool,
+            name: self.name.clone(),
+            extension: "log".to_owned(),
+            dir: self.dir.clone(),
+        }
+    }
+
     pub fn open(&self) -> Result<File> {
         let path = self.to_path();
-        File::open(&path)
-            .with_context(|| format!("Error opening callgrind output file '{}'", path.display()))
+        File::open(&path).with_context(|| {
+            format!(
+                "Error opening {} output file '{}'",
+                self.tool.id(),
+                path.display()
+            )
+        })
     }
 
     pub fn lines(&self) -> Result<impl Iterator<Item = String>> {
@@ -356,6 +434,31 @@ impl ToolOutputPath {
             .map(std::result::Result::unwrap))
     }
 
+    pub fn dump_log(&self, log_level: log::Level, writer: &mut impl Write) -> Result<()> {
+        if log_enabled!(log_level) {
+            for path in self.real_paths() {
+                log::log!(
+                    log_level,
+                    "{} log output '{}':",
+                    self.tool.id(),
+                    path.display()
+                );
+
+                let file = File::open(&path).with_context(|| {
+                    format!(
+                        "Error opening {} output file '{}'",
+                        self.tool.id(),
+                        path.display()
+                    )
+                })?;
+
+                let mut reader = BufReader::new(file);
+                std::io::copy(&mut reader, writer)?;
+            }
+        }
+        Ok(())
+    }
+
     pub fn to_path(&self) -> PathBuf {
         self.dir.join(format!(
             "{}.{}.{}",
@@ -363,6 +466,17 @@ impl ToolOutputPath {
             self.name,
             self.extension,
         ))
+    }
+
+    pub fn real_paths(&self) -> Vec<PathBuf> {
+        glob(&format!("{}*", self.to_path().display()))
+            .expect("Reading glob patterns should succeed")
+            .map(Result::unwrap)
+            .filter(|e| {
+                e.extension()
+                    .map_or(false, |e| !e.eq_ignore_ascii_case("old"))
+            })
+            .collect()
     }
 }
 
@@ -425,54 +539,60 @@ impl TryFrom<&str> for ValgrindTool {
 }
 
 pub fn check_exit(
+    tool: ValgrindTool,
     executable: &Path,
     output: Output,
+    output_path: &ToolOutputPath,
     exit_with: Option<&ExitWith>,
 ) -> Result<Output> {
     let status_code = if let Some(code) = output.status.code() {
         code
     } else {
-        return Err(Error::BenchmarkLaunchError(output).into());
+        return Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into());
     };
 
     match (status_code, exit_with) {
         (0i32, None | Some(ExitWith::Code(0i32) | ExitWith::Success)) => Ok(output),
         (0i32, Some(ExitWith::Code(code))) => {
             error!(
-                "Expected benchmark '{}' to exit with '{}' but it succeeded",
+                "{}: Expected '{}' to exit with '{}' but it succeeded",
+                tool.id(),
                 executable.display(),
                 code
             );
-            Err(Error::BenchmarkLaunchError(output).into())
+            Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into())
         }
         (0i32, Some(ExitWith::Failure)) => {
             error!(
-                "Expected benchmark '{}' to fail but it succeeded",
+                "{}: Expected '{}' to fail but it succeeded",
+                tool.id(),
                 executable.display(),
             );
-            Err(Error::BenchmarkLaunchError(output).into())
+            Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into())
         }
         (_, Some(ExitWith::Failure)) => Ok(output),
         (code, Some(ExitWith::Success)) => {
             error!(
-                "Expected benchmark '{}' to succeed but it exited with '{}'",
+                "{}: Expected '{}' to succeed but it terminated with '{}'",
+                tool.id(),
                 executable.display(),
                 code
             );
-            Err(Error::BenchmarkLaunchError(output).into())
+            Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into())
         }
         (actual_code, Some(ExitWith::Code(expected_code))) if actual_code == *expected_code => {
             Ok(output)
         }
         (actual_code, Some(ExitWith::Code(expected_code))) => {
             error!(
-                "Expected benchmark '{}' to exit with '{}' but it exited with '{}'",
+                "{}: Expected '{}' to exit with '{}' but it terminated with '{}'",
+                tool.id(),
                 executable.display(),
                 expected_code,
                 actual_code
             );
-            Err(Error::BenchmarkLaunchError(output).into())
+            Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into())
         }
-        _ => Err(Error::BenchmarkLaunchError(output).into()),
+        _ => Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into()),
     }
 }

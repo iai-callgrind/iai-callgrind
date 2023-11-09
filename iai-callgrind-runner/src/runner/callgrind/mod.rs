@@ -88,6 +88,7 @@ impl CallgrindCommand {
             callgrind_args.collect_atstart = true;
         }
         callgrind_args.set_output_file(&output_path.to_path());
+        callgrind_args.set_log_arg(output_path);
 
         let callgrind_args = callgrind_args.to_vec();
         debug!("Callgrind arguments: {}", &callgrind_args.join(" "));
@@ -106,7 +107,15 @@ impl CallgrindCommand {
             .map_err(|error| {
                 Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
             })
-            .and_then(|output| check_exit(&executable, output, exit_with.as_ref()))?;
+            .and_then(|output| {
+                check_exit(
+                    ValgrindTool::Callgrind,
+                    &executable,
+                    output,
+                    &output_path.to_log_output(),
+                    exit_with.as_ref(),
+                )
+            })?;
 
         Ok(ToolOutput {
             tool: ValgrindTool::Callgrind,

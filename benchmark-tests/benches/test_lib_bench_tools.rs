@@ -1,3 +1,4 @@
+use std::ffi::OsString;
 use std::io;
 use std::process::Output;
 
@@ -27,19 +28,23 @@ fn bench_bubble_sort_allocate() -> i32 {
     bubble_sort_allocate(black_box(4000), black_box(2000))
 }
 
-#[library_benchmark(
-    config = LibraryBenchmarkConfig::default()
+#[library_benchmark]
+#[bench::with_modifier(args = (), config = LibraryBenchmarkConfig::default()
         .tool_override(
             Tool::new(ValgrindTool::DHAT)
                 .args(["--trace-children=yes"])
                 .outfile_modifier("%p")
-        )
-)]
+        ))]
+#[bench::without_modifier(args = (), config = LibraryBenchmarkConfig::default()
+        .tool_override(
+            Tool::new(ValgrindTool::DHAT)
+                .args(["--trace-children=yes"])
+        ))]
 fn bench_subprocess() -> io::Result<Output> {
     println!("Do something before calling subprocess");
     subprocess(
         black_box(env!("CARGO_BIN_EXE_benchmark-tests-sort")),
-        black_box(Vec::<std::ffi::OsString>::new()),
+        black_box(Vec::<OsString>::new()),
     )
 }
 

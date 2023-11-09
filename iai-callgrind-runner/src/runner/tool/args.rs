@@ -9,6 +9,7 @@ use crate::api::{self};
 pub struct ToolArgs {
     tool: ValgrindTool,
     output_paths: Vec<OsString>,
+    log_path: Option<OsString>,
     other: Vec<String>,
 }
 
@@ -22,16 +23,22 @@ impl ToolArgs {
                 .map(|(k, v)| (k.trim(), v.trim()))
             {
                 Some((
-                    "--dhat-out-file" | "--massif-out-file" | "--bb-out-file" | "--pc-out-file",
+                    "--dhat-out-file" | "--massif-out-file" | "--bb-out-file" | "--pc-out-file"
+                    | "--log-file",
                     _,
                 )) => warn!(
-                    "Ignoring {} argument '{arg}': Output files of tools are managed by \
+                    "Ignoring {} argument '{arg}': Output/Log files of tools are managed by \
                      iai-callgrind",
                     tool.id()
                 ),
                 None if matches!(
                     arg.as_str(),
-                    "-h" | "--help" | "--help-dyn-options" | "--help-debug" | "--version"
+                    "-h" | "--help"
+                        | "--help-dyn-options"
+                        | "--help-debug"
+                        | "--version"
+                        | "-q"
+                        | "--quiet"
                 ) =>
                 {
                     warn!("Ignoring {} argument '{arg}'", tool.id());
@@ -42,6 +49,7 @@ impl ToolArgs {
         Self {
             tool,
             output_paths: Vec::default(),
+            log_path: None,
             other,
         }
     }
@@ -55,55 +63,66 @@ impl ToolArgs {
             return;
         }
 
-        let path = &output_path.to_path();
-        let mut extension = path
-            .extension()
-            .expect("An extension must be present")
-            .to_os_string();
+        let mut output_path = output_path.clone();
         match self.tool {
             ValgrindTool::Callgrind => unreachable!("Callgrind is not managed here"),
             ValgrindTool::Massif => {
-                let mut out_file = OsString::from("--massif-out-file=");
+                let mut arg = OsString::from("--massif-out-file=");
                 if let Some(modifier) = modifier {
-                    extension.push(".");
-                    extension.push(modifier.as_ref());
-                    out_file.push(path.with_extension(extension));
-                } else {
-                    out_file.push(path);
+                    output_path
+                        .extension
+                        .push_str(&format!(".{}", modifier.as_ref()));
                 }
-                self.output_paths.push(out_file);
+                arg.push(output_path.to_path());
+                self.output_paths.push(arg);
             }
             ValgrindTool::DHAT => {
-                let mut out_file = OsString::from("--dhat-out-file=");
+                let mut arg = OsString::from("--dhat-out-file=");
                 if let Some(modifier) = modifier {
-                    extension.push(".");
-                    extension.push(modifier.as_ref());
-                    out_file.push(path.with_extension(extension));
-                } else {
-                    out_file.push(path);
+                    output_path
+                        .extension
+                        .push_str(&format!(".{}", modifier.as_ref()));
                 }
-                self.output_paths.push(out_file);
+                arg.push(output_path.to_path());
+                self.output_paths.push(arg);
             }
             ValgrindTool::BBV => {
-                let mut bb_extension = extension.clone();
-                bb_extension.push(".bb");
-                let mut pc_extension = extension.clone();
-                pc_extension.push(".pc");
+                let mut bb_arg = OsString::from("--bb-out-file=");
+                let mut pc_arg = OsString::from("--pc-out-file=");
+                let mut bb_out = output_path.clone();
+                let mut pc_out = output_path;
+                bb_out.extension.push_str(".bb");
+                pc_out.extension.push_str(".pc");
                 if let Some(modifier) = modifier {
-                    bb_extension.push(".");
-                    bb_extension.push(modifier.as_ref());
-                    pc_extension.push(".");
-                    pc_extension.push(modifier.as_ref());
+                    bb_out
+                        .extension
+                        .push_str(&format!(".{}", modifier.as_ref()));
+                    pc_out
+                        .extension
+                        .push_str(&format!(".{}", modifier.as_ref()));
                 }
-                let mut bb_out = OsString::from("--bb-out-file=");
-                bb_out.push(path.with_extension(bb_extension));
-                self.output_paths.push(bb_out);
-                let mut pc_out = OsString::from("--pc-out-file=");
-                pc_out.push(path.with_extension(pc_extension));
-                self.output_paths.push(pc_out);
+                bb_arg.push(bb_out.to_path());
+                pc_arg.push(pc_out.to_path());
+                self.output_paths.push(bb_arg);
+                self.output_paths.push(pc_arg);
             }
             _ => {}
         }
+    }
+
+    pub fn set_log_arg<T>(&mut self, output_path: &ToolOutputPath, modifier: Option<T>)
+    where
+        T: AsRef<str>,
+    {
+        let mut log_output = output_path.to_log_output();
+        if let Some(modifier) = modifier {
+            log_output
+                .extension
+                .push_str(&format!(".{}", modifier.as_ref()));
+        }
+        let mut arg = OsString::from("--log-file=");
+        arg.push(log_output.to_path());
+        self.log_path = Some(arg);
     }
 
     pub fn to_vec(&self) -> Vec<OsString> {
@@ -112,6 +131,9 @@ impl ToolArgs {
         vec.push(format!("--tool={}", self.tool.id()).into());
         vec.extend(self.other.iter().map(OsString::from));
         vec.extend_from_slice(&self.output_paths);
+        if let Some(log_arg) = self.log_path.as_ref() {
+            vec.push(log_arg.clone());
+        }
 
         vec
     }

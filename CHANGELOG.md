@@ -44,7 +44,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   the new event counts instead of just the new event counts.
 * The output format now shows the factor in addition to the percentage
   difference when comparing the new benchmark run with the old benchmark run.
-  The factor can be more intuitive to estimate performance improvements.
+  The factor can be more intuitive when trying to estimate performance
+  improvements.
 * The output format also received some small improvements in case a cost is not
   recorded either in the new benchmark run or in the old benchmark run.
 * The percentage difference is now a digit shorter to equalize the widths of the
@@ -53,10 +54,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   (but also flamegraphs), the output of benchmark runs is now nested one level
   deeper into a directory for each benchmark id instead of putting all output
   files into the group directory.
-* Passing short options (like `-q`) to
+* Passing short options (like `-v`) to
   `LibraryBenchmarkConfig::raw_callgrind_args`,
   `BinaryBenchmarkConfig::raw_callgrind_args`, `Run::raw_callgrind_args`
   `Tool::args` is now possible
+* The output of iai-callgrind when running multiple tool was adjusted
+* `--log-file` for callgrind runs is now ignored because the log files are now
+  created and placed next to the usual output files of iai-callgrind
+* `-q`, `--quiet` arguments are now ignored because they are known to cause
+  problems when parsing log file output for example for DHAT.
 
 ### Fixed
 

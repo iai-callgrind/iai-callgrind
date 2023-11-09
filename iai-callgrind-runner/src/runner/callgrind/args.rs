@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
@@ -6,6 +7,7 @@ use log::{log_enabled, warn};
 
 use crate::api::RawArgs;
 use crate::error::Error;
+use crate::runner::tool::ToolOutputPath;
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
 #[allow(clippy::struct_excessive_bools)]
@@ -25,6 +27,7 @@ pub struct Args {
     dump_line: bool,
     combine_dumps: bool,
     callgrind_out_file: Option<PathBuf>,
+    log_arg: Option<OsString>,
 }
 
 impl Args {
@@ -68,20 +71,22 @@ impl Args {
                     | "--callgrind-out-file"
                     | "--compress-strings"
                     | "--compress-pos"
-                    | "--combine-dumps"),
+                    | "--combine-dumps"
+                    | "--log-file"),
                     value,
                 )) => {
                     warn!("Ignoring callgrind argument: '{}={}'", key, value);
                 }
                 Some(_) => self.other.push(arg.clone()),
                 None if arg == "-v" || arg == "--verbose" => self.verbose = true,
-                None if arg == "-q" || arg == "--quiet" => {
-                    self.verbose = false;
-                    self.other.push(arg.clone());
-                }
                 None if matches!(
                     arg.trim(),
-                    "-h" | "--help" | "--help-dyn-options" | "--help-debug" | "--version"
+                    "-h" | "--help"
+                        | "--help-dyn-options"
+                        | "--help-debug"
+                        | "--version"
+                        | "-q"
+                        | "--quiet"
                 ) =>
                 {
                     warn!("Ignoring callgrind argument: '{arg}'");
@@ -104,6 +109,13 @@ impl Args {
         T: AsRef<Path>,
     {
         self.callgrind_out_file = Some(arg.as_ref().to_owned());
+    }
+
+    pub fn set_log_arg(&mut self, output_path: &ToolOutputPath) {
+        let log_output = output_path.to_log_output();
+        let mut arg = OsString::from("--log-file=");
+        arg.push(log_output.to_path());
+        self.log_arg = Some(arg);
     }
 
     pub fn to_vec(&self) -> Vec<String> {
@@ -142,6 +154,10 @@ impl Args {
             ));
         }
 
+        if let Some(log_arg) = &self.log_arg {
+            args.push(log_arg.to_string_lossy().to_string());
+        }
+
         args.extend_from_slice(self.other.as_slice());
         args
     }
@@ -166,6 +182,7 @@ impl Default for Args {
             dump_instr: false,
             toggle_collect: VecDeque::default(),
             callgrind_out_file: Option::default(),
+            log_arg: Option::default(),
             other: Vec::default(),
         }
     }

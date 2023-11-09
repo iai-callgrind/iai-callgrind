@@ -1,5 +1,6 @@
 use std::ffi::OsString;
 use std::fmt::Display;
+use std::io::stdout;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -18,6 +19,7 @@ use super::print::{Formatter, Header, VerticalFormat};
 use super::tool::{RunOptions, ToolConfigs};
 use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig, RawArgs};
 use crate::error::Error;
+use crate::runner::print::tool_summary_header;
 use crate::runner::tool::{ToolOutputPath, ValgrindTool};
 use crate::util::{copy_directory, receive_benchmark, write_all_to_stderr, write_all_to_stdout};
 
@@ -140,6 +142,20 @@ impl Assistant {
             &group.module_path,
             &format!("{}.{}", self.kind.id(), &self.name),
         );
+        let log_path = output_path.to_log_output();
+        log_path.init();
+
+        let header = Header::from_segments(
+            [&group.module_path, &self.kind.id(), &self.name],
+            None,
+            None,
+        );
+
+        header.print();
+        if self.tools.has_tools_enabled() {
+            println!("{}", tool_summary_header(ValgrindTool::Callgrind));
+        }
+
         let options = RunOptions {
             env_clear: false,
             entry_point: Some(format!("*{}::{}", &config.module, &self.name)),
@@ -166,18 +182,11 @@ impl Assistant {
             None
         };
 
-        let header = Header::from_segments(
-            [&group.module_path, &self.kind.id(), &self.name],
-            None,
-            None,
-        );
-
-        header.print();
-
         let format = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
         print!("{format}");
 
-        output.dump_if(log::Level::Info);
+        output.dump_log(log::Level::Info);
+        log_path.dump_log(log::Level::Info, &mut stdout())?;
 
         if let Some(flamegraph_config) = self.flamegraph.clone() {
             Flamegraph::new(header.to_title(), flamegraph_config).create(
@@ -224,7 +233,11 @@ impl Assistant {
                 if output.status.success() {
                     Ok((output.stdout, output.stderr))
                 } else {
-                    Err(Error::BenchmarkLaunchError(output))
+                    Err(Error::ProcessError((
+                        format!("{}:{id}::{}", &config.bench_bin.display(), self.name),
+                        output,
+                        None,
+                    )))
                 }
             })?;
 
@@ -314,6 +327,16 @@ impl BinBench {
             &format!("{}.{}", self.id, self.display),
         );
 
+        let log_path = output_path.to_log_output();
+        log_path.init();
+
+        let header = Header::new(&group.module_path, self.id.clone(), self.to_string());
+        header.print();
+
+        if self.tools.has_tools_enabled() {
+            println!("{}", tool_summary_header(ValgrindTool::Callgrind));
+        }
+
         let output = callgrind_command.run(
             self.callgrind_args.clone(),
             &self.command,
@@ -332,13 +355,11 @@ impl BinBench {
             None
         };
 
-        let header = Header::new(&group.module_path, self.id.clone(), self.to_string());
-        header.print();
-
         let output_format = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
         print!("{output_format}");
 
-        output.dump_if(log::Level::Info);
+        output.dump_log(log::Level::Info);
+        log_path.dump_log(log::Level::Info, &mut stdout())?;
 
         let sentinel = self.options.entry_point.as_ref().map(Sentinel::new);
         if let Some(flamegraph_config) = self.flamegraph.clone() {

@@ -1,17 +1,19 @@
 use std::fmt::Display;
+use std::io::stderr;
 use std::os::unix::process::ExitStatusExt;
 use std::path::PathBuf;
 use std::process::Output;
 
 use version_compare::Cmp;
 
+use crate::runner::tool::ToolOutputPath;
 use crate::runner::write_all_to_stderr;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Error {
     VersionMismatch(version_compare::Cmp, String, String),
     LaunchError(PathBuf, String),
-    BenchmarkLaunchError(Output),
+    ProcessError((String, Output, Option<ToolOutputPath>)),
     InvalidCallgrindBoolArgument((String, String)),
     ParseError((PathBuf, String)),
     RegressionError(bool),
@@ -45,26 +47,26 @@ impl Display for Error {
                 _ => unreachable!(),
             },
             Self::LaunchError(exec, message) => {
-                write!(f, "Error executing '{}': {message}", exec.display())
+                write!(f, "Error launching '{}': {message}", exec.display())
             }
-            Self::BenchmarkLaunchError(output) => {
-                write_all_to_stderr(&output.stderr);
+            Self::ProcessError((process, output, output_path)) => {
+                if let Some(output_path) = output_path {
+                    output_path
+                        .dump_log(log::Level::Error, &mut stderr())
+                        .expect("Printing error output should succeed");
+                } else {
+                    write_all_to_stderr(&output.stderr);
+                }
+
                 if let Some(code) = output.status.code() {
-                    write!(
-                        f,
-                        "Error launching benchmark: Callgrind exit code was: '{code}'"
-                    )
+                    write!(f, "Error running '{process}': Exit code was: '{code}'")
                 } else if let Some(signal) = output.status.signal() {
                     write!(
                         f,
-                        "Error launching benchmark: Callgrind was terminated by a signal \
-                         '{signal}'"
+                        "Error running '{process}': Terminated by a signal '{signal}'"
                     )
                 } else {
-                    write!(
-                        f,
-                        "Error launching benchmark: Callgrind terminated abnormally"
-                    )
+                    write!(f, "Error running '{process}': Terminated abnormally")
                 }
             }
             Self::InvalidCallgrindBoolArgument((option, value)) => {
