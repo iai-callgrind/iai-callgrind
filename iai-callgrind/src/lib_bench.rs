@@ -301,7 +301,7 @@ impl LibraryBenchmarkConfig {
         self
     }
 
-    /// Option to produce flamegraphs from callgrind output using the [`FlamegraphConfig`]
+    /// Option to produce flamegraphs from callgrind output using the [`crate::FlamegraphConfig`]
     ///
     /// # Examples
     ///
@@ -327,7 +327,7 @@ impl LibraryBenchmarkConfig {
         self
     }
 
-    /// Enable performance regression checks with a [`RegressionConfig`]
+    /// Enable performance regression checks with a [`crate::RegressionConfig`]
     ///
     /// # Examples
     ///
@@ -353,7 +353,7 @@ impl LibraryBenchmarkConfig {
         self
     }
 
-    /// Add a configuration to run a valgrind [`Tool`] in addition to callgrind
+    /// Add a configuration to run a valgrind [`crate::Tool`] in addition to callgrind
     ///
     /// # Examples
     ///
@@ -380,7 +380,7 @@ impl LibraryBenchmarkConfig {
         self
     }
 
-    /// Add multiple configurations to run valgrind [`Tool`]s in addition to callgrind
+    /// Add multiple configurations to run valgrind [`crate::Tool`]s in addition to callgrind
     ///
     /// # Examples
     ///
@@ -413,15 +413,16 @@ impl LibraryBenchmarkConfig {
         self
     }
 
-    /// Override previously defined configurations of valgrind [`Tool`]s
+    /// Override previously defined configurations of valgrind [`crate::Tool`]s
     ///
-    /// Usually, if specifying [`Tool`] configurations with [`LibraryBenchmarkConfig::tool`] these
-    /// tools are appended to the configuration of a [`LibraryBenchmarkConfig`] of higher-levels.
-    /// Specifying a [`Tool`] with this method overrides previously defined configurations.
+    /// Usually, if specifying [`crate::Tool`] configurations with [`LibraryBenchmarkConfig::tool`]
+    /// these tools are appended to the configuration of a [`LibraryBenchmarkConfig`] of
+    /// higher-levels. Specifying a [`crate::Tool`] with this method overrides previously defined
+    /// configurations.
     ///
-    /// Note that [`Tool`]s specified with [`LibraryBenchmarkConfig::tool`] will be ignored, if in
-    /// the very same `LibraryBenchmarkConfig`, [`Tool`]s are specified by this method (or
-    /// [`LibraryBenchmarkConfig::tools_override`]).
+    /// Note that [`crate::Tool`]s specified with [`LibraryBenchmarkConfig::tool`] will be ignored,
+    /// if in the very same `LibraryBenchmarkConfig`, [`crate::Tool`]s are specified by this method
+    /// (or [`LibraryBenchmarkConfig::tools_override`]).
     ///
     /// # Examples
     ///
@@ -469,7 +470,7 @@ impl LibraryBenchmarkConfig {
         self
     }
 
-    /// Override previously defined configurations of valgrind [`Tool`]s
+    /// Override previously defined configurations of valgrind [`crate::Tool`]s
     ///
     /// See also [`LibraryBenchmarkConfig::tool_override`].
     ///

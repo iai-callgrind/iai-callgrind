@@ -415,7 +415,7 @@ impl BinaryBenchmarkConfig {
 
     /// Specify multiple pass-through environment variables
     ///
-    /// See also [`LibraryBenchmarkConfig::pass_through_env`].
+    /// See also [`crate::LibraryBenchmarkConfig::pass_through_env`].
     ///
     /// # Examples
     ///
@@ -619,7 +619,7 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    /// Option to produce flamegraphs from callgrind output using the [`FlamegraphConfig`]
+    /// Option to produce flamegraphs from callgrind output using the [`crate::FlamegraphConfig`]
     ///
     /// # Examples
     ///
@@ -645,7 +645,7 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    /// Enable performance regression checks with a [`RegressionConfig`]
+    /// Enable performance regression checks with a [`crate::RegressionConfig`]
     ///
     /// # Examples
     ///
@@ -671,7 +671,7 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    /// Add a configuration to run a valgrind [`Tool`] in addition to callgrind
+    /// Add a configuration to run a valgrind [`crate::Tool`] in addition to callgrind
     ///
     /// # Examples
     ///
@@ -700,7 +700,7 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    /// Add multiple configurations to run valgrind [`Tool`]s in addition to callgrind
+    /// Add multiple configurations to run valgrind [`crate::Tool`]s in addition to callgrind
     ///
     /// # Examples
     ///
@@ -733,9 +733,9 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    /// Override previously defined configurations of valgrind [`Tool`]s
+    /// Override previously defined configurations of valgrind [`crate::Tool`]s
     ///
-    /// See also [`LibraryBenchmarkConfig::tool_override`] for more details.
+    /// See also [`crate::LibraryBenchmarkConfig::tool_override`] for more details.
     ///
     /// # Example
     ///
@@ -781,9 +781,9 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    /// Override previously defined configurations of valgrind [`Tool`]s
+    /// Override previously defined configurations of valgrind [`crate::Tool`]s
     ///
-    /// See also [`LibraryBenchmarkConfig::tool_override`] for more details.
+    /// See also [`crate::LibraryBenchmarkConfig::tool_override`] for more details.
     ///
     /// # Example
     ///
@@ -1559,7 +1559,7 @@ impl Run {
         self
     }
 
-    /// Option to produce flamegraphs from callgrind output using the [`FlamegraphConfig`]
+    /// Option to produce flamegraphs from callgrind output using the [`crate::FlamegraphConfig`]
     ///
     /// See also [`BinaryBenchmarkConfig::flamegraph`]
     ///
@@ -1590,7 +1590,7 @@ impl Run {
         self
     }
 
-    /// Enable performance regression checks with a [`RegressionConfig`]
+    /// Enable performance regression checks with a [`crate::RegressionConfig`]
     ///
     /// See also [`BinaryBenchmarkConfig::regression`]
     ///
@@ -1621,7 +1621,7 @@ impl Run {
         self
     }
 
-    /// Add a configuration to run a valgrind [`Tool`] in addition to callgrind
+    /// Add a configuration to run a valgrind [`crate::Tool`] in addition to callgrind
     ///
     /// # Examples
     ///
@@ -1654,7 +1654,7 @@ impl Run {
         self
     }
 
-    /// Add multiple configurations to run valgrind [`Tool`]s in addition to callgrind
+    /// Add multiple configurations to run valgrind [`crate::Tool`]s in addition to callgrind
     ///
     /// # Examples
     ///
@@ -1692,7 +1692,7 @@ impl Run {
         self
     }
 
-    /// Override previously defined configurations of valgrind [`Tool`]s
+    /// Override previously defined configurations of valgrind [`crate::Tool`]s
     ///
     /// See also [`BinaryBenchmarkConfig::tool_override`].
     ///
@@ -1741,7 +1741,7 @@ impl Run {
         self
     }
 
-    /// Override previously defined configurations of valgrind [`Tool`]s
+    /// Override previously defined configurations of valgrind [`crate::Tool`]s
     ///
     /// See also [`BinaryBenchmarkConfig::tools_override`].
     ///

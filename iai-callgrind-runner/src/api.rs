@@ -240,13 +240,20 @@ pub struct Tool {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tools(pub Vec<Tool>);
 
+/// An enum with all possible valgrind tools
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ValgrindTool {
+    /// [Memcheck: a memory error detector](https://valgrind.org/docs/manual/mc-manual.html)
     Memcheck,
+    /// [Helgrind: a thread error detector](https://valgrind.org/docs/manual/hg-manual.html)
     Helgrind,
+    /// [DRD: a thread error detector](https://valgrind.org/docs/manual/drd-manual.html)
     DRD,
+    /// [Massif: a heap profiler](https://valgrind.org/docs/manual/ms-manual.html)
     Massif,
+    /// [DHAT: a dynamic heap analysis tool](https://valgrind.org/docs/manual/dh-manual.html)
     DHAT,
+    /// [BBV: an experimental basic block vector generation tool](https://valgrind.org/docs/manual/bbv-manual.html)
     BBV,
 }
 

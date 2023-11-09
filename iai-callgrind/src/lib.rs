@@ -1,7 +1,7 @@
-//! Iai-Callgrind is a benchmarking framework/harness which uses [Valgrind's
-//! Callgrind](https://valgrind.org/docs/manual/cl-manual.html) to provide extremely accurate and
-//! consistent measurements of Rust code, making it perfectly suited to run in environments like a
-//! CI.
+//! Iai-Callgrind is a benchmarking framework/harness which primarily uses [Valgrind's
+//! Callgrind](https://valgrind.org/docs/manual/cl-manual.html) and the other Valgrind tools to
+//! provide extremely accurate and consistent measurements of Rust code, making it perfectly suited
+//! to run in environments like a CI.
 //!
 //! # Features
 //! - __Precision__: High-precision measurements allow you to reliably detect very small
@@ -12,17 +12,24 @@
 //! faster to run than benchmarks measuring the execution and wall time
 //! - __Regression__: Iai-Callgrind reports the difference between benchmark runs to make it easy to
 //! spot detailed performance regressions and improvements.
-//! - __Profiling__: Iai-Callgrind generates a Callgrind profile of your code while benchmarking, so
-//! you can use Callgrind-compatible tools like
+//! - __CPU and Cache Profiling__: Iai-Callgrind generates a Callgrind profile of your code while
+//! benchmarking, so you can use Callgrind-compatible tools like
 //! [callgrind_annotate](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.callgrind_annotate-options)
 //! or the visualizer [kcachegrind](https://kcachegrind.github.io/html/Home.html) to analyze the
-//! results in detail
+//! results in detail.
+//! - __Memory Profiling__: You can run other Valgrind tools like [DHAT: a dynamic heap analysis
+//! tool](https://valgrind.org/docs/manual/dh-manual.html) and [Massif: a heap
+//! profiler](https://valgrind.org/docs/manual/ms-manual.html) with the Iai-Callgrind benchmarking
+//! framework. Their profiles are stored next to the callgrind profiles and are ready to be examined
+//! with analyzing tools like `dh_view.html`, `ms_print` and others.
+//! - __Visualization__: Iai-Callgrind is capable of creating regular and differential flamegraphs
+//! from the Callgrind output format.
 //! - __Stable-compatible__: Benchmark your code without installing nightly Rust
 //!
 //! # Benchmarking
 //!
 //! `iai-callgrind` can be divided into two sections: Benchmarking the library and
-//! its public functions and benchmarking of a crate's binary.
+//! its public functions and benchmarking of the binaries of a crate.
 //!
 //! ## Library Benchmarks
 //!
@@ -214,6 +221,31 @@
 //! of [`crate::binary_benchmark_group`] and [`Run`]. Also, the
 //! [README](https://github.com/iai-callgrind/iai-callgrind) of this crate includes some introductory
 //! documentation with additional examples.
+//!
+//! ### Valgrind Tools
+//!
+//! In addition to the default benchmarks, you can use the Iai-Callgrind framework to run other
+//! Valgrind profiling [`Tool`]s like `DHAT`, `Massif` and the experimental `BBV` but also
+//! `Memcheck`, `Helgrind` and `DRD` if you need to check memory and thread safety of benchmarked
+//! code. See also the [Valgrind User Manual](https://valgrind.org/docs/manual/manual.html) for
+//! details and command line arguments. The additional tools can be specified in
+//! [`LibraryBenchmarkConfig`], [`BinaryBenchmarkConfig`] or [`Run`]. For example to run `DHAT` for
+//! all library benchmarks:
+//!
+//! ```rust
+//! # use iai_callgrind::{library_benchmark, library_benchmark_group};
+//! use iai_callgrind::{main, LibraryBenchmarkConfig, Tool, ValgrindTool};
+//! # #[library_benchmark]
+//! # fn some_func() {}
+//! # library_benchmark_group!(name = some_group; benchmarks = some_func);
+//! # fn main() {
+//! main!(
+//!     config = LibraryBenchmarkConfig::default()
+//!                 .tool(Tool::new(ValgrindTool::DHAT));
+//!     library_benchmark_groups = some_group
+//! );
+//! # }
+//! ```
 //!
 //! ### Flamegraphs
 //!
