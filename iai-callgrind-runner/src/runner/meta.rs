@@ -136,11 +136,11 @@ impl From<&Metadata> for Command {
 
 fn try_regression_config_from_env() -> Result<Option<RegressionConfig>> {
     let mut regression = None;
-    if let Ok(regression_env) = std::env::var("IAI_CALLGRIND_REGRESSION") {
+    if let Ok(regression_env) = std::env::var(envs::IAI_CALLGRIND_REGRESSION) {
         let regression_env = regression_env.trim();
         if regression_env.is_empty() {
             return Err(Error::EnvironmentVariableError((
-                "IAI_CALLGRIND_REGRESSION".to_owned(),
+                envs::IAI_CALLGRIND_REGRESSION.to_owned(),
                 "No limits found: At least one limit must be specified".to_owned(),
             ))
             .into());
@@ -159,7 +159,7 @@ fn try_regression_config_from_env() -> Result<Option<RegressionConfig>> {
                     let event_kind =
                         EventKind::from_str_ignore_case(key).ok_or_else(|| -> anyhow::Error {
                             Error::EnvironmentVariableError((
-                                "IAI_CALLGRIND_REGRESSION".to_owned(),
+                                envs::IAI_CALLGRIND_REGRESSION.to_owned(),
                                 format!("Unknown event kind: '{key}'"),
                             ))
                             .into()
@@ -167,7 +167,7 @@ fn try_regression_config_from_env() -> Result<Option<RegressionConfig>> {
 
                     let pct = value.parse::<f64>().map_err(|error| -> anyhow::Error {
                         Error::EnvironmentVariableError((
-                            "IAI_CALLGRIND_REGRESSION".to_owned(),
+                            envs::IAI_CALLGRIND_REGRESSION.to_owned(),
                             format!("Invalid percentage for '{key}': {error}"),
                         ))
                         .into()
@@ -175,7 +175,7 @@ fn try_regression_config_from_env() -> Result<Option<RegressionConfig>> {
                     limits.push((event_kind, pct));
                 } else {
                     return Err(Error::EnvironmentVariableError((
-                        "IAI_CALLGRIND_REGRESSION".to_owned(),
+                        envs::IAI_CALLGRIND_REGRESSION.to_owned(),
                         format!("Invalid format of key/value pair: '{split}'"),
                     ))
                     .into());
@@ -187,13 +187,13 @@ fn try_regression_config_from_env() -> Result<Option<RegressionConfig>> {
         }
     }
 
-    if let Ok(fail_fast_env) = std::env::var("IAI_CALLGRIND_REGRESSION_FAIL_FAST") {
+    if let Ok(fail_fast_env) = std::env::var(envs::IAI_CALLGRIND_REGRESSION_FAIL_FAST) {
         if let Some(regression) = regression.as_mut() {
             let fail_fast_env = fail_fast_env.trim();
             let fail_fast = yesno_to_bool(fail_fast_env.to_lowercase().as_str()).ok_or_else(
                 || -> anyhow::Error {
                     Error::EnvironmentVariableError((
-                        "IAI_CALLGRIND_REGRESSION_FAIL_FAST".to_owned(),
+                        envs::IAI_CALLGRIND_REGRESSION_FAIL_FAST.to_owned(),
                         format!("Expected 'yes' or 'no' but found: '{fail_fast_env}'"),
                     ))
                     .into()
@@ -203,8 +203,9 @@ fn try_regression_config_from_env() -> Result<Option<RegressionConfig>> {
             regression.fail_fast = Some(fail_fast);
         } else {
             warn!(
-                "Ignoring IAI_CALLGRIND_REGRESSION_FAIL_FAST: No IAI_CALLGRIND_REGRESSION \
-                 environment variable found"
+                "Ignoring {}: No {} environment variable found",
+                envs::IAI_CALLGRIND_REGRESSION_FAIL_FAST,
+                envs::IAI_CALLGRIND_REGRESSION
             );
         }
     }
@@ -223,16 +224,16 @@ mod tests {
     #[test]
     #[serial]
     fn test_try_regression_config_from_env_when_no_envs_present_then_none() {
-        std::env::remove_var("IAI_CALLGRIND_REGRESSION");
-        std::env::remove_var("IAI_CALLGRIND_REGRESSION_FAIL_FAST");
+        std::env::remove_var(envs::IAI_CALLGRIND_REGRESSION);
+        std::env::remove_var(envs::IAI_CALLGRIND_REGRESSION_FAIL_FAST);
         assert!(try_regression_config_from_env().unwrap().is_none());
     }
 
     #[test]
     #[serial]
     fn test_try_regression_config_from_env_when_fail_fast_only_then_none() {
-        std::env::remove_var("IAI_CALLGRIND_REGRESSION");
-        std::env::set_var("IAI_CALLGRIND_REGRESSION_FAIL_FAST", "yes");
+        std::env::remove_var(envs::IAI_CALLGRIND_REGRESSION);
+        std::env::set_var(envs::IAI_CALLGRIND_REGRESSION_FAIL_FAST, "yes");
         assert!(try_regression_config_from_env().unwrap().is_none());
     }
 
@@ -254,14 +255,14 @@ mod tests {
         #[case] expected_limits: Vec<(EventKind, f64)>,
         #[case] expected_fail_fast: Option<bool>,
     ) {
-        std::env::remove_var("IAI_CALLGRIND_REGRESSION");
-        std::env::remove_var("IAI_CALLGRIND_REGRESSION_FAIL_FAST");
+        std::env::remove_var(envs::IAI_CALLGRIND_REGRESSION);
+        std::env::remove_var(envs::IAI_CALLGRIND_REGRESSION_FAIL_FAST);
 
         if let Some(regression_var) = regression_var {
-            std::env::set_var("IAI_CALLGRIND_REGRESSION", regression_var);
+            std::env::set_var(envs::IAI_CALLGRIND_REGRESSION, regression_var);
         }
         if let Some(fail_fast_var) = fail_fast_var {
-            std::env::set_var("IAI_CALLGRIND_REGRESSION_FAIL_FAST", fail_fast_var);
+            std::env::set_var(envs::IAI_CALLGRIND_REGRESSION_FAIL_FAST, fail_fast_var);
         }
 
         let expected = RegressionConfig {
@@ -285,31 +286,31 @@ mod tests {
     #[case::regression_wrong_format_of_key_value_pair(
         Some("Ir:10"),
         None,
-        "IAI_CALLGRIND_REGRESSION",
+        envs::IAI_CALLGRIND_REGRESSION,
         "Invalid format of key/value pair: 'Ir:10'"
     )]
     #[case::regression_unknown_event_kind(
         Some("WRONG=10"),
         None,
-        "IAI_CALLGRIND_REGRESSION",
+        envs::IAI_CALLGRIND_REGRESSION,
         "Unknown event kind: 'WRONG'"
     )]
     #[case::regression_invalid_percentage(
         Some("Ir=10.0.0"),
         None,
-        "IAI_CALLGRIND_REGRESSION",
+        envs::IAI_CALLGRIND_REGRESSION,
         "Invalid percentage for 'Ir': invalid float literal"
     )]
     #[case::regression_empty_limits(
         Some(""),
         None,
-        "IAI_CALLGRIND_REGRESSION",
+        envs::IAI_CALLGRIND_REGRESSION,
         "No limits found: At least one limit must be specified"
     )]
     #[case::fail_fast_invalid(
         Some("Ir=10"),
         Some("YEAH"),
-        "IAI_CALLGRIND_REGRESSION_FAIL_FAST",
+        envs::IAI_CALLGRIND_REGRESSION_FAIL_FAST,
         "Expected 'yes' or 'no' but found: 'YEAH'"
     )]
     #[serial]
@@ -319,14 +320,14 @@ mod tests {
         #[case] expected_var: &str,
         #[case] expected_reason: &str,
     ) {
-        std::env::remove_var("IAI_CALLGRIND_REGRESSION");
-        std::env::remove_var("IAI_CALLGRIND_REGRESSION_FAIL_FAST");
+        std::env::remove_var(envs::IAI_CALLGRIND_REGRESSION);
+        std::env::remove_var(envs::IAI_CALLGRIND_REGRESSION_FAIL_FAST);
 
         if let Some(regression_var) = regression_var {
-            std::env::set_var("IAI_CALLGRIND_REGRESSION", regression_var);
+            std::env::set_var(envs::IAI_CALLGRIND_REGRESSION, regression_var);
         }
         if let Some(fail_fast_var) = fail_fast_var {
-            std::env::set_var("IAI_CALLGRIND_REGRESSION_FAIL_FAST", fail_fast_var);
+            std::env::set_var(envs::IAI_CALLGRIND_REGRESSION_FAIL_FAST, fail_fast_var);
         }
 
         assert_environment_variable_error(
