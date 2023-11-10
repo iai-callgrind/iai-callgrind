@@ -43,9 +43,10 @@ improvements and features.
     - [Benchmarking](#benchmarking)
         - [Library Benchmarks](#library-benchmarks)
         - [Binary Benchmarks](#binary-benchmarks)
+    - [Performance Regressions](#performance-regressions)
     - [Valgrind Tools](#valgrind-tools)
     - [Flamegraphs](#flamegraphs)
-    - [Iai-callgrind Environment variables](#environment-variables-colored-output-and-logging)
+    - [Iai-callgrind Environment variables](#iai_callgrind-environment-variables)
     - [Iai-callgrind command line arguments](#command-line-passing-arguments-to-callgrind)
     - [Features and differences to Iai](#features-and-differences-to-iai)
     - [What hasn't changed](#what-hasnt-changed)
@@ -64,7 +65,9 @@ improvements and features.
   typically a lot faster to run than benchmarks measuring the execution and wall
   time
 - __Regression__: Iai-Callgrind reports the difference between benchmark runs to
-  make it easy to spot detailed performance regressions and improvements.
+  make it easy to spot detailed performance regressions and improvements. You
+  can define limits for specific event kinds to fail a benchmark if that limit
+  is breached.
 - __CPU and Cache Profiling__: Iai-Callgrind generates a Callgrind profile of
   your code while benchmarking, so you can use Callgrind-compatible tools like
   [callgrind_annotate](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.callgrind_annotate-options)
@@ -494,6 +497,36 @@ binary_benchmark_group!(
 See the [test_bin_bench_groups](benchmark-tests/benches/test_bin_bench_groups.rs) benchmark file of
 this project for a working example.
 
+### Performance Regressions
+
+With Iai-Callgrind you can define limits for each event kinds over which a
+performance regression can be assumed. There are no default regression checks
+and you have to opt-in with a `RegressionConfig` or [Environment
+variables](#iai_callgrind-environment-variables).
+
+A performance regression check consists of an `EventKind` and a percentage over
+which a regression is assumed. If the percentage is negative, then a regression
+is assumed to be below this limit. The default `EventKind` is
+`EventKind::EstimatedCycles` with a value of `+10%`.For example, in a [Library
+Benchmark](#library-benchmarks), let's overwrite the default limit with a global
+limit of `+5%` for the total instructions executed (the `Ir` event kind):
+
+```rust
+main!(
+    config = LibraryBenchmarkConfig::default()
+        .regression(
+            RegressionConfig::default()
+                .limits([(EventKind::Ir, 5.0)])
+        );
+    library_benchmark_groups = some_group
+);
+```
+
+For example [SQLite](https://sqlite.org/cpu.html#performance_measurement) uses
+mainly cpu instructions to measure performance improvements (and regressions).
+
+For more details on regression checks consult the iai-callgrind [docs].
+
 ### Valgrind Tools
 
 In addition to the default benchmarks, you can use the Iai-Callgrind framework
@@ -540,12 +573,25 @@ sections which cause a bottleneck or a performance regressions etc.
 The produced flamegraph svg files are located next to the respective callgrind
 output file in the `target/iai` directory.
 
-### Environment variables: Colored output and logging
+### IAI_CALLGRIND Environment variables
+
+This is an overview of environment variables iai-callgrind understands:
+
+- `IAI_CALLGRIND_COLOR`: Control the colored output of iai-callgrind
+- `IAI_CALLGRIND_LOG`: Define the log level
+- `IAI_CALLGRIND_REGRESSION`: Define limits for event kinds to detect performance
+  regressions
+- `IAI_CALLGRIND_REGRESSION_FAIL_FAST`: If `yes`, fail the benchmarks on the first
+  performance regression encountered. The default is `no`.
+
+#### IAI_CALLGRIND_COLOR
 
 The metrics output is colored per default but follows the value for the `IAI_CALLGRIND_COLOR`
 environment variable. If `IAI_CALLGRIND_COLOR` is not set, `CARGO_TERM_COLOR` is also tried.
 Accepted values are: `always`, `never`, `auto` (default). So, disabling colors can be achieved with
 setting `IAI_CALLGRIND_COLOR` or `CARGO_TERM_COLOR=never`.
+
+#### IAI_CALLGRIND_LOG
 
 This library uses [env_logger](https://crates.io/crates/env_logger) and the default logging level
 `WARN`. To set the logging level to something different, set the environment variable
@@ -553,6 +599,20 @@ This library uses [env_logger](https://crates.io/crates/env_logger) and the defa
 (default), `info`, `debug`, `trace`. The logging output is colored per default but follows the
 settings of `IAI_CALLGRIND_COLOR` and `CARGO_TERM_COLOR` (In this order). See also the
 [documentation](https://docs.rs/env_logger/latest) of `env_logger`.
+
+#### IAI_CALLGRIND_REGRESSION
+
+This environment variables takes a `,` separated list of `EVENT_KIND=PERCENTAGE`
+(key=value) pairs. For example `IAI_CALLGRIND_REGRESSION='Ir=5,
+EstimatedCycles=10'`. See also the section about [Performance
+Regressions](#performance-regressions).
+
+#### IAI_CALLGRIND_REGRESSION_FAIL_FAST
+
+This environment variables takes `yes` or `no` as value for example
+`IAI_CALLGRIND_REGRESSION_FAIL_FAST=yes`. This environment variable will be
+ignored if no `IAI_CALLGRIND_REGRESSION` variable is defined. See also the
+section about [Performance Regressions](#performance-regressions).
 
 ### Command-line: Passing arguments to Callgrind
 
