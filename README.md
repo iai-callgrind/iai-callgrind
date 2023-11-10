@@ -1,3 +1,5 @@
+<!-- spell-checker: ignore fixt -->
+
 <h1 align="center">Iai-Callgrind</h1>
 
 <div align="center">High-precision and consistent benchmarking framework/harness for Rust</div>
@@ -23,9 +25,10 @@
     </a>
 </div>
 
-Iai-Callgrind is a benchmarking framework and harness that uses Callgrind to provide extremely
-accurate and consistent measurements of Rust code, making it perfectly suited to run in environments
-like a CI.
+Iai-Callgrind is a benchmarking framework/harness which primarily uses
+[Valgrind's Callgrind](https://valgrind.org/docs/manual/cl-manual.html) and the
+other Valgrind tools to provide extremely accurate and consistent measurements
+of Rust code, making it perfectly suited to run in environments like a CI.
 
 This crate started as a fork of the great [Iai](https://github.com/bheisler/iai) crate rewritten to
 use Valgrind's [Callgrind](https://valgrind.org/docs/manual/cl-manual.html) instead of
@@ -40,6 +43,7 @@ improvements and features.
     - [Benchmarking](#benchmarking)
         - [Library Benchmarks](#library-benchmarks)
         - [Binary Benchmarks](#binary-benchmarks)
+    - [Valgrind Tools](#valgrind-tools)
     - [Flamegraphs](#flamegraphs)
     - [Iai-callgrind Environment variables](#environment-variables-colored-output-and-logging)
     - [Iai-callgrind command line arguments](#command-line-passing-arguments-to-callgrind)
@@ -52,18 +56,26 @@ improvements and features.
 
 ### Features
 
-- __Precision__: High-precision measurements allow you to reliably detect very small optimizations
-of your code
-- __Consistency__: Iai-Callgrind can take accurate measurements even in virtualized CI environments
-- __Performance__: Since Iai-Callgrind only executes a benchmark once, it is typically a lot faster
-to run than benchmarks measuring the execution and wall time
-- __Regression__: Iai-Callgrind reports the difference between benchmark runs to make it easy to
-spot detailed performance regressions and improvements.
-- __Profiling__: Iai-Callgrind generates a Callgrind profile of your code while benchmarking, so you
-can use Callgrind-compatible tools like
-[callgrind_annotate](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.callgrind_annotate-options)
-or the visualizer [kcachegrind](https://kcachegrind.github.io/html/Home.html) to analyze the results
-in detail
+- __Precision__: High-precision measurements allow you to reliably detect very
+  small optimizations of your code
+- __Consistency__: Iai-Callgrind can take accurate measurements even in
+  virtualized CI environments
+- __Performance__: Since Iai-Callgrind only executes a benchmark once, it is
+  typically a lot faster to run than benchmarks measuring the execution and wall
+  time
+- __Regression__: Iai-Callgrind reports the difference between benchmark runs to
+  make it easy to spot detailed performance regressions and improvements.
+- __CPU and Cache Profiling__: Iai-Callgrind generates a Callgrind profile of
+  your code while benchmarking, so you can use Callgrind-compatible tools like
+  [callgrind_annotate](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.callgrind_annotate-options)
+  or the visualizer [kcachegrind](https://kcachegrind.github.io/html/Home.html)
+  to analyze the results in detail.
+- __Memory Profiling__: You can run other Valgrind tools like [DHAT: a dynamic
+  heap analysis tool](https://valgrind.org/docs/manual/dh-manual.html) and
+  [Massif: a heap profiler](https://valgrind.org/docs/manual/ms-manual.html)
+  with the Iai-Callgrind benchmarking framework. Their profiles are stored next
+  to the callgrind profiles and are ready to be examined with analyzing tools
+  like `dh_view.html`, `ms_print` and others.
 - __Visualization__: Iai-Callgrind is capable of creating regular and
   differential flamegraphs from the Callgrind output format.
 - __Stable-compatible__: Benchmark your code without installing nightly Rust
@@ -77,14 +89,14 @@ To start with Iai-Callgrind, add the following to your `Cargo.toml` file:
 
 ```toml
 [dev-dependencies]
-iai-callgrind = "0.7.3"
+iai-callgrind = "0.8.0"
 ```
 
 To be able to run the benchmarks you'll also need the `iai-callgrind-runner` binary installed
 somewhere in your `$PATH`, for example with
 
 ```shell
-cargo install --version 0.7.3 iai-callgrind-runner
+cargo install --version 0.8.0 iai-callgrind-runner
 ```
 
 There's also the possibility to install the binary somewhere else and point the
@@ -92,7 +104,7 @@ There's also the possibility to install the binary somewhere else and point the
 binary like so:
 
 ```shell
-cargo install --version 0.7.3 --root /tmp iai-callgrind-runner
+cargo install --version 0.8.0 --root /tmp iai-callgrind-runner
 IAI_CALLGRIND_RUNNER=/tmp/bin/iai-callgrind-runner cargo bench --bench my-bench
 ```
 
@@ -109,7 +121,19 @@ sections.
 
 For a quickstart and examples of benchmarking libraries see the [Library Benchmark
 Section](#library-benchmarks) and for executables see the [Binary Benchmark
-Section](#binary-benchmarks). Read the [`docs`]!
+Section](#binary-benchmarks). Read the [docs]!
+
+It's highly advisable to run the benchmarks with debugging symbols switched on.
+For example in your `~/.cargo/config`:
+
+```toml
+[profile.bench]
+debug = true
+```
+
+Now, all benchmarks you run with `cargo bench` include the debug info. (See also
+[Cargo Profiles](https://doc.rust-lang.org/cargo/reference/profiles.html) and
+[Cargo Config](https://doc.rust-lang.org/cargo/reference/config.html))
 
 #### Library Benchmarks
 
@@ -117,8 +141,9 @@ Use this scheme if you want to micro-benchmark specific functions of your crate'
 
 #### Important default behavior
 
-The environment variables are cleared before running a library benchmark. See also
-[Configuration](#configuration) if you need to change that behavior.
+The environment variables are cleared before running a library benchmark. Have a
+look into the [Configuration](#configuration) section if you need to change that
+behavior.
 
 ##### Quickstart
 
@@ -181,20 +206,20 @@ Now, you can run this benchmark with `cargo bench --bench my_benchmark` in your 
 should see something like this:
 
 ```text
-my_benchmark::bench_fibonacci_group::bench_fibonacci short:10
-  Instructions:                1733
-  L1 Hits:                     2358
-  L2 Hits:                        0
-  RAM Hits:                       3
-  Total read+write:            2361
-  Estimated Cycles:            2463
-my_benchmark::bench_fibonacci_group::bench_fibonacci long:30
-  Instructions:            26214733
-  L1 Hits:                 35638617
-  L2 Hits:                        0
-  RAM Hits:                       4
-  Total read+write:        35638621
-  Estimated Cycles:        35638757
+test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci short:10
+  Instructions:                1733|N/A             (*********)
+  L1 Hits:                     2359|N/A             (*********)
+  L2 Hits:                        0|N/A             (*********)
+  RAM Hits:                       2|N/A             (*********)
+  Total read+write:            2361|N/A             (*********)
+  Estimated Cycles:            2429|N/A             (*********)
+test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci long:30
+  Instructions:            26214733|N/A             (*********)
+  L1 Hits:                 35638617|N/A             (*********)
+  L2 Hits:                        0|N/A             (*********)
+  RAM Hits:                       4|N/A             (*********)
+  Total read+write:        35638621|N/A             (*********)
+  Estimated Cycles:        35638757|N/A             (*********)
 ```
 
 In addition, you'll find the callgrind output in `target/iai`, if you want to investigate further
@@ -203,20 +228,20 @@ report the differences between the current and the previous run. Say you've made
 `fibonacci` function, then you may see something like this:
 
 ```text
-my_benchmark::bench_fibonacci_group::bench_fibonacci short:10
-  Instructions:                2804 (+61.80035%)
-  L1 Hits:                     3814 (+61.74724%)
-  L2 Hits:                        0 (No Change)
-  RAM Hits:                       3 (No Change)
-  Total read+write:            3817 (+61.66878%)
-  Estimated Cycles:            3919 (+59.11490%)
-my_benchmark::bench_fibonacci_group::bench_fibonacci long:30
-  Instructions:            16201596 (-38.19660%)
-  L1 Hits:                 22025877 (-38.19660%)
-  L2 Hits:                        0 (No Change)
-  RAM Hits:                       4 (No Change)
-  Total read+write:        22025881 (-38.19660%)
-  Estimated Cycles:        22026017 (-38.19645%)
+test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci short:10
+  Instructions:                2804|1733            (+61.8003%) [+1.61800x]
+  L1 Hits:                     3815|2359            (+61.7211%) [+1.61721x]
+  L2 Hits:                        0|0               (No change)
+  RAM Hits:                       2|2               (No change)
+  Total read+write:            3817|2361            (+61.6688%) [+1.61669x]
+  Estimated Cycles:            3885|2429            (+59.9424%) [+1.59942x]
+test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci long:30
+  Instructions:            16201596|26214733        (-38.1966%) [-1.61803x]
+  L1 Hits:                 22025878|35638617        (-38.1966%) [-1.61803x]
+  L2 Hits:                        0|0               (No change)
+  RAM Hits:                       3|4               (-25.0000%) [-1.33333x]
+  Total read+write:        22025881|35638621        (-38.1966%) [-1.61803x]
+  Estimated Cycles:        22025983|35638757        (-38.1965%) [-1.61803x]
 ```
 
 ##### Examples
@@ -227,7 +252,7 @@ the [`library documentation`]!
 
 ##### Configuration
 
-It's possible to configure some of the behavior of `iai-callgrind`. See the [`docs`] of
+It's possible to configure some of the behavior of `iai-callgrind`. See the [docs] of
 `LibraryBenchmarkConfig` for more details. At top-level with the `main!` macro:
 
 ```rust
@@ -290,28 +315,37 @@ benchmarked binary.
 
 #### Quickstart
 
-Suppose your crate's binary is named `my-exe` and you have a fixtures directory in
-`benches/fixtures` with a file `test1.txt` in it:
+Suppose your crate's binary is named `benchmark-tests-printargs` and you have a
+fixtures directory in `fixtures` with a file `test1.txt` in it:
 
 ```rust
-use iai_callgrind::{main, binary_benchmark_group, BinaryBenchmarkConfig, BinaryBenchmarkGroup, Run, Arg, Fixtures};
+use iai_callgrind::{
+    binary_benchmark_group, main, Arg, BinaryBenchmarkConfig, BinaryBenchmarkGroup,
+    Fixtures, Run,
+};
 
 fn my_setup() {
     println!("We can put code in here which will be run before each benchmark run");
 }
 
-// We specify a cmd `"my-exe"` for the whole group which is a binary of our crate. This
-// eliminates the need to specify a `cmd` for each `Run` later on and we can use the
-// auto-discovery of a crate's binary at group level. We'll also use the `setup` argument
-// to run a function before each of the benchmark runs.
+// We specify a cmd `"benchmark-tests-exe"` for the whole group which is a
+// binary of our crate. This eliminates the need to specify a `cmd` for each
+// `Run` later on and we can use the auto-discovery of a crate's binary at group
+// level. We'll also use the `setup` argument to run a function before each of
+// the benchmark runs.
 binary_benchmark_group!(
     name = my_exe_group;
     setup = my_setup;
     // This directory will be copied into the root of the sandbox (as `fixtures`)
-    config = BinaryBenchmarkConfig::default().fixtures(Fixtures::new("benches/fixtures"));
-    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| setup_my_exe_group(group));
+    config = BinaryBenchmarkConfig::default().fixtures(Fixtures::new("fixtures"));
+    benchmark =
+        |"benchmark-tests-printargs", group: &mut BinaryBenchmarkGroup| {
+            setup_my_exe_group(group)
+    }
+);
 
-// Working within a macro can be tedious sometimes so we moved the setup code into this method
+// Working within a macro can be tedious sometimes so we moved the setup code
+// into this method
 fn setup_my_exe_group(group: &mut BinaryBenchmarkGroup) {
     group
         // Setup our first run doing something with our fixture `test1.txt`. The
@@ -322,19 +356,25 @@ fn setup_my_exe_group(group: &mut BinaryBenchmarkGroup) {
             ["--foo=fixtures/test1.txt"],
         )))
 
-        // Setup our second run with two positional arguments
-        .bench(Run::with_arg(Arg::new(
-            "positional arguments",
-            ["foo", "foo bar"],
-        )))
+        // Setup our second run with two positional arguments. We're not
+        // interested in anything happening before the main function in
+        // `benchmark-tests-printargs`, so we set the entry_point.
+        .bench(
+            Run::with_arg(
+                Arg::new(
+                    "positional arguments",
+                    ["foo", "foo bar"],
+                )
+            ).entry_point("benchmark_tests_printargs::main")
+        )
 
         // Our last run doesn't take an argument at all.
         .bench(Run::with_arg(Arg::empty("no argument")));
 }
 
-// As last step specify all groups we want to benchmark in the main! macro argument
-// `binary_benchmark_groups`. The main macro is always needed and finally expands
-// to a benchmarking harness
+// As last step specify all groups we want to benchmark in the main! macro
+// argument `binary_benchmark_groups`. The main macro is always needed and
+// finally expands to a benchmarking harness
 main!(binary_benchmark_groups = my_exe_group);
 ```
 
@@ -343,27 +383,27 @@ You're ready to run the benchmark with `cargo bench --bench my_binary_benchmark`
 The output of this benchmark run could look like this:
 
 ```text
-my_binary_benchmark::my_exe_group do foo with test1:my-exe --foo=fixtures/test1.txt
-  Instructions:              160346 (No Change)
-  L1 Hits:                   212787 (No Change)
-  L2 Hits:                      381 (No Change)
-  RAM Hits:                    2918 (No Change)
-  Total read+write:          216086 (No Change)
-  Estimated Cycles:          316822 (No Change)
-my_binary_benchmark::my_exe_group positional arguments:my-exe foo "foo bar"
-  Instructions:              340937 (No Change)
-  L1 Hits:                   454995 (No Change)
-  L2 Hits:                      750 (No Change)
-  RAM Hits:                    4074 (No Change)
-  Total read+write:          459819 (No Change)
-  Estimated Cycles:          601335 (No Change)
-my_binary_benchmark::my_exe_group no argument:my-exe
-  Instructions:              166491 (No Change)
-  L1 Hits:                   220756 (No Change)
-  L2 Hits:                      402 (No Change)
-  RAM Hits:                    3053 (No Change)
-  Total read+write:          224211 (No Change)
-  Estimated Cycles:          329621 (No Change)
+my_binary_benchmark::my_exe_group do foo with test1:benchmark-tests-printargs "--foo=fixt...
+  Instructions:              331082|N/A             (*********)
+  L1 Hits:                   442452|N/A             (*********)
+  L2 Hits:                      720|N/A             (*********)
+  RAM Hits:                    3926|N/A             (*********)
+  Total read+write:          447098|N/A             (*********)
+  Estimated Cycles:          583462|N/A             (*********)
+my_binary_benchmark::my_exe_group positional arguments:benchmark-tests-printargs foo "foo ba...
+  Instructions:                3906|N/A             (*********)
+  L1 Hits:                     5404|N/A             (*********)
+  L2 Hits:                        8|N/A             (*********)
+  RAM Hits:                      91|N/A             (*********)
+  Total read+write:            5503|N/A             (*********)
+  Estimated Cycles:            8629|N/A             (*********)
+my_binary_benchmark::my_exe_group no argument:benchmark-tests-printargs
+  Instructions:              330070|N/A             (*********)
+  L1 Hits:                   441031|N/A             (*********)
+  L2 Hits:                      716|N/A             (*********)
+  RAM Hits:                    3925|N/A             (*********)
+  Total read+write:          445672|N/A             (*********)
+  Estimated Cycles:          581986|N/A             (*********)
 ```
 
 You'll find the callgrind output files of each run of the benchmark `my_binary_benchmark` of the
@@ -407,7 +447,12 @@ expected exit code with `Options` at `Run`-level
 binary_benchmark_group!(
     name = my_exe_group;
     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
-        group.bench(Run::with_arg(Arg::empty("some id")).options(Options::default().exit_with(ExitWith::Code(100))));
+        group.bench(
+            Run::with_arg(
+                Arg::empty("some id")
+            )
+            .options(Options::default().exit_with(ExitWith::Code(100)))
+        );
     });
 ```
 
@@ -449,6 +494,37 @@ binary_benchmark_group!(
 See the [test_bin_bench_groups](benchmark-tests/benches/test_bin_bench_groups.rs) benchmark file of
 this project for a working example.
 
+### Valgrind Tools
+
+In addition to the default benchmarks, you can use the Iai-Callgrind framework
+to run other Valgrind profiling `Tool`s like `DHAT`, `Massif` and the
+experimental `BBV` but also `Memcheck`, `Helgrind` and `DRD` if you need to
+check memory and thread safety of benchmarked code. See also the [Valgrind User
+Manual](https://valgrind.org/docs/manual/manual.html) for more details and
+command line arguments. The additional tools can be specified in
+`LibraryBenchmarkConfig`, `BinaryBenchmarkConfig` or `Run`. For example to run
+`DHAT` for all library benchmarks:
+
+```rust
+use iai_callgrind::{
+    library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig, Tool,
+    ValgrindTool
+};
+
+#[library_benchmark]
+fn some_func() {
+    println!("Hello, World!");
+}
+
+library_benchmark_group!(name = some_group; benchmarks = some_func);
+
+main!(
+    config = LibraryBenchmarkConfig::default()
+                .tool(Tool::new(ValgrindTool::DHAT));
+    library_benchmark_groups = some_group
+);
+```
+
 ### Flamegraphs
 
 Flamegraphs are opt-in and can be created if you pass a `FlamegraphConfig` to
@@ -457,9 +533,9 @@ flamegraphs are meant as a complement to valgrind's visualization tools
 `callgrind_annotate` and `kcachegrind`.
 
 Callgrind flamegraphs show the inclusive costs for functions and a specific
-event type, much like `callgrind_annotate` does but in a nicer (and clickable)
-way. Especially, differential flamegraphs facilitate a deeper understanding of
-code sections which cause a bottleneck or a performance regressions etc.
+event type, similar to `callgrind_annotate` but in a nicer (and clickable) way.
+Especially, differential flamegraphs facilitate a deeper understanding of code
+sections which cause a bottleneck or a performance regressions etc.
 
 The produced flamegraph svg files are located next to the respective callgrind
 output file in the `target/iai` directory.
@@ -527,19 +603,19 @@ Below a local run of one of the benchmarks of this library
 $ cd iai-callgrind
 $ cargo bench --bench test_lib_bench_readme_example_fibonacci
 test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci short:10
-  Instructions:                1733
-  L1 Hits:                     2359
-  L2 Hits:                        0
-  RAM Hits:                       2
-  Total read+write:            2361
-  Estimated Cycles:            2429
+  Instructions:                1733|N/A             (*********)
+  L1 Hits:                     2359|N/A             (*********)
+  L2 Hits:                        0|N/A             (*********)
+  RAM Hits:                       2|N/A             (*********)
+  Total read+write:            2361|N/A             (*********)
+  Estimated Cycles:            2429|N/A             (*********)
 test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci long:30
-  Instructions:            26214733
-  L1 Hits:                 35638617
-  L2 Hits:                        0
-  RAM Hits:                       4
-  Total read+write:        35638621
-  Estimated Cycles:        35638757
+  Instructions:            26214733|N/A             (*********)
+  L1 Hits:                 35638617|N/A             (*********)
+  L2 Hits:                        0|N/A             (*********)
+  RAM Hits:                       4|N/A             (*********)
+  Total read+write:        35638621|N/A             (*********)
+  Estimated Cycles:        35638757|N/A             (*********)
 ```
 
 For comparison, the output of the same benchmark but in the github CI, producing
@@ -547,19 +623,19 @@ the exact same results:
 
 ```text
 test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci short:10
-  Instructions:                1733
-  L1 Hits:                     2359
-  L2 Hits:                        0
-  RAM Hits:                       2
-  Total read+write:            2361
-  Estimated Cycles:            2429
+  Instructions:                1733|N/A             (*********)
+  L1 Hits:                     2359|N/A             (*********)
+  L2 Hits:                        0|N/A             (*********)
+  RAM Hits:                       2|N/A             (*********)
+  Total read+write:            2361|N/A             (*********)
+  Estimated Cycles:            2429|N/A             (*********)
 test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci long:30
-  Instructions:            26214733
-  L1 Hits:                 35638617
-  L2 Hits:                        0
-  RAM Hits:                       4
-  Total read+write:        35638621
-  Estimated Cycles:        35638757
+  Instructions:            26214733|N/A             (*********)
+  L1 Hits:                 35638617|N/A             (*********)
+  L2 Hits:                        0|N/A             (*********)
+  RAM Hits:                       4|N/A             (*********)
+  Total read+write:        35638621|N/A             (*********)
+  Estimated Cycles:        35638757|N/A             (*********)
 ```
 
 There's no difference (or only very small differences) what makes benchmark runs
@@ -579,13 +655,13 @@ The statistics of the benchmarks are mostly not compatible with the original Iai
 still related. They now also include some additional information:
 
 ```text
-test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci long:30
-  Instructions:            26214733
-  L1 Hits:                 35638617
-  L2 Hits:                        0
-  RAM Hits:                       4
-  Total read+write:        35638621
-  Estimated Cycles:        35638757
+test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci short:10
+  Instructions:                1733|N/A             (*********)
+  L1 Hits:                     2359|N/A             (*********)
+  L2 Hits:                        0|N/A             (*********)
+  RAM Hits:                       2|N/A             (*********)
+  Total read+write:            2361|N/A             (*********)
+  Estimated Cycles:            2429|N/A             (*********)
 ```
 
 There is an additional line `Total read+write` which summarizes all event counters of the lines with
@@ -628,10 +704,12 @@ A guideline about contributing to iai-callgrind can be found in the
 Iai-Callgrind is forked from <https://github.com/bheisler/iai> and was originally written by Brook
 Heisler (@bheisler).
 
+Iai-Callgrind wouldn't be possible without [Valgrind](https://valgrind.org/).
+
 ### License
 
 Iai-Callgrind is like Iai dual licensed under the Apache 2.0 license and the MIT license at your
 option.
 
-[`library documentation`]: https://docs.rs/iai-callgrind/0.7.3/iai_callgrind/
-[`docs`]: https://docs.rs/iai-callgrind/0.7.3/iai_callgrind/
+[`library documentation`]: https://docs.rs/iai-callgrind/0.8.0/iai_callgrind/
+[docs]: https://docs.rs/iai-callgrind/0.8.0/iai_callgrind/

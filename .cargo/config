@@ -3,3 +3,6 @@ inherits = "test"
 opt-level = 0
 split-debuginfo = "off"
 debug = true
+
+[profile.bench]
+debug = true

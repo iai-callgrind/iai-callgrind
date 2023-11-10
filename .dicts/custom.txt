@@ -69,6 +69,7 @@ mispredicted
 nsec
 outfile
 pipefail
+printargs
 printenv
 println
 proccontrol
