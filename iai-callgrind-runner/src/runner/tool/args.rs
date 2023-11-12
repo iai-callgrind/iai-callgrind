@@ -14,6 +14,7 @@ pub struct ToolArgs {
 }
 
 impl ToolArgs {
+    // TODO: Sort out --tool
     pub fn from_raw_args(tool: ValgrindTool, raw_args: api::RawArgs) -> Self {
         let mut other = vec![];
         for arg in raw_args.0 {
