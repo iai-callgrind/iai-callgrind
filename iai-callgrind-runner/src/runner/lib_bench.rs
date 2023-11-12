@@ -3,7 +3,9 @@ use std::io::stdout;
 use std::path::PathBuf;
 
 use anyhow::Result;
+use clap::Parser as ClapParser;
 
+use super::args::CommandLineArgs;
 use super::callgrind::args::Args;
 use super::callgrind::flamegraph::{Config as FlamegraphConfig, Flamegraph};
 use super::callgrind::parser::{Parser, Sentinel};
@@ -13,7 +15,7 @@ use super::meta::Metadata;
 use super::print::{Formatter, Header, VerticalFormat};
 use super::tool::{RunOptions, ToolConfigs};
 use super::Error;
-use crate::api::{self, LibraryBenchmark, RawArgs};
+use crate::api::{self, LibraryBenchmark};
 use crate::runner::print::tool_summary_header;
 use crate::runner::tool::{ToolOutputPath, ValgrindTool};
 use crate::util::receive_benchmark;
@@ -28,6 +30,8 @@ struct Config {
     module: String,
     bench_bin: PathBuf,
     meta: Metadata,
+    #[allow(unused)]
+    args: CommandLineArgs,
 }
 
 // A `Group` is the organizational unit and counterpart of the `library_benchmark_group!` macro
@@ -68,10 +72,11 @@ impl Groups {
         module: &str,
         benchmark: LibraryBenchmark,
         meta: &Metadata,
+        args: &CommandLineArgs,
     ) -> Result<Self> {
         let global_config = benchmark.config;
         let mut groups = vec![];
-        let command_line_args = RawArgs::from_command_line_args(benchmark.command_line_args);
+        let callgrind_command_line_args = args.callgrind_args.clone();
 
         for library_benchmark_group in benchmark.groups {
             let module_path = if let Some(group_id) = &library_benchmark_group.id {
@@ -96,8 +101,10 @@ impl Groups {
                         library_benchmark_bench.config.as_ref(),
                     ]);
                     let envs = config.resolve_envs();
-                    let callgrind_args =
-                        Args::from_raw_args(&[&config.raw_callgrind_args, &command_line_args])?;
+                    let callgrind_args = Args::from_raw_args(&[
+                        &config.raw_callgrind_args,
+                        &callgrind_command_line_args,
+                    ])?;
                     let flamegraph = config.flamegraph.map(Into::into);
                     let lib_bench = LibBench {
                         bench_index,
@@ -264,9 +271,12 @@ impl Runner {
             .parse::<usize>()
             .unwrap();
 
-        let benchmark = receive_benchmark(num_bytes)?;
+        let benchmark: LibraryBenchmark = receive_benchmark(num_bytes)?;
+
+        let args = CommandLineArgs::parse_from(&benchmark.command_line_args);
         let meta = Metadata::new()?;
-        let groups = Groups::from_library_benchmark(&module, benchmark, &meta)?;
+
+        let groups = Groups::from_library_benchmark(&module, benchmark, &meta, &args)?;
 
         Ok(Self {
             config: Config {
@@ -275,6 +285,7 @@ impl Runner {
                 module,
                 bench_bin,
                 meta,
+                args,
             },
             groups,
         })

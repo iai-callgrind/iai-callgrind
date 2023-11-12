@@ -22,6 +22,7 @@ runner = [
   "dep:anyhow",
   "dep:bincode",
   "dep:cargo_metadata",
+  "dep:clap",
   "dep:colored",
   "dep:env_logger",
   "dep:glob",
@@ -44,6 +45,7 @@ all-features = true
 anyhow = { version = ">=1.0.46, <2", optional = true }
 bincode = { version = "1", optional = true }
 cargo_metadata = { version = "0.17", optional = true }
+clap = { version = ">=3.0.0, <3.2.24", optional = true, features = ["derive"] }
 colored = { version = ">=1.6, <3", optional = true }
 env_logger = { version = ">=0.7, <0.11", optional = true }
 glob = { version = "0.3", optional = true }

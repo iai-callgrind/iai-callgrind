@@ -443,12 +443,8 @@ impl LibraryBenchmarkConfig {
 }
 
 impl RawArgs {
-    pub fn new<I, T>(args: T) -> Self
-    where
-        I: AsRef<str>,
-        T: IntoIterator<Item = I>,
-    {
-        args.into_iter().collect::<Self>()
+    pub fn new(args: Vec<String>) -> Self {
+        Self(args)
     }
 
     pub fn extend_ignore_flag<I, T>(&mut self, args: T)
@@ -456,14 +452,18 @@ impl RawArgs {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        self.0.extend(args.into_iter().map(|s| {
-            let string = s.as_ref();
-            if string.starts_with('-') {
-                string.to_owned()
-            } else {
-                format!("--{string}")
-            }
-        }));
+        self.0.extend(
+            args.into_iter()
+                .filter(|s| !s.as_ref().is_empty())
+                .map(|s| {
+                    let string = s.as_ref();
+                    if string.starts_with('-') {
+                        string.to_owned()
+                    } else {
+                        format!("--{string}")
+                    }
+                }),
+        );
     }
 
     pub fn from_command_line_args(args: Vec<String>) -> Self {

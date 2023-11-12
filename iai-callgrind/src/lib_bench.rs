@@ -54,7 +54,7 @@ impl LibraryBenchmarkConfig {
     {
         Self(internal::InternalLibraryBenchmarkConfig {
             env_clear: Option::default(),
-            raw_callgrind_args: internal::InternalRawArgs::new(args),
+            raw_callgrind_args: internal::InternalRawArgs::from_iter(args),
             envs: Vec::default(),
             flamegraph: Option::default(),
             regression: Option::default(),

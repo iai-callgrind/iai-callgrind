@@ -5,9 +5,11 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use anyhow::{anyhow, Result};
+use clap::Parser as ClapParser;
 use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
+use super::args::CommandLineArgs;
 use super::callgrind::args::Args;
 use super::callgrind::flamegraph::{Config as FlamegraphConfig, Flamegraph};
 use super::callgrind::parser::{Parser, Sentinel};
@@ -72,6 +74,8 @@ struct Config {
     module: String,
     bench_bin: PathBuf,
     meta: Metadata,
+    #[allow(unused)]
+    args: CommandLineArgs,
 }
 
 #[derive(Debug)]
@@ -579,10 +583,11 @@ impl Groups {
         module: &str,
         benchmark: BinaryBenchmark,
         meta: &Metadata,
+        args: &CommandLineArgs,
     ) -> Result<Self> {
         let global_config = benchmark.config;
         let mut groups = vec![];
-        let command_line_args = RawArgs::from_command_line_args(benchmark.command_line_args);
+        let callgrind_args = &args.callgrind_args;
 
         for group in benchmark.groups {
             let module_path = if let Some(id) = group.id.as_ref() {
@@ -598,11 +603,11 @@ impl Groups {
                 &group.cmd,
                 group.benches,
                 &group_config,
-                &command_line_args,
+                callgrind_args,
                 meta,
             )?;
             let callgrind_args =
-                Args::from_raw_args(&[&group_config.raw_callgrind_args, &command_line_args])?;
+                Args::from_raw_args(&[&group_config.raw_callgrind_args, &callgrind_args])?;
             let config = Group {
                 id: group.id,
                 module_path,
@@ -663,9 +668,12 @@ impl Runner {
             .parse::<usize>()
             .unwrap();
 
-        let benchmark = receive_benchmark(num_bytes)?;
+        let benchmark: BinaryBenchmark = receive_benchmark(num_bytes)?;
+
+        let args = CommandLineArgs::parse_from(&benchmark.command_line_args);
         let meta = Metadata::new()?;
-        let groups = Groups::from_binary_benchmark(&module, benchmark, &meta)?;
+
+        let groups = Groups::from_binary_benchmark(&module, benchmark, &meta, &args)?;
 
         Ok(Self {
             config: Config {
@@ -674,6 +682,7 @@ impl Runner {
                 module,
                 bench_bin,
                 meta,
+                args,
             },
             groups,
         })
