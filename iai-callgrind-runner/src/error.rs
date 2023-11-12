@@ -54,9 +54,8 @@ impl Display for Error {
                     output_path
                         .dump_log(log::Level::Error, &mut stderr())
                         .expect("Printing error output should succeed");
-                } else {
-                    write_all_to_stderr(&output.stderr);
                 }
+                write_all_to_stderr(&output.stderr);
 
                 if let Some(code) = output.status.code() {
                     write!(f, "Error running '{process}': Exit code was: '{code}'")
