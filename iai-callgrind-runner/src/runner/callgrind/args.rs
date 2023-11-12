@@ -37,6 +37,7 @@ impl Args {
         Ok(default)
     }
 
+    // TODO: Sort out --tool
     pub fn update<'a, T: Iterator<Item = &'a String>>(&mut self, args: T) -> Result<()> {
         for arg in args {
             match arg
