@@ -9,6 +9,7 @@ use log::warn;
 use super::flamegraph_parser::FlamegraphParser;
 use super::parser::{Parser, Sentinel};
 use crate::api::{self, EventKind, FlamegraphKind};
+use crate::runner::summary::FlamegraphSummary;
 use crate::runner::tool::ToolOutputPath;
 
 #[derive(Debug, Clone)]
@@ -81,9 +82,9 @@ impl Flamegraph {
         callgrind_output_path: &ToolOutputPath,
         sentinel: Option<&Sentinel>,
         project_root: &Path,
-    ) -> Result<()> {
+    ) -> Result<Vec<FlamegraphSummary>> {
         if self.config.kind == FlamegraphKind::None {
-            return Ok(());
+            return Ok(vec![]);
         }
         let summarize_events = [
             EventKind::L1hits,
@@ -103,7 +104,7 @@ impl Flamegraph {
         let mut map = parser.parse(callgrind_output_path)?;
         if map.is_empty() {
             warn!("Unable to create a flamegraph: No stacks found");
-            return Ok(());
+            return Ok(vec![]);
         }
 
         let mut options = Options::default();
@@ -137,7 +138,10 @@ impl Flamegraph {
             }
         }
 
+        let mut flamegraph_summaries = vec![];
         for event_kind in &self.config.event_kinds {
+            let mut flamegraph_summary = FlamegraphSummary::new(*event_kind);
+
             options.count_name = event_kind.to_string();
             let stacks_lines = map.to_stack_format(event_kind)?;
 
@@ -150,6 +154,7 @@ impl Flamegraph {
                     &mut options,
                     stacks_lines.iter().map(std::string::String::as_str),
                 )?;
+                flamegraph_summary.regular_path = Some(output.as_path().to_owned());
             }
 
             // Is Some if FlamegraphKind::Differential or FlamegraphKind::Both
@@ -173,15 +178,21 @@ impl Flamegraph {
                 )
                 .context("Failed creating a differential flamegraph")?;
 
+                let diff_output = output.to_diff_output();
                 create_flamegraph(
-                    &output.to_diff_output(),
+                    &diff_output,
                     &mut options,
                     String::from_utf8_lossy(result.get_ref()).lines(),
                 )?;
+
+                flamegraph_summary.old_path = Some(output.to_old_output().as_path().to_owned());
+                flamegraph_summary.diff_path = Some(diff_output.as_path().to_owned());
             }
+
+            flamegraph_summaries.push(flamegraph_summary);
         }
 
-        Ok(())
+        Ok(flamegraph_summaries)
     }
 }
 
@@ -190,19 +201,19 @@ impl Output {
     where
         T: AsRef<Path>,
     {
-        let path = path.as_ref().with_extension(format!("{event_kind}.svg"));
-        if path.exists() {
-            let old_svg = path.with_extension("old.svg");
-            std::fs::copy(&path, &old_svg).with_context(|| {
+        let output = Self(path.as_ref().with_extension(format!("{event_kind}.svg")));
+        if output.exists() {
+            let old_svg = output.to_old_output();
+            std::fs::rename(output.as_path(), old_svg.as_path()).with_context(|| {
                 format!(
-                    "Failed copying flamegraph file '{}' -> '{}'",
-                    &path.display(),
-                    &old_svg.display(),
+                    "Failed moving flamegraph file '{}' -> '{}'",
+                    &output.as_path().display(),
+                    &old_svg.as_path().display(),
                 )
             })?;
         }
 
-        Ok(Self(path))
+        Ok(output)
     }
 
     pub fn create(&self) -> Result<File> {
@@ -216,6 +227,14 @@ impl Output {
 
     pub fn to_diff_output(&self) -> Self {
         Self(self.0.with_extension("diff.svg"))
+    }
+
+    pub fn to_old_output(&self) -> Self {
+        Self(self.0.with_extension("old.svg"))
+    }
+
+    pub fn as_path(&self) -> &Path {
+        self.0.as_path()
     }
 }
 

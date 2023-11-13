@@ -239,6 +239,28 @@ pub fn factor_diff(new: u64, old: u64) -> f64 {
     }
 }
 
+pub fn make_relative<B, T>(base_dir: B, path: T) -> PathBuf
+where
+    B: AsRef<Path>,
+    T: AsRef<Path>,
+{
+    let (base_dir, path) = (base_dir.as_ref(), path.as_ref());
+    path.strip_prefix(base_dir).unwrap_or(path).to_owned()
+}
+
+pub fn make_absolute<B, T>(base_dir: B, path: T) -> PathBuf
+where
+    B: AsRef<Path>,
+    T: AsRef<Path>,
+{
+    let (base_dir, path) = (base_dir.as_ref(), path.as_ref());
+    if path.strip_prefix(base_dir).is_ok() {
+        path.to_owned()
+    } else {
+        base_dir.join(path)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use rstest::rstest;

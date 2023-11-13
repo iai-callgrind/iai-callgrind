@@ -3,8 +3,10 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use anyhow::Result;
+use clap::Parser;
 use log::{debug, warn};
 
+use super::args::CommandLineArgs;
 use super::Error;
 use crate::api::{EventKind, RegressionConfig};
 use crate::runner::envs;
@@ -16,6 +18,8 @@ pub struct Cmd {
     pub args: Vec<OsString>,
 }
 
+/// `Metadata` contains all information that needs be collected from cargo, global constants,
+/// environment variables and command line arguments
 #[derive(Debug, Clone)]
 pub struct Metadata {
     pub arch: String,
@@ -25,10 +29,11 @@ pub struct Metadata {
     pub valgrind: Cmd,
     pub valgrind_wrapper: Option<Cmd>,
     pub regression_config: Option<RegressionConfig>,
+    pub args: CommandLineArgs,
 }
 
 impl Metadata {
-    pub fn new() -> Result<Self> {
+    pub fn new(raw_command_line_args: &[String]) -> Result<Self> {
         let arch = std::env::consts::ARCH.to_owned();
         debug!("Detected architecture: {}", arch);
         let meta = cargo_metadata::MetadataCommand::new()
@@ -112,6 +117,7 @@ impl Metadata {
             valgrind_wrapper,
             project_root,
             regression_config: try_regression_config_from_env()?,
+            args: CommandLineArgs::parse_from(raw_command_line_args),
         })
     }
 }

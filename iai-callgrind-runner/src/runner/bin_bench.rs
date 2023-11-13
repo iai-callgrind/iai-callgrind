@@ -5,11 +5,9 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use anyhow::{anyhow, Result};
-use clap::Parser as ClapParser;
 use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
-use super::args::CommandLineArgs;
 use super::callgrind::args::Args;
 use super::callgrind::flamegraph::{Config as FlamegraphConfig, Flamegraph};
 use super::callgrind::parser::{Parser, Sentinel};
@@ -18,10 +16,12 @@ use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{CallgrindCommand, Regression};
 use super::meta::Metadata;
 use super::print::{Formatter, Header, VerticalFormat};
+use super::summary::BenchmarkSummary;
 use super::tool::{RunOptions, ToolConfigs};
-use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig, RawArgs};
+use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig};
 use crate::error::Error;
 use crate::runner::print::tool_summary_header;
+use crate::runner::summary::{BenchmarkKind, CallgrindSummary, CostsSummary, SummaryOutput};
 use crate::runner::tool::{ToolOutputPath, ValgrindTool};
 use crate::util::{copy_directory, receive_benchmark, write_all_to_stderr, write_all_to_stdout};
 
@@ -74,8 +74,6 @@ struct Config {
     module: String,
     bench_bin: PathBuf,
     meta: Metadata,
-    #[allow(unused)]
-    args: CommandLineArgs,
 }
 
 #[derive(Debug)]
@@ -126,7 +124,8 @@ impl Assistant {
     }
 
     /// Run the assistant and benchmark this run
-    fn run_bench(&self, is_regressed: &mut bool, config: &Config, group: &Group) -> Result<()> {
+    #[allow(clippy::too_many_lines)]
+    fn run_bench(&self, config: &Config, group: &Group) -> Result<BenchmarkSummary> {
         let command = CallgrindCommand::new(&config.meta);
 
         let run_id = if let Some(id) = &group.id {
@@ -146,8 +145,27 @@ impl Assistant {
             &group.module_path,
             &format!("{}.{}", &self.name, self.kind.id()),
         );
+
         let log_path = output_path.to_log_output();
         log_path.init();
+
+        let summary_output = config.meta.args.save_summary.map(|format| {
+            let output = SummaryOutput::new(format, &output_path.dir);
+            output.init();
+            output
+        });
+
+        let mut benchmark_summary = BenchmarkSummary::new(
+            BenchmarkKind::BinaryBenchmark,
+            config.meta.project_root.clone(),
+            config.package_dir.clone(),
+            config.bench_file.clone(),
+            config.bench_bin.clone(),
+            &[&group.module_path, &self.kind.id(), &self.name],
+            None,
+            None,
+            summary_output,
+        );
 
         let header = Header::from_segments(
             [&group.module_path, &self.kind.id(), &self.name],
@@ -192,15 +210,42 @@ impl Assistant {
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stdout())?;
 
+        let (regressions, fail_fast) = if let Some(regression) = &self.regression {
+            // TODO: Make use of CostsSummary
+            (
+                regression.check_and_print(&new_costs, old_costs.as_ref()),
+                regression.fail_fast,
+            )
+        } else {
+            (vec![], false)
+        };
+
+        let callgrind_summary = benchmark_summary
+            .callgrind_summary
+            .insert(CallgrindSummary::new(
+                fail_fast,
+                vec![log_path.to_path()],
+                vec![output_path.to_path()],
+            ));
+
+        callgrind_summary.add_summary(
+            &config.bench_bin,
+            &executable_args,
+            &old_output,
+            CostsSummary::new(&new_costs, old_costs.as_ref()),
+            regressions,
+        );
+
         if let Some(flamegraph_config) = self.flamegraph.clone() {
-            Flamegraph::new(header.to_title(), flamegraph_config).create(
+            callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
+                .create(
                 &output_path,
                 Some(&sentinel),
                 &config.meta.project_root,
             )?;
         }
 
-        self.tools.run(
+        benchmark_summary.tool_summaries = self.tools.run(
             &config.meta,
             &config.bench_bin,
             &executable_args,
@@ -208,15 +253,7 @@ impl Assistant {
             &output_path,
         )?;
 
-        if let Some(regression) = &self.regression {
-            match regression.check_and_print(&new_costs, old_costs.as_ref()) {
-                Ok(()) => {}
-                Err(error) if regression.fail_fast => return Err(error),
-                Err(_) => *is_regressed = true,
-            }
-        }
-
-        Ok(())
+        Ok(benchmark_summary)
     }
 
     /// Run the `Assistant` but don't benchmark it
@@ -270,15 +307,15 @@ impl Assistant {
     /// This method returns an [`anyhow::Error`] with sources:
     ///
     /// * [`Error::RegressionError`] if the regression was fatal
-    fn run(&mut self, is_regressed: &mut bool, config: &Config, group: &Group) -> Result<()> {
+    fn run(&mut self, config: &Config, group: &Group) -> Result<Option<BenchmarkSummary>> {
         if self.bench {
             match self.kind {
                 AssistantKind::Setup | AssistantKind::Teardown => self.bench = false,
                 _ => {}
             }
-            self.run_bench(is_regressed, config, group)
+            self.run_bench(config, group).map(Some)
         } else {
-            self.run_plain(config, group)
+            self.run_plain(config, group).map(|()| None)
         }
     }
 }
@@ -322,7 +359,7 @@ impl BinBench {
     /// Returns an `anyhow::Error` with sources:
     /// `Error::RegressionError` if a fatal regression occurred.
     /// `Error::ParsingError` if a parsing error occurred.
-    fn run(&self, is_regressed: &mut bool, config: &Config, group: &Group) -> Result<()> {
+    fn run(&self, config: &Config, group: &Group) -> Result<BenchmarkSummary> {
         let callgrind_command = CallgrindCommand::new(&config.meta);
         let output_path = ToolOutputPath::with_init(
             ValgrindTool::Callgrind,
@@ -333,6 +370,24 @@ impl BinBench {
 
         let log_path = output_path.to_log_output();
         log_path.init();
+
+        let summary_output = config.meta.args.save_summary.map(|format| {
+            let output = SummaryOutput::new(format, &output_path.dir);
+            output.init();
+            output
+        });
+
+        let mut benchmark_summary = BenchmarkSummary::new(
+            BenchmarkKind::BinaryBenchmark,
+            config.meta.project_root.clone(),
+            config.package_dir.clone(),
+            config.bench_file.clone(),
+            config.bench_bin.clone(),
+            &[&group.module_path],
+            Some(self.id.clone()),
+            Some(self.to_string()),
+            summary_output,
+        );
 
         let header = Header::new(&group.module_path, self.id.clone(), self.to_string());
         header.print();
@@ -365,16 +420,43 @@ impl BinBench {
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stdout())?;
 
+        let (regressions, fail_fast) = if let Some(regression) = &self.regression {
+            // TODO: Make use of CostsSummary
+            (
+                regression.check_and_print(&new_costs, old_costs.as_ref()),
+                regression.fail_fast,
+            )
+        } else {
+            (vec![], false)
+        };
+
+        let callgrind_summary = benchmark_summary
+            .callgrind_summary
+            .insert(CallgrindSummary::new(
+                fail_fast,
+                vec![log_path.to_path()],
+                vec![output_path.to_path()],
+            ));
+
+        callgrind_summary.add_summary(
+            &self.command,
+            &self.args,
+            &old_output,
+            CostsSummary::new(&new_costs, old_costs.as_ref()),
+            regressions,
+        );
+
         let sentinel = self.options.entry_point.as_ref().map(Sentinel::new);
         if let Some(flamegraph_config) = self.flamegraph.clone() {
-            Flamegraph::new(header.to_title(), flamegraph_config).create(
+            callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
+                .create(
                 &output_path,
                 sentinel.as_ref(),
                 &config.meta.project_root,
             )?;
         }
 
-        self.tools.run(
+        benchmark_summary.tool_summaries = self.tools.run(
             &config.meta,
             &self.command,
             &self.args,
@@ -382,15 +464,7 @@ impl BinBench {
             &output_path,
         )?;
 
-        if let Some(regression) = &self.regression {
-            match regression.check_and_print(&new_costs, old_costs.as_ref()) {
-                Ok(()) => {}
-                Err(error) if regression.fail_fast => return Err(error),
-                Err(_) => *is_regressed = true,
-            }
-        }
-
-        Ok(())
+        Ok(benchmark_summary)
     }
 }
 
@@ -410,6 +484,20 @@ impl Display for BinBench {
 }
 
 impl Group {
+    fn run_assistant(
+        &self,
+        assistant: &mut Assistant,
+        is_regressed: &mut bool,
+        config: &Config,
+    ) -> Result<()> {
+        if let Some(summary) = assistant.run(config, self)? {
+            summary.save()?;
+            summary.check_regression(is_regressed)?;
+        }
+
+        Ok(())
+    }
+
     fn run(&self, is_regressed: &mut bool, config: &Config) -> Result<()> {
         let sandbox = if self.sandbox {
             debug!("Setting up sandbox");
@@ -425,23 +513,25 @@ impl Group {
         let mut assists = self.assists.clone();
 
         if let Some(before) = assists.before.as_mut() {
-            before.run(is_regressed, config, self)?;
+            self.run_assistant(before, is_regressed, config)?;
         }
 
         for bench in &self.benches {
             if let Some(setup) = assists.setup.as_mut() {
-                setup.run(is_regressed, config, self)?;
+                self.run_assistant(setup, is_regressed, config)?;
             }
 
-            bench.run(is_regressed, config, self)?;
+            let summary = bench.run(config, self)?;
+            summary.save()?;
+            summary.check_regression(is_regressed)?;
 
             if let Some(teardown) = assists.teardown.as_mut() {
-                teardown.run(is_regressed, config, self)?;
+                self.run_assistant(teardown, is_regressed, config)?;
             }
         }
 
         if let Some(after) = assists.after.as_mut() {
-            after.run(is_regressed, config, self)?;
+            self.run_assistant(after, is_regressed, config)?;
         }
 
         if let Some(sandbox) = sandbox {
@@ -459,11 +549,12 @@ impl Groups {
         cmd: &Option<api::Cmd>,
         runs: Vec<api::Run>,
         group_config: &BinaryBenchmarkConfig,
-        command_line_args: &RawArgs,
         meta: &Metadata,
     ) -> Result<Vec<BinBench>> {
         let mut benches = vec![];
         let mut counter: usize = 0;
+        let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
+
         for run in runs {
             if run.args.is_empty() {
                 return Err(anyhow!(
@@ -487,7 +578,7 @@ impl Groups {
             let regression = api::update_option(&config.regression, &meta.regression_config)
                 .map(std::convert::Into::into);
             let callgrind_args =
-                Args::from_raw_args(&[&config.raw_callgrind_args, command_line_args])?;
+                Args::from_raw_args(&[&config.raw_callgrind_args, &meta_callgrind_args])?;
             let tools = ToolConfigs(config.tools.0.into_iter().map(Into::into).collect());
             for args in run.args {
                 let id = if let Some(id) = args.id {
@@ -583,12 +674,11 @@ impl Groups {
         module: &str,
         benchmark: BinaryBenchmark,
         meta: &Metadata,
-        args: &CommandLineArgs,
     ) -> Result<Self> {
         let global_config = benchmark.config;
-        let mut groups = vec![];
-        let callgrind_args = &args.callgrind_args;
+        let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
 
+        let mut groups = vec![];
         for group in benchmark.groups {
             let module_path = if let Some(id) = group.id.as_ref() {
                 format!("{module}::{id}")
@@ -598,16 +688,10 @@ impl Groups {
             let group_config = global_config
                 .clone()
                 .update_from_all([group.config.as_ref()]);
-            let benches = Self::parse_runs(
-                &module_path,
-                &group.cmd,
-                group.benches,
-                &group_config,
-                callgrind_args,
-                meta,
-            )?;
+            let benches =
+                Self::parse_runs(&module_path, &group.cmd, group.benches, &group_config, meta)?;
             let callgrind_args =
-                Args::from_raw_args(&[&group_config.raw_callgrind_args, &callgrind_args])?;
+                Args::from_raw_args(&[&group_config.raw_callgrind_args, &meta_callgrind_args])?;
             let config = Group {
                 id: group.id,
                 module_path,
@@ -669,11 +753,8 @@ impl Runner {
             .unwrap();
 
         let benchmark: BinaryBenchmark = receive_benchmark(num_bytes)?;
-
-        let args = CommandLineArgs::parse_from(&benchmark.command_line_args);
-        let meta = Metadata::new()?;
-
-        let groups = Groups::from_binary_benchmark(&module, benchmark, &meta, &args)?;
+        let meta = Metadata::new(&benchmark.command_line_args)?;
+        let groups = Groups::from_binary_benchmark(&module, benchmark, &meta)?;
 
         Ok(Self {
             config: Config {
@@ -682,7 +763,6 @@ impl Runner {
                 module,
                 bench_bin,
                 meta,
-                args,
             },
             groups,
         })

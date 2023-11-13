@@ -457,6 +457,7 @@ dependencies = [
  "rstest",
  "sanitize-filename",
  "serde",
+ "serde_json",
  "serde_yaml",
  "serial_test",
  "shlex",

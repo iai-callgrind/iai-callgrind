@@ -12,16 +12,19 @@ use colored::Colorize;
 use glob::glob;
 use log::{debug, error, log_enabled, Level};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 
 use self::args::ToolArgs;
 use super::callgrind::parser::Parser;
 use super::dhat::logfile_parser::LogfileParser;
 use super::meta::Metadata;
+use super::summary::ToolSummary;
 use crate::api::ExitWith;
 use crate::error::Error;
 use crate::runner::dhat::format::LogfileSummaryFormatter;
 use crate::runner::print::tool_summary_header;
-use crate::util::{resolve_binary_path, truncate_str_utf8};
+use crate::runner::summary::ToolRunSummary;
+use crate::util::{make_relative, resolve_binary_path, truncate_str_utf8};
 use crate::{api, util};
 
 #[derive(Debug, Default, Clone)]
@@ -49,7 +52,7 @@ pub struct ToolOutputPath {
     pub name: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ValgrindTool {
     Callgrind,
     Memcheck,
@@ -198,9 +201,18 @@ impl ToolConfigs {
         executable_args: &[OsString],
         options: &RunOptions,
         output_path: &ToolOutputPath,
-    ) -> Result<()> {
+    ) -> Result<Vec<ToolSummary>> {
+        let mut tool_summaries = vec![];
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
             let tool = tool_config.tool;
+
+            let mut tool_summary = ToolSummary {
+                tool,
+                log_paths: vec![],
+                out_paths: vec![],
+                summaries: vec![],
+            };
+
             let command = ToolCommand::new(tool, meta);
 
             let output_path = output_path.to_tool_output(tool);
@@ -223,30 +235,38 @@ impl ToolConfigs {
                 let parser = LogfileParser {
                     root_dir: meta.project_root.clone(),
                 };
-                let summaries = parser.parse(&log_path)?;
-                for summary in summaries {
-                    print!("{}", LogfileSummaryFormatter::format(&summary));
+                let logfile_summaries = parser.parse(&log_path)?;
+                for logfile_summary in logfile_summaries {
+                    print!("{}", LogfileSummaryFormatter::format(&logfile_summary));
+
+                    tool_summary.summaries.push(ToolRunSummary {
+                        command: logfile_summary.command.to_string_lossy().to_string(),
+                        pid: logfile_summary.pid.to_string(),
+                        baseline: None,
+                        summary: logfile_summary.fields.iter().cloned().collect(),
+                    });
                 }
+
+                tool_summary.log_paths = log_path.real_paths();
+                tool_summary.out_paths = output_path.real_paths();
             } else if tool_config.tool.has_output_file() {
                 for path in output_path.real_paths() {
-                    let path = if let Ok(relative) = path.strip_prefix(&meta.project_root) {
-                        relative
-                    } else {
-                        &path
-                    };
+                    tool_summary.out_paths.push(path.clone());
+
+                    let path = make_relative(&meta.project_root, path);
                     println!(
                         "  {:<18}{}",
                         "Output:",
                         path.display().to_string().blue().bold()
                     );
                 }
+
+                tool_summary.log_paths = log_path.real_paths();
             } else {
                 for path in log_path.real_paths() {
-                    let path = if let Ok(relative) = path.strip_prefix(&meta.project_root) {
-                        relative
-                    } else {
-                        &path
-                    };
+                    tool_summary.log_paths.push(path.clone());
+
+                    let path = make_relative(&meta.project_root, path);
                     println!(
                         "  {:<18}{}",
                         "Output:",
@@ -254,10 +274,14 @@ impl ToolConfigs {
                     );
                 }
             }
+
             output.dump_log(log::Level::Info);
             log_path.dump_log(log::Level::Info, &mut stdout())?;
+
+            tool_summaries.push(tool_summary);
         }
-        Ok(())
+
+        Ok(tool_summaries)
     }
 }
 

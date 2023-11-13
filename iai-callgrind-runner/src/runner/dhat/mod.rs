@@ -5,7 +5,7 @@ pub mod logfile_parser;
 
 #[derive(Debug, Clone)]
 pub struct LogfileSummary {
-    command: PathBuf,
-    pid: i32,
-    fields: Vec<(String, String)>,
+    pub command: PathBuf,
+    pub pid: i32,
+    pub fields: Vec<(String, String)>,
 }

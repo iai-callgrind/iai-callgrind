@@ -1,10 +1,11 @@
 //! This module includes all the structs to model the callgrind output
 
 use anyhow::{anyhow, Result};
-use indexmap::{indexmap, IndexMap};
+use indexmap::map::Iter;
+use indexmap::{indexmap, IndexMap, IndexSet};
 use serde::{Deserialize, Serialize};
 
-use super::CallgrindSummary;
+use super::CacheSummary;
 use crate::api::EventKind;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -96,7 +97,7 @@ impl Costs {
     /// If the necessary cache simulation events (when running callgrind with --cache-sim) were not
     /// present.
     pub fn make_summary(&mut self) -> Result<()> {
-        let CallgrindSummary {
+        let CacheSummary {
             l1_hits,
             l3_hits,
             ram_hits,
@@ -118,6 +119,16 @@ impl Costs {
     /// This method just probes for [`EventKind::EstimatedCycles`] to detect the summarized state.
     pub fn is_summarized(&self) -> bool {
         self.cost_by_kind(&EventKind::EstimatedCycles).is_some()
+    }
+
+    pub fn event_kinds_union(&self, other: &Self) -> IndexSet<EventKind> {
+        let set = self.0.keys().collect::<IndexSet<_>>();
+        let other_set = other.0.keys().collect::<IndexSet<_>>();
+        set.union(&other_set).map(|s| **s).collect()
+    }
+
+    pub fn iter(&self) -> Iter<'_, EventKind, u64> {
+        self.0.iter()
     }
 }
 

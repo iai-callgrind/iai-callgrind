@@ -62,7 +62,7 @@ fn bench_bubble_sort_empty() -> Vec<i32> {
 #[bench::empty(vec![])]
 // Some other use cases to play around with
 #[bench::worst_case_6(vec![6, 5, 4, 3, 2, 1])]
-#[bench::best_case_6(vec![1, 2, 3, 4, 5, 6])]
+#[bench::best_case_6(vec![1, 2, 3, 4, 5, 6, 7])]
 #[bench::best_case_20(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20])]
 // Function calls are fine too
 #[bench::worst_case_4000(setup_worst_case_array(4000))]
