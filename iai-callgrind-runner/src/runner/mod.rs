@@ -5,7 +5,7 @@ pub mod dhat;
 mod lib_bench;
 mod meta;
 mod print;
-mod summary;
+pub mod summary;
 pub mod tool;
 
 use std::path::PathBuf;

@@ -12,7 +12,14 @@ repository = "https://github.com/iai-callgrind/iai-callgrind"
 license = "Apache-2.0 OR MIT"
 
 [dependencies]
+cargo_metadata = { version = "0.17" }
+colored = { version = ">=1.6, <3" }
+glob = { version = "0.3" }
 iai-callgrind = { path = "../iai-callgrind" }
+iai-callgrind-runner = { path = "../iai-callgrind-runner" }
+new_string_template = { version = "1.4" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }
 
 [[bin]]
 name = "benchmark-tests-printenv"
@@ -41,6 +48,10 @@ path = "src/benchmark-tests-subprocess.rs"
 [[bin]]
 name = "benchmark-tests-printargs"
 path = "src/benchmark-tests-printargs.rs"
+
+[[bin]]
+name = "bench"
+path = "src/bench.rs"
 
 [[bench]]
 name = "test_bin_bench_with_fixtures"

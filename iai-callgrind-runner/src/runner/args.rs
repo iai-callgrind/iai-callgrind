@@ -8,6 +8,7 @@ use crate::api::RawArgs;
 /// These arguments are not the command line arguments passed to `iai-callgrind-runner`. We collect
 /// the command line arguments in the `iai-callgrind::main!` macro without the binary as first
 /// argument, that's why `no_binary_name` is set to `true`.
+/// TODO: ADD environment variables
 #[derive(Parser, Debug, Clone)]
 #[clap(
     author,

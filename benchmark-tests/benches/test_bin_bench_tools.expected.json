@@ -1,0 +1,278 @@
+{
+  "runs": [
+    [
+      {
+        "group": "sort",
+        "function": "benchmark-tests-sort",
+        "id": "sort_10_sum_10",
+        "expected": {
+          "files": [
+            "callgrind.benchmark-tests-sort.sort_10_sum_10.log",
+            "callgrind.benchmark-tests-sort.sort_10_sum_10.out",
+            "dhat.benchmark-tests-sort.sort_10_sum_10.log",
+            "dhat.benchmark-tests-sort.sort_10_sum_10.out",
+            "drd.benchmark-tests-sort.sort_10_sum_10.log",
+            "exp-bbv.benchmark-tests-sort.sort_10_sum_10.log",
+            "exp-bbv.benchmark-tests-sort.sort_10_sum_10.out.bb",
+            "exp-bbv.benchmark-tests-sort.sort_10_sum_10.out.pc",
+            "helgrind.benchmark-tests-sort.sort_10_sum_10.log",
+            "massif.benchmark-tests-sort.sort_10_sum_10.log",
+            "massif.benchmark-tests-sort.sort_10_sum_10.out",
+            "memcheck.benchmark-tests-sort.sort_10_sum_10.log",
+            "summary.json"
+          ]
+        }
+      },
+      {
+        "group": "sort",
+        "function": "benchmark-tests-sort",
+        "id": "sort_4000_sum_2000",
+        "expected": {
+          "files": [
+            "callgrind.benchmark-tests-sort.sort_4000_sum_2000.log",
+            "callgrind.benchmark-tests-sort.sort_4000_sum_2000.out",
+            "dhat.benchmark-tests-sort.sort_4000_sum_2000.log",
+            "dhat.benchmark-tests-sort.sort_4000_sum_2000.out",
+            "drd.benchmark-tests-sort.sort_4000_sum_2000.log",
+            "exp-bbv.benchmark-tests-sort.sort_4000_sum_2000.log",
+            "exp-bbv.benchmark-tests-sort.sort_4000_sum_2000.out.bb",
+            "exp-bbv.benchmark-tests-sort.sort_4000_sum_2000.out.pc",
+            "helgrind.benchmark-tests-sort.sort_4000_sum_2000.log",
+            "massif.benchmark-tests-sort.sort_4000_sum_2000.log",
+            "massif.benchmark-tests-sort.sort_4000_sum_2000.out",
+            "memcheck.benchmark-tests-sort.sort_4000_sum_2000.log",
+            "summary.json"
+          ]
+        }
+      },
+      {
+        "group": "sort",
+        "function": "run_after",
+        "id": "after",
+        "expected": {
+          "files": [
+            "callgrind.run_after.after.log",
+            "callgrind.run_after.after.out",
+            "dhat.run_after.after.log",
+            "dhat.run_after.after.out",
+            "drd.run_after.after.log",
+            "exp-bbv.run_after.after.log",
+            "exp-bbv.run_after.after.out.bb",
+            "exp-bbv.run_after.after.out.pc",
+            "helgrind.run_after.after.log",
+            "massif.run_after.after.log",
+            "massif.run_after.after.out",
+            "memcheck.run_after.after.log",
+            "summary.json"
+          ]
+        }
+      },
+      {
+        "group": "subprocess",
+        "function": "benchmark-tests-subprocess",
+        "id": "trace_sort_4000_sum_2000",
+        "expected": {
+          "files": [
+            "callgrind.benchmark-tests-subprocess.trace_sort_4000_sum_2000.log",
+            "callgrind.benchmark-tests-subprocess.trace_sort_4000_sum_2000.out",
+            "summary.json"
+          ],
+          "globs": [
+            {
+              "pattern": "dhat.benchmark-tests-subprocess.trace_sort_4000_sum_2000.log.*",
+              "count": 2
+            },
+            {
+              "pattern": "dhat.benchmark-tests-subprocess.trace_sort_4000_sum_2000.out.*",
+              "count": 2
+            }
+          ]
+        }
+      },
+      {
+        "group": "subprocess",
+        "function": "run_before",
+        "id": "before",
+        "expected": {
+          "files": [
+            "callgrind.run_before.before.log",
+            "callgrind.run_before.before.out",
+            "dhat.run_before.before.log",
+            "dhat.run_before.before.out",
+            "drd.run_before.before.log",
+            "exp-bbv.run_before.before.log",
+            "exp-bbv.run_before.before.out.bb",
+            "exp-bbv.run_before.before.out.pc",
+            "helgrind.run_before.before.log",
+            "massif.run_before.before.log",
+            "massif.run_before.before.out",
+            "memcheck.run_before.before.log",
+            "summary.json"
+          ]
+        }
+      }
+    ],
+    [
+      {
+        "group": "sort",
+        "function": "benchmark-tests-sort",
+        "id": "sort_10_sum_10",
+        "expected": {
+          "files": [
+            "callgrind.benchmark-tests-sort.sort_10_sum_10.log",
+            "callgrind.benchmark-tests-sort.sort_10_sum_10.log.old",
+            "callgrind.benchmark-tests-sort.sort_10_sum_10.out",
+            "callgrind.benchmark-tests-sort.sort_10_sum_10.out.old",
+            "dhat.benchmark-tests-sort.sort_10_sum_10.log",
+            "dhat.benchmark-tests-sort.sort_10_sum_10.log.old",
+            "dhat.benchmark-tests-sort.sort_10_sum_10.out",
+            "dhat.benchmark-tests-sort.sort_10_sum_10.out.old",
+            "drd.benchmark-tests-sort.sort_10_sum_10.log",
+            "drd.benchmark-tests-sort.sort_10_sum_10.log.old",
+            "exp-bbv.benchmark-tests-sort.sort_10_sum_10.log",
+            "exp-bbv.benchmark-tests-sort.sort_10_sum_10.log.old",
+            "exp-bbv.benchmark-tests-sort.sort_10_sum_10.out.bb",
+            "exp-bbv.benchmark-tests-sort.sort_10_sum_10.out.bb.old",
+            "exp-bbv.benchmark-tests-sort.sort_10_sum_10.out.pc",
+            "exp-bbv.benchmark-tests-sort.sort_10_sum_10.out.pc.old",
+            "helgrind.benchmark-tests-sort.sort_10_sum_10.log",
+            "helgrind.benchmark-tests-sort.sort_10_sum_10.log.old",
+            "massif.benchmark-tests-sort.sort_10_sum_10.log",
+            "massif.benchmark-tests-sort.sort_10_sum_10.log.old",
+            "massif.benchmark-tests-sort.sort_10_sum_10.out",
+            "massif.benchmark-tests-sort.sort_10_sum_10.out.old",
+            "memcheck.benchmark-tests-sort.sort_10_sum_10.log",
+            "memcheck.benchmark-tests-sort.sort_10_sum_10.log.old",
+            "summary.json"
+          ]
+        }
+      },
+      {
+        "group": "sort",
+        "function": "benchmark-tests-sort",
+        "id": "sort_4000_sum_2000",
+        "expected": {
+          "files": [
+            "callgrind.benchmark-tests-sort.sort_4000_sum_2000.log",
+            "callgrind.benchmark-tests-sort.sort_4000_sum_2000.log.old",
+            "callgrind.benchmark-tests-sort.sort_4000_sum_2000.out",
+            "callgrind.benchmark-tests-sort.sort_4000_sum_2000.out.old",
+            "dhat.benchmark-tests-sort.sort_4000_sum_2000.log",
+            "dhat.benchmark-tests-sort.sort_4000_sum_2000.log.old",
+            "dhat.benchmark-tests-sort.sort_4000_sum_2000.out",
+            "dhat.benchmark-tests-sort.sort_4000_sum_2000.out.old",
+            "drd.benchmark-tests-sort.sort_4000_sum_2000.log",
+            "drd.benchmark-tests-sort.sort_4000_sum_2000.log.old",
+            "exp-bbv.benchmark-tests-sort.sort_4000_sum_2000.log",
+            "exp-bbv.benchmark-tests-sort.sort_4000_sum_2000.log.old",
+            "exp-bbv.benchmark-tests-sort.sort_4000_sum_2000.out.bb",
+            "exp-bbv.benchmark-tests-sort.sort_4000_sum_2000.out.bb.old",
+            "exp-bbv.benchmark-tests-sort.sort_4000_sum_2000.out.pc",
+            "exp-bbv.benchmark-tests-sort.sort_4000_sum_2000.out.pc.old",
+            "helgrind.benchmark-tests-sort.sort_4000_sum_2000.log",
+            "helgrind.benchmark-tests-sort.sort_4000_sum_2000.log.old",
+            "massif.benchmark-tests-sort.sort_4000_sum_2000.log",
+            "massif.benchmark-tests-sort.sort_4000_sum_2000.log.old",
+            "massif.benchmark-tests-sort.sort_4000_sum_2000.out",
+            "massif.benchmark-tests-sort.sort_4000_sum_2000.out.old",
+            "memcheck.benchmark-tests-sort.sort_4000_sum_2000.log",
+            "memcheck.benchmark-tests-sort.sort_4000_sum_2000.log.old",
+            "summary.json"
+          ]
+        }
+      },
+      {
+        "group": "sort",
+        "function": "run_after",
+        "id": "after",
+        "expected": {
+          "files": [
+            "callgrind.run_after.after.log",
+            "callgrind.run_after.after.log.old",
+            "callgrind.run_after.after.out",
+            "callgrind.run_after.after.out.old",
+            "dhat.run_after.after.log",
+            "dhat.run_after.after.log.old",
+            "dhat.run_after.after.out",
+            "dhat.run_after.after.out.old",
+            "drd.run_after.after.log",
+            "drd.run_after.after.log.old",
+            "exp-bbv.run_after.after.log",
+            "exp-bbv.run_after.after.log.old",
+            "exp-bbv.run_after.after.out.bb",
+            "exp-bbv.run_after.after.out.bb.old",
+            "exp-bbv.run_after.after.out.pc",
+            "exp-bbv.run_after.after.out.pc.old",
+            "helgrind.run_after.after.log",
+            "helgrind.run_after.after.log.old",
+            "massif.run_after.after.log",
+            "massif.run_after.after.log.old",
+            "massif.run_after.after.out",
+            "massif.run_after.after.out.old",
+            "memcheck.run_after.after.log",
+            "memcheck.run_after.after.log.old",
+            "summary.json"
+          ]
+        }
+      },
+      {
+        "group": "subprocess",
+        "function": "benchmark-tests-subprocess",
+        "id": "trace_sort_4000_sum_2000",
+        "expected": {
+          "files": [
+            "callgrind.benchmark-tests-subprocess.trace_sort_4000_sum_2000.log",
+            "callgrind.benchmark-tests-subprocess.trace_sort_4000_sum_2000.log.old",
+            "callgrind.benchmark-tests-subprocess.trace_sort_4000_sum_2000.out",
+            "callgrind.benchmark-tests-subprocess.trace_sort_4000_sum_2000.out.old",
+            "summary.json"
+          ],
+          "globs": [
+            {
+              "pattern": "dhat.benchmark-tests-subprocess.trace_sort_4000_sum_2000.log.*",
+              "count": 4
+            },
+            {
+              "pattern": "dhat.benchmark-tests-subprocess.trace_sort_4000_sum_2000.out.*",
+              "count": 4
+            }
+          ]
+        }
+      },
+      {
+        "group": "subprocess",
+        "function": "run_before",
+        "id": "before",
+        "expected": {
+          "files": [
+            "callgrind.run_before.before.log",
+            "callgrind.run_before.before.log.old",
+            "callgrind.run_before.before.out",
+            "callgrind.run_before.before.out.old",
+            "dhat.run_before.before.log",
+            "dhat.run_before.before.log.old",
+            "dhat.run_before.before.out",
+            "dhat.run_before.before.out.old",
+            "drd.run_before.before.log",
+            "drd.run_before.before.log.old",
+            "exp-bbv.run_before.before.log",
+            "exp-bbv.run_before.before.log.old",
+            "exp-bbv.run_before.before.out.bb",
+            "exp-bbv.run_before.before.out.bb.old",
+            "exp-bbv.run_before.before.out.pc",
+            "exp-bbv.run_before.before.out.pc.old",
+            "helgrind.run_before.before.log",
+            "helgrind.run_before.before.log.old",
+            "massif.run_before.before.log",
+            "massif.run_before.before.log.old",
+            "massif.run_before.before.out",
+            "massif.run_before.before.out.old",
+            "memcheck.run_before.before.log",
+            "memcheck.run_before.before.log.old",
+            "summary.json"
+          ]
+        }
+      }
+    ]
+  ]
+}

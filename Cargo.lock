@@ -64,7 +64,14 @@ dependencies = [
 name = "benchmark-tests"
 version = "0.1.0"
 dependencies = [
+ "cargo_metadata",
+ "colored",
+ "glob",
  "iai-callgrind",
+ "iai-callgrind-runner",
+ "new_string_template",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -563,6 +570,16 @@ name = "memchr"
 version = "2.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5486aed0026218e61b8a01d5fbd5a0a134649abb71a0e53b7bc088529dced86e"
+
+[[package]]
+name = "new_string_template"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7359c5bee6fe9218ccd4988120a23dc79d291e95486756969112d45efdc97d1"
+dependencies = [
+ "lazy_static",
+ "regex",
+]
 
 [[package]]
 name = "num-format"
