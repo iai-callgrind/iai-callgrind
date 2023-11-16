@@ -144,7 +144,7 @@ impl Assistant {
             ValgrindTool::Callgrind,
             &config.meta.target_dir,
             &group.module_path,
-            &format!("{}.{}", self.kind.id(), &self.name),
+            &format!("{}.{}", &self.name, self.kind.id()),
         );
         let log_path = output_path.to_log_output();
         log_path.init();
@@ -328,7 +328,7 @@ impl BinBench {
             ValgrindTool::Callgrind,
             &config.meta.target_dir,
             &group.module_path,
-            &format!("{}.{}", self.id, self.display),
+            &format!("{}.{}", self.display, self.id),
         );
 
         let log_path = output_path.to_log_output();
