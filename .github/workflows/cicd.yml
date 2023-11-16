@@ -124,12 +124,12 @@ jobs:
       - name: Test
         run: |
           set -o pipefail
-          cargo test --all-features |& tee test.output
+          cargo test ${{ matrix.ui_tests }} |& tee test.output
       - name: Check test output for ui errors
         if: ${{ matrix.ui_tests && failure() }}
         run: |
           if grep -q '^test ui \.\.\. FAILED$' test.output; then
-            TRYBUILD=overwrite cargo test --all-features ui
+            TRYBUILD=overwrite cargo test ${{ matrix.ui_tests }} ui
             git diff iai-callgrind/tests/ui
           fi
           exit 1
