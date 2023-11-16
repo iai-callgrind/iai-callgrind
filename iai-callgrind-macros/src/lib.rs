@@ -159,7 +159,7 @@ impl LibraryBenchmark {
                     emit_error!(
                         pair, "Missing key";
                         help = "At least one argument must be given";
-                        note = r#"Valid arguments are: args, config"#
+                        note = r"Valid arguments are: args, config"
                     );
                 } else if pair.path.is_ident("args") {
                     if args.is_none() {
@@ -198,7 +198,7 @@ impl LibraryBenchmark {
                     } else {
                         emit_error!(
                             pair, "Duplicate argument: args";
-                            help = r#"args is allowed only once"#
+                            help = r"args is allowed only once"
                         );
                     }
                 } else if pair.path.is_ident("config") {
@@ -207,13 +207,13 @@ impl LibraryBenchmark {
                     } else {
                         emit_error!(
                             pair, "Duplicate argument: config";
-                            help = r#"config is allowed only once"#
+                            help = r"config is allowed only once"
                         );
                     }
                 } else {
                     emit_error!(
                         pair, "Invalid argument: {}", pair.path.get_ident().unwrap();
-                        help = r#"Valid arguments are: args, config"#
+                        help = r"Valid arguments are: args, config"
                     );
                 }
             }
@@ -238,7 +238,7 @@ impl LibraryBenchmark {
                 }
                 None => emit_error!(
                     attr, "Expected {} arguments but found none", expected_num_args;
-                    help = r#"Try passing arguments either with #[bench::some_id(arg1, ...)] or with #[bench::some_id(args = (arg1, ...))]"#
+                    help = r"Try passing arguments either with #[bench::some_id(arg1, ...)] or with #[bench::some_id(args = (arg1, ...))]"
                 ),
             }
         } else {
