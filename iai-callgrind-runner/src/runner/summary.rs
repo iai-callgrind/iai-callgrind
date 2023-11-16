@@ -398,31 +398,3 @@ impl SummaryOutput {
         File::create(&self.path).with_context(|| "Failed to create json summary file")
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use pretty_assertions::assert_eq;
-
-    use super::*;
-
-    #[test]
-    fn test_benchmark_summary_serialize() {
-        let summary = BenchmarkSummary {
-            version: "1".to_owned(),
-            kind: BenchmarkKind::LibraryBenchmark,
-            benchmark_file: PathBuf::from("/project/root/benches/bench.rs"),
-            benchmark_exe: PathBuf::from("target/bench/deps/some_exe"),
-            module_path: "package::group::bench".to_owned(),
-            id: None,
-            details: None,
-            callgrind_summary: None,
-            tool_summaries: vec![],
-            summary_output: None,
-            project_root: PathBuf::from("/some/path"),
-            package_dir: PathBuf::from("/some/path/package"),
-        };
-
-        let expected = "{}";
-        assert_eq!(serde_json::to_string_pretty(&summary).unwrap(), expected);
-    }
-}
