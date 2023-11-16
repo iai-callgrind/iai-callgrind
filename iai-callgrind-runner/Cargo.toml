@@ -38,6 +38,7 @@ runner = [
   "dep:version-compare",
   "dep:which",
 ]
+schema = ["default", "dep:schemars"]
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]
@@ -61,6 +62,7 @@ inferno = { version = "0.11.10", optional = true, default-features = false, feat
 log = { version = "0.4", optional = true }
 regex = { version = "1", optional = true }
 sanitize-filename = { version = "0.5", optional = true }
+schemars = { version = "0.8.16", features = ["indexmap1"], optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
 shlex = { version = "1", optional = true }
@@ -80,3 +82,11 @@ name = "iai-callgrind-runner"
 path = "src/main.rs"
 test = true
 bench = true
+required-features = ["default"]
+
+[[bin]]
+name = "schema-creator"
+path = "src/schema_creator.rs"
+test = false
+bench = false
+required-features = ["schema"]

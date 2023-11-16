@@ -124,7 +124,7 @@ jobs:
       - name: Test
         run: |
           set -o pipefail
-          cargo test ${{ matrix.ui_tests }} |& tee test.output
+          cargo test --all-features |& tee test.output
       - name: Check test output for ui errors
         if: ${{ matrix.ui_tests && failure() }}
         run: |
@@ -134,15 +134,9 @@ jobs:
           fi
           exit 1
       - name: Bench
-        run: cargo bench --all-features
-        env:
-          IAI_CALLGRIND_RUNNER: /home/runner/work/iai-callgrind/iai-callgrind/target/release/iai-callgrind-runner
-          # IAI_CALLGRIND_LOG: trace
-      - name: Bench second run
-        run: cargo bench --all-features
-        env:
-          IAI_CALLGRIND_RUNNER: /home/runner/work/iai-callgrind/iai-callgrind/target/release/iai-callgrind-runner
-          # IAI_CALLGRIND_LOG: trace
+        run: cargo run --package benchmark-tests --profile=bench --bin bench
+        # env:
+        # IAI_CALLGRIND_LOG: trace
 
   docs:
     needs: [base]

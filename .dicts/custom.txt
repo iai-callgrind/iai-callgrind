@@ -85,6 +85,7 @@ rustdoc
 rustfmt
 rustup
 sandboxing
+schemars
 serde
 setarch
 shlex

@@ -12,6 +12,8 @@ use colored::Colorize;
 use glob::glob;
 use log::{debug, error, log_enabled, Level};
 use regex::Regex;
+#[cfg(feature = "schema")]
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use self::args::ToolArgs;
@@ -53,6 +55,7 @@ pub struct ToolOutputPath {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ValgrindTool {
     Callgrind,
     Memcheck,

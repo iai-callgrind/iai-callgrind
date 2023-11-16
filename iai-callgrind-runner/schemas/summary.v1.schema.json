@@ -1,0 +1,480 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BenchmarkSummary",
+  "description": "The `BenchmarkSummary` containing all the information of a single benchmark run\n\nThis includes produced files, recorded callgrind events, performance regressions ...",
+  "type": "object",
+  "required": [
+    "benchmark_exe",
+    "benchmark_file",
+    "kind",
+    "module_path",
+    "package_dir",
+    "project_root",
+    "tool_summaries",
+    "version"
+  ],
+  "properties": {
+    "benchmark_exe": {
+      "type": "string"
+    },
+    "benchmark_file": {
+      "type": "string"
+    },
+    "callgrind_summary": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/CallgrindSummary"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "details": {
+      "type": ["string", "null"]
+    },
+    "id": {
+      "type": ["string", "null"]
+    },
+    "kind": {
+      "$ref": "#/definitions/BenchmarkKind"
+    },
+    "module_path": {
+      "type": "string"
+    },
+    "package_dir": {
+      "type": "string"
+    },
+    "project_root": {
+      "type": "string"
+    },
+    "summary_output": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/SummaryOutput"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "tool_summaries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ToolSummary"
+      }
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "Baseline": {
+      "description": "A `Baseline` depending on the [`BaselineKind`] which points to the corresponding path\n\nThis baseline is used for comparisons with the new output of valgrind tools.",
+      "type": "object",
+      "required": ["kind", "path"],
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/BaselineKind"
+        },
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "BaselineKind": {
+      "description": "The `BaselineKind` describing the baseline\n\nCurrently, iai-callgrind can only compare callgrind output with `.old` files.",
+      "type": "string",
+      "enum": ["Old"]
+    },
+    "BenchmarkKind": {
+      "description": "The `BenchmarkKind`",
+      "type": "string",
+      "enum": ["LibraryBenchmark", "BinaryBenchmark"]
+    },
+    "CallgrindRegressionSummary": {
+      "description": "The `CallgrindRegressionSummary` describing a single event based performance regression",
+      "type": "object",
+      "required": ["diff_pct", "event_kind", "limit", "new", "old"],
+      "properties": {
+        "diff_pct": {
+          "type": "number",
+          "format": "double"
+        },
+        "event_kind": {
+          "$ref": "#/definitions/EventKind"
+        },
+        "limit": {
+          "type": "number",
+          "format": "double"
+        },
+        "new": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "old": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    },
+    "CallgrindRunSummary": {
+      "description": "The `CallgrindRunSummary` containing the recorded events, performance regressions of a single callgrind run",
+      "type": "object",
+      "required": ["command", "events", "regressions"],
+      "properties": {
+        "baseline": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Baseline"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "command": {
+          "type": "string"
+        },
+        "events": {
+          "$ref": "#/definitions/CostsSummary"
+        },
+        "regressions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CallgrindRegressionSummary"
+          }
+        }
+      }
+    },
+    "CallgrindSummary": {
+      "description": "The `CallgrindSummary` summarizes all callgrind runs",
+      "type": "object",
+      "required": [
+        "flamegraphs",
+        "log_paths",
+        "out_paths",
+        "regression_fail_fast",
+        "summaries"
+      ],
+      "properties": {
+        "flamegraphs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FlamegraphSummary"
+          }
+        },
+        "log_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "out_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "regression_fail_fast": {
+          "type": "boolean"
+        },
+        "summaries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CallgrindRunSummary"
+          }
+        }
+      }
+    },
+    "CostsDiff": {
+      "description": "The `CostsDiff` describes the difference between an optional `new` and `old` cost as percentage and factor",
+      "type": "object",
+      "properties": {
+        "diff_pct": {
+          "type": ["number", "null"],
+          "format": "double"
+        },
+        "factor": {
+          "type": ["number", "null"],
+          "format": "double"
+        },
+        "new": {
+          "type": ["integer", "null"],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "old": {
+          "type": ["integer", "null"],
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    },
+    "CostsSummary": {
+      "description": "The `CostsSummary` contains all differences for affected [`EventKind`]s",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/CostsDiff"
+      }
+    },
+    "EventKind": {
+      "description": "All `EventKind`s callgrind produces and additionally some derived events\n\nDepending on the options passed to Callgrind, these are the events that Callgrind can produce. See the [Callgrind documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.",
+      "oneOf": [
+        {
+          "description": "The default event. I cache reads (which equals the number of instructions executed)",
+          "type": "string",
+          "enum": ["Ir"]
+        },
+        {
+          "description": "The number of system calls done (--collect-systime=yes)",
+          "type": "string",
+          "enum": ["SysCount"]
+        },
+        {
+          "description": "The elapsed time spent in system calls (--collect-systime=yes)",
+          "type": "string",
+          "enum": ["SysTime"]
+        },
+        {
+          "description": "The cpu time spent during system calls (--collect-systime=nsec)",
+          "type": "string",
+          "enum": ["SysCpuTime"]
+        },
+        {
+          "description": "The number of global bus events (--collect-bus=yes)",
+          "type": "string",
+          "enum": ["Ge"]
+        },
+        {
+          "description": "D Cache reads (which equals the number of memory reads) (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["Dr"]
+        },
+        {
+          "description": "D Cache writes (which equals the number of memory writes) (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["Dw"]
+        },
+        {
+          "description": "I1 cache read misses (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["I1mr"]
+        },
+        {
+          "description": "LL cache instruction read misses (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["ILmr"]
+        },
+        {
+          "description": "D1 cache read misses (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["D1mr"]
+        },
+        {
+          "description": "LL cache data read misses (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["DLmr"]
+        },
+        {
+          "description": "D1 cache write misses (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["D1mw"]
+        },
+        {
+          "description": "LL cache data write misses (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["DLmw"]
+        },
+        {
+          "description": "Derived event showing the L1 hits (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["L1hits"]
+        },
+        {
+          "description": "Derived event showing the LL hits (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["LLhits"]
+        },
+        {
+          "description": "Derived event showing the RAM hits (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["RamHits"]
+        },
+        {
+          "description": "Derived event showing the total amount of cache reads and writes (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["TotalRW"]
+        },
+        {
+          "description": "Derived event showing estimated CPU cycles (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["EstimatedCycles"]
+        },
+        {
+          "description": "Conditional branches executed (--branch-sim=yes)",
+          "type": "string",
+          "enum": ["Bc"]
+        },
+        {
+          "description": "Conditional branches mispredicted (--branch-sim=yes)",
+          "type": "string",
+          "enum": ["Bcm"]
+        },
+        {
+          "description": "Indirect branches executed (--branch-sim=yes)",
+          "type": "string",
+          "enum": ["Bi"]
+        },
+        {
+          "description": "Indirect branches mispredicted (--branch-sim=yes)",
+          "type": "string",
+          "enum": ["Bim"]
+        },
+        {
+          "description": "Dirty miss because of instruction read (--simulate-wb=yes)",
+          "type": "string",
+          "enum": ["ILdmr"]
+        },
+        {
+          "description": "Dirty miss because of data read (--simulate-wb=yes)",
+          "type": "string",
+          "enum": ["DLdmr"]
+        },
+        {
+          "description": "Dirty miss because of data write (--simulate-wb=yes)",
+          "type": "string",
+          "enum": ["DLdmw"]
+        },
+        {
+          "description": "Counter showing bad temporal locality for L1 caches (--cachuse=yes)",
+          "type": "string",
+          "enum": ["AcCost1"]
+        },
+        {
+          "description": "Counter showing bad temporal locality for LL caches (--cachuse=yes)",
+          "type": "string",
+          "enum": ["AcCost2"]
+        },
+        {
+          "description": "Counter showing bad spatial locality for L1 caches (--cachuse=yes)",
+          "type": "string",
+          "enum": ["SpLoss1"]
+        },
+        {
+          "description": "Counter showing bad spatial locality for LL caches (--cachuse=yes)",
+          "type": "string",
+          "enum": ["SpLoss2"]
+        }
+      ]
+    },
+    "FlamegraphSummary": {
+      "description": "The `FlamegraphSummary` records all created paths for an [`EventKind`] specific flamegraph",
+      "type": "object",
+      "required": ["event_kind"],
+      "properties": {
+        "diff_path": {
+          "type": ["string", "null"]
+        },
+        "event_kind": {
+          "$ref": "#/definitions/EventKind"
+        },
+        "old_path": {
+          "type": ["string", "null"]
+        },
+        "regular_path": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "SummaryFormat": {
+      "description": "The format (json, ...) in which the summary file should be saved or printed",
+      "type": "string",
+      "enum": ["Json", "PrettyJson"]
+    },
+    "SummaryOutput": {
+      "description": "Manage the summary output file with this `SummaryOutput`",
+      "type": "object",
+      "required": ["format", "path"],
+      "properties": {
+        "format": {
+          "$ref": "#/definitions/SummaryFormat"
+        },
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "ToolRunSummary": {
+      "description": "The `ToolRunSummary` which contains all information about a single tool run process\n\nThere's a separate process and therefore `ToolRunSummary` for the parent process and each child process",
+      "type": "object",
+      "required": ["command", "pid", "summary"],
+      "properties": {
+        "baseline": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Baseline"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "command": {
+          "type": "string"
+        },
+        "pid": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ToolSummary": {
+      "description": "The `ToolSummary` containing all information about a valgrind tool run",
+      "type": "object",
+      "required": ["log_paths", "out_paths", "summaries", "tool"],
+      "properties": {
+        "log_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "out_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "summaries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ToolRunSummary"
+          }
+        },
+        "tool": {
+          "$ref": "#/definitions/ValgrindTool"
+        }
+      }
+    },
+    "ValgrindTool": {
+      "type": "string",
+      "enum": [
+        "Callgrind",
+        "Memcheck",
+        "Helgrind",
+        "DRD",
+        "Massif",
+        "DHAT",
+        "BBV"
+      ]
+    }
+  }
+}

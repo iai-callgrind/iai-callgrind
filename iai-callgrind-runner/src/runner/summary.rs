@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use glob::glob;
 use indexmap::{indexmap, IndexMap};
+#[cfg(feature = "schema")]
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::callgrind::model::Costs;
@@ -18,6 +20,7 @@ use crate::util::{factor_diff, make_absolute, percentage_diff};
 ///
 /// This baseline is used for comparisons with the new output of valgrind tools.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Baseline {
     pub kind: BaselineKind,
     pub path: PathBuf,
@@ -27,12 +30,14 @@ pub struct Baseline {
 ///
 /// Currently, iai-callgrind can only compare callgrind output with `.old` files.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum BaselineKind {
     Old,
 }
 
 /// The `BenchmarkKind`
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum BenchmarkKind {
     LibraryBenchmark,
     BinaryBenchmark,
@@ -42,6 +47,7 @@ pub enum BenchmarkKind {
 ///
 /// This includes produced files, recorded callgrind events, performance regressions ...
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct BenchmarkSummary {
     pub version: String,
     pub kind: BenchmarkKind,
@@ -59,6 +65,7 @@ pub struct BenchmarkSummary {
 
 /// The `CallgrindRegressionSummary` describing a single event based performance regression
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindRegressionSummary {
     pub event_kind: EventKind,
     pub new: u64,
@@ -70,6 +77,7 @@ pub struct CallgrindRegressionSummary {
 /// The `CallgrindRunSummary` containing the recorded events, performance regressions of a single
 /// callgrind run
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindRunSummary {
     pub command: String,
     pub baseline: Option<Baseline>,
@@ -79,6 +87,7 @@ pub struct CallgrindRunSummary {
 
 /// The `CallgrindSummary` summarizes all callgrind runs
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindSummary {
     pub regression_fail_fast: bool,
     pub log_paths: Vec<PathBuf>,
@@ -90,6 +99,7 @@ pub struct CallgrindSummary {
 /// The `CostsDiff` describes the difference between an optional `new` and `old` cost as percentage
 /// and factor
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CostsDiff {
     pub new: Option<u64>,
     pub old: Option<u64>,
@@ -99,10 +109,12 @@ pub struct CostsDiff {
 
 /// The `CostsSummary` contains all differences for affected [`EventKind`]s
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CostsSummary(IndexMap<EventKind, CostsDiff>);
 
 /// The `FlamegraphSummary` records all created paths for an [`EventKind`] specific flamegraph
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct FlamegraphSummary {
     pub event_kind: EventKind,
     pub regular_path: Option<PathBuf>,
@@ -112,6 +124,7 @@ pub struct FlamegraphSummary {
 
 /// The format (json, ...) in which the summary file should be saved or printed
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum SummaryFormat {
     Json,
     PrettyJson,
@@ -119,6 +132,7 @@ pub enum SummaryFormat {
 
 /// Manage the summary output file with this `SummaryOutput`
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct SummaryOutput {
     format: SummaryFormat,
     path: PathBuf,
@@ -129,6 +143,7 @@ pub struct SummaryOutput {
 /// There's a separate process and therefore `ToolRunSummary` for the parent process and each child
 /// process
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ToolRunSummary {
     pub command: String,
     pub pid: String,
@@ -138,6 +153,7 @@ pub struct ToolRunSummary {
 
 /// The `ToolSummary` containing all information about a valgrind tool run
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ToolSummary {
     pub tool: ValgrindTool,
     pub log_paths: Vec<PathBuf>,
