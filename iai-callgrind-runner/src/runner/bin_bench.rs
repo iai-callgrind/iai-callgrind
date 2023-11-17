@@ -204,16 +204,16 @@ impl Assistant {
             None
         };
 
-        let format = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
+        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
+        let format = VerticalFormat::default().format(&costs_summary)?;
         print!("{format}");
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stdout())?;
 
         let (regressions, fail_fast) = if let Some(regression) = &self.regression {
-            // TODO: Make use of CostsSummary
             (
-                regression.check_and_print(&new_costs, old_costs.as_ref()),
+                regression.check_and_print(&costs_summary),
                 regression.fail_fast,
             )
         } else {
@@ -232,7 +232,7 @@ impl Assistant {
             &config.bench_bin,
             &executable_args,
             &old_output,
-            CostsSummary::new(&new_costs, old_costs.as_ref()),
+            costs_summary,
             regressions,
         );
 
@@ -414,16 +414,16 @@ impl BinBench {
             None
         };
 
-        let output_format = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
+        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
+        let output_format = VerticalFormat::default().format(&costs_summary)?;
         print!("{output_format}");
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stdout())?;
 
         let (regressions, fail_fast) = if let Some(regression) = &self.regression {
-            // TODO: Make use of CostsSummary
             (
-                regression.check_and_print(&new_costs, old_costs.as_ref()),
+                regression.check_and_print(&costs_summary),
                 regression.fail_fast,
             )
         } else {
@@ -442,7 +442,7 @@ impl BinBench {
             &self.command,
             &self.args,
             &old_output,
-            CostsSummary::new(&new_costs, old_costs.as_ref()),
+            costs_summary,
             regressions,
         );
 

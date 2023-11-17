@@ -96,8 +96,8 @@ pub struct CallgrindSummary {
     pub summaries: Vec<CallgrindRunSummary>,
 }
 
-/// The `CostsDiff` describes the difference between an optional `new` and `old` cost as percentage
-/// and factor
+/// The `CostsDiff` describes the difference between an single optional `new` and `old` cost as
+/// percentage and factor
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CostsDiff {
@@ -358,6 +358,11 @@ impl CostsSummary {
                     .collect::<IndexMap<_, _>>(),
             )
         }
+    }
+
+    /// Try to return a [`CostsDiff`] for the specified [`crate::api::EventKind`]
+    pub fn diff_by_kind(&self, event_kind: &EventKind) -> Option<&CostsDiff> {
+        self.0.get(event_kind)
     }
 }
 

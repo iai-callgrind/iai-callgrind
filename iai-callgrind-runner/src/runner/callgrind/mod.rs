@@ -7,7 +7,6 @@ pub mod parser;
 pub mod sentinel_parser;
 pub mod summary_parser;
 
-use std::borrow::Cow;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -19,12 +18,12 @@ use log::debug;
 use self::model::Costs;
 use super::callgrind::args::Args;
 use super::meta::Metadata;
-use super::summary::CallgrindRegressionSummary;
+use super::summary::{CallgrindRegressionSummary, CostsSummary};
 use super::tool::{RunOptions, ToolOutputPath};
 use crate::api::{self, EventKind, RegressionConfig};
 use crate::error::Error;
 use crate::runner::tool::{check_exit, ToolOutput, ValgrindTool};
-use crate::util::{percentage_diff, resolve_binary_path, to_string_signed_short};
+use crate::util::{resolve_binary_path, to_string_signed_short};
 
 pub struct CallgrindCommand {
     command: Command,
@@ -176,12 +175,8 @@ impl Regression {
     ///
     /// Returns an [`anyhow::Error`] with the only source [`Error::RegressionError`] if a regression
     /// error occurred
-    pub fn check_and_print(
-        &self,
-        new_costs: &Costs,
-        old_costs: Option<&Costs>,
-    ) -> Vec<CallgrindRegressionSummary> {
-        let regression_summaries = self.check(new_costs, old_costs);
+    pub fn check_and_print(&self, costs_summary: &CostsSummary) -> Vec<CallgrindRegressionSummary> {
+        let regression_summaries = self.check(costs_summary);
 
         for CallgrindRegressionSummary {
             event_kind,
@@ -217,43 +212,16 @@ impl Regression {
         regression_summaries
     }
 
-    fn check(
-        &self,
-        new_costs: &Costs,
-        old_costs: Option<&Costs>,
-    ) -> Vec<CallgrindRegressionSummary> {
+    pub fn check(&self, costs_summary: &CostsSummary) -> Vec<CallgrindRegressionSummary> {
         let mut regressions = vec![];
-        if let Some(old) = old_costs {
-            let mut new_costs = Cow::Borrowed(new_costs);
-            let mut old_costs = Cow::Borrowed(old);
-
-            for (event_kind, limit) in &self.limits {
-                if event_kind.is_derived() {
-                    if !new_costs.is_summarized() {
-                        _ = new_costs.to_mut().make_summary();
-                    }
-                    if !old_costs.is_summarized() {
-                        _ = old_costs.to_mut().make_summary();
-                    }
-                }
-
-                if let (Some(new_cost), Some(old_cost)) = (
-                    new_costs.cost_by_kind(event_kind),
-                    old_costs.cost_by_kind(event_kind),
-                ) {
-                    let pct = percentage_diff(new_cost, old_cost);
-                    if limit.is_sign_positive() {
-                        if pct > *limit {
-                            let summary = CallgrindRegressionSummary {
-                                event_kind: *event_kind,
-                                new: new_cost,
-                                old: old_cost,
-                                diff_pct: pct,
-                                limit: *limit,
-                            };
-                            regressions.push(summary);
-                        }
-                    } else if pct < *limit {
+        for (event_kind, limit) in &self.limits {
+            if let Some((new_cost, old_cost, pct)) = costs_summary
+                .diff_by_kind(event_kind)
+                .filter(|d| d.diff_pct.is_some())
+                .map(|d| (d.new.unwrap(), d.old.unwrap(), d.diff_pct.unwrap()))
+            {
+                if limit.is_sign_positive() {
+                    if pct > *limit {
                         let summary = CallgrindRegressionSummary {
                             event_kind: *event_kind,
                             new: new_cost,
@@ -262,9 +230,18 @@ impl Regression {
                             limit: *limit,
                         };
                         regressions.push(summary);
-                    } else {
-                        // no regression
                     }
+                } else if pct < *limit {
+                    let summary = CallgrindRegressionSummary {
+                        event_kind: *event_kind,
+                        new: new_cost,
+                        old: old_cost,
+                        diff_pct: pct,
+                        limit: *limit,
+                    };
+                    regressions.push(summary);
+                } else {
+                    // no regression
                 }
             }
         }
@@ -321,8 +298,9 @@ mod tests {
         let regression = Regression::default();
         let new = cachesim_costs([0, 0, 0, 0, 0, 0, 0, 0, 0]);
         let old = None;
+        let summary = CostsSummary::new(&new, old);
 
-        assert!(regression.check(&new, old).is_empty());
+        assert!(regression.check(&summary).is_empty());
     }
 
     #[rstest]
@@ -393,6 +371,7 @@ mod tests {
 
         let new = cachesim_costs(new);
         let old = Some(cachesim_costs(old));
+        let summary = CostsSummary::new(&new, old.as_ref());
         let expected = expected
             .iter()
             .map(|(e, n, o, d, l)| CallgrindRegressionSummary {
@@ -404,6 +383,6 @@ mod tests {
             })
             .collect::<Vec<CallgrindRegressionSummary>>();
 
-        assert_eq!(regression.check(&new, old.as_ref()), expected);
+        assert_eq!(regression.check(&summary), expected);
     }
 }
