@@ -22,7 +22,9 @@ use crate::util::{factor_diff, make_absolute, percentage_diff};
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Baseline {
+    /// The kind of the `Baseline`, which currently can only be `Old`
     pub kind: BaselineKind,
+    /// The path to the file which is used to compare against the new output
     pub path: PathBuf,
 }
 
@@ -32,14 +34,17 @@ pub struct Baseline {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum BaselineKind {
+    /// Compare new against `*.old` output files
     Old,
 }
 
-/// The `BenchmarkKind`
+/// The `BenchmarkKind`, differentiating between library and binary benchmarks
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum BenchmarkKind {
+    /// A library benchmark
     LibraryBenchmark,
+    /// A binary benchmark
     BinaryBenchmark,
 }
 
@@ -49,17 +54,29 @@ pub enum BenchmarkKind {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct BenchmarkSummary {
+    /// The version of this format. Only backwards incompatible cause an increase of the version
     pub version: String,
+    /// Whether this summary describes a library or binary benchmark
     pub kind: BenchmarkKind,
+    /// The destination and kind of the summary file
     pub summary_output: Option<SummaryOutput>,
+    /// The project's root directory
     pub project_root: PathBuf,
+    /// The directory of the package
     pub package_dir: PathBuf,
+    /// The path to the benchmark file
     pub benchmark_file: PathBuf,
+    /// The path to the compiled and executable benchmark file
     pub benchmark_exe: PathBuf,
+    /// The rust path in the form `bench_file::group::bench`
     pub module_path: String,
+    /// The user provided id of this benchmark
     pub id: Option<String>,
+    /// More details describing this benchmark run
     pub details: Option<String>,
+    /// The summary of the callgrind run
     pub callgrind_summary: Option<CallgrindSummary>,
+    /// The summary of other valgrind tool runs
     pub tool_summaries: Vec<ToolSummary>,
 }
 
@@ -67,10 +84,15 @@ pub struct BenchmarkSummary {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindRegressionSummary {
+    /// The [`EventKind`] which is affected by a performance regression
     pub event_kind: EventKind,
+    /// The value of the new benchmark run
     pub new: u64,
+    /// The value of the old benchmark run
     pub old: u64,
+    /// The difference between new and old in percent
     pub diff_pct: f64,
+    /// The value of the limit which was exceeded to cause a performance regression
     pub limit: f64,
 }
 
@@ -79,9 +101,13 @@ pub struct CallgrindRegressionSummary {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindRunSummary {
+    /// The executed command extracted from Valgrind output
     pub command: String,
+    /// If present, the `Baseline` used to compare the new with the old output
     pub baseline: Option<Baseline>,
+    /// All recorded costs for `EventKinds`
     pub events: CostsSummary,
+    /// All detected performance regressions
     pub regressions: Vec<CallgrindRegressionSummary>,
 }
 
@@ -89,21 +115,33 @@ pub struct CallgrindRunSummary {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindSummary {
+    /// If the regressions were configured to cause the benchmark run to fail immediately or not
     pub regression_fail_fast: bool,
+    /// The paths to the `*.log` files
     pub log_paths: Vec<PathBuf>,
+    /// The paths to the `*.old` files
     pub out_paths: Vec<PathBuf>,
+    /// The summaries of possibly created flamegraphs
     pub flamegraphs: Vec<FlamegraphSummary>,
+    /// The summaries of all callgrind runs
     pub summaries: Vec<CallgrindRunSummary>,
 }
 
 /// The `CostsDiff` describes the difference between an single optional `new` and `old` cost as
-/// percentage and factor
+/// percentage and factor.
+///
+/// There is either a `new` or an `old` value present. Never can both be absent. If both values are
+/// present, then there is also a `diff_pct` and `factor` present.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CostsDiff {
+    /// The value of the new cost
     pub new: Option<u64>,
+    /// The value of the old cost
     pub old: Option<u64>,
+    /// The difference between new and old in percent
     pub diff_pct: Option<f64>,
+    /// The difference between new and old expressed as a factor
     pub factor: Option<f64>,
 }
 
@@ -113,12 +151,19 @@ pub struct CostsDiff {
 pub struct CostsSummary(IndexMap<EventKind, CostsDiff>);
 
 /// The `FlamegraphSummary` records all created paths for an [`EventKind`] specific flamegraph
+///
+/// Either the `regular_path`, `old_path` or the `diff_path` are present. Never can all of them be
+/// absent.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct FlamegraphSummary {
+    /// The `EventKind` of the flamegraph
     pub event_kind: EventKind,
+    /// If present, the path to the file of the regular (non-differential) flamegraph
     pub regular_path: Option<PathBuf>,
+    /// If present, the path to the file of the old regular (non-differential) flamegraph
     pub old_path: Option<PathBuf>,
+    /// If present, the path to the file of the differential flamegraph
     pub diff_path: Option<PathBuf>,
 }
 
@@ -126,7 +171,9 @@ pub struct FlamegraphSummary {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum SummaryFormat {
+    /// The format in a space optimal json representation without newlines
     Json,
+    /// The format in pretty printed json
     PrettyJson,
 }
 
@@ -134,20 +181,26 @@ pub enum SummaryFormat {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct SummaryOutput {
+    /// The [`SummaryFormat`]
     format: SummaryFormat,
+    /// The path to the destination file of this summary
     path: PathBuf,
 }
 
 /// The `ToolRunSummary` which contains all information about a single tool run process
 ///
 /// There's a separate process and therefore `ToolRunSummary` for the parent process and each child
-/// process
+/// process if `--trace-children=yes` was passed as argument to the `Tool`.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ToolRunSummary {
+    /// The executed command extracted from Valgrind output
     pub command: String,
+    /// The pid of the process of the `command`
     pub pid: String,
+    /// If present, the baseline used to compare with the new output of this tool
     pub baseline: Option<Baseline>,
+    /// The tool specific summary extracted from Valgrind output
     pub summary: IndexMap<String, String>,
 }
 
@@ -155,9 +208,14 @@ pub struct ToolRunSummary {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ToolSummary {
+    /// The Valgrind tool like `DHAT`, `Memcheck` etc.
     pub tool: ValgrindTool,
+    /// The paths to the `*.log` files. All tools produce at least one log file
     pub log_paths: Vec<PathBuf>,
+    /// The paths to the `*.out` files. Not all tools produce an output in addition to the log
+    /// files
     pub out_paths: Vec<PathBuf>,
+    /// All [`ToolRunSummary`]s
     pub summaries: Vec<ToolRunSummary>,
 }
 

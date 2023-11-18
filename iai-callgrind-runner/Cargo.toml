@@ -85,8 +85,8 @@ bench = true
 required-features = ["default"]
 
 [[bin]]
-name = "schema-creator"
-path = "src/schema_creator.rs"
+name = "schema-gen"
+path = "src/schema_gen.rs"
 test = false
 bench = false
 required-features = ["schema"]
