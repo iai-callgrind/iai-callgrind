@@ -51,9 +51,11 @@ dotgraphs
 dtolnay
 elems
 estimatedcycles
+exitcode
 flamegraph
 flamegraphs
 funcs
+gmax
 grcov
 ildmr
 ilmr

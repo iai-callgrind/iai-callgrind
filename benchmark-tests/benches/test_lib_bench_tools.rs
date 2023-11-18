@@ -1,6 +1,11 @@
+use std::cell::RefCell;
 use std::ffi::OsString;
 use std::io;
 use std::process::Output;
+use std::rc::Rc;
+
+struct Left(Option<Rc<Right>>);
+struct Right(Option<Rc<RefCell<Left>>>);
 
 use benchmark_tests::{bubble_sort, bubble_sort_allocate, subprocess};
 use iai_callgrind::{
@@ -48,9 +53,26 @@ fn bench_subprocess() -> io::Result<Output> {
     )
 }
 
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .tool_override(Tool::new(ValgrindTool::DHAT))
+        .tool_override(
+            Tool::new(ValgrindTool::Memcheck)
+                .args(["--leak-check=full", "--errors-for-leak-kinds=all"])
+        )
+        .tool_override(Tool::new(ValgrindTool::Massif))
+)]
+fn bad_memory() {
+    for _ in 0..100_000 {
+        let left = Rc::new(RefCell::new(Left(None)));
+        let right = Rc::new(Right(Some(Rc::clone(&left))));
+        left.borrow_mut().0 = Some(Rc::clone(&right));
+    }
+}
+
 library_benchmark_group!(
     name = bench_group;
-    benchmarks = bench_bubble_sort_allocate, bench_subprocess, bench_bubble_sort
+    benchmarks = bench_bubble_sort_allocate, bench_subprocess, bench_bubble_sort, bad_memory
 );
 
 main!(

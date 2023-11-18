@@ -102,6 +102,23 @@
             "summary.json"
           ]
         }
+      },
+      {
+        "group": "bench_group",
+        "function": "bad_memory",
+        "id": null,
+        "expected": {
+          "files": [
+            "callgrind.bad_memory.log",
+            "callgrind.bad_memory.out",
+            "memcheck.bad_memory.log",
+            "dhat.bad_memory.log",
+            "dhat.bad_memory.out",
+            "massif.bad_memory.log",
+            "massif.bad_memory.out",
+            "summary.json"
+          ]
+        }
       }
     ],
     [
@@ -245,6 +262,30 @@
             "dhat.bench_subprocess.without_modifier.log.old",
             "dhat.bench_subprocess.without_modifier.out",
             "dhat.bench_subprocess.without_modifier.out.old",
+            "summary.json"
+          ]
+        }
+      },
+      {
+        "group": "bench_group",
+        "function": "bad_memory",
+        "id": null,
+        "expected": {
+          "files": [
+            "callgrind.bad_memory.log",
+            "callgrind.bad_memory.log.old",
+            "callgrind.bad_memory.out",
+            "callgrind.bad_memory.out.old",
+            "memcheck.bad_memory.log",
+            "memcheck.bad_memory.log.old",
+            "dhat.bad_memory.log",
+            "dhat.bad_memory.log.old",
+            "dhat.bad_memory.out",
+            "dhat.bad_memory.out.old",
+            "massif.bad_memory.log",
+            "massif.bad_memory.log.old",
+            "massif.bad_memory.out",
+            "massif.bad_memory.out.old",
             "summary.json"
           ]
         }
