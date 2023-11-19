@@ -13,7 +13,6 @@ use std::path::PathBuf;
 use log::debug;
 
 pub mod envs {
-    pub const IAI_CALLGRIND_ALLOW_ASLR: &str = "IAI_CALLGRIND_ALLOW_ASLR";
     pub const IAI_CALLGRIND_COLOR: &str = "IAI_CALLGRIND_COLOR";
     pub const IAI_CALLGRIND_LOG: &str = "IAI_CALLGRIND_LOG";
     pub const IAI_CALLGRIND_REGRESSION: &str = "IAI_CALLGRIND_REGRESSION";

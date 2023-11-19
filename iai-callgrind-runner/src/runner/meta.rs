@@ -23,7 +23,6 @@ pub struct Cmd {
 #[derive(Debug, Clone)]
 pub struct Metadata {
     pub arch: String,
-    pub aslr_enabled: bool,
     pub project_root: PathBuf,
     pub target_dir: PathBuf,
     pub valgrind: Cmd,
@@ -34,6 +33,8 @@ pub struct Metadata {
 
 impl Metadata {
     pub fn new(raw_command_line_args: &[String]) -> Result<Self> {
+        let args = CommandLineArgs::parse_from(raw_command_line_args);
+
         let arch = std::env::consts::ARCH.to_owned();
         debug!("Detected architecture: {}", arch);
         let meta = cargo_metadata::MetadataCommand::new()
@@ -51,17 +52,9 @@ impl Metadata {
 
         debug!("Detected target directory: '{}'", target_dir.display());
 
-        let aslr_enabled = std::env::var_os(envs::IAI_CALLGRIND_ALLOW_ASLR).is_some();
-        if aslr_enabled {
-            debug!(
-                "Found {} environment variable. Running with ASLR enabled.",
-                envs::IAI_CALLGRIND_ALLOW_ASLR
-            );
-        }
-
         // Invoke Valgrind, disabling ASLR if possible because ASLR could noise up the results a bit
         let valgrind_path = resolve_binary_path("valgrind")?;
-        let valgrind_wrapper = if aslr_enabled {
+        let valgrind_wrapper = if args.allow_aslr {
             debug!("Running with ASLR enabled");
             None
         } else if cfg!(target_os = "linux") {
@@ -108,7 +101,6 @@ impl Metadata {
 
         Ok(Self {
             arch,
-            aslr_enabled,
             target_dir,
             valgrind: Cmd {
                 bin: valgrind_path,
@@ -117,7 +109,7 @@ impl Metadata {
             valgrind_wrapper,
             project_root,
             regression_config: try_regression_config_from_env()?,
-            args: CommandLineArgs::parse_from(raw_command_line_args),
+            args,
         })
     }
 }

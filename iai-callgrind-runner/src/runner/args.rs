@@ -41,6 +41,14 @@ pub struct CommandLineArgs {
         help = "Save a summary for each benchmark run"
     )]
     pub save_summary: Option<SummaryFormat>,
+
+    #[clap(
+        long = "allow-aslr",
+        env = "IAI_CALLGRIND_ALLOW_ASLR",
+        help = "Allow ASLR. If possible ASLR is disabled on platforms that support it (linux, \
+                freebsd) because ASLR could noise up the callgrind cache simulation results a bit"
+    )]
+    pub allow_aslr: bool,
 }
 
 /// This function parses a space separated list of raw argument strings into [`crate::api::RawArgs`]
