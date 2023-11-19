@@ -7,6 +7,9 @@ use glob::glob;
 use iai_callgrind_runner::runner::summary::BenchmarkSummary;
 use new_string_template::template::Template;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use valico::json_schema;
+use valico::json_schema::schema::ScopedSchema;
 
 const PACKAGE: &str = "benchmark-tests";
 
@@ -48,7 +51,7 @@ struct Benchmark {
 
 #[derive(Debug, Clone)]
 struct Metadata {
-    _workspace_root: PathBuf,
+    workspace_root: PathBuf,
     target_directory: PathBuf,
     _package_dir: PathBuf,
     benchmarks: Vec<Benchmark>,
@@ -67,7 +70,8 @@ impl Metadata {
             .unwrap();
 
         let package_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-
+        let workspace_root = meta.workspace_root.clone().into_std_path_buf();
+        let target_directory = meta.target_directory.clone().into_std_path_buf();
         let benchmarks = meta
             .workspace_packages()
             .iter()
@@ -76,12 +80,12 @@ impl Metadata {
             .targets
             .iter()
             .filter(|&t| t.kind.contains(&"bench".to_owned()))
-            .map(|t| Benchmark::new(&t.name, &package_dir, meta.target_directory.as_std_path()))
+            .map(|t| Benchmark::new(&t.name, &package_dir, &target_directory))
             .collect::<Vec<Benchmark>>();
 
         Self {
-            _workspace_root: meta.workspace_root.into_std_path_buf(),
-            target_directory: meta.target_directory.into_std_path_buf(),
+            workspace_root,
+            target_directory,
             _package_dir: package_dir,
             benchmarks,
         }
@@ -138,7 +142,7 @@ impl Benchmark {
         self.run_bench();
     }
 
-    pub fn run_asserted(&self) {
+    pub fn run_asserted(&self, meta: &Metadata) {
         if let Some(expected_path) = &self.expected_path {
             let expected_runs: ExpectedRuns =
                 serde_json::from_reader(File::open(expected_path).expect("File should exist"))
@@ -146,6 +150,16 @@ impl Benchmark {
 
             self.clean_benchmark();
 
+            let schema: Value = serde_json::from_reader(
+                File::open(
+                    meta.workspace_root
+                        .join("iai-callgrind-runner/schemas/summary.v1.schema.json"),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+            let mut scope = json_schema::Scope::new();
+            let compiled = scope.compile_and_return(schema, false).unwrap();
             for (index, runs) in expected_runs.runs.iter().enumerate() {
                 print_info(format!(
                     "Running {}: ({}/{})",
@@ -156,7 +170,7 @@ impl Benchmark {
                 self.run_bench();
 
                 for expected_run in runs {
-                    expected_run.assert(&self.base_dir, &self.template_data);
+                    expected_run.assert(&self.base_dir, &self.template_data, &compiled);
                 }
             }
         }
@@ -201,7 +215,7 @@ impl BenchmarkRunner {
 
         for bench in benchmarks {
             if bench.is_verifiable() {
-                bench.run_asserted();
+                bench.run_asserted(&self.metadata);
             } else {
                 bench.run();
             }
@@ -212,7 +226,12 @@ impl BenchmarkRunner {
 }
 
 impl ExpectedRun {
-    pub fn assert(&self, base_dir: &Path, template_data: &HashMap<String, String>) {
+    pub fn assert(
+        &self,
+        base_dir: &Path,
+        template_data: &HashMap<String, String>,
+        schema: &ScopedSchema,
+    ) {
         let function = Template::new(&self.function)
             .render_string(template_data)
             .expect("Rendering template string should succeed");
@@ -238,7 +257,13 @@ impl ExpectedRun {
             .map(Result::unwrap)
             .collect::<HashSet<PathBuf>>();
 
+        let mut summary = None;
         for file in self.expected.files.iter().map(|f| dir.join(f)) {
+            if let Some(file_name) = file.file_name() {
+                if file_name == "summary.json" {
+                    summary = Some(file.clone());
+                }
+            }
             assert!(
                 real_files.remove(&file),
                 "Expected file '{}' does not exist",
@@ -260,9 +285,25 @@ impl ExpectedRun {
                 files.len()
             );
 
-            files.into_iter().for_each(|file| {
+            for file in files.into_iter() {
+                if let Some(file_name) = file.file_name() {
+                    if file_name == "summary.json" {
+                        summary = Some(file.clone());
+                    }
+                }
                 real_files.remove(&file);
-            });
+            }
+        }
+
+        if let Some(summary) = summary {
+            print_info(format!("Validating summary {}", summary.display()));
+            let instance: Value = serde_json::from_reader(File::open(&summary).unwrap()).unwrap();
+            let result = schema.validate(&instance);
+            if !result.is_valid() {
+                for error in result.errors {
+                    print_error(format!("{}: Validation error: {error}", summary.display()))
+                }
+            }
         }
 
         assert!(

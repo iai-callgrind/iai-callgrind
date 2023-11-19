@@ -63,6 +63,7 @@ iname
 indexmap
 indexset
 jcnd
+jsonschema
 kcachegrind
 lcov
 llhits
@@ -105,6 +106,7 @@ xtleak
 xtree
 valgrind
 valgrind's
+valico
 vulnaribility
 walkdir
 yesno
