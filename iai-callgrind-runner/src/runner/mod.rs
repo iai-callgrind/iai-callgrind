@@ -15,8 +15,6 @@ use log::debug;
 pub mod envs {
     pub const IAI_CALLGRIND_COLOR: &str = "IAI_CALLGRIND_COLOR";
     pub const IAI_CALLGRIND_LOG: &str = "IAI_CALLGRIND_LOG";
-    pub const IAI_CALLGRIND_REGRESSION: &str = "IAI_CALLGRIND_REGRESSION";
-    pub const IAI_CALLGRIND_REGRESSION_FAIL_FAST: &str = "IAI_CALLGRIND_REGRESSION_FAIL_FAST";
 
     pub const CARGO_PKG_NAME: &str = "CARGO_PKG_NAME";
     pub const CARGO_TARGET_DIR: &str = "CARGO_TARGET_DIR";
