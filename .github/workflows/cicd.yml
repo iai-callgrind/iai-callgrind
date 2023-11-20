@@ -56,7 +56,7 @@ jobs:
       - uses: taiki-e/install-action@cargo-hack
       - uses: taiki-e/install-action@cargo-minimal-versions
       - name: Check build with minimal versions
-        run: cargo minimal-versions build --workspace --all-targets
+        run: cargo minimal-versions check --workspace --all-targets --ignore-private
 
   format:
     name: Check format and spelling
@@ -129,20 +129,18 @@ jobs:
         if: ${{ matrix.ui_tests && failure() }}
         run: |
           if grep -q '^test ui \.\.\. FAILED$' test.output; then
-            TRYBUILD=overwrite cargo test --all-features ui
+            TRYBUILD=overwrite cargo test ${{ matrix.ui_tests }} ui
             git diff iai-callgrind/tests/ui
           fi
           exit 1
       - name: Bench
-        run: cargo bench --all-features
-        env:
-          IAI_CALLGRIND_RUNNER: /home/runner/work/iai-callgrind/iai-callgrind/target/release/iai-callgrind-runner
-          # IAI_CALLGRIND_LOG: trace
-      - name: Bench second run
-        run: cargo bench --all-features
-        env:
-          IAI_CALLGRIND_RUNNER: /home/runner/work/iai-callgrind/iai-callgrind/target/release/iai-callgrind-runner
-          # IAI_CALLGRIND_LOG: trace
+        run: cargo run --package benchmark-tests --profile=bench --bin bench
+        # env:
+        # IAI_CALLGRIND_LOG: trace
+      - uses: actions/upload-artifact@v3
+        with:
+          name: iai-callgrind-benchmarks
+          path: "target/iai"
 
   docs:
     needs: [base]

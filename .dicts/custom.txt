@@ -51,9 +51,11 @@ dotgraphs
 dtolnay
 elems
 estimatedcycles
+exitcode
 flamegraph
 flamegraphs
 funcs
+gmax
 grcov
 ildmr
 ilmr
@@ -61,6 +63,7 @@ iname
 indexmap
 indexset
 jcnd
+jsonschema
 kcachegrind
 lcov
 llhits
@@ -85,6 +88,7 @@ rustdoc
 rustfmt
 rustup
 sandboxing
+schemars
 serde
 setarch
 shlex
@@ -102,6 +106,7 @@ xtleak
 xtree
 valgrind
 valgrind's
+valico
 vulnaribility
 walkdir
 yesno

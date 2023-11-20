@@ -204,7 +204,7 @@ binary_benchmark_group!(
 binary_benchmark_group!(
     name = group_test_benchmark_id;
     benchmark = |"benchmark-tests-printenv", group: &mut BinaryBenchmarkGroup| {
-        for i in 0..10 {
+        for i in 0..2 {
             let env = format!("MY_ENV={i}");
             group.bench(
                 Run::with_arg(

@@ -3,6 +3,8 @@ use std::ffi::OsString;
 use std::fmt::Display;
 use std::path::PathBuf;
 
+#[cfg(feature = "schema")]
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -73,6 +75,7 @@ pub enum Direction {
 /// See the [Callgrind
 /// documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum EventKind {
     /// The default event. I cache reads (which equals the number of instructions executed)
     Ir,
@@ -443,12 +446,8 @@ impl LibraryBenchmarkConfig {
 }
 
 impl RawArgs {
-    pub fn new<I, T>(args: T) -> Self
-    where
-        I: AsRef<str>,
-        T: IntoIterator<Item = I>,
-    {
-        args.into_iter().collect::<Self>()
+    pub fn new(args: Vec<String>) -> Self {
+        Self(args)
     }
 
     pub fn extend_ignore_flag<I, T>(&mut self, args: T)
@@ -456,14 +455,18 @@ impl RawArgs {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        self.0.extend(args.into_iter().map(|s| {
-            let string = s.as_ref();
-            if string.starts_with('-') {
-                string.to_owned()
-            } else {
-                format!("--{string}")
-            }
-        }));
+        self.0.extend(
+            args.into_iter()
+                .filter(|s| !s.as_ref().is_empty())
+                .map(|s| {
+                    let string = s.as_ref();
+                    if string.starts_with('-') {
+                        string.to_owned()
+                    } else {
+                        format!("--{string}")
+                    }
+                }),
+        );
     }
 
     pub fn from_command_line_args(args: Vec<String>) -> Self {

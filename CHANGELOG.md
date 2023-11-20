@@ -22,6 +22,38 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+* ([#31](https://github.com/iai-callgrind/iai-callgrind/issues/31)): Machine
+  readable output. This feature adds an environment variable
+  `IAI_CALLGRIND_SAVE_SUMMARY` and command line argument `--save-summary` to
+  create a `summary.json` next to the usual output files of a benchmark which
+  contains all the terminal output data and more in a machine readable output
+  format. The json schema for the json summary file is stored in
+  `iai-callgrind-runner/schemas/*.json`.
+
+### Changed
+
+* Like discussed in #31, the parsing of command line arguments for iai-callgrind
+  in `cargo bench ... -- ARGS` had to change. Instead of interpreting all `ARGS`
+  as Callgrind arguments, Callgrind arguments can now be passed with the
+  `--callgrind-args=...` option, so other iai-callgrind arguments are now
+  possible, for example the `--save-summary=...` option in #31 or even `--help`
+  and `--version`.
+* The names of output files and directories of binary benchmarks changed the
+  order from `ID.BINARY` to `BINARY.ID` to match the file naming scheme
+  `FUNCTION.ID` of library benchmarks.
+
+### Fixed
+
+* The `iai-callgrind-runner` dependencies `regex` and `glob` were removed from
+  the `iai-callgrind` dependencies.
+* The `stderr` output from a valgrind run wasn't shown in case of an error
+  during the benchmark run because of the change to use `--log-file` to store
+  valgrind output in log files. However, not all valgrind output goes into the
+  log file in case of an error, so it is still necessary to print the `stderr`
+  output after the log file content to see all error output of valgrind.
+
 ### [0.8.0] - 2023-11-10
 
 ### Added

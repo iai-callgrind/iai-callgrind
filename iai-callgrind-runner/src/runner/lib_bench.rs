@@ -13,16 +13,17 @@ use super::meta::Metadata;
 use super::print::{Formatter, Header, VerticalFormat};
 use super::tool::{RunOptions, ToolConfigs};
 use super::Error;
-use crate::api::{self, LibraryBenchmark, RawArgs};
+use crate::api::{self, LibraryBenchmark};
 use crate::runner::print::tool_summary_header;
+use crate::runner::summary::{
+    BenchmarkKind, BenchmarkSummary, CallgrindSummary, CostsSummary, SummaryOutput,
+};
 use crate::runner::tool::{ToolOutputPath, ValgrindTool};
 use crate::util::receive_benchmark;
 
 #[derive(Debug)]
 struct Config {
-    #[allow(unused)]
     package_dir: PathBuf,
-    #[allow(unused)]
     bench_file: PathBuf,
     #[allow(unused)]
     module: String,
@@ -71,7 +72,7 @@ impl Groups {
     ) -> Result<Self> {
         let global_config = benchmark.config;
         let mut groups = vec![];
-        let command_line_args = RawArgs::from_command_line_args(benchmark.command_line_args);
+        let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
 
         for library_benchmark_group in benchmark.groups {
             let module_path = if let Some(group_id) = &library_benchmark_group.id {
@@ -97,7 +98,7 @@ impl Groups {
                     ]);
                     let envs = config.resolve_envs();
                     let callgrind_args =
-                        Args::from_raw_args(&[&config.raw_callgrind_args, &command_line_args])?;
+                        Args::from_raw_args(&[&config.raw_callgrind_args, &meta_callgrind_args])?;
                     let flamegraph = config.flamegraph.map(Into::into);
                     let lib_bench = LibBench {
                         bench_index,
@@ -130,16 +131,9 @@ impl Groups {
         let mut is_regressed = false;
         for group in &self.0 {
             for bench in &group.benches {
-                if let Err(error) = bench.run(config, group) {
-                    // We catch the regression error here and return immediately it if it is fatal.
-                    // Else, we return the regression error later which let's the main process fail
-                    // but in a non-fatal way
-                    if let Some(Error::RegressionError(false)) = error.downcast_ref::<Error>() {
-                        is_regressed = true;
-                    } else {
-                        return Err(error);
-                    }
-                }
+                let summary = bench.run(config, group)?;
+                summary.save()?;
+                summary.check_regression(&mut is_regressed)?;
             }
         }
 
@@ -152,7 +146,8 @@ impl Groups {
 }
 
 impl LibBench {
-    fn run(&self, config: &Config, group: &Group) -> Result<()> {
+    #[allow(clippy::too_many_lines)]
+    fn run(&self, config: &Config, group: &Group) -> Result<BenchmarkSummary> {
         let callgrind_command = CallgrindCommand::new(&config.meta);
         let args = if let Some(group_id) = &group.id {
             vec![
@@ -186,8 +181,27 @@ impl LibBench {
                 &self.function,
             )
         };
+
         let log_path = output_path.to_log_output();
         log_path.init();
+
+        let summary_output = config.meta.args.save_summary.map(|format| {
+            let output = SummaryOutput::new(format, &output_path.dir);
+            output.init();
+            output
+        });
+
+        let mut benchmark_summary = BenchmarkSummary::new(
+            BenchmarkKind::LibraryBenchmark,
+            config.meta.project_root.clone(),
+            config.package_dir.clone(),
+            config.bench_file.clone(),
+            config.bench_bin.clone(),
+            &[&group.module, &self.function],
+            self.id.clone(),
+            self.args.clone(),
+            summary_output,
+        );
 
         let header = Header::from_segments(
             [&group.module, &self.function],
@@ -218,21 +232,48 @@ impl LibBench {
             None
         };
 
-        let string = VerticalFormat::default().format(&new_costs, old_costs.as_ref())?;
+        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
+        let string = VerticalFormat::default().format(&costs_summary)?;
         print!("{string}");
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stdout())?;
 
+        let (regressions, fail_fast) = if let Some(regression) = &self.regression {
+            (
+                regression.check_and_print(&costs_summary),
+                regression.fail_fast,
+            )
+        } else {
+            (vec![], false)
+        };
+
+        let callgrind_summary = benchmark_summary
+            .callgrind_summary
+            .insert(CallgrindSummary::new(
+                fail_fast,
+                vec![log_path.to_path()],
+                vec![output_path.to_path()],
+            ));
+
+        callgrind_summary.add_summary(
+            &config.bench_bin,
+            &args,
+            &old_output,
+            costs_summary,
+            regressions,
+        );
+
         if let Some(flamegraph_config) = self.flamegraph.clone() {
-            Flamegraph::new(header.to_title(), flamegraph_config).create(
+            callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
+                .create(
                 &output_path,
                 Some(&sentinel),
                 &config.meta.project_root,
             )?;
         }
 
-        self.tools.run(
+        benchmark_summary.tool_summaries = self.tools.run(
             &config.meta,
             &config.bench_bin,
             &args,
@@ -240,11 +281,7 @@ impl LibBench {
             &output_path,
         )?;
 
-        if let Some(regression) = &self.regression {
-            regression.check_and_print(&new_costs, old_costs.as_ref())?;
-        }
-
-        Ok(())
+        Ok(benchmark_summary)
     }
 }
 
@@ -264,8 +301,8 @@ impl Runner {
             .parse::<usize>()
             .unwrap();
 
-        let benchmark = receive_benchmark(num_bytes)?;
-        let meta = Metadata::new()?;
+        let benchmark: LibraryBenchmark = receive_benchmark(num_bytes)?;
+        let meta = Metadata::new(&benchmark.command_line_args)?;
         let groups = Groups::from_library_benchmark(&module, benchmark, &meta)?;
 
         Ok(Self {

@@ -22,6 +22,7 @@ runner = [
   "dep:anyhow",
   "dep:bincode",
   "dep:cargo_metadata",
+  "dep:clap",
   "dep:colored",
   "dep:env_logger",
   "dep:glob",
@@ -30,11 +31,14 @@ runner = [
   "dep:log",
   "dep:regex",
   "dep:sanitize-filename",
+  "dep:serde",
+  "dep:serde_json",
   "dep:shlex",
   "dep:tempfile",
   "dep:version-compare",
   "dep:which",
 ]
+schema = ["default", "dep:schemars"]
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]
@@ -44,6 +48,10 @@ all-features = true
 anyhow = { version = ">=1.0.46, <2", optional = true }
 bincode = { version = "1", optional = true }
 cargo_metadata = { version = "0.17", optional = true }
+clap = { version = ">=3.2.3, <3.2.24", optional = true, features = [
+  "derive",
+  "env",
+] }
 colored = { version = ">=1.6, <3", optional = true }
 env_logger = { version = ">=0.7, <0.11", optional = true }
 glob = { version = "0.3", optional = true }
@@ -54,7 +62,9 @@ inferno = { version = "0.11.10", optional = true, default-features = false, feat
 log = { version = "0.4", optional = true }
 regex = { version = "1", optional = true }
 sanitize-filename = { version = "0.5", optional = true }
+schemars = { version = "0.8.16", features = ["indexmap1"], optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
 shlex = { version = "1", optional = true }
 tempfile = { version = "3", optional = true }
 version-compare = { version = "0.1", optional = true }
@@ -72,3 +82,11 @@ name = "iai-callgrind-runner"
 path = "src/main.rs"
 test = true
 bench = true
+required-features = ["default"]
+
+[[bin]]
+name = "schema-gen"
+path = "src/schema_gen.rs"
+test = false
+bench = false
+required-features = ["schema"]
