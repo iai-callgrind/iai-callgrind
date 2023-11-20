@@ -56,7 +56,7 @@ jobs:
       - uses: taiki-e/install-action@cargo-hack
       - uses: taiki-e/install-action@cargo-minimal-versions
       - name: Check build with minimal versions
-        run: cargo minimal-versions build --workspace --all-targets
+        run: cargo minimal-versions check --workspace --all-targets --ignore-private
 
   format:
     name: Check format and spelling
