@@ -48,7 +48,7 @@ all-features = true
 anyhow = { version = ">=1.0.46, <2", optional = true }
 bincode = { version = "1", optional = true }
 cargo_metadata = { version = "0.17", optional = true }
-clap = { version = ">=3.2.2, <3.2.24", optional = true, features = [
+clap = { version = ">=3.2.3, <3.2.24", optional = true, features = [
   "derive",
   "env",
 ] }
