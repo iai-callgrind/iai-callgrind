@@ -1,6 +1,5 @@
 use std::ffi::OsString;
 use std::io::stdout;
-use std::path::PathBuf;
 
 use anyhow::Result;
 
@@ -12,24 +11,13 @@ use super::callgrind::{CallgrindCommand, Regression};
 use super::meta::Metadata;
 use super::print::{Formatter, Header, VerticalFormat};
 use super::tool::{RunOptions, ToolConfigs};
-use super::Error;
+use super::{Config, Error};
 use crate::api::{self, LibraryBenchmark};
 use crate::runner::print::tool_summary_header;
 use crate::runner::summary::{
     BenchmarkKind, BenchmarkSummary, CallgrindSummary, CostsSummary, SummaryOutput,
 };
 use crate::runner::tool::{ToolOutputPath, ValgrindTool};
-use crate::util::receive_benchmark;
-
-#[derive(Debug)]
-struct Config {
-    package_dir: PathBuf,
-    bench_file: PathBuf,
-    #[allow(unused)]
-    module: String,
-    bench_bin: PathBuf,
-    meta: Metadata,
-}
 
 // A `Group` is the organizational unit and counterpart of the `library_benchmark_group!` macro
 #[derive(Debug)]
@@ -286,35 +274,11 @@ impl LibBench {
 }
 
 impl Runner {
-    fn generate<I>(mut env_args_iter: I) -> Result<Self>
-    where
-        I: Iterator<Item = OsString> + std::fmt::Debug,
-    {
-        let package_dir = PathBuf::from(env_args_iter.next().unwrap());
-        let bench_file = PathBuf::from(env_args_iter.next().unwrap());
-        let module = env_args_iter.next().unwrap().to_str().unwrap().to_owned();
-        let bench_bin = PathBuf::from(env_args_iter.next().unwrap());
-        let num_bytes = env_args_iter
-            .next()
-            .unwrap()
-            .to_string_lossy()
-            .parse::<usize>()
-            .unwrap();
+    fn generate(library_benchmark: LibraryBenchmark, config: Config) -> Result<Self> {
+        let groups =
+            Groups::from_library_benchmark(&config.module, library_benchmark, &config.meta)?;
 
-        let benchmark: LibraryBenchmark = receive_benchmark(num_bytes)?;
-        let meta = Metadata::new(&benchmark.command_line_args)?;
-        let groups = Groups::from_library_benchmark(&module, benchmark, &meta)?;
-
-        Ok(Self {
-            config: Config {
-                package_dir,
-                bench_file,
-                module,
-                bench_bin,
-                meta,
-            },
-            groups,
-        })
+        Ok(Self { config, groups })
     }
 
     fn run(&self) -> Result<()> {
@@ -322,9 +286,6 @@ impl Runner {
     }
 }
 
-pub fn run<I>(env_args_iter: I) -> Result<()>
-where
-    I: Iterator<Item = OsString> + std::fmt::Debug,
-{
-    Runner::generate(env_args_iter)?.run()
+pub fn run(library_benchmark: LibraryBenchmark, config: Config) -> Result<()> {
+    Runner::generate(library_benchmark, config)?.run()
 }

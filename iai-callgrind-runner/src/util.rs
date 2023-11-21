@@ -1,41 +1,15 @@
 //! This module provides common utility functions
 use std::ffi::OsStr;
-use std::io::{self, stdin, BufWriter, Read, Write};
+use std::io::{self, BufWriter, Write};
 use std::ops::Neg;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use log::{debug, log_enabled, trace, Level};
 use which::which;
 
 use crate::error::Error;
-
-/// Method to read, decode and deserialize the data sent by iai-callgrind
-///
-/// iai-callgrind uses elements from the [`crate::api`], so the runner can understand which elements
-/// can be received by this method
-pub fn receive_benchmark<T>(num_bytes: usize) -> Result<T>
-where
-    T: serde::de::DeserializeOwned,
-{
-    let mut encoded = vec![];
-    let mut stdin = stdin();
-    stdin
-        .read_to_end(&mut encoded)
-        .with_context(|| "Failed to read encoded configuration")?;
-    assert!(
-        encoded.len() == num_bytes,
-        "Bytes mismatch when decoding configuration: Expected {num_bytes} bytes but received: {} \
-         bytes",
-        encoded.len()
-    );
-
-    let benchmark: T =
-        bincode::deserialize(&encoded).with_context(|| "Failed to decode configuration")?;
-
-    Ok(benchmark)
-}
 
 /// Convert a boolean value to a `yes` or `no` string
 pub fn bool_to_yesno(value: bool) -> String {
