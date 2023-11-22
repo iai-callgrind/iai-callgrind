@@ -1,5 +1,6 @@
 ASLR
 Aparicio
+Boolish
 CALLGRIND
 Cachegrind
 Callgrind

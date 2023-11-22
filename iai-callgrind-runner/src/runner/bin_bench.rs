@@ -18,12 +18,13 @@ use super::meta::Metadata;
 use super::print::{Formatter, Header, VerticalFormat};
 use super::summary::BenchmarkSummary;
 use super::tool::{RunOptions, ToolConfigs};
+use super::Config;
 use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig};
 use crate::error::Error;
 use crate::runner::print::tool_summary_header;
 use crate::runner::summary::{BenchmarkKind, CallgrindSummary, CostsSummary, SummaryOutput};
 use crate::runner::tool::{ToolOutputPath, ValgrindTool};
-use crate::util::{copy_directory, receive_benchmark, write_all_to_stderr, write_all_to_stdout};
+use crate::util::{copy_directory, write_all_to_stderr, write_all_to_stdout};
 
 #[derive(Debug, Clone)]
 struct Assistant {
@@ -63,17 +64,6 @@ struct BinBench {
     flamegraph: Option<FlamegraphConfig>,
     regression: Option<Regression>,
     tools: ToolConfigs,
-}
-
-#[derive(Debug)]
-struct Config {
-    #[allow(unused)]
-    package_dir: PathBuf,
-    #[allow(unused)]
-    bench_file: PathBuf,
-    module: String,
-    bench_bin: PathBuf,
-    meta: Metadata,
 }
 
 #[derive(Debug)]
@@ -735,37 +725,9 @@ impl Groups {
 }
 
 impl Runner {
-    fn generate<I>(mut env_args_iter: I) -> Result<Self>
-    where
-        I: Iterator<Item = OsString> + std::fmt::Debug,
-    {
-        // The following unwraps are safe because these arguments are assuredly submitted by the
-        // iai_callgrind::main macro
-        let package_dir = PathBuf::from(env_args_iter.next().unwrap());
-        let bench_file = PathBuf::from(env_args_iter.next().unwrap());
-        let module = env_args_iter.next().unwrap().to_str().unwrap().to_owned();
-        let bench_bin = PathBuf::from(env_args_iter.next().unwrap());
-        let num_bytes = env_args_iter
-            .next()
-            .unwrap()
-            .to_string_lossy()
-            .parse::<usize>()
-            .unwrap();
-
-        let benchmark: BinaryBenchmark = receive_benchmark(num_bytes)?;
-        let meta = Metadata::new(&benchmark.command_line_args)?;
-        let groups = Groups::from_binary_benchmark(&module, benchmark, &meta)?;
-
-        Ok(Self {
-            config: Config {
-                package_dir,
-                bench_file,
-                module,
-                bench_bin,
-                meta,
-            },
-            groups,
-        })
+    fn generate(binary_benchmark: BinaryBenchmark, config: Config) -> Result<Self> {
+        let groups = Groups::from_binary_benchmark(&config.module, binary_benchmark, &config.meta)?;
+        Ok(Self { groups, config })
     }
 
     fn run(&self) -> Result<()> {
@@ -816,9 +778,6 @@ impl Sandbox {
     }
 }
 
-pub fn run<I>(env_args_iter: I) -> Result<()>
-where
-    I: Iterator<Item = OsString> + std::fmt::Debug,
-{
-    Runner::generate(env_args_iter)?.run()
+pub fn run(binary_benchmark: BinaryBenchmark, config: Config) -> Result<()> {
+    Runner::generate(binary_benchmark, config)?.run()
 }

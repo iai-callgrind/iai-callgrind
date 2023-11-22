@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   contains all the terminal output data and more in a machine readable output
   format. The json schema for the json summary file is stored in
   `iai-callgrind-runner/schemas/*.json`.
+* Add command line arguments `--allow-aslr`, `--regression` and
+  `--regression-fail-fast` which have higher precedence than their environment
+  variable counterparts `IAI_CALLGRIND_ALLOW_ASLR`, `IAI_CALLGRIND_REGRESSION`
+  and `IAI_CALLGRIND_REGRESSION_FAIL_FAST`
 
 ### Changed
 
