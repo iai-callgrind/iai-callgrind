@@ -58,7 +58,7 @@ fn bench_subprocess() -> io::Result<Output> {
         .tool_override(Tool::new(ValgrindTool::DHAT))
         .tool_override(
             Tool::new(ValgrindTool::Memcheck)
-                .args(["--leak-check=full", "--errors-for-leak-kinds=all"])
+                .args(["--leak-check=full", "--errors-for-leak-kinds=all", "--error-exitcode=0"])
         )
         .tool_override(Tool::new(ValgrindTool::Massif))
 )]

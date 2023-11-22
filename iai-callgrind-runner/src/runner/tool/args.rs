@@ -10,6 +10,7 @@ pub struct ToolArgs {
     tool: ValgrindTool,
     output_paths: Vec<OsString>,
     log_path: Option<OsString>,
+    error_exitcode: String,
     other: Vec<String>,
 }
 
@@ -17,6 +18,7 @@ impl ToolArgs {
     // TODO: Sort out --tool
     pub fn from_raw_args(tool: ValgrindTool, raw_args: api::RawArgs) -> Self {
         let mut other = vec![];
+        let mut error_exitcode = None;
         for arg in raw_args.0 {
             match arg
                 .trim()
@@ -32,6 +34,9 @@ impl ToolArgs {
                      iai-callgrind",
                     tool.id()
                 ),
+                Some(("--error-exitcode", value)) => {
+                    error_exitcode = Some(value.to_owned());
+                }
                 None if matches!(
                     arg.as_str(),
                     "-h" | "--help"
@@ -51,6 +56,15 @@ impl ToolArgs {
             tool,
             output_paths: Vec::default(),
             log_path: None,
+            error_exitcode: error_exitcode.unwrap_or_else(|| match tool {
+                ValgrindTool::Memcheck | ValgrindTool::Helgrind | ValgrindTool::DRD => {
+                    "201".to_owned()
+                }
+                ValgrindTool::Callgrind
+                | ValgrindTool::Massif
+                | ValgrindTool::DHAT
+                | ValgrindTool::BBV => "0".to_owned(),
+            }),
             other,
         }
     }
@@ -130,6 +144,7 @@ impl ToolArgs {
         let mut vec: Vec<OsString> = vec![];
 
         vec.push(format!("--tool={}", self.tool.id()).into());
+        vec.push(format!("--error-exitcode={}", &self.error_exitcode).into());
         vec.extend(self.other.iter().map(OsString::from));
         vec.extend_from_slice(&self.output_paths);
         if let Some(log_arg) = self.log_path.as_ref() {
