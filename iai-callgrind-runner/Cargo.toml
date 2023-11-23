@@ -59,6 +59,7 @@ indexmap = { version = "1.9", optional = true, features = ["serde"] }
 inferno = { version = "0.11.10", optional = true, default-features = false, features = [
   'multithreaded',
 ] }
+lazy_static = { version = "1.4.0" }
 log = { version = "0.4", optional = true }
 regex = { version = "1", optional = true }
 sanitize-filename = { version = "0.5", optional = true }

@@ -1,4 +1,6 @@
 pub mod args;
+pub mod format;
+pub mod logfile_parser;
 
 use std::ffi::OsString;
 use std::fmt::Display;
@@ -8,8 +10,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
 use anyhow::{anyhow, Context, Result};
-use colored::Colorize;
 use glob::glob;
+use indexmap::IndexMap;
 use log::{debug, error, log_enabled, Level};
 use regex::Regex;
 #[cfg(feature = "schema")]
@@ -18,15 +20,16 @@ use serde::{Deserialize, Serialize};
 
 use self::args::ToolArgs;
 use super::callgrind::parser::Parser;
-use super::dhat::logfile_parser::LogfileParser;
+use super::dhat::logfile_parser::LogfileParser as DhatLogfileParser;
 use super::meta::Metadata;
 use super::summary::ToolSummary;
 use crate::api::ExitWith;
 use crate::error::Error;
-use crate::runner::dhat::format::LogfileSummaryFormatter;
 use crate::runner::print::tool_summary_header;
 use crate::runner::summary::ToolRunSummary;
-use crate::util::{make_relative, resolve_binary_path, truncate_str_utf8};
+use crate::runner::tool::format::LogfileSummaryFormatter;
+use crate::runner::tool::logfile_parser::LogfileParser;
+use crate::util::{resolve_binary_path, truncate_str_utf8};
 use crate::{api, util};
 
 #[derive(Debug, Default, Clone)]
@@ -235,12 +238,12 @@ impl ToolConfigs {
             )?;
 
             if let ValgrindTool::DHAT = tool {
-                let parser = LogfileParser {
+                let parser = DhatLogfileParser {
                     root_dir: meta.project_root.clone(),
                 };
                 let logfile_summaries = parser.parse(&log_path)?;
                 for logfile_summary in logfile_summaries {
-                    print!("{}", LogfileSummaryFormatter::format(&logfile_summary));
+                    LogfileSummaryFormatter::print(&logfile_summary);
 
                     tool_summary.summaries.push(ToolRunSummary {
                         command: logfile_summary.command.to_string_lossy().to_string(),
@@ -252,30 +255,32 @@ impl ToolConfigs {
 
                 tool_summary.log_paths = log_path.real_paths();
                 tool_summary.out_paths = output_path.real_paths();
-            } else if tool_config.tool.has_output_file() {
-                for path in output_path.real_paths() {
-                    tool_summary.out_paths.push(path.clone());
-
-                    let path = make_relative(&meta.project_root, path);
-                    println!(
-                        "  {:<18}{}",
-                        "Output:",
-                        path.display().to_string().blue().bold()
-                    );
-                }
-
-                tool_summary.log_paths = log_path.real_paths();
             } else {
-                for path in log_path.real_paths() {
-                    tool_summary.log_paths.push(path.clone());
-
-                    let path = make_relative(&meta.project_root, path);
-                    println!(
-                        "  {:<18}{}",
-                        "Output:",
-                        path.display().to_string().blue().bold()
-                    );
+                let parser = LogfileParser {
+                    root_dir: meta.project_root.clone(),
+                };
+                let logfile_summaries = parser.parse(&log_path)?;
+                for logfile_summary in logfile_summaries {
+                    LogfileSummaryFormatter::print(&logfile_summary);
+                    let mut summary: IndexMap<String, String> =
+                        logfile_summary.fields.iter().cloned().collect();
+                    if !logfile_summary.body.is_empty() {
+                        summary.insert("Summary".to_owned(), logfile_summary.body.join("\n"));
+                    }
+                    if let Some(error_summary) = logfile_summary.error_summary {
+                        summary.insert("Error Summary".to_owned(), error_summary);
+                    }
+                    tool_summary.summaries.push(ToolRunSummary {
+                        command: logfile_summary.command.to_string_lossy().to_string(),
+                        pid: logfile_summary.pid.to_string(),
+                        baseline: None,
+                        summary,
+                    });
                 }
+                if tool.has_output_file() {
+                    tool_summary.out_paths = output_path.real_paths();
+                }
+                tool_summary.log_paths = log_path.real_paths();
             }
 
             output.dump_log(log::Level::Info);

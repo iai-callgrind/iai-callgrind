@@ -3,12 +3,27 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
+use lazy_static::lazy_static;
 use log::debug;
+use regex::Regex;
 
-use super::LogfileSummary;
 use crate::error::Error;
 use crate::runner::callgrind::parser::Parser;
+use crate::runner::tool::logfile_parser::LogfileSummary;
 use crate::runner::tool::ToolOutputPath;
+use crate::util::make_relative;
+
+lazy_static! {
+    static ref EXTRACT_FIELDS_RE: Regex =
+        regex::Regex::new(r"^\s*==[0-9]+==\s*(?<key>.*?)\s*:\s*(?<value>.*)\s*$")
+            .expect("Regex should compile");
+    static ref EMPTY_LINE_RE: Regex =
+        regex::Regex::new(r"^\s*==[0-9]+==\s*$").expect("Regex should compile");
+    static ref FIXUP_NUMBERS_RE: Regex =
+        regex::Regex::new(r"([0-9]),([0-9])").expect("Regex should compile");
+    static ref EXTRACT_PID_RE: Regex =
+        regex::Regex::new(r"^\s*==([0-9]+)==.*").expect("Regex should compile");
+}
 
 pub struct LogfileParser {
     pub root_dir: PathBuf,
@@ -32,10 +47,8 @@ impl LogfileParser {
 
         let line = iter
             .next()
-            .ok_or_else(|| Error::ParseError((path, "Empty file".to_owned())))?;
-        let extract_pid_re =
-            regex::Regex::new(r"^\s*==([0-9]+)==.*").expect("Regex should compile");
-        let pid = extract_pid_re
+            .ok_or_else(|| Error::ParseError((path.clone(), "Empty file".to_owned())))?;
+        let pid = EXTRACT_PID_RE
             .captures(line.trim())
             .expect("Log output should not be malformed")
             .get(1)
@@ -44,28 +57,18 @@ impl LogfileParser {
             .parse::<i32>()
             .expect("Pid should be valid");
 
-        let extract_fields_re =
-            regex::Regex::new(r"^\s*==[0-9]+==\s*(?<key>.*?)\s*:\s*(?<value>.*)\s*$")
-                .expect("Regex should compile");
-        let empty_line_re = regex::Regex::new(r"^\s*==[0-9]+==\s*$").expect("Regex should compile");
-        let fixup_numbers_re = regex::Regex::new(r"([0-9]),([0-9])").expect("Regex should compile");
-
         let mut state = State::Header;
         let mut command = None;
         let mut fields = Vec::new();
-        for line in iter.filter(|line| !empty_line_re.is_match(line)) {
-            let caps = extract_fields_re.captures(&line);
+        // TODO: FIX PARSING WHEN VERBOSE
+        for line in iter.filter(|line| !EMPTY_LINE_RE.is_match(line)) {
+            let caps = EXTRACT_FIELDS_RE.captures(&line);
             match (&state, caps) {
                 (State::Header, Some(caps)) => {
                     let key = caps.name("key").unwrap().as_str();
                     if key.eq_ignore_ascii_case("command") {
                         let value = caps.name("value").unwrap().as_str();
-                        let path = PathBuf::from(value);
-                        command = if let Ok(relative) = path.strip_prefix(&self.root_dir) {
-                            Some(relative.to_owned())
-                        } else {
-                            Some(path)
-                        };
+                        command = Some(make_relative(&self.root_dir, value));
                         state = State::Body;
                     }
                 }
@@ -73,7 +76,7 @@ impl LogfileParser {
                 (State::Body, Some(caps)) => {
                     let key = caps.name("key").unwrap().as_str();
                     let value = caps.name("value").unwrap().as_str();
-                    let value = fixup_numbers_re.replace_all(value, "$1$2");
+                    let value = FIXUP_NUMBERS_RE.replace_all(value, "$1$2");
                     fields.push((key.to_owned(), value.to_string()));
                 }
                 (State::Body, None) => break,
@@ -84,6 +87,9 @@ impl LogfileParser {
             command: command.expect("A command should be present"),
             pid,
             fields,
+            body: vec![],
+            error_summary: None,
+            log_path: make_relative(&self.root_dir, path),
         })
     }
 }

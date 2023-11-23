@@ -47,6 +47,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * The names of output files and directories of binary benchmarks changed the
   order from `ID.BINARY` to `BINARY.ID` to match the file naming scheme
   `FUNCTION.ID` of library benchmarks.
+* ([#35](https://github.com/iai-callgrind/iai-callgrind/issues/35)): The
+  terminal output of other valgrind tool runs (like Memcheck, DRD, ...) is now
+  more informative and also shows the content of the log file, if any. If not
+  specified otherwise, Memcheck, DRD and Helgrind now run with
+  `--error-exitcode=201`. If any errors are detected by these tools, setting
+  this option to an exit code different from `0` causes the benchmark run to
+  fail immediately and show the whole logging output.
 
 ### Fixed
 

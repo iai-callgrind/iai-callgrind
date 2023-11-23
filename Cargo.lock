@@ -569,6 +569,7 @@ dependencies = [
  "glob",
  "indexmap",
  "inferno",
+ "lazy_static",
  "log",
  "pretty_assertions",
  "regex",
