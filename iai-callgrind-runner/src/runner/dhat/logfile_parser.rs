@@ -13,26 +13,36 @@ use crate::runner::tool::logfile_parser::LogfileSummary;
 use crate::runner::tool::ToolOutputPath;
 use crate::util::make_relative;
 
+// The different regex have to consider --time-stamp=yes
 lazy_static! {
-    static ref EXTRACT_FIELDS_RE: Regex =
-        regex::Regex::new(r"^\s*==[0-9]+==\s*(?<key>.*?)\s*:\s*(?<value>.*)\s*$")
-            .expect("Regex should compile");
+    static ref EXTRACT_FIELDS_RE: Regex = regex::Regex::new(
+        r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--)\s*(?<key>.*?)\s*:\s*(?<value>.*)\s*$"
+    )
+    .expect("Regex should compile");
     static ref EMPTY_LINE_RE: Regex =
-        regex::Regex::new(r"^\s*==[0-9]+==\s*$").expect("Regex should compile");
+        regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--)\s*$")
+            .expect("Regex should compile");
+    static ref STRIP_PREFIX_RE: Regex =
+        regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--) (?<rest>.*)$")
+            .expect("Regex should compile");
+    static ref EXTRACT_PID_RE: Regex =
+        regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?(?<pid>[0-9]+)(==|--).*")
+            .expect("Regex should compile");
     static ref FIXUP_NUMBERS_RE: Regex =
         regex::Regex::new(r"([0-9]),([0-9])").expect("Regex should compile");
-    static ref EXTRACT_PID_RE: Regex =
-        regex::Regex::new(r"^\s*==([0-9]+)==.*").expect("Regex should compile");
 }
 
 pub struct LogfileParser {
     pub root_dir: PathBuf,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum State {
     Header,
+    HeaderSpace,
     Body,
+    Fields,
+    Footer,
 }
 
 impl LogfileParser {
@@ -51,7 +61,7 @@ impl LogfileParser {
         let pid = EXTRACT_PID_RE
             .captures(line.trim())
             .expect("Log output should not be malformed")
-            .get(1)
+            .name("pid")
             .expect("Log output should contain pid")
             .as_str()
             .parse::<i32>()
@@ -59,27 +69,71 @@ impl LogfileParser {
 
         let mut state = State::Header;
         let mut command = None;
-        let mut fields = Vec::new();
-        // TODO: FIX PARSING WHEN VERBOSE
-        for line in iter.filter(|line| !EMPTY_LINE_RE.is_match(line)) {
-            let caps = EXTRACT_FIELDS_RE.captures(&line);
-            match (&state, caps) {
-                (State::Header, Some(caps)) => {
-                    let key = caps.name("key").unwrap().as_str();
-                    if key.eq_ignore_ascii_case("command") {
-                        let value = caps.name("value").unwrap().as_str();
-                        command = Some(make_relative(&self.root_dir, value));
-                        state = State::Body;
+        let mut fields = vec![];
+        let mut body = vec![];
+        for line in iter {
+            match &state {
+                State::Header if !EMPTY_LINE_RE.is_match(&line) => {
+                    if let Some(caps) = EXTRACT_FIELDS_RE.captures(&line) {
+                        let key = caps.name("key").unwrap().as_str();
+                        match key.to_ascii_lowercase().as_str() {
+                            "command" => {
+                                let value = caps.name("value").unwrap().as_str();
+                                command = Some(make_relative(&self.root_dir, value));
+                            }
+                            "parent pid" => {
+                                let value = caps.name("value").unwrap().as_str().to_owned();
+                                fields.push((key.to_owned(), value));
+                            }
+                            _ => {}
+                        }
                     }
                 }
-                (State::Header, None) => continue,
-                (State::Body, Some(caps)) => {
-                    let key = caps.name("key").unwrap().as_str();
-                    let value = caps.name("value").unwrap().as_str();
-                    let value = FIXUP_NUMBERS_RE.replace_all(value, "$1$2");
-                    fields.push((key.to_owned(), value.to_string()));
+                State::Header => state = State::HeaderSpace,
+                State::HeaderSpace if EMPTY_LINE_RE.is_match(&line) => {}
+                State::HeaderSpace | State::Body => {
+                    if state == State::HeaderSpace {
+                        state = State::Body;
+                    }
+                    if let Some(caps) = EXTRACT_FIELDS_RE.captures(&line) {
+                        let key = caps.name("key").unwrap().as_str();
+
+                        // Total: ... is the first line of the fields we're interested in
+                        if key.to_ascii_lowercase().as_str() == "total" {
+                            let value = caps.name("value").unwrap().as_str();
+                            let value = FIXUP_NUMBERS_RE.replace_all(value, "$1$2");
+                            fields.push((key.to_owned(), value.to_string()));
+
+                            state = State::Fields;
+                            continue;
+                        }
+                    }
+                    if let Some(caps) = STRIP_PREFIX_RE.captures(&line) {
+                        let rest_of_line = caps.name("rest").unwrap().as_str();
+                        body.push(rest_of_line.to_owned());
+                    } else {
+                        body.push(line);
+                    }
                 }
-                (State::Body, None) => break,
+                State::Fields => {
+                    if let Some(caps) = EXTRACT_FIELDS_RE.captures(&line) {
+                        let key = caps.name("key").unwrap().as_str();
+                        let value = caps.name("value").unwrap().as_str();
+                        let value = FIXUP_NUMBERS_RE.replace_all(value, "$1$2");
+                        fields.push((key.to_owned(), value.to_string()));
+                    } else {
+                        state = State::Footer;
+                    }
+                }
+                State::Footer => break,
+            }
+        }
+
+        while let Some(last) = body.last() {
+            if last.trim().is_empty() {
+                body.pop();
+            } else {
+                break;
             }
         }
 
@@ -87,7 +141,7 @@ impl LogfileParser {
             command: command.expect("A command should be present"),
             pid,
             fields,
-            body: vec![],
+            body,
             error_summary: None,
             log_path: make_relative(&self.root_dir, path),
         })
