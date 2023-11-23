@@ -1,7 +1,9 @@
 use std::borrow::Cow;
 use std::ffi::OsString;
+use std::fmt::Display;
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use glob::glob;
@@ -22,20 +24,26 @@ use crate::util::{factor_diff, make_absolute, percentage_diff};
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Baseline {
-    /// The kind of the `Baseline`, which currently can only be `Old`
+    /// The kind of the `Baseline`
     pub kind: BaselineKind,
     /// The path to the file which is used to compare against the new output
     pub path: PathBuf,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct BaselineName(String);
+
 /// The `BaselineKind` describing the baseline
 ///
 /// Currently, iai-callgrind can only compare callgrind output with `.old` files.
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum BaselineKind {
     /// Compare new against `*.old` output files
     Old,
+    /// Compare new against a named baseline
+    Name(BaselineName),
 }
 
 /// The `BenchmarkKind`, differentiating between library and binary benchmarks
@@ -219,6 +227,29 @@ pub struct ToolSummary {
     pub summaries: Vec<ToolRunSummary>,
 }
 
+// TODO: DOES THE NAME TO BE THAT RESTRICTIVE OR IS excluding `.` sufficient?
+impl FromStr for BaselineName {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        for char in s.chars() {
+            if !(char.is_ascii_alphanumeric() || char == '_') {
+                return Err(format!(
+                    "A baseline name can only consist of ascii characters which are alphabetic, \
+                     numeric or '_' but found: '{char}'"
+                ));
+            }
+        }
+        Ok(Self(s.to_owned()))
+    }
+}
+
+impl Display for BaselineName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
 impl BenchmarkSummary {
     /// Create a new `BenchmarkSummary`
     ///
@@ -304,6 +335,7 @@ impl BenchmarkSummary {
 impl CallgrindSummary {
     /// Create a new `CallgrindSummary`
     pub fn new(
+        // TODO: REMOVE
         fail_fast: bool,
         log_paths: Vec<PathBuf>,
         out_paths: Vec<PathBuf>,
@@ -327,7 +359,7 @@ impl CallgrindSummary {
         &mut self,
         bench_bin: &Path,
         bench_args: &[OsString],
-        old_output: &ToolOutputPath,
+        old_path: &ToolOutputPath,
         events: CostsSummary,
         regressions: Vec<CallgrindRegressionSummary>,
     ) {
@@ -345,9 +377,9 @@ impl CallgrindSummary {
                         .map(std::string::String::as_str)
                 )
             ),
-            baseline: old_output.exists().then(|| Baseline {
-                kind: BaselineKind::Old,
-                path: old_output.to_path(),
+            baseline: old_path.exists().then(|| Baseline {
+                kind: old_path.baseline_kind.clone(),
+                path: old_path.to_path(),
             }),
             events,
             regressions,

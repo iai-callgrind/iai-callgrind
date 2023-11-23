@@ -1,7 +1,7 @@
 use clap::builder::BoolishValueParser;
 use clap::{ArgAction, Parser};
 
-use super::summary::SummaryFormat;
+use super::summary::{BaselineName, SummaryFormat};
 use crate::api::{EventKind, RawArgs, RegressionConfig};
 
 /// The command line arguments the user provided after `--` when running cargo bench
@@ -95,6 +95,32 @@ pub struct CommandLineArgs {
         value_parser = BoolishValueParser::new()
     )]
     pub regression_fail_fast: Option<bool>,
+
+    /// Compare against this baseline if present and then overwrite it
+    #[clap(
+        long = "save-baseline",
+        env = "IAI_CALLGRIND_SAVE_BASELINE",
+        default_missing_value = "default",
+        conflicts_with_all = &["baseline", "load-baseline"]
+    )]
+    pub save_baseline: Option<BaselineName>,
+
+    /// Compare against this baseline if present but do not overwrite it
+    #[clap(
+        long = "baseline",
+        env = "IAI_CALLGRIND_BASELINE",
+        default_missing_value = "default"
+    )]
+    pub baseline: Option<BaselineName>,
+
+    /// Load this baseline as the new data set instead of creating a new one
+    #[clap(
+        id = "load-baseline",
+        long = "load-baseline",
+        requires = "baseline",
+        env = "IAI_CALLGRIND_LOAD_BASELINE"
+    )]
+    pub load_baseline: Option<BaselineName>,
 }
 
 /// This function parses a space separated list of raw argument strings into [`crate::api::RawArgs`]

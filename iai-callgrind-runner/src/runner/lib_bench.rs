@@ -10,14 +10,23 @@ use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::{CallgrindCommand, Regression};
 use super::meta::Metadata;
 use super::print::{Formatter, Header, VerticalFormat};
+use super::summary::{BaselineName, CallgrindRegressionSummary};
 use super::tool::{RunOptions, ToolConfigs};
 use super::{Config, Error};
 use crate::api::{self, LibraryBenchmark};
 use crate::runner::print::tool_summary_header;
 use crate::runner::summary::{
-    BenchmarkKind, BenchmarkSummary, CallgrindSummary, CostsSummary, SummaryOutput,
+    BaselineKind, BenchmarkKind, BenchmarkSummary, CallgrindSummary, CostsSummary, SummaryOutput,
 };
-use crate::runner::tool::{ToolOutputPath, ValgrindTool};
+use crate::runner::tool::{ToolOutputPath, ToolOutputPathKind, ValgrindTool};
+
+#[derive(Debug)]
+struct BaselineLibBenchRunner {
+    baseline_kind: BaselineKind,
+}
+
+#[derive(Debug)]
+struct BenchmarkRunnerFactory;
 
 // A `Group` is the organizational unit and counterpart of the `library_benchmark_group!` macro
 #[derive(Debug)]
@@ -47,9 +56,164 @@ struct LibBench {
 }
 
 #[derive(Debug)]
+struct LoadedBaselineLibBenchRunner {
+    loaded_baseline: BaselineName,
+    baseline: BaselineName,
+}
+
+#[derive(Debug)]
 struct Runner {
     config: Config,
     groups: Groups,
+}
+
+#[derive(Debug)]
+struct SaveBaselineLibBenchRunner {
+    baseline: BaselineName,
+}
+
+trait LibBenchRunner: std::fmt::Debug {
+    fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath;
+    fn baselines(&self) -> (Option<String>, Option<String>);
+    fn run(&self, lib_bench: &LibBench, config: &Config, group: &Group)
+    -> Result<BenchmarkSummary>;
+}
+
+impl LibBenchRunner for BaselineLibBenchRunner {
+    fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath {
+        ToolOutputPath::new(
+            ToolOutputPathKind::Out,
+            ValgrindTool::Callgrind,
+            &self.baseline_kind,
+            &config.meta.target_dir,
+            &group.module,
+            &lib_bench.name(),
+        )
+    }
+
+    fn baselines(&self) -> (Option<String>, Option<String>) {
+        match &self.baseline_kind {
+            BaselineKind::Old => (None, None),
+            BaselineKind::Name(name) => (None, Some(name.to_string())),
+        }
+    }
+
+    fn run(
+        &self,
+        lib_bench: &LibBench,
+        config: &Config,
+        group: &Group,
+    ) -> Result<BenchmarkSummary> {
+        let callgrind_command = CallgrindCommand::new(&config.meta);
+        let bench_args = lib_bench.bench_args(group);
+
+        let sentinel = Sentinel::new("iai_callgrind::bench::");
+        let out_path = self.output_path(lib_bench, config, group);
+        out_path.init();
+        out_path.shift();
+
+        let old_path = out_path.to_base_path();
+        let log_path = out_path.to_log_output();
+        log_path.shift();
+
+        for path in lib_bench.tools.output_paths(&out_path) {
+            path.shift();
+            path.to_log_output().shift();
+        }
+
+        let mut benchmark_summary = lib_bench.create_benchmark_summary(config, group, &out_path);
+
+        let header = lib_bench.print_header(group);
+
+        let output = callgrind_command.run(
+            lib_bench.callgrind_args.clone(),
+            &config.bench_bin,
+            &bench_args,
+            lib_bench.options.clone(),
+            &out_path,
+        )?;
+
+        let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
+
+        // TODO: BASELINE if not Old MUST EXIST OR ERROR
+        #[allow(clippy::if_then_some_else_none)]
+        let old_costs = if old_path.exists() {
+            Some(SentinelParser::new(&sentinel).parse(&old_path)?)
+        } else {
+            None
+        };
+
+        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
+        print!(
+            "{}",
+            VerticalFormat::default().format(self.baselines(), &costs_summary)?
+        );
+
+        output.dump_log(log::Level::Info);
+        log_path.dump_log(log::Level::Info, &mut stdout())?;
+
+        let regressions = lib_bench.check_and_print_regressions(&costs_summary);
+        let fail_fast = lib_bench.regression.as_ref().map_or(false, |r| r.fail_fast);
+
+        let callgrind_summary = benchmark_summary
+            .callgrind_summary
+            .insert(CallgrindSummary::new(
+                fail_fast,
+                log_path.real_paths(),
+                out_path.real_paths(),
+            ));
+
+        callgrind_summary.add_summary(
+            &config.bench_bin,
+            &bench_args,
+            &old_path,
+            costs_summary,
+            regressions,
+        );
+
+        if let Some(flamegraph_config) = lib_bench.flamegraph.clone() {
+            callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
+                .create(
+                &out_path,
+                Some(&sentinel),
+                &config.meta.project_root,
+            )?;
+        }
+
+        benchmark_summary.tool_summaries = lib_bench.tools.run(
+            &config.meta,
+            &config.bench_bin,
+            &bench_args,
+            &lib_bench.options,
+            &out_path,
+        )?;
+
+        Ok(benchmark_summary)
+    }
+}
+
+impl BenchmarkRunnerFactory {
+    fn create_runner(
+        save_baseline: Option<&BaselineName>,
+        load_baseline: Option<&BaselineName>,
+        baseline: Option<&BaselineName>,
+    ) -> Box<dyn LibBenchRunner> {
+        if let Some(baseline_name) = save_baseline {
+            Box::new(SaveBaselineLibBenchRunner {
+                baseline: baseline_name.clone(),
+            })
+        } else if let Some(baseline_name) = load_baseline {
+            Box::new(LoadedBaselineLibBenchRunner {
+                loaded_baseline: baseline_name.clone(),
+                baseline: baseline.unwrap().clone(),
+            })
+        } else {
+            Box::new(BaselineLibBenchRunner {
+                baseline_kind: baseline
+                    .map_or(BaselineKind::Old, |name| BaselineKind::Name(name.clone())),
+            })
+        }
+    }
 }
 
 impl Groups {
@@ -116,10 +280,16 @@ impl Groups {
     }
 
     fn run(&self, config: &Config) -> Result<()> {
+        let runner = BenchmarkRunnerFactory::create_runner(
+            config.meta.args.save_baseline.as_ref(),
+            config.meta.args.load_baseline.as_ref(),
+            config.meta.args.baseline.as_ref(),
+        );
         let mut is_regressed = false;
+
         for group in &self.0 {
             for bench in &group.benches {
-                let summary = bench.run(config, group)?;
+                let summary = runner.run(bench, config, group)?;
                 summary.save()?;
                 summary.check_regression(&mut is_regressed)?;
             }
@@ -134,10 +304,16 @@ impl Groups {
 }
 
 impl LibBench {
-    #[allow(clippy::too_many_lines)]
-    fn run(&self, config: &Config, group: &Group) -> Result<BenchmarkSummary> {
-        let callgrind_command = CallgrindCommand::new(&config.meta);
-        let args = if let Some(group_id) = &group.id {
+    fn name(&self) -> String {
+        if let Some(bench_id) = &self.id {
+            format!("{}.{}", &self.function, bench_id)
+        } else {
+            self.function.clone()
+        }
+    }
+
+    fn bench_args(&self, group: &Group) -> Vec<OsString> {
+        if let Some(group_id) = &group.id {
             vec![
                 OsString::from("--iai-run".to_owned()),
                 OsString::from(group_id),
@@ -151,35 +327,21 @@ impl LibBench {
                 OsString::from(self.index.to_string()),
                 OsString::from(format!("{}::{}", group.module, self.function)),
             ]
-        };
+        }
+    }
 
-        let sentinel = Sentinel::new("iai_callgrind::bench::");
-        let output_path = if let Some(bench_id) = &self.id {
-            ToolOutputPath::with_init(
-                ValgrindTool::Callgrind,
-                &config.meta.target_dir,
-                &group.module,
-                &format!("{}.{}", &self.function, bench_id),
-            )
-        } else {
-            ToolOutputPath::with_init(
-                ValgrindTool::Callgrind,
-                &config.meta.target_dir,
-                &group.module,
-                &self.function,
-            )
-        };
-
-        let log_path = output_path.to_log_output();
-        log_path.init();
-
+    fn create_benchmark_summary(
+        &self,
+        config: &Config,
+        group: &Group,
+        output_path: &ToolOutputPath,
+    ) -> BenchmarkSummary {
         let summary_output = config.meta.args.save_summary.map(|format| {
             let output = SummaryOutput::new(format, &output_path.dir);
             output.init();
             output
         });
-
-        let mut benchmark_summary = BenchmarkSummary::new(
+        BenchmarkSummary::new(
             BenchmarkKind::LibraryBenchmark,
             config.meta.project_root.clone(),
             config.package_dir.clone(),
@@ -189,8 +351,10 @@ impl LibBench {
             self.id.clone(),
             self.args.clone(),
             summary_output,
-        );
+        )
+    }
 
+    fn print_header(&self, group: &Group) -> Header {
         let header = Header::from_segments(
             [&group.module, &self.function],
             self.id.clone(),
@@ -201,73 +365,86 @@ impl LibBench {
         if self.tools.has_tools_enabled() {
             println!("{}", tool_summary_header(ValgrindTool::Callgrind));
         }
+        header
+    }
 
-        let output = callgrind_command.run(
-            self.callgrind_args.clone(),
-            &config.bench_bin,
-            &args,
-            self.options.clone(),
-            &output_path,
-        )?;
-
-        let new_costs = SentinelParser::new(&sentinel).parse(&output_path)?;
-
-        let old_output = output_path.to_old_output();
-        #[allow(clippy::if_then_some_else_none)]
-        let old_costs = if old_output.exists() {
-            Some(SentinelParser::new(&sentinel).parse(&old_output)?)
+    fn check_and_print_regressions(
+        &self,
+        costs_summary: &CostsSummary,
+    ) -> Vec<CallgrindRegressionSummary> {
+        if let Some(regression) = &self.regression {
+            regression.check_and_print(costs_summary)
         } else {
-            None
-        };
+            vec![]
+        }
+    }
+}
 
+impl LibBenchRunner for LoadedBaselineLibBenchRunner {
+    fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath {
+        ToolOutputPath::new(
+            ToolOutputPathKind::Base(self.loaded_baseline.to_string()),
+            ValgrindTool::Callgrind,
+            &BaselineKind::Name(self.baseline.clone()),
+            &config.meta.target_dir,
+            &group.module,
+            &lib_bench.name(),
+        )
+    }
+
+    fn baselines(&self) -> (Option<String>, Option<String>) {
+        (
+            Some(self.loaded_baseline.to_string()),
+            Some(self.baseline.to_string()),
+        )
+    }
+
+    fn run(
+        &self,
+        lib_bench: &LibBench,
+        config: &Config,
+        group: &Group,
+    ) -> Result<BenchmarkSummary> {
+        let bench_args = lib_bench.bench_args(group);
+        let sentinel = Sentinel::new("iai_callgrind::bench::");
+        let out_path = self.output_path(lib_bench, config, group);
+        let old_path = out_path.to_base_path();
+        let log_path = out_path.to_log_output();
+        let mut benchmark_summary = lib_bench.create_benchmark_summary(config, group, &out_path);
+
+        lib_bench.print_header(group);
+
+        let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
+        let old_costs = Some(SentinelParser::new(&sentinel).parse(&old_path)?);
         let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
-        let string = VerticalFormat::default().format(&costs_summary)?;
-        print!("{string}");
 
-        output.dump_log(log::Level::Info);
-        log_path.dump_log(log::Level::Info, &mut stdout())?;
+        print!(
+            "{}",
+            VerticalFormat::default().format(self.baselines(), &costs_summary)?
+        );
 
-        let (regressions, fail_fast) = if let Some(regression) = &self.regression {
-            (
-                regression.check_and_print(&costs_summary),
-                regression.fail_fast,
-            )
-        } else {
-            (vec![], false)
-        };
+        let regressions = lib_bench.check_and_print_regressions(&costs_summary);
+        let fail_fast = lib_bench.regression.as_ref().map_or(false, |r| r.fail_fast);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
             .insert(CallgrindSummary::new(
                 fail_fast,
-                vec![log_path.to_path()],
-                vec![output_path.to_path()],
+                log_path.real_paths(),
+                out_path.real_paths(),
             ));
 
         callgrind_summary.add_summary(
             &config.bench_bin,
-            &args,
-            &old_output,
+            &bench_args,
+            &old_path,
             costs_summary,
             regressions,
         );
 
-        if let Some(flamegraph_config) = self.flamegraph.clone() {
-            callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
-                .create(
-                &output_path,
-                Some(&sentinel),
-                &config.meta.project_root,
-            )?;
-        }
-
-        benchmark_summary.tool_summaries = self.tools.run(
-            &config.meta,
-            &config.bench_bin,
-            &args,
-            &self.options,
-            &output_path,
-        )?;
+        benchmark_summary.tool_summaries = lib_bench
+            .tools
+            .run_loaded_vs_base(&config.meta, &out_path)?;
 
         Ok(benchmark_summary)
     }
@@ -283,6 +460,122 @@ impl Runner {
 
     fn run(&self) -> Result<()> {
         self.groups.run(&self.config)
+    }
+}
+
+impl LibBenchRunner for SaveBaselineLibBenchRunner {
+    fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath {
+        ToolOutputPath::new(
+            ToolOutputPathKind::Base(self.baseline.to_string()),
+            ValgrindTool::Callgrind,
+            &BaselineKind::Name(self.baseline.clone()),
+            &config.meta.target_dir,
+            &group.module,
+            &lib_bench.name(),
+        )
+    }
+
+    fn baselines(&self) -> (Option<String>, Option<String>) {
+        (
+            Some(self.baseline.to_string()),
+            Some(self.baseline.to_string()),
+        )
+    }
+
+    // TODO: MOVE TO LibBenchRunner
+    // fn initialize(&self, lib_bench: &LibBench, config: &Config, group: &Group) ->
+    // (ToolOutputPath, ToolOutputPath) {
+    //
+    // }
+
+    fn run(
+        &self,
+        lib_bench: &LibBench,
+        config: &Config,
+        group: &Group,
+    ) -> Result<BenchmarkSummary> {
+        let callgrind_command = CallgrindCommand::new(&config.meta);
+        let bench_args = lib_bench.bench_args(group);
+
+        let sentinel = Sentinel::new("iai_callgrind::bench::");
+        let out_path = self.output_path(lib_bench, config, group);
+        out_path.init();
+
+        #[allow(clippy::if_then_some_else_none)]
+        let old_costs = if out_path.exists() {
+            let old_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
+            out_path.clear();
+            Some(old_costs)
+        } else {
+            None
+        };
+
+        let log_path = out_path.to_log_output();
+        log_path.clear();
+
+        for path in lib_bench.tools.output_paths(&out_path) {
+            path.clear();
+            path.to_log_output().clear();
+        }
+
+        let mut benchmark_summary = lib_bench.create_benchmark_summary(config, group, &out_path);
+
+        lib_bench.print_header(group);
+
+        let output = callgrind_command.run(
+            lib_bench.callgrind_args.clone(),
+            &config.bench_bin,
+            &bench_args,
+            lib_bench.options.clone(),
+            &out_path,
+        )?;
+
+        let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
+        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
+        let string = VerticalFormat::default().format(self.baselines(), &costs_summary)?;
+        print!("{string}");
+
+        output.dump_log(log::Level::Info);
+        log_path.dump_log(log::Level::Info, &mut stdout())?;
+
+        let regressions = lib_bench.check_and_print_regressions(&costs_summary);
+        let fail_fast = lib_bench.regression.as_ref().map_or(false, |r| r.fail_fast);
+
+        let callgrind_summary = benchmark_summary
+            .callgrind_summary
+            .insert(CallgrindSummary::new(
+                fail_fast,
+                log_path.real_paths(),
+                out_path.real_paths(),
+            ));
+
+        callgrind_summary.add_summary(
+            &config.bench_bin,
+            &bench_args,
+            &out_path,
+            costs_summary,
+            regressions,
+        );
+
+        // TODO: MAKE THIS WORK
+        // if let Some(flamegraph_config) = self.flamegraph.clone() {
+        //     callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
+        //         .create(
+        //         &output_path,
+        //         Some(&sentinel),
+        //         &config.meta.project_root,
+        //     )?;
+        // }
+
+        benchmark_summary.tool_summaries = lib_bench.tools.run(
+            &config.meta,
+            &config.bench_bin,
+            &bench_args,
+            &lib_bench.options,
+            &out_path,
+        )?;
+
+        Ok(benchmark_summary)
     }
 }
 

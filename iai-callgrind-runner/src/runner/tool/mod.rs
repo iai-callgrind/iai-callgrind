@@ -1,3 +1,4 @@
+// spell-checker: ignore extbase extbasename extold
 pub mod args;
 pub mod format;
 pub mod logfile_parser;
@@ -8,10 +9,11 @@ use std::fs::File;
 use std::io::{stdout, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
+use std::str::FromStr;
 
 use anyhow::{anyhow, Context, Result};
-use glob::glob;
 use indexmap::IndexMap;
+use lazy_static::lazy_static;
 use log::{debug, error, log_enabled, Level};
 use regex::Regex;
 #[cfg(feature = "schema")]
@@ -22,7 +24,7 @@ use self::args::ToolArgs;
 use super::callgrind::parser::Parser;
 use super::dhat::logfile_parser::LogfileParser as DhatLogfileParser;
 use super::meta::Metadata;
-use super::summary::ToolSummary;
+use super::summary::{BaselineKind, BaselineName, ToolSummary};
 use crate::api::ExitWith;
 use crate::error::Error;
 use crate::runner::print::tool_summary_header;
@@ -31,6 +33,11 @@ use crate::runner::tool::format::LogfileSummaryFormatter;
 use crate::runner::tool::logfile_parser::LogfileParser;
 use crate::util::{resolve_binary_path, truncate_str_utf8};
 use crate::{api, util};
+
+lazy_static!(
+        static ref FILENAME_RE: Regex = Regex::new(r"^(?<tool>.*?)[.](?<name>.*)[.]((?<extold>out(\..*)?)|(?<extbase>base[.](?<extbasename>[^.]+)(\..+)?))$")
+            .expect("Regex should compile");
+);
 
 #[derive(Debug, Default, Clone)]
 pub struct RunOptions {
@@ -51,10 +58,22 @@ pub struct ToolConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolOutputPath {
+    pub kind: ToolOutputPathKind,
     pub tool: ValgrindTool,
+    pub baseline_kind: BaselineKind,
     pub dir: PathBuf,
-    pub extension: String,
     pub name: String,
+    pub modifiers: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ToolOutputPathKind {
+    Out,
+    OldOut,
+    Log,
+    OldLog,
+    BaseLog(String),
+    Base(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -200,6 +219,89 @@ impl ToolConfigs {
         self.0.iter().any(|t| t.is_enabled)
     }
 
+    pub fn output_paths(&self, output_path: &ToolOutputPath) -> Vec<ToolOutputPath> {
+        self.0
+            .iter()
+            .filter(|t| t.is_enabled)
+            .map(|t| output_path.to_tool_output(t.tool))
+            .collect()
+    }
+
+    pub fn parse(
+        tool: ValgrindTool,
+        meta: &Metadata,
+        log_path: &ToolOutputPath,
+    ) -> Result<ToolSummary> {
+        let mut tool_summary = ToolSummary {
+            tool,
+            log_paths: log_path.real_paths(),
+            out_paths: vec![],
+            summaries: vec![],
+        };
+        if let ValgrindTool::DHAT = tool {
+            let parser = DhatLogfileParser {
+                root_dir: meta.project_root.clone(),
+            };
+            let logfile_summaries = parser.parse(log_path)?;
+            for logfile_summary in logfile_summaries {
+                LogfileSummaryFormatter::print(&logfile_summary);
+
+                tool_summary.summaries.push(ToolRunSummary {
+                    command: logfile_summary.command.to_string_lossy().to_string(),
+                    pid: logfile_summary.pid.to_string(),
+                    baseline: None,
+                    summary: logfile_summary.fields.iter().cloned().collect(),
+                });
+            }
+        } else {
+            let parser = LogfileParser {
+                root_dir: meta.project_root.clone(),
+            };
+            let logfile_summaries = parser.parse(log_path)?;
+            for logfile_summary in logfile_summaries {
+                LogfileSummaryFormatter::print(&logfile_summary);
+                let mut summary: IndexMap<String, String> =
+                    logfile_summary.fields.iter().cloned().collect();
+                if !logfile_summary.body.is_empty() {
+                    summary.insert("Summary".to_owned(), logfile_summary.body.join("\n"));
+                }
+                if let Some(error_summary) = logfile_summary.error_summary {
+                    summary.insert("Error Summary".to_owned(), error_summary);
+                }
+                tool_summary.summaries.push(ToolRunSummary {
+                    command: logfile_summary.command.to_string_lossy().to_string(),
+                    pid: logfile_summary.pid.to_string(),
+                    baseline: None,
+                    summary,
+                });
+            }
+        }
+        Ok(tool_summary)
+    }
+
+    pub fn run_loaded_vs_base(
+        &self,
+        meta: &Metadata,
+        output_path: &ToolOutputPath,
+    ) -> Result<Vec<ToolSummary>> {
+        let mut tool_summaries = vec![];
+        for tool_config in self.0.iter().filter(|t| t.is_enabled) {
+            let tool = tool_config.tool;
+
+            let output_path = output_path.to_tool_output(tool);
+            let log_path = output_path.to_log_output();
+
+            println!("{}", tool_summary_header(tool));
+            let tool_summary = Self::parse(tool, meta, &log_path)?;
+
+            log_path.dump_log(log::Level::Info, &mut stdout())?;
+
+            tool_summaries.push(tool_summary);
+        }
+
+        Ok(tool_summaries)
+    }
+
     pub fn run(
         &self,
         meta: &Metadata,
@@ -212,20 +314,11 @@ impl ToolConfigs {
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
             let tool = tool_config.tool;
 
-            let mut tool_summary = ToolSummary {
-                tool,
-                log_paths: vec![],
-                out_paths: vec![],
-                summaries: vec![],
-            };
-
             let command = ToolCommand::new(tool, meta);
 
+            // TODO: INITIALIZE output files AT BENCHMARK RUN START NOT HERE
             let output_path = output_path.to_tool_output(tool);
-            output_path.init();
-
             let log_path = output_path.to_log_output();
-            log_path.init();
 
             println!("{}", tool_summary_header(tool));
 
@@ -236,54 +329,13 @@ impl ToolConfigs {
                 options.clone(),
                 &output_path,
             )?;
-
-            if let ValgrindTool::DHAT = tool {
-                let parser = DhatLogfileParser {
-                    root_dir: meta.project_root.clone(),
-                };
-                let logfile_summaries = parser.parse(&log_path)?;
-                for logfile_summary in logfile_summaries {
-                    LogfileSummaryFormatter::print(&logfile_summary);
-
-                    tool_summary.summaries.push(ToolRunSummary {
-                        command: logfile_summary.command.to_string_lossy().to_string(),
-                        pid: logfile_summary.pid.to_string(),
-                        baseline: None,
-                        summary: logfile_summary.fields.iter().cloned().collect(),
-                    });
-                }
-
-                tool_summary.log_paths = log_path.real_paths();
+            let mut tool_summary = Self::parse(tool, meta, &log_path)?;
+            if tool.has_output_file() {
                 tool_summary.out_paths = output_path.real_paths();
-            } else {
-                let parser = LogfileParser {
-                    root_dir: meta.project_root.clone(),
-                };
-                let logfile_summaries = parser.parse(&log_path)?;
-                for logfile_summary in logfile_summaries {
-                    LogfileSummaryFormatter::print(&logfile_summary);
-                    let mut summary: IndexMap<String, String> =
-                        logfile_summary.fields.iter().cloned().collect();
-                    if !logfile_summary.body.is_empty() {
-                        summary.insert("Summary".to_owned(), logfile_summary.body.join("\n"));
-                    }
-                    if let Some(error_summary) = logfile_summary.error_summary {
-                        summary.insert("Error Summary".to_owned(), error_summary);
-                    }
-                    tool_summary.summaries.push(ToolRunSummary {
-                        command: logfile_summary.command.to_string_lossy().to_string(),
-                        pid: logfile_summary.pid.to_string(),
-                        baseline: None,
-                        summary,
-                    });
-                }
-                if tool.has_output_file() {
-                    tool_summary.out_paths = output_path.real_paths();
-                }
-                tool_summary.log_paths = log_path.real_paths();
             }
 
             output.dump_log(log::Level::Info);
+            // TODO: ALL LOGGING OUTPUT SHOULD GO TO STDERR
             log_path.dump_log(log::Level::Info, &mut stdout())?;
 
             tool_summaries.push(tool_summary);
@@ -299,6 +351,7 @@ impl ToolOutput {
             let (stdout, stderr) = (&self.output.stdout, &self.output.stderr);
             if !stdout.is_empty() {
                 log::log!(log_level, "{} output on stdout:", self.tool.id());
+                // TODO: ALL LOGGING OUTPUT SHOULD GO TO STDERR
                 util::write_all_to_stdout(stdout);
             }
             if !stderr.is_empty() {
@@ -310,7 +363,14 @@ impl ToolOutput {
 }
 
 impl ToolOutputPath {
-    pub fn new(tool: ValgrindTool, base_dir: &Path, module: &str, name: &str) -> Self {
+    pub fn new(
+        kind: ToolOutputPathKind,
+        tool: ValgrindTool,
+        baseline_kind: &BaselineKind,
+        base_dir: &Path,
+        module: &str,
+        name: &str,
+    ) -> Self {
         let current = base_dir;
         let module_path: PathBuf = module.split("::").collect();
         let sanitized_name = sanitize_filename::sanitize_with_options(
@@ -323,16 +383,19 @@ impl ToolOutputPath {
         );
         let sanitized_name = truncate_str_utf8(&sanitized_name, 200);
         Self {
+            kind,
             tool,
+            baseline_kind: baseline_kind.clone(),
             dir: current
                 .join(base_dir)
                 .join(module_path)
                 .join(sanitized_name),
-            extension: "out".to_owned(),
             name: sanitized_name.to_owned(),
+            modifiers: vec![],
         }
     }
 
+    // TODO: FIX THIS to use ToolOutputPathKind and BaselineKind correctly
     pub fn from_existing<T>(path: T) -> Result<Self>
     where
         T: Into<PathBuf>,
@@ -345,30 +408,41 @@ impl ToolOutputPath {
             ));
         }
         let file_name = path.file_name().unwrap().to_string_lossy();
-        let re = Regex::new(r"^(?<tool>.*?)[.](?<name>.*)[.](?<extension>out(\..*)?)$")
-            .expect("Regex should compile");
-        let caps = re
+        let caps = FILENAME_RE
             .captures(&file_name)
             .ok_or_else(|| anyhow!("Illegal file name: {file_name}"))?;
+        let baseline_kind = if let Some(extold) = caps.name("extold") {
+            BaselineKind::Old
+        } else if let Some(extbase) = caps.name("extbase") {
+            let name = caps
+                .name("extbasename")
+                .ok_or_else(|| anyhow!("Illegal file name: {file_name}"))?
+                .as_str();
+            BaselineKind::Name(
+                BaselineName::from_str(name)
+                    .map_err(|error| anyhow!("Illegal baseline name: {error}"))?,
+            )
+        } else {
+            return Err(anyhow!("Illegal file name: {file_name}"));
+        };
 
         Ok(Self {
+            kind: ToolOutputPathKind::Out,
             tool: caps
                 .name("tool")
                 .ok_or_else(|| anyhow!("Illegal file name: {file_name}"))?
                 .as_str()
                 .try_into()
                 .unwrap(),
+            baseline_kind,
             dir: path.parent().unwrap().to_owned(),
-            extension: caps
-                .name("extension")
-                .ok_or_else(|| anyhow!("Illegal file name: {file_name}"))?
-                .as_str()
-                .to_owned(),
             name: caps
                 .name("name")
                 .ok_or_else(|| anyhow!("Illegal file name: {file_name}"))?
                 .as_str()
                 .to_owned(),
+            // TODO: ADJUST
+            modifiers: vec![],
         })
     }
 
@@ -376,75 +450,94 @@ impl ToolOutputPath {
     ///
     /// This method moves the old output to `$TOOL_ID.*.out.old`
     /// TODO: RETURN Result
-    pub fn with_init(tool: ValgrindTool, base_dir: &Path, module: &str, name: &str) -> Self {
-        let output = Self::new(tool, base_dir, module, name);
+    pub fn with_init(
+        kind: ToolOutputPathKind,
+        tool: ValgrindTool,
+        baseline_kind: &BaselineKind,
+        base_dir: &Path,
+        module: &str,
+        name: &str,
+    ) -> Self {
+        let output = Self::new(kind, tool, baseline_kind, base_dir, module, name);
         output.init();
         output
     }
 
-    // TODO: RETURN Result
+    // TODO: RETURN Result??
     pub fn init(&self) {
         std::fs::create_dir_all(&self.dir).expect("Failed to create directory");
-        self.move_old();
     }
 
-    pub fn move_old(&self) {
-        let path = self.to_path();
-
-        // Cleanup old files
-        for entry in glob(&format!("{}*.old", path.display()))
-            .expect("Reading glob patterns should succeed")
-            .map(Result::unwrap)
-        {
+    pub fn clear(&self) {
+        for entry in self.real_paths() {
             std::fs::remove_file(entry).unwrap();
         }
+    }
 
-        // Move existing files to *.old
-        for entry in glob(&format!("{}*", path.display()))
-            .expect("Reading glob patterns should succeed")
-            .map(Result::unwrap)
-        {
-            let mut extension = entry.extension().unwrap().to_owned();
-            extension.push(".old");
-            std::fs::rename(&entry, entry.with_extension(extension)).unwrap();
+    pub fn shift(&self) {
+        match self.baseline_kind {
+            BaselineKind::Old => {
+                self.to_base_path().clear();
+                for entry in self.real_paths() {
+                    let mut extension = entry.extension().unwrap().to_owned();
+                    extension.push(".old");
+                    std::fs::rename(&entry, entry.with_extension(extension)).unwrap();
+                }
+            }
+            BaselineKind::Name(_) => {
+                self.clear();
+            }
         }
     }
 
     pub fn exists(&self) -> bool {
-        self.to_path().exists()
+        !self.real_paths().is_empty()
     }
 
-    pub fn to_old_output(&self) -> Self {
-        let mut extension = self.extension.clone();
-        if !std::path::Path::new(&extension)
-            .extension()
-            .map_or(false, |ext| ext.eq_ignore_ascii_case("old"))
-        {
-            extension.push_str(".old");
-        }
+    pub fn to_base_path(&self) -> Self {
         Self {
+            kind: match (&self.kind, &self.baseline_kind) {
+                (ToolOutputPathKind::Out, BaselineKind::Old) => ToolOutputPathKind::OldOut,
+                (ToolOutputPathKind::Out, BaselineKind::Name(name)) => {
+                    ToolOutputPathKind::Base(name.to_string())
+                }
+                (ToolOutputPathKind::Log, BaselineKind::Old) => ToolOutputPathKind::OldLog,
+                (ToolOutputPathKind::Log, BaselineKind::Name(name)) => {
+                    ToolOutputPathKind::BaseLog(name.to_string())
+                }
+                (kind, _) => kind.clone(),
+            },
             tool: self.tool,
+            baseline_kind: self.baseline_kind.clone(),
             name: self.name.clone(),
-            extension,
             dir: self.dir.clone(),
+            modifiers: self.modifiers.clone(),
         }
     }
 
     pub fn to_tool_output(&self, tool: ValgrindTool) -> Self {
         Self {
             tool,
+            kind: self.kind.clone(),
+            baseline_kind: self.baseline_kind.clone(),
             name: self.name.clone(),
-            extension: self.extension.clone(),
             dir: self.dir.clone(),
+            modifiers: self.modifiers.clone(),
         }
     }
 
     pub fn to_log_output(&self) -> Self {
         Self {
+            kind: match &self.kind {
+                ToolOutputPathKind::Out | ToolOutputPathKind::OldOut => ToolOutputPathKind::Log,
+                ToolOutputPathKind::Base(name) => ToolOutputPathKind::BaseLog(name.clone()),
+                kind => kind.clone(),
+            },
             tool: self.tool,
+            baseline_kind: self.baseline_kind.clone(),
             name: self.name.clone(),
-            extension: "log".to_owned(),
             dir: self.dir.clone(),
+            modifiers: self.modifiers.clone(),
         }
     }
 
@@ -466,6 +559,7 @@ impl ToolOutputPath {
             .map(std::result::Result::unwrap))
     }
 
+    // TODO: DOUBLE CHECK THE CHANGE
     pub fn dump_log(&self, log_level: log::Level, writer: &mut impl Write) -> Result<()> {
         if log_enabled!(log_level) {
             for path in self.real_paths() {
@@ -491,24 +585,99 @@ impl ToolOutputPath {
         Ok(())
     }
 
+    pub fn extension(&self) -> String {
+        match (&self.kind, self.modifiers.is_empty()) {
+            (ToolOutputPathKind::Out, true) => "out".to_owned(),
+            (ToolOutputPathKind::Out, false) => format!("out.{}", self.modifiers.join(".")),
+            (ToolOutputPathKind::Log, true) => "log".to_owned(),
+            (ToolOutputPathKind::Log, false) => format!("log.{}", self.modifiers.join(".")),
+            (ToolOutputPathKind::OldOut, true) => "out.old".to_owned(),
+            (ToolOutputPathKind::OldOut, false) => format!("out.{}.old", self.modifiers.join(".")),
+            (ToolOutputPathKind::OldLog, true) => "log.old".to_owned(),
+            (ToolOutputPathKind::OldLog, false) => format!("log.{}.old", self.modifiers.join(".")),
+            (ToolOutputPathKind::BaseLog(name), true) => {
+                format!("log.base@{name}")
+            }
+            (ToolOutputPathKind::BaseLog(name), false) => {
+                format!("log.{}.base@{name}", self.modifiers.join("."))
+            }
+            (ToolOutputPathKind::Base(name), true) => format!("out.base@{name}"),
+            (ToolOutputPathKind::Base(name), false) => {
+                format!("out.{}.base@{name}", self.modifiers.join("."))
+            }
+        }
+    }
+
+    pub fn with_modifiers<I, T>(&self, modifiers: T) -> Self
+    where
+        I: Into<String>,
+        T: IntoIterator<Item = I>,
+    {
+        Self {
+            kind: self.kind.clone(),
+            tool: self.tool,
+            baseline_kind: self.baseline_kind.clone(),
+            dir: self.dir.clone(),
+            name: self.name.clone(),
+            modifiers: modifiers.into_iter().map(Into::into).collect(),
+        }
+    }
+
     pub fn to_path(&self) -> PathBuf {
         self.dir.join(format!(
             "{}.{}.{}",
             self.tool.id(),
             self.name,
-            self.extension,
+            self.extension()
         ))
     }
 
     pub fn real_paths(&self) -> Vec<PathBuf> {
-        glob(&format!("{}*", self.to_path().display()))
-            .expect("Reading glob patterns should succeed")
-            .map(Result::unwrap)
-            .filter(|e| {
-                e.extension()
-                    .map_or(false, |e| !e.eq_ignore_ascii_case("old"))
-            })
-            .collect()
+        let mut paths = vec![];
+        for entry in std::fs::read_dir(&self.dir).unwrap() {
+            let path = entry.unwrap();
+            let file_name = path.file_name().to_string_lossy().to_string();
+            if let Some(suffix) =
+                file_name.strip_prefix(format!("{}.{}.", self.tool.id(), self.name).as_str())
+            {
+                #[allow(clippy::case_sensitive_file_extension_comparisons)]
+                let is_match = match &self.kind {
+                    ToolOutputPathKind::Out => {
+                        suffix.starts_with("out")
+                            && !(suffix.ends_with(".old")
+                                || suffix
+                                    .rsplit_once('.')
+                                    .map_or(false, |(_, b)| b.starts_with("base@")))
+                    }
+                    ToolOutputPathKind::Log => {
+                        suffix.starts_with("log")
+                            && !(suffix.ends_with(".old")
+                                || suffix
+                                    .rsplit_once('.')
+                                    .map_or(false, |(_, b)| b.starts_with("base@")))
+                    }
+                    ToolOutputPathKind::OldOut => {
+                        suffix.starts_with("out") && suffix.ends_with(".old")
+                    }
+                    ToolOutputPathKind::OldLog => {
+                        suffix.starts_with("log") && suffix.ends_with(".old")
+                    }
+                    ToolOutputPathKind::BaseLog(name) => {
+                        suffix.starts_with("log")
+                            && suffix.ends_with(format!(".base@{name}").as_str())
+                    }
+                    ToolOutputPathKind::Base(name) => {
+                        suffix.starts_with("out")
+                            && suffix.ends_with(format!(".base@{name}").as_str())
+                    }
+                };
+
+                if is_match {
+                    paths.push(path.path());
+                }
+            }
+        }
+        paths
     }
 }
 

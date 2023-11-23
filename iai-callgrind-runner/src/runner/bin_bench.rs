@@ -10,20 +10,23 @@ use tempfile::TempDir;
 
 use super::callgrind::args::Args;
 use super::callgrind::flamegraph::{Config as FlamegraphConfig, Flamegraph};
+use super::callgrind::model::Costs;
 use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{CallgrindCommand, Regression};
 use super::meta::Metadata;
 use super::print::{Formatter, Header, VerticalFormat};
-use super::summary::BenchmarkSummary;
+use super::summary::{BaselineName, BenchmarkSummary, CallgrindRegressionSummary};
 use super::tool::{RunOptions, ToolConfigs};
 use super::Config;
 use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig};
 use crate::error::Error;
 use crate::runner::print::tool_summary_header;
-use crate::runner::summary::{BenchmarkKind, CallgrindSummary, CostsSummary, SummaryOutput};
-use crate::runner::tool::{ToolOutputPath, ValgrindTool};
+use crate::runner::summary::{
+    BaselineKind, BenchmarkKind, CallgrindSummary, CostsSummary, SummaryOutput,
+};
+use crate::runner::tool::{ToolOutputPath, ToolOutputPathKind, ValgrindTool};
 use crate::util::{copy_directory, write_all_to_stderr, write_all_to_stdout};
 
 #[derive(Debug, Clone)]
@@ -45,6 +48,11 @@ enum AssistantKind {
     After,
 }
 
+#[derive(Debug)]
+struct BaselineBenchmarkRunner {
+    baseline_kind: BaselineKind,
+}
+
 #[derive(Debug, Clone)]
 struct BenchmarkAssistants {
     before: Option<Assistant>,
@@ -52,6 +60,9 @@ struct BenchmarkAssistants {
     setup: Option<Assistant>,
     teardown: Option<Assistant>,
 }
+
+#[derive(Debug, Clone)]
+struct BenchmarkRunnerFactory;
 
 #[derive(Debug)]
 struct BinBench {
@@ -80,6 +91,12 @@ struct Group {
 struct Groups(Vec<Group>);
 
 #[derive(Debug)]
+struct LoadBaselineBenchmarkRunner {
+    loaded_baseline: BaselineName,
+    baseline: BaselineName,
+}
+
+#[derive(Debug)]
 struct Runner {
     groups: Groups,
     config: Config,
@@ -89,6 +106,52 @@ struct Runner {
 struct Sandbox {
     current_dir: PathBuf,
     temp_dir: TempDir,
+}
+
+#[derive(Debug)]
+struct SaveBaselineBenchmarkRunner {
+    baseline: BaselineName,
+}
+
+trait BenchmarkRunner: std::fmt::Debug {
+    fn output_path(
+        &self,
+        runnable: &dyn Runnable,
+        config: &Config,
+        group: &Group,
+    ) -> ToolOutputPath;
+    fn baselines(&self) -> (Option<String>, Option<String>);
+    fn run(
+        &self,
+        runnable: &dyn Runnable,
+        config: &Config,
+        group: &Group,
+    ) -> Result<BenchmarkSummary>;
+}
+
+trait Runnable {
+    fn callgrind_args(&self) -> &Args;
+    fn executable(&self, config: &Config) -> PathBuf;
+    fn executable_args(&self, config: &Config, group: &Group) -> Vec<OsString>;
+    fn flamegraph(&self) -> Option<&FlamegraphConfig>;
+    fn name(&self) -> String;
+    fn run_options(&self, config: &Config) -> RunOptions;
+    fn regression(&self) -> Option<&Regression>;
+    fn tools(&self) -> &ToolConfigs;
+    fn create_benchmark_summary(
+        &self,
+        config: &Config,
+        group: &Group,
+        out_path: &ToolOutputPath,
+    ) -> BenchmarkSummary;
+    fn check_and_print_regressions(
+        &self,
+        costs_summary: &CostsSummary,
+    ) -> Vec<CallgrindRegressionSummary>;
+    fn parse(&self, config: &Config, out_path: &ToolOutputPath) -> Result<CostsSummary>;
+    fn parse_costs(&self, config: &Config, out_path: &ToolOutputPath) -> Result<Costs>;
+    fn print_header(&self, group: &Group) -> Header;
+    fn sentinel(&self, config: &Config) -> Option<Sentinel>;
 }
 
 impl Assistant {
@@ -111,139 +174,6 @@ impl Assistant {
             flamegraph,
             tools,
         }
-    }
-
-    /// Run the assistant and benchmark this run
-    #[allow(clippy::too_many_lines)]
-    fn run_bench(&self, config: &Config, group: &Group) -> Result<BenchmarkSummary> {
-        let command = CallgrindCommand::new(&config.meta);
-
-        let run_id = if let Some(id) = &group.id {
-            format!("{}::{}", id, self.kind.id())
-        } else {
-            self.kind.id()
-        };
-        let executable_args = vec![
-            OsString::from("--iai-run"),
-            OsString::from(run_id),
-            OsString::from(format!("{}::{}", &config.module, &self.name)),
-        ];
-
-        let output_path = ToolOutputPath::with_init(
-            ValgrindTool::Callgrind,
-            &config.meta.target_dir,
-            &group.module_path,
-            &format!("{}.{}", &self.name, self.kind.id()),
-        );
-
-        let log_path = output_path.to_log_output();
-        log_path.init();
-
-        let summary_output = config.meta.args.save_summary.map(|format| {
-            let output = SummaryOutput::new(format, &output_path.dir);
-            output.init();
-            output
-        });
-
-        let mut benchmark_summary = BenchmarkSummary::new(
-            BenchmarkKind::BinaryBenchmark,
-            config.meta.project_root.clone(),
-            config.package_dir.clone(),
-            config.bench_file.clone(),
-            config.bench_bin.clone(),
-            &[&group.module_path, &self.kind.id(), &self.name],
-            None,
-            None,
-            summary_output,
-        );
-
-        let header = Header::from_segments(
-            [&group.module_path, &self.kind.id(), &self.name],
-            None,
-            None,
-        );
-
-        header.print();
-        if self.tools.has_tools_enabled() {
-            println!("{}", tool_summary_header(ValgrindTool::Callgrind));
-        }
-
-        let options = RunOptions {
-            env_clear: false,
-            entry_point: Some(format!("*{}::{}", &config.module, &self.name)),
-            ..Default::default()
-        };
-
-        let output = command.run(
-            self.callgrind_args.clone(),
-            &config.bench_bin,
-            &executable_args,
-            options.clone(),
-            &output_path,
-        )?;
-
-        let sentinel = Sentinel::from_path(&config.module, &self.name);
-        let new_costs = SentinelParser::new(&sentinel).parse(&output_path)?;
-
-        let old_output = output_path.to_old_output();
-
-        #[allow(clippy::if_then_some_else_none)]
-        let old_costs = if old_output.exists() {
-            Some(SentinelParser::new(&sentinel).parse(&old_output)?)
-        } else {
-            None
-        };
-
-        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
-        let format = VerticalFormat::default().format(&costs_summary)?;
-        print!("{format}");
-
-        output.dump_log(log::Level::Info);
-        log_path.dump_log(log::Level::Info, &mut stdout())?;
-
-        let (regressions, fail_fast) = if let Some(regression) = &self.regression {
-            (
-                regression.check_and_print(&costs_summary),
-                regression.fail_fast,
-            )
-        } else {
-            (vec![], false)
-        };
-
-        let callgrind_summary = benchmark_summary
-            .callgrind_summary
-            .insert(CallgrindSummary::new(
-                fail_fast,
-                vec![log_path.to_path()],
-                vec![output_path.to_path()],
-            ));
-
-        callgrind_summary.add_summary(
-            &config.bench_bin,
-            &executable_args,
-            &old_output,
-            costs_summary,
-            regressions,
-        );
-
-        if let Some(flamegraph_config) = self.flamegraph.clone() {
-            callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
-                .create(
-                &output_path,
-                Some(&sentinel),
-                &config.meta.project_root,
-            )?;
-        }
-
-        benchmark_summary.tool_summaries = self.tools.run(
-            &config.meta,
-            &config.bench_bin,
-            &executable_args,
-            &options,
-            &output_path,
-        )?;
-
-        Ok(benchmark_summary)
     }
 
     /// Run the `Assistant` but don't benchmark it
@@ -272,6 +202,7 @@ impl Assistant {
                 }
             })?;
 
+        // TODO: Refactor
         if !stdout.is_empty() {
             info!("{} function '{}': stdout:", id, self.name);
             if log_enabled!(Level::Info) {
@@ -297,16 +228,142 @@ impl Assistant {
     /// This method returns an [`anyhow::Error`] with sources:
     ///
     /// * [`Error::RegressionError`] if the regression was fatal
-    fn run(&mut self, config: &Config, group: &Group) -> Result<Option<BenchmarkSummary>> {
+    fn run(
+        &mut self,
+        runner: &dyn BenchmarkRunner,
+        config: &Config,
+        group: &Group,
+    ) -> Result<Option<BenchmarkSummary>> {
         if self.bench {
             match self.kind {
                 AssistantKind::Setup | AssistantKind::Teardown => self.bench = false,
                 _ => {}
             }
-            self.run_bench(config, group).map(Some)
+            runner.run(&*self, config, group).map(Some)
         } else {
             self.run_plain(config, group).map(|()| None)
         }
+    }
+}
+
+impl Runnable for Assistant {
+    fn callgrind_args(&self) -> &Args {
+        &self.callgrind_args
+    }
+
+    fn executable(&self, config: &Config) -> PathBuf {
+        config.bench_bin.clone()
+    }
+
+    fn executable_args(&self, config: &Config, group: &Group) -> Vec<OsString> {
+        let run_id = if let Some(id) = &group.id {
+            format!("{}::{}", id, self.kind.id())
+        } else {
+            self.kind.id()
+        };
+        vec![
+            OsString::from("--iai-run"),
+            OsString::from(run_id),
+            OsString::from(format!("{}::{}", &config.module, &self.name)),
+        ]
+    }
+
+    fn flamegraph(&self) -> Option<&FlamegraphConfig> {
+        self.flamegraph.as_ref()
+    }
+
+    fn name(&self) -> String {
+        format!("{}.{}", &self.name, self.kind.id())
+    }
+
+    fn run_options(&self, config: &Config) -> RunOptions {
+        RunOptions {
+            env_clear: false,
+            entry_point: Some(format!("*{}::{}", &config.module, &self.name)),
+            ..Default::default()
+        }
+    }
+
+    fn regression(&self) -> Option<&Regression> {
+        self.regression.as_ref()
+    }
+
+    fn tools(&self) -> &ToolConfigs {
+        &self.tools
+    }
+
+    fn create_benchmark_summary(
+        &self,
+        config: &Config,
+        group: &Group,
+        out_path: &ToolOutputPath,
+    ) -> BenchmarkSummary {
+        let summary_output = config.meta.args.save_summary.map(|format| {
+            let output = SummaryOutput::new(format, &out_path.dir);
+            output.init();
+            output
+        });
+
+        BenchmarkSummary::new(
+            BenchmarkKind::BinaryBenchmark,
+            config.meta.project_root.clone(),
+            config.package_dir.clone(),
+            config.bench_file.clone(),
+            config.bench_bin.clone(),
+            &[&group.module_path, &self.kind.id(), &self.name],
+            None,
+            None,
+            summary_output,
+        )
+    }
+
+    fn check_and_print_regressions(
+        &self,
+        costs_summary: &CostsSummary,
+    ) -> Vec<CallgrindRegressionSummary> {
+        if let Some(regression) = &self.regression {
+            regression.check_and_print(costs_summary)
+        } else {
+            vec![]
+        }
+    }
+
+    fn parse(&self, config: &Config, out_path: &ToolOutputPath) -> Result<CostsSummary> {
+        let new_costs = self.parse_costs(config, out_path)?;
+
+        let old_path = out_path.to_base_path();
+        #[allow(clippy::if_then_some_else_none)]
+        let old_costs = if old_path.exists() {
+            Some(self.parse_costs(config, &old_path)?)
+        } else {
+            None
+        };
+
+        Ok(CostsSummary::new(&new_costs, old_costs.as_ref()))
+    }
+
+    fn parse_costs(&self, config: &Config, out_path: &ToolOutputPath) -> Result<Costs> {
+        let sentinel = self.sentinel(config).unwrap();
+        SentinelParser::new(&sentinel).parse(out_path)
+    }
+
+    fn print_header(&self, group: &Group) -> Header {
+        let header = Header::from_segments(
+            [&group.module_path, &self.kind.id(), &self.name],
+            None,
+            None,
+        );
+
+        header.print();
+        if self.tools.has_tools_enabled() {
+            println!("{}", tool_summary_header(ValgrindTool::Callgrind));
+        }
+
+        header
+    }
+
+    fn sentinel(&self, config: &Config) -> Option<Sentinel> {
+        Some(Sentinel::from_path(&config.module, &self.name))
     }
 }
 
@@ -338,36 +395,52 @@ impl Default for BenchmarkAssistants {
     }
 }
 
-impl BinBench {
-    /// Run the binary benchmark
-    ///
-    /// This method sets `is_regressed` to true if a non-fatal regression occurred (but doesn't
-    /// return an `Error::RegressionError`)
-    ///
-    /// # Errors
-    ///
-    /// Returns an `anyhow::Error` with sources:
-    /// `Error::RegressionError` if a fatal regression occurred.
-    /// `Error::ParsingError` if a parsing error occurred.
-    fn run(&self, config: &Config, group: &Group) -> Result<BenchmarkSummary> {
-        let callgrind_command = CallgrindCommand::new(&config.meta);
-        let output_path = ToolOutputPath::with_init(
-            ValgrindTool::Callgrind,
-            &config.meta.target_dir,
-            &group.module_path,
-            &format!("{}.{}", self.display, self.id),
-        );
+impl Runnable for BinBench {
+    fn callgrind_args(&self) -> &Args {
+        &self.callgrind_args
+    }
 
-        let log_path = output_path.to_log_output();
-        log_path.init();
+    fn executable(&self, _config: &Config) -> PathBuf {
+        self.command.clone()
+    }
 
+    fn executable_args(&self, _config: &Config, _group: &Group) -> Vec<OsString> {
+        self.args.clone()
+    }
+
+    fn flamegraph(&self) -> Option<&FlamegraphConfig> {
+        self.flamegraph.as_ref()
+    }
+
+    fn name(&self) -> String {
+        format!("{}.{}", self.display, self.id)
+    }
+
+    fn run_options(&self, _config: &Config) -> RunOptions {
+        self.options.clone()
+    }
+
+    fn regression(&self) -> Option<&Regression> {
+        self.regression.as_ref()
+    }
+
+    fn tools(&self) -> &ToolConfigs {
+        &self.tools
+    }
+
+    fn create_benchmark_summary(
+        &self,
+        config: &Config,
+        group: &Group,
+        out_path: &ToolOutputPath,
+    ) -> BenchmarkSummary {
         let summary_output = config.meta.args.save_summary.map(|format| {
-            let output = SummaryOutput::new(format, &output_path.dir);
+            let output = SummaryOutput::new(format, &out_path.dir);
             output.init();
             output
         });
 
-        let mut benchmark_summary = BenchmarkSummary::new(
+        BenchmarkSummary::new(
             BenchmarkKind::BinaryBenchmark,
             config.meta.project_root.clone(),
             config.package_dir.clone(),
@@ -377,8 +450,39 @@ impl BinBench {
             Some(self.id.clone()),
             Some(self.to_string()),
             summary_output,
-        );
+        )
+    }
 
+    fn check_and_print_regressions(
+        &self,
+        costs_summary: &CostsSummary,
+    ) -> Vec<CallgrindRegressionSummary> {
+        if let Some(regression) = &self.regression {
+            regression.check_and_print(costs_summary)
+        } else {
+            vec![]
+        }
+    }
+
+    fn parse(&self, config: &Config, out_path: &ToolOutputPath) -> Result<CostsSummary> {
+        let new_costs = self.parse_costs(config, out_path)?;
+
+        let old_path = out_path.to_base_path();
+        #[allow(clippy::if_then_some_else_none)]
+        let old_costs = if old_path.exists() {
+            Some(self.parse_costs(config, &old_path)?)
+        } else {
+            None
+        };
+
+        Ok(CostsSummary::new(&new_costs, old_costs.as_ref()))
+    }
+
+    fn parse_costs(&self, _config: &Config, out_path: &ToolOutputPath) -> Result<Costs> {
+        SummaryParser.parse(out_path)
+    }
+
+    fn print_header(&self, group: &Group) -> Header {
         let header = Header::new(&group.module_path, self.id.clone(), self.to_string());
         header.print();
 
@@ -386,75 +490,11 @@ impl BinBench {
             println!("{}", tool_summary_header(ValgrindTool::Callgrind));
         }
 
-        let output = callgrind_command.run(
-            self.callgrind_args.clone(),
-            &self.command,
-            &self.args,
-            self.options.clone(),
-            &output_path,
-        )?;
+        header
+    }
 
-        let new_costs = SummaryParser.parse(&output_path)?;
-
-        let old_output = output_path.to_old_output();
-        #[allow(clippy::if_then_some_else_none)]
-        let old_costs = if old_output.exists() {
-            Some(SummaryParser.parse(&old_output)?)
-        } else {
-            None
-        };
-
-        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
-        let output_format = VerticalFormat::default().format(&costs_summary)?;
-        print!("{output_format}");
-
-        output.dump_log(log::Level::Info);
-        log_path.dump_log(log::Level::Info, &mut stdout())?;
-
-        let (regressions, fail_fast) = if let Some(regression) = &self.regression {
-            (
-                regression.check_and_print(&costs_summary),
-                regression.fail_fast,
-            )
-        } else {
-            (vec![], false)
-        };
-
-        let callgrind_summary = benchmark_summary
-            .callgrind_summary
-            .insert(CallgrindSummary::new(
-                fail_fast,
-                vec![log_path.to_path()],
-                vec![output_path.to_path()],
-            ));
-
-        callgrind_summary.add_summary(
-            &self.command,
-            &self.args,
-            &old_output,
-            costs_summary,
-            regressions,
-        );
-
-        let sentinel = self.options.entry_point.as_ref().map(Sentinel::new);
-        if let Some(flamegraph_config) = self.flamegraph.clone() {
-            callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
-                .create(
-                &output_path,
-                sentinel.as_ref(),
-                &config.meta.project_root,
-            )?;
-        }
-
-        benchmark_summary.tool_summaries = self.tools.run(
-            &config.meta,
-            &self.command,
-            &self.args,
-            &self.options,
-            &output_path,
-        )?;
-
-        Ok(benchmark_summary)
+    fn sentinel(&self, _config: &Config) -> Option<Sentinel> {
+        self.options.entry_point.as_ref().map(Sentinel::new)
     }
 }
 
@@ -476,11 +516,12 @@ impl Display for BinBench {
 impl Group {
     fn run_assistant(
         &self,
+        runner: &dyn BenchmarkRunner,
         assistant: &mut Assistant,
         is_regressed: &mut bool,
         config: &Config,
     ) -> Result<()> {
-        if let Some(summary) = assistant.run(config, self)? {
+        if let Some(summary) = assistant.run(runner, config, self)? {
             summary.save()?;
             summary.check_regression(is_regressed)?;
         }
@@ -488,7 +529,12 @@ impl Group {
         Ok(())
     }
 
-    fn run(&self, is_regressed: &mut bool, config: &Config) -> Result<()> {
+    fn run(
+        &self,
+        runner: &dyn BenchmarkRunner,
+        is_regressed: &mut bool,
+        config: &Config,
+    ) -> Result<()> {
         let sandbox = if self.sandbox {
             debug!("Setting up sandbox");
             Some(Sandbox::setup(&self.fixtures)?)
@@ -503,25 +549,25 @@ impl Group {
         let mut assists = self.assists.clone();
 
         if let Some(before) = assists.before.as_mut() {
-            self.run_assistant(before, is_regressed, config)?;
+            self.run_assistant(runner, before, is_regressed, config)?;
         }
 
         for bench in &self.benches {
             if let Some(setup) = assists.setup.as_mut() {
-                self.run_assistant(setup, is_regressed, config)?;
+                self.run_assistant(runner, setup, is_regressed, config)?;
             }
 
-            let summary = bench.run(config, self)?;
+            let summary = runner.run(bench, config, self)?;
             summary.save()?;
             summary.check_regression(is_regressed)?;
 
             if let Some(teardown) = assists.teardown.as_mut() {
-                self.run_assistant(teardown, is_regressed, config)?;
+                self.run_assistant(runner, teardown, is_regressed, config)?;
             }
         }
 
         if let Some(after) = assists.after.as_mut() {
-            self.run_assistant(after, is_regressed, config)?;
+            self.run_assistant(runner, after, is_regressed, config)?;
         }
 
         if let Some(sandbox) = sandbox {
@@ -711,9 +757,14 @@ impl Groups {
     ///
     /// * [`Error::RegressionError`] if a regression occurred.
     fn run(&self, config: &Config) -> Result<()> {
+        let runner = BenchmarkRunnerFactory::create_runner(
+            config.meta.args.save_baseline.as_ref(),
+            config.meta.args.load_baseline.as_ref(),
+            config.meta.args.baseline.as_ref(),
+        );
         let mut is_regressed = false;
         for group in &self.0 {
-            group.run(&mut is_regressed, config)?;
+            group.run(runner.as_ref(), &mut is_regressed, config)?;
         }
 
         if is_regressed {
@@ -721,6 +772,222 @@ impl Groups {
         } else {
             Ok(())
         }
+    }
+}
+
+impl BenchmarkRunner for BaselineBenchmarkRunner {
+    fn output_path(
+        &self,
+        runnable: &dyn Runnable,
+        config: &Config,
+        group: &Group,
+    ) -> ToolOutputPath {
+        ToolOutputPath::new(
+            ToolOutputPathKind::Out,
+            ValgrindTool::Callgrind,
+            &self.baseline_kind,
+            &config.meta.target_dir,
+            &group.module_path,
+            &runnable.name(),
+        )
+    }
+
+    fn baselines(&self) -> (Option<String>, Option<String>) {
+        match &self.baseline_kind {
+            BaselineKind::Old => (None, None),
+            BaselineKind::Name(name) => (None, Some(name.to_string())),
+        }
+    }
+
+    fn run(
+        &self,
+        runnable: &dyn Runnable,
+        config: &Config,
+        group: &Group,
+    ) -> Result<BenchmarkSummary> {
+        let callgrind_command = CallgrindCommand::new(&config.meta);
+        let executable = runnable.executable(config);
+        let executable_args = runnable.executable_args(config, group);
+        let run_options = runnable.run_options(config);
+        let out_path = self.output_path(runnable, config, group);
+        out_path.init();
+        out_path.shift();
+
+        let old_path = out_path.to_base_path();
+        let log_path = out_path.to_log_output();
+        log_path.shift();
+
+        for path in runnable.tools().output_paths(&out_path) {
+            path.shift();
+            path.to_log_output().shift();
+        }
+
+        let mut benchmark_summary = runnable.create_benchmark_summary(config, group, &out_path);
+
+        let header = runnable.print_header(group);
+
+        let output = callgrind_command.run(
+            runnable.callgrind_args().clone(),
+            &executable,
+            &executable_args,
+            run_options.clone(),
+            &out_path,
+        )?;
+
+        let costs_summary = runnable.parse(config, &out_path)?;
+        print!(
+            "{}",
+            VerticalFormat::default().format(self.baselines(), &costs_summary)?
+        );
+
+        output.dump_log(log::Level::Info);
+        log_path.dump_log(log::Level::Info, &mut stdout())?;
+
+        let regressions = runnable.check_and_print_regressions(&costs_summary);
+        let fail_fast = runnable.regression().map_or(false, |r| r.fail_fast);
+
+        let callgrind_summary = benchmark_summary
+            .callgrind_summary
+            .insert(CallgrindSummary::new(
+                fail_fast,
+                log_path.real_paths(),
+                out_path.real_paths(),
+            ));
+
+        callgrind_summary.add_summary(
+            &executable,
+            &executable_args,
+            &old_path,
+            costs_summary,
+            regressions,
+        );
+
+        if let Some(flamegraph_config) = runnable.flamegraph().cloned() {
+            callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
+                .create(
+                &out_path,
+                runnable.sentinel(config).as_ref(),
+                &config.meta.project_root,
+            )?;
+        }
+
+        benchmark_summary.tool_summaries = runnable.tools().run(
+            &config.meta,
+            &executable,
+            &executable_args,
+            &run_options,
+            &out_path,
+        )?;
+
+        Ok(benchmark_summary)
+    }
+}
+
+impl BenchmarkRunnerFactory {
+    fn create_runner(
+        save_baseline: Option<&BaselineName>,
+        load_baseline: Option<&BaselineName>,
+        baseline: Option<&BaselineName>,
+    ) -> Box<dyn BenchmarkRunner> {
+        if let Some(baseline_name) = save_baseline {
+            Box::new(SaveBaselineBenchmarkRunner {
+                baseline: baseline_name.clone(),
+            })
+        } else if let Some(baseline_name) = load_baseline {
+            Box::new(LoadBaselineBenchmarkRunner {
+                loaded_baseline: baseline_name.clone(),
+                baseline: baseline.unwrap().clone(),
+            })
+        } else {
+            Box::new(BaselineBenchmarkRunner {
+                baseline_kind: baseline
+                    .map_or(BaselineKind::Old, |name| BaselineKind::Name(name.clone())),
+            })
+        }
+    }
+}
+
+impl BenchmarkRunner for LoadBaselineBenchmarkRunner {
+    fn output_path(
+        &self,
+        runnable: &dyn Runnable,
+        config: &Config,
+        group: &Group,
+    ) -> ToolOutputPath {
+        ToolOutputPath::new(
+            ToolOutputPathKind::Base(self.loaded_baseline.to_string()),
+            ValgrindTool::Callgrind,
+            &BaselineKind::Name(self.baseline.clone()),
+            &config.meta.target_dir,
+            &group.module_path,
+            &runnable.name(),
+        )
+    }
+
+    fn baselines(&self) -> (Option<String>, Option<String>) {
+        (
+            Some(self.loaded_baseline.to_string()),
+            Some(self.baseline.to_string()),
+        )
+    }
+
+    fn run(
+        &self,
+        runnable: &dyn Runnable,
+        config: &Config,
+        group: &Group,
+    ) -> Result<BenchmarkSummary> {
+        let executable = runnable.executable(config);
+        let executable_args = runnable.executable_args(config, group);
+        let out_path = self.output_path(runnable, config, group);
+        let base_path = out_path.to_base_path();
+        let log_path = out_path.to_log_output();
+
+        let mut benchmark_summary = runnable.create_benchmark_summary(config, group, &out_path);
+
+        runnable.print_header(group);
+        let costs_summary = runnable.parse(config, &out_path)?;
+        print!(
+            "{}",
+            VerticalFormat::default().format(self.baselines(), &costs_summary)?
+        );
+
+        log_path.dump_log(log::Level::Info, &mut stdout())?;
+
+        let regressions = runnable.check_and_print_regressions(&costs_summary);
+        let fail_fast = runnable.regression().map_or(false, |r| r.fail_fast);
+
+        let callgrind_summary = benchmark_summary
+            .callgrind_summary
+            .insert(CallgrindSummary::new(
+                fail_fast,
+                log_path.real_paths(),
+                out_path.real_paths(),
+            ));
+
+        callgrind_summary.add_summary(
+            &executable,
+            &executable_args,
+            &base_path,
+            costs_summary,
+            regressions,
+        );
+
+        // TODO: ??
+        // if let Some(flamegraph_config) = runnable.flamegraph().cloned() {
+        //     callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
+        //         .create(
+        //         &out_path,
+        //         runnable.sentinel(config).as_ref(),
+        //         &config.meta.project_root,
+        //     )?;
+        // }
+
+        benchmark_summary.tool_summaries = runnable
+            .tools()
+            .run_loaded_vs_base(&config.meta, &out_path)?;
+
+        Ok(benchmark_summary)
     }
 }
 
@@ -775,6 +1042,123 @@ impl Sandbox {
         } else {
             _ = self.temp_dir.close();
         }
+    }
+}
+
+impl BenchmarkRunner for SaveBaselineBenchmarkRunner {
+    fn output_path(
+        &self,
+        runnable: &dyn Runnable,
+        config: &Config,
+        group: &Group,
+    ) -> ToolOutputPath {
+        ToolOutputPath::new(
+            ToolOutputPathKind::Base(self.baseline.to_string()),
+            ValgrindTool::Callgrind,
+            &BaselineKind::Name(self.baseline.clone()),
+            &config.meta.target_dir,
+            &group.module_path,
+            &runnable.name(),
+        )
+    }
+
+    fn baselines(&self) -> (Option<String>, Option<String>) {
+        (
+            Some(self.baseline.to_string()),
+            Some(self.baseline.to_string()),
+        )
+    }
+
+    fn run(
+        &self,
+        runnable: &dyn Runnable,
+        config: &Config,
+        group: &Group,
+    ) -> Result<BenchmarkSummary> {
+        let callgrind_command = CallgrindCommand::new(&config.meta);
+        let executable = runnable.executable(config);
+        let executable_args = runnable.executable_args(config, group);
+        let run_options = runnable.run_options(config);
+        let out_path = self.output_path(runnable, config, group);
+        out_path.init();
+
+        #[allow(clippy::if_then_some_else_none)]
+        let old_costs = if out_path.exists() {
+            let old_costs = runnable.parse_costs(config, &out_path)?;
+            out_path.clear();
+            Some(old_costs)
+        } else {
+            None
+        };
+
+        let log_path = out_path.to_log_output();
+        log_path.clear();
+
+        for path in runnable.tools().output_paths(&out_path) {
+            path.clear();
+            path.to_log_output().clear();
+        }
+
+        let mut benchmark_summary = runnable.create_benchmark_summary(config, group, &out_path);
+
+        runnable.print_header(group);
+
+        let output = callgrind_command.run(
+            runnable.callgrind_args().clone(),
+            &executable,
+            &executable_args,
+            run_options.clone(),
+            &out_path,
+        )?;
+
+        let new_costs = runnable.parse_costs(config, &out_path)?;
+        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
+        print!(
+            "{}",
+            VerticalFormat::default().format(self.baselines(), &costs_summary)?
+        );
+
+        output.dump_log(log::Level::Info);
+        log_path.dump_log(log::Level::Info, &mut stdout())?;
+
+        let regressions = runnable.check_and_print_regressions(&costs_summary);
+        let fail_fast = runnable.regression().map_or(false, |r| r.fail_fast);
+
+        let callgrind_summary = benchmark_summary
+            .callgrind_summary
+            .insert(CallgrindSummary::new(
+                fail_fast,
+                log_path.real_paths(),
+                out_path.real_paths(),
+            ));
+
+        callgrind_summary.add_summary(
+            &executable,
+            &executable_args,
+            &out_path,
+            costs_summary,
+            regressions,
+        );
+
+        // TODO: ??
+        // if let Some(flamegraph_config) = runnable.flamegraph().cloned() {
+        //     callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
+        //         .create(
+        //         &out_path,
+        //         runnable.sentinel(config).as_ref(),
+        //         &config.meta.project_root,
+        //     )?;
+        // }
+
+        benchmark_summary.tool_summaries = runnable.tools().run(
+            &config.meta,
+            &executable,
+            &executable_args,
+            &run_options,
+            &out_path,
+        )?;
+
+        Ok(benchmark_summary)
     }
 }
 

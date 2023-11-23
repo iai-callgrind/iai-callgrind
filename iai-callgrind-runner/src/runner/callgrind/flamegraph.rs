@@ -25,6 +25,7 @@ pub struct Config {
     pub min_width: f64,
 }
 
+#[derive(Debug, Clone)]
 pub struct Flamegraph {
     pub config: Config,
 }
@@ -119,14 +120,14 @@ impl Flamegraph {
         options.subtitle = self.config.subtitle.clone();
         options.min_width = self.config.min_width;
 
-        let old_output = callgrind_output_path.to_old_output();
+        let old_path = callgrind_output_path.to_base_path();
 
         #[allow(clippy::if_then_some_else_none)]
         let mut old_map = if (self.config.kind == FlamegraphKind::Differential
             || self.config.kind == FlamegraphKind::All)
-            && old_output.exists()
+            && old_path.exists()
         {
-            Some(parser.parse(&old_output)?)
+            Some(parser.parse(&old_path)?)
         } else {
             None
         };
@@ -185,7 +186,7 @@ impl Flamegraph {
                     String::from_utf8_lossy(result.get_ref()).lines(),
                 )?;
 
-                flamegraph_summary.old_path = Some(output.to_old_output().as_path().to_owned());
+                flamegraph_summary.old_path = Some(output.to_old_path().as_path().to_owned());
                 flamegraph_summary.diff_path = Some(diff_output.as_path().to_owned());
             }
 
@@ -203,7 +204,7 @@ impl Output {
     {
         let output = Self(path.as_ref().with_extension(format!("{event_kind}.svg")));
         if output.exists() {
-            let old_svg = output.to_old_output();
+            let old_svg = output.to_old_path();
             std::fs::rename(output.as_path(), old_svg.as_path()).with_context(|| {
                 format!(
                     "Failed moving flamegraph file '{}' -> '{}'",
@@ -229,7 +230,7 @@ impl Output {
         Self(self.0.with_extension("diff.svg"))
     }
 
-    pub fn to_old_output(&self) -> Self {
+    pub fn to_old_path(&self) -> Self {
         Self(self.0.with_extension("old.svg"))
     }
 
