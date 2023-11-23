@@ -58,7 +58,7 @@ fn bench_subprocess() -> io::Result<Output> {
         .tool_override(Tool::new(ValgrindTool::DHAT))
         .tool_override(
             Tool::new(ValgrindTool::Memcheck)
-                .args(["--leak-check=full", "--errors-for-leak-kinds=all", "--error-exitcode=0"])
+                .args(["--leak-check=full", "--errors-for-leak-kinds=all", "--error-exitcode=0", "--time-stamp=yes"])
         )
         .tool_override(Tool::new(ValgrindTool::Massif))
 )]
@@ -81,10 +81,10 @@ main!(
             RegressionConfig::default()
                 .limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
         )
-        .tool(Tool::new(ValgrindTool::DHAT))
+        .tool(Tool::new(ValgrindTool::DHAT).args(["--time-stamp=yes"]))
         .tool(Tool::new(ValgrindTool::Massif))
         .tool(Tool::new(ValgrindTool::BBV))
-        .tool(Tool::new(ValgrindTool::Memcheck))
+        .tool(Tool::new(ValgrindTool::Memcheck).args(["--time-stamp=yes"]))
         .tool(Tool::new(ValgrindTool::DRD))
         .tool(Tool::new(ValgrindTool::Helgrind));
     library_benchmark_groups = bench_group);

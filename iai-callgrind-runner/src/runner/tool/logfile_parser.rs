@@ -12,16 +12,21 @@ use crate::error::Error;
 use crate::runner::callgrind::parser::Parser;
 use crate::util::make_relative;
 
+// The different regex have to consider --time-stamp=yes
 lazy_static! {
-    static ref EXTRACT_FIELDS_RE: Regex =
-        regex::Regex::new(r"^\s*(==|--)[0-9]+(==|--)\s*(?<key>.*?)\s*:\s*(?<value>.*)\s*$")
-            .expect("Regex should compile");
+    static ref EXTRACT_FIELDS_RE: Regex = regex::Regex::new(
+        r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--)\s*(?<key>.*?)\s*:\s*(?<value>.*)\s*$"
+    )
+    .expect("Regex should compile");
     static ref EMPTY_LINE_RE: Regex =
-        regex::Regex::new(r"^\s*(==|--)[0-9]+(==|--)\s*$").expect("Regex should compile");
+        regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--)\s*$")
+            .expect("Regex should compile");
     static ref STRIP_PREFIX_RE: Regex =
-        regex::Regex::new(r"^\s*(==|--)[0-9]+(==|--) (?<rest>.*)$").expect("Regex should compile");
+        regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--) (?<rest>.*)$")
+            .expect("Regex should compile");
     static ref EXTRACT_PID_RE: Regex =
-        regex::Regex::new(r"^\s*(==|--)(?<pid>[0-9]+)(==|--).*").expect("Regex should compile");
+        regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?(?<pid>[0-9]+)(==|--).*")
+            .expect("Regex should compile");
 }
 
 pub struct LogfileParser {
@@ -110,6 +115,14 @@ impl LogfileParser {
                         body.push(line);
                     }
                 }
+            }
+        }
+
+        while let Some(last) = body.last() {
+            if last.trim().is_empty() {
+                body.pop();
+            } else {
+                break;
             }
         }
 
