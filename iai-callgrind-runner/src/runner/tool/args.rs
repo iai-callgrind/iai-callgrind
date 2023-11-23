@@ -15,7 +15,6 @@ pub struct ToolArgs {
 }
 
 impl ToolArgs {
-    // TODO: Sort out --tool
     pub fn from_raw_args(tool: ValgrindTool, raw_args: api::RawArgs) -> Self {
         let mut other = vec![];
         let mut error_exitcode = None;
@@ -25,9 +24,11 @@ impl ToolArgs {
                 .split_once('=')
                 .map(|(k, v)| (k.trim(), v.trim()))
             {
+                Some(("--tool", _)) => warn!("Ignoring {} argument '{arg}'", tool.id()),
                 Some((
                     "--dhat-out-file" | "--massif-out-file" | "--bb-out-file" | "--pc-out-file"
-                    | "--log-file",
+                    | "--log-file" | "--log-fd" | "--log-socket" | "--xml" | "--xml-file"
+                    | "--xml-fd" | "--xml-socket" | "--xml-user-comment",
                     _,
                 )) => warn!(
                     "Ignoring {} argument '{arg}': Output/Log files of tools are managed by \
