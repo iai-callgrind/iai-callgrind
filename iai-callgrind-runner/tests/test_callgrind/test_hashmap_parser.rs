@@ -1,5 +1,6 @@
 use iai_callgrind_runner::runner::callgrind::hashmap_parser::{CallgrindMap, HashMapParser};
 use iai_callgrind_runner::runner::callgrind::parser::Parser;
+use iai_callgrind_runner::runner::tool::{ToolOutputPathKind, ValgrindTool};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 
@@ -8,8 +9,12 @@ use crate::common::{assert_parse_error, Fixtures};
 #[test]
 fn test_when_version_mismatch_then_should_return_error() {
     let parser = HashMapParser::default();
-    let output =
-        Fixtures::get_callgrind_output_path("callgrind.out/callgrind.invalid.version_too_high.out");
+    let output = Fixtures::get_tool_output_path(
+        "callgrind.out",
+        ValgrindTool::Callgrind,
+        ToolOutputPathKind::Out,
+        "invalid.version_too_high",
+    );
     assert_parse_error(
         &output.to_path(),
         parser.parse(&output),
@@ -20,15 +25,24 @@ fn test_when_version_mismatch_then_should_return_error() {
 #[test]
 fn test_when_empty_file_then_should_return_error() {
     let parser = HashMapParser::default();
-    let output = Fixtures::get_callgrind_output_path("callgrind.out/callgrind.empty.out");
+    let output = Fixtures::get_tool_output_path(
+        "callgrind.out",
+        ValgrindTool::Callgrind,
+        ToolOutputPathKind::Out,
+        "empty",
+    );
     assert_parse_error(&output.to_path(), parser.parse(&output), "Empty file");
 }
 
 #[test]
 fn test_valid_just_main() {
     let parser = HashMapParser::default();
-    let output =
-        Fixtures::get_callgrind_output_path("callgrind.out/callgrind.valid.minimal_main.out");
+    let output = Fixtures::get_tool_output_path(
+        "callgrind.out",
+        ValgrindTool::Callgrind,
+        ToolOutputPathKind::Out,
+        "valid.minimal_main",
+    );
     let expected_map =
         Fixtures::load_serialized("callgrind.out/callgrind.valid.minimal_main.exp_map").unwrap();
 
@@ -38,11 +52,16 @@ fn test_valid_just_main() {
 }
 
 #[rstest]
-#[case::no_summary_and_totals("callgrind.out/callgrind.no_records.no_summary_and_totals.out")]
-#[case::summary_and_totals("callgrind.out/callgrind.no_records.with_summary_and_totals.out")]
-fn test_when_no_records(#[case] fixture: &str) {
+#[case::no_summary_and_totals("no_records.no_summary_and_totals")]
+#[case::summary_and_totals("no_records.with_summary_and_totals")]
+fn test_when_no_records(#[case] name: &str) {
     let parser = HashMapParser::default();
-    let output = Fixtures::get_callgrind_output_path(fixture);
+    let output = Fixtures::get_tool_output_path(
+        "callgrind.out",
+        ValgrindTool::Callgrind,
+        ToolOutputPathKind::Out,
+        name,
+    );
     let expected_map = CallgrindMap::default();
 
     let actual_map = parser.parse(&output).unwrap();

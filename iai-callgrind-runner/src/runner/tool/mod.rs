@@ -9,13 +9,10 @@ use std::fs::File;
 use std::io::{stdout, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
-use std::str::FromStr;
 
 use anyhow::{anyhow, Context, Result};
 use indexmap::IndexMap;
-use lazy_static::lazy_static;
 use log::{debug, error, log_enabled, Level};
-use regex::Regex;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -24,7 +21,7 @@ use self::args::ToolArgs;
 use super::callgrind::parser::Parser;
 use super::dhat::logfile_parser::LogfileParser as DhatLogfileParser;
 use super::meta::Metadata;
-use super::summary::{BaselineKind, BaselineName, ToolSummary};
+use super::summary::{BaselineKind, ToolSummary};
 use crate::api::ExitWith;
 use crate::error::Error;
 use crate::runner::print::tool_summary_header;
@@ -33,11 +30,6 @@ use crate::runner::tool::format::LogfileSummaryFormatter;
 use crate::runner::tool::logfile_parser::LogfileParser;
 use crate::util::{resolve_binary_path, truncate_str_utf8};
 use crate::{api, util};
-
-lazy_static!(
-        static ref FILENAME_RE: Regex = Regex::new(r"^(?<tool>.*?)[.](?<name>.*)[.]((?<extold>out(\..*)?)|(?<extbase>base[.](?<extbasename>[^.]+)(\..+)?))$")
-            .expect("Regex should compile");
-);
 
 #[derive(Debug, Default, Clone)]
 pub struct RunOptions {
@@ -393,57 +385,6 @@ impl ToolOutputPath {
             name: sanitized_name.to_owned(),
             modifiers: vec![],
         }
-    }
-
-    // TODO: FIX THIS to use ToolOutputPathKind and BaselineKind correctly
-    pub fn from_existing<T>(path: T) -> Result<Self>
-    where
-        T: Into<PathBuf>,
-    {
-        let path: PathBuf = path.into();
-        if !path.is_file() {
-            return Err(anyhow!(
-                "The output file '{}' did not exist or is not a valid file",
-                path.display()
-            ));
-        }
-        let file_name = path.file_name().unwrap().to_string_lossy();
-        let caps = FILENAME_RE
-            .captures(&file_name)
-            .ok_or_else(|| anyhow!("Illegal file name: {file_name}"))?;
-        let baseline_kind = if let Some(extold) = caps.name("extold") {
-            BaselineKind::Old
-        } else if let Some(extbase) = caps.name("extbase") {
-            let name = caps
-                .name("extbasename")
-                .ok_or_else(|| anyhow!("Illegal file name: {file_name}"))?
-                .as_str();
-            BaselineKind::Name(
-                BaselineName::from_str(name)
-                    .map_err(|error| anyhow!("Illegal baseline name: {error}"))?,
-            )
-        } else {
-            return Err(anyhow!("Illegal file name: {file_name}"));
-        };
-
-        Ok(Self {
-            kind: ToolOutputPathKind::Out,
-            tool: caps
-                .name("tool")
-                .ok_or_else(|| anyhow!("Illegal file name: {file_name}"))?
-                .as_str()
-                .try_into()
-                .unwrap(),
-            baseline_kind,
-            dir: path.parent().unwrap().to_owned(),
-            name: caps
-                .name("name")
-                .ok_or_else(|| anyhow!("Illegal file name: {file_name}"))?
-                .as_str()
-                .to_owned(),
-            // TODO: ADJUST
-            modifiers: vec![],
-        })
     }
 
     /// Initialize and create the output directory and organize files
