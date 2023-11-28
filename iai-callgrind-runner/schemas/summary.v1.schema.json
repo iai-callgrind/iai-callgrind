@@ -91,7 +91,7 @@
       "required": ["kind", "path"],
       "properties": {
         "kind": {
-          "description": "The kind of the `Baseline`, which currently can only be `Old`",
+          "description": "The kind of the `Baseline`",
           "allOf": [
             {
               "$ref": "#/definitions/BaselineKind"
@@ -111,8 +111,22 @@
           "description": "Compare new against `*.old` output files",
           "type": "string",
           "enum": ["Old"]
+        },
+        {
+          "description": "Compare new against a named baseline",
+          "type": "object",
+          "required": ["Name"],
+          "properties": {
+            "Name": {
+              "$ref": "#/definitions/BaselineName"
+            }
+          },
+          "additionalProperties": false
         }
       ]
+    },
+    "BaselineName": {
+      "type": "string"
     },
     "BenchmarkKind": {
       "description": "The `BenchmarkKind`, differentiating between library and binary benchmarks",
