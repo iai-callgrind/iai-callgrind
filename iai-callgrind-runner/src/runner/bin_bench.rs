@@ -49,7 +49,7 @@ enum AssistantKind {
 }
 
 #[derive(Debug)]
-struct BaselineBenchmarkRunner {
+struct BaselineBenchmark {
     baseline_kind: BaselineKind,
 }
 
@@ -60,9 +60,6 @@ struct BenchmarkAssistants {
     setup: Option<Assistant>,
     teardown: Option<Assistant>,
 }
-
-#[derive(Debug, Clone)]
-struct BenchmarkRunnerFactory;
 
 #[derive(Debug)]
 struct BinBench {
@@ -91,7 +88,7 @@ struct Group {
 struct Groups(Vec<Group>);
 
 #[derive(Debug)]
-struct LoadBaselineBenchmarkRunner {
+struct LoadBaselineBenchmark {
     loaded_baseline: BaselineName,
     baseline: BaselineName,
 }
@@ -100,6 +97,7 @@ struct LoadBaselineBenchmarkRunner {
 struct Runner {
     groups: Groups,
     config: Config,
+    benchmark: Box<dyn Benchmark>,
 }
 
 #[derive(Debug)]
@@ -109,11 +107,11 @@ struct Sandbox {
 }
 
 #[derive(Debug)]
-struct SaveBaselineBenchmarkRunner {
+struct SaveBaselineBenchmark {
     baseline: BaselineName,
 }
 
-trait BenchmarkRunner: std::fmt::Debug {
+trait Benchmark: std::fmt::Debug {
     fn output_path(
         &self,
         runnable: &dyn Runnable,
@@ -230,7 +228,7 @@ impl Assistant {
     /// * [`Error::RegressionError`] if the regression was fatal
     fn run(
         &mut self,
-        runner: &dyn BenchmarkRunner,
+        benchmark: &dyn Benchmark,
         config: &Config,
         group: &Group,
     ) -> Result<Option<BenchmarkSummary>> {
@@ -239,7 +237,7 @@ impl Assistant {
                 AssistantKind::Setup | AssistantKind::Teardown => self.bench = false,
                 _ => {}
             }
-            runner.run(&*self, config, group).map(Some)
+            benchmark.run(&*self, config, group).map(Some)
         } else {
             self.run_plain(config, group).map(|()| None)
         }
@@ -516,12 +514,12 @@ impl Display for BinBench {
 impl Group {
     fn run_assistant(
         &self,
-        runner: &dyn BenchmarkRunner,
+        benchmark: &dyn Benchmark,
         assistant: &mut Assistant,
         is_regressed: &mut bool,
         config: &Config,
     ) -> Result<()> {
-        if let Some(summary) = assistant.run(runner, config, self)? {
+        if let Some(summary) = assistant.run(benchmark, config, self)? {
             summary.save()?;
             summary.check_regression(is_regressed)?;
         }
@@ -531,7 +529,7 @@ impl Group {
 
     fn run(
         &self,
-        runner: &dyn BenchmarkRunner,
+        benchmark: &dyn Benchmark,
         is_regressed: &mut bool,
         config: &Config,
     ) -> Result<()> {
@@ -549,25 +547,25 @@ impl Group {
         let mut assists = self.assists.clone();
 
         if let Some(before) = assists.before.as_mut() {
-            self.run_assistant(runner, before, is_regressed, config)?;
+            self.run_assistant(benchmark, before, is_regressed, config)?;
         }
 
         for bench in &self.benches {
             if let Some(setup) = assists.setup.as_mut() {
-                self.run_assistant(runner, setup, is_regressed, config)?;
+                self.run_assistant(benchmark, setup, is_regressed, config)?;
             }
 
-            let summary = runner.run(bench, config, self)?;
+            let summary = benchmark.run(bench, config, self)?;
             summary.save()?;
             summary.check_regression(is_regressed)?;
 
             if let Some(teardown) = assists.teardown.as_mut() {
-                self.run_assistant(runner, teardown, is_regressed, config)?;
+                self.run_assistant(benchmark, teardown, is_regressed, config)?;
             }
         }
 
         if let Some(after) = assists.after.as_mut() {
-            self.run_assistant(runner, after, is_regressed, config)?;
+            self.run_assistant(benchmark, after, is_regressed, config)?;
         }
 
         if let Some(sandbox) = sandbox {
@@ -756,15 +754,10 @@ impl Groups {
     /// Return an [`anyhow::Error`] with sources:
     ///
     /// * [`Error::RegressionError`] if a regression occurred.
-    fn run(&self, config: &Config) -> Result<()> {
-        let runner = BenchmarkRunnerFactory::create_runner(
-            config.meta.args.save_baseline.as_ref(),
-            config.meta.args.load_baseline.as_ref(),
-            config.meta.args.baseline.as_ref(),
-        );
+    fn run(&self, benchmark: &dyn Benchmark, config: &Config) -> Result<()> {
         let mut is_regressed = false;
         for group in &self.0 {
-            group.run(runner.as_ref(), &mut is_regressed, config)?;
+            group.run(benchmark, &mut is_regressed, config)?;
         }
 
         if is_regressed {
@@ -775,7 +768,7 @@ impl Groups {
     }
 }
 
-impl BenchmarkRunner for BaselineBenchmarkRunner {
+impl Benchmark for BaselineBenchmark {
     fn output_path(
         &self,
         runnable: &dyn Runnable,
@@ -883,31 +876,7 @@ impl BenchmarkRunner for BaselineBenchmarkRunner {
     }
 }
 
-impl BenchmarkRunnerFactory {
-    fn create_runner(
-        save_baseline: Option<&BaselineName>,
-        load_baseline: Option<&BaselineName>,
-        baseline: Option<&BaselineName>,
-    ) -> Box<dyn BenchmarkRunner> {
-        if let Some(baseline_name) = save_baseline {
-            Box::new(SaveBaselineBenchmarkRunner {
-                baseline: baseline_name.clone(),
-            })
-        } else if let Some(baseline_name) = load_baseline {
-            Box::new(LoadBaselineBenchmarkRunner {
-                loaded_baseline: baseline_name.clone(),
-                baseline: baseline.unwrap().clone(),
-            })
-        } else {
-            Box::new(BaselineBenchmarkRunner {
-                baseline_kind: baseline
-                    .map_or(BaselineKind::Old, |name| BaselineKind::Name(name.clone())),
-            })
-        }
-    }
-}
-
-impl BenchmarkRunner for LoadBaselineBenchmarkRunner {
+impl Benchmark for LoadBaselineBenchmark {
     fn output_path(
         &self,
         runnable: &dyn Runnable,
@@ -992,13 +961,45 @@ impl BenchmarkRunner for LoadBaselineBenchmarkRunner {
 }
 
 impl Runner {
-    fn generate(binary_benchmark: BinaryBenchmark, config: Config) -> Result<Self> {
+    fn new(binary_benchmark: BinaryBenchmark, config: Config) -> Result<Self> {
         let groups = Groups::from_binary_benchmark(&config.module, binary_benchmark, &config.meta)?;
-        Ok(Self { groups, config })
+
+        let benchmark: Box<dyn Benchmark> =
+            if let Some(baseline_name) = &config.meta.args.save_baseline {
+                Box::new(SaveBaselineBenchmark {
+                    baseline: baseline_name.clone(),
+                })
+            } else if let Some(baseline_name) = &config.meta.args.load_baseline {
+                Box::new(LoadBaselineBenchmark {
+                    loaded_baseline: baseline_name.clone(),
+                    baseline: config
+                        .meta
+                        .args
+                        .baseline
+                        .as_ref()
+                        .expect("A baseline should be present")
+                        .clone(),
+                })
+            } else {
+                Box::new(BaselineBenchmark {
+                    baseline_kind: config
+                        .meta
+                        .args
+                        .baseline
+                        .as_ref()
+                        .map_or(BaselineKind::Old, |name| BaselineKind::Name(name.clone())),
+                })
+            };
+
+        Ok(Self {
+            groups,
+            config,
+            benchmark,
+        })
     }
 
     fn run(&self) -> Result<()> {
-        self.groups.run(&self.config)
+        self.groups.run(self.benchmark.as_ref(), &self.config)
     }
 }
 
@@ -1045,7 +1046,7 @@ impl Sandbox {
     }
 }
 
-impl BenchmarkRunner for SaveBaselineBenchmarkRunner {
+impl Benchmark for SaveBaselineBenchmark {
     fn output_path(
         &self,
         runnable: &dyn Runnable,
@@ -1163,5 +1164,5 @@ impl BenchmarkRunner for SaveBaselineBenchmarkRunner {
 }
 
 pub fn run(binary_benchmark: BinaryBenchmark, config: Config) -> Result<()> {
-    Runner::generate(binary_benchmark, config)?.run()
+    Runner::new(binary_benchmark, config)?.run()
 }

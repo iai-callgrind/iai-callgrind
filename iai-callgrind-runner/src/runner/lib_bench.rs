@@ -21,12 +21,9 @@ use crate::runner::summary::{
 use crate::runner::tool::{ToolOutputPath, ToolOutputPathKind, ValgrindTool};
 
 #[derive(Debug)]
-struct BaselineLibBenchRunner {
+struct BaselineBenchmark {
     baseline_kind: BaselineKind,
 }
-
-#[derive(Debug)]
-struct BenchmarkRunnerFactory;
 
 // A `Group` is the organizational unit and counterpart of the `library_benchmark_group!` macro
 #[derive(Debug)]
@@ -56,7 +53,7 @@ struct LibBench {
 }
 
 #[derive(Debug)]
-struct LoadedBaselineLibBenchRunner {
+struct LoadBaselineBenchmark {
     loaded_baseline: BaselineName,
     baseline: BaselineName,
 }
@@ -65,21 +62,22 @@ struct LoadedBaselineLibBenchRunner {
 struct Runner {
     config: Config,
     groups: Groups,
+    benchmark: Box<dyn Benchmark>,
 }
 
 #[derive(Debug)]
-struct SaveBaselineLibBenchRunner {
+struct SaveBaselineBenchmark {
     baseline: BaselineName,
 }
 
-trait LibBenchRunner: std::fmt::Debug {
+trait Benchmark: std::fmt::Debug {
     fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath;
     fn baselines(&self) -> (Option<String>, Option<String>);
     fn run(&self, lib_bench: &LibBench, config: &Config, group: &Group)
     -> Result<BenchmarkSummary>;
 }
 
-impl LibBenchRunner for BaselineLibBenchRunner {
+impl Benchmark for BaselineBenchmark {
     fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath {
         ToolOutputPath::new(
             ToolOutputPathKind::Out,
@@ -135,7 +133,6 @@ impl LibBenchRunner for BaselineLibBenchRunner {
 
         let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
 
-        // TODO: BASELINE if not Old MUST EXIST OR ERROR
         #[allow(clippy::if_then_some_else_none)]
         let old_costs = if old_path.exists() {
             Some(SentinelParser::new(&sentinel).parse(&old_path)?)
@@ -189,30 +186,6 @@ impl LibBenchRunner for BaselineLibBenchRunner {
         )?;
 
         Ok(benchmark_summary)
-    }
-}
-
-impl BenchmarkRunnerFactory {
-    fn create_runner(
-        save_baseline: Option<&BaselineName>,
-        load_baseline: Option<&BaselineName>,
-        baseline: Option<&BaselineName>,
-    ) -> Box<dyn LibBenchRunner> {
-        if let Some(baseline_name) = save_baseline {
-            Box::new(SaveBaselineLibBenchRunner {
-                baseline: baseline_name.clone(),
-            })
-        } else if let Some(baseline_name) = load_baseline {
-            Box::new(LoadedBaselineLibBenchRunner {
-                loaded_baseline: baseline_name.clone(),
-                baseline: baseline.unwrap().clone(),
-            })
-        } else {
-            Box::new(BaselineLibBenchRunner {
-                baseline_kind: baseline
-                    .map_or(BaselineKind::Old, |name| BaselineKind::Name(name.clone())),
-            })
-        }
     }
 }
 
@@ -279,17 +252,12 @@ impl Groups {
         Ok(Self(groups))
     }
 
-    fn run(&self, config: &Config) -> Result<()> {
-        let runner = BenchmarkRunnerFactory::create_runner(
-            config.meta.args.save_baseline.as_ref(),
-            config.meta.args.load_baseline.as_ref(),
-            config.meta.args.baseline.as_ref(),
-        );
+    fn run(&self, benchmark: &dyn Benchmark, config: &Config) -> Result<()> {
         let mut is_regressed = false;
 
         for group in &self.0 {
             for bench in &group.benches {
-                let summary = runner.run(bench, config, group)?;
+                let summary = benchmark.run(bench, config, group)?;
                 summary.save()?;
                 summary.check_regression(&mut is_regressed)?;
             }
@@ -380,7 +348,7 @@ impl LibBench {
     }
 }
 
-impl LibBenchRunner for LoadedBaselineLibBenchRunner {
+impl Benchmark for LoadBaselineBenchmark {
     fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath {
         ToolOutputPath::new(
             ToolOutputPathKind::Base(self.loaded_baseline.to_string()),
@@ -451,19 +419,50 @@ impl LibBenchRunner for LoadedBaselineLibBenchRunner {
 }
 
 impl Runner {
-    fn generate(library_benchmark: LibraryBenchmark, config: Config) -> Result<Self> {
+    fn new(library_benchmark: LibraryBenchmark, config: Config) -> Result<Self> {
         let groups =
             Groups::from_library_benchmark(&config.module, library_benchmark, &config.meta)?;
 
-        Ok(Self { config, groups })
+        let benchmark: Box<dyn Benchmark> =
+            if let Some(baseline_name) = &config.meta.args.save_baseline {
+                Box::new(SaveBaselineBenchmark {
+                    baseline: baseline_name.clone(),
+                })
+            } else if let Some(baseline_name) = &config.meta.args.load_baseline {
+                Box::new(LoadBaselineBenchmark {
+                    loaded_baseline: baseline_name.clone(),
+                    baseline: config
+                        .meta
+                        .args
+                        .baseline
+                        .as_ref()
+                        .expect("A baseline should be present")
+                        .clone(),
+                })
+            } else {
+                Box::new(BaselineBenchmark {
+                    baseline_kind: config
+                        .meta
+                        .args
+                        .baseline
+                        .as_ref()
+                        .map_or(BaselineKind::Old, |name| BaselineKind::Name(name.clone())),
+                })
+            };
+
+        Ok(Self {
+            config,
+            groups,
+            benchmark,
+        })
     }
 
     fn run(&self) -> Result<()> {
-        self.groups.run(&self.config)
+        self.groups.run(self.benchmark.as_ref(), &self.config)
     }
 }
 
-impl LibBenchRunner for SaveBaselineLibBenchRunner {
+impl Benchmark for SaveBaselineBenchmark {
     fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath {
         ToolOutputPath::new(
             ToolOutputPathKind::Base(self.baseline.to_string()),
@@ -580,5 +579,5 @@ impl LibBenchRunner for SaveBaselineLibBenchRunner {
 }
 
 pub fn run(library_benchmark: LibraryBenchmark, config: Config) -> Result<()> {
-    Runner::generate(library_benchmark, config)?.run()
+    Runner::new(library_benchmark, config)?.run()
 }
