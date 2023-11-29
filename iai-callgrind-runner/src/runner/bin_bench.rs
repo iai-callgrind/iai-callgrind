@@ -519,9 +519,10 @@ impl Group {
         is_regressed: &mut bool,
         config: &Config,
     ) -> Result<()> {
+        let fail_fast = assistant.regression.as_ref().map_or(false, |r| r.fail_fast);
         if let Some(summary) = assistant.run(benchmark, config, self)? {
             summary.save()?;
-            summary.check_regression(is_regressed)?;
+            summary.check_regression(is_regressed, fail_fast)?;
         }
 
         Ok(())
@@ -555,9 +556,10 @@ impl Group {
                 self.run_assistant(benchmark, setup, is_regressed, config)?;
             }
 
+            let fail_fast = bench.regression.as_ref().map_or(false, |r| r.fail_fast);
             let summary = benchmark.run(bench, config, self)?;
             summary.save()?;
-            summary.check_regression(is_regressed)?;
+            summary.check_regression(is_regressed, fail_fast)?;
 
             if let Some(teardown) = assists.teardown.as_mut() {
                 self.run_assistant(benchmark, teardown, is_regressed, config)?;
@@ -837,12 +839,10 @@ impl Benchmark for BaselineBenchmark {
         log_path.dump_log(log::Level::Info, &mut stdout())?;
 
         let regressions = runnable.check_and_print_regressions(&costs_summary);
-        let fail_fast = runnable.regression().map_or(false, |r| r.fail_fast);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
             .insert(CallgrindSummary::new(
-                fail_fast,
                 log_path.real_paths(),
                 out_path.real_paths(),
             ));
@@ -924,12 +924,10 @@ impl Benchmark for LoadBaselineBenchmark {
         log_path.dump_log(log::Level::Info, &mut stdout())?;
 
         let regressions = runnable.check_and_print_regressions(&costs_summary);
-        let fail_fast = runnable.regression().map_or(false, |r| r.fail_fast);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
             .insert(CallgrindSummary::new(
-                fail_fast,
                 log_path.real_paths(),
                 out_path.real_paths(),
             ));
@@ -1123,12 +1121,10 @@ impl Benchmark for SaveBaselineBenchmark {
         log_path.dump_log(log::Level::Info, &mut stdout())?;
 
         let regressions = runnable.check_and_print_regressions(&costs_summary);
-        let fail_fast = runnable.regression().map_or(false, |r| r.fail_fast);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
             .insert(CallgrindSummary::new(
-                fail_fast,
                 log_path.real_paths(),
                 out_path.real_paths(),
             ));

@@ -123,8 +123,6 @@ pub struct CallgrindRunSummary {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindSummary {
-    /// If the regressions were configured to cause the benchmark run to fail immediately or not
-    pub regression_fail_fast: bool,
     /// The paths to the `*.log` files
     pub log_paths: Vec<PathBuf>,
     /// The paths to the `*.old` files
@@ -318,10 +316,10 @@ impl BenchmarkSummary {
     /// # Errors
     ///
     /// If the regressions are configured to be `fail_fast` an error is returned
-    pub fn check_regression(&self, is_regressed: &mut bool) -> Result<()> {
+    pub fn check_regression(&self, is_regressed: &mut bool, fail_fast: bool) -> Result<()> {
         if let Some(callgrind_summary) = &self.callgrind_summary {
             let benchmark_is_regressed = callgrind_summary.is_regressed();
-            if benchmark_is_regressed && callgrind_summary.regression_fail_fast {
+            if benchmark_is_regressed && fail_fast {
                 return Err(Error::RegressionError(true).into());
             }
 
@@ -334,14 +332,8 @@ impl BenchmarkSummary {
 
 impl CallgrindSummary {
     /// Create a new `CallgrindSummary`
-    pub fn new(
-        // TODO: REMOVE
-        fail_fast: bool,
-        log_paths: Vec<PathBuf>,
-        out_paths: Vec<PathBuf>,
-    ) -> CallgrindSummary {
+    pub fn new(log_paths: Vec<PathBuf>, out_paths: Vec<PathBuf>) -> CallgrindSummary {
         Self {
-            regression_fail_fast: fail_fast,
             log_paths,
             out_paths,
             flamegraphs: Vec::default(),

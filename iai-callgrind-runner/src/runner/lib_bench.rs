@@ -1,3 +1,6 @@
+//! The `lib_bench` module
+//!
+//! This module runs all the library benchmarks
 use std::ffi::OsString;
 use std::io::stdout;
 
@@ -20,6 +23,7 @@ use crate::runner::summary::{
 };
 use crate::runner::tool::{ToolOutputPath, ToolOutputPathKind, ValgrindTool};
 
+/// Implements [`Benchmark`] to run a [`LibBench`] and compare against a earlier [`BenchmarkKind`]
 #[derive(Debug)]
 struct BaselineBenchmark {
     baseline_kind: BaselineKind,
@@ -37,7 +41,9 @@ struct Group {
 #[derive(Debug)]
 struct Groups(Vec<Group>);
 
-/// A `LibBench` represents a single benchmark from the `#[library_benchmark]` attribute macro
+/// A `LibBench` represents a single benchmark under the `#[library_benchmark]` attribute macro
+///
+/// It needs an implementation of `Benchmark` to be run.
 #[derive(Debug)]
 struct LibBench {
     bench_index: usize,
@@ -52,12 +58,17 @@ struct LibBench {
     tools: ToolConfigs,
 }
 
+/// Implements [`Benchmark`] to load a [`LibBench`] baseline run and compare against another
+/// baseline
+///
+/// This benchmark runner does not run valgrind or execute anything.
 #[derive(Debug)]
 struct LoadBaselineBenchmark {
     loaded_baseline: BaselineName,
     baseline: BaselineName,
 }
 
+/// Create and run [`Groups`] with an implementation of [`Benchmark`]
 #[derive(Debug)]
 struct Runner {
     config: Config,
@@ -65,11 +76,17 @@ struct Runner {
     benchmark: Box<dyn Benchmark>,
 }
 
+/// Implements [`Benchmark`] to save a [`LibBench`] run as baseline. If present compare against a
+/// former baseline with the same name
 #[derive(Debug)]
 struct SaveBaselineBenchmark {
     baseline: BaselineName,
 }
 
+/// This trait needs to be implemented to actually run a [`LibBench`]
+///
+/// Despite having the same name, this trait differs from [`super::bin_bench::Benchmark`] and is
+/// designed to run a `LibBench` only.
 trait Benchmark: std::fmt::Debug {
     fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath;
     fn baselines(&self) -> (Option<String>, Option<String>);
@@ -150,12 +167,10 @@ impl Benchmark for BaselineBenchmark {
         log_path.dump_log(log::Level::Info, &mut stdout())?;
 
         let regressions = lib_bench.check_and_print_regressions(&costs_summary);
-        let fail_fast = lib_bench.regression.as_ref().map_or(false, |r| r.fail_fast);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
             .insert(CallgrindSummary::new(
-                fail_fast,
                 log_path.real_paths(),
                 out_path.real_paths(),
             ));
@@ -190,6 +205,7 @@ impl Benchmark for BaselineBenchmark {
 }
 
 impl Groups {
+    /// Create this `Groups` from a [`LibraryBenchmark`] submitted by the benchmarking harness
     fn from_library_benchmark(
         module: &str,
         benchmark: LibraryBenchmark,
@@ -252,14 +268,16 @@ impl Groups {
         Ok(Self(groups))
     }
 
+    /// Run all [`LibBench`] benchmarks
     fn run(&self, benchmark: &dyn Benchmark, config: &Config) -> Result<()> {
         let mut is_regressed = false;
 
         for group in &self.0 {
             for bench in &group.benches {
+                let fail_fast = bench.regression.as_ref().map_or(false, |r| r.fail_fast);
                 let summary = benchmark.run(bench, config, group)?;
                 summary.save()?;
-                summary.check_regression(&mut is_regressed)?;
+                summary.check_regression(&mut is_regressed, fail_fast)?;
             }
         }
 
@@ -272,6 +290,11 @@ impl Groups {
 }
 
 impl LibBench {
+    /// The name of this `LibBench` consisting of the name of the benchmark function and the id of
+    /// the bench attribute (`#[bench::ID(...)]`)
+    ///
+    /// The name is whenever it is necessary to identify a benchmark run within the same
+    /// [`Group`].
     fn name(&self) -> String {
         if let Some(bench_id) = &self.id {
             format!("{}.{}", &self.function, bench_id)
@@ -280,6 +303,9 @@ impl LibBench {
         }
     }
 
+    /// The arguments for the `bench_bin` to actually run the benchmark function
+    ///
+    /// Not all [`Group`]s have an id
     fn bench_args(&self, group: &Group) -> Vec<OsString> {
         if let Some(group_id) = &group.id {
             vec![
@@ -298,6 +324,7 @@ impl LibBench {
         }
     }
 
+    /// This method creates the initial [`BenchmarkSummary`]
     fn create_benchmark_summary(
         &self,
         config: &Config,
@@ -322,6 +349,10 @@ impl LibBench {
         )
     }
 
+    /// Print the headline of the terminal output for this benchmark run
+    ///
+    /// If there are more tools than the usual callgrind run, this method also prints the tool
+    /// summary header
     fn print_header(&self, group: &Group) -> Header {
         let header = Header::from_segments(
             [&group.module, &self.function],
@@ -336,6 +367,8 @@ impl LibBench {
         header
     }
 
+    /// Check for regressions as defined in [`Regression`] and print an error if a regression
+    /// occurred
     fn check_and_print_regressions(
         &self,
         costs_summary: &CostsSummary,
@@ -392,12 +425,10 @@ impl Benchmark for LoadBaselineBenchmark {
         );
 
         let regressions = lib_bench.check_and_print_regressions(&costs_summary);
-        let fail_fast = lib_bench.regression.as_ref().map_or(false, |r| r.fail_fast);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
             .insert(CallgrindSummary::new(
-                fail_fast,
                 log_path.real_paths(),
                 out_path.real_paths(),
             ));
@@ -419,6 +450,7 @@ impl Benchmark for LoadBaselineBenchmark {
 }
 
 impl Runner {
+    /// Create a new `Runner`
     fn new(library_benchmark: LibraryBenchmark, config: Config) -> Result<Self> {
         let groups =
             Groups::from_library_benchmark(&config.module, library_benchmark, &config.meta)?;
@@ -457,6 +489,7 @@ impl Runner {
         })
     }
 
+    /// Run all benchmarks in all groups
     fn run(&self) -> Result<()> {
         self.groups.run(self.benchmark.as_ref(), &self.config)
     }
@@ -480,12 +513,6 @@ impl Benchmark for SaveBaselineBenchmark {
             Some(self.baseline.to_string()),
         )
     }
-
-    // TODO: MOVE TO LibBenchRunner
-    // fn initialize(&self, lib_bench: &LibBench, config: &Config, group: &Group) ->
-    // (ToolOutputPath, ToolOutputPath) {
-    //
-    // }
 
     fn run(
         &self,
@@ -538,12 +565,10 @@ impl Benchmark for SaveBaselineBenchmark {
         log_path.dump_log(log::Level::Info, &mut stdout())?;
 
         let regressions = lib_bench.check_and_print_regressions(&costs_summary);
-        let fail_fast = lib_bench.regression.as_ref().map_or(false, |r| r.fail_fast);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
             .insert(CallgrindSummary::new(
-                fail_fast,
                 log_path.real_paths(),
                 out_path.real_paths(),
             ));
@@ -578,6 +603,7 @@ impl Benchmark for SaveBaselineBenchmark {
     }
 }
 
+/// The top-level method which should be used to initiate running all benchmarks
 pub fn run(library_benchmark: LibraryBenchmark, config: Config) -> Result<()> {
     Runner::new(library_benchmark, config)?.run()
 }
