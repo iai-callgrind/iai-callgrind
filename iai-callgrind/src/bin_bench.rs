@@ -641,7 +641,7 @@ impl BinaryBenchmarkConfig {
     where
         T: Into<internal::InternalFlamegraphConfig>,
     {
-        self.0.flamegraph = Some(config.into());
+        self.0.flamegraph_config = Some(config.into());
         self
     }
 
@@ -667,7 +667,7 @@ impl BinaryBenchmarkConfig {
     where
         T: Into<internal::InternalRegressionConfig>,
     {
-        self.0.regression = Some(config.into());
+        self.0.regression_config = Some(config.into());
         self
     }
 
@@ -1586,7 +1586,7 @@ impl Run {
     where
         T: Into<internal::InternalFlamegraphConfig>,
     {
-        self.0.config.flamegraph = Some(config.into());
+        self.0.config.flamegraph_config = Some(config.into());
         self
     }
 
@@ -1617,7 +1617,7 @@ impl Run {
     where
         T: Into<internal::InternalRegressionConfig>,
     {
-        self.0.config.regression = Some(config.into());
+        self.0.config.regression_config = Some(config.into());
         self
     }
 

@@ -37,8 +37,8 @@ pub struct BinaryBenchmarkConfig {
     pub exit_with: Option<ExitWith>,
     pub raw_callgrind_args: RawArgs,
     pub envs: Vec<(OsString, Option<OsString>)>,
-    pub flamegraph: Option<FlamegraphConfig>,
-    pub regression: Option<RegressionConfig>,
+    pub flamegraph_config: Option<FlamegraphConfig>,
+    pub regression_config: Option<RegressionConfig>,
     pub tools: Tools,
     pub tools_override: Option<Tools>,
 }
@@ -202,8 +202,8 @@ pub struct LibraryBenchmarkConfig {
     pub env_clear: Option<bool>,
     pub raw_callgrind_args: RawArgs,
     pub envs: Vec<(OsString, Option<OsString>)>,
-    pub flamegraph: Option<FlamegraphConfig>,
-    pub regression: Option<RegressionConfig>,
+    pub flamegraph_config: Option<FlamegraphConfig>,
+    pub regression_config: Option<RegressionConfig>,
     pub tools: Tools,
     pub tools_override: Option<Tools>,
 }
@@ -277,8 +277,10 @@ impl BinaryBenchmarkConfig {
                 .extend_ignore_flag(other.raw_callgrind_args.0.iter());
 
             self.envs.extend_from_slice(&other.envs);
-            self.flamegraph = update_option(&self.flamegraph, &other.flamegraph);
-            self.regression = update_option(&self.regression, &other.regression);
+            self.flamegraph_config =
+                update_option(&self.flamegraph_config, &other.flamegraph_config);
+            self.regression_config =
+                update_option(&self.regression_config, &other.regression_config);
             if let Some(other_tools) = &other.tools_override {
                 self.tools = other_tools.clone();
             } else if !other.tools.is_empty() {
@@ -421,8 +423,10 @@ impl LibraryBenchmarkConfig {
                 .extend_ignore_flag(other.raw_callgrind_args.0.iter());
             self.env_clear = update_option(&self.env_clear, &other.env_clear);
             self.envs.extend_from_slice(&other.envs);
-            self.flamegraph = update_option(&self.flamegraph, &other.flamegraph);
-            self.regression = update_option(&self.regression, &other.regression);
+            self.flamegraph_config =
+                update_option(&self.flamegraph_config, &other.flamegraph_config);
+            self.regression_config =
+                update_option(&self.regression_config, &other.regression_config);
             if let Some(other_tools) = &other.tools_override {
                 self.tools = other_tools.clone();
             } else if !other.tools.is_empty() {
@@ -560,8 +564,8 @@ mod tests {
             env_clear: Some(true),
             raw_callgrind_args: RawArgs(vec!["--just-testing=yes".to_owned()]),
             envs: vec![(OsString::from("MY_ENV"), Some(OsString::from("value")))],
-            flamegraph: Some(FlamegraphConfig::default()),
-            regression: Some(RegressionConfig::default()),
+            flamegraph_config: Some(FlamegraphConfig::default()),
+            regression_config: Some(RegressionConfig::default()),
             tools: Tools(vec![Tool {
                 kind: ValgrindTool::DHAT,
                 enable: None,
@@ -582,8 +586,8 @@ mod tests {
             env_clear: Some(true),
             raw_callgrind_args: RawArgs(vec!["--just-testing=yes".to_owned()]),
             envs: vec![(OsString::from("MY_ENV"), Some(OsString::from("value")))],
-            flamegraph: Some(FlamegraphConfig::default()),
-            regression: Some(RegressionConfig::default()),
+            flamegraph_config: Some(FlamegraphConfig::default()),
+            regression_config: Some(RegressionConfig::default()),
             tools: Tools(vec![Tool {
                 kind: ValgrindTool::DHAT,
                 enable: None,

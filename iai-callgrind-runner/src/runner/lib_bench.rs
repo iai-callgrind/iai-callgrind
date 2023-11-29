@@ -10,7 +10,7 @@ use super::callgrind::args::Args;
 use super::callgrind::flamegraph::{Config as FlamegraphConfig, Flamegraph};
 use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
-use super::callgrind::{CallgrindCommand, Regression};
+use super::callgrind::{CallgrindCommand, RegressionConfig};
 use super::meta::Metadata;
 use super::print::{Formatter, Header, VerticalFormat};
 use super::summary::{BaselineName, CallgrindRegressionSummary};
@@ -53,8 +53,8 @@ struct LibBench {
     args: Option<String>,
     options: RunOptions,
     callgrind_args: Args,
-    flamegraph: Option<FlamegraphConfig>,
-    regression: Option<Regression>,
+    flamegraph_config: Option<FlamegraphConfig>,
+    regression_config: Option<RegressionConfig>,
     tools: ToolConfigs,
 }
 
@@ -183,7 +183,7 @@ impl Benchmark for BaselineBenchmark {
             regressions,
         );
 
-        if let Some(flamegraph_config) = lib_bench.flamegraph.clone() {
+        if let Some(flamegraph_config) = lib_bench.flamegraph_config.clone() {
             callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
                 .create(
                 &out_path,
@@ -240,7 +240,7 @@ impl Groups {
                     let envs = config.resolve_envs();
                     let callgrind_args =
                         Args::from_raw_args(&[&config.raw_callgrind_args, &meta_callgrind_args])?;
-                    let flamegraph = config.flamegraph.map(Into::into);
+                    let flamegraph_config = config.flamegraph_config.map(Into::into);
                     let lib_bench = LibBench {
                         bench_index,
                         index,
@@ -254,9 +254,12 @@ impl Groups {
                             ..Default::default()
                         },
                         callgrind_args,
-                        flamegraph,
-                        regression: api::update_option(&config.regression, &meta.regression_config)
-                            .map(Into::into),
+                        flamegraph_config,
+                        regression_config: api::update_option(
+                            &config.regression_config,
+                            &meta.regression_config,
+                        )
+                        .map(Into::into),
                         tools: ToolConfigs(config.tools.0.into_iter().map(Into::into).collect()),
                     };
                     group.benches.push(lib_bench);
@@ -274,7 +277,10 @@ impl Groups {
 
         for group in &self.0 {
             for bench in &group.benches {
-                let fail_fast = bench.regression.as_ref().map_or(false, |r| r.fail_fast);
+                let fail_fast = bench
+                    .regression_config
+                    .as_ref()
+                    .map_or(false, |r| r.fail_fast);
                 let summary = benchmark.run(bench, config, group)?;
                 summary.save()?;
                 summary.check_regression(&mut is_regressed, fail_fast)?;
@@ -373,8 +379,8 @@ impl LibBench {
         &self,
         costs_summary: &CostsSummary,
     ) -> Vec<CallgrindRegressionSummary> {
-        if let Some(regression) = &self.regression {
-            regression.check_and_print(costs_summary)
+        if let Some(regression_config) = &self.regression_config {
+            regression_config.check_and_print(costs_summary)
         } else {
             vec![]
         }
@@ -522,6 +528,7 @@ impl Benchmark for SaveBaselineBenchmark {
     ) -> Result<BenchmarkSummary> {
         let callgrind_command = CallgrindCommand::new(&config.meta);
         let bench_args = lib_bench.bench_args(group);
+        let baselines = self.baselines();
 
         let sentinel = Sentinel::new("iai_callgrind::bench::");
         let out_path = self.output_path(lib_bench, config, group);
@@ -546,7 +553,7 @@ impl Benchmark for SaveBaselineBenchmark {
 
         let mut benchmark_summary = lib_bench.create_benchmark_summary(config, group, &out_path);
 
-        lib_bench.print_header(group);
+        let header = lib_bench.print_header(group);
 
         let output = callgrind_command.run(
             lib_bench.callgrind_args.clone(),
@@ -558,7 +565,7 @@ impl Benchmark for SaveBaselineBenchmark {
 
         let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
         let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
-        let string = VerticalFormat::default().format(self.baselines(), &costs_summary)?;
+        let string = VerticalFormat::default().format(baselines.clone(), &costs_summary)?;
         print!("{string}");
 
         output.dump_log(log::Level::Info);
@@ -582,10 +589,10 @@ impl Benchmark for SaveBaselineBenchmark {
         );
 
         // TODO: MAKE THIS WORK
-        // if let Some(flamegraph_config) = self.flamegraph.clone() {
+        // if let Some(flamegraph_config) = lib_bench.flamegraph.clone() {
         //     callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
         //         .create(
-        //         &output_path,
+        //         &out_path,
         //         Some(&sentinel),
         //         &config.meta.project_root,
         //     )?;

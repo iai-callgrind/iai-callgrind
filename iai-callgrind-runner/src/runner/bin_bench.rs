@@ -14,7 +14,7 @@ use super::callgrind::model::Costs;
 use super::callgrind::parser::{Parser, Sentinel};
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::summary_parser::SummaryParser;
-use super::callgrind::{CallgrindCommand, Regression};
+use super::callgrind::{CallgrindCommand, RegressionConfig};
 use super::meta::Metadata;
 use super::print::{Formatter, Header, VerticalFormat};
 use super::summary::{BaselineName, BenchmarkSummary, CallgrindRegressionSummary};
@@ -35,8 +35,8 @@ struct Assistant {
     kind: AssistantKind,
     bench: bool,
     callgrind_args: Args,
-    regression: Option<Regression>,
-    flamegraph: Option<FlamegraphConfig>,
+    regression_config: Option<RegressionConfig>,
+    flamegraph_config: Option<FlamegraphConfig>,
     tools: ToolConfigs,
 }
 
@@ -66,11 +66,11 @@ struct BinBench {
     id: String,
     display: String,
     command: PathBuf,
-    args: Vec<OsString>,
-    options: RunOptions,
+    command_args: Vec<OsString>,
+    run_options: RunOptions,
     callgrind_args: Args,
-    flamegraph: Option<FlamegraphConfig>,
-    regression: Option<Regression>,
+    flamegraph_config: Option<FlamegraphConfig>,
+    regression_config: Option<RegressionConfig>,
     tools: ToolConfigs,
 }
 
@@ -131,10 +131,10 @@ trait Runnable {
     fn callgrind_args(&self) -> &Args;
     fn executable(&self, config: &Config) -> PathBuf;
     fn executable_args(&self, config: &Config, group: &Group) -> Vec<OsString>;
-    fn flamegraph(&self) -> Option<&FlamegraphConfig>;
+    fn flamegraph_config(&self) -> Option<&FlamegraphConfig>;
     fn name(&self) -> String;
     fn run_options(&self, config: &Config) -> RunOptions;
-    fn regression(&self) -> Option<&Regression>;
+    fn regression_config(&self) -> Option<&RegressionConfig>;
     fn tools(&self) -> &ToolConfigs;
     fn create_benchmark_summary(
         &self,
@@ -159,8 +159,8 @@ impl Assistant {
         kind: AssistantKind,
         bench: bool,
         callgrind_args: Args,
-        regression: Option<Regression>,
-        flamegraph: Option<FlamegraphConfig>,
+        regression_config: Option<RegressionConfig>,
+        flamegraph_config: Option<FlamegraphConfig>,
         tools: ToolConfigs,
     ) -> Self {
         Self {
@@ -168,8 +168,8 @@ impl Assistant {
             kind,
             bench,
             callgrind_args,
-            regression,
-            flamegraph,
+            regression_config,
+            flamegraph_config,
             tools,
         }
     }
@@ -266,8 +266,8 @@ impl Runnable for Assistant {
         ]
     }
 
-    fn flamegraph(&self) -> Option<&FlamegraphConfig> {
-        self.flamegraph.as_ref()
+    fn flamegraph_config(&self) -> Option<&FlamegraphConfig> {
+        self.flamegraph_config.as_ref()
     }
 
     fn name(&self) -> String {
@@ -282,8 +282,8 @@ impl Runnable for Assistant {
         }
     }
 
-    fn regression(&self) -> Option<&Regression> {
-        self.regression.as_ref()
+    fn regression_config(&self) -> Option<&RegressionConfig> {
+        self.regression_config.as_ref()
     }
 
     fn tools(&self) -> &ToolConfigs {
@@ -319,8 +319,8 @@ impl Runnable for Assistant {
         &self,
         costs_summary: &CostsSummary,
     ) -> Vec<CallgrindRegressionSummary> {
-        if let Some(regression) = &self.regression {
-            regression.check_and_print(costs_summary)
+        if let Some(regression_config) = &self.regression_config {
+            regression_config.check_and_print(costs_summary)
         } else {
             vec![]
         }
@@ -403,11 +403,11 @@ impl Runnable for BinBench {
     }
 
     fn executable_args(&self, _config: &Config, _group: &Group) -> Vec<OsString> {
-        self.args.clone()
+        self.command_args.clone()
     }
 
-    fn flamegraph(&self) -> Option<&FlamegraphConfig> {
-        self.flamegraph.as_ref()
+    fn flamegraph_config(&self) -> Option<&FlamegraphConfig> {
+        self.flamegraph_config.as_ref()
     }
 
     fn name(&self) -> String {
@@ -415,11 +415,11 @@ impl Runnable for BinBench {
     }
 
     fn run_options(&self, _config: &Config) -> RunOptions {
-        self.options.clone()
+        self.run_options.clone()
     }
 
-    fn regression(&self) -> Option<&Regression> {
-        self.regression.as_ref()
+    fn regression_config(&self) -> Option<&RegressionConfig> {
+        self.regression_config.as_ref()
     }
 
     fn tools(&self) -> &ToolConfigs {
@@ -455,8 +455,8 @@ impl Runnable for BinBench {
         &self,
         costs_summary: &CostsSummary,
     ) -> Vec<CallgrindRegressionSummary> {
-        if let Some(regression) = &self.regression {
-            regression.check_and_print(costs_summary)
+        if let Some(regression_config) = &self.regression_config {
+            regression_config.check_and_print(costs_summary)
         } else {
             vec![]
         }
@@ -492,14 +492,14 @@ impl Runnable for BinBench {
     }
 
     fn sentinel(&self, _config: &Config) -> Option<Sentinel> {
-        self.options.entry_point.as_ref().map(Sentinel::new)
+        self.run_options.entry_point.as_ref().map(Sentinel::new)
     }
 }
 
 impl Display for BinBench {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let args: Vec<String> = self
-            .args
+            .command_args
             .iter()
             .map(|s| s.to_string_lossy().to_string())
             .collect();
@@ -519,7 +519,10 @@ impl Group {
         is_regressed: &mut bool,
         config: &Config,
     ) -> Result<()> {
-        let fail_fast = assistant.regression.as_ref().map_or(false, |r| r.fail_fast);
+        let fail_fast = assistant
+            .regression_config
+            .as_ref()
+            .map_or(false, |r| r.fail_fast);
         if let Some(summary) = assistant.run(benchmark, config, self)? {
             summary.save()?;
             summary.check_regression(is_regressed, fail_fast)?;
@@ -556,7 +559,10 @@ impl Group {
                 self.run_assistant(benchmark, setup, is_regressed, config)?;
             }
 
-            let fail_fast = bench.regression.as_ref().map_or(false, |r| r.fail_fast);
+            let fail_fast = bench
+                .regression_config
+                .as_ref()
+                .map_or(false, |r| r.fail_fast);
             let summary = benchmark.run(bench, config, self)?;
             summary.save()?;
             summary.check_regression(is_regressed, fail_fast)?;
@@ -610,9 +616,10 @@ impl Groups {
             };
             let config = group_config.clone().update_from_all([Some(&run.config)]);
             let envs = config.resolve_envs();
-            let flamegraph = config.flamegraph.map(std::convert::Into::into);
-            let regression = api::update_option(&config.regression, &meta.regression_config)
-                .map(std::convert::Into::into);
+            let flamegraph_config = config.flamegraph_config.map(std::convert::Into::into);
+            let regression_config =
+                api::update_option(&config.regression_config, &meta.regression_config)
+                    .map(std::convert::Into::into);
             let callgrind_args =
                 Args::from_raw_args(&[&config.raw_callgrind_args, &meta_callgrind_args])?;
             let tools = ToolConfigs(config.tools.0.into_iter().map(Into::into).collect());
@@ -628,8 +635,8 @@ impl Groups {
                     id,
                     display: orig.clone(),
                     command: command.clone(),
-                    args: args.args,
-                    options: RunOptions {
+                    command_args: args.args,
+                    run_options: RunOptions {
                         env_clear: config.env_clear.unwrap_or(true),
                         current_dir: config.current_dir.clone(),
                         entry_point: config.entry_point.clone(),
@@ -637,8 +644,8 @@ impl Groups {
                         envs: envs.clone(),
                     },
                     callgrind_args: callgrind_args.clone(),
-                    flamegraph: flamegraph.clone(),
-                    regression: regression.clone(),
+                    flamegraph_config: flamegraph_config.clone(),
+                    regression_config: regression_config.clone(),
                     tools: tools.clone(),
                 });
             }
@@ -649,8 +656,8 @@ impl Groups {
     fn parse_assists(
         assists: Vec<crate::api::Assistant>,
         callgrind_args: &Args,
-        regression: Option<&Regression>,
-        flamegraph: Option<&FlamegraphConfig>,
+        regression_config: Option<&RegressionConfig>,
+        flamegraph_config: Option<&FlamegraphConfig>,
         tools: &ToolConfigs,
     ) -> BenchmarkAssistants {
         let mut bench_assists = BenchmarkAssistants::default();
@@ -662,8 +669,8 @@ impl Groups {
                         AssistantKind::Before,
                         assist.bench,
                         callgrind_args.clone(),
-                        regression.cloned(),
-                        flamegraph.cloned(),
+                        regression_config.cloned(),
+                        flamegraph_config.cloned(),
                         tools.clone(),
                     ));
                 }
@@ -673,8 +680,8 @@ impl Groups {
                         AssistantKind::After,
                         assist.bench,
                         callgrind_args.clone(),
-                        regression.cloned(),
-                        flamegraph.cloned(),
+                        regression_config.cloned(),
+                        flamegraph_config.cloned(),
                         tools.clone(),
                     ));
                 }
@@ -684,8 +691,8 @@ impl Groups {
                         AssistantKind::Setup,
                         assist.bench,
                         callgrind_args.clone(),
-                        regression.cloned(),
-                        flamegraph.cloned(),
+                        regression_config.cloned(),
+                        flamegraph_config.cloned(),
                         tools.clone(),
                     ));
                 }
@@ -695,8 +702,8 @@ impl Groups {
                         AssistantKind::Teardown,
                         assist.bench,
                         callgrind_args.clone(),
-                        regression.cloned(),
-                        flamegraph.cloned(),
+                        regression_config.cloned(),
+                        flamegraph_config.cloned(),
                         tools.clone(),
                     ));
                 }
@@ -737,10 +744,10 @@ impl Groups {
                 assists: Self::parse_assists(
                     group.assists,
                     &callgrind_args,
-                    api::update_option(&group_config.regression, &meta.regression_config)
+                    api::update_option(&group_config.regression_config, &meta.regression_config)
                         .map(std::convert::Into::into)
                         .as_ref(),
-                    group_config.flamegraph.map(Into::into).as_ref(),
+                    group_config.flamegraph_config.map(Into::into).as_ref(),
                     &ToolConfigs(group_config.tools.0.into_iter().map(Into::into).collect()),
                 ),
             };
@@ -855,7 +862,7 @@ impl Benchmark for BaselineBenchmark {
             regressions,
         );
 
-        if let Some(flamegraph_config) = runnable.flamegraph().cloned() {
+        if let Some(flamegraph_config) = runnable.flamegraph_config().cloned() {
             callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
                 .create(
                 &out_path,

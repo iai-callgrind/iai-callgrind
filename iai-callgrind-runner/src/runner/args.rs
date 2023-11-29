@@ -136,7 +136,7 @@ fn parse_regression_config(value: &str) -> Result<RegressionConfig, String> {
         return Err("No limits found: At least one limit must be specified".to_owned());
     }
 
-    let regression = if value.eq_ignore_ascii_case("default") {
+    let regression_config = if value.eq_ignore_ascii_case("default") {
         RegressionConfig::default()
     } else {
         let mut limits = vec![];
@@ -164,7 +164,7 @@ fn parse_regression_config(value: &str) -> Result<RegressionConfig, String> {
         }
     };
 
-    Ok(regression)
+    Ok(regression_config)
 }
 
 impl From<&CommandLineArgs> for Option<RegressionConfig> {

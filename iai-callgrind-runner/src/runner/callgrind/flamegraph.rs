@@ -87,18 +87,6 @@ impl Flamegraph {
         if self.config.kind == FlamegraphKind::None {
             return Ok(vec![]);
         }
-        let summarize_events = [
-            EventKind::L1hits,
-            EventKind::LLhits,
-            EventKind::RamHits,
-            EventKind::TotalRW,
-            EventKind::EstimatedCycles,
-        ];
-        let summarize = self
-            .config
-            .event_kinds
-            .iter()
-            .any(|e| summarize_events.contains(e));
 
         let parser = FlamegraphParser::new(sentinel, project_root);
         // We need this map in all remaining cases of `FlamegraphKinds`
@@ -123,16 +111,17 @@ impl Flamegraph {
         let old_path = callgrind_output_path.to_base_path();
 
         #[allow(clippy::if_then_some_else_none)]
-        let mut old_map = if (self.config.kind == FlamegraphKind::Differential
-            || self.config.kind == FlamegraphKind::All)
-            && old_path.exists()
+        let mut old_map = if matches!(
+            self.config.kind,
+            FlamegraphKind::Differential | FlamegraphKind::All
+        ) && old_path.exists()
         {
             Some(parser.parse(&old_path)?)
         } else {
             None
         };
 
-        if summarize {
+        if self.config.event_kinds.iter().any(EventKind::is_derived) {
             map.make_summary()?;
             if let Some(map) = old_map.as_mut() {
                 map.make_summary()?;

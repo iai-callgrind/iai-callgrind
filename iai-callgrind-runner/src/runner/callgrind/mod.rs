@@ -20,7 +20,7 @@ use super::callgrind::args::Args;
 use super::meta::Metadata;
 use super::summary::{CallgrindRegressionSummary, CostsSummary};
 use super::tool::{RunOptions, ToolOutputPath};
-use crate::api::{self, EventKind, RegressionConfig};
+use crate::api::{self, EventKind};
 use crate::error::Error;
 use crate::runner::tool::{check_exit, ToolOutput, ValgrindTool};
 use crate::util::{resolve_binary_path, to_string_signed_short};
@@ -39,7 +39,7 @@ pub struct CacheSummary {
 }
 
 #[derive(Debug, Clone)]
-pub struct Regression {
+pub struct RegressionConfig {
     pub limits: Vec<(EventKind, f64)>,
     pub fail_fast: bool,
 }
@@ -165,7 +165,7 @@ impl TryFrom<&Costs> for CacheSummary {
     }
 }
 
-impl Regression {
+impl RegressionConfig {
     /// Check regression of the [`Costs`] for the configured [`EventKind`]s and print it
     ///
     /// If the old `Costs` is None then no regression checks are performed and this method returns
@@ -249,10 +249,10 @@ impl Regression {
     }
 }
 
-impl From<api::RegressionConfig> for Regression {
+impl From<api::RegressionConfig> for RegressionConfig {
     fn from(value: api::RegressionConfig) -> Self {
-        let RegressionConfig { limits, fail_fast } = value;
-        Regression {
+        let api::RegressionConfig { limits, fail_fast } = value;
+        RegressionConfig {
             limits: if limits.is_empty() {
                 vec![(EventKind::EstimatedCycles, 10f64)]
             } else {
@@ -263,7 +263,7 @@ impl From<api::RegressionConfig> for Regression {
     }
 }
 
-impl Default for Regression {
+impl Default for RegressionConfig {
     fn default() -> Self {
         Self {
             limits: vec![(EventKind::EstimatedCycles, 10f64)],
@@ -295,7 +295,7 @@ mod tests {
 
     #[rstest]
     fn test_regression_check_when_old_is_none() {
-        let regression = Regression::default();
+        let regression = RegressionConfig::default();
         let new = cachesim_costs([0, 0, 0, 0, 0, 0, 0, 0, 0]);
         let old = None;
         let summary = CostsSummary::new(&new, old);
@@ -364,7 +364,7 @@ mod tests {
         #[case] old: [u64; 9],
         #[case] expected: Vec<(EventKind, u64, u64, f64, f64)>,
     ) {
-        let regression = Regression {
+        let regression = RegressionConfig {
             limits,
             ..Default::default()
         };
