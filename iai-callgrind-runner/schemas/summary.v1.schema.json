@@ -220,13 +220,7 @@
     "CallgrindSummary": {
       "description": "The `CallgrindSummary` summarizes all callgrind runs",
       "type": "object",
-      "required": [
-        "flamegraphs",
-        "log_paths",
-        "out_paths",
-        "regression_fail_fast",
-        "summaries"
-      ],
+      "required": ["flamegraphs", "log_paths", "out_paths", "summaries"],
       "properties": {
         "flamegraphs": {
           "description": "The summaries of possibly created flamegraphs",
@@ -248,10 +242,6 @@
           "items": {
             "type": "string"
           }
-        },
-        "regression_fail_fast": {
-          "description": "If the regressions were configured to cause the benchmark run to fail immediately or not",
-          "type": "boolean"
         },
         "summaries": {
           "description": "The summaries of all callgrind runs",
@@ -452,6 +442,10 @@
       "type": "object",
       "required": ["event_kind"],
       "properties": {
+        "base_path": {
+          "description": "If present, the path to the file of the old regular (non-differential) flamegraph",
+          "type": ["string", "null"]
+        },
         "diff_path": {
           "description": "If present, the path to the file of the differential flamegraph",
           "type": ["string", "null"]
@@ -463,10 +457,6 @@
               "$ref": "#/definitions/EventKind"
             }
           ]
-        },
-        "old_path": {
-          "description": "If present, the path to the file of the old regular (non-differential) flamegraph",
-          "type": ["string", "null"]
         },
         "regular_path": {
           "description": "If present, the path to the file of the regular (non-differential) flamegraph",

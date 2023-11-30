@@ -22,6 +22,10 @@ use super::tool::{RunOptions, ToolConfigs};
 use super::Config;
 use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig};
 use crate::error::Error;
+use crate::runner::callgrind::flamegraph::{
+    BaselineFlamegraphGenerator, FlamegraphGenerator, LoadBaselineFlamegraphGenerator,
+    SaveBaselineFlamegraphGenerator,
+};
 use crate::runner::print::tool_summary_header;
 use crate::runner::summary::{
     BaselineKind, BenchmarkKind, CallgrindSummary, CostsSummary, SummaryOutput,
@@ -127,6 +131,7 @@ trait Benchmark: std::fmt::Debug {
     ) -> Result<BenchmarkSummary>;
 }
 
+// TODO: Rename to Benchmarkable
 trait Runnable {
     fn callgrind_args(&self) -> &Args;
     fn executable(&self, config: &Config) -> PathBuf;
@@ -863,8 +868,11 @@ impl Benchmark for BaselineBenchmark {
         );
 
         if let Some(flamegraph_config) = runnable.flamegraph_config().cloned() {
-            callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
-                .create(
+            callgrind_summary.flamegraphs = BaselineFlamegraphGenerator {
+                baseline_kind: self.baseline_kind.clone(),
+            }
+            .create(
+                &Flamegraph::new(header.to_title(), flamegraph_config),
                 &out_path,
                 runnable.sentinel(config).as_ref(),
                 &config.meta.project_root,
@@ -921,7 +929,7 @@ impl Benchmark for LoadBaselineBenchmark {
 
         let mut benchmark_summary = runnable.create_benchmark_summary(config, group, &out_path);
 
-        runnable.print_header(group);
+        let header = runnable.print_header(group);
         let costs_summary = runnable.parse(config, &out_path)?;
         print!(
             "{}",
@@ -947,15 +955,18 @@ impl Benchmark for LoadBaselineBenchmark {
             regressions,
         );
 
-        // TODO: ??
-        // if let Some(flamegraph_config) = runnable.flamegraph().cloned() {
-        //     callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
-        //         .create(
-        //         &out_path,
-        //         runnable.sentinel(config).as_ref(),
-        //         &config.meta.project_root,
-        //     )?;
-        // }
+        if let Some(flamegraph_config) = runnable.flamegraph_config().cloned() {
+            callgrind_summary.flamegraphs = LoadBaselineFlamegraphGenerator {
+                loaded_baseline: self.loaded_baseline.clone(),
+                baseline: self.baseline.clone(),
+            }
+            .create(
+                &Flamegraph::new(header.to_title(), flamegraph_config),
+                &out_path,
+                runnable.sentinel(config).as_ref(),
+                &config.meta.project_root,
+            )?;
+        }
 
         benchmark_summary.tool_summaries = runnable
             .tools()
@@ -1107,7 +1118,7 @@ impl Benchmark for SaveBaselineBenchmark {
 
         let mut benchmark_summary = runnable.create_benchmark_summary(config, group, &out_path);
 
-        runnable.print_header(group);
+        let header = runnable.print_header(group);
 
         let output = callgrind_command.run(
             runnable.callgrind_args().clone(),
@@ -1144,15 +1155,17 @@ impl Benchmark for SaveBaselineBenchmark {
             regressions,
         );
 
-        // TODO: ??
-        // if let Some(flamegraph_config) = runnable.flamegraph().cloned() {
-        //     callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
-        //         .create(
-        //         &out_path,
-        //         runnable.sentinel(config).as_ref(),
-        //         &config.meta.project_root,
-        //     )?;
-        // }
+        if let Some(flamegraph_config) = runnable.flamegraph_config().cloned() {
+            callgrind_summary.flamegraphs = SaveBaselineFlamegraphGenerator {
+                baseline: self.baseline.clone(),
+            }
+            .create(
+                &Flamegraph::new(header.to_title(), flamegraph_config),
+                &out_path,
+                runnable.sentinel(config).as_ref(),
+                &config.meta.project_root,
+            )?;
+        }
 
         benchmark_summary.tool_summaries = runnable.tools().run(
             &config.meta,

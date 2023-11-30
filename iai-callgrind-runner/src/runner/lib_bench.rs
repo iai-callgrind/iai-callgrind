@@ -17,6 +17,10 @@ use super::summary::{BaselineName, CallgrindRegressionSummary};
 use super::tool::{RunOptions, ToolConfigs};
 use super::{Config, Error};
 use crate::api::{self, LibraryBenchmark};
+use crate::runner::callgrind::flamegraph::{
+    BaselineFlamegraphGenerator, FlamegraphGenerator, LoadBaselineFlamegraphGenerator,
+    SaveBaselineFlamegraphGenerator,
+};
 use crate::runner::print::tool_summary_header;
 use crate::runner::summary::{
     BaselineKind, BenchmarkKind, BenchmarkSummary, CallgrindSummary, CostsSummary, SummaryOutput,
@@ -184,8 +188,11 @@ impl Benchmark for BaselineBenchmark {
         );
 
         if let Some(flamegraph_config) = lib_bench.flamegraph_config.clone() {
-            callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
-                .create(
+            callgrind_summary.flamegraphs = BaselineFlamegraphGenerator {
+                baseline_kind: self.baseline_kind.clone(),
+            }
+            .create(
+                &Flamegraph::new(header.to_title(), flamegraph_config),
                 &out_path,
                 Some(&sentinel),
                 &config.meta.project_root,
@@ -419,7 +426,7 @@ impl Benchmark for LoadBaselineBenchmark {
         let log_path = out_path.to_log_output();
         let mut benchmark_summary = lib_bench.create_benchmark_summary(config, group, &out_path);
 
-        lib_bench.print_header(group);
+        let header = lib_bench.print_header(group);
 
         let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
         let old_costs = Some(SentinelParser::new(&sentinel).parse(&old_path)?);
@@ -446,6 +453,19 @@ impl Benchmark for LoadBaselineBenchmark {
             costs_summary,
             regressions,
         );
+
+        if let Some(flamegraph_config) = lib_bench.flamegraph_config.clone() {
+            callgrind_summary.flamegraphs = LoadBaselineFlamegraphGenerator {
+                loaded_baseline: self.loaded_baseline.clone(),
+                baseline: self.baseline.clone(),
+            }
+            .create(
+                &Flamegraph::new(header.to_title(), flamegraph_config),
+                &out_path,
+                Some(&sentinel),
+                &config.meta.project_root,
+            )?;
+        }
 
         benchmark_summary.tool_summaries = lib_bench
             .tools
@@ -588,15 +608,17 @@ impl Benchmark for SaveBaselineBenchmark {
             regressions,
         );
 
-        // TODO: MAKE THIS WORK
-        // if let Some(flamegraph_config) = lib_bench.flamegraph.clone() {
-        //     callgrind_summary.flamegraphs = Flamegraph::new(header.to_title(), flamegraph_config)
-        //         .create(
-        //         &out_path,
-        //         Some(&sentinel),
-        //         &config.meta.project_root,
-        //     )?;
-        // }
+        if let Some(flamegraph_config) = lib_bench.flamegraph_config.clone() {
+            callgrind_summary.flamegraphs = SaveBaselineFlamegraphGenerator {
+                baseline: self.baseline.clone(),
+            }
+            .create(
+                &Flamegraph::new(header.to_title(), flamegraph_config),
+                &out_path,
+                Some(&sentinel),
+                &config.meta.project_root,
+            )?;
+        }
 
         benchmark_summary.tool_summaries = lib_bench.tools.run(
             &config.meta,

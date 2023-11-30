@@ -168,7 +168,7 @@ pub struct FlamegraphSummary {
     /// If present, the path to the file of the regular (non-differential) flamegraph
     pub regular_path: Option<PathBuf>,
     /// If present, the path to the file of the old regular (non-differential) flamegraph
-    pub old_path: Option<PathBuf>,
+    pub base_path: Option<PathBuf>,
     /// If present, the path to the file of the differential flamegraph
     pub diff_path: Option<PathBuf>,
 }
@@ -454,7 +454,7 @@ impl FlamegraphSummary {
         Self {
             event_kind,
             regular_path: Option::default(),
-            old_path: Option::default(),
+            base_path: Option::default(),
             diff_path: Option::default(),
         }
     }

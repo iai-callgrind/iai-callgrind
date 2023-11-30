@@ -1,5 +1,6 @@
 ASLR
 Aparicio
+Benchmarkable
 Boolish
 CALLGRIND
 Cachegrind
@@ -93,6 +94,7 @@ schemars
 serde
 setarch
 shlex
+splitn
 sploss1
 sploss2
 struct
