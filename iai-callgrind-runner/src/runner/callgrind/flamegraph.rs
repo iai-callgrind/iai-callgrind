@@ -124,19 +124,15 @@ impl FlamegraphGenerator for SaveBaselineFlamegraphGenerator {
 
         let (map, _) = flamegraph.parse(tool_output_path, sentinel, project_root, true)?;
 
-        let mut options = flamegraph.options();
         let mut flamegraph_summaries = vec![];
         for event_kind in &flamegraph.config.event_kinds {
             let mut flamegraph_summary = FlamegraphSummary::new(*event_kind);
             output_path.set_event_kind(*event_kind);
-            options.count_name = event_kind.to_string();
 
             Flamegraph::write(
                 &output_path,
-                &mut options,
-                map.to_stack_format(event_kind)?
-                    .iter()
-                    .map(std::string::String::as_str),
+                &mut flamegraph.options(*event_kind, output_path.file_name()),
+                map.to_stack_format(event_kind)?.iter().map(String::as_str),
             )?;
 
             flamegraph_summary.regular_path = Some(output_path.to_path());
@@ -171,16 +167,14 @@ impl FlamegraphGenerator for LoadBaselineFlamegraphGenerator {
             .parse(tool_output_path, sentinel, project_root, false)
             .map(|(m, b)| (m, b.unwrap()))?;
 
-        let mut options = flamegraph.options();
         let mut flamegraph_summaries = vec![];
         for event_kind in &flamegraph.config.event_kinds {
             let mut flamegraph_summary = FlamegraphSummary::new(*event_kind);
             output_path.set_event_kind(*event_kind);
-            options.count_name = event_kind.to_string();
 
             Flamegraph::create_differential(
                 &output_path,
-                &mut options,
+                &mut flamegraph.options(*event_kind, output_path.to_diff_path().file_name()),
                 &base_map,
                 flamegraph.differential_options().unwrap(),
                 *event_kind,
@@ -221,19 +215,17 @@ impl FlamegraphGenerator for BaselineFlamegraphGenerator {
 
         let (map, base_map) = flamegraph.parse(tool_output_path, sentinel, project_root, false)?;
 
-        let mut options = flamegraph.options();
         let mut flamegraph_summaries = vec![];
         for event_kind in &flamegraph.config.event_kinds {
             let mut flamegraph_summary = FlamegraphSummary::new(*event_kind);
             output_path.set_event_kind(*event_kind);
-            options.count_name = event_kind.to_string();
 
             let stacks_lines = map.to_stack_format(event_kind)?;
 
             if flamegraph.is_regular() {
                 Flamegraph::write(
                     &output_path,
-                    &mut options,
+                    &mut flamegraph.options(*event_kind, output_path.file_name()),
                     stacks_lines.iter().map(std::string::String::as_str),
                 )?;
                 flamegraph_summary.regular_path = Some(output_path.to_path());
@@ -243,7 +235,7 @@ impl FlamegraphGenerator for BaselineFlamegraphGenerator {
             if let Some(base_map) = base_map.as_ref() {
                 Flamegraph::create_differential(
                     &output_path,
-                    &mut options,
+                    &mut flamegraph.options(*event_kind, output_path.to_diff_path().file_name()),
                     base_map,
                     flamegraph.differential_options().unwrap(),
                     *event_kind,
@@ -263,18 +255,9 @@ impl FlamegraphGenerator for BaselineFlamegraphGenerator {
 
 impl Flamegraph {
     pub fn new(heading: String, mut config: Config) -> Self {
-        let (title, subtitle) = match (config.title, config.subtitle) {
-            (None, None) => heading.split_once(' ').map_or_else(
-                || (heading.clone(), None),
-                |(k, v)| (k.to_owned(), Some(v.to_owned())),
-            ),
-            (None, Some(s)) => (heading, Some(s)),
-            (Some(t), None) => (t, Some(heading)),
-            (Some(t), Some(s)) => (t, Some(s)),
-        };
-
-        config.title = Some(title);
-        config.subtitle = subtitle;
+        if config.title.is_none() {
+            config.title = Some(heading);
+        }
 
         Self { config }
     }
@@ -293,7 +276,7 @@ impl Flamegraph {
         )
     }
 
-    pub fn options(&self) -> Options {
+    pub fn options(&self, event_kind: EventKind, subtitle: String) -> Options {
         let mut options = Options::default();
         options.negate_differentials = self.config.negate_differential;
         options.direction = self.config.direction;
@@ -303,8 +286,15 @@ impl Flamegraph {
             .as_ref()
             .expect("A title must be present at this point")
             .clone();
-        options.subtitle = self.config.subtitle.clone();
+
+        options.subtitle = if let Some(subtitle) = &self.config.subtitle {
+            Some(subtitle.clone())
+        } else {
+            Some(subtitle)
+        };
+
         options.min_width = self.config.min_width;
+        options.count_name = event_kind.to_string();
         options
     }
 
@@ -550,8 +540,11 @@ impl OutputPath {
         paths
     }
 
+    pub fn file_name(&self) -> String {
+        format!("callgrind.{}.{}", self.name, self.extension())
+    }
+
     pub fn to_path(&self) -> PathBuf {
-        self.dir
-            .join(format!("callgrind.{}.{}", self.name, self.extension()))
+        self.dir.join(self.file_name())
     }
 }
