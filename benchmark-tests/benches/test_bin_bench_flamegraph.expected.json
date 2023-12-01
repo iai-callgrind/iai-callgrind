@@ -8,7 +8,7 @@
           "id": "Ir event type",
           "expected": {
             "files": [
-              "callgrind.benchmark-tests-exit.Ir event type.Ir.svg",
+              "callgrind.benchmark-tests-exit.Ir event type.flamegraph.Ir.svg",
               "callgrind.benchmark-tests-exit.Ir event type.log",
               "callgrind.benchmark-tests-exit.Ir event type.out",
               "summary.json"
@@ -33,7 +33,7 @@
           "id": "with_entry_point",
           "expected": {
             "files": [
-              "callgrind.benchmark-tests-exit.with_entry_point.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.with_entry_point.flamegraph.EstimatedCycles.svg",
               "callgrind.benchmark-tests-exit.with_entry_point.log",
               "callgrind.benchmark-tests-exit.with_entry_point.out",
               "summary.json"
@@ -46,7 +46,7 @@
           "id": "before",
           "expected": {
             "files": [
-              "callgrind.run_before.before.EstimatedCycles.svg",
+              "callgrind.run_before.before.flamegraph.EstimatedCycles.svg",
               "callgrind.run_before.before.log",
               "callgrind.run_before.before.out",
               "summary.json"
@@ -59,7 +59,7 @@
           "id": "foo",
           "expected": {
             "files": [
-              "callgrind.benchmark-tests-exit.foo.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.svg",
               "callgrind.benchmark-tests-exit.foo.log",
               "callgrind.benchmark-tests-exit.foo.out",
               "summary.json"
@@ -72,7 +72,7 @@
           "id": "after",
           "expected": {
             "files": [
-              "callgrind.run_after.after.EstimatedCycles.svg",
+              "callgrind.run_after.after.flamegraph.EstimatedCycles.svg",
               "callgrind.run_after.after.log",
               "callgrind.run_after.after.out",
               "summary.json"
@@ -85,7 +85,7 @@
           "id": "foo",
           "expected": {
             "files": [
-              "callgrind.benchmark-tests-exit.foo.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.svg",
               "callgrind.benchmark-tests-exit.foo.log",
               "callgrind.benchmark-tests-exit.foo.out",
               "summary.json"
@@ -98,7 +98,7 @@
           "id": "all_flamegraph_kinds",
           "expected": {
             "files": [
-              "callgrind.benchmark-tests-exit.all_flamegraph_kinds.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.all_flamegraph_kinds.flamegraph.EstimatedCycles.svg",
               "callgrind.benchmark-tests-exit.all_flamegraph_kinds.log",
               "callgrind.benchmark-tests-exit.all_flamegraph_kinds.out",
               "summary.json"
@@ -135,7 +135,7 @@
           "id": "only_regular_kind",
           "expected": {
             "files": [
-              "callgrind.benchmark-tests-exit.only_regular_kind.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.only_regular_kind.flamegraph.EstimatedCycles.svg",
               "callgrind.benchmark-tests-exit.only_regular_kind.log",
               "callgrind.benchmark-tests-exit.only_regular_kind.out",
               "summary.json"
@@ -152,9 +152,9 @@
           "id": "Ir event type",
           "expected": {
             "files": [
-              "callgrind.benchmark-tests-exit.Ir event type.Ir.svg",
-              "callgrind.benchmark-tests-exit.Ir event type.Ir.diff.svg",
-              "callgrind.benchmark-tests-exit.Ir event type.Ir.old.svg",
+              "callgrind.benchmark-tests-exit.Ir event type.flamegraph.Ir.svg",
+              "callgrind.benchmark-tests-exit.Ir event type.flamegraph.Ir.diff.old.svg",
+              "callgrind.benchmark-tests-exit.Ir event type.flamegraph.Ir.old.svg",
               "callgrind.benchmark-tests-exit.Ir event type.log",
               "callgrind.benchmark-tests-exit.Ir event type.log.old",
               "callgrind.benchmark-tests-exit.Ir event type.out",
@@ -183,9 +183,9 @@
           "id": "with_entry_point",
           "expected": {
             "files": [
-              "callgrind.benchmark-tests-exit.with_entry_point.EstimatedCycles.svg",
-              "callgrind.benchmark-tests-exit.with_entry_point.EstimatedCycles.diff.svg",
-              "callgrind.benchmark-tests-exit.with_entry_point.EstimatedCycles.old.svg",
+              "callgrind.benchmark-tests-exit.with_entry_point.flamegraph.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.with_entry_point.flamegraph.EstimatedCycles.diff.old.svg",
+              "callgrind.benchmark-tests-exit.with_entry_point.flamegraph.EstimatedCycles.old.svg",
               "callgrind.benchmark-tests-exit.with_entry_point.log",
               "callgrind.benchmark-tests-exit.with_entry_point.log.old",
               "callgrind.benchmark-tests-exit.with_entry_point.out",
@@ -200,9 +200,9 @@
           "id": "before",
           "expected": {
             "files": [
-              "callgrind.run_before.before.EstimatedCycles.svg",
-              "callgrind.run_before.before.EstimatedCycles.diff.svg",
-              "callgrind.run_before.before.EstimatedCycles.old.svg",
+              "callgrind.run_before.before.flamegraph.EstimatedCycles.svg",
+              "callgrind.run_before.before.flamegraph.EstimatedCycles.diff.old.svg",
+              "callgrind.run_before.before.flamegraph.EstimatedCycles.old.svg",
               "callgrind.run_before.before.log",
               "callgrind.run_before.before.log.old",
               "callgrind.run_before.before.out",
@@ -217,9 +217,9 @@
           "id": "foo",
           "expected": {
             "files": [
-              "callgrind.benchmark-tests-exit.foo.EstimatedCycles.svg",
-              "callgrind.benchmark-tests-exit.foo.EstimatedCycles.diff.svg",
-              "callgrind.benchmark-tests-exit.foo.EstimatedCycles.old.svg",
+              "callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.diff.old.svg",
+              "callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.old.svg",
               "callgrind.benchmark-tests-exit.foo.log",
               "callgrind.benchmark-tests-exit.foo.log.old",
               "callgrind.benchmark-tests-exit.foo.out",
@@ -234,9 +234,9 @@
           "id": "after",
           "expected": {
             "files": [
-              "callgrind.run_after.after.EstimatedCycles.svg",
-              "callgrind.run_after.after.EstimatedCycles.diff.svg",
-              "callgrind.run_after.after.EstimatedCycles.old.svg",
+              "callgrind.run_after.after.flamegraph.EstimatedCycles.svg",
+              "callgrind.run_after.after.flamegraph.EstimatedCycles.diff.old.svg",
+              "callgrind.run_after.after.flamegraph.EstimatedCycles.old.svg",
               "callgrind.run_after.after.log",
               "callgrind.run_after.after.log.old",
               "callgrind.run_after.after.out",
@@ -251,9 +251,9 @@
           "id": "foo",
           "expected": {
             "files": [
-              "callgrind.benchmark-tests-exit.foo.EstimatedCycles.svg",
-              "callgrind.benchmark-tests-exit.foo.EstimatedCycles.diff.svg",
-              "callgrind.benchmark-tests-exit.foo.EstimatedCycles.old.svg",
+              "callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.diff.old.svg",
+              "callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.old.svg",
               "callgrind.benchmark-tests-exit.foo.log",
               "callgrind.benchmark-tests-exit.foo.log.old",
               "callgrind.benchmark-tests-exit.foo.out",
@@ -268,9 +268,9 @@
           "id": "all_flamegraph_kinds",
           "expected": {
             "files": [
-              "callgrind.benchmark-tests-exit.all_flamegraph_kinds.EstimatedCycles.svg",
-              "callgrind.benchmark-tests-exit.all_flamegraph_kinds.EstimatedCycles.diff.svg",
-              "callgrind.benchmark-tests-exit.all_flamegraph_kinds.EstimatedCycles.old.svg",
+              "callgrind.benchmark-tests-exit.all_flamegraph_kinds.flamegraph.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.all_flamegraph_kinds.flamegraph.EstimatedCycles.diff.old.svg",
+              "callgrind.benchmark-tests-exit.all_flamegraph_kinds.flamegraph.EstimatedCycles.old.svg",
               "callgrind.benchmark-tests-exit.all_flamegraph_kinds.log",
               "callgrind.benchmark-tests-exit.all_flamegraph_kinds.log.old",
               "callgrind.benchmark-tests-exit.all_flamegraph_kinds.out",
@@ -299,7 +299,7 @@
           "id": "only_differential_kind",
           "expected": {
             "files": [
-              "callgrind.benchmark-tests-exit.only_differential_kind.EstimatedCycles.diff.svg",
+              "callgrind.benchmark-tests-exit.only_differential_kind.flamegraph.EstimatedCycles.diff.old.svg",
               "callgrind.benchmark-tests-exit.only_differential_kind.log",
               "callgrind.benchmark-tests-exit.only_differential_kind.log.old",
               "callgrind.benchmark-tests-exit.only_differential_kind.out",
@@ -314,8 +314,8 @@
           "id": "only_regular_kind",
           "expected": {
             "files": [
-              "callgrind.benchmark-tests-exit.only_regular_kind.EstimatedCycles.svg",
-              "callgrind.benchmark-tests-exit.only_regular_kind.EstimatedCycles.old.svg",
+              "callgrind.benchmark-tests-exit.only_regular_kind.flamegraph.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.only_regular_kind.flamegraph.EstimatedCycles.old.svg",
               "callgrind.benchmark-tests-exit.only_regular_kind.log",
               "callgrind.benchmark-tests-exit.only_regular_kind.log.old",
               "callgrind.benchmark-tests-exit.only_regular_kind.out",
