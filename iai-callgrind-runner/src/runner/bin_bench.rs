@@ -1,6 +1,6 @@
 use std::ffi::OsString;
 use std::fmt::Display;
-use std::io::stdout;
+use std::io::stderr;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -31,7 +31,7 @@ use crate::runner::summary::{
     BaselineKind, BenchmarkKind, CallgrindSummary, CostsSummary, SummaryOutput,
 };
 use crate::runner::tool::{ToolOutputPath, ToolOutputPathKind, ValgrindTool};
-use crate::util::{copy_directory, write_all_to_stderr, write_all_to_stdout};
+use crate::util::{copy_directory, write_all_to_stderr};
 
 #[derive(Debug, Clone)]
 struct Assistant {
@@ -204,19 +204,16 @@ impl Assistant {
                 }
             })?;
 
-        // TODO: Refactor
-        if !stdout.is_empty() {
+        if log_enabled!(Level::Info) && !stdout.is_empty() {
             info!("{} function '{}': stdout:", id, self.name);
-            if log_enabled!(Level::Info) {
-                write_all_to_stdout(&stdout);
-            }
+            write_all_to_stderr(&stdout);
         }
-        if !stderr.is_empty() {
+
+        if log_enabled!(Level::Info) && !stderr.is_empty() {
             info!("{} function '{}': stderr:", id, self.name);
-            if log_enabled!(Level::Info) {
-                write_all_to_stderr(&stderr);
-            }
+            write_all_to_stderr(&stderr);
         }
+
         Ok(())
     }
 
@@ -853,7 +850,7 @@ impl Benchmark for BaselineBenchmark {
         );
 
         output.dump_log(log::Level::Info);
-        log_path.dump_log(log::Level::Info, &mut stdout())?;
+        log_path.dump_log(log::Level::Info, &mut stderr())?;
 
         let regressions = benchmarkable.check_and_print_regressions(&costs_summary);
 
@@ -942,7 +939,7 @@ impl Benchmark for LoadBaselineBenchmark {
             VerticalFormat::default().format(self.baselines(), &costs_summary)?
         );
 
-        log_path.dump_log(log::Level::Info, &mut stdout())?;
+        log_path.dump_log(log::Level::Info, &mut stderr())?;
 
         let regressions = benchmarkable.check_and_print_regressions(&costs_summary);
 
@@ -1151,7 +1148,7 @@ impl Benchmark for SaveBaselineBenchmark {
         );
 
         output.dump_log(log::Level::Info);
-        log_path.dump_log(log::Level::Info, &mut stdout())?;
+        log_path.dump_log(log::Level::Info, &mut stderr())?;
 
         let regressions = benchmarkable.check_and_print_regressions(&costs_summary);
 

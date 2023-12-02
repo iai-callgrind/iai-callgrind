@@ -2,7 +2,7 @@
 //!
 //! This module runs all the library benchmarks
 use std::ffi::OsString;
-use std::io::stdout;
+use std::io::stderr;
 
 use anyhow::Result;
 
@@ -168,7 +168,7 @@ impl Benchmark for BaselineBenchmark {
         );
 
         output.dump_log(log::Level::Info);
-        log_path.dump_log(log::Level::Info, &mut stdout())?;
+        log_path.dump_log(log::Level::Info, &mut stderr())?;
 
         let regressions = lib_bench.check_and_print_regressions(&costs_summary);
 
@@ -592,7 +592,7 @@ impl Benchmark for SaveBaselineBenchmark {
         print!("{string}");
 
         output.dump_log(log::Level::Info);
-        log_path.dump_log(log::Level::Info, &mut stdout())?;
+        log_path.dump_log(log::Level::Info, &mut stderr())?;
 
         let regressions = lib_bench.check_and_print_regressions(&costs_summary);
 

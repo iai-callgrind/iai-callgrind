@@ -6,7 +6,7 @@ pub mod logfile_parser;
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::fs::File;
-use std::io::{stdout, BufRead, BufReader, Write};
+use std::io::{stderr, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
@@ -286,7 +286,7 @@ impl ToolConfigs {
             println!("{}", tool_summary_header(tool));
             let tool_summary = Self::parse(tool, meta, &log_path)?;
 
-            log_path.dump_log(log::Level::Info, &mut stdout())?;
+            log_path.dump_log(log::Level::Info, &mut stderr())?;
 
             tool_summaries.push(tool_summary);
         }
@@ -326,8 +326,7 @@ impl ToolConfigs {
             }
 
             output.dump_log(log::Level::Info);
-            // TODO: ALL LOGGING OUTPUT SHOULD GO TO STDERR
-            log_path.dump_log(log::Level::Info, &mut stdout())?;
+            log_path.dump_log(log::Level::Info, &mut stderr())?;
 
             tool_summaries.push(tool_summary);
         }
@@ -342,8 +341,7 @@ impl ToolOutput {
             let (stdout, stderr) = (&self.output.stdout, &self.output.stderr);
             if !stdout.is_empty() {
                 log::log!(log_level, "{} output on stdout:", self.tool.id());
-                // TODO: ALL LOGGING OUTPUT SHOULD GO TO STDERR
-                util::write_all_to_stdout(stdout);
+                util::write_all_to_stderr(stdout);
             }
             if !stderr.is_empty() {
                 log::log!(log_level, "{} output on stderr:", self.tool.id());
@@ -512,7 +510,6 @@ impl ToolOutputPath {
             .map(std::result::Result::unwrap))
     }
 
-    // TODO: DOUBLE CHECK THE CHANGE
     pub fn dump_log(&self, log_level: log::Level, writer: &mut impl Write) -> Result<()> {
         if log_enabled!(log_level) {
             for path in self.real_paths()? {
