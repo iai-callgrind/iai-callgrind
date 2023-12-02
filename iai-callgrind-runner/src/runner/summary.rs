@@ -225,7 +225,6 @@ pub struct ToolSummary {
     pub summaries: Vec<ToolRunSummary>,
 }
 
-// TODO: DOES THE NAME TO BE THAT RESTRICTIVE OR IS excluding `.` sufficient?
 impl FromStr for BaselineName {
     type Err = String;
 
@@ -233,8 +232,8 @@ impl FromStr for BaselineName {
         for char in s.chars() {
             if !(char.is_ascii_alphanumeric() || char == '_') {
                 return Err(format!(
-                    "A baseline name can only consist of ascii characters which are alphabetic, \
-                     numeric or '_' but found: '{char}'"
+                    "A baseline name can only consist of ascii characters which are alphanumeric \
+                     or '_' but found: '{char}'"
                 ));
             }
         }
@@ -471,13 +470,20 @@ impl SummaryOutput {
     }
 
     /// Initialize this `SummaryOutput` removing old summary files
-    pub fn init(&self) {
+    pub fn init(&self) -> Result<()> {
         for entry in glob(self.path.with_extension("*").to_string_lossy().as_ref())
             .expect("Glob pattern should be valid")
         {
-            std::fs::remove_file(entry.unwrap().as_path())
-                .expect("Path from matched glob pattern should be present");
+            let entry = entry?;
+            std::fs::remove_file(entry.as_path()).with_context(|| {
+                format!(
+                    "Failed removing summary file '{}'",
+                    entry.as_path().display()
+                )
+            })?;
         }
+
+        Ok(())
     }
 
     /// Try to create an empty summary file returning the [`File`] object

@@ -128,19 +128,19 @@ impl Benchmark for BaselineBenchmark {
 
         let sentinel = Sentinel::new("iai_callgrind::bench::");
         let out_path = self.output_path(lib_bench, config, group);
-        out_path.init();
-        out_path.shift();
+        out_path.init()?;
+        out_path.shift()?;
 
         let old_path = out_path.to_base_path();
         let log_path = out_path.to_log_output();
-        log_path.shift();
+        log_path.shift()?;
 
         for path in lib_bench.tools.output_paths(&out_path) {
-            path.shift();
-            path.to_log_output().shift();
+            path.shift()?;
+            path.to_log_output().shift()?;
         }
 
-        let mut benchmark_summary = lib_bench.create_benchmark_summary(config, group, &out_path);
+        let mut benchmark_summary = lib_bench.create_benchmark_summary(config, group, &out_path)?;
 
         let header = lib_bench.print_header(group);
 
@@ -175,8 +175,8 @@ impl Benchmark for BaselineBenchmark {
         let callgrind_summary = benchmark_summary
             .callgrind_summary
             .insert(CallgrindSummary::new(
-                log_path.real_paths(),
-                out_path.real_paths(),
+                log_path.real_paths()?,
+                out_path.real_paths()?,
             ));
 
         callgrind_summary.add_summary(
@@ -343,13 +343,16 @@ impl LibBench {
         config: &Config,
         group: &Group,
         output_path: &ToolOutputPath,
-    ) -> BenchmarkSummary {
-        let summary_output = config.meta.args.save_summary.map(|format| {
+    ) -> Result<BenchmarkSummary> {
+        let summary_output = if let Some(format) = config.meta.args.save_summary {
             let output = SummaryOutput::new(format, &output_path.dir);
-            output.init();
-            output
-        });
-        BenchmarkSummary::new(
+            output.init()?;
+            Some(output)
+        } else {
+            None
+        };
+
+        Ok(BenchmarkSummary::new(
             BenchmarkKind::LibraryBenchmark,
             config.meta.project_root.clone(),
             config.package_dir.clone(),
@@ -359,7 +362,7 @@ impl LibBench {
             self.id.clone(),
             self.args.clone(),
             summary_output,
-        )
+        ))
     }
 
     /// Print the headline of the terminal output for this benchmark run
@@ -424,7 +427,7 @@ impl Benchmark for LoadBaselineBenchmark {
         let out_path = self.output_path(lib_bench, config, group);
         let old_path = out_path.to_base_path();
         let log_path = out_path.to_log_output();
-        let mut benchmark_summary = lib_bench.create_benchmark_summary(config, group, &out_path);
+        let mut benchmark_summary = lib_bench.create_benchmark_summary(config, group, &out_path)?;
 
         let header = lib_bench.print_header(group);
 
@@ -442,8 +445,8 @@ impl Benchmark for LoadBaselineBenchmark {
         let callgrind_summary = benchmark_summary
             .callgrind_summary
             .insert(CallgrindSummary::new(
-                log_path.real_paths(),
-                out_path.real_paths(),
+                log_path.real_paths()?,
+                out_path.real_paths()?,
             ));
 
         callgrind_summary.add_summary(
@@ -552,26 +555,26 @@ impl Benchmark for SaveBaselineBenchmark {
 
         let sentinel = Sentinel::new("iai_callgrind::bench::");
         let out_path = self.output_path(lib_bench, config, group);
-        out_path.init();
+        out_path.init()?;
 
         #[allow(clippy::if_then_some_else_none)]
         let old_costs = if out_path.exists() {
             let old_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
-            out_path.clear();
+            out_path.clear()?;
             Some(old_costs)
         } else {
             None
         };
 
         let log_path = out_path.to_log_output();
-        log_path.clear();
+        log_path.clear()?;
 
         for path in lib_bench.tools.output_paths(&out_path) {
-            path.clear();
-            path.to_log_output().clear();
+            path.clear()?;
+            path.to_log_output().clear()?;
         }
 
-        let mut benchmark_summary = lib_bench.create_benchmark_summary(config, group, &out_path);
+        let mut benchmark_summary = lib_bench.create_benchmark_summary(config, group, &out_path)?;
 
         let header = lib_bench.print_header(group);
 
@@ -596,8 +599,8 @@ impl Benchmark for SaveBaselineBenchmark {
         let callgrind_summary = benchmark_summary
             .callgrind_summary
             .insert(CallgrindSummary::new(
-                log_path.real_paths(),
-                out_path.real_paths(),
+                log_path.real_paths()?,
+                out_path.real_paths()?,
             ));
 
         callgrind_summary.add_summary(

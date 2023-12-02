@@ -218,6 +218,7 @@ impl RegressionConfig {
             if let Some((new_cost, old_cost, pct)) = costs_summary
                 .diff_by_kind(event_kind)
                 .filter(|d| d.diff_pct.is_some())
+                // These unwraps are safe since if diff_pct is present new and old are also present
                 .map(|d| (d.new.unwrap(), d.old.unwrap(), d.diff_pct.unwrap()))
             {
                 if limit.is_sign_positive() {

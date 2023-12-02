@@ -226,7 +226,7 @@ impl ToolConfigs {
     ) -> Result<ToolSummary> {
         let mut tool_summary = ToolSummary {
             tool,
-            log_paths: log_path.real_paths(),
+            log_paths: log_path.real_paths()?,
             out_paths: vec![],
             summaries: vec![],
         };
@@ -308,7 +308,6 @@ impl ToolConfigs {
 
             let command = ToolCommand::new(tool, meta);
 
-            // TODO: INITIALIZE output files AT BENCHMARK RUN START NOT HERE
             let output_path = output_path.to_tool_output(tool);
             let log_path = output_path.to_log_output();
 
@@ -323,7 +322,7 @@ impl ToolConfigs {
             )?;
             let mut tool_summary = Self::parse(tool, meta, &log_path)?;
             if tool.has_output_file() {
-                tool_summary.out_paths = output_path.real_paths();
+                tool_summary.out_paths = output_path.real_paths()?;
             }
 
             output.dump_log(log::Level::Info);
@@ -390,7 +389,6 @@ impl ToolOutputPath {
     /// Initialize and create the output directory and organize files
     ///
     /// This method moves the old output to `$TOOL_ID.*.out.old`
-    /// TODO: RETURN Result
     pub fn with_init(
         kind: ToolOutputPathKind,
         tool: ValgrindTool,
@@ -398,41 +396,55 @@ impl ToolOutputPath {
         base_dir: &Path,
         module: &str,
         name: &str,
-    ) -> Self {
+    ) -> Result<Self> {
         let output = Self::new(kind, tool, baseline_kind, base_dir, module, name);
-        output.init();
-        output
+        output.init()?;
+        Ok(output)
     }
 
-    // TODO: RETURN Result??
-    pub fn init(&self) {
-        std::fs::create_dir_all(&self.dir).expect("Failed to create directory");
+    pub fn init(&self) -> Result<()> {
+        std::fs::create_dir_all(&self.dir).with_context(|| {
+            format!(
+                "Failed to create benchmark directory: '{}'",
+                self.dir.display()
+            )
+        })
     }
 
-    pub fn clear(&self) {
-        for entry in self.real_paths() {
-            std::fs::remove_file(entry).unwrap();
+    pub fn clear(&self) -> Result<()> {
+        for entry in self.real_paths()? {
+            std::fs::remove_file(&entry).with_context(|| {
+                format!("Failed to remove benchmark file: '{}'", entry.display())
+            })?;
         }
+        Ok(())
     }
 
-    pub fn shift(&self) {
+    pub fn shift(&self) -> Result<()> {
         match self.baseline_kind {
             BaselineKind::Old => {
-                self.to_base_path().clear();
-                for entry in self.real_paths() {
-                    let mut extension = entry.extension().unwrap().to_owned();
+                self.to_base_path().clear()?;
+                for entry in self.real_paths()? {
+                    let extension = entry.extension().expect("An extension should be present");
+                    let mut extension = extension.to_owned();
                     extension.push(".old");
-                    std::fs::rename(&entry, entry.with_extension(extension)).unwrap();
+                    let new_path = entry.with_extension(extension);
+                    std::fs::rename(&entry, &new_path).with_context(|| {
+                        format!(
+                            "Failed to move benchmark file from '{}' to '{}'",
+                            entry.display(),
+                            new_path.display()
+                        )
+                    })?;
                 }
+                Ok(())
             }
-            BaselineKind::Name(_) => {
-                self.clear();
-            }
+            BaselineKind::Name(_) => self.clear(),
         }
     }
 
     pub fn exists(&self) -> bool {
-        !self.real_paths().is_empty()
+        self.real_paths().map_or(false, |p| !p.is_empty())
     }
 
     pub fn to_base_path(&self) -> Self {
@@ -503,7 +515,7 @@ impl ToolOutputPath {
     // TODO: DOUBLE CHECK THE CHANGE
     pub fn dump_log(&self, log_level: log::Level, writer: &mut impl Write) -> Result<()> {
         if log_enabled!(log_level) {
-            for path in self.real_paths() {
+            for path in self.real_paths()? {
                 log::log!(
                     log_level,
                     "{} log output '{}':",
@@ -573,10 +585,15 @@ impl ToolOutputPath {
         ))
     }
 
-    pub fn real_paths(&self) -> Vec<PathBuf> {
+    pub fn real_paths(&self) -> Result<Vec<PathBuf>> {
         let mut paths = vec![];
-        for entry in std::fs::read_dir(&self.dir).unwrap() {
-            let path = entry.unwrap();
+        for entry in std::fs::read_dir(&self.dir).with_context(|| {
+            format!(
+                "Failed opening benchmark directory: '{}'",
+                self.dir.display()
+            )
+        })? {
+            let path = entry?;
             let file_name = path.file_name().to_string_lossy().to_string();
             if let Some(suffix) =
                 file_name.strip_prefix(format!("{}.{}.", self.tool.id(), self.name).as_str())
@@ -618,7 +635,7 @@ impl ToolOutputPath {
                 }
             }
         }
-        paths
+        Ok(paths)
     }
 }
 

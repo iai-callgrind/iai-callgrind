@@ -148,7 +148,7 @@ impl Parser for LogfileParser {
         debug!("{}: Parsing log file '{}'", output_path.tool.id(), log_path);
 
         let mut summaries = vec![];
-        for path in log_path.real_paths() {
+        for path in log_path.real_paths()? {
             let summary = self.parse_single(path)?;
             summaries.push(summary);
         }

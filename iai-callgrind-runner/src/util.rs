@@ -32,7 +32,7 @@ pub fn yesno_to_bool(value: &str) -> Option<bool> {
     }
 }
 
-/// Truncate a utf-8 [`std::str`] to a give `len`
+/// Truncate a utf-8 [`std::str`] to a given `len`
 pub fn truncate_str_utf8(string: &str, len: usize) -> &str {
     if let Some((pos, c)) = string
         .char_indices()
@@ -58,7 +58,7 @@ pub fn trim(bytes: &[u8]) -> &[u8] {
     &bytes[from..=to]
 }
 
-/// Dump all bytes data to `stdout`
+/// Dump all data to `stdout`
 pub fn write_all_to_stdout(bytes: &[u8]) {
     if !bytes.is_empty() {
         let stdout = io::stdout();
@@ -74,7 +74,7 @@ pub fn write_all_to_stdout(bytes: &[u8]) {
     }
 }
 
-/// Dump all bytes data to `stderr`
+/// Dump all data to `stderr`
 pub fn write_all_to_stderr(bytes: &[u8]) {
     if !bytes.is_empty() {
         let stderr = io::stderr();

@@ -4,7 +4,7 @@ use std::io::stdout;
 use std::path::PathBuf;
 use std::process::Command;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
@@ -145,7 +145,7 @@ trait Benchmarkable {
         config: &Config,
         group: &Group,
         out_path: &ToolOutputPath,
-    ) -> BenchmarkSummary;
+    ) -> Result<BenchmarkSummary>;
     fn check_and_print_regressions(
         &self,
         costs_summary: &CostsSummary,
@@ -299,14 +299,16 @@ impl Benchmarkable for Assistant {
         config: &Config,
         group: &Group,
         out_path: &ToolOutputPath,
-    ) -> BenchmarkSummary {
-        let summary_output = config.meta.args.save_summary.map(|format| {
+    ) -> Result<BenchmarkSummary> {
+        let summary_output = if let Some(format) = config.meta.args.save_summary {
             let output = SummaryOutput::new(format, &out_path.dir);
-            output.init();
-            output
-        });
+            output.init()?;
+            Some(output)
+        } else {
+            None
+        };
 
-        BenchmarkSummary::new(
+        Ok(BenchmarkSummary::new(
             BenchmarkKind::BinaryBenchmark,
             config.meta.project_root.clone(),
             config.package_dir.clone(),
@@ -316,7 +318,7 @@ impl Benchmarkable for Assistant {
             None,
             None,
             summary_output,
-        )
+        ))
     }
 
     fn check_and_print_regressions(
@@ -345,6 +347,7 @@ impl Benchmarkable for Assistant {
     }
 
     fn parse_costs(&self, config: &Config, out_path: &ToolOutputPath) -> Result<Costs> {
+        // This unwrap is safe because `sentinel()` always returns Some
         let sentinel = self.sentinel(config).unwrap();
         SentinelParser::new(&sentinel).parse(out_path)
     }
@@ -435,14 +438,16 @@ impl Benchmarkable for BinBench {
         config: &Config,
         group: &Group,
         out_path: &ToolOutputPath,
-    ) -> BenchmarkSummary {
-        let summary_output = config.meta.args.save_summary.map(|format| {
+    ) -> Result<BenchmarkSummary> {
+        let summary_output = if let Some(format) = config.meta.args.save_summary {
             let output = SummaryOutput::new(format, &out_path.dir);
-            output.init();
-            output
-        });
+            output.init()?;
+            Some(output)
+        } else {
+            None
+        };
 
-        BenchmarkSummary::new(
+        Ok(BenchmarkSummary::new(
             BenchmarkKind::BinaryBenchmark,
             config.meta.project_root.clone(),
             config.package_dir.clone(),
@@ -452,7 +457,7 @@ impl Benchmarkable for BinBench {
             Some(self.id.clone()),
             Some(self.to_string()),
             summary_output,
-        )
+        ))
     }
 
     fn check_and_print_regressions(
@@ -816,20 +821,20 @@ impl Benchmark for BaselineBenchmark {
         let executable_args = benchmarkable.executable_args(config, group);
         let run_options = benchmarkable.run_options(config);
         let out_path = self.output_path(benchmarkable, config, group);
-        out_path.init();
-        out_path.shift();
+        out_path.init()?;
+        out_path.shift()?;
 
         let old_path = out_path.to_base_path();
         let log_path = out_path.to_log_output();
-        log_path.shift();
+        log_path.shift()?;
 
         for path in benchmarkable.tools().output_paths(&out_path) {
-            path.shift();
-            path.to_log_output().shift();
+            path.shift()?;
+            path.to_log_output().shift()?;
         }
 
         let mut benchmark_summary =
-            benchmarkable.create_benchmark_summary(config, group, &out_path);
+            benchmarkable.create_benchmark_summary(config, group, &out_path)?;
 
         let header = benchmarkable.print_header(group);
 
@@ -855,8 +860,8 @@ impl Benchmark for BaselineBenchmark {
         let callgrind_summary = benchmark_summary
             .callgrind_summary
             .insert(CallgrindSummary::new(
-                log_path.real_paths(),
-                out_path.real_paths(),
+                log_path.real_paths()?,
+                out_path.real_paths()?,
             ));
 
         callgrind_summary.add_summary(
@@ -928,7 +933,7 @@ impl Benchmark for LoadBaselineBenchmark {
         let log_path = out_path.to_log_output();
 
         let mut benchmark_summary =
-            benchmarkable.create_benchmark_summary(config, group, &out_path);
+            benchmarkable.create_benchmark_summary(config, group, &out_path)?;
 
         let header = benchmarkable.print_header(group);
         let costs_summary = benchmarkable.parse(config, &out_path)?;
@@ -944,8 +949,8 @@ impl Benchmark for LoadBaselineBenchmark {
         let callgrind_summary = benchmark_summary
             .callgrind_summary
             .insert(CallgrindSummary::new(
-                log_path.real_paths(),
-                out_path.real_paths(),
+                log_path.real_paths()?,
+                out_path.real_paths()?,
             ));
 
         callgrind_summary.add_summary(
@@ -1034,13 +1039,21 @@ impl Sandbox {
             copy_directory(&fixtures.path, temp_dir.path(), fixtures.follow_symlinks)?;
         }
 
-        let current_dir = std::env::current_dir().unwrap();
+        let current_dir = std::env::current_dir()
+            .with_context(|| "Failed to detect current directory".to_owned())?;
+
         trace!(
             "Changing current directory to temporary directory: '{}'",
             temp_dir.path().display()
         );
-        std::env::set_current_dir(temp_dir.path())
-            .expect("Set current directory to temporary workspace directory");
+
+        let path = temp_dir.path();
+        std::env::set_current_dir(path).with_context(|| {
+            format!(
+                "Failed setting current directory to temporary workspace directory: '{}'",
+                path.display()
+            )
+        })?;
 
         Ok(Self {
             current_dir,
@@ -1098,27 +1111,27 @@ impl Benchmark for SaveBaselineBenchmark {
         let executable_args = benchmarkable.executable_args(config, group);
         let run_options = benchmarkable.run_options(config);
         let out_path = self.output_path(benchmarkable, config, group);
-        out_path.init();
+        out_path.init()?;
 
         #[allow(clippy::if_then_some_else_none)]
         let old_costs = if out_path.exists() {
             let old_costs = benchmarkable.parse_costs(config, &out_path)?;
-            out_path.clear();
+            out_path.clear()?;
             Some(old_costs)
         } else {
             None
         };
 
         let log_path = out_path.to_log_output();
-        log_path.clear();
+        log_path.clear()?;
 
         for path in benchmarkable.tools().output_paths(&out_path) {
-            path.clear();
-            path.to_log_output().clear();
+            path.clear()?;
+            path.to_log_output().clear()?;
         }
 
         let mut benchmark_summary =
-            benchmarkable.create_benchmark_summary(config, group, &out_path);
+            benchmarkable.create_benchmark_summary(config, group, &out_path)?;
 
         let header = benchmarkable.print_header(group);
 
@@ -1145,8 +1158,8 @@ impl Benchmark for SaveBaselineBenchmark {
         let callgrind_summary = benchmark_summary
             .callgrind_summary
             .insert(CallgrindSummary::new(
-                log_path.real_paths(),
-                out_path.real_paths(),
+                log_path.real_paths()?,
+                out_path.real_paths()?,
             ));
 
         callgrind_summary.add_summary(

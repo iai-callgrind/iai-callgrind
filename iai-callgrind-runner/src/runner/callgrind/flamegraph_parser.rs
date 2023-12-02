@@ -114,9 +114,10 @@ impl FlamegraphMap {
         let len = heap.len();
         if len > 1 {
             for window in heap.into_sorted_vec().windows(2) {
-                // There is only the slice size of 2 possible due to the windows size of 2
+                // There is only the slice size of 2 possible due to the window size of 2
                 if let [h1, h2] = window {
                     let stack = if let Some(last) = stacks.last() {
+                        // This unwrap is safe since the space must be present due to stack format
                         let (split, _) = last.rsplit_once(' ').unwrap();
                         format!("{split};{} {}", h1.source, h1.cost - h2.cost)
                     } else {
@@ -127,6 +128,8 @@ impl FlamegraphMap {
 
                     // The last window needs to push the last element too
                     if stacks.len() == len - 1 {
+                        // This unwrap is safe since we have a last element the moment we enter the
+                        // `if` statement
                         let last = stacks.last().unwrap();
                         let (split, _) = last.rsplit_once(' ').unwrap();
 
@@ -136,7 +139,7 @@ impl FlamegraphMap {
                 }
             }
         } else {
-            // unwrap is safe since heap.len() == 1 here
+            // This unwrap is safe since heap.len() == 1 here
             let elem = heap.pop().unwrap();
             stacks.push(format!("{} {}", elem.source, elem.cost));
         }

@@ -477,6 +477,7 @@ impl RawArgs {
         let mut this = Self(Vec::default());
         if !args.is_empty() {
             let mut iter = args.into_iter();
+            // This unwrap is safe. We just checked that `args` is not empty.
             let mut last = iter.next().unwrap();
             for elem in iter {
                 this.0.push(last);
