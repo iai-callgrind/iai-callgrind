@@ -118,21 +118,20 @@ struct SaveBaselineBenchmark {
 trait Benchmark: std::fmt::Debug {
     fn output_path(
         &self,
-        runnable: &dyn Runnable,
+        benchmarkable: &dyn Benchmarkable,
         config: &Config,
         group: &Group,
     ) -> ToolOutputPath;
     fn baselines(&self) -> (Option<String>, Option<String>);
     fn run(
         &self,
-        runnable: &dyn Runnable,
+        benchmarkable: &dyn Benchmarkable,
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary>;
 }
 
-// TODO: Rename to Benchmarkable
-trait Runnable {
+trait Benchmarkable {
     fn callgrind_args(&self) -> &Args;
     fn executable(&self, config: &Config) -> PathBuf;
     fn executable_args(&self, config: &Config, group: &Group) -> Vec<OsString>;
@@ -249,7 +248,7 @@ impl Assistant {
     }
 }
 
-impl Runnable for Assistant {
+impl Benchmarkable for Assistant {
     fn callgrind_args(&self) -> &Args {
         &self.callgrind_args
     }
@@ -398,7 +397,7 @@ impl Default for BenchmarkAssistants {
     }
 }
 
-impl Runnable for BinBench {
+impl Benchmarkable for BinBench {
     fn callgrind_args(&self) -> &Args {
         &self.callgrind_args
     }
@@ -785,7 +784,7 @@ impl Groups {
 impl Benchmark for BaselineBenchmark {
     fn output_path(
         &self,
-        runnable: &dyn Runnable,
+        benchmarkable: &dyn Benchmarkable,
         config: &Config,
         group: &Group,
     ) -> ToolOutputPath {
@@ -795,7 +794,7 @@ impl Benchmark for BaselineBenchmark {
             &self.baseline_kind,
             &config.meta.target_dir,
             &group.module_path,
-            &runnable.name(),
+            &benchmarkable.name(),
         )
     }
 
@@ -808,15 +807,15 @@ impl Benchmark for BaselineBenchmark {
 
     fn run(
         &self,
-        runnable: &dyn Runnable,
+        benchmarkable: &dyn Benchmarkable,
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
         let callgrind_command = CallgrindCommand::new(&config.meta);
-        let executable = runnable.executable(config);
-        let executable_args = runnable.executable_args(config, group);
-        let run_options = runnable.run_options(config);
-        let out_path = self.output_path(runnable, config, group);
+        let executable = benchmarkable.executable(config);
+        let executable_args = benchmarkable.executable_args(config, group);
+        let run_options = benchmarkable.run_options(config);
+        let out_path = self.output_path(benchmarkable, config, group);
         out_path.init();
         out_path.shift();
 
@@ -824,24 +823,25 @@ impl Benchmark for BaselineBenchmark {
         let log_path = out_path.to_log_output();
         log_path.shift();
 
-        for path in runnable.tools().output_paths(&out_path) {
+        for path in benchmarkable.tools().output_paths(&out_path) {
             path.shift();
             path.to_log_output().shift();
         }
 
-        let mut benchmark_summary = runnable.create_benchmark_summary(config, group, &out_path);
+        let mut benchmark_summary =
+            benchmarkable.create_benchmark_summary(config, group, &out_path);
 
-        let header = runnable.print_header(group);
+        let header = benchmarkable.print_header(group);
 
         let output = callgrind_command.run(
-            runnable.callgrind_args().clone(),
+            benchmarkable.callgrind_args().clone(),
             &executable,
             &executable_args,
             run_options.clone(),
             &out_path,
         )?;
 
-        let costs_summary = runnable.parse(config, &out_path)?;
+        let costs_summary = benchmarkable.parse(config, &out_path)?;
         print!(
             "{}",
             VerticalFormat::default().format(self.baselines(), &costs_summary)?
@@ -850,7 +850,7 @@ impl Benchmark for BaselineBenchmark {
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stdout())?;
 
-        let regressions = runnable.check_and_print_regressions(&costs_summary);
+        let regressions = benchmarkable.check_and_print_regressions(&costs_summary);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
@@ -867,19 +867,19 @@ impl Benchmark for BaselineBenchmark {
             regressions,
         );
 
-        if let Some(flamegraph_config) = runnable.flamegraph_config().cloned() {
+        if let Some(flamegraph_config) = benchmarkable.flamegraph_config().cloned() {
             callgrind_summary.flamegraphs = BaselineFlamegraphGenerator {
                 baseline_kind: self.baseline_kind.clone(),
             }
             .create(
                 &Flamegraph::new(header.to_title(), flamegraph_config),
                 &out_path,
-                runnable.sentinel(config).as_ref(),
+                benchmarkable.sentinel(config).as_ref(),
                 &config.meta.project_root,
             )?;
         }
 
-        benchmark_summary.tool_summaries = runnable.tools().run(
+        benchmark_summary.tool_summaries = benchmarkable.tools().run(
             &config.meta,
             &executable,
             &executable_args,
@@ -894,7 +894,7 @@ impl Benchmark for BaselineBenchmark {
 impl Benchmark for LoadBaselineBenchmark {
     fn output_path(
         &self,
-        runnable: &dyn Runnable,
+        benchmarkable: &dyn Benchmarkable,
         config: &Config,
         group: &Group,
     ) -> ToolOutputPath {
@@ -904,7 +904,7 @@ impl Benchmark for LoadBaselineBenchmark {
             &BaselineKind::Name(self.baseline.clone()),
             &config.meta.target_dir,
             &group.module_path,
-            &runnable.name(),
+            &benchmarkable.name(),
         )
     }
 
@@ -917,20 +917,21 @@ impl Benchmark for LoadBaselineBenchmark {
 
     fn run(
         &self,
-        runnable: &dyn Runnable,
+        benchmarkable: &dyn Benchmarkable,
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
-        let executable = runnable.executable(config);
-        let executable_args = runnable.executable_args(config, group);
-        let out_path = self.output_path(runnable, config, group);
+        let executable = benchmarkable.executable(config);
+        let executable_args = benchmarkable.executable_args(config, group);
+        let out_path = self.output_path(benchmarkable, config, group);
         let base_path = out_path.to_base_path();
         let log_path = out_path.to_log_output();
 
-        let mut benchmark_summary = runnable.create_benchmark_summary(config, group, &out_path);
+        let mut benchmark_summary =
+            benchmarkable.create_benchmark_summary(config, group, &out_path);
 
-        let header = runnable.print_header(group);
-        let costs_summary = runnable.parse(config, &out_path)?;
+        let header = benchmarkable.print_header(group);
+        let costs_summary = benchmarkable.parse(config, &out_path)?;
         print!(
             "{}",
             VerticalFormat::default().format(self.baselines(), &costs_summary)?
@@ -938,7 +939,7 @@ impl Benchmark for LoadBaselineBenchmark {
 
         log_path.dump_log(log::Level::Info, &mut stdout())?;
 
-        let regressions = runnable.check_and_print_regressions(&costs_summary);
+        let regressions = benchmarkable.check_and_print_regressions(&costs_summary);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
@@ -955,7 +956,7 @@ impl Benchmark for LoadBaselineBenchmark {
             regressions,
         );
 
-        if let Some(flamegraph_config) = runnable.flamegraph_config().cloned() {
+        if let Some(flamegraph_config) = benchmarkable.flamegraph_config().cloned() {
             callgrind_summary.flamegraphs = LoadBaselineFlamegraphGenerator {
                 loaded_baseline: self.loaded_baseline.clone(),
                 baseline: self.baseline.clone(),
@@ -963,12 +964,12 @@ impl Benchmark for LoadBaselineBenchmark {
             .create(
                 &Flamegraph::new(header.to_title(), flamegraph_config),
                 &out_path,
-                runnable.sentinel(config).as_ref(),
+                benchmarkable.sentinel(config).as_ref(),
                 &config.meta.project_root,
             )?;
         }
 
-        benchmark_summary.tool_summaries = runnable
+        benchmark_summary.tool_summaries = benchmarkable
             .tools()
             .run_loaded_vs_base(&config.meta, &out_path)?;
 
@@ -1065,7 +1066,7 @@ impl Sandbox {
 impl Benchmark for SaveBaselineBenchmark {
     fn output_path(
         &self,
-        runnable: &dyn Runnable,
+        benchmarkable: &dyn Benchmarkable,
         config: &Config,
         group: &Group,
     ) -> ToolOutputPath {
@@ -1075,7 +1076,7 @@ impl Benchmark for SaveBaselineBenchmark {
             &BaselineKind::Name(self.baseline.clone()),
             &config.meta.target_dir,
             &group.module_path,
-            &runnable.name(),
+            &benchmarkable.name(),
         )
     }
 
@@ -1088,20 +1089,20 @@ impl Benchmark for SaveBaselineBenchmark {
 
     fn run(
         &self,
-        runnable: &dyn Runnable,
+        benchmarkable: &dyn Benchmarkable,
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
         let callgrind_command = CallgrindCommand::new(&config.meta);
-        let executable = runnable.executable(config);
-        let executable_args = runnable.executable_args(config, group);
-        let run_options = runnable.run_options(config);
-        let out_path = self.output_path(runnable, config, group);
+        let executable = benchmarkable.executable(config);
+        let executable_args = benchmarkable.executable_args(config, group);
+        let run_options = benchmarkable.run_options(config);
+        let out_path = self.output_path(benchmarkable, config, group);
         out_path.init();
 
         #[allow(clippy::if_then_some_else_none)]
         let old_costs = if out_path.exists() {
-            let old_costs = runnable.parse_costs(config, &out_path)?;
+            let old_costs = benchmarkable.parse_costs(config, &out_path)?;
             out_path.clear();
             Some(old_costs)
         } else {
@@ -1111,24 +1112,25 @@ impl Benchmark for SaveBaselineBenchmark {
         let log_path = out_path.to_log_output();
         log_path.clear();
 
-        for path in runnable.tools().output_paths(&out_path) {
+        for path in benchmarkable.tools().output_paths(&out_path) {
             path.clear();
             path.to_log_output().clear();
         }
 
-        let mut benchmark_summary = runnable.create_benchmark_summary(config, group, &out_path);
+        let mut benchmark_summary =
+            benchmarkable.create_benchmark_summary(config, group, &out_path);
 
-        let header = runnable.print_header(group);
+        let header = benchmarkable.print_header(group);
 
         let output = callgrind_command.run(
-            runnable.callgrind_args().clone(),
+            benchmarkable.callgrind_args().clone(),
             &executable,
             &executable_args,
             run_options.clone(),
             &out_path,
         )?;
 
-        let new_costs = runnable.parse_costs(config, &out_path)?;
+        let new_costs = benchmarkable.parse_costs(config, &out_path)?;
         let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
         print!(
             "{}",
@@ -1138,7 +1140,7 @@ impl Benchmark for SaveBaselineBenchmark {
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stdout())?;
 
-        let regressions = runnable.check_and_print_regressions(&costs_summary);
+        let regressions = benchmarkable.check_and_print_regressions(&costs_summary);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
@@ -1155,19 +1157,19 @@ impl Benchmark for SaveBaselineBenchmark {
             regressions,
         );
 
-        if let Some(flamegraph_config) = runnable.flamegraph_config().cloned() {
+        if let Some(flamegraph_config) = benchmarkable.flamegraph_config().cloned() {
             callgrind_summary.flamegraphs = SaveBaselineFlamegraphGenerator {
                 baseline: self.baseline.clone(),
             }
             .create(
                 &Flamegraph::new(header.to_title(), flamegraph_config),
                 &out_path,
-                runnable.sentinel(config).as_ref(),
+                benchmarkable.sentinel(config).as_ref(),
                 &config.meta.project_root,
             )?;
         }
 
-        benchmark_summary.tool_summaries = runnable.tools().run(
+        benchmark_summary.tool_summaries = benchmarkable.tools().run(
             &config.meta,
             &executable,
             &executable_args,
