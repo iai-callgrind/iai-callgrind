@@ -33,6 +33,7 @@ aslr
 atstart
 bheisler
 bincode
+bindgen
 bools
 bumpversion
 cachesim
