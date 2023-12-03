@@ -1,7 +1,9 @@
 use std::borrow::Cow;
 use std::ffi::OsString;
+use std::fmt::Display;
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use glob::glob;
@@ -22,20 +24,26 @@ use crate::util::{factor_diff, make_absolute, percentage_diff};
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Baseline {
-    /// The kind of the `Baseline`, which currently can only be `Old`
+    /// The kind of the `Baseline`
     pub kind: BaselineKind,
     /// The path to the file which is used to compare against the new output
     pub path: PathBuf,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct BaselineName(String);
+
 /// The `BaselineKind` describing the baseline
 ///
 /// Currently, iai-callgrind can only compare callgrind output with `.old` files.
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum BaselineKind {
     /// Compare new against `*.old` output files
     Old,
+    /// Compare new against a named baseline
+    Name(BaselineName),
 }
 
 /// The `BenchmarkKind`, differentiating between library and binary benchmarks
@@ -115,8 +123,6 @@ pub struct CallgrindRunSummary {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindSummary {
-    /// If the regressions were configured to cause the benchmark run to fail immediately or not
-    pub regression_fail_fast: bool,
     /// The paths to the `*.log` files
     pub log_paths: Vec<PathBuf>,
     /// The paths to the `*.old` files
@@ -162,7 +168,7 @@ pub struct FlamegraphSummary {
     /// If present, the path to the file of the regular (non-differential) flamegraph
     pub regular_path: Option<PathBuf>,
     /// If present, the path to the file of the old regular (non-differential) flamegraph
-    pub old_path: Option<PathBuf>,
+    pub base_path: Option<PathBuf>,
     /// If present, the path to the file of the differential flamegraph
     pub diff_path: Option<PathBuf>,
 }
@@ -217,6 +223,28 @@ pub struct ToolSummary {
     pub out_paths: Vec<PathBuf>,
     /// All [`ToolRunSummary`]s
     pub summaries: Vec<ToolRunSummary>,
+}
+
+impl FromStr for BaselineName {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        for char in s.chars() {
+            if !(char.is_ascii_alphanumeric() || char == '_') {
+                return Err(format!(
+                    "A baseline name can only consist of ascii characters which are alphanumeric \
+                     or '_' but found: '{char}'"
+                ));
+            }
+        }
+        Ok(Self(s.to_owned()))
+    }
+}
+
+impl Display for BaselineName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
 }
 
 impl BenchmarkSummary {
@@ -287,10 +315,10 @@ impl BenchmarkSummary {
     /// # Errors
     ///
     /// If the regressions are configured to be `fail_fast` an error is returned
-    pub fn check_regression(&self, is_regressed: &mut bool) -> Result<()> {
+    pub fn check_regression(&self, is_regressed: &mut bool, fail_fast: bool) -> Result<()> {
         if let Some(callgrind_summary) = &self.callgrind_summary {
             let benchmark_is_regressed = callgrind_summary.is_regressed();
-            if benchmark_is_regressed && callgrind_summary.regression_fail_fast {
+            if benchmark_is_regressed && fail_fast {
                 return Err(Error::RegressionError(true).into());
             }
 
@@ -303,13 +331,8 @@ impl BenchmarkSummary {
 
 impl CallgrindSummary {
     /// Create a new `CallgrindSummary`
-    pub fn new(
-        fail_fast: bool,
-        log_paths: Vec<PathBuf>,
-        out_paths: Vec<PathBuf>,
-    ) -> CallgrindSummary {
+    pub fn new(log_paths: Vec<PathBuf>, out_paths: Vec<PathBuf>) -> CallgrindSummary {
         Self {
-            regression_fail_fast: fail_fast,
             log_paths,
             out_paths,
             flamegraphs: Vec::default(),
@@ -327,7 +350,7 @@ impl CallgrindSummary {
         &mut self,
         bench_bin: &Path,
         bench_args: &[OsString],
-        old_output: &ToolOutputPath,
+        old_path: &ToolOutputPath,
         events: CostsSummary,
         regressions: Vec<CallgrindRegressionSummary>,
     ) {
@@ -345,9 +368,9 @@ impl CallgrindSummary {
                         .map(std::string::String::as_str)
                 )
             ),
-            baseline: old_output.exists().then(|| Baseline {
-                kind: BaselineKind::Old,
-                path: old_output.to_path(),
+            baseline: old_path.exists().then(|| Baseline {
+                kind: old_path.baseline_kind.clone(),
+                path: old_path.to_path(),
             }),
             events,
             regressions,
@@ -430,7 +453,7 @@ impl FlamegraphSummary {
         Self {
             event_kind,
             regular_path: Option::default(),
-            old_path: Option::default(),
+            base_path: Option::default(),
             diff_path: Option::default(),
         }
     }
@@ -447,13 +470,20 @@ impl SummaryOutput {
     }
 
     /// Initialize this `SummaryOutput` removing old summary files
-    pub fn init(&self) {
+    pub fn init(&self) -> Result<()> {
         for entry in glob(self.path.with_extension("*").to_string_lossy().as_ref())
             .expect("Glob pattern should be valid")
         {
-            std::fs::remove_file(entry.unwrap().as_path())
-                .expect("Path from matched glob pattern should be present");
+            let entry = entry?;
+            std::fs::remove_file(entry.as_path()).with_context(|| {
+                format!(
+                    "Failed removing summary file '{}'",
+                    entry.as_path().display()
+                )
+            })?;
         }
+
+        Ok(())
     }
 
     /// Try to create an empty summary file returning the [`File`] object

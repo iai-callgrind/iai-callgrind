@@ -2,14 +2,15 @@ use iai_callgrind_runner::api::EventKind;
 use iai_callgrind_runner::runner::callgrind::model::Costs;
 use iai_callgrind_runner::runner::callgrind::parser::Parser;
 use iai_callgrind_runner::runner::callgrind::summary_parser::SummaryParser;
+use iai_callgrind_runner::runner::tool::{ToolOutputPathKind, ValgrindTool};
 use rstest::rstest;
 
 use crate::common::{assert_parse_error, Fixtures};
 
 // Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
 #[rstest]
-#[case::no_records("no_records.with_summary_and_totals.out", [0, 0, 0, 0, 0, 0, 0, 0, 0])]
-#[case::with_records("no_entry_point.out", [325261, 78145, 35789, 1595, 2119, 850, 1558, 1485, 799])]
+#[case::no_records("no_records.with_summary_and_totals", [0, 0, 0, 0, 0, 0, 0, 0, 0])]
+#[case::with_records("no_entry_point", [325261, 78145, 35789, 1595, 2119, 850, 1558, 1485, 799])]
 fn test_sentinel_parser(#[case] fixture: &str, #[case] costs: [u64; 9]) {
     let expected_costs = Costs::with_event_kinds([
         (EventKind::Ir, costs[0]),
@@ -22,8 +23,13 @@ fn test_sentinel_parser(#[case] fixture: &str, #[case] costs: [u64; 9]) {
         (EventKind::DLmr, costs[7]),
         (EventKind::DLmw, costs[8]),
     ]);
-    let callgrind_output =
-        Fixtures::get_callgrind_output_path(format!("callgrind.out/callgrind.{fixture}"));
+
+    let callgrind_output = Fixtures::get_tool_output_path(
+        "callgrind.out",
+        ValgrindTool::Callgrind,
+        ToolOutputPathKind::Out,
+        fixture,
+    );
 
     let parser = SummaryParser;
     let actual_costs = parser.parse(&callgrind_output).unwrap();
@@ -33,8 +39,11 @@ fn test_sentinel_parser(#[case] fixture: &str, #[case] costs: [u64; 9]) {
 
 #[test]
 fn test_summary_parser_when_not_found_then_error() {
-    let callgrind_output = Fixtures::get_callgrind_output_path(
-        "callgrind.out/callgrind.no_records.no_summary_and_totals.out",
+    let callgrind_output = Fixtures::get_tool_output_path(
+        "callgrind.out",
+        ValgrindTool::Callgrind,
+        ToolOutputPathKind::Out,
+        "no_records.no_summary_and_totals",
     );
 
     let result = SummaryParser.parse(&callgrind_output);

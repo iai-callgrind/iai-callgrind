@@ -79,44 +79,42 @@ impl ToolArgs {
             return;
         }
 
-        let mut output_path = output_path.clone();
         match self.tool {
             ValgrindTool::Callgrind => unreachable!("Callgrind is not managed here"),
             ValgrindTool::Massif => {
                 let mut arg = OsString::from("--massif-out-file=");
-                if let Some(modifier) = modifier {
-                    output_path
-                        .extension
-                        .push_str(&format!(".{}", modifier.as_ref()));
-                }
-                arg.push(output_path.to_path());
+                let massif_out_path = if let Some(modifier) = modifier {
+                    output_path.with_modifiers([modifier.as_ref()])
+                } else {
+                    output_path.clone()
+                };
+                arg.push(massif_out_path.to_path());
                 self.output_paths.push(arg);
             }
             ValgrindTool::DHAT => {
                 let mut arg = OsString::from("--dhat-out-file=");
-                if let Some(modifier) = modifier {
-                    output_path
-                        .extension
-                        .push_str(&format!(".{}", modifier.as_ref()));
-                }
-                arg.push(output_path.to_path());
+                let dhat_out_path = if let Some(modifier) = modifier {
+                    output_path.with_modifiers([modifier.as_ref()])
+                } else {
+                    output_path.clone()
+                };
+                arg.push(dhat_out_path.to_path());
                 self.output_paths.push(arg);
             }
             ValgrindTool::BBV => {
                 let mut bb_arg = OsString::from("--bb-out-file=");
                 let mut pc_arg = OsString::from("--pc-out-file=");
-                let mut bb_out = output_path.clone();
-                let mut pc_out = output_path;
-                bb_out.extension.push_str(".bb");
-                pc_out.extension.push_str(".pc");
-                if let Some(modifier) = modifier {
-                    bb_out
-                        .extension
-                        .push_str(&format!(".{}", modifier.as_ref()));
-                    pc_out
-                        .extension
-                        .push_str(&format!(".{}", modifier.as_ref()));
-                }
+                let (bb_out, pc_out) = if let Some(modifier) = modifier {
+                    (
+                        output_path.with_modifiers(["bb", modifier.as_ref()]),
+                        output_path.with_modifiers(["pc", modifier.as_ref()]),
+                    )
+                } else {
+                    (
+                        output_path.with_modifiers(["bb"]),
+                        output_path.with_modifiers(["pc"]),
+                    )
+                };
                 bb_arg.push(bb_out.to_path());
                 pc_arg.push(pc_out.to_path());
                 self.output_paths.push(bb_arg);
@@ -130,12 +128,13 @@ impl ToolArgs {
     where
         T: AsRef<str>,
     {
-        let mut log_output = output_path.to_log_output();
-        if let Some(modifier) = modifier {
-            log_output
-                .extension
-                .push_str(&format!(".{}", modifier.as_ref()));
-        }
+        let log_output = if let Some(modifier) = modifier {
+            output_path
+                .to_log_output()
+                .with_modifiers([modifier.as_ref()])
+        } else {
+            output_path.to_log_output()
+        };
         let mut arg = OsString::from("--log-file=");
         arg.push(log_output.to_path());
         self.log_path = Some(arg);

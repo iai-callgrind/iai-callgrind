@@ -56,8 +56,8 @@ impl LibraryBenchmarkConfig {
             env_clear: Option::default(),
             raw_callgrind_args: internal::InternalRawArgs::from_iter(args),
             envs: Vec::default(),
-            flamegraph: Option::default(),
-            regression: Option::default(),
+            flamegraph_config: Option::default(),
+            regression_config: Option::default(),
             tools: internal::InternalTools::default(),
             tools_override: Option::default(),
         })
@@ -323,7 +323,7 @@ impl LibraryBenchmarkConfig {
     where
         T: Into<internal::InternalFlamegraphConfig>,
     {
-        self.0.flamegraph = Some(config.into());
+        self.0.flamegraph_config = Some(config.into());
         self
     }
 
@@ -349,7 +349,7 @@ impl LibraryBenchmarkConfig {
     where
         T: Into<internal::InternalRegressionConfig>,
     {
-        self.0.regression = Some(config.into());
+        self.0.regression_config = Some(config.into());
         self
     }
 

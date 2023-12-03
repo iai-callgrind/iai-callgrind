@@ -1,0 +1,614 @@
+{
+  "runs": [
+    {
+      "args": ["--save-baseline=foo"],
+      "data": [
+        {
+          "group": "bench_group",
+          "function": "bench_bubble_sort_allocate",
+          "id": null,
+          "expected": {
+            "files": [
+              "callgrind.bench_bubble_sort_allocate.log.base@foo",
+              "callgrind.bench_bubble_sort_allocate.out.base@foo",
+              "dhat.bench_bubble_sort_allocate.log.base@foo",
+              "dhat.bench_bubble_sort_allocate.out.base@foo",
+              "drd.bench_bubble_sort_allocate.log.base@foo",
+              "exp-bbv.bench_bubble_sort_allocate.log.base@foo",
+              "exp-bbv.bench_bubble_sort_allocate.out.bb.base@foo",
+              "exp-bbv.bench_bubble_sort_allocate.out.pc.base@foo",
+              "helgrind.bench_bubble_sort_allocate.log.base@foo",
+              "massif.bench_bubble_sort_allocate.log.base@foo",
+              "massif.bench_bubble_sort_allocate.out.base@foo",
+              "memcheck.bench_bubble_sort_allocate.log.base@foo",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bench_bubble_sort",
+          "id": "empty",
+          "expected": {
+            "files": [
+              "callgrind.bench_bubble_sort.empty.log.base@foo",
+              "callgrind.bench_bubble_sort.empty.out.base@foo",
+              "dhat.bench_bubble_sort.empty.log.base@foo",
+              "dhat.bench_bubble_sort.empty.out.base@foo",
+              "drd.bench_bubble_sort.empty.log.base@foo",
+              "exp-bbv.bench_bubble_sort.empty.log.base@foo",
+              "exp-bbv.bench_bubble_sort.empty.out.bb.base@foo",
+              "exp-bbv.bench_bubble_sort.empty.out.pc.base@foo",
+              "helgrind.bench_bubble_sort.empty.log.base@foo",
+              "massif.bench_bubble_sort.empty.log.base@foo",
+              "massif.bench_bubble_sort.empty.out.base@foo",
+              "memcheck.bench_bubble_sort.empty.log.base@foo",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bench_bubble_sort",
+          "id": "worst_case_4000",
+          "expected": {
+            "files": [
+              "callgrind.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "callgrind.bench_bubble_sort.worst_case_4000.out.base@foo",
+              "dhat.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "dhat.bench_bubble_sort.worst_case_4000.out.base@foo",
+              "drd.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "exp-bbv.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "exp-bbv.bench_bubble_sort.worst_case_4000.out.bb.base@foo",
+              "exp-bbv.bench_bubble_sort.worst_case_4000.out.pc.base@foo",
+              "helgrind.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "massif.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "massif.bench_bubble_sort.worst_case_4000.out.base@foo",
+              "memcheck.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bench_subprocess",
+          "id": "with_modifier",
+          "expected": {
+            "files": [
+              "callgrind.bench_subprocess.with_modifier.log.base@foo",
+              "callgrind.bench_subprocess.with_modifier.out.base@foo",
+              "summary.json"
+            ],
+            "globs": [
+              {
+                "pattern": "dhat.bench_subprocess.with_modifier.log.*.base@foo",
+                "count": 2
+              },
+              {
+                "pattern": "dhat.bench_subprocess.with_modifier.out.*.base@foo",
+                "count": 2
+              }
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bench_subprocess",
+          "id": "without_modifier",
+          "expected": {
+            "files": [
+              "callgrind.bench_subprocess.without_modifier.log.base@foo",
+              "callgrind.bench_subprocess.without_modifier.out.base@foo",
+              "dhat.bench_subprocess.without_modifier.log.base@foo",
+              "dhat.bench_subprocess.without_modifier.out.base@foo",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bad_memory",
+          "id": null,
+          "expected": {
+            "files": [
+              "callgrind.bad_memory.log.base@foo",
+              "callgrind.bad_memory.out.base@foo",
+              "dhat.bad_memory.log.base@foo",
+              "dhat.bad_memory.out.base@foo",
+              "massif.bad_memory.log.base@foo",
+              "massif.bad_memory.out.base@foo",
+              "memcheck.bad_memory.log.base@foo",
+              "summary.json"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "args": ["--save-baseline=foo"],
+      "data": [
+        {
+          "group": "bench_group",
+          "function": "bench_bubble_sort_allocate",
+          "id": null,
+          "expected": {
+            "files": [
+              "callgrind.bench_bubble_sort_allocate.log.base@foo",
+              "callgrind.bench_bubble_sort_allocate.out.base@foo",
+              "dhat.bench_bubble_sort_allocate.log.base@foo",
+              "dhat.bench_bubble_sort_allocate.out.base@foo",
+              "drd.bench_bubble_sort_allocate.log.base@foo",
+              "exp-bbv.bench_bubble_sort_allocate.log.base@foo",
+              "exp-bbv.bench_bubble_sort_allocate.out.bb.base@foo",
+              "exp-bbv.bench_bubble_sort_allocate.out.pc.base@foo",
+              "helgrind.bench_bubble_sort_allocate.log.base@foo",
+              "massif.bench_bubble_sort_allocate.log.base@foo",
+              "massif.bench_bubble_sort_allocate.out.base@foo",
+              "memcheck.bench_bubble_sort_allocate.log.base@foo",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bench_bubble_sort",
+          "id": "empty",
+          "expected": {
+            "files": [
+              "callgrind.bench_bubble_sort.empty.log.base@foo",
+              "callgrind.bench_bubble_sort.empty.out.base@foo",
+              "dhat.bench_bubble_sort.empty.log.base@foo",
+              "dhat.bench_bubble_sort.empty.out.base@foo",
+              "drd.bench_bubble_sort.empty.log.base@foo",
+              "exp-bbv.bench_bubble_sort.empty.log.base@foo",
+              "exp-bbv.bench_bubble_sort.empty.out.bb.base@foo",
+              "exp-bbv.bench_bubble_sort.empty.out.pc.base@foo",
+              "helgrind.bench_bubble_sort.empty.log.base@foo",
+              "massif.bench_bubble_sort.empty.log.base@foo",
+              "massif.bench_bubble_sort.empty.out.base@foo",
+              "memcheck.bench_bubble_sort.empty.log.base@foo",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bench_bubble_sort",
+          "id": "worst_case_4000",
+          "expected": {
+            "files": [
+              "callgrind.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "callgrind.bench_bubble_sort.worst_case_4000.out.base@foo",
+              "dhat.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "dhat.bench_bubble_sort.worst_case_4000.out.base@foo",
+              "drd.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "exp-bbv.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "exp-bbv.bench_bubble_sort.worst_case_4000.out.bb.base@foo",
+              "exp-bbv.bench_bubble_sort.worst_case_4000.out.pc.base@foo",
+              "helgrind.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "massif.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "massif.bench_bubble_sort.worst_case_4000.out.base@foo",
+              "memcheck.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bench_subprocess",
+          "id": "with_modifier",
+          "expected": {
+            "files": [
+              "callgrind.bench_subprocess.with_modifier.log.base@foo",
+              "callgrind.bench_subprocess.with_modifier.out.base@foo",
+              "summary.json"
+            ],
+            "globs": [
+              {
+                "pattern": "dhat.bench_subprocess.with_modifier.log.*.base@foo",
+                "count": 2
+              },
+              {
+                "pattern": "dhat.bench_subprocess.with_modifier.out.*.base@foo",
+                "count": 2
+              }
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bench_subprocess",
+          "id": "without_modifier",
+          "expected": {
+            "files": [
+              "callgrind.bench_subprocess.without_modifier.log.base@foo",
+              "callgrind.bench_subprocess.without_modifier.out.base@foo",
+              "dhat.bench_subprocess.without_modifier.log.base@foo",
+              "dhat.bench_subprocess.without_modifier.out.base@foo",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bad_memory",
+          "id": null,
+          "expected": {
+            "files": [
+              "callgrind.bad_memory.log.base@foo",
+              "callgrind.bad_memory.out.base@foo",
+              "dhat.bad_memory.log.base@foo",
+              "dhat.bad_memory.out.base@foo",
+              "massif.bad_memory.log.base@foo",
+              "massif.bad_memory.out.base@foo",
+              "memcheck.bad_memory.log.base@foo",
+              "summary.json"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "args": ["--save-baseline=bar"],
+      "data": [
+        {
+          "group": "bench_group",
+          "function": "bench_bubble_sort_allocate",
+          "id": null,
+          "expected": {
+            "files": [
+              "callgrind.bench_bubble_sort_allocate.log.base@bar",
+              "callgrind.bench_bubble_sort_allocate.log.base@foo",
+              "callgrind.bench_bubble_sort_allocate.out.base@bar",
+              "callgrind.bench_bubble_sort_allocate.out.base@foo",
+              "dhat.bench_bubble_sort_allocate.log.base@bar",
+              "dhat.bench_bubble_sort_allocate.log.base@foo",
+              "dhat.bench_bubble_sort_allocate.out.base@bar",
+              "dhat.bench_bubble_sort_allocate.out.base@foo",
+              "drd.bench_bubble_sort_allocate.log.base@bar",
+              "drd.bench_bubble_sort_allocate.log.base@foo",
+              "exp-bbv.bench_bubble_sort_allocate.log.base@bar",
+              "exp-bbv.bench_bubble_sort_allocate.log.base@foo",
+              "exp-bbv.bench_bubble_sort_allocate.out.bb.base@bar",
+              "exp-bbv.bench_bubble_sort_allocate.out.bb.base@foo",
+              "exp-bbv.bench_bubble_sort_allocate.out.pc.base@bar",
+              "exp-bbv.bench_bubble_sort_allocate.out.pc.base@foo",
+              "helgrind.bench_bubble_sort_allocate.log.base@bar",
+              "helgrind.bench_bubble_sort_allocate.log.base@foo",
+              "massif.bench_bubble_sort_allocate.log.base@bar",
+              "massif.bench_bubble_sort_allocate.log.base@foo",
+              "massif.bench_bubble_sort_allocate.out.base@bar",
+              "massif.bench_bubble_sort_allocate.out.base@foo",
+              "memcheck.bench_bubble_sort_allocate.log.base@bar",
+              "memcheck.bench_bubble_sort_allocate.log.base@foo",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bench_bubble_sort",
+          "id": "empty",
+          "expected": {
+            "files": [
+              "callgrind.bench_bubble_sort.empty.log.base@bar",
+              "callgrind.bench_bubble_sort.empty.log.base@foo",
+              "callgrind.bench_bubble_sort.empty.out.base@bar",
+              "callgrind.bench_bubble_sort.empty.out.base@foo",
+              "dhat.bench_bubble_sort.empty.log.base@bar",
+              "dhat.bench_bubble_sort.empty.log.base@foo",
+              "dhat.bench_bubble_sort.empty.out.base@bar",
+              "dhat.bench_bubble_sort.empty.out.base@foo",
+              "drd.bench_bubble_sort.empty.log.base@bar",
+              "drd.bench_bubble_sort.empty.log.base@foo",
+              "exp-bbv.bench_bubble_sort.empty.log.base@bar",
+              "exp-bbv.bench_bubble_sort.empty.log.base@foo",
+              "exp-bbv.bench_bubble_sort.empty.out.bb.base@bar",
+              "exp-bbv.bench_bubble_sort.empty.out.bb.base@foo",
+              "exp-bbv.bench_bubble_sort.empty.out.pc.base@bar",
+              "exp-bbv.bench_bubble_sort.empty.out.pc.base@foo",
+              "helgrind.bench_bubble_sort.empty.log.base@bar",
+              "helgrind.bench_bubble_sort.empty.log.base@foo",
+              "massif.bench_bubble_sort.empty.log.base@bar",
+              "massif.bench_bubble_sort.empty.log.base@foo",
+              "massif.bench_bubble_sort.empty.out.base@bar",
+              "massif.bench_bubble_sort.empty.out.base@foo",
+              "memcheck.bench_bubble_sort.empty.log.base@bar",
+              "memcheck.bench_bubble_sort.empty.log.base@foo",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bench_bubble_sort",
+          "id": "worst_case_4000",
+          "expected": {
+            "files": [
+              "callgrind.bench_bubble_sort.worst_case_4000.log.base@bar",
+              "callgrind.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "callgrind.bench_bubble_sort.worst_case_4000.out.base@bar",
+              "callgrind.bench_bubble_sort.worst_case_4000.out.base@foo",
+              "dhat.bench_bubble_sort.worst_case_4000.log.base@bar",
+              "dhat.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "dhat.bench_bubble_sort.worst_case_4000.out.base@bar",
+              "dhat.bench_bubble_sort.worst_case_4000.out.base@foo",
+              "drd.bench_bubble_sort.worst_case_4000.log.base@bar",
+              "drd.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "exp-bbv.bench_bubble_sort.worst_case_4000.log.base@bar",
+              "exp-bbv.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "exp-bbv.bench_bubble_sort.worst_case_4000.out.bb.base@bar",
+              "exp-bbv.bench_bubble_sort.worst_case_4000.out.bb.base@foo",
+              "exp-bbv.bench_bubble_sort.worst_case_4000.out.pc.base@bar",
+              "exp-bbv.bench_bubble_sort.worst_case_4000.out.pc.base@foo",
+              "helgrind.bench_bubble_sort.worst_case_4000.log.base@bar",
+              "helgrind.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "massif.bench_bubble_sort.worst_case_4000.log.base@bar",
+              "massif.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "massif.bench_bubble_sort.worst_case_4000.out.base@bar",
+              "massif.bench_bubble_sort.worst_case_4000.out.base@foo",
+              "memcheck.bench_bubble_sort.worst_case_4000.log.base@bar",
+              "memcheck.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bench_subprocess",
+          "id": "with_modifier",
+          "expected": {
+            "files": [
+              "callgrind.bench_subprocess.with_modifier.log.base@bar",
+              "callgrind.bench_subprocess.with_modifier.log.base@foo",
+              "callgrind.bench_subprocess.with_modifier.out.base@bar",
+              "callgrind.bench_subprocess.with_modifier.out.base@foo",
+              "summary.json"
+            ],
+            "globs": [
+              {
+                "pattern": "dhat.bench_subprocess.with_modifier.log.*.base@foo",
+                "count": 2
+              },
+              {
+                "pattern": "dhat.bench_subprocess.with_modifier.out.*.base@foo",
+                "count": 2
+              },
+              {
+                "pattern": "dhat.bench_subprocess.with_modifier.log.*.base@bar",
+                "count": 2
+              },
+              {
+                "pattern": "dhat.bench_subprocess.with_modifier.out.*.base@bar",
+                "count": 2
+              }
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bench_subprocess",
+          "id": "without_modifier",
+          "expected": {
+            "files": [
+              "callgrind.bench_subprocess.without_modifier.log.base@bar",
+              "callgrind.bench_subprocess.without_modifier.log.base@foo",
+              "callgrind.bench_subprocess.without_modifier.out.base@bar",
+              "callgrind.bench_subprocess.without_modifier.out.base@foo",
+              "dhat.bench_subprocess.without_modifier.log.base@bar",
+              "dhat.bench_subprocess.without_modifier.log.base@foo",
+              "dhat.bench_subprocess.without_modifier.out.base@bar",
+              "dhat.bench_subprocess.without_modifier.out.base@foo",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bad_memory",
+          "id": null,
+          "expected": {
+            "files": [
+              "callgrind.bad_memory.log.base@bar",
+              "callgrind.bad_memory.log.base@foo",
+              "callgrind.bad_memory.out.base@bar",
+              "callgrind.bad_memory.out.base@foo",
+              "dhat.bad_memory.log.base@bar",
+              "dhat.bad_memory.log.base@foo",
+              "dhat.bad_memory.out.base@bar",
+              "dhat.bad_memory.out.base@foo",
+              "massif.bad_memory.log.base@bar",
+              "massif.bad_memory.log.base@foo",
+              "massif.bad_memory.out.base@bar",
+              "massif.bad_memory.out.base@foo",
+              "memcheck.bad_memory.log.base@bar",
+              "memcheck.bad_memory.log.base@foo",
+              "summary.json"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "args": ["--load-baseline=bar", "--baseline=foo"],
+      "data": [
+        {
+          "group": "bench_group",
+          "function": "bench_bubble_sort_allocate",
+          "id": null,
+          "expected": {
+            "files": [
+              "callgrind.bench_bubble_sort_allocate.log.base@bar",
+              "callgrind.bench_bubble_sort_allocate.log.base@foo",
+              "callgrind.bench_bubble_sort_allocate.out.base@bar",
+              "callgrind.bench_bubble_sort_allocate.out.base@foo",
+              "dhat.bench_bubble_sort_allocate.log.base@bar",
+              "dhat.bench_bubble_sort_allocate.log.base@foo",
+              "dhat.bench_bubble_sort_allocate.out.base@bar",
+              "dhat.bench_bubble_sort_allocate.out.base@foo",
+              "drd.bench_bubble_sort_allocate.log.base@bar",
+              "drd.bench_bubble_sort_allocate.log.base@foo",
+              "exp-bbv.bench_bubble_sort_allocate.log.base@bar",
+              "exp-bbv.bench_bubble_sort_allocate.log.base@foo",
+              "exp-bbv.bench_bubble_sort_allocate.out.bb.base@bar",
+              "exp-bbv.bench_bubble_sort_allocate.out.bb.base@foo",
+              "exp-bbv.bench_bubble_sort_allocate.out.pc.base@bar",
+              "exp-bbv.bench_bubble_sort_allocate.out.pc.base@foo",
+              "helgrind.bench_bubble_sort_allocate.log.base@bar",
+              "helgrind.bench_bubble_sort_allocate.log.base@foo",
+              "massif.bench_bubble_sort_allocate.log.base@bar",
+              "massif.bench_bubble_sort_allocate.log.base@foo",
+              "massif.bench_bubble_sort_allocate.out.base@bar",
+              "massif.bench_bubble_sort_allocate.out.base@foo",
+              "memcheck.bench_bubble_sort_allocate.log.base@bar",
+              "memcheck.bench_bubble_sort_allocate.log.base@foo",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bench_bubble_sort",
+          "id": "empty",
+          "expected": {
+            "files": [
+              "callgrind.bench_bubble_sort.empty.log.base@bar",
+              "callgrind.bench_bubble_sort.empty.log.base@foo",
+              "callgrind.bench_bubble_sort.empty.out.base@bar",
+              "callgrind.bench_bubble_sort.empty.out.base@foo",
+              "dhat.bench_bubble_sort.empty.log.base@bar",
+              "dhat.bench_bubble_sort.empty.log.base@foo",
+              "dhat.bench_bubble_sort.empty.out.base@bar",
+              "dhat.bench_bubble_sort.empty.out.base@foo",
+              "drd.bench_bubble_sort.empty.log.base@bar",
+              "drd.bench_bubble_sort.empty.log.base@foo",
+              "exp-bbv.bench_bubble_sort.empty.log.base@bar",
+              "exp-bbv.bench_bubble_sort.empty.log.base@foo",
+              "exp-bbv.bench_bubble_sort.empty.out.bb.base@bar",
+              "exp-bbv.bench_bubble_sort.empty.out.bb.base@foo",
+              "exp-bbv.bench_bubble_sort.empty.out.pc.base@bar",
+              "exp-bbv.bench_bubble_sort.empty.out.pc.base@foo",
+              "helgrind.bench_bubble_sort.empty.log.base@bar",
+              "helgrind.bench_bubble_sort.empty.log.base@foo",
+              "massif.bench_bubble_sort.empty.log.base@bar",
+              "massif.bench_bubble_sort.empty.log.base@foo",
+              "massif.bench_bubble_sort.empty.out.base@bar",
+              "massif.bench_bubble_sort.empty.out.base@foo",
+              "memcheck.bench_bubble_sort.empty.log.base@bar",
+              "memcheck.bench_bubble_sort.empty.log.base@foo",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bench_bubble_sort",
+          "id": "worst_case_4000",
+          "expected": {
+            "files": [
+              "callgrind.bench_bubble_sort.worst_case_4000.log.base@bar",
+              "callgrind.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "callgrind.bench_bubble_sort.worst_case_4000.out.base@bar",
+              "callgrind.bench_bubble_sort.worst_case_4000.out.base@foo",
+              "dhat.bench_bubble_sort.worst_case_4000.log.base@bar",
+              "dhat.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "dhat.bench_bubble_sort.worst_case_4000.out.base@bar",
+              "dhat.bench_bubble_sort.worst_case_4000.out.base@foo",
+              "drd.bench_bubble_sort.worst_case_4000.log.base@bar",
+              "drd.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "exp-bbv.bench_bubble_sort.worst_case_4000.log.base@bar",
+              "exp-bbv.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "exp-bbv.bench_bubble_sort.worst_case_4000.out.bb.base@bar",
+              "exp-bbv.bench_bubble_sort.worst_case_4000.out.bb.base@foo",
+              "exp-bbv.bench_bubble_sort.worst_case_4000.out.pc.base@bar",
+              "exp-bbv.bench_bubble_sort.worst_case_4000.out.pc.base@foo",
+              "helgrind.bench_bubble_sort.worst_case_4000.log.base@bar",
+              "helgrind.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "massif.bench_bubble_sort.worst_case_4000.log.base@bar",
+              "massif.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "massif.bench_bubble_sort.worst_case_4000.out.base@bar",
+              "massif.bench_bubble_sort.worst_case_4000.out.base@foo",
+              "memcheck.bench_bubble_sort.worst_case_4000.log.base@bar",
+              "memcheck.bench_bubble_sort.worst_case_4000.log.base@foo",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bench_subprocess",
+          "id": "with_modifier",
+          "expected": {
+            "files": [
+              "callgrind.bench_subprocess.with_modifier.log.base@bar",
+              "callgrind.bench_subprocess.with_modifier.log.base@foo",
+              "callgrind.bench_subprocess.with_modifier.out.base@bar",
+              "callgrind.bench_subprocess.with_modifier.out.base@foo",
+              "summary.json"
+            ],
+            "globs": [
+              {
+                "pattern": "dhat.bench_subprocess.with_modifier.log.*.base@foo",
+                "count": 2
+              },
+              {
+                "pattern": "dhat.bench_subprocess.with_modifier.out.*.base@foo",
+                "count": 2
+              },
+              {
+                "pattern": "dhat.bench_subprocess.with_modifier.log.*.base@bar",
+                "count": 2
+              },
+              {
+                "pattern": "dhat.bench_subprocess.with_modifier.out.*.base@bar",
+                "count": 2
+              }
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bench_subprocess",
+          "id": "without_modifier",
+          "expected": {
+            "files": [
+              "callgrind.bench_subprocess.without_modifier.log.base@bar",
+              "callgrind.bench_subprocess.without_modifier.log.base@foo",
+              "callgrind.bench_subprocess.without_modifier.out.base@bar",
+              "callgrind.bench_subprocess.without_modifier.out.base@foo",
+              "dhat.bench_subprocess.without_modifier.log.base@bar",
+              "dhat.bench_subprocess.without_modifier.log.base@foo",
+              "dhat.bench_subprocess.without_modifier.out.base@bar",
+              "dhat.bench_subprocess.without_modifier.out.base@foo",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "bench_group",
+          "function": "bad_memory",
+          "id": null,
+          "expected": {
+            "files": [
+              "callgrind.bad_memory.log.base@bar",
+              "callgrind.bad_memory.log.base@foo",
+              "callgrind.bad_memory.out.base@bar",
+              "callgrind.bad_memory.out.base@foo",
+              "dhat.bad_memory.log.base@bar",
+              "dhat.bad_memory.log.base@foo",
+              "dhat.bad_memory.out.base@bar",
+              "dhat.bad_memory.out.base@foo",
+              "massif.bad_memory.log.base@bar",
+              "massif.bad_memory.log.base@foo",
+              "massif.bad_memory.out.base@bar",
+              "massif.bad_memory.out.base@foo",
+              "memcheck.bad_memory.log.base@bar",
+              "memcheck.bad_memory.log.base@foo",
+              "summary.json"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -37,15 +37,22 @@ struct ExpectedRun {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+struct RunConfig {
+    #[serde(default)]
+    args: Vec<String>,
+    data: Vec<ExpectedRun>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 struct ExpectedRuns {
-    runs: Vec<Vec<ExpectedRun>>,
+    runs: Vec<RunConfig>,
 }
 
 #[derive(Debug, Clone)]
 struct Benchmark {
     name: String,
     base_dir: PathBuf,
-    expected_path: Option<PathBuf>,
+    expected_paths: Vec<PathBuf>,
     template_data: HashMap<String, String>,
 }
 
@@ -95,9 +102,13 @@ impl Metadata {
 impl Benchmark {
     pub fn new(name: &str, package_dir: &Path, target_dir: &Path) -> Self {
         let name = name.to_owned();
-        let expected_path = package_dir
-            .join("benches")
-            .join(format!("{name}.expected.json"));
+        let expected_paths = glob(&format!(
+            "{}/{name}.expected*.json",
+            package_dir.join("benches").display()
+        ))
+        .unwrap()
+        .map(Result::unwrap)
+        .collect::<Vec<PathBuf>>();
         let template_data = {
             let mut map = HashMap::new();
             map.insert(
@@ -111,7 +122,7 @@ impl Benchmark {
             map
         };
         Benchmark {
-            expected_path: expected_path.exists().then(|| expected_path),
+            expected_paths,
             base_dir: target_dir.join("iai").join(PACKAGE).join(&name),
             name,
             template_data,
@@ -119,7 +130,7 @@ impl Benchmark {
     }
 
     pub fn is_verifiable(&self) -> bool {
-        self.expected_path.is_some()
+        !self.expected_paths.is_empty()
     }
 
     pub fn clean_benchmark(&self) {
@@ -128,24 +139,35 @@ impl Benchmark {
         }
     }
 
-    pub fn run_bench(&self) {
-        let status = std::process::Command::new(env!("CARGO"))
-            .args(["bench", "--package", PACKAGE, "--bench", &self.name])
+    pub fn run_bench(&self, args: Vec<String>) {
+        let mut command = std::process::Command::new(env!("CARGO"));
+        command.args(["bench", "--package", PACKAGE, "--bench", &self.name]);
+        if !args.is_empty() {
+            command.arg("--");
+            command.args(args);
+        }
+        let status = command
             .status()
             .expect("Launching benchmark should succeed");
 
         assert!(status.success(), "Expected run to be successful");
     }
 
-    pub fn run(&self) {
+    pub fn run(&self, args: Vec<String>) {
         self.clean_benchmark();
-        self.run_bench();
+        self.run_bench(args);
     }
 
     pub fn run_asserted(&self, meta: &Metadata) {
-        if let Some(expected_path) = &self.expected_path {
+        for expected_path in &self.expected_paths {
             let expected_runs: ExpectedRuns =
                 serde_json::from_reader(File::open(expected_path).expect("File should exist"))
+                    .map_err(|error| {
+                        format!(
+                            "Failed to deserialize '{}': {error}",
+                            expected_path.display()
+                        )
+                    })
                     .expect("File should be deserializable");
 
             self.clean_benchmark();
@@ -167,9 +189,12 @@ impl Benchmark {
                     index + 1,
                     &expected_runs.runs.len()
                 ));
-                self.run_bench();
+                if !runs.args.is_empty() {
+                    print_info(format!("Benchmark arguments: {}", runs.args.join(" ")))
+                }
+                self.run_bench(runs.args.clone());
 
-                for expected_run in runs {
+                for expected_run in &runs.data {
                     expected_run.assert(&self.base_dir, &self.template_data, &compiled);
                 }
             }
@@ -217,7 +242,7 @@ impl BenchmarkRunner {
             if bench.is_verifiable() {
                 bench.run_asserted(&self.metadata);
             } else {
-                bench.run();
+                bench.run(vec![]);
             }
         }
 

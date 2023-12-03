@@ -29,7 +29,12 @@ pub trait Formatter {
             format!("{signed_short:^+8}{unit}").bright_green().bold()
         }
     }
-    fn format(&self, costs_summary: &CostsSummary) -> Result<String>;
+
+    fn format(
+        &self,
+        baselines: (Option<String>, Option<String>),
+        costs_summary: &CostsSummary,
+    ) -> Result<String>;
 }
 
 #[derive(Clone)]
@@ -155,12 +160,29 @@ impl Default for VerticalFormat {
 }
 
 impl Formatter for VerticalFormat {
-    fn format(&self, costs_summary: &CostsSummary) -> Result<String> {
+    fn format(
+        &self,
+        baselines: (Option<String>, Option<String>),
+        costs_summary: &CostsSummary,
+    ) -> Result<String> {
         let mut result = String::new();
 
         let not_available = "N/A";
         let unknown = "*********";
         let no_change = "No change";
+
+        match baselines {
+            (None, None) => {}
+            (None, Some(base)) => {
+                writeln!(result, "  {:<33}|{base}", "Baselines:").unwrap();
+            }
+            (Some(base), None) => {
+                writeln!(result, "  {:<18}{:>15}", "Baselines:", base.bold()).unwrap();
+            }
+            (Some(new), Some(old)) => {
+                writeln!(result, "  {:<18}{:>15}|{old}", "Baselines:", new.bold()).unwrap();
+            }
+        }
 
         for (event_kind, diff) in self
             .event_kinds

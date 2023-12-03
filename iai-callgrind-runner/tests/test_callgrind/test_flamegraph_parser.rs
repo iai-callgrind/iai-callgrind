@@ -1,6 +1,7 @@
 use iai_callgrind_runner::api::EventKind;
 use iai_callgrind_runner::runner::callgrind::flamegraph_parser::FlamegraphParser;
 use iai_callgrind_runner::runner::callgrind::parser::{Parser, Sentinel};
+use iai_callgrind_runner::runner::tool::{ToolOutputPathKind, ValgrindTool};
 use rstest::rstest;
 
 use crate::common::{get_project_root, Fixtures};
@@ -8,11 +9,15 @@ use crate::common::{get_project_root, Fixtures};
 #[rstest]
 #[case::when_entry_point("when_entry_point", Some(Sentinel::new("benchmark_tests_exit::main")))]
 #[case::no_entry_point("no_entry_point", None)]
-fn test_flamegraph_parser(#[case] fixture: &str, #[case] sentinel: Option<Sentinel>) {
-    let output =
-        Fixtures::get_callgrind_output_path(format!("callgrind.out/callgrind.{fixture}.out"));
+fn test_flamegraph_parser(#[case] name: &str, #[case] sentinel: Option<Sentinel>) {
+    let output = Fixtures::get_tool_output_path(
+        "callgrind.out",
+        ValgrindTool::Callgrind,
+        ToolOutputPathKind::Out,
+        name,
+    );
     let expected_stacks =
-        Fixtures::load_stacks(format!("callgrind.out/callgrind.{fixture}.exp_stacks"));
+        Fixtures::load_stacks(format!("callgrind.out/callgrind.{name}.exp_stacks"));
     let parser = FlamegraphParser::new(sentinel.as_ref(), get_project_root());
 
     let result = parser.parse(&output).unwrap();

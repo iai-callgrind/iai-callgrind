@@ -91,9 +91,12 @@ where
 pub fn run() -> Result<()> {
     let mut args_iter = std::env::args_os();
 
+    // This unwrap is safe since the first argument is alway the executable
     let runner = PathBuf::from(args_iter.next().unwrap());
     debug!("Runner executable: '{}'", runner.display());
 
+    // The following unwraps are safe because these arguments are assuredly submitted by the
+    // iai_callgrind::main macro
     let library_version = args_iter.next().unwrap().to_str().unwrap().to_owned();
     let runner_version = env!("CARGO_PKG_VERSION").to_owned();
     let bench_kind = match args_iter.next().unwrap().to_str().unwrap() {
@@ -102,8 +105,6 @@ pub fn run() -> Result<()> {
         kind => panic!("Invalid benchmark kind: '{kind}'"),
     };
 
-    // The following unwraps are safe because these arguments are assuredly submitted by the
-    // iai_callgrind::main macro
     let package_dir = PathBuf::from(args_iter.next().unwrap());
     let bench_file = PathBuf::from(args_iter.next().unwrap());
     let module = args_iter.next().unwrap().to_str().unwrap().to_owned();

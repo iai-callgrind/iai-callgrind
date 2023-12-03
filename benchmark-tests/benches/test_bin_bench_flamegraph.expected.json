@@ -1,326 +1,330 @@
 {
   "runs": [
-    [
-      {
-        "group": "flamegraph_configurations",
-        "function": "benchmark-tests-exit",
-        "id": "Ir event type",
-        "expected": {
-          "files": [
-            "callgrind.benchmark-tests-exit.Ir event type.Ir.svg",
-            "callgrind.benchmark-tests-exit.Ir event type.log",
-            "callgrind.benchmark-tests-exit.Ir event type.out",
-            "summary.json"
-          ]
+    {
+      "data": [
+        {
+          "group": "flamegraph_configurations",
+          "function": "benchmark-tests-exit",
+          "id": "Ir event type",
+          "expected": {
+            "files": [
+              "callgrind.benchmark-tests-exit.Ir event type.flamegraph.Ir.svg",
+              "callgrind.benchmark-tests-exit.Ir event type.log",
+              "callgrind.benchmark-tests-exit.Ir event type.out",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "flamegraph_configurations",
+          "function": "benchmark-tests-exit",
+          "id": "no_event_kinds_then_no_flamegraph",
+          "expected": {
+            "files": [
+              "callgrind.benchmark-tests-exit.no_event_kinds_then_no_flamegraph.log",
+              "callgrind.benchmark-tests-exit.no_event_kinds_then_no_flamegraph.out",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "flamegraph_configurations",
+          "function": "benchmark-tests-exit",
+          "id": "with_entry_point",
+          "expected": {
+            "files": [
+              "callgrind.benchmark-tests-exit.with_entry_point.flamegraph.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.with_entry_point.log",
+              "callgrind.benchmark-tests-exit.with_entry_point.out",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "group_level_flamegraph",
+          "function": "run_before",
+          "id": "before",
+          "expected": {
+            "files": [
+              "callgrind.run_before.before.flamegraph.EstimatedCycles.svg",
+              "callgrind.run_before.before.log",
+              "callgrind.run_before.before.out",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "group_level_flamegraph",
+          "function": "benchmark-tests-exit",
+          "id": "foo",
+          "expected": {
+            "files": [
+              "callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.foo.log",
+              "callgrind.benchmark-tests-exit.foo.out",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "main_level_flamegraph",
+          "function": "run_after",
+          "id": "after",
+          "expected": {
+            "files": [
+              "callgrind.run_after.after.flamegraph.EstimatedCycles.svg",
+              "callgrind.run_after.after.log",
+              "callgrind.run_after.after.out",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "main_level_flamegraph",
+          "function": "benchmark-tests-exit",
+          "id": "foo",
+          "expected": {
+            "files": [
+              "callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.foo.log",
+              "callgrind.benchmark-tests-exit.foo.out",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "run_level_flamegraph",
+          "function": "benchmark-tests-exit",
+          "id": "all_flamegraph_kinds",
+          "expected": {
+            "files": [
+              "callgrind.benchmark-tests-exit.all_flamegraph_kinds.flamegraph.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.all_flamegraph_kinds.log",
+              "callgrind.benchmark-tests-exit.all_flamegraph_kinds.out",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "run_level_flamegraph",
+          "function": "benchmark-tests-exit",
+          "id": "none_kind",
+          "expected": {
+            "files": [
+              "callgrind.benchmark-tests-exit.none_kind.log",
+              "callgrind.benchmark-tests-exit.none_kind.out",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "run_level_flamegraph",
+          "function": "benchmark-tests-exit",
+          "id": "only_differential_kind",
+          "expected": {
+            "files": [
+              "callgrind.benchmark-tests-exit.only_differential_kind.log",
+              "callgrind.benchmark-tests-exit.only_differential_kind.out",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "run_level_flamegraph",
+          "function": "benchmark-tests-exit",
+          "id": "only_regular_kind",
+          "expected": {
+            "files": [
+              "callgrind.benchmark-tests-exit.only_regular_kind.flamegraph.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.only_regular_kind.log",
+              "callgrind.benchmark-tests-exit.only_regular_kind.out",
+              "summary.json"
+            ]
+          }
         }
-      },
-      {
-        "group": "flamegraph_configurations",
-        "function": "benchmark-tests-exit",
-        "id": "no_event_kinds_then_no_flamegraph",
-        "expected": {
-          "files": [
-            "callgrind.benchmark-tests-exit.no_event_kinds_then_no_flamegraph.log",
-            "callgrind.benchmark-tests-exit.no_event_kinds_then_no_flamegraph.out",
-            "summary.json"
-          ]
+      ]
+    },
+    {
+      "data": [
+        {
+          "group": "flamegraph_configurations",
+          "function": "benchmark-tests-exit",
+          "id": "Ir event type",
+          "expected": {
+            "files": [
+              "callgrind.benchmark-tests-exit.Ir event type.flamegraph.Ir.svg",
+              "callgrind.benchmark-tests-exit.Ir event type.flamegraph.Ir.diff.old.svg",
+              "callgrind.benchmark-tests-exit.Ir event type.flamegraph.Ir.old.svg",
+              "callgrind.benchmark-tests-exit.Ir event type.log",
+              "callgrind.benchmark-tests-exit.Ir event type.log.old",
+              "callgrind.benchmark-tests-exit.Ir event type.out",
+              "callgrind.benchmark-tests-exit.Ir event type.out.old",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "flamegraph_configurations",
+          "function": "benchmark-tests-exit",
+          "id": "no_event_kinds_then_no_flamegraph",
+          "expected": {
+            "files": [
+              "callgrind.benchmark-tests-exit.no_event_kinds_then_no_flamegraph.log",
+              "callgrind.benchmark-tests-exit.no_event_kinds_then_no_flamegraph.log.old",
+              "callgrind.benchmark-tests-exit.no_event_kinds_then_no_flamegraph.out",
+              "callgrind.benchmark-tests-exit.no_event_kinds_then_no_flamegraph.out.old",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "flamegraph_configurations",
+          "function": "benchmark-tests-exit",
+          "id": "with_entry_point",
+          "expected": {
+            "files": [
+              "callgrind.benchmark-tests-exit.with_entry_point.flamegraph.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.with_entry_point.flamegraph.EstimatedCycles.diff.old.svg",
+              "callgrind.benchmark-tests-exit.with_entry_point.flamegraph.EstimatedCycles.old.svg",
+              "callgrind.benchmark-tests-exit.with_entry_point.log",
+              "callgrind.benchmark-tests-exit.with_entry_point.log.old",
+              "callgrind.benchmark-tests-exit.with_entry_point.out",
+              "callgrind.benchmark-tests-exit.with_entry_point.out.old",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "group_level_flamegraph",
+          "function": "run_before",
+          "id": "before",
+          "expected": {
+            "files": [
+              "callgrind.run_before.before.flamegraph.EstimatedCycles.svg",
+              "callgrind.run_before.before.flamegraph.EstimatedCycles.diff.old.svg",
+              "callgrind.run_before.before.flamegraph.EstimatedCycles.old.svg",
+              "callgrind.run_before.before.log",
+              "callgrind.run_before.before.log.old",
+              "callgrind.run_before.before.out",
+              "callgrind.run_before.before.out.old",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "group_level_flamegraph",
+          "function": "benchmark-tests-exit",
+          "id": "foo",
+          "expected": {
+            "files": [
+              "callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.diff.old.svg",
+              "callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.old.svg",
+              "callgrind.benchmark-tests-exit.foo.log",
+              "callgrind.benchmark-tests-exit.foo.log.old",
+              "callgrind.benchmark-tests-exit.foo.out",
+              "callgrind.benchmark-tests-exit.foo.out.old",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "main_level_flamegraph",
+          "function": "run_after",
+          "id": "after",
+          "expected": {
+            "files": [
+              "callgrind.run_after.after.flamegraph.EstimatedCycles.svg",
+              "callgrind.run_after.after.flamegraph.EstimatedCycles.diff.old.svg",
+              "callgrind.run_after.after.flamegraph.EstimatedCycles.old.svg",
+              "callgrind.run_after.after.log",
+              "callgrind.run_after.after.log.old",
+              "callgrind.run_after.after.out",
+              "callgrind.run_after.after.out.old",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "main_level_flamegraph",
+          "function": "benchmark-tests-exit",
+          "id": "foo",
+          "expected": {
+            "files": [
+              "callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.diff.old.svg",
+              "callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.old.svg",
+              "callgrind.benchmark-tests-exit.foo.log",
+              "callgrind.benchmark-tests-exit.foo.log.old",
+              "callgrind.benchmark-tests-exit.foo.out",
+              "callgrind.benchmark-tests-exit.foo.out.old",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "run_level_flamegraph",
+          "function": "benchmark-tests-exit",
+          "id": "all_flamegraph_kinds",
+          "expected": {
+            "files": [
+              "callgrind.benchmark-tests-exit.all_flamegraph_kinds.flamegraph.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.all_flamegraph_kinds.flamegraph.EstimatedCycles.diff.old.svg",
+              "callgrind.benchmark-tests-exit.all_flamegraph_kinds.flamegraph.EstimatedCycles.old.svg",
+              "callgrind.benchmark-tests-exit.all_flamegraph_kinds.log",
+              "callgrind.benchmark-tests-exit.all_flamegraph_kinds.log.old",
+              "callgrind.benchmark-tests-exit.all_flamegraph_kinds.out",
+              "callgrind.benchmark-tests-exit.all_flamegraph_kinds.out.old",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "run_level_flamegraph",
+          "function": "benchmark-tests-exit",
+          "id": "none_kind",
+          "expected": {
+            "files": [
+              "callgrind.benchmark-tests-exit.none_kind.log",
+              "callgrind.benchmark-tests-exit.none_kind.log.old",
+              "callgrind.benchmark-tests-exit.none_kind.out",
+              "callgrind.benchmark-tests-exit.none_kind.out.old",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "run_level_flamegraph",
+          "function": "benchmark-tests-exit",
+          "id": "only_differential_kind",
+          "expected": {
+            "files": [
+              "callgrind.benchmark-tests-exit.only_differential_kind.flamegraph.EstimatedCycles.diff.old.svg",
+              "callgrind.benchmark-tests-exit.only_differential_kind.log",
+              "callgrind.benchmark-tests-exit.only_differential_kind.log.old",
+              "callgrind.benchmark-tests-exit.only_differential_kind.out",
+              "callgrind.benchmark-tests-exit.only_differential_kind.out.old",
+              "summary.json"
+            ]
+          }
+        },
+        {
+          "group": "run_level_flamegraph",
+          "function": "benchmark-tests-exit",
+          "id": "only_regular_kind",
+          "expected": {
+            "files": [
+              "callgrind.benchmark-tests-exit.only_regular_kind.flamegraph.EstimatedCycles.svg",
+              "callgrind.benchmark-tests-exit.only_regular_kind.flamegraph.EstimatedCycles.old.svg",
+              "callgrind.benchmark-tests-exit.only_regular_kind.log",
+              "callgrind.benchmark-tests-exit.only_regular_kind.log.old",
+              "callgrind.benchmark-tests-exit.only_regular_kind.out",
+              "callgrind.benchmark-tests-exit.only_regular_kind.out.old",
+              "summary.json"
+            ]
+          }
         }
-      },
-      {
-        "group": "flamegraph_configurations",
-        "function": "benchmark-tests-exit",
-        "id": "with_entry_point",
-        "expected": {
-          "files": [
-            "callgrind.benchmark-tests-exit.with_entry_point.EstimatedCycles.svg",
-            "callgrind.benchmark-tests-exit.with_entry_point.log",
-            "callgrind.benchmark-tests-exit.with_entry_point.out",
-            "summary.json"
-          ]
-        }
-      },
-      {
-        "group": "group_level_flamegraph",
-        "function": "run_before",
-        "id": "before",
-        "expected": {
-          "files": [
-            "callgrind.run_before.before.EstimatedCycles.svg",
-            "callgrind.run_before.before.log",
-            "callgrind.run_before.before.out",
-            "summary.json"
-          ]
-        }
-      },
-      {
-        "group": "group_level_flamegraph",
-        "function": "benchmark-tests-exit",
-        "id": "foo",
-        "expected": {
-          "files": [
-            "callgrind.benchmark-tests-exit.foo.EstimatedCycles.svg",
-            "callgrind.benchmark-tests-exit.foo.log",
-            "callgrind.benchmark-tests-exit.foo.out",
-            "summary.json"
-          ]
-        }
-      },
-      {
-        "group": "main_level_flamegraph",
-        "function": "run_after",
-        "id": "after",
-        "expected": {
-          "files": [
-            "callgrind.run_after.after.EstimatedCycles.svg",
-            "callgrind.run_after.after.log",
-            "callgrind.run_after.after.out",
-            "summary.json"
-          ]
-        }
-      },
-      {
-        "group": "main_level_flamegraph",
-        "function": "benchmark-tests-exit",
-        "id": "foo",
-        "expected": {
-          "files": [
-            "callgrind.benchmark-tests-exit.foo.EstimatedCycles.svg",
-            "callgrind.benchmark-tests-exit.foo.log",
-            "callgrind.benchmark-tests-exit.foo.out",
-            "summary.json"
-          ]
-        }
-      },
-      {
-        "group": "run_level_flamegraph",
-        "function": "benchmark-tests-exit",
-        "id": "all_flamegraph_kinds",
-        "expected": {
-          "files": [
-            "callgrind.benchmark-tests-exit.all_flamegraph_kinds.EstimatedCycles.svg",
-            "callgrind.benchmark-tests-exit.all_flamegraph_kinds.log",
-            "callgrind.benchmark-tests-exit.all_flamegraph_kinds.out",
-            "summary.json"
-          ]
-        }
-      },
-      {
-        "group": "run_level_flamegraph",
-        "function": "benchmark-tests-exit",
-        "id": "none_kind",
-        "expected": {
-          "files": [
-            "callgrind.benchmark-tests-exit.none_kind.log",
-            "callgrind.benchmark-tests-exit.none_kind.out",
-            "summary.json"
-          ]
-        }
-      },
-      {
-        "group": "run_level_flamegraph",
-        "function": "benchmark-tests-exit",
-        "id": "only_differential_kind",
-        "expected": {
-          "files": [
-            "callgrind.benchmark-tests-exit.only_differential_kind.log",
-            "callgrind.benchmark-tests-exit.only_differential_kind.out",
-            "summary.json"
-          ]
-        }
-      },
-      {
-        "group": "run_level_flamegraph",
-        "function": "benchmark-tests-exit",
-        "id": "only_regular_kind",
-        "expected": {
-          "files": [
-            "callgrind.benchmark-tests-exit.only_regular_kind.EstimatedCycles.svg",
-            "callgrind.benchmark-tests-exit.only_regular_kind.log",
-            "callgrind.benchmark-tests-exit.only_regular_kind.out",
-            "summary.json"
-          ]
-        }
-      }
-    ],
-    [
-      {
-        "group": "flamegraph_configurations",
-        "function": "benchmark-tests-exit",
-        "id": "Ir event type",
-        "expected": {
-          "files": [
-            "callgrind.benchmark-tests-exit.Ir event type.Ir.svg",
-            "callgrind.benchmark-tests-exit.Ir event type.Ir.diff.svg",
-            "callgrind.benchmark-tests-exit.Ir event type.Ir.old.svg",
-            "callgrind.benchmark-tests-exit.Ir event type.log",
-            "callgrind.benchmark-tests-exit.Ir event type.log.old",
-            "callgrind.benchmark-tests-exit.Ir event type.out",
-            "callgrind.benchmark-tests-exit.Ir event type.out.old",
-            "summary.json"
-          ]
-        }
-      },
-      {
-        "group": "flamegraph_configurations",
-        "function": "benchmark-tests-exit",
-        "id": "no_event_kinds_then_no_flamegraph",
-        "expected": {
-          "files": [
-            "callgrind.benchmark-tests-exit.no_event_kinds_then_no_flamegraph.log",
-            "callgrind.benchmark-tests-exit.no_event_kinds_then_no_flamegraph.log.old",
-            "callgrind.benchmark-tests-exit.no_event_kinds_then_no_flamegraph.out",
-            "callgrind.benchmark-tests-exit.no_event_kinds_then_no_flamegraph.out.old",
-            "summary.json"
-          ]
-        }
-      },
-      {
-        "group": "flamegraph_configurations",
-        "function": "benchmark-tests-exit",
-        "id": "with_entry_point",
-        "expected": {
-          "files": [
-            "callgrind.benchmark-tests-exit.with_entry_point.EstimatedCycles.svg",
-            "callgrind.benchmark-tests-exit.with_entry_point.EstimatedCycles.diff.svg",
-            "callgrind.benchmark-tests-exit.with_entry_point.EstimatedCycles.old.svg",
-            "callgrind.benchmark-tests-exit.with_entry_point.log",
-            "callgrind.benchmark-tests-exit.with_entry_point.log.old",
-            "callgrind.benchmark-tests-exit.with_entry_point.out",
-            "callgrind.benchmark-tests-exit.with_entry_point.out.old",
-            "summary.json"
-          ]
-        }
-      },
-      {
-        "group": "group_level_flamegraph",
-        "function": "run_before",
-        "id": "before",
-        "expected": {
-          "files": [
-            "callgrind.run_before.before.EstimatedCycles.svg",
-            "callgrind.run_before.before.EstimatedCycles.diff.svg",
-            "callgrind.run_before.before.EstimatedCycles.old.svg",
-            "callgrind.run_before.before.log",
-            "callgrind.run_before.before.log.old",
-            "callgrind.run_before.before.out",
-            "callgrind.run_before.before.out.old",
-            "summary.json"
-          ]
-        }
-      },
-      {
-        "group": "group_level_flamegraph",
-        "function": "benchmark-tests-exit",
-        "id": "foo",
-        "expected": {
-          "files": [
-            "callgrind.benchmark-tests-exit.foo.EstimatedCycles.svg",
-            "callgrind.benchmark-tests-exit.foo.EstimatedCycles.diff.svg",
-            "callgrind.benchmark-tests-exit.foo.EstimatedCycles.old.svg",
-            "callgrind.benchmark-tests-exit.foo.log",
-            "callgrind.benchmark-tests-exit.foo.log.old",
-            "callgrind.benchmark-tests-exit.foo.out",
-            "callgrind.benchmark-tests-exit.foo.out.old",
-            "summary.json"
-          ]
-        }
-      },
-      {
-        "group": "main_level_flamegraph",
-        "function": "run_after",
-        "id": "after",
-        "expected": {
-          "files": [
-            "callgrind.run_after.after.EstimatedCycles.svg",
-            "callgrind.run_after.after.EstimatedCycles.diff.svg",
-            "callgrind.run_after.after.EstimatedCycles.old.svg",
-            "callgrind.run_after.after.log",
-            "callgrind.run_after.after.log.old",
-            "callgrind.run_after.after.out",
-            "callgrind.run_after.after.out.old",
-            "summary.json"
-          ]
-        }
-      },
-      {
-        "group": "main_level_flamegraph",
-        "function": "benchmark-tests-exit",
-        "id": "foo",
-        "expected": {
-          "files": [
-            "callgrind.benchmark-tests-exit.foo.EstimatedCycles.svg",
-            "callgrind.benchmark-tests-exit.foo.EstimatedCycles.diff.svg",
-            "callgrind.benchmark-tests-exit.foo.EstimatedCycles.old.svg",
-            "callgrind.benchmark-tests-exit.foo.log",
-            "callgrind.benchmark-tests-exit.foo.log.old",
-            "callgrind.benchmark-tests-exit.foo.out",
-            "callgrind.benchmark-tests-exit.foo.out.old",
-            "summary.json"
-          ]
-        }
-      },
-      {
-        "group": "run_level_flamegraph",
-        "function": "benchmark-tests-exit",
-        "id": "all_flamegraph_kinds",
-        "expected": {
-          "files": [
-            "callgrind.benchmark-tests-exit.all_flamegraph_kinds.EstimatedCycles.svg",
-            "callgrind.benchmark-tests-exit.all_flamegraph_kinds.EstimatedCycles.diff.svg",
-            "callgrind.benchmark-tests-exit.all_flamegraph_kinds.EstimatedCycles.old.svg",
-            "callgrind.benchmark-tests-exit.all_flamegraph_kinds.log",
-            "callgrind.benchmark-tests-exit.all_flamegraph_kinds.log.old",
-            "callgrind.benchmark-tests-exit.all_flamegraph_kinds.out",
-            "callgrind.benchmark-tests-exit.all_flamegraph_kinds.out.old",
-            "summary.json"
-          ]
-        }
-      },
-      {
-        "group": "run_level_flamegraph",
-        "function": "benchmark-tests-exit",
-        "id": "none_kind",
-        "expected": {
-          "files": [
-            "callgrind.benchmark-tests-exit.none_kind.log",
-            "callgrind.benchmark-tests-exit.none_kind.log.old",
-            "callgrind.benchmark-tests-exit.none_kind.out",
-            "callgrind.benchmark-tests-exit.none_kind.out.old",
-            "summary.json"
-          ]
-        }
-      },
-      {
-        "group": "run_level_flamegraph",
-        "function": "benchmark-tests-exit",
-        "id": "only_differential_kind",
-        "expected": {
-          "files": [
-            "callgrind.benchmark-tests-exit.only_differential_kind.EstimatedCycles.diff.svg",
-            "callgrind.benchmark-tests-exit.only_differential_kind.log",
-            "callgrind.benchmark-tests-exit.only_differential_kind.log.old",
-            "callgrind.benchmark-tests-exit.only_differential_kind.out",
-            "callgrind.benchmark-tests-exit.only_differential_kind.out.old",
-            "summary.json"
-          ]
-        }
-      },
-      {
-        "group": "run_level_flamegraph",
-        "function": "benchmark-tests-exit",
-        "id": "only_regular_kind",
-        "expected": {
-          "files": [
-            "callgrind.benchmark-tests-exit.only_regular_kind.EstimatedCycles.svg",
-            "callgrind.benchmark-tests-exit.only_regular_kind.EstimatedCycles.old.svg",
-            "callgrind.benchmark-tests-exit.only_regular_kind.log",
-            "callgrind.benchmark-tests-exit.only_regular_kind.log.old",
-            "callgrind.benchmark-tests-exit.only_regular_kind.out",
-            "callgrind.benchmark-tests-exit.only_regular_kind.out.old",
-            "summary.json"
-          ]
-        }
-      }
-    ]
+      ]
+    }
   ]
 }
