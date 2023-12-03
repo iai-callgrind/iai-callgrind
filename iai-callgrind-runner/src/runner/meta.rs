@@ -7,8 +7,8 @@ use clap::Parser;
 use log::debug;
 
 use super::args::CommandLineArgs;
+use super::envs;
 use crate::api::RegressionConfig;
-use crate::runner::envs;
 use crate::util::resolve_binary_path;
 
 #[derive(Debug, Clone)]

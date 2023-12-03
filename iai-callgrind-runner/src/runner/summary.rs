@@ -14,8 +14,8 @@ use serde::{Deserialize, Serialize};
 
 use super::callgrind::model::Costs;
 use super::tool::{ToolOutputPath, ValgrindTool};
-use super::Error;
 use crate::api::EventKind;
+use crate::error::Error;
 use crate::util::{factor_diff, make_absolute, percentage_diff};
 
 /// A `Baseline` depending on the [`BaselineKind`] which points to the corresponding path

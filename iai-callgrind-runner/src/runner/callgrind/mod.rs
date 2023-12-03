@@ -15,14 +15,13 @@ use anyhow::Result;
 use colored::Colorize;
 use log::debug;
 
+use self::args::Args;
 use self::model::Costs;
-use super::callgrind::args::Args;
 use super::meta::Metadata;
 use super::summary::{CallgrindRegressionSummary, CostsSummary};
-use super::tool::{RunOptions, ToolOutputPath};
+use super::tool::{check_exit, RunOptions, ToolOutput, ToolOutputPath, ValgrindTool};
 use crate::api::{self, EventKind};
 use crate::error::Error;
-use crate::runner::tool::{check_exit, ToolOutput, ValgrindTool};
 use crate::util::{resolve_binary_path, to_string_signed_short};
 
 pub struct CallgrindCommand {

@@ -19,18 +19,16 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use self::args::ToolArgs;
+use self::format::LogfileSummaryFormatter;
+use self::logfile_parser::LogfileParser;
 use super::callgrind::parser::Parser;
 use super::dhat::logfile_parser::LogfileParser as DhatLogfileParser;
+use super::format::tool_summary_header;
 use super::meta::Metadata;
-use super::summary::{BaselineKind, ToolSummary};
-use crate::api::ExitWith;
+use super::summary::{BaselineKind, ToolRunSummary, ToolSummary};
+use crate::api::{self, ExitWith};
 use crate::error::Error;
-use crate::runner::print::tool_summary_header;
-use crate::runner::summary::ToolRunSummary;
-use crate::runner::tool::format::LogfileSummaryFormatter;
-use crate::runner::tool::logfile_parser::LogfileParser;
-use crate::util::{make_relative, resolve_binary_path, truncate_str_utf8};
-use crate::{api, util};
+use crate::util::{self, make_relative, resolve_binary_path, truncate_str_utf8};
 
 #[derive(Debug, Default, Clone)]
 pub struct RunOptions {
