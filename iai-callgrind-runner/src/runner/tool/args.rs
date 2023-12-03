@@ -7,17 +7,33 @@ use crate::api::{self};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolArgs {
-    tool: ValgrindTool,
-    output_paths: Vec<OsString>,
-    log_path: Option<OsString>,
-    error_exitcode: String,
-    other: Vec<String>,
+    pub tool: ValgrindTool,
+    pub output_paths: Vec<OsString>,
+    pub log_path: Option<OsString>,
+    pub error_exitcode: String,
+    pub verbose: bool,
+    pub other: Vec<String>,
 }
 
 impl ToolArgs {
     pub fn from_raw_args(tool: ValgrindTool, raw_args: api::RawArgs) -> Self {
-        let mut other = vec![];
-        let mut error_exitcode = None;
+        let mut tool_args = Self {
+            tool,
+            output_paths: Vec::default(),
+            log_path: Option::default(),
+            error_exitcode: match tool {
+                ValgrindTool::Memcheck | ValgrindTool::Helgrind | ValgrindTool::DRD => {
+                    "201".to_owned()
+                }
+                ValgrindTool::Callgrind
+                | ValgrindTool::Massif
+                | ValgrindTool::DHAT
+                | ValgrindTool::BBV => "0".to_owned(),
+            },
+            verbose: false,
+            other: Vec::default(),
+        };
+
         for arg in raw_args.0 {
             match arg
                 .trim()
@@ -36,7 +52,7 @@ impl ToolArgs {
                     tool.id()
                 ),
                 Some(("--error-exitcode", value)) => {
-                    error_exitcode = Some(value.to_owned());
+                    tool_args.error_exitcode = value.to_owned();
                 }
                 None if matches!(
                     arg.as_str(),
@@ -50,24 +66,12 @@ impl ToolArgs {
                 {
                     warn!("Ignoring {} argument '{arg}'", tool.id());
                 }
-                None | Some(_) => other.push(arg),
+                None if matches!(arg.as_str(), "--verbose") => tool_args.verbose = true,
+                None | Some(_) => tool_args.other.push(arg),
             }
         }
-        Self {
-            tool,
-            output_paths: Vec::default(),
-            log_path: None,
-            error_exitcode: error_exitcode.unwrap_or_else(|| match tool {
-                ValgrindTool::Memcheck | ValgrindTool::Helgrind | ValgrindTool::DRD => {
-                    "201".to_owned()
-                }
-                ValgrindTool::Callgrind
-                | ValgrindTool::Massif
-                | ValgrindTool::DHAT
-                | ValgrindTool::BBV => "0".to_owned(),
-            }),
-            other,
-        }
+
+        tool_args
     }
 
     // TODO: memcheck: --xtree-leak-file=<filename> [default: xtleak.kcg.%p]

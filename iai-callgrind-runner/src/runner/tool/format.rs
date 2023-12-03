@@ -5,22 +5,32 @@ use super::logfile_parser::LogfileSummary;
 pub struct LogfileSummaryFormatter;
 
 impl LogfileSummaryFormatter {
-    pub fn print(summary: &LogfileSummary) {
-        println!(
-            "  {:<18}{}",
-            "Command:",
-            summary.command.display().to_string().blue().bold()
-        );
+    pub fn print(
+        summary: &LogfileSummary,
+        verbose: bool,
+        is_multiple: bool,
+        force_show_body: bool,
+    ) {
+        if verbose || is_multiple {
+            println!(
+                "  {:<18}{}",
+                "Command:",
+                summary.command.display().to_string().blue().bold()
+            );
+            println!("  {:<18}{}", "PID:", summary.pid.to_string().bold());
 
-        println!("  {:<18}{}", "PID:", summary.pid.to_string().bold());
+            if let Some(parent_pid) = summary.parent_pid {
+                println!("  {:<18}{}", "Parent PID:", parent_pid.to_string().bold());
+            }
+        }
 
         for field in &summary.fields {
             println!("  {:<18}{}", format!("{}:", field.0), field.1.bold());
         }
 
-        if !summary.body.is_empty() {
-            let mut iter = summary.body.iter();
-            println!("  {:<18}{}", "Summary:", iter.next().unwrap());
+        if (force_show_body || verbose || summary.has_errors()) && !summary.details.is_empty() {
+            let mut iter = summary.details.iter();
+            println!("  {:<18}{}", "Details:", iter.next().unwrap());
 
             for body_line in iter {
                 println!("                    {body_line}");

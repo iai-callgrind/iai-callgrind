@@ -70,7 +70,8 @@ impl LogfileParser {
         let mut state = State::Header;
         let mut command = None;
         let mut fields = vec![];
-        let mut body = vec![];
+        let mut details = vec![];
+        let mut parent_pid = None;
         for line in iter {
             match &state {
                 State::Header if !EMPTY_LINE_RE.is_match(&line) => {
@@ -83,7 +84,12 @@ impl LogfileParser {
                             }
                             "parent pid" => {
                                 let value = caps.name("value").unwrap().as_str().to_owned();
-                                fields.push((key.to_owned(), value));
+                                parent_pid = Some(
+                                    value
+                                        .as_str()
+                                        .parse::<i32>()
+                                        .expect("Parent PID should be valid"),
+                                );
                             }
                             _ => {}
                         }
@@ -110,9 +116,9 @@ impl LogfileParser {
                     }
                     if let Some(caps) = STRIP_PREFIX_RE.captures(&line) {
                         let rest_of_line = caps.name("rest").unwrap().as_str();
-                        body.push(rest_of_line.to_owned());
+                        details.push(rest_of_line.to_owned());
                     } else {
-                        body.push(line);
+                        details.push(line);
                     }
                 }
                 State::Fields => {
@@ -129,9 +135,9 @@ impl LogfileParser {
             }
         }
 
-        while let Some(last) = body.last() {
+        while let Some(last) = details.last() {
             if last.trim().is_empty() {
-                body.pop();
+                details.pop();
             } else {
                 break;
             }
@@ -140,9 +146,11 @@ impl LogfileParser {
         Ok(LogfileSummary {
             command: command.expect("A command should be present"),
             pid,
+            parent_pid,
             fields,
-            body,
+            details,
             error_summary: None,
+            num_errors: None,
             log_path: make_relative(&self.root_dir, path),
         })
     }
