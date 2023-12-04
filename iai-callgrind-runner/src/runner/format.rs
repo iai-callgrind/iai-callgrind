@@ -246,7 +246,7 @@ impl Formatter for VerticalFormat {
     }
 }
 
-pub fn tool_summary_header(tool: ValgrindTool) -> String {
+pub fn tool_headline(tool: ValgrindTool) -> String {
     let id = tool.id();
     format!(
         "  {} {} {}",

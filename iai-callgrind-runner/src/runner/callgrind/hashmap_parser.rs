@@ -9,9 +9,9 @@ use log::trace;
 use serde::{Deserialize, Serialize};
 
 use super::model::Costs;
-use super::parser::{parse_header, Parser, Sentinel};
+use super::parser::{parse_header, Sentinel};
 use crate::error::Error;
-use crate::runner::tool::ToolOutputPath;
+use crate::runner::tool::{Parser, ToolOutputPath};
 
 #[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CallgrindMap {

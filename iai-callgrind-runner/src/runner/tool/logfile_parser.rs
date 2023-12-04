@@ -9,7 +9,7 @@ use regex::Regex;
 
 use super::ToolOutputPath;
 use crate::error::Error;
-use crate::runner::callgrind::parser::Parser;
+use crate::runner::tool::Parser;
 use crate::util::make_relative;
 
 // The different regex have to consider --time-stamp=yes

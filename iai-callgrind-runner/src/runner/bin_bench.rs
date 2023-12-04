@@ -14,17 +14,19 @@ use super::callgrind::flamegraph::{
     LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
 };
 use super::callgrind::model::Costs;
-use super::callgrind::parser::{Parser, Sentinel};
+use super::callgrind::parser::Sentinel;
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{CallgrindCommand, RegressionConfig};
-use super::format::{tool_summary_header, Formatter, Header, VerticalFormat};
+use super::format::{tool_headline, Formatter, Header, VerticalFormat};
 use super::meta::Metadata;
 use super::summary::{
     BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, CallgrindRegressionSummary,
     CallgrindSummary, CostsSummary, SummaryOutput,
 };
-use super::tool::{RunOptions, ToolConfigs, ToolOutputPath, ToolOutputPathKind, ValgrindTool};
+use super::tool::{
+    Parser, RunOptions, ToolConfigs, ToolOutputPath, ToolOutputPathKind, ValgrindTool,
+};
 use super::Config;
 use crate::api::{self, BinaryBenchmark, BinaryBenchmarkConfig};
 use crate::error::Error;
@@ -355,7 +357,7 @@ impl Benchmarkable for Assistant {
 
         header.print();
         if self.tools.has_tools_enabled() {
-            println!("{}", tool_summary_header(ValgrindTool::Callgrind));
+            println!("{}", tool_headline(ValgrindTool::Callgrind));
         }
 
         header
@@ -488,7 +490,7 @@ impl Benchmarkable for BinBench {
         header.print();
 
         if self.tools.has_tools_enabled() {
-            println!("{}", tool_summary_header(ValgrindTool::Callgrind));
+            println!("{}", tool_headline(ValgrindTool::Callgrind));
         }
 
         header

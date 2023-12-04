@@ -8,9 +8,8 @@ use log::debug;
 use regex::Regex;
 
 use crate::error::Error;
-use crate::runner::callgrind::parser::Parser;
 use crate::runner::tool::logfile_parser::LogfileSummary;
-use crate::runner::tool::ToolOutputPath;
+use crate::runner::tool::{Parser, ToolOutputPath};
 use crate::util::make_relative;
 
 // The different regex have to consider --time-stamp=yes

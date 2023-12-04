@@ -13,6 +13,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::callgrind::model::Costs;
+use super::tool::logfile_parser::LogfileSummary;
 use super::tool::{ToolOutputPath, ValgrindTool};
 use crate::api::EventKind;
 use crate::error::Error;
@@ -202,12 +203,25 @@ pub struct SummaryOutput {
 pub struct ToolRunSummary {
     /// The executed command extracted from Valgrind output
     pub command: String,
-    /// The pid of the process of the `command`
-    pub pid: String,
-    /// If present, the baseline used to compare with the new output of this tool
-    pub baseline: Option<Baseline>,
+    /// The pid of this process
+    pub pid: i32,
+    /// The parent pid of this process
+    pub parent_pid: Option<i32>,
     /// The tool specific summary extracted from Valgrind output
     pub summary: IndexMap<String, String>,
+    /// More details from the logging output of the tool run
+    pub details: Option<String>,
+    /// The error summary string of tools that have an error summary like Memcheck, DRD, Helgrind
+    ///
+    /// Some example strings:
+    /// * `0 errors from 0 contexts (suppressed: 0 from 0)`
+    /// * `2 errors from 2 contexts (suppressed: 0 from 0)`
+    pub error_summary: Option<String>,
+    /// The amount of errors extracted from the `error_summary` string if present
+    ///
+    /// This number does not take suppressed errors or contexts into account. It's just the first
+    /// number from the `error_summary` string.
+    pub num_errors: Option<u64>,
 }
 
 /// The `ToolSummary` containing all information about a valgrind tool run
@@ -489,5 +503,19 @@ impl SummaryOutput {
     /// Try to create an empty summary file returning the [`File`] object
     pub fn create(&self) -> Result<File> {
         File::create(&self.path).with_context(|| "Failed to create json summary file")
+    }
+}
+
+impl From<&LogfileSummary> for ToolRunSummary {
+    fn from(value: &LogfileSummary) -> Self {
+        ToolRunSummary {
+            command: value.command.to_string_lossy().to_string(),
+            pid: value.pid,
+            parent_pid: value.parent_pid,
+            summary: value.fields.iter().cloned().collect(),
+            details: (!value.details.is_empty()).then(|| value.details.join("\n")),
+            error_summary: value.error_summary.clone(),
+            num_errors: value.num_errors,
+        }
     }
 }

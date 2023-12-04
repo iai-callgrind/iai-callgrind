@@ -5,7 +5,6 @@ use log::{trace, warn};
 use serde::{Deserialize, Serialize};
 
 use super::model::{Costs, Positions};
-use crate::runner::tool::ToolOutputPath;
 
 #[derive(Debug, Default)]
 pub struct CallgrindProperties {
@@ -16,13 +15,6 @@ pub struct CallgrindProperties {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Sentinel(String);
 
-pub trait Parser {
-    type Output;
-
-    fn parse(&self, output: &ToolOutputPath) -> Result<Self::Output>
-    where
-        Self: std::marker::Sized;
-}
 impl Sentinel {
     pub fn new<T>(value: T) -> Self
     where

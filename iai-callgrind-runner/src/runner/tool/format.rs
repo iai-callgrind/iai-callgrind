@@ -4,6 +4,8 @@ use super::logfile_parser::LogfileSummary;
 
 pub struct LogfileSummaryFormatter;
 
+pub struct ToolSummaryFormatter;
+
 impl LogfileSummaryFormatter {
     pub fn print(
         summary: &LogfileSummary,

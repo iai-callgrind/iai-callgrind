@@ -2,9 +2,9 @@ use anyhow::Result;
 use log::{debug, trace};
 
 use super::model::Costs;
-use super::parser::{parse_header, Parser, Sentinel};
+use super::parser::{parse_header, Sentinel};
 use crate::error::Error;
-use crate::runner::tool::ToolOutputPath;
+use crate::runner::tool::{Parser, ToolOutputPath};
 
 pub struct SentinelParser {
     sentinel: Sentinel,

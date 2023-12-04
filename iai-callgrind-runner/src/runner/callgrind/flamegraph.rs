@@ -6,10 +6,10 @@ use anyhow::{anyhow, Context, Result};
 use inferno::flamegraph::{Direction, Options};
 
 use super::flamegraph_parser::{FlamegraphMap, FlamegraphParser};
-use super::parser::{Parser, Sentinel};
+use super::parser::Sentinel;
 use crate::api::{self, EventKind, FlamegraphKind};
 use crate::runner::summary::{BaselineKind, BaselineName, FlamegraphSummary};
-use crate::runner::tool::{ToolOutputPath, ToolOutputPathKind};
+use crate::runner::tool::{Parser, ToolOutputPath, ToolOutputPathKind};
 
 #[derive(Debug)]
 pub struct BaselineFlamegraphGenerator {
