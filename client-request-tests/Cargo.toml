@@ -1,0 +1,21 @@
+[package]
+name = "client-request-tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+authors = ["Joining7943 <joining@posteo.de>"]
+rust-version = "1.60.0"
+description = "Tests for iai-callgrind client requests"
+readme = "../README.md"
+homepage = "https://github.com/iai-callgrind/iai-callgrind"
+repository = "https://github.com/iai-callgrind/iai-callgrind"
+license = "Apache-2.0 OR MIT"
+
+[build-dependencies]
+cc = { version = "1" }
+
+[dependencies]
+cty = { version = "0.2" }
+iai-callgrind = { path = "../iai-callgrind/", version = "=0.9.0", features = [
+  "client_requests_defs",
+] }
