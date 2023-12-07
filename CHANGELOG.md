@@ -30,7 +30,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   create a `summary.json` next to the usual output files of a benchmark which
   contains all the terminal output data and more in a machine readable output
   format. The json schema for the json summary file is stored in
-  `iai-callgrind-runner/schemas/*.json`.
+  `iai-callgrind-runner/schemas/*.json`. In addition to `--save-summary` and
+  saving the summary to a file it's possible with
+  `--output-format=default|json|pretty-json` to specify
+  the output format for the terminal output.
 * Add command line arguments `--allow-aslr`, `--regression` and
   `--regression-fail-fast` which have higher precedence than their environment
   variable counterparts `IAI_CALLGRIND_ALLOW_ASLR`, `IAI_CALLGRIND_REGRESSION`
@@ -61,7 +64,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   this option to an exit code different from `0` causes the benchmark run to
   fail immediately and show the whole logging output.
 * The output file names of flamegraphs had to change due to #29.
-* The logging output at `info` level now all goes to stderr.
+* All output not being part of the summary terminal output now goes to stderr.
+  This change affects the logging output at `info` level and the regression
+  check output.
 
 ### Fixed
 

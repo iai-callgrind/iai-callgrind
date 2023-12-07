@@ -18,7 +18,7 @@ use super::callgrind::parser::Sentinel;
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{CallgrindCommand, RegressionConfig};
-use super::format::{tool_headline, Formatter, Header, VerticalFormat};
+use super::format::{tool_headline, Header, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
 use super::summary::{
     BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, CallgrindRegressionSummary,
@@ -151,7 +151,7 @@ trait Benchmarkable {
     ) -> Vec<CallgrindRegressionSummary>;
     fn parse(&self, config: &Config, out_path: &ToolOutputPath) -> Result<CostsSummary>;
     fn parse_costs(&self, config: &Config, out_path: &ToolOutputPath) -> Result<Costs>;
-    fn print_header(&self, group: &Group) -> Header;
+    fn print_header(&self, meta: &Metadata, group: &Group) -> Header;
     fn sentinel(&self, config: &Config) -> Option<Sentinel>;
 }
 
@@ -348,16 +348,18 @@ impl Benchmarkable for Assistant {
         SentinelParser::new(&sentinel).parse(out_path)
     }
 
-    fn print_header(&self, group: &Group) -> Header {
+    fn print_header(&self, meta: &Metadata, group: &Group) -> Header {
         let header = Header::from_segments(
             [&group.module_path, &self.kind.id(), &self.name],
             None,
             None,
         );
 
-        header.print();
-        if self.tools.has_tools_enabled() {
-            println!("{}", tool_headline(ValgrindTool::Callgrind));
+        if meta.args.output_format == OutputFormat::Default {
+            header.print();
+            if self.tools.has_tools_enabled() {
+                println!("{}", tool_headline(ValgrindTool::Callgrind));
+            }
         }
 
         header
@@ -485,12 +487,14 @@ impl Benchmarkable for BinBench {
         SummaryParser.parse(out_path)
     }
 
-    fn print_header(&self, group: &Group) -> Header {
+    fn print_header(&self, meta: &Metadata, group: &Group) -> Header {
         let header = Header::new(&group.module_path, self.id.clone(), self.to_string());
-        header.print();
 
-        if self.tools.has_tools_enabled() {
-            println!("{}", tool_headline(ValgrindTool::Callgrind));
+        if meta.args.output_format == OutputFormat::Default {
+            header.print();
+            if self.tools.has_tools_enabled() {
+                println!("{}", tool_headline(ValgrindTool::Callgrind));
+            }
         }
 
         header
@@ -529,7 +533,7 @@ impl Group {
             .as_ref()
             .map_or(false, |r| r.fail_fast);
         if let Some(summary) = assistant.run(benchmark, config, self)? {
-            summary.save()?;
+            summary.print_and_save(&config.meta.args.output_format)?;
             summary.check_regression(is_regressed, fail_fast)?;
         }
 
@@ -569,7 +573,7 @@ impl Group {
                 .as_ref()
                 .map_or(false, |r| r.fail_fast);
             let summary = benchmark.run(bench, config, self)?;
-            summary.save()?;
+            summary.print_and_save(&config.meta.args.output_format)?;
             summary.check_regression(is_regressed, fail_fast)?;
 
             if let Some(teardown) = assists.teardown.as_mut() {
@@ -832,7 +836,7 @@ impl Benchmark for BaselineBenchmark {
         let mut benchmark_summary =
             benchmarkable.create_benchmark_summary(config, group, &out_path)?;
 
-        let header = benchmarkable.print_header(group);
+        let header = benchmarkable.print_header(&config.meta, group);
 
         let output = callgrind_command.run(
             benchmarkable.callgrind_args().clone(),
@@ -843,10 +847,7 @@ impl Benchmark for BaselineBenchmark {
         )?;
 
         let costs_summary = benchmarkable.parse(config, &out_path)?;
-        print!(
-            "{}",
-            VerticalFormat::default().format(self.baselines(), &costs_summary)?
-        );
+        VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stderr())?;
@@ -931,12 +932,10 @@ impl Benchmark for LoadBaselineBenchmark {
         let mut benchmark_summary =
             benchmarkable.create_benchmark_summary(config, group, &out_path)?;
 
-        let header = benchmarkable.print_header(group);
+        let header = benchmarkable.print_header(&config.meta, group);
         let costs_summary = benchmarkable.parse(config, &out_path)?;
-        print!(
-            "{}",
-            VerticalFormat::default().format(self.baselines(), &costs_summary)?
-        );
+
+        VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
 
         log_path.dump_log(log::Level::Info, &mut stderr())?;
 
@@ -1129,7 +1128,7 @@ impl Benchmark for SaveBaselineBenchmark {
         let mut benchmark_summary =
             benchmarkable.create_benchmark_summary(config, group, &out_path)?;
 
-        let header = benchmarkable.print_header(group);
+        let header = benchmarkable.print_header(&config.meta, group);
 
         let output = callgrind_command.run(
             benchmarkable.callgrind_args().clone(),
@@ -1141,10 +1140,7 @@ impl Benchmark for SaveBaselineBenchmark {
 
         let new_costs = benchmarkable.parse_costs(config, &out_path)?;
         let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
-        print!(
-            "{}",
-            VerticalFormat::default().format(self.baselines(), &costs_summary)?
-        );
+        VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stderr())?;

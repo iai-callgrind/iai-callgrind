@@ -14,7 +14,7 @@ use super::callgrind::flamegraph::{
 use super::callgrind::parser::Sentinel;
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::{CallgrindCommand, RegressionConfig};
-use super::format::{tool_headline, Formatter, Header, VerticalFormat};
+use super::format::{tool_headline, Header, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
 use super::summary::{
     BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, CallgrindRegressionSummary,
@@ -141,7 +141,7 @@ impl Benchmark for BaselineBenchmark {
 
         let mut benchmark_summary = lib_bench.create_benchmark_summary(config, group, &out_path)?;
 
-        let header = lib_bench.print_header(group);
+        let header = lib_bench.print_header(&config.meta, group);
 
         let output = callgrind_command.run(
             lib_bench.callgrind_args.clone(),
@@ -161,10 +161,7 @@ impl Benchmark for BaselineBenchmark {
         };
 
         let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
-        print!(
-            "{}",
-            VerticalFormat::default().format(self.baselines(), &costs_summary)?
-        );
+        VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stderr())?;
@@ -288,7 +285,7 @@ impl Groups {
                     .as_ref()
                     .map_or(false, |r| r.fail_fast);
                 let summary = benchmark.run(bench, config, group)?;
-                summary.save()?;
+                summary.print_and_save(&config.meta.args.output_format)?;
                 summary.check_regression(&mut is_regressed, fail_fast)?;
             }
         }
@@ -368,16 +365,18 @@ impl LibBench {
     ///
     /// If there are more tools than the usual callgrind run, this method also prints the tool
     /// summary header
-    fn print_header(&self, group: &Group) -> Header {
+    fn print_header(&self, meta: &Metadata, group: &Group) -> Header {
         let header = Header::from_segments(
             [&group.module, &self.function],
             self.id.clone(),
             self.args.clone(),
         );
 
-        header.print();
-        if self.tools.has_tools_enabled() {
-            println!("{}", tool_headline(ValgrindTool::Callgrind));
+        if meta.args.output_format == OutputFormat::Default {
+            header.print();
+            if self.tools.has_tools_enabled() {
+                println!("{}", tool_headline(ValgrindTool::Callgrind));
+            }
         }
         header
     }
@@ -428,16 +427,13 @@ impl Benchmark for LoadBaselineBenchmark {
         let log_path = out_path.to_log_output();
         let mut benchmark_summary = lib_bench.create_benchmark_summary(config, group, &out_path)?;
 
-        let header = lib_bench.print_header(group);
+        let header = lib_bench.print_header(&config.meta, group);
 
         let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
         let old_costs = Some(SentinelParser::new(&sentinel).parse(&old_path)?);
         let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
 
-        print!(
-            "{}",
-            VerticalFormat::default().format(self.baselines(), &costs_summary)?
-        );
+        VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
 
         let regressions = lib_bench.check_and_print_regressions(&costs_summary);
 
@@ -575,7 +571,7 @@ impl Benchmark for SaveBaselineBenchmark {
 
         let mut benchmark_summary = lib_bench.create_benchmark_summary(config, group, &out_path)?;
 
-        let header = lib_bench.print_header(group);
+        let header = lib_bench.print_header(&config.meta, group);
 
         let output = callgrind_command.run(
             lib_bench.callgrind_args.clone(),
@@ -587,8 +583,7 @@ impl Benchmark for SaveBaselineBenchmark {
 
         let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
         let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
-        let string = VerticalFormat::default().format(baselines.clone(), &costs_summary)?;
-        print!("{string}");
+        VerticalFormat::default().print(&config.meta, baselines.clone(), &costs_summary)?;
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stderr())?;

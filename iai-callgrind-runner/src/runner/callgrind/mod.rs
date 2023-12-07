@@ -186,7 +186,7 @@ impl RegressionConfig {
         } in &regression_summaries
         {
             if limit.is_sign_positive() {
-                println!(
+                eprintln!(
                     "Performance has {0}: {1} ({new} > {old}) regressed by {2:>+6} (>{3:>+6})",
                     "regressed".bold().bright_red(),
                     event_kind.to_string().bold(),
@@ -196,7 +196,7 @@ impl RegressionConfig {
                     to_string_signed_short(*limit).bright_black()
                 );
             } else {
-                println!(
+                eprintln!(
                     "Performance has {0}: {1} ({new} < {old}) regressed by {2:>+6} (<{3:>+6})",
                     "regressed".bold().bright_red(),
                     event_kind.to_string().bold(),

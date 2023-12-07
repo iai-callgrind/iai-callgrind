@@ -1,6 +1,7 @@
 use clap::builder::BoolishValueParser;
 use clap::{ArgAction, Parser};
 
+use super::format::OutputFormat;
 use super::summary::{BaselineName, SummaryFormat};
 use crate::api::{EventKind, RawArgs, RegressionConfig};
 
@@ -121,6 +122,29 @@ pub struct CommandLineArgs {
         env = "IAI_CALLGRIND_LOAD_BASELINE"
     )]
     pub load_baseline: Option<BaselineName>,
+
+    /// The terminal output format in default human-readable format or in machine-readable json
+    /// format
+    ///
+    /// # The JSON Output Format
+    ///
+    /// The json terminal output schema is the same as the schema with the `--save-summary`
+    /// argument when saving to a `summary.json` file. All other output than the json output goes
+    /// to stderr and only the summary output goes to stdout. When not printing pretty json, each
+    /// line is a dictionary summarizing a single benchmark. You can combine all lines
+    /// (benchmarks) into an array for example with `jq`
+    ///
+    /// `cargo bench -- --output-format=json | jq -s`
+    ///
+    /// which transforms `{...}\n{...}` into `[{...},{...}]`
+    #[clap(
+        long = "output-format",
+        value_enum,
+        required = false,
+        default_value = "default",
+        env = "IAI_CALLGRIND_OUTPUT_FORMAT"
+    )]
+    pub output_format: OutputFormat,
 }
 
 /// This function parses a space separated list of raw argument strings into [`crate::api::RawArgs`]

@@ -21,7 +21,7 @@ use self::args::ToolArgs;
 use self::format::LogfileSummaryFormatter;
 use self::logfile_parser::{LogfileParser, LogfileSummary};
 use super::dhat::logfile_parser::LogfileParser as DhatLogfileParser;
-use super::format::tool_headline;
+use super::format::{tool_headline, OutputFormat};
 use super::meta::Metadata;
 use super::summary::{BaselineKind, ToolSummary};
 use crate::api::{self, ExitWith};
@@ -257,8 +257,10 @@ impl ToolConfigs {
             .collect()
     }
 
-    fn print_headline(tool_config: &ToolConfig) {
-        println!("{}", tool_headline(tool_config.tool));
+    fn print_headline(meta: &Metadata, tool_config: &ToolConfig) {
+        if meta.args.output_format == OutputFormat::Default {
+            println!("{}", tool_headline(tool_config.tool));
+        }
     }
 
     fn print(
@@ -267,24 +269,26 @@ impl ToolConfigs {
         logfile_summaries: &[LogfileSummary],
         output_paths: &[PathBuf],
     ) {
-        for logfile_summary in logfile_summaries {
-            LogfileSummaryFormatter::print(
-                logfile_summary,
-                tool_config.args.verbose,
-                logfile_summaries.len() > 1,
-                matches!(tool_config.tool, ValgrindTool::BBV),
-            );
-        }
+        if meta.args.output_format == OutputFormat::Default {
+            for logfile_summary in logfile_summaries {
+                LogfileSummaryFormatter::print(
+                    logfile_summary,
+                    tool_config.args.verbose,
+                    logfile_summaries.len() > 1,
+                    matches!(tool_config.tool, ValgrindTool::BBV),
+                );
+            }
 
-        for path in output_paths
-            .iter()
-            .map(|p| make_relative(&meta.project_root, p))
-        {
-            println!(
-                "  {:<18}{}",
-                "Outfile:",
-                path.display().to_string().blue().bold()
-            );
+            for path in output_paths
+                .iter()
+                .map(|p| make_relative(&meta.project_root, p))
+            {
+                println!(
+                    "  {:<18}{}",
+                    "Outfile:",
+                    path.display().to_string().blue().bold()
+                );
+            }
         }
     }
 
@@ -333,7 +337,7 @@ impl ToolConfigs {
             let output_path = output_path.to_tool_output(tool);
             let log_path = output_path.to_log_output();
 
-            Self::print_headline(tool_config);
+            Self::print_headline(meta, tool_config);
 
             let (tool_summary, logfile_summaries) = tool_config.parse(meta, &log_path, None)?;
 
