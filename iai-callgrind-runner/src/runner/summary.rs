@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::fs::File;
+use std::io::stdout;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -13,6 +14,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::callgrind::model::Costs;
+use super::format::OutputFormat;
 use super::tool::logfile_parser::LogfileSummary;
 use super::tool::{ToolOutputPath, ValgrindTool};
 use crate::api::EventKind;
@@ -293,29 +295,45 @@ impl BenchmarkSummary {
         }
     }
 
-    /// If this `BenchmarkSummary` has a value in the option `SummaryOutput` save it in json format
-    pub fn save_json(&self, pretty: bool) -> Result<()> {
+    pub fn print_and_save(&self, output_format: &OutputFormat) -> Result<()> {
+        let value = match (output_format, &self.summary_output) {
+            (OutputFormat::Default, None) => return Ok(()),
+            _ => {
+                serde_json::to_value(self).with_context(|| "Failed to serialize summary to json")?
+            }
+        };
+
+        let result = match output_format {
+            OutputFormat::Default => Ok(()),
+            OutputFormat::Json => {
+                let output = stdout();
+                let writer = output.lock();
+                let result = serde_json::to_writer(writer, &value);
+                println!();
+                result
+            }
+            OutputFormat::PrettyJson => {
+                let output = stdout();
+                let writer = output.lock();
+                let result = serde_json::to_writer_pretty(writer, &value);
+                println!();
+                result
+            }
+        };
+        result.with_context(|| "Failed to print json to stdout")?;
+
         if let Some(output) = &self.summary_output {
-            let mut file = output.create()?;
-            if pretty {
-                serde_json::to_writer_pretty(&mut file, self)
-                    .with_context(|| "Failed to serialize to json".to_owned())?;
+            let file = output.create()?;
+
+            let result = if matches!(output.format, SummaryFormat::PrettyJson) {
+                serde_json::to_writer_pretty(file, &value)
             } else {
-                serde_json::to_writer(&mut file, self)
-                    .with_context(|| "Failed to serialize to json".to_owned())?;
-            }
-        }
+                serde_json::to_writer(file, &value)
+            };
 
-        Ok(())
-    }
-
-    /// If this `BenchmarkSummary` has a value in the option `SummaryOutput` save it
-    pub fn save(&self) -> Result<()> {
-        if let Some(output) = &self.summary_output {
-            match output.format {
-                SummaryFormat::Json => self.save_json(false)?,
-                SummaryFormat::PrettyJson => self.save_json(true)?,
-            }
+            result.with_context(|| {
+                format!("Failed to write summary to file: {}", output.path.display())
+            })?;
         }
 
         Ok(())

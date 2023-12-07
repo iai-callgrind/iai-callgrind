@@ -3,6 +3,7 @@ use std::fmt::{Display, Write};
 use anyhow::Result;
 use colored::{ColoredString, Colorize};
 
+use super::meta::Metadata;
 use super::summary::CostsSummary;
 use super::tool::ValgrindTool;
 use crate::api::EventKind;
@@ -35,6 +36,13 @@ pub trait Formatter {
         baselines: (Option<String>, Option<String>),
         costs_summary: &CostsSummary,
     ) -> Result<String>;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum OutputFormat {
+    Default,
+    Json,
+    PrettyJson,
 }
 
 #[derive(Clone)]
@@ -123,6 +131,20 @@ impl Display for Header {
             } else {
                 f.write_fmt(format_args!(" {}", id.cyan()))?;
             }
+        }
+        Ok(())
+    }
+}
+
+impl VerticalFormat {
+    pub fn print(
+        &self,
+        meta: &Metadata,
+        baselines: (Option<String>, Option<String>),
+        costs_summary: &CostsSummary,
+    ) -> Result<()> {
+        if meta.args.output_format == OutputFormat::Default {
+            print!("{}", self.format(baselines, costs_summary)?);
         }
         Ok(())
     }
