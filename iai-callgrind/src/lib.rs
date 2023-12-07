@@ -315,6 +315,8 @@ macro_rules! impl_traits {
 }
 
 mod bin_bench;
+#[cfg(feature = "client_requests_defs")]
+pub mod client_requests;
 #[doc(hidden)]
 pub mod internal;
 mod lib_bench;

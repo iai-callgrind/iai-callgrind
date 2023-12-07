@@ -26,8 +26,11 @@ RUSTFLAGS
 RUSTSEC
 Swatinem
 Trauring's
+USERREQ
 Valgrind
+Valgrinds
 Valgrind's
+aarch
 ahash
 aslr
 atstart
@@ -51,6 +54,7 @@ dlmw
 docsrs
 doesnotexist
 dotgraphs
+dpkg
 dtolnay
 elems
 estimatedcycles
@@ -68,10 +72,15 @@ indexset
 jcnd
 jsonschema
 kcachegrind
+lateout
 lcov
+libclang
 llhits
 massif
+mips
 mispredicted
+msvc
+nanomips
 nsec
 outfile
 pipefail
@@ -84,6 +93,8 @@ profraw
 quickstart
 ramhits
 realpath
+rlval
+rolq
 rposition
 rsplit
 rstest
@@ -107,6 +118,8 @@ tempdir
 tempfile
 totalrw
 trybuild
+xchg
+xchgq
 xtleak
 xtree
 valgrind

@@ -16,7 +16,7 @@ fn main() -> Result<(), std::io::Error> {
             assert_eq!(actual, FILE_WITH_CONTENT_EXPECTED);
         }
         FILE_WITHOUT_CONTENT => {
-            assert_eq!(actual, &[]);
+            assert_eq!(actual, Vec::<u8>::default().as_slice());
         }
         _ => {}
     }

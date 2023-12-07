@@ -16,14 +16,22 @@ keywords = ["iai", "benchmark", "callgrind", "valgrind"]
 categories = ["development-tools::profiling", "development-tools::testing"]
 
 [features]
+client_requests = ["client_requests_defs"]
+client_requests_defs = ["dep:cty", "dep:cfg-if"]
 default = []
 ui_tests = []
+
+[build-dependencies]
+cc = { version = "1" }
+bindgen = { version = "0.69" }
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 bincode = "1"
+cfg-if = { version = "1", optional = true }
+cty = { version = "0.2", optional = true }
 iai-callgrind-macros = { path = "../iai-callgrind-macros/", version = "=0.1.0" }
 iai-callgrind-runner = { path = "../iai-callgrind-runner/", version = "=0.9.0", default-features = false, features = [
   "api",

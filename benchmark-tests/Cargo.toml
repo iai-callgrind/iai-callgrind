@@ -15,7 +15,9 @@ license = "Apache-2.0 OR MIT"
 cargo_metadata = { version = "0.17" }
 colored = { version = ">=1.6, <3" }
 glob = { version = "0.3" }
-iai-callgrind = { path = "../iai-callgrind" }
+iai-callgrind = { path = "../iai-callgrind", features = [
+  "client_requests_defs",
+] }
 iai-callgrind-runner = { path = "../iai-callgrind-runner" }
 new_string_template = { version = "1.4" }
 serde = { version = "1", features = ["derive"] }

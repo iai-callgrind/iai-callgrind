@@ -4,5 +4,6 @@ members = [
   "iai-callgrind-runner",
   "iai-callgrind-macros",
   "benchmark-tests",
+  "client-request-tests",
 ]
 resolver = "2"
