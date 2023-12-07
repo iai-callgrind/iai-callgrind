@@ -33,6 +33,7 @@ aslr
 atstart
 bheisler
 bincode
+bindgen
 bools
 bumpversion
 cachesim
@@ -74,6 +75,7 @@ mispredicted
 nsec
 outfile
 pipefail
+ppid
 printargs
 printenv
 println

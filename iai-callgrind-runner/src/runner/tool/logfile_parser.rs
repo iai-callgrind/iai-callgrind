@@ -9,7 +9,7 @@ use regex::Regex;
 
 use super::ToolOutputPath;
 use crate::error::Error;
-use crate::runner::callgrind::parser::Parser;
+use crate::runner::tool::Parser;
 use crate::util::make_relative;
 
 // The different regex have to consider --time-stamp=yes
@@ -27,6 +27,8 @@ lazy_static! {
     static ref EXTRACT_PID_RE: Regex =
         regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?(?<pid>[0-9]+)(==|--).*")
             .expect("Regex should compile");
+    static ref EXTRACT_ERRORS_RE: Regex =
+        regex::Regex::new(r"^.*?(?<errors>[0-9]+).*$").expect("Regex should compile");
 }
 
 pub struct LogfileParser {
@@ -37,9 +39,11 @@ pub struct LogfileParser {
 pub struct LogfileSummary {
     pub command: PathBuf,
     pub pid: i32,
+    pub parent_pid: Option<i32>,
     pub fields: Vec<(String, String)>,
-    pub body: Vec<String>,
+    pub details: Vec<String>,
     pub error_summary: Option<String>,
+    pub num_errors: Option<u64>,
     pub log_path: PathBuf,
 }
 
@@ -74,9 +78,10 @@ impl LogfileParser {
 
         let mut state = State::Header;
         let mut command = None;
-        let mut fields = vec![];
-        let mut body = vec![];
+        let mut details = vec![];
         let mut error_summary = None;
+        let mut parent_pid = None;
+        let mut num_errors = None;
         for line in iter {
             match &state {
                 State::Header if !EMPTY_LINE_RE.is_match(&line) => {
@@ -89,7 +94,12 @@ impl LogfileParser {
                             }
                             "parent pid" => {
                                 let value = caps.name("value").unwrap().as_str().to_owned();
-                                fields.push((key.to_owned(), value));
+                                parent_pid = Some(
+                                    value
+                                        .as_str()
+                                        .parse::<i32>()
+                                        .expect("Parent PID should be valid"),
+                                );
                             }
                             _ => {}
                         }
@@ -104,23 +114,30 @@ impl LogfileParser {
                     if let Some(caps) = EXTRACT_FIELDS_RE.captures(&line) {
                         let key = caps.name("key").unwrap().as_str();
                         if key.eq_ignore_ascii_case("error summary") {
-                            error_summary = Some(caps.name("value").unwrap().as_str().to_owned());
+                            let error_summary_value =
+                                caps.name("value").unwrap().as_str().to_owned();
+
+                            num_errors =
+                                EXTRACT_ERRORS_RE.captures(&error_summary_value).map(|c| {
+                                    c.name("errors").unwrap().as_str().parse::<u64>().unwrap()
+                                });
+                            error_summary = Some(error_summary_value);
                             continue;
                         }
                     }
                     if let Some(caps) = STRIP_PREFIX_RE.captures(&line) {
                         let rest_of_line = caps.name("rest").unwrap().as_str();
-                        body.push(rest_of_line.to_owned());
+                        details.push(rest_of_line.to_owned());
                     } else {
-                        body.push(line);
+                        details.push(line);
                     }
                 }
             }
         }
 
-        while let Some(last) = body.last() {
+        while let Some(last) = details.last() {
             if last.trim().is_empty() {
-                body.pop();
+                details.pop();
             } else {
                 break;
             }
@@ -129,9 +146,11 @@ impl LogfileParser {
         Ok(LogfileSummary {
             command: command.expect("A command should be present"),
             pid,
-            fields,
-            body,
+            parent_pid,
+            fields: Vec::default(),
+            details,
             error_summary,
+            num_errors,
             log_path: make_relative(&self.root_dir, path),
         })
     }
@@ -154,5 +173,11 @@ impl Parser for LogfileParser {
         }
         summaries.sort_by_key(|s| s.pid);
         Ok(summaries)
+    }
+}
+
+impl LogfileSummary {
+    pub fn has_errors(&self) -> bool {
+        self.num_errors.map_or(false, |n| n > 0)
     }
 }

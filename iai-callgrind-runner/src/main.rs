@@ -1,3 +1,4 @@
+//! The `iai-callgrind-runner` binary
 use std::io::Write;
 
 use colored::{control, Colorize};
@@ -5,6 +6,7 @@ use env_logger::Env;
 use iai_callgrind_runner::runner::envs;
 use log::{error, warn};
 
+/// Print warnings for deprecated usages of environment variables
 fn print_warnings() {
     if std::env::var("IAI_ALLOW_ASLR").is_ok() {
         warn!("The IAI_ALLOW_ASLR environment variable changed to IAI_CALLGRIND_ALLOW_ASLR");
@@ -17,6 +19,12 @@ fn print_warnings() {
     }
 }
 
+/// The main function of the `iai-callgrind-runner` binary
+///
+/// We initialize the logging interface and configure the usage of colors as early as possible here.
+/// Then we're printing warnings with [`print_warnings`] and finally call the main
+/// [`iai_callgrind_runner::runner::run`] library function catching and printing
+/// [`iai_callgrind_runner::error::Error`]s.
 fn main() {
     // Configure the colored crate to respect IAI_CALLGRIND_COLOR and CARGO_TERM_COLOR
     let iai_callgrind_color = std::env::var(envs::IAI_CALLGRIND_COLOR).ok();

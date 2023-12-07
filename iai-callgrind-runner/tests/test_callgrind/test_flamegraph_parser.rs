@@ -1,7 +1,7 @@
 use iai_callgrind_runner::api::EventKind;
 use iai_callgrind_runner::runner::callgrind::flamegraph_parser::FlamegraphParser;
-use iai_callgrind_runner::runner::callgrind::parser::{Parser, Sentinel};
-use iai_callgrind_runner::runner::tool::{ToolOutputPathKind, ValgrindTool};
+use iai_callgrind_runner::runner::callgrind::parser::Sentinel;
+use iai_callgrind_runner::runner::tool::{Parser, ToolOutputPathKind, ValgrindTool};
 use rstest::rstest;
 
 use crate::common::{get_project_root, Fixtures};

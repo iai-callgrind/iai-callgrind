@@ -90,7 +90,7 @@ pub fn write_all_to_stderr(bytes: &[u8]) {
     }
 }
 
-/// Copy a directory from `source` to `dest`
+/// Copy a directory recursively from `source` to `dest` preserving mode, ownership and timestamps
 ///
 /// If `follow_symlinks` is true copy the symlinked file or directory instead of the symlink itself
 pub fn copy_directory(source: &Path, dest: &Path, follow_symlinks: bool) -> Result<()> {
@@ -158,6 +158,11 @@ where
     }
 }
 
+/// Format a float as string depending on the number of digits of the integer-part
+///
+/// The higher the number of integer-part digits the lower the number of fractional-part digits.
+/// This procedure accounts for the fractional-part being less significant the higher the value of
+/// the floating point number gets.
 pub fn to_string_signed_short(n: f64) -> String {
     let n_abs = n.abs();
 
@@ -176,6 +181,7 @@ pub fn to_string_signed_short(n: f64) -> String {
     }
 }
 
+/// Calculate the difference between `new` and `old` as percentage
 pub fn percentage_diff(new: u64, old: u64) -> f64 {
     if new == old {
         return 0f64;
@@ -190,6 +196,7 @@ pub fn percentage_diff(new: u64, old: u64) -> f64 {
     diff * 100.0f64
 }
 
+/// Calculate the difference between `new` and `old` as factor
 pub fn factor_diff(new: u64, old: u64) -> f64 {
     if new == old {
         return 1f64;
@@ -213,6 +220,7 @@ pub fn factor_diff(new: u64, old: u64) -> f64 {
     }
 }
 
+/// Make a `path` relative to the `base_dir`
 pub fn make_relative<B, T>(base_dir: B, path: T) -> PathBuf
 where
     B: AsRef<Path>,
@@ -222,6 +230,7 @@ where
     path.strip_prefix(base_dir).unwrap_or(path).to_owned()
 }
 
+/// Make a `path` absolute with the `base_dir` as prefix
 pub fn make_absolute<B, T>(base_dir: B, path: T) -> PathBuf
 where
     B: AsRef<Path>,

@@ -35,6 +35,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   `--regression-fail-fast` which have higher precedence than their environment
   variable counterparts `IAI_CALLGRIND_ALLOW_ASLR`, `IAI_CALLGRIND_REGRESSION`
   and `IAI_CALLGRIND_REGRESSION_FAIL_FAST`
+* ([#29](https://github.com/iai-callgrind/iai-callgrind/issues/29)): Add support
+  to compare against baselines instead of the usual `*.old` output files. This
+  adds command-line arguments `--save-baseline=BASELINE`,
+  `--load-baseline=BASELINE` and `--baseline=BASELINE` and their environment
+  variable counterparts `IAI_CALLGRIND_SAVE_BASELINE`,
+  `IAI_CALLGRIND_LOAD_BASELINE` and `IAI_CALLGRIND_BASELINE`.
 
 ### Changed
 
@@ -54,6 +60,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   `--error-exitcode=201`. If any errors are detected by these tools, setting
   this option to an exit code different from `0` causes the benchmark run to
   fail immediately and show the whole logging output.
+* The output file names of flamegraphs had to change due to #29.
+* The logging output at `info` level now all goes to stderr.
 
 ### Fixed
 
@@ -64,6 +72,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   valgrind output in log files. However, not all valgrind output goes into the
   log file in case of an error, so it is still necessary to print the `stderr`
   output after the log file content to see all error output of valgrind.
+* Update the yanked wasm-bindgen `0.2.88` to `0.2.89`
 
 ### [0.8.0] - 2023-11-10
 

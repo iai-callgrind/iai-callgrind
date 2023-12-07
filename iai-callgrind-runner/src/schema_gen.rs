@@ -1,3 +1,7 @@
+//! A utility binary to create the json schema for the summary.json file
+//!
+//! This binary is not considered a part of the published `iai-callgrind-runner` package and is only
+//! used during the development of `iai-callgrind`.
 use std::fs::File;
 
 use iai_callgrind_runner::runner::summary::BenchmarkSummary;

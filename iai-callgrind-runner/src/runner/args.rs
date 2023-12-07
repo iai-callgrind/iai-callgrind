@@ -101,7 +101,7 @@ pub struct CommandLineArgs {
         long = "save-baseline",
         env = "IAI_CALLGRIND_SAVE_BASELINE",
         default_missing_value = "default",
-        conflicts_with_all = &["baseline", "load-baseline"]
+        conflicts_with_all = &["baseline", "LOAD_BASELINE"]
     )]
     pub save_baseline: Option<BaselineName>,
 
@@ -115,7 +115,7 @@ pub struct CommandLineArgs {
 
     /// Load this baseline as the new data set instead of creating a new one
     #[clap(
-        id = "load-baseline",
+        id = "LOAD_BASELINE",
         long = "load-baseline",
         requires = "baseline",
         env = "IAI_CALLGRIND_LOAD_BASELINE"

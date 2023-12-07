@@ -503,24 +503,33 @@
       "type": "object",
       "required": ["command", "pid", "summary"],
       "properties": {
-        "baseline": {
-          "description": "If present, the baseline used to compare with the new output of this tool",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Baseline"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
         "command": {
           "description": "The executed command extracted from Valgrind output",
           "type": "string"
         },
+        "details": {
+          "description": "More details from the logging output of the tool run",
+          "type": ["string", "null"]
+        },
+        "error_summary": {
+          "description": "The error summary string of tools that have an error summary like Memcheck, DRD, Helgrind\n\nSome example strings: * `0 errors from 0 contexts (suppressed: 0 from 0)` * `2 errors from 2 contexts (suppressed: 0 from 0)`",
+          "type": ["string", "null"]
+        },
+        "num_errors": {
+          "description": "The amount of errors extracted from the `error_summary` string if present\n\nThis number does not take suppressed errors or contexts into account. It's just the first number from the `error_summary` string.",
+          "type": ["integer", "null"],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "parent_pid": {
+          "description": "The parent pid of this process",
+          "type": ["integer", "null"],
+          "format": "int32"
+        },
         "pid": {
-          "description": "The pid of the process of the `command`",
-          "type": "string"
+          "description": "The pid of this process",
+          "type": "integer",
+          "format": "int32"
         },
         "summary": {
           "description": "The tool specific summary extracted from Valgrind output",

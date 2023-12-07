@@ -7,7 +7,7 @@ use std::process::Output;
 use version_compare::Cmp;
 
 use crate::runner::tool::ToolOutputPath;
-use crate::runner::write_all_to_stderr;
+use crate::util::write_all_to_stderr;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Error {

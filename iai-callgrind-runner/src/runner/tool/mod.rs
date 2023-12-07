@@ -11,25 +11,22 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
 use anyhow::{anyhow, Context, Result};
-use indexmap::IndexMap;
+use colored::Colorize;
 use log::{debug, error, log_enabled, Level};
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use self::args::ToolArgs;
-use super::callgrind::parser::Parser;
+use self::format::LogfileSummaryFormatter;
+use self::logfile_parser::{LogfileParser, LogfileSummary};
 use super::dhat::logfile_parser::LogfileParser as DhatLogfileParser;
+use super::format::tool_headline;
 use super::meta::Metadata;
 use super::summary::{BaselineKind, ToolSummary};
-use crate::api::ExitWith;
+use crate::api::{self, ExitWith};
 use crate::error::Error;
-use crate::runner::print::tool_summary_header;
-use crate::runner::summary::ToolRunSummary;
-use crate::runner::tool::format::LogfileSummaryFormatter;
-use crate::runner::tool::logfile_parser::LogfileParser;
-use crate::util::{resolve_binary_path, truncate_str_utf8};
-use crate::{api, util};
+use crate::util::{self, make_relative, resolve_binary_path, truncate_str_utf8};
 
 #[derive(Debug, Default, Clone)]
 pub struct RunOptions {
@@ -46,6 +43,19 @@ pub struct ToolConfig {
     pub is_enabled: bool,
     pub args: ToolArgs,
     pub outfile_modifier: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToolConfigs(pub Vec<ToolConfig>);
+
+pub struct ToolCommand {
+    tool: ValgrindTool,
+    command: Command,
+}
+
+pub struct ToolOutput {
+    pub tool: ValgrindTool,
+    pub output: Output,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -80,17 +90,10 @@ pub enum ValgrindTool {
     BBV,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ToolConfigs(pub Vec<ToolConfig>);
+pub trait Parser {
+    type Output;
 
-pub struct ToolCommand {
-    tool: ValgrindTool,
-    command: Command,
-}
-
-pub struct ToolOutput {
-    pub tool: ValgrindTool,
-    pub output: Output,
+    fn parse(&self, output: &ToolOutputPath) -> Result<Self::Output>;
 }
 
 impl ToolCommand {
@@ -194,6 +197,41 @@ impl ToolCommand {
     }
 }
 
+impl ToolConfig {
+    fn parse(
+        &self,
+        meta: &Metadata,
+        log_path: &ToolOutputPath,
+        out_path: Option<&ToolOutputPath>,
+    ) -> Result<(ToolSummary, Vec<LogfileSummary>)> {
+        let mut tool_summary = ToolSummary {
+            tool: self.tool,
+            log_paths: log_path.real_paths()?,
+            out_paths: out_path.map_or_else(|| Ok(Vec::default()), ToolOutputPath::real_paths)?,
+            summaries: vec![],
+        };
+
+        let parser: Box<dyn Parser<Output = Vec<LogfileSummary>>> =
+            if let ValgrindTool::DHAT = self.tool {
+                Box::new(DhatLogfileParser {
+                    root_dir: meta.project_root.clone(),
+                })
+            } else {
+                Box::new(LogfileParser {
+                    root_dir: meta.project_root.clone(),
+                })
+            };
+
+        let logfile_summaries = parser.as_ref().parse(log_path)?;
+
+        for logfile_summary in &logfile_summaries {
+            tool_summary.summaries.push(logfile_summary.into());
+        }
+
+        Ok((tool_summary, logfile_summaries))
+    }
+}
+
 impl From<api::Tool> for ToolConfig {
     fn from(value: api::Tool) -> Self {
         let tool = value.kind.into();
@@ -219,56 +257,68 @@ impl ToolConfigs {
             .collect()
     }
 
+    fn print_headline(tool_config: &ToolConfig) {
+        println!("{}", tool_headline(tool_config.tool));
+    }
+
+    fn print(
+        meta: &Metadata,
+        tool_config: &ToolConfig,
+        logfile_summaries: &[LogfileSummary],
+        output_paths: &[PathBuf],
+    ) {
+        for logfile_summary in logfile_summaries {
+            LogfileSummaryFormatter::print(
+                logfile_summary,
+                tool_config.args.verbose,
+                logfile_summaries.len() > 1,
+                matches!(tool_config.tool, ValgrindTool::BBV),
+            );
+        }
+
+        for path in output_paths
+            .iter()
+            .map(|p| make_relative(&meta.project_root, p))
+        {
+            println!(
+                "  {:<18}{}",
+                "Outfile:",
+                path.display().to_string().blue().bold()
+            );
+        }
+    }
+
     pub fn parse(
-        tool: ValgrindTool,
+        tool_config: &ToolConfig,
         meta: &Metadata,
         log_path: &ToolOutputPath,
-    ) -> Result<ToolSummary> {
+        out_path: Option<&ToolOutputPath>,
+    ) -> Result<(ToolSummary, Vec<LogfileSummary>)> {
         let mut tool_summary = ToolSummary {
-            tool,
+            tool: tool_config.tool,
             log_paths: log_path.real_paths()?,
-            out_paths: vec![],
+            out_paths: out_path.map_or_else(|| Ok(Vec::default()), ToolOutputPath::real_paths)?,
             summaries: vec![],
         };
-        if let ValgrindTool::DHAT = tool {
-            let parser = DhatLogfileParser {
-                root_dir: meta.project_root.clone(),
-            };
-            let logfile_summaries = parser.parse(log_path)?;
-            for logfile_summary in logfile_summaries {
-                LogfileSummaryFormatter::print(&logfile_summary);
 
-                tool_summary.summaries.push(ToolRunSummary {
-                    command: logfile_summary.command.to_string_lossy().to_string(),
-                    pid: logfile_summary.pid.to_string(),
-                    baseline: None,
-                    summary: logfile_summary.fields.iter().cloned().collect(),
-                });
-            }
-        } else {
-            let parser = LogfileParser {
-                root_dir: meta.project_root.clone(),
+        let parser: Box<dyn Parser<Output = Vec<LogfileSummary>>> =
+            if let ValgrindTool::DHAT = tool_config.tool {
+                Box::new(DhatLogfileParser {
+                    root_dir: meta.project_root.clone(),
+                })
+            } else {
+                Box::new(LogfileParser {
+                    root_dir: meta.project_root.clone(),
+                })
             };
-            let logfile_summaries = parser.parse(log_path)?;
-            for logfile_summary in logfile_summaries {
-                LogfileSummaryFormatter::print(&logfile_summary);
-                let mut summary: IndexMap<String, String> =
-                    logfile_summary.fields.iter().cloned().collect();
-                if !logfile_summary.body.is_empty() {
-                    summary.insert("Summary".to_owned(), logfile_summary.body.join("\n"));
-                }
-                if let Some(error_summary) = logfile_summary.error_summary {
-                    summary.insert("Error Summary".to_owned(), error_summary);
-                }
-                tool_summary.summaries.push(ToolRunSummary {
-                    command: logfile_summary.command.to_string_lossy().to_string(),
-                    pid: logfile_summary.pid.to_string(),
-                    baseline: None,
-                    summary,
-                });
-            }
+
+        let logfile_summaries = parser.as_ref().parse(log_path)?;
+
+        for logfile_summary in &logfile_summaries {
+            tool_summary.summaries.push(logfile_summary.into());
         }
-        Ok(tool_summary)
+
+        Ok((tool_summary, logfile_summaries))
     }
 
     pub fn run_loaded_vs_base(
@@ -283,8 +333,16 @@ impl ToolConfigs {
             let output_path = output_path.to_tool_output(tool);
             let log_path = output_path.to_log_output();
 
-            println!("{}", tool_summary_header(tool));
-            let tool_summary = Self::parse(tool, meta, &log_path)?;
+            Self::print_headline(tool_config);
+
+            let (tool_summary, logfile_summaries) = tool_config.parse(meta, &log_path, None)?;
+
+            Self::print(
+                meta,
+                tool_config,
+                &logfile_summaries,
+                &tool_summary.out_paths,
+            );
 
             log_path.dump_log(log::Level::Info, &mut stderr())?;
 
@@ -311,8 +369,6 @@ impl ToolConfigs {
             let output_path = output_path.to_tool_output(tool);
             let log_path = output_path.to_log_output();
 
-            println!("{}", tool_summary_header(tool));
-
             let output = command.run(
                 tool_config.clone(),
                 executable,
@@ -320,10 +376,20 @@ impl ToolConfigs {
                 options.clone(),
                 &output_path,
             )?;
-            let mut tool_summary = Self::parse(tool, meta, &log_path)?;
-            if tool.has_output_file() {
-                tool_summary.out_paths = output_path.real_paths()?;
-            }
+
+            let (tool_summary, logfile_summaries) = Self::parse(
+                tool_config,
+                meta,
+                &log_path,
+                tool.has_output_file().then(|| &output_path),
+            )?;
+
+            Self::print(
+                meta,
+                tool_config,
+                &logfile_summaries,
+                &tool_summary.out_paths,
+            );
 
             output.dump_log(log::Level::Info);
             log_path.dump_log(log::Level::Info, &mut stderr())?;
@@ -443,6 +509,10 @@ impl ToolOutputPath {
 
     pub fn exists(&self) -> bool {
         self.real_paths().map_or(false, |p| !p.is_empty())
+    }
+
+    pub fn is_multiple(&self) -> bool {
+        self.real_paths().map_or(false, |p| p.len() > 1)
     }
 
     pub fn to_base_path(&self) -> Self {

@@ -2,9 +2,9 @@ mod args;
 mod bin_bench;
 pub mod callgrind;
 pub mod dhat;
+mod format;
 mod lib_bench;
 mod meta;
-mod print;
 pub mod summary;
 pub mod tool;
 
@@ -15,10 +15,9 @@ use anyhow::{Context, Result};
 use log::debug;
 
 use self::meta::Metadata;
+use self::summary::BenchmarkKind;
 use crate::api::{BinaryBenchmark, LibraryBenchmark};
-pub use crate::error::Error;
-use crate::runner::summary::BenchmarkKind;
-pub use crate::util::{write_all_to_stderr, write_all_to_stdout};
+use crate::error::Error;
 
 pub mod envs {
     pub const IAI_CALLGRIND_COLOR: &str = "IAI_CALLGRIND_COLOR";

@@ -7,25 +7,24 @@ use std::io::stderr;
 use anyhow::Result;
 
 use super::callgrind::args::Args;
-use super::callgrind::flamegraph::{Config as FlamegraphConfig, Flamegraph};
-use super::callgrind::parser::{Parser, Sentinel};
+use super::callgrind::flamegraph::{
+    BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
+    LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
+};
+use super::callgrind::parser::Sentinel;
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::{CallgrindCommand, RegressionConfig};
+use super::format::{tool_headline, Formatter, Header, VerticalFormat};
 use super::meta::Metadata;
-use super::print::{Formatter, Header, VerticalFormat};
-use super::summary::{BaselineName, CallgrindRegressionSummary};
-use super::tool::{RunOptions, ToolConfigs};
+use super::summary::{
+    BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, CallgrindRegressionSummary,
+    CallgrindSummary, CostsSummary, SummaryOutput,
+};
+use super::tool::{
+    Parser, RunOptions, ToolConfigs, ToolOutputPath, ToolOutputPathKind, ValgrindTool,
+};
 use super::{Config, Error};
 use crate::api::{self, LibraryBenchmark};
-use crate::runner::callgrind::flamegraph::{
-    BaselineFlamegraphGenerator, FlamegraphGenerator, LoadBaselineFlamegraphGenerator,
-    SaveBaselineFlamegraphGenerator,
-};
-use crate::runner::print::tool_summary_header;
-use crate::runner::summary::{
-    BaselineKind, BenchmarkKind, BenchmarkSummary, CallgrindSummary, CostsSummary, SummaryOutput,
-};
-use crate::runner::tool::{ToolOutputPath, ToolOutputPathKind, ValgrindTool};
 
 /// Implements [`Benchmark`] to run a [`LibBench`] and compare against a earlier [`BenchmarkKind`]
 #[derive(Debug)]
@@ -378,7 +377,7 @@ impl LibBench {
 
         header.print();
         if self.tools.has_tools_enabled() {
-            println!("{}", tool_summary_header(ValgrindTool::Callgrind));
+            println!("{}", tool_headline(ValgrindTool::Callgrind));
         }
         header
     }
