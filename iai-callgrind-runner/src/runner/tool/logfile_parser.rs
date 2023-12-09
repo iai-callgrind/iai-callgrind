@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use anyhow::{Context, Result};
 use lazy_static::lazy_static;
@@ -9,6 +10,7 @@ use regex::Regex;
 
 use super::ToolOutputPath;
 use crate::error::Error;
+use crate::runner::summary::ErrorSummary;
 use crate::runner::tool::Parser;
 use crate::util::make_relative;
 
@@ -29,6 +31,10 @@ lazy_static! {
             .expect("Regex should compile");
     static ref EXTRACT_ERRORS_RE: Regex =
         regex::Regex::new(r"^.*?(?<errors>[0-9]+).*$").expect("Regex should compile");
+    static ref EXTRACT_ERROR_SUMMARY_RE: Regex = regex::Regex::new(
+        r"^.*?(?<err>[0-9]+).*(<?<ctxs>[0-9]+).*(<?<s_err>[0-9]+).*(<?<s_ctxs>[0-9]+)$"
+    )
+    .expect("Regex should compile");
 }
 
 pub struct LogfileParser {
@@ -42,8 +48,7 @@ pub struct LogfileSummary {
     pub parent_pid: Option<i32>,
     pub fields: Vec<(String, String)>,
     pub details: Vec<String>,
-    pub error_summary: Option<String>,
-    pub num_errors: Option<u64>,
+    pub error_summary: Option<ErrorSummary>,
     pub log_path: PathBuf,
 }
 
@@ -81,7 +86,6 @@ impl LogfileParser {
         let mut details = vec![];
         let mut error_summary = None;
         let mut parent_pid = None;
-        let mut num_errors = None;
         for line in iter {
             match &state {
                 State::Header if !EMPTY_LINE_RE.is_match(&line) => {
@@ -114,14 +118,10 @@ impl LogfileParser {
                     if let Some(caps) = EXTRACT_FIELDS_RE.captures(&line) {
                         let key = caps.name("key").unwrap().as_str();
                         if key.eq_ignore_ascii_case("error summary") {
-                            let error_summary_value =
-                                caps.name("value").unwrap().as_str().to_owned();
+                            let error_summary_value = caps.name("value").unwrap().as_str();
+                            error_summary =
+                                ErrorSummary::from_str(error_summary_value).map(Some)?;
 
-                            num_errors =
-                                EXTRACT_ERRORS_RE.captures(&error_summary_value).map(|c| {
-                                    c.name("errors").unwrap().as_str().parse::<u64>().unwrap()
-                                });
-                            error_summary = Some(error_summary_value);
                             continue;
                         }
                     }
@@ -150,7 +150,6 @@ impl LogfileParser {
             fields: Vec::default(),
             details,
             error_summary,
-            num_errors,
             log_path: make_relative(&self.root_dir, path),
         })
     }
@@ -178,6 +177,8 @@ impl Parser for LogfileParser {
 
 impl LogfileSummary {
     pub fn has_errors(&self) -> bool {
-        self.num_errors.map_or(false, |n| n > 0)
+        self.error_summary
+            .as_ref()
+            .map_or(false, ErrorSummary::has_errors)
     }
 }

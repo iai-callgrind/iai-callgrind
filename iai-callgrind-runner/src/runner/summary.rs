@@ -6,9 +6,11 @@ use std::io::stdout;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use glob::glob;
 use indexmap::{indexmap, IndexMap};
+use lazy_static::lazy_static;
+use regex::Regex;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -20,6 +22,13 @@ use super::tool::{ToolOutputPath, ValgrindTool};
 use crate::api::EventKind;
 use crate::error::Error;
 use crate::util::{factor_diff, make_absolute, percentage_diff};
+
+lazy_static! {
+    static ref EXTRACT_ERROR_SUMMARY_RE: Regex = regex::Regex::new(
+        r"^.*(?<errs>[0-9]+).*(?<ctxs>[0-9]+).*(?<s_errs>[0-9]+).*(?<s_ctxs>[0-9]+).*$"
+    )
+    .expect("Regex should compile");
+}
 
 /// A `Baseline` depending on the [`BaselineKind`] which points to the corresponding path
 ///
@@ -159,6 +168,22 @@ pub struct CostsDiff {
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CostsSummary(IndexMap<EventKind, CostsDiff>);
 
+/// The `ErrorSummary` of tools which have it (Memcheck, DRD, Helgrind)
+///
+/// The `ErrorSummary` is extracted from the `ERROR SUMMARY` line in the log file output.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct ErrorSummary {
+    /// The number of total errors
+    pub errors: u64,
+    /// The number of contexts in which the errors appeared
+    pub contexts: u64,
+    /// The number of suppressed errors
+    pub supp_errors: u64,
+    /// The number of contexts from suppressed errors
+    pub supp_contexts: u64,
+}
+
 /// The `FlamegraphSummary` records all created paths for an [`EventKind`] specific flamegraph
 ///
 /// Either the `regular_path`, `old_path` or the `diff_path` are present. Never can all of them be
@@ -215,15 +240,10 @@ pub struct ToolRunSummary {
     pub details: Option<String>,
     /// The error summary string of tools that have an error summary like Memcheck, DRD, Helgrind
     ///
-    /// Some example strings:
-    /// * `0 errors from 0 contexts (suppressed: 0 from 0)`
-    /// * `2 errors from 2 contexts (suppressed: 0 from 0)`
-    pub error_summary: Option<String>,
-    /// The amount of errors extracted from the `error_summary` string if present
-    ///
-    /// This number does not take suppressed errors or contexts into account. It's just the first
-    /// number from the `error_summary` string.
-    pub num_errors: Option<u64>,
+    /// The error summary is extracted from the ERROR SUMMARY line in log files. For example
+    /// `4 errors from 3 contexts (suppressed: 2 from 1)`
+    /// results in `ErrorSummary {errors: 4, contexts: 3, supp_errors: 2, supp_contexts: 1}`
+    pub error_summary: Option<ErrorSummary>,
 }
 
 /// The `ToolSummary` containing all information about a valgrind tool run
@@ -479,6 +499,38 @@ impl CostsSummary {
     }
 }
 
+impl ErrorSummary {
+    pub fn has_errors(&self) -> bool {
+        self.errors > 0
+    }
+}
+
+impl FromStr for ErrorSummary {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let caps = EXTRACT_ERROR_SUMMARY_RE.captures(s).ok_or(anyhow!(
+            "Failed to extract error summary from string".to_owned()
+        ))?;
+        Ok(ErrorSummary {
+            errors: caps.name("errs").unwrap().as_str().parse::<u64>().unwrap(),
+            contexts: caps.name("ctxs").unwrap().as_str().parse::<u64>().unwrap(),
+            supp_errors: caps
+                .name("s_errs")
+                .unwrap()
+                .as_str()
+                .parse::<u64>()
+                .unwrap(),
+            supp_contexts: caps
+                .name("s_ctxs")
+                .unwrap()
+                .as_str()
+                .parse::<u64>()
+                .unwrap(),
+        })
+    }
+}
+
 impl FlamegraphSummary {
     /// Create a new `FlamegraphSummary`
     pub fn new(event_kind: EventKind) -> Self {
@@ -533,7 +585,6 @@ impl From<&LogfileSummary> for ToolRunSummary {
             summary: value.fields.iter().cloned().collect(),
             details: (!value.details.is_empty()).then(|| value.details.join("\n")),
             error_summary: value.error_summary.clone(),
-            num_errors: value.num_errors,
         }
     }
 }

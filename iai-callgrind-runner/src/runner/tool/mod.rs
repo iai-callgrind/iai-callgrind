@@ -373,6 +373,8 @@ impl ToolConfigs {
             let output_path = output_path.to_tool_output(tool);
             let log_path = output_path.to_log_output();
 
+            Self::print_headline(meta, tool_config);
+
             let output = command.run(
                 tool_config.clone(),
                 executable,

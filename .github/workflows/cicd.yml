@@ -133,6 +133,11 @@ jobs:
             git diff iai-callgrind/tests/ui
           fi
           exit 1
+      - name: Check summary.json schema is up-to-date
+        run: |
+          cargo run -p iai-callgrind-runner --features schema --bin schema-gen
+          npx prettier --write summary.schema.json
+          diff summary.schema.json iai-callgrind-runner/schemas/summary.v1.schema.json
       - name: Bench
         run: cargo run --package benchmark-tests --profile=bench --bin bench
         # env:
