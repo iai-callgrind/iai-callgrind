@@ -63,10 +63,10 @@ pub struct CommandLineArgs {
     /// See also https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space
     #[clap(
         long = "allow-aslr",
-        env = "IAI_CALLGRIND_ALLOW_ASLR",
         default_missing_value = "yes",
         value_parser = BoolishValueParser::new(),
-        )]
+        env = "IAI_CALLGRIND_ALLOW_ASLR",
+    )]
     pub allow_aslr: Option<bool>,
 
     /// Set performance regression limits for specific `EventKinds`
@@ -81,8 +81,8 @@ pub struct CommandLineArgs {
     #[clap(
         required = false,
         long = "regression",
+        value_parser = parse_regression_config,
         env = "IAI_CALLGRIND_REGRESSION",
-        value_parser = parse_regression_config
     )]
     pub regression: Option<RegressionConfig>,
 
@@ -91,27 +91,27 @@ pub struct CommandLineArgs {
     /// This option requires --regression=... or IAI_CALLGRIND_REGRESSION=... to be present.
     #[clap(
         long = "regression-fail-fast",
-        env = "IAI_CALLGRIND_REGRESSION_FAIL_FAST",
         requires = "regression",
         default_missing_value = "yes",
-        value_parser = BoolishValueParser::new()
+        value_parser = BoolishValueParser::new(),
+        env = "IAI_CALLGRIND_REGRESSION_FAIL_FAST",
     )]
     pub regression_fail_fast: Option<bool>,
 
     /// Compare against this baseline if present and then overwrite it
     #[clap(
         long = "save-baseline",
-        env = "IAI_CALLGRIND_SAVE_BASELINE",
         default_missing_value = "default",
         conflicts_with_all = &["baseline", "LOAD_BASELINE"]
+        env = "IAI_CALLGRIND_SAVE_BASELINE",
     )]
     pub save_baseline: Option<BaselineName>,
 
     /// Compare against this baseline if present but do not overwrite it
     #[clap(
         long = "baseline",
-        env = "IAI_CALLGRIND_BASELINE",
-        default_missing_value = "default"
+        default_missing_value = "default",
+        env = "IAI_CALLGRIND_BASELINE"
     )]
     pub baseline: Option<BaselineName>,
 
