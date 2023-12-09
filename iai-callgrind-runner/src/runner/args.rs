@@ -102,7 +102,7 @@ pub struct CommandLineArgs {
     #[clap(
         long = "save-baseline",
         default_missing_value = "default",
-        conflicts_with_all = &["baseline", "LOAD_BASELINE"]
+        conflicts_with_all = &["baseline", "LOAD_BASELINE"],
         env = "IAI_CALLGRIND_SAVE_BASELINE",
     )]
     pub save_baseline: Option<BaselineName>,
@@ -120,6 +120,7 @@ pub struct CommandLineArgs {
         id = "LOAD_BASELINE",
         long = "load-baseline",
         requires = "baseline",
+        default_missing_value = "default",
         env = "IAI_CALLGRIND_LOAD_BASELINE"
     )]
     pub load_baseline: Option<BaselineName>,
