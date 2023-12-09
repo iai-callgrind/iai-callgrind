@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### [0.9.0] - 2023-12-09
+
 ### Added
 
 * ([#31](https://github.com/iai-callgrind/iai-callgrind/issues/31)): Machine
@@ -44,6 +46,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   `--load-baseline=BASELINE` and `--baseline=BASELINE` and their environment
   variable counterparts `IAI_CALLGRIND_SAVE_BASELINE`,
   `IAI_CALLGRIND_LOAD_BASELINE` and `IAI_CALLGRIND_BASELINE`.
+* ([#30](https://github.com/iai-callgrind/iai-callgrind/issues/30)): Add
+  environment variable `IAI_CALLGRIND_CALLGRIND_ARGS` as complement to
+  `--callgrind-args`
 
 ### Changed
 

@@ -46,8 +46,9 @@ improvements and features.
     - [Performance Regressions](#performance-regressions)
     - [Valgrind Tools](#valgrind-tools)
     - [Flamegraphs](#flamegraphs)
-    - [Iai-callgrind Environment variables](#iai_callgrind-environment-variables)
-    - [Iai-callgrind command line arguments](#command-line-passing-arguments-to-callgrind)
+    - [Command-line arguments and environment variables](command-line-arguments-and-environment-variables)
+        - [Baselines](#comparing-with-baselines)
+        - [Machine-readable output](#machine-readable-output)
     - [Features and differences to Iai](#features-and-differences-to-iai)
     - [What hasn't changed](#what-hasnt-changed)
     - [See also](#see-also)
@@ -92,14 +93,14 @@ To start with Iai-Callgrind, add the following to your `Cargo.toml` file:
 
 ```toml
 [dev-dependencies]
-iai-callgrind = "0.8.0"
+iai-callgrind = "0.9.0"
 ```
 
 To be able to run the benchmarks you'll also need the `iai-callgrind-runner` binary installed
 somewhere in your `$PATH`, for example with
 
 ```shell
-cargo install --version 0.8.0 iai-callgrind-runner
+cargo install --version 0.9.0 iai-callgrind-runner
 ```
 
 There's also the possibility to install the binary somewhere else and point the
@@ -107,7 +108,7 @@ There's also the possibility to install the binary somewhere else and point the
 binary like so:
 
 ```shell
-cargo install --version 0.8.0 --root /tmp iai-callgrind-runner
+cargo install --version 0.9.0 --root /tmp iai-callgrind-runner
 IAI_CALLGRIND_RUNNER=/tmp/bin/iai-callgrind-runner cargo bench --bench my-bench
 ```
 
@@ -501,8 +502,9 @@ this project for a working example.
 
 With Iai-Callgrind you can define limits for each event kinds over which a
 performance regression can be assumed. There are no default regression checks
-and you have to opt-in with a `RegressionConfig` or [Environment
-variables](#iai_callgrind-environment-variables).
+and you have to opt-in with a `RegressionConfig` at benchmark level or at a
+global level with [Command-line arguments or Environment
+variables](#command-line-arguments-and-environment-variables).
 
 A performance regression check consists of an `EventKind` and a percentage over
 which a regression is assumed. If the percentage is negative, then a regression
@@ -558,6 +560,18 @@ main!(
 );
 ```
 
+All tools which produce an `ERROR SUMMARY` `(Memcheck, DRD, Helgrind)` have
+`--error-exitcode=201` ([See
+also](https://valgrind.org/docs/manual/manual-core.html#manual-core.erropts))
+set, so if there are any errors the benchmark run fails with `201`. You can
+overwrite this default with
+
+```rust
+Tool::new(ValgrindTool::Memcheck).args("--error-exitcode=0")
+```
+
+which would restore the default of `0` from valgrind.
+
 ### Flamegraphs
 
 Flamegraphs are opt-in and can be created if you pass a `FlamegraphConfig` to
@@ -573,73 +587,88 @@ sections which cause a bottleneck or a performance regressions etc.
 The produced flamegraph svg files are located next to the respective callgrind
 output file in the `target/iai` directory.
 
-### IAI_CALLGRIND Environment variables
+### Command-line arguments and environment variables
 
-This is an overview of environment variables iai-callgrind understands:
+It's possible to pass arguments to iai-callgrind separated by `--` (`cargo bench --
+ARGS`). For a complete rundown of possible arguments execute `cargo bench
+--bench <benchmark> -- --help`. Almost all command-line arguments
+have a corresponding environment variable. The environment variables which
+don't have a corresponding command-line argument are:
 
-- `IAI_CALLGRIND_COLOR`: Control the colored output of iai-callgrind
-- `IAI_CALLGRIND_LOG`: Define the log level
-- `IAI_CALLGRIND_REGRESSION`: Define limits for event kinds to detect performance
-  regressions
-- `IAI_CALLGRIND_REGRESSION_FAIL_FAST`: If `yes`, fail the benchmarks on the first
-  performance regression encountered. The default is `no`.
+- `IAI_CALLGRIND_COLOR`: Control the colored output of iai-callgrind. (Default
+  is `auto`)
+- `IAI_CALLGRIND_LOG`: Define the log level (Default is `WARN`)
 
-#### IAI_CALLGRIND_COLOR
+#### Comparing with baselines
 
-The metrics output is colored per default but follows the value for the `IAI_CALLGRIND_COLOR`
-environment variable. If `IAI_CALLGRIND_COLOR` is not set, `CARGO_TERM_COLOR` is also tried.
-Accepted values are: `always`, `never`, `auto` (default). So, disabling colors can be achieved with
-setting `IAI_CALLGRIND_COLOR` or `CARGO_TERM_COLOR=never`.
+Usually, two consecutive benchmark runs let iai-callgrind compare these two
+runs. It's sometimes desirable to compare the current benchmark run against a
+static reference, instead. For example, if you're working longer on the
+implementation of a feature, you may wish to compare against a baseline from
+another branch or the commit from which you started off hacking on your new
+feature to make sure you haven't introduced performance regressions.
+`iai-callgrind` offers such custom baselines. If you are familiar with
+[criterion.rs](https://bheisler.github.io/criterion.rs/book/user_guide/command_line_options.html#baselines),
+the following command line arguments should also be very familiar to you:
 
-#### IAI_CALLGRIND_LOG
+- `--save-baseline=NAME`: Compare against the `NAME` baseline if present and
+  then overwrite it. (env: `IAI_CALLGRIND_SAVE_BASELINE`)
+- `--baseline=NAME`: Compare against the `NAME` baseline without overwriting it
+  (env: `IAI_CALLGRIND_BASELINE`)
+- `--load-baseline=NAME`: Load the `NAME` baseline as the `new` data set instead
+  of creating a new one. This options needs also `--baseline=NAME` to be
+  present. (env: `IAI_CALLGRIND_LOAD_BASELINE`)
 
-This library uses [env_logger](https://crates.io/crates/env_logger) and the default logging level
-`WARN`. To set the logging level to something different, set the environment variable
-`IAI_CALLGRIND_LOG` for example to `IAI_CALLGRIND_LOG=DEBUG`. Accepted values are: `error`, `warn`
-(default), `info`, `debug`, `trace`. The logging output is colored per default but follows the
-settings of `IAI_CALLGRIND_COLOR` and `CARGO_TERM_COLOR` (In this order). See also the
-[documentation](https://docs.rs/env_logger/latest) of `env_logger`.
+If `NAME` is not present, `NAME` defaults to `default`.
 
-#### IAI_CALLGRIND_REGRESSION
+For example to create a static reference from the main branch and compare it:
 
-This environment variables takes a `,` separated list of `EVENT_KIND=PERCENTAGE`
-(key=value) pairs. For example `IAI_CALLGRIND_REGRESSION='Ir=5,
-EstimatedCycles=10'`. See also the section about [Performance
-Regressions](#performance-regressions).
+```shell
+git checkout main
+cargo bench --bench <benchmark> -- --save-baseline=main
+git checkout feature
+# ... HACK ... HACK
+cargo bench --bench <benchmark> -- --baseline main
+```
 
-#### IAI_CALLGRIND_REGRESSION_FAIL_FAST
+#### Machine-readable output
 
-This environment variables takes `yes` or `no` as value for example
-`IAI_CALLGRIND_REGRESSION_FAIL_FAST=yes`. This environment variable will be
-ignored if no `IAI_CALLGRIND_REGRESSION` variable is defined. See also the
-section about [Performance Regressions](#performance-regressions).
+With `--output-format=default|json|pretty-json` (env:
+`IAI_CALLGRIND_OUTPUT_FORMAT`) you can change the terminal output format to the
+machine-readable json format. The json schema fully describing the json output
+is stored in
+[summary.v1.schema.json](./iai-callgrind-runner/schemas/summary.v1.schema.json).
+Each line of json output (if not `pretty-json`) is a summary of a single
+benchmark and you may want to combine all benchmarks in an array. You can do so
+for example with `jq`
 
-### Command-line: Passing arguments to Callgrind
+`cargo bench -- --output-format=json | jq -s`
 
-It's now possible to pass additional arguments to callgrind separated by `--` (`cargo bench --
-CALLGRIND_ARGS`) or overwrite the defaults, which are:
+which transforms `{...}\n{...}` into `[{...},{...}]`.
 
-- `--I1=32768,8,64`
-- `--D1=32768,8,64`
-- `--LL=8388608,16,64`
-- `--toggle-collect` (additive)
-- `--collect-atstart=no`
-- `--compress-pos=no`
+Instead of or in addition to changing the terminal output, it's possible to save
+a summary file for each benchmark with `--save-summary=json|pretty-json` (env:
+`IAI_CALLGRIND_SAVE_SUMMARY`). The `summary.json` files are stored next to the
+usual benchmark output files in the `target/iai` directory.
 
-Note that `toggle-collect` won't be overwritten by any additional `toggle-collect` argument but
-instead will be passed to Callgrind in addition to the default value in the case of [library
-benchmarks](#library-benchmarks). [Binary benchmarks](#binary-benchmarks) don't have a default
-toggle.
+#### Changing the color output
 
-Some callgrind arguments don't play well with `iai-callgrind`'s defaults and are therefore ignored:
+The terminal output is colored per default but follows the value for the
+`IAI_CALLGRIND_COLOR` environment variable. If `IAI_CALLGRIND_COLOR` is not set,
+`CARGO_TERM_COLOR` is also tried. Accepted values are: `always`, `never`, `auto`
+(default). So, disabling colors can be achieved with setting
+`IAI_CALLGRIND_COLOR` or `CARGO_TERM_COLOR=never`.
 
-- `--separate-threads`
-- `--callgrind-out-file`
-- `--cache-sim`
-- `--compress-strings`
-- `--combine-dumps`
+#### Changing the logging output
 
-See also [Callgrind Command-line Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options).
+This library uses [env_logger](https://crates.io/crates/env_logger) and the
+default logging level `WARN`. To set the logging level to something different,
+set the environment variable `IAI_CALLGRIND_LOG` for example to
+`IAI_CALLGRIND_LOG=DEBUG`. Accepted values are: `error`, `warn` (default),
+`info`, `debug`, `trace`. The logging output is colored per default but follows
+the settings of `IAI_CALLGRIND_COLOR` and `CARGO_TERM_COLOR` (In this order of
+precedence). See also the [documentation](https://docs.rs/env_logger/latest) of
+`env_logger`.
 
 ### Features and differences to Iai
 
@@ -678,29 +707,10 @@ test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci 
   Estimated Cycles:        35638757|N/A             (*********)
 ```
 
-For comparison, the output of the same benchmark but in the github CI, producing
-the exact same results:
-
-```text
-test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci short:10
-  Instructions:                1733|N/A             (*********)
-  L1 Hits:                     2359|N/A             (*********)
-  L2 Hits:                        0|N/A             (*********)
-  RAM Hits:                       2|N/A             (*********)
-  Total read+write:            2361|N/A             (*********)
-  Estimated Cycles:            2429|N/A             (*********)
-test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci long:30
-  Instructions:            26214733|N/A             (*********)
-  L1 Hits:                 35638617|N/A             (*********)
-  L2 Hits:                        0|N/A             (*********)
-  RAM Hits:                       4|N/A             (*********)
-  Total read+write:        35638621|N/A             (*********)
-  Estimated Cycles:        35638757|N/A             (*********)
-```
-
-There's no difference (or only very small differences) what makes benchmark runs
-and performance improvements of the benchmarked code even more comparable across
-systems.
+For comparison, the output of the same benchmark but in the github CI is
+producing the same results. Usually, there's almost no difference between a CI
+run and a local run what makes benchmark runs and performance improvements of
+the benchmarked code even more comparable across systems.
 
 #### Cleaner output of Valgrind's annotation tools
 
@@ -739,11 +749,6 @@ The formula for the `Estimated Cycles` hasn't changed and uses Itamar Turner-Tra
 For further details about how the caches are simulated and more, see the documentation of
 [Callgrind](https://valgrind.org/docs/manual/cg-manual.html)
 
-#### Incomplete list of other minor improvements
-
-- The output files of Callgrind are now located in a subdirectory under `target/iai` to avoid
-overwriting them in case of multiple benchmark files.
-
 ### What hasn't changed
 
 Iai-Callgrind cannot completely remove the influences of setup changes. However, these effects
@@ -771,5 +776,5 @@ Iai-Callgrind wouldn't be possible without [Valgrind](https://valgrind.org/).
 Iai-Callgrind is like Iai dual licensed under the Apache 2.0 license and the MIT license at your
 option.
 
-[`library documentation`]: https://docs.rs/iai-callgrind/0.8.0/iai_callgrind/
-[docs]: https://docs.rs/iai-callgrind/0.8.0/iai_callgrind/
+[`library documentation`]: https://docs.rs/iai-callgrind/0.9.0/iai_callgrind/
+[docs]: https://docs.rs/iai-callgrind/0.9.0/iai_callgrind/
