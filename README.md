@@ -593,7 +593,7 @@ It's possible to pass arguments to iai-callgrind separated by `--` (`cargo bench
 ARGS`). For a complete rundown of possible arguments execute `cargo bench
 --bench <benchmark> -- --help`. Almost all command-line arguments
 have a corresponding environment variable. The environment variables which
-don't have a command-line argument are:
+don't have a corresponding command-line argument are:
 
 - `IAI_CALLGRIND_COLOR`: Control the colored output of iai-callgrind. (Default
   is `auto`)
@@ -602,12 +602,12 @@ don't have a command-line argument are:
 #### Comparing with baselines
 
 Usually, two consecutive benchmark runs let iai-callgrind compare these two
-runs. It's sometimes desirable to compare the current benchmark against a static
-reference, instead. For example, if you're working longer on the implementation
-of a feature, you may wish to compare against a baseline from another branch or
-the commit from which you started off hacking on your new feature to make sure
-you haven't introduced performance regressions. `iai-callgrind` offers such
-custom baselines. If you are familiar with
+runs. It's sometimes desirable to compare the current benchmark run against a
+static reference, instead. For example, if you're working longer on the
+implementation of a feature, you may wish to compare against a baseline from
+another branch or the commit from which you started off hacking on your new
+feature to make sure you haven't introduced performance regressions.
+`iai-callgrind` offers such custom baselines. If you are familiar with
 [criterion.rs](https://bheisler.github.io/criterion.rs/book/user_guide/command_line_options.html#baselines),
 the following command line arguments should also be very familiar to you:
 
@@ -619,8 +619,7 @@ the following command line arguments should also be very familiar to you:
   of creating a new one. This options needs also `--baseline=NAME` to be
   present. (env: `IAI_CALLGRIND_LOAD_BASELINE`)
 
-If `NAME` is not present in `--save-baseline` or `--baseline`, `NAME` defaults
-to `default`.
+If `NAME` is not present, `NAME` defaults to `default`.
 
 For example to create a static reference from the main branch and compare it:
 
