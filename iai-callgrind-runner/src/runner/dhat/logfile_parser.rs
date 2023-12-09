@@ -149,7 +149,6 @@ impl LogfileParser {
             fields,
             details,
             error_summary: None,
-            num_errors: None,
             log_path: make_relative(&self.root_dir, path),
         })
     }

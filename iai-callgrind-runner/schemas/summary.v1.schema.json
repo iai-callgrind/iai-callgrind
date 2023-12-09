@@ -287,6 +287,37 @@
         "$ref": "#/definitions/CostsDiff"
       }
     },
+    "ErrorSummary": {
+      "description": "The `ErrorSummary` of tools which have it (Memcheck, DRD, Helgrind)\n\nThe `ErrorSummary` is extracted from the `ERROR SUMMARY` line in the log file output.",
+      "type": "object",
+      "required": ["contexts", "errors", "supp_contexts", "supp_errors"],
+      "properties": {
+        "contexts": {
+          "description": "The number of contexts in which the errors appeared",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "errors": {
+          "description": "The number of total errors",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "supp_contexts": {
+          "description": "The number of contexts from suppressed errors",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "supp_errors": {
+          "description": "The number of suppressed errors",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    },
     "EventKind": {
       "description": "All `EventKind`s callgrind produces and additionally some derived events\n\nDepending on the options passed to Callgrind, these are the events that Callgrind can produce. See the [Callgrind documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.",
       "oneOf": [
@@ -512,14 +543,15 @@
           "type": ["string", "null"]
         },
         "error_summary": {
-          "description": "The error summary string of tools that have an error summary like Memcheck, DRD, Helgrind\n\nSome example strings: * `0 errors from 0 contexts (suppressed: 0 from 0)` * `2 errors from 2 contexts (suppressed: 0 from 0)`",
-          "type": ["string", "null"]
-        },
-        "num_errors": {
-          "description": "The amount of errors extracted from the `error_summary` string if present\n\nThis number does not take suppressed errors or contexts into account. It's just the first number from the `error_summary` string.",
-          "type": ["integer", "null"],
-          "format": "uint64",
-          "minimum": 0.0
+          "description": "The error summary string of tools that have an error summary like Memcheck, DRD, Helgrind\n\nThe error summary is extracted from the ERROR SUMMARY line in log files. For example `4 errors from 3 contexts (suppressed: 2 from 1)` results in `ErrorSummary {errors: 4, contexts: 3, supp_errors: 2, supp_contexts: 1}`",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ErrorSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "parent_pid": {
           "description": "The parent pid of this process",

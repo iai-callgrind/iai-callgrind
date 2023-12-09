@@ -40,7 +40,18 @@ impl LogfileSummaryFormatter {
         }
 
         if let Some(error_summary) = summary.error_summary.as_ref() {
-            println!("  {:<18}{}", "Error Summary:", error_summary.bold());
+            println!(
+                "  {:<18}{}",
+                "Error Summary:",
+                format!(
+                    "{} errors from {} contexts (suppressed: {} from {})",
+                    error_summary.errors,
+                    error_summary.contexts,
+                    error_summary.supp_errors,
+                    error_summary.supp_contexts
+                )
+                .bold()
+            );
         }
 
         println!(
