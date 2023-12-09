@@ -38,7 +38,8 @@ pub struct CommandLineArgs {
         required = false,
         value_parser = parse_args,
         takes_value = true,
-        verbatim_doc_comment
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_CALLGRIND_ARGS"
     )]
     pub callgrind_args: Option<RawArgs>,
 
@@ -62,10 +63,10 @@ pub struct CommandLineArgs {
     /// See also https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space
     #[clap(
         long = "allow-aslr",
-        env = "IAI_CALLGRIND_ALLOW_ASLR",
         default_missing_value = "yes",
         value_parser = BoolishValueParser::new(),
-        )]
+        env = "IAI_CALLGRIND_ALLOW_ASLR",
+    )]
     pub allow_aslr: Option<bool>,
 
     /// Set performance regression limits for specific `EventKinds`
@@ -80,8 +81,8 @@ pub struct CommandLineArgs {
     #[clap(
         required = false,
         long = "regression",
+        value_parser = parse_regression_config,
         env = "IAI_CALLGRIND_REGRESSION",
-        value_parser = parse_regression_config
     )]
     pub regression: Option<RegressionConfig>,
 
@@ -90,27 +91,27 @@ pub struct CommandLineArgs {
     /// This option requires --regression=... or IAI_CALLGRIND_REGRESSION=... to be present.
     #[clap(
         long = "regression-fail-fast",
-        env = "IAI_CALLGRIND_REGRESSION_FAIL_FAST",
         requires = "regression",
         default_missing_value = "yes",
-        value_parser = BoolishValueParser::new()
+        value_parser = BoolishValueParser::new(),
+        env = "IAI_CALLGRIND_REGRESSION_FAIL_FAST",
     )]
     pub regression_fail_fast: Option<bool>,
 
     /// Compare against this baseline if present and then overwrite it
     #[clap(
         long = "save-baseline",
-        env = "IAI_CALLGRIND_SAVE_BASELINE",
         default_missing_value = "default",
-        conflicts_with_all = &["baseline", "LOAD_BASELINE"]
+        conflicts_with_all = &["baseline", "LOAD_BASELINE"],
+        env = "IAI_CALLGRIND_SAVE_BASELINE",
     )]
     pub save_baseline: Option<BaselineName>,
 
     /// Compare against this baseline if present but do not overwrite it
     #[clap(
         long = "baseline",
-        env = "IAI_CALLGRIND_BASELINE",
-        default_missing_value = "default"
+        default_missing_value = "default",
+        env = "IAI_CALLGRIND_BASELINE"
     )]
     pub baseline: Option<BaselineName>,
 
@@ -119,6 +120,7 @@ pub struct CommandLineArgs {
         id = "LOAD_BASELINE",
         long = "load-baseline",
         requires = "baseline",
+        default_missing_value = "default",
         env = "IAI_CALLGRIND_LOAD_BASELINE"
     )]
     pub load_baseline: Option<BaselineName>,
@@ -260,5 +262,82 @@ mod tests {
             &parse_regression_config(regression_var).unwrap_err(),
             expected_reason,
         );
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_callgrind_args_env() {
+        let test_arg = "--just-testing=yes";
+        std::env::set_var("IAI_CALLGRIND_CALLGRIND_ARGS", test_arg);
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.callgrind_args,
+            Some(RawArgs::new(vec![test_arg.to_owned()]))
+        );
+    }
+
+    #[test]
+    fn test_callgrind_args_not_env() {
+        let test_arg = "--just-testing=yes";
+        let result = CommandLineArgs::parse_from([format!("--callgrind-args={test_arg}")]);
+        assert_eq!(
+            result.callgrind_args,
+            Some(RawArgs::new(vec![test_arg.to_owned()]))
+        );
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_callgrind_args_cli_takes_precedence_over_env() {
+        let test_arg_yes = "--just-testing=yes";
+        let test_arg_no = "--just-testing=no";
+        std::env::set_var("IAI_CALLGRIND_CALLGRIND_ARGS", test_arg_yes);
+        let result = CommandLineArgs::parse_from([format!("--callgrind-args={test_arg_no}")]);
+        assert_eq!(
+            result.callgrind_args,
+            Some(RawArgs::new(vec![test_arg_no.to_owned()]))
+        );
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_save_summary_env() {
+        std::env::set_var("IAI_CALLGRIND_SAVE_SUMMARY", "json");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(result.save_summary, Some(SummaryFormat::Json));
+    }
+
+    #[rstest]
+    #[case::default("", SummaryFormat::Json)]
+    #[case::json("json", SummaryFormat::Json)]
+    #[case::pretty_json("pretty-json", SummaryFormat::PrettyJson)]
+    fn test_save_summary_cli(#[case] value: &str, #[case] expected: SummaryFormat) {
+        let result = if value.is_empty() {
+            CommandLineArgs::parse_from(["--save-summary".to_owned()])
+        } else {
+            CommandLineArgs::parse_from([format!("--save-summary={value}")])
+        };
+        assert_eq!(result.save_summary, Some(expected));
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_allow_aslr_env() {
+        std::env::set_var("IAI_CALLGRIND_ALLOW_ASLR", "yes");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(result.allow_aslr, Some(true));
+    }
+
+    #[rstest]
+    #[case::default("", true)]
+    #[case::yes("yes", true)]
+    #[case::no("no", false)]
+    fn test_allow_aslr_cli(#[case] value: &str, #[case] expected: bool) {
+        let result = if value.is_empty() {
+            CommandLineArgs::parse_from(["--allow-aslr".to_owned()])
+        } else {
+            CommandLineArgs::parse_from([format!("--allow-aslr={value}")])
+        };
+        assert_eq!(result.allow_aslr, Some(expected));
     }
 }
