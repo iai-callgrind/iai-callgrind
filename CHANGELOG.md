@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### [0.9.0] - 2023-12-09
+
 ### Added
 
 * ([#31](https://github.com/iai-callgrind/iai-callgrind/issues/31)): Machine
