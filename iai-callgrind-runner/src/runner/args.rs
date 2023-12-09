@@ -262,4 +262,81 @@ mod tests {
             expected_reason,
         );
     }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_callgrind_args_env() {
+        let test_arg = "--just-testing=yes";
+        std::env::set_var("IAI_CALLGRIND_CALLGRIND_ARGS", test_arg);
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.callgrind_args,
+            Some(RawArgs::new(vec![test_arg.to_owned()]))
+        );
+    }
+
+    #[test]
+    fn test_callgrind_args_not_env() {
+        let test_arg = "--just-testing=yes";
+        let result = CommandLineArgs::parse_from([format!("--callgrind-args={test_arg}")]);
+        assert_eq!(
+            result.callgrind_args,
+            Some(RawArgs::new(vec![test_arg.to_owned()]))
+        );
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_callgrind_args_cli_takes_precedence_over_env() {
+        let test_arg_yes = "--just-testing=yes";
+        let test_arg_no = "--just-testing=no";
+        std::env::set_var("IAI_CALLGRIND_CALLGRIND_ARGS", test_arg_yes);
+        let result = CommandLineArgs::parse_from([format!("--callgrind-args={test_arg_no}")]);
+        assert_eq!(
+            result.callgrind_args,
+            Some(RawArgs::new(vec![test_arg_no.to_owned()]))
+        );
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_save_summary_env() {
+        std::env::set_var("IAI_CALLGRIND_SAVE_SUMMARY", "json");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(result.save_summary, Some(SummaryFormat::Json));
+    }
+
+    #[rstest]
+    #[case::default("", SummaryFormat::Json)]
+    #[case::json("json", SummaryFormat::Json)]
+    #[case::pretty_json("pretty-json", SummaryFormat::PrettyJson)]
+    fn test_save_summary_cli(#[case] value: &str, #[case] expected: SummaryFormat) {
+        let result = if value.is_empty() {
+            CommandLineArgs::parse_from(["--save-summary".to_owned()])
+        } else {
+            CommandLineArgs::parse_from([format!("--save-summary={value}")])
+        };
+        assert_eq!(result.save_summary, Some(expected));
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_allow_aslr_env() {
+        std::env::set_var("IAI_CALLGRIND_ALLOW_ASLR", "yes");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(result.allow_aslr, Some(true));
+    }
+
+    #[rstest]
+    #[case::default("", true)]
+    #[case::yes("yes", true)]
+    #[case::no("no", false)]
+    fn test_allow_aslr_cli(#[case] value: &str, #[case] expected: bool) {
+        let result = if value.is_empty() {
+            CommandLineArgs::parse_from(["--allow-aslr".to_owned()])
+        } else {
+            CommandLineArgs::parse_from([format!("--allow-aslr={value}")])
+        };
+        assert_eq!(result.allow_aslr, Some(expected));
+    }
 }
