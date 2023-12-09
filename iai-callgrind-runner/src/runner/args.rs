@@ -38,7 +38,8 @@ pub struct CommandLineArgs {
         required = false,
         value_parser = parse_args,
         takes_value = true,
-        verbatim_doc_comment
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_CALLGRIND_ARGS"
     )]
     pub callgrind_args: Option<RawArgs>,
 
