@@ -1,0 +1,2 @@
+bin.name = "callgrind-reqs-test"
+status = { code = 0 }

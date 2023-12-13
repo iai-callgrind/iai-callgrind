@@ -1,0 +1,9 @@
+bin.name = "valgrind-wrapper"
+args = [
+  "--tool=callgrind",
+  "--valgrind-args=--verbose",
+  "--bin=callgrind-reqs-test",
+]
+status = { code = 1 }
+fs.sandbox = true
+stdout = ""

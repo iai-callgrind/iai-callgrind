@@ -12,13 +12,31 @@
 /// We're only using constant values known at compile time, which the compiler will finally optimize
 /// away, so this macro costs us nothing.
 macro_rules! is_def {
-    ($user_req:path) => {{ $user_req as cty::c_uint > 0x0000_ffff }};
+    ($user_req:path) => {{ $user_req as cty::c_uint > 0x1000 }};
+}
+
+/// TODO: DOCS
+#[cfg(feature = "client_requests")]
+#[macro_export]
+macro_rules! valgrind_printf {
+    ($($arg:tt)*) => {{
+        $crate::client_requests::__print(format!($($arg)*));
+    }};
+}
+
+/// TODO: DOCS
+#[cfg(not(feature = "client_requests"))]
+#[macro_export]
+macro_rules! valgrind_printf {
+    ($($arg:tt)*) => {};
 }
 
 mod arch;
 mod bindings;
 #[cfg(client_requests_support = "native")]
 mod native_bindings;
+
+use std::ffi::CString;
 
 use arch::imp::valgrind_do_client_request_expr;
 use arch::valgrind_do_client_request_stmt;
@@ -30,6 +48,23 @@ fn fatal_error(func: &str) -> ! {
         module_path!(),
         bindings::__VALGRIND_MAJOR__,
         bindings::__VALGRIND_MINOR__
+    );
+}
+
+#[doc(hidden)]
+#[inline(always)]
+pub fn __print(string: String) {
+    let c_string =
+        CString::new(string).expect("A valid string should not contain \\0 bytes in the middle");
+
+    valgrind_do_client_request_expr(
+        0,
+        bindings::IC_ValgrindClientRequest::IC_PRINTF_VALIST_BY_REF as cty::c_uint,
+        c_string.as_ptr() as usize,
+        0,
+        0,
+        0,
+        0,
     );
 }
 
@@ -77,6 +112,8 @@ pub mod valgrind {
 
 /// TODO: DOCS
 pub mod callgrind {
+    use std::ffi::CString;
+
     use super::{bindings, fatal_error, valgrind_do_client_request_stmt};
 
     /// TODO: DOCS
@@ -104,7 +141,7 @@ pub mod callgrind {
     #[inline(always)]
     pub fn dump_stats_at(string: &str) {
         if is_def!(bindings::IC_CallgrindClientRequest::IC_DUMP_STATS_AT) {
-            let c_string = std::ffi::CString::new(string)
+            let c_string = CString::new(string)
                 .expect("A valid string should not contain \\0 bytes in the middle");
             valgrind_do_client_request_stmt(
                 bindings::IC_CallgrindClientRequest::IC_DUMP_STATS_AT as cty::c_uint,

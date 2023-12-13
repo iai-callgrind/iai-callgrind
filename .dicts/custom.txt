@@ -19,6 +19,8 @@ Ldmr
 Ldmw
 Logfile
 Memcheck
+Mispred
+Mispredicts
 MSRV
 Nulgrind
 Quickstart
@@ -44,6 +46,7 @@ cachuse
 callgrind
 cicd
 clippy
+condi
 consts
 debuginfo
 dhat
@@ -93,6 +96,7 @@ profraw
 quickstart
 ramhits
 realpath
+reqs
 rlval
 rolq
 rposition
@@ -118,6 +122,7 @@ tempdir
 tempfile
 totalrw
 trybuild
+trycmd
 xchg
 xchgq
 xtleak
@@ -125,6 +130,7 @@ xtree
 valgrind
 valgrind's
 valico
+valist
 vulnaribility
 walkdir
 yesno
