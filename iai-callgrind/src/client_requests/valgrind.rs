@@ -1,69 +1,55 @@
 //! TODO: DOCS
 
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::os::fd::RawFd;
 use std::usize;
 
 use super::{
     bindings, fatal_error, valgrind_do_client_request_expr, valgrind_do_client_request_stmt,
+    StackId, ThreadId,
 };
-
-/// TODO: DOCS
-pub type ThreadId = usize;
-
-/// TODO: DOCS
-pub type StackId = usize;
 
 /// TODO: DOCS
 #[inline(always)]
 pub fn running_on_valgrind() -> usize {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_RUNNING_ON_VALGRIND) {
-        valgrind_do_client_request_expr(
-            0,
-            bindings::IC_ValgrindClientRequest::IC_RUNNING_ON_VALGRIND as cty::c_uint,
-            0,
-            0,
-            0,
-            0,
-            0,
-        )
-    } else {
-        fatal_error("valgrind::running_on_valgrind");
-    }
+    do_client_request!(
+        "valgrind::running_on_valgrind",
+        0,
+        bindings::IC_ValgrindClientRequest::IC_RUNNING_ON_VALGRIND,
+        0,
+        0,
+        0,
+        0,
+        0
+    )
 }
 
 /// TODO: DOCS
 #[inline(always)]
 pub fn discard_translations(addr: *const (), len: usize) {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_DISCARD_TRANSLATIONS) {
-        valgrind_do_client_request_stmt(
-            bindings::IC_ValgrindClientRequest::IC_DISCARD_TRANSLATIONS as cty::c_uint,
-            addr as usize,
-            len,
-            0,
-            0,
-            0,
-        );
-    } else {
-        fatal_error("valgrind::discard_translations");
-    }
+    do_client_request!(
+        "valgrind::discard_translations",
+        bindings::IC_ValgrindClientRequest::IC_DISCARD_TRANSLATIONS,
+        addr as usize,
+        len,
+        0,
+        0,
+        0
+    );
 }
 
 /// TODO: DOCS
 #[inline(always)]
 pub fn inner_threads(addr: *const ()) {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_INNER_THREADS) {
-        valgrind_do_client_request_stmt(
-            bindings::IC_ValgrindClientRequest::IC_INNER_THREADS as cty::c_uint,
-            addr as usize,
-            0,
-            0,
-            0,
-            0,
-        );
-    } else {
-        fatal_error("valgrind::inner_threads");
-    }
+    do_client_request!(
+        "valgrind::inner_threads",
+        bindings::IC_ValgrindClientRequest::IC_INNER_THREADS,
+        addr as usize,
+        0,
+        0,
+        0,
+        0
+    );
 }
 
 /// Allow control to move from the simulated CPU to the real CPU, calling an arbitrary function.
@@ -84,19 +70,16 @@ pub fn inner_threads(addr: *const ()) {
 #[allow(clippy::fn_to_numeric_cast_any)]
 #[inline(always)]
 pub fn non_simd_call0(func: fn(ThreadId) -> usize) -> usize {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_CLIENT_CALL0) {
-        valgrind_do_client_request_expr(
-            0,
-            bindings::IC_ValgrindClientRequest::IC_CLIENT_CALL0 as cty::c_uint,
-            func as *const () as usize,
-            0,
-            0,
-            0,
-            0,
-        )
-    } else {
-        fatal_error("valgrind::non_simd_call0");
-    }
+    do_client_request!(
+        "valgrind::non_simd_call0",
+        0,
+        bindings::IC_ValgrindClientRequest::IC_CLIENT_CALL0,
+        func as *const () as usize,
+        0,
+        0,
+        0,
+        0
+    )
 }
 
 /// Allow control to move from the simulated CPU to the real CPU, calling an arbitrary function.
@@ -115,19 +98,16 @@ pub fn non_simd_call0(func: fn(ThreadId) -> usize) -> usize {
 #[allow(clippy::fn_to_numeric_cast_any)]
 #[inline(always)]
 pub fn non_simd_call1(func: fn(ThreadId, usize) -> usize, arg1: usize) -> usize {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_CLIENT_CALL1) {
-        valgrind_do_client_request_expr(
-            0,
-            bindings::IC_ValgrindClientRequest::IC_CLIENT_CALL1 as cty::c_uint,
-            func as *const () as usize,
-            arg1,
-            0,
-            0,
-            0,
-        )
-    } else {
-        fatal_error("valgrind::non_simd_call1");
-    }
+    do_client_request!(
+        "valgrind::non_simd_call1",
+        0,
+        bindings::IC_ValgrindClientRequest::IC_CLIENT_CALL1,
+        func as *const () as usize,
+        arg1,
+        0,
+        0,
+        0
+    )
 }
 
 /// Allow control to move from the simulated CPU to the real CPU, calling an arbitrary function.
@@ -140,19 +120,16 @@ pub fn non_simd_call2(
     arg1: usize,
     arg2: usize,
 ) -> usize {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_CLIENT_CALL2) {
-        valgrind_do_client_request_expr(
-            0,
-            bindings::IC_ValgrindClientRequest::IC_CLIENT_CALL2 as cty::c_uint,
-            func as *const () as usize,
-            arg1,
-            arg2,
-            0,
-            0,
-        )
-    } else {
-        fatal_error("valgrind::non_simd_call2");
-    }
+    do_client_request!(
+        "valgrind::non_simd_call2",
+        0,
+        bindings::IC_ValgrindClientRequest::IC_CLIENT_CALL2,
+        func as *const () as usize,
+        arg1,
+        arg2,
+        0,
+        0
+    )
 }
 
 /// Allow control to move from the simulated CPU to the real CPU, calling an arbitrary function.
@@ -166,19 +143,16 @@ pub fn non_simd_call3(
     arg2: usize,
     arg3: usize,
 ) -> usize {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_CLIENT_CALL3) {
-        valgrind_do_client_request_expr(
-            0,
-            bindings::IC_ValgrindClientRequest::IC_CLIENT_CALL3 as cty::c_uint,
-            func as *const () as usize,
-            arg1,
-            arg2,
-            arg3,
-            0,
-        )
-    } else {
-        fatal_error("valgrind::non_simd_call3");
-    }
+    do_client_request!(
+        "valgrind::non_simd_call3",
+        0,
+        bindings::IC_ValgrindClientRequest::IC_CLIENT_CALL3,
+        func as *const () as usize,
+        arg1,
+        arg2,
+        arg3,
+        0
+    )
 }
 
 /// Counts the number of errors that have been recorded by a tool.
@@ -187,19 +161,16 @@ pub fn non_simd_call3(
 /// for them to be counted.
 #[inline(always)]
 pub fn count_errors() -> usize {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_COUNT_ERRORS) {
-        valgrind_do_client_request_expr(
-            0,
-            bindings::IC_ValgrindClientRequest::IC_COUNT_ERRORS as cty::c_uint,
-            0,
-            0,
-            0,
-            0,
-            0,
-        )
-    } else {
-        fatal_error("valgrind::count_errors");
-    }
+    do_client_request!(
+        "valgrind::count_errors",
+        0,
+        bindings::IC_ValgrindClientRequest::IC_COUNT_ERRORS,
+        0,
+        0,
+        0,
+        0,
+        0
+    )
 }
 
 /// TODO: DOCS
@@ -217,69 +188,57 @@ pub fn count_errors() -> usize {
 /// ```
 #[inline(always)]
 pub fn malloclike_block(addr: *const (), size: usize, redzone: usize, is_zeroed: bool) {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_MALLOCLIKE_BLOCK) {
-        valgrind_do_client_request_stmt(
-            bindings::IC_ValgrindClientRequest::IC_MALLOCLIKE_BLOCK as cty::c_uint,
-            addr as usize,
-            size,
-            redzone,
-            usize::from(is_zeroed),
-            0,
-        );
-    } else {
-        fatal_error("valgrind::malloclike_block");
-    }
+    do_client_request!(
+        "valgrind::malloclike_block",
+        bindings::IC_ValgrindClientRequest::IC_MALLOCLIKE_BLOCK,
+        addr as usize,
+        size,
+        redzone,
+        usize::from(is_zeroed),
+        0
+    );
 }
 
 /// TODO: DOCS
 #[inline(always)]
 pub fn resizeinplace_block(addr: *const (), old_size: usize, new_size: usize, redzone: usize) {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_RESIZEINPLACE_BLOCK) {
-        valgrind_do_client_request_stmt(
-            bindings::IC_ValgrindClientRequest::IC_RESIZEINPLACE_BLOCK as cty::c_uint,
-            addr as usize,
-            old_size,
-            new_size,
-            redzone,
-            0,
-        );
-    } else {
-        fatal_error("valgrind::resizeinplace_block");
-    }
+    do_client_request!(
+        "valgrind::resizeinplace_block",
+        bindings::IC_ValgrindClientRequest::IC_RESIZEINPLACE_BLOCK,
+        addr as usize,
+        old_size,
+        new_size,
+        redzone,
+        0
+    );
 }
 
 /// TODO: DOCS
 #[inline(always)]
 pub fn freelike_block(addr: *const (), redzone: usize) {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_FREELIKE_BLOCK) {
-        valgrind_do_client_request_stmt(
-            bindings::IC_ValgrindClientRequest::IC_FREELIKE_BLOCK as cty::c_uint,
-            addr as usize,
-            redzone,
-            0,
-            0,
-            0,
-        );
-    } else {
-        fatal_error("valgrind::freelike_block");
-    }
+    do_client_request!(
+        "valgrind::freelike_block",
+        bindings::IC_ValgrindClientRequest::IC_FREELIKE_BLOCK,
+        addr as usize,
+        redzone,
+        0,
+        0,
+        0
+    );
 }
 
 /// TODO: DOCS
 #[inline(always)]
 pub fn create_mempool(pool: *const (), redzone: usize, is_zeroed: bool) {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_CREATE_MEMPOOL) {
-        valgrind_do_client_request_stmt(
-            bindings::IC_ValgrindClientRequest::IC_CREATE_MEMPOOL as cty::c_uint,
-            pool as usize,
-            redzone,
-            usize::from(is_zeroed),
-            0,
-            0,
-        );
-    } else {
-        fatal_error("valgrind::create_mempool");
-    }
+    do_client_request!(
+        "valgrind::create_mempool",
+        bindings::IC_ValgrindClientRequest::IC_CREATE_MEMPOOL,
+        pool as usize,
+        redzone,
+        usize::from(is_zeroed),
+        0,
+        0
+    );
 }
 
 /// TODO: DOCS
@@ -296,175 +255,145 @@ pub mod MempoolFlags {
 /// TODO: DOCS
 #[inline(always)]
 pub fn create_mempool_ext(pool: *const (), redzone: usize, is_zeroed: bool, flags: u8) {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_CREATE_MEMPOOL) {
-        valgrind_do_client_request_stmt(
-            bindings::IC_ValgrindClientRequest::IC_CREATE_MEMPOOL as cty::c_uint,
-            pool as usize,
-            redzone,
-            usize::from(is_zeroed),
-            flags as usize,
-            0,
-        );
-    } else {
-        fatal_error("valgrind::create_mempool_ext");
-    }
+    do_client_request!(
+        "valgrind::create_mempool_ext",
+        bindings::IC_ValgrindClientRequest::IC_CREATE_MEMPOOL,
+        pool as usize,
+        redzone,
+        usize::from(is_zeroed),
+        flags as usize,
+        0
+    );
 }
 
 /// Destroy a memory pool
 #[inline(always)]
 pub fn destroy_mempool(pool: *const ()) {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_DESTROY_MEMPOOL) {
-        valgrind_do_client_request_stmt(
-            bindings::IC_ValgrindClientRequest::IC_DESTROY_MEMPOOL as cty::c_uint,
-            pool as usize,
-            0,
-            0,
-            0,
-            0,
-        );
-    } else {
-        fatal_error("valgrind::destroy_mempool");
-    }
+    do_client_request!(
+        "valgrind::destroy_mempool",
+        bindings::IC_ValgrindClientRequest::IC_DESTROY_MEMPOOL,
+        pool as usize,
+        0,
+        0,
+        0,
+        0
+    );
 }
 
 /// Associate a piece of memory with a memory pool
 #[inline(always)]
 pub fn mempool_alloc(pool: *const (), addr: *const (), size: usize) {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_MEMPOOL_ALLOC) {
-        valgrind_do_client_request_stmt(
-            bindings::IC_ValgrindClientRequest::IC_MEMPOOL_ALLOC as cty::c_uint,
-            pool as usize,
-            addr as usize,
-            size,
-            0,
-            0,
-        );
-    } else {
-        fatal_error("valgrind::mempool_alloc");
-    }
+    do_client_request!(
+        "valgrind::mempool_alloc",
+        bindings::IC_ValgrindClientRequest::IC_MEMPOOL_ALLOC,
+        pool as usize,
+        addr as usize,
+        size,
+        0,
+        0
+    );
 }
 
 /// Disassociate a piece of memory from a memory pool
 #[inline(always)]
 pub fn mempool_free(pool: *const (), addr: *const ()) {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_MEMPOOL_FREE) {
-        valgrind_do_client_request_stmt(
-            bindings::IC_ValgrindClientRequest::IC_MEMPOOL_FREE as cty::c_uint,
-            pool as usize,
-            addr as usize,
-            0,
-            0,
-            0,
-        );
-    } else {
-        fatal_error("valgrind::mempool_free");
-    }
+    do_client_request!(
+        "valgrind::mempool_free",
+        bindings::IC_ValgrindClientRequest::IC_MEMPOOL_FREE,
+        pool as usize,
+        addr as usize,
+        0,
+        0,
+        0
+    );
 }
 
 /// Disassociate any pieces outside a particular range
 #[inline(always)]
 pub fn mempool_trim(pool: *const (), addr: *const (), size: usize) {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_MEMPOOL_TRIM) {
-        valgrind_do_client_request_stmt(
-            bindings::IC_ValgrindClientRequest::IC_MEMPOOL_TRIM as cty::c_uint,
-            pool as usize,
-            addr as usize,
-            size,
-            0,
-            0,
-        );
-    } else {
-        fatal_error("valgrind::mempool_trim");
-    }
+    do_client_request!(
+        "valgrind::mempool_trim",
+        bindings::IC_ValgrindClientRequest::IC_MEMPOOL_TRIM,
+        pool as usize,
+        addr as usize,
+        size,
+        0,
+        0
+    );
 }
 
 /// Resize and/or move a piece associated with a memory pool
 #[inline(always)]
 pub fn move_mempool(pool_a: *const (), pool_b: *const ()) {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_MOVE_MEMPOOL) {
-        valgrind_do_client_request_stmt(
-            bindings::IC_ValgrindClientRequest::IC_MOVE_MEMPOOL as cty::c_uint,
-            pool_a as usize,
-            pool_b as usize,
-            0,
-            0,
-            0,
-        );
-    } else {
-        fatal_error("valgrind::move_mempool");
-    }
+    do_client_request!(
+        "valgrind::move_mempool",
+        bindings::IC_ValgrindClientRequest::IC_MOVE_MEMPOOL,
+        pool_a as usize,
+        pool_b as usize,
+        0,
+        0,
+        0
+    );
 }
 
 /// Resize and/or move a piece associated with a memory pool
 #[inline(always)]
 pub fn mempool_change(pool: *const (), addr_a: *const (), addr_b: *const (), size: usize) {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_MEMPOOL_CHANGE) {
-        valgrind_do_client_request_stmt(
-            bindings::IC_ValgrindClientRequest::IC_MEMPOOL_CHANGE as cty::c_uint,
-            pool as usize,
-            addr_a as usize,
-            addr_b as usize,
-            size,
-            0,
-        );
-    } else {
-        fatal_error("valgrind::mempool_change");
-    }
+    do_client_request!(
+        "valgrind::mempool_change",
+        bindings::IC_ValgrindClientRequest::IC_MEMPOOL_CHANGE,
+        pool as usize,
+        addr_a as usize,
+        addr_b as usize,
+        size,
+        0
+    );
 }
 
 /// Return true if a mempool exists, else false
 #[inline(always)]
 pub fn mempool_exists(pool: *const ()) -> bool {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_MEMPOOL_EXISTS) {
-        valgrind_do_client_request_expr(
-            0,
-            bindings::IC_ValgrindClientRequest::IC_MEMPOOL_EXISTS as cty::c_uint,
-            pool as usize,
-            0,
-            0,
-            0,
-            0,
-        ) != 0
-    } else {
-        fatal_error("valgrind::mempool_exists");
-    }
+    do_client_request!(
+        "valgrind::mempool_exists",
+        0,
+        bindings::IC_ValgrindClientRequest::IC_MEMPOOL_EXISTS,
+        pool as usize,
+        0,
+        0,
+        0,
+        0
+    ) != 0
 }
 
-/// Mark a piece of memory as being a stack. Returns a [`StackId`]
+/// Mark a piece of memory as being a stack. Returns a [`super::StackId`]
 ///
 /// `start` is the lowest addressable stack byte, `end` is the highest addressable stack byte.
 #[inline(always)]
 pub fn stack_register(start: usize, end: usize) -> StackId {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_STACK_REGISTER) {
-        valgrind_do_client_request_expr(
-            0,
-            bindings::IC_ValgrindClientRequest::IC_STACK_REGISTER as cty::c_uint,
-            start,
-            end,
-            0,
-            0,
-            0,
-        )
-    } else {
-        fatal_error("valgrind::stack_register");
-    }
+    do_client_request!(
+        "valgrind::stack_register",
+        0,
+        bindings::IC_ValgrindClientRequest::IC_STACK_REGISTER,
+        start,
+        end,
+        0,
+        0,
+        0
+    )
 }
 
 /// Unmark the piece of memory associated with a [`StackId`] as being a stack
 #[inline(always)]
 pub fn stack_deregister(stack_id: StackId) {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_STACK_DEREGISTER) {
-        valgrind_do_client_request_stmt(
-            bindings::IC_ValgrindClientRequest::IC_STACK_DEREGISTER as cty::c_uint,
-            stack_id,
-            0,
-            0,
-            0,
-            0,
-        );
-    } else {
-        fatal_error("valgrind::stack_deregister");
-    }
+    do_client_request!(
+        "valgrind::stack_deregister",
+        bindings::IC_ValgrindClientRequest::IC_STACK_DEREGISTER,
+        stack_id,
+        0,
+        0,
+        0,
+        0
+    );
 }
 
 /// Change the `start` and `end` address of the [`StackId`]
@@ -473,18 +402,15 @@ pub fn stack_deregister(stack_id: StackId) {
 /// byte.
 #[inline(always)]
 pub fn stack_change(stack_id: StackId, start: usize, end: usize) {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_STACK_CHANGE) {
-        valgrind_do_client_request_stmt(
-            bindings::IC_ValgrindClientRequest::IC_STACK_CHANGE as cty::c_uint,
-            stack_id,
-            start,
-            end,
-            0,
-            0,
-        );
-    } else {
-        fatal_error("valgrind::stack_change");
-    }
+    do_client_request!(
+        "valgrind::stack_change",
+        bindings::IC_ValgrindClientRequest::IC_STACK_CHANGE,
+        stack_id,
+        start,
+        end,
+        0,
+        0
+    );
 }
 
 /// Load PDB debug info for `Wine PE image_map`
@@ -494,18 +420,15 @@ pub fn stack_change(stack_id: StackId, start: usize, end: usize) {
 /// When the raw file descriptor `fd` is smaller than 0
 #[inline(always)]
 pub fn load_pdb_debuginfo(fd: RawFd, ptr: *const (), total_size: usize, delta: usize) {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_LOAD_PDB_DEBUGINFO) {
-        valgrind_do_client_request_stmt(
-            bindings::IC_ValgrindClientRequest::IC_LOAD_PDB_DEBUGINFO as cty::c_uint,
-            fd.try_into().expect("A file descriptor should be >= 0"),
-            ptr as usize,
-            total_size,
-            delta,
-            0,
-        );
-    } else {
-        fatal_error("valgrind::load_pdb_debuginfo");
-    }
+    do_client_request!(
+        "valgrind::load_pdb_debuginfo",
+        bindings::IC_ValgrindClientRequest::IC_LOAD_PDB_DEBUGINFO,
+        fd.try_into().expect("A file descriptor should be >= 0"),
+        ptr as usize,
+        total_size,
+        delta,
+        0
+    );
 }
 
 /// Map a code address to a source file name and line number
@@ -515,19 +438,16 @@ pub fn load_pdb_debuginfo(fd: RawFd, ptr: *const (), total_size: usize, delta: u
 /// zero.
 #[inline(always)]
 pub fn map_ip_to_srcloc(addr: *const (), buf64: *const ()) -> usize {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_MAP_IP_TO_SRCLOC) {
-        valgrind_do_client_request_expr(
-            0,
-            bindings::IC_ValgrindClientRequest::IC_MAP_IP_TO_SRCLOC as cty::c_uint,
-            addr as usize,
-            buf64 as usize,
-            0,
-            0,
-            0,
-        )
-    } else {
-        fatal_error("valgrind::map_ip_to_srcloc");
-    }
+    do_client_request!(
+        "valgrind::map_ip_to_srcloc",
+        0,
+        bindings::IC_ValgrindClientRequest::IC_MAP_IP_TO_SRCLOC,
+        addr as usize,
+        buf64 as usize,
+        0,
+        0,
+        0
+    )
 }
 
 /// Disable error reporting for this thread.
@@ -559,18 +479,15 @@ pub fn disable_error_reporting() {
 /// See also [`disable_error_reporting`]
 #[inline(always)]
 pub fn enable_error_reporting() {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_CHANGE_ERR_DISABLEMENT) {
-        valgrind_do_client_request_stmt(
-            bindings::IC_ValgrindClientRequest::IC_CHANGE_ERR_DISABLEMENT as cty::c_uint,
-            usize::MAX, // The original code in `valgrind.h` used `-1` as value
-            0,
-            0,
-            0,
-            0,
-        );
-    } else {
-        fatal_error("valgrind::enable_error_reporting");
-    }
+    do_client_request!(
+        "valgrind::enable_error_reporting",
+        bindings::IC_ValgrindClientRequest::IC_CHANGE_ERR_DISABLEMENT,
+        usize::MAX, // The original code in `valgrind.h` used `-1` as value
+        0,
+        0,
+        0,
+        0
+    );
 }
 
 /// Execute a monitor command from the client program
@@ -588,22 +505,19 @@ pub fn monitor_command<T>(command: T) -> bool
 where
     T: Into<String>,
 {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_GDB_MONITOR_COMMAND) {
-        let c_string = CString::new(command.into())
-            .expect("A valid string should not contain \\0 bytes in the middle");
+    let c_string = CString::new(command.into())
+        .expect("A valid string should not contain \\0 bytes in the middle");
 
-        valgrind_do_client_request_expr(
-            0,
-            bindings::IC_ValgrindClientRequest::IC_GDB_MONITOR_COMMAND as cty::c_uint,
-            c_string.as_ptr() as usize,
-            0,
-            0,
-            0,
-            0,
-        ) != 1
-    } else {
-        fatal_error("valgrind::monitor_command");
-    }
+    do_client_request!(
+        "valgrind::monitor_command",
+        0,
+        bindings::IC_ValgrindClientRequest::IC_GDB_MONITOR_COMMAND,
+        c_string.as_ptr() as usize,
+        0,
+        0,
+        0,
+        0
+    ) != 1
 }
 
 /// Change the value of a dynamic command line option
@@ -619,19 +533,16 @@ pub fn clo_change<T>(option: T)
 where
     T: Into<String>,
 {
-    if is_def!(bindings::IC_ValgrindClientRequest::IC_CLO_CHANGE) {
-        let c_string = CString::new(option.into())
-            .expect("A valid string should not contain \\0 bytes in the middle");
+    let c_string = CString::new(option.into())
+        .expect("A valid string should not contain \\0 bytes in the middle");
 
-        valgrind_do_client_request_stmt(
-            bindings::IC_ValgrindClientRequest::IC_CLO_CHANGE as cty::c_uint,
-            c_string.as_ptr() as usize,
-            0,
-            0,
-            0,
-            0,
-        );
-    } else {
-        fatal_error("valgrind::clo_change");
-    }
+    do_client_request!(
+        "valgrind::clo_change",
+        bindings::IC_ValgrindClientRequest::IC_CLO_CHANGE,
+        c_string.as_ptr() as usize,
+        0,
+        0,
+        0,
+        0
+    );
 }

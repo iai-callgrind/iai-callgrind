@@ -10,6 +10,18 @@ const bool IC_IS_PLATFORM_SUPPORTED_BY_VALGRIND = true;
 const bool IC_IS_PLATFORM_SUPPORTED_BY_VALGRIND = false;
 #endif
 
+#ifdef __VALGRIND_MAJOR__
+const unsigned int IC_VALGRIND_MAJOR = __VALGRIND_MAJOR__;
+#else
+const unsigned int IC_VALGRIND_MAJOR = 0;
+#endif
+
+#ifdef __VALGRIND_MINOR__
+const unsigned int IC_VALGRIND_MINOR = __VALGRIND_MINOR__;
+#else
+const unsigned int IC_VALGRIND_MINOR = 0;
+#endif
+
 /*
  * Instead of taking the original enums, we wrap the enum variants in our own
  * type. So, we stay in control which client requests we offer and can sort out
