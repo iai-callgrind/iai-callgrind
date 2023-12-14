@@ -1,5 +1,8 @@
+use std::ffi::{CStr, CString, OsStr, OsString};
+
 use client_request_tests::MARKER;
-use iai_callgrind::client_requests;
+use iai_callgrind::client_requests::valgrind::ThreadId;
+use iai_callgrind::client_requests::{self};
 
 fn do_work(start: i32) -> i32 {
     let mut sum = start;
@@ -36,7 +39,7 @@ fn client_requests_2() -> i32 {
 }
 
 fn main() {
-    iai_callgrind::valgrind_printf!("{MARKER}\n");
+    iai_callgrind::valgrind_println!("{MARKER}");
 
     client_requests_2();
 

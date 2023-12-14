@@ -15,31 +15,80 @@ macro_rules! is_def {
     ($user_req:path) => {{ $user_req as cty::c_uint > 0x1000 }};
 }
 
-/// TODO: DOCS
-#[cfg(feature = "client_requests")]
-#[macro_export]
-macro_rules! valgrind_printf {
-    ($($arg:tt)*) => {{
-        $crate::client_requests::__print(format!($($arg)*));
-    }};
-}
+cfg_if! {
+    if #[cfg(feature = "client_requests")] {
+        /// TODO: DOCS
+        #[macro_export]
+        macro_rules! valgrind_printf {
+            ($($arg:tt)*) => {{
+                $crate::client_requests::__valgrind_print(format!($($arg)*));
+            }};
+        }
 
-/// TODO: DOCS
-#[cfg(not(feature = "client_requests"))]
-#[macro_export]
-macro_rules! valgrind_printf {
-    ($($arg:tt)*) => {};
+        /// TODO: DOCS
+        #[macro_export]
+        macro_rules! valgrind_println {
+            () => { valgrind_printf!("\n") };
+            ($($arg:tt)*) => {{
+                $crate::client_requests::__valgrind_print(format!("{}\n", format_args!($($arg)*)));
+            }};
+        }
+
+        /// TODO: DOCS
+        #[macro_export]
+        macro_rules! valgrind_printf_backtrace {
+            ($($arg:tt)*) => {{
+                $crate::client_requests::__valgrind_print_backtrace(format!($($arg)*));
+            }};
+        }
+
+        /// TODO: DOCS
+        #[macro_export]
+        macro_rules! valgrind_println_backtrace {
+            () => { valgrind_printf_backtrace!("\n") };
+            ($($arg:tt)*) => {{
+                $crate::client_requests::__valgrind_print_backtrace(format!("{}\n", format_args!($($arg)*)));
+            }};
+        }
+    } else {
+        /// TODO: DOCS
+        #[macro_export]
+        macro_rules! valgrind_printf {
+            ($($arg:tt)*) => {};
+        }
+
+        /// TODO: DOCS
+        #[macro_export]
+        macro_rules! valgrind_println {
+            ($($arg:tt)*) => {};
+        }
+
+        /// TODO: DOCS
+        #[macro_export]
+        macro_rules! valgrind_printf_backtrace {
+            ($($arg:tt)*) => {};
+        }
+
+        /// TODO: DOCS
+        #[macro_export]
+        macro_rules! valgrind_println_backtrace {
+            ($($arg:tt)*) => {};
+        }
+    }
 }
 
 mod arch;
 mod bindings;
+pub mod callgrind;
 #[cfg(client_requests_support = "native")]
 mod native_bindings;
+pub mod valgrind;
 
 use std::ffi::CString;
 
 use arch::imp::valgrind_do_client_request_expr;
 use arch::valgrind_do_client_request_stmt;
+use cfg_if::cfg_if;
 
 fn fatal_error(func: &str) -> ! {
     panic!(
@@ -53,7 +102,7 @@ fn fatal_error(func: &str) -> ! {
 
 #[doc(hidden)]
 #[inline(always)]
-pub fn __print(string: String) {
+pub fn __valgrind_print(string: String) {
     let c_string =
         CString::new(string).expect("A valid string should not contain \\0 bytes in the middle");
 
@@ -68,159 +117,19 @@ pub fn __print(string: String) {
     );
 }
 
-/// TODO: DOCS
-pub mod valgrind {
-    use super::{
-        bindings, fatal_error, valgrind_do_client_request_expr, valgrind_do_client_request_stmt,
-    };
+#[doc(hidden)]
+#[inline(always)]
+pub fn __valgrind_print_backtrace(string: String) {
+    let c_string =
+        CString::new(string).expect("A valid string should not contain \\0 bytes in the middle");
 
-    /// TODO: DOCS
-    #[inline(always)]
-    pub fn running_on_valgrind() -> usize {
-        if is_def!(bindings::IC_ValgrindClientRequest::IC_RUNNING_ON_VALGRIND) {
-            valgrind_do_client_request_expr(
-                0,
-                bindings::IC_ValgrindClientRequest::IC_RUNNING_ON_VALGRIND as cty::c_uint,
-                0,
-                0,
-                0,
-                0,
-                0,
-            )
-        } else {
-            fatal_error("valgrind::running_on_valgrind");
-        }
-    }
-
-    /// TODO: DOCS
-    #[inline(always)]
-    pub fn discard_translations(addr: *const (), len: usize) {
-        if is_def!(bindings::IC_ValgrindClientRequest::IC_VALGRIND_DISCARD_TRANSLATIONS) {
-            valgrind_do_client_request_stmt(
-                bindings::IC_ValgrindClientRequest::IC_VALGRIND_DISCARD_TRANSLATIONS as cty::c_uint,
-                addr as usize,
-                len,
-                0,
-                0,
-                0,
-            );
-        } else {
-            fatal_error("valgrind::discard_translations");
-        }
-    }
-}
-
-/// TODO: DOCS
-pub mod callgrind {
-    use std::ffi::CString;
-
-    use super::{bindings, fatal_error, valgrind_do_client_request_stmt};
-
-    /// TODO: DOCS
-    #[inline(always)]
-    pub fn dump_stats() {
-        if is_def!(bindings::IC_CallgrindClientRequest::IC_DUMP_STATS) {
-            valgrind_do_client_request_stmt(
-                bindings::IC_CallgrindClientRequest::IC_DUMP_STATS as cty::c_uint,
-                0,
-                0,
-                0,
-                0,
-                0,
-            );
-        } else {
-            fatal_error("callgrind::dump_stats");
-        }
-    }
-
-    /// TODO: DOCS
-    ///
-    /// # Panics
-    ///
-    /// null bytes
-    #[inline(always)]
-    pub fn dump_stats_at(string: &str) {
-        if is_def!(bindings::IC_CallgrindClientRequest::IC_DUMP_STATS_AT) {
-            let c_string = CString::new(string)
-                .expect("A valid string should not contain \\0 bytes in the middle");
-            valgrind_do_client_request_stmt(
-                bindings::IC_CallgrindClientRequest::IC_DUMP_STATS_AT as cty::c_uint,
-                c_string.as_ptr() as usize,
-                0,
-                0,
-                0,
-                0,
-            );
-        } else {
-            fatal_error("callgrind::dump_stats_at");
-        }
-    }
-
-    /// .
-    #[inline(always)]
-    pub fn zero_stats() {
-        if is_def!(bindings::IC_CallgrindClientRequest::IC_ZERO_STATS) {
-            valgrind_do_client_request_stmt(
-                bindings::IC_CallgrindClientRequest::IC_ZERO_STATS as cty::c_uint,
-                0,
-                0,
-                0,
-                0,
-                0,
-            );
-        } else {
-            fatal_error("callgrind::zero_stats");
-        }
-    }
-
-    /// .
-    #[inline(always)]
-    pub fn toggle_collect() {
-        if is_def!(bindings::IC_CallgrindClientRequest::IC_TOGGLE_COLLECT) {
-            valgrind_do_client_request_stmt(
-                bindings::IC_CallgrindClientRequest::IC_TOGGLE_COLLECT as cty::c_uint,
-                0,
-                0,
-                0,
-                0,
-                0,
-            );
-        } else {
-            fatal_error("callgrind::toggle_collect");
-        }
-    }
-
-    /// .
-    #[inline(always)]
-    pub fn start_instrumentation() {
-        if is_def!(bindings::IC_CallgrindClientRequest::IC_START_INSTRUMENTATION) {
-            valgrind_do_client_request_stmt(
-                bindings::IC_CallgrindClientRequest::IC_START_INSTRUMENTATION as cty::c_uint,
-                0,
-                0,
-                0,
-                0,
-                0,
-            );
-        } else {
-            fatal_error("callgrind::start_instrumentation");
-        }
-    }
-
-    /// .
-    #[inline(always)]
-    pub fn stop_instrumentation() {
-        if is_def!(bindings::IC_CallgrindClientRequest::IC_STOP_INSTRUMENTATION) {
-            valgrind_do_client_request_stmt(
-                bindings::IC_CallgrindClientRequest::IC_STOP_INSTRUMENTATION as cty::c_uint,
-                0,
-                0,
-                0,
-                0,
-                0,
-            );
-        } else {
-            fatal_error("callgrind::stop_instrumentation");
-        }
-    }
+    valgrind_do_client_request_expr(
+        0,
+        bindings::IC_ValgrindClientRequest::IC_PRINTF_BACKTRACE_VALIST_BY_REF as cty::c_uint,
+        c_string.as_ptr() as usize,
+        0,
+        0,
+        0,
+        0,
+    );
 }

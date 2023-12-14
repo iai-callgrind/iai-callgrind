@@ -28,7 +28,7 @@ lazy_static! {
     static ref CALLGRIND_RM_DUMP_TO_RE: Regex =
         regex::Regex::new(r"^(Dump to).*$").expect("Regex should compile");
     static ref CALLGRIND_RM_BB_NUM_RE: Regex =
-        regex::Regex::new(r"^(.*at BB\s*)([0-9]*)(.*)$").expect("Regex should compile");
+        regex::Regex::new(r"^(.*at BB)(\s*[0-9]+\s*)(.*)$").expect("Regex should compile");
 }
 
 #[derive(Debug)]
@@ -74,20 +74,27 @@ fn callgrind_filter(bytes: &[u8], writer: &mut impl Write) {
             .unwrap()
             .as_str();
         if !CALLGRIND_EXCLUDED_LINES_RE.is_match(rest) {
-            let rest = if let Some(caps) = CALLGRIND_RM_NUM_REFS_RE.captures(rest) {
-                caps.get(1).unwrap().as_str()
+            if let Some(caps) = CALLGRIND_RM_NUM_REFS_RE.captures(rest) {
+                writeln!(writer, "{}", caps.get(1).unwrap().as_str()).unwrap();
             } else if let Some(caps) = CALLGRIND_RM_NUM_MISS_RE.captures(rest) {
-                caps.get(1).unwrap().as_str()
+                writeln!(writer, "{}", caps.get(1).unwrap().as_str()).unwrap();
             } else if let Some(caps) = CALLGRIND_RM_NUM_RATE_RE.captures(rest) {
-                caps.get(1).unwrap().as_str()
+                writeln!(writer, "{}", caps.get(1).unwrap().as_str()).unwrap();
             } else if let Some(caps) = CALLGRIND_RM_NUM_COLLECTED_RE.captures(rest) {
-                caps.get(1).unwrap().as_str()
+                writeln!(writer, "{}", caps.get(1).unwrap().as_str()).unwrap();
             } else if let Some(caps) = CALLGRIND_RM_DUMP_TO_RE.captures(rest) {
-                caps.get(1).unwrap().as_str()
+                writeln!(writer, "{}", caps.get(1).unwrap().as_str()).unwrap();
+            } else if let Some(caps) = CALLGRIND_RM_BB_NUM_RE.captures(rest) {
+                writeln!(
+                    writer,
+                    "{} {}",
+                    caps.get(1).unwrap().as_str(),
+                    caps.get(3).unwrap().as_str()
+                )
+                .unwrap();
             } else {
-                rest
-            };
-            writeln!(writer, "{rest}").unwrap();
+                writeln!(writer, "{rest}").unwrap();
+            }
         }
     }
 }
