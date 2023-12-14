@@ -49,6 +49,7 @@ cicd
 clippy
 condi
 consts
+cstring
 debuginfo
 dhat
 dldmr

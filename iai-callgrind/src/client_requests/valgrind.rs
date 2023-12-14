@@ -1,11 +1,12 @@
-//! TODO: DOCS
+//! The client requests from `valgrind.h`
+//!
+//! TODO: MORE DOCS
 
-use std::ffi::CString;
-use std::os::fd::RawFd;
+use std::ffi::CStr;
 use std::usize;
 
 use super::{
-    bindings, fatal_error, valgrind_do_client_request_expr, valgrind_do_client_request_stmt,
+    bindings, fatal_error, valgrind_do_client_request_expr, valgrind_do_client_request_stmt, RawFd,
     StackId, ThreadId,
 };
 
@@ -496,23 +497,16 @@ pub fn enable_error_reporting() {
 /// vgdb. If no connection is opened, output will go to the log output. Returns `false` if command
 /// not recognized, `true` otherwise. Note the return value deviates from the original in
 /// `valgrind.h` which returns 1 if the command was not recognized and 0 otherwise.
-///
-/// # Panics
-///
-/// If the `command` cannot be converted to a [`CString`]
 #[inline(always)]
 pub fn monitor_command<T>(command: T) -> bool
 where
-    T: Into<String>,
+    T: AsRef<CStr>,
 {
-    let c_string = CString::new(command.into())
-        .expect("A valid string should not contain \\0 bytes in the middle");
-
     do_client_request!(
         "valgrind::monitor_command",
         0,
         bindings::IC_ValgrindClientRequest::IC_GDB_MONITOR_COMMAND,
-        c_string.as_ptr() as usize,
+        command.as_ref().as_ptr() as usize,
         0,
         0,
         0,
@@ -524,22 +518,15 @@ where
 ///
 /// Note that unknown or not dynamically changeable options will cause a warning message to be
 /// output.
-///
-/// # Panics
-///
-/// If `CString` ...
 #[inline(always)]
 pub fn clo_change<T>(option: T)
 where
-    T: Into<String>,
+    T: AsRef<CStr>,
 {
-    let c_string = CString::new(option.into())
-        .expect("A valid string should not contain \\0 bytes in the middle");
-
     do_client_request!(
         "valgrind::clo_change",
         bindings::IC_ValgrindClientRequest::IC_CLO_CHANGE,
-        c_string.as_ptr() as usize,
+        option.as_ref().as_ptr() as usize,
         0,
         0,
         0,

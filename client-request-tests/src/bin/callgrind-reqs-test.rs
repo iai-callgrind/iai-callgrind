@@ -1,5 +1,6 @@
 use client_request_tests::MARKER;
 use iai_callgrind::client_requests::{self};
+use iai_callgrind::cstring;
 
 fn do_work(start: i32) -> i32 {
     let mut sum = start;
@@ -19,7 +20,7 @@ fn client_requests_1() -> i32 {
     client_requests::callgrind::dump_stats();
 
     sum += do_work(sum);
-    client_requests::callgrind::dump_stats_at("Please dump here");
+    client_requests::callgrind::dump_stats_at(unsafe { cstring!("Please dump here") });
 
     do_work(sum)
 }
@@ -36,7 +37,7 @@ fn client_requests_2() -> i32 {
 }
 
 fn main() {
-    iai_callgrind::valgrind_println!("{MARKER}");
+    unsafe { iai_callgrind::valgrind_println_unchecked!("{MARKER}") };
 
     client_requests_2();
 

@@ -1,43 +1,44 @@
 // spell-checker: ignore rustified iquote
-use std::io::{BufRead, BufReader, Cursor};
-use std::path::PathBuf;
-
-use bindgen::builder;
-
-struct Target {
-    arch: String,
-    env: String,
-    os: String,
-    vendor: String,
-}
-
-enum Support {
-    X86,
-    X86_64,
-    Native,
-    No,
-}
-
-impl Target {
-    fn from_env() -> Self {
-        Self {
-            arch: std::env::var("CARGO_CFG_TARGET_ARCH").unwrap(),
-            env: std::env::var("CARGO_CFG_TARGET_ENV").unwrap(),
-            os: std::env::var("CARGO_CFG_TARGET_OS").unwrap(),
-            vendor: std::env::var("CARGO_CFG_TARGET_VENDOR").unwrap(),
-        }
-    }
-}
-
-fn print_client_requests_support(value: &str) {
-    println!("cargo:rustc-cfg=client_requests_support=\"{value}\"");
-}
 
 #[cfg(not(feature = "client_requests_defs"))]
 fn main() {}
 
 #[cfg(feature = "client_requests_defs")]
 fn main() {
+    use std::io::{BufRead, BufReader, Cursor};
+    use std::path::PathBuf;
+
+    use bindgen::builder;
+
+    struct Target {
+        arch: String,
+        env: String,
+        os: String,
+        vendor: String,
+    }
+
+    enum Support {
+        X86,
+        X86_64,
+        Native,
+        No,
+    }
+
+    impl Target {
+        fn from_env() -> Self {
+            Self {
+                arch: std::env::var("CARGO_CFG_TARGET_ARCH").unwrap(),
+                env: std::env::var("CARGO_CFG_TARGET_ENV").unwrap(),
+                os: std::env::var("CARGO_CFG_TARGET_OS").unwrap(),
+                vendor: std::env::var("CARGO_CFG_TARGET_VENDOR").unwrap(),
+            }
+        }
+    }
+
+    fn print_client_requests_support(value: &str) {
+        println!("cargo:rustc-cfg=client_requests_support=\"{value}\"");
+    }
+
     println!("cargo:rerun-if-changed=valgrind/wrapper.h");
     println!("cargo:rerun-if-changed=valgrind/native.c");
 
@@ -129,10 +130,6 @@ fn main() {
             panic!("Unable to set cfg value for client_requests_support");
         }
     }
-
-    // TODO: CLEANUP TEST CODE
-    // eprintln!("{bindings}");
-    // panic!();
 
     // Write the generated bindings to an output file.
     let out_dir = std::env::var("OUT_DIR").map(PathBuf::from).unwrap();
