@@ -16,7 +16,7 @@ iai-callgrind = { path = "../iai-callgrind/", version = "=0.9.0", default-featur
   "client_requests_defs",
 ] }
 lazy_static = { version = "1.4" }
-regex = { version = "1.10" }
+regex = { version = "1.9" }
 shlex = { version = "1.2" }
 
 [dev-dependencies]

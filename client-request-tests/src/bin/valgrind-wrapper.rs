@@ -1,6 +1,7 @@
 use std::fmt::Display;
 use std::io::{stderr, BufRead, BufReader, Write};
-use std::path::PathBuf;
+use std::ops::Deref;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use client_request_tests::MARKER;
@@ -9,10 +10,16 @@ use regex::Regex;
 
 lazy_static! {
     static ref STRIP_PREFIX_RE: Regex =
-        regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--)\s*(?<rest>.*)$")
+        regex::Regex::new(r"^\s*(==|--|\*\*)([0-9:.]+\s+)?[0-9]+(==|--|\*\*)\s*(?<rest>.*)$")
             .expect("Regex should compile");
     static ref CALLGRIND_EXCLUDED_LINES_RE: Regex =
         regex::Regex::new(r"^(For interactive control,)").expect("Regex should compile");
+    static ref CALLGRIND_RM_DUMP_TO_RE: Regex =
+        regex::Regex::new(r"^(Dump to).*$").expect("Regex should compile");
+    static ref CALLGRIND_RM_BB_NUM_RE: Regex =
+        regex::Regex::new(r"(at BB\s+)([0-9]+)(\s+.*)$").expect("Regex should compile");
+    static ref CALLGRIND_RM_ADDR_RE: Regex =
+        regex::Regex::new(r"((at|by)\s+)(0x[0-9A-Za-z]+)").expect("Regex should compile");
     // The following regex are almost 1:1 taken from valgrind.git/callgrind/tests/filter_stderr
     // to filter the numbers from stderr
     static ref CALLGRIND_RM_NUM_REFS_RE: Regex =
@@ -25,10 +32,6 @@ lazy_static! {
             .expect("Regex should compile");
     static ref CALLGRIND_RM_NUM_COLLECTED_RE: Regex =
         regex::Regex::new(r"^(Collected\s*:)[ 0-9]*$").expect("Regex should compile");
-    static ref CALLGRIND_RM_DUMP_TO_RE: Regex =
-        regex::Regex::new(r"^(Dump to).*$").expect("Regex should compile");
-    static ref CALLGRIND_RM_BB_NUM_RE: Regex =
-        regex::Regex::new(r"^(.*at BB)(\s*[0-9]+\s*)(.*)$").expect("Regex should compile");
 }
 
 #[derive(Debug)]
@@ -53,7 +56,10 @@ impl Display for Tool {
     }
 }
 
-fn callgrind_filter(bytes: &[u8], writer: &mut impl Write) {
+fn callgrind_filter(path: &Path, bytes: &[u8], writer: &mut impl Write) {
+    let path_re =
+        regex::Regex::new(format!(r"({})", path.display()).as_str()).expect("Regex should compile");
+
     #[derive(Debug, PartialEq, Eq)]
     enum State {
         Header,
@@ -69,10 +75,17 @@ fn callgrind_filter(bytes: &[u8], writer: &mut impl Write) {
         }
         let rest = STRIP_PREFIX_RE
             .captures(&line)
-            .expect("Callgrind output line should be a valid output line")
+            .unwrap_or_else(|| {
+                panic!("Callgrind output line should be a valid output line: was {line}")
+            })
             .name("rest")
             .unwrap()
             .as_str();
+
+        let replaced = path_re.replace_all(rest, "<__FILTER__>");
+        let replaced = CALLGRIND_RM_ADDR_RE.replace_all(&replaced, "$1<__FILTER__>");
+        let replaced = CALLGRIND_RM_BB_NUM_RE.replace_all(&replaced, "$1<__FILTER__>$3");
+        let rest = replaced.deref();
         if !CALLGRIND_EXCLUDED_LINES_RE.is_match(rest) {
             if let Some(caps) = CALLGRIND_RM_NUM_REFS_RE.captures(rest) {
                 writeln!(writer, "{}", caps.get(1).unwrap().as_str()).unwrap();
@@ -84,14 +97,6 @@ fn callgrind_filter(bytes: &[u8], writer: &mut impl Write) {
                 writeln!(writer, "{}", caps.get(1).unwrap().as_str()).unwrap();
             } else if let Some(caps) = CALLGRIND_RM_DUMP_TO_RE.captures(rest) {
                 writeln!(writer, "{}", caps.get(1).unwrap().as_str()).unwrap();
-            } else if let Some(caps) = CALLGRIND_RM_BB_NUM_RE.captures(rest) {
-                writeln!(
-                    writer,
-                    "{} {}",
-                    caps.get(1).unwrap().as_str(),
-                    caps.get(3).unwrap().as_str()
-                )
-                .unwrap();
             } else {
                 writeln!(writer, "{rest}").unwrap();
             }
@@ -133,13 +138,13 @@ fn main() {
     let output = std::process::Command::new("valgrind")
         .arg(format!("--tool={tool}"))
         .args(valgrind_args)
-        .arg(bin)
+        .arg(&bin)
         .args(bin_args)
         .output()
         .unwrap();
 
     match tool {
-        Tool::Callgrind => callgrind_filter(&output.stderr, &mut stderr()),
+        Tool::Callgrind => callgrind_filter(&bin, &output.stderr, &mut stderr()),
     }
 
     std::process::exit(output.status.code().unwrap());

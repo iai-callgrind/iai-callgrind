@@ -1,5 +1,5 @@
 //! TODO: DOCS
-use std::ffi::CString;
+use std::ffi::CStr;
 
 use super::{bindings, fatal_error, valgrind_do_client_request_stmt};
 
@@ -18,21 +18,15 @@ pub fn dump_stats() {
 }
 
 /// TODO: DOCS
-///
-/// # Panics
-///
-/// null bytes
 #[inline(always)]
-pub fn dump_stats_at<T>(string: T)
+pub fn dump_stats_at<T>(c_str: T)
 where
-    T: Into<String>,
+    T: AsRef<CStr>,
 {
-    let c_string = CString::new(string.into())
-        .expect("A valid string should not contain \\0 bytes in the middle");
     do_client_request!(
         "callgrind::dump_stats_at",
         bindings::IC_CallgrindClientRequest::IC_DUMP_STATS_AT,
-        c_string.as_ptr() as usize,
+        c_str.as_ref().as_ptr() as usize,
         0,
         0,
         0,

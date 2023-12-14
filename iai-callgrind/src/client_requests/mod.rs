@@ -72,63 +72,210 @@ macro_rules! do_client_request {
     }};
 }
 
+/// Conveniently create a `\0`-byte terminated [`std::ffi::CString`] from a literal string
+///
+/// The string literal passed to this macro must not end with a `\0`-byte.
+///
+/// # Safety
+///
+/// This macro is unsafe but convenient and very efficient. It is your responsibility to ensure that
+/// the input string literal does not contain any `\0` bytes.
+#[macro_export]
+macro_rules! cstring {
+    ($string:literal) => {{ std::ffi::CString::from_vec_with_nul_unchecked(concat!($string, "\0").as_bytes().to_vec()) }};
+}
+
+/// Conveniently create a `\0`-byte terminated [`std::ffi::CString`] from a format string
+///
+/// The format string passed to this macro must not end with a `\0`-byte.
+///
+/// # Safety
+///
+/// The same safety conditions as in the [`cstring`] macro apply here
+#[macro_export]
+macro_rules! format_cstring {
+    ($($args:tt)*) => {{ std::ffi::CString::from_vec_with_nul_unchecked(format!("{}\0", format_args!($($args)*)).into_bytes()) }};
+}
+
 cfg_if! {
     if #[cfg(feature = "client_requests")] {
         /// TODO: DOCS
         #[macro_export]
         macro_rules! valgrind_printf {
-            ($($arg:tt)*) => {{
-                $crate::client_requests::__valgrind_print(format!($($arg)*));
+            ($($args:tt)*) => {{
+                match std::ffi::CString::from_vec_with_nul(
+                    format!("{}\0", format_args!($($args)*)).into_bytes()
+                ) {
+                    Ok(c_string) => {
+                        unsafe {
+                            $crate::client_requests::__valgrind_print(
+                                c_string.as_ptr() as *const ()
+                            );
+                        }
+                        Ok(())
+                    },
+                    Err(error) => Err(
+                        $crate::client_requests::error::ClientRequestError::from(error)
+                    )
+                }
+            }};
+        }
+
+        /// TODO: DOCS
+        #[macro_export]
+        macro_rules! valgrind_printf_unchecked {
+            ($($args:tt)*) => {{
+                let string = format!("{}\0", format_args!($($args)*));
+                $crate::client_requests::__valgrind_print(string.as_ptr() as *const ());
             }};
         }
 
         /// TODO: DOCS
         #[macro_export]
         macro_rules! valgrind_println {
-            () => { valgrind_printf!("\n") };
+            () => { $crate::valgrind_printf!("\n") };
             ($($arg:tt)*) => {{
-                $crate::client_requests::__valgrind_print(format!("{}\n", format_args!($($arg)*)));
+                match std::ffi::CString::from_vec_with_nul(
+                    format!("{}\n\0", format_args!($($arg)*)).into_bytes()
+                ) {
+                    Ok(c_string) => {
+                        unsafe {
+                            $crate::client_requests::__valgrind_print(
+                                c_string.as_ptr() as *const ()
+                            );
+                        }
+                        Ok(())
+                    },
+                    Err(error) => Err(
+                        $crate::client_requests::error::ClientRequestError::from(error)
+                    )
+                }
             }};
         }
 
+        /// TODO: DOCS
+        #[macro_export]
+        macro_rules! valgrind_println_unchecked {
+            () => { $crate::valgrind_printf_unchecked!("\n") };
+            ($($arg:tt)*) => {{
+                let string = format!("{}\n\0", format_args!($($arg)*));
+                $crate::client_requests::__valgrind_print(string.as_ptr() as *const ());
+            }};
+        }
+        ///
         /// TODO: DOCS
         #[macro_export]
         macro_rules! valgrind_printf_backtrace {
             ($($arg:tt)*) => {{
-                $crate::client_requests::__valgrind_print_backtrace(format!($($arg)*));
+                match std::ffi::CString::from_vec_with_nul(
+                    format!("{}\0", format_args!($($arg)*)).into_bytes()
+                ) {
+                    Ok(c_string) => {
+                        unsafe {
+                            $crate::client_requests::__valgrind_print_backtrace(
+                                c_string.as_ptr() as *const ()
+                            );
+                        }
+                        Ok(())
+                    },
+                    Err(error) => Err(
+                        $crate::client_requests::error::ClientRequestError::from(error)
+                    )
+                }
             }};
         }
 
         /// TODO: DOCS
         #[macro_export]
-        macro_rules! valgrind_println_backtrace {
-            () => { valgrind_printf_backtrace!("\n") };
+        macro_rules! valgrind_printf_backtrace_unchecked {
             ($($arg:tt)*) => {{
-                $crate::client_requests::__valgrind_print_backtrace(format!("{}\n", format_args!($($arg)*)));
+                let string = format!("{}\0", format_args!($($arg)*));
+                $crate::client_requests::__valgrind_print_backtrace(string.as_ptr() as *const ());
+            }};
+        }
+        ///
+        /// TODO: DOCS
+        #[macro_export]
+        macro_rules! valgrind_println_backtrace {
+            () => { $crate::valgrind_printf_backtrace!("\n") };
+            ($($arg:tt)*) => {{
+                match std::ffi::CString::from_vec_with_nul(
+                    format!("{}\n\0", format_args!($($arg)*)).into_bytes()
+                ) {
+                    Ok(c_string) => {
+                        unsafe {
+                            $crate::client_requests::__valgrind_print_backtrace(
+                                c_string.as_ptr() as *const ()
+                            );
+                        }
+                        Ok(())
+                    },
+                    Err(error) => Err(
+                        $crate::client_requests::error::ClientRequestError::from(error)
+                    )
+                }
+            }};
+        }
+
+        /// TODO: DOCS
+        #[macro_export]
+        macro_rules! valgrind_println_backtrace_unchecked {
+            () => { $crate::valgrind_printf_backtrace_unchecked!("\n") };
+            ($($arg:tt)*) => {{
+                let string = format!("{}\n\0", format_args!($($arg)*));
+                unsafe {
+                    $crate::client_requests::__valgrind_print_backtrace(
+                        string.as_ptr() as *const ()
+                    );
+                }
             }};
         }
     } else {
         /// TODO: DOCS
         #[macro_export]
         macro_rules! valgrind_printf {
-            ($($arg:tt)*) => {};
+            ($($arg:tt)*) => { Ok(()) };
         }
 
+        /// TODO: DOCS
+        #[macro_export]
+        macro_rules! valgrind_printf_unchecked {
+            ($($arg:tt)*) => {};
+        }
+        ///
         /// TODO: DOCS
         #[macro_export]
         macro_rules! valgrind_println {
-            ($($arg:tt)*) => {};
+            ($($arg:tt)*) => { Ok(()) };
         }
 
         /// TODO: DOCS
         #[macro_export]
+        macro_rules! valgrind_println_unchecked {
+            ($($arg:tt)*) => {};
+        }
+        ///
+        /// TODO: DOCS
+        #[macro_export]
         macro_rules! valgrind_printf_backtrace {
+            ($($arg:tt)*) => { Ok(()) };
+        }
+
+        /// TODO: DOCS
+        #[macro_export]
+        macro_rules! valgrind_printf_backtrace_unchecked {
             ($($arg:tt)*) => {};
         }
 
         /// TODO: DOCS
         #[macro_export]
         macro_rules! valgrind_println_backtrace {
+            ($($arg:tt)*) => { Ok(()) };
+        }
+
+        /// TODO: DOCS
+        #[macro_export]
+        macro_rules! valgrind_println_backtrace_unchecked {
             ($($arg:tt)*) => {};
         }
     }
@@ -137,11 +284,10 @@ cfg_if! {
 mod arch;
 mod bindings;
 pub mod callgrind;
+pub mod error;
 #[cfg(client_requests_support = "native")]
 mod native_bindings;
 pub mod valgrind;
-
-use std::ffi::CString;
 
 use arch::imp::valgrind_do_client_request_expr;
 use arch::valgrind_do_client_request_stmt;
@@ -156,6 +302,11 @@ pub type ThreadId = usize;
 /// The `StackId` is used and returned by some client requests and represents an id on valgrind's
 /// stack
 pub type StackId = usize;
+
+/// The raw file descriptor number
+///
+/// This type has no relationship to [`std::os::unix::RawFd`]
+pub type RawFd = cty::c_int;
 
 /// Valgrind's version number from the `valgrind.h` file
 ///
@@ -183,33 +334,61 @@ fn fatal_error(func: &str) -> ! {
     );
 }
 
+// #[doc(hidden)]
+// #[inline(always)]
+// pub fn __valgrind_print<T>(c_string: T)
+// where
+//     T: AsRef<CStr>,
+// {
+//     valgrind_do_client_request_expr(
+//         0,
+//         bindings::IC_ValgrindClientRequest::IC_PRINTF_VALIST_BY_REF as cty::c_uint,
+//         c_string.as_ref().as_ptr() as usize,
+//         0,
+//         0,
+//         0,
+//         0,
+//     );
+// }
+
 #[doc(hidden)]
 #[inline(always)]
-pub fn __valgrind_print(string: String) {
-    let c_string =
-        CString::new(string).expect("A valid string should not contain \\0 bytes in the middle");
-
+pub unsafe fn __valgrind_print(ptr: *const ()) {
     valgrind_do_client_request_expr(
         0,
         bindings::IC_ValgrindClientRequest::IC_PRINTF_VALIST_BY_REF as cty::c_uint,
-        c_string.as_ptr() as usize,
+        ptr as usize,
         0,
         0,
         0,
         0,
     );
 }
+//
+// #[doc(hidden)]
+// #[inline(always)]
+// pub fn __valgrind_print_backtrace<T>(c_string: T)
+// where
+//     T: AsRef<CStr>,
+// {
+//     valgrind_do_client_request_expr(
+//         0,
+//         bindings::IC_ValgrindClientRequest::IC_PRINTF_BACKTRACE_VALIST_BY_REF as cty::c_uint,
+//         c_string.as_ref().as_ptr() as usize,
+//         0,
+//         0,
+//         0,
+//         0,
+//     );
+// }
 
 #[doc(hidden)]
 #[inline(always)]
-pub fn __valgrind_print_backtrace(string: String) {
-    let c_string =
-        CString::new(string).expect("A valid string should not contain \\0 bytes in the middle");
-
+pub unsafe fn __valgrind_print_backtrace(ptr: *const ()) {
     valgrind_do_client_request_expr(
         0,
         bindings::IC_ValgrindClientRequest::IC_PRINTF_BACKTRACE_VALIST_BY_REF as cty::c_uint,
-        c_string.as_ptr() as usize,
+        ptr as usize,
         0,
         0,
         0,

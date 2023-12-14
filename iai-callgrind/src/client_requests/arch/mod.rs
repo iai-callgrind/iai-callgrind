@@ -28,12 +28,12 @@ cfg_if::cfg_if! {
             #[allow(clippy::similar_names)]
             pub fn valgrind_do_client_request_expr(
                 default: usize,
-                request: cty::c_uint,
-                arg1: usize,
-                arg2: usize,
-                arg3: usize,
-                arg4: usize,
-                arg5: usize,
+                _request: cty::c_uint,
+                _arg1: usize,
+                _arg2: usize,
+                _arg3: usize,
+                _arg4: usize,
+                _arg5: usize,
             ) -> usize {
                 default
             }
@@ -69,12 +69,12 @@ cfg_if::cfg_if! {
     } else {
         #[inline(always)]
         pub fn valgrind_do_client_request_stmt(
-            request: cty::c_uint,
-            arg1: usize,
-            arg2: usize,
-            arg3: usize,
-            arg4: usize,
-            arg5: usize,
+            _request: cty::c_uint,
+            _arg1: usize,
+            _arg2: usize,
+            _arg3: usize,
+            _arg4: usize,
+            _arg5: usize,
         ) {}
     }
 }
