@@ -1,24 +1,7 @@
 //! Provide the platform dependent implementations of the valgrind.h header macros and functions
 //!
 //! The rust `asm!` macro is not stable yet for all platforms which valgrind supports, so we can't
-//! deliver the client requests for all platforms. The platforms which are currently unsupported by
-//! rust but by valgrind are:
-//!
-//! * s390x-unknown-linux
-//! * mips32-unknown-linux
-//! * mips64-unknown-linux
-//! * powerpc-unknown-linux
-//! * powerpc64-unknown-linux
-//! * powerpc64le-unknown-linux
-//! * nanomips-unknown-linux
-//!
-//! Despite the above platforms, the following platforms are not implemented with `asm!`, yet:
-//!
-//! * i686-pc-windows-msvc
-//! * arm (linux)
-//! * aarch64 (linux)
-//!
-//! We fall back to `native` for all the platforms above.
+//! deliver the client requests for all platforms. We fall back to `native` for all these platforms.
 
 // The `client_requests_support` cfg is set in the build script
 cfg_if::cfg_if! {

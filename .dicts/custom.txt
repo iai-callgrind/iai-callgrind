@@ -15,6 +15,7 @@ Heisler
 Helgrind
 IndexSet
 Itamar
+JITter
 Ldmr
 Ldmw
 Logfile
@@ -76,6 +77,7 @@ iname
 indexmap
 indexset
 jcnd
+jitter
 jsonschema
 kcachegrind
 lateout
@@ -84,11 +86,14 @@ libclang
 llhits
 malloclike
 massif
+memalign
 metapool
 mips
 mispredicted
+mmap
 msvc
 nanomips
+noaccess
 nsec
 outfile
 pipefail
@@ -100,8 +105,10 @@ proccontrol
 profraw
 quickstart
 ramhits
+realloc
 realpath
 redzone
+redzones
 reqs
 resizeinplace
 rlval
@@ -122,8 +129,9 @@ simd
 splitn
 sploss1
 sploss2
-struct
 srcloc
+struct
+superblocks
 syscount
 syscputime
 systime
@@ -132,6 +140,7 @@ tempfile
 totalrw
 trybuild
 trycmd
+unaddressable
 unmark
 valgrind
 valgrind's
