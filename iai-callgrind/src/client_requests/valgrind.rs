@@ -3,7 +3,7 @@
 //! See also [The client request
 //! mechanism](https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq)
 
-use core::ffi::CStr;
+use std::ffi::CStr;
 
 use super::{
     bindings, fatal_error, valgrind_do_client_request_expr, valgrind_do_client_request_stmt, RawFd,
