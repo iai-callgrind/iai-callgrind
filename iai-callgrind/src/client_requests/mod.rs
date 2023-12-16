@@ -423,6 +423,7 @@ cfg_if! {
 mod arch;
 mod bindings;
 pub mod callgrind;
+pub mod dhat;
 pub mod error;
 pub mod memcheck;
 #[cfg(client_requests_support = "native")]
