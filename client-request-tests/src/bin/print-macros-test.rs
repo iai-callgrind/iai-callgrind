@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 use client_request_tests::MARKER;
 use iai_callgrind::{
     client_requests, valgrind_printf, valgrind_printf_backtrace,
@@ -5,11 +7,14 @@ use iai_callgrind::{
     valgrind_println_backtrace, valgrind_println_backtrace_unchecked, valgrind_println_unchecked,
 };
 
+#[allow(unused_variables)]
 fn main() {
     let invalid_cstring = "INV\0LID";
     let valid_cstring = "foo";
 
-    unsafe { valgrind_println_unchecked!("{MARKER}") };
+    unsafe {
+        valgrind_println_unchecked!("{MARKER}");
+    }
 
     valgrind_printf!("printf: {valid_cstring}\n").unwrap();
     valgrind_printf!("printf (invalid): {invalid_cstring}\n").unwrap_err();
@@ -17,7 +22,7 @@ fn main() {
     unsafe {
         valgrind_printf_unchecked!("printf unchecked: {valid_cstring}\n");
         valgrind_printf_unchecked!("printf unchecked (invalid): {invalid_cstring}\n");
-        valgrind_println_unchecked!()
+        valgrind_println_unchecked!();
     }
 
     valgrind_println!("println: {valid_cstring}").unwrap();

@@ -378,44 +378,88 @@ cfg_if! {
             }};
         }
     } else {
+        /// Allow prints to valgrind log
+        ///
+        /// This macro is a safe variant of the `VALGRIND_PRINTF` function, checking for `\0` bytes in the
+        /// formatting string. However, if you're sure there are no `\0` bytes present you can
+        /// safely use [`crate::valgrind_printf_unchecked`] which performs better compared to this
+        /// macro and should perform around equal to the original `VALGRIND_PRINTF` function from
+        /// the `valgrind.h` header file.
         #[macro_export]
         macro_rules! valgrind_printf {
-            ($($arg:tt)*) => { Ok(()) };
+            ($($arg:tt)*) => {{
+                let res: Result<(), $crate::client_requests::error::ClientRequestError> = Ok(());
+                res
+            }};
         }
 
+        /// Allow prints to valgrind log
+        ///
+        /// Use this macro only if you are sure there are no `\0`-bytes in the formatted string. If
+        /// unsure use the safe [`crate::valgrind_printf`] variant.
+        ///
+        /// This variant performs better than [`crate::valgrind_printf`] and should perform around
+        /// equal to the original `VALGRIND_PRINTF` function from the `valgrind.h` header file.
         #[macro_export]
         macro_rules! valgrind_printf_unchecked {
-            ($($arg:tt)*) => {};
+            ($($arg:tt)*) => {{ $crate::client_requests::__no_op() }};
         }
 
+        /// Allow prints to valgrind log ending with a newline
+        ///
+        /// See also [`crate::valgrind_printf`]
         #[macro_export]
         macro_rules! valgrind_println {
-            ($($arg:tt)*) => { Ok(()) };
+            ($($arg:tt)*) => {{
+                let res: Result<(), $crate::client_requests::error::ClientRequestError> = Ok(());
+                res
+            }};
         }
 
+        /// Allow prints to valgrind log ending with a newline
+        ///
+        /// See also [`crate::valgrind_printf_unchecked`]
         #[macro_export]
         macro_rules! valgrind_println_unchecked {
-            ($($arg:tt)*) => {};
+            ($($arg:tt)*) => {{ $crate::client_requests::__no_op() }};
         }
 
+        /// Allow prints to valgrind log with a backtrace
+        ///
+        /// See also [`crate::valgrind_printf`]
         #[macro_export]
         macro_rules! valgrind_printf_backtrace {
-            ($($arg:tt)*) => { Ok(()) };
+            ($($arg:tt)*) => {{
+                let res: Result<(), $crate::client_requests::error::ClientRequestError> = Ok(());
+                res
+            }};
         }
 
+        /// Allow prints to valgrind log with a backtrace
+        ///
+        /// See also [`crate::valgrind_printf_unchecked`]
         #[macro_export]
         macro_rules! valgrind_printf_backtrace_unchecked {
-            ($($arg:tt)*) => {};
+            ($($arg:tt)*) => {{ $crate::client_requests::__no_op() }};
         }
 
+        /// Allow prints to valgrind log with a backtrace ending the formatted string with a newline
+        ///
+        /// See also [`crate::valgrind_printf`]
         #[macro_export]
         macro_rules! valgrind_println_backtrace {
-            ($($arg:tt)*) => { Ok(()) };
+            ($($arg:tt)*) => {{
+                let res: Result<(), $crate::client_requests::error::ClientRequestError> = Ok(());
+                res
+            }};
         }
 
+        /// Allow prints to valgrind log with a backtrace ending the formatted string with a newline
+        ///
+        /// See also [`crate::valgrind_printf_unchecked`]
         #[macro_export]
         macro_rules! valgrind_println_backtrace_unchecked {
-            ($($arg:tt)*) => {};
+            ($($arg:tt)*) => {{ $crate::client_requests::__no_op() }};
         }
     }
 }
@@ -504,3 +548,7 @@ pub unsafe fn __valgrind_print_backtrace(ptr: *const ()) {
         0,
     );
 }
+
+#[doc(hidden)]
+#[inline(always)]
+pub unsafe fn __no_op() {}
