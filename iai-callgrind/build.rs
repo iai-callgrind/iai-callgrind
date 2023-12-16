@@ -63,16 +63,20 @@ fn main() {
         .clang_arg("-iquote/usr/include")
         .header("valgrind/wrapper.h")
         .allowlist_var("IC_IS_PLATFORM_SUPPORTED_BY_VALGRIND")
+        // valgrind.h
+        .allowlist_var("IC_VALGRIND_MAJOR")
+        .allowlist_var("IC_VALGRIND_MINOR")
         .allowlist_type("IC_ValgrindClientRequest")
-        .allowlist_type("IC_CallgrindClientRequest")
-        .allowlist_type("IC_DHATClientRequest")
-        .allowlist_item("IC_VALGRIND_MAJOR")
-        .allowlist_item("IC_VALGRIND_MINOR")
-        .allowlist_item("VALGRIND_MEMPOOL_AUTO_FREE")
-        .allowlist_item("VALGRIND_MEMPOOL_METAPOOL")
         .rustified_enum("IC_ValgrindClientRequest")
+        // callgrind.h
+        .allowlist_type("IC_CallgrindClientRequest")
         .rustified_enum("IC_CallgrindClientRequest")
+        // dhat.h
+        .allowlist_type("IC_DHATClientRequest")
         .rustified_enum("IC_DHATClientRequest")
+        // memcheck.h
+        .allowlist_type("IC_MemcheckClientRequest")
+        .rustified_enum("IC_MemcheckClientRequest")
         .layout_tests(false)
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()

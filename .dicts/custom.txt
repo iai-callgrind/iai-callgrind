@@ -34,6 +34,7 @@ Valgrind
 Valgrind's
 Valgrinds
 aarch
+addressibility
 ahash
 aslr
 atstart
@@ -52,6 +53,7 @@ condi
 consts
 cstring
 debuginfo
+definedness
 descendents
 dhat
 dldmr
@@ -148,6 +150,7 @@ valgrind
 valgrind's
 valico
 valist
+vbits
 vgdb
 vulnaribility
 walkdir

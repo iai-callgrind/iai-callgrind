@@ -1,6 +1,6 @@
 //! TODO DOCS
+use core::fmt::Display;
 use std::ffi::FromVecWithNulError;
-use std::fmt::Display;
 
 /// TODO: DOCS
 #[derive(Debug)]
@@ -18,7 +18,7 @@ impl From<FromVecWithNulError> for ClientRequestError {
 }
 
 impl Display for ClientRequestError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             ClientRequestError::ValgrindPrintError(inner) => {
                 write!(
