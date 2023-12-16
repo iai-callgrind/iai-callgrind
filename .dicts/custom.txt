@@ -52,8 +52,10 @@ clippy
 condi
 consts
 cstring
+deallocations
 debuginfo
 definedness
+deregisters
 descendents
 dhat
 dldmr
