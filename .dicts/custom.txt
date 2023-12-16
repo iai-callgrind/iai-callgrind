@@ -52,6 +52,7 @@ condi
 consts
 cstring
 debuginfo
+descendents
 dhat
 dldmr
 dldmw
@@ -119,6 +120,7 @@ rstest
 rustc
 rustdoc
 rustfmt
+rustified
 rustup
 sandboxing
 schemars
