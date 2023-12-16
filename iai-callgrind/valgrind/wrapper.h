@@ -2,6 +2,7 @@
 #include <stddef.h>
 
 #include "valgrind/callgrind.h"
+#include "valgrind/dhat.h"
 #include "valgrind/valgrind.h"
 
 #ifdef VALGRIND_DO_CLIENT_REQUEST_EXPR
@@ -212,3 +213,20 @@ typedef enum {
   IC_STOP_INSTRUMENTATION = 5
 #endif
 } IC_CallgrindClientRequest;
+
+/*
+ * DHAT
+ * */
+
+typedef enum {
+#ifdef DHAT_AD_HOC_EVENT
+  IC_DHAT_AD_HOC_EVENT = VG_USERREQ__DHAT_AD_HOC_EVENT,
+#else
+  IC_DHAT_AD_HOC_EVENT = 0,
+#endif
+#ifdef DHAT_HISTOGRAM_MEMORY
+  IC_DHAT_HISTOGRAM_MEMORY = VG_USERREQ__DHAT_HISTOGRAM_MEMORY,
+#else
+  IC_DHAT_HISTOGRAM_MEMORY = 1,
+#endif
+} IC_DHATClientRequest;

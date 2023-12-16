@@ -113,12 +113,13 @@ pub fn non_simd_call0(func: fn(ThreadId) -> usize) -> usize {
 ///
 /// # Examples
 ///
-/// ```
+/// ```rust,no_run
 /// let num = 42i32;
 /// let res = iai_callgrind::client_requests::valgrind::non_simd_call1(
 ///     |_tid, a| unsafe { ((a as *const i32).as_ref().unwrap() + 2) as usize },
 ///     (&num) as *const i32 as usize,
 /// );
+/// assert_eq!(res, 44);
 /// ```
 #[allow(clippy::fn_to_numeric_cast_any)]
 #[inline(always)]
