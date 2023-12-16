@@ -1,8 +1,36 @@
-//! The public interface to valgrind's client request mechanism
+//! The `iai-callgrind` rustified interface to [Valgrind's Client Request
+//! Mechanism](https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq)
 //!
-//! You can use these macros to manipulate and query Valgrind's execution inside your own programs.
+//! You can use these methods to manipulate and query Valgrind's execution inside `iai-callgrind`
+//! benchmarks or your own programs.
 //!
-//! # Organization
+//! Valgrind has a trapdoor mechanism via which the client program can pass all manner of requests
+//! and queries to Valgrind and the current tool. The so-called client requests are provided to
+//! allow you to tell Valgrind facts about the behavior of your program, and also to make queries.
+//! In particular, your program can tell Valgrind about things that it otherwise would not know,
+//! leading to better results.
+//!
+//! # Building
+//!
+//! The client requests need to be built with the valgrind header files. Usually, these header files
+//! are installed by your distribution's package manager with the valgrind package into a global
+//! include path and you don't need to do anything but activating the `client_requests` feature (see
+//! below) of the `iai-callgrind` dependency.
+//!
+//! If you encounter problems because the valgrind header files cannot be found, first ensure you
+//! have installed valgrind and your package manager's package includes the header files. If not or
+//! you use a custom build of valgrind, you can point the `IAI_CALLGRIND_VALGRIND_INCLUDE`
+//! environment variable to the include path where the valgrind headers can be found. The include
+//! directive used by `iai-callgrind` is `#include "valgrind/valgrind.h"` and is prefixed with
+//! `valgrind`. For example, if the valgrind header files reside in
+//! `/home/foo/repo/valgrind/{valgrind.h, callgrind.h, ...}`, then the environment variable has to
+//! point to `IAI_CALLGRIND_VALGRIND_INCLUDE=/home/foo/repo` and not
+//! `IAI_CALLGRIND_VALGRIND_INCLUDE=/home/foo/repo/valgrind`.
+//!
+//! Also, worth to consider is that the build of `iai-callgrind` with client requests takes longer
+//! than the build without them.
+//!
+//! # Module Organization
 //!
 //! The client requests are organized into modules representing the source header file. So, if you
 //! search for a client request originating from the `valgrind.h` header file, the client request
@@ -12,6 +40,9 @@
 //! file equals [`crate::client_requests::valgrind::running_on_valgrind`] and
 //! `VALGRIND_COUNT_ERRORS` from the same `valgrind.h` header file equals
 //! [`crate::client_requests::valgrind::count_errors`].
+//!
+//! The only exception to this rule are the [`crate::valgrind_printf`] macro and its descendents
+//! like [`crate::valgrind_printf_unchecked`] which can be found in the root of `iai-callgrind`.
 //!
 //! # Features
 //!
@@ -34,23 +65,26 @@
 //! iai-callgrind = { version = "0.9.0", features = ["client_requests"] }
 //! ```
 //!
-//! # Performance
+//! If you would only need the client requests in `iai-callgrind` benchmarks, you only need to add
+//! `iai-callgrind` with the `client_requests` feature to your `dev-dependencies`.
 //!
-//! Depending on the architecture you are making use of the client requests, the client requests are
-//! optimized to run with the same overhead like the original client requests. The
-//! optimizations are based on inline assembly with the `asm!` macro and depend on the availability
-//! of it on a specific architecture/target. Since inline assembly is not stable on all
-//! architectures which are supported by valgrind, we cannot provide optimized client requests for
-//! them. But, you can still use the non-optimized version on all platforms which would be supported
-//! by valgrind. In the end, all platforms which are covered by valgrind are also covered by
-//! `iai-callgrind`.
+//! # Performance and implementation details
+//!
+//! Depending on the target, the client requests are optimized to run with the same overhead like
+//! the original valgrind client requests in C code. The optimizations are based on inline assembly
+//! with the `asm!` macro and depend on the availability of it on a specific target. Since inline
+//! assembly is not stable on all targets which are supported by valgrind, we cannot provide
+//! optimized client requests for them. But, you can still use the non-optimized version on all
+//! platforms which would be natively supported by valgrind. In the end, all targets which are
+//! covered by valgrind are also covered by `iai-callgrind`.
 //!
 //! The non-optimized version add overhead because we need to wrap the macro from the header file in
 //! a function call. This additional function call equals the additional overhead compared to the
 //! original valgrind implementation. Although this is usually not much, we try hard to avoid any
 //! overhead to not slow down the benchmarks.
 //!
-//! Here's a short overview on which targets the optimized client requests are available
+//! Here's a short overview on which targets the optimized client requests are available and why
+//! not (Valgrind version = `3.22`)
 //!
 //! | Target                | Optimized | Reason  |
 //! | --------------------- | --------- | ------- |
@@ -64,9 +98,9 @@
 //! | `x86/apple+darwin`    | yes | -
 //! | `x86/windows+gnu`     | yes | -
 //! | `x86/solaris`         | yes | -
-//! | `x86/windows+msvc`    | no  | TODO
-//! | `arm/linux`           | no  | TODO
-//! | `aarch64/linux`       | no  | TODO
+//! | `x86/windows+msvc`    | no  | TBD
+//! | `arm/linux`           | no  | TBD
+//! | `aarch64/linux`       | no  | TBD
 //! | `x86_64/windows+msvc` | no  | unsupported by valgrind
 //! | `s390x/linux`         | no  | unstable inline assembly
 //! | `mips32/linux`        | no  | unstable inline assembly
@@ -74,20 +108,30 @@
 //! | `powerpc/linux`       | no  | unstable inline assembly
 //! | `powerpc64/linux`     | no  | unstable inline assembly
 //! | `powerpc64le/linux`   | no  | unstable inline assembly
-//! | `nanomips/linux`      | no  | unstable inline assembly
+//! | `nanomips/linux`      | no  | valgrind only
 //!
-//! All other platforms you don't find in the table above are also not supported by valgrind, yet.
+//! All other targets you don't find in the table above are also not supported by valgrind, yet.
+//!
+//! Note this table might quickly become outdated with higher versions of valgrind and you should
+//! not rely on it to be up-to-date. As indicated above, the bindings are created dynamically in
+//! such a way, that always all targets which are covered by valgrind are also covered by
+//! `iai-callgrind`. They just might not have been optimized, yet. If you need to know if your
+//! target is supported you should consult the `valgrind.h` header file in the [Valgrind
+//! Repository](https://sourceware.org/git/?p=valgrind.git) or have a look at the [Valgrind Release
+//! Notes](https://valgrind.org/downloads/current.html)
 //!
 //! # Sources and additional documentation
 //!
 //! A lot of the library documentation of the client requests within this module and its submodules
-//! are taken from the online manual and the valgrind header files. For more details see also [The
+//! is taken from the online manual and the valgrind header files. For more details see also [The
 //! Client Request
 //! mechanism](https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq)
 
 #![allow(clippy::inline_always)]
 
 /// Return true if a client request is defined and available in the used valgrind version
+///
+/// For internal use only!
 ///
 /// We do this check to avoid incompatibilities with older valgrinds version which might not have
 /// all client requests available we're offering.
@@ -157,8 +201,8 @@ macro_rules! do_client_request {
 ///
 /// # Safety
 ///
-/// This macro is unsafe but convenient and very efficient. It is your responsibility to ensure that
-/// the input string literal does not contain any `\0` bytes.
+/// This macro is unsafe but convenient and efficient. It is your responsibility to ensure that the
+/// input string literal does not contain any `\0` bytes.
 #[macro_export]
 macro_rules! cstring {
     ($string:literal) => {{ std::ffi::CString::from_vec_with_nul_unchecked(concat!($string, "\0").as_bytes().to_vec()) }};
@@ -211,7 +255,7 @@ cfg_if! {
         /// Use this macro only if you are sure there are no `\0`-bytes in the formatted string. If
         /// unsure use the safe [`crate::valgrind_printf`] variant.
         ///
-        /// This variant performs better than [`crate::valgrind_printf`] and  should perform around
+        /// This variant performs better than [`crate::valgrind_printf`] and should perform around
         /// equal to the original `VALGRIND_PRINTF` function from the `valgrind.h` header file.
         #[macro_export]
         macro_rules! valgrind_printf_unchecked {

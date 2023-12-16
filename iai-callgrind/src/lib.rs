@@ -3,7 +3,23 @@
 //! provide extremely accurate and consistent measurements of Rust code, making it perfectly suited
 //! to run in environments like a CI.
 //!
-//! # Features
+//! # Table of contents
+//! - [Characteristics](#characteristics)
+//! - [Benchmarking](#benchmarking)
+//!   - [Library Benchmarks](#library-benchmarks)
+//!     - [Important Default Behavior](#important-default-behavior)
+//!     - [Quickstart](#quickstart-library-benchmarks)
+//!     - [Configuration](#configuration-library-benchmarks)
+//!   - [Binary Benchmarks](#binary-benchmarks)
+//!     - [Temporary workspace and other important default
+//!       behavior](#temporary-workspace-and-other-important-default-behavior)
+//!     - [Quickstart](#quickstart-binary-benchmarks)
+//!     - [Configuration](#configuration-binary-benchmarks)
+//! - [Valgrind Tools](#valgrind-tools)
+//! - [Client Requests](#client-requests)
+//! - [Flamegraphs](#flamegraphs)
+//!
+//! ## Characteristics
 //! - __Precision__: High-precision measurements allow you to reliably detect very small
 //! optimizations of your code
 //! - __Consistency__: Iai-Callgrind can take accurate measurements even in virtualized CI
@@ -24,24 +40,27 @@
 //! with analyzing tools like `dh_view.html`, `ms_print` and others.
 //! - __Visualization__: Iai-Callgrind is capable of creating regular and differential flamegraphs
 //! from the Callgrind output format.
+//! - __Valgrind Client Requests__: Support of zero overhead [Valgrind Client
+//! Requests](https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq)
+//! (compared to native valgrind client requests overhead) on many targets
 //! - __Stable-compatible__: Benchmark your code without installing nightly Rust
 //!
-//! # Benchmarking
+//! ## Benchmarking
 //!
 //! `iai-callgrind` can be divided into two sections: Benchmarking the library and
 //! its public functions and benchmarking of the binaries of a crate.
 //!
-//! ## Library Benchmarks
+//! ### Library Benchmarks
 //!
 //! Use this scheme of the [`main`] macro if you want to benchmark functions of your
 //! crate's library.
 //!
-//! ### Important default behavior
+//! #### Important default behavior
 //!
 //! The environment variables are cleared before running a library benchmark. See also the
 //! Configuration section below if you need to change that behavior.
 //!
-//! ### Quickstart
+//! #### Quickstart (#library-benchmarks)
 //!
 //! ```rust
 //! use iai_callgrind::{black_box, library_benchmark, library_benchmark_group, main};
@@ -111,7 +130,7 @@
 //! Note that it is important to annotate the benchmark functions with
 //! [`#[library_benchmark]`](crate::library_benchmark).
 //!
-//! ### Configuration
+//! ### Configuration (#library-benchmarks)
 //!
 //! It's possible to configure some of the behavior of `iai-callgrind`. See the docs of
 //! [`crate::LibraryBenchmarkConfig`] for more details. Configure library benchmarks at
@@ -140,14 +159,14 @@
 //! [README](https://github.com/iai-callgrind/iai-callgrind) of this crate includes more explanations,
 //! common recipes and some examples.
 //!
-//! ## Binary Benchmarks
+//! ### Binary Benchmarks
 //!
 //! Use this scheme of the [`main`] macro to benchmark one or more binaries of your crate. If you
 //! really like to, it's possible to benchmark any executable file in the PATH or any executable
 //! specified with an absolute path. The documentation for setting up binary benchmarks with the
 //! `binary_benchmark_group` macro can be found in the docs of [`crate::binary_benchmark_group`].
 //!
-//! ### Temporary Workspace and other important default behavior
+//! #### Temporary Workspace and other important default behavior
 //!
 //! Per default, all binary benchmarks and the `before`, `after`, `setup` and `teardown` functions
 //! are executed in a temporary directory. See [`crate::BinaryBenchmarkConfig::sandbox`] for a
@@ -155,7 +174,7 @@
 //! of benchmarked binaries are cleared before the benchmark is run. See also
 //! [`crate::BinaryBenchmarkConfig::env_clear`] for how to change this behavior.
 //!
-//! ### Quickstart
+//! #### Quickstart (#binary-benchmarks)
 //!
 //! Suppose your crate's binary is named `my-exe` and you have a fixtures directory in
 //! `benches/fixtures` with a file `test1.txt` in it:
@@ -210,7 +229,7 @@
 //! main!(binary_benchmark_groups = my_exe_group);
 //! # }
 //! ```
-//! ### Configuration
+//! #### Configuration (#binary-benchmarks)
 //!
 //! Much like the configuration of library benchmarks (See above) it's possible to configure binary
 //! benchmarks at top-level in the `main!` macro and at group-level in the
@@ -222,7 +241,7 @@
 //! [README](https://github.com/iai-callgrind/iai-callgrind) of this crate includes some introductory
 //! documentation with additional examples.
 //!
-//! ### Valgrind Tools
+//! ## Valgrind Tools
 //!
 //! In addition to the default benchmarks, you can use the Iai-Callgrind framework to run other
 //! Valgrind profiling [`Tool`]s like `DHAT`, `Massif` and the experimental `BBV` but also
@@ -247,7 +266,12 @@
 //! # }
 //! ```
 //!
-//! ### Flamegraphs
+//! ## Client requests
+//!
+//! `iai-callgrind` supports valgrind client requests. See the documentation of the
+//! [`client_requests`] module.
+//!
+//! ## Flamegraphs
 //!
 //! Flamegraphs are opt-in and can be created if you pass a [`FlamegraphConfig`] to the
 //! [`BinaryBenchmarkConfig::flamegraph`], [`Run::flamegraph`] or
@@ -286,7 +310,7 @@
 #![allow(clippy::enum_glob_use)]
 #![allow(clippy::module_name_repetitions)]
 
-#[cfg(feature = "benchmark")]
+#[cfg(feature = "default")]
 macro_rules! impl_traits {
     ($src:ty, $dst:ty) => {
         impl From<$src> for $dst {
@@ -315,31 +339,31 @@ macro_rules! impl_traits {
     };
 }
 
-#[cfg(feature = "benchmark")]
+#[cfg(feature = "default")]
 mod bin_bench;
 #[cfg(feature = "client_requests_defs")]
 pub mod client_requests;
-#[cfg(feature = "benchmark")]
+#[cfg(feature = "default")]
 mod common;
-#[cfg(feature = "benchmark")]
+#[cfg(feature = "default")]
 #[doc(hidden)]
 pub mod internal;
-#[cfg(feature = "benchmark")]
+#[cfg(feature = "default")]
 mod lib_bench;
-#[cfg(feature = "benchmark")]
+#[cfg(feature = "default")]
 mod macros;
 
-#[cfg(feature = "benchmark")]
+#[cfg(feature = "default")]
 pub use bin_bench::{
     Arg, BenchmarkId, BinaryBenchmarkConfig, BinaryBenchmarkGroup, ExitWith, Fixtures, Run,
 };
-#[cfg(feature = "benchmark")]
+#[cfg(feature = "default")]
 pub use bincode;
-#[cfg(feature = "benchmark")]
+#[cfg(feature = "default")]
 pub use common::{black_box, FlamegraphConfig, RegressionConfig, Tool};
-#[cfg(feature = "benchmark")]
+#[cfg(feature = "default")]
 pub use iai_callgrind_macros::library_benchmark;
-#[cfg(feature = "benchmark")]
+#[cfg(feature = "default")]
 pub use iai_callgrind_runner::api::{Direction, EventKind, FlamegraphKind, ValgrindTool};
-#[cfg(feature = "benchmark")]
+#[cfg(feature = "default")]
 pub use lib_bench::LibraryBenchmarkConfig;

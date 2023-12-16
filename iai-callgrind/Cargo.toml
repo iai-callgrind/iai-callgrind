@@ -12,7 +12,7 @@ readme = "../README.md"
 homepage = "https://github.com/iai-callgrind/iai-callgrind"
 repository = "https://github.com/iai-callgrind/iai-callgrind"
 license = "Apache-2.0 OR MIT"
-keywords = ["iai", "benchmark", "callgrind", "valgrind"]
+keywords = ["iai", "benchmark", "callgrind", "valgrind", "client requests"]
 categories = ["development-tools::profiling", "development-tools::testing"]
 
 [features]
