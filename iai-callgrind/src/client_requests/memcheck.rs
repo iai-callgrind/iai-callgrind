@@ -3,7 +3,7 @@
 //! See also [Memcheck Client
 //! Requests](https://valgrind.org/docs/manual/mc-manual.html#mc-manual.clientreqs)
 
-use core::ffi::CStr;
+use std::ffi::CStr;
 
 use super::{
     bindings, fatal_error, valgrind_do_client_request_expr, valgrind_do_client_request_stmt,
