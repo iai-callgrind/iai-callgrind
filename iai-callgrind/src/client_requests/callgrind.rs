@@ -2,7 +2,7 @@
 //!
 //! See also [Callgrind specific client
 //! requests](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.clientrequests)
-use std::ffi::CStr;
+use core::ffi::CStr;
 
 use super::{bindings, fatal_error, valgrind_do_client_request_stmt};
 

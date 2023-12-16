@@ -3,8 +3,7 @@
 //! See also [The client request
 //! mechanism](https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq)
 
-use std::ffi::CStr;
-use std::usize;
+use core::ffi::CStr;
 
 use super::{
     bindings, fatal_error, valgrind_do_client_request_expr, valgrind_do_client_request_stmt, RawFd,
@@ -693,6 +692,7 @@ pub fn enable_error_reporting() {
     );
 }
 
+// TODO: CHECK RETURN VALUE: 0 is default (when not running under valgrind)
 /// Execute a monitor command from the client program
 ///
 /// If a connection is opened with GDB, the output will be sent according to the output mode set for
