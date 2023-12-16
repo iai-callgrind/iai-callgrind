@@ -103,6 +103,7 @@ jobs:
         if: matrix.toolchain != 'stable'
         run: |
           rustup toolchain install stable --no-self-update --component clippy
+      - uses: taiki-e/install-action@cargo-hack
       - uses: Swatinem/rust-cache@v2.2.0
         with:
           key: ubuntu-latest_${{ matrix.toolchain }}
@@ -117,8 +118,8 @@ jobs:
           rustup show
           rustup component list --installed
           valgrind --version
-      - name: Build
-        run: cargo build --all-features --release
+      - name: Build with the feature powerset
+        run: cargo hack --feature-powerset --exclude-features ui_tests build
       - name: Lint
         run: cargo +stable clippy --all-features --all-targets -- -D warnings
       - name: Test

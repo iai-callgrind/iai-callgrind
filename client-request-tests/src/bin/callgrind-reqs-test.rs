@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 use client_request_tests::MARKER;
 use iai_callgrind::client_requests::{self};
 use iai_callgrind::cstring;
@@ -37,7 +39,9 @@ fn client_requests_2() -> i32 {
 }
 
 fn main() {
-    unsafe { iai_callgrind::valgrind_println_unchecked!("{MARKER}") };
+    unsafe {
+        iai_callgrind::valgrind_println_unchecked!("{MARKER}");
+    }
 
     client_requests_2();
 

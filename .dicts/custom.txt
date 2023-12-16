@@ -102,6 +102,7 @@ noaccess
 nsec
 outfile
 pipefail
+powerset
 ppid
 printargs
 printenv

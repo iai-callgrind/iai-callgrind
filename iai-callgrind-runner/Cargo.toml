@@ -17,8 +17,9 @@ categories = ["development-tools::profiling", "development-tools::testing"]
 
 [features]
 api = ["dep:serde"]
-default = ["runner", "api"]
+default = ["runner"]
 runner = [
+  "api",
   "dep:anyhow",
   "dep:bincode",
   "dep:cargo_metadata",
