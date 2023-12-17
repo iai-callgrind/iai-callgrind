@@ -29,6 +29,7 @@ ui_tests = []
 [build-dependencies]
 cc = { version = "1" }
 bindgen = { version = "0.69" }
+regex = { version = "1" }
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]

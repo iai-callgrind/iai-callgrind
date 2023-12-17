@@ -1,0 +1,33 @@
+printf: foo
+
+printf unchecked: foo
+printf unchecked (invalid): INV
+println: foo
+println unchecked: foo
+println unchecked (invalid): INV
+printf backtrace: foo
+<__BACKTRACE__>
+
+<__BACKTRACE__>
+printf backtrace unchecked: foo
+<__BACKTRACE__>
+printf backtrace unchecked (invalid): INV   at <__FILTER__>
+<__BACKTRACE__>
+
+<__BACKTRACE__>
+println backtrace: foo
+<__BACKTRACE__>
+println backtrace unchecked: foo
+<__BACKTRACE__>
+println backtrace unchecked (invalid): INV   at <__FILTER__>
+<__BACKTRACE__>
+
+<__BACKTRACE__>
+
+Start dumping at BB <__FILTER__> (Prg.Term.)...
+Dump to
+Dumping done.
+Events    : Ir
+Collected :
+
+I   refs:

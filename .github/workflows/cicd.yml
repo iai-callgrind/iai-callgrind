@@ -1,4 +1,5 @@
-# spell-checker:ignore taiki rustfmt binstall clippy taplo rustup
+# spell-checker:ignore taiki rustfmt binstall clippy taplo rustup nocapture
+# spell-checker:ignore nofile gnuabi armv gnueabi mipsel
 
 name: Build and Check
 
@@ -119,13 +120,13 @@ jobs:
           rustup component list --installed
           valgrind --version
       - name: Build with the feature powerset
-        run: cargo hack --feature-powerset --exclude-features ui_tests build
+        run: cargo hack --workspace --exclude client-request-tests --feature-powerset --exclude-features ui_tests build
       - name: Lint
         run: cargo +stable clippy --all-features --all-targets -- -D warnings
       - name: Test
         run: |
           set -o pipefail
-          cargo test ${{ matrix.ui_tests }} |& tee test.output
+          cargo test --workspace --exclude client-request-tests ${{ matrix.ui_tests }} |& tee test.output
       - name: Check test output for ui errors
         if: ${{ matrix.ui_tests && failure() }}
         run: |
@@ -148,6 +149,54 @@ jobs:
           name: iai-callgrind-benchmarks
           path: "target/iai"
 
+  client_requests:
+    needs: [format]
+    name: Test client requests
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: i686-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: s390x-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+          - os: ubuntu-latest
+            target: powerpc-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: powerpc64-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: powerpc64le-unknown-linux-gnu
+    runs-on: ${{ matrix.job.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@cross
+      - uses: Swatinem/rust-cache@v2.2.0
+        with:
+          key: cross_${{ matrix.job.os }}_${{ matrix.job.target }}
+      - name: Cache docker images
+        uses: ScribeMD/docker-cache@0.3.7
+        with:
+          key: docker_${{ matrix.job.os }}_${{ matrix.job.target }}_${{ hashFiles('docker/*', 'Cross.toml') }}
+      - name: Info
+        run: |
+          set -x
+          uname -a
+          pwd
+          rustup --version
+          rustup show
+          rustup component list --installed
+      - name: Test client requests
+        run: cross test --package client-request-tests --target ${{ matrix.job.target }} --test tests --release -- --nocapture
+        env:
+          CROSS_CONTAINER_OPTS: "--ulimit nofile=1024:4096"
+
   docs:
     needs: [base]
     name: Docs/ubuntu-latest
@@ -156,6 +205,9 @@ jobs:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2.2.0
+      # We need the headers to be able to build iai-callgrind
+      - name: Install valgrind
+        run: sudo apt-get -y update && sudo apt-get -y install valgrind
       - name: Run doc tests
         run: cargo test --all-features --doc
       - name: Check Documentation

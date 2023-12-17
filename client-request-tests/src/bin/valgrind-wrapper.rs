@@ -2,9 +2,10 @@ use std::fmt::Display;
 use std::io::{stderr, BufRead, BufReader, Write};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::str::FromStr;
 
-use client_request_tests::MARKER;
+use client_request_tests::{CROSS_TARGET, MARKER};
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -19,7 +20,7 @@ lazy_static! {
     static ref CALLGRIND_RM_BB_NUM_RE: Regex =
         regex::Regex::new(r"(at BB\s+)([0-9]+)(\s+.*)$").expect("Regex should compile");
     static ref CALLGRIND_RM_ADDR_RE: Regex =
-        regex::Regex::new(r"((at|by)\s+)(0x[0-9A-Za-z]+)").expect("Regex should compile");
+        regex::Regex::new(r"((at|by)\s+)(0x[0-9A-Za-z]+\s*:.*)$").expect("Regex should compile");
     // The following regex are almost 1:1 taken from valgrind.git/callgrind/tests/filter_stderr
     // to filter the numbers from stderr
     static ref CALLGRIND_RM_NUM_REFS_RE: Regex =
@@ -34,6 +35,8 @@ lazy_static! {
         regex::Regex::new(r"^(Collected\s*:)[ 0-9]*$").expect("Regex should compile");
     static ref CALLGRIND_RM_LINE_NUM_RE: Regex =
         regex::Regex::new(r"(\(.*:)([0-9]+)(\))\s*$").expect("Regex should compile");
+    static ref CALLGRIND_BACKTRACE_RE: Regex =
+        regex::Regex::new(r"^((at|by)\s*0x[0-9A-Za-z]+\s*:)").expect("Regex should compile");
 }
 
 #[derive(Debug)]
@@ -70,6 +73,7 @@ fn callgrind_filter(path: &Path, bytes: &[u8], writer: &mut impl Write) {
         Body,
     }
     let mut state = State::Header;
+    let mut is_backtrace = false;
     for line in BufReader::new(bytes).lines().map(Result::unwrap) {
         if state == State::Header {
             if line.contains(MARKER) {
@@ -86,6 +90,16 @@ fn callgrind_filter(path: &Path, bytes: &[u8], writer: &mut impl Write) {
             .unwrap()
             .as_str();
 
+        // backtraces are too different on different targets
+        if CALLGRIND_BACKTRACE_RE.is_match(rest) {
+            if !is_backtrace {
+                writeln!(writer, "<__BACKTRACE__>").unwrap();
+                is_backtrace = true;
+            }
+            continue;
+        } else {
+            is_backtrace = false;
+        }
         let replaced = path_re.replace_all(rest, "<__FILTER__>");
         let replaced = CALLGRIND_RM_ADDR_RE.replace_all(&replaced, "$1<__FILTER__>");
         let replaced = CALLGRIND_RM_BB_NUM_RE.replace_all(&replaced, "$1<__FILTER__>$3");
@@ -109,12 +123,24 @@ fn callgrind_filter(path: &Path, bytes: &[u8], writer: &mut impl Write) {
     }
 }
 
+pub fn get_valgrind_command() -> Command {
+    let valgrind = PathBuf::from("/target/valgrind")
+        .join(CROSS_TARGET)
+        .join("bin/valgrind");
+    if !valgrind.exists() {
+        panic!("Running the tests without cross is unsupported");
+    }
+    Command::new(valgrind)
+}
+
 fn main() {
     let mut env_args = std::env::args();
     let base_dir = {
         let exe = PathBuf::from(env_args.next().unwrap());
         exe.parent().unwrap().to_owned()
     };
+
+    let expected_exit_code = env_args.next().unwrap().parse::<i32>().unwrap();
 
     let tool = {
         let tool = env_args.next().unwrap();
@@ -140,17 +166,26 @@ fn main() {
         }
     };
 
-    let output = std::process::Command::new("valgrind")
-        .arg(format!("--tool={tool}"))
+    let mut cmd = get_valgrind_command();
+    cmd.arg(format!("--tool={tool}"))
         .args(valgrind_args)
         .arg(&bin)
-        .args(bin_args)
-        .output()
-        .unwrap();
+        .args(bin_args);
+    let output = cmd.output().unwrap();
 
     if let Some(code) = output.status.code() {
-        if let Tool::Callgrind = tool {
-            callgrind_filter(&bin, &output.stderr, &mut stderr())
+        if code == expected_exit_code {
+            if let Tool::Callgrind = tool {
+                callgrind_filter(&bin, &output.stderr, &mut stderr())
+            }
+        } else {
+            let stderr = stderr();
+            let mut stderr = stderr.lock();
+            eprintln!("Unexpected exit code '{code}' when running {cmd:?}");
+            eprintln!("STDOUT:");
+            stderr.write_all(&output.stdout).unwrap();
+            eprintln!("STDERR:");
+            stderr.write_all(&output.stderr).unwrap();
         }
 
         std::process::exit(code);

@@ -7,6 +7,7 @@ Cachegrind
 Callgrind
 Clearify
 DEBUGINFOD
+DESTDIR
 Deque
 Flamegraph
 Flamegraphs
@@ -36,6 +37,7 @@ Valgrinds
 aarch
 addressibility
 ahash
+armv7
 aslr
 atstart
 autofree
@@ -75,6 +77,9 @@ flamegraphs
 freelike
 funcs
 gmax
+gnuabi
+gnueabi
+gnueabihf
 grcov
 ildmr
 ilmr
@@ -94,11 +99,13 @@ massif
 memalign
 metapool
 mips
+mipsel
 mispredicted
 mmap
 msvc
 nanomips
 noaccess
+noninteractive
 nsec
 outfile
 pipefail
