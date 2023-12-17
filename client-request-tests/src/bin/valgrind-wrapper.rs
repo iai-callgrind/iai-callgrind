@@ -32,11 +32,14 @@ lazy_static! {
             .expect("Regex should compile");
     static ref CALLGRIND_RM_NUM_COLLECTED_RE: Regex =
         regex::Regex::new(r"^(Collected\s*:)[ 0-9]*$").expect("Regex should compile");
+    static ref CALLGRIND_RM_LINE_NUM_RE: Regex =
+        regex::Regex::new(r"(\(.*:)([0-9]+)(\))\s*$").expect("Regex should compile");
 }
 
 #[derive(Debug)]
 enum Tool {
     Callgrind,
+    Memcheck,
 }
 
 impl FromStr for Tool {
@@ -45,6 +48,7 @@ impl FromStr for Tool {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_ascii_lowercase().as_str() {
             "callgrind" => Ok(Tool::Callgrind),
+            "memcheck" => Ok(Tool::Memcheck),
             tool => Err(format!("Unsupported tool: {tool}")),
         }
     }
@@ -85,6 +89,7 @@ fn callgrind_filter(path: &Path, bytes: &[u8], writer: &mut impl Write) {
         let replaced = path_re.replace_all(rest, "<__FILTER__>");
         let replaced = CALLGRIND_RM_ADDR_RE.replace_all(&replaced, "$1<__FILTER__>");
         let replaced = CALLGRIND_RM_BB_NUM_RE.replace_all(&replaced, "$1<__FILTER__>$3");
+        let replaced = CALLGRIND_RM_LINE_NUM_RE.replace_all(&replaced, "$1<__FILTER__>$3");
         let rest = replaced.deref();
         if !CALLGRIND_EXCLUDED_LINES_RE.is_match(rest) {
             if let Some(caps) = CALLGRIND_RM_NUM_REFS_RE.captures(rest) {
@@ -143,9 +148,14 @@ fn main() {
         .output()
         .unwrap();
 
-    match tool {
-        Tool::Callgrind => callgrind_filter(&bin, &output.stderr, &mut stderr()),
-    }
+    if let Some(code) = output.status.code() {
+        if let Tool::Callgrind = tool {
+            callgrind_filter(&bin, &output.stderr, &mut stderr())
+        }
 
-    std::process::exit(output.status.code().unwrap());
+        std::process::exit(code);
+    } else {
+        eprintln!("{:?}", output);
+        std::process::exit(-1);
+    }
 }

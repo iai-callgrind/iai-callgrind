@@ -217,7 +217,11 @@ macro_rules! cstring {
 /// The same safety conditions as to the [`cstring`] macro apply here
 #[macro_export]
 macro_rules! format_cstring {
-    ($($args:tt)*) => {{ std::ffi::CString::from_vec_with_nul_unchecked(format!("{}\0", format_args!($($args)*)).into_bytes()) }};
+    ($($args:tt)*) => {{
+        std::ffi::CString::from_vec_with_nul_unchecked(
+            format!("{}\0", format_args!($($args)*)).into_bytes()
+        )
+    }};
 }
 
 cfg_if! {
@@ -238,7 +242,7 @@ cfg_if! {
                     Ok(c_string) => {
                         unsafe {
                             $crate::client_requests::__valgrind_print(
-                                c_string.as_ptr() as *const ()
+                                c_string.as_ptr()
                             );
                         }
                         Ok(())
@@ -261,7 +265,9 @@ cfg_if! {
         macro_rules! valgrind_printf_unchecked {
             ($($args:tt)*) => {{
                 let string = format!("{}\0", format_args!($($args)*));
-                $crate::client_requests::__valgrind_print(string.as_ptr() as *const ());
+                $crate::client_requests::__valgrind_print(
+                    string.as_ptr() as *const $crate::cty::c_char
+                );
             }};
         }
 
@@ -278,7 +284,7 @@ cfg_if! {
                     Ok(c_string) => {
                         unsafe {
                             $crate::client_requests::__valgrind_print(
-                                c_string.as_ptr() as *const ()
+                                c_string.as_ptr()
                             );
                         }
                         Ok(())
@@ -296,9 +302,11 @@ cfg_if! {
         #[macro_export]
         macro_rules! valgrind_println_unchecked {
             () => { $crate::valgrind_printf_unchecked!("\n") };
-            ($($arg:tt)*) => {{
-                let string = format!("{}\n\0", format_args!($($arg)*));
-                $crate::client_requests::__valgrind_print(string.as_ptr() as *const ());
+            ($($args:tt)*) => {{
+                let string = format!("{}\n\0", format_args!($($args)*));
+                $crate::client_requests::__valgrind_print(
+                    string.as_ptr() as *const $crate::cty::c_char
+                );
             }};
         }
 
@@ -314,7 +322,7 @@ cfg_if! {
                     Ok(c_string) => {
                         unsafe {
                             $crate::client_requests::__valgrind_print_backtrace(
-                                c_string.as_ptr() as *const ()
+                                c_string.as_ptr()
                             );
                         }
                         Ok(())
@@ -333,7 +341,9 @@ cfg_if! {
         macro_rules! valgrind_printf_backtrace_unchecked {
             ($($arg:tt)*) => {{
                 let string = format!("{}\0", format_args!($($arg)*));
-                $crate::client_requests::__valgrind_print_backtrace(string.as_ptr() as *const ());
+                $crate::client_requests::__valgrind_print_backtrace(
+                    string.as_ptr() as *const $crate::cty::c_char
+                );
             }};
         }
 
@@ -350,7 +360,7 @@ cfg_if! {
                     Ok(c_string) => {
                         unsafe {
                             $crate::client_requests::__valgrind_print_backtrace(
-                                c_string.as_ptr() as *const ()
+                                c_string.as_ptr()
                             );
                         }
                         Ok(())
@@ -372,7 +382,7 @@ cfg_if! {
                 let string = format!("{}\n\0", format_args!($($arg)*));
                 unsafe {
                     $crate::client_requests::__valgrind_print_backtrace(
-                        string.as_ptr() as *const ()
+                        string.as_ptr() as *const $crate::cty::c_char
                     );
                 }
             }};
@@ -470,7 +480,6 @@ pub mod callgrind;
 pub mod dhat;
 pub mod error;
 pub mod memcheck;
-#[cfg(client_requests_support = "native")]
 mod native_bindings;
 pub mod valgrind;
 
@@ -521,32 +530,17 @@ fn fatal_error(func: &str) -> ! {
     );
 }
 
+// TODO: CLEANUP. How to avoid these additional wrappers ??
 #[doc(hidden)]
 #[inline(always)]
-pub unsafe fn __valgrind_print(ptr: *const ()) {
-    valgrind_do_client_request_expr(
-        0,
-        bindings::IC_ValgrindClientRequest::IC_PRINTF_VALIST_BY_REF as cty::c_uint,
-        ptr as usize,
-        0,
-        0,
-        0,
-        0,
-    );
+pub unsafe fn __valgrind_print(ptr: *const cty::c_char) {
+    native_bindings::valgrind_printf(ptr);
 }
 
 #[doc(hidden)]
 #[inline(always)]
-pub unsafe fn __valgrind_print_backtrace(ptr: *const ()) {
-    valgrind_do_client_request_expr(
-        0,
-        bindings::IC_ValgrindClientRequest::IC_PRINTF_BACKTRACE_VALIST_BY_REF as cty::c_uint,
-        ptr as usize,
-        0,
-        0,
-        0,
-        0,
-    );
+pub unsafe fn __valgrind_print_backtrace(ptr: *const cty::c_char) {
+    native_bindings::valgrind_printf_backtrace(ptr);
 }
 
 #[doc(hidden)]

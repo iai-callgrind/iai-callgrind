@@ -361,6 +361,8 @@ pub use bin_bench::{
 pub use bincode;
 #[cfg(feature = "default")]
 pub use common::{black_box, FlamegraphConfig, RegressionConfig, Tool};
+#[cfg(feature = "client_requests_defs")]
+pub use cty;
 #[cfg(feature = "default")]
 pub use iai_callgrind_macros::library_benchmark;
 #[cfg(feature = "default")]

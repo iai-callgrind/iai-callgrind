@@ -1,8 +1,7 @@
 #![allow(unused_imports)]
 
 use client_request_tests::MARKER;
-use iai_callgrind::client_requests::{self};
-use iai_callgrind::cstring;
+use iai_callgrind::{client_requests, cstring, valgrind_printf, valgrind_println_unchecked};
 
 fn do_work(start: i32) -> i32 {
     let mut sum = start;
@@ -40,7 +39,7 @@ fn client_requests_2() -> i32 {
 
 fn main() {
     unsafe {
-        iai_callgrind::valgrind_println_unchecked!("{MARKER}");
+        valgrind_println_unchecked!("{MARKER}");
     }
 
     client_requests_2();

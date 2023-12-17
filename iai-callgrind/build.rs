@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use bindgen::builder;
 
 #[cfg(feature = "client_requests_defs")]
+#[derive(Debug)]
 struct Target {
     arch: String,
     env: String,
@@ -17,6 +18,7 @@ struct Target {
 }
 
 #[cfg(feature = "client_requests_defs")]
+#[derive(Debug)]
 enum Support {
     X86,
     X86_64,
@@ -39,6 +41,19 @@ impl Target {
 #[cfg(feature = "client_requests_defs")]
 fn print_client_requests_support(value: &str) {
     println!("cargo:rustc-cfg=client_requests_support=\"{value}\"");
+}
+
+#[cfg(feature = "client_requests_defs")]
+fn build_native() {
+    let mut builder = cc::Build::new();
+    if let Ok(env) = std::env::var("IAI_CALLGRIND_VALGRIND_INCLUDE") {
+        builder.include(env);
+    }
+
+    builder
+        .debug(true)
+        .file("valgrind/native.c")
+        .compile("native");
 }
 
 #[cfg(not(feature = "client_requests_defs"))]
@@ -126,18 +141,15 @@ fn main() {
     match support {
         Some(Support::X86_64) => {
             print_client_requests_support("x86_64");
+            build_native();
         }
         Some(Support::X86) => {
             print_client_requests_support("x86");
+            build_native();
         }
         Some(Support::Native) => {
             print_client_requests_support("native");
-
-            let mut builder = cc::Build::new();
-            if let Ok(env) = std::env::var("IAI_CALLGRIND_VALGRIND_INCLUDE") {
-                builder.include(env);
-            }
-            builder.file("valgrind/native.c").compile("native");
+            build_native();
         }
         Some(Support::No) => {
             print_client_requests_support("no");

@@ -1,10 +1,15 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "valgrind/callgrind.h"
-#include "valgrind/dhat.h"
-#include "valgrind/memcheck.h"
 #include "valgrind/valgrind.h"
+
+#include "valgrind/callgrind.h"
+#if defined(__VALGRIND_MAJOR__) && defined(__VALGRIND_MINOR__) &&              \
+    ((__VALGRIND_MAJOR__ == 3 && __VALGRIND_MINOR__ >= 17) ||                  \
+     (__VALGRIND_MAJOR__ > 3))
+#include "valgrind/dhat.h"
+#endif
+#include "valgrind/memcheck.h"
 
 #ifdef VALGRIND_DO_CLIENT_REQUEST_EXPR
 const bool IC_IS_PLATFORM_SUPPORTED_BY_VALGRIND = true;
@@ -220,12 +225,12 @@ typedef enum {
  * */
 
 typedef enum {
-#ifdef DHAT_AD_HOC_EVENT
+#if defined(VALGRIND_DHAT_H) && defined(DHAT_AD_HOC_EVENT)
   IC_DHAT_AD_HOC_EVENT = VG_USERREQ__DHAT_AD_HOC_EVENT,
 #else
   IC_DHAT_AD_HOC_EVENT = 0,
 #endif
-#ifdef DHAT_HISTOGRAM_MEMORY
+#if defined(VALGRIND_DHAT_H) && defined(DHAT_HISTOGRAM_MEMORY)
   IC_DHAT_HISTOGRAM_MEMORY = VG_USERREQ__DHAT_HISTOGRAM_MEMORY,
 #else
   IC_DHAT_HISTOGRAM_MEMORY = 1,
