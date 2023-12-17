@@ -1,12 +1,117 @@
+################
+# X86_64
+################
+[target.x86_64-unknown-linux-gnu]
+runner = "qemu-system"
+
+[target.x86_64-unknown-linux-gnu.dockerfile]
+file = "docker/Dockerfile"
+context = "docker"
+build-args = { IAI_CALLGRIND_CROSS_TARGET = "x86_64-unknown-linux-gnu" }
+
+[target.x86_64-unknown-linux-gnu.env]
+passthrough = ["BINDGEN_EXTRA_CLANG_ARGS_x86_64_unknown_linux_gnu='--verbose'"]
+
+################
+# i686
+################
+[target.i686-unknown-linux-gnu]
+runner = "qemu-system"
+
+[target.i686-unknown-linux-gnu.dockerfile]
+file = "docker/Dockerfile"
+context = "docker"
+build-args = { IAI_CALLGRIND_CROSS_TARGET = "i686-unknown-linux-gnu" }
+
+[target.i686-unknown-linux-gnu.env]
+passthrough = ["BINDGEN_EXTRA_CLANG_ARGS_i686_unknown_linux_gnu='--verbose'"]
+
+################
+# s390x
+################
 [target.s390x-unknown-linux-gnu]
-image = "ghcr.io/cross-rs/s390x-unknown-linux-gnu:main"
-pre-build = [
-  "apt-get update && apt-get --assume-yes --no-install-recommends install libclang-12-dev clang-12 llvm-12-dev valgrind",
+runner = "qemu-system"
+
+[target.s390x-unknown-linux-gnu.dockerfile]
+file = "docker/Dockerfile"
+context = "docker"
+build-args = { IAI_CALLGRIND_CROSS_TARGET = "s390x-unknown-linux-gnu" }
+
+[target.s390x-unknown-linux-gnu.env]
+passthrough = ["BINDGEN_EXTRA_CLANG_ARGS_s390x_unknown_linux_gnu='--verbose'"]
+
+################
+# aarch64
+################
+[target.aarch64-unknown-linux-gnu]
+runner = "qemu-system"
+
+[target.aarch64-unknown-linux-gnu.dockerfile]
+file = "docker/Dockerfile"
+context = "docker"
+build-args = { IAI_CALLGRIND_CROSS_TARGET = "aarch64-unknown-linux-gnu" }
+
+[target.aarch64-unknown-linux-gnu.env]
+passthrough = ["BINDGEN_EXTRA_CLANG_ARGS_aarch64_unknown_linux_gnu='--verbose'"]
+
+################
+# armv7
+################
+[target.armv7-unknown-linux-gnueabihf]
+runner = "qemu-system"
+
+[target.armv7-unknown-linux-gnueabihf.dockerfile]
+file = "docker/Dockerfile"
+context = "docker"
+build-args = { IAI_CALLGRIND_CROSS_TARGET = "armv7-unknown-linux-gnueabihf" }
+
+[target.armv7-unknown-linux-gnueabihf.env]
+passthrough = [
+  "BINDGEN_EXTRA_CLANG_ARGS_armv7_unknown_linux_gnueabihf='--verbose'",
 ]
 
-[target.i686-unknown-linux-gnu]
-image = "ghcr.io/cross-rs/i686-unknown-linux-gnu:main"
-pre-build = [
-  "dpkg --add-architecture $CROSS_DEB_ARCH",
-  "apt-get update && apt-get --assume-yes --no-install-recommends install valgrind:$CROSS_DEB_ARCH",
+################
+# powerpc
+################
+[target.powerpc-unknown-linux-gnu]
+runner = "qemu-system"
+
+[target.powerpc-unknown-linux-gnu.dockerfile]
+file = "docker/Dockerfile"
+context = "docker"
+build-args = { IAI_CALLGRIND_CROSS_TARGET = "powerpc-unknown-linux-gnu" }
+
+[target.powerpc-unknown-linux-gnu.env]
+passthrough = ["BINDGEN_EXTRA_CLANG_ARGS_powerpc_unknown_linux_gnu='--verbose'"]
+
+################
+# powerpc64
+################
+[target.powerpc64-unknown-linux-gnu]
+runner = "qemu-system"
+
+[target.powerpc64-unknown-linux-gnu.dockerfile]
+file = "docker/Dockerfile"
+context = "docker"
+build-args = { IAI_CALLGRIND_CROSS_TARGET = "powerpc64-unknown-linux-gnu" }
+
+[target.powerpc64-unknown-linux-gnu.env]
+passthrough = [
+  "BINDGEN_EXTRA_CLANG_ARGS_powerpc64_unknown_linux_gnu='--verbose'",
+]
+
+################
+# powerpc64le
+################
+[target.powerpc64le-unknown-linux-gnu]
+runner = "qemu-system"
+
+[target.powerpc64le-unknown-linux-gnu.dockerfile]
+file = "docker/Dockerfile"
+context = "docker"
+build-args = { IAI_CALLGRIND_CROSS_TARGET = "powerpc64le-unknown-linux-gnu" }
+
+[target.powerpc64le-unknown-linux-gnu.env]
+passthrough = [
+  "BINDGEN_EXTRA_CLANG_ARGS_powerpc64le_unknown_linux_gnu='--verbose'",
 ]

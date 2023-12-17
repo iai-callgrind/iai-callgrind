@@ -11,7 +11,8 @@ size_t valgrind_do_client_request_expr(size_t _zzq_default, size_t _zzq_request,
                                          _zzq_arg5);
 }
 
-size_t valgrind_printf(char *message) { return VALGRIND_PRINTF("%s", message); }
-size_t valgrind_printf_backtrace(char *message) {
+int valgrind_printf(char *message) { return VALGRIND_PRINTF("%s", message); }
+
+int valgrind_printf_backtrace(char *message) {
   return VALGRIND_PRINTF_BACKTRACE("%s", message);
 }

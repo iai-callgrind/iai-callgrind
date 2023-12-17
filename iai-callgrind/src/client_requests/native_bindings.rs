@@ -11,6 +11,6 @@ extern "C" {
         arg5: usize,
     ) -> usize;
 
-    pub fn valgrind_printf(addr: *const cty::c_char) -> usize;
-    pub fn valgrind_printf_backtrace(addr: *const cty::c_char) -> usize;
+    pub fn valgrind_printf(addr: *const cty::c_char) -> cty::c_int;
+    pub fn valgrind_printf_backtrace(addr: *const cty::c_char) -> cty::c_int;
 }

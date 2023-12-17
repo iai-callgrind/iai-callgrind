@@ -49,6 +49,12 @@ fn build_native() {
     if let Ok(env) = std::env::var("IAI_CALLGRIND_VALGRIND_INCLUDE") {
         builder.include(env);
     }
+    if let Ok(env) = std::env::var("IAI_CALLGRIND_CROSS_TARGET") {
+        let path = PathBuf::from("/valgrind/target/valgrind")
+            .join(env)
+            .join("include");
+        builder.include(path);
+    }
 
     builder
         .debug(true)
@@ -72,6 +78,13 @@ fn main() {
 
     if let Ok(env) = std::env::var("IAI_CALLGRIND_VALGRIND_INCLUDE") {
         builder = builder.clang_arg(format!("-iquote{env}"))
+    }
+
+    if let Ok(env) = std::env::var("IAI_CALLGRIND_CROSS_TARGET") {
+        let path = PathBuf::from("/valgrind/target/valgrind")
+            .join(env)
+            .join("include");
+        builder = builder.clang_arg(format!("-iquote{}", path.display()))
     }
 
     let bindings = builder
@@ -115,19 +128,17 @@ fn main() {
     {
         Some(Support::X86)
     } else {
+        let re =
+            regex::Regex::new(r"IC_IS_PLATFORM_SUPPORTED_BY_VALGRIND.*?=\s*(?<value>true|false)")
+                .expect("Regex should compile");
         let reader = BufReader::new(Cursor::new(bindings.to_string()));
         let mut support = None;
         for line in reader.lines().map(Result::unwrap) {
-            // The bindings are formatted, so we can expect a strict format of the
-            // `IS_PLATFORM_SUPPORTED_BY_VALGRIND` variable
-            if let Some(suffix) = line
-                .trim()
-                .strip_prefix("pub const IC_IS_PLATFORM_SUPPORTED_BY_VALGRIND: bool =")
-            {
-                let suffix = suffix.trim();
-                if suffix == "false;" {
+            if let Some(caps) = re.captures(&line) {
+                let value = caps.name("value").unwrap().as_str();
+                if value == "false" {
                     support = Some(Support::No);
-                } else if suffix == "true;" {
+                } else if value == "true" {
                     support = Some(Support::Native);
                 } else {
                     // do nothing
