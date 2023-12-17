@@ -21,8 +21,8 @@ pub fn valgrind_do_client_request_expr(
         asm! {
             "rol edi,3",
             "rol edi,13",
-            "rol edi,61",
-            "rol edi,51",
+            "rol edi,29",
+            "rol edi,19",
             "xchg ebx, ebx",
             lateout("edx") result,
             in("eax") args.as_ptr(),

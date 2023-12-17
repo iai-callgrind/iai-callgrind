@@ -13,6 +13,7 @@ pub fn valgrind_do_client_request_expr(
     arg4: usize,
     arg5: usize,
 ) -> usize {
+    // SAFETY: TODO: SAFETY
     unsafe {
         native_bindings::valgrind_do_client_request_expr(
             default,

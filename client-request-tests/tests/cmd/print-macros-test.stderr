@@ -1,0 +1,85 @@
+printf: foo
+
+printf unchecked: foo
+printf unchecked (invalid): INV
+println: foo
+println unchecked: foo
+println unchecked (invalid): INV
+printf backtrace: foo
+at <__FILTER__>: VALGRIND_PRINTF_BACKTRACE.constprop.0 (valgrind.h:<__FILTER__>)
+by <__FILTER__>: valgrind_printf_backtrace (native.c:<__FILTER__>)
+by <__FILTER__>: print_macros_test::main (in <__FILTER__>)
+by <__FILTER__>: std::sys_common::backtrace::__rust_begin_short_backtrace (in <__FILTER__>)
+by <__FILTER__>: std::rt::lang_start::{{closure}} (in <__FILTER__>)
+by <__FILTER__>: std::rt::lang_start_internal (function.rs:<__FILTER__>)
+by <__FILTER__>: main (in <__FILTER__>)
+
+at <__FILTER__>: VALGRIND_PRINTF_BACKTRACE.constprop.0 (valgrind.h:<__FILTER__>)
+by <__FILTER__>: valgrind_printf_backtrace (native.c:<__FILTER__>)
+by <__FILTER__>: print_macros_test::main (in <__FILTER__>)
+by <__FILTER__>: std::sys_common::backtrace::__rust_begin_short_backtrace (in <__FILTER__>)
+by <__FILTER__>: std::rt::lang_start::{{closure}} (in <__FILTER__>)
+by <__FILTER__>: std::rt::lang_start_internal (function.rs:<__FILTER__>)
+by <__FILTER__>: main (in <__FILTER__>)
+printf backtrace unchecked: foo
+at <__FILTER__>: VALGRIND_PRINTF_BACKTRACE.constprop.0 (valgrind.h:<__FILTER__>)
+by <__FILTER__>: valgrind_printf_backtrace (native.c:<__FILTER__>)
+by <__FILTER__>: print_macros_test::main (in <__FILTER__>)
+by <__FILTER__>: std::sys_common::backtrace::__rust_begin_short_backtrace (in <__FILTER__>)
+by <__FILTER__>: std::rt::lang_start::{{closure}} (in <__FILTER__>)
+by <__FILTER__>: std::rt::lang_start_internal (function.rs:<__FILTER__>)
+by <__FILTER__>: main (in <__FILTER__>)
+printf backtrace unchecked (invalid): INV   at <__FILTER__>: VALGRIND_PRINTF_BACKTRACE.constprop.0 (valgrind.h:<__FILTER__>)
+by <__FILTER__>: valgrind_printf_backtrace (native.c:<__FILTER__>)
+by <__FILTER__>: print_macros_test::main (in <__FILTER__>)
+by <__FILTER__>: std::sys_common::backtrace::__rust_begin_short_backtrace (in <__FILTER__>)
+by <__FILTER__>: std::rt::lang_start::{{closure}} (in <__FILTER__>)
+by <__FILTER__>: std::rt::lang_start_internal (function.rs:<__FILTER__>)
+by <__FILTER__>: main (in <__FILTER__>)
+
+at <__FILTER__>: VALGRIND_PRINTF_BACKTRACE.constprop.0 (valgrind.h:<__FILTER__>)
+by <__FILTER__>: valgrind_printf_backtrace (native.c:<__FILTER__>)
+by <__FILTER__>: print_macros_test::main (in <__FILTER__>)
+by <__FILTER__>: std::sys_common::backtrace::__rust_begin_short_backtrace (in <__FILTER__>)
+by <__FILTER__>: std::rt::lang_start::{{closure}} (in <__FILTER__>)
+by <__FILTER__>: std::rt::lang_start_internal (function.rs:<__FILTER__>)
+by <__FILTER__>: main (in <__FILTER__>)
+println backtrace: foo
+at <__FILTER__>: VALGRIND_PRINTF_BACKTRACE.constprop.0 (valgrind.h:<__FILTER__>)
+by <__FILTER__>: valgrind_printf_backtrace (native.c:<__FILTER__>)
+by <__FILTER__>: print_macros_test::main (in <__FILTER__>)
+by <__FILTER__>: std::sys_common::backtrace::__rust_begin_short_backtrace (in <__FILTER__>)
+by <__FILTER__>: std::rt::lang_start::{{closure}} (in <__FILTER__>)
+by <__FILTER__>: std::rt::lang_start_internal (function.rs:<__FILTER__>)
+by <__FILTER__>: main (in <__FILTER__>)
+println backtrace unchecked: foo
+at <__FILTER__>: VALGRIND_PRINTF_BACKTRACE.constprop.0 (valgrind.h:<__FILTER__>)
+by <__FILTER__>: valgrind_printf_backtrace (native.c:<__FILTER__>)
+by <__FILTER__>: print_macros_test::main (in <__FILTER__>)
+by <__FILTER__>: std::sys_common::backtrace::__rust_begin_short_backtrace (in <__FILTER__>)
+by <__FILTER__>: std::rt::lang_start::{{closure}} (in <__FILTER__>)
+by <__FILTER__>: std::rt::lang_start_internal (function.rs:<__FILTER__>)
+by <__FILTER__>: main (in <__FILTER__>)
+println backtrace unchecked (invalid): INV   at <__FILTER__>: VALGRIND_PRINTF_BACKTRACE.constprop.0 (valgrind.h:<__FILTER__>)
+by <__FILTER__>: valgrind_printf_backtrace (native.c:<__FILTER__>)
+by <__FILTER__>: print_macros_test::main (in <__FILTER__>)
+by <__FILTER__>: std::sys_common::backtrace::__rust_begin_short_backtrace (in <__FILTER__>)
+by <__FILTER__>: std::rt::lang_start::{{closure}} (in <__FILTER__>)
+by <__FILTER__>: std::rt::lang_start_internal (function.rs:<__FILTER__>)
+by <__FILTER__>: main (in <__FILTER__>)
+
+at <__FILTER__>: VALGRIND_PRINTF_BACKTRACE.constprop.0 (valgrind.h:<__FILTER__>)
+by <__FILTER__>: valgrind_printf_backtrace (native.c:<__FILTER__>)
+by <__FILTER__>: print_macros_test::main (in <__FILTER__>)
+by <__FILTER__>: std::sys_common::backtrace::__rust_begin_short_backtrace (in <__FILTER__>)
+by <__FILTER__>: std::rt::lang_start::{{closure}} (in <__FILTER__>)
+by <__FILTER__>: std::rt::lang_start_internal (function.rs:<__FILTER__>)
+by <__FILTER__>: main (in <__FILTER__>)
+
+Start dumping at BB <__FILTER__> (Prg.Term.)...
+Dump to
+Dumping done.
+Events    : Ir
+Collected :
+
+I   refs:
