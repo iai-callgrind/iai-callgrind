@@ -27,6 +27,9 @@ cfg_if::cfg_if! {
     } else if #[cfg(client_requests_support = "x86")] {
         #[path = "x86.rs"]
         pub mod imp;
+    } else if #[cfg(client_requests_support = "arm")] {
+        #[path = "arm.rs"]
+        pub mod imp;
     } else if #[cfg(client_requests_support = "native")] {
         #[path = "native.rs"]
         pub mod imp;

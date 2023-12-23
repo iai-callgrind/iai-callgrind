@@ -20,6 +20,7 @@ struct Target {
 #[cfg(feature = "client_requests_defs")]
 #[derive(Debug)]
 enum Support {
+    Arm,
     X86,
     X86_64,
     Native,
@@ -127,6 +128,8 @@ fn main() {
             || ((target.vendor == "sun") || target.vendor == "pc") && target.os == "solaris")
     {
         Some(Support::X86)
+    } else if target.arch == "arm" && target.os == "linux" && target.env == "gnu" {
+        Some(Support::Arm)
     } else {
         let re =
             regex::Regex::new(r"IC_IS_PLATFORM_SUPPORTED_BY_VALGRIND.*?=\s*(?<value>true|false)")
@@ -156,6 +159,10 @@ fn main() {
         }
         Some(Support::X86) => {
             print_client_requests_support("x86");
+            build_native();
+        }
+        Some(Support::Arm) => {
+            print_client_requests_support("arm");
             build_native();
         }
         Some(Support::Native) => {
