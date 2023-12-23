@@ -21,6 +21,7 @@ struct Target {
 #[derive(Debug)]
 enum Support {
     Arm,
+    Aarch64,
     X86,
     X86_64,
     Native,
@@ -130,6 +131,8 @@ fn main() {
         Some(Support::X86)
     } else if target.arch == "arm" && target.os == "linux" && target.env == "gnu" {
         Some(Support::Arm)
+    } else if target.arch == "aarch64" && target.os == "linux" && target.env == "gnu" {
+        Some(Support::Aarch64)
     } else {
         let re =
             regex::Regex::new(r"IC_IS_PLATFORM_SUPPORTED_BY_VALGRIND.*?=\s*(?<value>true|false)")
@@ -163,6 +166,10 @@ fn main() {
         }
         Some(Support::Arm) => {
             print_client_requests_support("arm");
+            build_native();
+        }
+        Some(Support::Aarch64) => {
+            print_client_requests_support("aarch64");
             build_native();
         }
         Some(Support::Native) => {
