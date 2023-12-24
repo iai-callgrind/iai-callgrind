@@ -479,6 +479,7 @@ mod bindings;
 pub mod callgrind;
 pub mod dhat;
 pub mod error;
+pub mod helgrind;
 pub mod memcheck;
 mod native_bindings;
 pub mod valgrind;
