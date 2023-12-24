@@ -1,4 +1,4 @@
-// spell-checker: ignore rustified iquote
+// spell-checker: ignore rustified iquote iquotevalgrind
 
 #[cfg(feature = "client_requests_defs")]
 use std::io::{BufRead, BufReader, Cursor};
@@ -91,6 +91,7 @@ fn main() {
 
     let bindings = builder
         .clang_arg("-iquote/usr/include")
+        .clang_arg("-iquotevalgrind/include")
         .header("valgrind/wrapper.h")
         .allowlist_var("IC_IS_PLATFORM_SUPPORTED_BY_VALGRIND")
         // valgrind.h
@@ -107,6 +108,9 @@ fn main() {
         // memcheck.h
         .allowlist_type("IC_MemcheckClientRequest")
         .rustified_enum("IC_MemcheckClientRequest")
+        // helgrind.h
+        .allowlist_type("IC_HelgrindClientRequest")
+        .rustified_enum("IC_HelgrindClientRequest")
         .layout_tests(false)
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()

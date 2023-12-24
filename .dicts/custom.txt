@@ -25,12 +25,15 @@ Memcheck
 Mispred
 Mispredicts
 Nulgrind
+PTHREAD
 Quickstart
 RUSTFLAGS
 RUSTSEC
+RWLOCK
 Swatinem
 Trauring's
 USERREQ
+USERSO
 Valgrind
 Valgrind's
 Valgrinds
@@ -41,6 +44,7 @@ armv7
 aslr
 atstart
 autofree
+behaviour
 bheisler
 bincode
 bindgen
@@ -109,6 +113,7 @@ noninteractive
 nsec
 outfile
 pipefail
+posix
 powerset
 ppid
 printargs
@@ -116,6 +121,7 @@ printenv
 println
 proccontrol
 profraw
+pthread
 quickstart
 ramhits
 realloc
@@ -134,6 +140,8 @@ rustdoc
 rustfmt
 rustified
 rustup
+rwlock
+rwlocks
 sandboxing
 schemars
 serde
@@ -146,6 +154,7 @@ sploss2
 srcloc
 struct
 superblocks
+synchronisation
 syscount
 syscputime
 systime
