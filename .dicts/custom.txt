@@ -107,6 +107,7 @@ tempdir
 tempfile
 totalrw
 trybuild
+uninit
 xtleak
 xtree
 valgrind

@@ -767,10 +767,6 @@ impl_traits!(Tool, internal::InternalTool);
 /// This variant is stable-compatible, but it may cause some performance overhead
 /// or fail to prevent code from being eliminated.
 pub fn black_box<T>(dummy: T) -> T {
-    // SAFETY: The safety conditions for read_volatile and forget are satisfied
-    unsafe {
-        let ret = std::ptr::read_volatile(&dummy);
-        std::mem::forget(dummy);
-        ret
-    }
+    // SAFETY: `dummy` and the returned value do not alias.
+    unsafe { std::mem::MaybeUninit::new(dummy).as_ptr().read_volatile() }
 }
