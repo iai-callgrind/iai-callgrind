@@ -1,4 +1,4 @@
-# spell-checker:ignore taiki rustfmt binstall clippy taplo rustup
+# spell-checker:ignore taiki rustfmt binstall clippy taplo rustup miri
 
 name: Build and Check
 
@@ -146,6 +146,31 @@ jobs:
         with:
           name: iai-callgrind-benchmarks
           path: "target/iai"
+  miri:
+    needs: [format]
+    name: Tests/Miri
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: miri_ubuntu-latest
+          cache-directories: /home/runner/.cache/miri
+      - name: Info
+        run: |
+          set -x
+          pwd
+          rustup --version
+          rustup show
+          rustup component list --installed
+          cargo --list
+      - name: Setup miri
+        run: cargo miri setup
+      - name: Test with miri
+        run: cargo miri test --package iai-callgrind
 
   docs:
     needs: [base]
