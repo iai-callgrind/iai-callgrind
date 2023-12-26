@@ -478,6 +478,7 @@ mod arch;
 mod bindings;
 pub mod callgrind;
 pub mod dhat;
+pub mod drd;
 pub mod error;
 pub mod helgrind;
 pub mod memcheck;

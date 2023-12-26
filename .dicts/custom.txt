@@ -160,6 +160,7 @@ syscputime
 systime
 tempdir
 tempfile
+threadid
 totalrw
 trybuild
 trycmd
