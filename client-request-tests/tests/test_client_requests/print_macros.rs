@@ -1,4 +1,4 @@
-use crate::common::{self};
+use crate::common;
 
 #[test]
 fn test_client_request_print_macros_when_running_native() {
@@ -23,6 +23,8 @@ fn test_client_request_print_macros_when_running_on_valgrind() {
     cmd.assert()
         .code(1)
         .stdout("")
-        .stderr(common::get_fixture_as_string("print-macros-test.stderr"));
+        .stderr(predicates::str::diff(common::get_fixture_as_string(
+            "print-macros-test.stderr",
+        )));
     drop(sandbox);
 }

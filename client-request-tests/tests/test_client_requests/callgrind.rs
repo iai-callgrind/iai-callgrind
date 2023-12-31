@@ -21,5 +21,7 @@ fn test_callgrind_reqs_when_running_on_valgrind() {
     cmd.assert()
         .code(1)
         .stdout("")
-        .stderr(get_fixture_as_string("callgrind_in_valgrind.stderr"));
+        .stderr(predicates::str::diff(get_fixture_as_string(
+            "callgrind-reqs-test.stderr",
+        )));
 }
