@@ -1,11 +1,12 @@
-//! TODO DOCS
+//! Provide the `ClientRequestError`
+
 use core::fmt::Display;
 use std::ffi::FromVecWithNulError;
 
-/// TODO: DOCS
+/// The `ClientRequestError`
 #[derive(Debug)]
 pub enum ClientRequestError {
-    /// TODO: DOCS
+    /// The error when printing with valgrind's `VALGRIND_PRINTF` fails
     ValgrindPrintError(FromVecWithNulError),
 }
 
