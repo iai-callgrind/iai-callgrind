@@ -99,8 +99,8 @@
 //! | `x86/windows+gnu`     | yes | -
 //! | `x86/solaris`         | yes | -
 //! | `x86/windows+msvc`    | no  | TBD
-//! | `arm/linux`           | no  | TBD
-//! | `aarch64/linux`       | no  | TBD
+//! | `arm/linux`           | yes | -
+//! | `aarch64/linux`       | yes | -
 //! | `x86_64/windows+msvc` | no  | unsupported by valgrind
 //! | `s390x/linux`         | no  | unstable inline assembly
 //! | `mips32/linux`        | no  | unstable inline assembly
@@ -231,8 +231,7 @@ cfg_if! {
         /// This macro is a safe variant of the `VALGRIND_PRINTF` function, checking for `\0` bytes in the
         /// formatting string. However, if you're sure there are no `\0` bytes present you can
         /// safely use [`crate::valgrind_printf_unchecked`] which performs better compared to this
-        /// macro and should perform around equal to the original `VALGRIND_PRINTF` function from
-        /// the `valgrind.h` header file.
+        /// macro.
         #[macro_export]
         macro_rules! valgrind_printf {
             ($($args:tt)*) => {{
@@ -259,8 +258,7 @@ cfg_if! {
         /// Use this macro only if you are sure there are no `\0`-bytes in the formatted string. If
         /// unsure use the safe [`crate::valgrind_printf`] variant.
         ///
-        /// This variant performs better than [`crate::valgrind_printf`] and should perform around
-        /// equal to the original `VALGRIND_PRINTF` function from the `valgrind.h` header file.
+        /// This variant performs better than [`crate::valgrind_printf`].
         #[macro_export]
         macro_rules! valgrind_printf_unchecked {
             ($($args:tt)*) => {{
@@ -393,8 +391,7 @@ cfg_if! {
         /// This macro is a safe variant of the `VALGRIND_PRINTF` function, checking for `\0` bytes in the
         /// formatting string. However, if you're sure there are no `\0` bytes present you can
         /// safely use [`crate::valgrind_printf_unchecked`] which performs better compared to this
-        /// macro and should perform around equal to the original `VALGRIND_PRINTF` function from
-        /// the `valgrind.h` header file.
+        /// macro.
         #[macro_export]
         macro_rules! valgrind_printf {
             ($($arg:tt)*) => {{
@@ -408,8 +405,7 @@ cfg_if! {
         /// Use this macro only if you are sure there are no `\0`-bytes in the formatted string. If
         /// unsure use the safe [`crate::valgrind_printf`] variant.
         ///
-        /// This variant performs better than [`crate::valgrind_printf`] and should perform around
-        /// equal to the original `VALGRIND_PRINTF` function from the `valgrind.h` header file.
+        /// This variant performs better than [`crate::valgrind_printf`].
         #[macro_export]
         macro_rules! valgrind_printf_unchecked {
             ($($arg:tt)*) => {{ $crate::client_requests::__no_op() }};
@@ -532,7 +528,6 @@ fn fatal_error(func: &str) -> ! {
     );
 }
 
-// TODO: CLEANUP. How to avoid these additional wrappers ??
 #[doc(hidden)]
 #[inline(always)]
 pub unsafe fn __valgrind_print(ptr: *const cty::c_char) {

@@ -1,7 +1,7 @@
-//! TODO: DOCS
+//! Provide the native implementation of `valgrind_do_client_request_expr`
 use crate::client_requests::native_bindings;
 
-/// TODO: DOCS
+/// Valgrind's native implementation of `valgrind_do_client_request_expr`
 #[inline(always)]
 #[allow(clippy::similar_names)]
 pub fn valgrind_do_client_request_expr(
@@ -13,7 +13,8 @@ pub fn valgrind_do_client_request_expr(
     arg4: usize,
     arg5: usize,
 ) -> usize {
-    // SAFETY: TODO: SAFETY
+    // SAFETY: This call is as safe as valgrind's implementation of
+    // `valgrind_do_client_request_expr`
     unsafe {
         native_bindings::valgrind_do_client_request_expr(
             default,

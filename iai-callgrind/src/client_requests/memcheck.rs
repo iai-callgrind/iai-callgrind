@@ -9,19 +9,25 @@ use super::{
     bindings, fatal_error, valgrind_do_client_request_expr, valgrind_do_client_request_stmt,
 };
 
-/// TODO: DOCS
+/// The [`BlockHandle`] type as returned by [`create_block`]
+///
+/// You can pass this [`BlockHandle`] to [`discard`]
 pub type BlockHandle = usize;
 
-/// TODO: DOCS
+/// The `LeakCounts` as returned by [`count_leaks`] and [`count_leak_blocks`]
+///
+/// These client request fills in the four fields of [`LeakCounts`] with the number of bytes of
+/// memory found by the previous leak check to be leaked (i.e. the sum of direct leaks and indirect
+/// leaks), dubious, reachable and suppressed.
 #[derive(Debug, Default)]
 pub struct LeakCounts {
-    /// TODO: DOCS
+    /// The number of bytes of memory of direct and indirect leaks
     leaked: cty::c_ulong,
-    /// TODO: DOCS
+    /// The number of bytes of memory of dubious leaks
     dubious: cty::c_ulong,
-    /// TODO: DOCS
+    /// The number of bytes of memory of reachable leaks
     reachable: cty::c_ulong,
-    /// TODO: DOCS
+    /// The number of bytes of memory of suppressed leaks
     suppressed: cty::c_ulong,
 }
 

@@ -1,8 +1,8 @@
-//! TODO: DOCS
+//! Provide the assembly optimized implementation of `valgrind_do_client_request_expr`
 
 use core::arch::asm;
 
-/// TODO: DOCS
+/// The optimized implementation of `valgrind_do_client_request_expr`
 #[inline(always)]
 #[allow(clippy::similar_names)]
 pub fn valgrind_do_client_request_expr(
@@ -16,7 +16,7 @@ pub fn valgrind_do_client_request_expr(
 ) -> usize {
     let args: [usize; 6] = [request as usize, arg1, arg2, arg3, arg4, arg5];
     let result;
-    // SAFETY: TODO:
+    // SAFETY: These assembly instructions do nothing when not run under valgrind
     unsafe {
         asm! {
             "ror r12, r12, 3",
