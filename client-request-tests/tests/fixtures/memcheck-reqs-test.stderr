@@ -1,0 +1,60 @@
+Handling new value --leak-check=summary for option --leak-check=summary
+Searching for pointers to 3 not-freed blocks
+Checked 99,904 bytes
+
+LEAK SUMMARY:
+definitely lost: 0 bytes in 0 blocks
+indirectly lost: 0 bytes in 0 blocks
+possibly lost: 0 bytes in 0 blocks
+still reachable: 85 bytes in 3 blocks
+suppressed: 0 bytes in 0 blocks
+Reachable blocks (those to which a pointer was found) are not shown.
+To see them, rerun with: --leak-check=full --show-leak-kinds=all
+
+Searching for pointers to 2,003 not-freed blocks
+Checked 100,000 bytes
+
+55,944 (31,968 direct, 23,976 indirect) bytes in 999 blocks are definitely lost in loss record 7 of 7
+<__BACKTRACE__>
+
+LEAK SUMMARY:
+definitely lost: 31,968 bytes in 999 blocks
+indirectly lost: 23,976 bytes in 999 blocks
+possibly lost: 0 bytes in 0 blocks
+still reachable: 141 bytes in 5 blocks
+suppressed: 0 bytes in 0 blocks
+Reachable blocks (those to which a pointer was found) are not shown.
+To see them, rerun with: --leak-check=full --show-leak-kinds=all
+
+Searching for pointers to 2,023 not-freed blocks
+Checked 100,032 bytes
+
+504 (+504) (288 (+288) direct, 216 (+216) indirect) bytes in 9 (+9) blocks are definitely lost in new loss record 9 of 11
+<__BACKTRACE__>
+
+LEAK SUMMARY:
+definitely lost: 32,288 (+320) bytes in 1,009 (+10) blocks
+indirectly lost: 24,216 (+240) bytes in 1,009 (+10) blocks
+possibly lost: 0 (+0) bytes in 0 (+0) blocks
+still reachable: 141 (+0) bytes in 5 (+0) blocks
+suppressed: 0 (+0) bytes in 0 (+0) blocks
+Reachable blocks (those to which a pointer was found) are not shown.
+To see them, rerun with: --leak-check=full --show-leak-kinds=all
+
+
+HEAP SUMMARY:
+in use at exit: 56,560 bytes in 2,020 blocks
+total heap usage: 2,031 allocs, 11 frees, 58,588 bytes allocated
+
+Searching for pointers to 2,020 not-freed blocks
+Checked 91,968 bytes
+
+LEAK SUMMARY:
+definitely lost: 32,288 bytes in 1,009 blocks
+indirectly lost: 24,216 bytes in 1,009 blocks
+possibly lost: 0 bytes in 0 blocks
+still reachable: 56 bytes in 2 blocks
+suppressed: 0 bytes in 0 blocks
+Rerun with --leak-check=full to see details of leaked memory
+
+ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)

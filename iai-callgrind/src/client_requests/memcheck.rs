@@ -19,16 +19,16 @@ pub type BlockHandle = usize;
 /// These client request fills in the four fields of [`LeakCounts`] with the number of bytes of
 /// memory found by the previous leak check to be leaked (i.e. the sum of direct leaks and indirect
 /// leaks), dubious, reachable and suppressed.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Hash)]
 pub struct LeakCounts {
     /// The number of bytes of memory of direct and indirect leaks
-    leaked: cty::c_ulong,
+    pub leaked: cty::c_ulong,
     /// The number of bytes of memory of dubious leaks
-    dubious: cty::c_ulong,
+    pub dubious: cty::c_ulong,
     /// The number of bytes of memory of reachable leaks
-    reachable: cty::c_ulong,
+    pub reachable: cty::c_ulong,
     /// The number of bytes of memory of suppressed leaks
-    suppressed: cty::c_ulong,
+    pub suppressed: cty::c_ulong,
 }
 
 /// Mark memory `addr` as unaddressable for `len` bytes
@@ -216,8 +216,8 @@ pub fn do_leak_check() {
     );
 }
 
-/// Same as [`do_leak_check`] but only showing the entries for which there was an increase in
-/// leaked bytes or leaked nr of blocks since the previous leak search.
+/// Same as [`do_leak_check`] but only showing the entries for which there was an increase in leaked
+/// bytes or leaked nr of blocks since the previous leak search.
 #[inline(always)]
 pub fn do_added_leak_check() {
     do_client_request!(
@@ -319,10 +319,10 @@ pub fn count_leak_blocks() -> LeakCounts {
 /// The validity data is copied into the provided `bits` slice.
 ///
 /// Return values:
-///    0   if not running on valgrind
-///    1   success
-///    2   [previously indicated unaligned arrays; these are now allowed]
-///    3   if any parts of `addr`/`bits` are not addressable.
+/// * 0   if not running on valgrind
+/// * 1   success
+/// * 2   [previously indicated unaligned arrays; these are now allowed]
+/// * 3   if any parts of `addr`/`bits` are not addressable.
 ///
 /// The metadata is not copied in cases 0, 2 or 3 so it should be impossible to segfault your system
 /// by using this call.
@@ -350,10 +350,10 @@ pub fn get_vbits(addr: *const (), bits: &mut [u8], len: usize) -> usize {
 /// The validity data is copied from the provided `bits` slice.
 ///
 /// Return values:
-///    0   if not running on valgrind
-///    1   success
-///    2   [previously indicated unaligned arrays;  these are now allowed]
-///    3   if any parts of `addr`/`bits` are not addressable.
+/// * 0   if not running on valgrind
+/// * 1   success
+/// * 2   [previously indicated unaligned arrays;  these are now allowed]
+/// * 3   if any parts of `addr`/`bits` are not addressable.
 ///
 /// The metadata is not copied in cases 0, 2 or 3 so it should be impossible to segfault your system
 /// by using this call.

@@ -35,7 +35,7 @@ lazy_static! {
         regex::Regex::new(r"^(Collected\s*:)[ 0-9]*$").expect("Regex should compile");
     static ref CALLGRIND_RM_LINE_NUM_RE: Regex =
         regex::Regex::new(r"(\(.*:)([0-9]+)(\))\s*$").expect("Regex should compile");
-    static ref CALLGRIND_BACKTRACE_RE: Regex =
+    static ref BACKTRACE_RE: Regex =
         regex::Regex::new(r"^((at|by)\s*0x[0-9A-Za-z]+\s*:)").expect("Regex should compile");
 }
 
@@ -43,6 +43,7 @@ lazy_static! {
 enum Tool {
     Callgrind,
     Memcheck,
+    Helgrind,
 }
 
 impl FromStr for Tool {
@@ -52,6 +53,7 @@ impl FromStr for Tool {
         match s.to_ascii_lowercase().as_str() {
             "callgrind" => Ok(Tool::Callgrind),
             "memcheck" => Ok(Tool::Memcheck),
+            "helgrind" => Ok(Tool::Helgrind),
             tool => Err(format!("Unsupported tool: {tool}")),
         }
     }
@@ -91,7 +93,7 @@ fn callgrind_filter(path: &Path, bytes: &[u8], writer: &mut impl Write) {
             .as_str();
 
         // backtraces are too different on different targets
-        if CALLGRIND_BACKTRACE_RE.is_match(rest) {
+        if BACKTRACE_RE.is_match(rest) {
             if !is_backtrace {
                 writeln!(writer, "<__BACKTRACE__>").unwrap();
                 is_backtrace = true;
@@ -120,6 +122,44 @@ fn callgrind_filter(path: &Path, bytes: &[u8], writer: &mut impl Write) {
                 writeln!(writer, "{rest}").unwrap();
             }
         }
+    }
+}
+
+fn memcheck_filter(bytes: &[u8], writer: &mut impl Write) {
+    #[derive(Debug, PartialEq, Eq)]
+    enum State {
+        Header,
+        Body,
+    }
+    let mut state = State::Header;
+    let mut is_backtrace = false;
+    for line in BufReader::new(bytes).lines().map(Result::unwrap) {
+        if state == State::Header {
+            if line.contains(MARKER) {
+                state = State::Body;
+            }
+            continue;
+        }
+        let rest = STRIP_PREFIX_RE
+            .captures(&line)
+            .unwrap_or_else(|| {
+                panic!("Memcheck output line should be a valid output line: was {line}")
+            })
+            .name("rest")
+            .unwrap()
+            .as_str();
+
+        // backtraces are too different on different targets
+        if BACKTRACE_RE.is_match(rest) {
+            if !is_backtrace {
+                writeln!(writer, "<__BACKTRACE__>").unwrap();
+                is_backtrace = true;
+            }
+            continue;
+        } else {
+            is_backtrace = false;
+        }
+        writeln!(writer, "{rest}").unwrap();
     }
 }
 
@@ -175,8 +215,10 @@ fn main() {
 
     if let Some(code) = output.status.code() {
         if code == expected_exit_code {
-            if let Tool::Callgrind = tool {
-                callgrind_filter(&bin, &output.stderr, &mut stderr())
+            match tool {
+                Tool::Callgrind => callgrind_filter(&bin, &output.stderr, &mut stderr()),
+                Tool::Memcheck => memcheck_filter(&output.stderr, &mut stderr()),
+                _ => (),
             }
         } else {
             let stderr = stderr();
