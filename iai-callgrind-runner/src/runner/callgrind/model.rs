@@ -6,7 +6,7 @@ use indexmap::{indexmap, IndexMap, IndexSet};
 use serde::{Deserialize, Serialize};
 
 use super::CacheSummary;
-use crate::api::EventKind;
+use crate::api::{self, EventKind};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Calls {
@@ -43,7 +43,7 @@ impl Costs {
     where
         T: IntoIterator<Item = (EventKind, u64)>,
     {
-        Self(kinds.into_iter().map(|(t, c)| (t, c)).collect())
+        Self(kinds.into_iter().collect())
     }
 
     pub fn add_iter_str<I, T>(&mut self, iter: T)
@@ -135,6 +135,16 @@ impl Costs {
 impl Default for Costs {
     fn default() -> Self {
         Self(indexmap! {EventKind::Ir => 0})
+    }
+}
+
+impl<'a> IntoIterator for &'a Costs {
+    type Item = (&'a api::EventKind, &'a u64);
+
+    type IntoIter = indexmap::map::Iter<'a, api::EventKind, u64>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 
