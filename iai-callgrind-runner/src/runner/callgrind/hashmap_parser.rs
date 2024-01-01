@@ -79,6 +79,16 @@ impl CallgrindMap {
     }
 }
 
+impl<'a> IntoIterator for &'a CallgrindMap {
+    type Item = (&'a Id, &'a Value);
+
+    type IntoIter = Iter<'a, Id, Value>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
 impl From<Id> for CurrentId {
     fn from(value: Id) -> Self {
         CurrentId {
