@@ -22,6 +22,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+* ([#42](https://github.com/iai-callgrind/iai-callgrind/issues/42)): Support
+  valgrind client requests. The client requests are available in the
+  `iai-callgrind` package and can be activated via feature flags
+  (`client_requests` and `client_requests_defs`).
+
 ### [0.9.0] - 2023-12-09
 
 ### Added
