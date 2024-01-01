@@ -1,3 +1,5 @@
+use std::io::{stderr, Write};
+
 use crate::common;
 
 #[test]
@@ -18,10 +20,31 @@ fn test_memcheck_reqs_when_running_on_valgrind() {
             common::get_test_bin_path("memcheck-reqs-test").display()
         ),
     ]);
-    cmd.assert()
-        .code(1)
-        .stdout("")
-        .stderr(predicates::str::diff(common::get_fixture_as_string(
-            "memcheck-reqs-test.stderr",
-        )));
+    let expected_code = 1;
+
+    match cmd.assert().try_code(expected_code) {
+        Ok(assert) => {
+            let fixture_string = if cfg!(target_arch = "arm") {
+                common::get_fixture_as_string("memcheck-reqs-test.armv7.stderr")
+            } else {
+                common::get_fixture_as_string("memcheck-reqs-test.stderr")
+            };
+            assert
+                .stdout("")
+                .stderr(predicates::str::diff(fixture_string));
+        }
+        Err(error) => {
+            let assert = error.assert();
+            let output = assert.get_output();
+
+            let mut err = stderr();
+            writeln!(err, "Unexpected exit code: STDERR:").unwrap();
+            err.write_all(&output.stderr).unwrap();
+            panic!(
+                "Assertion of exit code failed: Actual: {}, Expected: {}",
+                &output.status.code().unwrap(),
+                expected_code
+            )
+        }
+    }
 }

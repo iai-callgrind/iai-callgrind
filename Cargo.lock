@@ -332,6 +332,7 @@ name = "client-request-tests"
 version = "0.1.0"
 dependencies = [
  "assert_cmd",
+ "cty",
  "fs_extra",
  "iai-callgrind",
  "lazy_static",

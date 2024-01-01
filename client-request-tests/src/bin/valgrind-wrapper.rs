@@ -37,6 +37,13 @@ lazy_static! {
         regex::Regex::new(r"(\(.*:)([0-9]+)(\))\s*$").expect("Regex should compile");
     static ref BACKTRACE_RE: Regex =
         regex::Regex::new(r"^((at|by)\s*0x[0-9A-Za-z]+\s*:)").expect("Regex should compile");
+    static ref MEMCHECK_CHECKED_RE: Regex =
+        regex::Regex::new(r"^(\s*Checked\s*)([0-9,.]+)(\s*bytes)\s*$").expect("Regex should compile");
+    static ref MEMCHECK_TOTAL_HEAP_USAGE_RE: Regex =
+        regex::Regex::new(r"^(?i:(\s*total heap usage:\s*))(.*)$").expect("Regex should compile");
+    static ref MEMCHECK_LEAK_SUMMARY_RE: Regex =
+        regex::Regex::new(r"(?i:(\s*(definitely lost|indirectly lost|possibly lost|still reachable|suppressed):\s*))([ 0-9,()+.]*)(\s*bytes in\s*)([ 0-9,()+.]*)(\s*blocks\s*)$")
+            .expect("Regex should compile");
 }
 
 #[derive(Debug)]
@@ -159,7 +166,12 @@ fn memcheck_filter(bytes: &[u8], writer: &mut impl Write) {
         } else {
             is_backtrace = false;
         }
-        writeln!(writer, "{rest}").unwrap();
+
+        let replaced = MEMCHECK_CHECKED_RE.replace_all(rest, "$1<__FILTER__>$3");
+        let replaced = MEMCHECK_TOTAL_HEAP_USAGE_RE.replace_all(&replaced, "$1<__FILTER__>");
+        let replaced =
+            MEMCHECK_LEAK_SUMMARY_RE.replace_all(&replaced, "$1<__FILTER__> $4<__FILTER__> $6");
+        writeln!(writer, "{replaced}").unwrap();
     }
 }
 

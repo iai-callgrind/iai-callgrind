@@ -1,7 +1,7 @@
 
 HEAP SUMMARY:
 in use at exit: 0 bytes in 0 blocks
-total heap usage: 10 allocs, 10 frees, 2,006 bytes allocated
+total heap usage: <__FILTER__>
 
 All heap blocks were freed -- no leaks are possible
 
