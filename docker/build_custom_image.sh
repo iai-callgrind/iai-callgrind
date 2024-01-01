@@ -10,7 +10,10 @@ cd /
 
 # shellcheck disable=SC2016
 if ! grep 'libc6-dbg' /linux-image.sh; then
+  rm -f /qemu/initrd.gz /qemu/kernel
   sed -Ei 's#^(\s*["])(libc6.*)\\$#\1\2\\\n\1libc6-dbg:${arch}" \\#' /linux-image.sh
-  arch="${IAI_CALLGRIND_CROSS_TARGET%%-*}"
-  /linux-image.sh "$arch"
+  sed -Ei 's#^(\s*curl .*www\.ports\.debian\.org/archive_\{)(.*)(\}.*)$#\1\2,2023,2024\3#' /linux-image.sh
 fi
+
+arch="${IAI_CALLGRIND_CROSS_TARGET%%-*}"
+/linux-image.sh "$arch"

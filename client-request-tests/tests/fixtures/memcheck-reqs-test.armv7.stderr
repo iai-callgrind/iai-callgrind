@@ -31,9 +31,6 @@ First value of leaked memory: 1
 Searching for pointers to 5 not-freed blocks
 Checked <__FILTER__> bytes
 
-4 (+4) bytes in 1 (+1) blocks are definitely lost in new loss record 2 of 5
-<__BACKTRACE__>
-
 LEAK SUMMARY:
 definitely lost: <__FILTER__> bytes in <__FILTER__> blocks
 indirectly lost: <__FILTER__> bytes in <__FILTER__> blocks
@@ -59,4 +56,4 @@ still reachable: <__FILTER__> bytes in <__FILTER__> blocks
 suppressed: <__FILTER__> bytes in <__FILTER__> blocks
 Rerun with --leak-check=full to see details of leaked memory
 
-ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)
+ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
