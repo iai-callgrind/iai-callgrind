@@ -5,7 +5,7 @@ mod imp {
     use std::io::{BufRead, BufReader, Cursor};
     use std::path::PathBuf;
 
-    use bindgen::builder;
+    use bindgen::{builder, Bindings};
     #[derive(Debug)]
     struct Target {
         arch: String,
@@ -50,6 +50,7 @@ mod imp {
                 .join("include");
             builder.include(path);
         }
+        builder.include("valgrind/include");
 
         builder
             .debug(true)
@@ -57,14 +58,7 @@ mod imp {
             .compile("native");
     }
 
-    pub fn main() {
-        if std::env::var("DOCS_RS").is_ok() {
-            return;
-        }
-
-        println!("cargo:rerun-if-changed=valgrind/wrapper.h");
-        println!("cargo:rerun-if-changed=valgrind/native.c");
-
+    fn build_bindings() -> Bindings {
         let mut builder = builder();
 
         if let Ok(env) = std::env::var("IAI_CALLGRIND_VALGRIND_INCLUDE") {
@@ -91,6 +85,25 @@ mod imp {
             .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
             .generate()
             .expect("Generating binding should succeed");
+
+        let out_dir = std::env::var("OUT_DIR").map(PathBuf::from).unwrap();
+        let path = out_dir.join("bindings.rs");
+        bindings.write_to_file(path).unwrap();
+        bindings
+    }
+
+    pub fn main() {
+        println!("cargo:rerun-if-changed=valgrind/wrapper.h");
+        println!("cargo:rerun-if-changed=valgrind/native.c");
+
+        if std::env::var("DOCS_RS").is_ok() {
+            print_client_requests_support("x86_64");
+            build_bindings();
+            build_native();
+            return;
+        }
+
+        let bindings = build_bindings();
 
         let target = Target::from_env();
         let support = if target.arch == "x86_64"
@@ -165,11 +178,6 @@ mod imp {
                 panic!("Unable to set cfg value for client_requests_support");
             }
         }
-
-        // Write the generated bindings to an output file.
-        let out_dir = std::env::var("OUT_DIR").map(PathBuf::from).unwrap();
-        let path = out_dir.join("bindings.rs");
-        bindings.write_to_file(path).unwrap();
     }
 }
 
