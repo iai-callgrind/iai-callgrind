@@ -60,7 +60,7 @@ pub struct CommandLineArgs {
     /// could noise up the callgrind cache simulation results a bit. Setting this option to true
     /// runs all benchmarks with ASLR enabled.
     ///
-    /// See also https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space
+    /// See also <https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space>
     #[clap(
         long = "allow-aslr",
         default_missing_value = "yes",
@@ -75,7 +75,7 @@ pub struct CommandLineArgs {
     /// positive or negative percentage. If positive, a performance regression check for this
     /// `EventKind` fails if the limit is exceeded. If negative, the regression check fails if the
     /// value comes below the limit. The `EventKind` is matched case insensitive. For a list of
-    /// valid `EventKinds` see the docs: https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.EventKind.html
+    /// valid `EventKinds` see the docs: <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.EventKind.html>
     ///
     /// Examples: --regression='ir=0.0' or --regression='ir=0, EstimatedCycles=10'
     #[clap(

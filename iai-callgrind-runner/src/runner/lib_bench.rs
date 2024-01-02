@@ -88,7 +88,7 @@ struct SaveBaselineBenchmark {
 
 /// This trait needs to be implemented to actually run a [`LibBench`]
 ///
-/// Despite having the same name, this trait differs from [`super::bin_bench::Benchmark`] and is
+/// Despite having the same name, this trait differs from `bin_bench::Benchmark` and is
 /// designed to run a `LibBench` only.
 trait Benchmark: std::fmt::Debug {
     fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath;
@@ -381,7 +381,7 @@ impl LibBench {
         header
     }
 
-    /// Check for regressions as defined in [`Regression`] and print an error if a regression
+    /// Check for regressions as defined in [`RegressionConfig`] and print an error if a regression
     /// occurred
     fn check_and_print_regressions(
         &self,

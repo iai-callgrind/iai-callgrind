@@ -195,16 +195,17 @@ jobs:
           # CROSS_DEBUG: "1"
 
   docs:
-    needs: [base]
+    needs: [base, client_requests]
     name: Docs/ubuntu-latest
     runs-on: ubuntu-latest
+    env:
+      DOCS_RS: "1"
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@v2.2.0
-      # We need the headers to be able to build iai-callgrind
-      - name: Install valgrind
-        run: sudo apt-get -y update && sudo apt-get -y install valgrind
+      - name: Build iai-callgrind without valgrind headers
+        run: cargo build --package iai-callgrind --features client_requests_defs --release
       - name: Run doc tests
         run: cargo test --all-features --doc
       - name: Check Documentation

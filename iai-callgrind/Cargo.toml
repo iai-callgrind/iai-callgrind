@@ -32,6 +32,7 @@ bindgen = { version = "0.69" }
 regex = { version = "1" }
 
 [package.metadata.docs.rs]
+features = ["client_requests_defs"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
