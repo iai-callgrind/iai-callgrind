@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 authors = ["Joining7943 <joining@posteo.de>"]
-rust-version = "1.74.0"
 description = "Tests for iai-callgrind client requests"
 readme = "../README.md"
 homepage = "https://github.com/iai-callgrind/iai-callgrind"
