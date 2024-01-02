@@ -45,6 +45,7 @@ improvements and features.
         - [Binary Benchmarks](#binary-benchmarks)
     - [Performance Regressions](#performance-regressions)
     - [Valgrind Tools](#valgrind-tools)
+    - [Valgrind Client Requests](#valgrind-client-requests)
     - [Flamegraphs](#flamegraphs)
     - [Command-line arguments and environment variables](command-line-arguments-and-environment-variables)
         - [Baselines](#comparing-with-baselines)
@@ -82,6 +83,9 @@ improvements and features.
   like `dh_view.html`, `ms_print` and others.
 - __Visualization__: Iai-Callgrind is capable of creating regular and
   differential flamegraphs from the Callgrind output format.
+- __Valgrind Client Requests__: Support of zero overhead [Valgrind Client
+  Requests](https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq)
+  (compared to native valgrind client requests overhead) on many targets
 - __Stable-compatible__: Benchmark your code without installing nightly Rust
 
 ### Installation
@@ -572,6 +576,77 @@ Tool::new(ValgrindTool::Memcheck).args("--error-exitcode=0")
 
 which would restore the default of `0` from valgrind.
 
+### Valgrind Client Requests
+
+`iai-callgrind` ships with it's own interface to [Valgrind's Client Request
+Mechanism](https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq).
+`iai-callgrind's` client requests have (compared to the valgrind's client
+requests used in `C` code) zero overhead on many targets which are also natively
+supported by valgrind. My opinion might be biased but, compared to other crates
+providing an interface to valgrind's client requests, `iai-callgrind` provides
+be the most complete and performant implementation.
+
+Client requests are deactivated by default but can be activated with the
+`client_requests` feature.
+
+```toml
+[dev-dependencies]
+iai-callgrind = { version = "0.9.0", features = ["client_requests"] }
+```
+
+If you need the client requests in your production code, you usually don't want
+them to do anything when not running under valgrind with `iai-callgrind`
+benchmarks. You can achieve that by adding `iai-callgrind` with the
+`client_requests_defs` feature to your runtime dependencies and with the
+`client_requests` feature to your `dev-dependencies` like so:
+
+```toml
+[dependencies]
+iai-callgrind = { version = "0.9.0", default-features = false, features = [
+    "client_requests_defs"
+] }
+
+[dev-dependencies]
+iai-callgrind = { version = "0.9.0", features = ["client_requests"] }
+```
+
+With just the `client_requests_defs` feature activated, the client requests
+compile down to nothing and don't add any overhead to your production code. It
+simply provides the "definitions", method signatures and macros without body.
+Only with the activated `client_requests` feature they will be actually
+executed. Note that the client requests do not depend on any other part of
+`iai-callgrind`, so you could even use the client requests without the rest of
+`iai-callgrind`.
+
+Use them in your code for example like so:
+
+```rust
+use iai_callgrind::client_requests;
+
+fn main() {
+    // Start callgrind event counting if not already started earlier
+    client_requests::callgrind::start_instrumentation();
+
+    // do something important
+
+    // Toggle callgrind event counting off
+    client_requests::callgrind::toggle_collect();
+}
+```
+
+When building `iai-callgrind` with client requests, the valgrind header files
+must exist in your standard include path (most of the time `/usr/include`). This
+is usually the case if you've installed valgrind with your distribution's
+package manager. If not, you can point the `IAI_CALLGRIND_VALGRIND_INCLUDE`
+environment variable to the include path. So, if the headers can be found in
+`/home/foo/repo/valgrind/{valgrind.h, callgrind.h, ...}`, the correct include
+path would be `IAI_CALLGRIND_VALGRIND_INCLUDE=/home/foo/repo` (not
+`/home/foo/repo/valgrind`)
+
+This was just a small introduction, please see the
+[docs](https://docs.rs/iai-callgrind/0.9.0/iai_callgrind/client_requests) for
+more details!
+
 ### Flamegraphs
 
 Flamegraphs are opt-in and can be created if you pass a `FlamegraphConfig` to
@@ -773,8 +848,17 @@ Iai-Callgrind wouldn't be possible without [Valgrind](https://valgrind.org/).
 
 ### License
 
-Iai-Callgrind is like Iai dual licensed under the Apache 2.0 license and the MIT license at your
-option.
+Iai-Callgrind is like Iai dual licensed under the Apache 2.0 license and the MIT
+license at your option.
+
+According to [Valgrind's documentation](https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq):
+
+> The Valgrind headers, unlike most of the rest of
+the code, are under a BSD-style license so you may include them without worrying
+about license incompatibility.
+
+We have included the original license where we make use of the original header
+files.
 
 [`library documentation`]: https://docs.rs/iai-callgrind/0.9.0/iai_callgrind/
 [docs]: https://docs.rs/iai-callgrind/0.9.0/iai_callgrind/
