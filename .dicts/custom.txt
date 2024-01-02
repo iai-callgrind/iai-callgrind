@@ -1,5 +1,6 @@
 ASLR
 Aparicio
+Assche
 Benchmarkable
 Boolish
 CALLGRIND
@@ -24,6 +25,7 @@ MSRV
 Memcheck
 Mispred
 Mispredicts
+Nethercote
 Nulgrind
 PTHREAD
 Quickstart
@@ -37,6 +39,7 @@ USERSO
 Valgrind
 Valgrind's
 Valgrinds
+Weidendorfer
 aarch
 addressibility
 ahash
