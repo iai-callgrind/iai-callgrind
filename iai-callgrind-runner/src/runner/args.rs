@@ -35,7 +35,6 @@ pub struct CommandLineArgs {
     ///   * --callgrind-args='--dump-instr=yes --collect-systime=yes'
     #[arg(
         long = "callgrind-args",
-        required = false,
         value_parser = parse_args,
         num_args = 1,
         verbatim_doc_comment,
@@ -48,7 +47,8 @@ pub struct CommandLineArgs {
     #[arg(
         long = "save-summary",
         value_enum,
-        required = false,
+        num_args = 0..=1,
+        require_equals = true,
         default_missing_value = "json",
         env = "IAI_CALLGRIND_SAVE_SUMMARY"
     )]
@@ -64,6 +64,8 @@ pub struct CommandLineArgs {
     #[arg(
         long = "allow-aslr",
         default_missing_value = "yes",
+        num_args = 0..=1,
+        require_equals = true,
         value_parser = BoolishValueParser::new(),
         env = "IAI_CALLGRIND_ALLOW_ASLR",
     )]
@@ -79,8 +81,8 @@ pub struct CommandLineArgs {
     ///
     /// Examples: --regression='ir=0.0' or --regression='ir=0, EstimatedCycles=10'
     #[arg(
-        required = false,
         long = "regression",
+        num_args = 1,
         value_parser = parse_regression_config,
         env = "IAI_CALLGRIND_REGRESSION",
     )]
@@ -93,6 +95,8 @@ pub struct CommandLineArgs {
         long = "regression-fail-fast",
         requires = "regression",
         default_missing_value = "yes",
+        num_args = 0..=1,
+        require_equals = true,
         value_parser = BoolishValueParser::new(),
         env = "IAI_CALLGRIND_REGRESSION_FAIL_FAST",
     )]
@@ -102,6 +106,8 @@ pub struct CommandLineArgs {
     #[arg(
         long = "save-baseline",
         default_missing_value = "default",
+        num_args = 0..=1,
+        require_equals = true,
         conflicts_with_all = &["baseline", "LOAD_BASELINE"],
         env = "IAI_CALLGRIND_SAVE_BASELINE",
     )]
@@ -111,6 +117,8 @@ pub struct CommandLineArgs {
     #[arg(
         long = "baseline",
         default_missing_value = "default",
+        num_args = 0..=1,
+        require_equals = true,
         env = "IAI_CALLGRIND_BASELINE"
     )]
     pub baseline: Option<BaselineName>,
@@ -120,6 +128,8 @@ pub struct CommandLineArgs {
         id = "LOAD_BASELINE",
         long = "load-baseline",
         requires = "baseline",
+        num_args = 0..=1,
+        require_equals = true,
         default_missing_value = "default",
         env = "IAI_CALLGRIND_LOAD_BASELINE"
     )]
@@ -144,6 +154,7 @@ pub struct CommandLineArgs {
         value_enum,
         required = false,
         default_value = "default",
+        num_args = 1,
         env = "IAI_CALLGRIND_OUTPUT_FORMAT"
     )]
     pub output_format: OutputFormat,
