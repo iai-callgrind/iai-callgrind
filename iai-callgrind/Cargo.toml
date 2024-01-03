@@ -27,22 +27,22 @@ default = ["benchmark"]
 ui_tests = []
 
 [build-dependencies]
-cc = { version = "1" }
-bindgen = { version = "0.69" }
-regex = { version = "1" }
+cc = { workspace = true }
+bindgen = { workspace = true }
+regex = { workspace = true }
 
 [package.metadata.docs.rs]
 features = ["client_requests_defs"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-bincode = { version = "1", optional = true }
-cfg-if = { version = "1", optional = true }
-cty = { version = "0.2", optional = true }
+bincode = { workspace = true, optional = true }
+cfg-if = { workspace = true, optional = true }
+cty = { workspace = true, optional = true }
 iai-callgrind-macros = { path = "../iai-callgrind-macros/", version = "=0.1.0", optional = true }
 iai-callgrind-runner = { path = "../iai-callgrind-runner/", version = "=0.9.0", default-features = false, features = [
   "api",
 ], optional = true }
 
 [dev-dependencies]
-trybuild = "1"
+trybuild = { workspace = true }
