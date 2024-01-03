@@ -338,7 +338,7 @@ dependencies = [
  "lazy_static",
  "predicates",
  "regex",
- "rstest 0.18.2",
+ "rstest",
  "shlex",
  "tempfile",
  "which 5.0.0",
@@ -346,13 +346,12 @@ dependencies = [
 
 [[package]]
 name = "colored"
-version = "2.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3616f750b84d8f0de8a58bda93e08e2a81ad3f523089b05f1dffecab48c6cbd"
+checksum = "cbf2150cce219b664a8a70df7a1f933836724b503f8a413af9365b4dcc4d90b8"
 dependencies = [
- "atty",
  "lazy_static",
- "winapi",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -707,7 +706,7 @@ dependencies = [
  "log",
  "pretty_assertions",
  "regex",
- "rstest 0.17.0",
+ "rstest",
  "sanitize-filename",
  "schemars",
  "serde",
@@ -1261,40 +1260,14 @@ dependencies = [
 
 [[package]]
 name = "rstest"
-version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de1bb486a691878cd320c2f0d319ba91eeaa2e894066d8b5f8f117c000e9d962"
-dependencies = [
- "futures",
- "futures-timer",
- "rstest_macros 0.17.0",
- "rustc_version",
-]
-
-[[package]]
-name = "rstest"
 version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97eeab2f3c0a199bc4be135c36c924b6590b88c377d416494288c14f2db30199"
 dependencies = [
  "futures",
  "futures-timer",
- "rstest_macros 0.18.2",
+ "rstest_macros",
  "rustc_version",
-]
-
-[[package]]
-name = "rstest_macros"
-version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "290ca1a1c8ca7edb7c3283bd44dc35dd54fdec6253a3912e201ba1072018fca8"
-dependencies = [
- "cfg-if",
- "proc-macro2",
- "quote",
- "rustc_version",
- "syn 1.0.109",
- "unicode-ident",
 ]
 
 [[package]]
