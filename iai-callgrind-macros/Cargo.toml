@@ -1,16 +1,16 @@
 [package]
 name = "iai-callgrind-macros"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.66.0"
 authors = ["Joining7943 <joining@posteo.de>"]
+categories.workspace = true
 description = "Proc macros for iai-callgrind, a high-precision and consistent benchmarking framework/harness for Rust"
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
 readme = "README.md"
-homepage = "https://github.com/iai-callgrind/iai-callgrind"
-repository = "https://github.com/iai-callgrind/iai-callgrind"
-license = "Apache-2.0 OR MIT"
-keywords = ["iai", "benchmark", "callgrind", "valgrind"]
-categories = ["development-tools::profiling", "development-tools::testing"]
+repository.workspace = true
+rust-version.workspace = true
+version = "0.1.0"
 
 [lib]
 proc-macro = true

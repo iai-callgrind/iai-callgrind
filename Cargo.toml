@@ -8,6 +8,16 @@ members = [
 ]
 resolver = "2"
 
+[workspace.package]
+categories = ["development-tools::profiling", "development-tools::testing"]
+edition = "2021"
+homepage = "https://github.com/iai-callgrind/iai-callgrind"
+keywords = ["iai", "benchmark", "callgrind", "valgrind", "client requests"]
+license = "Apache-2.0 OR MIT"
+repository = "https://github.com/iai-callgrind/iai-callgrind"
+rust-version = "1.66.0"
+version = "0.9.0"
+
 [workspace.dependencies]
 anyhow = { version = ">=1.0.46, <2" }
 assert_cmd = { version = "2.0" }
