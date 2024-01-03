@@ -21,8 +21,6 @@ lazy_static! {
         regex::Regex::new(r"(at BB\s+)([0-9]+)(\s+.*)$").expect("Regex should compile");
     static ref CALLGRIND_RM_ADDR_RE: Regex =
         regex::Regex::new(r"((at|by)\s+)(0x[0-9A-Za-z]+\s*:.*)$").expect("Regex should compile");
-    // The following regex are almost 1:1 taken from valgrind.git/callgrind/tests/filter_stderr
-    // to filter the numbers from stderr
     static ref CALLGRIND_RM_NUM_REFS_RE: Regex =
         regex::Regex::new(r"((I|D|LL)\s*refs:)[ 0-9,()+rdw]*$").expect("Regex should compile");
     static ref CALLGRIND_RM_NUM_MISS_RE: Regex =
@@ -44,6 +42,8 @@ lazy_static! {
     static ref MEMCHECK_LEAK_SUMMARY_RE: Regex =
         regex::Regex::new(r"(?i:(\s*(definitely lost|indirectly lost|possibly lost|still reachable|suppressed):\s*))([ 0-9,()+.]*)(\s*bytes in\s*)([ 0-9,()+.]*)(\s*blocks\s*)$")
             .expect("Regex should compile");
+    static ref MEMORY_ADDRESS_RE: Regex =
+        regex::Regex::new(r"0x[0-9A-Za-z]+").expect("Regex should compile");
 }
 
 #[derive(Debug)]
@@ -171,6 +171,7 @@ fn memcheck_filter(bytes: &[u8], writer: &mut impl Write) {
         let replaced = MEMCHECK_TOTAL_HEAP_USAGE_RE.replace_all(&replaced, "$1<__FILTER__>");
         let replaced =
             MEMCHECK_LEAK_SUMMARY_RE.replace_all(&replaced, "$1<__FILTER__> $4<__FILTER__> $6");
+        let replaced = MEMORY_ADDRESS_RE.replace_all(&replaced, "<__FILTER__>");
         writeln!(writer, "{replaced}").unwrap();
     }
 }

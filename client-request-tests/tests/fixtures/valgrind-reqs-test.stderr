@@ -1,3 +1,10 @@
+Illegal memory pool address
+<__BACKTRACE__>
+Address <__FILTER__> is 0 bytes inside a block of size 6 free'd
+<__BACKTRACE__>
+Block was alloc'd at
+<__BACKTRACE__>
+
 
 HEAP SUMMARY:
 in use at exit: 0 bytes in 0 blocks
@@ -5,4 +12,14 @@ total heap usage: <__FILTER__>
 
 All heap blocks were freed -- no leaks are possible
 
-ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
+
+1 errors in context 1 of 1:
+Illegal memory pool address
+<__BACKTRACE__>
+Address <__FILTER__> is 0 bytes inside a block of size 6 free'd
+<__BACKTRACE__>
+Block was alloc'd at
+<__BACKTRACE__>
+
+ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
