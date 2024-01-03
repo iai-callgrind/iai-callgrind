@@ -6,9 +6,11 @@
 //! simplified.
 
 // These two functions from the benchmark-tests library serve as functions we want to benchmark
+use std::hint::black_box;
+
 use benchmark_tests::{bubble_sort, fibonacci};
 use iai_callgrind::{
-    black_box, library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,
+    library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,
     RegressionConfig, Tool, ValgrindTool,
 };
 

@@ -1,3 +1,5 @@
+use std::hint::black_box;
+
 use iai_callgrind::{
     library_benchmark, library_benchmark_group, main, FlamegraphConfig, FlamegraphKind,
     LibraryBenchmarkConfig,
@@ -55,7 +57,7 @@ fn setup_worst_case_array(start: i32) -> Vec<i32> {
             )
 )]
 fn bench_level_flamegraphs(array: Vec<i32>) -> Vec<i32> {
-    benchmark_tests::bubble_sort(array)
+    black_box(benchmark_tests::bubble_sort(array))
 }
 
 #[library_benchmark(
@@ -66,13 +68,13 @@ fn bench_level_flamegraphs(array: Vec<i32>) -> Vec<i32> {
             )
 )]
 fn without_bench_attribute() -> Vec<i32> {
-    benchmark_tests::bubble_sort(vec![])
+    black_box(benchmark_tests::bubble_sort(vec![]))
 }
 
 #[library_benchmark]
 #[bench::worst_case(setup_worst_case_array(10))]
 fn main_level_flamegraph_config(array: Vec<i32>) -> Vec<i32> {
-    benchmark_tests::bubble_sort(array)
+    black_box(benchmark_tests::bubble_sort(array))
 }
 
 #[library_benchmark]
@@ -92,7 +94,7 @@ library_benchmark_group!(
 #[library_benchmark]
 #[bench::fibonacci(5)]
 fn recursive_function(n: u64) -> u64 {
-    benchmark_tests::fibonacci(n)
+    black_box(benchmark_tests::fibonacci(n))
 }
 
 library_benchmark_group!(

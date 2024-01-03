@@ -7,9 +7,11 @@ use std::rc::Rc;
 struct Left(Option<Rc<Right>>);
 struct Right(Option<Rc<RefCell<Left>>>);
 
+use std::hint::black_box;
+
 use benchmark_tests::{bubble_sort, bubble_sort_allocate, subprocess};
 use iai_callgrind::{
-    black_box, library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,
+    library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,
     RegressionConfig, Tool, ValgrindTool,
 };
 
@@ -30,7 +32,7 @@ fn bench_bubble_sort(array: Vec<i32>) -> Vec<i32> {
 
 #[library_benchmark]
 fn bench_bubble_sort_allocate() -> i32 {
-    bubble_sort_allocate(black_box(4000), black_box(2000))
+    black_box(bubble_sort_allocate(black_box(4000), black_box(2000)))
 }
 
 #[library_benchmark]
@@ -47,10 +49,10 @@ fn bench_bubble_sort_allocate() -> i32 {
         ))]
 fn bench_subprocess() -> io::Result<Output> {
     println!("Do something before calling subprocess");
-    subprocess(
+    black_box(subprocess(
         black_box(env!("CARGO_BIN_EXE_benchmark-tests-sort")),
         black_box(Vec::<OsString>::new()),
-    )
+    ))
 }
 
 #[library_benchmark(

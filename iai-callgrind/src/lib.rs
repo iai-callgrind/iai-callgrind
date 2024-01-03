@@ -63,7 +63,8 @@
 //! #### Quickstart (#library-benchmarks)
 //!
 //! ```rust
-//! use iai_callgrind::{black_box, library_benchmark, library_benchmark_group, main};
+//! use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+//! use std::hint::black_box;
 //!
 //! // Our function we want to test. Just assume this is a public function in your
 //! // library.
