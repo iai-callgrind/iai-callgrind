@@ -47,9 +47,8 @@ pub fn truncate_str_utf8(string: &str, len: usize) -> &str {
 
 /// Trim a slice of `u8` from ascii whitespace
 pub fn trim(bytes: &[u8]) -> &[u8] {
-    let from = match bytes.iter().position(|x| !x.is_ascii_whitespace()) {
-        Some(i) => i,
-        None => return &bytes[0..0],
+    let Some(from) = bytes.iter().position(|x| !x.is_ascii_whitespace()) else {
+        return &bytes[0..0];
     };
     let to = bytes
         .iter()

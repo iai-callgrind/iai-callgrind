@@ -274,15 +274,12 @@ impl LibraryBenchmark {
                             note = r#"#[bench::my_id()] or #[bench::my_id("with", "args")] or #[bench::my_id(args = (arg1, ...), config = ...)]"#
                         );
                     }
-                    let id = match path_segments.next().map(|p| p.ident.clone()) {
-                        Some(id) => id,
-                        None => {
-                            abort!(
-                                attr, "An id is required";
-                                help = "bench followed by :: and an unique id";
-                                note = "bench::my_id"
-                            );
-                        }
+                    let Some(id) = path_segments.next().map(|p| p.ident.clone()) else {
+                        abort!(
+                            attr, "An id is required";
+                            help = "bench followed by :: and an unique id";
+                            note = "bench::my_id"
+                        );
                     };
                     self.parse_attribute(item_fn, attr, id)?;
                 }
