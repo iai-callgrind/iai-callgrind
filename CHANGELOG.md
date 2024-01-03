@@ -29,6 +29,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   `iai-callgrind` package and can be activated via feature flags
   (`client_requests` and `client_requests_defs`).
 
+### Changed
+
+* ([#48](https://github.com/iai-callgrind/iai-callgrind/pull/48)): Update MSRV
+  from `1.60.0` to `1.66.0`. Make use of new language features.
+* ([#48](https://github.com/iai-callgrind/iai-callgrind/pull/48)): Update
+  dependencies. Use latest possible versions (with our MSRV) of `which`,
+  `cargo_metadata`, `indexmap`, `clap` and others.
+
+### Deprecated
+
+* ([#48](https://github.com/iai-callgrind/iai-callgrind/pull/48)): Change our
+  implementation of `black_box` to wrap `std::hint::black_box` which is stable
+  since `1.66.0`. The usage of `iai_callgrind::black_box` is deprecated and
+  `std::hint::black_box` should be used directly.
+
+### Fixed
+
+* ([#48](https://github.com/iai-callgrind/iai-callgrind/pull/48)): The
+  `lazy_static` dependency of `iai-callgrind-runner` is now optional and not
+  unnecessarily installed with the `iai-callgrind` package.
+
 ### [0.9.0] - 2023-12-09
 
 ### Added
