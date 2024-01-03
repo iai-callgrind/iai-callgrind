@@ -91,6 +91,7 @@ jobs:
         include:
           - toolchain: "1.66.0" # MSRV
             ui_tests: --features ui_tests
+            components: rust-src
           - toolchain: stable
             components: clippy
     runs-on: ubuntu-latest
