@@ -2,7 +2,7 @@
 name = "iai-callgrind-macros"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.60.0"
+rust-version = "1.66.0"
 authors = ["Joining7943 <joining@posteo.de>"]
 description = "Proc macros for iai-callgrind, a high-precision and consistent benchmarking framework/harness for Rust"
 readme = "README.md"
