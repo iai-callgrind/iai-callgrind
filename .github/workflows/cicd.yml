@@ -145,7 +145,7 @@ jobs:
         run: cargo run --package benchmark-tests --profile=bench --bin bench
         # env:
         # IAI_CALLGRIND_LOG: trace
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: iai-callgrind-benchmarks
           path: "target/iai"
