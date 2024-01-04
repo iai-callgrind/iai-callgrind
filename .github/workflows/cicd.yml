@@ -73,7 +73,7 @@ jobs:
       - run: cargo fmt --check
       - run: taplo fmt --check --verbose
       - run: npx prettier --check --log-level warn '**/*.json' '**/*.yml'
-      - uses: streetsidesoftware/cspell-action@v3
+      - uses: streetsidesoftware/cspell-action@v5
         with:
           incremental_files_only: false
           verbose: true
