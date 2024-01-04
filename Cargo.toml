@@ -27,7 +27,7 @@ cargo_metadata = { version = "0.18" }
 cc = { version = "1" }
 cfg-if = { version = "1" }
 clap = { version = ">=4.0.0, <4.4", features = ["derive", "env"] }
-colored = { version = ">=1.6, <2.1" }
+colored = { version = ">=1.6, <2.2" }
 cty = { version = "0.2" }
 env_logger = { version = ">=0.7, <0.11" }
 fs_extra = { version = "1.3" }
