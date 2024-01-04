@@ -33,7 +33,7 @@ env_logger = { version = ">=0.7, <0.11" }
 fs_extra = { version = "1.3" }
 glob = { version = "0.3" }
 indexmap = { version = "2", features = ["serde"] }
-inferno = { version = "0.11.10", default-features = false, features = [
+inferno = { version = "0.11.19", default-features = false, features = [
   'multithreaded',
 ] }
 lazy_static = { version = "1.4.0" }
