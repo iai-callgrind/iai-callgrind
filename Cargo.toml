@@ -55,7 +55,7 @@ serial_test = { version = "2" }
 shlex = { version = "1" }
 syn = { version = ">=2.0.1, <3", features = ["full", "extra-traits"] }
 tempfile = { version = "3" }
-trybuild = "1.0.18"
+trybuild = "1.0.87"
 valico = { version = "4" }
 version-compare = { version = "0.1" }
 which = { version = "5" }
