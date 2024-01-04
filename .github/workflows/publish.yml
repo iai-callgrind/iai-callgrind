@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2.2.0
+      - uses: Swatinem/rust-cache@v2.7.1
       - name: Publish iai-callgrind-runner
         run: cargo publish -p iai-callgrind-runner --token ${{ secrets.CRATES_GITHUB_TOKEN }}
       - name: Publish iai-callgrind
