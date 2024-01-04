@@ -3,6 +3,7 @@
 
 #include "valgrind/valgrind.h"
 
+#include "valgrind/cachegrind.h"
 #include "valgrind/callgrind.h"
 #include "valgrind/dhat.h"
 #include "valgrind/drd.h"
@@ -443,3 +444,16 @@ typedef enum {
   IC_DRD_SET_THREAD_NAME = 14,
 #endif
 } IC_DRDClientRequest;
+
+typedef enum {
+#ifdef CACHEGRIND_START_INSTRUMENTATION
+  IC_CG_START_INSTRUMENTATION = VG_USERREQ__CG_START_INSTRUMENTATION,
+#else
+  IC_CG_START_INSTRUMENTATION = 0,
+#endif
+#ifdef CACHEGRIND_STOP_INSTRUMENTATION
+  IC_CG_STOP_INSTRUMENTATION = VG_USERREQ__CG_STOP_INSTRUMENTATION,
+#else
+  IC_CG_STOP_INSTRUMENTATION = 1,
+#endif
+} IC_CachegrindClientRequest;
