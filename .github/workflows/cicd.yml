@@ -29,7 +29,7 @@ jobs:
             arguments: --deny warnings
           - checks: bans licenses sources
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v1
         with:
           rust-version: "1.66.0" # MSRV
@@ -46,7 +46,7 @@ jobs:
           - stable
           - nightly
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
       - uses: dtolnay/rust-toolchain@master
         with:
@@ -63,7 +63,7 @@ jobs:
     name: Check format and spelling
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: npm install prettier
       - uses: dtolnay/rust-toolchain@nightly
         with:
@@ -96,7 +96,7 @@ jobs:
             components: clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
@@ -175,7 +175,7 @@ jobs:
             target: powerpc64le-unknown-linux-gnu
     runs-on: ${{ matrix.job.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: taiki-e/install-action@cross
       - uses: Swatinem/rust-cache@v2.2.0
@@ -202,7 +202,7 @@ jobs:
     env:
       DOCS_RS: "1"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@v2.2.0
       - name: Build iai-callgrind without valgrind headers
