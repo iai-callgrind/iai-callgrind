@@ -743,7 +743,7 @@ dependencies = [
  "colored",
  "env_logger",
  "glob",
- "indexmap 1.9.3",
+ "indexmap 2.1.0",
  "inferno",
  "lazy_static",
  "log",
@@ -814,6 +814,7 @@ checksum = "d530e1a18b1cb4c484e6e34556a0d948706958449fca0cab753d649f2bce3d1f"
 dependencies = [
  "equivalent",
  "hashbrown 0.14.3",
+ "serde",
 ]
 
 [[package]]
@@ -1354,6 +1355,7 @@ checksum = "45a28f4c49489add4ce10783f7911893516f15afe45d015608d41faca6bc4d29"
 dependencies = [
  "dyn-clone",
  "indexmap 1.9.3",
+ "indexmap 2.1.0",
  "schemars_derive",
  "serde",
  "serde_json",

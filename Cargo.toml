@@ -32,7 +32,7 @@ cty = { version = "0.2" }
 env_logger = { version = ">=0.7, <0.11" }
 fs_extra = { version = "1.3" }
 glob = { version = "0.3" }
-indexmap = { version = "1.9", features = ["serde"] }
+indexmap = { version = "2", features = ["serde"] }
 inferno = { version = "0.11.10", default-features = false, features = [
   'multithreaded',
 ] }
@@ -47,7 +47,7 @@ quote = "1"
 regex = { version = "1" }
 rstest = ">=0.17, <0.19"
 sanitize-filename = { version = "0.5" }
-schemars = { version = "0.8.16", features = ["indexmap1"] }
+schemars = { version = "0.8.16", features = ["indexmap2"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1" }
 serde_yaml = { version = "0.9" }
