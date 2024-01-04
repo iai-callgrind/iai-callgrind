@@ -55,25 +55,19 @@ note: the function `bench7` is defined here
 35 | pub fn bench7() {}
    |     ^^^^^^^^^^^
 
-error[E0061]: this function takes 1 argument but 0 arguments were supplied
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:39:5
-   |
-39 |     bench5::bench5();
-   |     ^^^^^^^^^^^^^^-- supplied 0 arguments
-   |     |
-   |     expected 1 argument
-   |
-note: function defined here
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:26:4
-   |
-26 | fn bench5(my: u8) -> String {
-   |    ^^^^^^-
-
 error[E0308]: mismatched types
   --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:20:13
    |
+19 | #[library_benchmark]
+   | -------------------- arguments to this function are incorrect
 20 | #[bench::id("hello")]
    |             ^^^^^^^ expected `u8`, found `&str`
+   |
+note: function defined here
+  --> $RUST/core/src/hint.rs
+   |
+   | pub const fn black_box<T>(dummy: T) -> T {
+   |              ^^^^^^^^^
 
 error[E0308]: mismatched types
   --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:27:5
@@ -84,3 +78,19 @@ error[E0308]: mismatched types
    |     ^^- help: try using a conversion method: `.to_string()`
    |     |
    |     expected struct `String`, found `u8`
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:39:5
+   |
+39 |     bench5::bench5();
+   |     ^^^^^^^^^^^^^^-- an argument of type `u8` is missing
+   |
+note: function defined here
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:26:4
+   |
+26 | fn bench5(my: u8) -> String {
+   |    ^^^^^^ ------
+help: provide the argument
+   |
+39 |     bench5::bench5(/* u8 */);
+   |                   ~~~~~~~~~~

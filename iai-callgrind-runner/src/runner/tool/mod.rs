@@ -387,7 +387,7 @@ impl ToolConfigs {
                 tool_config,
                 meta,
                 &log_path,
-                tool.has_output_file().then(|| &output_path),
+                tool.has_output_file().then_some(&output_path),
             )?;
 
             Self::print(
@@ -777,9 +777,7 @@ pub fn check_exit(
     output_path: &ToolOutputPath,
     exit_with: Option<&ExitWith>,
 ) -> Result<Output> {
-    let status_code = if let Some(code) = output.status.code() {
-        code
-    } else {
+    let Some(status_code) = output.status.code() else {
         return Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into());
     };
 

@@ -11,7 +11,7 @@ use crate::api::{EventKind, RawArgs, RegressionConfig};
 /// the command line arguments in the `iai-callgrind::main!` macro without the binary as first
 /// argument, that's why `no_binary_name` is set to `true`.
 #[derive(Parser, Debug, Clone)]
-#[clap(
+#[command(
     author,
     version,
     about = "High-precision and consistent benchmarking framework/harness for Rust",
@@ -22,7 +22,7 @@ pub struct CommandLineArgs {
     /// `--bench` usually shows up as last argument set by cargo and not by us.
     ///
     /// This argument is useless, so we sort it out and never make use of it.
-    #[clap(long = "bench", hide = true, action = ArgAction::SetTrue, required = false)]
+    #[arg(long = "bench", hide = true, action = ArgAction::SetTrue, required = false)]
     pub _bench: bool,
 
     /// The raw arguments to pass through to Callgrind
@@ -33,11 +33,10 @@ pub struct CommandLineArgs {
     /// Examples:
     ///   * --callgrind-args=--dump-instr=yes
     ///   * --callgrind-args='--dump-instr=yes --collect-systime=yes'
-    #[clap(
+    #[arg(
         long = "callgrind-args",
-        required = false,
         value_parser = parse_args,
-        takes_value = true,
+        num_args = 1,
         verbatim_doc_comment,
         env = "IAI_CALLGRIND_CALLGRIND_ARGS"
     )]
@@ -45,10 +44,11 @@ pub struct CommandLineArgs {
 
     /// Save a machine-readable summary of each benchmark run in json format next to the usual
     /// benchmark output
-    #[clap(
+    #[arg(
         long = "save-summary",
         value_enum,
-        required = false,
+        num_args = 0..=1,
+        require_equals = true,
         default_missing_value = "json",
         env = "IAI_CALLGRIND_SAVE_SUMMARY"
     )]
@@ -61,9 +61,11 @@ pub struct CommandLineArgs {
     /// runs all benchmarks with ASLR enabled.
     ///
     /// See also <https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space>
-    #[clap(
+    #[arg(
         long = "allow-aslr",
         default_missing_value = "yes",
+        num_args = 0..=1,
+        require_equals = true,
         value_parser = BoolishValueParser::new(),
         env = "IAI_CALLGRIND_ALLOW_ASLR",
     )]
@@ -78,9 +80,9 @@ pub struct CommandLineArgs {
     /// valid `EventKinds` see the docs: <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.EventKind.html>
     ///
     /// Examples: --regression='ir=0.0' or --regression='ir=0, EstimatedCycles=10'
-    #[clap(
-        required = false,
+    #[arg(
         long = "regression",
+        num_args = 1,
         value_parser = parse_regression_config,
         env = "IAI_CALLGRIND_REGRESSION",
     )]
@@ -89,28 +91,34 @@ pub struct CommandLineArgs {
     /// If true, the first failed performance regression check fails the whole benchmark run
     ///
     /// This option requires --regression=... or IAI_CALLGRIND_REGRESSION=... to be present.
-    #[clap(
+    #[arg(
         long = "regression-fail-fast",
         requires = "regression",
         default_missing_value = "yes",
+        num_args = 0..=1,
+        require_equals = true,
         value_parser = BoolishValueParser::new(),
         env = "IAI_CALLGRIND_REGRESSION_FAIL_FAST",
     )]
     pub regression_fail_fast: Option<bool>,
 
     /// Compare against this baseline if present and then overwrite it
-    #[clap(
+    #[arg(
         long = "save-baseline",
         default_missing_value = "default",
+        num_args = 0..=1,
+        require_equals = true,
         conflicts_with_all = &["baseline", "LOAD_BASELINE"],
         env = "IAI_CALLGRIND_SAVE_BASELINE",
     )]
     pub save_baseline: Option<BaselineName>,
 
     /// Compare against this baseline if present but do not overwrite it
-    #[clap(
+    #[arg(
         long = "baseline",
         default_missing_value = "default",
+        num_args = 0..=1,
+        require_equals = true,
         env = "IAI_CALLGRIND_BASELINE"
     )]
     pub baseline: Option<BaselineName>,
@@ -120,6 +128,8 @@ pub struct CommandLineArgs {
         id = "LOAD_BASELINE",
         long = "load-baseline",
         requires = "baseline",
+        num_args = 0..=1,
+        require_equals = true,
         default_missing_value = "default",
         env = "IAI_CALLGRIND_LOAD_BASELINE"
     )]
@@ -139,11 +149,12 @@ pub struct CommandLineArgs {
     /// `cargo bench -- --output-format=json | jq -s`
     ///
     /// which transforms `{...}\n{...}` into `[{...},{...}]`
-    #[clap(
+    #[arg(
         long = "output-format",
         value_enum,
         required = false,
         default_value = "default",
+        num_args = 1,
         env = "IAI_CALLGRIND_OUTPUT_FORMAT"
     )]
     pub output_format: OutputFormat,

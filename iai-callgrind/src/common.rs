@@ -435,16 +435,13 @@ impl Tool {
 
 impl_traits!(Tool, internal::InternalTool);
 
-/// A function that is opaque to the optimizer, used to prevent the compiler from
-/// optimizing away computations in a benchmark.
+/// __DEPRECATED__: A function that is opaque to the optimizer
 ///
-/// This variant is stable-compatible, but it may cause some performance overhead
-/// or fail to prevent code from being eliminated.
+/// It is used to prevent the compiler from optimizing away computations in a benchmark.
+///
+/// This method is deprecated and is in newer versions of `iai-callgrind` merely a wrapper around
+/// [`std::hint::black_box`]. Please use `std::hint::black_box` directly.
+#[inline]
 pub fn black_box<T>(dummy: T) -> T {
-    // SAFETY: The safety conditions for read_volatile and forget are satisfied
-    unsafe {
-        let ret = std::ptr::read_volatile(&dummy);
-        std::mem::forget(dummy);
-        ret
-    }
+    std::hint::black_box(dummy)
 }

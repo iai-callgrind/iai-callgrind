@@ -1,6 +1,6 @@
-use iai_callgrind::{
-    black_box, library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
-};
+use std::hint::black_box;
+
+use iai_callgrind::{library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig};
 
 fn fibonacci(n: u64) -> u64 {
     match n {

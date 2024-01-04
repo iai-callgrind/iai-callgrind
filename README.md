@@ -21,7 +21,7 @@
         <img src="https://docs.rs/iai-callgrind/badge.svg" alt="docs.rs"/>
     </a>
     <a href="https://github.com/rust-lang/rust">
-        <img src="https://img.shields.io/badge/MSRV-1.60.0-brightgreen" alt="MSRV"/>
+        <img src="https://img.shields.io/badge/MSRV-1.66.0-brightgreen" alt="MSRV"/>
     </a>
 </div>
 
@@ -167,7 +167,8 @@ to your `Cargo.toml` file and then create a file with the same `name` in `benche
 with the following content:
 
 ```rust
-use iai_callgrind::{black_box, main, library_benchmark_group, library_benchmark};
+use iai_callgrind::{main, library_benchmark_group, library_benchmark};
+use std::hint::black_box;
 
 fn fibonacci(n: u64) -> u64 {
     match n {

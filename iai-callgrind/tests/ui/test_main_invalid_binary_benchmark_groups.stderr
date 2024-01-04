@@ -13,17 +13,17 @@ error[E0433]: failed to resolve: use of undeclared crate or module `some_func`
   |                                     ^^^^^^^^^ use of undeclared crate or module `some_func`
 
 error[E0277]: the trait bound `InternalBinaryBenchmarkConfig: From<&str>` is not satisfied
-  --> tests/ui/test_main_invalid_binary_benchmark_groups.rs:19:5
+  --> tests/ui/test_main_invalid_binary_benchmark_groups.rs:20:18
    |
 19 | /     main!(
 20 | |         config = "some string";
+   | |                  ^^^^^^^^^^^^^ the trait `From<&str>` is not implemented for `InternalBinaryBenchmarkConfig`
 21 | |         binary_benchmark_groups = some
 22 | |     );
-   | |_____^ the trait `From<&str>` is not implemented for `InternalBinaryBenchmarkConfig`
+   | |_____- required by a bound introduced by this call
    |
-   = help: the following implementations were found:
+   = help: the following other types implement trait `From<T>`:
              <InternalBinaryBenchmarkConfig as From<&BinaryBenchmarkConfig>>
              <InternalBinaryBenchmarkConfig as From<&mut BinaryBenchmarkConfig>>
              <InternalBinaryBenchmarkConfig as From<BinaryBenchmarkConfig>>
-   = note: required because of the requirements on the impl of `Into<InternalBinaryBenchmarkConfig>` for `&str`
-   = note: this error originates in the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: required for `&str` to implement `Into<InternalBinaryBenchmarkConfig>`

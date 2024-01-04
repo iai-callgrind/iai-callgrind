@@ -50,7 +50,8 @@
 /// [`#[library_benchmark]`](crate::library_benchmark) annotated benchmark functions.
 ///
 /// ```rust
-/// use iai_callgrind::{black_box, main, library_benchmark_group, library_benchmark};
+/// use iai_callgrind::{main, library_benchmark_group, library_benchmark};
+/// use std::hint::black_box;
 ///
 /// fn fibonacci(n: u64) -> u64 {
 ///     match n {
@@ -236,13 +237,13 @@ macro_rules! main {
         }
 
         fn main() {
-            let mut args_iter = $crate::black_box(std::env::args()).skip(1);
+            let mut args_iter = std::hint::black_box(std::env::args()).skip(1);
             if args_iter
                 .next()
                 .as_ref()
                 .map_or(false, |value| value == "--iai-run")
             {
-                match $crate::black_box(args_iter.next().expect("Expecting a function type")).as_str() {
+                match std::hint::black_box(args_iter.next().expect("Expecting a function type")).as_str() {
                     $(
                         concat!(stringify!($group), "::", "before") => $group::before(),
                         concat!(stringify!($group), "::", "after") => $group::after(),
@@ -252,7 +253,7 @@ macro_rules! main {
                     name => panic!("function '{}' not found in this scope", name)
                 }
             } else {
-                $crate::black_box(run());
+                std::hint::black_box(run());
             };
         }
     };
@@ -343,23 +344,23 @@ macro_rules! main {
         }
 
         fn main() {
-            let mut args_iter = $crate::black_box(std::env::args()).skip(1);
+            let mut args_iter = std::hint::black_box(std::env::args()).skip(1);
             if args_iter
                 .next()
                 .as_ref()
                 .map_or(false, |value| value == "--iai-run")
             {
-                match $crate::black_box(args_iter.next().expect("Expecting a function type")).as_str() {
+                match std::hint::black_box(args_iter.next().expect("Expecting a function type")).as_str() {
                     $(
                         stringify!($group) => {
-                            let group_index = $crate::black_box(
+                            let group_index = std::hint::black_box(
                                 args_iter
                                     .next()
                                     .expect("Expecting a group index")
                                     .parse::<usize>()
                                     .expect("Expecting a valid group index")
                             );
-                            let bench_index = $crate::black_box(
+                            let bench_index = std::hint::black_box(
                                 args_iter
                                     .next()
                                     .expect("Expecting a bench index")
@@ -372,7 +373,7 @@ macro_rules! main {
                     name => panic!("function '{}' not found in this scope", name)
                 }
             } else {
-                $crate::black_box(run());
+                std::hint::black_box(run());
             };
         }
     };
@@ -574,28 +575,28 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
             #[inline(never)]
             pub fn before() {
                 $(
-                    let _ = $crate::black_box(super::$before());
+                    let _ = std::hint::black_box(super::$before());
                 )?
             }
 
             #[inline(never)]
             pub fn after() {
                 $(
-                    let _ = $crate::black_box(super::$after());
+                    let _ = std::hint::black_box(super::$after());
                 )?
             }
 
             #[inline(never)]
             pub fn setup() {
                 $(
-                    let _ = $crate::black_box(super::$setup());
+                    let _ = std::hint::black_box(super::$setup());
                 )?
             }
 
             #[inline(never)]
             pub fn teardown() {
                 $(
-                    let _ = $crate::black_box(super::$teardown());
+                    let _ = std::hint::black_box(super::$teardown());
                 )?
             }
 

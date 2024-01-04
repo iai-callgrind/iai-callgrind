@@ -72,7 +72,7 @@ impl ToTokens for Arguments {
     fn to_tokens(&self, tokens: &mut TokenStream2) {
         let exprs = &self.0;
         let this_tokens = quote! {
-            #(iai_callgrind::black_box(#exprs)),*
+            #(std::hint::black_box(#exprs)),*
         };
         tokens.append_all(this_tokens);
     }
@@ -93,14 +93,14 @@ impl LibBenchAttribute {
 
                 #[inline(never)]
                 pub fn #id() {
-                    let _ = iai_callgrind::black_box(#callee(#args));
+                    let _ = std::hint::black_box(#callee(#args));
                 }
             }
         } else {
             quote! {
                 #[inline(never)]
                 pub fn #id() {
-                    let _ = iai_callgrind::black_box(#callee(#args));
+                    let _ = std::hint::black_box(#callee(#args));
                 }
             }
         }
@@ -274,15 +274,12 @@ impl LibraryBenchmark {
                             note = r#"#[bench::my_id()] or #[bench::my_id("with", "args")] or #[bench::my_id(args = (arg1, ...), config = ...)]"#
                         );
                     }
-                    let id = match path_segments.next().map(|p| p.ident.clone()) {
-                        Some(id) => id,
-                        None => {
-                            abort!(
-                                attr, "An id is required";
-                                help = "bench followed by :: and an unique id";
-                                note = "bench::my_id"
-                            );
-                        }
+                    let Some(id) = path_segments.next().map(|p| p.ident.clone()) else {
+                        abort!(
+                            attr, "An id is required";
+                            help = "bench followed by :: and an unique id";
+                            note = "bench::my_id"
+                        );
                     };
                     self.parse_attribute(item_fn, attr, id)?;
                 }
@@ -352,7 +349,7 @@ impl LibraryBenchmark {
 
                 #[inline(never)]
                 pub fn wrapper() {
-                    let _ = iai_callgrind::black_box(#ident());
+                    let _ = std::hint::black_box(#ident());
                 }
             }
         }
@@ -465,11 +462,7 @@ impl Parse for LibraryBenchmark {
 ///
 /// ```rust
 /// # use iai_callgrind_macros::library_benchmark;
-/// # fn black_box<T>(arg: T) -> T {
-/// # arg
-/// # }
 /// # mod iai_callgrind {
-/// # pub fn black_box<T>(arg: T) -> T { arg }
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod internal {
 /// # pub struct InternalMacroLibBench {
@@ -489,7 +482,7 @@ impl Parse for LibraryBenchmark {
 /// #[library_benchmark]
 /// #[bench::some_id(42)]
 /// fn bench_some_func(value: u64) -> u64 {
-///     black_box(some_func(value))
+///     std::hint::black_box(some_func(value))
 /// }
 /// # fn main() {}
 /// ```
@@ -500,11 +493,7 @@ impl Parse for LibraryBenchmark {
 ///
 /// ```rust
 /// # use iai_callgrind_macros::library_benchmark;
-/// # fn black_box<T>(arg: T) -> T {
-/// # arg
-/// # }
 /// # mod iai_callgrind {
-/// # pub fn black_box<T>(arg: T) -> T { arg }
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod internal {
 /// # pub struct InternalMacroLibBench {
@@ -525,7 +514,7 @@ impl Parse for LibraryBenchmark {
 /// fn bench_my_library_function() -> u64 {
 ///     // The `black_box` is needed to tell the compiler to not optimize what's inside the
 ///     // black_box or else the benchmarks might return inaccurate results.
-///     black_box(some_func())
+///     std::hint::black_box(some_func())
 /// }
 /// # fn main() {
 /// # }
@@ -537,11 +526,7 @@ impl Parse for LibraryBenchmark {
 ///
 /// ```rust
 /// # use iai_callgrind_macros::library_benchmark;
-/// # fn black_box<T>(arg: T) -> T {
-/// # arg
-/// # }
 /// # mod iai_callgrind {
-/// # pub fn black_box<T>(arg: T) -> T { arg }
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod internal {
 /// # pub struct InternalMacroLibBench {
@@ -582,7 +567,7 @@ impl Parse for LibraryBenchmark {
 /// fn bench_some_func_with_array(array: Vec<i32>) -> Vec<i32> {
 ///     // Note `array` does not need to be put in a `black_box` because that's already done for
 ///     // you.
-///     black_box(some_func_with_array(array))
+///     std::hint::black_box(some_func_with_array(array))
 /// }
 /// # fn main() {
 /// # }
@@ -674,8 +659,8 @@ mod tests {
             rendered_benches.push(quote!(
                 #[inline(never)]
                 pub fn #ident() {
-                    let _ = iai_callgrind::black_box(#callee(
-                        #(iai_callgrind::black_box(#args)),*
+                    let _ = std::hint::black_box(#callee(
+                        #(std::hint::black_box(#args)),*
                     ));
                 }
             ));

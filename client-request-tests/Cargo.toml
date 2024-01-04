@@ -1,34 +1,37 @@
 [package]
 name = "client-request-tests"
-version = "0.1.0"
-edition = "2021"
-publish = false
 authors = ["Joining7943 <joining@posteo.de>"]
+categories.workspace = true
 description = "Tests for iai-callgrind client requests"
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+publish = false
 readme = "../README.md"
-homepage = "https://github.com/iai-callgrind/iai-callgrind"
-repository = "https://github.com/iai-callgrind/iai-callgrind"
-license = "Apache-2.0 OR MIT"
+repository.workspace = true
+rust-version.workspace = true
+version = "0.1.0"
 
 [build-dependencies]
-fs_extra = { version = "1.3" }
+fs_extra = { workspace = true }
 
 [dependencies]
-cty = { version = "0.2" }
+cty = { workspace = true }
 iai-callgrind = { path = "../iai-callgrind/", version = "=0.9.0", default-features = false, features = [
   "client_requests_defs",
 ] }
-lazy_static = { version = "1.4" }
-regex = { version = "1.9" }
-shlex = { version = "1.2" }
-which = { version = "5" }
+lazy_static = { workspace = true }
+regex = { workspace = true }
+shlex = { workspace = true }
+which = { workspace = true }
 
 [dev-dependencies]
-assert_cmd = { version = "2.0" }
-fs_extra = { version = "1.3" }
+assert_cmd = { workspace = true }
+fs_extra = { workspace = true }
 iai-callgrind = { path = "../iai-callgrind/", version = "=0.9.0", default-features = false, features = [
   "client_requests",
 ] }
-predicates = { version = "3" }
-rstest = { version = "0.18" }
-tempfile = { version = "3" }
+predicates = { workspace = true }
+rstest = { workspace = true }
+tempfile = { workspace = true }
