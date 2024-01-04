@@ -1,4 +1,6 @@
 #[cfg(test)]
+mod cachegrind;
+#[cfg(test)]
 mod callgrind;
 #[cfg(test)]
 mod memcheck;

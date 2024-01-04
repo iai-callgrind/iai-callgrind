@@ -472,6 +472,7 @@ cfg_if! {
 
 mod arch;
 mod bindings;
+pub mod cachegrind;
 pub mod callgrind;
 pub mod dhat;
 pub mod drd;
