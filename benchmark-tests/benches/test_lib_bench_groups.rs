@@ -34,6 +34,11 @@ fn setup_best_case_array(start: i32) -> Vec<i32> {
     }
 }
 
+// TODO: REMOVE TESTING CODE
+fn setup_test(a: i32, b: i32) -> (i32, i32) {
+    (a + b, a - b)
+}
+
 // The #[library_benchmark] attribute let's you define a benchmark function which you can later use
 // in the `library_benchmark_groups!` macro. Just using the #[library_benchmark] attribute as a
 // standalone is fine for simple function calls without parameters. However, we actually want to
@@ -46,6 +51,19 @@ fn setup_best_case_array(start: i32) -> Vec<i32> {
 fn bench_bubble_sort_empty() -> Vec<i32> {
     // The `black_box` is needed to tell the compiler to not optimize what's inside the black_box or
     // else the benchmarks might return inaccurate results.
+    black_box(bubble_sort(black_box(vec![])))
+}
+
+// TODO: REMOVE TESTING CODE
+#[library_benchmark]
+// #[benches::my0((1, 2), (2, 3))]
+// #[benches::my1(args = [(1, 2), (2, 3)])]
+// #[benches::my0(args = [])]
+// #[benches::my1(args = [(1), (2,), [3], 5])]
+// #[benches::my1(args = [(1), (2,), [3], 5])]
+#[benches::my1(args = [(1, 2)], setup = setup_test)]
+// fn bench_bubble_sort_empty_testing(_c: i32, _d: i32) -> Vec<i32> {
+fn bench_bubble_sort_empty_testing((_c, _d): (i32, i32)) -> Vec<i32> {
     black_box(bubble_sort(black_box(vec![])))
 }
 
@@ -135,7 +153,10 @@ library_benchmark_group!(
         .regression(
             RegressionConfig::default().fail_fast(false)
         );
-    benchmarks = bench_bubble_sort_empty, bench_bubble_sort
+    benchmarks =
+        bench_bubble_sort_empty_testing,
+        bench_bubble_sort_empty,
+        bench_bubble_sort,
 );
 
 // In our example file here, we could have put `bench_fibonacci` into the same group as the bubble

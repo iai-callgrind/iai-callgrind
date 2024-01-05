@@ -30,9 +30,8 @@ use proc_macro_error::{abort, emit_error, proc_macro_error};
 use quote::{format_ident, quote, ToTokens, TokenStreamExt};
 use syn::parse::Parse;
 use syn::punctuated::Punctuated;
-use syn::spanned::Spanned;
 use syn::{
-    parse2, parse_quote, Attribute, Expr, ExprArray, ExprParen, ExprTuple, Ident, ItemFn,
+    parse2, parse_quote, Attribute, Expr, ExprArray, ExprPath, Ident, ItemFn, MetaList,
     MetaNameValue, Token,
 };
 
@@ -44,6 +43,7 @@ struct LibBenchAttribute {
     id: Ident,
     args: Arguments,
     config: Option<Expr>,
+    setup: Option<ExprPath>,
 }
 
 #[derive(Debug, Default)]
@@ -51,6 +51,9 @@ struct LibraryBenchmark {
     config: Option<Expr>,
     benches: Vec<LibBenchAttribute>,
 }
+
+#[derive(Debug, Clone)]
+struct MultipleArguments(Vec<Arguments>);
 
 impl Arguments {
     fn len(&self) -> usize {
@@ -78,11 +81,71 @@ impl ToTokens for Arguments {
     }
 }
 
+impl MultipleArguments {
+    fn from_expr(expr: &Expr, expected_num_args: usize, has_setup: bool) -> syn::Result<Self> {
+        let expr_array = parse2::<ExprArray>(expr.to_token_stream())?;
+        let mut values: Vec<Arguments> = vec![];
+        for elem in expr_array.elems {
+            match elem {
+                Expr::Array(items) => {
+                    values.push(parse2(items.elems.to_token_stream())?);
+                }
+                Expr::Tuple(items) => {
+                    values.push(parse2(items.elems.to_token_stream())?);
+                }
+                Expr::Paren(item) if has_setup || expected_num_args == 1 => {
+                    values.push(Arguments(vec![*item.expr]));
+                }
+                _ if has_setup || expected_num_args == 1 => {
+                    values.push(Arguments(vec![elem]));
+                }
+                _ => {
+                    abort!(
+                        elem,
+                        "Failed parsing arguments: Expected {} values per tuple",
+                        expected_num_args;
+                        help = "If the benchmarking function has multiple parameters
+                    the arguments for #[benches::...] must be given as tuple";
+                        note = "#[benches::id((1, 2), (3, 4))] or \
+                               #[benches::id(args = [(1, 2), (3, 4)])]";
+                    );
+                }
+            }
+        }
+        Ok(Self(values))
+    }
+
+    fn from_meta_list(meta: &MetaList, expected_num_args: usize) -> syn::Result<Self> {
+        let list = &meta.tokens;
+        let expr = parse2::<Expr>(quote! { [#list] })?;
+        Self::from_expr(&expr, expected_num_args, false)
+    }
+}
+
 impl LibBenchAttribute {
     fn render_as_function(&self, callee: &Ident) -> TokenStream2 {
         let id = &self.id;
-        let args = &self.args;
 
+        let func = if let Some(setup) = &self.setup {
+            let exprs = &self.args.0;
+            let args = quote! {
+                #(#exprs),*
+            };
+            quote! {
+                #[inline(never)]
+                pub fn #id() {
+                    let _ = std::hint::black_box(#callee(std::hint::black_box(#setup(#args))));
+                }
+            }
+        } else {
+            let args = &self.args;
+            quote! {
+                #[inline(never)]
+                pub fn #id() {
+                    let _ = std::hint::black_box(#callee(#args));
+                }
+            }
+        };
         if let Some(config) = &self.config {
             let config_ident = format_ident!("get_config_{}", id);
             quote! {
@@ -91,31 +154,30 @@ impl LibBenchAttribute {
                     #config.into()
                 }
 
-                #[inline(never)]
-                pub fn #id() {
-                    let _ = std::hint::black_box(#callee(#args));
-                }
+                #func
             }
         } else {
-            quote! {
-                #[inline(never)]
-                pub fn #id() {
-                    let _ = std::hint::black_box(#callee(#args));
-                }
-            }
+            func
         }
     }
 
     fn render_as_lib_bench(&self) -> TokenStream2 {
         let id = &self.id;
         let id_str = self.id.to_string();
-        let args = self
-            .args
-            .0
-            .iter()
-            .map(|a| a.to_token_stream().to_string())
-            .collect::<Vec<String>>()
-            .join(", ");
+        let args = if let Some(setup) = self.setup.as_ref() {
+            let exprs = &self.args.0;
+            let tokens = quote! {
+                #(#exprs),*
+            };
+            quote! { #setup(#tokens) }.to_string()
+        } else {
+            self.args
+                .0
+                .iter()
+                .map(|a| a.to_token_stream().to_string())
+                .collect::<Vec<String>>()
+                .join(", ")
+        };
         if self.config.is_some() {
             let conf_ident = format_ident!("get_config_{}", id);
             quote! {
@@ -141,7 +203,7 @@ impl LibBenchAttribute {
 
 impl LibraryBenchmark {
     #[allow(clippy::too_many_lines)]
-    fn parse_attribute(
+    fn parse_bench_attribute(
         &mut self,
         item_fn: &ItemFn,
         attr: &Attribute,
@@ -159,46 +221,15 @@ impl LibraryBenchmark {
                     emit_error!(
                         pair, "Missing key";
                         help = "At least one argument must be given";
-                        note = r"Valid arguments are: args, config"
+                        note = "Valid arguments are: args, config"
                     );
                 } else if pair.path.is_ident("args") {
                     if args.is_none() {
-                        let value = parse2::<ExprArray>(pair.value.to_token_stream()).map_or_else(
-                            |_| {
-                                parse2::<ExprTuple>(pair.value.to_token_stream()).map_or_else(
-                                    |error| {
-                                        if expected_num_args == 0 {
-                                            if parse2::<ExprParen>(pair.value.to_token_stream())
-                                                .is_ok()
-                                            {
-                                                abort!(pair, "Expected 0 arguments but found 1",);
-                                            } else {
-                                                Err(error)
-                                            }
-                                        } else if expected_num_args == 1 {
-                                            parse2::<ExprParen>(pair.value.to_token_stream()).map(
-                                                |paren| {
-                                                    let mut sequence =
-                                                        Punctuated::<Expr, Token![,]>::new();
-                                                    sequence.push(*paren.expr);
-                                                    sequence
-                                                },
-                                            )
-                                        } else {
-                                            Err(error)
-                                        }
-                                    },
-                                    |tuple| Ok(tuple.elems),
-                                )
-                            },
-                            |array| Ok(array.elems),
-                        )?;
-
-                        args = Some((pair.span(), parse2::<Arguments>(value.to_token_stream())?));
+                        args = Some(pair.value);
                     } else {
                         emit_error!(
                             pair, "Duplicate argument: args";
-                            help = r"args is allowed only once"
+                            help = "args is allowed only once"
                         );
                     }
                 } else if pair.path.is_ident("config") {
@@ -207,39 +238,60 @@ impl LibraryBenchmark {
                     } else {
                         emit_error!(
                             pair, "Duplicate argument: config";
-                            help = r"config is allowed only once"
+                            help = "config is allowed only once"
                         );
                     }
                 } else {
-                    emit_error!(
+                    abort!(
                         pair, "Invalid argument: {}", pair.path.get_ident().unwrap();
-                        help = r"Valid arguments are: args, config"
+                        help = "Valid arguments are: args, config"
                     );
                 }
             }
-            match args {
-                Some((_, args)) if args.len() == expected_num_args => {
-                    self.benches.push(LibBenchAttribute { id, args, config });
-                }
-                Some((span, args)) => {
+            if let Some(expr) = args {
+                let args = match expr {
+                    Expr::Array(items) => parse2::<Arguments>(items.elems.to_token_stream())?,
+                    Expr::Tuple(items) => parse2::<Arguments>(items.elems.to_token_stream())?,
+                    Expr::Paren(item) if expected_num_args == 1 => Arguments(vec![*item.expr]),
+                    _ => {
+                        abort!(
+                            expr,
+                            "Failed parsing `args`";
+                            help = "`args` must be an tuple/array which elements (expressions)
+                            match the number of parameters of the benchmarking function";
+                            note = "#[bench::id(args = (1, 2))] or
+                            #[bench::id(args = [1, 2]])]"
+                        );
+                    }
+                };
+                if args.len() == expected_num_args {
+                    self.benches.push(LibBenchAttribute {
+                        id,
+                        args,
+                        config,
+                        setup: None,
+                    });
+                } else {
                     emit_error!(
-                        span,
+                        meta,
                         "Expected {} arguments but found {}",
                         expected_num_args,
                         args.len()
                     );
-                }
-                None if expected_num_args == 0 => {
-                    self.benches.push(LibBenchAttribute {
-                        id,
-                        args: Arguments(vec![]),
-                        config,
-                    });
-                }
-                None => emit_error!(
+                };
+            } else if expected_num_args == 0 {
+                self.benches.push(LibBenchAttribute {
+                    id,
+                    args: Arguments(vec![]),
+                    config,
+                    setup: None,
+                });
+            } else {
+                emit_error!(
                     attr, "Expected {} arguments but found none", expected_num_args;
-                    help = r"Try passing arguments either with #[bench::some_id(arg1, ...)] or with #[bench::some_id(args = (arg1, ...))]"
-                ),
+                    help = "Try passing arguments either with #[bench::some_id(arg1, ...)]
+                or with #[bench::some_id(args = (arg1, ...))]"
+                );
             }
         } else {
             let args = meta.parse_args::<Arguments>()?;
@@ -248,10 +300,111 @@ impl LibraryBenchmark {
                     id,
                     args,
                     config: None,
+                    setup: None,
                 });
             } else {
                 emit_error!(
-                    attr,
+                    meta,
+                    "Expected {} arguments but found {}",
+                    expected_num_args,
+                    args.len()
+                );
+            }
+        }
+        Ok(())
+    }
+
+    fn parse_benches_attribute(
+        &mut self,
+        item_fn: &ItemFn,
+        attr: &Attribute,
+        id: &Ident,
+    ) -> syn::Result<()> {
+        let expected_num_args = item_fn.sig.inputs.len();
+        let meta = attr.meta.require_list()?;
+
+        let mut config = None;
+        let mut setup = None;
+        let args = if let Ok(pairs) =
+            meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
+        {
+            let mut args = None;
+            for pair in pairs {
+                if pair.path.segments.is_empty() {
+                    emit_error!(
+                        pair, "Missing key";
+                        help = "At least one argument must be given";
+                        note = "Valid arguments are: `args`, `config`, `setup`"
+                    );
+                } else if pair.path.is_ident("args") {
+                    if args.is_none() {
+                        args = Some(pair.value);
+                    } else {
+                        emit_error!(
+                            pair, "Duplicate argument: `args`";
+                            help = "`args` is allowed only once"
+                        );
+                    }
+                } else if pair.path.is_ident("config") {
+                    if config.is_none() {
+                        config = Some(pair.value);
+                    } else {
+                        emit_error!(
+                            pair, "Duplicate argument: `config`";
+                            help = "`config` is allowed only once"
+                        );
+                    }
+                } else if pair.path.is_ident("setup") {
+                    if setup.is_none() {
+                        if let Expr::Path(path) = pair.value {
+                            setup = Some(path);
+                        } else {
+                            abort!(
+                                pair, "Invalid value for `setup`";
+                                help = "The `setup` argument needs a path to an existing function
+                            in a reachable scope";
+                                note = "`setup = my_setup` or `setup = my::setup::function`"
+                            );
+                        }
+                    } else {
+                        emit_error!(
+                            pair, "Duplicate argument: `setup`";
+                            help = "`setup` is allowed only once"
+                        );
+                    }
+                } else {
+                    emit_error!(
+                        pair, "Invalid argument: {}", pair.path.get_ident().unwrap();
+                        help = "Valid arguments are: `args`, `config`, `setup`"
+                    );
+                }
+            }
+            if let Some(args) = args {
+                MultipleArguments::from_expr(&args, expected_num_args, setup.is_some())?
+            } else {
+                emit_error!(
+                    meta, "Missing arguments for `benches`";
+                    help = "Either specify the `args` argument or use plain arguments";
+                    note = "`#[benches::id(args = [...])]` or `#[benches::id(1, 2, ...)]`"
+                );
+                return Ok(());
+            }
+        } else {
+            MultipleArguments::from_meta_list(meta, expected_num_args)?
+        };
+
+        for (i, args) in args.0.into_iter().enumerate() {
+            let id = format_ident!("{id}_{i}");
+            if (setup.is_none() && args.len() == expected_num_args) || setup.is_some() {
+                self.benches.push(LibBenchAttribute {
+                    id,
+                    args,
+                    config: config.clone(),
+                    setup: setup.clone(),
+                });
+            } else {
+                emit_error!(
+                    meta,
                     "Expected {} arguments but found {}",
                     expected_num_args,
                     args.len()
@@ -263,31 +416,53 @@ impl LibraryBenchmark {
 
     fn extract_benches(&mut self, item_fn: &ItemFn) -> syn::Result<()> {
         let bench: syn::PathSegment = parse_quote!(bench);
+        let benches: syn::PathSegment = parse_quote!(benches);
         for attr in &item_fn.attrs {
             let mut path_segments = attr.path().segments.iter();
             match path_segments.next() {
                 Some(segment) if segment == &bench => {
                     if attr.path().segments.len() > 2 {
-                        emit_error!(
+                        abort!(
                             attr, "Only one id is allowed";
                             help = "bench followed by :: and an single unique id";
-                            note = r#"#[bench::my_id()] or #[bench::my_id("with", "args")] or #[bench::my_id(args = (arg1, ...), config = ...)]"#
+                            note = r#"#[bench::my_id()] or #[bench::my_id("with", "args")]
+                        or #[bench::my_id(args = (arg1, ...), config = ...)]"#
                         );
                     }
                     let Some(id) = path_segments.next().map(|p| p.ident.clone()) else {
                         abort!(
                             attr, "An id is required";
                             help = "bench followed by :: and an unique id";
-                            note = "bench::my_id"
+                            note = "#[bench::my_id(...)]"
                         );
                     };
-                    self.parse_attribute(item_fn, attr, id)?;
+                    self.parse_bench_attribute(item_fn, attr, id)?;
+                }
+                Some(segment) if segment == &benches => {
+                    if attr.path().segments.len() > 2 {
+                        abort!(
+                            attr, "Only one id is allowed";
+                            help = "benches followed by :: and an single unique id";
+                            note = r#"#[benches::my_id("with", "args")]
+                        or #[benches::my_id(args = [arg1, ...]]"#
+                        );
+                    }
+                    let Some(id) = path_segments.next().map(|p| p.ident.clone()) else {
+                        abort!(
+                            attr, "An id is required";
+                            help = "benches followed by :: and an unique id";
+                            note = "#[benches::my_id(...)]"
+                        );
+                    };
+                    self.parse_benches_attribute(item_fn, attr, &id)?;
                 }
                 Some(segment) => {
+                    // TODO: FIX ERROR MESSAGE
                     abort!(
                         attr, "Invalid attribute: '{}'", segment.ident;
-                        help = "Only the 'bench' attribute is allowed";
-                        note = r#"#[bench::my_id()] or #[bench::my_id("with", "args")] or #[bench::my_id(args = (arg1, ...), config = ...)]"#
+                        help = "Only the `bench` and the `benches` attribute are allowed";
+                        note = r#"#[bench::my_id("with", "args")]
+                    or #[benches::my_id(args = [("with", "args"), ...)])]"#
                     );
                 }
                 None => {

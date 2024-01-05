@@ -1,12 +1,13 @@
 error: Expected 0 arguments but found 1
- --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:5:1
+ --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:5:3
   |
 5 | #[bench::id(42)]
-  | ^^^^^^^^^^^^^^^^
+  |   ^^^^^^^^^^^^^
 
 error: Expected 1 arguments but found none
 
-         = help: Try passing arguments either with #[bench::some_id(arg1, ...)] or with #[bench::some_id(args = (arg1, ...))]
+         = help: Try passing arguments either with #[bench::some_id(arg1, ...)]
+                       or with #[bench::some_id(args = (arg1, ...))]
 
   --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:10:1
    |
@@ -14,10 +15,10 @@ error: Expected 1 arguments but found none
    | ^^^^^^^^^^^^^^
 
 error: Expected 1 arguments but found 2
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:15:1
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:15:3
    |
 15 | #[bench::id(42, 8)]
-   | ^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^
 
 error[E0603]: function `bench5` is private
   --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:39:13
