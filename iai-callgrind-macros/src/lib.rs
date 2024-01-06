@@ -457,7 +457,6 @@ impl LibraryBenchmark {
                     self.parse_benches_attribute(item_fn, attr, &id)?;
                 }
                 Some(segment) => {
-                    // TODO: FIX ERROR MESSAGE
                     abort!(
                         attr, "Invalid attribute: '{}'", segment.ident;
                         help = "Only the `bench` and the `benches` attribute are allowed";
