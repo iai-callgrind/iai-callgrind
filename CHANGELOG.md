@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   valgrind client requests. The client requests are available in the
   `iai-callgrind` package and can be activated via feature flags
   (`client_requests` and `client_requests_defs`).
+* ([#38](https://github.com/iai-callgrind/iai-callgrind/issues/38)): Add support
+  for specifying multiple library benchmarks in one go with the `#[benches]`
+  attribute. This attribute also accepts a `setup` argument which takes a path
+  to a function, so the `args` are passed as parameter to the `setup` function
+  instead of the benchmarking function.
 
 ### Changed
 
