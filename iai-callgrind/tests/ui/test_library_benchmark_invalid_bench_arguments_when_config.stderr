@@ -13,6 +13,33 @@ error: unexpected end of input, expected an expression
 12 | #[bench::id(config = )]
    |                      ^
 
+error: Invalid argument: wrong
+
+         = help: Valid arguments are: `args`, `config`, `setup`
+
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments_when_config.rs:16:18
+   |
+16 | #[benches::wrong(wrong = LibraryBenchmarkConfig::default())]
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Missing arguments for `benches`
+
+         = help: Either specify the `args` argument or use plain arguments
+         = note: `#[benches::id(args = [...])]` or `#[benches::id(1, 2, ...)]`
+
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments_when_config.rs:20:3
+   |
+20 | #[benches::missing_args(config = LibraryBenchmarkConfig::default())]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unexpected end of input, expected an expression
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments_when_config.rs:23:1
+   |
+23 | #[library_benchmark]
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error[E0277]: the trait bound `InternalLibraryBenchmarkConfig: From<&str>` is not satisfied
  --> tests/ui/test_library_benchmark_invalid_bench_arguments_when_config.rs:4:22
   |

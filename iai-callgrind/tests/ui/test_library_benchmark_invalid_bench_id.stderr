@@ -25,3 +25,15 @@ error[E0428]: the name `same` is defined multiple times
    |
    = note: `same` must be defined only once in the value namespace of this module
    = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0428]: the name `same_0` is defined multiple times
+  --> tests/ui/test_library_benchmark_invalid_bench_id.rs:21:1
+   |
+21 | #[library_benchmark]
+   | ^^^^^^^^^^^^^^^^^^^^
+   | |
+   | `same_0` redefined here
+   | previous definition of the value `same_0` here
+   |
+   = note: `same_0` must be defined only once in the value namespace of this module
+   = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)

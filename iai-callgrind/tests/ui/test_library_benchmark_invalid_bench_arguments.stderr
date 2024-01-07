@@ -4,64 +4,100 @@ error: Expected 0 arguments but found 1
 5 | #[bench::id(42)]
   |   ^^^^^^^^^^^^^
 
+error: Failed parsing arguments: Expected 0 values per tuple
+
+         = help: If the benchmarking function has multiple parameters
+                           the arguments for #[benches::...] must be given as tuple
+         = note: #[benches::id((1, 2), (3, 4))] or #[benches::id(args = [(1, 2), (3, 4)])]
+
+ --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:6:18
+  |
+6 | #[benches::multi(42)]
+  |                  ^^
+
 error: Expected 1 arguments but found none
 
          = help: Try passing arguments either with #[bench::some_id(arg1, ...)]
                        or with #[bench::some_id(args = (arg1, ...))]
 
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:10:1
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:11:1
    |
-10 | #[bench::id()]
+11 | #[bench::id()]
    | ^^^^^^^^^^^^^^
 
 error: Expected 1 arguments but found 2
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:15:3
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:20:3
    |
-15 | #[bench::id(42, 8)]
+20 | #[bench::id(42, 8)]
    |   ^^^^^^^^^^^^^^^^
 
-error[E0603]: function `bench5` is private
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:39:13
+error: Expected 1 arguments but found 2
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:24:3
    |
-39 |     bench5::bench5();
+24 | #[benches::multi((42, 8))]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0603]: function `bench5` is private
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:52:13
+   |
+52 |     bench5::bench5();
    |             ^^^^^^ private function
    |
 note: the function `bench5` is defined here
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:26:1
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:39:1
    |
-26 | fn bench5(my: u8) -> String {
+39 | fn bench5(my: u8) -> String {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0603]: function `bench6` is private
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:41:13
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:54:13
    |
-41 |     bench6::bench6();
+54 |     bench6::bench6();
    |             ^^^^^^ private function
    |
 note: the function `bench6` is defined here
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:31:5
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:44:5
    |
-31 | pub fn bench6() {}
+44 | pub fn bench6() {}
    |     ^^^^^^^^^^^
 
 error[E0603]: function `bench7` is private
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:43:13
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:56:13
    |
-43 |     bench7::bench7();
+56 |     bench7::bench7();
    |             ^^^^^^ private function
    |
 note: the function `bench7` is defined here
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:35:5
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:48:5
    |
-35 | pub fn bench7() {}
+48 | pub fn bench7() {}
    |     ^^^^^^^^^^^
 
-error[E0308]: mismatched types
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:20:13
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:16:4
    |
-19 | #[library_benchmark]
+14 | #[library_benchmark]
+   | -------------------- an argument of type `i32` is missing
+15 | #[benches::multi(args = [])]
+16 | fn bench25(my: i32) {}
+   |    ^^^^^^^
+   |
+note: function defined here
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:16:4
+   |
+16 | fn bench25(my: i32) {}
+   |    ^^^^^^^ -------
+help: provide the argument
+   |
+14 | bench25(/* i32 */)
+   |
+
+error[E0308]: mismatched types
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:29:13
+   |
+28 | #[library_benchmark]
    | -------------------- arguments to this function are incorrect
-20 | #[bench::id("hello")]
+29 | #[bench::id("hello")]
    |             ^^^^^^^ expected `u8`, found `&str`
    |
 note: function defined here
@@ -71,27 +107,41 @@ note: function defined here
    |              ^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:27:5
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:33:18
    |
-26 | fn bench5(my: u8) -> String {
+32 | #[library_benchmark]
+   | -------------------- arguments to this function are incorrect
+33 | #[benches::multi("hello")]
+   |                  ^^^^^^^ expected `u8`, found `&str`
+   |
+note: function defined here
+  --> $RUST/core/src/hint.rs
+   |
+   | pub const fn black_box<T>(dummy: T) -> T {
+   |              ^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:40:5
+   |
+39 | fn bench5(my: u8) -> String {
    |                      ------ expected `String` because of return type
-27 |     my
+40 |     my
    |     ^^- help: try using a conversion method: `.to_string()`
    |     |
    |     expected struct `String`, found `u8`
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:39:5
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:52:5
    |
-39 |     bench5::bench5();
+52 |     bench5::bench5();
    |     ^^^^^^^^^^^^^^-- an argument of type `u8` is missing
    |
 note: function defined here
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:26:4
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:39:4
    |
-26 | fn bench5(my: u8) -> String {
+39 | fn bench5(my: u8) -> String {
    |    ^^^^^^ ------
 help: provide the argument
    |
-39 |     bench5::bench5(/* u8 */);
+52 |     bench5::bench5(/* u8 */);
    |                   ~~~~~~~~~~

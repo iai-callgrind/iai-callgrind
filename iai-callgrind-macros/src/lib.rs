@@ -81,47 +81,6 @@ impl ToTokens for Arguments {
     }
 }
 
-impl MultipleArguments {
-    fn from_expr(expr: &Expr, expected_num_args: usize, has_setup: bool) -> syn::Result<Self> {
-        let expr_array = parse2::<ExprArray>(expr.to_token_stream())?;
-        let mut values: Vec<Arguments> = vec![];
-        for elem in expr_array.elems {
-            match elem {
-                Expr::Array(items) => {
-                    values.push(parse2(items.elems.to_token_stream())?);
-                }
-                Expr::Tuple(items) => {
-                    values.push(parse2(items.elems.to_token_stream())?);
-                }
-                Expr::Paren(item) if has_setup || expected_num_args == 1 => {
-                    values.push(Arguments(vec![*item.expr]));
-                }
-                _ if has_setup || expected_num_args == 1 => {
-                    values.push(Arguments(vec![elem]));
-                }
-                _ => {
-                    abort!(
-                        elem,
-                        "Failed parsing arguments: Expected {} values per tuple",
-                        expected_num_args;
-                        help = "If the benchmarking function has multiple parameters
-                    the arguments for #[benches::...] must be given as tuple";
-                        note = "#[benches::id((1, 2), (3, 4))] or \
-                               #[benches::id(args = [(1, 2), (3, 4)])]";
-                    );
-                }
-            }
-        }
-        Ok(Self(values))
-    }
-
-    fn from_meta_list(meta: &MetaList, expected_num_args: usize) -> syn::Result<Self> {
-        let list = &meta.tokens;
-        let expr = parse2::<Expr>(quote! { [#list] })?;
-        Self::from_expr(&expr, expected_num_args, false)
-    }
-}
-
 impl LibBenchAttribute {
     fn render_as_function(&self, callee: &Ident) -> TokenStream2 {
         let id = &self.id;
@@ -331,7 +290,7 @@ impl LibraryBenchmark {
             let mut args = None;
             for pair in pairs {
                 if pair.path.segments.is_empty() {
-                    emit_error!(
+                    abort!(
                         pair, "Missing key";
                         help = "At least one argument must be given";
                         note = "Valid arguments are: `args`, `config`, `setup`"
@@ -340,7 +299,7 @@ impl LibraryBenchmark {
                     if args.is_none() {
                         args = Some(pair.value);
                     } else {
-                        emit_error!(
+                        abort!(
                             pair, "Duplicate argument: `args`";
                             help = "`args` is allowed only once"
                         );
@@ -349,7 +308,7 @@ impl LibraryBenchmark {
                     if config.is_none() {
                         config = Some(pair.value);
                     } else {
-                        emit_error!(
+                        abort!(
                             pair, "Duplicate argument: `config`";
                             help = "`config` is allowed only once"
                         );
@@ -367,13 +326,13 @@ impl LibraryBenchmark {
                             );
                         }
                     } else {
-                        emit_error!(
+                        abort!(
                             pair, "Duplicate argument: `setup`";
                             help = "`setup` is allowed only once"
                         );
                     }
                 } else {
-                    emit_error!(
+                    abort!(
                         pair, "Invalid argument: {}", pair.path.get_ident().unwrap();
                         help = "Valid arguments are: `args`, `config`, `setup`"
                     );
@@ -381,13 +340,14 @@ impl LibraryBenchmark {
             }
             if let Some(args) = args {
                 MultipleArguments::from_expr(&args, expected_num_args, setup.is_some())?
-            } else {
-                emit_error!(
+            } else if setup.is_none() && expected_num_args != 0 {
+                abort!(
                     meta, "Missing arguments for `benches`";
                     help = "Either specify the `args` argument or use plain arguments";
                     note = "`#[benches::id(args = [...])]` or `#[benches::id(1, 2, ...)]`"
                 );
-                return Ok(());
+            } else {
+                MultipleArguments(vec![])
             }
         } else {
             MultipleArguments::from_meta_list(meta, expected_num_args)?
@@ -612,6 +572,44 @@ impl Parse for LibraryBenchmark {
                 }))
             }
         }
+    }
+}
+
+impl MultipleArguments {
+    fn from_expr(expr: &Expr, expected_num_args: usize, has_setup: bool) -> syn::Result<Self> {
+        let expr_array = parse2::<ExprArray>(expr.to_token_stream())?;
+        let mut values: Vec<Arguments> = vec![];
+        for elem in expr_array.elems {
+            match elem {
+                Expr::Tuple(items) => {
+                    values.push(parse2(items.elems.to_token_stream())?);
+                }
+                Expr::Paren(item) if has_setup || expected_num_args == 1 => {
+                    values.push(Arguments(vec![*item.expr]));
+                }
+                _ if has_setup || expected_num_args == 1 => {
+                    values.push(Arguments(vec![elem]));
+                }
+                _ => {
+                    abort!(
+                        elem,
+                        "Failed parsing arguments: Expected {} values per tuple",
+                        expected_num_args;
+                        help = "If the benchmarking function has multiple parameters
+                    the arguments for #[benches::...] must be given as tuple";
+                        note = "#[benches::id((1, 2), (3, 4))] or \
+                               #[benches::id(args = [(1, 2), (3, 4)])]";
+                    );
+                }
+            }
+        }
+        Ok(Self(values))
+    }
+
+    fn from_meta_list(meta: &MetaList, expected_num_args: usize) -> syn::Result<Self> {
+        let list = &meta.tokens;
+        let expr = parse2::<Expr>(quote! { [#list] })?;
+        Self::from_expr(&expr, expected_num_args, false)
     }
 }
 
