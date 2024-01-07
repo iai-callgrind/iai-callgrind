@@ -187,7 +187,7 @@ fn bench_fibonacci(value: u64) -> u64 {
 
 library_benchmark_group!(
     name = bench_fibonacci_group;
-    benchmarks = bench_fibonacci
+    benchmarks = bench_fibonacci, bench_fibonacci_alternative
 );
 
 main!(library_benchmark_groups = bench_fibonacci_group);
@@ -252,6 +252,46 @@ test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci 
   Total read+write:        22025881|35638621        (-38.1966%) [-1.61803x]
   Estimated Cycles:        22025983|35638757        (-38.1965%) [-1.61803x]
 ```
+
+##### Specify multiple benchmarks at once with the #[benches] attribute
+
+Let's start with an example:
+
+```rust
+fn setup_worst_case_array(start: i32) -> Vec<i32> {
+    if start.is_negative() {
+        (start..0).rev().collect()
+    } else {
+        (0..start).rev().collect()
+    }
+}
+
+#[library_benchmark]
+#[benches::multiple(vec![1], vec![5])]
+#[benches::with_setup(args = [1, 5], setup = setup_worst_case_array)]
+fn bench_bubble_sort_with_benches_attribute(input: Vec<i32>) -> Vec<i32> {
+    black_box(bubble_sort(input))
+}
+```
+
+Usually the `arguments` are passed directly to the benchmarking function as it
+can be seen in the `#[benches::multiple(...)]` case. In
+`#[benches::with_setup(...)]`, the arguments are passed to the `setup` function
+instead. The above `#[library_benchmark]` is pretty much the same as
+
+```rust
+#[library_benchmark]
+#[bench::multiple_0(vec![1])]
+#[bench::multiple_1(vec![5])]
+#[bench::with_setup_0(setup_worst_case_array(1)])]
+#[bench::with_setup_1(setup_worst_case_array(5)])]
+fn bench_bubble_sort_with_benches_attribute(input: Vec<i32>) -> Vec<i32> {
+    black_box(bubble_sort(input))
+}
+```
+
+but a lot more concise especially if a lot of values are passed to the same
+`setup` function.
 
 ##### Examples
 
@@ -583,9 +623,9 @@ which would restore the default of `0` from valgrind.
 Mechanism](https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq).
 `iai-callgrind's` client requests have (compared to the valgrind's client
 requests used in `C` code) zero overhead on many targets which are also natively
-supported by valgrind. My opinion might be biased but, compared to other crates
-providing an interface to valgrind's client requests, `iai-callgrind` provides
-be the most complete and performant implementation.
+supported by valgrind. My opinion may be biased, but compared to other crates
+that offer an interface to valgrind's client requests, `iai-callgrind` provides
+the most complete and best performant implementation.
 
 Client requests are deactivated by default but can be activated with the
 `client_requests` feature.

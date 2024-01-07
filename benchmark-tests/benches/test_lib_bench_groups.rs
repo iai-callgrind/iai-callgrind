@@ -103,8 +103,7 @@ fn bench_bubble_sort_with_benches_attribute(input: Vec<i32>) -> Vec<i32> {
     black_box(bubble_sort(input))
 }
 
-// The same as above in `bench_bubble_sort_with_benches_attribute` but a function with multiple
-// parameters requires the elements to be specified as tuples.
+// A benchmarking function with multiple parameters requires the elements to be specified as tuples.
 #[library_benchmark]
 #[benches::multiple((1, 2), (3, 4))]
 #[benches::with_args(args = [(1, 2), (3, 4)])]
@@ -120,8 +119,8 @@ fn bench_fibonacci_with_config() -> u64 {
     black_box(black_box(fibonacci(black_box(8))))
 }
 
-// A config per `bench` attribute is also possible using the alternative `bench` attribute with
-// key = value pairs. The example below shows all accepted keys.
+// A `config` per `bench` or `benches` attribute is also possible using the alternative `bench`
+// or `benches` attribute with key = value pairs
 //
 // Note that `LibraryBenchmarkConfig` is additive for callgrind arguments, tools and environment
 // variables and appends them to the variables of `configs` of higher levels (like

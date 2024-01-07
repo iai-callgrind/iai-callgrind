@@ -659,6 +659,33 @@ impl MultipleArguments {
 /// # fn main() {}
 /// ```
 ///
+/// Assuming the same function `some_func`, the `benches` attribute lets you define multiple
+/// benchmarks in one go:
+/// ```rust
+/// # use iai_callgrind_macros::library_benchmark;
+/// # mod iai_callgrind {
+/// # pub struct LibraryBenchmarkConfig {}
+/// # pub mod internal {
+/// # pub struct InternalMacroLibBench {
+/// #   pub id_display: Option<&'static str>,
+/// #   pub args_display: Option<&'static str>,
+/// #   pub func: fn(),
+/// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
+/// # }
+/// # pub struct InternalLibraryBenchmarkConfig {}
+/// # }
+/// # }
+/// # fn some_func(value: u64) -> u64 {
+/// #    value
+/// # }
+/// #[library_benchmark]
+/// #[benches::some_id(21, 42, 84)]
+/// fn bench_some_func(value: u64) -> u64 {
+///     std::hint::black_box(some_func(value))
+/// }
+/// # fn main() {}
+/// ```
+///
 /// # Examples
 ///
 /// The `#[library_benchmark]` attribute as a standalone
@@ -726,9 +753,9 @@ impl MultipleArguments {
 ///     }
 /// }
 ///
-/// // This benchmark is setting up multiple benchmark cases with the advantage that the setup costs
-/// // for creating a vector (even if it is empty) aren't attributed to the benchmark and that the
-/// // `array` is already wrapped in a black_box.
+/// // This benchmark is setting up multiple benchmark cases with the advantage that the setup
+/// // costs  for creating a vector (even if it is empty) aren't attributed to the benchmark and
+/// // that the `array` is already wrapped in a black_box.
 /// #[library_benchmark]
 /// #[bench::empty(vec![])]
 /// #[bench::worst_case_6(vec![6, 5, 4, 3, 2, 1])]
@@ -739,6 +766,17 @@ impl MultipleArguments {
 /// fn bench_some_func_with_array(array: Vec<i32>) -> Vec<i32> {
 ///     // Note `array` does not need to be put in a `black_box` because that's already done for
 ///     // you.
+///     std::hint::black_box(some_func_with_array(array))
+/// }
+///
+/// // The following benchmark uses the `#[benches]` attribute to setup multiple benchmark cases
+/// // in one go
+/// #[library_benchmark]
+/// #[benches::multiple(vec![1], vec![5])]
+/// // Reroute the `args` to a `setup` function and use the setup function's return value as
+/// // input for the benchmarking function
+/// #[benches::with_setup(args = [1, 5], setup = setup_worst_case_array)]
+/// fn bench_using_the_benches_attribute(array: Vec<i32>) -> Vec<i32> {
 ///     std::hint::black_box(some_func_with_array(array))
 /// }
 /// # fn main() {
