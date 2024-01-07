@@ -85,6 +85,32 @@ fn bench_fibonacci_sum(first: u64, second: u64) -> u64 {
     black_box(black_box(fibonacci(first)) + black_box(fibonacci(second)))
 }
 
+// You can use the `benches` attribute to specify multiple benchmark runs in one go. You can specify
+// multiple `benches` attributes or mix the `benches` attribute with `bench` attributes.
+#[library_benchmark]
+// This is the simple form. Each `,`-separated element is another benchmark run and is passed to the
+// benchmarking function as parameter. So, this is the same as specifying two `#[bench]` attributes
+// #[bench::multiple_0(vec![1])] and #[bench::multiple_1(vec![5])].
+#[benches::multiple(vec![1], vec![5])]
+// You can also use the `args` argument to achieve the same. Using `args` is necessary if you also
+// want to specify a `config` or `setup` function.
+#[benches::with_args(args = [vec![1], vec![5]], config = LibraryBenchmarkConfig::default())]
+// Usually, each element in `args` is passed directly to the benchmarking function. You can instead
+// reroute them to a `setup` function. In that case the (black boxed) return value of the setup
+// function is passed as parameter to the benchmarking function.
+#[benches::with_setup(args = [1, 5], setup = setup_worst_case_array)]
+fn bench_bubble_sort_with_benches_attribute(input: Vec<i32>) -> Vec<i32> {
+    black_box(bubble_sort(input))
+}
+
+// A benchmarking function with multiple parameters requires the elements to be specified as tuples.
+#[library_benchmark]
+#[benches::multiple((1, 2), (3, 4))]
+#[benches::with_args(args = [(1, 2), (3, 4)])]
+fn bench_bubble_sort_with_multiple_parameters(a: i32, b: i32) -> Vec<i32> {
+    black_box(bubble_sort(black_box(vec![a, b])))
+}
+
 // It's possible to specify a `LibraryBenchmarkConfig` valid for all benches of this
 // `library_benchmark`. Since we only use the default here for demonstration purposes actually
 // nothing changes. The default configuration is always applied.
@@ -93,8 +119,8 @@ fn bench_fibonacci_with_config() -> u64 {
     black_box(black_box(fibonacci(black_box(8))))
 }
 
-// A config per `bench` attribute is also possible using the alternative `bench` attribute with
-// key = value pairs. The example below shows all accepted keys.
+// A `config` per `bench` or `benches` attribute is also possible using the alternative `bench`
+// or `benches` attribute with key = value pairs
 //
 // Note that `LibraryBenchmarkConfig` is additive for callgrind arguments, tools and environment
 // variables and appends them to the variables of `configs` of higher levels (like
@@ -135,7 +161,11 @@ library_benchmark_group!(
         .regression(
             RegressionConfig::default().fail_fast(false)
         );
-    benchmarks = bench_bubble_sort_empty, bench_bubble_sort
+    benchmarks =
+        bench_bubble_sort_empty,
+        bench_bubble_sort,
+        bench_bubble_sort_with_benches_attribute,
+        bench_bubble_sort_with_multiple_parameters
 );
 
 // In our example file here, we could have put `bench_fibonacci` into the same group as the bubble

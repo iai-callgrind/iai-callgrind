@@ -7,7 +7,13 @@ error: Invalid argument: invalid
 4 | #[bench::id(invalid = "value")]
   |             ^^^^^^^^^^^^^^^^^
 
-error: expected tuple expression
+error: Failed parsing `args`
+
+         = help: `args` must be an tuple/array which elements (expressions)
+                                   match the number of parameters of the benchmarking function
+         = note: #[bench::id(args = (1, 2))] or
+                                   #[bench::id(args = [1, 2]])]
+
  --> tests/ui/test_library_benchmark_invalid_bench_arguments_key_value.rs:8:20
   |
 8 | #[bench::id(args = "value")]

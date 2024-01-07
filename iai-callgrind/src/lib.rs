@@ -63,7 +63,9 @@
 //! #### Quickstart (#library-benchmarks)
 //!
 //! ```rust
-//! use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+//! use iai_callgrind::{
+//!     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig
+//! };
 //! use std::hint::black_box;
 //!
 //! // Our function we want to test. Just assume this is a public function in your
@@ -114,10 +116,41 @@
 //!     black_box(bubble_sort(array))
 //! }
 //!
+//! // You can use the `benches` attribute to specify multiple benchmark runs in one go. You can
+//! // specify multiple `benches` attributes or mix the `benches` attribute with `bench`
+//! // attributes.
+//! #[library_benchmark]
+//! // This is the simple form. Each `,`-separated element is another benchmark run and is
+//! // passed to the benchmarking function as parameter. So, this is the same as specifying
+//! // two `#[bench]` attributes #[bench::multiple_0(vec![1])] and #[bench::multiple_1(vec![5])].
+//! #[benches::multiple(vec![1], vec![5])]
+//! // You can also use the `args` argument to achieve the same. Using `args` is necessary if you
+//! // also want to specify a `config` or `setup` function.
+//! #[benches::with_args(args = [vec![1], vec![5]], config = LibraryBenchmarkConfig::default())]
+//! // Usually, each element in `args` is passed directly to the benchmarking function. You can
+//! // instead reroute them to a `setup` function. In that case the (black boxed) return value of
+//! // the setup function is passed as parameter to the benchmarking function.
+//! #[benches::with_setup(args = [1, 5], setup = setup_worst_case_array)]
+//! fn bench_bubble_sort_with_benches_attribute(input: Vec<i32>) -> Vec<i32> {
+//!     black_box(bubble_sort(input))
+//! }
+//!
+//! // A benchmarking function with multiple parameters requires the elements to be specified as
+//! // tuples.
+//! #[library_benchmark]
+//! #[benches::multiple((1, 2), (3, 4))]
+//! fn bench_bubble_sort_with_multiple_parameters(a: i32, b: i32) -> Vec<i32> {
+//!     black_box(bubble_sort(black_box(vec![a, b])))
+//! }
+//!
 //! // A group in which we can put all our benchmark functions
 //! library_benchmark_group!(
 //!     name = bubble_sort_group;
-//!     benchmarks = bench_bubble_sort_empty, bench_bubble_sort
+//!     benchmarks =
+//!         bench_bubble_sort_empty,
+//!         bench_bubble_sort,
+//!         bench_bubble_sort_with_benches_attribute,
+//!         bench_bubble_sort_with_multiple_parameters
 //! );
 //!
 //! # fn main() {
