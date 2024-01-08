@@ -1,3 +1,5 @@
+use crate::runner::format::format_vertical;
+use anyhow::Result;
 use colored::Colorize;
 
 use super::logfile_parser::LogfileSummary;
@@ -12,7 +14,7 @@ impl LogfileSummaryFormatter {
         verbose: bool,
         is_multiple: bool,
         force_show_body: bool,
-    ) {
+    ) -> Result<()> {
         if verbose || is_multiple {
             println!(
                 "  {:<18}{}",
@@ -24,6 +26,10 @@ impl LogfileSummaryFormatter {
             if let Some(parent_pid) = summary.parent_pid {
                 println!("  {:<18}{}", "Parent PID:", parent_pid.to_string().bold());
             }
+        }
+
+        if let Some(costs) = &summary.cost_summary {
+            print!("{}", format_vertical((None, None), costs.all_diffs())?);
         }
 
         for field in &summary.fields {
@@ -59,5 +65,7 @@ impl LogfileSummaryFormatter {
             "Logfile:",
             summary.log_path.display().to_string().blue().bold()
         );
+
+        Ok(())
     }
 }

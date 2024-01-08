@@ -1,12 +1,14 @@
 //! This module includes all the structs to model the callgrind output
 
-use anyhow::{anyhow, Result};
-use indexmap::map::Iter;
-use indexmap::{indexmap, IndexMap, IndexSet};
+use anyhow::Result;
+use indexmap::{indexmap, IndexMap};
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
+use std::hash::Hash;
 
 use super::CacheSummary;
-use crate::api::{self, EventKind};
+use crate::api::EventKind;
+use crate::runner::costs::Summarize;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Calls {
@@ -14,8 +16,7 @@ pub struct Calls {
     positions: Positions,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Costs(IndexMap<EventKind, u64>);
+pub type Costs = crate::runner::costs::Costs<EventKind>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PositionType {
@@ -38,56 +39,6 @@ impl Calls {
 }
 
 impl Costs {
-    // The order matters. The index is derived from the insertion order
-    pub fn with_event_kinds<T>(kinds: T) -> Self
-    where
-        T: IntoIterator<Item = (EventKind, u64)>,
-    {
-        Self(kinds.into_iter().collect())
-    }
-
-    pub fn add_iter_str<I, T>(&mut self, iter: T)
-    where
-        I: AsRef<str>,
-        T: IntoIterator<Item = I>,
-    {
-        // From the documentation of the callgrind format:
-        // > If a cost line specifies less event counts than given in the "events" line, the
-        // > rest is assumed to be zero.
-        for ((_, old), cost) in self.0.iter_mut().zip(iter.into_iter()) {
-            *old += cost.as_ref().parse::<u64>().unwrap();
-        }
-    }
-
-    pub fn add(&mut self, other: &Self) {
-        for ((_, old), cost) in self.0.iter_mut().zip(other.0.iter().map(|(_, c)| c)) {
-            *old += cost;
-        }
-    }
-
-    /// Return the cost of the event at index (of insertion order) if present
-    ///
-    /// This operation is O(1)
-    pub fn cost_by_index(&self, index: usize) -> Option<u64> {
-        self.0.get_index(index).map(|(_, c)| *c)
-    }
-
-    /// Return the cost of the [`EventKind`] if present
-    ///
-    /// This operation is O(1)
-    pub fn cost_by_kind(&self, kind: &EventKind) -> Option<u64> {
-        self.0.get_key_value(kind).map(|(_, c)| *c)
-    }
-
-    pub fn try_cost_by_kind(&self, kind: &EventKind) -> Result<u64> {
-        self.cost_by_kind(kind)
-            .ok_or_else(|| anyhow!("Missing event type '{kind}"))
-    }
-
-    pub fn event_kinds(&self) -> Vec<EventKind> {
-        self.0.iter().map(|(k, _)| *k).collect()
-    }
-
     /// Calculate and add derived summary events (i.e. estimated cycles) in-place
     ///
     /// Additional calls to this function will overwrite the costs for derived summary events.
@@ -120,47 +71,18 @@ impl Costs {
     pub fn is_summarized(&self) -> bool {
         self.cost_by_kind(&EventKind::EstimatedCycles).is_some()
     }
-
-    pub fn event_kinds_union(&self, other: &Self) -> IndexSet<EventKind> {
-        let set = self.0.keys().collect::<IndexSet<_>>();
-        let other_set = other.0.keys().collect::<IndexSet<_>>();
-        set.union(&other_set).map(|s| **s).collect()
-    }
-
-    pub fn iter(&self) -> Iter<'_, EventKind, u64> {
-        self.0.iter()
-    }
 }
 
+impl Summarize for EventKind {
+    fn summarize(costs: &mut Cow<Costs>) {
+        if !costs.is_summarized() {
+            let _ = costs.to_mut().make_summary();
+        }
+    }
+}
 impl Default for Costs {
     fn default() -> Self {
         Self(indexmap! {EventKind::Ir => 0})
-    }
-}
-
-impl<'a> IntoIterator for &'a Costs {
-    type Item = (&'a api::EventKind, &'a u64);
-
-    type IntoIter = indexmap::map::Iter<'a, api::EventKind, u64>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
-    }
-}
-
-impl<I> FromIterator<I> for Costs
-where
-    I: AsRef<str>,
-{
-    fn from_iter<T>(iter: T) -> Self
-    where
-        T: IntoIterator<Item = I>,
-    {
-        Self(
-            iter.into_iter()
-                .map(|s| (EventKind::from(s), 0))
-                .collect::<IndexMap<_, _>>(),
-        )
     }
 }
 

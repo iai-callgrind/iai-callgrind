@@ -369,7 +369,15 @@ impl EventKind {
 
 impl Display for EventKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{self:?}"))
+        match self {
+            EventKind::Ir => f.write_str("Instructions"),
+            EventKind::L1hits => f.write_str("L1 Hits"),
+            EventKind::LLhits => f.write_str("L2 Hits"),
+            EventKind::RamHits => f.write_str("RAM Hits"),
+            EventKind::TotalRW => f.write_str("Total read+write"),
+            EventKind::EstimatedCycles => f.write_str("Estimated Cycles"),
+            _ => f.write_fmt(format_args!("{self:?}")),
+        }
     }
 }
 

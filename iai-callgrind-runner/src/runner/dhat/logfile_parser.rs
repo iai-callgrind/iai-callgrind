@@ -8,6 +8,8 @@ use log::debug;
 use regex::Regex;
 
 use crate::error::Error;
+use crate::runner::costs::Costs;
+use crate::runner::summary::CostsSummary;
 use crate::runner::tool::logfile_parser::LogfileSummary;
 use crate::runner::tool::{Parser, ToolOutputPath};
 use crate::util::make_relative;
@@ -29,6 +31,8 @@ lazy_static! {
             .expect("Regex should compile");
     static ref FIXUP_NUMBERS_RE: Regex =
         regex::Regex::new(r"([0-9]),([0-9])").expect("Regex should compile");
+    static ref BYTES_RE: Regex =
+        regex::Regex::new(r"([0-9]*) bytes(?: in ([0-9]*) blocks)?").expect("Regex should compile");
 }
 
 pub struct LogfileParser {
@@ -44,8 +48,23 @@ enum State {
     Footer,
 }
 
+fn fields_to_costs(fields: &[(String, String)]) -> Costs<String> {
+    let mut res = Costs::with_event_kinds([]);
+    for (field, value) in fields {
+        if let Some(cap) = BYTES_RE.captures(value) {
+            let bytes = cap.get(1).unwrap().as_str().parse().unwrap();
+            res.0.insert(format!("{field} bytes"), bytes);
+            if let Some(blocks) = cap.get(2) {
+                let blocks = blocks.as_str().parse().unwrap();
+                res.0.insert(format!("{field} blocks"), blocks);
+            }
+        }
+    }
+    res
+}
+
 impl LogfileParser {
-    fn parse_single(&self, path: PathBuf) -> Result<LogfileSummary> {
+    fn parse_single(&self, path: PathBuf) -> Result<(LogfileSummary, Costs<String>)> {
         let file = File::open(&path)
             .with_context(|| format!("Error opening log file '{}'", path.display()))?;
 
@@ -142,15 +161,21 @@ impl LogfileParser {
             }
         }
 
-        Ok(LogfileSummary {
-            command: command.expect("A command should be present"),
-            pid,
-            parent_pid,
-            fields,
-            details,
-            error_summary: None,
-            log_path: make_relative(&self.root_dir, path),
-        })
+        let costs = fields_to_costs(&fields);
+
+        Ok((
+            LogfileSummary {
+                command: command.expect("A command should be present"),
+                pid,
+                parent_pid,
+                fields,
+                details,
+                error_summary: None,
+                log_path: make_relative(&self.root_dir, path),
+                cost_summary: None,
+            },
+            costs,
+        ))
     }
 }
 
@@ -165,9 +190,20 @@ impl Parser for LogfileParser {
         debug!("DHAT: Parsing log file '{}'", log_path);
 
         let mut summaries = vec![];
-        for path in log_path.real_paths()? {
-            let summary = self.parse_single(path)?;
-            summaries.push(summary);
+        let paths = log_path.real_paths()?;
+        if let Ok(old_paths) = log_path.to_base_path().real_paths() {
+            for (path, old_path) in paths.into_iter().zip(old_paths) {
+                let (mut summary, costs) = self.parse_single(path)?;
+                let (_, old_costs) = self.parse_single(old_path)?;
+                summary.cost_summary = Some(CostsSummary::new(&costs, Some(&old_costs)));
+                summaries.push(summary)
+            }
+        } else {
+            for path in log_path.real_paths()? {
+                let (mut summary, costs) = self.parse_single(path)?;
+                summary.cost_summary = Some(CostsSummary::new(&costs, None));
+                summaries.push(summary)
+            }
         }
         summaries.sort_by_key(|s| s.pid);
         Ok(summaries)

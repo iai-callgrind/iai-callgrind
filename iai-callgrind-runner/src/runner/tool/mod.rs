@@ -268,7 +268,7 @@ impl ToolConfigs {
         tool_config: &ToolConfig,
         logfile_summaries: &[LogfileSummary],
         output_paths: &[PathBuf],
-    ) {
+    ) -> Result<()> {
         if meta.args.output_format == OutputFormat::Default {
             for logfile_summary in logfile_summaries {
                 LogfileSummaryFormatter::print(
@@ -276,7 +276,7 @@ impl ToolConfigs {
                     tool_config.args.verbose,
                     logfile_summaries.len() > 1,
                     matches!(tool_config.tool, ValgrindTool::BBV),
-                );
+                )?;
             }
 
             for path in output_paths
@@ -290,6 +290,7 @@ impl ToolConfigs {
                 );
             }
         }
+        Ok(())
     }
 
     pub fn parse(
@@ -346,7 +347,7 @@ impl ToolConfigs {
                 tool_config,
                 &logfile_summaries,
                 &tool_summary.out_paths,
-            );
+            )?;
 
             log_path.dump_log(log::Level::Info, &mut stderr())?;
 
@@ -395,7 +396,7 @@ impl ToolConfigs {
                 tool_config,
                 &logfile_summaries,
                 &tool_summary.out_paths,
-            );
+            )?;
 
             output.dump_log(log::Level::Info);
             log_path.dump_log(log::Level::Info, &mut stderr())?;

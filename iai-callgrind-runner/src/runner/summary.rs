@@ -1,7 +1,8 @@
 use std::borrow::Cow;
 use std::ffi::OsString;
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 use std::fs::File;
+use std::hash::Hash;
 use std::io::stdout;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -15,12 +16,13 @@ use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::callgrind::model::Costs;
+use super::costs::Costs;
 use super::format::OutputFormat;
 use super::tool::logfile_parser::LogfileSummary;
 use super::tool::{ToolOutputPath, ValgrindTool};
 use crate::api::EventKind;
 use crate::error::Error;
+use crate::runner::costs::Summarize;
 use crate::util::{factor_diff, make_absolute, percentage_diff};
 
 lazy_static! {
@@ -126,7 +128,7 @@ pub struct CallgrindRunSummary {
     /// If present, the `Baseline` used to compare the new with the old output
     pub baseline: Option<Baseline>,
     /// All recorded costs for `EventKinds`
-    pub events: CostsSummary,
+    pub events: CostsSummary<EventKind>,
     /// All detected performance regressions
     pub regressions: Vec<CallgrindRegressionSummary>,
 }
@@ -150,7 +152,7 @@ pub struct CallgrindSummary {
 ///
 /// There is either a `new` or an `old` value present. Never can both be absent. If both values are
 /// present, then there is also a `diff_pct` and `factor` present.
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CostsDiff {
     /// The value of the new cost
@@ -164,9 +166,9 @@ pub struct CostsDiff {
 }
 
 /// The `CostsSummary` contains all differences for affected [`EventKind`]s
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct CostsSummary(IndexMap<EventKind, CostsDiff>);
+pub struct CostsSummary<K: Hash + Eq = EventKind>(IndexMap<K, CostsDiff>);
 
 /// The `ErrorSummary` of tools which have it (Memcheck, DRD, Helgrind)
 ///
@@ -244,6 +246,8 @@ pub struct ToolRunSummary {
     /// `4 errors from 3 contexts (suppressed: 2 from 1)`
     /// results in `ErrorSummary {errors: 4, contexts: 3, supp_errors: 2, supp_contexts: 1}`
     pub error_summary: Option<ErrorSummary>,
+    /// The tool specific cost summary extracted from Valgrind output
+    pub cost_summary: Option<CostsSummary<String>>,
 }
 
 /// The `ToolSummary` containing all information about a valgrind tool run
@@ -430,20 +434,16 @@ impl CallgrindSummary {
     }
 }
 
-impl CostsSummary {
+impl<K: Hash + Eq + Summarize + Display + Clone> CostsSummary<K> {
     /// Create a new `CostsSummary` calculating the differences between new and old (if any)
     /// [`Costs`]
-    pub fn new(new_costs: &Costs, old_costs: Option<&Costs>) -> Self {
+    pub fn new(new_costs: &Costs<K>, old_costs: Option<&Costs<K>>) -> Self {
         let mut new_costs = Cow::Borrowed(new_costs);
-        if !new_costs.is_summarized() {
-            _ = new_costs.to_mut().make_summary();
-        }
+        K::summarize(&mut new_costs);
 
         if let Some(old_costs) = old_costs {
             let mut old_costs = Cow::Borrowed(old_costs);
-            if !old_costs.is_summarized() {
-                _ = old_costs.to_mut().make_summary();
-            }
+            K::summarize(&mut old_costs);
             let mut map = indexmap! {};
             for event_kind in new_costs.event_kinds_union(old_costs.as_ref()) {
                 let diff = match (
@@ -479,7 +479,7 @@ impl CostsSummary {
                     .iter()
                     .map(|(event_kind, cost)| {
                         (
-                            *event_kind,
+                            event_kind.clone(),
                             CostsDiff {
                                 new: Some(*cost),
                                 old: None,
@@ -494,8 +494,12 @@ impl CostsSummary {
     }
 
     /// Try to return a [`CostsDiff`] for the specified [`crate::api::EventKind`]
-    pub fn diff_by_kind(&self, event_kind: &EventKind) -> Option<&CostsDiff> {
+    pub fn diff_by_kind(&self, event_kind: &K) -> Option<&CostsDiff> {
         self.0.get(event_kind)
+    }
+
+    pub fn all_diffs(&self) -> impl Iterator<Item = (&K, &CostsDiff)> {
+        self.0.iter()
     }
 }
 
@@ -585,6 +589,7 @@ impl From<&LogfileSummary> for ToolRunSummary {
             summary: value.fields.iter().cloned().collect(),
             details: (!value.details.is_empty()).then(|| value.details.join("\n")),
             error_summary: value.error_summary.clone(),
+            cost_summary: value.cost_summary.clone(),
         }
     }
 }

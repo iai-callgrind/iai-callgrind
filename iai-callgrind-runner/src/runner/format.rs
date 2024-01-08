@@ -4,7 +4,7 @@ use anyhow::Result;
 use colored::{ColoredString, Colorize};
 
 use super::meta::Metadata;
-use super::summary::CostsSummary;
+use super::summary::{CostsDiff, CostsSummary};
 use super::tool::ValgrindTool;
 use crate::api::EventKind;
 use crate::util::{to_string_signed_short, truncate_str_utf8};
@@ -187,85 +187,85 @@ impl Formatter for VerticalFormat {
         baselines: (Option<String>, Option<String>),
         costs_summary: &CostsSummary,
     ) -> Result<String> {
-        let mut result = String::new();
-
-        let not_available = "N/A";
-        let unknown = "*********";
-        let no_change = "No change";
-
-        match baselines {
-            (None, None) => {}
-            (None, Some(base)) => {
-                writeln!(result, "  {:<33}|{base}", "Baselines:").unwrap();
-            }
-            (Some(base), None) => {
-                writeln!(result, "  {:<18}{:>15}", "Baselines:", base.bold()).unwrap();
-            }
-            (Some(new), Some(old)) => {
-                writeln!(result, "  {:<18}{:>15}|{old}", "Baselines:", new.bold()).unwrap();
-            }
-        }
-
-        for (event_kind, diff) in self
-            .event_kinds
-            .iter()
-            .filter_map(|e| costs_summary.diff_by_kind(e).map(|d| (e, d)))
-        {
-            let description = match event_kind {
-                EventKind::Ir => "Instructions:".to_owned(),
-                EventKind::L1hits => "L1 Hits:".to_owned(),
-                EventKind::LLhits => "L2 Hits:".to_owned(),
-                EventKind::RamHits => "RAM Hits:".to_owned(),
-                EventKind::TotalRW => "Total read+write:".to_owned(),
-                EventKind::EstimatedCycles => "Estimated Cycles:".to_owned(),
-                event_kind => format!("{event_kind}:"),
-            };
-            match (diff.new, diff.old) {
-                (None, Some(old_cost)) => writeln!(
-                    result,
-                    "  {description:<18}{:>15}|{old_cost:<15} ({:^9})",
-                    not_available.bold(),
-                    unknown.bright_black()
-                )?,
-                (Some(new_cost), None) => writeln!(
-                    result,
-                    "  {description:<18}{:>15}|{not_available:<15} ({:^9})",
-                    new_cost.to_string().bold(),
-                    unknown.bright_black()
-                )?,
-                (Some(new_cost), Some(old_cost)) if new_cost == old_cost => writeln!(
-                    result,
-                    "  {description:<18}{:>15}|{old_cost:<15} ({:^9})",
-                    new_cost.to_string().bold(),
-                    no_change.bright_black()
-                )?,
-                (Some(new_cost), Some(old_cost)) => {
-                    let pct_string = {
-                        let pct = diff.diff_pct.expect(
-                            "If there are new costs and old costs there should be a difference in \
-                             percent",
-                        );
-                        Self::format_float(pct, "%")
-                    };
-                    let factor_string = {
-                        let factor = diff.factor.expect(
-                            "If there are new costs and old costs there should be a difference \
-                             factor",
-                        );
-                        Self::format_float(factor, "x")
-                    };
-                    writeln!(
-                        result,
-                        "  {description:<18}{:>15}|{old_cost:<15} ({pct_string:^9}) \
-                         [{factor_string:^9}]",
-                        new_cost.to_string().bold(),
-                    )?;
-                }
-                _ => {}
-            }
-        }
-        Ok(result)
+        format_vertical(
+            baselines,
+            self.event_kinds
+                .iter()
+                .filter_map(|e| costs_summary.diff_by_kind(e).map(|d| (e, d))),
+        )
     }
+}
+
+pub fn format_vertical<'a, K: Display + 'a>(
+    baselines: (Option<String>, Option<String>),
+    costs_summary: impl Iterator<Item = (&'a K, &'a CostsDiff)>,
+) -> Result<String> {
+    let mut result = String::new();
+
+    let not_available = "N/A";
+    let unknown = "*********";
+    let no_change = "No change";
+
+    match baselines {
+        (None, None) => {}
+        (None, Some(base)) => {
+            writeln!(result, "  {:<33}|{base}", "Baselines:").unwrap();
+        }
+        (Some(base), None) => {
+            writeln!(result, "  {:<18}{:>15}", "Baselines:", base.bold()).unwrap();
+        }
+        (Some(new), Some(old)) => {
+            writeln!(result, "  {:<18}{:>15}|{old}", "Baselines:", new.bold()).unwrap();
+        }
+    }
+
+    for (event_kind, diff) in costs_summary {
+        let description = format!("{event_kind}:");
+        match (diff.new, diff.old) {
+            (None, Some(old_cost)) => writeln!(
+                result,
+                "  {description:<18}{:>15}|{old_cost:<15} ({:^9})",
+                not_available.bold(),
+                unknown.bright_black()
+            )?,
+            (Some(new_cost), None) => writeln!(
+                result,
+                "  {description:<18}{:>15}|{not_available:<15} ({:^9})",
+                new_cost.to_string().bold(),
+                unknown.bright_black()
+            )?,
+            (Some(new_cost), Some(old_cost)) if new_cost == old_cost => writeln!(
+                result,
+                "  {description:<18}{:>15}|{old_cost:<15} ({:^9})",
+                new_cost.to_string().bold(),
+                no_change.bright_black()
+            )?,
+            (Some(new_cost), Some(old_cost)) => {
+                let pct_string = {
+                    let pct = diff.diff_pct.expect(
+                        "If there are new costs and old costs there should be a difference in \
+                             percent",
+                    );
+                    VerticalFormat::format_float(pct, "%")
+                };
+                let factor_string = {
+                    let factor = diff.factor.expect(
+                        "If there are new costs and old costs there should be a difference \
+                             factor",
+                    );
+                    VerticalFormat::format_float(factor, "x")
+                };
+                writeln!(
+                    result,
+                    "  {description:<18}{:>15}|{old_cost:<15} ({pct_string:^9}) \
+                         [{factor_string:^9}]",
+                    new_cost.to_string().bold(),
+                )?;
+            }
+            _ => {}
+        }
+    }
+    Ok(result)
 }
 
 pub fn tool_headline(tool: ValgrindTool) -> String {

@@ -1,6 +1,7 @@
 mod args;
 mod bin_bench;
 pub mod callgrind;
+mod costs;
 pub mod dhat;
 mod format;
 mod lib_bench;

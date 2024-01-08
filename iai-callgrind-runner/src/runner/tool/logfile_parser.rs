@@ -10,7 +10,7 @@ use regex::Regex;
 
 use super::ToolOutputPath;
 use crate::error::Error;
-use crate::runner::summary::ErrorSummary;
+use crate::runner::summary::{CostsSummary, ErrorSummary};
 use crate::runner::tool::Parser;
 use crate::util::make_relative;
 
@@ -49,6 +49,7 @@ pub struct LogfileSummary {
     pub fields: Vec<(String, String)>,
     pub details: Vec<String>,
     pub error_summary: Option<ErrorSummary>,
+    pub cost_summary: Option<CostsSummary<String>>,
     pub log_path: PathBuf,
 }
 
@@ -151,6 +152,7 @@ impl LogfileParser {
             details,
             error_summary,
             log_path: make_relative(&self.root_dir, path),
+            cost_summary: None,
         })
     }
 }

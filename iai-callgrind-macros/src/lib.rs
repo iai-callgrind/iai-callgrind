@@ -456,8 +456,9 @@ impl LibraryBenchmark {
         } else {
             quote!(
                 #[inline(never)]
-                pub fn get_config()
-                -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig> {
+                pub fn get_config(
+                ) -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
+                {
                     None
                 }
             )
@@ -519,8 +520,9 @@ impl LibraryBenchmark {
         } else {
             quote!(
                 #[inline(never)]
-                pub fn get_config()
-                -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig> {
+                pub fn get_config(
+                ) -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
+                {
                     None
                 }
             )
@@ -844,8 +846,9 @@ mod tests {
         } else {
             quote!(
                 #[inline(never)]
-                pub fn get_config()
-                -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig> {
+                pub fn get_config(
+                ) -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
+                {
                     None
                 }
             )
