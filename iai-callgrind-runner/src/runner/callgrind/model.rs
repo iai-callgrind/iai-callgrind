@@ -1,10 +1,11 @@
 //! This module includes all the structs to model the callgrind output
 
+use std::borrow::Cow;
+use std::hash::Hash;
+
 use anyhow::Result;
 use indexmap::{indexmap, IndexMap};
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
-use std::hash::Hash;
 
 use super::CacheSummary;
 use crate::api::EventKind;

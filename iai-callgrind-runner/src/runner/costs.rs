@@ -1,10 +1,11 @@
+use std::borrow::Cow;
+use std::fmt::Display;
+use std::hash::Hash;
+
 use anyhow::{anyhow, Result};
 use indexmap::map::Iter;
 use indexmap::{IndexMap, IndexSet};
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
-use std::fmt::Display;
-use std::hash::Hash;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Costs<K: Hash + Eq>(pub IndexMap<K, u64>);

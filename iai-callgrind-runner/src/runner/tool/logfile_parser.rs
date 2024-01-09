@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::iter;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -44,6 +45,8 @@ pub struct LogfileParser {
 #[derive(Debug, Clone)]
 pub struct LogfileSummary {
     pub command: PathBuf,
+    pub old_pid: Option<i32>,
+    pub old_parent_pid: Option<i32>,
     pub pid: i32,
     pub parent_pid: Option<i32>,
     pub fields: Vec<(String, String)>,
@@ -146,6 +149,8 @@ impl LogfileParser {
 
         Ok(LogfileSummary {
             command: command.expect("A command should be present"),
+            old_pid: None,
+            old_parent_pid: None,
             pid,
             parent_pid,
             fields: Vec::default(),
@@ -168,9 +173,17 @@ impl Parser for LogfileParser {
         debug!("{}: Parsing log file '{}'", output_path.tool.id(), log_path);
 
         let mut summaries = vec![];
-        for path in log_path.real_paths()? {
-            let summary = self.parse_single(path)?;
-            summaries.push(summary);
+        let paths = log_path.real_paths()?.into_iter();
+        let old_paths = log_path.to_base_path().real_paths().into_iter().flatten();
+        let old_paths = old_paths.map(Some).chain(iter::repeat(None));
+        for (path, old_path) in iter::zip(paths, old_paths) {
+            let mut summary = self.parse_single(path)?;
+            if let Some(old_path) = old_path {
+                let old_summary = self.parse_single(old_path)?;
+                summary.old_pid = Some(old_summary.pid);
+                summary.old_parent_pid = old_summary.parent_pid;
+            }
+            summaries.push(summary)
         }
         summaries.sort_by_key(|s| s.pid);
         Ok(summaries)

@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::iter;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
@@ -31,8 +32,8 @@ lazy_static! {
             .expect("Regex should compile");
     static ref FIXUP_NUMBERS_RE: Regex =
         regex::Regex::new(r"([0-9]),([0-9])").expect("Regex should compile");
-    static ref BYTES_RE: Regex =
-        regex::Regex::new(r"([0-9]*) bytes(?: in ([0-9]*) blocks)?").expect("Regex should compile");
+    static ref COSTS_RE: Regex =
+        regex::Regex::new(r"([0-9]*) (\w*)(?: in ([0-9]*) (\w*))?").expect("Regex should compile");
 }
 
 pub struct LogfileParser {
@@ -51,12 +52,14 @@ enum State {
 fn fields_to_costs(fields: &[(String, String)]) -> Costs<String> {
     let mut res = Costs::with_event_kinds([]);
     for (field, value) in fields {
-        if let Some(cap) = BYTES_RE.captures(value) {
-            let bytes = cap.get(1).unwrap().as_str().parse().unwrap();
-            res.0.insert(format!("{field} bytes"), bytes);
-            if let Some(blocks) = cap.get(2) {
-                let blocks = blocks.as_str().parse().unwrap();
-                res.0.insert(format!("{field} blocks"), blocks);
+        if let Some(cap) = COSTS_RE.captures(value) {
+            let c1 = cap.get(1).unwrap().as_str().parse().unwrap();
+            let n1 = cap.get(2).unwrap().as_str();
+            res.0.insert(format!("{field} {n1}"), c1);
+            if let Some(blocks) = cap.get(3) {
+                let c2 = blocks.as_str().parse().unwrap();
+                let n2 = cap.get(4).unwrap().as_str();
+                res.0.insert(format!("{field} {n2}"), c2);
             }
         }
     }
@@ -166,9 +169,11 @@ impl LogfileParser {
         Ok((
             LogfileSummary {
                 command: command.expect("A command should be present"),
+                old_pid: None,
+                old_parent_pid: None,
                 pid,
                 parent_pid,
-                fields,
+                fields: vec![],
                 details,
                 error_summary: None,
                 log_path: make_relative(&self.root_dir, path),
@@ -190,20 +195,21 @@ impl Parser for LogfileParser {
         debug!("DHAT: Parsing log file '{}'", log_path);
 
         let mut summaries = vec![];
-        let paths = log_path.real_paths()?;
-        if let Ok(old_paths) = log_path.to_base_path().real_paths() {
-            for (path, old_path) in paths.into_iter().zip(old_paths) {
-                let (mut summary, costs) = self.parse_single(path)?;
-                let (_, old_costs) = self.parse_single(old_path)?;
+        let paths = log_path.real_paths()?.into_iter();
+        let old_paths = log_path.to_base_path().real_paths().into_iter().flatten();
+        let old_paths = old_paths.map(Some).chain(iter::repeat(None));
+        for (path, old_path) in iter::zip(paths, old_paths) {
+            let (mut summary, costs) = self.parse_single(path)?;
+            if let Some(old_path) = old_path {
+                let (old_summary, old_costs) = self.parse_single(old_path)?;
                 summary.cost_summary = Some(CostsSummary::new(&costs, Some(&old_costs)));
-                summaries.push(summary)
+                summary.old_pid = Some(old_summary.pid);
+                summary.old_parent_pid = old_summary.parent_pid;
+            } else {
+                summary.cost_summary = Some(CostsSummary::new(&costs, None))
             }
-        } else {
-            for path in log_path.real_paths()? {
-                let (mut summary, costs) = self.parse_single(path)?;
-                summary.cost_summary = Some(CostsSummary::new(&costs, None));
-                summaries.push(summary)
-            }
+
+            summaries.push(summary)
         }
         summaries.sort_by_key(|s| s.pid);
         Ok(summaries)

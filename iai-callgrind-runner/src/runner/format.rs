@@ -244,21 +244,20 @@ pub fn format_vertical<'a, K: Display + 'a>(
                 let pct_string = {
                     let pct = diff.diff_pct.expect(
                         "If there are new costs and old costs there should be a difference in \
-                             percent",
+                         percent",
                     );
                     VerticalFormat::format_float(pct, "%")
                 };
                 let factor_string = {
                     let factor = diff.factor.expect(
-                        "If there are new costs and old costs there should be a difference \
-                             factor",
+                        "If there are new costs and old costs there should be a difference factor",
                     );
                     VerticalFormat::format_float(factor, "x")
                 };
                 writeln!(
                     result,
                     "  {description:<18}{:>15}|{old_cost:<15} ({pct_string:^9}) \
-                         [{factor_string:^9}]",
+                     [{factor_string:^9}]",
                     new_cost.to_string().bold(),
                 )?;
             }
