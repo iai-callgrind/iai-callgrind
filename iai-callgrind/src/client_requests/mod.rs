@@ -57,12 +57,12 @@
 //!
 //! ```toml
 //! [dependencies]
-//! iai-callgrind = { version = "0.9.0", default-features = false, features = [
+//! iai-callgrind = { version = "0.10.0", default-features = false, features = [
 //!     "client_requests_defs"
 //! ]}
 //!
 //! [dev-dependencies]
-//! iai-callgrind = { version = "0.9.0", features = ["client_requests"] }
+//! iai-callgrind = { version = "0.10.0", features = ["client_requests"] }
 //! ```
 //!
 //! If you would only need the client requests in `iai-callgrind` benchmarks, you only need to add
