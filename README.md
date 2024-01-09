@@ -119,6 +119,26 @@ IAI_CALLGRIND_RUNNER=/tmp/bin/iai-callgrind-runner cargo bench --bench my-bench
 When updating the `iai-callgrind` library, you'll also need to update `iai-callgrind-runner` and
 vice-versa or else the benchmark runner will exit with an error.
 
+Since the `iai-callgrind-runner` version must match the `iai-callgrind` library
+version it's best to automate this step in the CI. A job step in the github
+actions ci could look like this
+
+```yaml
+- name: Install iai-callgrind-runner
+  run: |
+    version=$(cargo metadata --format-version=1 |\
+      jq '.packages[] | select(.name == "iai-callgrind").version' |\
+      tr -d '"'
+    )
+    cargo install iai-callgrind-runner --version $version
+```
+
+If you want to make use of the [Valgrind Client
+Requests](#valgrind-client-requests) you need `libclang` (clang >= 5.0)
+installed. See also the requirements of
+[bindgen](https://rust-lang.github.io/rust-bindgen/requirements.html)) and of
+[cc](https://github.com/rust-lang/cc-rs).
+
 ### Benchmarking
 
 `iai-callgrind` can be used to benchmark libraries or binaries. Library benchmarks benchmark
