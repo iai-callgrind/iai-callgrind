@@ -1,18 +1,15 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::iter;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use lazy_static::lazy_static;
-use log::debug;
 use regex::Regex;
 
 use crate::error::Error;
 use crate::runner::costs::Costs;
 use crate::runner::summary::CostsSummary;
-use crate::runner::tool::logfile_parser::LogfileSummary;
-use crate::runner::tool::{Parser, ToolOutputPath};
+use crate::runner::tool::logfile_parser::{LogfileParserT, LogfileSummary, OldLogfileSummary};
 use crate::util::make_relative;
 
 // The different regex have to consider --time-stamp=yes
@@ -67,7 +64,7 @@ fn fields_to_costs(fields: &[(String, String)]) -> Costs<String> {
 }
 
 impl LogfileParser {
-    fn parse_single(&self, path: PathBuf) -> Result<(LogfileSummary, Costs<String>)> {
+    fn parse_comb(&self, path: PathBuf) -> Result<(LogfileSummary, Costs<String>)> {
         let file = File::open(&path)
             .with_context(|| format!("Error opening log file '{}'", path.display()))?;
 
@@ -184,34 +181,29 @@ impl LogfileParser {
     }
 }
 
-impl Parser for LogfileParser {
-    type Output = Vec<LogfileSummary>;
+impl LogfileParserT for LogfileParser {
+    fn parse_old_single(&self, path: PathBuf) -> Result<OldLogfileSummary> {
+        let (summary, costs) = self.parse_comb(path)?;
+        Ok(OldLogfileSummary {
+            old_costs: Some(costs),
+            old_pid: Some(summary.pid),
+            old_parent_pid: summary.parent_pid,
+        })
+    }
 
-    fn parse(&self, output_path: &ToolOutputPath) -> Result<Self::Output>
-    where
-        Self: std::marker::Sized,
-    {
-        let log_path = output_path.to_log_output();
-        debug!("DHAT: Parsing log file '{}'", log_path);
-
-        let mut summaries = vec![];
-        let paths = log_path.real_paths()?.into_iter();
-        let old_paths = log_path.to_base_path().real_paths().into_iter().flatten();
-        let old_paths = old_paths.map(Some).chain(iter::repeat(None));
-        for (path, old_path) in iter::zip(paths, old_paths) {
-            let (mut summary, costs) = self.parse_single(path)?;
-            if let Some(old_path) = old_path {
-                let (old_summary, old_costs) = self.parse_single(old_path)?;
-                summary.cost_summary = Some(CostsSummary::new(&costs, Some(&old_costs)));
-                summary.old_pid = Some(old_summary.pid);
-                summary.old_parent_pid = old_summary.parent_pid;
-            } else {
-                summary.cost_summary = Some(CostsSummary::new(&costs, None))
-            }
-
-            summaries.push(summary)
+    fn parse_single(
+        &self,
+        old: Option<OldLogfileSummary>,
+        path: PathBuf,
+    ) -> Result<LogfileSummary> {
+        let (mut summary, costs) = self.parse_comb(path)?;
+        if let Some(old) = old {
+            summary.cost_summary = Some(CostsSummary::new(&costs, old.old_costs.as_ref()));
+            summary.old_pid = old.old_pid;
+            summary.old_parent_pid = old.old_parent_pid;
+        } else {
+            summary.cost_summary = Some(CostsSummary::new(&costs, None))
         }
-        summaries.sort_by_key(|s| s.pid);
-        Ok(summaries)
+        Ok(summary)
     }
 }

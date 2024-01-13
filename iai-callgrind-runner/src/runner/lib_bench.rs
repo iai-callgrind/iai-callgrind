@@ -201,6 +201,7 @@ impl Benchmark for BaselineBenchmark {
             &bench_args,
             &lib_bench.options,
             &out_path,
+            false,
         )?;
 
         Ok(benchmark_summary)
@@ -564,11 +565,6 @@ impl Benchmark for SaveBaselineBenchmark {
         let log_path = out_path.to_log_output();
         log_path.clear()?;
 
-        for path in lib_bench.tools.output_paths(&out_path) {
-            path.clear()?;
-            path.to_log_output().clear()?;
-        }
-
         let mut benchmark_summary = lib_bench.create_benchmark_summary(config, group, &out_path)?;
 
         let header = lib_bench.print_header(&config.meta, group);
@@ -623,6 +619,7 @@ impl Benchmark for SaveBaselineBenchmark {
             &bench_args,
             &lib_bench.options,
             &out_path,
+            true,
         )?;
 
         Ok(benchmark_summary)

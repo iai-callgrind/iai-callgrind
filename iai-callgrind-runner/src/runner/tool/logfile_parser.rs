@@ -9,10 +9,11 @@ use lazy_static::lazy_static;
 use log::debug;
 use regex::Regex;
 
-use super::ToolOutputPath;
+use super::{ToolOutputPath, ValgrindTool};
 use crate::error::Error;
+use crate::runner::costs::Costs;
+use crate::runner::dhat;
 use crate::runner::summary::{CostsSummary, ErrorSummary};
-use crate::runner::tool::Parser;
 use crate::util::make_relative;
 
 // The different regex have to consider --time-stamp=yes
@@ -56,6 +57,13 @@ pub struct LogfileSummary {
     pub log_path: PathBuf,
 }
 
+#[derive(Default, Debug, Clone)]
+pub struct OldLogfileSummary {
+    pub old_pid: Option<i32>,
+    pub old_parent_pid: Option<i32>,
+    pub old_costs: Option<Costs<String>>,
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum State {
     Header,
@@ -63,8 +71,72 @@ enum State {
     Body,
 }
 
-impl LogfileParser {
-    fn parse_single(&self, path: PathBuf) -> Result<LogfileSummary> {
+pub trait LogfileParserT {
+    fn parse_old_single(&self, path: PathBuf) -> Result<OldLogfileSummary>;
+
+    fn parse_single(&self, old: Option<OldLogfileSummary>, path: PathBuf)
+    -> Result<LogfileSummary>;
+
+    fn parse_old(&self, output_path: &ToolOutputPath) -> Result<Vec<OldLogfileSummary>> {
+        let log_path = output_path.to_log_output().to_base_path();
+        debug!(
+            "{}: Parsing old log file '{}'",
+            output_path.tool.id(),
+            log_path
+        );
+
+        let mut summaries = vec![];
+        let Ok(paths) = log_path.real_paths() else {
+            return Ok(vec![]);
+        };
+        for path in paths.into_iter() {
+            let summary = self.parse_old_single(path)?;
+            summaries.push(summary)
+        }
+        Ok(summaries)
+    }
+
+    fn parse(
+        &self,
+        old: Vec<OldLogfileSummary>,
+        output_path: &ToolOutputPath,
+    ) -> Result<Vec<LogfileSummary>> {
+        let log_path = output_path.to_log_output();
+        debug!("{}: Parsing log file '{}'", output_path.tool.id(), log_path);
+
+        let mut summaries = vec![];
+        let paths = log_path.real_paths()?.into_iter();
+        let old = old.into_iter().map(Some).chain(iter::repeat_with(|| None));
+        for (old, path) in iter::zip(old, paths) {
+            let summary = self.parse_single(old, path)?;
+            summaries.push(summary)
+        }
+        Ok(summaries)
+    }
+
+    fn parse_load(&self, output_path: &ToolOutputPath) -> Result<Vec<LogfileSummary>> {
+        let log_path = output_path.to_log_output();
+        debug!("{}: Parsing log file '{}'", output_path.tool.id(), log_path);
+
+        let mut summaries = vec![];
+        let paths = log_path.real_paths()?.into_iter();
+        let old_paths = log_path.to_base_path().real_paths().into_iter().flatten();
+        let old_paths = old_paths.map(Some).chain(iter::repeat(None));
+        for (old_path, path) in iter::zip(old_paths, paths) {
+            let old = old_path.map(|x| self.parse_old_single(x)).transpose()?;
+            let summary = self.parse_single(old, path)?;
+            summaries.push(summary)
+        }
+        Ok(summaries)
+    }
+}
+
+impl LogfileParserT for LogfileParser {
+    fn parse_old_single(&self, _: PathBuf) -> Result<OldLogfileSummary> {
+        Ok(OldLogfileSummary::default())
+    }
+
+    fn parse_single(&self, _: Option<OldLogfileSummary>, path: PathBuf) -> Result<LogfileSummary> {
         let file = File::open(&path)
             .with_context(|| format!("Error opening log file '{}'", path.display()))?;
 
@@ -162,31 +234,12 @@ impl LogfileParser {
     }
 }
 
-impl Parser for LogfileParser {
-    type Output = Vec<LogfileSummary>;
-
-    fn parse(&self, output_path: &ToolOutputPath) -> Result<Self::Output>
-    where
-        Self: std::marker::Sized,
-    {
-        let log_path = output_path.to_log_output();
-        debug!("{}: Parsing log file '{}'", output_path.tool.id(), log_path);
-
-        let mut summaries = vec![];
-        let paths = log_path.real_paths()?.into_iter();
-        let old_paths = log_path.to_base_path().real_paths().into_iter().flatten();
-        let old_paths = old_paths.map(Some).chain(iter::repeat(None));
-        for (path, old_path) in iter::zip(paths, old_paths) {
-            let mut summary = self.parse_single(path)?;
-            if let Some(old_path) = old_path {
-                let old_summary = self.parse_single(old_path)?;
-                summary.old_pid = Some(old_summary.pid);
-                summary.old_parent_pid = old_summary.parent_pid;
-            }
-            summaries.push(summary)
+impl ValgrindTool {
+    pub(crate) fn to_parser(&self, root_dir: PathBuf) -> Box<dyn LogfileParserT> {
+        match self {
+            ValgrindTool::DHAT => Box::new(dhat::logfile_parser::LogfileParser { root_dir }),
+            _ => Box::new(LogfileParser { root_dir }),
         }
-        summaries.sort_by_key(|s| s.pid);
-        Ok(summaries)
     }
 }
 
