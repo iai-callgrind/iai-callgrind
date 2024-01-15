@@ -18,14 +18,13 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use self::args::ToolArgs;
-use self::format::LogfileSummaryFormatter;
+use self::format::ToolRunSummaryFormatter;
 use self::logfile_parser::LogfileSummary;
 use super::format::{tool_headline, OutputFormat};
 use super::meta::Metadata;
-use super::summary::{BaselineKind, ToolSummary};
+use super::summary::{BaselineKind, ToolRunSummary, ToolSummary};
 use crate::api::{self, ExitWith};
 use crate::error::Error;
-use crate::runner::tool::logfile_parser::OldLogfileSummary;
 use crate::util::{self, make_relative, resolve_binary_path, truncate_str_utf8};
 
 #[derive(Debug, Default, Clone)]
@@ -203,23 +202,18 @@ impl ToolConfig {
         meta: &Metadata,
         log_path: &ToolOutputPath,
         out_path: Option<&ToolOutputPath>,
-    ) -> Result<(ToolSummary, Vec<LogfileSummary>)> {
-        let mut tool_summary = ToolSummary {
+    ) -> Result<ToolSummary> {
+        let parser = self.tool.to_parser(meta.project_root.clone());
+        let old_summaries = parser.as_ref().parse(&log_path.to_base_path())?;
+        let summaries = parser.as_ref().parse_merge(log_path, old_summaries)?;
+        let tool_summary = ToolSummary {
             tool: self.tool,
             log_paths: log_path.real_paths()?,
             out_paths: out_path.map_or_else(|| Ok(Vec::default()), ToolOutputPath::real_paths)?,
-            summaries: vec![],
+            summaries,
         };
 
-        let parser = self.tool.to_parser(meta.project_root.clone());
-
-        let logfile_summaries = parser.as_ref().parse_load(log_path)?;
-
-        for logfile_summary in &logfile_summaries {
-            tool_summary.summaries.push(logfile_summary.into());
-        }
-
-        Ok((tool_summary, logfile_summaries))
+        Ok(tool_summary)
     }
 }
 
@@ -257,12 +251,12 @@ impl ToolConfigs {
     fn print(
         meta: &Metadata,
         tool_config: &ToolConfig,
-        logfile_summaries: &[LogfileSummary],
+        logfile_summaries: &[ToolRunSummary],
         output_paths: &[PathBuf],
     ) -> Result<()> {
         if meta.args.output_format == OutputFormat::Default {
             for logfile_summary in logfile_summaries {
-                LogfileSummaryFormatter::print(
+                ToolRunSummaryFormatter::print(
                     logfile_summary,
                     tool_config.args.verbose,
                     logfile_summaries.len() > 1,
@@ -289,24 +283,18 @@ impl ToolConfigs {
         meta: &Metadata,
         log_path: &ToolOutputPath,
         out_path: Option<&ToolOutputPath>,
-        old_summaries: Vec<OldLogfileSummary>,
-    ) -> Result<(ToolSummary, Vec<LogfileSummary>)> {
-        let mut tool_summary = ToolSummary {
+        old_summaries: Vec<LogfileSummary>,
+    ) -> Result<ToolSummary> {
+        let parser = tool_config.tool.to_parser(meta.project_root.clone());
+
+        let summaries = parser.as_ref().parse_merge(log_path, old_summaries)?;
+
+        Ok(ToolSummary {
             tool: tool_config.tool,
             log_paths: log_path.real_paths()?,
             out_paths: out_path.map_or_else(|| Ok(Vec::default()), ToolOutputPath::real_paths)?,
-            summaries: vec![],
-        };
-
-        let parser = tool_config.tool.to_parser(meta.project_root.clone());
-
-        let logfile_summaries = parser.as_ref().parse(old_summaries, log_path)?;
-
-        for logfile_summary in &logfile_summaries {
-            tool_summary.summaries.push(logfile_summary.into());
-        }
-
-        Ok((tool_summary, logfile_summaries))
+            summaries,
+        })
     }
 
     pub fn run_loaded_vs_base(
@@ -323,13 +311,12 @@ impl ToolConfigs {
 
             Self::print_headline(meta, tool_config);
 
-            let (tool_summary, logfile_summaries) =
-                tool_config.parse_load(meta, &log_path, None)?;
+            let tool_summary = tool_config.parse_load(meta, &log_path, None)?;
 
             Self::print(
                 meta,
                 tool_config,
-                &logfile_summaries,
+                &tool_summary.summaries,
                 &tool_summary.out_paths,
             )?;
 
@@ -363,7 +350,7 @@ impl ToolConfigs {
 
             let parser = tool_config.tool.to_parser(meta.project_root.clone());
 
-            let old_summaries = parser.as_ref().parse_old(&log_path)?;
+            let old_summaries = parser.as_ref().parse(&log_path.to_base_path())?;
 
             if save_baseline {
                 output_path.clear()?;
@@ -378,7 +365,7 @@ impl ToolConfigs {
                 &output_path,
             )?;
 
-            let (tool_summary, logfile_summaries) = Self::parse(
+            let tool_summary = Self::parse(
                 tool_config,
                 meta,
                 &log_path,
@@ -389,7 +376,7 @@ impl ToolConfigs {
             Self::print(
                 meta,
                 tool_config,
-                &logfile_summaries,
+                &tool_summary.summaries,
                 &tool_summary.out_paths,
             )?;
 

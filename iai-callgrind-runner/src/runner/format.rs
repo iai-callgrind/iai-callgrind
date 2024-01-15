@@ -196,13 +196,14 @@ impl Formatter for VerticalFormat {
     }
 }
 
+pub const NOT_AVAILABLE: &str = "N/A";
+
 pub fn format_vertical<'a, K: Display + 'a>(
     baselines: (Option<String>, Option<String>),
     costs_summary: impl Iterator<Item = (&'a K, &'a CostsDiff)>,
 ) -> Result<String> {
     let mut result = String::new();
 
-    let not_available = "N/A";
     let unknown = "*********";
     let no_change = "No change";
 
@@ -225,12 +226,12 @@ pub fn format_vertical<'a, K: Display + 'a>(
             (None, Some(old_cost)) => writeln!(
                 result,
                 "  {description:<18}{:>15}|{old_cost:<15} ({:^9})",
-                not_available.bold(),
+                NOT_AVAILABLE.bold(),
                 unknown.bright_black()
             )?,
             (Some(new_cost), None) => writeln!(
                 result,
-                "  {description:<18}{:>15}|{not_available:<15} ({:^9})",
+                "  {description:<18}{:>15}|{NOT_AVAILABLE:<15} ({:^9})",
                 new_cost.to_string().bold(),
                 unknown.bright_black()
             )?,

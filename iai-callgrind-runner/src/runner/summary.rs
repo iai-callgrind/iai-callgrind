@@ -18,7 +18,6 @@ use serde::{Deserialize, Serialize};
 
 use super::costs::Costs;
 use super::format::OutputFormat;
-use super::tool::logfile_parser::LogfileSummary;
 use super::tool::{ToolOutputPath, ValgrindTool};
 use crate::api::EventKind;
 use crate::error::Error;
@@ -232,8 +231,12 @@ pub struct SummaryOutput {
 pub struct ToolRunSummary {
     /// The executed command extracted from Valgrind output
     pub command: String,
+    /// The old pid of this process
+    pub old_pid: Option<i32>,
+    /// The old parent pid of this process
+    pub old_parent_pid: Option<i32>,
     /// The pid of this process
-    pub pid: i32,
+    pub pid: Option<i32>,
     /// The parent pid of this process
     pub parent_pid: Option<i32>,
     /// The tool specific summary extracted from Valgrind output
@@ -247,7 +250,17 @@ pub struct ToolRunSummary {
     /// results in `ErrorSummary {errors: 4, contexts: 3, supp_errors: 2, supp_contexts: 1}`
     pub error_summary: Option<ErrorSummary>,
     /// The tool specific cost summary extracted from Valgrind output
-    pub cost_summary: Option<CostsSummary<String>>,
+    pub costs_summary: Option<CostsSummary<String>>,
+    /// The path to the full logfile from the tool run
+    pub log_path: PathBuf,
+}
+
+impl ToolRunSummary {
+    pub fn has_errors(&self) -> bool {
+        self.error_summary
+            .as_ref()
+            .map_or(false, ErrorSummary::has_errors)
+    }
 }
 
 /// The `ToolSummary` containing all information about a valgrind tool run
@@ -577,19 +590,5 @@ impl SummaryOutput {
     /// Try to create an empty summary file returning the [`File`] object
     pub fn create(&self) -> Result<File> {
         File::create(&self.path).with_context(|| "Failed to create json summary file")
-    }
-}
-
-impl From<&LogfileSummary> for ToolRunSummary {
-    fn from(value: &LogfileSummary) -> Self {
-        ToolRunSummary {
-            command: value.command.to_string_lossy().to_string(),
-            pid: value.pid,
-            parent_pid: value.parent_pid,
-            summary: value.fields.iter().cloned().collect(),
-            details: (!value.details.is_empty()).then(|| value.details.join("\n")),
-            error_summary: value.error_summary.clone(),
-            cost_summary: value.cost_summary.clone(),
-        }
     }
 }

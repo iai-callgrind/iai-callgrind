@@ -365,6 +365,10 @@ impl EventKind {
             _ => None,
         }
     }
+
+    pub fn to_name(&self) -> String {
+        format!("{:?}", *self)
+    }
 }
 
 impl Display for EventKind {

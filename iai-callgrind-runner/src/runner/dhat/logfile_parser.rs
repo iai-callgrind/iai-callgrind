@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::iter;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
@@ -8,32 +9,21 @@ use regex::Regex;
 
 use crate::error::Error;
 use crate::runner::costs::Costs;
-use crate::runner::summary::CostsSummary;
-use crate::runner::tool::logfile_parser::{LogfileParserT, LogfileSummary, OldLogfileSummary};
+use crate::runner::summary::ToolRunSummary;
+use crate::runner::tool::logfile_parser::{
+    extract_pid, LogfileParser, LogfileSummary, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
+};
 use crate::util::make_relative;
 
 // The different regex have to consider --time-stamp=yes
 lazy_static! {
-    static ref EXTRACT_FIELDS_RE: Regex = regex::Regex::new(
-        r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--)\s*(?<key>.*?)\s*:\s*(?<value>.*)\s*$"
-    )
-    .expect("Regex should compile");
-    static ref EMPTY_LINE_RE: Regex =
-        regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--)\s*$")
-            .expect("Regex should compile");
-    static ref STRIP_PREFIX_RE: Regex =
-        regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--) (?<rest>.*)$")
-            .expect("Regex should compile");
-    static ref EXTRACT_PID_RE: Regex =
-        regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?(?<pid>[0-9]+)(==|--).*")
-            .expect("Regex should compile");
     static ref FIXUP_NUMBERS_RE: Regex =
         regex::Regex::new(r"([0-9]),([0-9])").expect("Regex should compile");
     static ref COSTS_RE: Regex =
         regex::Regex::new(r"([0-9]*) (\w*)(?: in ([0-9]*) (\w*))?").expect("Regex should compile");
 }
 
-pub struct LogfileParser {
+pub struct DhatLogfileParser {
     pub root_dir: PathBuf,
 }
 
@@ -63,8 +53,8 @@ fn fields_to_costs(fields: &[(String, String)]) -> Costs<String> {
     res
 }
 
-impl LogfileParser {
-    fn parse_comb(&self, path: PathBuf) -> Result<(LogfileSummary, Costs<String>)> {
+impl LogfileParser for DhatLogfileParser {
+    fn parse_single(&self, path: PathBuf) -> Result<LogfileSummary> {
         let file = File::open(&path)
             .with_context(|| format!("Error opening log file '{}'", path.display()))?;
 
@@ -76,14 +66,7 @@ impl LogfileParser {
         let line = iter
             .next()
             .ok_or_else(|| Error::ParseError((path.clone(), "Empty file".to_owned())))?;
-        let pid = EXTRACT_PID_RE
-            .captures(line.trim())
-            .expect("Log output should not be malformed")
-            .name("pid")
-            .expect("Log output should contain pid")
-            .as_str()
-            .parse::<i32>()
-            .expect("Pid should be valid");
+        let pid = extract_pid(&line);
 
         let mut state = State::Header;
         let mut command = None;
@@ -161,49 +144,44 @@ impl LogfileParser {
             }
         }
 
-        let costs = fields_to_costs(&fields);
-
-        Ok((
-            LogfileSummary {
-                command: command.expect("A command should be present"),
-                old_pid: None,
-                old_parent_pid: None,
-                pid,
-                parent_pid,
-                fields: vec![],
-                details,
-                error_summary: None,
-                log_path: make_relative(&self.root_dir, path),
-                cost_summary: None,
-            },
+        let costs = Some(fields_to_costs(&fields));
+        Ok(LogfileSummary {
+            command: command.expect("A command should be present"),
+            pid,
+            parent_pid,
+            fields: vec![],
+            details,
+            error_summary: None,
+            log_path: make_relative(&self.root_dir, path),
             costs,
-        ))
-    }
-}
-
-impl LogfileParserT for LogfileParser {
-    fn parse_old_single(&self, path: PathBuf) -> Result<OldLogfileSummary> {
-        let (summary, costs) = self.parse_comb(path)?;
-        Ok(OldLogfileSummary {
-            old_costs: Some(costs),
-            old_pid: Some(summary.pid),
-            old_parent_pid: summary.parent_pid,
         })
     }
 
-    fn parse_single(
+    fn merge_logfile_summaries(
         &self,
-        old: Option<OldLogfileSummary>,
-        path: PathBuf,
-    ) -> Result<LogfileSummary> {
-        let (mut summary, costs) = self.parse_comb(path)?;
-        if let Some(old) = old {
-            summary.cost_summary = Some(CostsSummary::new(&costs, old.old_costs.as_ref()));
-            summary.old_pid = old.old_pid;
-            summary.old_parent_pid = old.old_parent_pid;
-        } else {
-            summary.cost_summary = Some(CostsSummary::new(&costs, None))
+        old: Vec<LogfileSummary>,
+        new: Vec<LogfileSummary>,
+    ) -> Vec<ToolRunSummary> {
+        let old = old.into_iter().map(Some).chain(iter::repeat_with(|| None));
+        let new = new.into_iter().map(Some).chain(iter::repeat_with(|| None));
+        let zip = iter::zip(old, new).take_while(|(o, n)| o.is_some() || n.is_some());
+
+        let mut res = vec![];
+        for (old, new) in zip {
+            match (old, new) {
+                (None, None) => unreachable!(),
+                (Some(old), None) => res.push(old.old_into_tool_run()),
+                (None, Some(new)) => res.push(new.new_into_tool_run()),
+                (Some(old), Some(new)) => {
+                    if old.command == new.command {
+                        res.push(new.merge(&old));
+                    } else {
+                        res.push(old.old_into_tool_run());
+                        res.push(new.new_into_tool_run());
+                    }
+                }
+            }
         }
-        Ok(summary)
+        res
     }
 }

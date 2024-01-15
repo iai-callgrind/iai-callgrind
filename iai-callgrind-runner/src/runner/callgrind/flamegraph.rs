@@ -472,17 +472,24 @@ impl OutputPath {
 
     pub fn extension(&self) -> String {
         match &self.kind {
-            OutputPathKind::Regular => format!("flamegraph.{}.svg", self.event_kind),
-            OutputPathKind::Old => format!("flamegraph.{}.old.svg", self.event_kind),
-            OutputPathKind::Base(name) => format!("flamegraph.{}.base@{name}.svg", self.event_kind),
-            OutputPathKind::DiffOld => format!("flamegraph.{}.diff.old.svg", self.event_kind),
+            OutputPathKind::Regular => format!("flamegraph.{}.svg", self.event_kind.to_name()),
+            OutputPathKind::Old => format!("flamegraph.{}.old.svg", self.event_kind.to_name()),
+            OutputPathKind::Base(name) => {
+                format!("flamegraph.{}.base@{name}.svg", self.event_kind.to_name())
+            }
+            OutputPathKind::DiffOld => {
+                format!("flamegraph.{}.diff.old.svg", self.event_kind.to_name())
+            }
             OutputPathKind::DiffBase(name) => {
-                format!("flamegraph.{}.diff.base@{name}.svg", self.event_kind)
+                format!(
+                    "flamegraph.{}.diff.base@{name}.svg",
+                    self.event_kind.to_name()
+                )
             }
             OutputPathKind::DiffBases(name, base) => {
                 format!(
                     "flamegraph.{}.base@{name}.diff.base@{base}.svg",
-                    self.event_kind
+                    self.event_kind.to_name()
                 )
             }
         }

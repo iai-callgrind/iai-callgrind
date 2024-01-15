@@ -70,6 +70,10 @@ impl<K: Hash + Eq + Display + Clone> Costs<K> {
     pub fn iter(&self) -> Iter<'_, K, u64> {
         self.0.iter()
     }
+
+    pub fn empty() -> Self {
+        Costs(IndexMap::new())
+    }
 }
 
 pub trait Summarize: Hash + Eq + Clone {
