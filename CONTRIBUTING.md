@@ -1,3 +1,5 @@
+<!-- spell-checker: ignore readlink -->
+
 # Contributing to iai-callgrind
 
 Thank you for your interest in contributing to iai-callgrind!
@@ -57,8 +59,18 @@ very welcome. Patches have to include tests to verify (at a minimum) that the
 whole pipeline runs through without errors.
 
 The benches in the `benchmark-tests` package run the whole pipeline which is
-good for verifying that there are no panics or errors. The concrete results of
-the benchmarks are not checked there. Use unit tests or integration tests in the
+good for verifying that there are no panics or errors. If you've made changes in
+the `iai-callgrind-runner` package then you can point the `IAI_CALLGRIND_RUNNER`
+environment variable to your modified version of the `iai-callgrind-runner`
+binary:
+
+```rust
+cargo build -p iai-callgrind-runner --release
+IAI_CALLGRIND_RUNNER=$(readlink -e target/release/iai-callgrind-runner) cargo bench -p benchmark-tests
+```
+
+The concrete results of the benchmarks are not checked with the
+`benchmark-tests`. Use unit tests or integration tests in the
 `iai-callgrind-runner` package to test for concrete results.
 
 ## Contact
