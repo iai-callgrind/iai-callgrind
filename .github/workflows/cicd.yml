@@ -21,19 +21,14 @@ jobs:
   deny:
     name: Check dependencies/ubuntu-latest
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        config:
-          - checks: advisories
-            arguments: --deny warnings
-          - checks: bans licenses sources
     steps:
       - uses: actions/checkout@v4
-      - uses: EmbarkStudios/cargo-deny-action@v1
-        with:
-          rust-version: "1.66.0" # MSRV
-          command: check ${{ matrix.config.arguments }} ${{ matrix.config.checks }}
+      - uses: dtolnay/rust-toolchain@1.66.0
+      - uses: taiki-e/install-action@cargo-deny
+      - name: Check advisories
+        run: cargo deny check --deny warnings advisories
+      - name: Check bans licenses sources
+        run: cargo deny check bans licenses sources
 
   minimal_versions:
     name: Check minimal version requirements of dependencies
