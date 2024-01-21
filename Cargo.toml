@@ -41,8 +41,8 @@ log = { version = "0.4" }
 new_string_template = { version = "1.4" }
 predicates = { version = "3" }
 pretty_assertions = "1.1"
-proc-macro-error = "1"
 proc-macro2 = "1.0.60"
+proc-macro2-diagnostics = { version = "0.10.1", default-features = false }
 quote = "1"
 regex = { version = "1" }
 rstest = ">=0.17, <0.19"
