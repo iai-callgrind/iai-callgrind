@@ -40,3 +40,6 @@ insert_final_newline = false
 [*.pl]
 max_line_length = 99
 indent_size = 4
+
+[Justfile]
+indent_size=4
