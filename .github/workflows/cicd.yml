@@ -27,10 +27,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.66.0
       - uses: taiki-e/install-action@cargo-deny
+      - uses: taiki-e/install-action@just
       - name: Check advisories
-        run: cargo deny check --deny warnings advisories
+        run: just args='--deny warnings' deny advisories
       - name: Check bans licenses sources
-        run: cargo deny check bans licenses sources
+        run: just deny bans licenses sources
 
   minimal_versions:
     name: Check minimal version requirements of dependencies
@@ -53,27 +54,22 @@ jobs:
           key: ubuntu-latest_${{ matrix.toolchain }}
       - uses: taiki-e/install-action@cargo-hack
       - uses: taiki-e/install-action@cargo-minimal-versions
+      - uses: taiki-e/install-action@just
       - name: Check build with minimal versions
-        run: cargo minimal-versions check --workspace --all-targets --ignore-private
+        run: just minimal-versions
 
   format:
     name: Check format and spelling
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: npm install prettier
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
       - uses: taiki-e/install-action@cargo-binstall
+      - uses: taiki-e/install-action@just
       - run: cargo binstall --no-confirm --no-symlinks taplo-cli
-      - run: cargo fmt --check
-      - run: taplo fmt --check --verbose
-      - run: npx prettier --check --log-level warn '**/*.json' '**/*.yml'
-      - uses: streetsidesoftware/cspell-action@v5
-        with:
-          incremental_files_only: false
-          verbose: true
+      - run: just check-fmt-all
 
   base:
     needs: [format]
@@ -107,6 +103,7 @@ jobs:
         run: |
           cargo update
       - uses: taiki-e/install-action@cargo-hack
+      - uses: taiki-e/install-action@just
       - uses: Swatinem/rust-cache@v2
         with:
           key: ubuntu-latest_${{ matrix.toolchain }}
@@ -122,9 +119,9 @@ jobs:
           rustup component list --installed
           valgrind --version
       - name: Build with the feature powerset
-        run: cargo hack --workspace --exclude client-request-tests --feature-powerset --exclude-features ui_tests build
+        run: just build-hack
       - name: Lint
-        run: cargo +stable clippy --all-features --all-targets -- -D warnings
+        run: just lint
       - name: Test
         run: |
           set -o pipefail
@@ -138,12 +135,9 @@ jobs:
           fi
           exit 1
       - name: Check summary.json schema is up-to-date
-        run: |
-          cargo run -p iai-callgrind-runner --features schema --bin schema-gen
-          npx prettier --write summary.schema.json
-          diff summary.schema.json iai-callgrind-runner/schemas/summary.v1.schema.json
+        run: just schema-gen-diff
       - name: Bench
-        run: cargo run --package benchmark-tests --profile=bench --bin bench
+        run: just full-bench-test-all
         # env:
         # IAI_CALLGRIND_LOG: trace
       - uses: actions/upload-artifact@v4
@@ -179,6 +173,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: taiki-e/install-action@cross
+      - uses: taiki-e/install-action@just
       - uses: Swatinem/rust-cache@v2
         with:
           key: cross_${{ matrix.job.os }}_${{ matrix.job.target }}
@@ -191,10 +186,9 @@ jobs:
           rustup show
           rustup component list --installed
       - name: Test client requests
-        run: cross test --package client-request-tests --target ${{ matrix.job.target }} --test tests --release -- --nocapture
-        env:
-          CROSS_CONTAINER_OPTS: "--ulimit nofile=1024:4096"
-          # CROSS_DEBUG: "1"
+        run: just reqs-test ${{ matrix.job.target }}
+        # env:
+        #   CROSS_DEBUG: "1"
 
   docs:
     needs: [base, client_requests]
