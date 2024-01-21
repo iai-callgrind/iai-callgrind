@@ -8,6 +8,8 @@ on:
     branches: ["main", "cicd", "release", "develop", "[0-9]+-*"]
   pull_request:
     branches: ["main"]
+  schedule:
+    - cron: "00 01 * * *"
 
 env:
   CARGO_TERM_COLOR: always
