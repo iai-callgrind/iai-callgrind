@@ -96,10 +96,14 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
           components: ${{ matrix.components }}
-      - name: Prepare
+      - name: "Prepare: Install stable toolchain with clippy"
         if: matrix.toolchain != 'stable'
         run: |
           rustup toolchain install stable --no-self-update --component clippy
+      - name: "Prepare: Run cargo update"
+        if: matrix.toolchain == 'stable' || matrix.toolchain == 'nightly'
+        run: |
+          cargo update
       - uses: taiki-e/install-action@cargo-hack
       - uses: Swatinem/rust-cache@v2
         with:
