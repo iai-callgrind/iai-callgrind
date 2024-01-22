@@ -410,15 +410,16 @@ impl CallgrindSummary {
             command: format!(
                 "{} {}",
                 bench_bin.display(),
-                shlex::join(
+                shlex::try_join(
                     bench_args
                         .iter()
                         .map(|s| s.to_string_lossy().to_string())
                         .collect::<Vec<String>>()
                         .as_slice()
                         .iter()
-                        .map(std::string::String::as_str)
+                        .map(String::as_str)
                 )
+                .unwrap()
             ),
             baseline: old_path.exists().then(|| Baseline {
                 kind: old_path.baseline_kind.clone(),

@@ -515,7 +515,7 @@ impl Display for BinBench {
         f.write_str(&format!(
             "{} {}",
             self.display,
-            shlex::join(args.iter().map(std::string::String::as_str))
+            shlex::try_join(args.iter().map(String::as_str)).unwrap()
         ))
     }
 }
