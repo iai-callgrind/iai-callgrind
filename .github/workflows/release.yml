@@ -1,0 +1,28 @@
+name: Release
+
+on:
+  push:
+    # TODO: DEVELOPMENT: DELETE THIS
+    branches: ["v[0-9]+-[0-9]+-[0-9]+"]
+    tags: ["v[0-9]+-[0-9]+-[0-9]+"]
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: create release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get the release version from the tag
+        run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+      - name: Show the version
+        run: |
+          echo "version is: $VERSION"
+      # - name: Create GitHub release
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: gh release create iai-callgrind-runner-$VERSION --draft --verify-tag --title iai-callgrind-runner-$VERSION
+    outputs:
+      version: ${{ env.VERSION }}
