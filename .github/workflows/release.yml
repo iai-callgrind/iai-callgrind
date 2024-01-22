@@ -1,28 +1,151 @@
+# spell-checker: ignore androideabi taiki binutils
 name: Release
 
 on:
   push:
     # TODO: DEVELOPMENT: DELETE THIS
-    branches: ["main", "v[0-9]+-[0-9]+-[0-9]+"]
-    tags: ["v[0-9]+-[0-9]+-[0-9]+"]
+    branches: ["main", "v[0-9]+.[0-9]+.[0-9]+"]
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The ref/tag to use for the release"
+        required: true
+        type: string
 
 permissions:
   contents: write
 
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  create-release:
-    name: create release
+  release:
+    name: Create a draft release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout specific tag
+        if: inputs.tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - name: Checkout default ref
+        if: ${{ ! inputs.tag }}
+        uses: actions/checkout@v4
       - name: Get the release version from the tag
+        if: inputs.tag
+        run: echo "VERSION=${{ inputs.tag }}" >> $GITHUB_ENV
+      - name: Get the release version from the tag
+        if: ${{ ! inputs.tag }}
         run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
-      - name: Show the version
-        run: |
-          echo "version is: $VERSION"
-      # - name: Create GitHub release
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: gh release create iai-callgrind-runner-$VERSION --draft --verify-tag --title iai-callgrind-runner-$VERSION
+      - name: Create release
+        # TODO: DEVELOPMENT
+        # run: gh release create $VERSION --draft --verify-tag --title $VERSION -F CHANGELOG.md
+        run: gh release create $VERSION --draft --title $VERSION -F CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     outputs:
       version: ${{ env.VERSION }}
+
+  build:
+    name: Build release artifacts
+    needs: ["release"]
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
+          - i686-unknown-linux-gnu
+          - armv7-unknown-linux-gnueabihf
+          - aarch64-unknown-linux-gnu
+          - powerpc-unknown-linux-gnu
+          - powerpc64-unknown-linux-gnu
+          - powerpc64le-unknown-linux-gnu
+          - s390x-unknown-linux-gnu
+          - aarch64-linux-android
+          - i686-linux-android
+          - armv7-linux-androideabi
+          - x86_64-linux-android
+          - x86_64-sun-solaris
+          - x86_64-unknown-freebsd
+          - i686-unknown-freebsd
+        include:
+          - toolchain: stable
+          - cargo: cross
+          - needs_ndk: false
+          - target: armv7-linux-androideabi
+            cargo: cargo
+            needs_ndk: true
+          - target: aarch64-linux-android
+            cargo: cargo
+            needs_ndk: true
+          - target: i686-linux-android
+            cargo: cargo
+            needs_ndk: true
+          - target: x86_64-linux-android
+            cargo: cargo
+            needs_ndk: true
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout specific tag
+        if: inputs.tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - name: Checkout default ref
+        if: ${{ ! inputs.tag }}
+        uses: actions/checkout@v4
+      - uses: taiki-e/install-action@cross
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          target: ${{ matrix.target }}
+      - name: Cleanup Cross.toml
+        run: |
+          [[ -e Cross.toml ]] && mv Cross.toml Cross.toml.old
+      # https://developer.android.com/ndk/guides/other_build_systems
+      - name: Use NDK and install cargo config
+        if: matrix.needs_ndk
+        run: |
+          set -x
+
+          min_sdk="21"
+          if [[ "${{ matrix.target }}" == "armv7-linux-androideabi" ]]; then
+            binutils_prefix="arm-linux-androideabi"
+            compiler_prefix="armv7a-linux-androideabi"
+          else
+            binutils_prefix="${{ matrix.target }}"
+            compiler_prefix="${{ matrix.target }}"
+          fi
+
+          linker="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/${compiler_prefix}${min_sdk}-clang"
+
+          cat <<EOF >~/.cargo/config
+          [target.${{ matrix.target }}]
+          linker = "$linker"
+          EOF
+      - name: Update dependencies
+        run: cargo update
+      - name: Build iai-callgrind-runner
+        run: ${{ matrix.cargo }} build -p iai-callgrind-runner --release --target ${{ matrix.target }}
+      - name: Create archive
+        run: |
+          archive_dir="iai-callgrind-runner-${{ needs.release.outputs.version }}-${{ matrix.target }}"
+          archive_name="${archive_dir}.tar.gz"
+          archive_sum="${archive_name}.sha256"
+          mkdir -p "${archive_dir}/doc"
+          cp -v target/${{ matrix.target }}/release/iai-callgrind-runner "$archive_dir"
+          cp -v README.md LICENSE-MIT LICENSE-APACHE "$archive_dir"
+          cp -v CHANGELOG.md "$archive_dir/doc"
+          ls -laR "$archive_dir"
+          tar czf "$archive_name" "$archive_dir"
+          sha256sum "$archive_name" > "$archive_sum"
+          echo "ARCHIVE=${archive_name}" >> $GITHUB_ENV
+          echo "ARCHIVE_SUM=${archive_sum}" >> $GITHUB_ENV
+      - name: Upload archive
+        run: gh release upload "${{ needs.release.outputs.version }}" "${{ env.ARCHIVE }}" "${{ env.ARCHIVE_SUM }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
