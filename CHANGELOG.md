@@ -22,6 +22,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### [0.10.1] - 2023-01-22
+
+### Changed
+
+* Update env_logger and which dependencies in Cargo.toml
+* Update locked dependencies
+
+### Fixed
+
+* ([#81](https://github.com/iai-callgrind/iai-callgrind/pull/81)): Fix security
+  advisory RUSTSEC-2024-0006 of shlex dependency and update shlex to 1.3.0. Use
+  `shlex::try_join` instead of deprecated `shlex::join`.
+
 ### [0.10.0] - 2023-01-09
 
 ### Added
