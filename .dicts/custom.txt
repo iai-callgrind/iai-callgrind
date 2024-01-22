@@ -127,6 +127,7 @@ profraw
 pthread
 quickstart
 ramhits
+readlink
 realloc
 realpath
 redzone
@@ -161,6 +162,7 @@ synchronisation
 syscount
 syscputime
 systime
+taplo
 tempdir
 tempfile
 threadid
