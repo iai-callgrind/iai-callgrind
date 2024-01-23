@@ -1,4 +1,4 @@
-<!-- spell-checker: ignore fixt -->
+<!-- spell-checker: ignore fixt binstall -->
 
 <h1 align="center">Iai-Callgrind</h1>
 
@@ -107,6 +107,12 @@ somewhere in your `$PATH`, for example with
 cargo install --version 0.10.1 iai-callgrind-runner
 ```
 
+or with `binstall`
+
+```shell
+cargo binstall iai-callgrind-runner@0.10.1
+```
+
 There's also the possibility to install the binary somewhere else and point the
 `IAI_CALLGRIND_RUNNER` environment variable to the absolute path of the `iai-callgrind-runner`
 binary like so:
@@ -116,8 +122,10 @@ cargo install --version 0.10.1 --root /tmp iai-callgrind-runner
 IAI_CALLGRIND_RUNNER=/tmp/bin/iai-callgrind-runner cargo bench --bench my-bench
 ```
 
-When updating the `iai-callgrind` library, you'll also need to update `iai-callgrind-runner` and
-vice-versa or else the benchmark runner will exit with an error.
+When updating the `iai-callgrind` library, you'll also need to update
+`iai-callgrind-runner` and vice-versa or else the benchmark runner will exit
+with an error. Otherwise, there is no need to interact with
+`iai-callgrind-runner` as it is just an implementation detail.
 
 Since the `iai-callgrind-runner` version must match the `iai-callgrind` library
 version it's best to automate this step in the CI. A job step in the github
