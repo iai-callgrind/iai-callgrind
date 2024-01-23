@@ -101,7 +101,7 @@ jobs:
           target: ${{ matrix.target }}
       - name: Cleanup Cross.toml
         run: |
-          [[ -e Cross.toml ]] && mv Cross.toml Cross.toml.old
+          [[ -e Cross.toml ]] && mv Cross.toml Cross.toml.old || true
       # https://developer.android.com/ndk/guides/other_build_systems
       - name: Use NDK and install cargo config
         if: matrix.needs_ndk
