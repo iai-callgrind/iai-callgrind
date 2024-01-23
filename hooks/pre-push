@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -e
+
+if command -V just; then
+  just schema-gen-diff
+else
+  echo "Please install 'just' to properly run this hook"
+fi
