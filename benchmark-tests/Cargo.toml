@@ -24,6 +24,7 @@ iai-callgrind-runner = { path = "../iai-callgrind-runner" }
 new_string_template = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+serde_yaml = { workspace = true }
 valico = { workspace = true }
 
 [[bin]]

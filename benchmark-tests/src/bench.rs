@@ -7,7 +7,6 @@ use glob::glob;
 use iai_callgrind_runner::runner::summary::BenchmarkSummary;
 use new_string_template::template::Template;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use valico::json_schema;
 use valico::json_schema::schema::ScopedSchema;
 
@@ -103,7 +102,7 @@ impl Benchmark {
     pub fn new(name: &str, package_dir: &Path, target_dir: &Path) -> Self {
         let name = name.to_owned();
         let expected_paths = glob(&format!(
-            "{}/{name}.expected*.json",
+            "{}/{name}.expected*.yml",
             package_dir.join("benches").display()
         ))
         .unwrap()
@@ -161,7 +160,7 @@ impl Benchmark {
     pub fn run_asserted(&self, meta: &Metadata) {
         for expected_path in &self.expected_paths {
             let expected_runs: ExpectedRuns =
-                serde_json::from_reader(File::open(expected_path).expect("File should exist"))
+                serde_yaml::from_reader(File::open(expected_path).expect("File should exist"))
                     .map_err(|error| {
                         format!(
                             "Failed to deserialize '{}': {error}",
@@ -172,7 +171,7 @@ impl Benchmark {
 
             self.clean_benchmark();
 
-            let schema: Value = serde_json::from_reader(
+            let schema: serde_json::Value = serde_json::from_reader(
                 File::open(
                     meta.workspace_root
                         .join("iai-callgrind-runner/schemas/summary.v1.schema.json"),
@@ -322,7 +321,8 @@ impl ExpectedRun {
 
         if let Some(summary) = summary {
             print_info(format!("Validating summary {}", summary.display()));
-            let instance: Value = serde_json::from_reader(File::open(&summary).unwrap()).unwrap();
+            let instance: serde_json::Value =
+                serde_json::from_reader(File::open(&summary).unwrap()).unwrap();
             let result = schema.validate(&instance);
             if !result.is_valid() {
                 for error in result.errors {

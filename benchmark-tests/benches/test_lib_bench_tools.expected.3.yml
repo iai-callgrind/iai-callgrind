@@ -1,0 +1,581 @@
+runs:
+  - data:
+      - group: bench_group
+        function: bench_bubble_sort_allocate
+        id: null
+        expected:
+          files:
+            - callgrind.bench_bubble_sort_allocate.log
+            - callgrind.bench_bubble_sort_allocate.out
+            - dhat.bench_bubble_sort_allocate.log
+            - dhat.bench_bubble_sort_allocate.out
+            - drd.bench_bubble_sort_allocate.log
+            - exp-bbv.bench_bubble_sort_allocate.log
+            - exp-bbv.bench_bubble_sort_allocate.out.bb
+            - exp-bbv.bench_bubble_sort_allocate.out.pc
+            - helgrind.bench_bubble_sort_allocate.log
+            - massif.bench_bubble_sort_allocate.log
+            - massif.bench_bubble_sort_allocate.out
+            - memcheck.bench_bubble_sort_allocate.log
+            - summary.json
+      - group: bench_group
+        function: bench_bubble_sort
+        id: empty
+        expected:
+          files:
+            - callgrind.bench_bubble_sort.empty.log
+            - callgrind.bench_bubble_sort.empty.out
+            - dhat.bench_bubble_sort.empty.log
+            - dhat.bench_bubble_sort.empty.out
+            - drd.bench_bubble_sort.empty.log
+            - exp-bbv.bench_bubble_sort.empty.log
+            - exp-bbv.bench_bubble_sort.empty.out.bb
+            - exp-bbv.bench_bubble_sort.empty.out.pc
+            - helgrind.bench_bubble_sort.empty.log
+            - massif.bench_bubble_sort.empty.log
+            - massif.bench_bubble_sort.empty.out
+            - memcheck.bench_bubble_sort.empty.log
+            - summary.json
+      - group: bench_group
+        function: bench_bubble_sort
+        id: worst_case_4000
+        expected:
+          files:
+            - callgrind.bench_bubble_sort.worst_case_4000.log
+            - callgrind.bench_bubble_sort.worst_case_4000.out
+            - dhat.bench_bubble_sort.worst_case_4000.log
+            - dhat.bench_bubble_sort.worst_case_4000.out
+            - drd.bench_bubble_sort.worst_case_4000.log
+            - exp-bbv.bench_bubble_sort.worst_case_4000.log
+            - exp-bbv.bench_bubble_sort.worst_case_4000.out.bb
+            - exp-bbv.bench_bubble_sort.worst_case_4000.out.pc
+            - helgrind.bench_bubble_sort.worst_case_4000.log
+            - massif.bench_bubble_sort.worst_case_4000.log
+            - massif.bench_bubble_sort.worst_case_4000.out
+            - memcheck.bench_bubble_sort.worst_case_4000.log
+            - summary.json
+      - group: bench_group
+        function: bench_subprocess
+        id: with_modifier
+        expected:
+          files:
+            - callgrind.bench_subprocess.with_modifier.log
+            - callgrind.bench_subprocess.with_modifier.out
+            - summary.json
+          globs:
+            - pattern: dhat.bench_subprocess.with_modifier.log.*
+              count: 2
+            - pattern: dhat.bench_subprocess.with_modifier.out.*
+              count: 2
+      - group: bench_group
+        function: bench_subprocess
+        id: without_modifier
+        expected:
+          files:
+            - callgrind.bench_subprocess.without_modifier.log
+            - callgrind.bench_subprocess.without_modifier.out
+            - dhat.bench_subprocess.without_modifier.log
+            - dhat.bench_subprocess.without_modifier.out
+            - summary.json
+      - group: bench_group
+        function: bad_memory
+        id: null
+        expected:
+          files:
+            - callgrind.bad_memory.log
+            - callgrind.bad_memory.out
+            - dhat.bad_memory.log
+            - dhat.bad_memory.out
+            - massif.bad_memory.log
+            - massif.bad_memory.out
+            - memcheck.bad_memory.log
+            - summary.json
+  - args:
+      - --save-baseline=foo
+    data:
+      - group: bench_group
+        function: bench_bubble_sort_allocate
+        id: null
+        expected:
+          files:
+            - callgrind.bench_bubble_sort_allocate.log
+            - callgrind.bench_bubble_sort_allocate.log.base@foo
+            - callgrind.bench_bubble_sort_allocate.out
+            - callgrind.bench_bubble_sort_allocate.out.base@foo
+            - dhat.bench_bubble_sort_allocate.log
+            - dhat.bench_bubble_sort_allocate.log.base@foo
+            - dhat.bench_bubble_sort_allocate.out
+            - dhat.bench_bubble_sort_allocate.out.base@foo
+            - drd.bench_bubble_sort_allocate.log
+            - drd.bench_bubble_sort_allocate.log.base@foo
+            - exp-bbv.bench_bubble_sort_allocate.log
+            - exp-bbv.bench_bubble_sort_allocate.log.base@foo
+            - exp-bbv.bench_bubble_sort_allocate.out.bb
+            - exp-bbv.bench_bubble_sort_allocate.out.bb.base@foo
+            - exp-bbv.bench_bubble_sort_allocate.out.pc
+            - exp-bbv.bench_bubble_sort_allocate.out.pc.base@foo
+            - helgrind.bench_bubble_sort_allocate.log
+            - helgrind.bench_bubble_sort_allocate.log.base@foo
+            - massif.bench_bubble_sort_allocate.log
+            - massif.bench_bubble_sort_allocate.log.base@foo
+            - massif.bench_bubble_sort_allocate.out
+            - massif.bench_bubble_sort_allocate.out.base@foo
+            - memcheck.bench_bubble_sort_allocate.log
+            - memcheck.bench_bubble_sort_allocate.log.base@foo
+            - summary.json
+      - group: bench_group
+        function: bench_bubble_sort
+        id: empty
+        expected:
+          files:
+            - callgrind.bench_bubble_sort.empty.log
+            - callgrind.bench_bubble_sort.empty.log.base@foo
+            - callgrind.bench_bubble_sort.empty.out
+            - callgrind.bench_bubble_sort.empty.out.base@foo
+            - dhat.bench_bubble_sort.empty.log
+            - dhat.bench_bubble_sort.empty.log.base@foo
+            - dhat.bench_bubble_sort.empty.out
+            - dhat.bench_bubble_sort.empty.out.base@foo
+            - drd.bench_bubble_sort.empty.log
+            - drd.bench_bubble_sort.empty.log.base@foo
+            - exp-bbv.bench_bubble_sort.empty.log
+            - exp-bbv.bench_bubble_sort.empty.log.base@foo
+            - exp-bbv.bench_bubble_sort.empty.out.bb
+            - exp-bbv.bench_bubble_sort.empty.out.bb.base@foo
+            - exp-bbv.bench_bubble_sort.empty.out.pc
+            - exp-bbv.bench_bubble_sort.empty.out.pc.base@foo
+            - helgrind.bench_bubble_sort.empty.log
+            - helgrind.bench_bubble_sort.empty.log.base@foo
+            - massif.bench_bubble_sort.empty.log
+            - massif.bench_bubble_sort.empty.log.base@foo
+            - massif.bench_bubble_sort.empty.out
+            - massif.bench_bubble_sort.empty.out.base@foo
+            - memcheck.bench_bubble_sort.empty.log
+            - memcheck.bench_bubble_sort.empty.log.base@foo
+            - summary.json
+      - group: bench_group
+        function: bench_bubble_sort
+        id: worst_case_4000
+        expected:
+          files:
+            - callgrind.bench_bubble_sort.worst_case_4000.log
+            - callgrind.bench_bubble_sort.worst_case_4000.log.base@foo
+            - callgrind.bench_bubble_sort.worst_case_4000.out
+            - callgrind.bench_bubble_sort.worst_case_4000.out.base@foo
+            - dhat.bench_bubble_sort.worst_case_4000.log
+            - dhat.bench_bubble_sort.worst_case_4000.log.base@foo
+            - dhat.bench_bubble_sort.worst_case_4000.out
+            - dhat.bench_bubble_sort.worst_case_4000.out.base@foo
+            - drd.bench_bubble_sort.worst_case_4000.log
+            - drd.bench_bubble_sort.worst_case_4000.log.base@foo
+            - exp-bbv.bench_bubble_sort.worst_case_4000.log
+            - exp-bbv.bench_bubble_sort.worst_case_4000.log.base@foo
+            - exp-bbv.bench_bubble_sort.worst_case_4000.out.bb
+            - exp-bbv.bench_bubble_sort.worst_case_4000.out.bb.base@foo
+            - exp-bbv.bench_bubble_sort.worst_case_4000.out.pc
+            - exp-bbv.bench_bubble_sort.worst_case_4000.out.pc.base@foo
+            - helgrind.bench_bubble_sort.worst_case_4000.log
+            - helgrind.bench_bubble_sort.worst_case_4000.log.base@foo
+            - massif.bench_bubble_sort.worst_case_4000.log
+            - massif.bench_bubble_sort.worst_case_4000.log.base@foo
+            - massif.bench_bubble_sort.worst_case_4000.out
+            - massif.bench_bubble_sort.worst_case_4000.out.base@foo
+            - memcheck.bench_bubble_sort.worst_case_4000.log
+            - memcheck.bench_bubble_sort.worst_case_4000.log.base@foo
+            - summary.json
+      - group: bench_group
+        function: bench_subprocess
+        id: with_modifier
+        expected:
+          files:
+            - callgrind.bench_subprocess.with_modifier.log
+            - callgrind.bench_subprocess.with_modifier.log.base@foo
+            - callgrind.bench_subprocess.with_modifier.out
+            - callgrind.bench_subprocess.with_modifier.out.base@foo
+            - summary.json
+          globs:
+            - pattern: dhat.bench_subprocess.with_modifier.log.*.base@foo
+              count: 2
+            - pattern: dhat.bench_subprocess.with_modifier.out.*.base@foo
+              count: 2
+            - pattern: dhat.bench_subprocess.with_modifier.log.*
+              count: 4
+            - pattern: dhat.bench_subprocess.with_modifier.out.*
+              count: 4
+      - group: bench_group
+        function: bench_subprocess
+        id: without_modifier
+        expected:
+          files:
+            - callgrind.bench_subprocess.without_modifier.log
+            - callgrind.bench_subprocess.without_modifier.log.base@foo
+            - callgrind.bench_subprocess.without_modifier.out
+            - callgrind.bench_subprocess.without_modifier.out.base@foo
+            - dhat.bench_subprocess.without_modifier.log
+            - dhat.bench_subprocess.without_modifier.log.base@foo
+            - dhat.bench_subprocess.without_modifier.out
+            - dhat.bench_subprocess.without_modifier.out.base@foo
+            - summary.json
+      - group: bench_group
+        function: bad_memory
+        id: null
+        expected:
+          files:
+            - callgrind.bad_memory.log
+            - callgrind.bad_memory.log.base@foo
+            - callgrind.bad_memory.out
+            - callgrind.bad_memory.out.base@foo
+            - dhat.bad_memory.log
+            - dhat.bad_memory.log.base@foo
+            - dhat.bad_memory.out
+            - dhat.bad_memory.out.base@foo
+            - massif.bad_memory.log
+            - massif.bad_memory.log.base@foo
+            - massif.bad_memory.out
+            - massif.bad_memory.out.base@foo
+            - memcheck.bad_memory.log
+            - memcheck.bad_memory.log.base@foo
+            - summary.json
+  - args:
+      - --baseline=foo
+    data:
+      - group: bench_group
+        function: bench_bubble_sort_allocate
+        id: null
+        expected:
+          files:
+            - callgrind.bench_bubble_sort_allocate.log
+            - callgrind.bench_bubble_sort_allocate.log.base@foo
+            - callgrind.bench_bubble_sort_allocate.out
+            - callgrind.bench_bubble_sort_allocate.out.base@foo
+            - dhat.bench_bubble_sort_allocate.log
+            - dhat.bench_bubble_sort_allocate.log.base@foo
+            - dhat.bench_bubble_sort_allocate.out
+            - dhat.bench_bubble_sort_allocate.out.base@foo
+            - drd.bench_bubble_sort_allocate.log
+            - drd.bench_bubble_sort_allocate.log.base@foo
+            - exp-bbv.bench_bubble_sort_allocate.log
+            - exp-bbv.bench_bubble_sort_allocate.log.base@foo
+            - exp-bbv.bench_bubble_sort_allocate.out.bb
+            - exp-bbv.bench_bubble_sort_allocate.out.bb.base@foo
+            - exp-bbv.bench_bubble_sort_allocate.out.pc
+            - exp-bbv.bench_bubble_sort_allocate.out.pc.base@foo
+            - helgrind.bench_bubble_sort_allocate.log
+            - helgrind.bench_bubble_sort_allocate.log.base@foo
+            - massif.bench_bubble_sort_allocate.log
+            - massif.bench_bubble_sort_allocate.log.base@foo
+            - massif.bench_bubble_sort_allocate.out
+            - massif.bench_bubble_sort_allocate.out.base@foo
+            - memcheck.bench_bubble_sort_allocate.log
+            - memcheck.bench_bubble_sort_allocate.log.base@foo
+            - summary.json
+      - group: bench_group
+        function: bench_bubble_sort
+        id: empty
+        expected:
+          files:
+            - callgrind.bench_bubble_sort.empty.log
+            - callgrind.bench_bubble_sort.empty.log.base@foo
+            - callgrind.bench_bubble_sort.empty.out
+            - callgrind.bench_bubble_sort.empty.out.base@foo
+            - dhat.bench_bubble_sort.empty.log
+            - dhat.bench_bubble_sort.empty.log.base@foo
+            - dhat.bench_bubble_sort.empty.out
+            - dhat.bench_bubble_sort.empty.out.base@foo
+            - drd.bench_bubble_sort.empty.log
+            - drd.bench_bubble_sort.empty.log.base@foo
+            - exp-bbv.bench_bubble_sort.empty.log
+            - exp-bbv.bench_bubble_sort.empty.log.base@foo
+            - exp-bbv.bench_bubble_sort.empty.out.bb
+            - exp-bbv.bench_bubble_sort.empty.out.bb.base@foo
+            - exp-bbv.bench_bubble_sort.empty.out.pc
+            - exp-bbv.bench_bubble_sort.empty.out.pc.base@foo
+            - helgrind.bench_bubble_sort.empty.log
+            - helgrind.bench_bubble_sort.empty.log.base@foo
+            - massif.bench_bubble_sort.empty.log
+            - massif.bench_bubble_sort.empty.log.base@foo
+            - massif.bench_bubble_sort.empty.out
+            - massif.bench_bubble_sort.empty.out.base@foo
+            - memcheck.bench_bubble_sort.empty.log
+            - memcheck.bench_bubble_sort.empty.log.base@foo
+            - summary.json
+      - group: bench_group
+        function: bench_bubble_sort
+        id: worst_case_4000
+        expected:
+          files:
+            - callgrind.bench_bubble_sort.worst_case_4000.log
+            - callgrind.bench_bubble_sort.worst_case_4000.log.base@foo
+            - callgrind.bench_bubble_sort.worst_case_4000.out
+            - callgrind.bench_bubble_sort.worst_case_4000.out.base@foo
+            - dhat.bench_bubble_sort.worst_case_4000.log
+            - dhat.bench_bubble_sort.worst_case_4000.log.base@foo
+            - dhat.bench_bubble_sort.worst_case_4000.out
+            - dhat.bench_bubble_sort.worst_case_4000.out.base@foo
+            - drd.bench_bubble_sort.worst_case_4000.log
+            - drd.bench_bubble_sort.worst_case_4000.log.base@foo
+            - exp-bbv.bench_bubble_sort.worst_case_4000.log
+            - exp-bbv.bench_bubble_sort.worst_case_4000.log.base@foo
+            - exp-bbv.bench_bubble_sort.worst_case_4000.out.bb
+            - exp-bbv.bench_bubble_sort.worst_case_4000.out.bb.base@foo
+            - exp-bbv.bench_bubble_sort.worst_case_4000.out.pc
+            - exp-bbv.bench_bubble_sort.worst_case_4000.out.pc.base@foo
+            - helgrind.bench_bubble_sort.worst_case_4000.log
+            - helgrind.bench_bubble_sort.worst_case_4000.log.base@foo
+            - massif.bench_bubble_sort.worst_case_4000.log
+            - massif.bench_bubble_sort.worst_case_4000.log.base@foo
+            - massif.bench_bubble_sort.worst_case_4000.out
+            - massif.bench_bubble_sort.worst_case_4000.out.base@foo
+            - memcheck.bench_bubble_sort.worst_case_4000.log
+            - memcheck.bench_bubble_sort.worst_case_4000.log.base@foo
+            - summary.json
+      - group: bench_group
+        function: bench_subprocess
+        id: with_modifier
+        expected:
+          files:
+            - callgrind.bench_subprocess.with_modifier.log
+            - callgrind.bench_subprocess.with_modifier.log.base@foo
+            - callgrind.bench_subprocess.with_modifier.out
+            - callgrind.bench_subprocess.with_modifier.out.base@foo
+            - summary.json
+          globs:
+            - pattern: dhat.bench_subprocess.with_modifier.log.*.base@foo
+              count: 2
+            - pattern: dhat.bench_subprocess.with_modifier.out.*.base@foo
+              count: 2
+            - pattern: dhat.bench_subprocess.with_modifier.log.*
+              count: 4
+            - pattern: dhat.bench_subprocess.with_modifier.out.*
+              count: 4
+      - group: bench_group
+        function: bench_subprocess
+        id: without_modifier
+        expected:
+          files:
+            - callgrind.bench_subprocess.without_modifier.log
+            - callgrind.bench_subprocess.without_modifier.log.base@foo
+            - callgrind.bench_subprocess.without_modifier.out
+            - callgrind.bench_subprocess.without_modifier.out.base@foo
+            - dhat.bench_subprocess.without_modifier.log
+            - dhat.bench_subprocess.without_modifier.log.base@foo
+            - dhat.bench_subprocess.without_modifier.out
+            - dhat.bench_subprocess.without_modifier.out.base@foo
+            - summary.json
+      - group: bench_group
+        function: bad_memory
+        id: null
+        expected:
+          files:
+            - callgrind.bad_memory.log
+            - callgrind.bad_memory.log.base@foo
+            - callgrind.bad_memory.out
+            - callgrind.bad_memory.out.base@foo
+            - dhat.bad_memory.log
+            - dhat.bad_memory.log.base@foo
+            - dhat.bad_memory.out
+            - dhat.bad_memory.out.base@foo
+            - massif.bad_memory.log
+            - massif.bad_memory.log.base@foo
+            - massif.bad_memory.out
+            - massif.bad_memory.out.base@foo
+            - memcheck.bad_memory.log
+            - memcheck.bad_memory.log.base@foo
+            - summary.json
+  - data:
+      - group: bench_group
+        function: bench_bubble_sort_allocate
+        id: null
+        expected:
+          files:
+            - callgrind.bench_bubble_sort_allocate.log
+            - callgrind.bench_bubble_sort_allocate.log.base@foo
+            - callgrind.bench_bubble_sort_allocate.log.old
+            - callgrind.bench_bubble_sort_allocate.out
+            - callgrind.bench_bubble_sort_allocate.out.base@foo
+            - callgrind.bench_bubble_sort_allocate.out.old
+            - dhat.bench_bubble_sort_allocate.log
+            - dhat.bench_bubble_sort_allocate.log.base@foo
+            - dhat.bench_bubble_sort_allocate.log.old
+            - dhat.bench_bubble_sort_allocate.out
+            - dhat.bench_bubble_sort_allocate.out.base@foo
+            - dhat.bench_bubble_sort_allocate.out.old
+            - drd.bench_bubble_sort_allocate.log
+            - drd.bench_bubble_sort_allocate.log.base@foo
+            - drd.bench_bubble_sort_allocate.log.old
+            - exp-bbv.bench_bubble_sort_allocate.log
+            - exp-bbv.bench_bubble_sort_allocate.log.base@foo
+            - exp-bbv.bench_bubble_sort_allocate.log.old
+            - exp-bbv.bench_bubble_sort_allocate.out.bb
+            - exp-bbv.bench_bubble_sort_allocate.out.bb.base@foo
+            - exp-bbv.bench_bubble_sort_allocate.out.bb.old
+            - exp-bbv.bench_bubble_sort_allocate.out.pc
+            - exp-bbv.bench_bubble_sort_allocate.out.pc.base@foo
+            - exp-bbv.bench_bubble_sort_allocate.out.pc.old
+            - helgrind.bench_bubble_sort_allocate.log
+            - helgrind.bench_bubble_sort_allocate.log.base@foo
+            - helgrind.bench_bubble_sort_allocate.log.old
+            - massif.bench_bubble_sort_allocate.log
+            - massif.bench_bubble_sort_allocate.log.base@foo
+            - massif.bench_bubble_sort_allocate.log.old
+            - massif.bench_bubble_sort_allocate.out
+            - massif.bench_bubble_sort_allocate.out.base@foo
+            - massif.bench_bubble_sort_allocate.out.old
+            - memcheck.bench_bubble_sort_allocate.log
+            - memcheck.bench_bubble_sort_allocate.log.base@foo
+            - memcheck.bench_bubble_sort_allocate.log.old
+            - summary.json
+      - group: bench_group
+        function: bench_bubble_sort
+        id: empty
+        expected:
+          files:
+            - callgrind.bench_bubble_sort.empty.log
+            - callgrind.bench_bubble_sort.empty.log.base@foo
+            - callgrind.bench_bubble_sort.empty.log.old
+            - callgrind.bench_bubble_sort.empty.out
+            - callgrind.bench_bubble_sort.empty.out.base@foo
+            - callgrind.bench_bubble_sort.empty.out.old
+            - dhat.bench_bubble_sort.empty.log
+            - dhat.bench_bubble_sort.empty.log.base@foo
+            - dhat.bench_bubble_sort.empty.log.old
+            - dhat.bench_bubble_sort.empty.out
+            - dhat.bench_bubble_sort.empty.out.base@foo
+            - dhat.bench_bubble_sort.empty.out.old
+            - drd.bench_bubble_sort.empty.log
+            - drd.bench_bubble_sort.empty.log.base@foo
+            - drd.bench_bubble_sort.empty.log.old
+            - exp-bbv.bench_bubble_sort.empty.log
+            - exp-bbv.bench_bubble_sort.empty.log.base@foo
+            - exp-bbv.bench_bubble_sort.empty.log.old
+            - exp-bbv.bench_bubble_sort.empty.out.bb
+            - exp-bbv.bench_bubble_sort.empty.out.bb.base@foo
+            - exp-bbv.bench_bubble_sort.empty.out.bb.old
+            - exp-bbv.bench_bubble_sort.empty.out.pc
+            - exp-bbv.bench_bubble_sort.empty.out.pc.base@foo
+            - exp-bbv.bench_bubble_sort.empty.out.pc.old
+            - helgrind.bench_bubble_sort.empty.log
+            - helgrind.bench_bubble_sort.empty.log.base@foo
+            - helgrind.bench_bubble_sort.empty.log.old
+            - massif.bench_bubble_sort.empty.log
+            - massif.bench_bubble_sort.empty.log.base@foo
+            - massif.bench_bubble_sort.empty.log.old
+            - massif.bench_bubble_sort.empty.out
+            - massif.bench_bubble_sort.empty.out.base@foo
+            - massif.bench_bubble_sort.empty.out.old
+            - memcheck.bench_bubble_sort.empty.log
+            - memcheck.bench_bubble_sort.empty.log.base@foo
+            - memcheck.bench_bubble_sort.empty.log.old
+            - summary.json
+      - group: bench_group
+        function: bench_bubble_sort
+        id: worst_case_4000
+        expected:
+          files:
+            - callgrind.bench_bubble_sort.worst_case_4000.log
+            - callgrind.bench_bubble_sort.worst_case_4000.log.base@foo
+            - callgrind.bench_bubble_sort.worst_case_4000.log.old
+            - callgrind.bench_bubble_sort.worst_case_4000.out
+            - callgrind.bench_bubble_sort.worst_case_4000.out.base@foo
+            - callgrind.bench_bubble_sort.worst_case_4000.out.old
+            - dhat.bench_bubble_sort.worst_case_4000.log
+            - dhat.bench_bubble_sort.worst_case_4000.log.base@foo
+            - dhat.bench_bubble_sort.worst_case_4000.log.old
+            - dhat.bench_bubble_sort.worst_case_4000.out
+            - dhat.bench_bubble_sort.worst_case_4000.out.base@foo
+            - dhat.bench_bubble_sort.worst_case_4000.out.old
+            - drd.bench_bubble_sort.worst_case_4000.log
+            - drd.bench_bubble_sort.worst_case_4000.log.base@foo
+            - drd.bench_bubble_sort.worst_case_4000.log.old
+            - exp-bbv.bench_bubble_sort.worst_case_4000.log
+            - exp-bbv.bench_bubble_sort.worst_case_4000.log.base@foo
+            - exp-bbv.bench_bubble_sort.worst_case_4000.log.old
+            - exp-bbv.bench_bubble_sort.worst_case_4000.out.bb
+            - exp-bbv.bench_bubble_sort.worst_case_4000.out.bb.base@foo
+            - exp-bbv.bench_bubble_sort.worst_case_4000.out.bb.old
+            - exp-bbv.bench_bubble_sort.worst_case_4000.out.pc
+            - exp-bbv.bench_bubble_sort.worst_case_4000.out.pc.base@foo
+            - exp-bbv.bench_bubble_sort.worst_case_4000.out.pc.old
+            - helgrind.bench_bubble_sort.worst_case_4000.log
+            - helgrind.bench_bubble_sort.worst_case_4000.log.base@foo
+            - helgrind.bench_bubble_sort.worst_case_4000.log.old
+            - massif.bench_bubble_sort.worst_case_4000.log
+            - massif.bench_bubble_sort.worst_case_4000.log.base@foo
+            - massif.bench_bubble_sort.worst_case_4000.log.old
+            - massif.bench_bubble_sort.worst_case_4000.out
+            - massif.bench_bubble_sort.worst_case_4000.out.base@foo
+            - massif.bench_bubble_sort.worst_case_4000.out.old
+            - memcheck.bench_bubble_sort.worst_case_4000.log
+            - memcheck.bench_bubble_sort.worst_case_4000.log.base@foo
+            - memcheck.bench_bubble_sort.worst_case_4000.log.old
+            - summary.json
+      - group: bench_group
+        function: bench_subprocess
+        id: with_modifier
+        expected:
+          files:
+            - callgrind.bench_subprocess.with_modifier.log
+            - callgrind.bench_subprocess.with_modifier.log.base@foo
+            - callgrind.bench_subprocess.with_modifier.log.old
+            - callgrind.bench_subprocess.with_modifier.out
+            - callgrind.bench_subprocess.with_modifier.out.base@foo
+            - callgrind.bench_subprocess.with_modifier.out.old
+            - summary.json
+          globs:
+            - pattern: dhat.bench_subprocess.with_modifier.log.*.base@foo
+              count: 2
+            - pattern: dhat.bench_subprocess.with_modifier.out.*.base@foo
+              count: 2
+            - pattern: dhat.bench_subprocess.with_modifier.log.*
+              count: 6
+            - pattern: dhat.bench_subprocess.with_modifier.out.*
+              count: 6
+            - pattern: dhat.bench_subprocess.with_modifier.log.*.old
+              count: 2
+            - pattern: dhat.bench_subprocess.with_modifier.out.*.old
+              count: 2
+      - group: bench_group
+        function: bench_subprocess
+        id: without_modifier
+        expected:
+          files:
+            - callgrind.bench_subprocess.without_modifier.log
+            - callgrind.bench_subprocess.without_modifier.log.base@foo
+            - callgrind.bench_subprocess.without_modifier.log.old
+            - callgrind.bench_subprocess.without_modifier.out
+            - callgrind.bench_subprocess.without_modifier.out.base@foo
+            - callgrind.bench_subprocess.without_modifier.out.old
+            - dhat.bench_subprocess.without_modifier.log
+            - dhat.bench_subprocess.without_modifier.log.base@foo
+            - dhat.bench_subprocess.without_modifier.log.old
+            - dhat.bench_subprocess.without_modifier.out
+            - dhat.bench_subprocess.without_modifier.out.base@foo
+            - dhat.bench_subprocess.without_modifier.out.old
+            - summary.json
+      - group: bench_group
+        function: bad_memory
+        id: null
+        expected:
+          files:
+            - callgrind.bad_memory.log
+            - callgrind.bad_memory.log.base@foo
+            - callgrind.bad_memory.log.old
+            - callgrind.bad_memory.out
+            - callgrind.bad_memory.out.base@foo
+            - callgrind.bad_memory.out.old
+            - dhat.bad_memory.log
+            - dhat.bad_memory.log.base@foo
+            - dhat.bad_memory.log.old
+            - dhat.bad_memory.out
+            - dhat.bad_memory.out.base@foo
+            - dhat.bad_memory.out.old
+            - massif.bad_memory.log
+            - massif.bad_memory.log.base@foo
+            - massif.bad_memory.log.old
+            - massif.bad_memory.out
+            - massif.bad_memory.out.base@foo
+            - massif.bad_memory.out.old
+            - memcheck.bad_memory.log
+            - memcheck.bad_memory.log.base@foo
+            - memcheck.bad_memory.log.old
+            - summary.json
