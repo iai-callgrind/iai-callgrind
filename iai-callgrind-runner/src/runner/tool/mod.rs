@@ -525,13 +525,15 @@ impl ToolOutputPath {
         Self {
             kind: match (&self.kind, &self.baseline_kind) {
                 (ToolOutputPathKind::Out, BaselineKind::Old) => ToolOutputPathKind::OldOut,
-                (ToolOutputPathKind::Out, BaselineKind::Name(name)) => {
-                    ToolOutputPathKind::Base(name.to_string())
-                }
+                (
+                    ToolOutputPathKind::Out | ToolOutputPathKind::Base(_),
+                    BaselineKind::Name(name),
+                ) => ToolOutputPathKind::Base(name.to_string()),
                 (ToolOutputPathKind::Log, BaselineKind::Old) => ToolOutputPathKind::OldLog,
-                (ToolOutputPathKind::Log, BaselineKind::Name(name)) => {
-                    ToolOutputPathKind::BaseLog(name.to_string())
-                }
+                (
+                    ToolOutputPathKind::Log | ToolOutputPathKind::BaseLog(_),
+                    BaselineKind::Name(name),
+                ) => ToolOutputPathKind::BaseLog(name.to_string()),
                 (kind, _) => kind.clone(),
             },
             tool: self.tool,
