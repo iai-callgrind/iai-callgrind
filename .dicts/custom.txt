@@ -106,6 +106,7 @@ malloclike
 massif
 memalign
 metapool
+minijinja
 mips
 mipsel
 mispredicted

@@ -21,7 +21,8 @@ iai-callgrind = { path = "../iai-callgrind", features = [
   "client_requests_defs",
 ] }
 iai-callgrind-runner = { path = "../iai-callgrind-runner" }
-new_string_template = { workspace = true }
+minijinja = { workspace = true }
+once_cell = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
@@ -101,4 +102,8 @@ harness = false
 
 [[bench]]
 name = "test_lib_bench_tools"
+harness = false
+
+[[bench]]
+name = "test_bench"
 harness = false
