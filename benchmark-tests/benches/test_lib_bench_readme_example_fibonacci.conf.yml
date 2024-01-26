@@ -1,0 +1,8 @@
+groups:
+  - runs:
+      - args: []
+        expected:
+          files: test_lib_bench_readme_example_fibonacci.expected.1.yml
+      - args: []
+        expected:
+          files: test_lib_bench_readme_example_fibonacci.expected.2.yml

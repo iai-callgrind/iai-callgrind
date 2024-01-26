@@ -1,0 +1,34 @@
+groups:
+  - runs:
+      - args: []
+        expected:
+          files: test_lib_bench_tools.expected.1a.yml
+      - args: []
+        expected:
+          files: test_lib_bench_tools.expected.1b.yml
+  - runs:
+      - args: ["--save-baseline=foo"]
+        expected:
+          files: test_lib_bench_tools.expected.2a.yml
+      - args: ["--save-baseline=foo"]
+        expected:
+          files: test_lib_bench_tools.expected.2b.yml
+      - args: ["--save-baseline=bar"]
+        expected:
+          files: test_lib_bench_tools.expected.2c.yml
+      - args: ["--load-baseline=bar", "--baseline=foo"]
+        expected:
+          files: test_lib_bench_tools.expected.2d.yml
+  - runs:
+      - args: []
+        expected:
+          files: test_lib_bench_tools.expected.3a.yml
+      - args: ["--save-baseline=foo"]
+        expected:
+          files: test_lib_bench_tools.expected.3b.yml
+      - args: ["--baseline=foo"]
+        expected:
+          files: test_lib_bench_tools.expected.3c.yml
+      - args: []
+        expected:
+          files: test_lib_bench_tools.expected.3d.yml

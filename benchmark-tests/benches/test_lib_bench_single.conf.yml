@@ -1,0 +1,18 @@
+template: test_lib_bench_single.rs.j2
+groups:
+  - runs:
+      - args: ["--save-baseline=foo"]
+        expected:
+          files: test_lib_bench_single.expected.1.yml
+        template_data:
+          worst_case_start: 10
+      - args: ["--save-baseline=bar"]
+        expected:
+          files: test_lib_bench_single.expected.2.yml
+        template_data:
+          worst_case_start: 20
+      - args: ["--load-baseline=bar", "--baseline=foo"]
+        expected:
+          files: test_lib_bench_single.expected.3.yml
+        template_data:
+          worst_case_start: 20

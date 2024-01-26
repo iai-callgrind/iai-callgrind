@@ -1,0 +1,11 @@
+data:
+  - group: bench_group
+    function: bench_bubble_sort
+    id: worst_case
+    expected:
+      files:
+        - callgrind.bench_bubble_sort.worst_case.log.base@bar
+        - callgrind.bench_bubble_sort.worst_case.log.base@foo
+        - callgrind.bench_bubble_sort.worst_case.out.base@bar
+        - callgrind.bench_bubble_sort.worst_case.out.base@foo
+        - summary.json
