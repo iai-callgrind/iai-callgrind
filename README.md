@@ -97,20 +97,20 @@ To start with Iai-Callgrind, add the following to your `Cargo.toml` file:
 
 ```toml
 [dev-dependencies]
-iai-callgrind = "0.10.1"
+iai-callgrind = "0.10.2"
 ```
 
 To be able to run the benchmarks you'll also need the `iai-callgrind-runner` binary installed
 somewhere in your `$PATH`, for example with
 
 ```shell
-cargo install --version 0.10.1 iai-callgrind-runner
+cargo install --version 0.10.2 iai-callgrind-runner
 ```
 
 or with `binstall`
 
 ```shell
-cargo binstall iai-callgrind-runner@0.10.1
+cargo binstall iai-callgrind-runner@0.10.2
 ```
 
 There's also the possibility to install the binary somewhere else and point the
@@ -118,7 +118,7 @@ There's also the possibility to install the binary somewhere else and point the
 binary like so:
 
 ```shell
-cargo install --version 0.10.1 --root /tmp iai-callgrind-runner
+cargo install --version 0.10.2 --root /tmp iai-callgrind-runner
 IAI_CALLGRIND_RUNNER=/tmp/bin/iai-callgrind-runner cargo bench --bench my-bench
 ```
 
@@ -660,7 +660,7 @@ Client requests are deactivated by default but can be activated with the
 
 ```toml
 [dev-dependencies]
-iai-callgrind = { version = "0.10.1", features = ["client_requests"] }
+iai-callgrind = { version = "0.10.2", features = ["client_requests"] }
 ```
 
 If you need the client requests in your production code, you usually don't want
@@ -671,12 +671,12 @@ benchmarks. You can achieve that by adding `iai-callgrind` with the
 
 ```toml
 [dependencies]
-iai-callgrind = { version = "0.10.1", default-features = false, features = [
+iai-callgrind = { version = "0.10.2", default-features = false, features = [
     "client_requests_defs"
 ] }
 
 [dev-dependencies]
-iai-callgrind = { version = "0.10.1", features = ["client_requests"] }
+iai-callgrind = { version = "0.10.2", features = ["client_requests"] }
 ```
 
 With just the `client_requests_defs` feature activated, the client requests
@@ -713,7 +713,7 @@ path would be `IAI_CALLGRIND_VALGRIND_INCLUDE=/home/foo/repo` (not
 `/home/foo/repo/valgrind`)
 
 This was just a small introduction, please see the
-[docs](https://docs.rs/iai-callgrind/0.10.1/iai_callgrind/client_requests) for
+[docs](https://docs.rs/iai-callgrind/0.10.2/iai_callgrind/client_requests) for
 more details!
 
 ### Flamegraphs
@@ -929,5 +929,5 @@ about license incompatibility.
 We have included the original license where we make use of the original header
 files.
 
-[`library documentation`]: https://docs.rs/iai-callgrind/0.10.1/iai_callgrind/
-[docs]: https://docs.rs/iai-callgrind/0.10.1/iai_callgrind/
+[`library documentation`]: https://docs.rs/iai-callgrind/0.10.2/iai_callgrind/
+[docs]: https://docs.rs/iai-callgrind/0.10.2/iai_callgrind/

@@ -22,7 +22,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-### [0.10.1] - 2023-01-22
+## [0.10.2] - 2023-01-25
+
+### Changed
+
+* Update locked dependencies
+
+### Fixed
+
+* ([#84](https://github.com/iai-callgrind/iai-callgrind/pull/84)): Fix an error
+  when `--load-baseline` loads the dataset from the `--baseline` argument. This
+  error led to a comparison of the `--baseline` dataset with itself.
+
+## [0.10.1] - 2023-01-22
 
 ### Changed
 
@@ -35,7 +47,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   advisory RUSTSEC-2024-0006 of shlex dependency and update shlex to 1.3.0. Use
   `shlex::try_join` instead of deprecated `shlex::join`.
 
-### [0.10.0] - 2023-01-09
+## [0.10.0] - 2023-01-09
 
 ### Added
 
@@ -70,7 +82,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   `lazy_static` dependency of `iai-callgrind-runner` is now optional and not
   unnecessarily installed with the `iai-callgrind` package.
 
-### [0.9.0] - 2023-12-09
+## [0.9.0] - 2023-12-09
 
 ### Added
 
@@ -132,7 +144,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   output after the log file content to see all error output of valgrind.
 * Update the yanked wasm-bindgen `0.2.88` to `0.2.89`
 
-### [0.8.0] - 2023-11-10
+## [0.8.0] - 2023-11-10
 
 ### Added
 
@@ -190,7 +202,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   `--help-dyn-options`, `--version` may cause problems and these arguments are now
   ignored.
 
-### [0.7.3] - 2023-10-24
+## [0.7.3] - 2023-10-24
 
 ### Changed
 
@@ -198,7 +210,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * Lower the locked inferno dependency to `0.11.12` to workaround yanked `ahash`
   version `0.8.3`
 
-### [0.7.2] - 2023-10-18
+## [0.7.2] - 2023-10-18
 
 ### Added
 
@@ -212,14 +224,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * Some small fixes of parsing callgrind output files in the event that no
   records are present.
 
-### [0.7.1] - 2023-09-27
+## [0.7.1] - 2023-09-27
 
 ### Fixed
 
 * ([#20](https://github.com/iai-callgrind/iai-callgrind/issues/20)): Clearing the
   environment variables with `env_clear` may break finding valgrind.
 
-### [0.7.0] - 2023-09-21
+## [0.7.0] - 2023-09-21
 
 The old api to setup library benchmarks using only the `main!` macro is deprecated and was removed.
 See the [README](./README.md) for a description of the new api.
@@ -304,7 +316,7 @@ produces event counts of zero.
 callgrind arguments to callgrind's parsing of command-line arguments. Now, only exact matches of
 `yes` and `no` are considered to be valid command-line arguments.
 
-### [0.6.2] - 2023-09-01
+## [0.6.2] - 2023-09-01
 
 ### Changed
 
@@ -320,7 +332,7 @@ file locks the dependencies to versions which are compatible with the current MS
 * Changed the license from `Apache-2.0 AND MIT` to `Apache-2.0 OR MIT` in Cargo.toml
 files of all packages
 
-### [0.6.1] - 2023-08-25
+## [0.6.1] - 2023-08-25
 
 ### Fixed
 
@@ -328,7 +340,7 @@ files of all packages
 directory of iai callgrind output files changes from `/workspace/$CARGO_PKG_NAME/target/iai` to
 `/workspace/target/iai/$CARGO_PKG_NAME` and respects the `CARGO_TARGET_DIR` environment variable
 
-### [0.6.0] - 2023-08-20
+## [0.6.0] - 2023-08-20
 
 ### Added
 
@@ -347,7 +359,7 @@ binary anymore.
 * The filename for callgrind output files is now truncated to a maximum of 255 bytes
 * library benchmarks: Fix event counting to include costs of inlined functions
 
-### [0.5.0] - 2023-08-07
+## [0.5.0] - 2023-08-07
 
 ### Added
 
@@ -370,7 +382,7 @@ binary
 
 * If running with ASLR disabled, proccontrol on freebsd was missing to run the valgrind binary
 
-### [0.4.0] - 2023-07-19
+## [0.4.0] - 2023-07-19
 
 BREAKING: Counting of events changed and therefore event counters are incompatible with versions
 before `0.4.0`. Usually, event counters are now lower and more precise than before.
@@ -387,7 +399,7 @@ before `0.4.0`. Usually, event counters are now lower and more precise than befo
 * Counting of events was sometimes summarizing the events of the `main` function instead of the
 benchmarking function
 
-### [0.3.1] - 2023-03-13
+## [0.3.1] - 2023-03-13
 
 ### Added
 
@@ -397,7 +409,7 @@ benchmarking function
 
 * The version mismatch check should cause an error when the library version is < 0.3.0
 
-### [0.3.0] - 2023-03-13
+## [0.3.0] - 2023-03-13
 
 This version is incompatible to previous versions due to changes in the `main!` macro which is
 passing additional arguments to the runner. However, benchmarks written with a version before
@@ -422,7 +434,7 @@ callgrind.
 
 * A cargo filter argument which is a positional argument resulted in the the runner to crash.
 
-### [0.2.0] - 2023-03-10
+## [0.2.0] - 2023-03-10
 
 This version is mostly compatible with `v0.1.0` but needs some additional setup. See
 [Installation](README.md#installation) in the README. Benchmarks created with `v0.1.0` should not
@@ -437,7 +449,7 @@ with the runner needed to run the benchmarks
 * The output of the collected event counters and metrics has changed
 * Other improvements to stabilize the metrics across different systems
 
-### [0.1.0] - 2023-03-08
+## [0.1.0] - 2023-03-08
 
 ### Added
 
