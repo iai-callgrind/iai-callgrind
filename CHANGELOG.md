@@ -22,6 +22,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### [0.10.2] - 2023-01-25
+
+### Changed
+
+* Update locked dependencies
+
+### Fixed
+
+* ([#84](https://github.com/iai-callgrind/iai-callgrind/pull/84)): Fix an error
+  when `--load-baseline` loads the dataset from the `--baseline` argument. This
+  error led to a comparison of the `--baseline` dataset with itself.
+
 ### [0.10.1] - 2023-01-22
 
 ### Changed
