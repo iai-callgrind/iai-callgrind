@@ -4,15 +4,18 @@ groups:
       - args: ["--save-baseline=foo"]
         expected:
           files: test_lib_bench_single.expected.1.yml
+          stdout: test_lib_bench_single.stdout.1
         template_data:
           worst_case_start: 10
       - args: ["--save-baseline=bar"]
         expected:
           files: test_lib_bench_single.expected.2.yml
+          stdout: test_lib_bench_single.stdout.2
         template_data:
           worst_case_start: 20
       - args: ["--load-baseline=bar", "--baseline=foo"]
         expected:
           files: test_lib_bench_single.expected.3.yml
+          stdout: test_lib_bench_single.stdout.3
         template_data:
           worst_case_start: 20
