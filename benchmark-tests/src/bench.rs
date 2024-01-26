@@ -1,22 +1,62 @@
 use std::collections::{HashMap, HashSet};
+use std::fmt::Write;
 use std::fs::File;
+use std::io::{stderr, stdout, BufRead, Read, Write as IOWrite};
 use std::path::{Path, PathBuf};
+use std::process::{Output, Stdio};
 
 use colored::Colorize;
 use glob::glob;
 use iai_callgrind_runner::runner::summary::BenchmarkSummary;
-use new_string_template::template::Template;
+use lazy_static::lazy_static;
+use minijinja::Environment;
+use once_cell::sync::OnceCell;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use valico::json_schema;
 use valico::json_schema::schema::ScopedSchema;
 
 const PACKAGE: &str = "benchmark-tests";
+const TEMPLATE_BENCH_NAME: &str = "test_bench";
+static TEMPLATE_DATA: OnceCell<HashMap<String, minijinja::Value>> = OnceCell::new();
 
-#[derive(Debug, Serialize, Deserialize)]
-struct ExpectedGlob {
-    pattern: String,
-    count: usize,
+lazy_static! {
+    static ref NUMBERS_RE: Regex = Regex::new(
+        r"(?x)
+            (?<desc>\s+.+:\s*)(?<comp1>[0-9]+|N/A)\|(?<comp2>[0-9]+|N/A)
+            (?<diff>
+                (?<diff_percent>(?<white1>\s*)(?<percent>\(.*\)))
+                (?<diff_factor>(?<white2>\s*)(?<factor>\[.*\]))?
+            )?"
+    )
+    .expect("Regex should compile");
+}
+
+#[derive(Debug, Clone)]
+struct Benchmark {
+    name: String,
+    bench_name: String,
+    config: Config,
+    dest_dir: PathBuf,
+}
+
+#[derive(Debug)]
+struct BenchmarkOutput(Output);
+
+#[derive(Debug)]
+pub struct BenchmarkRunner {
+    metadata: Metadata,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GroupConfig {
+    runs: Vec<RunConfig>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct Config {
+    template: Option<PathBuf>,
+    groups: Vec<GroupConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -28,6 +68,22 @@ struct Expected {
     summary: Option<BenchmarkSummary>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct ExpectedConfig {
+    #[serde(default)]
+    files: Option<PathBuf>,
+    #[serde(default)]
+    stdout: Option<PathBuf>,
+    #[serde(default)]
+    stderr: Option<PathBuf>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ExpectedGlob {
+    pattern: String,
+    count: usize,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct ExpectedRun {
     group: String,
@@ -37,180 +93,254 @@ struct ExpectedRun {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct RunConfig {
-    #[serde(default)]
-    args: Vec<String>,
-    data: Vec<ExpectedRun>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 struct ExpectedRuns {
-    runs: Vec<RunConfig>,
-}
-
-#[derive(Debug, Clone)]
-struct Benchmark {
-    name: String,
-    base_dir: PathBuf,
-    expected_paths: Vec<PathBuf>,
-    template_data: HashMap<String, String>,
+    data: Vec<ExpectedRun>,
 }
 
 #[derive(Debug, Clone)]
 struct Metadata {
     workspace_root: PathBuf,
     target_directory: PathBuf,
-    _package_dir: PathBuf,
     benchmarks: Vec<Benchmark>,
+    benches_dir: PathBuf,
 }
 
-#[derive(Debug)]
-pub struct BenchmarkRunner {
-    metadata: Metadata,
-}
-
-impl Metadata {
-    pub fn new() -> Self {
-        let meta = cargo_metadata::MetadataCommand::new()
-            .no_deps()
-            .exec()
-            .unwrap();
-
-        let package_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let workspace_root = meta.workspace_root.clone().into_std_path_buf();
-        let target_directory = meta.target_directory.clone().into_std_path_buf();
-        let benchmarks = meta
-            .workspace_packages()
-            .iter()
-            .find(|p| p.name == PACKAGE)
-            .unwrap()
-            .targets
-            .iter()
-            .filter(|&t| t.kind.contains(&"bench".to_owned()))
-            .map(|t| Benchmark::new(&t.name, &package_dir, &target_directory))
-            .collect::<Vec<Benchmark>>();
-
-        Self {
-            workspace_root,
-            target_directory,
-            _package_dir: package_dir,
-            benchmarks,
-        }
-    }
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct RunConfig {
+    #[serde(default)]
+    args: Vec<String>,
+    #[serde(default)]
+    template_data: HashMap<String, minijinja::Value>,
+    expected: Option<ExpectedConfig>,
 }
 
 impl Benchmark {
-    pub fn new(name: &str, package_dir: &Path, target_dir: &Path) -> Self {
-        let name = name.to_owned();
-        let expected_paths = glob(&format!(
-            "{}/{name}.expected*.json",
-            package_dir.join("benches").display()
-        ))
-        .unwrap()
-        .map(Result::unwrap)
-        .collect::<Vec<PathBuf>>();
-        let template_data = {
-            let mut map = HashMap::new();
-            map.insert(
-                "target_dir_sanitized".to_owned(),
-                target_dir
-                    .display()
-                    .to_string()
-                    .replace('/', "_")
-                    .to_owned(),
-            );
-            map
-        };
-        Benchmark {
-            expected_paths,
-            base_dir: target_dir.join("iai").join(PACKAGE).join(&name),
-            name,
-            template_data,
-        }
-    }
+    pub fn new(path: &Path, _package_dir: &Path, target_dir: &Path) -> Self {
+        let config: Config = serde_yaml::from_reader(File::open(path).expect("File should exist"))
+            .map_err(|error| format!("Failed to deserialize '{}': {error}", path.display()))
+            .expect("File should be deserializable");
 
-    pub fn is_verifiable(&self) -> bool {
-        !self.expected_paths.is_empty()
+        let name = path.file_name().unwrap().to_string_lossy();
+        let name = name.strip_suffix(".conf.yml").unwrap().to_owned();
+        let (bench_name, name) = if config.template.is_some() {
+            (String::from(TEMPLATE_BENCH_NAME), name)
+        } else {
+            (name.clone(), name.clone())
+        };
+
+        Benchmark {
+            dest_dir: target_dir.join("iai").join(PACKAGE).join(&bench_name),
+            bench_name,
+            name,
+            config,
+        }
     }
 
     pub fn clean_benchmark(&self) {
-        if self.base_dir.is_dir() {
-            std::fs::remove_dir_all(&self.base_dir).unwrap();
+        if self.dest_dir.is_dir() {
+            std::fs::remove_dir_all(&self.dest_dir).unwrap();
         }
     }
 
-    pub fn run_bench(&self, args: Vec<String>) {
+    pub fn run_bench(&self, args: &[String], capture: bool) -> Option<BenchmarkOutput> {
+        let stdio = if capture {
+            std::env::set_var("IAI_CALLGRIND_COLOR", "never");
+            Stdio::piped
+        } else {
+            std::env::set_var("IAI_CALLGRIND_COLOR", "auto");
+            Stdio::inherit
+        };
+
         let mut command = std::process::Command::new(env!("CARGO"));
-        command.args(["bench", "--package", PACKAGE, "--bench", &self.name]);
+        command.args(["bench", "--package", PACKAGE, "--bench", &self.bench_name]);
         if !args.is_empty() {
             command.arg("--");
             command.args(args);
         }
-        let status = command
-            .status()
+        let output = command
+            .stderr(stdio())
+            .stdout(stdio())
+            .output()
             .expect("Launching benchmark should succeed");
 
-        assert!(status.success(), "Expected run to be successful");
+        assert!(output.status.success(), "Expected run to be successful");
+
+        capture.then_some(BenchmarkOutput(output))
     }
 
-    pub fn run(&self, args: Vec<String>) {
-        self.clean_benchmark();
-        self.run_bench(args);
-    }
+    pub fn run_template(
+        &self,
+        template_path: &Path,
+        args: &[String],
+        template_data: &HashMap<String, minijinja::Value>,
+        meta: &Metadata,
+        capture: bool,
+    ) -> Option<BenchmarkOutput> {
+        let mut template_string = String::new();
+        File::open(meta.get_file(template_path))
+            .expect("File should exist")
+            .read_to_string(&mut template_string)
+            .expect("Reading to string should succeed");
 
-    pub fn run_asserted(&self, meta: &Metadata) {
-        for expected_path in &self.expected_paths {
-            let expected_runs: ExpectedRuns =
-                serde_json::from_reader(File::open(expected_path).expect("File should exist"))
-                    .map_err(|error| {
-                        format!(
-                            "Failed to deserialize '{}': {error}",
-                            expected_path.display()
-                        )
-                    })
-                    .expect("File should be deserializable");
-
-            self.clean_benchmark();
-
-            let schema: Value = serde_json::from_reader(
-                File::open(
-                    meta.workspace_root
-                        .join("iai-callgrind-runner/schemas/summary.v1.schema.json"),
-                )
-                .unwrap(),
-            )
+        let mut env = Environment::new();
+        env.add_template(&self.bench_name, &template_string)
             .unwrap();
-            let mut scope = json_schema::Scope::new();
-            let compiled = scope.compile_and_return(schema, false).unwrap();
-            for (index, runs) in expected_runs.runs.iter().enumerate() {
-                print_info(format!(
-                    "Running {}: ({}/{})",
-                    &self.name,
-                    index + 1,
-                    &expected_runs.runs.len()
-                ));
-                if !runs.args.is_empty() {
-                    print_info(format!("Benchmark arguments: {}", runs.args.join(" ")))
-                }
-                self.run_bench(runs.args.clone());
+        let template = env.get_template(&self.bench_name).unwrap();
 
-                for expected_run in &runs.data {
-                    expected_run.assert(&self.base_dir, &self.template_data, &compiled);
-                }
+        let dest = File::create(meta.get_bench_file(&self.bench_name)).unwrap();
+        template.render_to_write(template_data, dest).unwrap();
+
+        self.run_bench(args, capture)
+    }
+
+    pub fn run(&self, group: &GroupConfig, meta: &Metadata, schema: &ScopedSchema<'_>) {
+        self.clean_benchmark();
+
+        let num_runs = group.runs.len();
+        for (index, run) in group.runs.iter().enumerate() {
+            print_info(format!(
+                "Running {}: ({}/{})",
+                &self.name,
+                index + 1,
+                num_runs
+            ));
+
+            if !run.args.is_empty() {
+                print_info(format!("Benchmark arguments: {}", run.args.join(" ")))
+            }
+
+            let capture = run
+                .expected
+                .as_ref()
+                .map_or(false, |e| e.stdout.is_some() || e.stderr.is_some());
+
+            let output = if let Some(template) = &self.config.template {
+                self.run_template(template, &run.args, &run.template_data, meta, capture)
+            } else {
+                self.run_bench(&run.args, capture)
+            };
+
+            run.assert(meta, output, schema, &self.dest_dir);
+        }
+    }
+}
+
+impl BenchmarkOutput {
+    fn assert(&self, meta: &Metadata, expected: &ExpectedConfig) {
+        let output = &self.0;
+
+        eprintln!("STDERR:");
+        stderr().write_all(&output.stderr).unwrap();
+        println!("STDOUT:");
+        stdout().write_all(&output.stdout).unwrap();
+
+        if let Some(stderr) = &expected.stderr {
+            let mut expected_stderr: Vec<u8> = Vec::new();
+            File::open(meta.get_file(stderr))
+                .expect("File should exist")
+                .read_to_end(&mut expected_stderr)
+                .expect("Reading file should succeed");
+            let actual = String::from_utf8_lossy(&output.stderr);
+            let expected_string = String::from_utf8_lossy(&expected_stderr);
+            if actual != expected_string {
+                panic!(
+                    "Assertion failed: {}",
+                    pretty_assertions::StrComparison::new(&actual, &expected_string)
+                );
             }
         }
+
+        if let Some(stdout) = &expected.stdout {
+            let mut expected_stdout: Vec<u8> = Vec::new();
+            File::open(meta.get_file(stdout))
+                .expect("File should exist")
+                .read_to_end(&mut expected_stdout)
+                .expect("Reading file should succeed");
+            let filtered = self.filter_stdout(&output.stdout);
+            let expected_string = String::from_utf8_lossy(&expected_stdout);
+            if filtered != expected_string {
+                panic!(
+                    "Assertion failed: {}",
+                    pretty_assertions::StrComparison::new(&filtered, &expected_string)
+                );
+            }
+        }
+    }
+
+    fn filter_stdout(&self, stdout: &[u8]) -> String {
+        let mut result = String::new();
+        for line in stdout.lines().map(Result::unwrap) {
+            if let Some(caps) = NUMBERS_RE.captures(&line) {
+                let mut string = String::new();
+                let desc = caps.name("desc").unwrap().as_str();
+                let comp1 = {
+                    let cap = caps.name("comp1").unwrap().as_str();
+                    if cap.parse::<f64>().is_ok() {
+                        " ".repeat(cap.len())
+                    } else {
+                        cap.to_owned()
+                    }
+                };
+                let comp2 = {
+                    let cap = caps.name("comp2").unwrap().as_str();
+                    if cap.parse::<f64>().is_ok() {
+                        " ".repeat(cap.len())
+                    } else {
+                        cap.to_owned()
+                    }
+                };
+                write!(string, "{desc}{comp1}|{comp2}").unwrap();
+                if caps.name("diff_percent").is_some() {
+                    let white1 = caps.name("white1").unwrap().as_str();
+                    let percent = caps.name("percent").unwrap().as_str();
+                    let num = &percent[1..percent.len() - 2];
+                    if num.parse::<f64>().is_ok() {
+                        write!(
+                            string,
+                            "{white1}({}{}%)",
+                            num.chars().next().unwrap(),
+                            " ".repeat(num.len() - 1)
+                        )
+                        .unwrap();
+                    } else {
+                        write!(string, "{white1}{percent}").unwrap();
+                    }
+                }
+                if caps.name("diff_factor").is_some() {
+                    let white2 = caps.name("white2").unwrap().as_str();
+                    let factor = caps.name("factor").unwrap().as_str();
+                    let num = &factor[1..factor.len() - 2];
+                    if num.parse::<f64>().is_ok() {
+                        write!(
+                            string,
+                            "{white2}[{}{}x]",
+                            num.chars().next().unwrap(),
+                            " ".repeat(num.len() - 1)
+                        )
+                        .unwrap();
+                    } else {
+                        write!(string, "{white2}{factor}").unwrap();
+                    }
+                }
+                writeln!(result, "{string}").unwrap();
+            } else {
+                writeln!(result, "{line}").unwrap();
+            }
+        }
+
+        result
     }
 }
 
 impl BenchmarkRunner {
     #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
+    pub fn new(benches: &[String]) -> Self {
         Self {
-            metadata: Metadata::new(),
+            metadata: Metadata::new(benches),
         }
     }
 
-    pub fn run(&self, benchmarks: &[String]) -> Result<(), String> {
+    pub fn run(&self) -> Result<(), String> {
         std::env::set_var("IAI_CALLGRIND_SAVE_SUMMARY", "json");
         std::env::set_var(
             "IAI_CALLGRIND_RUNNER",
@@ -219,30 +349,23 @@ impl BenchmarkRunner {
                 .join("release/iai-callgrind-runner"),
         );
 
-        let benchmarks = if benchmarks.is_empty() {
-            self.metadata.benchmarks.iter().collect()
-        } else {
-            let mut benchmarks_to_run = vec![];
-            for benchmark in benchmarks {
-                if let Some(benchmark) = self
-                    .metadata
-                    .benchmarks
-                    .iter()
-                    .find(|b| &b.name == benchmark)
-                {
-                    benchmarks_to_run.push(benchmark);
-                } else {
-                    return Err(format!("Unknown benchmark: '{benchmark}'"));
-                }
-            }
-            benchmarks_to_run
-        };
+        let schema: serde_json::Value = serde_json::from_reader(
+            File::open(
+                self.metadata
+                    .workspace_root
+                    .join("iai-callgrind-runner/schemas/summary.v1.schema.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let mut scope = json_schema::Scope::new();
+        let compiled = scope.compile_and_return(schema, false).unwrap();
 
-        for bench in benchmarks {
-            if bench.is_verifiable() {
-                bench.run_asserted(&self.metadata);
-            } else {
-                bench.run(vec![]);
+        build_iai_callgrind_runner();
+
+        for bench in &self.metadata.benchmarks {
+            for group in &bench.config.groups {
+                bench.run(group, &self.metadata, &compiled);
             }
         }
 
@@ -251,15 +374,11 @@ impl BenchmarkRunner {
 }
 
 impl ExpectedRun {
-    pub fn assert(
-        &self,
-        base_dir: &Path,
-        template_data: &HashMap<String, String>,
-        schema: &ScopedSchema,
-    ) {
-        let function = Template::new(&self.function)
-            .render_string(template_data)
-            .expect("Rendering template string should succeed");
+    pub fn assert(&self, base_dir: &Path, schema: &ScopedSchema) {
+        let mut env = Environment::default();
+        env.add_template("function", &self.function).unwrap();
+        let template = env.get_template("function").unwrap();
+        let function = template.render(TEMPLATE_DATA.get().unwrap()).unwrap();
 
         let dir = if let Some(id) = &self.id {
             base_dir.join(&self.group).join(format!("{function}.{id}"))
@@ -322,7 +441,8 @@ impl ExpectedRun {
 
         if let Some(summary) = summary {
             print_info(format!("Validating summary {}", summary.display()));
-            let instance: Value = serde_json::from_reader(File::open(&summary).unwrap()).unwrap();
+            let instance: serde_json::Value =
+                serde_json::from_reader(File::open(&summary).unwrap()).unwrap();
             let result = schema.validate(&instance);
             if !result.is_valid() {
                 for error in result.errors {
@@ -337,6 +457,78 @@ impl ExpectedRun {
             dir.display(),
             real_files
         );
+    }
+}
+
+impl Metadata {
+    pub fn new(benches: &[String]) -> Self {
+        let meta = cargo_metadata::MetadataCommand::new()
+            .no_deps()
+            .exec()
+            .unwrap();
+
+        let package_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let benches_dir = package_dir.join("benches");
+        let workspace_root = meta.workspace_root.clone().into_std_path_buf();
+        let target_directory = meta.target_directory.clone().into_std_path_buf();
+        let benchmarks = glob(&format!("{}/*.conf.yml", benches_dir.display()))
+            .unwrap()
+            .map(Result::unwrap)
+            .filter(|path| {
+                if benches.is_empty() {
+                    true
+                } else {
+                    let name = path.file_name().unwrap().to_string_lossy();
+                    benches.contains(&name.strip_suffix(".conf.yml").unwrap().to_string())
+                }
+            })
+            .map(|path| Benchmark::new(&path, &package_dir, &target_directory))
+            .collect::<Vec<Benchmark>>();
+
+        Self {
+            workspace_root,
+            target_directory,
+            benchmarks,
+            benches_dir,
+        }
+    }
+
+    pub fn get_bench_file(&self, bench_name: &str) -> PathBuf {
+        self.get_file(format!("{bench_name}.rs"))
+    }
+
+    pub fn get_file<T>(&self, file_name: T) -> PathBuf
+    where
+        T: AsRef<Path>,
+    {
+        self.benches_dir.join(file_name.as_ref())
+    }
+}
+
+impl RunConfig {
+    fn assert(
+        &self,
+        meta: &Metadata,
+        output: Option<BenchmarkOutput>,
+        schema: &ScopedSchema<'_>,
+        dest_dir: &Path,
+    ) {
+        if let Some(expected) = &self.expected {
+            if let Some(output) = output {
+                output.assert(meta, expected);
+            }
+
+            if let Some(files) = &expected.files {
+                let expected_runs: ExpectedRuns = serde_yaml::from_reader(
+                    File::open(meta.get_file(files)).expect("File should exist"),
+                )
+                .map_err(|error| format!("Failed to deserialize '{}': {error}", files.display()))
+                .expect("File should be deserializable");
+                for expected in expected_runs.data {
+                    expected.assert(dest_dir, schema);
+                }
+            }
+        }
     }
 }
 
@@ -371,11 +563,24 @@ where
 fn main() {
     let benches = std::env::args().skip(1).collect::<Vec<String>>();
 
-    build_iai_callgrind_runner();
+    let runner = BenchmarkRunner::new(&benches);
 
-    let runner = BenchmarkRunner::new();
+    let mut map = HashMap::new();
+    map.insert(
+        "target_dir_sanitized".to_owned(),
+        minijinja::Value::from_serializable(
+            &runner
+                .metadata
+                .target_directory
+                .display()
+                .to_string()
+                .replace('/', "_"),
+        ),
+    );
 
-    if let Err(error) = runner.run(&benches) {
+    TEMPLATE_DATA.set(map).unwrap();
+
+    if let Err(error) = runner.run() {
         print_error(error);
     }
 }

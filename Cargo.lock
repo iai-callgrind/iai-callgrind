@@ -155,9 +155,14 @@ dependencies = [
  "glob",
  "iai-callgrind",
  "iai-callgrind-runner",
- "new_string_template",
+ "lazy_static",
+ "minijinja",
+ "once_cell",
+ "pretty_assertions",
+ "regex",
  "serde",
  "serde_json",
+ "serde_yaml",
  "valico",
 ]
 
@@ -935,20 +940,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "523dc4f511e55ab87b694dc30d0f820d60906ef06413f93d4d7a1385599cc149"
 
 [[package]]
+name = "minijinja"
+version = "1.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fe0ff215195a22884d867b547c70a0c4815cbbcc70991f281dca604b20d10ce"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
-
-[[package]]
-name = "new_string_template"
-version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7359c5bee6fe9218ccd4988120a23dc79d291e95486756969112d45efdc97d1"
-dependencies = [
- "lazy_static",
- "regex",
-]
 
 [[package]]
 name = "nom"

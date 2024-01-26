@@ -1,0 +1,5 @@
+groups:
+  - runs:
+      - args: []
+        expected:
+          files: test_bin_bench_readme_example.expected.yml
