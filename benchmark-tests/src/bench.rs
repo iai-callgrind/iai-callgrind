@@ -143,6 +143,14 @@ impl Benchmark {
     }
 
     pub fn run_bench(&self, args: &[String], capture: bool) -> Option<BenchmarkOutput> {
+        let stdio = if capture {
+            std::env::set_var("IAI_CALLGRIND_COLOR", "never");
+            Stdio::piped
+        } else {
+            std::env::set_var("IAI_CALLGRIND_COLOR", "auto");
+            Stdio::inherit
+        };
+
         let mut command = std::process::Command::new(env!("CARGO"));
         command.args(["bench", "--package", PACKAGE, "--bench", &self.bench_name]);
         if !args.is_empty() {
@@ -150,16 +158,8 @@ impl Benchmark {
             command.args(args);
         }
         let output = command
-            .stderr(if capture {
-                Stdio::piped()
-            } else {
-                Stdio::inherit()
-            })
-            .stdout(if capture {
-                Stdio::piped()
-            } else {
-                Stdio::inherit()
-            })
+            .stderr(stdio())
+            .stdout(stdio())
             .output()
             .expect("Launching benchmark should succeed");
 
