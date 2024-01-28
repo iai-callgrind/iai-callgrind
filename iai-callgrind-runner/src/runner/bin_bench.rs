@@ -887,6 +887,7 @@ impl Benchmark for BaselineBenchmark {
             &executable_args,
             &run_options,
             &out_path,
+            false,
         )?;
 
         Ok(benchmark_summary)
@@ -1120,11 +1121,6 @@ impl Benchmark for SaveBaselineBenchmark {
         let log_path = out_path.to_log_output();
         log_path.clear()?;
 
-        for path in benchmarkable.tools().output_paths(&out_path) {
-            path.clear()?;
-            path.to_log_output().clear()?;
-        }
-
         let mut benchmark_summary =
             benchmarkable.create_benchmark_summary(config, group, &out_path)?;
 
@@ -1180,6 +1176,7 @@ impl Benchmark for SaveBaselineBenchmark {
             &executable_args,
             &run_options,
             &out_path,
+            true,
         )?;
 
         Ok(benchmark_summary)

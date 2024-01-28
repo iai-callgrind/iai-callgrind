@@ -1,37 +1,29 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::iter;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use lazy_static::lazy_static;
-use log::debug;
 use regex::Regex;
 
 use crate::error::Error;
-use crate::runner::tool::logfile_parser::LogfileSummary;
-use crate::runner::tool::{Parser, ToolOutputPath};
+use crate::runner::costs::Costs;
+use crate::runner::summary::ToolRunSummary;
+use crate::runner::tool::logfile_parser::{
+    extract_pid, LogfileParser, LogfileSummary, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
+};
 use crate::util::make_relative;
 
 // The different regex have to consider --time-stamp=yes
 lazy_static! {
-    static ref EXTRACT_FIELDS_RE: Regex = regex::Regex::new(
-        r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--)\s*(?<key>.*?)\s*:\s*(?<value>.*)\s*$"
-    )
-    .expect("Regex should compile");
-    static ref EMPTY_LINE_RE: Regex =
-        regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--)\s*$")
-            .expect("Regex should compile");
-    static ref STRIP_PREFIX_RE: Regex =
-        regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--) (?<rest>.*)$")
-            .expect("Regex should compile");
-    static ref EXTRACT_PID_RE: Regex =
-        regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?(?<pid>[0-9]+)(==|--).*")
-            .expect("Regex should compile");
     static ref FIXUP_NUMBERS_RE: Regex =
         regex::Regex::new(r"([0-9]),([0-9])").expect("Regex should compile");
+    static ref COSTS_RE: Regex =
+        regex::Regex::new(r"([0-9]*) (\w*)(?: in ([0-9]*) (\w*))?").expect("Regex should compile");
 }
 
-pub struct LogfileParser {
+pub struct DhatLogfileParser {
     pub root_dir: PathBuf,
 }
 
@@ -44,7 +36,24 @@ enum State {
     Footer,
 }
 
-impl LogfileParser {
+fn fields_to_costs(fields: &[(String, String)]) -> Costs<String> {
+    let mut res = Costs::with_event_kinds([]);
+    for (field, value) in fields {
+        if let Some(cap) = COSTS_RE.captures(value) {
+            let c1 = cap.get(1).unwrap().as_str().parse().unwrap();
+            let n1 = cap.get(2).unwrap().as_str();
+            res.0.insert(format!("{field} {n1}"), c1);
+            if let Some(blocks) = cap.get(3) {
+                let c2 = blocks.as_str().parse().unwrap();
+                let n2 = cap.get(4).unwrap().as_str();
+                res.0.insert(format!("{field} {n2}"), c2);
+            }
+        }
+    }
+    res
+}
+
+impl LogfileParser for DhatLogfileParser {
     fn parse_single(&self, path: PathBuf) -> Result<LogfileSummary> {
         let file = File::open(&path)
             .with_context(|| format!("Error opening log file '{}'", path.display()))?;
@@ -57,14 +66,7 @@ impl LogfileParser {
         let line = iter
             .next()
             .ok_or_else(|| Error::ParseError((path.clone(), "Empty file".to_owned())))?;
-        let pid = EXTRACT_PID_RE
-            .captures(line.trim())
-            .expect("Log output should not be malformed")
-            .name("pid")
-            .expect("Log output should contain pid")
-            .as_str()
-            .parse::<i32>()
-            .expect("Pid should be valid");
+        let pid = extract_pid(&line);
 
         let mut state = State::Header;
         let mut command = None;
@@ -142,34 +144,44 @@ impl LogfileParser {
             }
         }
 
+        let costs = Some(fields_to_costs(&fields));
         Ok(LogfileSummary {
             command: command.expect("A command should be present"),
             pid,
             parent_pid,
-            fields,
+            fields: vec![],
             details,
             error_summary: None,
             log_path: make_relative(&self.root_dir, path),
+            costs,
         })
     }
-}
 
-impl Parser for LogfileParser {
-    type Output = Vec<LogfileSummary>;
+    fn merge_logfile_summaries(
+        &self,
+        old: Vec<LogfileSummary>,
+        new: Vec<LogfileSummary>,
+    ) -> Vec<ToolRunSummary> {
+        let old = old.into_iter().map(Some).chain(iter::repeat_with(|| None));
+        let new = new.into_iter().map(Some).chain(iter::repeat_with(|| None));
+        let zip = iter::zip(old, new).take_while(|(o, n)| o.is_some() || n.is_some());
 
-    fn parse(&self, output_path: &ToolOutputPath) -> Result<Self::Output>
-    where
-        Self: std::marker::Sized,
-    {
-        let log_path = output_path.to_log_output();
-        debug!("DHAT: Parsing log file '{}'", log_path);
-
-        let mut summaries = vec![];
-        for path in log_path.real_paths()? {
-            let summary = self.parse_single(path)?;
-            summaries.push(summary);
+        let mut res = vec![];
+        for (old, new) in zip {
+            match (old, new) {
+                (None, None) => unreachable!(),
+                (Some(old), None) => res.push(old.old_into_tool_run()),
+                (None, Some(new)) => res.push(new.new_into_tool_run()),
+                (Some(old), Some(new)) => {
+                    if old.command == new.command {
+                        res.push(new.merge(&old));
+                    } else {
+                        res.push(old.old_into_tool_run());
+                        res.push(new.new_into_tool_run());
+                    }
+                }
+            }
         }
-        summaries.sort_by_key(|s| s.pid);
-        Ok(summaries)
+        res
     }
 }

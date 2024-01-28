@@ -8,22 +8,23 @@ use lazy_static::lazy_static;
 use log::debug;
 use regex::Regex;
 
-use super::ToolOutputPath;
+use super::{ToolOutputPath, ValgrindTool};
 use crate::error::Error;
-use crate::runner::summary::ErrorSummary;
-use crate::runner::tool::Parser;
+use crate::runner::costs::Costs;
+use crate::runner::dhat::logfile_parser::DhatLogfileParser;
+use crate::runner::summary::{CostsSummary, ErrorSummary, ToolRunSummary};
 use crate::util::make_relative;
 
 // The different regex have to consider --time-stamp=yes
 lazy_static! {
-    static ref EXTRACT_FIELDS_RE: Regex = regex::Regex::new(
+    pub static ref EXTRACT_FIELDS_RE: Regex = regex::Regex::new(
         r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--)\s*(?<key>.*?)\s*:\s*(?<value>.*)\s*$"
     )
     .expect("Regex should compile");
-    static ref EMPTY_LINE_RE: Regex =
+    pub static ref EMPTY_LINE_RE: Regex =
         regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--)\s*$")
             .expect("Regex should compile");
-    static ref STRIP_PREFIX_RE: Regex =
+    pub static ref STRIP_PREFIX_RE: Regex =
         regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--) (?<rest>.*)$")
             .expect("Regex should compile");
     static ref EXTRACT_PID_RE: Regex =
@@ -37,7 +38,7 @@ lazy_static! {
     .expect("Regex should compile");
 }
 
-pub struct LogfileParser {
+pub struct ToolLogfileParser {
     pub root_dir: PathBuf,
 }
 
@@ -49,9 +50,9 @@ pub struct LogfileSummary {
     pub fields: Vec<(String, String)>,
     pub details: Vec<String>,
     pub error_summary: Option<ErrorSummary>,
+    pub costs: Option<Costs<String>>,
     pub log_path: PathBuf,
 }
-
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum State {
     Header,
@@ -59,7 +60,104 @@ enum State {
     Body,
 }
 
-impl LogfileParser {
+pub trait LogfileParser {
+    fn parse_single(&self, path: PathBuf) -> Result<LogfileSummary>;
+
+    fn parse(&self, output_path: &ToolOutputPath) -> Result<Vec<LogfileSummary>> {
+        let log_path = output_path.to_log_output();
+        debug!("{}: Parsing log file '{}'", output_path.tool.id(), log_path);
+
+        let mut summaries = vec![];
+        let Ok(paths) = log_path.real_paths() else {
+            return Ok(vec![]);
+        };
+        for path in paths {
+            let summary = self.parse_single(path)?;
+            summaries.push(summary);
+        }
+        summaries.sort_by_key(|x| x.pid);
+        Ok(summaries)
+    }
+
+    fn merge_logfile_summaries(
+        &self,
+        old: Vec<LogfileSummary>,
+        new: Vec<LogfileSummary>,
+    ) -> Vec<ToolRunSummary>;
+
+    fn parse_merge(
+        &self,
+        output_path: &ToolOutputPath,
+        old: Vec<LogfileSummary>,
+    ) -> Result<Vec<ToolRunSummary>> {
+        let new = self.parse(output_path)?;
+        Ok(self.merge_logfile_summaries(old, new))
+    }
+}
+
+impl LogfileSummary {
+    fn raw_into_tool_run(self) -> ToolRunSummary {
+        ToolRunSummary {
+            command: self.command.to_string_lossy().to_string(),
+            old_pid: None,
+            old_parent_pid: None,
+            pid: None,
+            parent_pid: None,
+            summary: self.fields.into_iter().collect(),
+            details: (!self.details.is_empty()).then(|| self.details.join("\n")),
+            error_summary: self.error_summary,
+            costs_summary: None,
+            log_path: self.log_path,
+        }
+    }
+    pub fn old_into_tool_run(self) -> ToolRunSummary {
+        let costs_summary = self
+            .costs
+            .as_ref()
+            .map(|x| CostsSummary::new(&Costs::empty(), Some(x)));
+        let old_pid = Some(self.pid);
+        let old_parent_pid = self.parent_pid;
+        ToolRunSummary {
+            old_pid,
+            old_parent_pid,
+            costs_summary,
+            ..self.raw_into_tool_run()
+        }
+    }
+
+    pub fn new_into_tool_run(self) -> ToolRunSummary {
+        let costs_summary = self.costs.as_ref().map(|x| CostsSummary::new(x, None));
+        let pid = Some(self.pid);
+        let parent_pid = self.parent_pid;
+        ToolRunSummary {
+            pid,
+            parent_pid,
+            costs_summary,
+            ..self.raw_into_tool_run()
+        }
+    }
+
+    pub fn merge(self, old: &LogfileSummary) -> ToolRunSummary {
+        assert_eq!(self.command, old.command);
+        let costs_summary = (self.costs.is_some() || old.costs.is_some()).then(|| {
+            let emp = Costs::empty();
+            CostsSummary::new(self.costs.as_ref().unwrap_or(&emp), old.costs.as_ref())
+        });
+        let old_pid = Some(old.pid);
+        let old_parent_pid = old.parent_pid;
+        let pid = Some(self.pid);
+        let parent_pid = self.parent_pid;
+        ToolRunSummary {
+            old_pid,
+            old_parent_pid,
+            pid,
+            parent_pid,
+            costs_summary,
+            ..self.raw_into_tool_run()
+        }
+    }
+}
+impl LogfileParser for ToolLogfileParser {
     fn parse_single(&self, path: PathBuf) -> Result<LogfileSummary> {
         let file = File::open(&path)
             .with_context(|| format!("Error opening log file '{}'", path.display()))?;
@@ -72,14 +170,7 @@ impl LogfileParser {
         let line = iter
             .next()
             .ok_or_else(|| Error::ParseError((path.clone(), "Empty file".to_owned())))?;
-        let pid = EXTRACT_PID_RE
-            .captures(line.trim())
-            .expect("Log output should not be malformed")
-            .name("pid")
-            .expect("Log output should contain pid")
-            .as_str()
-            .parse::<i32>()
-            .expect("Pid should be valid");
+        let pid = extract_pid(&line);
 
         let mut state = State::Header;
         let mut command = None;
@@ -151,27 +242,38 @@ impl LogfileParser {
             details,
             error_summary,
             log_path: make_relative(&self.root_dir, path),
+            costs: None,
         })
+    }
+
+    fn merge_logfile_summaries(
+        &self,
+        _: Vec<LogfileSummary>,
+        new: Vec<LogfileSummary>,
+    ) -> Vec<ToolRunSummary> {
+        new.into_iter()
+            .map(LogfileSummary::new_into_tool_run)
+            .collect()
     }
 }
 
-impl Parser for LogfileParser {
-    type Output = Vec<LogfileSummary>;
+pub fn extract_pid(line: &str) -> i32 {
+    EXTRACT_PID_RE
+        .captures(line.trim())
+        .expect("Log output should not be malformed")
+        .name("pid")
+        .expect("Log output should contain pid")
+        .as_str()
+        .parse::<i32>()
+        .expect("Pid should be valid")
+}
 
-    fn parse(&self, output_path: &ToolOutputPath) -> Result<Self::Output>
-    where
-        Self: std::marker::Sized,
-    {
-        let log_path = output_path.to_log_output();
-        debug!("{}: Parsing log file '{}'", output_path.tool.id(), log_path);
-
-        let mut summaries = vec![];
-        for path in log_path.real_paths()? {
-            let summary = self.parse_single(path)?;
-            summaries.push(summary);
+impl ValgrindTool {
+    pub fn to_parser(self, root_dir: PathBuf) -> Box<dyn LogfileParser> {
+        match self {
+            ValgrindTool::DHAT => Box::new(DhatLogfileParser { root_dir }),
+            _ => Box::new(ToolLogfileParser { root_dir }),
         }
-        summaries.sort_by_key(|s| s.pid);
-        Ok(summaries)
     }
 }
 
