@@ -25,6 +25,10 @@ pub struct CommandLineArgs {
     #[arg(long = "bench", hide = true, action = ArgAction::SetTrue, required = false)]
     pub _bench: bool,
 
+    /// We ignore any positional arguments
+    #[arg(hide = true)]
+    pub _filter: Option<String>,
+
     /// The raw arguments to pass through to Callgrind
     ///
     /// This is a space separated list of command-line-arguments specified as if they were
