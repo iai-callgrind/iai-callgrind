@@ -128,7 +128,7 @@ pub fn discard_translations(addr: *const (), len: usize) {
 /// `usize func(ThreadId tid)`
 ///
 /// Note that these client requests are not entirely reliable. For example, if you call a function
-/// with them that subsequently calls printf(), there's a high chance Valgrind will crash.
+/// with them that subsequently calls `printf()`, there's a high chance Valgrind will crash.
 /// Generally, your prospects of these working are made higher if the called function does not refer
 /// to any global variables, and does not refer to other functions (print! et al).
 #[allow(clippy::fn_to_numeric_cast_any)]
@@ -254,10 +254,10 @@ pub fn count_errors() -> usize {
 ///
 /// But if your program uses a custom allocator, this doesn't automatically happen, and Valgrind
 /// will not do as well. For example, if you allocate superblocks with `mmap()` and then allocates
-/// chunks of the superblocks, all Valgrind's observations will be at the mmap() level and it won't
-/// know that the chunks should be considered separate entities.  In Memcheck's case, that means you
-/// probably won't get heap block overrun detection (because there won't be redzones marked as
-/// unaddressable) and you definitely won't get any leak detection.
+/// chunks of the superblocks, all Valgrind's observations will be at the `mmap()` level and it
+/// won't know that the chunks should be considered separate entities.  In Memcheck's case, that
+/// means you probably won't get heap block overrun detection (because there won't be redzones
+/// marked as unaddressable) and you definitely won't get any leak detection.
 ///
 /// The following client requests allow a custom allocator to be annotated so that it can be handled
 /// accurately by Valgrind.
