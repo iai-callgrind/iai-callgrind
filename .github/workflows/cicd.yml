@@ -42,11 +42,21 @@ jobs:
         toolchain:
           - "1.66.0" # MSRV
           - stable
-          - nightly
+          # https://github.com/tkaitchuck/aHash/issues/200
+          # Pin nightly as long as inferno can use ahash < 0.8.7
+          - nightly-2024-02-04
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
       - uses: dtolnay/rust-toolchain@master
+        if: ${{ startsWith(matrix.toolchain, 'nightly') }}
+        with:
+          toolchain: ${{ matrix.toolchain }}
+      - uses: dtolnay/rust-toolchain@master
+        if: ${{ ! startsWith(matrix.toolchain, 'nightly') }}
+        with:
+          toolchain: nightly
+      - uses: dtolnay/rust-toolchain@master
+        if: ${{ ! startsWith(matrix.toolchain, 'nightly') }}
         with:
           toolchain: ${{ matrix.toolchain }}
       - uses: Swatinem/rust-cache@v2
