@@ -1,9 +1,39 @@
+use std::str::FromStr;
+
 use clap::builder::BoolishValueParser;
 use clap::{ArgAction, Parser};
 
 use super::format::OutputFormat;
 use super::summary::{BaselineName, SummaryFormat};
 use crate::api::{EventKind, RawArgs, RegressionConfig};
+
+/// A filter for benchmarks
+///
+/// # Developer Notes
+///
+/// This enum is used instead of a plain `String` for possible future usages to filter by benchmark
+/// ids, group name, file name etc.
+#[derive(Debug, Clone)]
+pub enum BenchmarkFilter {
+    /// The name of the benchmark
+    Name(String),
+}
+
+impl BenchmarkFilter {
+    /// Return true if the haystack contains the filter
+    pub fn apply(&self, haystack: &str) -> bool {
+        let Self::Name(name) = self;
+        haystack.contains(name)
+    }
+}
+
+impl FromStr for BenchmarkFilter {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(BenchmarkFilter::Name(s.to_owned()))
+    }
+}
 
 /// The command line arguments the user provided after `--` when running cargo bench
 ///
@@ -17,6 +47,7 @@ use crate::api::{EventKind, RawArgs, RegressionConfig};
     about = "High-precision and consistent benchmarking framework/harness for Rust",
     long_about = None,
     no_binary_name = true,
+    override_usage= "cargo bench ... [BENCHNAME] -- [OPTIONS]"
 )]
 pub struct CommandLineArgs {
     /// `--bench` usually shows up as last argument set by cargo and not by us.
@@ -25,9 +56,11 @@ pub struct CommandLineArgs {
     #[arg(long = "bench", hide = true, action = ArgAction::SetTrue, required = false)]
     pub _bench: bool,
 
-    /// We ignore any positional arguments
-    #[arg(hide = true)]
-    pub _filter: Option<String>,
+    /// If specified, only run benches containing this string in their names
+    ///
+    /// Note that a benchmark name might differ from the benchmark file name.
+    #[arg(name = "BENCHNAME", num_args = 0..=1, env = "IAI_CALLGRIND_FILTER")]
+    pub filter: Option<BenchmarkFilter>,
 
     /// The raw arguments to pass through to Callgrind
     ///

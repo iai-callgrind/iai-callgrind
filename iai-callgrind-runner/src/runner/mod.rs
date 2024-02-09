@@ -106,6 +106,7 @@ pub fn run() -> Result<()> {
     };
 
     let package_dir = PathBuf::from(args_iter.next().unwrap());
+    let package_name = args_iter.next().unwrap().to_str().unwrap().to_owned();
     let bench_file = PathBuf::from(args_iter.next().unwrap());
     let module = args_iter.next().unwrap().to_str().unwrap().to_owned();
     let bench_bin = PathBuf::from(args_iter.next().unwrap());
@@ -119,7 +120,17 @@ pub fn run() -> Result<()> {
     match bench_kind {
         BenchmarkKind::LibraryBenchmark => {
             let benchmark: LibraryBenchmark = receive_benchmark(num_bytes)?;
-            let meta = Metadata::new(&benchmark.command_line_args)?;
+            let meta = Metadata::new(&benchmark.command_line_args, &package_name, &bench_file)?;
+            if meta
+                .args
+                .filter
+                .as_ref()
+                .map_or(false, |filter| !filter.apply(&meta.bench_name))
+            {
+                debug!("Benchmark '{}' is filtered out", bench_file.display());
+                return Ok(());
+            }
+
             let config = Config {
                 package_dir,
                 bench_file,
@@ -133,7 +144,17 @@ pub fn run() -> Result<()> {
         }
         BenchmarkKind::BinaryBenchmark => {
             let benchmark: BinaryBenchmark = receive_benchmark(num_bytes)?;
-            let meta = Metadata::new(&benchmark.command_line_args)?;
+            let meta = Metadata::new(&benchmark.command_line_args, &package_name, &bench_file)?;
+            if meta
+                .args
+                .filter
+                .as_ref()
+                .map_or(false, |filter| !filter.apply(&meta.bench_name))
+            {
+                debug!("Benchmark '{}' is filtered out", bench_file.display());
+                return Ok(());
+            }
+
             let config = Config {
                 package_dir,
                 bench_file,

@@ -1,5 +1,5 @@
 use std::ffi::OsString;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::Result;
@@ -28,10 +28,15 @@ pub struct Metadata {
     pub valgrind_wrapper: Option<Cmd>,
     pub regression_config: Option<RegressionConfig>,
     pub args: CommandLineArgs,
+    pub bench_name: String,
 }
 
 impl Metadata {
-    pub fn new(raw_command_line_args: &[String]) -> Result<Self> {
+    pub fn new(
+        raw_command_line_args: &[String],
+        package_name: &str,
+        bench_file: &Path,
+    ) -> Result<Self> {
         let args = CommandLineArgs::parse_from(raw_command_line_args);
 
         let arch = std::env::consts::ARCH.to_owned();
@@ -40,6 +45,20 @@ impl Metadata {
             .no_deps()
             .exec()
             .expect("Querying metadata of cargo workspace succeeds");
+
+        let package = meta
+            .packages
+            .iter()
+            .find(|p| p.name == package_name)
+            .expect("The package name should exist");
+        let bench_name = package
+            .targets
+            .iter()
+            .find_map(|t| {
+                (t.kind.iter().any(|k| k == "bench") && t.src_path.ends_with(bench_file))
+                    .then_some(t.name.clone())
+            })
+            .expect("The benchmark name should exist");
 
         let project_root = meta.workspace_root.into_std_path_buf();
         debug!("Detected project root: '{}'", project_root.display());
@@ -109,6 +128,7 @@ impl Metadata {
             project_root,
             regression_config: Into::<Option<RegressionConfig>>::into(&args),
             args,
+            bench_name,
         })
     }
 }
