@@ -14,7 +14,9 @@ fn setup_worst_case_array(start: i32) -> Vec<i32> {
 #[library_benchmark]
 #[bench::worst_case(setup_worst_case_array(20))]
 fn bench_bubble_sort(array: Vec<i32>) -> Vec<i32> {
-    black_box(bubble_sort(array))
+    let result = black_box(bubble_sort(array));
+    println!("{:?}", result);
+    result
 }
 
 library_benchmark_group!(
