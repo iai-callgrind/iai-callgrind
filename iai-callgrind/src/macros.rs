@@ -180,6 +180,7 @@ macro_rules! main {
             cmd.arg(library_version);
             cmd.arg("--bin-bench");
             cmd.arg(env!("CARGO_MANIFEST_DIR"));
+            cmd.arg(env!("CARGO_PKG_NAME"));
             cmd.arg(file!());
             cmd.arg(module_path!());
             cmd.arg(this_args.next().unwrap()); // The executable benchmark binary
@@ -280,6 +281,7 @@ macro_rules! main {
             cmd.arg(library_version);
             cmd.arg("--lib-bench");
             cmd.arg(env!("CARGO_MANIFEST_DIR"));
+            cmd.arg(env!("CARGO_PKG_NAME"));
             cmd.arg(file!());
             cmd.arg(module_path!());
             cmd.arg(this_args.next().unwrap()); // The executable benchmark binary

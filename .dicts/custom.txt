@@ -1,6 +1,7 @@
 ASLR
 Aparicio
 Assche
+BENCHNAME
 Benchmarkable
 Boolish
 CALLGRIND

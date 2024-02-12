@@ -6,7 +6,7 @@ groups:
           files: test_lib_bench_single.expected.1.yml
           stdout: test_lib_bench_single.stdout.1
         template_data:
-          worst_case_start: 10
+          worst_case_start: 0
       - args: ["--save-baseline=bar"]
         expected:
           files: test_lib_bench_single.expected.2.yml
