@@ -47,7 +47,7 @@ improvements and features.
     - [Valgrind Tools](#valgrind-tools)
     - [Valgrind Client Requests](#valgrind-client-requests)
     - [Flamegraphs](#flamegraphs)
-    - [Command-line arguments and environment variables](command-line-arguments-and-environment-variables)
+    - [Command-line arguments and environment variables](#command-line-arguments-and-environment-variables)
         - [Baselines](#comparing-with-baselines)
         - [Machine-readable output](#machine-readable-output)
     - [Features and differences to Iai](#features-and-differences-to-iai)
