@@ -147,6 +147,19 @@ installed. See also the requirements of
 [bindgen](https://rust-lang.github.io/rust-bindgen/requirements.html)) and of
 [cc](https://github.com/rust-lang/cc-rs).
 
+`iai-callgrind` needs the debug symbols when running the benchmarks. There are
+multiple places where you can configure profiles, for example in your project's
+`Cargo.toml`:
+
+```toml
+[profile.bench]
+debug = true
+strip = false
+```
+
+Setting `strip = false` explicitly is only needed if you have changed this
+option for the `release` profile.
+
 ### Benchmarking
 
 `iai-callgrind` can be used to benchmark libraries or binaries. Library benchmarks benchmark
