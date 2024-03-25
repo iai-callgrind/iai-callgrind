@@ -10,6 +10,7 @@ use crate::api::{EventKind, RawArgs, RegressionConfig};
 /// These arguments are not the command line arguments passed to `iai-callgrind-runner`. We collect
 /// the command line arguments in the `iai-callgrind::main!` macro without the binary as first
 /// argument, that's why `no_binary_name` is set to `true`.
+#[allow(clippy::partial_pub_fields)]
 #[derive(Parser, Debug, Clone)]
 #[command(
     author,
@@ -23,11 +24,11 @@ pub struct CommandLineArgs {
     ///
     /// This argument is useless, so we sort it out and never make use of it.
     #[arg(long = "bench", hide = true, action = ArgAction::SetTrue, required = false)]
-    pub _bench: bool,
+    _bench: bool,
 
     /// We ignore any positional arguments
     #[arg(hide = true)]
-    pub _filter: Option<String>,
+    _filter: Option<String>,
 
     /// The raw arguments to pass through to Callgrind
     ///
