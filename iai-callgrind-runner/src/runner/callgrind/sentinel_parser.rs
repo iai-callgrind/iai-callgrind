@@ -6,6 +6,13 @@ use super::parser::{parse_header, Sentinel};
 use crate::error::Error;
 use crate::runner::tool::{Parser, ToolOutputPath};
 
+#[rustfmt::skip]
+pub const ERROR_MESSAGE_DEBUG_SYMBOLS: &str = "
+Please make sure you have debug symbols enabled in your benchmark profile.
+
+See also the Installation section in the iai-callgrind README:
+https://github.com/iai-callgrind/iai-callgrind?tab=readme-ov-file#installation";
+
 pub struct SentinelParser {
     sentinel: Sentinel,
 }
@@ -80,7 +87,10 @@ impl Parser for SentinelParser {
         } else {
             Err(Error::ParseError((
                 output_path.to_path(),
-                format!("Sentinel '{}' not found", &self.sentinel),
+                format!(
+                    "Sentinel '{}' not found.{}",
+                    &self.sentinel, ERROR_MESSAGE_DEBUG_SYMBOLS
+                ),
             ))
             .into())
         }

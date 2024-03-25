@@ -1,7 +1,9 @@
 use iai_callgrind_runner::api::EventKind;
 use iai_callgrind_runner::runner::callgrind::model::Costs;
 use iai_callgrind_runner::runner::callgrind::parser::Sentinel;
-use iai_callgrind_runner::runner::callgrind::sentinel_parser::SentinelParser;
+use iai_callgrind_runner::runner::callgrind::sentinel_parser::{
+    SentinelParser, ERROR_MESSAGE_DEBUG_SYMBOLS,
+};
 use iai_callgrind_runner::runner::tool::{Parser, ToolOutputPathKind, ValgrindTool};
 use rstest::rstest;
 
@@ -55,6 +57,9 @@ fn test_sentinel_parser_when_not_found_then_error() {
     assert_parse_error(
         &callgrind_output.to_path(),
         result,
-        "Sentinel 'doesnotexist' not found",
+        &format!(
+            "Sentinel 'doesnotexist' not found.{}",
+            ERROR_MESSAGE_DEBUG_SYMBOLS
+        ),
     )
 }
