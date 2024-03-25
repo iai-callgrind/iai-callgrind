@@ -186,9 +186,9 @@ impl Parser for HashMapParser {
                 Some(("cfn", cfn)) => {
                     let record = cfn_record.get_or_insert(CfnRecord::default());
                     record.id = Some(Id {
-                        obj: record.obj.take().or(current_id.obj.as_ref().cloned()),
+                        obj: record.obj.take().or(current_id.obj.clone()),
                         func: cfn.to_owned(),
-                        file: record.file.take().or(current_id.file.as_ref().cloned()),
+                        file: record.file.take().or(current_id.file.clone()),
                     });
                 }
                 Some(("calls", calls)) => {

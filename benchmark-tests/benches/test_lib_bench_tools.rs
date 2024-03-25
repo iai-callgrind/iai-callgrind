@@ -5,6 +5,7 @@ use std::process::Output;
 use std::rc::Rc;
 
 struct Left(Option<Rc<Right>>);
+#[allow(dead_code)]
 struct Right(Option<Rc<RefCell<Left>>>);
 
 use std::hint::black_box;
