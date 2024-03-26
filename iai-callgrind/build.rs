@@ -2,6 +2,7 @@
 
 #[cfg(feature = "client_requests_defs")]
 mod imp {
+    use std::borrow::Cow;
     use std::io::{BufRead, BufReader, Cursor};
     use std::path::PathBuf;
 
@@ -12,6 +13,7 @@ mod imp {
         env: String,
         os: String,
         vendor: String,
+        triple: String,
     }
 
     #[derive(Debug)]
@@ -31,6 +33,7 @@ mod imp {
                 env: std::env::var("CARGO_CFG_TARGET_ENV").unwrap(),
                 os: std::env::var("CARGO_CFG_TARGET_OS").unwrap(),
                 vendor: std::env::var("CARGO_CFG_TARGET_VENDOR").unwrap(),
+                triple: std::env::var("TARGET").unwrap(),
             }
         }
     }
@@ -39,9 +42,21 @@ mod imp {
         println!("cargo:rustc-cfg=client_requests_support=\"{value}\"");
     }
 
-    fn build_native() {
+    fn include_dirs(target: &Target) -> impl Iterator<Item = String> {
+        [
+            Cow::Owned(format!(
+                "IAI_CALLGRIND_{}_VALGRIND_INCLUDE",
+                target.triple.replace('-', "_")
+            )),
+            Cow::Borrowed("IAI_CALLGRIND_VALGRIND_INCLUDE"),
+        ]
+        .into_iter()
+        .filter_map(|env| std::env::var(env.as_ref()).ok())
+    }
+
+    fn build_native(target: &Target) {
         let mut builder = cc::Build::new();
-        if let Ok(env) = std::env::var("IAI_CALLGRIND_VALGRIND_INCLUDE") {
+        for env in include_dirs(target) {
             builder.include(env);
         }
         if let Ok(env) = std::env::var("IAI_CALLGRIND_CROSS_TARGET") {
@@ -58,10 +73,10 @@ mod imp {
             .compile("native");
     }
 
-    fn build_bindings() -> Bindings {
+    fn build_bindings(target: &Target) -> Bindings {
         let mut builder = builder();
 
-        if let Ok(env) = std::env::var("IAI_CALLGRIND_VALGRIND_INCLUDE") {
+        for env in include_dirs(target) {
             builder = builder.clang_arg(format!("-iquote{env}"))
         }
 
@@ -96,16 +111,17 @@ mod imp {
         println!("cargo:rerun-if-changed=valgrind/wrapper.h");
         println!("cargo:rerun-if-changed=valgrind/native.c");
 
+        let target = Target::from_env();
+
         if std::env::var("DOCS_RS").is_ok() {
             print_client_requests_support("x86_64");
-            build_bindings();
-            build_native();
+            build_bindings(&target);
+            build_native(&target);
             return;
         }
 
-        let bindings = build_bindings();
+        let bindings = build_bindings(&target);
 
-        let target = Target::from_env();
         let support = if target.arch == "x86_64"
             && (target.os == "linux"
                 || target.os == "freebsd"
@@ -154,23 +170,23 @@ mod imp {
         match support {
             Some(Support::X86_64) => {
                 print_client_requests_support("x86_64");
-                build_native();
+                build_native(&target);
             }
             Some(Support::X86) => {
                 print_client_requests_support("x86");
-                build_native();
+                build_native(&target);
             }
             Some(Support::Arm) => {
                 print_client_requests_support("arm");
-                build_native();
+                build_native(&target);
             }
             Some(Support::Aarch64) => {
                 print_client_requests_support("aarch64");
-                build_native();
+                build_native(&target);
             }
             Some(Support::Native) => {
                 print_client_requests_support("native");
-                build_native();
+                build_native(&target);
             }
             Some(Support::No) => {
                 print_client_requests_support("no");
