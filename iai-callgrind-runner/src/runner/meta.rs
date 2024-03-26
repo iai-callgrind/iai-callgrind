@@ -66,6 +66,7 @@ impl Metadata {
         let target_dir = std::env::var_os(envs::CARGO_TARGET_DIR)
             .map_or_else(|| meta.target_directory.into_std_path_buf(), PathBuf::from)
             .join("iai")
+            .join(std::env::var_os(envs::BUILD_TRIPLE).map_or_else(PathBuf::new, PathBuf::from))
             .join(std::env::var_os(envs::CARGO_PKG_NAME).map_or_else(PathBuf::new, PathBuf::from));
 
         debug!("Detected target directory: '{}'", target_dir.display());
