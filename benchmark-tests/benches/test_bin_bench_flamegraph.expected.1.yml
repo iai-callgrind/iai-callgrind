@@ -21,7 +21,7 @@ data:
     id: with_entry_point
     expected:
       files:
-        - callgrind.benchmark-tests-exit.with_entry_point.flamegraph.EstimatedCycles.svg
+        - callgrind.benchmark-tests-exit.with_entry_point.flamegraph.Ir.svg
         - callgrind.benchmark-tests-exit.with_entry_point.log
         - callgrind.benchmark-tests-exit.with_entry_point.out
         - summary.json
@@ -30,7 +30,7 @@ data:
     id: before
     expected:
       files:
-        - callgrind.run_before.before.flamegraph.EstimatedCycles.svg
+        - callgrind.run_before.before.flamegraph.Ir.svg
         - callgrind.run_before.before.log
         - callgrind.run_before.before.out
         - summary.json
@@ -39,7 +39,7 @@ data:
     id: foo
     expected:
       files:
-        - callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.svg
+        - callgrind.benchmark-tests-exit.foo.flamegraph.Ir.svg
         - callgrind.benchmark-tests-exit.foo.log
         - callgrind.benchmark-tests-exit.foo.out
         - summary.json
@@ -48,7 +48,7 @@ data:
     id: after
     expected:
       files:
-        - callgrind.run_after.after.flamegraph.EstimatedCycles.svg
+        - callgrind.run_after.after.flamegraph.Ir.svg
         - callgrind.run_after.after.log
         - callgrind.run_after.after.out
         - summary.json
@@ -57,7 +57,7 @@ data:
     id: foo
     expected:
       files:
-        - callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.svg
+        - callgrind.benchmark-tests-exit.foo.flamegraph.Ir.svg
         - callgrind.benchmark-tests-exit.foo.log
         - callgrind.benchmark-tests-exit.foo.out
         - summary.json
@@ -66,7 +66,7 @@ data:
     id: all_flamegraph_kinds
     expected:
       files:
-        - callgrind.benchmark-tests-exit.all_flamegraph_kinds.flamegraph.EstimatedCycles.svg
+        - callgrind.benchmark-tests-exit.all_flamegraph_kinds.flamegraph.Ir.svg
         - callgrind.benchmark-tests-exit.all_flamegraph_kinds.log
         - callgrind.benchmark-tests-exit.all_flamegraph_kinds.out
         - summary.json
@@ -91,7 +91,7 @@ data:
     id: only_regular_kind
     expected:
       files:
-        - callgrind.benchmark-tests-exit.only_regular_kind.flamegraph.EstimatedCycles.svg
+        - callgrind.benchmark-tests-exit.only_regular_kind.flamegraph.Ir.svg
         - callgrind.benchmark-tests-exit.only_regular_kind.log
         - callgrind.benchmark-tests-exit.only_regular_kind.out
         - summary.json
