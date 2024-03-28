@@ -595,7 +595,7 @@ variables](#command-line-arguments-and-environment-variables).
 A performance regression check consists of an `EventKind` and a percentage over
 which a regression is assumed. If the percentage is negative, then a regression
 is assumed to be below this limit. The default `EventKind` is
-`EventKind::EstimatedCycles` with a value of `+10%`.For example, in a [Library
+`EventKind::Ir` with a value of `+10%`.For example, in a [Library
 Benchmark](#library-benchmarks), let's overwrite the default limit with a global
 limit of `+5%` for the total instructions executed (the `Ir` event kind):
 
