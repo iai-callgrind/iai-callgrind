@@ -254,7 +254,7 @@ impl From<api::RegressionConfig> for RegressionConfig {
         let api::RegressionConfig { limits, fail_fast } = value;
         RegressionConfig {
             limits: if limits.is_empty() {
-                vec![(EventKind::EstimatedCycles, 10f64)]
+                vec![(EventKind::Ir, 10f64)]
             } else {
                 limits
             },
@@ -266,7 +266,7 @@ impl From<api::RegressionConfig> for RegressionConfig {
 impl Default for RegressionConfig {
     fn default() -> Self {
         Self {
-            limits: vec![(EventKind::EstimatedCycles, 10f64)],
+            limits: vec![(EventKind::Ir, 10f64)],
             fail_fast: Default::default(),
         }
     }
