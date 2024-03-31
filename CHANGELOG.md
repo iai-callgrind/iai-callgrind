@@ -22,6 +22,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+The default `EventKind` for `RegressionConfig` and `FlamegraphConfig` changed,
+so, if you're updating from a previous version of `iai-callgrind`, read
+carefully!
+
+### Added
+
+* ([#94](https://github.com/iai-callgrind/iai-callgrind/issues/94)): Support
+  running `iai-callgrind` benchmarks without cache simulation
+  (`--cache-sim=no`). Previously, specifying this option emitted a warning. Note
+  that running the benchmarks with `--cache-sim=no` implies that there is also
+  no estimated cycles calculation.
+
+### Changed
+
+* ([#106](https://github.com/iai-callgrind/iai-callgrind/pull/106)): Due to
+  [#94](https://github.com/iai-callgrind/iai-callgrind/issues/94), the
+  default `EventKind` for `RegressionConfig` and `FlamegraphConfig` changed from
+  `EventKind::EstimatedCycles` to `EventKind::Ir`.
+
 ## [0.10.2] - 2023-01-25
 
 ### Changed

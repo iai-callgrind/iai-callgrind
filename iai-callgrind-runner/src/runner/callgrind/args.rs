@@ -67,7 +67,6 @@ impl Args {
                 }
                 Some((
                     key @ ("--separate-threads"
-                    | "--cache-sim"
                     | "--callgrind-out-file"
                     | "--compress-strings"
                     | "--compress-pos"

@@ -27,9 +27,9 @@ data:
     id: with_entry_point
     expected:
       files:
-        - callgrind.benchmark-tests-exit.with_entry_point.flamegraph.EstimatedCycles.svg
-        - callgrind.benchmark-tests-exit.with_entry_point.flamegraph.EstimatedCycles.diff.old.svg
-        - callgrind.benchmark-tests-exit.with_entry_point.flamegraph.EstimatedCycles.old.svg
+        - callgrind.benchmark-tests-exit.with_entry_point.flamegraph.Ir.svg
+        - callgrind.benchmark-tests-exit.with_entry_point.flamegraph.Ir.diff.old.svg
+        - callgrind.benchmark-tests-exit.with_entry_point.flamegraph.Ir.old.svg
         - callgrind.benchmark-tests-exit.with_entry_point.log
         - callgrind.benchmark-tests-exit.with_entry_point.log.old
         - callgrind.benchmark-tests-exit.with_entry_point.out
@@ -40,9 +40,9 @@ data:
     id: before
     expected:
       files:
-        - callgrind.run_before.before.flamegraph.EstimatedCycles.svg
-        - callgrind.run_before.before.flamegraph.EstimatedCycles.diff.old.svg
-        - callgrind.run_before.before.flamegraph.EstimatedCycles.old.svg
+        - callgrind.run_before.before.flamegraph.Ir.svg
+        - callgrind.run_before.before.flamegraph.Ir.diff.old.svg
+        - callgrind.run_before.before.flamegraph.Ir.old.svg
         - callgrind.run_before.before.log
         - callgrind.run_before.before.log.old
         - callgrind.run_before.before.out
@@ -53,9 +53,9 @@ data:
     id: foo
     expected:
       files:
-        - callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.svg
-        - callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.diff.old.svg
-        - callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.old.svg
+        - callgrind.benchmark-tests-exit.foo.flamegraph.Ir.svg
+        - callgrind.benchmark-tests-exit.foo.flamegraph.Ir.diff.old.svg
+        - callgrind.benchmark-tests-exit.foo.flamegraph.Ir.old.svg
         - callgrind.benchmark-tests-exit.foo.log
         - callgrind.benchmark-tests-exit.foo.log.old
         - callgrind.benchmark-tests-exit.foo.out
@@ -66,9 +66,9 @@ data:
     id: after
     expected:
       files:
-        - callgrind.run_after.after.flamegraph.EstimatedCycles.svg
-        - callgrind.run_after.after.flamegraph.EstimatedCycles.diff.old.svg
-        - callgrind.run_after.after.flamegraph.EstimatedCycles.old.svg
+        - callgrind.run_after.after.flamegraph.Ir.svg
+        - callgrind.run_after.after.flamegraph.Ir.diff.old.svg
+        - callgrind.run_after.after.flamegraph.Ir.old.svg
         - callgrind.run_after.after.log
         - callgrind.run_after.after.log.old
         - callgrind.run_after.after.out
@@ -79,9 +79,9 @@ data:
     id: foo
     expected:
       files:
-        - callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.svg
-        - callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.diff.old.svg
-        - callgrind.benchmark-tests-exit.foo.flamegraph.EstimatedCycles.old.svg
+        - callgrind.benchmark-tests-exit.foo.flamegraph.Ir.svg
+        - callgrind.benchmark-tests-exit.foo.flamegraph.Ir.diff.old.svg
+        - callgrind.benchmark-tests-exit.foo.flamegraph.Ir.old.svg
         - callgrind.benchmark-tests-exit.foo.log
         - callgrind.benchmark-tests-exit.foo.log.old
         - callgrind.benchmark-tests-exit.foo.out
@@ -92,9 +92,9 @@ data:
     id: all_flamegraph_kinds
     expected:
       files:
-        - callgrind.benchmark-tests-exit.all_flamegraph_kinds.flamegraph.EstimatedCycles.svg
-        - callgrind.benchmark-tests-exit.all_flamegraph_kinds.flamegraph.EstimatedCycles.diff.old.svg
-        - callgrind.benchmark-tests-exit.all_flamegraph_kinds.flamegraph.EstimatedCycles.old.svg
+        - callgrind.benchmark-tests-exit.all_flamegraph_kinds.flamegraph.Ir.svg
+        - callgrind.benchmark-tests-exit.all_flamegraph_kinds.flamegraph.Ir.diff.old.svg
+        - callgrind.benchmark-tests-exit.all_flamegraph_kinds.flamegraph.Ir.old.svg
         - callgrind.benchmark-tests-exit.all_flamegraph_kinds.log
         - callgrind.benchmark-tests-exit.all_flamegraph_kinds.log.old
         - callgrind.benchmark-tests-exit.all_flamegraph_kinds.out
@@ -115,7 +115,7 @@ data:
     id: only_differential_kind
     expected:
       files:
-        - callgrind.benchmark-tests-exit.only_differential_kind.flamegraph.EstimatedCycles.diff.old.svg
+        - callgrind.benchmark-tests-exit.only_differential_kind.flamegraph.Ir.diff.old.svg
         - callgrind.benchmark-tests-exit.only_differential_kind.log
         - callgrind.benchmark-tests-exit.only_differential_kind.log.old
         - callgrind.benchmark-tests-exit.only_differential_kind.out
@@ -126,8 +126,8 @@ data:
     id: only_regular_kind
     expected:
       files:
-        - callgrind.benchmark-tests-exit.only_regular_kind.flamegraph.EstimatedCycles.svg
-        - callgrind.benchmark-tests-exit.only_regular_kind.flamegraph.EstimatedCycles.old.svg
+        - callgrind.benchmark-tests-exit.only_regular_kind.flamegraph.Ir.svg
+        - callgrind.benchmark-tests-exit.only_regular_kind.flamegraph.Ir.old.svg
         - callgrind.benchmark-tests-exit.only_regular_kind.log
         - callgrind.benchmark-tests-exit.only_regular_kind.log.old
         - callgrind.benchmark-tests-exit.only_regular_kind.out

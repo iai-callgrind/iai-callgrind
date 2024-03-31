@@ -80,9 +80,7 @@ impl From<api::FlamegraphConfig> for Config {
             kind: value.kind.unwrap_or(FlamegraphKind::All),
             negate_differential: value.negate_differential.unwrap_or_default(),
             normalize_differential: value.normalize_differential.unwrap_or(false),
-            event_kinds: value
-                .event_kinds
-                .unwrap_or_else(|| vec![EventKind::EstimatedCycles]),
+            event_kinds: value.event_kinds.unwrap_or_else(|| vec![EventKind::Ir]),
             direction: value
                 .direction
                 .map_or_else(|| Direction::Inverted, std::convert::Into::into),

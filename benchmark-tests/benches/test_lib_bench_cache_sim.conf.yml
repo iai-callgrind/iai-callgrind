@@ -1,0 +1,10 @@
+groups:
+  - runs:
+      - args: []
+        expected:
+          files: test_lib_bench_cache_sim.expected.1.yml
+          stdout: test_lib_bench_cache_sim.stdout.1
+      - args: []
+        expected:
+          files: test_lib_bench_cache_sim.expected.2.yml
+          stdout: test_lib_bench_cache_sim.stdout.2

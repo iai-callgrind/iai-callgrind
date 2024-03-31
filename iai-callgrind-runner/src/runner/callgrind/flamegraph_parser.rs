@@ -32,10 +32,14 @@ impl FlamegraphMap {
 
     pub fn make_summary(&mut self) -> Result<()> {
         for value in self.0.map.values_mut() {
-            value
-                .costs
-                .make_summary()
-                .map_err(|error| anyhow!("Failed calculating summary events: {error}"))?;
+            if value.costs.can_summarize() {
+                value
+                    .costs
+                    .make_summary()
+                    .map_err(|error| anyhow!("Failed calculating summary events: {error}"))?;
+            } else {
+                return Ok(());
+            }
         }
         Ok(())
     }

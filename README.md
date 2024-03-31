@@ -1,4 +1,4 @@
-<!-- spell-checker: ignore fixt binstall -->
+<!-- spell-checker: ignore fixt binstall libtest -->
 
 <h1 align="center">Iai-Callgrind</h1>
 
@@ -51,6 +51,7 @@ improvements and features.
         - [Baselines](#comparing-with-baselines)
         - [Machine-readable output](#machine-readable-output)
     - [Features and differences to Iai](#features-and-differences-to-iai)
+    - [FAQ](#faq)
     - [What hasn't changed](#what-hasnt-changed)
     - [See also](#see-also)
     - [Contributing](#contributing)
@@ -148,17 +149,8 @@ installed. See also the requirements of
 [cc](https://github.com/rust-lang/cc-rs).
 
 `iai-callgrind` needs the debug symbols when running the benchmarks. There are
-multiple places where you can configure profiles, for example in your project's
-`Cargo.toml`:
-
-```toml
-[profile.bench]
-debug = true
-strip = false
-```
-
-Setting `strip = false` explicitly is only needed if you have changed this
-option for the `release` profile.
+multiple places where you can configure profiles, see the
+[Benchmarking](#benchmarking) section below for more details.
 
 ### Benchmarking
 
@@ -172,17 +164,58 @@ For a quickstart and examples of benchmarking libraries see the [Library Benchma
 Section](#library-benchmarks) and for executables see the [Binary Benchmark
 Section](#binary-benchmarks). Read the [docs]!
 
-It's highly advisable to run the benchmarks with debugging symbols switched on.
-For example in your `~/.cargo/config`:
+As mentioned in above in the `Installation` section, it's required to run the
+benchmarks with debugging symbols switched on. For example in your
+`~/.cargo/config` or your project's `Cargo.toml`:
 
 ```toml
 [profile.bench]
 debug = true
 ```
 
-Now, all benchmarks you run with `cargo bench` include the debug info. (See also
+Now, all benchmarks you run with `cargo bench` include the debug symbols. (See also
 [Cargo Profiles](https://doc.rust-lang.org/cargo/reference/profiles.html) and
-[Cargo Config](https://doc.rust-lang.org/cargo/reference/config.html))
+[Cargo Config](https://doc.rust-lang.org/cargo/reference/config.html)).
+
+It's required that settings like `strip = true` or other configuration options
+stripping the debug symbols need to be disabled explicitly for the `bench`
+profile if you have changed this option for the `release` profile. For example:
+
+```toml
+[profile.release]
+strip = true
+
+[profile.bench]
+debug = true
+strip = false
+```
+
+Per default, `iai-callgrind` runs all benchmarks with Valgrind's cache
+simulation turned on (`--cache-sim=yes`) in order to calculate an estimation for
+the total cpu cycles. See also the [Metrics Output](#rework-the-metrics-output)
+section for more infos. However, if you want to opt-out of the cache simulation
+and the calculation of estimated cycles, you can easily do so within the
+benchmark with the `LibraryBenchmarkConfig` (or `BinaryBenchmarkConfig`):
+
+```rust
+LibraryBenchmarkConfig::default().raw_callgrind_args(["--cache-sim=no"])
+```
+
+in the cli with environment variables
+
+```shell
+IAI_CALLGRIND_CALLGRIND_ARGS="--cache-sim=no" cargo bench
+```
+
+or with arguments
+
+```shell
+cargo bench -- --callgrind-args="--cache-sim=no"
+```
+
+To be able to run the latter command, some [additional
+configuration](#running-cargo-bench-results-in-an-unrecognized-option-error)
+might be needed.
 
 #### Library Benchmarks
 
@@ -595,7 +628,7 @@ variables](#command-line-arguments-and-environment-variables).
 A performance regression check consists of an `EventKind` and a percentage over
 which a regression is assumed. If the percentage is negative, then a regression
 is assumed to be below this limit. The default `EventKind` is
-`EventKind::EstimatedCycles` with a value of `+10%`.For example, in a [Library
+`EventKind::Ir` with a value of `+10%`.For example, in a [Library
 Benchmark](#library-benchmarks), let's overwrite the default limit with a global
 limit of `+5%` for the total instructions executed (the `Ir` event kind):
 
@@ -649,7 +682,7 @@ main!(
 All tools which produce an `ERROR SUMMARY` `(Memcheck, DRD, Helgrind)` have
 `--error-exitcode=201` ([See
 also](https://valgrind.org/docs/manual/manual-core.html#manual-core.erropts))
-set, so if there are any errors the benchmark run fails with `201`. You can
+set, so if there are any errors, the benchmark run fails with `201`. You can
 overwrite this default with
 
 ```rust
@@ -736,21 +769,24 @@ the `BinaryBenchmarkConfig`, `Run` or `LibraryBenchmarkConfig`. Callgrind
 flamegraphs are meant as a complement to valgrind's visualization tools
 `callgrind_annotate` and `kcachegrind`.
 
-Callgrind flamegraphs show the inclusive costs for functions and a specific
-event type, similar to `callgrind_annotate` but in a nicer (and clickable) way.
-Especially, differential flamegraphs facilitate a deeper understanding of code
-sections which cause a bottleneck or a performance regressions etc.
+Callgrind flamegraphs show the inclusive costs for functions and a single
+`EventKind` (default is `EventKind::Ir`), similar to `callgrind_annotate` but in
+a nicer (and clickable) way. Especially, differential flamegraphs facilitate a
+deeper understanding of code sections which cause a bottleneck or a performance
+regressions etc.
 
-The produced flamegraph svg files are located next to the respective callgrind
+The produced flamegraph `*.svg` files are located next to the respective callgrind
 output file in the `target/iai` directory.
 
 ### Command-line arguments and environment variables
 
-It's possible to pass arguments to iai-callgrind separated by `--` (`cargo bench --
-ARGS`). For a complete rundown of possible arguments execute `cargo bench
---bench <benchmark> -- --help`. Almost all command-line arguments
-have a corresponding environment variable. The environment variables which
-don't have a corresponding command-line argument are:
+It's possible to pass arguments to iai-callgrind separated by `--` (`cargo bench
+-- ARGS`). If you're running into the error `Unrecognized Option`, see the
+[FAQ](#running-cargo-bench-results-in-an-unrecognized-option-error). For a
+complete rundown of possible arguments, execute `cargo bench --bench <benchmark>
+-- --help`. Almost all command-line arguments have a corresponding environment
+variable. The environment variables which don't have a corresponding
+command-line argument are:
 
 - `IAI_CALLGRIND_COLOR`: Control the colored output of iai-callgrind. (Default
   is `auto`)
@@ -910,6 +946,49 @@ For further details about how the caches are simulated and more, see the documen
 
 Iai-Callgrind cannot completely remove the influences of setup changes. However, these effects
 shouldn't be significant anymore.
+
+### FAQ
+
+#### I'm getting the error `Sentinel ... not found`
+
+You've most likely disabled creating debug symbols in your cargo `bench`
+profile. This can originate in an option you've added to the `release` profile
+since the `bench` profile inherits the `release` profile. For example, if you've
+added `strip = true` to your `release` profile which is perfectly fine, you need
+to disable this option in your `bench` profile to be able to run `iai-callgrind`
+benchmarks. See also the [Benchmarking](#benchmarking) section for a more
+thorough example.
+
+#### Running `cargo bench` results in an "Unrecognized Option" error
+
+For `cargo bench -- --some-valid-arg` to work you can either specify the benchmark with
+`--bench BENCHMARK`, for example `cargo bench --bench my_iai_benchmark --
+--callgrind-args="--collect-bus=yes"` or add the following to your `Cargo.toml`:
+
+```toml
+[lib]
+bench = false
+```
+
+and if you have binaries
+
+```toml
+[[bin]]
+name = "my-binary"
+path = "src/bin/my-binary.rs"
+bench = false
+```
+
+Setting `bench = false` disables the creation of the implicit default `libtest`
+harness which is added even if you haven't used `#[bench]` functions in your
+library or binary. Naturally, the default harness doesn't know of the
+`iai-callgrind` arguments and aborts execution printing the `Unrecognized
+Option` error.
+
+If you cannot or don't want to add `bench = false` to your `Cargo.toml`, you can
+alternatively use environment variables. For every [command-line
+argument](#command-line-arguments-and-environment-variables) exists a
+corresponding environment variable.
 
 ### Contributing
 

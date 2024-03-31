@@ -92,6 +92,10 @@ name = "test_lib_bench_flamegraph"
 harness = false
 
 [[bench]]
+name = "test_lib_bench_cache_sim"
+harness = false
+
+[[bench]]
 name = "test_lib_bench_groups"
 harness = false
 

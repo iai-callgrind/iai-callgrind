@@ -72,6 +72,14 @@ impl Costs {
     pub fn is_summarized(&self) -> bool {
         self.cost_by_kind(&EventKind::EstimatedCycles).is_some()
     }
+
+    /// Return true if costs can be summarized
+    ///
+    /// This method probes for [`EventKind::I1mr`] which is present if callgrind was run with the
+    /// cache simulation (`--cache-sim=yes`) enabled.
+    pub fn can_summarize(&self) -> bool {
+        self.cost_by_kind(&EventKind::I1mr).is_some()
+    }
 }
 
 impl Summarize for EventKind {
