@@ -1,4 +1,4 @@
-<!-- spell-checker:ignore serde -->
+<!-- spell-checker:ignore serde dewert binstall -->
 <!--
 Added for new features.
 Changed for changes in existing functionality.
@@ -28,6 +28,17 @@ carefully!
 
 ### Added
 
+* ([#71](https://github.com/iai-callgrind/iai-callgrind/issues/71)): Add a DHAT
+  cost summary similar to the summary of callgrind events in the benchmark run
+  output. Thanks to @dewert99.
+* ([#80](https://github.com/iai-callgrind/iai-callgrind/issues/80)): Add
+  pre-built `iai-callgrind-runner` binaries for most valgrind supported targets
+  to the github release pages. `iai-callgrind-runner` can now also be installed
+  with `cargo binstall`.
+* ([#88](https://github.com/iai-callgrind/iai-callgrind/issues/88)): Support
+  filtering benchmarks by name. This is a command-line option only and the
+  filter can be given as positional argument in `cargo bench -- FILTER`.
+  Specifying command-line arguments in addition to the `FILTER` still works.
 * ([#94](https://github.com/iai-callgrind/iai-callgrind/issues/94)): Support
   running `iai-callgrind` benchmarks without cache simulation
   (`--cache-sim=no`). Previously, specifying this option emitted a warning. Note
@@ -40,6 +51,12 @@ carefully!
   [#94](https://github.com/iai-callgrind/iai-callgrind/issues/94), the
   default `EventKind` for `RegressionConfig` and `FlamegraphConfig` changed from
   `EventKind::EstimatedCycles` to `EventKind::Ir`.
+
+### Fixed
+
+* ([#86](https://github.com/iai-callgrind/iai-callgrind/pull/86)): Fix
+  positional arguments meant as filter as in `cargo bench -- FILTER` cause
+  `iai-callgrind` to crash.
 
 ## [0.10.2] - 2023-01-25
 
