@@ -261,7 +261,7 @@ fn bench_fibonacci(value: u64) -> u64 {
 
 library_benchmark_group!(
     name = bench_fibonacci_group;
-    benchmarks = bench_fibonacci, bench_fibonacci_alternative
+    benchmarks = bench_fibonacci
 );
 
 main!(library_benchmark_groups = bench_fibonacci_group);
