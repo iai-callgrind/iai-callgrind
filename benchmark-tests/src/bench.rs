@@ -568,8 +568,8 @@ fn main() {
     let mut map = HashMap::new();
     map.insert(
         "target_dir_sanitized".to_owned(),
-        minijinja::Value::from_serializable(
-            &runner
+        minijinja::Value::from_serialize(
+            runner
                 .metadata
                 .target_directory
                 .display()
