@@ -52,7 +52,7 @@ impl ToolArgs {
                     tool.id()
                 ),
                 Some(("--error-exitcode", value)) => {
-                    tool_args.error_exitcode = value.to_owned();
+                    value.clone_into(&mut tool_args.error_exitcode);
                 }
                 None if matches!(
                     arg.as_str(),

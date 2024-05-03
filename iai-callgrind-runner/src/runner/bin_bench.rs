@@ -137,7 +137,6 @@ trait Benchmarkable {
     fn flamegraph_config(&self) -> Option<&FlamegraphConfig>;
     fn name(&self) -> String;
     fn run_options(&self, config: &Config) -> RunOptions;
-    fn regression_config(&self) -> Option<&RegressionConfig>;
     fn tools(&self) -> &ToolConfigs;
     fn create_benchmark_summary(
         &self,
@@ -282,10 +281,6 @@ impl Benchmarkable for Assistant {
         }
     }
 
-    fn regression_config(&self) -> Option<&RegressionConfig> {
-        self.regression_config.as_ref()
-    }
-
     fn tools(&self) -> &ToolConfigs {
         &self.tools
     }
@@ -421,10 +416,6 @@ impl Benchmarkable for BinBench {
 
     fn run_options(&self, _config: &Config) -> RunOptions {
         self.run_options.clone()
-    }
-
-    fn regression_config(&self) -> Option<&RegressionConfig> {
-        self.regression_config.as_ref()
     }
 
     fn tools(&self) -> &ToolConfigs {

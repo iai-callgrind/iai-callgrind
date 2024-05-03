@@ -128,7 +128,7 @@ pub struct CommandLineArgs {
 
     /// If true, the first failed performance regression check fails the whole benchmark run
     ///
-    /// This option requires --regression=... or IAI_CALLGRIND_REGRESSION=... to be present.
+    /// This option requires `--regression=...` or `IAI_CALLGRIND_REGRESSION=...` to be present.
     #[arg(
         long = "regression-fail-fast",
         requires = "regression",
