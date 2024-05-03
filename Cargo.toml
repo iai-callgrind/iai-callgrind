@@ -46,7 +46,7 @@ proc-macro-error = "1"
 proc-macro2 = "1.0.60"
 quote = "1"
 regex = { version = "1" }
-rstest = ">=0.17, <0.19"
+rstest = ">=0.17, <0.20"
 sanitize-filename = { version = "0.5" }
 schemars = { version = "0.8.16", features = ["indexmap2"] }
 serde = { version = "1", features = ["derive"] }
