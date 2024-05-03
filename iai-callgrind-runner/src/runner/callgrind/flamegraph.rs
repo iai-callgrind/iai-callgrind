@@ -190,12 +190,12 @@ impl Flamegraph {
         let mut options = Options::default();
         options.negate_differentials = self.config.negate_differential;
         options.direction = self.config.direction;
-        options.title = self
-            .config
-            .title
-            .as_ref()
-            .expect("A title must be present at this point")
-            .clone();
+        options.title.clone_from(
+            self.config
+                .title
+                .as_ref()
+                .expect("A title must be present at this point"),
+        );
 
         options.subtitle = if let Some(subtitle) = &self.config.subtitle {
             Some(subtitle.clone())

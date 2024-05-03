@@ -44,9 +44,9 @@ impl Args {
                 .split_once('=')
                 .map(|(k, v)| (k.trim(), v.trim()))
             {
-                Some(("--I1", value)) => self.i1 = value.to_owned(),
-                Some(("--D1", value)) => self.d1 = value.to_owned(),
-                Some(("--LL", value)) => self.ll = value.to_owned(),
+                Some(("--I1", value)) => value.clone_into(&mut self.i1),
+                Some(("--D1", value)) => value.clone_into(&mut self.d1),
+                Some(("--LL", value)) => value.clone_into(&mut self.ll),
                 Some((key @ "--collect-atstart", value)) => {
                     self.collect_atstart = yesno_to_bool(value).ok_or_else(|| {
                         Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
