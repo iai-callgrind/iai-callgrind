@@ -23,7 +23,7 @@ case $IAI_CALLGRIND_CROSS_TARGET in
   ;;
 esac
 
-cd ~/valgrind/valgrind-3.22.0
+cd ~/valgrind/valgrind-"${IAI_CALLGRIND_CROSS_VALGRIND_VERSION}"
 
 dest_dir="/valgrind"
 target_dir="/target/valgrind/${IAI_CALLGRIND_CROSS_TARGET}"
