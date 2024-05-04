@@ -24,7 +24,7 @@ assert_cmd = { version = "2.0" }
 bincode = { version = "1" }
 bindgen = { version = "0.69" }
 cargo_metadata = { version = "0.18" }
-cc = { version = "1" }
+cc = { version = "1.0.96" }
 cfg-if = { version = "1" }
 clap = { version = "4", features = ["derive", "env"] }
 colored = { version = "2" }
