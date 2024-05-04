@@ -46,7 +46,7 @@ mod imp {
         [
             Cow::Owned(format!(
                 "IAI_CALLGRIND_{}_VALGRIND_INCLUDE",
-                target.triple.replace('-', "_")
+                target.triple.replace('-', "_").to_ascii_uppercase()
             )),
             Cow::Borrowed("IAI_CALLGRIND_VALGRIND_INCLUDE"),
         ]
@@ -56,15 +56,18 @@ mod imp {
 
     fn build_native(target: &Target) {
         let mut builder = cc::Build::new();
+
         for env in include_dirs(target) {
             builder.include(env);
         }
+
         if let Ok(env) = std::env::var("IAI_CALLGRIND_CROSS_TARGET") {
             let path = PathBuf::from("/valgrind/target/valgrind")
                 .join(env)
                 .join("include");
             builder.include(path);
         }
+
         builder.include("valgrind/include");
 
         builder
