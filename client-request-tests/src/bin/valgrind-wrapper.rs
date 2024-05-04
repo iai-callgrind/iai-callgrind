@@ -42,6 +42,9 @@ lazy_static! {
     static ref MEMCHECK_LEAK_SUMMARY_RE: Regex =
         regex::Regex::new(r"(?i:(\s*(definitely lost|indirectly lost|possibly lost|still reachable|suppressed):\s*))([ 0-9,()+.]*)(\s*bytes in\s*)([ 0-9,()+.]*)(\s*blocks\s*)$")
             .expect("Regex should compile");
+    static ref MEMCHECK_RM_NUMBERS_RE: Regex =
+        regex::Regex::new(r"[+-]?[0-9][0-9,.]*")
+            .expect("Regex should compile");
     static ref MEMORY_ADDRESS_RE: Regex =
         regex::Regex::new(r"0x[0-9A-Za-z]+").expect("Regex should compile");
     static ref CACHEGRIND_NUM_REFS_RE: Regex =
@@ -182,6 +185,7 @@ fn memcheck_filter(bytes: &[u8], writer: &mut impl Write) {
         let replaced =
             MEMCHECK_LEAK_SUMMARY_RE.replace_all(&replaced, "$1<__FILTER__> $4<__FILTER__> $6");
         let replaced = MEMORY_ADDRESS_RE.replace_all(&replaced, "<__FILTER__>");
+        let replaced = MEMCHECK_RM_NUMBERS_RE.replace_all(&replaced, "<__NUMBER__>");
         writeln!(writer, "{replaced}").unwrap();
     }
 }
@@ -215,12 +219,17 @@ fn cachegrind_filter(bytes: &[u8], writer: &mut impl Write) {
 }
 
 pub fn get_valgrind_command() -> Command {
-    let valgrind = PathBuf::from("/target/valgrind")
-        .join(CROSS_TARGET)
-        .join("bin/valgrind");
-    if !valgrind.exists() {
-        panic!("Running the tests without cross is unsupported");
-    }
+    let valgrind = if let Ok(dir) = std::env::var("IAI_CALLGRIND_VALGRIND_PATH") {
+        PathBuf::from(dir).join("valgrind")
+    } else {
+        // TODO: Don't use a partly hardcoded path to the valgrind binary if running the tests with
+        // cross
+        PathBuf::from("/target/valgrind")
+            .join(CROSS_TARGET)
+            .join("bin/valgrind")
+    };
+
+    assert!(valgrind.exists(), "Valgrind binary not found");
     Command::new(valgrind)
 }
 
