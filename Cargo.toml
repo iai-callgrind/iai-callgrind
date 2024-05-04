@@ -37,7 +37,7 @@ inferno = { version = "0.11.10", default-features = false, features = [
   'multithreaded',
 ] }
 lazy_static = { version = "1.4.0" }
-log = { version = "0.4" }
+log = { version = "0.4.21" }
 minijinja = { version = "2.0.1" }
 once_cell = { version = "1" }
 predicates = { version = "3" }
