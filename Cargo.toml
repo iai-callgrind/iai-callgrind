@@ -51,7 +51,7 @@ sanitize-filename = { version = "0.5" }
 schemars = { version = "0.8.16", features = ["indexmap2"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1" }
-serde_yaml = { version = "0.9" }
+serde_yaml = { version = "0.9.34" }
 serial_test = { version = "3" }
 shlex = { version = "1.3" }
 syn = { version = "2.0.1", features = ["full", "extra-traits"] }
