@@ -8,5 +8,5 @@ cd
 
 mkdir valgrind
 cd valgrind
-wget https://sourceware.org/pub/valgrind/valgrind-3.22.0.tar.bz2
-tar xf valgrind-3.22.0.tar.bz2
+wget https://sourceware.org/pub/valgrind/valgrind-"${IAI_CALLGRIND_CROSS_VALGRIND_VERSION}".tar.bz2
+tar xf valgrind-"${IAI_CALLGRIND_CROSS_VALGRIND_VERSION}".tar.bz2
