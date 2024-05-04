@@ -94,6 +94,7 @@ fn callgrind_filter(path: &Path, bytes: &[u8], writer: &mut impl Write) {
             }
             continue;
         }
+
         let rest = STRIP_PREFIX_RE
             .captures(&line)
             .unwrap_or_else(|| {
@@ -102,6 +103,10 @@ fn callgrind_filter(path: &Path, bytes: &[u8], writer: &mut impl Write) {
             .name("rest")
             .unwrap()
             .as_str();
+
+        if rest.starts_with("Symbol match:") {
+            continue;
+        };
 
         // backtraces are too different on different targets
         if BACKTRACE_RE.is_match(rest) {
@@ -113,6 +118,7 @@ fn callgrind_filter(path: &Path, bytes: &[u8], writer: &mut impl Write) {
         } else {
             is_backtrace = false;
         }
+
         let replaced = path_re.replace_all(rest, "<__FILTER__>");
         let replaced = CALLGRIND_RM_ADDR_RE.replace_all(&replaced, "$1<__FILTER__>");
         let replaced = CALLGRIND_RM_BB_NUM_RE.replace_all(&replaced, "$1<__FILTER__>$3");
