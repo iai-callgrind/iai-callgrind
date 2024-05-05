@@ -124,7 +124,9 @@ mod imp {
             Some(Support::X86)
         } else if target.arch == "arm" && target.os == "linux" && target.env == "gnu" {
             Some(Support::Arm)
-        } else if target.arch == "aarch64" && target.os == "linux" && target.env == "gnu" {
+        } else if target.arch == "aarch64"
+            && (target.os == "freebsd" || (target.os == "linux" && target.env == "gnu"))
+        {
             Some(Support::Aarch64)
         } else {
             let re = regex::Regex::new(
