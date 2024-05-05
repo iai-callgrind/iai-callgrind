@@ -95,14 +95,18 @@ pub fn write_all_to_stderr(bytes: &[u8]) {
 pub fn copy_directory(source: &Path, dest: &Path, follow_symlinks: bool) -> Result<()> {
     let cp = resolve_binary_path("cp")?;
     let mut command = Command::new(&cp);
+
+    // Using short options ensures compatibility with FreeBSD and Linux
     if follow_symlinks {
-        command.args(["-H", "--dereference"]);
+        // -H: Follow command-line symbolic links
+        // -L: always follow symbolic links in SOURCE
+        command.args(["-H", "-L"]);
     }
-    command.args([
-        "--verbose",
-        "--recursive",
-        "--preserve=mode,ownership,timestamps",
-    ]);
+
+    // -v: Verbose
+    // -R: Recursive
+    // -p: preserve timestamps, file mode, ownership
+    command.args(["-v", "-R", "-p"]);
     command.arg(source);
     command.arg(dest);
     let (stdout, stderr) = command

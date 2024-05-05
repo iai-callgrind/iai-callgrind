@@ -1,3 +1,5 @@
+binstall
+nocapture
 ASLR
 Aparicio
 Assche
