@@ -290,36 +290,66 @@ impl BenchmarkOutput {
                     }
                 };
                 write!(string, "{desc}{comp1}|{comp2}").unwrap();
-                if caps.name("diff_percent").is_some() {
-                    let white1 = caps.name("white1").unwrap().as_str();
-                    let percent = caps.name("percent").unwrap().as_str();
-                    let num = &percent[1..percent.len() - 2];
-                    if num.parse::<f64>().is_ok() {
-                        write!(
-                            string,
-                            "{white1}({}{}%)",
-                            num.chars().next().unwrap(),
-                            " ".repeat(num.len() - 1)
-                        )
-                        .unwrap();
-                    } else {
-                        write!(string, "{white1}{percent}").unwrap();
+
+                // RAM Hits events are very unreliable across different systems, so to keep the
+                // output comparison more reliable we change this line from (for example)
+                //
+                //   RAM Hits:             179|209             (-14.3541%) [-1.16760x]
+                //   RAM Hits:             179|179             (No Change)
+                //
+                // to
+                //
+                //   RAM Hits:             179|209             (         )
+                //
+                // and
+                //
+                //   RAM Hits:             179|N/A             (*********)
+                //
+                // to
+                //
+                //   RAM Hits:                |N/A             (*********)
+                if desc.starts_with("  RAM Hits") {
+                    if caps.name("diff_percent").is_some() {
+                        let white1 = caps.name("white1").unwrap().as_str();
+                        let percent = caps.name("percent").unwrap().as_str();
+                        if percent == "(*********)" {
+                            write!(string, "{white1}{percent}").unwrap();
+                        } else {
+                            write!(string, "{white1}(         )").unwrap();
+                        }
                     }
-                }
-                if caps.name("diff_factor").is_some() {
-                    let white2 = caps.name("white2").unwrap().as_str();
-                    let factor = caps.name("factor").unwrap().as_str();
-                    let num = &factor[1..factor.len() - 2];
-                    if num.parse::<f64>().is_ok() {
-                        write!(
-                            string,
-                            "{white2}[{}{}x]",
-                            num.chars().next().unwrap(),
-                            " ".repeat(num.len() - 1)
-                        )
-                        .unwrap();
-                    } else {
-                        write!(string, "{white2}{factor}").unwrap();
+                } else {
+                    if caps.name("diff_percent").is_some() {
+                        let white1 = caps.name("white1").unwrap().as_str();
+                        let percent = caps.name("percent").unwrap().as_str();
+                        let num = &percent[1..percent.len() - 2];
+                        if num.parse::<f64>().is_ok() {
+                            write!(
+                                string,
+                                "{white1}({}{}%)",
+                                num.chars().next().unwrap(),
+                                " ".repeat(num.len() - 1)
+                            )
+                            .unwrap();
+                        } else {
+                            write!(string, "{white1}{percent}").unwrap();
+                        }
+                    }
+                    if caps.name("diff_factor").is_some() {
+                        let white2 = caps.name("white2").unwrap().as_str();
+                        let factor = caps.name("factor").unwrap().as_str();
+                        let num = &factor[1..factor.len() - 2];
+                        if num.parse::<f64>().is_ok() {
+                            write!(
+                                string,
+                                "{white2}[{}{}x]",
+                                num.chars().next().unwrap(),
+                                " ".repeat(num.len() - 1)
+                            )
+                            .unwrap();
+                        } else {
+                            write!(string, "{white2}{factor}").unwrap();
+                        }
                     }
                 }
                 writeln!(result, "{string}").unwrap();

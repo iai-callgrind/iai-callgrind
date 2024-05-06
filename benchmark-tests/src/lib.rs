@@ -2,6 +2,26 @@ use std::ffi::OsStr;
 use std::io;
 use std::process::Output;
 
+// This function is used to create a worst case array we want to sort with our implementation of
+// bubble sort
+pub fn setup_worst_case_array(start: i32) -> Vec<i32> {
+    if start.is_negative() {
+        (start..0).rev().collect()
+    } else {
+        (0..start).rev().collect()
+    }
+}
+
+// This function is used to create a best case array we want to sort with our implementation of
+// bubble sort
+pub fn setup_best_case_array(start: i32) -> Vec<i32> {
+    if start.is_negative() {
+        (start..0).collect()
+    } else {
+        (0..start).collect()
+    }
+}
+
 pub fn bubble_sort(mut array: Vec<i32>) -> Vec<i32> {
     for i in 0..array.len() {
         for j in 0..array.len() - i - 1 {

@@ -9,6 +9,12 @@ use super::tool::ValgrindTool;
 use crate::api::EventKind;
 use crate::util::{to_string_signed_short, truncate_str_utf8};
 
+pub struct ComparisonHeader {
+    pub function_name: String,
+    pub id: String,
+    pub details: Option<String>,
+}
+
 pub struct Header {
     pub module_path: String,
     pub id: Option<String>,
@@ -48,6 +54,43 @@ pub enum OutputFormat {
 #[derive(Clone)]
 pub struct VerticalFormat {
     event_kinds: Vec<EventKind>,
+}
+
+impl ComparisonHeader {
+    pub fn new<T, U, V>(function_name: T, id: U, details: Option<V>) -> Self
+    where
+        T: Into<String>,
+        U: Into<String>,
+        V: Into<String>,
+    {
+        Self {
+            function_name: function_name.into(),
+            id: id.into(),
+            details: details.map(Into::into),
+        }
+    }
+
+    pub fn print(&self) {
+        println!("{self}");
+    }
+}
+
+impl Display for ComparisonHeader {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "  {} {} {}",
+            "Comparison with".yellow().bold(),
+            self.function_name.green(),
+            self.id.cyan()
+        )?;
+
+        if let Some(details) = &self.details {
+            write!(f, ":{}", details.blue().bold())?;
+        }
+
+        Ok(())
+    }
 }
 
 impl Header {

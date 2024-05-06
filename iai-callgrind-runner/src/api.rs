@@ -212,6 +212,7 @@ pub struct LibraryBenchmarkConfig {
 pub struct LibraryBenchmarkGroup {
     pub id: Option<String>,
     pub config: Option<LibraryBenchmarkConfig>,
+    pub compare: bool,
     pub benches: Vec<LibraryBenchmarkBenches>,
 }
 

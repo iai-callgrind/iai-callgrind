@@ -101,6 +101,10 @@ name = "test_lib_bench_groups"
 
 [[bench]]
 harness = false
+name = "test_lib_bench_compare"
+
+[[bench]]
+harness = false
 name = "test_lib_bench_groups_envs"
 
 [[bench]]

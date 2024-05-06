@@ -1,3 +1,19 @@
+error[E0425]: cannot find function `compare` in module `some_func`
+  --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
+   |
+6  |     main!(library_benchmark_groups = some_func);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in `some_func`
+   |
+note: function `crate::test_main_when_invalid_config::my_group::compare` exists but is inaccessible
+  --> tests/ui/test_main_invalid_library_benchmark_groups.rs:14:5
+   |
+14 | /     library_benchmark_group!(
+15 | |         name = my_group;
+16 | |         benchmarks = some_func
+17 | |     );
+   | |_____^ not accessible
+   = note: this error originates in the macro `main` which comes from the expansion of the macro `library_benchmark_group` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error[E0603]: function import `run` is private
  --> src/macros.rs
   |

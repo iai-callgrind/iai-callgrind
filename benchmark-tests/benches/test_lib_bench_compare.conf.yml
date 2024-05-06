@@ -1,0 +1,6 @@
+groups:
+  - runs:
+      - args: []
+        expected:
+          files: test_lib_bench_compare.expected.1.yml
+          stdout: test_lib_bench_compare.stdout.1
