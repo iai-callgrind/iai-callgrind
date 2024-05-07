@@ -1,5 +1,4 @@
 [package]
-name = "iai-callgrind"
 authors = [
   "Joining7943 <joining@posteo.de>",
   "Brook Heisler <redattack34@gmail.com>",
@@ -10,6 +9,7 @@ edition.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 license.workspace = true
+name = "iai-callgrind"
 readme = "../README.md"
 repository.workspace = true
 rust-version.workspace = true
@@ -27,8 +27,8 @@ default = ["benchmark"]
 ui_tests = []
 
 [build-dependencies]
-cc = { workspace = true }
 bindgen = { workspace = true }
+cc = { workspace = true }
 regex = { workspace = true }
 
 [package.metadata.docs.rs]
