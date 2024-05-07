@@ -1,5 +1,4 @@
 [package]
-name = "benchmark-tests"
 authors = ["Joining7943 <joining@posteo.de>"]
 categories.workspace = true
 description = "Tests for iai-callgrind"
@@ -7,6 +6,7 @@ edition.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 license.workspace = true
+name = "benchmark-tests"
 publish = false
 readme = "../README.md"
 repository.workspace = true
@@ -64,53 +64,53 @@ name = "bench"
 path = "src/bench.rs"
 
 [[bench]]
+harness = false
 name = "test_bin_bench_with_fixtures"
-harness = false
 
 [[bench]]
+harness = false
 name = "test_bin_bench_with_exit"
-harness = false
 
 [[bench]]
+harness = false
 name = "test_bin_bench_groups"
-harness = false
 
 [[bench]]
+harness = false
 name = "test_bin_bench_flamegraph"
-harness = false
 
 [[bench]]
+harness = false
 name = "test_bin_bench_tools"
-harness = false
 
 [[bench]]
+harness = false
 name = "test_bin_bench_readme_example"
-harness = false
 
 [[bench]]
+harness = false
 name = "test_lib_bench_flamegraph"
-harness = false
 
 [[bench]]
+harness = false
 name = "test_lib_bench_cache_sim"
-harness = false
 
 [[bench]]
+harness = false
 name = "test_lib_bench_groups"
-harness = false
 
 [[bench]]
+harness = false
 name = "test_lib_bench_groups_envs"
-harness = false
 
 [[bench]]
+harness = false
 name = "test_lib_bench_readme_example_fibonacci"
-harness = false
 
 [[bench]]
+harness = false
 name = "test_lib_bench_tools"
-harness = false
 
 [[bench]]
-name = "test_bench"
 harness = false
+name = "test_bench"

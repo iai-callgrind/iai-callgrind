@@ -1,5 +1,4 @@
 [package]
-name = "iai-callgrind-runner"
 authors = [
   "Joining7943 <joining@posteo.de>",
   "Brook Heisler <redattack34@gmail.com>",
@@ -10,6 +9,7 @@ edition.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 license.workspace = true
+name = "iai-callgrind-runner"
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
@@ -43,8 +43,8 @@ runner = [
 schema = ["default", "dep:schemars"]
 
 [package.metadata.docs.rs]
-rustdoc-args = ["--cfg", "docsrs"]
 all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 anyhow = { workspace = true, optional = true }
@@ -78,15 +78,15 @@ serial_test = { workspace = true }
 tempfile = { workspace = true }
 
 [[bin]]
+bench = true
 name = "iai-callgrind-runner"
 path = "src/main.rs"
-test = true
-bench = true
 required-features = ["default"]
+test = true
 
 [[bin]]
+bench = false
 name = "schema-gen"
 path = "src/schema_gen.rs"
-test = false
-bench = false
 required-features = ["schema"]
+test = false

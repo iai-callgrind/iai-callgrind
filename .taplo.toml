@@ -2,6 +2,7 @@ exclude = ["**/Cargo.lock", "**/target/**/*"]
 
 [formatting]
 allowed_blank_lines = 1
+reorder_keys = false
 
 [[rule]]
 include = ["**/Cargo.toml"]
