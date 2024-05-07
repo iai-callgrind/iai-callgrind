@@ -735,7 +735,7 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
 /// library_benchmark_group!(
 ///     name = my_group;
 ///     config = LibraryBenchmarkConfig::default();
-///     compare = false;
+///     compare_by_id = false;
 ///     benchmarks = some_func
 /// );
 /// # fn main() {
@@ -744,11 +744,10 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
 ///
 /// * `__name__` (mandatory): A unique name used to identify the group for the `main!` macro
 /// * `__config__` (optional): A [`crate::LibraryBenchmarkConfig`] which is applied to all
-///   benchmarks within the same group.
-/// * `__compare_by_id__` (optional): The default is false. If true, the two benchmark functions
-///   specified with the `benchmarks` argument are compared with each other as long as the ids (the
-///   part after the `::` in `#[bench::id(...)]`) match. If true, the number of benchmark functions
-///   must be exactly two.
+/// benchmarks within the same group.
+/// * `__compare_by_id__` (optional): The default is false. If true, all benches in the benchmark
+/// functions specified with the `benchmarks` argument are compared with each other as long as the
+/// ids (the part after the `::` in `#[bench::id(...)]`) match.
 #[macro_export]
 macro_rules! library_benchmark_group {
     (

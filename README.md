@@ -367,6 +367,85 @@ fn bench_bubble_sort_with_benches_attribute(input: Vec<i32>) -> Vec<i32> {
 but a lot more concise especially if a lot of values are passed to the same
 `setup` function.
 
+##### Comparing benchmark functions
+
+Comparing benchmark functions is supported via the optional
+`library_benchmark_group!` argument `compare_by_id` (The default value for
+`compare_by_id` is `false`). Only benches with the same `id` are compared, which
+allows to single out cases which don't need to be compared. In the following
+example, the `case_3` and `multiple` bench are compared with each other in
+addition to the usual comparison with the previous run:
+
+```rust
+#[library_benchmark]
+#[bench::case_3(vec![1, 2, 3])]
+#[benches::multiple(args = [vec![1, 2], vec![1, 2, 3, 4]])]
+fn bench_bubble_sort_best_case(input: Vec<i32>) -> Vec<i32> {
+    black_box(bubble_sort(input))
+}
+
+#[library_benchmark]
+#[bench::case_3(vec![3, 2, 1])]
+#[benches::multiple(args = [vec![2, 1], vec![4, 3, 2, 1]])]
+fn bench_bubble_sort_worst_case(input: Vec<i32>) -> Vec<i32> {
+    black_box(bubble_sort(input))
+}
+
+library_benchmark_group!(
+    name = bench_bubble_sort;
+    compare_by_id = true;
+    benchmarks = bench_bubble_sort_best_case, bench_bubble_sort_worst_case
+);
+```
+
+Note if `compare_by_id` is `true`, all benchmark functions are compared with
+each other, so you are not limited to two benchmark functions per comparison
+group.
+
+Here's a curated excerpt from the output of the above example to see what is
+happening:
+
+```text
+test_lib_bench_compare::bubble_sort_compare::bench_bubble_sort_best_case case_3:vec! [1, 2, 3]
+  Instructions:                  94|N/A             (*********)
+  L1 Hits:                      124|N/A             (*********)
+  L2 Hits:                        0|N/A             (*********)
+  RAM Hits:                       4|N/A             (*********)
+  Total read+write:             128|N/A             (*********)
+  Estimated Cycles:             264|N/A             (*********)
+test_lib_bench_compare::bubble_sort_compare::bench_bubble_sort_worst_case case_3:vec! [3, 2, 1]
+  Instructions:                 103|N/A             (*********)
+  L1 Hits:                      138|N/A             (*********)
+  L2 Hits:                        0|N/A             (*********)
+  RAM Hits:                       5|N/A             (*********)
+  Total read+write:             143|N/A             (*********)
+  Estimated Cycles:             313|N/A             (*********)
+  Comparison with bench_bubble_sort_best_case case_3:vec! [1, 2, 3]
+  Instructions:                  94|103             (-8.73786%) [-1.09574x]
+  L1 Hits:                      124|138             (-10.1449%) [-1.11290x]
+  L2 Hits:                        0|0               (No change)
+  RAM Hits:                       4|5               (-20.0000%) [-1.25000x]
+  Total read+write:             128|143             (-10.4895%) [-1.11719x]
+  Estimated Cycles:             264|313             (-15.6550%) [-1.18561x]
+```
+
+Here's the procedure of the comparison algorithm:
+
+1. Run all benches in the first benchmark function
+2. Run the first bench in the second benchmark function and if there is a bench
+   in the first benchmark function with the same id compare them
+3. Run the second bench in the second benchmark function ...
+4. ...
+5. Run the first bench in the third benchmark function and if there is a bench
+   in the first benchmark function with the same id compare them. If there is a
+   bench with the same id in the second benchmark function compare them.
+6. Run the second bench in the third benchmark function ...
+7. and so on ... until all benches are compared with each other
+
+Neither the order nor the amount of benches within the benchmark functions
+matters, so it is not strictly necessary to mirror the bench ids of the first
+benchmark function in the second, third, etc. benchmark function.
+
 ##### Examples
 
 For a fully documented and working benchmark see the
