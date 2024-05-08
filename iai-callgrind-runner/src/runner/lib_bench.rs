@@ -1,6 +1,7 @@
 //! The `lib_bench` module
 //!
 //! This module runs all the library benchmarks
+use std::collections::HashMap;
 use std::ffi::OsString;
 use std::io::stderr;
 
@@ -37,6 +38,7 @@ struct BaselineBenchmark {
 struct Group {
     id: Option<String>,
     benches: Vec<LibBench>,
+    compare: bool,
     module: String,
 }
 
@@ -225,11 +227,14 @@ impl Groups {
             } else {
                 module.to_owned()
             };
+
             let mut group = Group {
                 id: library_benchmark_group.id,
                 module: module_path,
+                compare: library_benchmark_group.compare,
                 benches: vec![],
             };
+
             for (bench_index, library_benchmark_benches) in
                 library_benchmark_group.benches.into_iter().enumerate()
             {
@@ -269,6 +274,7 @@ impl Groups {
                     group.benches.push(lib_bench);
                 }
             }
+
             groups.push(group);
         }
 
@@ -280,6 +286,8 @@ impl Groups {
         let mut is_regressed = false;
 
         for group in &self.0 {
+            let mut summaries: HashMap<String, Vec<BenchmarkSummary>> =
+                HashMap::with_capacity(group.benches.len());
             for bench in &group.benches {
                 let fail_fast = bench
                     .regression_config
@@ -288,6 +296,19 @@ impl Groups {
                 let summary = benchmark.run(bench, config, group)?;
                 summary.print_and_save(&config.meta.args.output_format)?;
                 summary.check_regression(&mut is_regressed, fail_fast)?;
+
+                if group.compare && config.meta.args.output_format == OutputFormat::Default {
+                    if let Some(id) = &summary.id {
+                        if let Some(sums) = summaries.get_mut(id) {
+                            for sum in sums.iter() {
+                                sum.compare_and_print(id, &config.meta, &summary)?;
+                            }
+                            sums.push(summary);
+                        } else {
+                            summaries.insert(id.clone(), vec![summary]);
+                        }
+                    }
+                }
             }
         }
 

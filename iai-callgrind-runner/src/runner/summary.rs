@@ -17,7 +17,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::costs::Costs;
-use super::format::OutputFormat;
+use super::format::{ComparisonHeader, OutputFormat, VerticalFormat};
+use super::meta::Metadata;
 use super::tool::{ToolOutputPath, ValgrindTool};
 use crate::api::EventKind;
 use crate::error::Error;
@@ -89,6 +90,8 @@ pub struct BenchmarkSummary {
     pub benchmark_file: PathBuf,
     /// The path to the compiled and executable benchmark file
     pub benchmark_exe: PathBuf,
+    /// The name of the function under test
+    pub function_name: String,
     /// The rust path in the form `bench_file::group::bench`
     pub module_path: String,
     /// The user provided id of this benchmark
@@ -322,6 +325,7 @@ impl BenchmarkSummary {
             benchmark_file: make_absolute(&project_root, benchmark_file),
             benchmark_exe: make_absolute(&project_root, benchmark_exe),
             module_path: segments.join("::"),
+            function_name: (*segments.last().unwrap()).to_owned(),
             id,
             details,
             callgrind_summary: None,
@@ -392,6 +396,31 @@ impl BenchmarkSummary {
             }
 
             *is_regressed |= benchmark_is_regressed;
+        }
+
+        Ok(())
+    }
+
+    pub fn compare_and_print(&self, id: &str, meta: &Metadata, other: &Self) -> Result<()> {
+        if let (Some(callgrind_summary), Some(other_callgrind_summary)) =
+            (&self.callgrind_summary, &other.callgrind_summary)
+        {
+            for (summary, other_summary) in callgrind_summary
+                .summaries
+                .iter()
+                .zip(&other_callgrind_summary.summaries)
+            {
+                if let ((Some(new_costs), _), (Some(other_costs), _)) = (
+                    summary.events.extract_costs(),
+                    other_summary.events.extract_costs(),
+                ) {
+                    let costs_summary = CostsSummary::new(&new_costs, Some(&other_costs));
+
+                    ComparisonHeader::new(self.function_name.clone(), id, self.details.clone())
+                        .print();
+                    VerticalFormat::default().print(meta, (None, None), &costs_summary)?;
+                }
+            }
         }
 
         Ok(())
@@ -514,6 +543,26 @@ impl<K: Hash + Eq + Summarize + Display + Clone> CostsSummary<K> {
 
     pub fn all_diffs(&self) -> impl Iterator<Item = (&K, &CostsDiff)> {
         self.0.iter()
+    }
+
+    pub fn extract_costs(&self) -> (Option<Costs<K>>, Option<Costs<K>>) {
+        let mut new_costs: Costs<K> = Costs::empty();
+        let mut old_costs: Costs<K> = Costs::empty();
+        for (event_kind, diff) in self.all_diffs() {
+            if let Some(new) = diff.new {
+                new_costs.0.insert(event_kind.clone(), new);
+            }
+            if let Some(old) = diff.old {
+                old_costs.0.insert(event_kind.clone(), old);
+            }
+        }
+
+        match (new_costs.is_empty(), old_costs.is_empty()) {
+            (false, false) => (Some(new_costs), Some(old_costs)),
+            (false, true) => (Some(new_costs), None),
+            (true, false) => (None, Some(old_costs)),
+            (true, true) => unreachable!("A costs diff must contain new or old values"),
+        }
     }
 }
 

@@ -301,6 +301,7 @@ macro_rules! main {
                 let mut group = $crate::internal::InternalLibraryBenchmarkGroup {
                     id: Some(stringify!($group).to_owned()),
                     config: $group::get_config(),
+                    compare: $group::compare(),
                     benches: vec![]
                 };
                 for (bench_name, get_config, macro_lib_benches) in $group::BENCHES {
@@ -734,20 +735,24 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
 /// library_benchmark_group!(
 ///     name = my_group;
 ///     config = LibraryBenchmarkConfig::default();
+///     compare_by_id = false;
 ///     benchmarks = some_func
 /// );
 /// # fn main() {
 /// # }
 /// ```
 ///
-/// * __name__ (mandatory): A unique name used to identify the group for the `main!` macro
-/// * __config__ (optional): A [`crate::LibraryBenchmarkConfig`] which is applied to all benchmarks
-///   within
-/// the same group.
+/// * `__name__` (mandatory): A unique name used to identify the group for the `main!` macro
+/// * `__config__` (optional): A [`crate::LibraryBenchmarkConfig`] which is applied to all
+/// benchmarks within the same group.
+/// * `__compare_by_id__` (optional): The default is false. If true, all benches in the benchmark
+/// functions specified with the `benchmarks` argument are compared with each other as long as the
+/// ids (the part after the `::` in `#[bench::id(...)]`) match.
 #[macro_export]
 macro_rules! library_benchmark_group {
     (
         $( config = $config:expr ; $(;)* )?
+        $( compare_by_id = $compare:literal ; $(;)* )?
         benchmarks = $( $function:ident ),+
     ) => {
         compile_error!("A library_benchmark_group! needs a name\n\nlibrary_benchmark_group!(name = some_ident; benchmarks = ...);");
@@ -755,6 +760,7 @@ macro_rules! library_benchmark_group {
     (
         name = $name:ident;
         $( config = $config:expr ; $(;)* )?
+        $( compare_by_id = $compare:literal ; $(;)* )?
         benchmarks =
     ) => {
         compile_error!(
@@ -765,6 +771,7 @@ macro_rules! library_benchmark_group {
     (
         name = $name:ident; $(;)*
         $( config = $config:expr ; $(;)* )?
+        $( compare_by_id = $compare:literal ; $(;)* )?
         benchmarks = $( $function:ident ),+ $(,)*
     ) => {
         mod $name {
@@ -784,12 +791,22 @@ macro_rules! library_benchmark_group {
                 ),+
             ];
 
+            #[inline(never)]
             pub fn get_config() -> Option<$crate::internal::InternalLibraryBenchmarkConfig> {
                 let mut config: Option<$crate::internal::InternalLibraryBenchmarkConfig> = None;
                 $(
                     config = Some($config.into());
                 )?
                 config
+            }
+
+            #[inline(never)]
+            pub fn compare() -> bool {
+                let mut comp: bool = false;
+                $(
+                    comp = $compare;
+                )?
+                comp
             }
 
             #[inline(never)]

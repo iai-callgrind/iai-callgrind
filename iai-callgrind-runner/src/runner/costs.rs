@@ -74,6 +74,10 @@ impl<K: Hash + Eq + Display + Clone> Costs<K> {
     pub fn empty() -> Self {
         Costs(IndexMap::new())
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 pub trait Summarize: Hash + Eq + Clone {
