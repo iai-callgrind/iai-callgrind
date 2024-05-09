@@ -291,8 +291,9 @@ impl BenchmarkOutput {
                 };
                 write!(string, "{desc}{comp1}|{comp2}").unwrap();
 
-                // RAM Hits events are very unreliable across different systems, so to keep the
-                // output comparison more reliable we change this line from (for example)
+                // RAM Hits (and EstimatedCycles) events are very unreliable across different
+                // systems, so to keep the output comparison more reliable we change this line from
+                // (for example)
                 //
                 //   RAM Hits:             179|209             (-14.3541%) [-1.16760x]
                 //   RAM Hits:             179|179             (No Change)
@@ -308,7 +309,7 @@ impl BenchmarkOutput {
                 // to
                 //
                 //   RAM Hits:                |N/A             (*********)
-                if desc.starts_with("  RAM Hits") {
+                if desc.starts_with("  RAM Hits") || desc.starts_with("  Estimated Cycles") {
                     if caps.name("diff_percent").is_some() {
                         let white1 = caps.name("white1").unwrap().as_str();
                         let percent = caps.name("percent").unwrap().as_str();
