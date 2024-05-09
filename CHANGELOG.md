@@ -1,4 +1,4 @@
-<!-- spell-checker:ignore serde dewert binstall -->
+<!-- spell-checker:ignore serde dewert binstall jembishop -->
 <!--
 Added for new features.
 Changed for changes in existing functionality.
@@ -22,9 +22,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.11.0] - 2024-05-09
+
 The default `EventKind` for `RegressionConfig` and `FlamegraphConfig` changed,
-so, if you're updating from a previous version of `iai-callgrind`, read
-carefully!
+to `EventKind::Ir` so, if you're updating from a previous version of
+`iai-callgrind`, please read carefully!
 
 ### Added
 
@@ -39,26 +41,44 @@ carefully!
   filtering benchmarks by name. This is a command-line option only and the
   filter can be given as positional argument in `cargo bench -- FILTER`.
   Specifying command-line arguments in addition to the `FILTER` still works.
+* ([#144](https://github.com/iai-callgrind/iai-callgrind/pull/144)): Verify
+  compatibility with latest valgrind release 3.23.0 and update client requests
+  to newly supported target arm64/freebsd.
+* ([#152](https://github.com/iai-callgrind/iai-callgrind/pull/152)): Support
+  comparison of benches in library benchmark functions by id.
+* ([#158](https://github.com/iai-callgrind/iai-callgrind/pull/152)): Support
+  environment variable `IAI_CALLGRIND_<TRIPLE>_VALGRIND_INCLUDE` with `<TRIPLE>`
+  being the hosts target triple. This variable takes precedence over the more
+  generic `IAI_CALLGRIND_VALGRIND_INCLUDE` environment variable. Thanks to
+  @qRoC
+
+### Changed
+
 * ([#94](https://github.com/iai-callgrind/iai-callgrind/issues/94)): Support
   running `iai-callgrind` benchmarks without cache simulation
   (`--cache-sim=no`). Previously, specifying this option emitted a warning. Note
   that running the benchmarks with `--cache-sim=no` implies that there is also
   no estimated cycles calculation.
-
-### Changed
-
 * ([#106](https://github.com/iai-callgrind/iai-callgrind/pull/106)): Due to
   [#94](https://github.com/iai-callgrind/iai-callgrind/issues/94), the
   default `EventKind` for `RegressionConfig` and `FlamegraphConfig` changed from
   `EventKind::EstimatedCycles` to `EventKind::Ir`.
+* Updated locked dependencies to their most recent version
+* Due to backwards incompatible changes to the summary schema the schema version
+  was updated v1 -> v2. The current schema file is stored in
+  `iai-callgrind-runner/schemas/summary.v2.schema.json`
 
 ### Fixed
 
 * ([#86](https://github.com/iai-callgrind/iai-callgrind/pull/86)): Fix
   positional arguments meant as filter as in `cargo bench -- FILTER` cause
   `iai-callgrind` to crash.
+* ([#110](https://github.com/iai-callgrind/iai-callgrind/pull/110)): Fix example
+  in README. Thanks to @jembishop
+* ([#145](https://github.com/iai-callgrind/iai-callgrind/pull/145)): Fixed an
+  error on freebsd when copying fixtures in binary benchmarks.
 
-## [0.10.2] - 2023-01-25
+## [0.10.2] - 2024-01-25
 
 ### Changed
 
@@ -70,7 +90,7 @@ carefully!
   when `--load-baseline` loads the dataset from the `--baseline` argument. This
   error led to a comparison of the `--baseline` dataset with itself.
 
-## [0.10.1] - 2023-01-22
+## [0.10.1] - 2024-01-22
 
 ### Changed
 
@@ -83,7 +103,7 @@ carefully!
   advisory RUSTSEC-2024-0006 of shlex dependency and update shlex to 1.3.0. Use
   `shlex::try_join` instead of deprecated `shlex::join`.
 
-## [0.10.0] - 2023-01-09
+## [0.10.0] - 2024-01-09
 
 ### Added
 
