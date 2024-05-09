@@ -6,7 +6,6 @@
   "required": [
     "benchmark_exe",
     "benchmark_file",
-    "function_name",
     "kind",
     "module_path",
     "package_dir",
@@ -37,10 +36,6 @@
     "details": {
       "description": "More details describing this benchmark run",
       "type": ["string", "null"]
-    },
-    "function_name": {
-      "description": "The name of the function under test",
-      "type": "string"
     },
     "id": {
       "description": "The user provided id of this benchmark",
@@ -209,7 +204,7 @@
           "description": "All recorded costs for `EventKinds`",
           "allOf": [
             {
-              "$ref": "#/definitions/CostsSummary_for_EventKind"
+              "$ref": "#/definitions/CostsSummary"
             }
           ]
         },
@@ -285,14 +280,7 @@
         }
       }
     },
-    "CostsSummary_for_EventKind": {
-      "description": "The `CostsSummary` contains all differences for affected [`EventKind`]s",
-      "type": "object",
-      "additionalProperties": {
-        "$ref": "#/definitions/CostsDiff"
-      }
-    },
-    "CostsSummary_for_String": {
+    "CostsSummary": {
       "description": "The `CostsSummary` contains all differences for affected [`EventKind`]s",
       "type": "object",
       "additionalProperties": {
@@ -544,22 +532,11 @@
     "ToolRunSummary": {
       "description": "The `ToolRunSummary` which contains all information about a single tool run process\n\nThere's a separate process and therefore `ToolRunSummary` for the parent process and each child process if `--trace-children=yes` was passed as argument to the `Tool`.",
       "type": "object",
-      "required": ["command", "log_path", "summary"],
+      "required": ["command", "pid", "summary"],
       "properties": {
         "command": {
           "description": "The executed command extracted from Valgrind output",
           "type": "string"
-        },
-        "costs_summary": {
-          "description": "The tool specific cost summary extracted from Valgrind output",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/CostsSummary_for_String"
-            },
-            {
-              "type": "null"
-            }
-          ]
         },
         "details": {
           "description": "More details from the logging output of the tool run",
@@ -576,20 +553,6 @@
             }
           ]
         },
-        "log_path": {
-          "description": "The path to the full logfile from the tool run",
-          "type": "string"
-        },
-        "old_parent_pid": {
-          "description": "The old parent pid of this process",
-          "type": ["integer", "null"],
-          "format": "int32"
-        },
-        "old_pid": {
-          "description": "The old pid of this process",
-          "type": ["integer", "null"],
-          "format": "int32"
-        },
         "parent_pid": {
           "description": "The parent pid of this process",
           "type": ["integer", "null"],
@@ -597,7 +560,7 @@
         },
         "pid": {
           "description": "The pid of this process",
-          "type": ["integer", "null"],
+          "type": "integer",
           "format": "int32"
         },
         "summary": {
