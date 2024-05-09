@@ -832,7 +832,7 @@ When building `iai-callgrind` with client requests, the valgrind header files
 must exist in your standard include path (most of the time `/usr/include`). This
 is usually the case if you've installed valgrind with your distribution's
 package manager. If not, you can point the `IAI_CALLGRIND_VALGRIND_INCLUDE` or
-`IAI_CALLGRIND_<triple>_VALGRIND_INCLUDE` environment variables to the include 
+`IAI_CALLGRIND_<triple>_VALGRIND_INCLUDE` environment variables to the include
 path. So, if the headers can be found in
 `/home/foo/repo/valgrind/{valgrind.h, callgrind.h, ...}`, the correct include
 path would be `IAI_CALLGRIND_VALGRIND_INCLUDE=/home/foo/repo` (not
@@ -910,7 +910,7 @@ With `--output-format=default|json|pretty-json` (env:
 `IAI_CALLGRIND_OUTPUT_FORMAT`) you can change the terminal output format to the
 machine-readable json format. The json schema fully describing the json output
 is stored in
-[summary.v1.schema.json](./iai-callgrind-runner/schemas/summary.v1.schema.json).
+[summary.v2.schema.json](./iai-callgrind-runner/schemas/summary.v2.schema.json).
 Each line of json output (if not `pretty-json`) is a summary of a single
 benchmark and you may want to combine all benchmarks in an array. You can do so
 for example with `jq`

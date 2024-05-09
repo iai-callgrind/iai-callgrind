@@ -384,7 +384,7 @@ impl BenchmarkRunner {
             File::open(
                 self.metadata
                     .workspace_root
-                    .join("iai-callgrind-runner/schemas/summary.v1.schema.json"),
+                    .join("iai-callgrind-runner/schemas/summary.v2.schema.json"),
             )
             .unwrap(),
         )
