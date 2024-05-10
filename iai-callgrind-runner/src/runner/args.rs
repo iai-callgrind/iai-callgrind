@@ -413,4 +413,25 @@ mod tests {
         };
         assert_eq!(result.allow_aslr, Some(expected));
     }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_separate_targets_env() {
+        std::env::set_var("IAI_CALLGRIND_SEPARATE_TARGETS", "yes");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert!(result.separate_targets);
+    }
+
+    #[rstest]
+    #[case::default("", true)]
+    #[case::yes("yes", true)]
+    #[case::no("no", false)]
+    fn test_separate_targets_cli(#[case] value: &str, #[case] expected: bool) {
+        let result = if value.is_empty() {
+            CommandLineArgs::parse_from(["--separate-targets".to_owned()])
+        } else {
+            CommandLineArgs::parse_from([format!("--separate-targets={value}")])
+        };
+        assert_eq!(result.separate_targets, expected);
+    }
 }
