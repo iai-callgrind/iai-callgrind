@@ -212,9 +212,11 @@ pub struct CommandLineArgs {
     #[arg(
         long = "separate-targets",
         default_missing_value = "yes",
+        default_value = "no",
         num_args = 0..=1,
         require_equals = true,
         value_parser = BoolishValueParser::new(),
+        action = ArgAction::Set,
         env = "IAI_CALLGRIND_SEPARATE_TARGETS",
     )]
     pub separate_targets: bool,
