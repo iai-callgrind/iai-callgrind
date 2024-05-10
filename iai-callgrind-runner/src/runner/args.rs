@@ -200,10 +200,14 @@ pub struct CommandLineArgs {
     /// Separate iai-callgrind benchmark output files by target
     ///
     /// The default output path for files created by iai-callgrind and valgrind during the
-    /// benchmark is `target/iai/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.
-    /// $BENCH_ID`. This can be problematic if you're running the benchmarks not only for a
+    /// benchmark is
+    ///
+    /// `target/iai/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`.
+    ///
+    /// This can be problematic if you're running the benchmarks not only for a
     /// single target because you end up comparing the benchmark runs with the wrong targets.
     /// Setting this option changes the default output path to
+    ///
     /// `target/iai/$TARGET/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`
     ///
     /// Although not as comfortable and strict, you could achieve a separation by target also with
