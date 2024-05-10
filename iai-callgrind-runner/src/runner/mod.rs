@@ -27,7 +27,6 @@ pub mod envs {
     pub const CARGO_PKG_NAME: &str = "CARGO_PKG_NAME";
     pub const CARGO_TARGET_DIR: &str = "CARGO_TARGET_DIR";
     pub const CARGO_TERM_COLOR: &str = "CARGO_TERM_COLOR";
-    pub const BUILD_TRIPLE: &str = "BUILD_TRIPLE";
 }
 
 #[derive(Debug)]
