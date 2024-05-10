@@ -38,6 +38,7 @@ struct Benchmark {
     bench_name: String,
     config: Config,
     dest_dir: PathBuf,
+    home_dir: PathBuf,
 }
 
 #[derive(Debug)]
@@ -94,6 +95,8 @@ struct ExpectedRun {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ExpectedRuns {
+    #[serde(default)]
+    home_dir: Option<PathBuf>,
     data: Vec<ExpectedRun>,
 }
 
@@ -112,6 +115,8 @@ struct RunConfig {
     #[serde(default)]
     template_data: HashMap<String, minijinja::Value>,
     expected: Option<ExpectedConfig>,
+    #[serde(default)]
+    runs_on: Option<String>,
 }
 
 impl Benchmark {
@@ -129,6 +134,7 @@ impl Benchmark {
         };
 
         Benchmark {
+            home_dir: target_dir.join("iai"),
             dest_dir: target_dir.join("iai").join(PACKAGE).join(&bench_name),
             bench_name,
             name,
@@ -139,6 +145,14 @@ impl Benchmark {
     pub fn clean_benchmark(&self) {
         if self.dest_dir.is_dir() {
             std::fs::remove_dir_all(&self.dest_dir).unwrap();
+        }
+        let alt_dir = self
+            .home_dir
+            .join(env!("IC_BUILD_TRIPLE"))
+            .join(PACKAGE)
+            .join(&self.bench_name);
+        if alt_dir.is_dir() {
+            std::fs::remove_dir_all(&alt_dir).unwrap();
         }
     }
 
@@ -197,7 +211,16 @@ impl Benchmark {
         self.clean_benchmark();
 
         let num_runs = group.runs.len();
-        for (index, run) in group.runs.iter().enumerate() {
+        for (index, run) in group
+            .runs
+            .iter()
+            .filter(|r| {
+                r.runs_on
+                    .as_ref()
+                    .map_or(true, |r| r == env!("IC_BUILD_TRIPLE"))
+            })
+            .enumerate()
+        {
             print_info(format!(
                 "Running {}: ({}/{})",
                 &self.name,
@@ -220,7 +243,7 @@ impl Benchmark {
                 self.run_bench(&run.args, capture)
             };
 
-            run.assert(meta, output, schema, &self.dest_dir);
+            run.assert(meta, output, schema, &self.home_dir, &self.bench_name);
         }
     }
 }
@@ -545,7 +568,8 @@ impl RunConfig {
         meta: &Metadata,
         output: Option<BenchmarkOutput>,
         schema: &ScopedSchema<'_>,
-        dest_dir: &Path,
+        home_dir: &Path,
+        bench_name: &str,
     ) {
         if let Some(expected) = &self.expected {
             if let Some(output) = output {
@@ -558,8 +582,15 @@ impl RunConfig {
                 )
                 .map_err(|error| format!("Failed to deserialize '{}': {error}", files.display()))
                 .expect("File should be deserializable");
+
+                let dest_dir = if let Some(home_dir) = expected_runs.home_dir {
+                    home_dir.join(PACKAGE).join(bench_name)
+                } else {
+                    home_dir.join(PACKAGE).join(bench_name)
+                };
+
                 for expected in expected_runs.data {
-                    expected.assert(dest_dir, schema);
+                    expected.assert(&dest_dir, schema);
                 }
             }
         }

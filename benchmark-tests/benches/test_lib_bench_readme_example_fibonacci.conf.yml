@@ -2,7 +2,12 @@ groups:
   - runs:
       - args: []
         expected:
-          files: test_lib_bench_readme_example_fibonacci.expected.1.yml
+          files: test_lib_bench_readme_example_fibonacci.expected.1a.yml
       - args: []
         expected:
+          files: test_lib_bench_readme_example_fibonacci.expected.1b.yml
+  - runs:
+      - args: ["--separate-targets"]
+        expected:
           files: test_lib_bench_readme_example_fibonacci.expected.2.yml
+        runs_on: "x86_64-unknown-linux-gnu"
