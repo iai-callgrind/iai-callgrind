@@ -196,6 +196,34 @@ pub struct CommandLineArgs {
         env = "IAI_CALLGRIND_OUTPUT_FORMAT"
     )]
     pub output_format: OutputFormat,
+
+    /// Separate iai-callgrind benchmark output files by target
+    ///
+    /// The default output path for files created by iai-callgrind and valgrind during the
+    /// benchmark is
+    ///
+    /// `target/iai/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`.
+    ///
+    /// This can be problematic if you're running the benchmarks not only for a
+    /// single target because you end up comparing the benchmark runs with the wrong targets.
+    /// Setting this option changes the default output path to
+    ///
+    /// `target/iai/$TARGET/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`
+    ///
+    /// Although not as comfortable and strict, you could achieve a separation by target also with
+    /// baselines and a combination of `--save-baseline=$TARGET` and `--baseline=$TARGET` if you
+    /// prefer having all files of a single $BENCH in the same directory.
+    #[arg(
+        long = "separate-targets",
+        default_missing_value = "yes",
+        default_value = "no",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = BoolishValueParser::new(),
+        action = ArgAction::Set,
+        env = "IAI_CALLGRIND_SEPARATE_TARGETS",
+    )]
+    pub separate_targets: bool,
 }
 
 /// This function parses a space separated list of raw argument strings into [`crate::api::RawArgs`]
@@ -388,5 +416,26 @@ mod tests {
             CommandLineArgs::parse_from([format!("--allow-aslr={value}")])
         };
         assert_eq!(result.allow_aslr, Some(expected));
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_separate_targets_env() {
+        std::env::set_var("IAI_CALLGRIND_SEPARATE_TARGETS", "yes");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert!(result.separate_targets);
+    }
+
+    #[rstest]
+    #[case::default("", true)]
+    #[case::yes("yes", true)]
+    #[case::no("no", false)]
+    fn test_separate_targets_cli(#[case] value: &str, #[case] expected: bool) {
+        let result = if value.is_empty() {
+            CommandLineArgs::parse_from(["--separate-targets".to_owned()])
+        } else {
+            CommandLineArgs::parse_from([format!("--separate-targets={value}")])
+        };
+        assert_eq!(result.separate_targets, expected);
     }
 }

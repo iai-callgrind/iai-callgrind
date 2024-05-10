@@ -63,10 +63,17 @@ impl Metadata {
         let project_root = meta.workspace_root.into_std_path_buf();
         debug!("Detected project root: '{}'", project_root.display());
 
-        let target_dir = std::env::var_os(envs::CARGO_TARGET_DIR)
-            .map_or_else(|| meta.target_directory.into_std_path_buf(), PathBuf::from)
-            .join("iai")
-            .join(std::env::var_os(envs::CARGO_PKG_NAME).map_or_else(PathBuf::new, PathBuf::from));
+        let target_dir = {
+            let mut home = std::env::var_os(envs::CARGO_TARGET_DIR)
+                .map_or_else(|| meta.target_directory.into_std_path_buf(), PathBuf::from)
+                .join("iai");
+            if args.separate_targets {
+                home = home.join(env!("IC_BUILD_TRIPLE").to_ascii_lowercase());
+            }
+            home.join(
+                std::env::var_os(envs::CARGO_PKG_NAME).map_or_else(PathBuf::new, PathBuf::from),
+            )
+        };
 
         debug!("Detected target directory: '{}'", target_dir.display());
 
