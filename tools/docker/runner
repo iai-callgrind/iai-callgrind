@@ -1,0 +1,76 @@
+#!/bin/bash
+
+# Configuration:
+#  - QEMU_SMP=cores
+#  - QEMU_MEMORY=memory
+
+set -e
+
+qemuArch="${1}"
+qemuBinary="qemu-system-${qemuArch}"
+qemuArgs=(
+    -smp "${QEMU_SMP:-1}"
+    -m "${QEMU_MEMORY:-1G}"
+    -nographic
+    -monitor none
+    -kernel "/qemu/images/${qemuArch}/kernel"
+    -initrd "/qemu/images/${qemuArch}/initrd.gz"
+    -device "virtio-9p-pci,fsdev=fs0,mount_tag=app"
+    -fsdev "local,id=fs0,path=/app,security_model=mapped"
+)
+
+case "${qemuArch}" in
+    aarch64)
+        qemuSshPort="10022"
+        qemuArgs+=(
+            -machine virt-8.2
+            -cpu cortex-a76
+	    )
+        ;;
+    x86_64)
+        qemuSshPort="10122"
+        qemuArgs+=(
+            -machine pc-i440fx-8.2
+            -cpu Icelake-Server-v4
+            -append console=ttyS0
+	    )
+	    ;;
+	*)
+	    echo "arch is not set"
+	    exit 1
+        ;;
+esac
+
+qemuArgs+=(
+    -device "virtio-net-pci,netdev=net0"
+    -netdev "user,id=net0,hostfwd=tcp::${qemuSshPort}-:22"
+)
+
+lock_file="/var/run/lock/${qemuBinary}.lock"
+pid_file="/var/run/${qemuBinary}.pid"
+log_file="/var/log/${qemuBinary}"
+(
+    flock 200
+
+    if [ -s "${pid_file}" ]; then
+        pid=$(<"${pid_file}")
+    else
+        "/qemu/bin/${qemuBinary}" "${qemuArgs[@]}" >> "${log_file}" 2>&1 &
+        pid=$!
+        echo "$pid" > "${pid_file}"
+        sleep 0.5s
+    fi
+
+    if [ ! -h "/proc/${pid}/exe" ]; then
+        echo "QEMU is not runned"
+        tail -n 10 "${log_file}"
+        exit 1
+    fi
+) 200>"${lock_file}" && rm "${lock_file}"
+
+if [[ -t 1 ]] && [[ -t 2 ]]; then
+  tty_flag='-t'
+fi
+
+shift
+exec dbclient "${tty_flag}" -p "$qemuSshPort" root@localhost "sh -lc '${*}'"
