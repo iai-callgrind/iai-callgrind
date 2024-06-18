@@ -628,9 +628,12 @@ impl MultipleArguments {
 /// aren't attributed to the benchmark (and opposed to the old api we don't have to deal with
 /// callgrind arguments, toggles, inline(never), ...)
 ///
-/// The `bench` attribute consist of the attribute name itself, an unique id after `::` and
+/// The `bench` attribute consists of the attribute name itself, an unique id after `::` and
 /// optionally one or more arguments with expressions which are passed to the benchmark function as
-/// parameter as shown below:
+/// aparameter, as shown below. The id has to be unique within `#[library_benchmark]` where it's
+/// defined. However, the id can be the same as other id(s) in other `#[library_benchmark]` in the
+/// same 'library_benchmark_group!` macro invocation and then they can be `used with
+/// `library_benchmark_group!`'s optional parameter `compare_by_id`.
 ///
 /// ```rust
 /// # use iai_callgrind_macros::library_benchmark;
