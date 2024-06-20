@@ -7,6 +7,7 @@ mod imp {
     use std::path::PathBuf;
 
     use bindgen::{builder, Bindings};
+
     #[derive(Debug)]
     struct Target {
         arch: String,
@@ -39,6 +40,7 @@ mod imp {
     }
 
     fn print_client_requests_support(value: &str) {
+        println!("cargo:rustc-check-cfg=cfg(client_requests_support,values(\"{value}\")");
         println!("cargo:rustc-cfg=client_requests_support=\"{value}\"");
     }
 
