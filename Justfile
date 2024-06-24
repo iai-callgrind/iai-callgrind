@@ -219,4 +219,4 @@ reqs-test target:
 
 # Check minimal version requirements of dependencies
 minimal-versions:
-    cargo minimal-versions check --workspace --all-targets --ignore-private
+    cargo minimal-versions check --workspace --all-targets --ignore-private --direct
