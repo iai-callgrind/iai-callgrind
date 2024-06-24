@@ -22,14 +22,20 @@ benchmark = [
   "dep:iai-callgrind-runner",
 ]
 client_requests = ["client_requests_defs"]
-client_requests_defs = ["dep:cty", "dep:cfg-if"]
+client_requests_defs = [
+  "dep:cty",
+  "dep:cfg-if",
+  "dep:bindgen",
+  "dep:cc",
+  "dep:regex",
+]
 default = ["benchmark"]
 ui_tests = []
 
 [build-dependencies]
-bindgen = { workspace = true }
-cc = { workspace = true }
-regex = { workspace = true }
+bindgen = { workspace = true, optional = true }
+cc = { workspace = true, optional = true }
+regex = { workspace = true, optional = true }
 
 [package.metadata.docs.rs]
 features = ["client_requests_defs"]
