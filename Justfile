@@ -211,7 +211,7 @@ test-all:
 reqs-test-targets:
     @sed -En 's/\[target\.([^.]+)\]/\1/p' Cross.toml
 
-# Run the client request tests for a specific target
+# Run the client request tests for a specific target on the stable toolchain
 reqs-test target:
     @just reqs-test-targets | grep -q '{{ target }}' \
         || { echo "Unsupported target: '{{ target }}'. Run 'just reqs-test-targets' to get a list of supported targets"; exit 1; }
@@ -219,4 +219,4 @@ reqs-test target:
 
 # Check minimal version requirements of dependencies
 minimal-versions:
-    cargo minimal-versions check --workspace --all-targets --ignore-private
+    cargo minimal-versions check --workspace --all-targets --ignore-private --direct

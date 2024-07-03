@@ -37,24 +37,24 @@ inferno = { version = "0.11.10", default-features = false, features = [
   'multithreaded',
 ] }
 lazy_static = { version = "1.4.0" }
-log = { version = "0.4" }
+log = { version = "0.4.8" }
 minijinja = { version = "2.0.1" }
 once_cell = { version = "1" }
 predicates = { version = "3" }
 pretty_assertions = "1.1"
 proc-macro-error = "1"
 proc-macro2 = "1.0.60"
-quote = "1"
-regex = { version = "1" }
+quote = "1.0.25"
+regex = { version = "1.9" }
 rstest = ">=0.17, <0.20"
 sanitize-filename = { version = "0.5" }
 schemars = { version = "0.8.16", features = ["indexmap2"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1" }
+serde = { version = "1.0.139", features = ["derive"] }
+serde_json = { version = "1.0.79" }
 serde_yaml = { version = "0.9" }
 serial_test = { version = "3" }
 shlex = { version = "1.3" }
-syn = { version = "2.0.1", features = ["full", "extra-traits"] }
+syn = { version = "2.0.16", features = ["full", "extra-traits"] }
 tempfile = { version = "3" }
 trybuild = "1.0.18"
 valico = { version = "4" }

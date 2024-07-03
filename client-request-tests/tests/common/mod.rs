@@ -1,13 +1,16 @@
 use core::panic;
+use std::fmt::Write;
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use assert_cmd::Command;
 use tempfile::{tempdir, TempDir};
+use version_compare::Cmp;
 
 pub const VALGRIND_WRAPPER: &str = env!("CARGO_BIN_EXE_valgrind-wrapper");
 pub const FIXTURES_DIR: &str = env!("CLIENT_REQUEST_TESTS_FIXTURES");
+pub const RUST_VERSION: &str = env!("CLIENT_REQUEST_TESTS_RUST_VERSION");
 
 fn find_runner() -> Option<String> {
     for (key, value) in std::env::vars() {
@@ -16,6 +19,15 @@ fn find_runner() -> Option<String> {
         }
     }
     None
+}
+
+pub fn get_rust_version() -> String {
+    RUST_VERSION.to_string()
+}
+
+pub fn compare_rust_version(cmp: Cmp, expected: &str) -> bool {
+    version_compare::compare_to(get_rust_version(), expected, cmp)
+        .expect("Rust version comparison should succeed")
 }
 
 pub fn get_test_bin_path(name: &str) -> PathBuf {
@@ -67,6 +79,18 @@ pub fn get_fixture_as_string(name: &str) -> String {
         .unwrap_or_else(|_| panic!("Reading content of fixture '{name}' should succeed"));
 
     buf
+}
+
+pub fn get_fixture(name: &str, target: Option<&str>, since: Option<&str>, suffix: &str) -> String {
+    let mut file_name = String::from(name);
+    if let Some(since) = since {
+        write!(file_name, ".since_{since}").unwrap();
+    }
+    if let Some(target) = target {
+        write!(file_name, ".{target}").unwrap();
+    }
+    write!(file_name, ".{suffix}").unwrap();
+    get_fixture_as_string(&file_name)
 }
 
 pub fn get_sandbox() -> TempDir {

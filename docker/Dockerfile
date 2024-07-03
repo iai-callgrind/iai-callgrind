@@ -17,7 +17,6 @@ COPY cleanup_valgrind.sh /
 RUN /cleanup_valgrind.sh
 
 ARG IAI_CALLGRIND_CROSS_TARGET
-COPY linux-image.sh /
 COPY build_custom_image.sh /
 RUN /build_custom_image.sh
 

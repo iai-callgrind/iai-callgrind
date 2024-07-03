@@ -1,3 +1,4 @@
+use std::ffi::OsString;
 use std::path::PathBuf;
 
 use fs_extra::dir::CopyOptions;
@@ -10,7 +11,30 @@ where
     println!("cargo:rustc-env={}={}", key.as_ref(), value.as_ref());
 }
 
+pub fn get_rust_version() -> String {
+    let output = std::process::Command::new(
+        std::env::var_os("RUSTC").unwrap_or_else(|| OsString::from("rustc")),
+    )
+    .arg("--version")
+    .output()
+    .expect("Unable to run rustc");
+
+    String::from_utf8_lossy(&output.stdout)
+        .split(' ')
+        .nth(1)
+        .expect("The rust version should be present")
+        .to_string()
+}
+
 fn main() {
+    println!("cargo:rerun-if-env-changed=RUSTUP_TOOLCHAIN");
+    println!("cargo:rerun-if-env-changed=RUSTC");
+    println!("cargo:rerun-if-env-changed=CARGO_MANIFEST_DIR");
+    println!("cargo:rerun-if-env-changed=CROSS_RUNNER");
+    println!("cargo:rerun-if-env-changed=IAI_CALLGRIND_CROSS_TARGET");
+    println!("cargo:rerun-if-env-changed=IAI_CALLGRIND_CROSS_VALGRIND_TEMPDIR");
+    println!("cargo:rerun-if-env-changed=IAI_CALLGRIND_CROSS_VALGRIND_DESTDIR");
+
     let fixtures = PathBuf::from(
         std::env::var("CARGO_MANIFEST_DIR")
             .expect("Environment variable CARGO_MANIFEST_DIR should exist"),
@@ -76,4 +100,7 @@ fn main() {
             std::env::var("TARGET").expect("Environment variable TARGET should be present"),
         );
     }
+
+    let rust_version = get_rust_version();
+    set_env_var("CLIENT_REQUEST_TESTS_RUST_VERSION", rust_version);
 }

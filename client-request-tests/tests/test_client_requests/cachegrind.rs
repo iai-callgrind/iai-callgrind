@@ -1,5 +1,7 @@
 use std::io::{stderr, Write};
 
+use version_compare::Cmp;
+
 use crate::common;
 
 #[test]
@@ -24,7 +26,17 @@ fn test_cachegrind_reqs_when_running_on_valgrind() {
 
     match cmd.assert().try_code(expected_code) {
         Ok(assert) => {
-            let fixture_string = common::get_fixture_as_string("cachegrind-reqs-test.stderr");
+            let fixture_string =
+                if common::compare_rust_version(Cmp::Ge, "1.79.0") && cfg!(target_arch = "arm") {
+                    common::get_fixture(
+                        "cachegrind-reqs-test",
+                        Some("armv7"),
+                        Some("1.79.0"),
+                        "stderr",
+                    )
+                } else {
+                    common::get_fixture("cachegrind-reqs-test", None, None, "stderr")
+                };
             assert
                 .stdout("")
                 .stderr(predicates::str::diff(fixture_string));

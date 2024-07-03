@@ -19,7 +19,7 @@ echo Run normal tests
 cargo test --workspace --exclude client-request-tests
 
 echo Run client request tests
-cargo test -p client-request-tests --test tests --release -- --nocapture
+cargo +stable test -p client-request-tests --test tests --release -- --nocapture
 
 echo Run benchmark tests
 just full-bench-test-all
