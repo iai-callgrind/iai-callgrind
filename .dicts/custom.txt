@@ -1,5 +1,3 @@
-binstall
-nocapture
 ASLR
 Aparicio
 Assche
@@ -55,6 +53,7 @@ behaviour
 bheisler
 bincode
 bindgen
+binstall
 bools
 bumpversion
 cachesim
@@ -117,6 +116,7 @@ mmap
 msvc
 nanomips
 noaccess
+nocapture
 noninteractive
 nsec
 outfile
@@ -149,6 +149,7 @@ rustdoc
 rustfmt
 rustified
 rustup
+rustversion
 rwlock
 rwlocks
 sandboxing
