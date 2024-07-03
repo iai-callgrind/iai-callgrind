@@ -107,13 +107,8 @@ impl ToolCommand {
         debug!("{}: Clearing environment variables", self.tool.id());
         for (key, _) in std::env::vars() {
             match (key.as_str(), self.tool) {
-                (key @ ("DEBUGINFOD_URLS" | "PATH" | "HOME"), ValgrindTool::Memcheck) => {
-                    debug!(
-                        "{}: Clearing environment variables: Skipping {key}",
-                        self.tool.id()
-                    );
-                }
-                (key @ ("LD_PRELOAD" | "LD_LIBRARY_PATH"), _) => {
+                (key @ ("DEBUGINFOD_URLS" | "PATH" | "HOME"), ValgrindTool::Memcheck)
+                | (key @ ("LD_PRELOAD" | "LD_LIBRARY_PATH"), _) => {
                     debug!(
                         "{}: Clearing environment variables: Skipping {key}",
                         self.tool.id()
