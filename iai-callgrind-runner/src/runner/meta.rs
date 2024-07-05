@@ -17,7 +17,7 @@ pub struct Cmd {
     pub args: Vec<OsString>,
 }
 
-/// `Metadata` contains all information that needs be collected from cargo, global constants,
+/// `Metadata` contains all information that needs to be collected from cargo, global constants,
 /// environment variables and command line arguments
 #[derive(Debug, Clone)]
 pub struct Metadata {
@@ -64,9 +64,15 @@ impl Metadata {
         debug!("Detected project root: '{}'", project_root.display());
 
         let target_dir = {
-            let mut home = std::env::var_os(envs::CARGO_TARGET_DIR)
-                .map_or_else(|| meta.target_directory.into_std_path_buf(), PathBuf::from)
-                .join("iai");
+            let mut home = args.home.as_ref().map_or_else(
+                || {
+                    std::env::var_os(envs::CARGO_TARGET_DIR)
+                        .map_or_else(|| meta.target_directory.into_std_path_buf(), PathBuf::from)
+                        .join("iai")
+                },
+                Clone::clone,
+            );
+
             if args.separate_targets {
                 home = home.join(env!("IC_BUILD_TRIPLE").to_ascii_lowercase());
             }

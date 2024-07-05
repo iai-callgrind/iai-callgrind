@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use clap::builder::BoolishValueParser;
@@ -224,6 +225,14 @@ pub struct CommandLineArgs {
         env = "IAI_CALLGRIND_SEPARATE_TARGETS",
     )]
     pub separate_targets: bool,
+
+    /// Specify the home directory of iai-callgrind benchmark output files
+    ///
+    /// All output files are per default stored under the `$PROJECT_ROOT/target/iai` directory.
+    /// This option let's you customize this home directory and it will be created if it
+    /// does't exist.
+    #[arg(long = "home", num_args = 1, env = "IAI_CALLGRIND_HOME")]
+    pub home: Option<PathBuf>,
 }
 
 /// This function parses a space separated list of raw argument strings into [`crate::api::RawArgs`]
@@ -437,5 +446,25 @@ mod tests {
             CommandLineArgs::parse_from([format!("--separate-targets={value}")])
         };
         assert_eq!(result.separate_targets, expected);
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_home_env() {
+        std::env::set_var("IAI_CALLGRIND_HOME", "/tmp/my_iai_home");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(result.home, Some(PathBuf::from("/tmp/my_iai_home")));
+    }
+
+    #[test]
+    fn test_home_cli() {
+        let result = CommandLineArgs::parse_from(["--home=/test_me".to_owned()]);
+        assert_eq!(result.home, Some(PathBuf::from("/test_me")));
+    }
+
+    #[test]
+    fn test_home_cli_when_no_value_then_error() {
+        let result = CommandLineArgs::try_parse_from(["--home=".to_owned()]);
+        assert!(result.is_err());
     }
 }
