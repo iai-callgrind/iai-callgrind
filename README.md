@@ -909,6 +909,14 @@ cargo bench --bench <benchmark> -- --baseline main
 
 #### Customize the output directory
 
+Per default, all benchmark output files are stored under the
+`$PROJECT_ROOT/target/iai` directory tree. This home directory can be changed
+with the `IAI_CALLGRIND_HOME` environment variable or the command-line argument
+`--home`. The command-line argument overwrites the value of the environment
+variable. For example to store all files under the `/tmp/iai-callgrind`
+directory you can use `IAI_CALLGRIND_HOME=/tmp/iai-callgrind` or `cargo bench --
+--home=/tmp/iai-callgrind`.
+
 If you're running the benchmarks on different targets, it's necessary to
 separate the output files of the benchmark runs per target or else you could end
 up comparing the benchmarks with the wrong target leading to strange results.
