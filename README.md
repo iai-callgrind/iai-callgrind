@@ -49,6 +49,7 @@ improvements and features.
     - [Flamegraphs](#flamegraphs)
     - [Command-line arguments and environment variables](#command-line-arguments-and-environment-variables)
         - [Baselines](#comparing-with-baselines)
+        - [Output directory](#customize-the-output-directory)
         - [Machine-readable output](#machine-readable-output)
     - [Features and differences to Iai](#features-and-differences-to-iai)
     - [FAQ](#faq)
@@ -608,8 +609,10 @@ my_binary_benchmark::my_exe_group no argument:benchmark-tests-printargs
   Estimated Cycles:          581986|N/A             (*********)
 ```
 
-You'll find the callgrind output files of each run of the benchmark `my_binary_benchmark` of the
-group `my_exe_group` in `target/iai/$CARGO_PKG_NAME/my_binary_benchmark/my_exe_group`.
+You'll find the callgrind output files of each run of the benchmark
+`my_binary_benchmark` of the group `my_exe_group` in
+`target/iai/$CARGO_PKG_NAME/my_binary_benchmark/my_exe_group`. See also
+[customizing the output directory](#customize-the-output-directory).
 
 #### Configuration
 
@@ -903,6 +906,49 @@ git checkout feature
 # ... HACK ... HACK
 cargo bench --bench <benchmark> -- --baseline main
 ```
+
+#### Customize the output directory
+
+If you're running the benchmarks on different targets, it's necessary to
+separate the output files of the benchmark runs per target or else you could end
+up comparing the benchmarks with the wrong target leading to strange results.
+You can achieve this with different baselines per target, but it's much less
+painful to separate the output files by target with the `--separate-targets`
+command-line argument or setting the environment variable
+`IAI_CALLGRIND_SEPARATE_TARGETS=yes`). The output directory structure simply
+changes from
+`target/iai/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID` to
+`target/iai/$TARGET_TRIPLE/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`.
+
+For example the output directory of the following library benchmark assuming the
+benchmark file name is `bench_file` in the package `my_package`:
+
+```rust
+use iai_callgrind::{main, library_benchmark_group, library_benchmark};
+use my_lib::my_function;
+
+#[library_benchmark]
+#[bench::short(10)]
+fn bench_function(value: u64) -> u64 {
+    my_function(value)
+}
+
+library_benchmark_group!(
+    name = bench_group;
+    benchmarks = bench_function
+);
+
+main!(library_benchmark_groups = bench_group);
+```
+
+Without `--separate-targets`:
+
+`target/iai/my_package/bench_file/bench_group/bench_function.short`
+
+and with `--separate-targets` assuming you're running the benchmark on the
+`x86_64-unknown-linux-gnu` target:
+
+`target/iai/x86_64-unknown-linux-gnu/my_package/bench_file/bench_group/bench_function.short`
 
 #### Machine-readable output
 
