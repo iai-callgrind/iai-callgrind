@@ -3,10 +3,14 @@
 #[cfg(feature = "client_requests_defs")]
 mod imp {
     use std::borrow::Cow;
+    use std::ffi::OsString;
+    use std::fmt::Display;
     use std::io::{BufRead, BufReader, Cursor};
     use std::path::PathBuf;
 
     use bindgen::{builder, Bindings};
+    use strum::{EnumIter, IntoEnumIterator};
+    use version_compare::Cmp;
 
     #[derive(Debug)]
     struct Target {
@@ -17,7 +21,7 @@ mod imp {
         triple: String,
     }
 
-    #[derive(Debug)]
+    #[derive(EnumIter, Debug, PartialEq, Eq)]
     enum Support {
         Arm,
         Aarch64,
@@ -25,6 +29,13 @@ mod imp {
         X86_64,
         Native,
         No,
+    }
+
+    impl Display for Support {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let support = format!("{:?}", self).to_lowercase();
+            f.write_str(&support)
+        }
     }
 
     impl Target {
@@ -39,8 +50,24 @@ mod imp {
         }
     }
 
-    fn print_client_requests_support(value: &str) {
-        println!("cargo:rustc-check-cfg=cfg(client_requests_support,values(\"{value}\"))");
+    // Return the rust version if running rustc was successful
+    fn get_rust_version() -> Option<String> {
+        let output = std::process::Command::new(
+            std::env::var_os("RUSTC").unwrap_or_else(|| OsString::from("rustc")),
+        )
+        .arg("--version")
+        .output();
+
+        output.ok().map(|o| {
+            String::from_utf8_lossy(&o.stdout)
+                .split(' ')
+                .nth(1)
+                .expect("The rust version should be present")
+                .to_string()
+        })
+    }
+
+    fn print_client_requests_support(value: &Support) {
         println!("cargo:rustc-cfg=client_requests_support=\"{value}\"");
     }
 
@@ -116,10 +143,24 @@ mod imp {
         println!("cargo:rerun-if-changed=valgrind/wrapper.h");
         println!("cargo:rerun-if-changed=valgrind/native.c");
 
+        // rustc-check-cfg is introduced in rust with version 1.80 and avoids the compiler warnings
+        // in version >= 1.80.0. Printing it when compiling with versions < 1.80 triggers a warning,
+        // too. To get the best of both worlds we check against the currently active rust version.
+        if let Some(rust_version) = get_rust_version() {
+            if version_compare::compare_to(rust_version, "1.80", Cmp::Ge).unwrap() {
+                let values = Support::iter()
+                    .map(|s| format!("\"{s}\""))
+                    .collect::<Vec<String>>()
+                    .join(",");
+                println!("cargo:rustc-check-cfg=cfg(client_requests_support,values({values}))");
+            }
+        }
+
         let target = Target::from_env();
 
+        // When building the docs on docs.rs we can take a shortcut
         if std::env::var("DOCS_RS").is_ok() {
-            print_client_requests_support("x86_64");
+            print_client_requests_support(&Support::X86_64);
             build_bindings(&target);
             build_native(&target);
             return;
@@ -127,6 +168,7 @@ mod imp {
 
         let bindings = build_bindings(&target);
 
+        // These guards mirror the checks in the `valgrind.h` header file
         let support = if target.arch == "x86_64"
             && (target.os == "linux"
                 || target.os == "freebsd"
@@ -172,34 +214,14 @@ mod imp {
             support
         };
 
-        match support {
-            Some(Support::X86_64) => {
-                print_client_requests_support("x86_64");
+        if let Some(support) = support {
+            print_client_requests_support(&support);
+            if support != Support::No {
                 build_native(&target);
             }
-            Some(Support::X86) => {
-                print_client_requests_support("x86");
-                build_native(&target);
-            }
-            Some(Support::Arm) => {
-                print_client_requests_support("arm");
-                build_native(&target);
-            }
-            Some(Support::Aarch64) => {
-                print_client_requests_support("aarch64");
-                build_native(&target);
-            }
-            Some(Support::Native) => {
-                print_client_requests_support("native");
-                build_native(&target);
-            }
-            Some(Support::No) => {
-                print_client_requests_support("no");
-            }
-            None => {
-                eprintln!("{bindings}");
-                panic!("Unable to set cfg value for client_requests_support");
-            }
+        } else {
+            eprintln!("{bindings}");
+            panic!("Unable to set cfg value for client_requests_support");
         }
     }
 }
