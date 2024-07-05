@@ -1,4 +1,4 @@
-<!-- spell-checker:ignore serde dewert binstall jembishop -->
+<!-- spell-checker:ignore serde dewert binstall jembishop kehl DaniPopes -->
 <!--
 Added for new features.
 Changed for changes in existing functionality.
@@ -21,6 +21,18 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.11.1] - 2024-07-05
+
+### Changed
+
+* ([#169](https://github.com/iai-callgrind/iai-callgrind/pull/169)): Clearify
+  documentation about the scope of uniqueness of benchmark ids. Thanks to @peter-kehl
+* ([#175](https://github.com/iai-callgrind/iai-callgrind/pull/175)): Mark
+  iai-callgrind build dependencies required only by the `client_request_defs`
+  feature as optional. Solve cargo's `--check-cfg` warnings if currently active
+  rust version is `>= 1.80.0`. Thanks to @DaniPopes
+* Update some locked dependencies
 
 ## [0.11.0] - 2024-05-09
 
