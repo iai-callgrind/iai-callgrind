@@ -1,0 +1,14 @@
+[tool.bumpversion]
+current_version = "0.2.0"
+commit = true
+message = "Bump iai-callgrind-macros version v{current_version} -> v{new_version}"
+
+[[tool.bumpversion.files]]
+filename = "iai-callgrind-macros/Cargo.toml"
+search = "version = \"{current_version}\""
+replace = "version = \"{new_version}\""
+
+[[tool.bumpversion.files]]
+filename = "iai-callgrind/Cargo.toml"
+search = "iai-callgrind-macros = {{ path = \"../iai-callgrind-macros/\", version = \"={current_version}\""
+replace = "iai-callgrind-macros = {{ path = \"../iai-callgrind-macros/\", version = \"={new_version}\""
