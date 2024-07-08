@@ -44,6 +44,7 @@ struct LibBenchAttribute {
     args: Arguments,
     config: Option<Expr>,
     setup: Option<ExprPath>,
+    teardown: Option<ExprPath>,
 }
 
 #[derive(Debug, Default)]
@@ -84,27 +85,27 @@ impl ToTokens for Arguments {
 impl LibBenchAttribute {
     fn render_as_function(&self, callee: &Ident) -> TokenStream2 {
         let id = &self.id;
+        let args = &self.args;
 
-        let func = if let Some(setup) = &self.setup {
-            let exprs = &self.args.0;
-            let args = quote! {
-                #(#exprs),*
-            };
-            quote! {
-                #[inline(never)]
-                pub fn #id() {
-                    let _ = std::hint::black_box(#callee(std::hint::black_box(#setup(#args))));
-                }
-            }
+        let call = if let Some(setup) = &self.setup {
+            quote!(std::hint::black_box(#callee(std::hint::black_box(#setup(#args)))))
         } else {
-            let args = &self.args;
-            quote! {
-                #[inline(never)]
-                pub fn #id() {
-                    let _ = std::hint::black_box(#callee(#args));
-                }
-            }
+            quote!(std::hint::black_box(#callee(#args)))
         };
+
+        let call = if let Some(teardown) = &self.teardown {
+            quote!(std::hint::black_box(#teardown(#call)))
+        } else {
+            call
+        };
+
+        let func = quote!(
+            #[inline(never)]
+            pub fn #id() {
+                let _ = #call;
+            }
+        );
+
         if let Some(config) = &self.config {
             let config_ident = format_ident!("get_config_{}", id);
             quote! {
@@ -175,6 +176,7 @@ impl LibraryBenchmark {
         {
             let mut args = None;
             let mut config = None;
+            let mut teardown = None;
             for pair in pairs {
                 if pair.path.segments.is_empty() {
                     emit_error!(
@@ -200,13 +202,32 @@ impl LibraryBenchmark {
                             help = "config is allowed only once"
                         );
                     }
+                } else if pair.path.is_ident("teardown") {
+                    if teardown.is_none() {
+                        if let Expr::Path(path) = pair.value {
+                            teardown = Some(path);
+                        } else {
+                            abort!(
+                                pair, "Invalid value for `teardown`";
+                                help = "The `teardown` argument needs a path to an existing function
+                            in a reachable scope";
+                                note = "`teardown = my_teardown` or `teardown = my::teardown::function`"
+                            );
+                        }
+                    } else {
+                        abort!(
+                            pair, "Duplicate argument: `teardown`";
+                            help = "`teardown` is allowed only once"
+                        );
+                    }
                 } else {
                     abort!(
                         pair, "Invalid argument: {}", pair.path.get_ident().unwrap();
-                        help = "Valid arguments are: args, config"
+                        help = "Valid arguments are: args, config, teardown"
                     );
                 }
             }
+
             if let Some(expr) = args {
                 let args = match expr {
                     Expr::Array(items) => parse2::<Arguments>(items.elems.to_token_stream())?,
@@ -229,6 +250,7 @@ impl LibraryBenchmark {
                         args,
                         config,
                         setup: None,
+                        teardown,
                     });
                 } else {
                     emit_error!(
@@ -244,6 +266,7 @@ impl LibraryBenchmark {
                     args: Arguments(vec![]),
                     config,
                     setup: None,
+                    teardown,
                 });
             } else {
                 emit_error!(
@@ -260,6 +283,7 @@ impl LibraryBenchmark {
                     args,
                     config: None,
                     setup: None,
+                    teardown: None,
                 });
             } else {
                 emit_error!(
@@ -273,6 +297,7 @@ impl LibraryBenchmark {
         Ok(())
     }
 
+    #[allow(clippy::too_many_lines)]
     fn parse_benches_attribute(
         &mut self,
         item_fn: &ItemFn,
@@ -284,6 +309,7 @@ impl LibraryBenchmark {
 
         let mut config = None;
         let mut setup = None;
+        let mut teardown = None;
         let args = if let Ok(pairs) =
             meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
         {
@@ -293,7 +319,7 @@ impl LibraryBenchmark {
                     abort!(
                         pair, "Missing key";
                         help = "At least one argument must be given";
-                        note = "Valid arguments are: `args`, `config`, `setup`"
+                        note = "Valid arguments are: `args`, `config`, `setup`, `teardown`"
                     );
                 } else if pair.path.is_ident("args") {
                     if args.is_none() {
@@ -331,10 +357,28 @@ impl LibraryBenchmark {
                             help = "`setup` is allowed only once"
                         );
                     }
+                } else if pair.path.is_ident("teardown") {
+                    if setup.is_none() {
+                        if let Expr::Path(path) = pair.value {
+                            teardown = Some(path);
+                        } else {
+                            abort!(
+                                pair, "Invalid value for `teardown`";
+                                help = "The `teardown` argument needs a path to an existing function
+                            in a reachable scope";
+                                note = "`teardown = my_teardown` or `teardown = my::teardown::function`"
+                            );
+                        }
+                    } else {
+                        abort!(
+                            pair, "Duplicate argument: `teardown`";
+                            help = "`teardown` is allowed only once"
+                        );
+                    }
                 } else {
                     abort!(
                         pair, "Invalid argument: {}", pair.path.get_ident().unwrap();
-                        help = "Valid arguments are: `args`, `config`, `setup`"
+                        help = "Valid arguments are: `args`, `config`, `setup`, `teardown`"
                     );
                 }
             }
@@ -361,6 +405,7 @@ impl LibraryBenchmark {
                     args,
                     config: config.clone(),
                     setup: setup.clone(),
+                    teardown: teardown.clone(),
                 });
             } else {
                 emit_error!(
