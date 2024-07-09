@@ -15,15 +15,15 @@ error: Failed parsing arguments: Expected 0 values per tuple
 6 | #[benches::multi(42)]
   |                  ^^
 
-error: Expected 1 arguments but found none
+error: Expected 1 argument(s) but found none
 
          = help: Try passing arguments either with #[bench::some_id(arg1, ...)]
                        or with #[bench::some_id(args = (arg1, ...))]
 
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:11:1
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:11:3
    |
 11 | #[bench::id()]
-   | ^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^
 
 error: Expected 1 arguments but found 2
   --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:20:3

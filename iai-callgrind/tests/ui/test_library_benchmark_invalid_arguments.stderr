@@ -1,4 +1,4 @@
-error: Only the config argument is allowed
+error: Only the `config` argument is allowed
 
          = help: #[library_benchmark(config = ....)]
 

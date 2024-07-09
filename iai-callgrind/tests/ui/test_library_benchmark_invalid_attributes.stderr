@@ -2,7 +2,7 @@ error: Invalid attribute: 'b'
 
          = help: Only the `bench` and the `benches` attribute are allowed
          = note: #[bench::my_id("with", "args")]
-                           or #[benches::my_id(args = [("with", "args"), ...)])]
+                           or #[benches::my_id(args = [("with", "args"), ...])]
 
  --> tests/ui/test_library_benchmark_invalid_attributes.rs:4:1
   |
@@ -13,7 +13,7 @@ error: Invalid attribute: 'inline'
 
          = help: Only the `bench` and the `benches` attribute are allowed
          = note: #[bench::my_id("with", "args")]
-                           or #[benches::my_id(args = [("with", "args"), ...)])]
+                           or #[benches::my_id(args = [("with", "args"), ...])]
 
  --> tests/ui/test_library_benchmark_invalid_attributes.rs:8:1
   |
@@ -24,7 +24,7 @@ error: Invalid attribute: 'inline'
 
          = help: Only the `bench` and the `benches` attribute are allowed
          = note: #[bench::my_id("with", "args")]
-                           or #[benches::my_id(args = [("with", "args"), ...)])]
+                           or #[benches::my_id(args = [("with", "args"), ...])]
 
   --> tests/ui/test_library_benchmark_invalid_attributes.rs:11:1
    |

@@ -22,16 +22,6 @@ error: Invalid argument: wrong
 16 | #[benches::wrong(wrong = LibraryBenchmarkConfig::default())]
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Missing arguments for `benches`
-
-         = help: Either specify the `args` argument or use plain arguments
-         = note: `#[benches::id(args = [...])]` or `#[benches::id(1, 2, ...)]`
-
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments_when_config.rs:20:3
-   |
-20 | #[benches::missing_args(config = LibraryBenchmarkConfig::default())]
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: unexpected end of input, expected an expression
   --> tests/ui/test_library_benchmark_invalid_bench_arguments_when_config.rs:23:1
    |
@@ -53,3 +43,22 @@ error[E0277]: the trait bound `InternalLibraryBenchmarkConfig: From<&str>` is no
             <InternalLibraryBenchmarkConfig as From<&mut LibraryBenchmarkConfig>>
             <InternalLibraryBenchmarkConfig as From<LibraryBenchmarkConfig>>
   = note: required for `&str` to implement `Into<InternalLibraryBenchmarkConfig>`
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments_when_config.rs:21:8
+   |
+19 | #[library_benchmark]
+   | -------------------- an argument of type `i32` is missing
+20 | #[benches::missing_args(config = LibraryBenchmarkConfig::default())]
+21 | pub fn bench40(_arg: i32) {}
+   |        ^^^^^^^
+   |
+note: function defined here
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments_when_config.rs:21:8
+   |
+21 | pub fn bench40(_arg: i32) {}
+   |        ^^^^^^^ ---------
+help: provide the argument
+   |
+19 | bench40(/* i32 */)
+   |

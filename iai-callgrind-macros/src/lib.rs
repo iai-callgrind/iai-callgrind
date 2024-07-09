@@ -24,6 +24,7 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::str_to_string)]
 
+// TODO: CLEARIFY USAGE OF TokenStream vs TokenStream2
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use proc_macro_error::{abort, emit_error, proc_macro_error};
@@ -36,10 +37,16 @@ use syn::{
 };
 
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
-#[derive(Debug, Clone)]
-struct Args(Vec<Expr>);
+#[derive(Debug, Default, Clone)]
+struct Args(Option<Vec<Expr>>);
 
-/// This is the counterpart for the `#[bench]` attribute.
+#[derive(Debug, Default, Clone)]
+struct Setup(Option<ExprPath>);
+
+#[derive(Debug, Default, Clone)]
+struct Teardown(Option<ExprPath>);
+
+/// This is the counterpart for the `#[bench]` attribute
 ///
 /// The #[benches] attribute is also parsed into this structure.
 #[derive(Debug)]
@@ -47,27 +54,99 @@ struct Bench {
     id: Ident,
     args: Args,
     config: BenchConfig,
-    setup: Option<ExprPath>,
-    teardown: Option<ExprPath>,
+    setup: Setup,
+    teardown: Teardown,
 }
 
-#[derive(Debug, Clone)]
+/// The `config` parameter of the `#[bench]` or `#[benches]` attribute
+#[derive(Debug, Default, Clone)]
 struct BenchConfig(Option<Expr>);
 
 /// This is the counterpart to the `#[library_benchmark]` attribute.
 #[derive(Debug, Default)]
 struct LibraryBenchmark {
-    config: Option<Expr>,
+    config: LibraryBenchmarkConfig,
     benches: Vec<Bench>,
 }
 
+/// The `config` parameter of the `#[library_benchmark]` attribute
+///
+/// The `BenchConfig` and `LibraryBenchmarkConfig` are rendered differently, hence the different
+/// structures
+///
+/// Note: This struct is completely independent of the `iai_callgrind::LibraryBenchmarkConfig`
+/// struct with the same name.
+#[derive(Debug, Default, Clone)]
+struct LibraryBenchmarkConfig(Option<Expr>);
+
 /// This struct stores multiple `Args` as needed by the `#[benches]` attribute
-#[derive(Debug, Clone)]
-struct MultipleArgs(Vec<Args>);
+#[derive(Debug, Clone, Default)]
+struct MultipleArgs(Option<Vec<Args>>);
 
 impl Args {
     fn len(&self) -> usize {
-        self.0.len()
+        self.0.as_ref().map_or(0, Vec::len)
+    }
+
+    fn parse(&mut self, expr: &Expr, expected_num_args: usize) -> syn::Result<()> {
+        if self.0.is_none() {
+            let args = match &expr {
+                Expr::Array(items) => parse2::<Args>(items.elems.to_token_stream())?,
+                Expr::Tuple(items) => parse2::<Args>(items.elems.to_token_stream())?,
+                Expr::Paren(item) if expected_num_args == 1 => {
+                    Args(Some(vec![(*item.expr).clone()]))
+                }
+                _ => {
+                    abort!(
+                        expr,
+                        "Failed parsing `args`";
+                        help = "`args` must be an tuple/array which elements (expressions)
+                        match the number of parameters of the benchmarking function";
+                        note = "#[bench::id(args = (1, 2))] or
+                        #[bench::id(args = [1, 2]])]"
+                    );
+                }
+            };
+            if args.len() != expected_num_args {
+                emit_error!(
+                    expr,
+                    "Expected {} arguments but found {}",
+                    expected_num_args,
+                    args.len()
+                );
+            };
+            *self = args;
+        } else {
+            emit_error!(
+                expr, "Duplicate argument: `args`";
+                help = "`args` is allowed only once"
+            );
+        }
+
+        Ok(())
+    }
+
+    fn parse_meta_list(&mut self, meta: &MetaList, expected_num_args: usize) -> syn::Result<()> {
+        let args = meta.parse_args::<Args>()?;
+        if args.len() != expected_num_args {
+            emit_error!(
+                meta,
+                "Expected {} arguments but found {}",
+                expected_num_args,
+                args.len()
+            );
+        }
+        *self = args;
+
+        Ok(())
+    }
+
+    fn to_tokens_without_black_box(&self) -> TokenStream2 {
+        if let Some(exprs) = &self.0 {
+            quote! { #(#exprs),* }
+        } else {
+            TokenStream2::new()
+        }
     }
 }
 
@@ -77,36 +156,30 @@ impl Parse for Args {
             .parse_terminated(Parse::parse, Token![,])?
             .into_iter()
             .collect();
-        Ok(Self(data))
+        Ok(Self(Some(data)))
     }
 }
 
 impl ToTokens for Args {
     fn to_tokens(&self, tokens: &mut TokenStream2) {
-        let exprs = &self.0;
-        let this_tokens = quote! {
-            #(std::hint::black_box(#exprs)),*
-        };
-        tokens.append_all(this_tokens);
+        if let Some(exprs) = &self.0 {
+            let this_tokens = quote! {
+                #(std::hint::black_box(#exprs)),*
+            };
+            tokens.append_all(this_tokens);
+        }
     }
 }
 
 impl Bench {
-    fn render_as_function(&self, callee: &Ident) -> TokenStream2 {
+    fn render_as_code(&self, callee: &Ident) -> TokenStream2 {
         let id = &self.id;
         let args = &self.args;
 
-        let call = if let Some(setup) = &self.setup {
-            quote!(std::hint::black_box(#callee(std::hint::black_box(#setup(#args)))))
-        } else {
-            quote!(std::hint::black_box(#callee(#args)))
-        };
+        let inner = self.setup.render_as_code(args);
+        let call = quote! { std::hint::black_box(#callee(#inner)) };
 
-        let call = if let Some(teardown) = &self.teardown {
-            quote!(std::hint::black_box(#teardown(#call)))
-        } else {
-            call
-        };
+        let call = self.teardown.render_as_code(call);
 
         let func = quote!(
             #[inline(never)]
@@ -115,60 +188,30 @@ impl Bench {
             }
         );
 
-        let config = self.config.render_as_function(id);
+        let config = self.config.render_as_code(id);
         quote! {
             #config
-
             #func
         }
     }
 
-    fn render_as_lib_bench(&self) -> TokenStream2 {
+    fn render_as_member(&self) -> TokenStream2 {
         let id = &self.id;
-        let id_str = self.id.to_string();
-        // TODO: Move this into Args::to_string
-        let args = if let Some(setup) = self.setup.as_ref() {
-            let exprs = &self.args.0;
-            let tokens = quote! {
-                #(#exprs),*
-            };
-            quote! { #setup(#tokens) }.to_string()
-        } else {
-            self.args
-                .0
-                .iter()
-                .map(|a| a.to_token_stream().to_string())
-                .collect::<Vec<String>>()
-                .join(", ")
-        };
-        if self.config.0.is_some() {
-            let conf_ident = format_ident!("get_config_{}", id);
-            quote! {
-                iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some(#id_str),
-                    args_display: Some(#args),
-                    func: #id,
-                    config: Some(#conf_ident)
-                }
-            }
-        } else {
-            quote! {
-                iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some(#id_str),
-                    args_display: Some(#args),
-                    func: #id,
-                    config: None
-                }
+        let id_display = self.id.to_string();
+        let args_display = self.setup.to_string(&self.args);
+        let config = self.config.render_as_member(id);
+        quote! {
+            iai_callgrind::internal::InternalMacroLibBench {
+                id_display: Some(#id_display),
+                args_display: Some(#args_display),
+                func: #id,
+                config: #config
             }
         }
     }
 }
 
 impl BenchConfig {
-    fn new() -> Self {
-        Self(None)
-    }
-
     fn ident(id: &Ident) -> Ident {
         format_ident!("get_config_{}", id)
     }
@@ -184,12 +227,12 @@ impl BenchConfig {
         }
     }
 
-    fn render_as_function(&self, id: &Ident) -> TokenStream2 {
+    fn render_as_code(&self, id: &Ident) -> TokenStream2 {
         if let Some(config) = &self.0 {
-            let config_ident = Self::ident(id);
+            let ident = Self::ident(id);
             quote! {
                 #[inline(never)]
-                pub fn #config_ident() -> iai_callgrind::internal::InternalLibraryBenchmarkConfig {
+                pub fn #ident() -> iai_callgrind::internal::InternalLibraryBenchmarkConfig {
                     #config.into()
                 }
             }
@@ -197,10 +240,18 @@ impl BenchConfig {
             TokenStream2::new()
         }
     }
+
+    fn render_as_member(&self, id: &Ident) -> TokenStream2 {
+        if self.0.is_some() {
+            let ident = Self::ident(id);
+            quote! { Some(#ident) }
+        } else {
+            quote! { None }
+        }
+    }
 }
 
 impl LibraryBenchmark {
-    #[allow(clippy::too_many_lines)]
     fn parse_bench_attribute(
         &mut self,
         item_fn: &ItemFn,
@@ -209,126 +260,54 @@ impl LibraryBenchmark {
     ) -> syn::Result<()> {
         let expected_num_args = item_fn.sig.inputs.len();
         let meta = attr.meta.require_list()?;
+
+        let mut args = Args::default();
+        let mut config = BenchConfig::default();
+        let mut teardown = Teardown::default();
+
         if let Ok(pairs) =
             meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
         {
-            let mut args = None;
-            let mut config = BenchConfig::new();
-            let mut teardown = None;
-            for pair in pairs {
-                if pair.path.segments.is_empty() {
-                    emit_error!(
-                        pair, "Missing key";
-                        help = "At least one argument must be given";
-                        note = "Valid arguments are: `args`, `config`, `teardown`"
-                    );
-                } else if pair.path.is_ident("args") {
-                    if args.is_none() {
-                        args = Some(pair.value);
-                    } else {
-                        emit_error!(
-                            pair, "Duplicate argument: `args`";
-                            help = "`args` is allowed only once"
-                        );
-                    }
-                } else if pair.path.is_ident("config") {
-                    config.parse(pair.value);
-                } else if pair.path.is_ident("teardown") {
-                    if teardown.is_none() {
-                        if let Expr::Path(path) = pair.value {
-                            teardown = Some(path);
-                        } else {
-                            abort!(
-                                pair, "Invalid value for `teardown`";
-                                help = "The `teardown` argument needs a path to an existing function
-                            in a reachable scope";
-                                note = "`teardown = my_teardown` or `teardown = my::teardown::function`"
-                            );
-                        }
-                    } else {
-                        abort!(
-                            pair, "Duplicate argument: `teardown`";
-                            help = "`teardown` is allowed only once"
-                        );
-                    }
-                } else {
-                    abort!(
-                        pair, "Invalid argument: {}", pair.path.get_ident().unwrap();
-                        help = "Valid arguments are: `args`, `config`, `teardown`"
-                    );
-                }
-            }
-
-            if let Some(expr) = args {
-                let args = match expr {
-                    Expr::Array(items) => parse2::<Args>(items.elems.to_token_stream())?,
-                    Expr::Tuple(items) => parse2::<Args>(items.elems.to_token_stream())?,
-                    Expr::Paren(item) if expected_num_args == 1 => Args(vec![*item.expr]),
-                    _ => {
-                        abort!(
-                            expr,
-                            "Failed parsing `args`";
-                            help = "`args` must be an tuple/array which elements (expressions)
-                            match the number of parameters of the benchmarking function";
-                            note = "#[bench::id(args = (1, 2))] or
-                            #[bench::id(args = [1, 2]])]"
-                        );
-                    }
-                };
-                if args.len() == expected_num_args {
-                    self.benches.push(Bench {
-                        id,
-                        args,
-                        config,
-                        setup: None,
-                        teardown,
-                    });
-                } else {
-                    emit_error!(
-                        meta,
-                        "Expected {} arguments but found {}",
-                        expected_num_args,
-                        args.len()
-                    );
-                };
-            } else if expected_num_args == 0 {
-                self.benches.push(Bench {
-                    id,
-                    args: Args(vec![]),
-                    config,
-                    setup: None,
-                    teardown,
-                });
-            } else {
+            if pairs.is_empty() && expected_num_args != 0 {
                 emit_error!(
-                    attr, "Expected {} arguments but found none", expected_num_args;
+                    meta,
+                    "Expected {} argument(s) but found none",
+                    expected_num_args;
                     help = "Try passing arguments either with #[bench::some_id(arg1, ...)]
                 or with #[bench::some_id(args = (arg1, ...))]"
                 );
+            } else {
+                for pair in pairs {
+                    // TODO: Add parsing setup
+                    if pair.path.is_ident("args") {
+                        args.parse(&pair.value, expected_num_args)?;
+                    } else if pair.path.is_ident("config") {
+                        config.parse(pair.value);
+                    } else if pair.path.is_ident("teardown") {
+                        teardown.parse(pair.value);
+                    } else {
+                        abort!(
+                            pair, "Invalid argument: {}", pair.path.require_ident()?;
+                            help = "Valid arguments are: `args`, `config`, `teardown`"
+                        );
+                    }
+                }
             }
         } else {
-            let args = meta.parse_args::<Args>()?;
-            if args.len() == expected_num_args {
-                self.benches.push(Bench {
-                    id,
-                    args,
-                    config: BenchConfig::new(),
-                    setup: None,
-                    teardown: None,
-                });
-            } else {
-                emit_error!(
-                    meta,
-                    "Expected {} arguments but found {}",
-                    expected_num_args,
-                    args.len()
-                );
-            }
+            args.parse_meta_list(meta, expected_num_args)?;
         }
+
+        self.benches.push(Bench {
+            id,
+            args,
+            config,
+            setup: Setup::default(),
+            teardown,
+        });
+
         Ok(())
     }
 
-    #[allow(clippy::too_many_lines)]
     fn parse_benches_attribute(
         &mut self,
         item_fn: &ItemFn,
@@ -338,90 +317,35 @@ impl LibraryBenchmark {
         let expected_num_args = item_fn.sig.inputs.len();
         let meta = attr.meta.require_list()?;
 
-        let mut config = BenchConfig::new();
-        let mut setup = None;
-        let mut teardown = None;
-        let args = if let Ok(pairs) =
+        let mut config = BenchConfig::default();
+        let mut setup = Setup::default();
+        let mut teardown = Teardown::default();
+        let mut args = MultipleArgs::default();
+
+        if let Ok(pairs) =
             meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
         {
-            let mut args = None;
             for pair in pairs {
-                if pair.path.segments.is_empty() {
-                    abort!(
-                        pair, "Missing key";
-                        help = "At least one argument must be given";
-                        note = "Valid arguments are: `args`, `config`, `setup`, `teardown`"
-                    );
-                } else if pair.path.is_ident("args") {
-                    if args.is_none() {
-                        args = Some(pair.value);
-                    } else {
-                        abort!(
-                            pair, "Duplicate argument: `args`";
-                            help = "`args` is allowed only once"
-                        );
-                    }
+                if pair.path.is_ident("args") {
+                    args.parse(&pair.value, expected_num_args, setup.is_some())?;
                 } else if pair.path.is_ident("config") {
                     config.parse(pair.value);
                 } else if pair.path.is_ident("setup") {
-                    if setup.is_none() {
-                        if let Expr::Path(path) = pair.value {
-                            setup = Some(path);
-                        } else {
-                            abort!(
-                                pair, "Invalid value for `setup`";
-                                help = "The `setup` argument needs a path to an existing function
-                            in a reachable scope";
-                                note = "`setup = my_setup` or `setup = my::setup::function`"
-                            );
-                        }
-                    } else {
-                        abort!(
-                            pair, "Duplicate argument: `setup`";
-                            help = "`setup` is allowed only once"
-                        );
-                    }
+                    setup.parse(pair.value);
                 } else if pair.path.is_ident("teardown") {
-                    if setup.is_none() {
-                        if let Expr::Path(path) = pair.value {
-                            teardown = Some(path);
-                        } else {
-                            abort!(
-                                pair, "Invalid value for `teardown`";
-                                help = "The `teardown` argument needs a path to an existing function
-                            in a reachable scope";
-                                note = "`teardown = my_teardown` or `teardown = my::teardown::function`"
-                            );
-                        }
-                    } else {
-                        abort!(
-                            pair, "Duplicate argument: `teardown`";
-                            help = "`teardown` is allowed only once"
-                        );
-                    }
+                    teardown.parse(pair.value);
                 } else {
                     abort!(
-                        pair, "Invalid argument: {}", pair.path.get_ident().unwrap();
+                        pair, "Invalid argument: {}", pair.path.require_ident()?;
                         help = "Valid arguments are: `args`, `config`, `setup`, `teardown`"
                     );
                 }
             }
-            if let Some(args) = args {
-                MultipleArgs::from_expr(&args, expected_num_args, setup.is_some())?
-            } else if setup.is_none() && expected_num_args != 0 {
-                abort!(
-                    meta, "Missing arguments for `benches`";
-                    help = "Either specify the `args` argument or use plain arguments";
-                    note = "`#[benches::id(args = [...])]` or `#[benches::id(1, 2, ...)]`"
-                );
-            } else {
-                MultipleArgs(vec![])
-            }
         } else {
-            MultipleArgs::from_meta_list(meta, expected_num_args)?
+            args = MultipleArgs::from_meta_list(meta, expected_num_args)?;
         };
 
-        for (i, args) in args.0.into_iter().enumerate() {
+        for (i, args) in args.0.unwrap_or_default().into_iter().enumerate() {
             let id = format_ident!("{id}_{i}");
             if (setup.is_none() && args.len() == expected_num_args) || setup.is_some() {
                 self.benches.push(Bench {
@@ -446,6 +370,7 @@ impl LibraryBenchmark {
     fn extract_benches(&mut self, item_fn: &ItemFn) -> syn::Result<()> {
         let bench: syn::PathSegment = parse_quote!(bench);
         let benches: syn::PathSegment = parse_quote!(benches);
+
         for attr in &item_fn.attrs {
             let mut path_segments = attr.path().segments.iter();
             match path_segments.next() {
@@ -453,7 +378,7 @@ impl LibraryBenchmark {
                     if attr.path().segments.len() > 2 {
                         abort!(
                             attr, "Only one id is allowed";
-                            help = "bench followed by :: and an single unique id";
+                            help = "bench followed by :: and a single unique id";
                             note = r#"#[bench::my_id()] or #[bench::my_id("with", "args")]
                         or #[bench::my_id(args = (arg1, ...), config = ...)]"#
                         );
@@ -471,7 +396,7 @@ impl LibraryBenchmark {
                     if attr.path().segments.len() > 2 {
                         abort!(
                             attr, "Only one id is allowed";
-                            help = "benches followed by :: and an single unique id";
+                            help = "benches followed by :: and a single unique id";
                             note = r#"#[benches::my_id("with", "args")]
                         or #[benches::my_id(args = [arg1, ...]]"#
                         );
@@ -490,7 +415,7 @@ impl LibraryBenchmark {
                         attr, "Invalid attribute: '{}'", segment.ident;
                         help = "Only the `bench` and the `benches` attribute are allowed";
                         note = r#"#[bench::my_id("with", "args")]
-                    or #[benches::my_id(args = [("with", "args"), ...)])]"#
+                    or #[benches::my_id(args = [("with", "args"), ...])]"#
                     );
                 }
                 None => {
@@ -503,7 +428,15 @@ impl LibraryBenchmark {
         Ok(())
     }
 
-    fn render_single(self, item_fn: &ItemFn) -> TokenStream2 {
+    /// Render the `#[library_benchmark]` attribute when no outer attribute was present
+    ///
+    /// ```ignore
+    /// #[library_benchmark]
+    /// fn my_benchmark_function() -> u64 {
+    ///     my_lib::bench_me(42)
+    /// }
+    /// ```
+    fn render_standalone(self, item_fn: &ItemFn) -> TokenStream2 {
         let new_item_fn = ItemFn {
             attrs: vec![],
             vis: syn::Visibility::Inherited,
@@ -513,24 +446,7 @@ impl LibraryBenchmark {
 
         let ident = &item_fn.sig.ident;
         let export_name = format!("iai_callgrind::bench::{}", &item_fn.sig.ident);
-        let config = if let Some(config) = self.config {
-            quote!(
-                #[inline(never)]
-                pub fn get_config()
-                    -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
-                {
-                    Some(#config.into())
-                }
-            )
-        } else {
-            quote!(
-                #[inline(never)]
-                pub fn get_config()
-                -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig> {
-                    None
-                }
-            )
-        };
+        let config = self.config.render_as_code();
         quote! {
             mod #ident {
                 use super::*;
@@ -558,6 +474,53 @@ impl LibraryBenchmark {
         }
     }
 
+    /// Render the `#[library_benchmark]` when other outer attributes like `#[bench]` were present
+    ///
+    /// We use the function name of the annotated function as module name. This new module
+    /// encloses the new functions generated from the `#[bench]` and `#[benches]` attribute as well
+    /// as the original and unmodified benchmark function.
+    ///
+    /// The original benchmark function receives additional attributes `#[inline(never)]` to prevent
+    /// the compiler from inlining this function and `#[export_name]` to export this function with a
+    /// prefix `iai_callgrind::bench::`. The latter attribute is important since we extract the
+    /// costs in the iai-callgrind-runner using callgrind's function match mechanism via a wildcard
+    /// `iai_callgrind::bench::*`. The main problem is that the compiler replaces functions with
+    /// identical body. For example the functions
+    ///
+    /// ```ignore
+    /// #[library_benchmark]
+    /// #[bench::my_id(42)]
+    /// fn my_bench(arg: u64) -> u64 {
+    ///     my_lib::bench_me()
+    /// }
+    ///
+    /// #[library_benchmark]
+    /// #[bench::my_id(84)]
+    /// fn my_bench_with_longer_function_name(arg: u64) -> u64 {
+    ///     my_lib::bench_me()
+    /// }
+    /// ```
+    ///
+    /// would be treated by the compiler as a single function (it takes the one with the shorter
+    /// function name, here `my_bench`) and both function names would be exported under the same
+    /// name. If we don't export these functions with a common prefix, we wouldn't be able to
+    /// match for `my_bench_with_longer_function_name::my_bench_with_longer_function_name` since
+    /// this function was replaced by the compiler with `my_bench::my_bench`.
+    ///
+    /// Next, we store all necessary information in a `BENCHES` slice of
+    /// `iai_callgrind::internal::InternalMacroLibBench` structs. This slice can be easily accessed
+    /// by the macros of the `iai-callgrind` package in which we finally can call all the benchmark
+    /// functions.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// #[library_benchmark]
+    /// #[bench::my_id(42)]
+    /// fn my_benchmark_function(arg: u64) -> u64 {
+    ///     my_lib::bench_me(arg)
+    /// }
+    /// ```
     fn render_benches(self, item_fn: &ItemFn) -> TokenStream2 {
         let new_item_fn = ItemFn {
             attrs: vec![],
@@ -572,28 +535,11 @@ impl LibraryBenchmark {
         let mut funcs = TokenStream2::new();
         let mut lib_benches = vec![];
         for bench in self.benches {
-            funcs.append_all(bench.render_as_function(callee));
-            lib_benches.push(bench.render_as_lib_bench());
+            funcs.append_all(bench.render_as_code(callee));
+            lib_benches.push(bench.render_as_member());
         }
 
-        let config = if let Some(config) = self.config {
-            quote!(
-                #[inline(never)]
-                pub fn get_config()
-                -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
-                {
-                    Some(#config.into())
-                }
-            )
-        } else {
-            quote!(
-                #[inline(never)]
-                pub fn get_config()
-                -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig> {
-                    None
-                }
-            )
-        };
+        let config = self.config.render_as_code();
         quote! {
             mod #mod_name {
                 use super::*;
@@ -602,7 +548,7 @@ impl LibraryBenchmark {
                 #[export_name = #export_name]
                 #new_item_fn
 
-                pub const BENCHES: &[iai_callgrind::internal::InternalMacroLibBench]= &[
+                pub const BENCHES: &[iai_callgrind::internal::InternalMacroLibBench] = &[
                     #(#lib_benches,)*
                 ];
 
@@ -629,7 +575,7 @@ impl Parse for LibraryBenchmark {
                 Ok(pairs.first().map_or_else(Self::default, |pair| {
                     if pair.path.is_ident("config") {
                         Self {
-                            config: Some(pair.value.clone()),
+                            config: LibraryBenchmarkConfig::parse(&pair.value),
                             ..Default::default()
                         }
                     } else {
@@ -644,7 +590,47 @@ impl Parse for LibraryBenchmark {
     }
 }
 
+impl LibraryBenchmarkConfig {
+    fn parse(expr: &Expr) -> Self {
+        Self(Some(expr.clone()))
+    }
+
+    fn render_as_code(&self) -> TokenStream2 {
+        if let Some(config) = &self.0 {
+            quote!(
+                #[inline(never)]
+                pub fn get_config()
+                    -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
+                {
+                    Some(#config.into())
+                }
+            )
+        } else {
+            quote!(
+                #[inline(never)]
+                pub fn get_config()
+                -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig> {
+                    None
+                }
+            )
+        }
+    }
+}
+
 impl MultipleArgs {
+    fn parse(&mut self, expr: &Expr, expected_num_args: usize, has_setup: bool) -> syn::Result<()> {
+        if self.0.is_none() {
+            *self = MultipleArgs::from_expr(expr, expected_num_args, has_setup)?;
+        } else {
+            abort!(
+                expr, "Duplicate argument: `args`";
+                help = "`args` is allowed only once"
+            );
+        }
+
+        Ok(())
+    }
+
     fn from_expr(expr: &Expr, expected_num_args: usize, has_setup: bool) -> syn::Result<Self> {
         let expr_array = parse2::<ExprArray>(expr.to_token_stream())?;
         let mut values: Vec<Args> = vec![];
@@ -654,10 +640,10 @@ impl MultipleArgs {
                     values.push(parse2(items.elems.to_token_stream())?);
                 }
                 Expr::Paren(item) if has_setup || expected_num_args == 1 => {
-                    values.push(Args(vec![*item.expr]));
+                    values.push(Args(Some(vec![*item.expr])));
                 }
                 _ if has_setup || expected_num_args == 1 => {
-                    values.push(Args(vec![elem]));
+                    values.push(Args(Some(vec![elem])));
                 }
                 _ => {
                     abort!(
@@ -672,13 +658,90 @@ impl MultipleArgs {
                 }
             }
         }
-        Ok(Self(values))
+        Ok(Self(Some(values)))
     }
 
     fn from_meta_list(meta: &MetaList, expected_num_args: usize) -> syn::Result<Self> {
         let list = &meta.tokens;
         let expr = parse2::<Expr>(quote! { [#list] })?;
         Self::from_expr(&expr, expected_num_args, false)
+    }
+}
+
+impl Setup {
+    fn parse(&mut self, expr: Expr) {
+        if self.0.is_none() {
+            if let Expr::Path(path) = expr {
+                self.0 = Some(path);
+            } else {
+                abort!(
+                    expr, "Invalid value for `setup`";
+                    help = "The `setup` argument needs a path to an existing function
+                in a reachable scope";
+                    note = "`setup = my_setup` or `setup = my::setup::function`"
+                );
+            }
+        } else {
+            abort!(
+                expr, "Duplicate argument: `setup`";
+                help = "`setup` is allowed only once"
+            );
+        }
+    }
+
+    fn to_string(&self, args: &Args) -> String {
+        let tokens = args.to_tokens_without_black_box();
+        if let Some(setup) = self.0.as_ref() {
+            quote! { #setup(#tokens) }.to_string()
+        } else {
+            tokens.to_string()
+        }
+    }
+
+    fn render_as_code(&self, args: &Args) -> TokenStream2 {
+        if let Some(setup) = &self.0 {
+            quote! { std::hint::black_box(#setup(#args)) }
+        } else {
+            quote! { #args }
+        }
+    }
+
+    fn is_none(&self) -> bool {
+        self.0.is_none()
+    }
+
+    fn is_some(&self) -> bool {
+        self.0.is_some()
+    }
+}
+
+impl Teardown {
+    fn parse(&mut self, expr: Expr) {
+        if self.0.is_none() {
+            if let Expr::Path(path) = expr {
+                self.0 = Some(path);
+            } else {
+                abort!(
+                    expr, "Invalid value for `teardown`";
+                    help = "The `teardown` argument needs a path to an existing function
+                in a reachable scope";
+                    note = "`teardown = my_teardown` or `teardown = my::teardown::function`"
+                );
+            }
+        } else {
+            abort!(
+                expr, "Duplicate argument: `teardown`";
+                help = "`teardown` is allowed only once"
+            );
+        }
+    }
+
+    fn render_as_code(&self, tokens: TokenStream2) -> TokenStream2 {
+        if let Some(teardown) = &self.0 {
+            quote! { std::hint::black_box(#teardown(#tokens)) }
+        } else {
+            tokens
+        }
     }
 }
 
@@ -869,7 +932,7 @@ fn render_library_benchmark(args: TokenStream2, input: TokenStream2) -> syn::Res
 
     library_benchmark.extract_benches(&item_fn)?;
     if library_benchmark.benches.is_empty() {
-        Ok(library_benchmark.render_single(&item_fn))
+        Ok(library_benchmark.render_standalone(&item_fn))
     } else {
         Ok(library_benchmark.render_benches(&item_fn))
     }
@@ -1131,7 +1194,7 @@ mod tests {
                 &[parse_quote!(
                     iai_callgrind::internal::InternalMacroLibBench {
                         id_display: Some("my_id"),
-                        args_display: Some("1, 2"),
+                        args_display: Some("1 , 2"),
                         func: my_id,
                         config: None
                     }
