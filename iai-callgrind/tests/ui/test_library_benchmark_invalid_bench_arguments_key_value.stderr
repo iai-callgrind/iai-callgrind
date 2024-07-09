@@ -1,6 +1,6 @@
 error: Invalid argument: invalid
 
-         = help: Valid arguments are: args, config
+         = help: Valid arguments are: `args`, `config`, `teardown`
 
  --> tests/ui/test_library_benchmark_invalid_bench_arguments_key_value.rs:4:13
   |

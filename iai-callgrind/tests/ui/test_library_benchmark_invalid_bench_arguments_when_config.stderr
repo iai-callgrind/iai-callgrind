@@ -1,6 +1,6 @@
 error: Invalid argument: wrong
 
-         = help: Valid arguments are: args, config
+         = help: Valid arguments are: `args`, `config`, `teardown`
 
  --> tests/ui/test_library_benchmark_invalid_bench_arguments_when_config.rs:8:13
   |
@@ -15,7 +15,7 @@ error: unexpected end of input, expected an expression
 
 error: Invalid argument: wrong
 
-         = help: Valid arguments are: `args`, `config`, `setup`
+         = help: Valid arguments are: `args`, `config`, `setup`, `teardown`
 
   --> tests/ui/test_library_benchmark_invalid_bench_arguments_when_config.rs:16:18
    |

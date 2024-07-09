@@ -35,34 +35,43 @@ use syn::{
     MetaNameValue, Token,
 };
 
+/// This struct reflects the `args` parameter of the `#[bench]` attribute
 #[derive(Debug, Clone)]
-struct Arguments(Vec<Expr>);
+struct Args(Vec<Expr>);
 
+/// This is the counterpart for the `#[bench]` attribute.
+///
+/// The #[benches] attribute is also parsed into this structure.
 #[derive(Debug)]
-struct LibBenchAttribute {
+struct Bench {
     id: Ident,
-    args: Arguments,
-    config: Option<Expr>,
+    args: Args,
+    config: BenchConfig,
     setup: Option<ExprPath>,
     teardown: Option<ExprPath>,
 }
 
+#[derive(Debug, Clone)]
+struct BenchConfig(Option<Expr>);
+
+/// This is the counterpart to the `#[library_benchmark]` attribute.
 #[derive(Debug, Default)]
 struct LibraryBenchmark {
     config: Option<Expr>,
-    benches: Vec<LibBenchAttribute>,
+    benches: Vec<Bench>,
 }
 
+/// This struct stores multiple `Args` as needed by the `#[benches]` attribute
 #[derive(Debug, Clone)]
-struct MultipleArguments(Vec<Arguments>);
+struct MultipleArgs(Vec<Args>);
 
-impl Arguments {
+impl Args {
     fn len(&self) -> usize {
         self.0.len()
     }
 }
 
-impl Parse for Arguments {
+impl Parse for Args {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let data = input
             .parse_terminated(Parse::parse, Token![,])?
@@ -72,7 +81,7 @@ impl Parse for Arguments {
     }
 }
 
-impl ToTokens for Arguments {
+impl ToTokens for Args {
     fn to_tokens(&self, tokens: &mut TokenStream2) {
         let exprs = &self.0;
         let this_tokens = quote! {
@@ -82,7 +91,7 @@ impl ToTokens for Arguments {
     }
 }
 
-impl LibBenchAttribute {
+impl Bench {
     fn render_as_function(&self, callee: &Ident) -> TokenStream2 {
         let id = &self.id;
         let args = &self.args;
@@ -106,24 +115,18 @@ impl LibBenchAttribute {
             }
         );
 
-        if let Some(config) = &self.config {
-            let config_ident = format_ident!("get_config_{}", id);
-            quote! {
-                #[inline(never)]
-                pub fn #config_ident() -> iai_callgrind::internal::InternalLibraryBenchmarkConfig {
-                    #config.into()
-                }
+        let config = self.config.render_as_function(id);
+        quote! {
+            #config
 
-                #func
-            }
-        } else {
-            func
+            #func
         }
     }
 
     fn render_as_lib_bench(&self) -> TokenStream2 {
         let id = &self.id;
         let id_str = self.id.to_string();
+        // TODO: Move this into Args::to_string
         let args = if let Some(setup) = self.setup.as_ref() {
             let exprs = &self.args.0;
             let tokens = quote! {
@@ -138,7 +141,7 @@ impl LibBenchAttribute {
                 .collect::<Vec<String>>()
                 .join(", ")
         };
-        if self.config.is_some() {
+        if self.config.0.is_some() {
             let conf_ident = format_ident!("get_config_{}", id);
             quote! {
                 iai_callgrind::internal::InternalMacroLibBench {
@@ -161,6 +164,41 @@ impl LibBenchAttribute {
     }
 }
 
+impl BenchConfig {
+    fn new() -> Self {
+        Self(None)
+    }
+
+    fn ident(id: &Ident) -> Ident {
+        format_ident!("get_config_{}", id)
+    }
+
+    fn parse(&mut self, expr: Expr) {
+        if self.0.is_none() {
+            self.0 = Some(expr);
+        } else {
+            emit_error!(
+                expr, "Duplicate argument: `config`";
+                help = "`config` is allowed only once"
+            );
+        }
+    }
+
+    fn render_as_function(&self, id: &Ident) -> TokenStream2 {
+        if let Some(config) = &self.0 {
+            let config_ident = Self::ident(id);
+            quote! {
+                #[inline(never)]
+                pub fn #config_ident() -> iai_callgrind::internal::InternalLibraryBenchmarkConfig {
+                    #config.into()
+                }
+            }
+        } else {
+            TokenStream2::new()
+        }
+    }
+}
+
 impl LibraryBenchmark {
     #[allow(clippy::too_many_lines)]
     fn parse_bench_attribute(
@@ -175,33 +213,26 @@ impl LibraryBenchmark {
             meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
         {
             let mut args = None;
-            let mut config = None;
+            let mut config = BenchConfig::new();
             let mut teardown = None;
             for pair in pairs {
                 if pair.path.segments.is_empty() {
                     emit_error!(
                         pair, "Missing key";
                         help = "At least one argument must be given";
-                        note = "Valid arguments are: args, config"
+                        note = "Valid arguments are: `args`, `config`, `teardown`"
                     );
                 } else if pair.path.is_ident("args") {
                     if args.is_none() {
                         args = Some(pair.value);
                     } else {
                         emit_error!(
-                            pair, "Duplicate argument: args";
-                            help = "args is allowed only once"
+                            pair, "Duplicate argument: `args`";
+                            help = "`args` is allowed only once"
                         );
                     }
                 } else if pair.path.is_ident("config") {
-                    if config.is_none() {
-                        config = Some(pair.value);
-                    } else {
-                        emit_error!(
-                            pair, "Duplicate argument: config";
-                            help = "config is allowed only once"
-                        );
-                    }
+                    config.parse(pair.value);
                 } else if pair.path.is_ident("teardown") {
                     if teardown.is_none() {
                         if let Expr::Path(path) = pair.value {
@@ -223,16 +254,16 @@ impl LibraryBenchmark {
                 } else {
                     abort!(
                         pair, "Invalid argument: {}", pair.path.get_ident().unwrap();
-                        help = "Valid arguments are: args, config, teardown"
+                        help = "Valid arguments are: `args`, `config`, `teardown`"
                     );
                 }
             }
 
             if let Some(expr) = args {
                 let args = match expr {
-                    Expr::Array(items) => parse2::<Arguments>(items.elems.to_token_stream())?,
-                    Expr::Tuple(items) => parse2::<Arguments>(items.elems.to_token_stream())?,
-                    Expr::Paren(item) if expected_num_args == 1 => Arguments(vec![*item.expr]),
+                    Expr::Array(items) => parse2::<Args>(items.elems.to_token_stream())?,
+                    Expr::Tuple(items) => parse2::<Args>(items.elems.to_token_stream())?,
+                    Expr::Paren(item) if expected_num_args == 1 => Args(vec![*item.expr]),
                     _ => {
                         abort!(
                             expr,
@@ -245,7 +276,7 @@ impl LibraryBenchmark {
                     }
                 };
                 if args.len() == expected_num_args {
-                    self.benches.push(LibBenchAttribute {
+                    self.benches.push(Bench {
                         id,
                         args,
                         config,
@@ -261,9 +292,9 @@ impl LibraryBenchmark {
                     );
                 };
             } else if expected_num_args == 0 {
-                self.benches.push(LibBenchAttribute {
+                self.benches.push(Bench {
                     id,
-                    args: Arguments(vec![]),
+                    args: Args(vec![]),
                     config,
                     setup: None,
                     teardown,
@@ -276,12 +307,12 @@ impl LibraryBenchmark {
                 );
             }
         } else {
-            let args = meta.parse_args::<Arguments>()?;
+            let args = meta.parse_args::<Args>()?;
             if args.len() == expected_num_args {
-                self.benches.push(LibBenchAttribute {
+                self.benches.push(Bench {
                     id,
                     args,
-                    config: None,
+                    config: BenchConfig::new(),
                     setup: None,
                     teardown: None,
                 });
@@ -307,7 +338,7 @@ impl LibraryBenchmark {
         let expected_num_args = item_fn.sig.inputs.len();
         let meta = attr.meta.require_list()?;
 
-        let mut config = None;
+        let mut config = BenchConfig::new();
         let mut setup = None;
         let mut teardown = None;
         let args = if let Ok(pairs) =
@@ -331,14 +362,7 @@ impl LibraryBenchmark {
                         );
                     }
                 } else if pair.path.is_ident("config") {
-                    if config.is_none() {
-                        config = Some(pair.value);
-                    } else {
-                        abort!(
-                            pair, "Duplicate argument: `config`";
-                            help = "`config` is allowed only once"
-                        );
-                    }
+                    config.parse(pair.value);
                 } else if pair.path.is_ident("setup") {
                     if setup.is_none() {
                         if let Expr::Path(path) = pair.value {
@@ -383,7 +407,7 @@ impl LibraryBenchmark {
                 }
             }
             if let Some(args) = args {
-                MultipleArguments::from_expr(&args, expected_num_args, setup.is_some())?
+                MultipleArgs::from_expr(&args, expected_num_args, setup.is_some())?
             } else if setup.is_none() && expected_num_args != 0 {
                 abort!(
                     meta, "Missing arguments for `benches`";
@@ -391,16 +415,16 @@ impl LibraryBenchmark {
                     note = "`#[benches::id(args = [...])]` or `#[benches::id(1, 2, ...)]`"
                 );
             } else {
-                MultipleArguments(vec![])
+                MultipleArgs(vec![])
             }
         } else {
-            MultipleArguments::from_meta_list(meta, expected_num_args)?
+            MultipleArgs::from_meta_list(meta, expected_num_args)?
         };
 
         for (i, args) in args.0.into_iter().enumerate() {
             let id = format_ident!("{id}_{i}");
             if (setup.is_none() && args.len() == expected_num_args) || setup.is_some() {
-                self.benches.push(LibBenchAttribute {
+                self.benches.push(Bench {
                     id,
                     args,
                     config: config.clone(),
@@ -610,7 +634,7 @@ impl Parse for LibraryBenchmark {
                         }
                     } else {
                         abort!(
-                            pair, "Only the config argument is allowed";
+                            pair, "Only the `config` argument is allowed";
                             help = "#[library_benchmark(config = ....)]"
                         );
                     }
@@ -620,20 +644,20 @@ impl Parse for LibraryBenchmark {
     }
 }
 
-impl MultipleArguments {
+impl MultipleArgs {
     fn from_expr(expr: &Expr, expected_num_args: usize, has_setup: bool) -> syn::Result<Self> {
         let expr_array = parse2::<ExprArray>(expr.to_token_stream())?;
-        let mut values: Vec<Arguments> = vec![];
+        let mut values: Vec<Args> = vec![];
         for elem in expr_array.elems {
             match elem {
                 Expr::Tuple(items) => {
                     values.push(parse2(items.elems.to_token_stream())?);
                 }
                 Expr::Paren(item) if has_setup || expected_num_args == 1 => {
-                    values.push(Arguments(vec![*item.expr]));
+                    values.push(Args(vec![*item.expr]));
                 }
                 _ if has_setup || expected_num_args == 1 => {
-                    values.push(Arguments(vec![elem]));
+                    values.push(Args(vec![elem]));
                 }
                 _ => {
                     abort!(
