@@ -22,6 +22,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+
+* Compiler error when setup parameter was specified before args parameter and
+  number of elements of the args parameter did not match the number of arguments
+  of the benchmark function
+
 ## [0.11.1] - 2024-07-05
 
 ### Changed

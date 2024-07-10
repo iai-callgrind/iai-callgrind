@@ -31,6 +31,7 @@ use proc_macro_error::{abort, emit_error, proc_macro_error};
 use quote::{format_ident, quote, ToTokens, TokenStreamExt};
 use syn::parse::Parse;
 use syn::punctuated::Punctuated;
+use syn::spanned::Spanned;
 use syn::{
     parse2, parse_quote, Attribute, Expr, ExprArray, ExprPath, Ident, ItemFn, MetaList,
     MetaNameValue, Token,
@@ -39,12 +40,6 @@ use syn::{
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
 #[derive(Debug, Default, Clone)]
 struct Args(Option<Vec<Expr>>);
-
-#[derive(Debug, Default, Clone)]
-struct Setup(Option<ExprPath>);
-
-#[derive(Debug, Default, Clone)]
-struct Teardown(Option<ExprPath>);
 
 /// This is the counterpart for the `#[bench]` attribute
 ///
@@ -83,19 +78,39 @@ struct LibraryBenchmarkConfig(Option<Expr>);
 #[derive(Debug, Clone, Default)]
 struct MultipleArgs(Option<Vec<Args>>);
 
+#[derive(Debug, Default, Clone)]
+struct Setup(Option<ExprPath>);
+
+#[derive(Debug, Default, Clone)]
+struct Teardown(Option<ExprPath>);
+
+/// Emit a compiler error if the number of actual and expected arguments do not match
+///
+/// If there is a setup function present, we do not perform any checks.
+fn check_num_arguments(args: &Args, expected: usize, has_setup: bool) {
+    let actual = args.len();
+
+    if !has_setup && actual != expected {
+        emit_error!(
+            args.span(),
+            "Expected {} arguments but found {}",
+            expected,
+            actual
+        );
+    };
+}
+
 impl Args {
     fn len(&self) -> usize {
         self.0.as_ref().map_or(0, Vec::len)
     }
 
-    fn parse(&mut self, expr: &Expr, expected_num_args: usize) -> syn::Result<()> {
+    fn parse_expr(&mut self, expr: &Expr) -> syn::Result<()> {
         if self.0.is_none() {
             let args = match &expr {
                 Expr::Array(items) => parse2::<Args>(items.elems.to_token_stream())?,
                 Expr::Tuple(items) => parse2::<Args>(items.elems.to_token_stream())?,
-                Expr::Paren(item) if expected_num_args == 1 => {
-                    Args(Some(vec![(*item.expr).clone()]))
-                }
+                Expr::Paren(item) => Args(Some(vec![(*item.expr).clone()])),
                 _ => {
                     abort!(
                         expr,
@@ -106,14 +121,6 @@ impl Args {
                         #[bench::id(args = [1, 2]])]"
                     );
                 }
-            };
-            if args.len() != expected_num_args {
-                emit_error!(
-                    expr,
-                    "Expected {} arguments but found {}",
-                    expected_num_args,
-                    args.len()
-                );
             };
             *self = args;
         } else {
@@ -126,16 +133,8 @@ impl Args {
         Ok(())
     }
 
-    fn parse_meta_list(&mut self, meta: &MetaList, expected_num_args: usize) -> syn::Result<()> {
+    fn parse_meta_list(&mut self, meta: &MetaList) -> syn::Result<()> {
         let args = meta.parse_args::<Args>()?;
-        if args.len() != expected_num_args {
-            emit_error!(
-                meta,
-                "Expected {} arguments but found {}",
-                expected_num_args,
-                args.len()
-            );
-        }
         *self = args;
 
         Ok(())
@@ -163,9 +162,7 @@ impl Parse for Args {
 impl ToTokens for Args {
     fn to_tokens(&self, tokens: &mut TokenStream2) {
         if let Some(exprs) = &self.0 {
-            let this_tokens = quote! {
-                #(std::hint::black_box(#exprs)),*
-            };
+            let this_tokens = quote! { #(std::hint::black_box(#exprs)),* };
             tokens.append_all(this_tokens);
         }
     }
@@ -216,7 +213,7 @@ impl BenchConfig {
         format_ident!("get_config_{}", id)
     }
 
-    fn parse(&mut self, expr: Expr) {
+    fn parse_expr(&mut self, expr: Expr) {
         if self.0.is_none() {
             self.0 = Some(expr);
         } else {
@@ -263,6 +260,7 @@ impl LibraryBenchmark {
 
         let mut args = Args::default();
         let mut config = BenchConfig::default();
+        let mut setup = Setup::default();
         let mut teardown = Teardown::default();
 
         if let Ok(pairs) =
@@ -278,30 +276,33 @@ impl LibraryBenchmark {
                 );
             } else {
                 for pair in pairs {
-                    // TODO: Add parsing setup
                     if pair.path.is_ident("args") {
-                        args.parse(&pair.value, expected_num_args)?;
+                        args.parse_expr(&pair.value)?;
                     } else if pair.path.is_ident("config") {
-                        config.parse(pair.value);
+                        config.parse_expr(pair.value);
+                    } else if pair.path.is_ident("setup") {
+                        setup.parse(pair.value);
                     } else if pair.path.is_ident("teardown") {
                         teardown.parse(pair.value);
                     } else {
                         abort!(
                             pair, "Invalid argument: {}", pair.path.require_ident()?;
-                            help = "Valid arguments are: `args`, `config`, `teardown`"
+                            help = "Valid arguments are: `args`, `config`, `setup`, teardown`"
                         );
                     }
                 }
             }
         } else {
-            args.parse_meta_list(meta, expected_num_args)?;
+            args.parse_meta_list(meta)?;
         }
+
+        check_num_arguments(&args, expected_num_args, setup.is_some());
 
         self.benches.push(Bench {
             id,
             args,
             config,
-            setup: Setup::default(),
+            setup,
             teardown,
         });
 
@@ -327,9 +328,9 @@ impl LibraryBenchmark {
         {
             for pair in pairs {
                 if pair.path.is_ident("args") {
-                    args.parse(&pair.value, expected_num_args, setup.is_some())?;
+                    args.parse_expr(&pair.value)?;
                 } else if pair.path.is_ident("config") {
-                    config.parse(pair.value);
+                    config.parse_expr(pair.value);
                 } else if pair.path.is_ident("setup") {
                     setup.parse(pair.value);
                 } else if pair.path.is_ident("teardown") {
@@ -342,27 +343,20 @@ impl LibraryBenchmark {
                 }
             }
         } else {
-            args = MultipleArgs::from_meta_list(meta, expected_num_args)?;
+            args = MultipleArgs::from_meta_list(meta)?;
         };
 
         for (i, args) in args.0.unwrap_or_default().into_iter().enumerate() {
+            check_num_arguments(&args, expected_num_args, setup.is_some());
+
             let id = format_ident!("{id}_{i}");
-            if (setup.is_none() && args.len() == expected_num_args) || setup.is_some() {
-                self.benches.push(Bench {
-                    id,
-                    args,
-                    config: config.clone(),
-                    setup: setup.clone(),
-                    teardown: teardown.clone(),
-                });
-            } else {
-                emit_error!(
-                    meta,
-                    "Expected {} arguments but found {}",
-                    expected_num_args,
-                    args.len()
-                );
-            }
+            self.benches.push(Bench {
+                id,
+                args,
+                config: config.clone(),
+                setup: setup.clone(),
+                teardown: teardown.clone(),
+            });
         }
         Ok(())
     }
@@ -618,9 +612,9 @@ impl LibraryBenchmarkConfig {
 }
 
 impl MultipleArgs {
-    fn parse(&mut self, expr: &Expr, expected_num_args: usize, has_setup: bool) -> syn::Result<()> {
+    fn parse_expr(&mut self, expr: &Expr) -> syn::Result<()> {
         if self.0.is_none() {
-            *self = MultipleArgs::from_expr(expr, expected_num_args, has_setup)?;
+            *self = MultipleArgs::from_expr(expr)?;
         } else {
             abort!(
                 expr, "Duplicate argument: `args`";
@@ -631,44 +625,35 @@ impl MultipleArgs {
         Ok(())
     }
 
-    fn from_expr(expr: &Expr, expected_num_args: usize, has_setup: bool) -> syn::Result<Self> {
+    fn from_expr(expr: &Expr) -> syn::Result<Self> {
         let expr_array = parse2::<ExprArray>(expr.to_token_stream())?;
         let mut values: Vec<Args> = vec![];
         for elem in expr_array.elems {
             match elem {
                 Expr::Tuple(items) => {
-                    values.push(parse2(items.elems.to_token_stream())?);
+                    values.push(parse2::<Args>(items.elems.to_token_stream())?);
                 }
-                Expr::Paren(item) if has_setup || expected_num_args == 1 => {
+                Expr::Paren(item) => {
                     values.push(Args(Some(vec![*item.expr])));
                 }
-                _ if has_setup || expected_num_args == 1 => {
-                    values.push(Args(Some(vec![elem])));
-                }
                 _ => {
-                    abort!(
-                        elem,
-                        "Failed parsing arguments: Expected {} values per tuple",
-                        expected_num_args;
-                        help = "If the benchmarking function has multiple parameters
-                    the arguments for #[benches::...] must be given as tuple";
-                        note = "#[benches::id((1, 2), (3, 4))] or \
-                               #[benches::id(args = [(1, 2), (3, 4)])]";
-                    );
+                    values.push(Args(Some(vec![elem])));
                 }
             }
         }
         Ok(Self(Some(values)))
     }
 
-    fn from_meta_list(meta: &MetaList, expected_num_args: usize) -> syn::Result<Self> {
+    fn from_meta_list(meta: &MetaList) -> syn::Result<Self> {
         let list = &meta.tokens;
         let expr = parse2::<Expr>(quote! { [#list] })?;
-        Self::from_expr(&expr, expected_num_args, false)
+        Self::from_expr(&expr)
     }
 }
 
 impl Setup {
+    // TODO: Add a argument for a error scope. Not only for this parse function but also for the
+    // others.
     fn parse(&mut self, expr: Expr) {
         if self.0.is_none() {
             if let Expr::Path(path) = expr {
@@ -682,6 +667,7 @@ impl Setup {
                 );
             }
         } else {
+            // TODO: Scope should be the key, value pair not expr
             abort!(
                 expr, "Duplicate argument: `setup`";
                 help = "`setup` is allowed only once"
@@ -704,10 +690,6 @@ impl Setup {
         } else {
             quote! { #args }
         }
-    }
-
-    fn is_none(&self) -> bool {
-        self.0.is_none()
     }
 
     fn is_some(&self) -> bool {
