@@ -26,9 +26,9 @@
 
 // TODO: CLEARIFY USAGE OF TokenStream vs TokenStream2
 use proc_macro::TokenStream;
-use proc_macro2::TokenStream as TokenStream2;
+use proc_macro2::{Span, TokenStream as TokenStream2};
 use proc_macro_error::{abort, emit_error, proc_macro_error};
-use quote::{format_ident, quote, ToTokens, TokenStreamExt};
+use quote::{format_ident, quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::Parse;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
@@ -39,7 +39,7 @@ use syn::{
 
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
 #[derive(Debug, Default, Clone)]
-struct Args(Option<Vec<Expr>>);
+struct Args(Option<(Span, Vec<Expr>)>);
 
 /// This is the counterpart for the `#[bench]` attribute
 ///
@@ -91,41 +91,79 @@ fn check_num_arguments(args: &Args, expected: usize, has_setup: bool) {
     let actual = args.len();
 
     if !has_setup && actual != expected {
-        emit_error!(
-            args.span(),
-            "Expected {} arguments but found {}",
-            expected,
-            actual
-        );
+        if let Some(span) = args.span() {
+            emit_error!(
+                span,
+                "Expected {} arguments but found {}",
+                expected,
+                actual;
+                help = "This argument is expected to have the same amount of parameters as the benchmark function";
+            );
+        } else {
+            emit_error!(
+                args,
+                "Expected {} arguments but found {}",
+                expected,
+                actual;
+                help = "This argument is expected to have the same amount of parameters as the benchmark function";
+            );
+        }
     };
 }
 
 impl Args {
-    fn len(&self) -> usize {
-        self.0.as_ref().map_or(0, Vec::len)
+    fn new(span: Span, data: Vec<Expr>) -> Self {
+        Self(Some((span, data)))
     }
 
-    fn parse_expr(&mut self, expr: &Expr) -> syn::Result<()> {
+    fn len(&self) -> usize {
+        self.0.as_ref().map_or(0, |(_, data)| data.len())
+    }
+
+    fn span(&self) -> Option<&Span> {
+        self.0.as_ref().map(|(span, _)| span)
+    }
+
+    fn set_span(&mut self, span: Span) {
+        if let Some(data) = self.0.as_mut() {
+            data.0 = span;
+        }
+    }
+
+    fn parse_pair(&mut self, pair: &MetaNameValue) -> syn::Result<()> {
         if self.0.is_none() {
-            let args = match &expr {
-                Expr::Array(items) => parse2::<Args>(items.elems.to_token_stream())?,
-                Expr::Tuple(items) => parse2::<Args>(items.elems.to_token_stream())?,
-                Expr::Paren(item) => Args(Some(vec![(*item.expr).clone()])),
+            let expr = &pair.value;
+            let span = expr.span();
+            let args = match expr {
+                Expr::Array(items) => {
+                    let mut args = parse2::<Args>(items.elems.to_token_stream())?;
+                    // Set span explicitly (again) to overwrite the wrong span from parse2
+                    args.set_span(span);
+                    args
+                }
+                Expr::Tuple(items) => {
+                    let mut args = parse2::<Args>(items.elems.to_token_stream())?;
+                    // Set span explicitly (again) to overwrite the wrong span from parse2
+                    args.set_span(span);
+                    args
+                }
+                Expr::Paren(item) => Self::new(span, vec![(*item.expr).clone()]),
                 _ => {
                     abort!(
                         expr,
                         "Failed parsing `args`";
-                        help = "`args` must be an tuple/array which elements (expressions)
+                        help = "`args` has to be a tuple/array which elements (expressions)
                         match the number of parameters of the benchmarking function";
                         note = "#[bench::id(args = (1, 2))] or
                         #[bench::id(args = [1, 2]])]"
                     );
                 }
             };
+
             *self = args;
         } else {
             emit_error!(
-                expr, "Duplicate argument: `args`";
+                pair, "Duplicate argument: `args`";
                 help = "`args` is allowed only once"
             );
         }
@@ -134,15 +172,17 @@ impl Args {
     }
 
     fn parse_meta_list(&mut self, meta: &MetaList) -> syn::Result<()> {
-        let args = meta.parse_args::<Args>()?;
+        let mut args = meta.parse_args::<Args>()?;
+        args.set_span(meta.tokens.span());
+
         *self = args;
 
         Ok(())
     }
 
     fn to_tokens_without_black_box(&self) -> TokenStream2 {
-        if let Some(exprs) = &self.0 {
-            quote! { #(#exprs),* }
+        if let Some((span, exprs)) = self.0.as_ref() {
+            quote_spanned! { *span => #(#exprs),* }
         } else {
             TokenStream2::new()
         }
@@ -155,14 +195,17 @@ impl Parse for Args {
             .parse_terminated(Parse::parse, Token![,])?
             .into_iter()
             .collect();
-        Ok(Self(Some(data)))
+
+        // We set a default span here although it is most likely wrong. It's strongly advised to set
+        // the span with `Args::set_span` to the correct value.
+        Ok(Self::new(input.span(), data))
     }
 }
 
 impl ToTokens for Args {
     fn to_tokens(&self, tokens: &mut TokenStream2) {
-        if let Some(exprs) = &self.0 {
-            let this_tokens = quote! { #(std::hint::black_box(#exprs)),* };
+        if let Some((span, exprs)) = self.0.as_ref() {
+            let this_tokens = quote_spanned! { *span => #(std::hint::black_box(#exprs)),* };
             tokens.append_all(this_tokens);
         }
     }
@@ -213,12 +256,12 @@ impl BenchConfig {
         format_ident!("get_config_{}", id)
     }
 
-    fn parse_expr(&mut self, expr: Expr) {
+    fn parse_pair(&mut self, pair: &MetaNameValue) {
         if self.0.is_none() {
-            self.0 = Some(expr);
+            self.0 = Some(pair.value.clone());
         } else {
             emit_error!(
-                expr, "Duplicate argument: `config`";
+                pair, "Duplicate argument: `config`";
                 help = "`config` is allowed only once"
             );
         }
@@ -277,13 +320,13 @@ impl LibraryBenchmark {
             } else {
                 for pair in pairs {
                     if pair.path.is_ident("args") {
-                        args.parse_expr(&pair.value)?;
+                        args.parse_pair(&pair)?;
                     } else if pair.path.is_ident("config") {
-                        config.parse_expr(pair.value);
+                        config.parse_pair(&pair);
                     } else if pair.path.is_ident("setup") {
-                        setup.parse(pair.value);
+                        setup.parse_pair(&pair);
                     } else if pair.path.is_ident("teardown") {
-                        teardown.parse(pair.value);
+                        teardown.parse_pair(&pair);
                     } else {
                         abort!(
                             pair, "Invalid argument: {}", pair.path.require_ident()?;
@@ -328,13 +371,13 @@ impl LibraryBenchmark {
         {
             for pair in pairs {
                 if pair.path.is_ident("args") {
-                    args.parse_expr(&pair.value)?;
+                    args.parse_pair(&pair)?;
                 } else if pair.path.is_ident("config") {
-                    config.parse_expr(pair.value);
+                    config.parse_pair(&pair);
                 } else if pair.path.is_ident("setup") {
-                    setup.parse(pair.value);
+                    setup.parse_pair(&pair);
                 } else if pair.path.is_ident("teardown") {
-                    teardown.parse(pair.value);
+                    teardown.parse_pair(&pair);
                 } else {
                     abort!(
                         pair, "Invalid argument: {}", pair.path.require_ident()?;
@@ -612,12 +655,12 @@ impl LibraryBenchmarkConfig {
 }
 
 impl MultipleArgs {
-    fn parse_expr(&mut self, expr: &Expr) -> syn::Result<()> {
+    fn parse_pair(&mut self, pair: &MetaNameValue) -> syn::Result<()> {
         if self.0.is_none() {
-            *self = MultipleArgs::from_expr(expr)?;
+            *self = MultipleArgs::from_expr(&pair.value)?;
         } else {
             abort!(
-                expr, "Duplicate argument: `args`";
+                pair, "Duplicate argument: `args`";
                 help = "`args` is allowed only once"
             );
         }
@@ -629,35 +672,35 @@ impl MultipleArgs {
         let expr_array = parse2::<ExprArray>(expr.to_token_stream())?;
         let mut values: Vec<Args> = vec![];
         for elem in expr_array.elems {
-            match elem {
+            let span = elem.span();
+            let args = match elem {
                 Expr::Tuple(items) => {
-                    values.push(parse2::<Args>(items.elems.to_token_stream())?);
+                    let mut args = parse2::<Args>(items.elems.to_token_stream())?;
+                    args.set_span(span);
+                    args
                 }
-                Expr::Paren(item) => {
-                    values.push(Args(Some(vec![*item.expr])));
-                }
-                _ => {
-                    values.push(Args(Some(vec![elem])));
-                }
-            }
+                Expr::Paren(item) => Args::new(span, vec![*item.expr]),
+                _ => Args::new(span, vec![elem]),
+            };
+
+            values.push(args);
         }
         Ok(Self(Some(values)))
     }
 
     fn from_meta_list(meta: &MetaList) -> syn::Result<Self> {
         let list = &meta.tokens;
-        let expr = parse2::<Expr>(quote! { [#list] })?;
+        let expr = parse2::<Expr>(quote_spanned! { list.span() => [#list] })?;
         Self::from_expr(&expr)
     }
 }
 
 impl Setup {
-    // TODO: Add a argument for a error scope. Not only for this parse function but also for the
-    // others.
-    fn parse(&mut self, expr: Expr) {
+    fn parse_pair(&mut self, pair: &MetaNameValue) {
         if self.0.is_none() {
+            let expr = &pair.value;
             if let Expr::Path(path) = expr {
-                self.0 = Some(path);
+                self.0 = Some(path.clone());
             } else {
                 abort!(
                     expr, "Invalid value for `setup`";
@@ -667,9 +710,8 @@ impl Setup {
                 );
             }
         } else {
-            // TODO: Scope should be the key, value pair not expr
             abort!(
-                expr, "Duplicate argument: `setup`";
+                pair, "Duplicate argument: `setup`";
                 help = "`setup` is allowed only once"
             );
         }
@@ -698,10 +740,11 @@ impl Setup {
 }
 
 impl Teardown {
-    fn parse(&mut self, expr: Expr) {
+    fn parse_pair(&mut self, pair: &MetaNameValue) {
         if self.0.is_none() {
+            let expr = &pair.value;
             if let Expr::Path(path) = expr {
-                self.0 = Some(path);
+                self.0 = Some(path.clone());
             } else {
                 abort!(
                     expr, "Invalid value for `teardown`";
@@ -712,7 +755,7 @@ impl Teardown {
             }
         } else {
             abort!(
-                expr, "Duplicate argument: `teardown`";
+                pair, "Duplicate argument: `teardown`";
                 help = "`teardown` is allowed only once"
             );
         }
