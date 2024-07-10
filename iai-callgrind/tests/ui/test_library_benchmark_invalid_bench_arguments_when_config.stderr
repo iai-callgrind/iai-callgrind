@@ -1,6 +1,6 @@
 error: Invalid argument: wrong
 
-         = help: Valid arguments are: `args`, `config`, `teardown`
+         = help: Valid arguments are: `args`, `config`, `setup`, teardown`
 
  --> tests/ui/test_library_benchmark_invalid_bench_arguments_when_config.rs:8:13
   |
@@ -23,12 +23,10 @@ error: Invalid argument: wrong
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unexpected end of input, expected an expression
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments_when_config.rs:23:1
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments_when_config.rs:24:31
    |
-23 | #[library_benchmark]
-   | ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
+24 | #[benches::missing_expression(args = [], config = )]
+   |                               ^^^^
 
 error[E0277]: the trait bound `InternalLibraryBenchmarkConfig: From<&str>` is not satisfied
  --> tests/ui/test_library_benchmark_invalid_bench_arguments_when_config.rs:4:22

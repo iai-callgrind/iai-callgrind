@@ -1,6 +1,6 @@
-error: Only the `config` argument is allowed
+error: Invalid argument: wrong
 
-         = help: #[library_benchmark(config = ....)]
+         = help: Valid arguments are: `config`, `setup`, `teardown`
 
  --> tests/ui/test_library_benchmark_invalid_arguments.rs:3:21
   |
