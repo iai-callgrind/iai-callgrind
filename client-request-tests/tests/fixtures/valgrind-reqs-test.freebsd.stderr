@@ -31,4 +31,7 @@ Address <__FILTER__> is <__NUMBER__> bytes inside a block of size <__NUMBER__> f
 Block was alloc'd at
 <__BACKTRACE__>
 
+
+used_suppression:      <__NUMBER__> MEMCHECK-LIBTHR-REACHABLE<__NUMBER__> /usr/local/libexec/valgrind/default.supp:<__NUMBER__> suppressed: <__FILTER__> bytes in <__FILTER__> blocks
+
 ERROR SUMMARY: <__NUMBER__> errors from <__NUMBER__> contexts (suppressed: <__NUMBER__> from <__NUMBER__>)

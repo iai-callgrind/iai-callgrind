@@ -56,13 +56,25 @@ fn main() {
 
     client_requests::memcheck::do_leak_check();
     let leaks = client_requests::memcheck::count_leaks();
-    assert_leaks(leaks, 4, 0, initial_leaks.reachable, 0);
+    assert_leaks(
+        leaks,
+        4,
+        0,
+        initial_leaks.reachable,
+        initial_leaks.suppressed,
+    );
 
     leak_memory();
 
     client_requests::memcheck::do_new_leak_check();
     let leaks = client_requests::memcheck::count_leaks();
-    assert_leaks(leaks, 8, 0, initial_leaks.reachable, 0);
+    assert_leaks(
+        leaks,
+        8,
+        0,
+        initial_leaks.reachable,
+        initial_leaks.suppressed,
+    );
 
     std::process::exit(client_requests::valgrind::running_on_valgrind() as i32);
 }
