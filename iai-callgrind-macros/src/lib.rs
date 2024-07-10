@@ -61,6 +61,8 @@ struct BenchConfig(Option<Expr>);
 #[derive(Debug, Default)]
 struct LibraryBenchmark {
     config: LibraryBenchmarkConfig,
+    setup: Setup,
+    teardown: Teardown,
     benches: Vec<Bench>,
 }
 
@@ -309,35 +311,28 @@ impl LibraryBenchmark {
         if let Ok(pairs) =
             meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
         {
-            if pairs.is_empty() && expected_num_args != 0 {
-                emit_error!(
-                    meta,
-                    "Expected {} argument(s) but found none",
-                    expected_num_args;
-                    help = "Try passing arguments either with #[bench::some_id(arg1, ...)]
-                or with #[bench::some_id(args = (arg1, ...))]"
-                );
-            } else {
-                for pair in pairs {
-                    if pair.path.is_ident("args") {
-                        args.parse_pair(&pair)?;
-                    } else if pair.path.is_ident("config") {
-                        config.parse_pair(&pair);
-                    } else if pair.path.is_ident("setup") {
-                        setup.parse_pair(&pair);
-                    } else if pair.path.is_ident("teardown") {
-                        teardown.parse_pair(&pair);
-                    } else {
-                        abort!(
-                            pair, "Invalid argument: {}", pair.path.require_ident()?;
-                            help = "Valid arguments are: `args`, `config`, `setup`, teardown`"
-                        );
-                    }
+            for pair in pairs {
+                if pair.path.is_ident("args") {
+                    args.parse_pair(&pair)?;
+                } else if pair.path.is_ident("config") {
+                    config.parse_pair(&pair);
+                } else if pair.path.is_ident("setup") {
+                    setup.parse_pair(&pair);
+                } else if pair.path.is_ident("teardown") {
+                    teardown.parse_pair(&pair);
+                } else {
+                    abort!(
+                        pair, "Invalid argument: {}", pair.path.require_ident()?;
+                        help = "Valid arguments are: `args`, `config`, `setup`, teardown`"
+                    );
                 }
             }
         } else {
             args.parse_meta_list(meta)?;
         }
+
+        setup.update(&self.setup);
+        teardown.update(&self.teardown);
 
         check_num_arguments(&args, expected_num_args, setup.is_some());
 
@@ -388,6 +383,9 @@ impl LibraryBenchmark {
         } else {
             args = MultipleArgs::from_meta_list(meta)?;
         };
+
+        setup.update(&self.setup);
+        teardown.update(&self.teardown);
 
         for (i, args) in args.0.unwrap_or_default().into_iter().enumerate() {
             check_num_arguments(&args, expected_num_args, setup.is_some());
@@ -602,34 +600,42 @@ impl Parse for LibraryBenchmark {
         if input.is_empty() {
             Ok(Self::default())
         } else {
+            let mut config = LibraryBenchmarkConfig::default();
+            let mut setup = Setup::default();
+            let mut teardown = Teardown::default();
+
             let pairs = input.parse_terminated(MetaNameValue::parse, Token![,])?;
-            if pairs.len() > 1 {
-                abort!(
-                    pairs, "At most one argument is allowed";
-                    help = "#[library_benchmark] or #[library_benchmark(config = ....)]"
-                );
-            } else {
-                Ok(pairs.first().map_or_else(Self::default, |pair| {
-                    if pair.path.is_ident("config") {
-                        Self {
-                            config: LibraryBenchmarkConfig::parse(&pair.value),
-                            ..Default::default()
-                        }
-                    } else {
-                        abort!(
-                            pair, "Only the `config` argument is allowed";
-                            help = "#[library_benchmark(config = ....)]"
-                        );
-                    }
-                }))
+            for pair in pairs {
+                if pair.path.is_ident("config") {
+                    config.parse_pair(&pair);
+                } else if pair.path.is_ident("setup") {
+                    setup.parse_pair(&pair);
+                } else if pair.path.is_ident("teardown") {
+                    teardown.parse_pair(&pair);
+                } else {
+                    abort!(
+                        pair, "Invalid argument: {}", pair.path.require_ident()?;
+                        help = "Valid arguments are: `config`, `setup`, `teardown`"
+                    );
+                }
             }
+
+            let library_benchmark = LibraryBenchmark {
+                config,
+                setup,
+                teardown,
+                benches: vec![],
+            };
+            Ok(library_benchmark)
         }
     }
 }
 
 impl LibraryBenchmarkConfig {
-    fn parse(expr: &Expr) -> Self {
-        Self(Some(expr.clone()))
+    fn parse_pair(&mut self, pair: &MetaNameValue) {
+        let mut config = BenchConfig::default();
+        config.parse_pair(pair);
+        self.0 = config.0;
     }
 
     fn render_as_code(&self) -> TokenStream2 {
@@ -737,6 +743,13 @@ impl Setup {
     fn is_some(&self) -> bool {
         self.0.is_some()
     }
+
+    /// If this Setup is none and the other setup has a value update this `Setup` with that value
+    fn update(&mut self, other: &Self) {
+        if let (None, Some(other)) = (&self.0, &other.0) {
+            self.0 = Some(other.clone());
+        }
+    }
 }
 
 impl Teardown {
@@ -766,6 +779,14 @@ impl Teardown {
             quote! { std::hint::black_box(#teardown(#tokens)) }
         } else {
             tokens
+        }
+    }
+
+    /// If this Teardown is none and the other Teardown has a value update this Teardown with that
+    /// value
+    fn update(&mut self, other: &Self) {
+        if let (None, Some(other)) = (&self.0, &other.0) {
+            self.0 = Some(other.clone());
         }
     }
 }

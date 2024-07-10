@@ -6,6 +6,14 @@ fn setup_two_arguments(first: u64, second: u64) -> u64 {
     first + second
 }
 
+fn setup_expected(a: u64, expected: u64) -> (u64, u64) {
+    (a * a, expected)
+}
+
+fn setup_expected_two(a: u64, b: u64, expected: u64) -> (u64, u64) {
+    (a * b, expected)
+}
+
 fn setup_one_argument(value: u64) -> u64 {
     value * value
 }
@@ -17,6 +25,12 @@ fn setup_no_argument() -> u64 {
 fn teardown((result, expected): (u64, u64)) {
     if result != expected {
         panic!("Expected: {expected} but result was {result}");
+    }
+}
+
+fn teardown_other((result, expected): (u64, u64)) {
+    if result != expected {
+        panic!("Other Teardown: Expected: {expected} but result was {result}");
     }
 }
 
@@ -68,9 +82,23 @@ fn benches_only_teardown(a: u64, b: u64, c: u64) -> (u64, u64) {
     black_box((black_box(a + b), c))
 }
 
+#[library_benchmark(setup = setup_expected, teardown = teardown)]
+#[benches::simple(args = [(2, 4), (4, 16)])]
+#[benches::simple_no_args_parameter((2, 4), (4, 16))]
+#[benches::overwrite_setup(args = [(2, 3, 6), (3, 4, 12)], setup = setup_expected_two)]
+#[benches::overwrite_teardown(args = [(3, 9), (5, 25)], teardown = teardown_other)]
+fn benches_global_setup_and_teardown((value, expected): (u64, u64)) -> (u64, u64) {
+    black_box((black_box(value * value), expected))
+}
+
 library_benchmark_group!(
     name = bench_fibonacci_group;
-    benchmarks = bench_only_setup, bench_only_teardown, benches_only_setup, bench_only_teardown
+    benchmarks =
+        bench_only_setup,
+        bench_only_teardown,
+        benches_only_setup,
+        bench_only_teardown,
+        benches_global_setup_and_teardown
 );
 
 main!(library_benchmark_groups = bench_fibonacci_group);
