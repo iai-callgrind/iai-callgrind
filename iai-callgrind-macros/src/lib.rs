@@ -86,33 +86,6 @@ struct Setup(Option<ExprPath>);
 #[derive(Debug, Default, Clone)]
 struct Teardown(Option<ExprPath>);
 
-/// Emit a compiler error if the number of actual and expected arguments do not match
-///
-/// If there is a setup function present, we do not perform any checks.
-fn check_num_arguments(args: &Args, expected: usize, has_setup: bool) {
-    let actual = args.len();
-
-    if !has_setup && actual != expected {
-        if let Some(span) = args.span() {
-            emit_error!(
-                span,
-                "Expected {} arguments but found {}",
-                expected,
-                actual;
-                help = "This argument is expected to have the same amount of parameters as the benchmark function";
-            );
-        } else {
-            emit_error!(
-                args,
-                "Expected {} arguments but found {}",
-                expected,
-                actual;
-                help = "This argument is expected to have the same amount of parameters as the benchmark function";
-            );
-        }
-    };
-}
-
 impl Args {
     fn new(span: Span, data: Vec<Expr>) -> Self {
         Self(Some((span, data)))
@@ -188,6 +161,33 @@ impl Args {
         } else {
             TokenStream2::new()
         }
+    }
+
+    /// Emit a compiler error if the number of actual and expected arguments do not match
+    ///
+    /// If there is a setup function present, we do not perform any checks.
+    fn check_num_arguments(&self, expected: usize, has_setup: bool) {
+        let actual = self.len();
+
+        if !has_setup && actual != expected {
+            if let Some(span) = self.span() {
+                emit_error!(
+                    span,
+                    "Expected {} arguments but found {}",
+                    expected,
+                    actual;
+                    help = "This argument is expected to have the same amount of parameters as the benchmark function";
+                );
+            } else {
+                emit_error!(
+                    self,
+                    "Expected {} arguments but found {}",
+                    expected,
+                    actual;
+                    help = "This argument is expected to have the same amount of parameters as the benchmark function";
+                );
+            }
+        };
     }
 }
 
@@ -334,7 +334,7 @@ impl LibraryBenchmark {
         setup.update(&self.setup);
         teardown.update(&self.teardown);
 
-        check_num_arguments(&args, expected_num_args, setup.is_some());
+        args.check_num_arguments(expected_num_args, setup.is_some());
 
         self.benches.push(Bench {
             id,
@@ -388,7 +388,7 @@ impl LibraryBenchmark {
         teardown.update(&self.teardown);
 
         for (i, args) in args.0.unwrap_or_default().into_iter().enumerate() {
-            check_num_arguments(&args, expected_num_args, setup.is_some());
+            args.check_num_arguments(expected_num_args, setup.is_some());
 
             let id = format_ident!("{id}_{i}");
             self.benches.push(Bench {
