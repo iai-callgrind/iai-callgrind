@@ -36,6 +36,14 @@ impl FromStr for BenchmarkFilter {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum NoCapture {
+    True,
+    False,
+    Stderr,
+    Stdout,
+}
+
 /// The command line arguments the user provided after `--` when running cargo bench
 ///
 /// These arguments are not the command line arguments passed to `iai-callgrind-runner`. We collect
@@ -233,6 +241,20 @@ pub struct CommandLineArgs {
     /// does't exist.
     #[arg(long = "home", num_args = 1, env = "IAI_CALLGRIND_HOME")]
     pub home: Option<PathBuf>,
+
+    /// TODO: DOCS
+    /// TODO: DO I NEED `OUTPUT_FORMAT=default`?
+    #[arg(
+        long = "nocapture",
+        value_enum,
+        required = false,
+        default_missing_value = "true",
+        default_value = "false",
+        num_args = 0..=1,
+        require_equals = true,
+        env = "IAI_CALLGRIND_NOCAPTURE"
+    )]
+    pub nocapture: NoCapture,
 }
 
 /// This function parses a space separated list of raw argument strings into [`crate::api::RawArgs`]
@@ -466,5 +488,28 @@ mod tests {
     fn test_home_cli_when_no_value_then_error() {
         let result = CommandLineArgs::try_parse_from(["--home=".to_owned()]);
         assert!(result.is_err());
+    }
+
+    #[rstest]
+    #[case::default("", NoCapture::True)]
+    #[case::yes("true", NoCapture::True)]
+    #[case::no("false", NoCapture::False)]
+    #[case::stdout("stdout", NoCapture::Stdout)]
+    #[case::stderr("stderr", NoCapture::Stderr)]
+    fn test_nocapture_cli(#[case] value: &str, #[case] expected: NoCapture) {
+        let result = if value.is_empty() {
+            CommandLineArgs::parse_from(["--nocapture".to_owned()])
+        } else {
+            CommandLineArgs::parse_from([format!("--nocapture={value}")])
+        };
+        assert_eq!(result.nocapture, expected);
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_nocapture_env() {
+        std::env::set_var("IAI_CALLGRIND_NOCAPTURE", "true");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(result.nocapture, NoCapture::True);
     }
 }

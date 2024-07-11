@@ -8,7 +8,7 @@ use std::fmt::Display;
 use std::fs::File;
 use std::io::{stderr, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
+use std::process::{Command, ExitStatus, Output, Stdio};
 
 use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
@@ -54,7 +54,7 @@ pub struct ToolCommand {
 
 pub struct ToolOutput {
     pub tool: ValgrindTool,
-    pub output: Output,
+    pub output: Option<Output>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -175,10 +175,12 @@ impl ToolCommand {
                 Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
             })
             .and_then(|output| {
+                let status = output.status;
                 check_exit(
                     self.tool,
                     &executable,
-                    output,
+                    Some(output),
+                    status,
                     &output_path.to_log_output(),
                     exit_with.as_ref(),
                 )
@@ -387,15 +389,17 @@ impl ToolConfigs {
 
 impl ToolOutput {
     pub fn dump_log(&self, log_level: Level) {
-        if log::log_enabled!(log_level) {
-            let (stdout, stderr) = (&self.output.stdout, &self.output.stderr);
-            if !stdout.is_empty() {
-                log::log!(log_level, "{} output on stdout:", self.tool.id());
-                util::write_all_to_stderr(stdout);
-            }
-            if !stderr.is_empty() {
-                log::log!(log_level, "{} output on stderr:", self.tool.id());
-                util::write_all_to_stderr(stderr);
+        if let Some(output) = &self.output {
+            if log::log_enabled!(log_level) {
+                let (stdout, stderr) = (&output.stdout, &output.stderr);
+                if !stdout.is_empty() {
+                    log::log!(log_level, "{} output on stdout:", self.tool.id());
+                    util::write_all_to_stderr(stdout);
+                }
+                if !stderr.is_empty() {
+                    log::log!(log_level, "{} output on stderr:", self.tool.id());
+                    util::write_all_to_stderr(stderr);
+                }
             }
         }
     }
@@ -753,12 +757,15 @@ impl TryFrom<&str> for ValgrindTool {
 pub fn check_exit(
     tool: ValgrindTool,
     executable: &Path,
-    output: Output,
+    output: Option<Output>,
+    status: ExitStatus,
     output_path: &ToolOutputPath,
     exit_with: Option<&ExitWith>,
-) -> Result<Output> {
-    let Some(status_code) = output.status.code() else {
-        return Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into());
+) -> Result<Option<Output>> {
+    let Some(status_code) = status.code() else {
+        return Err(
+            Error::ProcessError((tool.id(), output, status, Some(output_path.clone()))).into(),
+        );
     };
 
     match (status_code, exit_with) {
@@ -770,7 +777,7 @@ pub fn check_exit(
                 executable.display(),
                 code
             );
-            Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into())
+            Err(Error::ProcessError((tool.id(), output, status, Some(output_path.clone()))).into())
         }
         (0i32, Some(ExitWith::Failure)) => {
             error!(
@@ -778,7 +785,7 @@ pub fn check_exit(
                 tool.id(),
                 executable.display(),
             );
-            Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into())
+            Err(Error::ProcessError((tool.id(), output, status, Some(output_path.clone()))).into())
         }
         (_, Some(ExitWith::Failure)) => Ok(output),
         (code, Some(ExitWith::Success)) => {
@@ -788,7 +795,7 @@ pub fn check_exit(
                 executable.display(),
                 code
             );
-            Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into())
+            Err(Error::ProcessError((tool.id(), output, status, Some(output_path.clone()))).into())
         }
         (actual_code, Some(ExitWith::Code(expected_code))) if actual_code == *expected_code => {
             Ok(output)
@@ -801,8 +808,10 @@ pub fn check_exit(
                 expected_code,
                 actual_code
             );
-            Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into())
+            Err(Error::ProcessError((tool.id(), output, status, Some(output_path.clone()))).into())
         }
-        _ => Err(Error::ProcessError((tool.id(), output, Some(output_path.clone()))).into()),
+        _ => {
+            Err(Error::ProcessError((tool.id(), output, status, Some(output_path.clone()))).into())
+        }
     }
 }

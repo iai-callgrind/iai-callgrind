@@ -17,15 +17,18 @@ use log::debug;
 
 use self::args::Args;
 use self::model::Costs;
+use super::args::NoCapture;
 use super::meta::Metadata;
 use super::summary::{CallgrindRegressionSummary, CostsSummary};
 use super::tool::{check_exit, RunOptions, ToolOutput, ToolOutputPath, ValgrindTool};
 use crate::api::{self, EventKind};
 use crate::error::Error;
+use crate::runner::format;
 use crate::util::{resolve_binary_path, to_string_signed_short};
 
 pub struct CallgrindCommand {
     command: Command,
+    nocapture: NoCapture,
 }
 
 #[derive(Clone, Debug)]
@@ -46,6 +49,7 @@ pub struct RegressionConfig {
 impl CallgrindCommand {
     pub fn new(meta: &Metadata) -> Self {
         Self {
+            nocapture: meta.args.nocapture,
             command: meta.into(),
         }
     }
@@ -94,27 +98,61 @@ impl CallgrindCommand {
 
         let executable = resolve_binary_path(executable)?;
 
-        let output = command
+        command
             .arg("--tool=callgrind")
             .args(callgrind_args)
             .arg(&executable)
             .args(executable_args)
-            .envs(envs)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
-            .map_err(|error| {
-                Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
-            })
-            .and_then(|output| {
-                check_exit(
-                    ValgrindTool::Callgrind,
-                    &executable,
-                    output,
-                    &output_path.to_log_output(),
-                    exit_with.as_ref(),
-                )
-            })?;
+            .envs(envs);
+
+        match self.nocapture {
+            NoCapture::True | NoCapture::False => {}
+            NoCapture::Stderr => {
+                command.stdout(Stdio::null()).stderr(Stdio::inherit());
+            }
+            NoCapture::Stdout => {
+                command.stdout(Stdio::inherit()).stderr(Stdio::null());
+            }
+        };
+
+        let output = match self.nocapture {
+            NoCapture::False => command
+                .output()
+                .map_err(|error| {
+                    Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
+                })
+                .and_then(|output| {
+                    let status = output.status;
+                    check_exit(
+                        ValgrindTool::Callgrind,
+                        &executable,
+                        Some(output),
+                        status,
+                        &output_path.to_log_output(),
+                        exit_with.as_ref(),
+                    )
+                })?,
+            NoCapture::True | NoCapture::Stderr | NoCapture::Stdout => {
+                command
+                    .status()
+                    .map_err(|error| {
+                        Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
+                    })
+                    .and_then(|status| {
+                        check_exit(
+                            ValgrindTool::Callgrind,
+                            &executable,
+                            None,
+                            status,
+                            &output_path.to_log_output(),
+                            exit_with.as_ref(),
+                        )
+                    })?;
+                None
+            }
+        };
+
+        println!("{}", format::no_capture_footer(self.nocapture));
 
         Ok(ToolOutput {
             tool: ValgrindTool::Callgrind,

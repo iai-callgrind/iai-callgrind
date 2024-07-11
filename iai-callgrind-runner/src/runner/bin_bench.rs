@@ -194,9 +194,11 @@ impl Assistant {
                 if output.status.success() {
                     Ok((output.stdout, output.stderr))
                 } else {
+                    let status = output.status;
                     Err(Error::ProcessError((
                         format!("{}:{id}::{}", &config.bench_bin.display(), self.name),
-                        output,
+                        Some(output),
+                        status,
                         None,
                     )))
                 }
