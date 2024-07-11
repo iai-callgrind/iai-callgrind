@@ -216,7 +216,7 @@ jobs:
           envs: "IAI_CALLGRIND_VALGRIND_INCLUDE IAI_CALLGRIND_VALGRIND_PATH"
           usesh: true
           prepare: |
-            pkg install -y valgrind curl llvm18 just npm-node21
+            pkg install -y valgrind curl llvm18 just npm-node22
             curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSL "https://sh.rustup.rs" | sh -s -- --default-toolchain stable --profile minimal -y
           run: |
             ./scripts/freebsd_print_info.sh
