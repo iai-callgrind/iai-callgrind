@@ -387,7 +387,21 @@ impl LibraryBenchmark {
         setup.update(&self.setup);
         teardown.update(&self.teardown);
 
-        for (i, args) in args.0.unwrap_or_default().into_iter().enumerate() {
+        // Make sure there is at least one `Args` present.
+        //
+        // `#[benches::id()]`, `#[benches::id(args = [])]` have to result in a single Bench with an
+        // empty Args.
+        let args = args.0.map_or_else(
+            || vec![Args::default()],
+            |a| {
+                if a.is_empty() {
+                    vec![Args::default()]
+                } else {
+                    a
+                }
+            },
+        );
+        for (i, args) in args.into_iter().enumerate() {
             args.check_num_arguments(expected_num_args, setup.is_some());
 
             let id = format_ident!("{id}_{i}");
@@ -399,6 +413,7 @@ impl LibraryBenchmark {
                 teardown: teardown.clone(),
             });
         }
+
         Ok(())
     }
 
@@ -739,7 +754,7 @@ impl Setup {
 
     fn render_as_code(&self, args: &Args) -> TokenStream2 {
         if let Some(setup) = &self.0 {
-            quote! { std::hint::black_box(#setup(#args)) }
+            quote_spanned! { setup.span() => std::hint::black_box(#setup(#args)) }
         } else {
             quote! { #args }
         }
@@ -781,7 +796,7 @@ impl Teardown {
 
     fn render_as_code(&self, tokens: TokenStream2) -> TokenStream2 {
         if let Some(teardown) = &self.0 {
-            quote! { std::hint::black_box(#teardown(#tokens)) }
+            quote_spanned! { teardown.span() => std::hint::black_box(#teardown(#tokens)) }
         } else {
             tokens
         }
