@@ -1,3 +1,4 @@
+// spell-checker:ignore rmdirs
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::fs::File;
@@ -117,6 +118,8 @@ struct RunConfig {
     expected: Option<ExpectedConfig>,
     #[serde(default)]
     runs_on: Option<String>,
+    #[serde(default)]
+    rmdirs: Vec<PathBuf>,
 }
 
 impl Benchmark {
@@ -227,6 +230,11 @@ impl Benchmark {
                 index + 1,
                 num_runs
             ));
+
+            for r in run.rmdirs.iter().filter(|r| r.is_dir()) {
+                print_info(format!("Removing directory: {}", r.display()));
+                std::fs::remove_dir_all(r).unwrap();
+            }
 
             if !run.args.is_empty() {
                 print_info(format!("Benchmark arguments: {}", run.args.join(" ")))
