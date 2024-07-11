@@ -482,6 +482,11 @@ impl LibraryBenchmark {
         let ident = &item_fn.sig.ident;
         let export_name = format!("iai_callgrind::bench::{}", &item_fn.sig.ident);
         let config = self.config.render_as_code();
+
+        let inner = self.setup.render_as_code(&Args::default());
+        let call = quote! { std::hint::black_box(#ident(#inner)) };
+
+        let call = self.teardown.render_as_code(call);
         quote! {
             mod #ident {
                 use super::*;
@@ -503,7 +508,7 @@ impl LibraryBenchmark {
 
                 #[inline(never)]
                 pub fn wrapper() {
-                    let _ = std::hint::black_box(#ident());
+                    let _ = #call;
                 }
             }
         }

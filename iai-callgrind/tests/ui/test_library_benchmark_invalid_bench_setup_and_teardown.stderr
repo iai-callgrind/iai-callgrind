@@ -1,0 +1,137 @@
+error[E0308]: mismatched types
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:21:21
+   |
+21 | #[bench::id(args = ("wrong type"), setup = setup_u64_to_string)]
+   |                    -^^^^^^^^^^^^-
+   |                    ||
+   |                    |expected `u64`, found `&str`
+   |                    arguments to this function are incorrect
+   |
+note: function defined here
+  --> $RUST/core/src/hint.rs
+   |
+   | pub const fn black_box<T>(dummy: T) -> T {
+   |              ^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:28:34
+   |
+28 | #[bench::id(args = (10), setup = setup_u64_to_string)]
+   |                                  ^^^^^^^^^^^^^^^^^^^
+   |                                  |
+   |                                  expected `u64`, found struct `String`
+   |                                  arguments to this function are incorrect
+   |
+note: function defined here
+  --> $RUST/core/src/hint.rs
+   |
+   | pub const fn black_box<T>(dummy: T) -> T {
+   |              ^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:35:21
+   |
+35 | #[bench::id(args = ("wrong type"), setup = setup_u64_to_string)]
+   |                    -^^^^^^^^^^^^-
+   |                    ||
+   |                    |expected `u64`, found `&str`
+   |                    arguments to this function are incorrect
+   |
+note: function defined here
+  --> $RUST/core/src/hint.rs
+   |
+   | pub const fn black_box<T>(dummy: T) -> T {
+   |              ^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:41:1
+   |
+41 | #[library_benchmark]
+   | ^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected `()`, found `u64`
+   | arguments to this function are incorrect
+   |
+note: function defined here
+  --> $RUST/core/src/hint.rs
+   |
+   | pub const fn black_box<T>(dummy: T) -> T {
+   |              ^^^^^^^^^
+   = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:48:1
+   |
+48 | #[library_benchmark(teardown = teardown_u64)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected `()`, found `u64`
+   | arguments to this function are incorrect
+   |
+note: function defined here
+  --> $RUST/core/src/hint.rs
+   |
+   | pub const fn black_box<T>(dummy: T) -> T {
+   |              ^^^^^^^^^
+   = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:56:23
+   |
+56 | #[benches::id(args = ["wrong type"], setup = setup_u64_to_string)]
+   |                       ^^^^^^^^^^^^
+   |                       |
+   |                       expected `u64`, found `&str`
+   |                       arguments to this function are incorrect
+   |
+note: function defined here
+  --> $RUST/core/src/hint.rs
+   |
+   | pub const fn black_box<T>(dummy: T) -> T {
+   |              ^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:63:36
+   |
+63 | #[benches::id(args = [10], setup = setup_u64_to_string)]
+   |                                    ^^^^^^^^^^^^^^^^^^^
+   |                                    |
+   |                                    expected `u64`, found struct `String`
+   |                                    arguments to this function are incorrect
+   |
+note: function defined here
+  --> $RUST/core/src/hint.rs
+   |
+   | pub const fn black_box<T>(dummy: T) -> T {
+   |              ^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:70:23
+   |
+70 | #[benches::id(args = ["wrong type"], setup = setup_u64_to_string)]
+   |                       ^^^^^^^^^^^^
+   |                       |
+   |                       expected `u64`, found `&str`
+   |                       arguments to this function are incorrect
+   |
+note: function defined here
+  --> $RUST/core/src/hint.rs
+   |
+   | pub const fn black_box<T>(dummy: T) -> T {
+   |              ^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:76:1
+   |
+76 | #[library_benchmark]
+   | ^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected `()`, found `u64`
+   | arguments to this function are incorrect
+   |
+note: function defined here
+  --> $RUST/core/src/hint.rs
+   |
+   | pub const fn black_box<T>(dummy: T) -> T {
+   |              ^^^^^^^^^
+   = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
