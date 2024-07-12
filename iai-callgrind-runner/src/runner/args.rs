@@ -242,8 +242,18 @@ pub struct CommandLineArgs {
     #[arg(long = "home", num_args = 1, env = "IAI_CALLGRIND_HOME")]
     pub home: Option<PathBuf>,
 
-    /// TODO: DOCS
-    /// TODO: DO I NEED `OUTPUT_FORMAT=default`?
+    /// Don't capture terminal output of benchmarks
+    ///
+    /// This option is currently restricted to the `callgrind` run of benchmarks. The output of
+    /// additional tool runs like DHAT, Memcheck, ... is still captured, to prevent showing the
+    /// same output of benchmarks multiple times. Use `IAI_CALLGRIND_LOG=info` to also show
+    /// captured and logged output.
+    ///
+    /// If no value is given, the default missing value is `true` and doesn't capture stdout and
+    /// stderr. Besides `true` or `false` you can specify the special values `stdout` or `stderr`.
+    /// If `--nocapture=stdout` is given, the output to `stdout` won't be captured and the output
+    /// to `stderr` will be discarded. Likewise, if `--nocapture=stderr` is specified, the
+    /// output to `stderr` won't be captured and the output to `stdout` will be discarded.
     #[arg(
         long = "nocapture",
         value_enum,
