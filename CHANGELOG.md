@@ -22,6 +22,30 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+* ([#192](https://github.com/iai-callgrind/iai-callgrind/pull/192)): The
+  `#[bench]` attribute now accepts a `setup` parameter similarly to the
+  `#[benches]` attribute. The `#[bench]` and `#[benches]` attribute accept a
+  new `teardown` parameter. The `teardown` function is called with the return
+  value of the benchmark function. The `#[library_benchmark]` attribute now
+  accepts a global `setup` and `teardown` parameter which are applied to all following
+  `#[bench]` and `#[benches]` attributes if they don't specify one of these
+  parameters themselves.
+
+### Fixed
+
+* ([#192](https://github.com/iai-callgrind/iai-callgrind/pull/192)): Fix a
+  wrongly issued compiler error when the setup parameter was specified before
+  the args parameter and the number of elements of the args parameter did not
+  match the number of arguments of the benchmark function.
+* ([#192](https://github.com/iai-callgrind/iai-callgrind/pull/192)): Fix the
+  error span of wrong user supplied argument types or wrong number of arguments.
+  The compiler errors now point to the exact location of any wrong arguments
+  instead of the generic call-site of the `#[library_benchmark]` attribute. If
+  there is a setup function involved, we leave it to the rust compiler to point
+  to the location of the setup function and the wrong arguments.
+
 ## [0.11.1] - 2024-07-05
 
 ### Changed

@@ -1,0 +1,58 @@
+error[E0425]: cannot find function `does_not_exist` in this scope
+  --> tests/ui/test_library_benchmark_invalid_setup_and_teardown.rs:13:29
+   |
+13 | #[library_benchmark(setup = does_not_exist)]
+   |                             ^^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find function `does_not_exist` in this scope
+  --> tests/ui/test_library_benchmark_invalid_setup_and_teardown.rs:18:32
+   |
+18 | #[library_benchmark(teardown = does_not_exist)]
+   |                                ^^^^^^^^^^^^^^ not found in this scope
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> tests/ui/test_library_benchmark_invalid_setup_and_teardown.rs:28:29
+   |
+28 | #[library_benchmark(setup = setup_string)]
+   |                             ^^^^^^^^^^^^ an argument of type `u64` is missing
+   |
+note: function defined here
+  --> tests/ui/test_library_benchmark_invalid_setup_and_teardown.rs:7:4
+   |
+7  | fn setup_string(value: u64) -> String {
+   |    ^^^^^^^^^^^^ ----------
+help: provide the argument
+   |
+28 | #[library_benchmark(setup = setup_string(/* u64 */))]
+   |                                         +++++++++++
+
+error[E0308]: mismatched types
+  --> tests/ui/test_library_benchmark_invalid_setup_and_teardown.rs:28:29
+   |
+28 | #[library_benchmark(setup = setup_string)]
+   |                             ^^^^^^^^^^^^
+   |                             |
+   |                             expected `u64`, found struct `String`
+   |                             arguments to this function are incorrect
+   |
+note: function defined here
+  --> $RUST/core/src/hint.rs
+   |
+   | pub const fn black_box<T>(dummy: T) -> T {
+   |              ^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> tests/ui/test_library_benchmark_invalid_setup_and_teardown.rs:34:1
+   |
+34 | #[library_benchmark(teardown = teardown_unit)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected `()`, found `u64`
+   | arguments to this function are incorrect
+   |
+note: function defined here
+  --> $RUST/core/src/hint.rs
+   |
+   | pub const fn black_box<T>(dummy: T) -> T {
+   |              ^^^^^^^^^
+   = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)

@@ -1,41 +1,60 @@
 error: Expected 0 arguments but found 1
- --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:5:3
+
+         = help: This argument is expected to have the same amount of parameters as the benchmark function
+
+ --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:5:13
   |
 5 | #[bench::id(42)]
-  |   ^^^^^^^^^^^^^
+  |             ^^
 
-error: Failed parsing arguments: Expected 0 values per tuple
+error: Expected 0 arguments but found 1
 
-         = help: If the benchmarking function has multiple parameters
-                           the arguments for #[benches::...] must be given as tuple
-         = note: #[benches::id((1, 2), (3, 4))] or #[benches::id(args = [(1, 2), (3, 4)])]
+         = help: This argument is expected to have the same amount of parameters as the benchmark function
 
  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:6:18
   |
 6 | #[benches::multi(42)]
   |                  ^^
 
-error: Expected 1 arguments but found none
+error: Expected 1 arguments but found 0
 
-         = help: Try passing arguments either with #[bench::some_id(arg1, ...)]
-                       or with #[bench::some_id(args = (arg1, ...))]
+         = help: This argument is expected to have the same amount of parameters as the benchmark function
 
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:11:1
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:10:1
    |
-11 | #[bench::id()]
-   | ^^^^^^^^^^^^^^
+10 | #[library_benchmark]
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: Expected 1 arguments but found 0
+
+         = help: This argument is expected to have the same amount of parameters as the benchmark function
+
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:14:1
+   |
+14 | #[library_benchmark]
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: Expected 1 arguments but found 2
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:20:3
+
+         = help: This argument is expected to have the same amount of parameters as the benchmark function
+
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:20:13
    |
 20 | #[bench::id(42, 8)]
-   |   ^^^^^^^^^^^^^^^^
+   |             ^^
 
 error: Expected 1 arguments but found 2
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:24:3
+
+         = help: This argument is expected to have the same amount of parameters as the benchmark function
+
+  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:24:18
    |
 24 | #[benches::multi((42, 8))]
-   |   ^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ^^^^^^^
 
 error[E0603]: function `bench5` is private
   --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:52:13
@@ -73,32 +92,14 @@ note: the function `bench7` is defined here
 48 | pub fn bench7() {}
    |     ^^^^^^^^^^^
 
-error[E0061]: this function takes 1 argument but 0 arguments were supplied
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:16:4
-   |
-14 | #[library_benchmark]
-   | -------------------- an argument of type `i32` is missing
-15 | #[benches::multi(args = [])]
-16 | fn bench25(my: i32) {}
-   |    ^^^^^^^
-   |
-note: function defined here
-  --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:16:4
-   |
-16 | fn bench25(my: i32) {}
-   |    ^^^^^^^ -------
-help: provide the argument
-   |
-14 | bench25(/* i32 */)
-   |
-
 error[E0308]: mismatched types
   --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:29:13
    |
-28 | #[library_benchmark]
-   | -------------------- arguments to this function are incorrect
 29 | #[bench::id("hello")]
-   |             ^^^^^^^ expected `u8`, found `&str`
+   |             ^^^^^^^
+   |             |
+   |             expected `u8`, found `&str`
+   |             arguments to this function are incorrect
    |
 note: function defined here
   --> $RUST/core/src/hint.rs
@@ -109,10 +110,11 @@ note: function defined here
 error[E0308]: mismatched types
   --> tests/ui/test_library_benchmark_invalid_bench_arguments.rs:33:18
    |
-32 | #[library_benchmark]
-   | -------------------- arguments to this function are incorrect
 33 | #[benches::multi("hello")]
-   |                  ^^^^^^^ expected `u8`, found `&str`
+   |                  ^^^^^^^
+   |                  |
+   |                  expected `u8`, found `&str`
+   |                  arguments to this function are incorrect
    |
 note: function defined here
   --> $RUST/core/src/hint.rs

@@ -1,6 +1,6 @@
 # spell-checker:ignore taiki rustfmt binstall clippy taplo rustup nocapture
 # spell-checker:ignore nofile gnuabi armv gnueabi mipsel vmactions usesh proto
-# spell-checker:ignore tlsv connrefused
+# spell-checker:ignore tlsv connrefused copyback
 
 name: Build and Check
 
@@ -215,6 +215,8 @@ jobs:
         with:
           envs: "IAI_CALLGRIND_VALGRIND_INCLUDE IAI_CALLGRIND_VALGRIND_PATH"
           usesh: true
+          sync: rsync
+          copyback: false
           prepare: |
             pkg install -y valgrind curl llvm18 just npm-node22
             curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSL "https://sh.rustup.rs" | sh -s -- --default-toolchain stable --profile minimal -y

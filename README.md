@@ -328,7 +328,76 @@ test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci 
   Estimated Cycles:        22025983|35638757        (-38.1965%) [-1.61803x]
 ```
 
+##### The #[library_benchmark] attribute in more detail
+
+This attribute needs to be present on all benchmark functions specified in the
+`library_benchmark_group`. The benchmark function can then be further annotated
+with the `#[bench]` or `#[benches]` attributes.
+
+```rust
+#[library_benchmark]
+#[bench::first(21)]
+fn my_bench(value: u64) -> u64 {
+    // benchmark something
+}
+
+library_benchmark_group!(name = my_group; benchmarks = my_bench);
+```
+
+The following parameters are accepted:
+
+- `config`: Accepts a `LibraryBenchmarkConfig`
+- `setup`: A global setup function which is applied to all following `#[bench]`
+  and `#[benches]` attributes if not overwritten by a `setup` parameter of these
+  attributes.
+- `teardown`: Similar to `setup` but takes a global `teardown` function.
+
+A short example on the usage of the `setup` parameter:
+
+```rust
+fn my_setup(value: u64) -> String {
+     format!("{value}")
+}
+
+fn my_other_setup(value: u64) -> String {
+     format!("{}", value + 10)
+}
+
+#[library_benchmark(setup = my_setup)]
+#[bench::first(21)]
+#[benches::multiple(42, 84)]
+#[bench::last(args = (102), setup = my_other_setup)]
+fn my_bench(value: String) {
+    println!("{value}");
+}
+```
+
+Here, the benchmarks with the id `first` and `multiple` use the `my_setup`
+function, and `last` uses `my_other_setup`.
+
+##### The #[bench] attribute
+
+The basic structure is `#[bench::some_id(/* parameters */)]`. The part after the
+`::` must be an id unique within the same `#[library_benchmark]`. This attribute
+accepts the following parameters:
+
+- `args`: A tuple with a list of arguments which are passed to the
+  benchmark function. The parentheses also need to be present if there is only a
+  single argument (`#[bench::my_id(args = (10))]`).
+- `config`: Accepts a `LibraryBenchmarkConfig`
+- `setup`: A function which takes the arguments specified in the `args`
+  parameter and passes its return value to the benchmark function.
+- `teardown`: A function which takes the return value of the benchmark function.
+
+If no other parameters besides `args` are present you can simply pass the
+arguments as a list of values. Instead of `#[bench::my_id(args = (10, 20))]`,
+you could also use the shorter `#[bench::my_id(10, 20)]`.
+
 ##### Specify multiple benchmarks at once with the #[benches] attribute
+
+This attribute accepts the same parameters as the `#[bench]` attribute: `args`,
+`config`, `setup` and `teardown`. In contrast to the `args` parameter in
+`#[bench]`, `args` takes an array of arguments.
 
 Let's start with an example:
 
