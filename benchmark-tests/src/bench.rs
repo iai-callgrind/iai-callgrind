@@ -31,6 +31,7 @@ lazy_static! {
             )?"
     )
     .expect("Regex should compile");
+    static ref RUNNING_RE: Regex = Regex::new(r"^[ ]+Running .*$").expect("Regex should compile");
 }
 
 #[derive(Debug, Clone)]
@@ -271,11 +272,11 @@ impl BenchmarkOutput {
                 .expect("File should exist")
                 .read_to_end(&mut expected_stderr)
                 .expect("Reading file should succeed");
-            let actual = String::from_utf8_lossy(&output.stderr);
+            let actual = self.filter_stderr(&output.stderr);
             let expected_string = String::from_utf8_lossy(&expected_stderr);
             if actual != expected_string {
                 panic!(
-                    "Assertion failed: {}",
+                    "Assertion of stderr failed: {}",
                     pretty_assertions::StrComparison::new(&actual, &expected_string)
                 );
             }
@@ -291,11 +292,26 @@ impl BenchmarkOutput {
             let expected_string = String::from_utf8_lossy(&expected_stdout);
             if filtered != expected_string {
                 panic!(
-                    "Assertion failed: {}",
+                    "Assertion of stdout failed: {}",
                     pretty_assertions::StrComparison::new(&filtered, &expected_string)
                 );
             }
         }
+    }
+
+    fn filter_stderr(&self, stderr: &[u8]) -> String {
+        let mut result = String::new();
+        let mut start = false;
+        for line in stderr.lines().map(Result::unwrap) {
+            if !start {
+                if RUNNING_RE.is_match(&line) {
+                    start = true;
+                }
+                continue;
+            }
+            writeln!(result, "{line}").unwrap();
+        }
+        result
     }
 
     fn filter_stdout(&self, stdout: &[u8]) -> String {

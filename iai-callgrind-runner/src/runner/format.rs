@@ -327,7 +327,7 @@ pub fn no_capture_footer(nocapture: NoCapture) -> String {
     match nocapture {
         NoCapture::True => format!("{} {}", "-".yellow(), "end of stdout/stderr".yellow()),
         NoCapture::False => String::new(),
-        NoCapture::Stderr => format!("{} {}", "-".yellow(), "stderr".yellow()),
-        NoCapture::Stdout => format!("{} {}", "-".yellow(), "stdout".yellow()),
+        NoCapture::Stderr => format!("{} {}", "-".yellow(), "end of stderr".yellow()),
+        NoCapture::Stdout => format!("{} {}", "-".yellow(), "end of stdout".yellow()),
     }
 }

@@ -1,0 +1,31 @@
+groups:
+  - runs:
+      - args: []
+        expected:
+          stdout: test_lib_bench_nocapture.stdout.1
+          stderr: test_lib_bench_nocapture.stderr.empty
+  - runs:
+      - args: ["--nocapture=false"]
+        expected:
+          stdout: test_lib_bench_nocapture.stdout.1
+          stderr: test_lib_bench_nocapture.stderr.empty
+  - runs:
+      - args: ["--nocapture"]
+        expected:
+          stdout: test_lib_bench_nocapture.stdout.2
+          stderr: test_lib_bench_nocapture.stderr.1
+  - runs:
+      - args: ["--nocapture=true"]
+        expected:
+          stdout: test_lib_bench_nocapture.stdout.2
+          stderr: test_lib_bench_nocapture.stderr.1
+  - runs:
+      - args: ["--nocapture=stdout"]
+        expected:
+          stdout: test_lib_bench_nocapture.stdout.3
+          stderr: test_lib_bench_nocapture.stderr.empty
+  - runs:
+      - args: ["--nocapture=stderr"]
+        expected:
+          stdout: test_lib_bench_nocapture.stdout.4
+          stderr: test_lib_bench_nocapture.stderr.1

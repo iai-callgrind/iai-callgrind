@@ -148,11 +148,10 @@ impl CallgrindCommand {
                             exit_with.as_ref(),
                         )
                     })?;
+                println!("{}", format::no_capture_footer(self.nocapture));
                 None
             }
         };
-
-        println!("{}", format::no_capture_footer(self.nocapture));
 
         Ok(ToolOutput {
             tool: ValgrindTool::Callgrind,

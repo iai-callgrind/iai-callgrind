@@ -121,4 +121,8 @@ name = "test_lib_bench_setup_and_teardown"
 
 [[bench]]
 harness = false
+name = "test_lib_bench_nocapture"
+
+[[bench]]
+harness = false
 name = "test_bench"
