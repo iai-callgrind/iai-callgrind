@@ -171,6 +171,9 @@ impl Benchmark {
 
         let mut command = std::process::Command::new(env!("CARGO"));
         command.args(["bench", "--package", PACKAGE, "--bench", &self.bench_name]);
+        if capture {
+            command.args(["--color", "never"]);
+        }
         if !args.is_empty() {
             command.arg("--");
             command.args(args);
