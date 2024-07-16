@@ -36,6 +36,14 @@ impl FromStr for BenchmarkFilter {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NoCapture {
+    True,
+    False,
+    Stderr,
+    Stdout,
+}
+
 /// The command line arguments the user provided after `--` when running cargo bench
 ///
 /// These arguments are not the command line arguments passed to `iai-callgrind-runner`. We collect
@@ -46,7 +54,11 @@ impl FromStr for BenchmarkFilter {
 #[command(
     author,
     version,
-    about = "High-precision and consistent benchmarking framework/harness for Rust",
+    about = "High-precision and consistent benchmarking framework/harness for Rust
+
+Boolish command line arguments take also one of `y`, `yes`, `t`, `true`, `on`, `1`
+instead of `true` and one of `n`, `no`, `f`, `false`, `off`, and `0` instead of
+`false`",
     long_about = None,
     no_binary_name = true,
     override_usage= "cargo bench ... [BENCHNAME] -- [OPTIONS]"
@@ -102,7 +114,7 @@ pub struct CommandLineArgs {
     /// See also <https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space>
     #[arg(
         long = "allow-aslr",
-        default_missing_value = "yes",
+        default_missing_value = "true",
         num_args = 0..=1,
         require_equals = true,
         value_parser = BoolishValueParser::new(),
@@ -133,7 +145,7 @@ pub struct CommandLineArgs {
     #[arg(
         long = "regression-fail-fast",
         requires = "regression",
-        default_missing_value = "yes",
+        default_missing_value = "true",
         num_args = 0..=1,
         require_equals = true,
         value_parser = BoolishValueParser::new(),
@@ -216,8 +228,8 @@ pub struct CommandLineArgs {
     /// prefer having all files of a single $BENCH in the same directory.
     #[arg(
         long = "separate-targets",
-        default_missing_value = "yes",
-        default_value = "no",
+        default_missing_value = "true",
+        default_value = "false",
         num_args = 0..=1,
         require_equals = true,
         value_parser = BoolishValueParser::new(),
@@ -233,6 +245,32 @@ pub struct CommandLineArgs {
     /// does't exist.
     #[arg(long = "home", num_args = 1, env = "IAI_CALLGRIND_HOME")]
     pub home: Option<PathBuf>,
+
+    /// Don't capture terminal output of benchmarks
+    ///
+    /// Possible values are one of [true, false, stdout, stderr].
+    ///
+    /// This option is currently restricted to the `callgrind` run of benchmarks. The output of
+    /// additional tool runs like DHAT, Memcheck, ... is still captured, to prevent showing the
+    /// same output of benchmarks multiple times. Use `IAI_CALLGRIND_LOG=info` to also show
+    /// captured and logged output.
+    ///
+    /// If no value is given, the default missing value is `true` and doesn't capture stdout and
+    /// stderr. Besides `true` or `false` you can specify the special values `stdout` or `stderr`.
+    /// If `--nocapture=stdout` is given, the output to `stdout` won't be captured and the output
+    /// to `stderr` will be discarded. Likewise, if `--nocapture=stderr` is specified, the
+    /// output to `stderr` won't be captured and the output to `stdout` will be discarded.
+    #[arg(
+        long = "nocapture",
+        required = false,
+        default_missing_value = "true",
+        default_value = "false",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = parse_nocapture,
+        env = "IAI_CALLGRIND_NOCAPTURE"
+    )]
+    pub nocapture: NoCapture,
 }
 
 /// This function parses a space separated list of raw argument strings into [`crate::api::RawArgs`]
@@ -286,6 +324,26 @@ impl From<&CommandLineArgs> for Option<RegressionConfig> {
             config.fail_fast = value.regression_fail_fast;
         }
         config
+    }
+}
+
+fn parse_nocapture(value: &str) -> Result<NoCapture, String> {
+    // Taken from clap source code
+    const TRUE_LITERALS: [&str; 6] = ["y", "yes", "t", "true", "on", "1"];
+    const FALSE_LITERALS: [&str; 6] = ["n", "no", "f", "false", "off", "0"];
+
+    let lowercase: String = value.to_lowercase();
+
+    if TRUE_LITERALS.contains(&lowercase.as_str()) {
+        Ok(NoCapture::True)
+    } else if FALSE_LITERALS.contains(&lowercase.as_str()) {
+        Ok(NoCapture::False)
+    } else if lowercase == "stdout" {
+        Ok(NoCapture::Stdout)
+    } else if lowercase == "stderr" {
+        Ok(NoCapture::Stderr)
+    } else {
+        Err(format!("Invalid value: {value}"))
     }
 }
 
@@ -466,5 +524,28 @@ mod tests {
     fn test_home_cli_when_no_value_then_error() {
         let result = CommandLineArgs::try_parse_from(["--home=".to_owned()]);
         assert!(result.is_err());
+    }
+
+    #[rstest]
+    #[case::default("", NoCapture::True)]
+    #[case::yes("true", NoCapture::True)]
+    #[case::no("false", NoCapture::False)]
+    #[case::stdout("stdout", NoCapture::Stdout)]
+    #[case::stderr("stderr", NoCapture::Stderr)]
+    fn test_nocapture_cli(#[case] value: &str, #[case] expected: NoCapture) {
+        let result = if value.is_empty() {
+            CommandLineArgs::parse_from(["--nocapture".to_owned()])
+        } else {
+            CommandLineArgs::parse_from([format!("--nocapture={value}")])
+        };
+        assert_eq!(result.nocapture, expected);
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_nocapture_env() {
+        std::env::set_var("IAI_CALLGRIND_NOCAPTURE", "true");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(result.nocapture, NoCapture::True);
     }
 }

@@ -116,9 +116,11 @@ pub fn copy_directory(source: &Path, dest: &Path, follow_symlinks: bool) -> Resu
             if output.status.success() {
                 Ok((output.stdout, output.stderr))
             } else {
+                let status = output.status;
                 Err(Error::ProcessError((
                     cp.to_string_lossy().to_string(),
-                    output,
+                    Some(output),
+                    status,
                     None,
                 )))
             }

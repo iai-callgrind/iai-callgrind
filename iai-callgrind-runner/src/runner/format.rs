@@ -3,6 +3,7 @@ use std::fmt::{Display, Write};
 use anyhow::Result;
 use colored::{ColoredString, Colorize};
 
+use super::args::NoCapture;
 use super::meta::Metadata;
 use super::summary::{CostsDiff, CostsSummary};
 use super::tool::ValgrindTool;
@@ -320,4 +321,13 @@ pub fn tool_headline(tool: ValgrindTool) -> String {
         "=".repeat(64 - id.len()).bright_black(),
         // "=".repeat(34 - tool.id().len()).bright_black()
     )
+}
+
+pub fn no_capture_footer(nocapture: NoCapture) -> String {
+    match nocapture {
+        NoCapture::True => format!("{} {}", "-".yellow(), "end of stdout/stderr".yellow()),
+        NoCapture::False => String::new(),
+        NoCapture::Stderr => format!("{} {}", "-".yellow(), "end of stderr".yellow()),
+        NoCapture::Stdout => format!("{} {}", "-".yellow(), "end of stdout".yellow()),
+    }
 }

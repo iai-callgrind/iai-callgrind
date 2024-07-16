@@ -2,7 +2,7 @@ use std::fmt::Display;
 use std::io::stderr;
 use std::os::unix::process::ExitStatusExt;
 use std::path::PathBuf;
-use std::process::Output;
+use std::process::{ExitStatus, Output};
 
 use version_compare::Cmp;
 
@@ -13,7 +13,7 @@ use crate::util::write_all_to_stderr;
 pub enum Error {
     VersionMismatch(version_compare::Cmp, String, String),
     LaunchError(PathBuf, String),
-    ProcessError((String, Output, Option<ToolOutputPath>)),
+    ProcessError((String, Option<Output>, ExitStatus, Option<ToolOutputPath>)),
     InvalidCallgrindBoolArgument((String, String)),
     ParseError((PathBuf, String)),
     RegressionError(bool),
@@ -49,17 +49,19 @@ impl Display for Error {
             Self::LaunchError(exec, message) => {
                 write!(f, "Error launching '{}': {message}", exec.display())
             }
-            Self::ProcessError((process, output, output_path)) => {
+            Self::ProcessError((process, output, status, output_path)) => {
                 if let Some(output_path) = output_path {
                     output_path
                         .dump_log(log::Level::Error, &mut stderr())
                         .expect("Printing error output should succeed");
                 }
-                write_all_to_stderr(&output.stderr);
+                if let Some(output) = output {
+                    write_all_to_stderr(&output.stderr);
+                }
 
-                if let Some(code) = output.status.code() {
+                if let Some(code) = status.code() {
                     write!(f, "Error running '{process}': Exit code was: '{code}'")
-                } else if let Some(signal) = output.status.signal() {
+                } else if let Some(signal) = status.signal() {
                     write!(
                         f,
                         "Error running '{process}': Terminated by a signal '{signal}'"

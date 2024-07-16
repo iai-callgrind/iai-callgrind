@@ -1,4 +1,4 @@
-<!-- spell-checker: ignore fixt binstall libtest -->
+<!-- spell-checker: ignore fixt binstall libtest eprintln -->
 
 <h1 align="center">Iai-Callgrind</h1>
 
@@ -51,6 +51,7 @@ improvements and features.
         - [Baselines](#comparing-with-baselines)
         - [Output directory](#customize-the-output-directory)
         - [Machine-readable output](#machine-readable-output)
+        - [Other output options](#other-output-options)
     - [Features and differences to Iai](#features-and-differences-to-iai)
     - [FAQ](#faq)
     - [What hasn't changed](#what-hasnt-changed)
@@ -1047,7 +1048,79 @@ a summary file for each benchmark with `--save-summary=json|pretty-json` (env:
 `IAI_CALLGRIND_SAVE_SUMMARY`). The `summary.json` files are stored next to the
 usual benchmark output files in the `target/iai` directory.
 
-#### Changing the color output
+#### Other output options
+
+This section describes other command-line options and environment variables
+which influence the terminal and logging output of iai-callgrind.
+
+##### Show terminal output of benchmarks
+
+Per default, all terminal output is captured and therefore not shown during a
+benchmark run. To show any captured output, you can use
+`IAI_CALLGRIND_LOG=info`. Another possibility is, to tell `iai-callgrind` to not
+capture output with the `--nocapture` (env: `IAI_CALLGRIND_NOCAPTURE`) option.
+This is currently restricted to the `callgrind` run to prevent showing the same
+output multiple times. So, any terminal output of other tool runs (see also
+[Valgrind Tools](#valgrind-tools)) is still captured.
+
+The `--nocapture` flag takes the special values `stdout` and `stderr` in
+addition to `true` and `false`. In the `--nocapture=stdout` case, terminal
+output to `stdout` is not captured and shown during the benchmark run but output
+to `stderr` is discarded. Likewise, `--nocapture=stderr` shows terminal output
+to `stderr` but discards output to `stdout`.
+
+For example a library benchmark `benches/my_benchmark.rs`
+
+```rust
+use iai_callgrind::{main, library_benchmark_group, library_benchmark};
+
+fn my_teardown(value: u64) {
+    eprintln!("Error output during teardown: {value}");
+}
+
+fn to_be_benchmarked(value: u64) -> u64 {
+    println!("Output to stdout: {value}");
+    value + 10
+}
+
+#[library_benchmark]
+#[bench::some_id(args = (10), teardown = my_teardown]
+fn my_bench(value: u64) -> u64 {
+    to_be_benchmarked(value)
+}
+
+library_benchmark_group!(
+    name = my_bench_group;
+    benchmarks = my_bench
+);
+
+main!(library_benchmark_groups = my_bench_group);
+```
+
+If the above benchmark is run with `cargo bench --bench my_benchmark --
+--nocapture`, the output of iai-callgrind will look like this (The values of
+Instructions and so on don't matter here and are made up)
+
+```text
+my_benchmark::my_bench_group::my_bench some_id:10
+Output to stdout: 10
+Error output during teardown: 20
+- end of stdout/stderr
+  Instructions:              331082|N/A             (*********)
+  L1 Hits:                   442452|N/A             (*********)
+  L2 Hits:                      720|N/A             (*********)
+  RAM Hits:                    3926|N/A             (*********)
+  Total read+write:          447098|N/A             (*********)
+  Estimated Cycles:          583462|N/A             (*********)
+```
+
+Note that independently of the value of the `--nocapture` option, all logging
+output of a valgrind tool itself is stored in files in the output directory of
+the benchmark. Since `iai-callgrind` needs the logging output of valgrind tools
+stored in files, there is no option to disable the creation of these log files.
+But, if anything goes sideways you might be glad to have the log files around.
+
+##### Changing the color output
 
 The terminal output is colored per default but follows the value for the
 `IAI_CALLGRIND_COLOR` environment variable. If `IAI_CALLGRIND_COLOR` is not set,
@@ -1055,7 +1128,7 @@ The terminal output is colored per default but follows the value for the
 (default). So, disabling colors can be achieved with setting
 `IAI_CALLGRIND_COLOR` or `CARGO_TERM_COLOR=never`.
 
-#### Changing the logging output
+##### Changing the logging output
 
 This library uses [env_logger](https://crates.io/crates/env_logger) and the
 default logging level `WARN`. To set the logging level to something different,
