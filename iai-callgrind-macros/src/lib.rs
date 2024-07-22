@@ -219,7 +219,7 @@ impl Bench {
         let args = &self.args;
 
         let inner = self.setup.render_as_code(args);
-        let call = quote! { std::hint::black_box(#callee(#inner)) };
+        let call = quote! { std::hint::black_box(__iai_callgrind_wrapper_mod::#callee(#inner)) };
 
         let call = self.teardown.render_as_code(call);
 
@@ -487,28 +487,31 @@ impl LibraryBenchmark {
     /// }
     /// ```
     fn render_standalone(self, item_fn: &ItemFn) -> TokenStream2 {
+        let ident = &item_fn.sig.ident;
+        let visibility: syn::Visibility = parse_quote! { pub(super) };
         let new_item_fn = ItemFn {
             attrs: vec![],
-            vis: syn::Visibility::Inherited,
+            vis: visibility,
             sig: item_fn.sig.clone(),
             block: item_fn.block.clone(),
         };
 
-        let ident = &item_fn.sig.ident;
-        let export_name = format!("iai_callgrind::bench::{}", &item_fn.sig.ident);
         let config = self.config.render_as_code();
 
         let inner = self.setup.render_as_code(&Args::default());
-        let call = quote! { std::hint::black_box(#ident(#inner)) };
+        let call = quote! { std::hint::black_box(__iai_callgrind_wrapper_mod::#ident(#inner)) };
 
         let call = self.teardown.render_as_code(call);
         quote! {
             mod #ident {
                 use super::*;
 
-                #[inline(never)]
-                #[export_name = #export_name]
-                #new_item_fn
+                mod __iai_callgrind_wrapper_mod {
+                    use super::*;
+
+                    #[inline(never)]
+                    #new_item_fn
+                }
 
                 pub const BENCHES: &[iai_callgrind::internal::InternalMacroLibBench]= &[
                     iai_callgrind::internal::InternalMacroLibBench {
@@ -529,6 +532,7 @@ impl LibraryBenchmark {
         }
     }
 
+    /// TODO: Update documentation
     /// Render the `#[library_benchmark]` when other outer attributes like `#[bench]` were present
     ///
     /// We use the function name of the annotated function as module name. This new module
@@ -577,15 +581,15 @@ impl LibraryBenchmark {
     /// }
     /// ```
     fn render_benches(self, item_fn: &ItemFn) -> TokenStream2 {
+        let visibility: syn::Visibility = parse_quote! { pub(super) };
         let new_item_fn = ItemFn {
             attrs: vec![],
-            vis: syn::Visibility::Inherited,
+            vis: visibility,
             sig: item_fn.sig.clone(),
             block: item_fn.block.clone(),
         };
 
         let mod_name = &item_fn.sig.ident;
-        let export_name = format!("iai_callgrind::bench::{}", &item_fn.sig.ident);
         let callee = &item_fn.sig.ident;
         let mut funcs = TokenStream2::new();
         let mut lib_benches = vec![];
@@ -599,9 +603,12 @@ impl LibraryBenchmark {
             mod #mod_name {
                 use super::*;
 
-                #[inline(never)]
-                #[export_name = #export_name]
-                #new_item_fn
+                mod __iai_callgrind_wrapper_mod {
+                    use super::*;
+
+                    #[inline(never)]
+                    #new_item_fn
+                }
 
                 pub const BENCHES: &[iai_callgrind::internal::InternalMacroLibBench] = &[
                     #(#lib_benches,)*
@@ -1032,7 +1039,15 @@ mod tests {
         bench: &[(Ident, Vec<Expr>)],
     ) -> Model {
         let callee = &func.sig.ident;
-        let export_name = format!("iai_callgrind::bench::{}", &func.sig.ident);
+
+        let visibility = parse_quote! { pub(super) };
+        let new_item_fn = ItemFn {
+            attrs: vec![],
+            vis: visibility,
+            sig: func.sig.clone(),
+            block: func.block.clone(),
+        };
+
         let rendered_get_config = if let Some(expr) = get_config {
             quote!(
                 #[inline(never)]
@@ -1070,7 +1085,7 @@ mod tests {
             rendered_benches.push(quote!(
                 #[inline(never)]
                 pub fn #ident() {
-                    let _ = std::hint::black_box(#callee(
+                    let _ = std::hint::black_box(__iai_callgrind_wrapper_mod::#callee(
                         #(std::hint::black_box(#args)),*
                     ));
                 }
@@ -1080,9 +1095,12 @@ mod tests {
             mod #callee {
                 use super::*;
 
-                #[inline(never)]
-                #[export_name = #export_name]
-                #func
+                mod __iai_callgrind_wrapper_mod {
+                    use super::*;
+
+                    #[inline(never)]
+                    #new_item_fn
+                }
 
                 pub const BENCHES: &[iai_callgrind::internal::InternalMacroLibBench]= &[
                     #(#benches),*,

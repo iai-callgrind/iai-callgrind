@@ -5,6 +5,7 @@ use log::{trace, warn};
 use serde::{Deserialize, Serialize};
 
 use super::model::{Costs, Positions};
+use crate::runner::DEFAULT_TOGGLE;
 
 #[derive(Debug, Default)]
 pub struct CallgrindProperties {
@@ -50,7 +51,7 @@ impl Sentinel {
     }
 
     pub fn matches(&self, string: &str) -> bool {
-        string.starts_with(self.0.as_str())
+        string.contains(self.0.as_str())
     }
 }
 
@@ -60,9 +61,21 @@ impl AsRef<Sentinel> for Sentinel {
     }
 }
 
+impl Default for Sentinel {
+    fn default() -> Self {
+        Self::new(DEFAULT_TOGGLE.to_owned())
+    }
+}
+
 impl Display for Sentinel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0)
+    }
+}
+
+impl From<Sentinel> for String {
+    fn from(value: Sentinel) -> Self {
+        value.0.clone()
     }
 }
 
