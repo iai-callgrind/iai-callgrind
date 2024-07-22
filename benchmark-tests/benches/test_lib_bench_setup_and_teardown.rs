@@ -97,7 +97,7 @@ library_benchmark_group!(
         bench_only_setup,
         bench_only_teardown,
         benches_only_setup,
-        bench_only_teardown,
+        benches_only_teardown,
         benches_global_setup_and_teardown
 );
 
