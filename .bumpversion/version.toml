@@ -1,0 +1,32 @@
+[tool.bumpversion]
+commit = true
+current_version = "0.11.1"
+message = "Bump version v{current_version} -> v{new_version}"
+
+[[tool.bumpversion.files]]
+filename = "Cargo.toml"
+search = "version = \"{current_version}\""
+replace = "version = \"{new_version}\""
+
+[[tool.bumpversion.files]]
+filename = "iai-callgrind/Cargo.toml"
+search = "version = \"={current_version}\""
+replace = "version = \"={new_version}\""
+
+[[tool.bumpversion.files]]
+filename = "iai-callgrind/src/macros.rs"
+search = "let library_version = \"{current_version}\""
+replace = "let library_version = \"{new_version}\""
+
+[[tool.bumpversion.files]]
+filename = "iai-callgrind/src/client_requests/mod.rs"
+search = "version = \"{current_version}\""
+replace = "version = \"{new_version}\""
+
+[[tool.bumpversion.files]]
+filename = "client-request-tests/Cargo.toml"
+search = "version = \"={current_version}\""
+replace = "version = \"={new_version}\""
+
+[[tool.bumpversion.files]]
+filename = "README.md"
