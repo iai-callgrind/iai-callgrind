@@ -43,8 +43,6 @@ pub struct Config {
 }
 
 struct RunnerArgs {
-    library_version: String,
-    runner_version: String,
     bench_kind: BenchmarkKind,
     package_dir: PathBuf,
     package_name: String,
@@ -66,6 +64,9 @@ impl RunnerArgs {
         debug!("Runner executable: '{}'", runner.display());
 
         let library_version = args_iter.next_string()?;
+
+        compare_versions(runner_version, library_version)?;
+
         let bench_kind = match args_iter.next_string()?.as_str() {
             "--lib-bench" => BenchmarkKind::LibraryBenchmark,
             "--bin-bench" => BenchmarkKind::BinaryBenchmark,
@@ -85,8 +86,6 @@ impl RunnerArgs {
             .map_err(|_| Error::InitError("Failed to parse number of bytes".to_owned()))?;
 
         Ok(Self {
-            library_version,
-            runner_version,
             bench_kind,
             package_dir,
             package_name,
@@ -121,11 +120,20 @@ impl RunnerArgsIterator {
     }
 }
 
-fn compare_versions(runner_version: String, library_version: String) -> Result<()> {
-    match version_compare::compare(&runner_version, &library_version) {
+fn compare_versions<R, L>(runner_version: R, library_version: L) -> Result<()>
+where
+    R: AsRef<str>,
+    L: AsRef<str>,
+{
+    match version_compare::compare(runner_version.as_ref(), library_version.as_ref()) {
         Ok(cmp) => match cmp {
             version_compare::Cmp::Lt | version_compare::Cmp::Gt => {
-                return Err(Error::VersionMismatch(cmp, runner_version, library_version).into());
+                return Err(Error::VersionMismatch(
+                    cmp,
+                    runner_version.as_ref().to_owned(),
+                    library_version.as_ref().to_owned(),
+                )
+                .into());
             }
             // version_compare::compare only returns Cmp::Lt, Cmp::Gt and Cmp::Eq so the versions
             // are equal here
@@ -135,8 +143,8 @@ fn compare_versions(runner_version: String, library_version: String) -> Result<(
         Err(()) => {
             return Err(Error::VersionMismatch(
                 version_compare::Cmp::Ne,
-                runner_version,
-                library_version,
+                runner_version.as_ref().to_owned(),
+                library_version.as_ref().to_owned(),
             )
             .into());
         }
@@ -173,8 +181,6 @@ where
 
 pub fn run() -> Result<()> {
     let RunnerArgs {
-        library_version,
-        runner_version,
         bench_kind,
         package_dir,
         package_name,
@@ -206,7 +212,6 @@ pub fn run() -> Result<()> {
                 meta,
             };
 
-            compare_versions(runner_version, library_version)?;
             lib_bench::run(benchmark, config)
         }
         BenchmarkKind::BinaryBenchmark => {
@@ -230,7 +235,6 @@ pub fn run() -> Result<()> {
                 meta,
             };
 
-            compare_versions(runner_version, library_version)?;
             bin_bench::run(benchmark, config)
         }
     }
