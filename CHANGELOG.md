@@ -22,8 +22,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.0] - 2024-07-23
+
 ### Added
 
+* ([#160](https://github.com/iai-callgrind/iai-callgrind/pull/160)): Add
+  `--separate-targets` (env: `IAI_CALLGRIND_SEPARATE_TARGETS`). Using this
+  option causes the compilation target to be included in the iai-callgrind
+  output directory tree to mitigate issues when running benchmarks on multiple
+  targets. For example, instead of having all output files under `target/iai`,
+  using this option puts all files under the directory
+  `target/iai/x86_64-unknown-linux-gnu` if running the benchmarks on the
+  `x86_64-unknown-linux-gnu` target.
+* ([#188](https://github.com/iai-callgrind/iai-callgrind/pull/188)): Add the
+  option `--home` (env: `IAI_CALLGRIND_HOME`) to be able to change the default
+  home directory `target/iai`.
 * ([#192](https://github.com/iai-callgrind/iai-callgrind/pull/192)): The
   `#[bench]` attribute now accepts a `setup` parameter similarly to the
   `#[benches]` attribute. The `#[bench]` and `#[benches]` attribute accept a
@@ -32,6 +45,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   accepts a global `setup` and `teardown` parameter which are applied to all following
   `#[bench]` and `#[benches]` attributes if they don't specify one of these
   parameters themselves.
+* ([#194](https://github.com/iai-callgrind/iai-callgrind/pull/194)): Add
+  `--nocapture` (env: `IAI_CALLGRIND_NOCAPTURE`) option to tell iai-callgrind to
+  not capture `callgrind` terminal output of benchmark functions. For all
+  possible values see the `README`.
+* ([#201](https://github.com/iai-callgrind/iai-callgrind/pull/201)): Add support
+  for generic benchmark functions fixing #198 (Generic bench arguments cause
+  compilation failure).
+
+### Changed
+
+* Update locked dependencies: `syn` -> 2.0.72, `cc` -> 1.1.5, `serde` -> 1.0.204
+* Update minimal version of `syn` -> 2.0.32
+* ([#201](https://github.com/iai-callgrind/iai-callgrind/pull/201)): The
+  `BinaryBenchmarkConfig::entry_point` and `Run::entry_point` functions now use
+  glob patterns as argument with `*` as placeholder for any amount of
+  characters.
 
 ### Fixed
 
