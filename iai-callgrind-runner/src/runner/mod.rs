@@ -9,6 +9,8 @@ mod meta;
 pub mod summary;
 pub mod tool;
 
+use std::env::ArgsOs;
+use std::ffi::OsString;
 use std::io::{stdin, Read};
 use std::path::PathBuf;
 
@@ -38,6 +40,85 @@ pub struct Config {
     module: String,
     bench_bin: PathBuf,
     meta: Metadata,
+}
+
+struct RunnerArgs {
+    library_version: String,
+    runner_version: String,
+    bench_kind: BenchmarkKind,
+    package_dir: PathBuf,
+    package_name: String,
+    bench_file: PathBuf,
+    module: String,
+    bench_bin: PathBuf,
+    num_bytes: usize,
+}
+
+struct RunnerArgsIterator(ArgsOs);
+
+impl RunnerArgs {
+    fn new() -> Result<Self> {
+        let runner_version = env!("CARGO_PKG_VERSION").to_owned();
+
+        let mut args_iter = RunnerArgsIterator::new();
+
+        let runner = args_iter.next_path()?;
+        debug!("Runner executable: '{}'", runner.display());
+
+        let library_version = args_iter.next_string()?;
+        let bench_kind = match args_iter.next_string()?.as_str() {
+            "--lib-bench" => BenchmarkKind::LibraryBenchmark,
+            "--bin-bench" => BenchmarkKind::BinaryBenchmark,
+            kind => {
+                return Err(Error::InitError(format!("Invalid benchmark kind: {kind}")).into());
+            }
+        };
+
+        let package_dir = args_iter.next_path()?;
+        let package_name = args_iter.next_string()?;
+        let bench_file = args_iter.next_path()?;
+        let module = args_iter.next_string()?;
+        let bench_bin = args_iter.next_path()?;
+        let num_bytes = args_iter
+            .next_string()?
+            .parse::<usize>()
+            .map_err(|_| Error::InitError("Failed to parse number of bytes".to_owned()))?;
+
+        Ok(Self {
+            library_version,
+            runner_version,
+            bench_kind,
+            package_dir,
+            package_name,
+            bench_file,
+            module,
+            bench_bin,
+            num_bytes,
+        })
+    }
+}
+
+impl RunnerArgsIterator {
+    fn new() -> Self {
+        Self(std::env::args_os())
+    }
+
+    fn next(&mut self) -> Result<OsString> {
+        self.0
+            .next()
+            .ok_or(Error::InitError("Unexpected number of arguments".to_owned()).into())
+    }
+
+    fn next_string(&mut self) -> Result<String> {
+        self.next()?
+            .to_str()
+            .map(ToOwned::to_owned)
+            .ok_or(Error::InitError("Invalid utf-8 string".to_owned()).into())
+    }
+
+    fn next_path(&mut self) -> Result<PathBuf> {
+        Ok(PathBuf::from(self.next()?))
+    }
 }
 
 fn compare_versions(runner_version: String, library_version: String) -> Result<()> {
@@ -91,33 +172,17 @@ where
 }
 
 pub fn run() -> Result<()> {
-    let mut args_iter = std::env::args_os();
-
-    // This unwrap is safe since the first argument is alway the executable
-    let runner = PathBuf::from(args_iter.next().unwrap());
-    debug!("Runner executable: '{}'", runner.display());
-
-    // The following unwraps are safe because these arguments are assuredly submitted by the
-    // iai_callgrind::main macro
-    let library_version = args_iter.next().unwrap().to_str().unwrap().to_owned();
-    let runner_version = env!("CARGO_PKG_VERSION").to_owned();
-    let bench_kind = match args_iter.next().unwrap().to_str().unwrap() {
-        "--lib-bench" => BenchmarkKind::LibraryBenchmark,
-        "--bin-bench" => BenchmarkKind::BinaryBenchmark,
-        kind => panic!("Invalid benchmark kind: '{kind}'"),
-    };
-
-    let package_dir = PathBuf::from(args_iter.next().unwrap());
-    let package_name = args_iter.next().unwrap().to_str().unwrap().to_owned();
-    let bench_file = PathBuf::from(args_iter.next().unwrap());
-    let module = args_iter.next().unwrap().to_str().unwrap().to_owned();
-    let bench_bin = PathBuf::from(args_iter.next().unwrap());
-    let num_bytes = args_iter
-        .next()
-        .unwrap()
-        .to_string_lossy()
-        .parse::<usize>()
-        .unwrap();
+    let RunnerArgs {
+        library_version,
+        runner_version,
+        bench_kind,
+        package_dir,
+        package_name,
+        bench_file,
+        module,
+        bench_bin,
+        num_bytes,
+    } = RunnerArgs::new()?;
 
     match bench_kind {
         BenchmarkKind::LibraryBenchmark => {

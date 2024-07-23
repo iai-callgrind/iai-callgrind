@@ -11,6 +11,7 @@ use crate::util::write_all_to_stderr;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Error {
+    InitError(String),
     VersionMismatch(version_compare::Cmp, String, String),
     LaunchError(PathBuf, String),
     ProcessError((String, Option<Output>, ExitStatus, Option<ToolOutputPath>)),
@@ -25,6 +26,18 @@ impl std::error::Error for Error {}
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::InitError(message) => {
+                let runner_version = env!("CARGO_PKG_VERSION").to_owned();
+                write!(
+                    f,
+                    "Failed to initialize iai-callgrind-runner: {message}\n\nDetected version of \
+                     iai-callgrind-runner is {runner_version}. This error can be caused by a \
+                     version mismatch between iai-callgrind and iai-callgrind-runner. If you \
+                     updated the library (iai-callgrind) in your Cargo.toml file, the binary \
+                     (iai-callgrind-runner) needs to be updated to the same version and vice \
+                     versa."
+                )
+            }
             Self::VersionMismatch(cmp, runner_version, library_version) => match cmp {
                 Cmp::Lt => write!(
                     f,
