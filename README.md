@@ -1,4 +1,4 @@
-<!-- spell-checker: ignore fixt binstall libtest eprintln -->
+<!-- spell-checker: ignore fixt binstall libtest eprintln usize -->
 
 <h1 align="center">Iai-Callgrind</h1>
 
@@ -375,6 +375,34 @@ fn my_bench(value: String) {
 
 Here, the benchmarks with the id `first` and `multiple` use the `my_setup`
 function, and `last` uses `my_other_setup`.
+
+And a short example of the `teardown` parameter:
+
+```rust
+fn my_teardown(value: usize) {
+     println!("The length of the input string was: {value}");
+}
+
+fn my_other_teardown(value: usize) {
+     if value != 3 {
+         panic!("The length of the input string was: {value} but expected it to be 3");
+     }
+}
+
+#[library_benchmark(teardown = my_teardown)]
+#[bench::first("1")]
+#[benches::multiple("42", "84")]
+#[bench::last(args = ("104"), teardown = my_other_teardown)]
+fn my_bench(value: &str) -> usize {
+    // Let's benchmark the `len` function
+    black_box(value.len())
+}
+```
+
+This example works well with the `--nocapture` option (env: `IAI_CALLGRIND_NOCAPTURE`,
+see also [Show terminal output of
+benchmarks](#show-terminal-output-of-benchmarks)), so you can actually see
+the output of the `my_teardown` function.
 
 ##### The #[bench] attribute
 
