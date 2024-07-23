@@ -258,7 +258,7 @@ impl Groups {
                         args: library_benchmark_bench.args,
                         options: RunOptions {
                             env_clear: config.env_clear.unwrap_or(true),
-                            entry_point: Some(format!("*{DEFAULT_TOGGLE}*")),
+                            entry_point: Some(DEFAULT_TOGGLE.to_owned()),
                             envs,
                             ..Default::default()
                         },

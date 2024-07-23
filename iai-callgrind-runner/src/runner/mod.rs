@@ -29,7 +29,7 @@ pub mod envs {
     pub const CARGO_TERM_COLOR: &str = "CARGO_TERM_COLOR";
 }
 
-pub const DEFAULT_TOGGLE: &str = "::__iai_callgrind_wrapper_mod::";
+pub const DEFAULT_TOGGLE: &str = "*::__iai_callgrind_wrapper_mod::*";
 
 #[derive(Debug)]
 pub struct Config {
