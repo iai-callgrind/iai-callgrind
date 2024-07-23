@@ -1,0 +1,5 @@
+groups:
+  - runs:
+      - args: []
+        expected:
+          files: test_lib_bench_compiler_optimization.expected.1.yml

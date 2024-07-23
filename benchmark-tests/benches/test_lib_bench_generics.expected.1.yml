@@ -1,0 +1,17 @@
+data:
+  - group: bench_format_group
+    function: bench_format
+    id: a
+    expected:
+      files:
+        - callgrind.bench_format.a.log
+        - callgrind.bench_format.a.out
+        - summary.json
+  - group: bench_format_group
+    function: bench_format
+    id: b
+    expected:
+      files:
+        - callgrind.bench_format.b.log
+        - callgrind.bench_format.b.out
+        - summary.json

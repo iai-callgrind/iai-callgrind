@@ -24,7 +24,7 @@ use super::summary::{
 use super::tool::{
     Parser, RunOptions, ToolConfigs, ToolOutputPath, ToolOutputPathKind, ValgrindTool,
 };
-use super::{Config, Error};
+use super::{Config, Error, DEFAULT_TOGGLE};
 use crate::api::{self, LibraryBenchmark};
 
 /// Implements [`Benchmark`] to run a [`LibBench`] and compare against a earlier [`BenchmarkKind`]
@@ -127,7 +127,7 @@ impl Benchmark for BaselineBenchmark {
         let callgrind_command = CallgrindCommand::new(&config.meta);
         let bench_args = lib_bench.bench_args(group);
 
-        let sentinel = Sentinel::new("iai_callgrind::bench::");
+        let sentinel = Sentinel::default();
         let out_path = self.output_path(lib_bench, config, group);
         out_path.init()?;
         out_path.shift()?;
@@ -258,7 +258,7 @@ impl Groups {
                         args: library_benchmark_bench.args,
                         options: RunOptions {
                             env_clear: config.env_clear.unwrap_or(true),
-                            entry_point: Some("iai_callgrind::bench::*".to_owned()),
+                            entry_point: Some(DEFAULT_TOGGLE.to_owned()),
                             envs,
                             ..Default::default()
                         },
@@ -443,7 +443,7 @@ impl Benchmark for LoadBaselineBenchmark {
         group: &Group,
     ) -> Result<BenchmarkSummary> {
         let bench_args = lib_bench.bench_args(group);
-        let sentinel = Sentinel::new("iai_callgrind::bench::");
+        let sentinel = Sentinel::default();
         let out_path = self.output_path(lib_bench, config, group);
         let old_path = out_path.to_base_path();
         let log_path = out_path.to_log_output();
@@ -570,7 +570,7 @@ impl Benchmark for SaveBaselineBenchmark {
         let bench_args = lib_bench.bench_args(group);
         let baselines = self.baselines();
 
-        let sentinel = Sentinel::new("iai_callgrind::bench::");
+        let sentinel = Sentinel::default();
         let out_path = self.output_path(lib_bench, config, group);
         out_path.init()?;
 

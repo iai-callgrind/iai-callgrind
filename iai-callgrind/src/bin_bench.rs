@@ -525,6 +525,20 @@ impl BinaryBenchmarkConfig {
     /// any function) and stop counting when leaving the main function of the executable. The
     /// following example will show how to do that.
     ///
+    /// # Glob Patterns
+    ///
+    /// Glob patterns are allowed in the same way as callgrind's --toggle-collect option allows glob
+    /// patterns. Note the pattern matches from start to end of the path. For example `*::main`
+    /// matches
+    ///
+    /// * `my_exe::main`
+    /// * `other::main`
+    ///
+    /// but not:
+    ///
+    /// * `main`
+    /// * `other::main::sub`
+    ///
     /// # Examples
     ///
     /// The `entry_point` could look like `my_exe::main` for a binary with the name `my-exe` (Note

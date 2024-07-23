@@ -36,7 +36,7 @@ fn test_sentinel_parser(#[case] sentinel: &str, #[case] costs: [u64; 9]) {
         "no_entry_point",
     );
 
-    let parser = SentinelParser::new(&Sentinel::new(sentinel));
+    let parser = SentinelParser::new(&Sentinel::new(sentinel).unwrap());
     let actual_costs = parser.parse(&callgrind_output).unwrap();
 
     assert_eq!(actual_costs, expected_costs);
@@ -50,7 +50,7 @@ fn test_sentinel_parser_when_not_found_then_error() {
         ToolOutputPathKind::Out,
         "no_entry_point",
     );
-    let sentinel = Sentinel::new("doesnotexist");
+    let sentinel = Sentinel::new("doesnotexist").unwrap();
 
     let result = SentinelParser::new(&sentinel).parse(&callgrind_output);
 
@@ -58,7 +58,7 @@ fn test_sentinel_parser_when_not_found_then_error() {
         &callgrind_output.to_path(),
         result,
         &format!(
-            "Sentinel 'doesnotexist' not found.{}",
+            "Sentinel '^doesnotexist$' not found.{}",
             ERROR_MESSAGE_DEBUG_SYMBOLS
         ),
     )

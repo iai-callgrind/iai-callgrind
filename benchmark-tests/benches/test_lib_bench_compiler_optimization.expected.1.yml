@@ -1,0 +1,31 @@
+data:
+  - group: my_group
+    function: bench
+    expected:
+      files:
+        - callgrind.bench.log
+        - callgrind.bench.out
+        - summary.json
+  - group: my_group
+    function: bench_with_longer_name
+    expected:
+      files:
+        - callgrind.bench_with_longer_name.log
+        - callgrind.bench_with_longer_name.out
+        - summary.json
+  - group: my_group
+    function: bench_with_bench
+    id: first
+    expected:
+      files:
+        - callgrind.bench_with_bench.first.log
+        - callgrind.bench_with_bench.first.out
+        - summary.json
+  - group: my_group
+    function: bench_with_bench_longer_name
+    id: first
+    expected:
+      files:
+        - callgrind.bench_with_bench_longer_name.first.log
+        - callgrind.bench_with_bench_longer_name.first.out
+        - summary.json

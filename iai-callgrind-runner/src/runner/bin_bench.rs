@@ -494,7 +494,10 @@ impl Benchmarkable for BinBench {
     }
 
     fn sentinel(&self, _config: &Config) -> Option<Sentinel> {
-        self.run_options.entry_point.as_ref().map(Sentinel::new)
+        self.run_options
+            .entry_point
+            .as_ref()
+            .and_then(|e| Sentinel::from_glob(e).ok())
     }
 }
 

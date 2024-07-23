@@ -125,4 +125,12 @@ name = "test_lib_bench_nocapture"
 
 [[bench]]
 harness = false
+name = "test_lib_bench_compiler_optimization"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_generics"
+
+[[bench]]
+harness = false
 name = "test_bench"

@@ -1,10 +1,12 @@
 use std::fmt::Display;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use log::{trace, warn};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use super::model::{Costs, Positions};
+use crate::runner::DEFAULT_TOGGLE;
 
 #[derive(Debug, Default)]
 pub struct CallgrindProperties {
@@ -12,22 +14,56 @@ pub struct CallgrindProperties {
     pub positions_prototype: Positions,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Sentinel(String);
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Sentinel(#[serde(with = "serde_regex")] Regex);
 
 impl Sentinel {
-    pub fn new<T>(value: T) -> Self
+    /// Create a new Sentinel
+    ///
+    /// A Sentinel is converted to a regex internally which matches from line start to line end.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind_runner::runner::callgrind::parser::Sentinel;
+    ///
+    /// let sentinel = Sentinel::new("main").unwrap();
+    /// assert_eq!(sentinel.to_string(), String::from("^main$"));
+    /// ```
+    pub fn new<T>(value: T) -> Result<Self>
     where
-        T: Into<String>,
+        T: AsRef<str>,
     {
-        Self(value.into())
+        Regex::new(&format!("^{}$", value.as_ref()))
+            .map(Self)
+            .with_context(|| "Invalid sentinel")
+    }
+
+    /// Create a new Sentinel from a glob pattern
+    ///
+    /// The `*` are replaced with `.*` because we need the glob as regex. Additionally, the glob
+    /// matches from the start to end of the string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind_runner::runner::callgrind::parser::Sentinel;
+    ///
+    /// let sentinel = Sentinel::from_glob("*::main").unwrap();
+    /// assert_eq!(sentinel.to_string(), String::from("^.*::main$"));
+    /// ```
+    pub fn from_glob<T>(glob: T) -> Result<Self>
+    where
+        T: AsRef<str>,
+    {
+        let regex = glob.as_ref().replace('*', ".*");
+        Self::new(regex)
     }
 
     pub fn from_path(module: &str, function: &str) -> Self {
-        Self(format!("{module}::{function}"))
+        Self::new(format!("{module}::{function}")).expect("Regex should compile")
     }
 
-    #[allow(unused)]
     pub fn from_segments<I, T>(segments: T) -> Self
     where
         I: AsRef<str>,
@@ -42,15 +78,11 @@ impl Sentinel {
         } else {
             String::new()
         };
-        Self(joined)
+        Self::new(joined).expect("Regex should compile")
     }
 
-    pub fn to_fn(&self) -> String {
-        format!("fn={}", self.0)
-    }
-
-    pub fn matches(&self, string: &str) -> bool {
-        string.starts_with(self.0.as_str())
+    pub fn matches(&self, haystack: &str) -> bool {
+        self.0.is_match(haystack)
     }
 }
 
@@ -60,9 +92,29 @@ impl AsRef<Sentinel> for Sentinel {
     }
 }
 
+impl Default for Sentinel {
+    fn default() -> Self {
+        Self::from_glob(DEFAULT_TOGGLE).expect("Default toggle should compile as regex")
+    }
+}
+
 impl Display for Sentinel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
+        f.write_str(self.0.as_str())
+    }
+}
+
+impl Eq for Sentinel {}
+
+impl From<Sentinel> for String {
+    fn from(value: Sentinel) -> Self {
+        value.0.as_str().to_owned()
+    }
+}
+
+impl PartialEq for Sentinel {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.as_str() == other.0.as_str()
     }
 }
 

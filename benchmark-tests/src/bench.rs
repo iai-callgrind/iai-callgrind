@@ -116,6 +116,7 @@ struct RunConfig {
     args: Vec<String>,
     #[serde(default)]
     template_data: HashMap<String, minijinja::Value>,
+    #[serde(default)]
     expected: Option<ExpectedConfig>,
     #[serde(default)]
     runs_on: Option<String>,
