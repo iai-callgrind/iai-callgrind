@@ -1,15 +1,33 @@
+use std::ffi::OsString;
+use std::fmt::Display;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
+use std::process::{Command, Output};
 
 use anyhow::Result;
 use iai_callgrind_runner::runner::summary::BaselineKind;
 use iai_callgrind_runner::runner::tool::{ToolOutputPath, ToolOutputPathKind, ValgrindTool};
+use pretty_assertions::assert_eq;
 use serde::{Deserialize, Serialize};
 
 pub const FIXTURES_ROOT: &str = "tests/fixtures";
 
 pub struct Fixtures;
+
+pub struct Runner {
+    path: OsString,
+    args: Vec<OsString>,
+}
+
+pub struct RunnerOutput(Output);
+
+#[derive(Debug, Clone)]
+pub struct Version {
+    major: u64,
+    minor: u64,
+    patch: u64,
+}
 
 impl Fixtures {
     pub fn get_path_of<T>(name: T) -> PathBuf
@@ -75,6 +93,131 @@ impl Fixtures {
         let reader = BufReader::new(File::open(path).unwrap());
         reader.lines().map(std::result::Result::unwrap).collect()
     }
+}
+
+impl Runner {
+    pub fn new() -> Self {
+        let path = OsString::from(env!("CARGO_BIN_EXE_iai-callgrind-runner"));
+        Self { path, args: vec![] }
+    }
+
+    pub fn run(&self) -> RunnerOutput {
+        Command::new(&self.path)
+            .args(&self.args)
+            .env("IAI_CALLGRIND_COLOR", "never")
+            .output()
+            .map(RunnerOutput)
+            .unwrap()
+    }
+
+    pub fn args(&mut self, args: &[&str]) -> &mut Self {
+        for arg in args {
+            self.args.push(OsString::from(arg));
+        }
+
+        self
+    }
+}
+
+impl RunnerOutput {
+    #[track_caller]
+    #[allow(unused)]
+    pub fn assert_stderr(&self, expected: &str) -> &Self {
+        assert_eq!(std::str::from_utf8(&self.0.stderr).unwrap(), expected);
+        self
+    }
+
+    #[track_caller]
+    #[allow(unused)]
+    pub fn assert_stdout(&self, expected: &str) -> &Self {
+        assert_eq!(std::str::from_utf8(&self.0.stdout).unwrap(), expected);
+        self
+    }
+
+    #[track_caller]
+    pub fn assert_stderr_bytes(&self, expected: &[u8]) -> &Self {
+        assert_eq!(&self.0.stderr, expected);
+        self
+    }
+
+    #[track_caller]
+    #[allow(unused)]
+    pub fn assert_stdout_bytes(&self, expected: &[u8]) -> &Self {
+        assert_eq!(&self.0.stdout, expected);
+        self
+    }
+
+    #[track_caller]
+    pub fn assert_stdout_is_empty(&self) -> &Self {
+        assert!(
+            self.0.stdout.is_empty(),
+            "Expected stdout to be empty but was: {}",
+            std::str::from_utf8(&self.0.stdout).unwrap()
+        );
+        self
+    }
+}
+
+impl Version {
+    pub fn new(version: &str) -> Self {
+        let (major, minor, patch) = match version
+            .split('.')
+            .map(|s| s.parse::<u64>().unwrap())
+            .collect::<Vec<u64>>()[..]
+        {
+            [major, minor, patch] => (major, minor, patch),
+            _ => panic!("Invalid version: '{version}'"),
+        };
+        Self {
+            major,
+            minor,
+            patch,
+        }
+    }
+
+    pub fn increment(&mut self, part: &str) {
+        match part {
+            "major" => {
+                self.major += 1;
+            }
+            "minor" => {
+                self.minor += 1;
+            }
+            "patch" => {
+                self.patch += 1;
+            }
+            _ => {
+                panic!("Invalid part: {part}");
+            }
+        }
+    }
+
+    pub fn decrement(&mut self, part: &str) {
+        match part {
+            "major" => {
+                self.major = self.major.saturating_sub(1);
+            }
+            "minor" => {
+                self.minor = self.minor.saturating_sub(1);
+            }
+            "patch" => {
+                self.patch = self.patch.saturating_sub(1);
+            }
+            _ => {
+                panic!("Invalid part: {part}");
+            }
+        }
+    }
+}
+
+impl Display for Version {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}.{}.{}", self.major, self.minor, self.patch)
+    }
+}
+
+pub fn get_runner_version() -> Version {
+    Version::new(env!("CARGO_PKG_VERSION"))
 }
 
 pub fn get_project_root() -> PathBuf {
