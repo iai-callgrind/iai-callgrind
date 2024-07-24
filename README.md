@@ -1,4 +1,4 @@
-<!-- spell-checker: ignore fixt binstall libtest eprintln -->
+<!-- spell-checker: ignore fixt binstall libtest eprintln usize -->
 
 <h1 align="center">Iai-Callgrind</h1>
 
@@ -100,20 +100,20 @@ To start with Iai-Callgrind, add the following to your `Cargo.toml` file:
 
 ```toml
 [dev-dependencies]
-iai-callgrind = "0.11.1"
+iai-callgrind = "0.12.0"
 ```
 
 To be able to run the benchmarks you'll also need the `iai-callgrind-runner` binary installed
 somewhere in your `$PATH`, for example with
 
 ```shell
-cargo install --version 0.11.1 iai-callgrind-runner
+cargo install --version 0.12.0 iai-callgrind-runner
 ```
 
 or with `binstall`
 
 ```shell
-cargo binstall iai-callgrind-runner@0.11.1
+cargo binstall iai-callgrind-runner@0.12.0
 ```
 
 There's also the possibility to install the binary somewhere else and point the
@@ -121,7 +121,7 @@ There's also the possibility to install the binary somewhere else and point the
 binary like so:
 
 ```shell
-cargo install --version 0.11.1 --root /tmp iai-callgrind-runner
+cargo install --version 0.12.0 --root /tmp iai-callgrind-runner
 IAI_CALLGRIND_RUNNER=/tmp/bin/iai-callgrind-runner cargo bench --bench my-bench
 ```
 
@@ -375,6 +375,34 @@ fn my_bench(value: String) {
 
 Here, the benchmarks with the id `first` and `multiple` use the `my_setup`
 function, and `last` uses `my_other_setup`.
+
+And a short example of the `teardown` parameter:
+
+```rust
+fn my_teardown(value: usize) {
+     println!("The length of the input string was: {value}");
+}
+
+fn my_other_teardown(value: usize) {
+     if value != 3 {
+         panic!("The length of the input string was: {value} but expected it to be 3");
+     }
+}
+
+#[library_benchmark(teardown = my_teardown)]
+#[bench::first("1")]
+#[benches::multiple("42", "84")]
+#[bench::last(args = ("104"), teardown = my_other_teardown)]
+fn my_bench(value: &str) -> usize {
+    // Let's benchmark the `len` function
+    black_box(value.len())
+}
+```
+
+This example works well with the `--nocapture` option (env: `IAI_CALLGRIND_NOCAPTURE`,
+see also [Show terminal output of
+benchmarks](#show-terminal-output-of-benchmarks)), so you can actually see
+the output of the `my_teardown` function.
 
 ##### The #[bench] attribute
 
@@ -858,7 +886,7 @@ Client requests are deactivated by default but can be activated with the
 
 ```toml
 [dev-dependencies]
-iai-callgrind = { version = "0.11.1", features = ["client_requests"] }
+iai-callgrind = { version = "0.12.0", features = ["client_requests"] }
 ```
 
 If you need the client requests in your production code, you usually don't want
@@ -869,12 +897,12 @@ benchmarks. You can achieve that by adding `iai-callgrind` with the
 
 ```toml
 [dependencies]
-iai-callgrind = { version = "0.11.1", default-features = false, features = [
+iai-callgrind = { version = "0.12.0", default-features = false, features = [
     "client_requests_defs"
 ] }
 
 [dev-dependencies]
-iai-callgrind = { version = "0.11.1", features = ["client_requests"] }
+iai-callgrind = { version = "0.12.0", features = ["client_requests"] }
 ```
 
 With just the `client_requests_defs` feature activated, the client requests
@@ -912,7 +940,7 @@ path would be `IAI_CALLGRIND_VALGRIND_INCLUDE=/home/foo/repo` (not
 `/home/foo/repo/valgrind`)
 
 This was just a small introduction, please see the
-[docs](https://docs.rs/iai-callgrind/0.11.1/iai_callgrind/client_requests) for
+[docs](https://docs.rs/iai-callgrind/0.12.0/iai_callgrind/client_requests) for
 more details!
 
 ### Flamegraphs
@@ -1297,5 +1325,5 @@ about license incompatibility.
 We have included the original license where we make use of the original header
 files.
 
-[`library documentation`]: https://docs.rs/iai-callgrind/0.11.1/iai_callgrind/
-[docs]: https://docs.rs/iai-callgrind/0.11.1/iai_callgrind/
+[`library documentation`]: https://docs.rs/iai-callgrind/0.12.0/iai_callgrind/
+[docs]: https://docs.rs/iai-callgrind/0.12.0/iai_callgrind/
