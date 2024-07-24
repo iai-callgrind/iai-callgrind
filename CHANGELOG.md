@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.12.0] - 2024-07-23
+## [0.12.0] - 2024-07-24
 
 ### Added
 
@@ -61,6 +61,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   `BinaryBenchmarkConfig::entry_point` and `Run::entry_point` functions now use
   glob patterns as argument with `*` as placeholder for any amount of
   characters.
+* ([#203](https://github.com/iai-callgrind/iai-callgrind/pull/203)): Improve
+  error messages during the initialization phase of the `iai-callgrind-runner`,
+  get rid of a lot of unwraps and include a solution hint. These errors mainly
+  happen if the `iai-callgrind` library has a different version than the
+  `iai-callgrind-runner` binary.
 
 ### Fixed
 
