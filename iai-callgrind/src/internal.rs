@@ -6,7 +6,7 @@ pub use iai_callgrind_runner::api::{
     Arg as InternalArg, Assistant as InternalAssistant, BinaryBenchmark as InternalBinaryBenchmark,
     BinaryBenchmarkConfig as InternalBinaryBenchmarkConfig,
     BinaryBenchmarkGroup as InternalBinaryBenchmarkGroup, Cmd as InternalCmd,
-    ExitWith as InternalExitWith, Fixtures as InternalFixtures,
+    Command as InternalCommand, ExitWith as InternalExitWith, Fixtures as InternalFixtures,
     FlamegraphConfig as InternalFlamegraphConfig, LibraryBenchmark as InternalLibraryBenchmark,
     LibraryBenchmarkBench as InternalLibraryBenchmarkBench,
     LibraryBenchmarkBenches as InternalLibraryBenchmarkBenches,
@@ -18,6 +18,15 @@ pub use iai_callgrind_runner::api::{
 
 #[derive(Debug, Clone)]
 pub struct InternalMacroLibBench {
+    pub id_display: Option<&'static str>,
+    pub args_display: Option<&'static str>,
+    pub func: fn(),
+    pub config: Option<fn() -> crate::internal::InternalLibraryBenchmarkConfig>,
+}
+
+// TODO: Integrate setup, teardown functions ...
+#[derive(Debug, Clone)]
+pub struct InternalMacroBinBench {
     pub id_display: Option<&'static str>,
     pub args_display: Option<&'static str>,
     pub func: fn(),

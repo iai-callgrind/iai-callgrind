@@ -7,12 +7,14 @@ use std::path::PathBuf;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+// TODO: REMOVE
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Arg {
     pub id: Option<String>,
     pub args: Vec<OsString>,
 }
 
+// TODO: REMOVE ??
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Assistant {
     pub id: String,
@@ -27,6 +29,7 @@ pub struct BinaryBenchmark {
     pub command_line_args: Vec<String>,
 }
 
+// TODO: ADJUST and cleanup fields which should be better part of Command
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BinaryBenchmarkConfig {
     pub sandbox: Option<bool>,
@@ -44,14 +47,25 @@ pub struct BinaryBenchmarkConfig {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Command {
+    pub cmd: PathBuf,
+    pub args: Vec<OsString>,
+    // TODO: Add others imitating std::process::Command as far as possible
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BinaryBenchmarkGroup {
+    // TODO: RENAME to name
     pub id: Option<String>,
+    // TODO: DELETE
     pub cmd: Option<Cmd>,
     pub config: Option<BinaryBenchmarkConfig>,
+    // TODO: CHANGE to Vec<Command>
     pub benches: Vec<Run>,
     pub assists: Vec<Assistant>,
 }
 
+// TODO: REMOVE
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Cmd {
     pub display: String,

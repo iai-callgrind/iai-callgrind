@@ -24,7 +24,6 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::str_to_string)]
 
-// TODO: CLEARIFY USAGE OF TokenStream vs TokenStream2
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use proc_macro_error::{abort, emit_error, proc_macro_error};

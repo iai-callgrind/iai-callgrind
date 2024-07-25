@@ -190,30 +190,14 @@ macro_rules! main {
                 config = Some($config.into());
             )?
 
+
             let mut benchmark = $crate::internal::InternalBinaryBenchmark {
                 config: config.unwrap_or_default(),
                 command_line_args: this_args.collect(),
                 ..Default::default()
             };
 
-            $(
-                let mut group = $crate::BinaryBenchmarkGroup::from(
-                    $crate::internal::InternalBinaryBenchmarkGroup {
-                        id: Some(stringify!($group).to_owned()),
-                        cmd: None,
-                        config: $group::get_config(),
-                        benches: Vec::default(),
-                        assists: Vec::default(),
-                    }
-                );
-                let (prog, assists) = $group::$group(&mut group);
-
-                let mut group: $crate::internal::InternalBinaryBenchmarkGroup = group.into();
-                group.cmd = prog;
-                group.assists = assists;
-
-                benchmark.groups.push(group);
-            )+
+            // TODO: collect the `iai_callgrind::Command`s
 
             let encoded = $crate::bincode::serialize(&benchmark).expect("Encoded benchmark");
             let mut child = cmd
