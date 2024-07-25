@@ -1,17 +1,19 @@
-use proc_macro2::{Span, TokenStream};
-use proc_macro_error::{abort, emit_error};
+use std::ops::Deref;
+
+use derive_more::{Deref, DerefMut};
+use proc_macro2::TokenStream;
+use proc_macro_error::abort;
 use quote::{format_ident, quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::Parse;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::{
-    parse2, parse_quote, Attribute, Expr, ExprArray, ExprPath, Ident, ItemFn, MetaList,
-    MetaNameValue, Token,
-};
+use syn::{parse2, parse_quote, Attribute, Ident, ItemFn, MetaNameValue, Token};
+
+use crate::common::{self, MultipleArgs};
 
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
-#[derive(Debug, Default, Clone)]
-struct Args(Option<(Span, Vec<Expr>)>);
+#[derive(Debug, Default, Clone, Deref, DerefMut)]
+struct Args(common::Args);
 
 /// This is the counterpart for the `#[bench]` attribute
 ///
@@ -25,9 +27,8 @@ struct Bench {
     teardown: Teardown,
 }
 
-/// The `config` parameter of the `#[bench]` or `#[benches]` attribute
-#[derive(Debug, Default, Clone)]
-struct BenchConfig(Option<Expr>);
+#[derive(Debug, Default, Clone, Deref, DerefMut)]
+struct BenchConfig(common::BenchConfig);
 
 /// This is the counterpart to the `#[library_benchmark]` attribute.
 #[derive(Debug, Default)]
@@ -45,143 +46,38 @@ struct LibraryBenchmark {
 ///
 /// Note: This struct is completely independent of the `iai_callgrind::LibraryBenchmarkConfig`
 /// struct with the same name.
-#[derive(Debug, Default, Clone)]
-struct LibraryBenchmarkConfig(Option<Expr>);
+#[derive(Debug, Default, Clone, Deref, DerefMut)]
+struct LibraryBenchmarkConfig(common::BenchConfig);
 
-/// This struct stores multiple `Args` as needed by the `#[benches]` attribute
-#[derive(Debug, Clone, Default)]
-struct MultipleArgs(Option<Vec<Args>>);
+#[derive(Debug, Default, Clone, Deref, DerefMut)]
+struct Setup(common::Setup);
 
-#[derive(Debug, Default, Clone)]
-struct Setup(Option<ExprPath>);
-
-#[derive(Debug, Default, Clone)]
-struct Teardown(Option<ExprPath>);
-
-impl Args {
-    fn new(span: Span, data: Vec<Expr>) -> Self {
-        Self(Some((span, data)))
-    }
-
-    fn len(&self) -> usize {
-        self.0.as_ref().map_or(0, |(_, data)| data.len())
-    }
-
-    fn span(&self) -> Option<&Span> {
-        self.0.as_ref().map(|(span, _)| span)
-    }
-
-    fn set_span(&mut self, span: Span) {
-        if let Some(data) = self.0.as_mut() {
-            data.0 = span;
-        }
-    }
-
-    fn parse_pair(&mut self, pair: &MetaNameValue) -> syn::Result<()> {
-        if self.0.is_none() {
-            let expr = &pair.value;
-            let span = expr.span();
-            let args = match expr {
-                Expr::Array(items) => {
-                    let mut args = parse2::<Args>(items.elems.to_token_stream())?;
-                    // Set span explicitly (again) to overwrite the wrong span from parse2
-                    args.set_span(span);
-                    args
-                }
-                Expr::Tuple(items) => {
-                    let mut args = parse2::<Args>(items.elems.to_token_stream())?;
-                    // Set span explicitly (again) to overwrite the wrong span from parse2
-                    args.set_span(span);
-                    args
-                }
-                Expr::Paren(item) => Self::new(span, vec![(*item.expr).clone()]),
-                _ => {
-                    abort!(
-                        expr,
-                        "Failed parsing `args`";
-                        help = "`args` has to be a tuple/array which elements (expressions)
-                        match the number of parameters of the benchmarking function";
-                        note = "#[bench::id(args = (1, 2))] or
-                        #[bench::id(args = [1, 2]])]"
-                    );
-                }
-            };
-
-            *self = args;
+impl Setup {
+    fn render_as_code(&self, args: &Args) -> TokenStream {
+        if let Some(setup) = &self.deref().0 {
+            quote_spanned! { setup.span() => std::hint::black_box(#setup(#args)) }
         } else {
-            emit_error!(
-                pair, "Duplicate argument: `args`";
-                help = "`args` is allowed only once"
-            );
+            quote! { #args }
         }
-
-        Ok(())
-    }
-
-    fn parse_meta_list(&mut self, meta: &MetaList) -> syn::Result<()> {
-        let mut args = meta.parse_args::<Args>()?;
-        args.set_span(meta.tokens.span());
-
-        *self = args;
-
-        Ok(())
-    }
-
-    fn to_tokens_without_black_box(&self) -> TokenStream {
-        if let Some((span, exprs)) = self.0.as_ref() {
-            quote_spanned! { *span => #(#exprs),* }
-        } else {
-            TokenStream::new()
-        }
-    }
-
-    /// Emit a compiler error if the number of actual and expected arguments do not match
-    ///
-    /// If there is a setup function present, we do not perform any checks.
-    fn check_num_arguments(&self, expected: usize, has_setup: bool) {
-        let actual = self.len();
-
-        if !has_setup && actual != expected {
-            if let Some(span) = self.span() {
-                emit_error!(
-                    span,
-                    "Expected {} arguments but found {}",
-                    expected,
-                    actual;
-                    help = "This argument is expected to have the same amount of parameters as the benchmark function";
-                );
-            } else {
-                emit_error!(
-                    self,
-                    "Expected {} arguments but found {}",
-                    expected,
-                    actual;
-                    help = "This argument is expected to have the same amount of parameters as the benchmark function";
-                );
-            }
-        };
     }
 }
 
-impl Parse for Args {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let data = input
-            .parse_terminated(Parse::parse, Token![,])?
-            .into_iter()
-            .collect();
-
-        // We set a default span here although it is most likely wrong. It's strongly advised to set
-        // the span with `Args::set_span` to the correct value.
-        Ok(Self::new(input.span(), data))
+impl Teardown {
+    fn render_as_code(&self, tokens: TokenStream) -> TokenStream {
+        if let Some(teardown) = &self.deref().0 {
+            quote_spanned! { teardown.span() => std::hint::black_box(#teardown(#tokens)) }
+        } else {
+            tokens
+        }
     }
 }
+
+#[derive(Debug, Default, Clone, Deref, DerefMut)]
+struct Teardown(common::Teardown);
 
 impl ToTokens for Args {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        if let Some((span, exprs)) = self.0.as_ref() {
-            let this_tokens = quote_spanned! { *span => #(std::hint::black_box(#exprs)),* };
-            tokens.append_all(this_tokens);
-        }
+        self.0.to_tokens(tokens);
     }
 }
 
@@ -226,24 +122,9 @@ impl Bench {
 }
 
 impl BenchConfig {
-    fn ident(id: &Ident) -> Ident {
-        format_ident!("get_config_{}", id)
-    }
-
-    fn parse_pair(&mut self, pair: &MetaNameValue) {
-        if self.0.is_none() {
-            self.0 = Some(pair.value.clone());
-        } else {
-            emit_error!(
-                pair, "Duplicate argument: `config`";
-                help = "`config` is allowed only once"
-            );
-        }
-    }
-
-    fn render_as_code(&self, id: &Ident) -> TokenStream {
-        if let Some(config) = &self.0 {
-            let ident = Self::ident(id);
+    pub fn render_as_code(&self, id: &Ident) -> TokenStream {
+        if let Some(config) = &self.deref().0 {
+            let ident = common::BenchConfig::ident(id);
             quote! {
                 #[inline(never)]
                 pub fn #ident() -> iai_callgrind::internal::InternalLibraryBenchmarkConfig {
@@ -255,9 +136,9 @@ impl BenchConfig {
         }
     }
 
-    fn render_as_member(&self, id: &Ident) -> TokenStream {
-        if self.0.is_some() {
-            let ident = Self::ident(id);
+    pub fn render_as_member(&self, id: &Ident) -> TokenStream {
+        if self.deref().0.is_some() {
+            let ident = common::BenchConfig::ident(id);
             quote! { Some(#ident) }
         } else {
             quote! { None }
@@ -369,7 +250,7 @@ impl LibraryBenchmark {
                 if a.is_empty() {
                     vec![Args::default()]
                 } else {
-                    a
+                    a.into_iter().map(Args).collect()
                 }
             },
         );
@@ -631,14 +512,8 @@ impl Parse for LibraryBenchmark {
 }
 
 impl LibraryBenchmarkConfig {
-    fn parse_pair(&mut self, pair: &MetaNameValue) {
-        let mut config = BenchConfig::default();
-        config.parse_pair(pair);
-        self.0 = config.0;
-    }
-
     fn render_as_code(&self) -> TokenStream {
-        if let Some(config) = &self.0 {
+        if let Some(config) = &self.deref().0 {
             quote!(
                 #[inline(never)]
                 pub fn get_config()
@@ -659,138 +534,7 @@ impl LibraryBenchmarkConfig {
     }
 }
 
-impl MultipleArgs {
-    fn parse_pair(&mut self, pair: &MetaNameValue) -> syn::Result<()> {
-        if self.0.is_none() {
-            *self = MultipleArgs::from_expr(&pair.value)?;
-        } else {
-            abort!(
-                pair, "Duplicate argument: `args`";
-                help = "`args` is allowed only once"
-            );
-        }
-
-        Ok(())
-    }
-
-    fn from_expr(expr: &Expr) -> syn::Result<Self> {
-        let expr_array = parse2::<ExprArray>(expr.to_token_stream())?;
-        let mut values: Vec<Args> = vec![];
-        for elem in expr_array.elems {
-            let span = elem.span();
-            let args = match elem {
-                Expr::Tuple(items) => {
-                    let mut args = parse2::<Args>(items.elems.to_token_stream())?;
-                    args.set_span(span);
-                    args
-                }
-                Expr::Paren(item) => Args::new(span, vec![*item.expr]),
-                _ => Args::new(span, vec![elem]),
-            };
-
-            values.push(args);
-        }
-        Ok(Self(Some(values)))
-    }
-
-    fn from_meta_list(meta: &MetaList) -> syn::Result<Self> {
-        let list = &meta.tokens;
-        let expr = parse2::<Expr>(quote_spanned! { list.span() => [#list] })?;
-        Self::from_expr(&expr)
-    }
-}
-
-impl Setup {
-    fn parse_pair(&mut self, pair: &MetaNameValue) {
-        if self.0.is_none() {
-            let expr = &pair.value;
-            if let Expr::Path(path) = expr {
-                self.0 = Some(path.clone());
-            } else {
-                abort!(
-                    expr, "Invalid value for `setup`";
-                    help = "The `setup` argument needs a path to an existing function
-                in a reachable scope";
-                    note = "`setup = my_setup` or `setup = my::setup::function`"
-                );
-            }
-        } else {
-            abort!(
-                pair, "Duplicate argument: `setup`";
-                help = "`setup` is allowed only once"
-            );
-        }
-    }
-
-    fn to_string(&self, args: &Args) -> String {
-        let tokens = args.to_tokens_without_black_box();
-        if let Some(setup) = self.0.as_ref() {
-            quote! { #setup(#tokens) }.to_string()
-        } else {
-            tokens.to_string()
-        }
-    }
-
-    fn render_as_code(&self, args: &Args) -> TokenStream {
-        if let Some(setup) = &self.0 {
-            quote_spanned! { setup.span() => std::hint::black_box(#setup(#args)) }
-        } else {
-            quote! { #args }
-        }
-    }
-
-    fn is_some(&self) -> bool {
-        self.0.is_some()
-    }
-
-    /// If this Setup is none and the other setup has a value update this `Setup` with that value
-    fn update(&mut self, other: &Self) {
-        if let (None, Some(other)) = (&self.0, &other.0) {
-            self.0 = Some(other.clone());
-        }
-    }
-}
-
-impl Teardown {
-    fn parse_pair(&mut self, pair: &MetaNameValue) {
-        if self.0.is_none() {
-            let expr = &pair.value;
-            if let Expr::Path(path) = expr {
-                self.0 = Some(path.clone());
-            } else {
-                abort!(
-                    expr, "Invalid value for `teardown`";
-                    help = "The `teardown` argument needs a path to an existing function
-                in a reachable scope";
-                    note = "`teardown = my_teardown` or `teardown = my::teardown::function`"
-                );
-            }
-        } else {
-            abort!(
-                pair, "Duplicate argument: `teardown`";
-                help = "`teardown` is allowed only once"
-            );
-        }
-    }
-
-    fn render_as_code(&self, tokens: TokenStream) -> TokenStream {
-        if let Some(teardown) = &self.0 {
-            quote_spanned! { teardown.span() => std::hint::black_box(#teardown(#tokens)) }
-        } else {
-            tokens
-        }
-    }
-
-    /// If this Teardown is none and the other Teardown has a value update this Teardown with that
-    /// value
-    fn update(&mut self, other: &Self) {
-        if let (None, Some(other)) = (&self.0, &other.0) {
-            self.0 = Some(other.clone());
-        }
-    }
-}
-
-pub fn render_library_benchmark(args: TokenStream, input: TokenStream) -> syn::Result<TokenStream> {
+pub fn render(args: TokenStream, input: TokenStream) -> syn::Result<TokenStream> {
     let mut library_benchmark = parse2::<LibraryBenchmark>(args)?;
     let item_fn = parse2::<ItemFn>(input)?;
 
@@ -805,7 +549,7 @@ pub fn render_library_benchmark(args: TokenStream, input: TokenStream) -> syn::R
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
-    use syn::{ExprStruct, ItemMod};
+    use syn::{Expr, ExprStruct, ItemMod};
 
     use super::*;
 
@@ -930,7 +674,7 @@ mod tests {
             &[],
             &[(parse_quote!(wrapper), vec![])],
         );
-        let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
+        let actual: Model = parse2(render(quote!(), input).unwrap()).unwrap();
         assert_eq!(actual, expected);
     }
 
@@ -960,11 +704,9 @@ mod tests {
             &[],
             &[(parse_quote!(wrapper), vec![])],
         );
-        let actual: Model = parse2(
-            render_library_benchmark(quote!(config = LibraryBenchmarkConfig::default()), input)
-                .unwrap(),
-        )
-        .unwrap();
+        let actual: Model =
+            parse2(render(quote!(config = LibraryBenchmarkConfig::default()), input).unwrap())
+                .unwrap();
         assert_eq!(actual, expected);
     }
 
@@ -1001,7 +743,7 @@ mod tests {
                 &[],
                 &[(parse_quote!(my_id), vec![])],
             );
-            let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
+            let actual: Model = parse2(render(quote!(), input).unwrap()).unwrap();
             assert_eq!(actual, expected);
         }
     }
@@ -1040,7 +782,7 @@ mod tests {
                 &[],
                 &[(parse_quote!(my_id), vec![parse_quote!(1)])],
             );
-            let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
+            let actual: Model = parse2(render(quote!(), input).unwrap()).unwrap();
             assert_eq!(actual, expected);
         }
     }
@@ -1078,7 +820,7 @@ mod tests {
                 &[],
                 &[(parse_quote!(my_id), vec![parse_quote!(1), parse_quote!(2)])],
             );
-            let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
+            let actual: Model = parse2(render(quote!(), input).unwrap()).unwrap();
             assert_eq!(actual, expected);
         }
     }
@@ -1121,7 +863,7 @@ mod tests {
                 )],
                 &[(parse_quote!(my_id), vec![])],
             );
-            let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
+            let actual: Model = parse2(render(quote!(), input).unwrap()).unwrap();
             assert_eq!(actual, expected);
         }
     }
@@ -1158,11 +900,8 @@ mod tests {
             )],
             &[(parse_quote!(my_id), vec![])],
         );
-        let actual: Model = parse2(
-            render_library_benchmark(quote!(config = LibraryBenchmarkConfig::new()), input)
-                .unwrap(),
-        )
-        .unwrap();
+        let actual: Model =
+            parse2(render(quote!(config = LibraryBenchmarkConfig::new()), input).unwrap()).unwrap();
         assert_eq!(actual, expected);
     }
 
@@ -1203,7 +942,7 @@ mod tests {
                 (parse_quote!(second), vec![]),
             ],
         );
-        let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
+        let actual: Model = parse2(render(quote!(), input).unwrap()).unwrap();
         assert_eq!(actual, expected);
     }
 
@@ -1244,7 +983,7 @@ mod tests {
                 (parse_quote!(second), vec![parse_quote!(2)]),
             ],
         );
-        let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
+        let actual: Model = parse2(render(quote!(), input).unwrap()).unwrap();
         assert_eq!(actual, expected);
     }
 
@@ -1288,7 +1027,7 @@ mod tests {
                 (parse_quote!(second), vec![parse_quote!(2)]),
             ],
         );
-        let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
+        let actual: Model = parse2(render(quote!(), input).unwrap()).unwrap();
         assert_eq!(actual, expected);
     }
 
@@ -1332,7 +1071,7 @@ mod tests {
                 (parse_quote!(second), vec![parse_quote!(2)]),
             ],
         );
-        let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
+        let actual: Model = parse2(render(quote!(), input).unwrap()).unwrap();
         assert_eq!(actual, expected);
     }
 
@@ -1384,7 +1123,7 @@ mod tests {
         );
 
         let actual: Model = parse2(
-            render_library_benchmark(
+            render(
                 quote!(config = LibraryBenchmarkConfig::does_not_exist()),
                 input,
             )

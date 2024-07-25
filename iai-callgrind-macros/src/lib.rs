@@ -27,6 +27,8 @@
 use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
 
+mod bin_bench;
+mod common;
 mod lib_bench;
 
 /// The `#[library_benchmark]` attribute let's you define a benchmark function which you can later
@@ -204,7 +206,17 @@ mod lib_bench;
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
-    match lib_bench::render_library_benchmark(args.into(), input.into()) {
+    match lib_bench::render(args.into(), input.into()) {
+        Ok(stream) => stream.into(),
+        Err(error) => error.to_compile_error().into(),
+    }
+}
+
+/// TODO: DOCUMENTATION
+#[proc_macro_attribute]
+#[proc_macro_error]
+pub fn binary_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
+    match bin_bench::render(args.into(), input.into()) {
         Ok(stream) => stream.into(),
         Err(error) => error.to_compile_error().into(),
     }
