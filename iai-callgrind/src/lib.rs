@@ -387,7 +387,7 @@ mod macros;
 
 #[cfg(feature = "default")]
 pub use bin_bench::{
-    Arg, BenchmarkId, BinaryBenchmarkConfig, BinaryBenchmarkGroup, ExitWith, Fixtures, Run,
+    Arg, BenchmarkId, BinaryBenchmarkConfig, BinaryBenchmarkGroup, Command, ExitWith, Fixtures, Run,
 };
 #[cfg(feature = "default")]
 pub use bincode;
@@ -396,7 +396,7 @@ pub use common::{black_box, FlamegraphConfig, RegressionConfig, Tool};
 #[cfg(feature = "client_requests_defs")]
 pub use cty;
 #[cfg(feature = "default")]
-pub use iai_callgrind_macros::library_benchmark;
+pub use iai_callgrind_macros::{binary_benchmark, library_benchmark};
 #[cfg(feature = "default")]
 pub use iai_callgrind_runner::api::{Direction, EventKind, FlamegraphKind, ValgrindTool};
 #[cfg(feature = "default")]

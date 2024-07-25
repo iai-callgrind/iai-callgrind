@@ -1,10 +1,13 @@
+use std::fmt::Display;
+use std::ops::Deref;
+
 use derive_more::{Deref, DerefMut};
 use proc_macro2::TokenStream;
 use proc_macro_error::abort;
-use quote::format_ident;
+use quote::{format_ident, quote, ToTokens, TokenStreamExt};
 use syn::parse::Parse;
 use syn::punctuated::Punctuated;
-use syn::{parse2, parse_quote, Attribute, Ident, ItemFn, MetaNameValue, Token};
+use syn::{parse2, parse_quote, Attribute, Expr, Ident, ItemFn, MetaNameValue, Token};
 
 use crate::common::{self, MultipleArgs};
 
@@ -21,10 +24,13 @@ struct Args(common::Args);
 struct Bench {
     id: Ident,
     args: Args,
-    config: common::BenchConfig,
+    config: BenchConfig,
     setup: Setup,
     teardown: Teardown,
 }
+
+#[derive(Debug, Default, Clone, Deref, DerefMut)]
+struct BenchConfig(common::BenchConfig);
 
 /// This is the counterpart to the `#[binary_benchmark]` attribute.
 #[derive(Debug, Default)]
@@ -45,11 +51,105 @@ struct BinaryBenchmark {
 #[derive(Debug, Default, Clone, Deref, DerefMut)]
 struct BinaryBenchmarkConfig(common::BenchConfig);
 
-#[derive(Debug, Default, Clone, Deref, DerefMut)]
-struct Setup(common::Setup);
+#[derive(Debug, Default, Clone)]
+struct Setup(Option<Expr>);
 
-#[derive(Debug, Default, Clone, Deref, DerefMut)]
-struct Teardown(common::Teardown);
+#[derive(Debug, Default, Clone)]
+struct Teardown(Option<Expr>);
+
+impl ToTokens for Args {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.deref().to_tokens(tokens);
+    }
+}
+
+impl Display for Args {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let tokens = self.to_tokens_without_black_box().to_string();
+        write!(f, "{tokens}")
+    }
+}
+
+impl Bench {
+    fn render_as_code(&self, callee: &Ident) -> TokenStream {
+        let id = &self.id;
+        let args = &self.args;
+
+        let func = quote!(
+            #[inline(never)]
+            pub fn #id() -> iai_callgrind::Command {
+                #callee(#args)
+            }
+        );
+
+        let config = self.config.render_as_code(Some(id));
+        let setup = self.setup.render_as_code(Some(id));
+        let teardown = self.teardown.render_as_code(Some(id));
+
+        quote! {
+            #config
+            #setup
+            #teardown
+            #func
+        }
+    }
+
+    // TODO: FINISH
+    fn render_as_member(&self) -> TokenStream {
+        let id = &self.id;
+        let id_display = self.id.to_string();
+        // TODO: TEST THE to_string method
+        let args_display = self.args.to_string();
+        let config = self.config.render_as_member(Some(id));
+        let setup = self.setup.render_as_member(Some(id));
+        let teardown = self.teardown.render_as_member(Some(id));
+        quote! {
+            iai_callgrind::internal::InternalMacroBinBench {
+                id_display: Some(#id_display),
+                args_display: Some(#args_display),
+                func: #id,
+                config: #config,
+                setup: #setup,
+                teardown: #teardown,
+            }
+        }
+    }
+}
+
+// TODO: SORT THIS INTO impl section
+impl BenchConfig {
+    pub fn ident(id: Option<&Ident>) -> Ident {
+        if let Some(ident) = id {
+            format_ident!("__get_config_{ident}")
+        } else {
+            format_ident!("__get_config")
+        }
+    }
+
+    // TODO: CONTINUE
+    fn render_as_code(&self, id: Option<&Ident>) -> TokenStream {
+        if let Some(config) = &self.deref().0 {
+            let ident = Self::ident(id);
+            quote! {
+                #[inline(never)]
+                pub fn #ident() -> iai_callgrind::internal::InternalBinaryBenchmarkConfig {
+                    #config.into()
+                }
+            }
+        } else {
+            TokenStream::new()
+        }
+    }
+
+    fn render_as_member(&self, id: Option<&Ident>) -> TokenStream {
+        if self.deref().is_some() {
+            let ident = Self::ident(id);
+            quote! { Some(#ident) }
+        } else {
+            quote! { None }
+        }
+    }
+}
 
 impl BinaryBenchmark {
     fn parse_bench_attribute(
@@ -62,7 +162,7 @@ impl BinaryBenchmark {
         let meta = attr.meta.require_list()?;
 
         let mut args = Args::default();
-        let mut config = common::BenchConfig::default();
+        let mut config = BenchConfig::default();
         let mut setup = Setup::default();
         let mut teardown = Teardown::default();
 
@@ -114,7 +214,7 @@ impl BinaryBenchmark {
         let expected_num_args = item_fn.sig.inputs.len();
         let meta = attr.meta.require_list()?;
 
-        let mut config = common::BenchConfig::default();
+        let mut config = BenchConfig::default();
         let mut setup = Setup::default();
         let mut teardown = Teardown::default();
         let mut args = MultipleArgs::default();
@@ -236,60 +336,55 @@ impl BinaryBenchmark {
         Ok(())
     }
 
-    // /// Render the `#[library_benchmark]` attribute when no outer attribute was present
-    // ///
-    // /// ```ignore
-    // /// #[library_benchmark]
-    // /// fn my_benchmark_function() -> u64 {
-    // ///     my_lib::bench_me(42)
-    // /// }
-    // /// ```
-    // fn render_standalone(self, item_fn: &ItemFn) -> TokenStream {
-    //     let ident = &item_fn.sig.ident;
-    //     let visibility: syn::Visibility = parse_quote! { pub(super) };
-    //     let new_item_fn = ItemFn {
-    //         attrs: vec![],
-    //         vis: visibility,
-    //         sig: item_fn.sig.clone(),
-    //         block: item_fn.block.clone(),
-    //     };
-    //
-    //     let config = self.config.render_as_code();
-    //
-    //     let inner = self.setup.render_as_code(&Args::default());
-    //     let call = quote! { std::hint::black_box(__iai_callgrind_wrapper_mod::#ident(#inner)) };
-    //
-    //     let call = self.teardown.render_as_code(call);
-    //     quote! {
-    //         mod #ident {
-    //             use super::*;
-    //
-    //             mod __iai_callgrind_wrapper_mod {
-    //                 use super::*;
-    //
-    //                 #[inline(never)]
-    //                 #new_item_fn
-    //             }
-    //
-    //             pub const BENCHES: &[iai_callgrind::internal::InternalMacroLibBench]= &[
-    //                 iai_callgrind::internal::InternalMacroLibBench {
-    //                     id_display: None,
-    //                     args_display: None,
-    //                     func: wrapper,
-    //                     config: None
-    //                 },
-    //             ];
-    //
-    //             #config
-    //
-    //             #[inline(never)]
-    //             pub fn wrapper() {
-    //                 let _ = #call;
-    //             }
-    //         }
-    //     }
-    // }
-    //
+    /// Render the `#[binary_benchmark]` attribute when no outer attribute was present
+    ///
+    /// ```ignore
+    /// #[library_benchmark]
+    /// fn my_benchmark_function() -> u64 {
+    ///     my_lib::bench_me(42)
+    /// }
+    /// ```
+    fn render_standalone(self, item_fn: &ItemFn) -> TokenStream {
+        let ident = &item_fn.sig.ident;
+        let visibility: syn::Visibility = parse_quote! { pub };
+        let new_item_fn = ItemFn {
+            attrs: vec![],
+            vis: visibility,
+            sig: item_fn.sig.clone(),
+            block: item_fn.block.clone(),
+        };
+
+        let config = self.config.render_as_code();
+        let setup = self.setup.render_as_code(None);
+        let setup_member = self.setup.render_as_member(None);
+        let teardown = self.teardown.render_as_code(None);
+        let teardown_member = self.teardown.render_as_member(None);
+
+        quote! {
+            mod #ident {
+                use super::*;
+
+                #[inline(never)]
+                #new_item_fn
+
+                pub const __BENCHES: &[iai_callgrind::internal::InternalMacroBinBench]= &[
+                    iai_callgrind::internal::InternalMacroBinBench {
+                        id_display: None,
+                        args_display: None,
+                        func: #ident,
+                        setup: #setup_member,
+                        teardown: #teardown_member,
+                        config: None
+                    },
+                ];
+
+                #config
+                #setup
+                #teardown
+            }
+        }
+    }
+
     // /// TODO: Update documentation
     // /// Render the `#[library_benchmark]` when other outer attributes like `#[bench]` were
     // present ///
@@ -338,81 +433,205 @@ impl BinaryBenchmark {
     // ///     my_lib::bench_me(arg)
     // /// }
     // /// ```
-    // fn render_benches(self, item_fn: &ItemFn) -> TokenStream {
-    //     let visibility: syn::Visibility = parse_quote! { pub(super) };
-    //     let new_item_fn = ItemFn {
-    //         attrs: vec![],
-    //         vis: visibility,
-    //         sig: item_fn.sig.clone(),
-    //         block: item_fn.block.clone(),
-    //     };
-    //
-    //     let mod_name = &item_fn.sig.ident;
-    //     let callee = &item_fn.sig.ident;
-    //     let mut funcs = TokenStream::new();
-    //     let mut lib_benches = vec![];
-    //     for bench in self.benches {
-    //         funcs.append_all(bench.render_as_code(callee));
-    //         lib_benches.push(bench.render_as_member());
-    //     }
-    //
-    //     let config = self.config.render_as_code();
-    //     quote! {
-    //         mod #mod_name {
-    //             use super::*;
-    //
-    //             mod __iai_callgrind_wrapper_mod {
-    //                 use super::*;
-    //
-    //                 #[inline(never)]
-    //                 #new_item_fn
-    //             }
-    //
-    //             pub const BENCHES: &[iai_callgrind::internal::InternalMacroLibBench] = &[
-    //                 #(#lib_benches,)*
-    //             ];
-    //
-    //             #config
-    //
-    //             #funcs
-    //         }
-    //     }
-    // }
+    fn render_benches(self, item_fn: &ItemFn) -> TokenStream {
+        let new_item_fn = ItemFn {
+            attrs: vec![],
+            vis: syn::Visibility::Inherited,
+            sig: item_fn.sig.clone(),
+            block: item_fn.block.clone(),
+        };
+
+        let mod_name = &item_fn.sig.ident;
+        let callee = &item_fn.sig.ident;
+        let mut funcs = TokenStream::new();
+        let mut bin_benches = vec![];
+        for bench in self.benches {
+            funcs.append_all(bench.render_as_code(callee));
+            bin_benches.push(bench.render_as_member());
+        }
+
+        let config = self.config.render_as_code();
+        quote! {
+            mod #mod_name {
+                use super::*;
+
+                #[inline(never)]
+                #new_item_fn
+
+                pub const __BENCHES: &[iai_callgrind::internal::InternalMacroBinBench] = &[
+                    #(#bin_benches,)*
+                ];
+
+                #config
+
+                #funcs
+            }
+        }
+    }
 }
 
 impl Parse for BinaryBenchmark {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        // if input.is_empty() {
-        Ok(Self::default())
-        // } else {
-        //     let mut config = LibraryBenchmarkConfig::default();
-        //     let mut setup = Setup::default();
-        //     let mut teardown = Teardown::default();
-        //
-        //     let pairs = input.parse_terminated(MetaNameValue::parse, Token![,])?;
-        //     for pair in pairs {
-        //         if pair.path.is_ident("config") {
-        //             config.parse_pair(&pair);
-        //         } else if pair.path.is_ident("setup") {
-        //             setup.parse_pair(&pair);
-        //         } else if pair.path.is_ident("teardown") {
-        //             teardown.parse_pair(&pair);
-        //         } else {
-        //             abort!(
-        //                 pair, "Invalid argument: {}", pair.path.require_ident()?;
-        //                 help = "Valid arguments are: `config`, `setup`, `teardown`"
-        //             );
-        //         }
-        //     }
-        //
-        //     let library_benchmark = LibraryBenchmark {
-        //         config,
-        //         setup,
-        //         teardown,
-        //         benches: vec![],
-        //     };
-        //     Ok(library_benchmark)
-        // }
+        if input.is_empty() {
+            Ok(Self::default())
+        } else {
+            let mut config = BinaryBenchmarkConfig::default();
+            let mut setup = Setup::default();
+            let mut teardown = Teardown::default();
+
+            let pairs = input.parse_terminated(MetaNameValue::parse, Token![,])?;
+            for pair in pairs {
+                if pair.path.is_ident("config") {
+                    config.parse_pair(&pair);
+                } else if pair.path.is_ident("setup") {
+                    setup.parse_pair(&pair);
+                } else if pair.path.is_ident("teardown") {
+                    teardown.parse_pair(&pair);
+                } else {
+                    abort!(
+                        pair, "Invalid argument: {}", pair.path.require_ident()?;
+                        help = "Valid arguments are: `config`, `setup`, `teardown`"
+                    );
+                }
+            }
+
+            let binary_benchmark = Self {
+                config,
+                setup,
+                teardown,
+                benches: vec![],
+            };
+            Ok(binary_benchmark)
+        }
+    }
+}
+
+impl BinaryBenchmarkConfig {
+    fn render_as_code(&self) -> TokenStream {
+        if let Some(config) = &self.deref().0 {
+            quote!(
+                #[inline(never)]
+                pub fn __get_config()
+                    -> Option<iai_callgrind::internal::InternalBinaryBenchmarkConfig>
+                {
+                    Some(#config.into())
+                }
+            )
+        } else {
+            quote!(
+                #[inline(never)]
+                pub fn __get_config()
+                -> Option<iai_callgrind::internal::InternalBinaryBenchmarkConfig> {
+                    None
+                }
+            )
+        }
+    }
+}
+
+impl Setup {
+    pub fn ident(id: Option<&Ident>) -> Ident {
+        if let Some(ident) = id {
+            format_ident!("__setup_{ident}")
+        } else {
+            format_ident!("__setup")
+        }
+    }
+
+    pub fn parse_pair(&mut self, pair: &MetaNameValue) {
+        if self.0.is_none() {
+            self.0 = Some(pair.value.clone());
+        } else {
+            abort!(
+                pair, "Duplicate argument: `setup`";
+                help = "`setup` is allowed only once"
+            );
+        }
+    }
+
+    pub fn is_some(&self) -> bool {
+        self.0.is_some()
+    }
+
+    /// If this Setup is none and the other setup has a value update this `Setup` with that value
+    pub fn update(&mut self, other: &Self) {
+        if let (None, Some(other)) = (&self.0, &other.0) {
+            self.0 = Some(other.clone());
+        }
+    }
+
+    fn render_as_code(&self, id: Option<&Ident>) -> TokenStream {
+        if let Some(setup) = &self.0 {
+            let ident = Self::ident(id);
+            quote! {
+                #[inline(never)]
+                pub fn #ident() {
+                    #setup
+                }
+            }
+        } else {
+            TokenStream::new()
+        }
+    }
+
+    fn render_as_member(&self, id: Option<&Ident>) -> TokenStream {
+        if self.0.is_some() {
+            let ident = Self::ident(id);
+            quote! { Some(#ident) }
+        } else {
+            quote! { None }
+        }
+    }
+}
+
+impl Teardown {
+    pub fn ident(id: Option<&Ident>) -> Ident {
+        if let Some(ident) = id {
+            format_ident!("__teardown_{ident}")
+        } else {
+            format_ident!("__teardown")
+        }
+    }
+
+    pub fn parse_pair(&mut self, pair: &MetaNameValue) {
+        if self.0.is_none() {
+            self.0 = Some(pair.value.clone());
+        } else {
+            abort!(
+                pair, "Duplicate argument: `teardown`";
+                help = "`teardown` is allowed only once"
+            );
+        }
+    }
+
+    /// If this Setup is none and the other setup has a value update this `Setup` with that value
+    pub fn update(&mut self, other: &Self) {
+        if let (None, Some(other)) = (&self.0, &other.0) {
+            self.0 = Some(other.clone());
+        }
+    }
+
+    fn render_as_code(&self, id: Option<&Ident>) -> TokenStream {
+        if let Some(teardown) = &self.0 {
+            let ident = Self::ident(id);
+            quote! {
+                #[inline(never)]
+                pub fn #ident() {
+                    #teardown
+                }
+            }
+        } else {
+            TokenStream::new()
+        }
+    }
+
+    fn render_as_member(&self, id: Option<&Ident>) -> TokenStream {
+        if self.0.is_some() {
+            let ident = Self::ident(id);
+            quote! { Some(#ident) }
+        } else {
+            quote! { None }
+        }
     }
 }
 
@@ -422,12 +641,8 @@ pub fn render(args: TokenStream, input: TokenStream) -> syn::Result<TokenStream>
 
     binary_benchmark.extract_benches(&item_fn)?;
     if binary_benchmark.benches.is_empty() {
-        // Ok(binary_benchmark.render_standalone(&item_fn))
-        // TODO: REMOVE TEMPORARY return
-        Ok(TokenStream::new())
+        Ok(binary_benchmark.render_standalone(&item_fn))
     } else {
-        // Ok(binary_benchmark.render_benches(&item_fn))
-        // TODO: REMOVE TEMPORARY return
-        Ok(TokenStream::new())
+        Ok(binary_benchmark.render_benches(&item_fn))
     }
 }

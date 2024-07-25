@@ -52,26 +52,6 @@ struct LibraryBenchmarkConfig(common::BenchConfig);
 #[derive(Debug, Default, Clone, Deref, DerefMut)]
 struct Setup(common::Setup);
 
-impl Setup {
-    fn render_as_code(&self, args: &Args) -> TokenStream {
-        if let Some(setup) = &self.deref().0 {
-            quote_spanned! { setup.span() => std::hint::black_box(#setup(#args)) }
-        } else {
-            quote! { #args }
-        }
-    }
-}
-
-impl Teardown {
-    fn render_as_code(&self, tokens: TokenStream) -> TokenStream {
-        if let Some(teardown) = &self.deref().0 {
-            quote_spanned! { teardown.span() => std::hint::black_box(#teardown(#tokens)) }
-        } else {
-            tokens
-        }
-    }
-}
-
 #[derive(Debug, Default, Clone, Deref, DerefMut)]
 struct Teardown(common::Teardown);
 
@@ -530,6 +510,26 @@ impl LibraryBenchmarkConfig {
                     None
                 }
             )
+        }
+    }
+}
+
+impl Setup {
+    fn render_as_code(&self, args: &Args) -> TokenStream {
+        if let Some(setup) = &self.deref().0 {
+            quote_spanned! { setup.span() => std::hint::black_box(#setup(#args)) }
+        } else {
+            quote! { #args }
+        }
+    }
+}
+
+impl Teardown {
+    fn render_as_code(&self, tokens: TokenStream) -> TokenStream {
+        if let Some(teardown) = &self.deref().0 {
+            quote_spanned! { teardown.span() => std::hint::black_box(#teardown(#tokens)) }
+        } else {
+            tokens
         }
     }
 }

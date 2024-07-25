@@ -41,6 +41,10 @@ path = "src/benchmark-tests-sort.rs"
 
 [[bench]]
 harness = false
+name = "test_bin_bench"
+
+[[bench]]
+harness = false
 name = "test_lib_bench_flamegraph"
 
 [[bench]]

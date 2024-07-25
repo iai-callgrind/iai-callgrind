@@ -29,6 +29,8 @@ pub struct InternalMacroLibBench {
 pub struct InternalMacroBinBench {
     pub id_display: Option<&'static str>,
     pub args_display: Option<&'static str>,
-    pub func: fn(),
-    pub config: Option<fn() -> crate::internal::InternalLibraryBenchmarkConfig>,
+    pub func: fn() -> crate::Command,
+    pub setup: Option<fn()>,
+    pub teardown: Option<fn()>,
+    pub config: Option<fn() -> crate::internal::InternalBinaryBenchmarkConfig>,
 }

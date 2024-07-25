@@ -38,6 +38,10 @@ pub struct BinaryBenchmarkConfig(internal::InternalBinaryBenchmarkConfig);
 #[derive(Debug, Default, Clone)]
 pub struct BinaryBenchmarkGroup(internal::InternalBinaryBenchmarkGroup);
 
+/// TODO: DOCUMENTATION
+#[derive(Debug, Default, Clone)]
+pub struct Command(internal::InternalCommand);
+
 /// Set the expected exit status of a binary benchmark
 ///
 /// Per default, the benchmarked binary is expected to succeed, but if a benchmark is expected to
@@ -911,6 +915,31 @@ impl From<internal::InternalBinaryBenchmarkGroup> for BinaryBenchmarkGroup {
 }
 
 impl_traits!(BinaryBenchmarkGroup, internal::InternalBinaryBenchmarkGroup);
+
+/// TODO: CONTINUE
+impl Command {
+    /// TODO: CONTINUE
+    pub fn new() -> Self {
+        Self(internal::InternalCommand {
+            cmd: PathBuf::from(""),
+            args: vec![],
+        })
+    }
+
+    /// TODO: DOCUMENTATION
+    pub fn arg<T>(&mut self, arg: T) -> &mut Self
+    where
+        T: Into<OsString>,
+    {
+        self.0.args.push(arg.into());
+        self
+    }
+
+    /// TODO: CONTINUE
+    pub fn build(&mut self) -> Self {
+        self.clone()
+    }
+}
 
 impl From<ExitWith> for internal::InternalExitWith {
     fn from(value: ExitWith) -> Self {

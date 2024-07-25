@@ -193,7 +193,8 @@ impl MultipleArgs {
 
 impl BenchConfig {
     pub fn ident(id: &Ident) -> Ident {
-        format_ident!("get_config_{}", id)
+        // TODO: CHANGE THIS TO __get_config
+        format_ident("get_config", Some(id))
     }
 
     pub fn parse_pair(&mut self, pair: &MetaNameValue) {
@@ -205,6 +206,10 @@ impl BenchConfig {
                 help = "`config` is allowed only once"
             );
         }
+    }
+
+    pub fn is_some(&self) -> bool {
+        self.0.is_some()
     }
 }
 
@@ -279,5 +284,13 @@ impl Teardown {
         if let (None, Some(other)) = (&self.0, &other.0) {
             self.0 = Some(other.clone());
         }
+    }
+}
+
+pub fn format_ident(prefix: &str, ident: Option<&Ident>) -> Ident {
+    if let Some(ident) = ident {
+        format_ident!("{prefix}_{ident}")
+    } else {
+        format_ident!("{prefix}")
     }
 }

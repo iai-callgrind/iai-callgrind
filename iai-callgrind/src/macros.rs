@@ -228,15 +228,15 @@ macro_rules! main {
                 .as_ref()
                 .map_or(false, |value| value == "--iai-run")
             {
-                match std::hint::black_box(args_iter.next().expect("Expecting a function type")).as_str() {
-                    $(
-                        concat!(stringify!($group), "::", "before") => $group::before(),
-                        concat!(stringify!($group), "::", "after") => $group::after(),
-                        concat!(stringify!($group), "::", "setup") => $group::setup(),
-                        concat!(stringify!($group), "::", "teardown") => $group::teardown(),
-                    )+
-                    name => panic!("function '{}' not found in this scope", name)
-                }
+                // match std::hint::black_box(args_iter.next().expect("Expecting a function type")).as_str() {
+                //     $(
+                //         concat!(stringify!($group), "::", "before") => $group::before(),
+                //         concat!(stringify!($group), "::", "after") => $group::after(),
+                //         concat!(stringify!($group), "::", "setup") => $group::setup(),
+                //         concat!(stringify!($group), "::", "teardown") => $group::teardown(),
+                //     )+
+                //     name => panic!("function '{}' not found in this scope", name)
+                // }
             } else {
                 std::hint::black_box(run());
             };
@@ -525,6 +525,7 @@ macro_rules! main {
 /// ```
 #[macro_export]
 macro_rules! binary_benchmark_group {
+    // TODO: DEPRECATE OLD SYNTAX
     (
         $( config = $config:expr ; $(;)* )?
         benchmark = |$cmd:expr, $group:ident: &mut BinaryBenchmarkGroup| $body:expr
@@ -550,40 +551,105 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
 "#);
     };
     (
+        name = $name:ident;
+        $( config = $config:expr ; $(;)* )?
+        $( compare_by_id = $compare:literal ; $(;)* )?
+        benchmarks =
+    ) => {
+        compile_error!(
+            "A binary_benchmark_group! needs at least 1 benchmark function \
+            annotated with #[binary_benchmark]\n\n\
+            binary_benchmark_group!(name = some_ident; benchmarks = some_library_benchmark);");
+    };
+    (
         name = $name:ident; $(;)*
-        $(before = $before:ident $(,bench = $bench_before:literal)? ; $(;)*)?
-        $(after = $after:ident $(,bench = $bench_after:literal)? ; $(;)*)?
-        $(setup = $setup:ident $(,bench = $bench_setup:literal)? ; $(;)*)?
-        $(teardown = $teardown:ident $(,bench = $bench_teardown:literal)? ; $(;)*)?
+        $( setup = $setup:expr $(,bench = $bench_setup:literal)? ; $(;)* )?
+        $( teardown = $teardown:expr $(,bench = $bench_teardown:literal)? ; $(;)* )?
+        $( config = $config:expr ; $(;)* )?
+        $( compare_by_id = $compare:literal ; $(;)* )?
+        benchmarks = $( $function:ident ),+ $(,)*
+    ) => {
+        // TODO: IMPLEMENT
+        pub mod $name {
+            use super::*;
+
+            pub const __BENCHES: &[&(
+                &'static str,
+                fn() -> Option<$crate::internal::InternalBinaryBenchmarkConfig>,
+                &[$crate::internal::InternalMacroBinBench]
+            )]= &[
+                $(
+                    &(
+                        stringify!($function),
+                        super::$function::__get_config,
+                        super::$function::__BENCHES
+                    )
+                ),+
+            ];
+
+            #[inline(never)]
+            pub fn __setup() {
+                $(
+                    let _ = std::hint::black_box($setup);
+                )?
+            }
+
+            #[inline(never)]
+            pub fn __teardown() {
+                $(
+                    let _ = std::hint::black_box($teardown);
+                )?
+            }
+
+            #[inline(never)]
+            pub fn __get_config() -> Option<$crate::internal::InternalBinaryBenchmarkConfig> {
+                use super::*;
+
+                let mut config = None;
+                $(
+                    config = Some($config.into());
+                )?
+                config
+            }
+        }
+    };
+    (
+        name = $name:ident; $(;)*
+        $(before = $before:expr $(,bench = $bench_before:literal)? ; $(;)*)?
+        $(after = $after:expr $(,bench = $bench_after:literal)? ; $(;)*)?
+        $(setup = $setup:expr $(,bench = $bench_setup:literal)? ; $(;)*)?
+        $(teardown = $teardown:expr $(,bench = $bench_teardown:literal)? ; $(;)*)?
         $( config = $config:expr ; $(;)* )?
         benchmark = |$cmd:expr, $group:ident: &mut BinaryBenchmarkGroup| $body:expr
     ) => {
         pub mod $name {
+            use super::*;
+
             #[inline(never)]
             pub fn before() {
                 $(
-                    let _ = std::hint::black_box(super::$before());
+                    let _ = std::hint::black_box($before);
                 )?
             }
 
             #[inline(never)]
             pub fn after() {
                 $(
-                    let _ = std::hint::black_box(super::$after());
+                    let _ = std::hint::black_box($after);
                 )?
             }
 
             #[inline(never)]
             pub fn setup() {
                 $(
-                    let _ = std::hint::black_box(super::$setup());
+                    let _ = std::hint::black_box($setup);
                 )?
             }
 
             #[inline(never)]
             pub fn teardown() {
                 $(
-                    let _ = std::hint::black_box(super::$teardown());
+                    let _ = std::hint::black_box($teardown);
                 )?
             }
 
