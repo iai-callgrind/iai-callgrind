@@ -1,8 +1,0 @@
-groups:
-  - runs:
-      - args: []
-        expected:
-          files: test_bin_bench_with_exit.expected.1.yml
-      - args: []
-        expected:
-          files: test_bin_bench_with_exit.expected.2.yml

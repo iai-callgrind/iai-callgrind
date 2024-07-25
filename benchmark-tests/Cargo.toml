@@ -32,60 +32,12 @@ serde_yaml = { workspace = true }
 valico = { workspace = true }
 
 [[bin]]
-name = "benchmark-tests-printenv"
-path = "src/benchmark-tests-printenv.rs"
-
-[[bin]]
-name = "benchmark-tests-cat"
-path = "src/benchmark-tests-cat.rs"
-
-[[bin]]
-name = "benchmark-tests-exit"
-path = "src/benchmark-tests-exit.rs"
-
-[[bin]]
-name = "benchmark-tests-echo"
-path = "src/benchmark-tests-echo.rs"
+name = "bench"
+path = "src/bench.rs"
 
 [[bin]]
 name = "benchmark-tests-sort"
 path = "src/benchmark-tests-sort.rs"
-
-[[bin]]
-name = "benchmark-tests-subprocess"
-path = "src/benchmark-tests-subprocess.rs"
-
-[[bin]]
-name = "benchmark-tests-printargs"
-path = "src/benchmark-tests-printargs.rs"
-
-[[bin]]
-name = "bench"
-path = "src/bench.rs"
-
-[[bench]]
-harness = false
-name = "test_bin_bench_with_fixtures"
-
-[[bench]]
-harness = false
-name = "test_bin_bench_with_exit"
-
-[[bench]]
-harness = false
-name = "test_bin_bench_groups"
-
-[[bench]]
-harness = false
-name = "test_bin_bench_flamegraph"
-
-[[bench]]
-harness = false
-name = "test_bin_bench_tools"
-
-[[bench]]
-harness = false
-name = "test_bin_bench_readme_example"
 
 [[bench]]
 harness = false
