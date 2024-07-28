@@ -266,11 +266,11 @@ pub fn count_errors() -> usize {
 /// function. For Memcheck (an illustrative case), this does two things:
 ///
 /// - It records that the block has been allocated.  This means any addresses within the block
-/// mentioned in error messages will be identified as belonging to the block.  It also means that if
-/// the block isn't freed it will be detected by the leak checker.
+///   mentioned in error messages will be identified as belonging to the block.  It also means that
+///   if the block isn't freed it will be detected by the leak checker.
 /// - It marks the block as being addressable and undefined (if `is_zeroed` is not set), or
-/// addressable and defined (if `is_zeroed` is set). This controls how accesses to the block by the
-/// program are handled.
+///   addressable and defined (if `is_zeroed` is set). This controls how accesses to the block by
+///   the program are handled.
 ///
 /// `addr` is the start of the usable block (ie. after any redzone), `size` is its size. `redzone`
 /// is the redzone size if the allocator can apply redzones -- these are blocks of padding at the
@@ -329,10 +329,11 @@ pub fn malloclike_block(addr: *const (), size: usize, redzone: usize, is_zeroed:
 /// For Memcheck, it does four things:
 ///
 /// - It records that the size of a block has been changed. This assumes that the block was
-/// annotated as having been allocated via [`malloclike_block`]. Otherwise, an error will be issued.
+///   annotated as having been allocated via [`malloclike_block`]. Otherwise, an error will be
+///   issued.
 /// - If the block shrunk, it marks the freed memory as being unaddressable.
 /// - If the block grew, it marks the new area as undefined and defines a red zone past the end of
-/// the new block.
+///   the new block.
 /// - The V-bits of the overlap between the old and the new block are preserved.
 ///
 /// `resizeinplace_block` should be put after allocation of the new block and before deallocation of
@@ -358,7 +359,7 @@ pub fn resizeinplace_block(addr: *const (), old_size: usize, new_size: usize, re
 /// file.
 ///
 /// - It records that the block has been deallocated. This assumes that the block was annotated as
-/// having been allocated via [`malloclike_block`]. Otherwise, an error will be issued.
+///   having been allocated via [`malloclike_block`]. Otherwise, an error will be issued.
 /// - It marks the block as being unaddressable.
 ///
 /// `freelike_block` should be put immediately after the point where a heap block is deallocated.
