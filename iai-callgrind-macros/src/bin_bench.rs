@@ -9,7 +9,7 @@ use syn::parse::Parse;
 use syn::punctuated::Punctuated;
 use syn::{parse2, parse_quote, Attribute, Expr, Ident, ItemFn, MetaNameValue, Token};
 
-use crate::common::{self, MultipleArgs};
+use crate::common::{self, format_ident, pretty_expr_path, BenchesArgs};
 
 // TODO: CHECK FOR OCCURRENCES OF library benchmark strings in docs and else
 
@@ -71,6 +71,119 @@ impl Display for Args {
 }
 
 impl Bench {
+    fn parse_bench_attribute(
+        item_fn: &ItemFn,
+        attr: &Attribute,
+        id: Ident,
+        other_setup: &Setup,
+        other_teardown: &Teardown,
+    ) -> syn::Result<Self> {
+        let expected_num_args = item_fn.sig.inputs.len();
+        let meta = attr.meta.require_list()?;
+
+        let mut args = Args::default();
+        let mut config = BenchConfig::default();
+        let mut setup = Setup::default();
+        let mut teardown = Teardown::default();
+
+        if let Ok(pairs) =
+            meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
+        {
+            for pair in pairs {
+                if pair.path.is_ident("args") {
+                    args.parse_pair(&pair)?;
+                } else if pair.path.is_ident("config") {
+                    config.parse_pair(&pair);
+                } else if pair.path.is_ident("setup") {
+                    setup.parse_pair(&pair);
+                } else if pair.path.is_ident("teardown") {
+                    teardown.parse_pair(&pair);
+                } else {
+                    abort!(
+                        pair, "Invalid argument: {}", pair.path.require_ident()?;
+                        help = "Valid arguments are: `args`, `config`, `setup`, teardown`"
+                    );
+                }
+            }
+        } else {
+            args.parse_meta_list(meta)?;
+        }
+
+        setup.update(other_setup);
+        teardown.update(other_teardown);
+
+        args.check_num_arguments(expected_num_args, setup.is_some());
+
+        Ok(Bench {
+            id,
+            args,
+            config,
+            setup,
+            teardown,
+        })
+    }
+
+    fn parse_benches_attribute(
+        item_fn: &ItemFn,
+        attr: &Attribute,
+        id: &Ident,
+        other_setup: &Setup,
+        other_teardown: &Teardown,
+    ) -> syn::Result<Vec<Self>> {
+        let expected_num_args = item_fn.sig.inputs.len();
+        let meta = attr.meta.require_list()?;
+
+        let mut config = BenchConfig::default();
+        let mut setup = Setup::default();
+        let mut teardown = Teardown::default();
+        let mut args = BenchesArgs::default();
+
+        if let Ok(pairs) =
+            meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
+        {
+            for pair in pairs {
+                if pair.path.is_ident("args") {
+                    args.parse_pair(&pair)?;
+                } else if pair.path.is_ident("config") {
+                    config.parse_pair(&pair);
+                } else if pair.path.is_ident("setup") {
+                    setup.parse_pair(&pair);
+                } else if pair.path.is_ident("teardown") {
+                    teardown.parse_pair(&pair);
+                } else {
+                    abort!(
+                        pair, "Invalid argument: {}", pair.path.require_ident()?;
+                        help = "Valid arguments are: `args`, `config`, `setup`, `teardown`"
+                    );
+                }
+            }
+        } else {
+            args = BenchesArgs::from_meta_list(meta)?;
+        };
+
+        setup.update(other_setup);
+        teardown.update(other_teardown);
+
+        let benches = args
+            .finalize()
+            .map(Args)
+            .enumerate()
+            .map(|(index, args)| {
+                args.check_num_arguments(expected_num_args, setup.is_some());
+                let id = format_ident!("{id}_{index}");
+                Bench {
+                    id,
+                    args,
+                    config: config.clone(),
+                    setup: setup.clone(),
+                    teardown: teardown.clone(),
+                }
+            })
+            .collect();
+
+        Ok(benches)
+    }
+
     fn render_as_code(&self, callee: &Ident) -> TokenStream {
         let id = &self.id;
         let args = &self.args;
@@ -152,129 +265,6 @@ impl BenchConfig {
 }
 
 impl BinaryBenchmark {
-    fn parse_bench_attribute(
-        &mut self,
-        item_fn: &ItemFn,
-        attr: &Attribute,
-        id: Ident,
-    ) -> syn::Result<()> {
-        let expected_num_args = item_fn.sig.inputs.len();
-        let meta = attr.meta.require_list()?;
-
-        let mut args = Args::default();
-        let mut config = BenchConfig::default();
-        let mut setup = Setup::default();
-        let mut teardown = Teardown::default();
-
-        if let Ok(pairs) =
-            meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
-        {
-            for pair in pairs {
-                if pair.path.is_ident("args") {
-                    args.parse_pair(&pair)?;
-                } else if pair.path.is_ident("config") {
-                    config.parse_pair(&pair);
-                } else if pair.path.is_ident("setup") {
-                    setup.parse_pair(&pair);
-                } else if pair.path.is_ident("teardown") {
-                    teardown.parse_pair(&pair);
-                } else {
-                    abort!(
-                        pair, "Invalid argument: {}", pair.path.require_ident()?;
-                        help = "Valid arguments are: `args`, `config`, `setup`, teardown`"
-                    );
-                }
-            }
-        } else {
-            args.parse_meta_list(meta)?;
-        }
-
-        setup.update(&self.setup);
-        teardown.update(&self.teardown);
-
-        args.check_num_arguments(expected_num_args, setup.is_some());
-
-        self.benches.push(Bench {
-            id,
-            args,
-            config,
-            setup,
-            teardown,
-        });
-
-        Ok(())
-    }
-
-    fn parse_benches_attribute(
-        &mut self,
-        item_fn: &ItemFn,
-        attr: &Attribute,
-        id: &Ident,
-    ) -> syn::Result<()> {
-        let expected_num_args = item_fn.sig.inputs.len();
-        let meta = attr.meta.require_list()?;
-
-        let mut config = BenchConfig::default();
-        let mut setup = Setup::default();
-        let mut teardown = Teardown::default();
-        let mut args = MultipleArgs::default();
-
-        if let Ok(pairs) =
-            meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
-        {
-            for pair in pairs {
-                if pair.path.is_ident("args") {
-                    args.parse_pair(&pair)?;
-                } else if pair.path.is_ident("config") {
-                    config.parse_pair(&pair);
-                } else if pair.path.is_ident("setup") {
-                    setup.parse_pair(&pair);
-                } else if pair.path.is_ident("teardown") {
-                    teardown.parse_pair(&pair);
-                } else {
-                    abort!(
-                        pair, "Invalid argument: {}", pair.path.require_ident()?;
-                        help = "Valid arguments are: `args`, `config`, `setup`, `teardown`"
-                    );
-                }
-            }
-        } else {
-            args = MultipleArgs::from_meta_list(meta)?;
-        };
-
-        setup.update(&self.setup);
-        teardown.update(&self.teardown);
-
-        // Make sure there is at least one `Args` present.
-        //
-        // `#[benches::id()]`, `#[benches::id(args = [])]` have to result in a single Bench with an
-        // empty Args.
-        let args = args.0.map_or_else(
-            || vec![Args::default()],
-            |a| {
-                if a.is_empty() {
-                    vec![Args::default()]
-                } else {
-                    a.into_iter().map(Args).collect()
-                }
-            },
-        );
-        for (i, args) in args.into_iter().enumerate() {
-            args.check_num_arguments(expected_num_args, setup.is_some());
-
-            let id = format_ident!("{id}_{i}");
-            self.benches.push(Bench {
-                id,
-                args,
-                config: config.clone(),
-                setup: setup.clone(),
-                teardown: teardown.clone(),
-            });
-        }
-
-        Ok(())
-    }
-
     fn extract_benches(&mut self, item_fn: &ItemFn) -> syn::Result<()> {
         let bench: syn::PathSegment = parse_quote!(bench);
         let benches: syn::PathSegment = parse_quote!(benches);
@@ -298,7 +288,13 @@ impl BinaryBenchmark {
                             note = "#[bench::my_id(...)]"
                         );
                     };
-                    self.parse_bench_attribute(item_fn, attr, id)?;
+                    self.benches.push(Bench::parse_bench_attribute(
+                        item_fn,
+                        attr,
+                        id,
+                        &self.setup,
+                        &self.teardown,
+                    )?);
                 }
                 Some(segment) if segment == &benches => {
                     if attr.path().segments.len() > 2 {
@@ -316,7 +312,13 @@ impl BinaryBenchmark {
                             note = "#[benches::my_id(...)]"
                         );
                     };
-                    self.parse_benches_attribute(item_fn, attr, &id)?;
+                    self.benches.extend(Bench::parse_benches_attribute(
+                        item_fn,
+                        attr,
+                        &id,
+                        &self.setup,
+                        &self.teardown,
+                    )?);
                 }
                 Some(segment) => {
                     abort!(
@@ -531,16 +533,21 @@ impl BinaryBenchmarkConfig {
 
 impl Setup {
     pub fn ident(id: Option<&Ident>) -> Ident {
-        if let Some(ident) = id {
-            format_ident!("__setup_{ident}")
-        } else {
-            format_ident!("__setup")
-        }
+        format_ident("__setup", id)
     }
 
     pub fn parse_pair(&mut self, pair: &MetaNameValue) {
         if self.0.is_none() {
-            self.0 = Some(pair.value.clone());
+            if let Expr::Path(expr) = &pair.value {
+                let string = pretty_expr_path(expr);
+                abort!(
+                    pair, "Expected an expression that is not a path";
+                    help = "Try `{0}(/* arguments */)` instead of `{0}`", string;
+                    note = "This is different to the `setup` argument in library benchmarks which only allows a path to a function"
+                );
+            } else {
+                self.0 = Some(pair.value.clone());
+            }
         } else {
             abort!(
                 pair, "Duplicate argument: `setup`";
@@ -586,16 +593,21 @@ impl Setup {
 
 impl Teardown {
     pub fn ident(id: Option<&Ident>) -> Ident {
-        if let Some(ident) = id {
-            format_ident!("__teardown_{ident}")
-        } else {
-            format_ident!("__teardown")
-        }
+        format_ident("__teardown", id)
     }
 
     pub fn parse_pair(&mut self, pair: &MetaNameValue) {
         if self.0.is_none() {
-            self.0 = Some(pair.value.clone());
+            if let Expr::Path(expr) = &pair.value {
+                let string = pretty_expr_path(expr);
+                abort!(
+                    pair, "Expected an expression that is not a path";
+                    help = "Try `{0}(/* arguments */)` instead of `{0}`", string;
+                    note = "This is different to the `teardown` argument in library benchmarks which only allows a path to a function"
+                );
+            } else {
+                self.0 = Some(pair.value.clone());
+            }
         } else {
             abort!(
                 pair, "Duplicate argument: `teardown`";

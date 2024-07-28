@@ -27,3 +27,4 @@ syn = { workspace = true, features = ["full", "extra-traits"] }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }
+rstest = { workspace = true }

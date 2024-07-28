@@ -124,6 +124,7 @@ pipefail
 posix
 powerset
 ppid
+prettyplease
 printargs
 printenv
 println
@@ -178,6 +179,7 @@ trybuild
 trycmd
 unaddressable
 unmark
+unparse
 valgrind
 valgrind's
 valico

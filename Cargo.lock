@@ -750,6 +750,7 @@ dependencies = [
  "proc-macro-error",
  "proc-macro2",
  "quote",
+ "rstest",
  "syn 2.0.72",
 ]
 

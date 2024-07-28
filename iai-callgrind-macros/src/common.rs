@@ -15,7 +15,7 @@ pub struct BenchConfig(pub Option<Expr>);
 
 /// This struct stores multiple `Args` as needed by the `#[benches]` attribute
 #[derive(Debug, Clone, Default)]
-pub struct MultipleArgs(pub Option<Vec<Args>>);
+pub struct BenchesArgs(pub Option<Vec<Args>>);
 
 #[derive(Debug, Default, Clone)]
 pub struct Setup(pub Option<ExprPath>);
@@ -150,10 +150,10 @@ impl ToTokens for Args {
     }
 }
 
-impl MultipleArgs {
+impl BenchesArgs {
     pub fn parse_pair(&mut self, pair: &MetaNameValue) -> syn::Result<()> {
         if self.0.is_none() {
-            *self = MultipleArgs::from_expr(&pair.value)?;
+            *self = BenchesArgs::from_expr(&pair.value)?;
         } else {
             abort!(
                 pair, "Duplicate argument: `args`";
@@ -188,6 +188,22 @@ impl MultipleArgs {
         let list = &meta.tokens;
         let expr = parse2::<Expr>(quote_spanned! { list.span() => [#list] })?;
         Self::from_expr(&expr)
+    }
+
+    // Make sure there is at least one `Args` present then return an iterator
+    //
+    // `#[benches::id()]`, `#[benches::id(args = [])]` have to result in a single Bench with
+    // an empty Args.
+    pub fn finalize(self) -> impl Iterator<Item = Args> {
+        if let Some(args) = self.0 {
+            if args.is_empty() {
+                vec![Args::default()].into_iter()
+            } else {
+                args.into_iter()
+            }
+        } else {
+            vec![Args::default()].into_iter()
+        }
     }
 }
 
@@ -287,10 +303,33 @@ impl Teardown {
     }
 }
 
+pub fn pretty_expr_path(expr: &ExprPath) -> String {
+    expr.to_token_stream().to_string().replace(' ', "")
+}
+
 pub fn format_ident(prefix: &str, ident: Option<&Ident>) -> Ident {
     if let Some(ident) = ident {
         format_ident!("{prefix}_{ident}")
     } else {
         format_ident!("{prefix}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+    use syn::parse_quote;
+
+    use super::*;
+
+    #[rstest]
+    #[case::simple(parse_quote!(simple), "simple")]
+    #[case::with_segments(parse_quote!(simple::segment), "simple::segment")]
+    #[case::with_turbo_fish(parse_quote!(simple::segment::<Vec<String>>), "simple::segment::<Vec<String>>")]
+    #[case::leading_colon(parse_quote!(::segment), "::segment")]
+    #[case::leading_colon_multiple(parse_quote!(::simple::segment), "::simple::segment")]
+    #[case::leading_colon_with_turbo_fish(parse_quote!(::simple::segment::<Vec<String>>), "::simple::segment::<Vec<String>>")]
+    fn test_expr_path_to_string(#[case] expr: ExprPath, #[case] expected: &str) {
+        assert_eq!(pretty_expr_path(&expr), expected);
     }
 }

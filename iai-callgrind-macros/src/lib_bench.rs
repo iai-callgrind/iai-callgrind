@@ -9,7 +9,7 @@ use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{parse2, parse_quote, Attribute, Ident, ItemFn, MetaNameValue, Token};
 
-use crate::common::{self, MultipleArgs};
+use crate::common::{self, BenchesArgs};
 
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
 #[derive(Debug, Default, Clone, Deref, DerefMut)]
@@ -192,7 +192,7 @@ impl LibraryBenchmark {
         let mut config = BenchConfig::default();
         let mut setup = Setup::default();
         let mut teardown = Teardown::default();
-        let mut args = MultipleArgs::default();
+        let mut args = BenchesArgs::default();
 
         if let Ok(pairs) =
             meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
@@ -214,7 +214,7 @@ impl LibraryBenchmark {
                 }
             }
         } else {
-            args = MultipleArgs::from_meta_list(meta)?;
+            args = BenchesArgs::from_meta_list(meta)?;
         };
 
         setup.update(&self.setup);
