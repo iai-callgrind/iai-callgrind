@@ -24,6 +24,9 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::str_to_string)]
 
+use std::fs::File as StdFile;
+use std::io::{BufRead, BufReader};
+
 // TODO: CLEARIFY USAGE OF TokenStream vs TokenStream2
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
@@ -33,8 +36,8 @@ use syn::parse::Parse;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
-    parse2, parse_quote, Attribute, Expr, ExprArray, ExprPath, Ident, ItemFn, MetaList,
-    MetaNameValue, Token,
+    parse2, parse_quote, parse_quote_spanned, Attribute, Expr, ExprArray, ExprPath, Ident, ItemFn,
+    LitStr, MetaList, MetaNameValue, Token,
 };
 
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
@@ -85,6 +88,9 @@ struct Setup(Option<ExprPath>);
 
 #[derive(Debug, Default, Clone)]
 struct Teardown(Option<ExprPath>);
+
+#[derive(Debug, Default, Clone)]
+struct File(Option<LitStr>);
 
 impl Args {
     fn new(span: Span, data: Vec<Expr>) -> Self {
@@ -293,6 +299,58 @@ impl BenchConfig {
     }
 }
 
+impl File {
+    fn parse_pair(&mut self, pair: &MetaNameValue) {
+        if self.0.is_none() {
+            if let Expr::Lit(literal) = &pair.value {
+                self.0 = Some(parse2::<LitStr>(literal.to_token_stream()).unwrap());
+            } else {
+                abort!(
+                    pair.value, "Invalid value for `file`";
+                    help = "The `file` argument needs a literal string containing the path to an existing file at compile time";
+                    note = "`file = \"benches/some_fixture\"`"
+                );
+            }
+        } else {
+            emit_error!(
+                pair, "Duplicate argument: `file`";
+                help = "`file` is allowed only once"
+            );
+        }
+    }
+
+    /// Read this [`File`] and return all its lines
+    ///
+    /// # Panics
+    ///
+    /// Panics if there is no path present
+    fn read(&self) -> Vec<String> {
+        let expr = self.0.as_ref().expect("A file should be present");
+        let string = expr.value();
+        let file = StdFile::open(&string)
+            .unwrap_or_else(|error| abort!(expr, "Error opening '{}': {}", string, error));
+
+        let mut lines = vec![];
+        for (index, line) in BufReader::new(file).lines().enumerate() {
+            match line {
+                Ok(line) => {
+                    lines.push(line);
+                }
+                Err(error) => {
+                    abort!(
+                        self.0,
+                        "Error reading line {} in file '{}': {}",
+                        index + 1,
+                        string,
+                        error
+                    );
+                }
+            }
+        }
+        lines
+    }
+}
+
 impl LibraryBenchmark {
     fn parse_bench_attribute(
         &mut self,
@@ -360,6 +418,7 @@ impl LibraryBenchmark {
         let mut setup = Setup::default();
         let mut teardown = Teardown::default();
         let mut args = MultipleArgs::default();
+        let mut file = File::default();
 
         if let Ok(pairs) =
             meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
@@ -373,6 +432,8 @@ impl LibraryBenchmark {
                     setup.parse_pair(&pair);
                 } else if pair.path.is_ident("teardown") {
                     teardown.parse_pair(&pair);
+                } else if pair.path.is_ident("file") {
+                    file.parse_pair(&pair);
                 } else {
                     abort!(
                         pair, "Invalid argument: {}", pair.path.require_ident()?;
@@ -387,31 +448,63 @@ impl LibraryBenchmark {
         setup.update(&self.setup);
         teardown.update(&self.teardown);
 
-        // Make sure there is at least one `Args` present.
-        //
-        // `#[benches::id()]`, `#[benches::id(args = [])]` have to result in a single Bench with an
-        // empty Args.
-        let args = args.0.map_or_else(
-            || vec![Args::default()],
-            |a| {
-                if a.is_empty() {
-                    vec![Args::default()]
-                } else {
-                    a
+        match (&file.0, args.0) {
+            (Some(literal), Some(_)) => {
+                abort!(
+                    literal.span(),
+                    "Only one parameter of `file` or `args` can be present"
+                );
+            }
+            (None, Some(mut args)) => {
+                // Make sure there is at least one `Args` present.
+                //
+                // `#[benches::id(args = [])]` has to result in a single Bench with an empty Args.
+                if args.is_empty() {
+                    args.push(Args::default());
                 }
-            },
-        );
-        for (i, args) in args.into_iter().enumerate() {
-            args.check_num_arguments(expected_num_args, setup.is_some());
+                for (i, args) in args.into_iter().enumerate() {
+                    args.check_num_arguments(expected_num_args, setup.is_some());
 
-            let id = format_ident!("{id}_{i}");
-            self.benches.push(Bench {
-                id,
-                args,
+                    let id = format_ident!("{id}_{i}");
+                    self.benches.push(Bench {
+                        id,
+                        args,
+                        config: config.clone(),
+                        setup: setup.clone(),
+                        teardown: teardown.clone(),
+                    });
+                }
+            }
+            (Some(literal), None) => {
+                let strings = file.read();
+                if strings.is_empty() {
+                    abort!(literal, "The provided file '{}' was empty", literal.value());
+                }
+                for (i, string) in strings.into_iter().enumerate() {
+                    let id = format_ident!("{id}_{i}");
+                    let expr = if string.is_empty() {
+                        parse_quote_spanned! { literal.span() => String::new() }
+                    } else {
+                        parse_quote_spanned! { literal.span() => String::from(#string) }
+                    };
+                    let args = Args::new(literal.span(), vec![expr]);
+                    self.benches.push(Bench {
+                        id,
+                        args,
+                        config: config.clone(),
+                        setup: setup.clone(),
+                        teardown: teardown.clone(),
+                    });
+                }
+            }
+            // Cover the case when no arguments were present for example `#[benches::id()]`,
+            (None, None) => self.benches.push(Bench {
+                id: id.clone(),
+                args: Args::default(),
                 config: config.clone(),
                 setup: setup.clone(),
                 teardown: teardown.clone(),
-            });
+            }),
         }
 
         Ok(())
