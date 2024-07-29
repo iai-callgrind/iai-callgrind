@@ -9,7 +9,7 @@ pub mod summary_parser;
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 use anyhow::Result;
 use colored::Colorize;
@@ -23,7 +23,6 @@ use super::summary::{CallgrindRegressionSummary, CostsSummary};
 use super::tool::{check_exit, RunOptions, ToolOutput, ToolOutputPath, ValgrindTool};
 use crate::api::{self, EventKind};
 use crate::error::Error;
-use crate::runner::format;
 use crate::util::{resolve_binary_path, to_string_signed_short};
 
 pub struct CallgrindCommand {
@@ -105,15 +104,7 @@ impl CallgrindCommand {
             .args(executable_args)
             .envs(envs);
 
-        match self.nocapture {
-            NoCapture::True | NoCapture::False => {}
-            NoCapture::Stderr => {
-                command.stdout(Stdio::null()).stderr(Stdio::inherit());
-            }
-            NoCapture::Stdout => {
-                command.stdout(Stdio::inherit()).stderr(Stdio::null());
-            }
-        };
+        self.nocapture.apply(&mut command);
 
         let output = match self.nocapture {
             NoCapture::False => command
@@ -148,7 +139,8 @@ impl CallgrindCommand {
                             exit_with.as_ref(),
                         )
                     })?;
-                println!("{}", format::no_capture_footer(self.nocapture));
+
+                self.nocapture.print_footer();
                 None
             }
         };

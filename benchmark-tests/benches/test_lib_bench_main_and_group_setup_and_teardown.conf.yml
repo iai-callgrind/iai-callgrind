@@ -1,0 +1,5 @@
+groups:
+  - runs:
+      - args: ["--nocapture"]
+        expected:
+          stdout: test_lib_bench_main_and_group_setup_and_teardown.stdout

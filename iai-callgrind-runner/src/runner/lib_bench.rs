@@ -4,9 +4,12 @@
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::io::stderr;
+use std::process::Command;
 
 use anyhow::Result;
+use log::{info, log_enabled, Level};
 
+use super::args::NoCapture;
 use super::callgrind::args::Args;
 use super::callgrind::flamegraph::{
     BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
@@ -26,6 +29,18 @@ use super::tool::{
 };
 use super::{Config, Error, DEFAULT_TOGGLE};
 use crate::api::{self, LibraryBenchmark};
+use crate::util::write_all_to_stderr;
+
+#[derive(Debug, Clone)]
+struct Assistant {
+    kind: AssistantKind,
+}
+
+#[derive(Debug, Clone)]
+enum AssistantKind {
+    Setup,
+    Teardown,
+}
 
 /// Implements [`Benchmark`] to run a [`LibBench`] and compare against a earlier [`BenchmarkKind`]
 #[derive(Debug)]
@@ -40,6 +55,8 @@ struct Group {
     benches: Vec<LibBench>,
     compare: bool,
     module: String,
+    setup: Option<Assistant>,
+    teardown: Option<Assistant>,
 }
 
 /// `Groups` is the top-level organizational unit of the `main!` macro for library benchmarks
@@ -79,6 +96,8 @@ struct Runner {
     config: Config,
     groups: Groups,
     benchmark: Box<dyn Benchmark>,
+    setup: Option<Assistant>,
+    teardown: Option<Assistant>,
 }
 
 /// Implements [`Benchmark`] to save a [`LibBench`] run as baseline. If present compare against a
@@ -86,6 +105,87 @@ struct Runner {
 #[derive(Debug)]
 struct SaveBaselineBenchmark {
     baseline: BaselineName,
+}
+
+impl Assistant {
+    /// Run the `Assistant` but don't benchmark it
+    fn run(&self, config: &Config, group_name: Option<&str>, module_path: &str) -> Result<()> {
+        let id = self.kind.id();
+        let nocapture = config.meta.args.nocapture;
+
+        let mut command = Command::new(&config.bench_bin);
+        command.arg("--iai-run");
+        if let Some(group_name) = group_name {
+            command.arg(group_name);
+        }
+        command.arg(&id);
+
+        nocapture.apply(&mut command);
+
+        match nocapture {
+            NoCapture::False => {
+                let output = command
+                    .output()
+                    .map_err(|error| {
+                        Error::LaunchError(config.bench_bin.clone(), error.to_string())
+                    })
+                    .and_then(|output| {
+                        if output.status.success() {
+                            Ok(output)
+                        } else {
+                            let status = output.status;
+                            Err(Error::ProcessError((
+                                format!("{module_path}::{id}"),
+                                Some(output),
+                                status,
+                                None,
+                            )))
+                        }
+                    })?;
+
+                if log_enabled!(Level::Info) && !output.stdout.is_empty() {
+                    info!("{id} function in group '{module_path}': stdout:");
+                    write_all_to_stderr(&output.stdout);
+                }
+
+                if log_enabled!(Level::Info) && !output.stderr.is_empty() {
+                    info!("{id} function in group '{module_path}': stderr:");
+                    write_all_to_stderr(&output.stderr);
+                }
+            }
+            NoCapture::True | NoCapture::Stderr | NoCapture::Stdout => {
+                command
+                    .status()
+                    .map_err(|error| {
+                        Error::LaunchError(config.bench_bin.clone(), error.to_string())
+                    })
+                    .and_then(|status| {
+                        if status.success() {
+                            Ok(())
+                        } else {
+                            Err(Error::ProcessError((
+                                format!("{module_path}::{id}"),
+                                None,
+                                status,
+                                None,
+                            )))
+                        }
+                    })?;
+            }
+        };
+
+        Ok(())
+    }
+}
+
+impl AssistantKind {
+    fn id(&self) -> String {
+        match self {
+            AssistantKind::Setup => "setup",
+            AssistantKind::Teardown => "teardown",
+        }
+        .to_owned()
+    }
 }
 
 /// This trait needs to be implemented to actually run a [`LibBench`]
@@ -227,12 +327,19 @@ impl Groups {
             } else {
                 module.to_owned()
             };
-
+            let setup = library_benchmark_group.has_setup.then_some(Assistant {
+                kind: AssistantKind::Setup,
+            });
+            let teardown = library_benchmark_group.has_teardown.then_some(Assistant {
+                kind: AssistantKind::Teardown,
+            });
             let mut group = Group {
                 id: library_benchmark_group.id,
                 module: module_path,
                 compare: library_benchmark_group.compare,
                 benches: vec![],
+                setup,
+                teardown,
             };
 
             for (bench_index, library_benchmark_benches) in
@@ -286,6 +393,11 @@ impl Groups {
         let mut is_regressed = false;
 
         for group in &self.0 {
+            let group_id = group.id.as_ref().unwrap().as_str();
+            if let Some(setup) = &group.setup {
+                setup.run(config, Some(group_id), &group.module)?;
+            }
+
             let mut summaries: HashMap<String, Vec<BenchmarkSummary>> =
                 HashMap::with_capacity(group.benches.len());
             for bench in &group.benches {
@@ -309,6 +421,10 @@ impl Groups {
                         }
                     }
                 }
+            }
+
+            if let Some(teardown) = &group.teardown {
+                teardown.run(config, Some(group_id), &group.module)?;
             }
         }
 
@@ -498,6 +614,13 @@ impl Benchmark for LoadBaselineBenchmark {
 impl Runner {
     /// Create a new `Runner`
     fn new(library_benchmark: LibraryBenchmark, config: Config) -> Result<Self> {
+        let setup = library_benchmark.has_setup.then_some(Assistant {
+            kind: AssistantKind::Setup,
+        });
+        let teardown = library_benchmark.has_teardown.then_some(Assistant {
+            kind: AssistantKind::Teardown,
+        });
+
         let groups =
             Groups::from_library_benchmark(&config.module, library_benchmark, &config.meta)?;
 
@@ -532,12 +655,24 @@ impl Runner {
             config,
             groups,
             benchmark,
+            setup,
+            teardown,
         })
     }
 
     /// Run all benchmarks in all groups
     fn run(&self) -> Result<()> {
-        self.groups.run(self.benchmark.as_ref(), &self.config)
+        if let Some(setup) = &self.setup {
+            setup.run(&self.config, None, &self.config.module)?;
+        }
+
+        self.groups.run(self.benchmark.as_ref(), &self.config)?;
+
+        if let Some(teardown) = &self.teardown {
+            teardown.run(&self.config, None, &self.config.module)?;
+        }
+
+        Ok(())
     }
 }
 
