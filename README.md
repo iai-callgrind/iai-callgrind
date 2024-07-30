@@ -425,8 +425,9 @@ you could also use the shorter `#[bench::my_id(10, 20)]`.
 ##### Specify multiple benchmarks at once with the #[benches] attribute
 
 This attribute accepts the same parameters as the `#[bench]` attribute: `args`,
-`config`, `setup` and `teardown`. In contrast to the `args` parameter in
-`#[bench]`, `args` takes an array of arguments.
+`config`, `setup` and `teardown` and additionally the `file` parameter. In
+contrast to the `args` parameter in `#[bench]`, `args` takes an array of
+arguments.
 
 Let's start with an example:
 
@@ -465,6 +466,42 @@ fn bench_bubble_sort_with_benches_attribute(input: Vec<i32>) -> Vec<i32> {
 
 but a lot more concise especially if a lot of values are passed to the same
 `setup` function.
+
+The `file` parameter goes a step further and reads the specified file line by
+line creating a benchmark out of each line. The line is passed to the benchmark
+function as `String` or if the `setup` parameter is also present to the `setup`
+function. A small example assuming you have a file `benches/inputs` with the
+following content
+
+```text
+1
+11
+111
+```
+
+then
+
+```rust
+#[library_benchmark]
+#[benches::by_file(file = "benches/inputs")]
+fn some_bench(line: String) -> Result<u64> {
+    black_box(my_lib::string_to_u64(line))
+}
+```
+
+The above is roughly equivalent to the following but with the `args` parameter
+
+```rust
+#[library_benchmark]
+#[benches::by_file(args = [1.to_string(), 11.to_string(), 111.to_string()])]
+fn some_bench(line: String) -> Result<u64> {
+    black_box(my_lib::string_to_u64(line))
+}
+```
+
+Reading inputs from a file allows for example sharing the same inputs between
+different benchmarking frameworks like `criterion` or if you simply have a long
+list of inputs you might find it more convenient to read them from a file.
 
 ##### Comparing benchmark functions
 
