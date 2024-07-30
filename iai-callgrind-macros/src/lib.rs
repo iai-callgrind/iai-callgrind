@@ -454,7 +454,7 @@ impl LibraryBenchmark {
                 } else {
                     abort!(
                         pair, "Invalid argument: {}", pair.path.require_ident()?;
-                        help = "Valid arguments are: `args`, `config`, `setup`, `teardown`"
+                        help = "Valid arguments are: `args`, `file`, `config`, `setup`, `teardown`"
                     );
                 }
             }
@@ -646,7 +646,6 @@ impl LibraryBenchmark {
         }
     }
 
-    /// TODO: Update documentation
     /// Render the `#[library_benchmark]` when other outer attributes like `#[bench]` were present
     ///
     /// We use the function name of the annotated function as module name. This new module
@@ -654,11 +653,9 @@ impl LibraryBenchmark {
     /// as the original and unmodified benchmark function.
     ///
     /// The original benchmark function receives additional attributes `#[inline(never)]` to prevent
-    /// the compiler from inlining this function and `#[export_name]` to export this function with a
-    /// prefix `iai_callgrind::bench::`. The latter attribute is important since we extract the
-    /// costs in the iai-callgrind-runner using callgrind's function match mechanism via a wildcard
-    /// `iai_callgrind::bench::*`. The main problem is that the compiler replaces functions with
-    /// identical body. For example the functions
+    /// the compiler from inlining this function. We also wrap the benchmark function into an extra
+    /// module. The main problem is that the compiler replaces functions with identical body. For
+    /// example the functions
     ///
     /// ```ignore
     /// #[library_benchmark]
@@ -675,10 +672,10 @@ impl LibraryBenchmark {
     /// ```
     ///
     /// would be treated by the compiler as a single function (it takes the one with the shorter
-    /// function name, here `my_bench`) and both function names would be exported under the same
-    /// name. If we don't export these functions with a common prefix, we wouldn't be able to
-    /// match for `my_bench_with_longer_function_name::my_bench_with_longer_function_name` since
-    /// this function was replaced by the compiler with `my_bench::my_bench`.
+    /// function name, here `my_bench`). If we don't wrap them into a module with a constant export
+    /// name, we wouldn't be able to match for
+    /// `my_bench_with_longer_function_name::my_bench_with_longer_function_name` since this function
+    /// was replaced by the compiler with `my_bench::my_bench`.
     ///
     /// Next, we store all necessary information in a `BENCHES` slice of
     /// `iai_callgrind::internal::InternalMacroLibBench` structs. This slice can be easily accessed
