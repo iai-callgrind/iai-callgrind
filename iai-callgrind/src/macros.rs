@@ -38,15 +38,20 @@
 /// # }
 /// ```
 ///
-/// which accepts the following top-level arguments:
+/// which accepts the following top-level arguments in this order (separated by a semicolon):
 ///
-/// * __`library_benchmark_groups`__ (mandatory): The `name` of one or more
-///   [`library_benchmark_group!`](crate::library_benchmark_group) macros.
 /// * __`config`__ (optional): Optionally specify a [`crate::LibraryBenchmarkConfig`] valid for all
 ///   benchmark groups
+/// * __`setup`__ (optional): A setup function or any valid expression which is run before all
+///   benchmarks
+/// * __`teardown`__ (optional): A setup function or any valid expression which is run after all
+///   benchmarks
+/// * __`library_benchmark_groups`__ (mandatory): The __name__ of one or more
+///   [`library_benchmark_group!`](crate::library_benchmark_group) macros. Multiple __names__ are
+///   expected to be a comma separated list
 ///
 /// A library benchmark consists of
-/// [`library_benchmark_groups`](crate::library_benchmark_group) and  with
+/// [`library_benchmark_groups`](crate::library_benchmark_group) and with
 /// [`#[library_benchmark]`](crate::library_benchmark) annotated benchmark functions.
 ///
 /// ```rust
@@ -778,28 +783,38 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
 /// name to the `library_benchmark_groups` argument of the `main!` macro. See there for further
 /// details about the [`crate::main`] macro.
 ///
-/// The following top-level arguments are accepted:
+/// The following top-level arguments are accepted in this order:
 ///
 /// ```rust
 /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig};
 /// # #[library_benchmark]
 /// # fn some_func() {}
+/// fn group_setup() {}
+/// fn group_teardown() {}
 /// library_benchmark_group!(
 ///     name = my_group;
 ///     config = LibraryBenchmarkConfig::default();
 ///     compare_by_id = false;
+///     setup = group_setup();
+///     teardown = group_teardown();
 ///     benchmarks = some_func
 /// );
 /// # fn main() {
 /// # }
 /// ```
 ///
-/// * `__name__` (mandatory): A unique name used to identify the group for the `main!` macro
-/// * `__config__` (optional): A [`crate::LibraryBenchmarkConfig`] which is applied to all
+/// * __`name`__ (mandatory): A unique name used to identify the group for the `main!` macro
+/// * __`config`__ (optional): A [`crate::LibraryBenchmarkConfig`] which is applied to all
 ///   benchmarks within the same group.
-/// * `__compare_by_id__` (optional): The default is false. If true, all benches in the benchmark
+/// * __`compare_by_id`__ (optional): The default is false. If true, all benches in the benchmark
 ///   functions specified with the `benchmarks` argument, across any benchmark groups, are compared
 ///   with each other as long as the ids (the part after the `::` in `#[bench::id(...)]`) match.
+/// * __`setup`__ (optional): A setup function or any valid expression which is run before all
+///   benchmarks of this group
+/// * __`teardown`__ (optional): A teardown function or any valid expression which is run after all
+///   benchmarks of this group
+/// * __`benchmarks`__ (mandatory): A list of comma separated benchmark functions which must be
+///   annotated with `#[library_benchmark]`
 #[macro_export]
 macro_rules! library_benchmark_group {
     (
