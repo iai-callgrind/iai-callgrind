@@ -26,12 +26,14 @@
 
 use std::fs::File as StdFile;
 use std::io::{BufRead, BufReader};
+use std::path::PathBuf;
 
 // TODO: CLEARIFY USAGE OF TokenStream vs TokenStream2
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use proc_macro_error::{abort, emit_error, proc_macro_error};
 use quote::{format_ident, quote, quote_spanned, ToTokens, TokenStreamExt};
+use serde::Deserialize;
 use syn::parse::Parse;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
@@ -39,6 +41,11 @@ use syn::{
     parse2, parse_quote, parse_quote_spanned, Attribute, Expr, ExprArray, ExprPath, Ident, ItemFn,
     LitStr, MetaList, MetaNameValue, Token,
 };
+
+#[derive(Debug, Deserialize)]
+struct CargoMetadata {
+    workspace_root: String,
+}
 
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
 #[derive(Debug, Default, Clone)]
@@ -324,11 +331,20 @@ impl File {
     /// # Panics
     ///
     /// Panics if there is no path present
-    fn read(&self) -> Vec<String> {
+    fn read(&self, cargo_meta: Option<&CargoMetadata>) -> Vec<String> {
         let expr = self.0.as_ref().expect("A file should be present");
         let string = expr.value();
-        let file = StdFile::open(&string)
-            .unwrap_or_else(|error| abort!(expr, "Error opening '{}': {}", string, error));
+        let mut path = PathBuf::from(&string);
+
+        if path.is_relative() {
+            if let Some(cargo_meta) = cargo_meta {
+                let root = PathBuf::from(&cargo_meta.workspace_root);
+                path = root.join(path);
+            }
+        }
+
+        let file = StdFile::open(&path)
+            .unwrap_or_else(|error| abort!(expr, "Error opening '{}': {}", path.display(), error));
 
         let mut lines = vec![];
         for (index, line) in BufReader::new(file).lines().enumerate() {
@@ -341,7 +357,7 @@ impl File {
                         self.0,
                         "Error reading line {} in file '{}': {}",
                         index + 1,
-                        string,
+                        path.display(),
                         error
                     );
                 }
@@ -410,6 +426,7 @@ impl LibraryBenchmark {
         item_fn: &ItemFn,
         attr: &Attribute,
         id: &Ident,
+        cargo_meta: Option<&CargoMetadata>,
     ) -> syn::Result<()> {
         let expected_num_args = item_fn.sig.inputs.len();
         let meta = attr.meta.require_list()?;
@@ -476,7 +493,7 @@ impl LibraryBenchmark {
                 }
             }
             (Some(literal), None) => {
-                let strings = file.read();
+                let strings = file.read(cargo_meta);
                 if strings.is_empty() {
                     abort!(literal, "The provided file '{}' was empty", literal.value());
                 }
@@ -510,7 +527,11 @@ impl LibraryBenchmark {
         Ok(())
     }
 
-    fn extract_benches(&mut self, item_fn: &ItemFn) -> syn::Result<()> {
+    fn extract_benches(
+        &mut self,
+        item_fn: &ItemFn,
+        cargo_meta: Option<&CargoMetadata>,
+    ) -> syn::Result<()> {
         let bench: syn::PathSegment = parse_quote!(bench);
         let benches: syn::PathSegment = parse_quote!(benches);
 
@@ -551,7 +572,7 @@ impl LibraryBenchmark {
                             note = "#[benches::my_id(...)]"
                         );
                     };
-                    self.parse_benches_attribute(item_fn, attr, &id)?;
+                    self.parse_benches_attribute(item_fn, attr, &id, cargo_meta)?;
                 }
                 Some(segment) => {
                     abort!(
@@ -1096,7 +1117,14 @@ fn render_library_benchmark(args: TokenStream2, input: TokenStream2) -> syn::Res
     let mut library_benchmark = parse2::<LibraryBenchmark>(args)?;
     let item_fn = parse2::<ItemFn>(input)?;
 
-    library_benchmark.extract_benches(&item_fn)?;
+    let cargo_meta: Option<CargoMetadata> =
+        std::process::Command::new(option_env!("CARGO").unwrap_or("cargo"))
+            .args(["metadata", "--no-deps", "--format-version", "1"])
+            .output()
+            .ok()
+            .and_then(|output| serde_json::de::from_slice(&output.stdout).ok());
+
+    library_benchmark.extract_benches(&item_fn, cargo_meta.as_ref())?;
     if library_benchmark.benches.is_empty() {
         Ok(library_benchmark.render_standalone(&item_fn))
     } else {
