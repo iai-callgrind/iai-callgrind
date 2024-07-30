@@ -29,6 +29,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   benchmarks from the specified file. Each line of this file represents a new
   benchmark and the read line is passed to the benchmark function or if the
   `setup` parameter is also present to the `setup` function.
+* ([#211](https://github.com/iai-callgrind/iai-callgrind/pull/211)): Add support
+  for a `setup` and `teardown` function in the `library_benchmark_group` and
+  `main` macro. The group `setup` function is run before any benchmark of this
+  group and the `teardown` function after all benchmarks of the same group.
+  Similarly, the `setup` function of the `main` macro is run before any
+  benchmark group and the `teardown` function after all benchmarks.
 
 ## [0.12.1] - 2024-07-31
 
