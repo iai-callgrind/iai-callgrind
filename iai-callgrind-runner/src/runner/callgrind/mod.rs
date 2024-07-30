@@ -90,7 +90,7 @@ impl CallgrindCommand {
         } else {
             callgrind_args.collect_atstart = true;
         }
-        callgrind_args.set_output_file(&output_path.to_path());
+        callgrind_args.set_output_file(output_path.to_path());
         callgrind_args.set_log_arg(output_path);
 
         let callgrind_args = callgrind_args.to_vec();

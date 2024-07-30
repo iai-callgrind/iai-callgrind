@@ -40,10 +40,10 @@
 ///
 /// which accepts the following top-level arguments:
 ///
-/// * __`library_benchmark_groups`__ (mandatory): The `name` of one or
-/// more [`library_benchmark_group!`](crate::library_benchmark_group) macros.
-/// * __`config`__ (optional): Optionally specify a [`crate::LibraryBenchmarkConfig`]
-/// valid for all benchmark groups
+/// * __`library_benchmark_groups`__ (mandatory): The `name` of one or more
+///   [`library_benchmark_group!`](crate::library_benchmark_group) macros.
+/// * __`config`__ (optional): Optionally specify a [`crate::LibraryBenchmarkConfig`] valid for all
+///   benchmark groups
 ///
 /// A library benchmark consists of
 /// [`library_benchmark_groups`](crate::library_benchmark_group) and  with
@@ -744,10 +744,10 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
 ///
 /// * `__name__` (mandatory): A unique name used to identify the group for the `main!` macro
 /// * `__config__` (optional): A [`crate::LibraryBenchmarkConfig`] which is applied to all
-/// benchmarks within the same group.
+///   benchmarks within the same group.
 /// * `__compare_by_id__` (optional): The default is false. If true, all benches in the benchmark
-/// functions specified with the `benchmarks` argument, across any benchmark groups, are compared
-/// with each other as long as the ids (the part after the `::` in `#[bench::id(...)]`) match.
+///   functions specified with the `benchmarks` argument, across any benchmark groups, are compared
+///   with each other as long as the ids (the part after the `::` in `#[bench::id(...)]`) match.
 #[macro_export]
 macro_rules! library_benchmark_group {
     (

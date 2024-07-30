@@ -21,28 +21,26 @@
 //!
 //! ## Characteristics
 //! - __Precision__: High-precision measurements allow you to reliably detect very small
-//! optimizations of your code
+//!   optimizations of your code
 //! - __Consistency__: Iai-Callgrind can take accurate measurements even in virtualized CI
-//! environments
+//!   environments
 //! - __Performance__: Since Iai-Callgrind only executes a benchmark once, it is typically a lot
-//! faster to run than benchmarks measuring the execution and wall time
+//!   faster to run than benchmarks measuring the execution and wall time
 //! - __Regression__: Iai-Callgrind reports the difference between benchmark runs to make it easy to
-//! spot detailed performance regressions and improvements.
+//!   spot detailed performance regressions and improvements.
 //! - __CPU and Cache Profiling__: Iai-Callgrind generates a Callgrind profile of your code while
-//! benchmarking, so you can use Callgrind-compatible tools like
-//! [callgrind_annotate](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.callgrind_annotate-options)
-//! or the visualizer [kcachegrind](https://kcachegrind.github.io/html/Home.html) to analyze the
-//! results in detail.
-//! - __Memory Profiling__: You can run other Valgrind tools like [DHAT: a dynamic heap analysis
-//! tool](https://valgrind.org/docs/manual/dh-manual.html) and [Massif: a heap
-//! profiler](https://valgrind.org/docs/manual/ms-manual.html) with the Iai-Callgrind benchmarking
-//! framework. Their profiles are stored next to the callgrind profiles and are ready to be examined
-//! with analyzing tools like `dh_view.html`, `ms_print` and others.
+//!   benchmarking, so you can use Callgrind-compatible tools like
+//!   [callgrind_annotate](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.callgrind_annotate-options)
+//!   or the visualizer [kcachegrind](https://kcachegrind.github.io/html/Home.html) to analyze the
+//!   results in detail.
+//! - __Memory Profiling__: You can run other Valgrind tools like [DHAT: a dynamic heap analysis tool](https://valgrind.org/docs/manual/dh-manual.html)
+//!   and [Massif: a heap profiler](https://valgrind.org/docs/manual/ms-manual.html) with the
+//!   Iai-Callgrind benchmarking framework. Their profiles are stored next to the callgrind profiles
+//!   and are ready to be examined with analyzing tools like `dh_view.html`, `ms_print` and others.
 //! - __Visualization__: Iai-Callgrind is capable of creating regular and differential flamegraphs
-//! from the Callgrind output format.
-//! - __Valgrind Client Requests__: Support of zero overhead [Valgrind Client
-//! Requests](https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq)
-//! (compared to native valgrind client requests overhead) on many targets
+//!   from the Callgrind output format.
+//! - __Valgrind Client Requests__: Support of zero overhead [Valgrind Client Requests](https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq)
+//!   (compared to native valgrind client requests overhead) on many targets
 //! - __Stable-compatible__: Benchmark your code without installing nightly Rust
 //!
 //! ## Benchmarking

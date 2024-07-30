@@ -1,4 +1,4 @@
-Reading EXIDX entries: 418 available
+Reading EXIDX entries: 397 available
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
@@ -7,8 +7,8 @@ Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
-Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
+Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
@@ -16,6 +16,7 @@ Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
+Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
@@ -28,13 +29,10 @@ Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
-Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
-Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
-Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
@@ -67,9 +65,6 @@ Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
-Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
-Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
-Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
@@ -81,8 +76,8 @@ Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
-Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
+Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
@@ -117,7 +112,6 @@ Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
-Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
@@ -135,10 +129,9 @@ Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
-Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
-Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
+Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
@@ -189,7 +182,6 @@ Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
-Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
@@ -214,9 +206,7 @@ Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
-Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
-Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
@@ -228,7 +218,6 @@ Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
-Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
@@ -292,18 +281,11 @@ Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
-Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
-Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
-Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
-Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
-Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
-Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
-Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
@@ -357,7 +339,7 @@ Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
-Reading EXIDX entries: 413 attempted, 55 successful
+Reading EXIDX entries: 392 attempted, 52 successful
 result: 90
 
 I refs:        <__FILTER__>

@@ -76,8 +76,8 @@ impl LibraryBenchmarkConfig {
     /// * `--D1=32768,8,64`
     /// * `--LL=8388608,16,64`
     /// * `--cache-sim=yes` (can't be changed)
-    /// * `--toggle-collect=*BENCHMARK_FILE::BENCHMARK_FUNCTION` (this first toggle can't
-    /// be changed)
+    /// * `--toggle-collect=*BENCHMARK_FILE::BENCHMARK_FUNCTION` (this first toggle can't be
+    ///   changed)
     /// * `--collect-atstart=no` (overwriting this setting will have no effect)
     /// * `--compress-pos=no`
     /// * `--compress-strings=no`
