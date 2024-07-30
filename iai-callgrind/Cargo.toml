@@ -38,8 +38,8 @@ ui_tests = []
 bindgen = { workspace = true, optional = true }
 cc = { workspace = true, optional = true }
 regex = { workspace = true, optional = true }
-version-compare = { workspace = true, optional = true }
 strum = { workspace = true, optional = true }
+version-compare = { workspace = true, optional = true }
 
 [package.metadata.docs.rs]
 features = ["client_requests_defs"]
@@ -55,4 +55,7 @@ iai-callgrind-runner = { path = "../iai-callgrind-runner/", version = "=0.12.0",
 ], optional = true }
 
 [dev-dependencies]
+fs_extra = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 trybuild = { workspace = true }
