@@ -22,6 +22,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+* ([#210](https://github.com/iai-callgrind/iai-callgrind/pull/210)): Add the
+  `file` parameter to the `#[benches]` attribute to support creation of
+  benchmarks from the specified file. Each line of this file represents a new
+  benchmark and the read line is passed to the benchmark function or if the
+  `setup` parameter is also present to the `setup` function.
+
 ## [0.12.1] - 2024-07-31
 
 ### Changed
