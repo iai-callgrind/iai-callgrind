@@ -223,7 +223,7 @@ might be needed.
 
 Use this scheme if you want to micro-benchmark specific functions of your crate's library.
 
-#### Important default behavior
+##### Important default behavior
 
 The environment variables are cleared before running a library benchmark. Have a
 look into the [Configuration](#configuration) section if you need to change that
@@ -466,7 +466,34 @@ fn bench_bubble_sort_with_benches_attribute(input: Vec<i32>) -> Vec<i32> {
 but a lot more concise especially if a lot of values are passed to the same
 `setup` function.
 
-##### Comparing benchmark functions
+##### The `library_benchmark_group!`
+
+The `library_benchmark_group` macro accepts the following parameters (in this
+order and separated by a semicolon):
+
+- __`name`__ (mandatory): A unique name used to identify the group for the
+  `main!` macro
+- __`config`__ (optional): A `LibraryBenchmarkConfig` which is applied
+  to all benchmarks within the same group.
+- __`compare_by_id`__ (optional): The default is false. If true, all benches in
+  the benchmark functions specified with the `benchmarks` argument, across any
+  benchmark groups, are compared with each other as long as the ids (the part
+  after the `::` in `#[bench::id(...)]`) match. See also
+  [below](#comparing-benchmark-functions)
+- __`setup`__ (optional): A setup function or any valid expression which is run
+  before all benchmarks of this group
+- __`teardown`__ (optional): A teardown function or any valid expression which
+  is run after all benchmarks of this group
+- __`benchmarks`__ (mandatory): A list of comma separated paths of benchmark
+  functions which are annotated with `#[library_benchmark]`
+
+Note the `setup` and `teardown` parameters are different to the ones of
+`#[library_benchmark]`, `#[bench]` and `#[benches]`. They accept an expression
+or function call as in `setup = group_setup_function()`. Also, these `setup` and
+`teardown` functions are not overridden by the ones from any of the before
+mentioned attributes.
+
+###### Comparing benchmark functions
 
 Comparing benchmark functions is supported via the optional
 `library_benchmark_group!` argument `compare_by_id` (The default value for
