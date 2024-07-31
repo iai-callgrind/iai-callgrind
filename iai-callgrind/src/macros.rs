@@ -38,15 +38,20 @@
 /// # }
 /// ```
 ///
-/// which accepts the following top-level arguments:
+/// which accepts the following top-level arguments in this order (separated by a semicolon):
 ///
-/// * __`library_benchmark_groups`__ (mandatory): The `name` of one or more
-///   [`library_benchmark_group!`](crate::library_benchmark_group) macros.
 /// * __`config`__ (optional): Optionally specify a [`crate::LibraryBenchmarkConfig`] valid for all
 ///   benchmark groups
+/// * __`setup`__ (optional): A setup function or any valid expression which is run before all
+///   benchmarks
+/// * __`teardown`__ (optional): A setup function or any valid expression which is run after all
+///   benchmarks
+/// * __`library_benchmark_groups`__ (mandatory): The __name__ of one or more
+///   [`library_benchmark_group!`](crate::library_benchmark_group) macros. Multiple __names__ are
+///   expected to be a comma separated list
 ///
 /// A library benchmark consists of
-/// [`library_benchmark_groups`](crate::library_benchmark_group) and  with
+/// [`library_benchmark_groups`](crate::library_benchmark_group) and with
 /// [`#[library_benchmark]`](crate::library_benchmark) annotated benchmark functions.
 ///
 /// ```rust
@@ -244,12 +249,16 @@ macro_rules! main {
     };
     (
         $( config = $config:expr; $(;)* )?
+        $( setup = $setup:expr ; $(;)* )?
+        $( teardown = $teardown:expr ; $(;)* )?
         library_benchmark_groups =
     ) => {
         compile_error!("The library_benchmark_groups argument needs at least one `name` of a `library_benchmark_group!`");
     };
     (
         $( config = $config:expr ; $(;)* )?
+        $( setup = $setup:expr ; $(;)* )?
+        $( teardown = $teardown:expr ; $(;)* )?
         library_benchmark_groups = $( $group:ident ),+ $(,)*
     ) => {
         #[inline(never)]
@@ -278,6 +287,8 @@ macro_rules! main {
             let mut benchmark = $crate::internal::InternalLibraryBenchmark {
                 config: config.unwrap_or_default(),
                 command_line_args: this_args.collect(),
+                has_setup: __run_setup(false),
+                has_teardown: __run_teardown(false),
                 ..Default::default()
             };
 
@@ -286,7 +297,9 @@ macro_rules! main {
                     id: Some(stringify!($group).to_owned()),
                     config: $group::get_config(),
                     compare: $group::compare(),
-                    benches: vec![]
+                    benches: vec![],
+                    has_setup: $group::run_setup(false),
+                    has_teardown: $group::run_teardown(false),
                 };
                 for (bench_name, get_config, macro_lib_benches) in $group::BENCHES {
                     let mut benches = $crate::internal::InternalLibraryBenchmarkBenches {
@@ -330,6 +343,30 @@ macro_rules! main {
             }
         }
 
+        #[inline(never)]
+        fn __run_setup(__run: bool) -> bool {
+            let mut __has_setup = false;
+            $(
+                __has_setup = true;
+                if __run {
+                    $setup;
+                }
+            )?
+            __has_setup
+        }
+
+        #[inline(never)]
+        fn __run_teardown(__run: bool) -> bool {
+            let mut __has_teardown = false;
+            $(
+                __has_teardown = true;
+                if __run {
+                    $teardown;
+                }
+            )?
+            __has_teardown
+        }
+
         fn main() {
             let mut args_iter = std::hint::black_box(std::env::args()).skip(1);
             if args_iter
@@ -337,24 +374,44 @@ macro_rules! main {
                 .as_ref()
                 .map_or(false, |value| value == "--iai-run")
             {
-                match std::hint::black_box(args_iter.next().expect("Expecting a function type")).as_str() {
+                let current = std::hint::black_box(args_iter.next().expect("Expecting a function type"));
+                let next = std::hint::black_box(args_iter.next());
+                match current.as_str() {
+                    "setup" if next.is_none() => {
+                        __run_setup(true);
+                    },
+                    "teardown" if next.is_none() => {
+                        __run_teardown(true);
+                    },
                     $(
                         stringify!($group) => {
-                            let group_index = std::hint::black_box(
-                                args_iter
-                                    .next()
-                                    .expect("Expecting a group index")
-                                    .parse::<usize>()
-                                    .expect("Expecting a valid group index")
-                            );
-                            let bench_index = std::hint::black_box(
-                                args_iter
-                                    .next()
-                                    .expect("Expecting a bench index")
-                                    .parse::<usize>()
-                                    .expect("Expecting a valid bench index")
-                            );
-                            $group::run(group_index, bench_index);
+                            match std::hint::black_box(
+                                next
+                                    .expect("An argument `setup`, `teardown` or an index should be present")
+                                    .as_str()
+                            ) {
+                                "setup" => {
+                                    $group::run_setup(true);
+                                },
+                                "teardown" => {
+                                    $group::run_teardown(true);
+                                }
+                                value => {
+                                    let group_index = std::hint::black_box(
+                                        value
+                                            .parse::<usize>()
+                                            .expect("Expecting a valid group index")
+                                    );
+                                    let bench_index = std::hint::black_box(
+                                        args_iter
+                                            .next()
+                                            .expect("A bench index should be present")
+                                            .parse::<usize>()
+                                            .expect("Expecting a valid bench index")
+                                    );
+                                    $group::run(group_index, bench_index);
+                                }
+                            }
                         }
                     )+
                     name => panic!("function '{}' not found in this scope", name)
@@ -776,33 +833,45 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
 /// name to the `library_benchmark_groups` argument of the `main!` macro. See there for further
 /// details about the [`crate::main`] macro.
 ///
-/// The following top-level arguments are accepted:
+/// The following top-level arguments are accepted in this order:
 ///
 /// ```rust
 /// # use iai_callgrind::{library_benchmark, library_benchmark_group, LibraryBenchmarkConfig};
 /// # #[library_benchmark]
 /// # fn some_func() {}
+/// fn group_setup() {}
+/// fn group_teardown() {}
 /// library_benchmark_group!(
 ///     name = my_group;
 ///     config = LibraryBenchmarkConfig::default();
 ///     compare_by_id = false;
+///     setup = group_setup();
+///     teardown = group_teardown();
 ///     benchmarks = some_func
 /// );
 /// # fn main() {
 /// # }
 /// ```
 ///
-/// * `__name__` (mandatory): A unique name used to identify the group for the `main!` macro
-/// * `__config__` (optional): A [`crate::LibraryBenchmarkConfig`] which is applied to all
+/// * __`name`__ (mandatory): A unique name used to identify the group for the `main!` macro
+/// * __`config`__ (optional): A [`crate::LibraryBenchmarkConfig`] which is applied to all
 ///   benchmarks within the same group.
-/// * `__compare_by_id__` (optional): The default is false. If true, all benches in the benchmark
+/// * __`compare_by_id`__ (optional): The default is false. If true, all benches in the benchmark
 ///   functions specified with the `benchmarks` argument, across any benchmark groups, are compared
 ///   with each other as long as the ids (the part after the `::` in `#[bench::id(...)]`) match.
+/// * __`setup`__ (optional): A setup function or any valid expression which is run before all
+///   benchmarks of this group
+/// * __`teardown`__ (optional): A teardown function or any valid expression which is run after all
+///   benchmarks of this group
+/// * __`benchmarks`__ (mandatory): A list of comma separated benchmark functions which must be
+///   annotated with `#[library_benchmark]`
 #[macro_export]
 macro_rules! library_benchmark_group {
     (
         $( config = $config:expr ; $(;)* )?
         $( compare_by_id = $compare:literal ; $(;)* )?
+        $( setup = $setup:expr ; $(;)* )?
+        $( teardown = $teardown:expr ; $(;)* )?
         benchmarks = $( $function:ident ),+
     ) => {
         compile_error!("A library_benchmark_group! needs a name\n\nlibrary_benchmark_group!(name = some_ident; benchmarks = ...);");
@@ -811,6 +880,8 @@ macro_rules! library_benchmark_group {
         name = $name:ident;
         $( config = $config:expr ; $(;)* )?
         $( compare_by_id = $compare:literal ; $(;)* )?
+        $( setup = $setup:expr ; $(;)* )?
+        $( teardown = $teardown:expr ; $(;)* )?
         benchmarks =
     ) => {
         compile_error!(
@@ -822,6 +893,8 @@ macro_rules! library_benchmark_group {
         name = $name:ident; $(;)*
         $( config = $config:expr ; $(;)* )?
         $( compare_by_id = $compare:literal ; $(;)* )?
+        $( setup = $setup:expr ; $(;)* )?
+        $( teardown = $teardown:expr ; $(;)* )?
         benchmarks = $( $function:ident ),+ $(,)*
     ) => {
         mod $name {
@@ -857,6 +930,30 @@ macro_rules! library_benchmark_group {
                     comp = $compare;
                 )?
                 comp
+            }
+
+            #[inline(never)]
+            pub fn run_setup(__run: bool) -> bool {
+                let mut __has_setup = false;
+                $(
+                    __has_setup = true;
+                    if __run {
+                        $setup;
+                    }
+                )?
+                __has_setup
+            }
+
+            #[inline(never)]
+            pub fn run_teardown(__run: bool) -> bool {
+                let mut __has_teardown = false;
+                $(
+                    __has_teardown = true;
+                    if __run {
+                        $teardown;
+                    }
+                )?
+                __has_teardown
             }
 
             #[inline(never)]

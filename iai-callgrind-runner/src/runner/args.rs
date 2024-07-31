@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::process::{Command, Stdio};
 use std::str::FromStr;
 
 use clap::builder::BoolishValueParser;
@@ -7,6 +8,7 @@ use clap::{ArgAction, Parser};
 use super::format::OutputFormat;
 use super::summary::{BaselineName, SummaryFormat};
 use crate::api::{EventKind, RawArgs, RegressionConfig};
+use crate::runner::format;
 
 /// A filter for benchmarks
 ///
@@ -42,6 +44,24 @@ pub enum NoCapture {
     False,
     Stderr,
     Stdout,
+}
+
+impl NoCapture {
+    pub fn apply(self, command: &mut Command) {
+        match self {
+            NoCapture::True | NoCapture::False => {}
+            NoCapture::Stderr => {
+                command.stdout(Stdio::null()).stderr(Stdio::inherit());
+            }
+            NoCapture::Stdout => {
+                command.stdout(Stdio::inherit()).stderr(Stdio::null());
+            }
+        };
+    }
+
+    pub fn print_footer(self) {
+        println!("{}", format::no_capture_footer(self));
+    }
 }
 
 /// The command line arguments the user provided after `--` when running cargo bench
