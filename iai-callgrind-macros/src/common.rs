@@ -151,6 +151,10 @@ impl ToTokens for Args {
 }
 
 impl BenchesArgs {
+    pub fn is_some(&self) -> bool {
+        self.0.is_some()
+    }
+
     pub fn parse_pair(&mut self, pair: &MetaNameValue) -> syn::Result<()> {
         if self.0.is_none() {
             *self = BenchesArgs::from_expr(&pair.value)?;

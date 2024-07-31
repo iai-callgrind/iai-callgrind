@@ -72,6 +72,165 @@ impl ToTokens for Args {
 }
 
 impl Bench {
+    fn parse_bench_attribute(
+        item_fn: &ItemFn,
+        attr: &Attribute,
+        id: Ident,
+        other_setup: &Setup,
+        other_teardown: &Teardown,
+    ) -> syn::Result<Self> {
+        let expected_num_args = item_fn.sig.inputs.len();
+        let meta = attr.meta.require_list()?;
+
+        let mut args = Args::default();
+        let mut config = BenchConfig::default();
+        let mut setup = Setup::default();
+        let mut teardown = Teardown::default();
+
+        if let Ok(pairs) =
+            meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
+        {
+            for pair in pairs {
+                if pair.path.is_ident("args") {
+                    args.parse_pair(&pair)?;
+                } else if pair.path.is_ident("config") {
+                    config.parse_pair(&pair);
+                } else if pair.path.is_ident("setup") {
+                    setup.parse_pair(&pair);
+                } else if pair.path.is_ident("teardown") {
+                    teardown.parse_pair(&pair);
+                } else {
+                    abort!(
+                        pair, "Invalid argument: {}", pair.path.require_ident()?;
+                        help = "Valid arguments are: `args`, `config`, `setup`, teardown`"
+                    );
+                }
+            }
+        } else {
+            args.parse_meta_list(meta)?;
+        }
+
+        setup.update(other_setup);
+        teardown.update(other_teardown);
+
+        args.check_num_arguments(expected_num_args, setup.is_some());
+
+        Ok(Bench {
+            id,
+            args,
+            config,
+            setup,
+            teardown,
+        })
+    }
+
+    fn parse_benches_attribute(
+        item_fn: &ItemFn,
+        attr: &Attribute,
+        id: &Ident,
+        other_setup: &Setup,
+        other_teardown: &Teardown,
+        cargo_meta: Option<&CargoMetadata>,
+    ) -> syn::Result<Vec<Self>> {
+        let expected_num_args = item_fn.sig.inputs.len();
+        let meta = attr.meta.require_list()?;
+
+        let mut config = BenchConfig::default();
+        let mut setup = Setup::default();
+        let mut teardown = Teardown::default();
+        let mut args = BenchesArgs::default();
+        let mut file = File::default();
+
+        if let Ok(pairs) =
+            meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
+        {
+            for pair in pairs {
+                if pair.path.is_ident("args") {
+                    args.parse_pair(&pair)?;
+                } else if pair.path.is_ident("config") {
+                    config.parse_pair(&pair);
+                } else if pair.path.is_ident("setup") {
+                    setup.parse_pair(&pair);
+                } else if pair.path.is_ident("teardown") {
+                    teardown.parse_pair(&pair);
+                } else if pair.path.is_ident("file") {
+                    file.parse_pair(&pair);
+                } else {
+                    abort!(
+                        pair, "Invalid argument: {}", pair.path.require_ident()?;
+                        help = "Valid arguments are: `args`, `file`, `config`, `setup`, `teardown`"
+                    );
+                }
+            }
+        } else {
+            args = BenchesArgs::from_meta_list(meta)?;
+        };
+
+        setup.update(other_setup);
+        teardown.update(other_teardown);
+
+        let benches = match (&file.0, args.is_some()) {
+            (Some(literal), true) => {
+                abort!(
+                    literal.span(),
+                    "Only one parameter of `file` or `args` can be present"
+                );
+            }
+            (None, true) => args
+                .finalize()
+                .map(Args)
+                .enumerate()
+                .map(|(index, args)| {
+                    args.check_num_arguments(expected_num_args, setup.is_some());
+                    let id = format_ident!("{id}_{index}");
+                    Bench {
+                        id,
+                        args,
+                        config: config.clone(),
+                        setup: setup.clone(),
+                        teardown: teardown.clone(),
+                    }
+                })
+                .collect(),
+            (Some(literal), false) => {
+                let strings = file.read(cargo_meta);
+                if strings.is_empty() {
+                    abort!(literal, "The provided file '{}' was empty", literal.value());
+                }
+
+                let mut benches = vec![];
+                for (i, string) in strings.into_iter().enumerate() {
+                    let id = format_ident!("{id}_{i}");
+                    let expr = if string.is_empty() {
+                        parse_quote_spanned! { literal.span() => String::new() }
+                    } else {
+                        parse_quote_spanned! { literal.span() => String::from(#string) }
+                    };
+                    let args = Args(common::Args::new(literal.span(), vec![expr]));
+                    benches.push(Bench {
+                        id,
+                        args,
+                        config: config.clone(),
+                        setup: setup.clone(),
+                        teardown: teardown.clone(),
+                    });
+                }
+
+                benches
+            }
+            // Cover the case when no arguments were present for example `#[benches::id()]`,
+            (None, false) => vec![Bench {
+                id: id.clone(),
+                args: Args::default(),
+                config: config.clone(),
+                setup: setup.clone(),
+                teardown: teardown.clone(),
+            }],
+        };
+
+        Ok(benches)
+    }
+
     fn render_as_code(&self, callee: &Ident) -> TokenStream {
         let id = &self.id;
         let args = &self.args;
@@ -198,165 +357,6 @@ impl File {
 }
 
 impl LibraryBenchmark {
-    fn parse_bench_attribute(
-        &mut self,
-        item_fn: &ItemFn,
-        attr: &Attribute,
-        id: Ident,
-    ) -> syn::Result<()> {
-        let expected_num_args = item_fn.sig.inputs.len();
-        let meta = attr.meta.require_list()?;
-
-        let mut args = Args::default();
-        let mut config = BenchConfig::default();
-        let mut setup = Setup::default();
-        let mut teardown = Teardown::default();
-
-        if let Ok(pairs) =
-            meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
-        {
-            for pair in pairs {
-                if pair.path.is_ident("args") {
-                    args.parse_pair(&pair)?;
-                } else if pair.path.is_ident("config") {
-                    config.parse_pair(&pair);
-                } else if pair.path.is_ident("setup") {
-                    setup.parse_pair(&pair);
-                } else if pair.path.is_ident("teardown") {
-                    teardown.parse_pair(&pair);
-                } else {
-                    abort!(
-                        pair, "Invalid argument: {}", pair.path.require_ident()?;
-                        help = "Valid arguments are: `args`, `config`, `setup`, teardown`"
-                    );
-                }
-            }
-        } else {
-            args.parse_meta_list(meta)?;
-        }
-
-        setup.update(&self.setup);
-        teardown.update(&self.teardown);
-
-        args.check_num_arguments(expected_num_args, setup.is_some());
-
-        self.benches.push(Bench {
-            id,
-            args,
-            config,
-            setup,
-            teardown,
-        });
-
-        Ok(())
-    }
-
-    fn parse_benches_attribute(
-        &mut self,
-        item_fn: &ItemFn,
-        attr: &Attribute,
-        id: &Ident,
-        cargo_meta: Option<&CargoMetadata>,
-    ) -> syn::Result<()> {
-        let expected_num_args = item_fn.sig.inputs.len();
-        let meta = attr.meta.require_list()?;
-
-        let mut config = BenchConfig::default();
-        let mut setup = Setup::default();
-        let mut teardown = Teardown::default();
-        let mut args = BenchesArgs::default();
-        let mut file = File::default();
-
-        if let Ok(pairs) =
-            meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
-        {
-            for pair in pairs {
-                if pair.path.is_ident("args") {
-                    args.parse_pair(&pair)?;
-                } else if pair.path.is_ident("config") {
-                    config.parse_pair(&pair);
-                } else if pair.path.is_ident("setup") {
-                    setup.parse_pair(&pair);
-                } else if pair.path.is_ident("teardown") {
-                    teardown.parse_pair(&pair);
-                } else if pair.path.is_ident("file") {
-                    file.parse_pair(&pair);
-                } else {
-                    abort!(
-                        pair, "Invalid argument: {}", pair.path.require_ident()?;
-                        help = "Valid arguments are: `args`, `file`, `config`, `setup`, `teardown`"
-                    );
-                }
-            }
-        } else {
-            args = BenchesArgs::from_meta_list(meta)?;
-        };
-
-        setup.update(&self.setup);
-        teardown.update(&self.teardown);
-
-        match (&file.0, args.0) {
-            (Some(literal), Some(_)) => {
-                abort!(
-                    literal.span(),
-                    "Only one parameter of `file` or `args` can be present"
-                );
-            }
-            (None, Some(mut args)) => {
-                // Make sure there is at least one `Args` present.
-                //
-                // `#[benches::id(args = [])]` has to result in a single Bench with an empty Args.
-                if args.is_empty() {
-                    args.push(common::Args::default());
-                }
-                for (i, args) in args.into_iter().map(Args).enumerate() {
-                    args.check_num_arguments(expected_num_args, setup.is_some());
-
-                    let id = format_ident!("{id}_{i}");
-                    self.benches.push(Bench {
-                        id,
-                        args,
-                        config: config.clone(),
-                        setup: setup.clone(),
-                        teardown: teardown.clone(),
-                    });
-                }
-            }
-            (Some(literal), None) => {
-                let strings = file.read(cargo_meta);
-                if strings.is_empty() {
-                    abort!(literal, "The provided file '{}' was empty", literal.value());
-                }
-                for (i, string) in strings.into_iter().enumerate() {
-                    let id = format_ident!("{id}_{i}");
-                    let expr = if string.is_empty() {
-                        parse_quote_spanned! { literal.span() => String::new() }
-                    } else {
-                        parse_quote_spanned! { literal.span() => String::from(#string) }
-                    };
-                    let args = Args(common::Args::new(literal.span(), vec![expr]));
-                    self.benches.push(Bench {
-                        id,
-                        args,
-                        config: config.clone(),
-                        setup: setup.clone(),
-                        teardown: teardown.clone(),
-                    });
-                }
-            }
-            // Cover the case when no arguments were present for example `#[benches::id()]`,
-            (None, None) => self.benches.push(Bench {
-                id: id.clone(),
-                args: Args::default(),
-                config: config.clone(),
-                setup: setup.clone(),
-                teardown: teardown.clone(),
-            }),
-        }
-
-        Ok(())
-    }
-
     fn extract_benches(
         &mut self,
         item_fn: &ItemFn,
@@ -384,7 +384,13 @@ impl LibraryBenchmark {
                             note = "#[bench::my_id(...)]"
                         );
                     };
-                    self.parse_bench_attribute(item_fn, attr, id)?;
+                    self.benches.push(Bench::parse_bench_attribute(
+                        item_fn,
+                        attr,
+                        id,
+                        &self.setup,
+                        &self.teardown,
+                    )?);
                 }
                 Some(segment) if segment == &benches => {
                     if attr.path().segments.len() > 2 {
@@ -402,7 +408,14 @@ impl LibraryBenchmark {
                             note = "#[benches::my_id(...)]"
                         );
                     };
-                    self.parse_benches_attribute(item_fn, attr, &id, cargo_meta)?;
+                    self.benches.extend(Bench::parse_benches_attribute(
+                        item_fn,
+                        attr,
+                        &id,
+                        &self.setup,
+                        &self.teardown,
+                        cargo_meta,
+                    )?);
                 }
                 Some(segment) => {
                     abort!(

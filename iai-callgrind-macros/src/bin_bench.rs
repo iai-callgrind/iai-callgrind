@@ -229,7 +229,6 @@ impl Bench {
     }
 }
 
-// TODO: SORT THIS INTO impl section
 impl BenchConfig {
     pub fn ident(id: Option<&Ident>) -> Ident {
         if let Some(ident) = id {
