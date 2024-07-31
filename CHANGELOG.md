@@ -1,4 +1,4 @@
-<!-- spell-checker:ignore serde dewert binstall jembishop kehl DaniPopes -->
+<!-- spell-checker:ignore serde dewert binstall jembishop kehl DaniPopes bytemuck -->
 <!--
 Added for new features.
 Changed for changes in existing functionality.
@@ -21,6 +21,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.12.1] - 2024-07-31
+
+### Changed
+
+* ([#212](https://github.com/iai-callgrind/iai-callgrind/pull/212)): Update
+  transitive dependency `bytemuck` 1.15.0 (yanked) -> 1.16.3
+* Update other locked dependencies:
+    * `cc`: 1.1.5 -> 1.1.7,
+    * `serde_json`: 1.0.120 -> 1.0.121
 
 ## [0.12.0] - 2024-07-24
 
