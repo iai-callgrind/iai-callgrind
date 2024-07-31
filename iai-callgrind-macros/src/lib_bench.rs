@@ -1,15 +1,22 @@
+use std::fs::File as StdFile;
+use std::io::{BufRead, BufReader};
 use std::ops::Deref;
+use std::path::PathBuf;
 
 use derive_more::{Deref, DerefMut};
 use proc_macro2::TokenStream;
-use proc_macro_error::abort;
+use proc_macro_error::{abort, emit_error};
 use quote::{format_ident, quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::Parse;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::{parse2, parse_quote, Attribute, Ident, ItemFn, MetaNameValue, Token};
+use syn::{
+    parse2, parse_quote, parse_quote_spanned, Attribute, Expr, Ident, ItemFn, LitStr,
+    MetaNameValue, Token,
+};
 
 use crate::common::{self, BenchesArgs};
+use crate::CargoMetadata;
 
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
 #[derive(Debug, Default, Clone, Deref, DerefMut)]
@@ -29,6 +36,9 @@ struct Bench {
 
 #[derive(Debug, Default, Clone, Deref, DerefMut)]
 struct BenchConfig(common::BenchConfig);
+
+#[derive(Debug, Default, Clone)]
+struct File(Option<LitStr>);
 
 /// This is the counterpart to the `#[library_benchmark]` attribute.
 #[derive(Debug, Default)]
@@ -126,6 +136,67 @@ impl BenchConfig {
     }
 }
 
+impl File {
+    fn parse_pair(&mut self, pair: &MetaNameValue) {
+        if self.0.is_none() {
+            if let Expr::Lit(literal) = &pair.value {
+                self.0 = Some(parse2::<LitStr>(literal.to_token_stream()).unwrap());
+            } else {
+                abort!(
+                    pair.value, "Invalid value for `file`";
+                    help = "The `file` argument needs a literal string containing the path to an existing file at compile time";
+                    note = "`file = \"benches/some_fixture\"`"
+                );
+            }
+        } else {
+            emit_error!(
+                pair, "Duplicate argument: `file`";
+                help = "`file` is allowed only once"
+            );
+        }
+    }
+
+    /// Read this [`File`] and return all its lines
+    ///
+    /// # Panics
+    ///
+    /// Panics if there is no path present
+    fn read(&self, cargo_meta: Option<&CargoMetadata>) -> Vec<String> {
+        let expr = self.0.as_ref().expect("A file should be present");
+        let string = expr.value();
+        let mut path = PathBuf::from(&string);
+
+        if path.is_relative() {
+            if let Some(cargo_meta) = cargo_meta {
+                let root = PathBuf::from(&cargo_meta.workspace_root);
+                path = root.join(path);
+            }
+        }
+
+        let file = StdFile::open(&path)
+            .unwrap_or_else(|error| abort!(expr, "Error opening '{}': {}", path.display(), error));
+
+        let mut lines = vec![];
+        for (index, line) in BufReader::new(file).lines().enumerate() {
+            match line {
+                Ok(line) => {
+                    lines.push(line);
+                }
+                Err(error) => {
+                    abort!(
+                        self.0,
+                        "Error reading line {} in file '{}': {}",
+                        index + 1,
+                        path.display(),
+                        error
+                    );
+                }
+            }
+        }
+        lines
+    }
+}
+
 impl LibraryBenchmark {
     fn parse_bench_attribute(
         &mut self,
@@ -185,6 +256,7 @@ impl LibraryBenchmark {
         item_fn: &ItemFn,
         attr: &Attribute,
         id: &Ident,
+        cargo_meta: Option<&CargoMetadata>,
     ) -> syn::Result<()> {
         let expected_num_args = item_fn.sig.inputs.len();
         let meta = attr.meta.require_list()?;
@@ -193,6 +265,7 @@ impl LibraryBenchmark {
         let mut setup = Setup::default();
         let mut teardown = Teardown::default();
         let mut args = BenchesArgs::default();
+        let mut file = File::default();
 
         if let Ok(pairs) =
             meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
@@ -206,10 +279,12 @@ impl LibraryBenchmark {
                     setup.parse_pair(&pair);
                 } else if pair.path.is_ident("teardown") {
                     teardown.parse_pair(&pair);
+                } else if pair.path.is_ident("file") {
+                    file.parse_pair(&pair);
                 } else {
                     abort!(
                         pair, "Invalid argument: {}", pair.path.require_ident()?;
-                        help = "Valid arguments are: `args`, `config`, `setup`, `teardown`"
+                        help = "Valid arguments are: `args`, `file`, `config`, `setup`, `teardown`"
                     );
                 }
             }
@@ -220,37 +295,73 @@ impl LibraryBenchmark {
         setup.update(&self.setup);
         teardown.update(&self.teardown);
 
-        // Make sure there is at least one `Args` present.
-        //
-        // `#[benches::id()]`, `#[benches::id(args = [])]` have to result in a single Bench with an
-        // empty Args.
-        let args = args.0.map_or_else(
-            || vec![Args::default()],
-            |a| {
-                if a.is_empty() {
-                    vec![Args::default()]
-                } else {
-                    a.into_iter().map(Args).collect()
+        match (&file.0, args.0) {
+            (Some(literal), Some(_)) => {
+                abort!(
+                    literal.span(),
+                    "Only one parameter of `file` or `args` can be present"
+                );
+            }
+            (None, Some(mut args)) => {
+                // Make sure there is at least one `Args` present.
+                //
+                // `#[benches::id(args = [])]` has to result in a single Bench with an empty Args.
+                if args.is_empty() {
+                    args.push(common::Args::default());
                 }
-            },
-        );
-        for (i, args) in args.into_iter().enumerate() {
-            args.check_num_arguments(expected_num_args, setup.is_some());
+                for (i, args) in args.into_iter().map(Args).enumerate() {
+                    args.check_num_arguments(expected_num_args, setup.is_some());
 
-            let id = format_ident!("{id}_{i}");
-            self.benches.push(Bench {
-                id,
-                args,
+                    let id = format_ident!("{id}_{i}");
+                    self.benches.push(Bench {
+                        id,
+                        args,
+                        config: config.clone(),
+                        setup: setup.clone(),
+                        teardown: teardown.clone(),
+                    });
+                }
+            }
+            (Some(literal), None) => {
+                let strings = file.read(cargo_meta);
+                if strings.is_empty() {
+                    abort!(literal, "The provided file '{}' was empty", literal.value());
+                }
+                for (i, string) in strings.into_iter().enumerate() {
+                    let id = format_ident!("{id}_{i}");
+                    let expr = if string.is_empty() {
+                        parse_quote_spanned! { literal.span() => String::new() }
+                    } else {
+                        parse_quote_spanned! { literal.span() => String::from(#string) }
+                    };
+                    let args = Args(common::Args::new(literal.span(), vec![expr]));
+                    self.benches.push(Bench {
+                        id,
+                        args,
+                        config: config.clone(),
+                        setup: setup.clone(),
+                        teardown: teardown.clone(),
+                    });
+                }
+            }
+            // Cover the case when no arguments were present for example `#[benches::id()]`,
+            (None, None) => self.benches.push(Bench {
+                id: id.clone(),
+                args: Args::default(),
                 config: config.clone(),
                 setup: setup.clone(),
                 teardown: teardown.clone(),
-            });
+            }),
         }
 
         Ok(())
     }
 
-    fn extract_benches(&mut self, item_fn: &ItemFn) -> syn::Result<()> {
+    fn extract_benches(
+        &mut self,
+        item_fn: &ItemFn,
+        cargo_meta: Option<&CargoMetadata>,
+    ) -> syn::Result<()> {
         let bench: syn::PathSegment = parse_quote!(bench);
         let benches: syn::PathSegment = parse_quote!(benches);
 
@@ -291,7 +402,7 @@ impl LibraryBenchmark {
                             note = "#[benches::my_id(...)]"
                         );
                     };
-                    self.parse_benches_attribute(item_fn, attr, &id)?;
+                    self.parse_benches_attribute(item_fn, attr, &id, cargo_meta)?;
                 }
                 Some(segment) => {
                     abort!(
@@ -538,7 +649,14 @@ pub fn render(args: TokenStream, input: TokenStream) -> syn::Result<TokenStream>
     let mut library_benchmark = parse2::<LibraryBenchmark>(args)?;
     let item_fn = parse2::<ItemFn>(input)?;
 
-    library_benchmark.extract_benches(&item_fn)?;
+    let cargo_meta: Option<CargoMetadata> =
+        std::process::Command::new(option_env!("CARGO").unwrap_or("cargo"))
+            .args(["metadata", "--no-deps", "--format-version", "1"])
+            .output()
+            .ok()
+            .and_then(|output| serde_json::de::from_slice(&output.stdout).ok());
+
+    library_benchmark.extract_benches(&item_fn, cargo_meta.as_ref())?;
     if library_benchmark.benches.is_empty() {
         Ok(library_benchmark.render_standalone(&item_fn))
     } else {

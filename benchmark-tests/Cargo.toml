@@ -93,4 +93,8 @@ name = "test_lib_bench_main_and_group_setup_and_teardown"
 
 [[bench]]
 harness = false
+name = "test_lib_bench_file_parameter"
+
+[[bench]]
+harness = false
 name = "test_bench"

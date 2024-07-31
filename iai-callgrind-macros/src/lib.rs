@@ -24,12 +24,18 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::str_to_string)]
 
-use proc_macro::TokenStream;
-use proc_macro_error::proc_macro_error;
-
 mod bin_bench;
 mod common;
 mod lib_bench;
+
+use proc_macro::TokenStream;
+use proc_macro_error::proc_macro_error;
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize)]
+struct CargoMetadata {
+    workspace_root: String,
+}
 
 /// The `#[library_benchmark]` attribute let's you define a benchmark function which you can later
 /// use in the `library_benchmark_groups!` macro.

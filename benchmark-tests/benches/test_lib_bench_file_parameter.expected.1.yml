@@ -1,0 +1,49 @@
+data:
+  - group: bench_group
+    function: one_line
+    id: one_line_0
+    expected:
+      files:
+        - callgrind.one_line.one_line_0.log
+        - callgrind.one_line.one_line_0.out
+        - summary.json
+  - group: bench_group
+    function: one_line_with_setup
+    id: one_line_0
+    expected:
+      files:
+        - callgrind.one_line_with_setup.one_line_0.log
+        - callgrind.one_line_with_setup.one_line_0.out
+        - summary.json
+  - group: bench_group
+    function: two_lines
+    id: two_lines_0
+    expected:
+      files:
+        - callgrind.two_lines.two_lines_0.log
+        - callgrind.two_lines.two_lines_0.out
+        - summary.json
+  - group: bench_group
+    function: two_lines
+    id: two_lines_1
+    expected:
+      files:
+        - callgrind.two_lines.two_lines_1.log
+        - callgrind.two_lines.two_lines_1.out
+        - summary.json
+  - group: bench_group
+    function: two_lines_with_setup
+    id: two_lines_0
+    expected:
+      files:
+        - callgrind.two_lines_with_setup.two_lines_0.log
+        - callgrind.two_lines_with_setup.two_lines_0.out
+        - summary.json
+  - group: bench_group
+    function: two_lines_with_setup
+    id: two_lines_1
+    expected:
+      files:
+        - callgrind.two_lines_with_setup.two_lines_1.log
+        - callgrind.two_lines_with_setup.two_lines_1.out
+        - summary.json

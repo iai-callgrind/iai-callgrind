@@ -733,9 +733,12 @@ dependencies = [
  "cc",
  "cfg-if",
  "cty",
+ "fs_extra",
  "iai-callgrind-macros",
  "iai-callgrind-runner",
  "regex",
+ "serde",
+ "serde_json",
  "strum",
  "trybuild",
  "version-compare",
@@ -751,6 +754,8 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rstest",
+ "serde",
+ "serde_json",
  "syn 2.0.72",
 ]
 
