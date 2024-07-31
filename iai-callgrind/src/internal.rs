@@ -4,6 +4,8 @@
 
 pub use iai_callgrind_runner::api::{
     Arg as InternalArg, Assistant as InternalAssistant, BinaryBenchmark as InternalBinaryBenchmark,
+    BinaryBenchmarkBench as InternalBinaryBenchmarkBench,
+    BinaryBenchmarkBenches as InternalBinaryBenchmarkBenches,
     BinaryBenchmarkConfig as InternalBinaryBenchmarkConfig,
     BinaryBenchmarkGroup as InternalBinaryBenchmarkGroup, Cmd as InternalCmd,
     Command as InternalCommand, ExitWith as InternalExitWith, Fixtures as InternalFixtures,

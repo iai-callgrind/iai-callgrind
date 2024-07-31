@@ -855,57 +855,58 @@ impl_traits!(
 );
 
 impl BinaryBenchmarkGroup {
-    /// Specify a [`Run`] to benchmark a binary
-    ///
-    /// You can specify a crate's binary either at group level with the simple name of the binary
-    /// (say `my-exe`) or at `bench` level with `env!("CARGO_BIN_EXE_my-exe")`. See examples.
-    ///
-    /// See also [`Run`] for more details.
-    ///
-    /// # Examples
-    ///
-    /// If your crate has a binary `my-exe` (the `name` key of a `[[bin]]` entry in Cargo.toml),
-    /// specifying `"my-exe"` in the benchmark argument sets the command for all [`Run`]
-    /// arguments and it's sufficient to specify only [`Arg`] with [`Run::with_arg`]:
-    ///
-    /// ```rust
-    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
-    ///
-    /// binary_benchmark_group!(
-    ///     name = my_exe_group;
-    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
-    ///         group.bench(Run::with_arg(Arg::new("foo", &["foo"])));
-    ///     }
-    /// );
-    /// # fn main() {
-    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
-    /// # }
-    /// ```
-    ///
-    /// Without the `command` at group level:
-    ///
-    /// ```rust
-    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
-    ///
-    /// binary_benchmark_group!(
-    ///     name = my_exe_group;
-    ///     benchmark = |group: &mut BinaryBenchmarkGroup| {
-    ///         // Usually you should use `env!("CARGO_BIN_EXE_my-exe")` if `my-exe` is a binary
-    ///         // of your crate
-    ///         group.bench(Run::with_cmd("/path/to/my-exe", Arg::new("foo", &["foo"])));
-    ///     }
-    /// );
-    /// # fn main() {
-    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
-    /// # }
-    /// ```
-    pub fn bench<T>(&mut self, run: T) -> &mut Self
-    where
-        T: Into<internal::InternalRun>,
-    {
-        self.0.benches.push(run.into());
-        self
-    }
+    // TODO: COMPLETELY REWRITE
+    // /// Specify a [`Run`] to benchmark a binary
+    // ///
+    // /// You can specify a crate's binary either at group level with the simple name of the binary
+    // /// (say `my-exe`) or at `bench` level with `env!("CARGO_BIN_EXE_my-exe")`. See examples.
+    // ///
+    // /// See also [`Run`] for more details.
+    // ///
+    // /// # Examples
+    // ///
+    // /// If your crate has a binary `my-exe` (the `name` key of a `[[bin]]` entry in Cargo.toml),
+    // /// specifying `"my-exe"` in the benchmark argument sets the command for all [`Run`]
+    // /// arguments and it's sufficient to specify only [`Arg`] with [`Run::with_arg`]:
+    // ///
+    // /// ```rust
+    // /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    // ///
+    // /// binary_benchmark_group!(
+    // ///     name = my_exe_group;
+    // ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
+    // ///         group.bench(Run::with_arg(Arg::new("foo", &["foo"])));
+    // ///     }
+    // /// );
+    // /// # fn main() {
+    // /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
+    // /// # }
+    // /// ```
+    // ///
+    // /// Without the `command` at group level:
+    // ///
+    // /// ```rust
+    // /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+    // ///
+    // /// binary_benchmark_group!(
+    // ///     name = my_exe_group;
+    // ///     benchmark = |group: &mut BinaryBenchmarkGroup| {
+    // ///         // Usually you should use `env!("CARGO_BIN_EXE_my-exe")` if `my-exe` is a binary
+    // ///         // of your crate
+    // ///         group.bench(Run::with_cmd("/path/to/my-exe", Arg::new("foo", &["foo"])));
+    // ///     }
+    // /// );
+    // /// # fn main() {
+    // /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
+    // /// # }
+    // /// ```
+    // pub fn bench<T>(&mut self, run: T) -> &mut Self
+    // where
+    //     T: Into<internal::InternalRun>,
+    // {
+    //     self.0.benches.push(run.into());
+    //     self
+    // }
 }
 
 impl From<internal::InternalBinaryBenchmarkGroup> for BinaryBenchmarkGroup {
@@ -940,6 +941,8 @@ impl Command {
         self.clone()
     }
 }
+
+impl_traits!(Command, internal::InternalCommand);
 
 impl From<ExitWith> for internal::InternalExitWith {
     fn from(value: ExitWith) -> Self {

@@ -718,6 +718,7 @@ impl Groups {
         bench_assists
     }
 
+    // TODO: STOPPED HERE
     fn from_binary_benchmark(
         module: &str,
         benchmark: BinaryBenchmark,
@@ -728,35 +729,36 @@ impl Groups {
 
         let mut groups = vec![];
         for group in benchmark.groups {
-            let module_path = if let Some(id) = group.id.as_ref() {
-                format!("{module}::{id}")
-            } else {
-                module.to_owned()
-            };
-            let group_config = global_config
-                .clone()
-                .update_from_all([group.config.as_ref()]);
-            let benches =
-                Self::parse_runs(&module_path, &group.cmd, group.benches, &group_config, meta)?;
-            let callgrind_args =
-                Args::from_raw_args(&[&group_config.raw_callgrind_args, &meta_callgrind_args])?;
-            let config = Group {
-                id: group.id,
-                module_path,
-                fixtures: group_config.fixtures,
-                sandbox: group_config.sandbox.unwrap_or(true),
-                benches,
-                assists: Self::parse_assists(
-                    group.assists,
-                    &callgrind_args,
-                    api::update_option(&group_config.regression_config, &meta.regression_config)
-                        .map(std::convert::Into::into)
-                        .as_ref(),
-                    group_config.flamegraph_config.map(Into::into).as_ref(),
-                    &ToolConfigs(group_config.tools.0.into_iter().map(Into::into).collect()),
-                ),
-            };
-            groups.push(config);
+            // TODO: IMPLEMENT
+            // let module_path = if let Some(id) = group.id.as_ref() {
+            //     format!("{module}::{id}")
+            // } else {
+            //     module.to_owned()
+            // };
+            // let group_config = global_config
+            //     .clone()
+            //     .update_from_all([group.config.as_ref()]);
+            // let benches =
+            //     Self::parse_runs(&module_path, &group.cmd, group.benches, &group_config, meta)?;
+            // let callgrind_args =
+            //     Args::from_raw_args(&[&group_config.raw_callgrind_args, &meta_callgrind_args])?;
+            // let config = Group {
+            //     id: group.id,
+            //     module_path,
+            //     fixtures: group_config.fixtures,
+            //     sandbox: group_config.sandbox.unwrap_or(true),
+            //     benches,
+            //     assists: Self::parse_assists(
+            //         group.assists,
+            //         &callgrind_args,
+            //         api::update_option(&group_config.regression_config, &meta.regression_config)
+            //             .map(std::convert::Into::into)
+            //             .as_ref(),
+            //         group_config.flamegraph_config.map(Into::into).as_ref(),
+            //         &ToolConfigs(group_config.tools.0.into_iter().map(Into::into).collect()),
+            //     ),
+            // };
+            // groups.push(config);
         }
         Ok(Self(groups))
     }

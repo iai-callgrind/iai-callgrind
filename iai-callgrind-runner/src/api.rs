@@ -54,15 +54,28 @@ pub struct Command {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct BinaryBenchmarkGroup {
-    // TODO: RENAME to name
+pub struct BinaryBenchmarkBench {
     pub id: Option<String>,
-    // TODO: DELETE
-    pub cmd: Option<Cmd>,
+    pub args: Option<String>,
+    pub command: Command,
     pub config: Option<BinaryBenchmarkConfig>,
-    // TODO: CHANGE to Vec<Command>
-    pub benches: Vec<Run>,
-    pub assists: Vec<Assistant>,
+    pub has_setup: bool,
+    pub has_teardown: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BinaryBenchmarkBenches {
+    pub config: Option<BinaryBenchmarkConfig>,
+    pub benches: Vec<BinaryBenchmarkBench>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BinaryBenchmarkGroup {
+    pub id: Option<String>,
+    pub config: Option<BinaryBenchmarkConfig>,
+    pub has_setup: bool,
+    pub has_teardown: bool,
+    pub benches: Vec<BinaryBenchmarkBenches>,
 }
 
 // TODO: REMOVE

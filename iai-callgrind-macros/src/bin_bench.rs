@@ -207,7 +207,6 @@ impl Bench {
         }
     }
 
-    // TODO: FINISH
     fn render_as_member(&self) -> TokenStream {
         let id = &self.id;
         let id_display = self.id.to_string();
@@ -231,14 +230,9 @@ impl Bench {
 
 impl BenchConfig {
     pub fn ident(id: Option<&Ident>) -> Ident {
-        if let Some(ident) = id {
-            format_ident!("__get_config_{ident}")
-        } else {
-            format_ident!("__get_config")
-        }
+        format_ident("__get_config", id)
     }
 
-    // TODO: CONTINUE
     fn render_as_code(&self, id: Option<&Ident>) -> TokenStream {
         if let Some(config) = &self.deref().0 {
             let ident = Self::ident(id);
@@ -386,54 +380,6 @@ impl BinaryBenchmark {
         }
     }
 
-    // /// TODO: Update documentation
-    // /// Render the `#[library_benchmark]` when other outer attributes like `#[bench]` were
-    // present ///
-    // /// We use the function name of the annotated function as module name. This new module
-    // /// encloses the new functions generated from the `#[bench]` and `#[benches]` attribute as
-    // well /// as the original and unmodified benchmark function.
-    // ///
-    // /// The original benchmark function receives additional attributes `#[inline(never)]` to
-    // prevent /// the compiler from inlining this function and `#[export_name]` to export this
-    // function with a /// prefix `iai_callgrind::bench::`. The latter attribute is important
-    // since we extract the /// costs in the iai-callgrind-runner using callgrind's function
-    // match mechanism via a wildcard /// `iai_callgrind::bench::*`. The main problem is that
-    // the compiler replaces functions with /// identical body. For example the functions
-    // ///
-    // /// ```ignore
-    // /// #[library_benchmark]
-    // /// #[bench::my_id(42)]
-    // /// fn my_bench(arg: u64) -> u64 {
-    // ///     my_lib::bench_me()
-    // /// }
-    // ///
-    // /// #[library_benchmark]
-    // /// #[bench::my_id(84)]
-    // /// fn my_bench_with_longer_function_name(arg: u64) -> u64 {
-    // ///     my_lib::bench_me()
-    // /// }
-    // /// ```
-    // ///
-    // /// would be treated by the compiler as a single function (it takes the one with the shorter
-    // /// function name, here `my_bench`) and both function names would be exported under the same
-    // /// name. If we don't export these functions with a common prefix, we wouldn't be able to
-    // /// match for `my_bench_with_longer_function_name::my_bench_with_longer_function_name` since
-    // /// this function was replaced by the compiler with `my_bench::my_bench`.
-    // ///
-    // /// Next, we store all necessary information in a `BENCHES` slice of
-    // /// `iai_callgrind::internal::InternalMacroLibBench` structs. This slice can be easily
-    // accessed /// by the macros of the `iai-callgrind` package in which we finally can call
-    // all the benchmark /// functions.
-    // ///
-    // /// # Example
-    // ///
-    // /// ```ignore
-    // /// #[library_benchmark]
-    // /// #[bench::my_id(42)]
-    // /// fn my_benchmark_function(arg: u64) -> u64 {
-    // ///     my_lib::bench_me(arg)
-    // /// }
-    // /// ```
     fn render_benches(self, item_fn: &ItemFn) -> TokenStream {
         let new_item_fn = ItemFn {
             attrs: vec![],

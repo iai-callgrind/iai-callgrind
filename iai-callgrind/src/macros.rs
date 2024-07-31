@@ -202,7 +202,35 @@ macro_rules! main {
                 ..Default::default()
             };
 
-            // TODO: collect the `iai_callgrind::Command`s
+            $(
+                let mut group = $crate::internal::InternalBinaryBenchmarkGroup {
+                    id: Some(stringify!($group).to_owned()),
+                    config: $group::__get_config(),
+                    benches: vec![],
+                    has_setup: $group::__run_setup(false),
+                    has_teardown: $group::__run_teardown(false),
+                };
+                for (bench_name, get_config, macro_bin_benches) in $group::__BENCHES {
+                    let mut benches = $crate::internal::InternalBinaryBenchmarkBenches {
+                        benches: vec![],
+                        config: get_config()
+                    };
+                    for macro_bin_bench in macro_bin_benches.iter() {
+                        let bench = $crate::internal::InternalBinaryBenchmarkBench {
+                            id: macro_bin_bench.id_display.map(|i| i.to_string()),
+                            args: macro_bin_bench.args_display.map(|i| i.to_string()),
+                            command: (macro_bin_bench.func)().into(),
+                            config: macro_bin_bench.config.map(|f| f()),
+                            has_setup: macro_bin_bench.setup.is_some(),
+                            has_teardown: macro_bin_bench.teardown.is_some()
+                        };
+                        benches.benches.push(bench);
+                    }
+                    group.benches.push(benches);
+                }
+
+                benchmark.groups.push(group);
+            )+
 
             let encoded = $crate::bincode::serialize(&benchmark).expect("Encoded benchmark");
             let mut child = cmd
@@ -227,7 +255,7 @@ macro_rules! main {
         }
 
         fn main() {
-            let mut args_iter = std::hint::black_box(std::env::args()).skip(1);
+            let mut args_iter = std::env::args().skip(1);
             if args_iter
                 .next()
                 .as_ref()
@@ -243,7 +271,7 @@ macro_rules! main {
                 //     name => panic!("function '{}' not found in this scope", name)
                 // }
             } else {
-                std::hint::black_box(run());
+                run();
             };
         }
     };
@@ -644,29 +672,46 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
                 ),+
             ];
 
-            #[inline(never)]
-            pub fn __setup() {
+            pub fn __run_setup(__run: bool) -> bool {
+                let mut __has_setup = false;
                 $(
-                    let _ = std::hint::black_box($setup);
+                    __has_setup = true;
+                    if __run {
+                        $setup;
+                    }
                 )?
+                __has_setup
             }
 
-            #[inline(never)]
-            pub fn __teardown() {
+            pub fn __run_teardown(__run: bool) -> bool {
+                let mut __has_teardown = false;
                 $(
-                    let _ = std::hint::black_box($teardown);
+                    __has_teardown = true;
+                    if __run {
+                        $teardown;
+                    }
                 )?
+                __has_teardown
             }
 
-            #[inline(never)]
             pub fn __get_config() -> Option<$crate::internal::InternalBinaryBenchmarkConfig> {
-                use super::*;
-
                 let mut config = None;
                 $(
                     config = Some($config.into());
                 )?
                 config
+            }
+
+            pub fn __run_bench_setup(group_index: usize, bench_index: usize) {
+                if let Some(setup) = __BENCHES[group_index].2[bench_index].setup {
+                    setup();
+                };
+            }
+
+            pub fn __run_bench_teardown(group_index: usize, bench_index: usize) {
+                if let Some(teardown) = __BENCHES[group_index].2[bench_index].teardown {
+                    teardown();
+                };
             }
         }
     };
