@@ -1,4 +1,4 @@
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
 use std::path::PathBuf;
 
@@ -920,10 +920,13 @@ impl_traits!(BinaryBenchmarkGroup, internal::InternalBinaryBenchmarkGroup);
 /// TODO: CONTINUE
 impl Command {
     /// TODO: CONTINUE
-    pub fn new() -> Self {
+    pub fn new<T>(path: T) -> Self
+    where
+        T: AsRef<OsStr>,
+    {
         Self(internal::InternalCommand {
-            cmd: PathBuf::from(""),
-            args: vec![],
+            path: PathBuf::from(path.as_ref()),
+            ..Default::default()
         })
     }
 

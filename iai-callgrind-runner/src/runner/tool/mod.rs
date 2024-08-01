@@ -23,6 +23,7 @@ use self::logfile_parser::LogfileSummary;
 use super::format::{tool_headline, OutputFormat};
 use super::meta::Metadata;
 use super::summary::{BaselineKind, ToolRunSummary, ToolSummary};
+use super::ModulePath;
 use crate::api::{self, ExitWith};
 use crate::error::Error;
 use crate::util::{self, make_relative, resolve_binary_path, truncate_str_utf8};
@@ -103,6 +104,7 @@ impl ToolCommand {
         }
     }
 
+    // TODO: RENAME TO clear_env
     pub fn env_clear(&mut self) -> &mut Self {
         debug!("{}: Clearing environment variables", self.tool.id());
         for (key, _) in std::env::vars() {
@@ -411,11 +413,11 @@ impl ToolOutputPath {
         tool: ValgrindTool,
         baseline_kind: &BaselineKind,
         base_dir: &Path,
-        module: &str,
+        module: &ModulePath,
         name: &str,
     ) -> Self {
         let current = base_dir;
-        let module_path: PathBuf = module.split("::").collect();
+        let module_path: PathBuf = module.to_string().split("::").collect();
         let sanitized_name = sanitize_filename::sanitize_with_options(
             name,
             sanitize_filename::Options {
@@ -449,7 +451,14 @@ impl ToolOutputPath {
         module: &str,
         name: &str,
     ) -> Result<Self> {
-        let output = Self::new(kind, tool, baseline_kind, base_dir, module, name);
+        let output = Self::new(
+            kind,
+            tool,
+            baseline_kind,
+            base_dir,
+            &ModulePath::new(module),
+            name,
+        );
         output.init()?;
         Ok(output)
     }

@@ -2,25 +2,33 @@ use iai_callgrind::{binary_benchmark, binary_benchmark_group, main, BinaryBenchm
 
 #[binary_benchmark]
 fn just_outer_attribute() -> iai_callgrind::Command {
-    iai_callgrind::Command::new().arg("me").build()
+    iai_callgrind::Command::new("/usr/bin/echo")
+        .arg("me")
+        .build()
 }
 
 #[binary_benchmark(config = BinaryBenchmarkConfig::default())]
 fn bench_with_config() -> iai_callgrind::Command {
-    iai_callgrind::Command::new().arg("happy").build()
+    iai_callgrind::Command::new("/usr/bin/echo")
+        .arg("happy")
+        .build()
 }
 
 #[binary_benchmark]
 #[bench::some(1)]
 fn bench(first: usize) -> iai_callgrind::Command {
-    iai_callgrind::Command::new().arg(first.to_string()).build()
+    iai_callgrind::Command::new("/usr/bin/echo")
+        .arg(first.to_string())
+        .build()
 }
 
 #[binary_benchmark]
 #[benches::multiple_list(1, 2, 3)]
 #[benches::multiple_args(args = [1, 2, 3], setup = my_mod::setup_me("hello there"))]
 fn benches(first: usize) -> iai_callgrind::Command {
-    iai_callgrind::Command::new().arg(first.to_string()).build()
+    iai_callgrind::Command::new("/usr/bin/echo")
+        .arg(first.to_string())
+        .build()
 }
 
 mod my_mod {

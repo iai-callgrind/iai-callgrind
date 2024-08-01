@@ -27,7 +27,7 @@ use super::summary::{
 use super::tool::{
     Parser, RunOptions, ToolConfigs, ToolOutputPath, ToolOutputPathKind, ValgrindTool,
 };
-use super::{Config, Error, DEFAULT_TOGGLE};
+use super::{Config, Error, ModulePath, DEFAULT_TOGGLE};
 use crate::api::{self, LibraryBenchmark};
 use crate::util::write_all_to_stderr;
 
@@ -206,7 +206,7 @@ impl Benchmark for BaselineBenchmark {
             ValgrindTool::Callgrind,
             &self.baseline_kind,
             &config.meta.target_dir,
-            &group.module,
+            &ModulePath::new(&group.module),
             &lib_bench.name(),
         )
     }
@@ -540,7 +540,8 @@ impl Benchmark for LoadBaselineBenchmark {
             ValgrindTool::Callgrind,
             &BaselineKind::Name(self.baseline.clone()),
             &config.meta.target_dir,
-            &group.module,
+            // TODO: group.module should already be a ModulePath
+            &ModulePath::new(&group.module),
             &lib_bench.name(),
         )
     }
@@ -683,7 +684,7 @@ impl Benchmark for SaveBaselineBenchmark {
             ValgrindTool::Callgrind,
             &BaselineKind::Name(self.baseline.clone()),
             &config.meta.target_dir,
-            &group.module,
+            &ModulePath::new(&group.module),
             &lib_bench.name(),
         )
     }

@@ -27,6 +27,8 @@ pub struct BinaryBenchmark {
     pub config: BinaryBenchmarkConfig,
     pub groups: Vec<BinaryBenchmarkGroup>,
     pub command_line_args: Vec<String>,
+    pub has_setup: bool,
+    pub has_teardown: bool,
 }
 
 // TODO: ADJUST and cleanup fields which should be better part of Command
@@ -46,16 +48,24 @@ pub struct BinaryBenchmarkConfig {
     pub tools_override: Option<Tools>,
 }
 
+/* TODO: Add other fields imitating std::process::Command as
+ * far as possible */
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Command {
-    pub cmd: PathBuf,
+    pub path: PathBuf,
     pub args: Vec<OsString>,
-    // TODO: Add others imitating std::process::Command as far as possible
+    pub envs: Vec<(OsString, Option<OsString>)>,
+    pub env_clear: Option<bool>,
+    // TODO: IMPLEMENT
+    // pub env_remove: Vec<OsString>,
+    pub current_dir: Option<PathBuf>,
+    pub exit_with: Option<ExitWith>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BinaryBenchmarkBench {
     pub id: Option<String>,
+    pub bench: String,
     pub args: Option<String>,
     pub command: Command,
     pub config: Option<BinaryBenchmarkConfig>,
@@ -71,7 +81,7 @@ pub struct BinaryBenchmarkBenches {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BinaryBenchmarkGroup {
-    pub id: Option<String>,
+    pub id: String,
     pub config: Option<BinaryBenchmarkConfig>,
     pub has_setup: bool,
     pub has_teardown: bool,

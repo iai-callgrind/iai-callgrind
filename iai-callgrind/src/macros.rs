@@ -164,15 +164,19 @@ macro_rules! main {
     };
     (
         $( config = $config:expr; $(;)* )?
+        $( setup = $setup:expr ; $(;)* )?
+        $( teardown = $teardown:expr ; $(;)* )?
         binary_benchmark_groups =
     ) => {
         compile_error!("The binary_benchmark_groups argument needs at least one `name` of a `binary_benchmark_group!`");
     };
     (
         $( config = $config:expr; $(;)* )?
+        $( setup = $setup:expr ; $(;)* )?
+        $( teardown = $teardown:expr ; $(;)* )?
         binary_benchmark_groups = $( $group:ident ),+ $(,)*
     ) => {
-        #[inline(never)]
+
         fn run() {
             let mut this_args = std::env::args();
             let exe = option_env!("IAI_CALLGRIND_RUNNER")
@@ -199,12 +203,14 @@ macro_rules! main {
             let mut benchmark = $crate::internal::InternalBinaryBenchmark {
                 config: config.unwrap_or_default(),
                 command_line_args: this_args.collect(),
+                has_setup: __run_setup(false),
+                has_teardown: __run_teardown(false),
                 ..Default::default()
             };
 
             $(
                 let mut group = $crate::internal::InternalBinaryBenchmarkGroup {
-                    id: Some(stringify!($group).to_owned()),
+                    id: stringify!($group).to_owned(),
                     config: $group::__get_config(),
                     benches: vec![],
                     has_setup: $group::__run_setup(false),
@@ -219,6 +225,7 @@ macro_rules! main {
                         let bench = $crate::internal::InternalBinaryBenchmarkBench {
                             id: macro_bin_bench.id_display.map(|i| i.to_string()),
                             args: macro_bin_bench.args_display.map(|i| i.to_string()),
+                            bench: bench_name.to_string(),
                             command: (macro_bin_bench.func)().into(),
                             config: macro_bin_bench.config.map(|f| f()),
                             has_setup: macro_bin_bench.setup.is_some(),
@@ -254,6 +261,28 @@ macro_rules! main {
             }
         }
 
+        fn __run_setup(__run: bool) -> bool {
+            let mut __has_setup = false;
+            $(
+                __has_setup = true;
+                if __run {
+                    $setup;
+                }
+            )?
+            __has_setup
+        }
+
+        fn __run_teardown(__run: bool) -> bool {
+            let mut __has_teardown = false;
+            $(
+                __has_teardown = true;
+                if __run {
+                    $teardown;
+                }
+            )?
+            __has_teardown
+        }
+
         fn main() {
             let mut args_iter = std::env::args().skip(1);
             if args_iter
@@ -261,15 +290,48 @@ macro_rules! main {
                 .as_ref()
                 .map_or(false, |value| value == "--iai-run")
             {
-                // match std::hint::black_box(args_iter.next().expect("Expecting a function type")).as_str() {
-                //     $(
-                //         concat!(stringify!($group), "::", "before") => $group::before(),
-                //         concat!(stringify!($group), "::", "after") => $group::after(),
-                //         concat!(stringify!($group), "::", "setup") => $group::setup(),
-                //         concat!(stringify!($group), "::", "teardown") => $group::teardown(),
-                //     )+
-                //     name => panic!("function '{}' not found in this scope", name)
-                // }
+                let mut current = args_iter.next().expect("Expecting a function type");
+                let next = args_iter.next();
+                match (current.as_str(), next) {
+                    ("setup", None) => {
+                        __run_setup(true);
+                    },
+                    ("teardown", None) => {
+                        __run_teardown(true);
+                    },
+                    $(
+                        (group @ stringify!($group), Some(next)) => {
+                            let current = next;
+                            let next = args_iter.next();
+
+                            match (current.as_str(), next) {
+                                ("setup", None) => {
+                                    $group::__run_setup(true);
+                                },
+                                ("teardown", None) => {
+                                    $group::__run_teardown(true);
+                                }
+                                (key @ ("setup" | "teardown"), Some(next)) => {
+                                    let group_index = next
+                                            .parse::<usize>()
+                                            .expect("The group index should be a number");
+                                    let bench_index = args_iter
+                                            .next()
+                                            .expect("The bench index should be present")
+                                            .parse::<usize>()
+                                            .expect("The bench index should be a number");
+                                    if key == "setup" {
+                                        $group::__run_bench_setup(group_index, bench_index);
+                                    } else {
+                                        $group::__run_bench_teardown(group_index, bench_index);
+                                    }
+                                }
+                                (name, _)=> panic!("Invalid function '{}' in group '{}'", name, group)
+                            }
+                        }
+                    )+
+                    (name, _) => panic!("function '{}' not found in this scope", name)
+                }
             } else {
                 run();
             };

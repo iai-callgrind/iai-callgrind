@@ -7,6 +7,7 @@ use super::args::NoCapture;
 use super::meta::Metadata;
 use super::summary::{CostsDiff, CostsSummary};
 use super::tool::ValgrindTool;
+use super::ModulePath;
 use crate::api::EventKind;
 use crate::util::{to_string_signed_short, truncate_str_utf8};
 
@@ -127,6 +128,18 @@ impl Header {
         }
     }
 
+    pub fn from_module_path<U, V>(module_path: &ModulePath, id: U, description: V) -> Self
+    where
+        U: Into<Option<String>>,
+        V: Into<Option<String>>,
+    {
+        Self {
+            module_path: module_path.to_string(),
+            id: id.into(),
+            description: description.into(),
+        }
+    }
+
     pub fn print(&self) {
         println!("{self}");
     }
@@ -175,6 +188,19 @@ impl Display for Header {
             } else {
                 f.write_fmt(format_args!(" {}", id.cyan()))?;
             }
+        } else if let Some(description) = &self.description {
+            let truncated = truncate_str_utf8(description, 37);
+            f.write_fmt(format_args!(
+                " {}{}",
+                truncated.bold().blue(),
+                if truncated.len() < description.len() {
+                    "..."
+                } else {
+                    ""
+                }
+            ))?;
+        } else {
+            // do nothing
         }
         Ok(())
     }
