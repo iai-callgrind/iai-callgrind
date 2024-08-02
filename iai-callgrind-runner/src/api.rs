@@ -34,8 +34,6 @@ pub struct BinaryBenchmark {
 // TODO: ADJUST and cleanup fields which should be better part of Command
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BinaryBenchmarkConfig {
-    pub sandbox: Option<bool>,
-    pub fixtures: Option<Fixtures>,
     pub env_clear: Option<bool>,
     pub current_dir: Option<PathBuf>,
     pub entry_point: Option<String>,
@@ -46,6 +44,7 @@ pub struct BinaryBenchmarkConfig {
     pub regression_config: Option<RegressionConfig>,
     pub tools: Tools,
     pub tools_override: Option<Tools>,
+    pub sandbox: Option<Sandbox>,
 }
 
 /* TODO: Add other fields imitating std::process::Command as
@@ -273,6 +272,12 @@ pub struct Run {
     pub config: BinaryBenchmarkConfig,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Sandbox {
+    pub enabled: Option<bool>,
+    pub fixtures: Vec<PathBuf>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tool {
     pub kind: ValgrindTool,
@@ -309,7 +314,6 @@ impl BinaryBenchmarkConfig {
     {
         for other in others.into_iter().flatten() {
             self.sandbox = update_option(&self.sandbox, &other.sandbox);
-            self.fixtures = update_option(&self.fixtures, &other.fixtures);
             self.env_clear = update_option(&self.env_clear, &other.env_clear);
             self.current_dir = update_option(&self.current_dir, &other.current_dir);
             self.entry_point = update_option(&self.entry_point, &other.entry_point);

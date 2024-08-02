@@ -28,6 +28,11 @@ use crate::error::Error;
 use crate::runner::format::tool_headline;
 use crate::util::{copy_directory, make_relative, write_all_to_stderr};
 
+mod defaults {
+    pub const SANDBOX_ENABLED: bool = false;
+    pub const REGRESSION_FAIL_FAST: bool = false;
+}
+
 // TODO: CLEANUP
 #[derive(Debug, Clone)]
 struct Assistant {
@@ -61,6 +66,7 @@ struct BinBench {
     tools: ToolConfigs,
     setup: Option<Assistant>,
     teardown: Option<Assistant>,
+    sandbox: Sandbox,
 }
 
 #[derive(Debug)]
@@ -95,8 +101,10 @@ struct Runner {
 
 #[derive(Debug)]
 struct Sandbox {
+    enabled: bool,
+    fixtures: Vec<PathBuf>,
     current_dir: PathBuf,
-    temp_dir: TempDir,
+    temp_dir: Option<TempDir>,
 }
 
 #[derive(Debug)]
@@ -124,7 +132,7 @@ impl Assistant {
     fn new_group(kind: AssistantKind, group_name: &str) -> Self {
         Self {
             kind,
-            group_name: Some(group_name.to_string()),
+            group_name: Some(group_name.to_owned()),
             indices: None,
         }
     }
@@ -132,7 +140,7 @@ impl Assistant {
     fn new_bench(kind: AssistantKind, group_name: &str, indices: (usize, usize)) -> Self {
         Self {
             kind,
-            group_name: Some(group_name.to_string()),
+            group_name: Some(group_name.to_owned()),
             indices: Some(indices),
         }
     }
@@ -397,6 +405,7 @@ impl BinBench {
             config.package_dir.clone(),
             config.bench_file.clone(),
             config.bench_bin.clone(),
+            // TODO: THIS SHOULD BE A ModulePath
             &[&group.module_path.to_string(), &self.function_name],
             self.id.clone(),
             self.args.clone(),
@@ -417,24 +426,6 @@ impl BinBench {
     }
 }
 
-// // TODO: IMPLEMENT ??
-// impl Display for BinBench {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         let args: Vec<String> = self
-//             .command
-//             .args
-//             .iter()
-//             .map(|s| s.to_string_lossy().to_string())
-//             .collect();
-//
-//         f.write_str(&format!(
-//             "{} {}",
-//             self.command.path.display(),
-//             shlex::try_join(args.iter().map(String::as_str)).unwrap()
-//         ))
-//     }
-// }
-
 impl Group {
     fn run(
         &self,
@@ -454,19 +445,27 @@ impl Group {
         //     None
         // };
 
-        // let mut assists = self.assists.clone();
+        for bench in &self.benches {
+            let sandbox = &bench.sandbox;
+            // let sandbox = if let Some(sandbox) = &bench.sandbox {
+            //     #[allow(clippy::if_then_some_else_none)]
+            //     if sandbox.enabled.unwrap_or(defaults::SANDBOX_ENABLED) {
+            //         debug!("Setting up sandbox");
+            //         Some(Sandbox::setup(sandbox)?)
+            //     } else {
+            //         debug!("Sandbox disabled");
+            //         None
+            //     }
+            // } else {
+            //     None
+            // };
 
-        // if let Some(before) = assists.before.as_mut() {
-        //     self.run_assistant(benchmark, before, is_regressed, config)?;
-        // }
-
-        for bench in self.benches.iter() {
             if let Some(setup) = &bench.setup {
                 setup.run(
                     config,
                     &bench.id.as_ref().map_or_else(
                         || self.module_path.join(&bench.function_name),
-                        |id| self.module_path.join(&bench.function_name).join(&id),
+                        |id| self.module_path.join(&bench.function_name).join(id),
                     ),
                 )?;
             }
@@ -474,7 +473,7 @@ impl Group {
             let fail_fast = bench
                 .regression_config
                 .as_ref()
-                .map_or(false, |r| r.fail_fast);
+                .map_or(defaults::REGRESSION_FAIL_FAST, |r| r.fail_fast);
             let summary = benchmark.run(bench, config, self)?;
             summary.print_and_save(&config.meta.args.output_format)?;
 
@@ -483,22 +482,18 @@ impl Group {
                     config,
                     &bench.id.as_ref().map_or_else(
                         || self.module_path.join(&bench.function_name),
-                        |id| self.module_path.join(&bench.function_name).join(&id),
+                        |id| self.module_path.join(&bench.function_name).join(id),
                     ),
                 )?;
             }
 
             summary.check_regression(is_regressed, fail_fast)?;
+
+            // if let Some(sandbox) = sandbox {
+            //     debug!("Removing sandbox");
+            //     sandbox.reset();
+            // }
         }
-
-        // if let Some(after) = assists.after.as_mut() {
-        //     self.run_assistant(benchmark, after, is_regressed, config)?;
-        // }
-
-        // if let Some(sandbox) = sandbox {
-        //     debug!("Removing sandbox");
-        //     sandbox.reset();
-        // }
 
         Ok(())
     }
@@ -513,6 +508,8 @@ impl Groups {
         // TODO: Mostly copied from lib_bench, DOUBLE_CHECK !!
         let global_config = benchmark.config;
         let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
+        let current_dir =
+            std::env::current_dir().expect("Detecting current directory should succeed");
 
         let mut groups = vec![];
         for binary_benchmark_group in benchmark.groups {
@@ -594,6 +591,10 @@ impl Groups {
                                 &group.name,
                                 (group_index, bench_index),
                             ),
+                        ),
+                        sandbox: config.sandbox.map_or_else(
+                            || Sandbox::new(defaults::SANDBOX_ENABLED, current_dir.clone()),
+                            |s| Sandbox::from_api(s, current_dir.clone()),
                         ),
                     };
                     group.benches.push(bin_bench);
@@ -705,6 +706,7 @@ impl Runner {
     }
 
     fn run(&self) -> Result<()> {
+        // TODO: DON'T RUN ANY SETUP OR TEARDOWN functions if --load-baseline is given
         if let Some(setup) = &self.setup {
             setup.run(&self.config, &ModulePath::new(&self.config.module))?;
         }
@@ -719,18 +721,18 @@ impl Runner {
 }
 
 impl Sandbox {
-    fn setup(fixtures: &Option<api::Fixtures>) -> Result<Self> {
+    fn setup(&self) -> Result<()> {
         debug!("Creating temporary workspace directory");
         let temp_dir = tempfile::tempdir().expect("Create temporary directory");
 
-        if let Some(fixtures) = &fixtures {
-            debug!(
-                "Copying fixtures from '{}' to '{}'",
-                &fixtures.path.display(),
-                temp_dir.path().display()
-            );
-            copy_directory(&fixtures.path, temp_dir.path(), fixtures.follow_symlinks)?;
-        }
+        // if let Some(fixtures) = &fixtures {
+        //     debug!(
+        //         "Copying fixtures from '{}' to '{}'",
+        //         &fixtures.path.display(),
+        //         temp_dir.path().display()
+        //     );
+        //     copy_directory(&fixtures.path, temp_dir.path(), fixtures.follow_symlinks)?;
+        // }
 
         let current_dir = std::env::current_dir()
             .with_context(|| "Failed to detect current directory".to_owned())?;
@@ -748,26 +750,48 @@ impl Sandbox {
             )
         })?;
 
-        Ok(Self {
-            current_dir,
-            temp_dir,
-        })
+        Ok(())
     }
 
     fn reset(self) {
-        std::env::set_current_dir(&self.current_dir)
-            .expect("Reset current directory to package directory");
+        // std::env::set_current_dir(&self.current_dir)
+        //     .expect("Reset current directory to package directory");
 
-        if log_enabled!(Level::Debug) {
-            debug!("Removing temporary workspace");
-            if let Err(error) = self.temp_dir.close() {
-                debug!("Error trying to delete temporary workspace: {error}");
-            }
-        } else {
-            _ = self.temp_dir.close();
+        // if log_enabled!(Level::Debug) {
+        //     debug!("Removing temporary workspace");
+        //     if let Err(error) = self.temp_dir.close() {
+        //         debug!("Error trying to delete temporary workspace: {error}");
+        //     }
+        // } else {
+        //     _ = self.temp_dir.close();
+        // }
+    }
+
+    fn new(enabled: bool, current_dir: PathBuf) -> Self {
+        Self {
+            enabled,
+            fixtures: vec![],
+            current_dir,
+            temp_dir: None,
+        }
+    }
+
+    fn from_api(s: api::Sandbox, current_dir: PathBuf) -> Sandbox {
+        Self {
+            enabled: s.enabled.unwrap_or(defaults::SANDBOX_ENABLED),
+            fixtures: s.fixtures,
+            current_dir,
+            temp_dir: None,
         }
     }
 }
+
+// TODO: CLEANUP
+// impl From<api::Sandbox> for Sandbox {
+//     fn from(value: api::Sandbox) -> Self {
+//         Self { enabled: value.enabled.unwrap_or(defaults::SANDBOX_ENABLED), fixtures:
+// value.fixtures, current_dir: (), temp_dir: () }     }
+// }
 
 impl Benchmark for SaveBaselineBenchmark {
     fn output_path(&self, bin_bench: &BinBench, config: &Config, group: &Group) -> ToolOutputPath {

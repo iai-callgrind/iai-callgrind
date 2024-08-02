@@ -1,4 +1,6 @@
-use iai_callgrind::{binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig};
+use iai_callgrind::{
+    binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Sandbox,
+};
 
 #[binary_benchmark]
 fn just_outer_attribute() -> iai_callgrind::Command {
@@ -24,7 +26,12 @@ fn bench(first: usize) -> iai_callgrind::Command {
 
 #[binary_benchmark]
 #[benches::multiple_list(1, 2, 3)]
-#[benches::multiple_args(args = [1, 2, 3], setup = my_mod::setup_me("hello there"))]
+#[benches::multiple_args(
+    args = [1, 2, 3],
+    setup = my_mod::setup_me("hello there"),
+    config = BinaryBenchmarkConfig::default()
+        .sandbox(Sandbox::default().enable(true)))
+]
 fn benches(first: usize) -> iai_callgrind::Command {
     iai_callgrind::Command::new("/usr/bin/echo")
         .arg(first.to_string())
