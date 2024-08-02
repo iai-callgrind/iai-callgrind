@@ -9,7 +9,7 @@ use crate::internal;
 pub struct Arg(internal::InternalArg);
 
 /// An id for an [`Arg`] which can be used to produce unique ids from parameters
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BenchmarkId {
     id: String,
 }
@@ -34,9 +34,112 @@ pub struct BenchmarkId {
 #[derive(Debug, Default, Clone)]
 pub struct BinaryBenchmarkConfig(internal::InternalBinaryBenchmarkConfig);
 
+/// TODO: UPDATE DOCUMENTATION
 /// The `BinaryBenchmarkGroup` lets you configure binary benchmark [`Run`]s
 #[derive(Debug, Default, Clone)]
-pub struct BinaryBenchmarkGroup(internal::InternalBinaryBenchmarkGroup);
+pub struct BinaryBenchmarkGroup {
+    /// TODO: DOCUMENTATION
+    pub benches: Vec<BinaryBenchmark>,
+}
+
+// TODO: MOVE INTO impl section
+impl BinaryBenchmarkGroup {
+    /// TODO: DOCUMENTATION
+    pub fn new() -> Self {
+        Self { benches: vec![] }
+    }
+
+    /// TODO: DOCUMENTATION
+    pub fn bench(&mut self, binary_benchmark: BinaryBenchmark) -> &mut Self {
+        self.benches.push(binary_benchmark);
+        self
+    }
+}
+
+/// TODO: DOCUMENTATION
+#[derive(Debug, Clone)]
+pub struct Bench {
+    /// TODO: DOCUMENTATION
+    pub id: BenchmarkId,
+    /// TODO: DOCUMENTATION
+    pub commands: Vec<Command>,
+    /// TODO: DOCUMENTATION
+    pub config: Option<BinaryBenchmarkConfig>,
+    /// TODO: DOCUMENTATION
+    pub setup: Option<fn()>,
+}
+
+// TODO: MOVE INTO impl section
+impl Bench {
+    /// TODO: DOCUMENTATION
+    pub fn new<T>(id: T) -> Self
+    where
+        T: Into<BenchmarkId>,
+    {
+        Self {
+            id: id.into(),
+            config: None,
+            commands: vec![],
+            setup: None,
+        }
+    }
+
+    /// TODO: DOCUMENTATION
+    pub fn config(&mut self, config: BinaryBenchmarkConfig) -> &mut Self {
+        self.config = Some(config);
+        self
+    }
+
+    /// TODO: DOCUMENTATION
+    pub fn command(&mut self, command: Command) -> &mut Self {
+        self.commands.push(command);
+        self
+    }
+
+    /// TODO: DOCUMENTATION
+    pub fn setup(&mut self, setup: fn()) -> &mut Self {
+        self.setup = Some(setup);
+        self
+    }
+}
+
+/// TODO: DOCUMENTATION
+#[derive(Debug, Clone)]
+pub struct BinaryBenchmark {
+    /// TODO: DOCUMENTATION
+    pub id: BenchmarkId,
+    /// TODO: DOCUMENTATION
+    pub config: Option<BinaryBenchmarkConfig>,
+    /// TODO: DOCUMENTATION
+    pub benches: Vec<Bench>,
+}
+
+// TODO: MOVE INTO impl section
+impl BinaryBenchmark {
+    /// TODO: DOCUMENTATION
+    pub fn new<T>(id: T) -> Self
+    where
+        T: Into<BenchmarkId>,
+    {
+        Self {
+            id: id.into(),
+            config: None,
+            benches: vec![],
+        }
+    }
+
+    /// TODO: DOCUMENTATION
+    pub fn config(&mut self, config: BinaryBenchmarkConfig) -> &mut Self {
+        self.config = Some(config);
+        self
+    }
+
+    /// TODO: DOCUMENTATION
+    pub fn bench(&mut self, bench: Bench) -> &mut Self {
+        self.benches.push(bench);
+        self
+    }
+}
 
 /// TODO: DOCUMENTATION
 #[derive(Debug, Default, Clone)]
@@ -214,15 +317,38 @@ impl BenchmarkId {
         T: AsRef<str>,
         P: Display,
     {
+        // TODO: CHECK VALIDITY OF ID
         Self {
             id: format!("{}_{parameter}", id.as_ref()),
         }
     }
 }
 
+impl Display for BenchmarkId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.id)
+    }
+}
+
 impl From<BenchmarkId> for String {
     fn from(value: BenchmarkId) -> Self {
         value.id
+    }
+}
+
+// TODO: REMOVE
+impl From<String> for BenchmarkId {
+    fn from(value: String) -> Self {
+        Self { id: value }
+    }
+}
+
+// TODO: IMPLEMENT FromStr and return error when invalid benchmark id
+impl From<&str> for BenchmarkId {
+    fn from(value: &str) -> Self {
+        Self {
+            id: value.to_owned(),
+        }
     }
 }
 
@@ -919,13 +1045,13 @@ impl BinaryBenchmarkGroup {
     // }
 }
 
-impl From<internal::InternalBinaryBenchmarkGroup> for BinaryBenchmarkGroup {
-    fn from(value: internal::InternalBinaryBenchmarkGroup) -> Self {
-        BinaryBenchmarkGroup(value)
-    }
-}
-
-impl_traits!(BinaryBenchmarkGroup, internal::InternalBinaryBenchmarkGroup);
+// impl From<internal::InternalBinaryBenchmarkGroup> for BinaryBenchmarkGroup {
+//     fn from(value: internal::InternalBinaryBenchmarkGroup) -> Self {
+//         BinaryBenchmarkGroup(value)
+//     }
+// }
+//
+// impl_traits!(BinaryBenchmarkGroup, internal::InternalBinaryBenchmarkGroup);
 
 /// TODO: CONTINUE
 impl Command {
@@ -1854,6 +1980,7 @@ impl Run {
 
 impl_traits!(Run, internal::InternalRun);
 
+/// TODO: ADD `follow_symlinks` and maybe others. See `InternalSandbox`
 impl Sandbox {
     /// TODO: DOCUMENTATION
     pub fn new(enabled: bool) -> Self {

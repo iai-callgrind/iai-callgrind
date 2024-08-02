@@ -387,7 +387,8 @@ mod macros;
 
 #[cfg(feature = "default")]
 pub use bin_bench::{
-    Arg, BenchmarkId, BinaryBenchmarkConfig, BinaryBenchmarkGroup, Command, ExitWith, Run, Sandbox,
+    Arg, Bench, BenchmarkId, BinaryBenchmark, BinaryBenchmarkConfig, BinaryBenchmarkGroup, Command,
+    ExitWith, Run, Sandbox,
 };
 #[cfg(feature = "default")]
 pub use bincode;

@@ -22,6 +22,7 @@ pub struct Assistant {
     pub bench: bool,
 }
 
+// TODO: RENAME TO BinaryBenchmarkMain or BinaryBenchmarks or BinaryBenchmarkGroups
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct BinaryBenchmark {
     pub config: BinaryBenchmarkConfig,

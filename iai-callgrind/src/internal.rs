@@ -26,7 +26,6 @@ pub struct InternalMacroLibBench {
     pub config: Option<fn() -> crate::internal::InternalLibraryBenchmarkConfig>,
 }
 
-// TODO: Integrate setup, teardown functions ...
 #[derive(Debug, Clone)]
 pub struct InternalMacroBinBench {
     pub id_display: Option<&'static str>,

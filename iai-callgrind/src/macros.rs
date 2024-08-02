@@ -209,34 +209,107 @@ macro_rules! main {
             };
 
             $(
-                let mut group = $crate::internal::InternalBinaryBenchmarkGroup {
-                    id: stringify!($group).to_owned(),
-                    config: $group::__get_config(),
-                    benches: vec![],
-                    has_setup: $group::__run_setup(false),
-                    has_teardown: $group::__run_teardown(false),
-                };
-                for (bench_name, get_config, macro_bin_benches) in $group::__BENCHES {
-                    let mut benches = $crate::internal::InternalBinaryBenchmarkBenches {
+                if !$group::__IS_LOW_LEVEL {
+                    let mut group = $crate::internal::InternalBinaryBenchmarkGroup {
+                        id: stringify!($group).to_owned(),
+                        config: $group::__get_config(),
                         benches: vec![],
-                        config: get_config()
+                        has_setup: $group::__run_setup(false),
+                        has_teardown: $group::__run_teardown(false),
                     };
-                    for macro_bin_bench in macro_bin_benches.iter() {
-                        let bench = $crate::internal::InternalBinaryBenchmarkBench {
-                            id: macro_bin_bench.id_display.map(|i| i.to_string()),
-                            args: macro_bin_bench.args_display.map(|i| i.to_string()),
-                            bench: bench_name.to_string(),
-                            command: (macro_bin_bench.func)().into(),
-                            config: macro_bin_bench.config.map(|f| f()),
-                            has_setup: macro_bin_bench.setup.is_some(),
-                            has_teardown: macro_bin_bench.teardown.is_some()
+                    for (bench_name, get_config, macro_bin_benches) in $group::__BENCHES {
+                        let mut benches = $crate::internal::InternalBinaryBenchmarkBenches {
+                            benches: vec![],
+                            config: get_config()
                         };
-                        benches.benches.push(bench);
+                        for macro_bin_bench in macro_bin_benches.iter() {
+                            let bench = $crate::internal::InternalBinaryBenchmarkBench {
+                                id: macro_bin_bench.id_display.map(|i| i.to_string()),
+                                args: macro_bin_bench.args_display.map(|i| i.to_string()),
+                                bench: bench_name.to_string(),
+                                command: (macro_bin_bench.func)().into(),
+                                config: macro_bin_bench.config.map(|f| f()),
+                                has_setup: macro_bin_bench.setup.is_some(),
+                                has_teardown: macro_bin_bench.teardown.is_some()
+                            };
+                            benches.benches.push(bench);
+                        }
+                        group.benches.push(benches);
                     }
-                    group.benches.push(benches);
-                }
 
-                benchmark.groups.push(group);
+                    benchmark.groups.push(group);
+                } else {
+                    let mut group = $crate::BinaryBenchmarkGroup::new();
+                    $group::$group(&mut group);
+                    let mut internal_group = $crate::internal::InternalBinaryBenchmarkGroup {
+                        id: stringify!($group).to_owned(),
+                        config: $group::__get_config(),
+                        benches: vec![],
+                        has_setup: $group::__run_setup(false),
+                        has_teardown: $group::__run_teardown(false),
+                    };
+
+                    let mut binary_benchmark_ids =
+                        std::collections::HashSet::<$crate::BenchmarkId>::new();
+                    for binary_benchmark in group.benches {
+                        let mut benches = $crate::internal::InternalBinaryBenchmarkBenches {
+                            benches: vec![],
+                            config: binary_benchmark.config.map(Into::into)
+                        };
+                        // TODO: MORE EFFICIENT using HashSet::contains
+                        if !binary_benchmark_ids.insert(binary_benchmark.id.clone()) {
+                            panic!("Duplicate binary benchmark id: {}", &binary_benchmark.id);
+                        }
+
+                        let mut bench_ids =
+                            std::collections::HashSet::<$crate::BenchmarkId>::new();
+                        for bench in binary_benchmark.benches {
+                            match bench.commands.as_slice() {
+                                [] => {
+                                    panic!("Missing command for bench with id: {}", bench.id);
+                                },
+                                [command] => {
+                                    // TODO: MORE EFFICIENT using HashSet::contains
+                                    if !bench_ids.insert(bench.id.clone()) {
+                                        panic!("Duplicate bench id: {}", bench.id);
+                                    }
+                                    let internal_bench =
+                                        $crate::internal::InternalBinaryBenchmarkBench {
+                                            id: Some(bench.id.into()),
+                                            args: None,
+                                            bench: binary_benchmark.id.clone().into(),
+                                            command: command.into(),
+                                            config: bench.config.map(Into::into),
+                                            has_setup: false,
+                                            has_teardown: false,
+                                    };
+                                    benches.benches.push(internal_bench);
+                                },
+                                commands => {
+                                    for (index, command) in commands.iter().enumerate() {
+                                        let bench_id: $crate::BenchmarkId = format!("{}_{}", bench.id, index).into();
+                                        if !bench_ids.insert(bench_id.clone()) {
+                                            panic!("Duplicate bench id: {}", bench.id);
+                                        }
+                                        let internal_bench =
+                                            $crate::internal::InternalBinaryBenchmarkBench {
+                                                id: Some(bench_id.into()),
+                                                args: None,
+                                                bench: String::new(),
+                                                command: command.into(),
+                                                config: bench.config.as_ref().map(Into::into),
+                                                has_setup: false,
+                                                has_teardown: false,
+                                        };
+                                        benches.benches.push(internal_bench);
+                                    }
+                                }
+                            }
+                        }
+                        internal_group.benches.push(benches);
+                    }
+                    benchmark.groups.push(internal_group);
+                }
             )+
 
             let encoded = $crate::bincode::serialize(&benchmark).expect("Encoded benchmark");
@@ -720,6 +793,8 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
         pub mod $name {
             use super::*;
 
+            pub const __IS_LOW_LEVEL: bool = false;
+
             pub const __BENCHES: &[&(
                 &'static str,
                 fn() -> Option<$crate::internal::InternalBinaryBenchmarkConfig>,
@@ -775,52 +850,45 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
                     teardown();
                 };
             }
+
+            pub fn $name(_: &mut $crate::BinaryBenchmarkGroup) {}
         }
     };
     (
         name = $name:ident; $(;)*
-        $(before = $before:expr $(,bench = $bench_before:literal)? ; $(;)*)?
-        $(after = $after:expr $(,bench = $bench_after:literal)? ; $(;)*)?
-        $(setup = $setup:expr $(,bench = $bench_setup:literal)? ; $(;)*)?
-        $(teardown = $teardown:expr $(,bench = $bench_teardown:literal)? ; $(;)*)?
-        $( config = $config:expr ; $(;)* )?
-        benchmark = |$cmd:expr, $group:ident: &mut BinaryBenchmarkGroup| $body:expr
+        $( setup = $setup:expr; $(;)* )?
+        $( teardown = $teardown:expr; $(;)* )?
+        $( config = $config:expr; $(;)* )?
+        benchmark = |$group:ident: &mut BinaryBenchmarkGroup| $body:expr
     ) => {
         pub mod $name {
             use super::*;
 
-            #[inline(never)]
-            pub fn before() {
+            pub const __IS_LOW_LEVEL: bool = true;
+
+            pub fn __run_setup(__run: bool) -> bool {
+                let mut __has_setup = false;
                 $(
-                    let _ = std::hint::black_box($before);
+                    __has_setup = true;
+                    if __run {
+                        $setup;
+                    }
                 )?
+                __has_setup
             }
 
-            #[inline(never)]
-            pub fn after() {
+            pub fn __run_teardown(__run: bool) -> bool {
+                let mut __has_teardown = false;
                 $(
-                    let _ = std::hint::black_box($after);
+                    __has_teardown = true;
+                    if __run {
+                        $teardown;
+                    }
                 )?
+                __has_teardown
             }
 
-            #[inline(never)]
-            pub fn setup() {
-                $(
-                    let _ = std::hint::black_box($setup);
-                )?
-            }
-
-            #[inline(never)]
-            pub fn teardown() {
-                $(
-                    let _ = std::hint::black_box($teardown);
-                )?
-            }
-
-            #[inline(never)]
-            pub fn get_config() -> Option<$crate::internal::InternalBinaryBenchmarkConfig> {
-                use super::*;
-
+            pub fn __get_config() -> Option<$crate::internal::InternalBinaryBenchmarkConfig> {
                 let mut config = None;
                 $(
                     config = Some($config.into());
@@ -828,67 +896,21 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
                 config
             }
 
+            pub fn __run_bench_setup(group_index: usize, bench_index: usize) {
+                if let Some(setup) = __BENCHES[group_index].2[bench_index].setup {
+                    setup();
+                };
+            }
+
+            pub fn __run_bench_teardown(group_index: usize, bench_index: usize) {
+                if let Some(teardown) = __BENCHES[group_index].2[bench_index].teardown {
+                    teardown();
+                };
+            }
+
             #[inline(never)]
-            pub fn $name($group: &mut $crate::BinaryBenchmarkGroup) ->
-                (Option<$crate::internal::InternalCmd>, Vec<$crate::internal::InternalAssistant>)
-            {
-                let cmd: &str = $cmd;
-                let cmd = (!cmd.is_empty()).then(|| $crate::internal::InternalCmd {
-                        display: cmd.to_owned(),
-                        cmd: option_env!(concat!("CARGO_BIN_EXE_", $cmd)).unwrap_or(cmd).to_owned()
-                    }
-                );
-
-                let mut assists: Vec<$crate::internal::InternalAssistant> = vec![];
-                $(
-                    let mut bench_before = false;
-                    $(
-                        bench_before = $bench_before;
-                    )?
-                    assists.push($crate::internal::InternalAssistant {
-                        id: "before".to_owned(),
-                        name: stringify!($before).to_owned(),
-                        bench: bench_before
-                    });
-                )?
-                $(
-                    let mut bench_after = false;
-                    $(
-                        bench_after = $bench_after;
-                    )?
-                    assists.push($crate::internal::InternalAssistant {
-                        id: "after".to_owned(),
-                        name: stringify!($after).to_owned(),
-                        bench: bench_after
-                    });
-                )?
-                $(
-                    let mut bench_setup = false;
-                    $(
-                        bench_setup = $bench_setup;
-                    )?
-                    assists.push($crate::internal::InternalAssistant {
-                        id: "setup".to_owned(),
-                        name: stringify!($setup).to_owned(),
-                        bench: bench_setup
-                    });
-                )?
-                $(
-                    let mut bench_teardown = false;
-                    $(
-                        bench_teardown = $bench_teardown;
-                    )?
-                    assists.push($crate::internal::InternalAssistant {
-                        id: "teardown".to_owned(),
-                        name: stringify!($teardown).to_owned(),
-                        bench: bench_teardown
-                    });
-                )?
-
-                use super::*;
+            pub fn $name($group: &mut $crate::BinaryBenchmarkGroup) {
                 $body;
-
-                (cmd, assists)
             }
         }
     };
