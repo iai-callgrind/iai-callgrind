@@ -276,6 +276,7 @@ pub struct Run {
 pub struct Sandbox {
     pub enabled: Option<bool>,
     pub fixtures: Vec<PathBuf>,
+    pub follow_symlinks: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -90,7 +90,7 @@ pub enum ExitWith {
 pub struct Run(internal::InternalRun);
 
 /// TODO: DOCUMENTATION
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct Sandbox(internal::InternalSandbox);
 
 impl Arg {
@@ -1856,9 +1856,11 @@ impl_traits!(Run, internal::InternalRun);
 
 impl Sandbox {
     /// TODO: DOCUMENTATION
-    pub fn enable(&mut self, value: bool) -> &mut Self {
-        self.0.enabled = Some(value);
-        self
+    pub fn new(enabled: bool) -> Self {
+        Self(internal::InternalSandbox {
+            enabled: Some(enabled),
+            ..Default::default()
+        })
     }
 
     /// TODO: DOCUMENTATION

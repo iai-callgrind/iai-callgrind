@@ -30,7 +30,7 @@ fn bench(first: usize) -> iai_callgrind::Command {
     args = [1, 2, 3],
     setup = my_mod::setup_me("hello there"),
     config = BinaryBenchmarkConfig::default()
-        .sandbox(Sandbox::default().enable(true)))
+        .sandbox(Sandbox::new(true)))
 ]
 fn benches(first: usize) -> iai_callgrind::Command {
     iai_callgrind::Command::new("/usr/bin/echo")

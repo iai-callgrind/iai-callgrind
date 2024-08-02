@@ -26,9 +26,10 @@ use super::{Config, ModulePath};
 use crate::api::{self, BinaryBenchmark};
 use crate::error::Error;
 use crate::runner::format::tool_headline;
-use crate::util::{copy_directory, make_relative, write_all_to_stderr};
+use crate::util::{copy_directory, make_absolute, make_relative, write_all_to_stderr};
 
 mod defaults {
+    pub const SANDBOX_FIXTURES_FOLLOW_SYMLINKS: bool = false;
     pub const SANDBOX_ENABLED: bool = false;
     pub const REGRESSION_FAIL_FAST: bool = false;
 }
@@ -66,7 +67,7 @@ struct BinBench {
     tools: ToolConfigs,
     setup: Option<Assistant>,
     teardown: Option<Assistant>,
-    sandbox: Sandbox,
+    sandbox: Option<api::Sandbox>,
 }
 
 #[derive(Debug)]
@@ -102,7 +103,6 @@ struct Runner {
 #[derive(Debug)]
 struct Sandbox {
     enabled: bool,
-    fixtures: Vec<PathBuf>,
     current_dir: PathBuf,
     temp_dir: Option<TempDir>,
 }
@@ -121,7 +121,7 @@ trait Benchmark: std::fmt::Debug {
 
 // TODO: CHECK THIS. JUST COPIED FROM lib_bench
 impl Assistant {
-    fn new_main(kind: AssistantKind) -> Self {
+    fn new_main_assistant(kind: AssistantKind) -> Self {
         Self {
             kind,
             group_name: None,
@@ -129,7 +129,7 @@ impl Assistant {
         }
     }
 
-    fn new_group(kind: AssistantKind, group_name: &str) -> Self {
+    fn new_group_assistant(kind: AssistantKind, group_name: &str) -> Self {
         Self {
             kind,
             group_name: Some(group_name.to_owned()),
@@ -137,7 +137,7 @@ impl Assistant {
         }
     }
 
-    fn new_bench(kind: AssistantKind, group_name: &str, indices: (usize, usize)) -> Self {
+    fn new_bench_assistant(kind: AssistantKind, group_name: &str, indices: (usize, usize)) -> Self {
         Self {
             kind,
             group_name: Some(group_name.to_owned()),
@@ -151,6 +151,7 @@ impl Assistant {
         let nocapture = config.meta.args.nocapture;
 
         let mut command = Command::new(&config.bench_bin);
+        command.env("IAI_CALLGRIND_WORKSPACE_ROOT", &config.meta.project_root);
         command.arg("--iai-run");
 
         if let Some(group_name) = &self.group_name {
@@ -433,33 +434,16 @@ impl Group {
         is_regressed: &mut bool,
         config: &Config,
     ) -> Result<()> {
-        // TODO: CLEANUP and implement SANDBOX
-        // let sandbox = if self.sandbox {
-        //     debug!("Setting up sandbox");
-        //     Some(Sandbox::setup(&self.fixtures)?)
-        // } else {
-        //     debug!(
-        //         "Sandbox switched off: Running benchmarks in the current directory: '{}'",
-        //         std::env::current_dir().unwrap().display()
-        //     );
-        //     None
-        // };
-
         for bench in &self.benches {
-            let sandbox = &bench.sandbox;
-            // let sandbox = if let Some(sandbox) = &bench.sandbox {
-            //     #[allow(clippy::if_then_some_else_none)]
-            //     if sandbox.enabled.unwrap_or(defaults::SANDBOX_ENABLED) {
-            //         debug!("Setting up sandbox");
-            //         Some(Sandbox::setup(sandbox)?)
-            //     } else {
-            //         debug!("Sandbox disabled");
-            //         None
-            //     }
-            // } else {
-            //     None
-            // };
+            // We're implicitly applying the default here: In the absence of a user provided
+            // sandbox we don't run the benchmarks in a sandbox.
+            let sandbox = if let Some(sandbox) = &bench.sandbox {
+                Some(Sandbox::setup(sandbox, &config.meta)?)
+            } else {
+                None
+            };
 
+            // The setup function runs within the sandbox
             if let Some(setup) = &bench.setup {
                 setup.run(
                     config,
@@ -474,9 +458,13 @@ impl Group {
                 .regression_config
                 .as_ref()
                 .map_or(defaults::REGRESSION_FAIL_FAST, |r| r.fail_fast);
+            // TODO: Should we run the teardown in case of errors?
             let summary = benchmark.run(bench, config, self)?;
             summary.print_and_save(&config.meta.args.output_format)?;
 
+            // Likewise to the setup function, the teardown runs within the sandbox. Also, we run
+            // the teardown function before any regression checks, just in case the regression
+            // checks fail and we're returning with an error without having run the teardown.
             if let Some(teardown) = &bench.teardown {
                 teardown.run(
                     config,
@@ -489,10 +477,9 @@ impl Group {
 
             summary.check_regression(is_regressed, fail_fast)?;
 
-            // if let Some(sandbox) = sandbox {
-            //     debug!("Removing sandbox");
-            //     sandbox.reset();
-            // }
+            if let Some(sandbox) = sandbox {
+                sandbox.reset()?;
+            }
         }
 
         Ok(())
@@ -517,16 +504,17 @@ impl Groups {
 
             let setup = binary_benchmark_group
                 .has_setup
-                .then_some(Assistant::new_group(
+                .then_some(Assistant::new_group_assistant(
                     AssistantKind::Setup,
                     &binary_benchmark_group.id,
                 ));
-            let teardown = binary_benchmark_group
-                .has_teardown
-                .then_some(Assistant::new_group(
-                    AssistantKind::Teardown,
-                    &binary_benchmark_group.id,
-                ));
+            let teardown =
+                binary_benchmark_group
+                    .has_teardown
+                    .then_some(Assistant::new_group_assistant(
+                        AssistantKind::Teardown,
+                        &binary_benchmark_group.id,
+                    ));
 
             let mut group = Group {
                 name: binary_benchmark_group.id,
@@ -578,24 +566,21 @@ impl Groups {
                         )
                         .map(Into::into),
                         tools: ToolConfigs(config.tools.0.into_iter().map(Into::into).collect()),
-                        setup: binary_benchmark_bench
-                            .has_setup
-                            .then_some(Assistant::new_bench(
+                        setup: binary_benchmark_bench.has_setup.then_some(
+                            Assistant::new_bench_assistant(
                                 AssistantKind::Setup,
                                 &group.name,
                                 (group_index, bench_index),
-                            )),
+                            ),
+                        ),
                         teardown: binary_benchmark_bench.has_teardown.then_some(
-                            Assistant::new_bench(
+                            Assistant::new_bench_assistant(
                                 AssistantKind::Teardown,
                                 &group.name,
                                 (group_index, bench_index),
                             ),
                         ),
-                        sandbox: config.sandbox.map_or_else(
-                            || Sandbox::new(defaults::SANDBOX_ENABLED, current_dir.clone()),
-                            |s| Sandbox::from_api(s, current_dir.clone()),
-                        ),
+                        sandbox: config.sandbox,
                     };
                     group.benches.push(bin_bench);
                 }
@@ -658,10 +643,10 @@ impl Runner {
     fn new(binary_benchmark: BinaryBenchmark, config: Config) -> Result<Self> {
         let setup = binary_benchmark
             .has_setup
-            .then_some(Assistant::new_main(AssistantKind::Setup));
+            .then_some(Assistant::new_main_assistant(AssistantKind::Setup));
         let teardown = binary_benchmark
             .has_teardown
-            .then_some(Assistant::new_main(AssistantKind::Teardown));
+            .then_some(Assistant::new_main_assistant(AssistantKind::Teardown));
 
         let groups = Groups::from_binary_benchmark(
             &ModulePath::new(&config.module),
@@ -721,68 +706,75 @@ impl Runner {
 }
 
 impl Sandbox {
-    fn setup(&self) -> Result<()> {
-        debug!("Creating temporary workspace directory");
-        let temp_dir = tempfile::tempdir().expect("Create temporary directory");
-
-        // if let Some(fixtures) = &fixtures {
-        //     debug!(
-        //         "Copying fixtures from '{}' to '{}'",
-        //         &fixtures.path.display(),
-        //         temp_dir.path().display()
-        //     );
-        //     copy_directory(&fixtures.path, temp_dir.path(), fixtures.follow_symlinks)?;
-        // }
-
-        let current_dir = std::env::current_dir()
-            .with_context(|| "Failed to detect current directory".to_owned())?;
-
-        trace!(
-            "Changing current directory to temporary directory: '{}'",
-            temp_dir.path().display()
-        );
-
-        let path = temp_dir.path();
-        std::env::set_current_dir(path).with_context(|| {
-            format!(
-                "Failed setting current directory to temporary workspace directory: '{}'",
-                path.display()
-            )
+    fn setup(inner: &api::Sandbox, meta: &Metadata) -> Result<Self> {
+        let enabled = inner.enabled.unwrap_or(defaults::SANDBOX_ENABLED);
+        let follow_symlinks = inner
+            .follow_symlinks
+            .unwrap_or(defaults::SANDBOX_FIXTURES_FOLLOW_SYMLINKS);
+        let current_dir = std::env::current_dir().map_err(|error| {
+            Error::SandboxError(format!("Failed to detect current directory: {error}"))
         })?;
 
-        Ok(())
-    }
+        let temp_dir = if enabled {
+            debug!("Creating sandbox");
 
-    fn reset(self) {
-        // std::env::set_current_dir(&self.current_dir)
-        //     .expect("Reset current directory to package directory");
+            let temp_dir = tempfile::tempdir().map_err(|error| {
+                Error::SandboxError(format!("Failed creating temporary directory: {error}"))
+            })?;
 
-        // if log_enabled!(Level::Debug) {
-        //     debug!("Removing temporary workspace");
-        //     if let Err(error) = self.temp_dir.close() {
-        //         debug!("Error trying to delete temporary workspace: {error}");
-        //     }
-        // } else {
-        //     _ = self.temp_dir.close();
-        // }
-    }
+            for fixture in &inner.fixtures {
+                if fixture.is_relative() {
+                    let absolute_path = make_absolute(&meta.project_root, fixture);
+                    copy_directory(&absolute_path, temp_dir.path(), follow_symlinks)?;
+                } else {
+                    copy_directory(fixture, temp_dir.path(), follow_symlinks)?;
+                };
+            }
 
-    fn new(enabled: bool, current_dir: PathBuf) -> Self {
-        Self {
+            trace!(
+                "Changing current directory to sandbox directory: '{}'",
+                temp_dir.path().display()
+            );
+
+            let path = temp_dir.path();
+            std::env::set_current_dir(path).map_err(|error| {
+                Error::SandboxError(format!(
+                    "Failed setting current directory to sandbox directory: '{error}'"
+                ))
+            })?;
+            Some(temp_dir)
+        } else {
+            debug!(
+                "Sandbox disabled: Running benchmarks in current directory '{}'",
+                current_dir.display()
+            );
+            None
+        };
+
+        Ok(Self {
             enabled,
-            fixtures: vec![],
             current_dir,
-            temp_dir: None,
-        }
+            temp_dir,
+        })
     }
 
-    fn from_api(s: api::Sandbox, current_dir: PathBuf) -> Sandbox {
-        Self {
-            enabled: s.enabled.unwrap_or(defaults::SANDBOX_ENABLED),
-            fixtures: s.fixtures,
-            current_dir,
-            temp_dir: None,
+    fn reset(self) -> Result<()> {
+        if let Some(temp_dir) = self.temp_dir {
+            std::env::set_current_dir(&self.current_dir).map_err(|error| {
+                Error::SandboxError(format!("Failed to reset current directory: {error}"))
+            })?;
+
+            if log_enabled!(Level::Debug) {
+                debug!("Removing temporary workspace");
+                if let Err(error) = temp_dir.close() {
+                    debug!("Error trying to delete temporary workspace: {error}");
+                }
+            } else {
+                _ = temp_dir.close();
+            }
         }
+
+        Ok(())
     }
 }
 

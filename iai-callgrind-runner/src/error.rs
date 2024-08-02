@@ -19,6 +19,7 @@ pub enum Error {
     ParseError((PathBuf, String)),
     RegressionError(bool),
     EnvironmentVariableError((String, String)),
+    SandboxError(String),
 }
 
 impl std::error::Error for Error {}
@@ -102,6 +103,9 @@ impl Display for Error {
             }
             Self::EnvironmentVariableError((var, reason)) => {
                 write!(f, "Failed parsing environment variable {var}: {reason}")
+            }
+            Self::SandboxError(message) => {
+                write!(f, "Error in sandbox: {message}")
             }
         }
     }
