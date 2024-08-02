@@ -54,6 +54,7 @@ struct Group {
     id: Option<String>,
     benches: Vec<LibBench>,
     compare: bool,
+    // TODO: CHANGE name to module_path and store a ModulePath
     module: String,
     setup: Option<Assistant>,
     teardown: Option<Assistant>,

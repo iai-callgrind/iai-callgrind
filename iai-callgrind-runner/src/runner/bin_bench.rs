@@ -2,7 +2,7 @@ use std::io::stderr;
 use std::path::PathBuf;
 use std::process::Command;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
@@ -10,6 +10,7 @@ use super::args::NoCapture;
 use super::callgrind::args::Args;
 use super::callgrind::flamegraph::{
     BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
+    LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
 };
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{CallgrindCommand, RegressionConfig};
@@ -34,7 +35,6 @@ mod defaults {
     pub const REGRESSION_FAIL_FAST: bool = false;
 }
 
-// TODO: CLEANUP
 #[derive(Debug, Clone)]
 struct Assistant {
     kind: AssistantKind,
@@ -42,7 +42,6 @@ struct Assistant {
     indices: Option<(usize, usize)>,
 }
 
-// TODO: CLEANUP
 #[derive(Debug, Clone)]
 enum AssistantKind {
     Setup,
@@ -72,11 +71,13 @@ struct BinBench {
 
 #[derive(Debug)]
 struct Group {
+    /// This name is the name from the `library_benchmark_group!` macro
+    ///
+    /// Due to the way we expand the `library_benchmark_group!` macro, we can safely assume that
+    /// this name is unique.
     name: String,
+    /// The module path so far which should be `file_name::group_name`
     module_path: ModulePath,
-    // TODO: Use a Sandbox struct
-    // fixtures: Option<api::Fixtures>,
-    // sandbox: bool,
     benches: Vec<BinBench>,
     setup: Option<Assistant>,
     teardown: Option<Assistant>,
@@ -102,7 +103,6 @@ struct Runner {
 
 #[derive(Debug)]
 struct Sandbox {
-    enabled: bool,
     current_dir: PathBuf,
     temp_dir: Option<TempDir>,
 }
@@ -145,8 +145,21 @@ impl Assistant {
         }
     }
 
-    /// Run the `Assistant` but don't benchmark it
+    /// Run the `Assistant` by calling the benchmark binary with the needed arguments
+    ///
+    /// We don't run the assistant if `--load-baseline` was given on the command-line!
+    ///
+    /// In order to run the assistants from the main! macro we only need to supply the id without
+    /// any further arguments. In order to run the assistants from the `binary_benchmark_group!`
+    /// macro we need to submit the group name as first argument and the assistant id as second
+    /// argument. No further arguments are allowed. In order to run the assistant specified in the
+    /// `#[bench]` macro we need the same arguments as if we would run a group assistant but now we
+    /// also submit the two indices needed to identify the `#[bench]`.
     fn run(&self, config: &Config, module_path: &ModulePath) -> Result<()> {
+        if config.meta.args.load_baseline.is_some() {
+            return Ok(());
+        }
+
         let id = self.kind.id();
         let nocapture = config.meta.args.nocapture;
 
@@ -495,8 +508,6 @@ impl Groups {
         // TODO: Mostly copied from lib_bench, DOUBLE_CHECK !!
         let global_config = benchmark.config;
         let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
-        let current_dir =
-            std::env::current_dir().expect("Detecting current directory should succeed");
 
         let mut groups = vec![];
         for binary_benchmark_group in benchmark.groups {
@@ -524,7 +535,7 @@ impl Groups {
                 teardown,
             };
 
-            // TODO: JUST COPIED FROM lib_bench. Check if everything's right
+            // TODO: MORE OR LESS COPIED FROM lib_bench. Check if everything's right
             for (group_index, binary_benchmark_benches) in
                 binary_benchmark_group.benches.into_iter().enumerate()
             {
@@ -622,11 +633,21 @@ impl Groups {
 
 impl Benchmark for LoadBaselineBenchmark {
     fn output_path(&self, bin_bench: &BinBench, config: &Config, group: &Group) -> ToolOutputPath {
-        todo!()
+        ToolOutputPath::new(
+            ToolOutputPathKind::Base(self.loaded_baseline.to_string()),
+            ValgrindTool::Callgrind,
+            &BaselineKind::Name(self.baseline.clone()),
+            &config.meta.target_dir,
+            &group.module_path,
+            &bin_bench.name(),
+        )
     }
 
     fn baselines(&self) -> (Option<String>, Option<String>) {
-        todo!()
+        (
+            Some(self.loaded_baseline.to_string()),
+            Some(self.baseline.to_string()),
+        )
     }
 
     fn run(
@@ -635,7 +656,54 @@ impl Benchmark for LoadBaselineBenchmark {
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
-        todo!()
+        let out_path = self.output_path(bin_bench, config, group);
+        let old_path = out_path.to_base_path();
+        let log_path = out_path.to_log_output();
+        let mut benchmark_summary = bin_bench.create_benchmark_summary(config, group, &out_path)?;
+
+        let header = bin_bench.print_header(&config.meta, group);
+
+        let new_costs = SummaryParser.parse(&out_path)?;
+        let old_costs = Some(SummaryParser.parse(&old_path)?);
+        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
+
+        VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
+
+        let regressions = bin_bench.check_and_print_regressions(&costs_summary);
+
+        let callgrind_summary = benchmark_summary
+            .callgrind_summary
+            .insert(CallgrindSummary::new(
+                log_path.real_paths()?,
+                out_path.real_paths()?,
+            ));
+
+        callgrind_summary.add_summary(
+            &bin_bench.command.path,
+            &bin_bench.command.args,
+            &old_path,
+            costs_summary,
+            regressions,
+        );
+
+        if let Some(flamegraph_config) = bin_bench.flamegraph_config.clone() {
+            callgrind_summary.flamegraphs = LoadBaselineFlamegraphGenerator {
+                loaded_baseline: self.loaded_baseline.clone(),
+                baseline: self.baseline.clone(),
+            }
+            .create(
+                &Flamegraph::new(header.to_title(), flamegraph_config),
+                &out_path,
+                None,
+                &config.meta.project_root,
+            )?;
+        }
+
+        benchmark_summary.tool_summaries = bin_bench
+            .tools
+            .run_loaded_vs_base(&config.meta, &out_path)?;
+
+        Ok(benchmark_summary)
     }
 }
 
@@ -752,7 +820,6 @@ impl Sandbox {
         };
 
         Ok(Self {
-            enabled,
             current_dir,
             temp_dir,
         })
@@ -778,20 +845,23 @@ impl Sandbox {
     }
 }
 
-// TODO: CLEANUP
-// impl From<api::Sandbox> for Sandbox {
-//     fn from(value: api::Sandbox) -> Self {
-//         Self { enabled: value.enabled.unwrap_or(defaults::SANDBOX_ENABLED), fixtures:
-// value.fixtures, current_dir: (), temp_dir: () }     }
-// }
-
 impl Benchmark for SaveBaselineBenchmark {
     fn output_path(&self, bin_bench: &BinBench, config: &Config, group: &Group) -> ToolOutputPath {
-        todo!()
+        ToolOutputPath::new(
+            ToolOutputPathKind::Base(self.baseline.to_string()),
+            ValgrindTool::Callgrind,
+            &BaselineKind::Name(self.baseline.clone()),
+            &config.meta.target_dir,
+            &group.module_path,
+            &bin_bench.name(),
+        )
     }
 
     fn baselines(&self) -> (Option<String>, Option<String>) {
-        todo!()
+        (
+            Some(self.baseline.to_string()),
+            Some(self.baseline.to_string()),
+        )
     }
 
     fn run(
@@ -800,7 +870,82 @@ impl Benchmark for SaveBaselineBenchmark {
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
-        todo!()
+        let callgrind_command = CallgrindCommand::new(&config.meta);
+        let baselines = self.baselines();
+
+        let out_path = self.output_path(bin_bench, config, group);
+        out_path.init()?;
+
+        #[allow(clippy::if_then_some_else_none)]
+        let old_costs = if out_path.exists() {
+            let old_costs = SummaryParser.parse(&out_path)?;
+            out_path.clear()?;
+            Some(old_costs)
+        } else {
+            None
+        };
+
+        let log_path = out_path.to_log_output();
+        log_path.clear()?;
+
+        let mut benchmark_summary = bin_bench.create_benchmark_summary(config, group, &out_path)?;
+
+        let header = bin_bench.print_header(&config.meta, group);
+
+        let output = callgrind_command.run(
+            bin_bench.callgrind_args.clone(),
+            &bin_bench.command.path,
+            &bin_bench.command.args,
+            bin_bench.run_options.clone(),
+            &out_path,
+        )?;
+
+        let new_costs = SummaryParser.parse(&out_path)?;
+        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
+        VerticalFormat::default().print(&config.meta, baselines.clone(), &costs_summary)?;
+
+        output.dump_log(log::Level::Info);
+        log_path.dump_log(log::Level::Info, &mut stderr())?;
+
+        let regressions = bin_bench.check_and_print_regressions(&costs_summary);
+
+        let callgrind_summary = benchmark_summary
+            .callgrind_summary
+            .insert(CallgrindSummary::new(
+                log_path.real_paths()?,
+                out_path.real_paths()?,
+            ));
+
+        callgrind_summary.add_summary(
+            &bin_bench.command.path,
+            &bin_bench.command.args,
+            &out_path,
+            costs_summary,
+            regressions,
+        );
+
+        if let Some(flamegraph_config) = bin_bench.flamegraph_config.clone() {
+            callgrind_summary.flamegraphs = SaveBaselineFlamegraphGenerator {
+                baseline: self.baseline.clone(),
+            }
+            .create(
+                &Flamegraph::new(header.to_title(), flamegraph_config),
+                &out_path,
+                None,
+                &config.meta.project_root,
+            )?;
+        }
+
+        benchmark_summary.tool_summaries = bin_bench.tools.run(
+            &config.meta,
+            &bin_bench.command.path,
+            &bin_bench.command.args,
+            &bin_bench.run_options,
+            &out_path,
+            true,
+        )?;
+
+        Ok(benchmark_summary)
     }
 }
 
