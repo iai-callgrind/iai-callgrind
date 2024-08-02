@@ -109,7 +109,13 @@ struct SaveBaselineBenchmark {
 
 impl Assistant {
     /// Run the `Assistant` but don't benchmark it
+    ///
+    /// We don't run anything if `--load-baseline` was given on the command line
     fn run(&self, config: &Config, group_name: Option<&str>, module_path: &str) -> Result<()> {
+        if config.meta.args.load_baseline.is_some() {
+            return Ok(());
+        }
+
         let id = self.kind.id();
         let nocapture = config.meta.args.nocapture;
 
