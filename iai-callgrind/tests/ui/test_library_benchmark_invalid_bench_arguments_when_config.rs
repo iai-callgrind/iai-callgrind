@@ -17,10 +17,6 @@ pub fn bench20() {}
 pub fn bench30() {}
 
 #[library_benchmark]
-#[benches::missing_args(config = LibraryBenchmarkConfig::default())]
-pub fn bench40(_arg: i32) {}
-
-#[library_benchmark]
 #[benches::missing_expression(args = [], config = )]
 pub fn bench50() {}
 

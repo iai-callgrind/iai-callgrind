@@ -133,4 +133,8 @@ name = "test_lib_bench_generics"
 
 [[bench]]
 harness = false
+name = "test_lib_bench_file_parameter"
+
+[[bench]]
+harness = false
 name = "test_bench"
