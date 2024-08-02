@@ -2,4 +2,10 @@ groups:
   - runs:
       - args: ["--nocapture"]
         expected:
-          stdout: test_lib_bench_main_and_group_setup_and_teardown.stdout
+          stdout: test_lib_bench_main_and_group_setup_and_teardown.stdout.1
+      - args: ["--nocapture", "--save-baseline"]
+        expected:
+          stdout: test_lib_bench_main_and_group_setup_and_teardown.stdout.2
+      - args: ["--nocapture", "--load-baseline", "--baseline"]
+        expected:
+          stdout: test_lib_bench_main_and_group_setup_and_teardown.stdout.3
