@@ -1,5 +1,6 @@
 use iai_callgrind::{
-    binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Sandbox,
+    binary_benchmark, binary_benchmark_group, main, Bench, BinaryBenchmark, BinaryBenchmarkConfig,
+    BinaryBenchmarkGroup, Command, Sandbox,
 };
 
 #[binary_benchmark]
@@ -62,4 +63,29 @@ binary_benchmark_group!(
     benchmarks = just_outer_attribute, bench_with_config, bench, benches
 );
 
-main!(binary_benchmark_groups = my_group);
+fn setup_group(group: &mut BinaryBenchmarkGroup) {
+    group.bench(
+        BinaryBenchmark::new("some id")
+            .bench(
+                Bench::new("other id")
+                    .command(Command::new("/usr/bin/echo").arg("1"))
+                    .setup(|| {
+                        println!("IN SETUP");
+                        my_mod::setup_me("set me up");
+                    })
+                    .teardown(|| {
+                        println!("IN TEARDOWN");
+                        teardown(10);
+                    })
+                    .clone(),
+            )
+            .clone(),
+    );
+}
+
+binary_benchmark_group!(
+    name = low_level_group;
+    benchmarks = |group: &mut BinaryBenchmarkGroup| setup_group(group)
+);
+
+main!(binary_benchmark_groups = low_level_group);

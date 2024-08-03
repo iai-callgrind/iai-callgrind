@@ -42,13 +42,8 @@ pub struct BinaryBenchmarkGroup {
     pub benches: Vec<BinaryBenchmark>,
 }
 
-// TODO: MOVE INTO impl section
+// TODO: MOVE INTO impl section. Add more methods??
 impl BinaryBenchmarkGroup {
-    /// TODO: DOCUMENTATION
-    pub fn new() -> Self {
-        Self { benches: vec![] }
-    }
-
     /// TODO: DOCUMENTATION
     pub fn bench(&mut self, binary_benchmark: BinaryBenchmark) -> &mut Self {
         self.benches.push(binary_benchmark);
@@ -67,9 +62,11 @@ pub struct Bench {
     pub config: Option<BinaryBenchmarkConfig>,
     /// TODO: DOCUMENTATION
     pub setup: Option<fn()>,
+    /// TODO: DOCUMENTATION
+    pub teardown: Option<fn()>,
 }
 
-// TODO: MOVE INTO impl section
+// TODO: MOVE INTO impl section and add more methods
 impl Bench {
     /// TODO: DOCUMENTATION
     pub fn new<T>(id: T) -> Self
@@ -81,6 +78,7 @@ impl Bench {
             config: None,
             commands: vec![],
             setup: None,
+            teardown: None,
         }
     }
 
@@ -91,14 +89,24 @@ impl Bench {
     }
 
     /// TODO: DOCUMENTATION
-    pub fn command(&mut self, command: Command) -> &mut Self {
-        self.commands.push(command);
+    /// TODO: ACCEPT a &mut Command and &Command, too
+    pub fn command<T>(&mut self, command: T) -> &mut Self
+    where
+        T: Into<Command>,
+    {
+        self.commands.push(command.into());
         self
     }
 
     /// TODO: DOCUMENTATION
     pub fn setup(&mut self, setup: fn()) -> &mut Self {
         self.setup = Some(setup);
+        self
+    }
+
+    /// TODO: DOCUMENTATION
+    pub fn teardown(&mut self, teardown: fn()) -> &mut Self {
+        self.teardown = Some(teardown);
         self
     }
 }
@@ -990,69 +998,6 @@ impl_traits!(
     internal::InternalBinaryBenchmarkConfig
 );
 
-impl BinaryBenchmarkGroup {
-    // TODO: COMPLETELY REWRITE
-    // /// Specify a [`Run`] to benchmark a binary
-    // ///
-    // /// You can specify a crate's binary either at group level with the simple name of the binary
-    // /// (say `my-exe`) or at `bench` level with `env!("CARGO_BIN_EXE_my-exe")`. See examples.
-    // ///
-    // /// See also [`Run`] for more details.
-    // ///
-    // /// # Examples
-    // ///
-    // /// If your crate has a binary `my-exe` (the `name` key of a `[[bin]]` entry in Cargo.toml),
-    // /// specifying `"my-exe"` in the benchmark argument sets the command for all [`Run`]
-    // /// arguments and it's sufficient to specify only [`Arg`] with [`Run::with_arg`]:
-    // ///
-    // /// ```rust
-    // /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
-    // ///
-    // /// binary_benchmark_group!(
-    // ///     name = my_exe_group;
-    // ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
-    // ///         group.bench(Run::with_arg(Arg::new("foo", &["foo"])));
-    // ///     }
-    // /// );
-    // /// # fn main() {
-    // /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
-    // /// # }
-    // /// ```
-    // ///
-    // /// Without the `command` at group level:
-    // ///
-    // /// ```rust
-    // /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
-    // ///
-    // /// binary_benchmark_group!(
-    // ///     name = my_exe_group;
-    // ///     benchmark = |group: &mut BinaryBenchmarkGroup| {
-    // ///         // Usually you should use `env!("CARGO_BIN_EXE_my-exe")` if `my-exe` is a binary
-    // ///         // of your crate
-    // ///         group.bench(Run::with_cmd("/path/to/my-exe", Arg::new("foo", &["foo"])));
-    // ///     }
-    // /// );
-    // /// # fn main() {
-    // /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
-    // /// # }
-    // /// ```
-    // pub fn bench<T>(&mut self, run: T) -> &mut Self
-    // where
-    //     T: Into<internal::InternalRun>,
-    // {
-    //     self.0.benches.push(run.into());
-    //     self
-    // }
-}
-
-// impl From<internal::InternalBinaryBenchmarkGroup> for BinaryBenchmarkGroup {
-//     fn from(value: internal::InternalBinaryBenchmarkGroup) -> Self {
-//         BinaryBenchmarkGroup(value)
-//     }
-// }
-//
-// impl_traits!(BinaryBenchmarkGroup, internal::InternalBinaryBenchmarkGroup);
-
 /// TODO: CONTINUE
 impl Command {
     /// TODO: CONTINUE
@@ -1078,6 +1023,18 @@ impl Command {
     /// TODO: CONTINUE
     pub fn build(&mut self) -> Self {
         self.clone()
+    }
+}
+
+impl From<&mut Command> for Command {
+    fn from(value: &mut Command) -> Self {
+        value.clone()
+    }
+}
+
+impl From<&Command> for Command {
+    fn from(value: &Command) -> Self {
+        value.clone()
     }
 }
 
