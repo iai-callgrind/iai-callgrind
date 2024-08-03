@@ -64,8 +64,10 @@ binary_benchmark_group!(
 );
 
 fn setup_group(group: &mut BinaryBenchmarkGroup) {
-    group.bench(
+    group.binary_benchmark(
         BinaryBenchmark::new("some id")
+            .setup(|| println!("IN BINARY BENCHMARK SETUP"))
+            .teardown(|| println!("IN BINARY BENCHMARK TEARDOWN"))
             .bench(
                 Bench::new("other id")
                     .command(Command::new("/usr/bin/echo").arg("1"))
@@ -76,10 +78,12 @@ fn setup_group(group: &mut BinaryBenchmarkGroup) {
                     .teardown(|| {
                         println!("IN TEARDOWN");
                         teardown(10);
-                    })
-                    .clone(),
+                    }),
             )
-            .clone(),
+            .bench(
+                Bench::new("global setup and teardown")
+                    .command(Command::new("/usr/bin/echo").arg("2")),
+            ),
     );
 }
 

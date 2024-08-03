@@ -3,7 +3,7 @@ use std::fmt::Display;
 use std::path::PathBuf;
 
 use crate::internal;
-///
+
 /// The arguments needed for [`Run`] which are passed to the benchmarked binary
 #[derive(Debug, Clone)]
 pub struct Arg(internal::InternalArg);
@@ -39,14 +39,28 @@ pub struct BinaryBenchmarkConfig(internal::InternalBinaryBenchmarkConfig);
 #[derive(Debug, Default, Clone)]
 pub struct BinaryBenchmarkGroup {
     /// TODO: DOCUMENTATION
-    pub benches: Vec<BinaryBenchmark>,
+    pub binary_benchmarks: Vec<BinaryBenchmark>,
 }
 
 // TODO: MOVE INTO impl section. Add more methods??
 impl BinaryBenchmarkGroup {
     /// TODO: DOCUMENTATION
-    pub fn bench(&mut self, binary_benchmark: BinaryBenchmark) -> &mut Self {
-        self.benches.push(binary_benchmark);
+    pub fn binary_benchmark<T>(&mut self, binary_benchmark: T) -> &mut Self
+    where
+        T: Into<BinaryBenchmark>,
+    {
+        self.binary_benchmarks.push(binary_benchmark.into());
+        self
+    }
+
+    /// TODO: DOCUMENTATION
+    pub fn binary_benchmarks<I, T>(&mut self, binary_benchmarks: T) -> &mut Self
+    where
+        I: Into<BinaryBenchmark>,
+        T: IntoIterator<Item = I>,
+    {
+        self.binary_benchmarks
+            .extend(binary_benchmarks.into_iter().map(Into::into));
         self
     }
 }
@@ -83,18 +97,30 @@ impl Bench {
     }
 
     /// TODO: DOCUMENTATION
-    pub fn config(&mut self, config: BinaryBenchmarkConfig) -> &mut Self {
-        self.config = Some(config);
+    pub fn config<T>(&mut self, config: T) -> &mut Self
+    where
+        T: Into<BinaryBenchmarkConfig>,
+    {
+        self.config = Some(config.into());
         self
     }
 
     /// TODO: DOCUMENTATION
-    /// TODO: ACCEPT a &mut Command and &Command, too
     pub fn command<T>(&mut self, command: T) -> &mut Self
     where
         T: Into<Command>,
     {
         self.commands.push(command.into());
+        self
+    }
+
+    /// TODO: DOCUMENTATION
+    pub fn commands<I, T>(&mut self, commands: T) -> &mut Self
+    where
+        I: Into<Command>,
+        T: IntoIterator<Item = I>,
+    {
+        self.commands.extend(commands.into_iter().map(Into::into));
         self
     }
 
@@ -111,6 +137,18 @@ impl Bench {
     }
 }
 
+impl From<&mut Bench> for Bench {
+    fn from(value: &mut Bench) -> Self {
+        value.clone()
+    }
+}
+
+impl From<&Bench> for Bench {
+    fn from(value: &Bench) -> Self {
+        value.clone()
+    }
+}
+
 /// TODO: DOCUMENTATION
 #[derive(Debug, Clone)]
 pub struct BinaryBenchmark {
@@ -120,6 +158,10 @@ pub struct BinaryBenchmark {
     pub config: Option<BinaryBenchmarkConfig>,
     /// TODO: DOCUMENTATION
     pub benches: Vec<Bench>,
+    /// TODO: DOCUMENTATION
+    pub setup: Option<fn()>,
+    /// TODO: DOCUMENTATION
+    pub teardown: Option<fn()>,
 }
 
 // TODO: MOVE INTO impl section
@@ -133,19 +175,51 @@ impl BinaryBenchmark {
             id: id.into(),
             config: None,
             benches: vec![],
+            setup: None,
+            teardown: None,
         }
     }
 
     /// TODO: DOCUMENTATION
-    pub fn config(&mut self, config: BinaryBenchmarkConfig) -> &mut Self {
-        self.config = Some(config);
+    pub fn config<T>(&mut self, config: T) -> &mut Self
+    where
+        T: Into<BinaryBenchmarkConfig>,
+    {
+        self.config = Some(config.into());
         self
     }
 
     /// TODO: DOCUMENTATION
-    pub fn bench(&mut self, bench: Bench) -> &mut Self {
-        self.benches.push(bench);
+    pub fn bench<T>(&mut self, bench: T) -> &mut Self
+    where
+        T: Into<Bench>,
+    {
+        self.benches.push(bench.into());
         self
+    }
+
+    /// TODO: DOCUMENTATION
+    pub fn setup(&mut self, setup: fn()) -> &mut Self {
+        self.setup = Some(setup);
+        self
+    }
+
+    /// TODO: DOCUMENTATION
+    pub fn teardown(&mut self, teardown: fn()) -> &mut Self {
+        self.teardown = Some(teardown);
+        self
+    }
+}
+
+impl From<&mut BinaryBenchmark> for BinaryBenchmark {
+    fn from(value: &mut BinaryBenchmark) -> Self {
+        value.clone()
+    }
+}
+
+impl From<&BinaryBenchmark> for BinaryBenchmark {
+    fn from(value: &BinaryBenchmark) -> Self {
+        value.clone()
     }
 }
 

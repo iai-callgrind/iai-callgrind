@@ -209,7 +209,36 @@ macro_rules! main {
             };
 
             $(
-                if $group::__IS_LOW_LEVEL {
+                if $group::__IS_ATTRIBUTE {
+                    let mut group = $crate::internal::InternalBinaryBenchmarkGroup {
+                        id: stringify!($group).to_owned(),
+                        config: $group::__get_config(),
+                        benches: vec![],
+                        has_setup: $group::__run_setup(false),
+                        has_teardown: $group::__run_teardown(false),
+                    };
+                    for (bench_name, get_config, macro_bin_benches) in $group::__BENCHES {
+                        let mut benches = $crate::internal::InternalBinaryBenchmarkBenches {
+                            benches: vec![],
+                            config: get_config()
+                        };
+                        for macro_bin_bench in macro_bin_benches.iter() {
+                            let bench = $crate::internal::InternalBinaryBenchmarkBench {
+                                id: macro_bin_bench.id_display.map(|i| i.to_string()),
+                                args: macro_bin_bench.args_display.map(|i| i.to_string()),
+                                bench: bench_name.to_string(),
+                                command: (macro_bin_bench.func)().into(),
+                                config: macro_bin_bench.config.map(|f| f()),
+                                has_setup: macro_bin_bench.setup.is_some(),
+                                has_teardown: macro_bin_bench.teardown.is_some()
+                            };
+                            benches.benches.push(bench);
+                        }
+                        group.benches.push(benches);
+                    }
+
+                    benchmark.groups.push(group);
+                } else {
                     let mut group = $crate::BinaryBenchmarkGroup::default();
                     $group::$group(&mut group);
 
@@ -223,7 +252,7 @@ macro_rules! main {
 
                     let mut binary_benchmark_ids =
                         std::collections::HashSet::<$crate::BenchmarkId>::new();
-                    for binary_benchmark in group.benches {
+                    for binary_benchmark in group.binary_benchmarks {
                         if !binary_benchmark_ids.insert(binary_benchmark.id.clone()) {
                             panic!("Duplicate binary benchmark id: {}", &binary_benchmark.id);
                         }
@@ -253,8 +282,10 @@ macro_rules! main {
                                             bench: binary_benchmark.id.clone().into(),
                                             command: command.into(),
                                             config: bench.config.map(Into::into),
-                                            has_setup: bench.setup.is_some(),
-                                            has_teardown: bench.teardown.is_some(),
+                                            has_setup: bench.setup.is_some()
+                                                    || binary_benchmark.setup.is_some(),
+                                            has_teardown: bench.teardown.is_some()
+                                                    || binary_benchmark.teardown.is_some(),
                                     };
                                     internal_binary_benchmarks.benches.push(internal_bench);
                                 },
@@ -283,35 +314,6 @@ macro_rules! main {
                     }
 
                     benchmark.groups.push(internal_group);
-                } else {
-                    let mut group = $crate::internal::InternalBinaryBenchmarkGroup {
-                        id: stringify!($group).to_owned(),
-                        config: $group::__get_config(),
-                        benches: vec![],
-                        has_setup: $group::__run_setup(false),
-                        has_teardown: $group::__run_teardown(false),
-                    };
-                    for (bench_name, get_config, macro_bin_benches) in $group::__BENCHES {
-                        let mut benches = $crate::internal::InternalBinaryBenchmarkBenches {
-                            benches: vec![],
-                            config: get_config()
-                        };
-                        for macro_bin_bench in macro_bin_benches.iter() {
-                            let bench = $crate::internal::InternalBinaryBenchmarkBench {
-                                id: macro_bin_bench.id_display.map(|i| i.to_string()),
-                                args: macro_bin_bench.args_display.map(|i| i.to_string()),
-                                bench: bench_name.to_string(),
-                                command: (macro_bin_bench.func)().into(),
-                                config: macro_bin_bench.config.map(|f| f()),
-                                has_setup: macro_bin_bench.setup.is_some(),
-                                has_teardown: macro_bin_bench.teardown.is_some()
-                            };
-                            benches.benches.push(bench);
-                        }
-                        group.benches.push(benches);
-                    }
-
-                    benchmark.groups.push(group);
                 }
             )+
 
@@ -796,7 +798,7 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
         pub mod $name {
             use super::*;
 
-            pub const __IS_LOW_LEVEL: bool = false;
+            pub const __IS_ATTRIBUTE: bool = true;
 
             pub const __BENCHES: &[&(
                 &'static str,
@@ -867,7 +869,7 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
         pub mod $name {
             use super::*;
 
-            pub const __IS_LOW_LEVEL: bool = true;
+            pub const __IS_ATTRIBUTE: bool = false;
 
             pub const __BENCHES: &[&(
                 &'static str,
@@ -910,7 +912,7 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
                 $name(&mut group);
 
                 let bench = group
-                    .benches
+                    .binary_benchmarks
                     .iter()
                     .enumerate()
                     .find_map(|(i, b)| (i == group_index).then_some(b))
@@ -922,6 +924,10 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
                         .find_map(|(i, b)| (i == bench_index).then_some(b.setup))
                         .expect("The bench index for setup should be present") {
                     setup();
+                } else if let Some(setup) = bench.setup {
+                    setup();
+                } else {
+                    // do nothing
                 }
             }
 
@@ -930,7 +936,7 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
                 $name(&mut group);
 
                 let bench = group
-                    .benches
+                    .binary_benchmarks
                     .iter()
                     .enumerate()
                     .find_map(|(i, b)| (i == group_index).then_some(b))
@@ -942,6 +948,10 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
                         .find_map(|(i, b)| (i == bench_index).then_some(b.teardown))
                         .expect("The bench index for teardown should be present") {
                     teardown();
+                } else if let Some(teardown) = bench.teardown {
+                    teardown();
+                } else {
+                    // do nothing
                 }
             }
 
