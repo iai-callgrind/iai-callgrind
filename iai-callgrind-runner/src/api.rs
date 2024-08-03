@@ -181,6 +181,8 @@ pub struct LibraryBenchmark {
     pub config: LibraryBenchmarkConfig,
     pub groups: Vec<LibraryBenchmarkGroup>,
     pub command_line_args: Vec<String>,
+    pub has_setup: bool,
+    pub has_teardown: bool,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -214,6 +216,8 @@ pub struct LibraryBenchmarkGroup {
     pub config: Option<LibraryBenchmarkConfig>,
     pub compare: bool,
     pub benches: Vec<LibraryBenchmarkBenches>,
+    pub has_setup: bool,
+    pub has_teardown: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
