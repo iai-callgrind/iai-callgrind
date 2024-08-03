@@ -1,3 +1,5 @@
+# spell-checker:ignore autobenches
+
 [package]
 authors = ["Joining7943 <joining@posteo.de>"]
 categories.workspace = true
@@ -12,6 +14,7 @@ readme = "../README.md"
 repository.workspace = true
 rust-version.workspace = true
 version = "0.1.0"
+autobenches = false
 
 [dependencies]
 cargo_metadata = { workspace = true }
@@ -41,60 +44,74 @@ path = "src/benchmark-tests-sort.rs"
 
 [[bench]]
 harness = false
-name = "test_bin_bench"
+path = "benches/test_bin_bench/test_bin_bench_dev/test_bin_bench_dev.rs"
+name = "test_bin_bench_dev"
 
 [[bench]]
 harness = false
+path = "benches/test_lib_bench/test_lib_bench_flamegraph/test_lib_bench_flamegraph.rs"
 name = "test_lib_bench_flamegraph"
 
 [[bench]]
 harness = false
+path = "benches/test_lib_bench/test_lib_bench_cache_sim/test_lib_bench_cache_sim.rs"
 name = "test_lib_bench_cache_sim"
 
 [[bench]]
 harness = false
+path = "benches/test_lib_bench/test_lib_bench_groups/test_lib_bench_groups.rs"
 name = "test_lib_bench_groups"
 
 [[bench]]
 harness = false
+path = "benches/test_lib_bench/test_lib_bench_compare/test_lib_bench_compare.rs"
 name = "test_lib_bench_compare"
 
 [[bench]]
 harness = false
+path = "benches/test_lib_bench/test_lib_bench_groups_envs/test_lib_bench_groups_envs.rs"
 name = "test_lib_bench_groups_envs"
 
 [[bench]]
 harness = false
+path = "benches/test_lib_bench/test_lib_bench_readme_example_fibonacci/test_lib_bench_readme_example_fibonacci.rs"
 name = "test_lib_bench_readme_example_fibonacci"
 
 [[bench]]
 harness = false
+path = "benches/test_lib_bench/test_lib_bench_tools/test_lib_bench_tools.rs"
 name = "test_lib_bench_tools"
 
 [[bench]]
 harness = false
+path = "benches/test_lib_bench/test_lib_bench_setup_and_teardown/test_lib_bench_setup_and_teardown.rs"
 name = "test_lib_bench_setup_and_teardown"
 
 [[bench]]
 harness = false
+path = "benches/test_lib_bench/test_lib_bench_nocapture/test_lib_bench_nocapture.rs"
 name = "test_lib_bench_nocapture"
 
 [[bench]]
 harness = false
+path = "benches/test_lib_bench/test_lib_bench_compiler_optimization/test_lib_bench_compiler_optimization.rs"
 name = "test_lib_bench_compiler_optimization"
 
 [[bench]]
 harness = false
+path = "benches/test_lib_bench/test_lib_bench_generics/test_lib_bench_generics.rs"
 name = "test_lib_bench_generics"
 
 [[bench]]
 harness = false
+path = "benches/test_lib_bench/test_lib_bench_main_and_group_setup_and_teardown/test_lib_bench_main_and_group_setup_and_teardown.rs"
 name = "test_lib_bench_main_and_group_setup_and_teardown"
 
 [[bench]]
 harness = false
+path = "benches/test_lib_bench/test_lib_bench_file_parameter/test_lib_bench_file_parameter.rs"
 name = "test_lib_bench_file_parameter"
 
 [[bench]]
 harness = false
-name = "test_bench"
+name = "test_bench_template"

@@ -1,8 +1,0 @@
-groups:
-  - runs:
-      - args: []
-        expected:
-          files: test_lib_bench_groups_envs.expected.1.yml
-      - args: []
-        expected:
-          files: test_lib_bench_groups_envs.expected.2.yml

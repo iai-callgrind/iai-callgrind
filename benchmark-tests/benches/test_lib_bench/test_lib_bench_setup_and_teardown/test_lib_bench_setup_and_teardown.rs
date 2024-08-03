@@ -83,10 +83,10 @@ fn benches_only_teardown(a: u64, b: u64, c: u64) -> (u64, u64) {
 }
 
 #[library_benchmark(setup = setup_expected, teardown = teardown)]
-#[benches::simple(args = [(2, 4), (4, 16)])]
-#[benches::simple_no_args_parameter((2, 4), (4, 16))]
-#[benches::overwrite_setup(args = [(2, 3, 6), (3, 4, 12)], setup = setup_expected_two)]
-#[benches::overwrite_teardown(args = [(3, 9), (5, 25)], teardown = teardown_other)]
+#[benches::simple(args = [(2, 16), (4, 16 * 16)])]
+#[benches::simple_no_args_parameter((2, 16), (4, 16 * 16))]
+#[benches::overwrite_setup(args = [(2, 3, 36), (3, 4, 12 * 12)], setup = setup_expected_two)]
+#[benches::overwrite_teardown(args = [(3, 9 * 9), (5, 25 * 25)], teardown = teardown_other)]
 fn benches_global_setup_and_teardown((value, expected): (u64, u64)) -> (u64, u64) {
     black_box((black_box(value * value), expected))
 }

@@ -1,0 +1,31 @@
+groups:
+  - runs:
+      - args: []
+        expected:
+          stdout: expected_stdout.1
+          stderr: expected_stderr.empty
+  - runs:
+      - args: ["--nocapture=false"]
+        expected:
+          stdout: expected_stdout.1
+          stderr: expected_stderr.empty
+  - runs:
+      - args: ["--nocapture"]
+        expected:
+          stdout: expected_stdout.2
+          stderr: expected_stderr.1
+  - runs:
+      - args: ["--nocapture=true"]
+        expected:
+          stdout: expected_stdout.2
+          stderr: expected_stderr.1
+  - runs:
+      - args: ["--nocapture=stdout"]
+        expected:
+          stdout: expected_stdout.3
+          stderr: expected_stderr.empty
+  - runs:
+      - args: ["--nocapture=stderr"]
+        expected:
+          stdout: expected_stdout.4
+          stderr: expected_stderr.1

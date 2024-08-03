@@ -18,7 +18,7 @@ use valico::json_schema;
 use valico::json_schema::schema::ScopedSchema;
 
 const PACKAGE: &str = "benchmark-tests";
-const TEMPLATE_BENCH_NAME: &str = "test_bench";
+const TEMPLATE_BENCH_NAME: &str = "test_bench_template";
 static TEMPLATE_DATA: OnceCell<HashMap<String, minijinja::Value>> = OnceCell::new();
 
 lazy_static! {
@@ -37,6 +37,7 @@ lazy_static! {
 #[derive(Debug, Clone)]
 struct Benchmark {
     name: String,
+    dir: PathBuf,
     bench_name: String,
     config: Config,
     dest_dir: PathBuf,
@@ -144,6 +145,7 @@ impl Benchmark {
             bench_name,
             name,
             config,
+            dir: path.parent().unwrap().to_path_buf(),
         }
     }
 
@@ -199,7 +201,7 @@ impl Benchmark {
         capture: bool,
     ) -> Option<BenchmarkOutput> {
         let mut template_string = String::new();
-        File::open(meta.get_file(template_path))
+        File::open(self.dir.join(template_path))
             .expect("File should exist")
             .read_to_string(&mut template_string)
             .expect("Reading to string should succeed");
@@ -209,7 +211,7 @@ impl Benchmark {
             .unwrap();
         let template = env.get_template(&self.bench_name).unwrap();
 
-        let dest = File::create(meta.get_bench_file(&self.bench_name)).unwrap();
+        let dest = File::create(meta.get_template()).unwrap();
         template.render_to_write(template_data, dest).unwrap();
 
         self.run_bench(args, capture)
@@ -256,13 +258,20 @@ impl Benchmark {
                 self.run_bench(&run.args, capture)
             };
 
-            run.assert(meta, output, schema, &self.home_dir, &self.bench_name);
+            run.assert(
+                &self.dir,
+                meta,
+                output,
+                schema,
+                &self.home_dir,
+                &self.bench_name,
+            );
         }
     }
 }
 
 impl BenchmarkOutput {
-    fn assert(&self, meta: &Metadata, expected: &ExpectedConfig) {
+    fn assert(&self, bench_dir: &Path, _meta: &Metadata, expected: &ExpectedConfig) {
         let output = &self.0;
 
         eprintln!("STDERR:");
@@ -272,7 +281,7 @@ impl BenchmarkOutput {
 
         if let Some(stderr) = &expected.stderr {
             let mut expected_stderr: Vec<u8> = Vec::new();
-            File::open(meta.get_file(stderr))
+            File::open(bench_dir.join(stderr))
                 .expect("File should exist")
                 .read_to_end(&mut expected_stderr)
                 .expect("Reading file should succeed");
@@ -288,7 +297,7 @@ impl BenchmarkOutput {
 
         if let Some(stdout) = &expected.stdout {
             let mut expected_stdout: Vec<u8> = Vec::new();
-            File::open(meta.get_file(stdout))
+            File::open(bench_dir.join(stdout))
                 .expect("File should exist")
                 .read_to_end(&mut expected_stdout)
                 .expect("Reading file should succeed");
@@ -556,7 +565,7 @@ impl Metadata {
         let benches_dir = package_dir.join("benches");
         let workspace_root = meta.workspace_root.clone().into_std_path_buf();
         let target_directory = meta.target_directory.clone().into_std_path_buf();
-        let benchmarks = glob(&format!("{}/*.conf.yml", benches_dir.display()))
+        let benchmarks = glob(&format!("{}/**/*.conf.yml", benches_dir.display()))
             .unwrap()
             .map(Result::unwrap)
             .filter(|path| {
@@ -578,21 +587,15 @@ impl Metadata {
         }
     }
 
-    pub fn get_bench_file(&self, bench_name: &str) -> PathBuf {
-        self.get_file(format!("{bench_name}.rs"))
-    }
-
-    pub fn get_file<T>(&self, file_name: T) -> PathBuf
-    where
-        T: AsRef<Path>,
-    {
-        self.benches_dir.join(file_name.as_ref())
+    pub fn get_template(&self) -> PathBuf {
+        self.benches_dir.join(format!("{TEMPLATE_BENCH_NAME}.rs"))
     }
 }
 
 impl RunConfig {
     fn assert(
         &self,
+        bench_dir: &Path,
         meta: &Metadata,
         output: Option<BenchmarkOutput>,
         schema: &ScopedSchema<'_>,
@@ -601,12 +604,12 @@ impl RunConfig {
     ) {
         if let Some(expected) = &self.expected {
             if let Some(output) = output {
-                output.assert(meta, expected);
+                output.assert(bench_dir, meta, expected);
             }
 
             if let Some(files) = &expected.files {
                 let expected_runs: ExpectedRuns = serde_yaml::from_reader(
-                    File::open(meta.get_file(files)).expect("File should exist"),
+                    File::open(bench_dir.join(files)).expect("File should exist"),
                 )
                 .map_err(|error| format!("Failed to deserialize '{}': {error}", files.display()))
                 .expect("File should be deserializable");
