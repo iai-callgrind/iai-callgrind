@@ -3,19 +3,19 @@
 #![allow(missing_docs)]
 
 pub use iai_callgrind_runner::api::{
-    Arg as InternalArg, Assistant as InternalAssistant, BinaryBenchmark as InternalBinaryBenchmark,
     BinaryBenchmarkBench as InternalBinaryBenchmarkBench,
     BinaryBenchmarkBenches as InternalBinaryBenchmarkBenches,
     BinaryBenchmarkConfig as InternalBinaryBenchmarkConfig,
-    BinaryBenchmarkGroup as InternalBinaryBenchmarkGroup, Cmd as InternalCmd,
-    Command as InternalCommand, ExitWith as InternalExitWith, Fixtures as InternalFixtures,
+    BinaryBenchmarkGroup as InternalBinaryBenchmarkGroup,
+    BinaryBenchmarkMain as InternalBinaryBenchmarkMain, Command as InternalCommand,
+    ExitWith as InternalExitWith, Fixtures as InternalFixtures,
     FlamegraphConfig as InternalFlamegraphConfig, LibraryBenchmark as InternalLibraryBenchmark,
     LibraryBenchmarkBench as InternalLibraryBenchmarkBench,
     LibraryBenchmarkBenches as InternalLibraryBenchmarkBenches,
     LibraryBenchmarkConfig as InternalLibraryBenchmarkConfig,
     LibraryBenchmarkGroup as InternalLibraryBenchmarkGroup, RawArgs as InternalRawArgs,
-    RegressionConfig as InternalRegressionConfig, Run as InternalRun, Sandbox as InternalSandbox,
-    Tool as InternalTool, Tools as InternalTools,
+    RegressionConfig as InternalRegressionConfig, Sandbox as InternalSandbox, Tool as InternalTool,
+    Tools as InternalTools,
 };
 
 #[derive(Debug, Clone)]

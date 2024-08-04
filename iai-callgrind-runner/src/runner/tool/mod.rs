@@ -35,6 +35,9 @@ pub struct RunOptions {
     pub entry_point: Option<String>,
     pub exit_with: Option<ExitWith>,
     pub envs: Vec<(OsString, OsString)>,
+    pub stdin: Option<api::Stdio>,
+    pub stdout: Option<api::Stdio>,
+    pub stderr: Option<api::Stdio>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

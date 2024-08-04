@@ -1,30 +1,18 @@
 //! The api contains all elements which the `runner` can understand
 use std::ffi::OsString;
 use std::fmt::Display;
+use std::fs::File;
+use std::io;
 use std::path::PathBuf;
+use std::process::{Command as StdCommand, Stdio as StdStdio};
 
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-// TODO: REMOVE
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Arg {
-    pub id: Option<String>,
-    pub args: Vec<OsString>,
-}
-
-// TODO: REMOVE ??
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Assistant {
-    pub id: String,
-    pub name: String,
-    pub bench: bool,
-}
-
 // TODO: RENAME TO BinaryBenchmarkMain or BinaryBenchmarks or BinaryBenchmarkGroups
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub struct BinaryBenchmark {
+pub struct BinaryBenchmarkMain {
     pub config: BinaryBenchmarkConfig,
     pub groups: Vec<BinaryBenchmarkGroup>,
     pub command_line_args: Vec<String>,
@@ -54,12 +42,10 @@ pub struct BinaryBenchmarkConfig {
 pub struct Command {
     pub path: PathBuf,
     pub args: Vec<OsString>,
-    pub envs: Vec<(OsString, Option<OsString>)>,
-    pub env_clear: Option<bool>,
-    // TODO: IMPLEMENT
-    // pub env_remove: Vec<OsString>,
-    pub current_dir: Option<PathBuf>,
-    pub exit_with: Option<ExitWith>,
+    pub stdin: Option<Stdio>,
+    pub stdout: Option<Stdio>,
+    pub stderr: Option<Stdio>,
+    pub config: BinaryBenchmarkConfig,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -86,13 +72,6 @@ pub struct BinaryBenchmarkGroup {
     pub has_setup: bool,
     pub has_teardown: bool,
     pub benches: Vec<BinaryBenchmarkBenches>,
-}
-
-// TODO: REMOVE
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Cmd {
-    pub display: String,
-    pub cmd: String,
 }
 
 /// The `Direction` in which the flamegraph should grow.
@@ -174,7 +153,7 @@ pub enum EventKind {
     SpLoss2,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum ExitWith {
     Success,
     Failure,
@@ -266,18 +245,38 @@ pub struct RegressionConfig {
     pub fail_fast: Option<bool>,
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct Run {
-    pub cmd: Option<Cmd>,
-    pub args: Vec<Arg>,
-    pub config: BinaryBenchmarkConfig,
-}
-
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Sandbox {
     pub enabled: Option<bool>,
     pub fixtures: Vec<PathBuf>,
     pub follow_symlinks: Option<bool>,
+}
+
+/// TODO: DOCUMENTATION
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub enum Pipe {
+    #[default]
+    Stdout,
+    Stderr,
+}
+
+/// TODO: DOCUMENTATION, just a helper struct not intended to be used in iai-callgrind
+#[derive(Debug, Clone, Copy)]
+pub enum Stream {
+    Stdin,
+    Stdout,
+    Stderr,
+}
+
+/// TODO: DOCUMENTATION and IMPLEMENTATION
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub enum Stdio {
+    Pipe,
+    #[default]
+    Inherit,
+    Null,
+    File(PathBuf),
+    // TODO: FILE DESCRIPTOR ??
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -315,6 +314,7 @@ impl BinaryBenchmarkConfig {
         T: IntoIterator<Item = Option<&'a Self>>,
     {
         for other in others.into_iter().flatten() {
+            // TODO: DOUBLE CHECK IF WE UPDATE ALL
             self.sandbox = update_option(&self.sandbox, &other.sandbox);
             self.env_clear = update_option(&self.env_clear, &other.env_clear);
             self.current_dir = update_option(&self.current_dir, &other.current_dir);
@@ -559,6 +559,36 @@ where
         let mut this = Self::default();
         this.extend_ignore_flag(iter);
         this
+    }
+}
+
+impl Stdio {
+    pub fn apply(&self, command: &mut StdCommand, stream: &Stream) -> Result<(), io::Error> {
+        let stdio = match self {
+            Stdio::Pipe => todo!(),
+            Stdio::Inherit => StdStdio::inherit(),
+            Stdio::Null => StdStdio::null(),
+            Stdio::File(path) => match stream {
+                Stream::Stdin => StdStdio::from(File::open(path)?),
+                Stream::Stdout | Stream::Stderr => {
+                    StdStdio::from(File::options().write(true).open(path)?)
+                }
+            },
+        };
+
+        match stream {
+            Stream::Stdin => command.stdin(stdio),
+            Stream::Stdout => command.stdout(stdio),
+            Stream::Stderr => command.stderr(stdio),
+        };
+
+        Ok(())
+    }
+}
+
+impl Display for Stream {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("{self:?}").to_lowercase())
     }
 }
 

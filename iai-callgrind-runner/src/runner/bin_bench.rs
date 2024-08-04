@@ -24,7 +24,7 @@ use super::tool::{
     Parser, RunOptions, ToolConfigs, ToolOutputPath, ToolOutputPathKind, ValgrindTool,
 };
 use super::{Config, ModulePath};
-use crate::api::{self, BinaryBenchmark};
+use crate::api::{self, BinaryBenchmarkMain};
 use crate::error::Error;
 use crate::runner::format::tool_headline;
 use crate::util::{copy_directory, make_absolute, make_relative, write_all_to_stderr};
@@ -33,6 +33,7 @@ mod defaults {
     pub const SANDBOX_FIXTURES_FOLLOW_SYMLINKS: bool = false;
     pub const SANDBOX_ENABLED: bool = false;
     pub const REGRESSION_FAIL_FAST: bool = false;
+    pub const ENV_CLEAR: bool = true;
 }
 
 #[derive(Debug, Clone)]
@@ -502,7 +503,7 @@ impl Group {
 impl Groups {
     fn from_binary_benchmark(
         module: &ModulePath,
-        benchmark: BinaryBenchmark,
+        benchmark: BinaryBenchmarkMain,
         meta: &Metadata,
     ) -> Result<Self> {
         // TODO: Mostly copied from lib_bench, DOUBLE_CHECK !!
@@ -542,15 +543,15 @@ impl Groups {
                 for (bench_index, binary_benchmark_bench) in
                     binary_benchmark_benches.benches.into_iter().enumerate()
                 {
-                    let mut config = global_config.clone().update_from_all([
+                    let command = binary_benchmark_bench.command;
+
+                    let config = global_config.clone().update_from_all([
                         binary_benchmark_group.config.as_ref(),
                         binary_benchmark_benches.config.as_ref(),
                         binary_benchmark_bench.config.as_ref(),
+                        Some(&command.config),
                     ]);
 
-                    // TODO: TEST
-                    let command = binary_benchmark_bench.command;
-                    config.envs.extend(command.envs.iter().cloned());
                     let envs = config.resolve_envs();
 
                     let callgrind_args =
@@ -561,11 +562,10 @@ impl Groups {
                         args: binary_benchmark_bench.args,
                         function_name: binary_benchmark_bench.bench,
                         run_options: RunOptions {
-                            env_clear: config
-                                .env_clear
-                                .unwrap_or_else(|| command.env_clear.unwrap_or(true)),
+                            env_clear: config.env_clear.unwrap_or(defaults::ENV_CLEAR),
                             entry_point: None,
                             envs,
+                            stdin: command.stdin.clone(),
                             ..Default::default()
                         },
                         command,
@@ -708,7 +708,7 @@ impl Benchmark for LoadBaselineBenchmark {
 }
 
 impl Runner {
-    fn new(binary_benchmark: BinaryBenchmark, config: Config) -> Result<Self> {
+    fn new(binary_benchmark: BinaryBenchmarkMain, config: Config) -> Result<Self> {
         let setup = binary_benchmark
             .has_setup
             .then_some(Assistant::new_main_assistant(AssistantKind::Setup));
@@ -949,6 +949,6 @@ impl Benchmark for SaveBaselineBenchmark {
     }
 }
 
-pub fn run(binary_benchmark: BinaryBenchmark, config: Config) -> Result<()> {
+pub fn run(binary_benchmark: BinaryBenchmarkMain, config: Config) -> Result<()> {
     Runner::new(binary_benchmark, config)?.run()
 }

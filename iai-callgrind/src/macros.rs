@@ -199,7 +199,7 @@ macro_rules! main {
             )?
 
 
-            let mut benchmark = $crate::internal::InternalBinaryBenchmark {
+            let mut benchmark = $crate::internal::InternalBinaryBenchmarkMain {
                 config: config.unwrap_or_default(),
                 command_line_args: this_args.collect(),
                 has_setup: __run_setup(false),

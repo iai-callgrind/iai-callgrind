@@ -21,8 +21,9 @@ use super::args::NoCapture;
 use super::meta::Metadata;
 use super::summary::{CallgrindRegressionSummary, CostsSummary};
 use super::tool::{check_exit, RunOptions, ToolOutput, ToolOutputPath, ValgrindTool};
-use crate::api::{self, EventKind};
+use crate::api::{self, EventKind, Stream};
 use crate::error::Error;
+use crate::runner::ModulePath;
 use crate::util::{resolve_binary_path, to_string_signed_short};
 
 pub struct CallgrindCommand {
@@ -72,6 +73,9 @@ impl CallgrindCommand {
             exit_with,
             entry_point,
             envs,
+            stdin,
+            stdout,
+            stderr,
         } = options;
 
         if env_clear {
@@ -105,6 +109,12 @@ impl CallgrindCommand {
             .envs(envs);
 
         self.nocapture.apply(&mut command);
+        // TODO: MODULE PATH
+        if let Some(stdin) = stdin {
+            stdin
+                .apply(&mut command, &Stream::Stdin)
+                .map_err(|error| Error::BenchmarkError(ModulePath::new(""), error.to_string()))?;
+        }
 
         let output = match self.nocapture {
             NoCapture::False => command

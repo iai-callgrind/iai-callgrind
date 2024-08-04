@@ -20,7 +20,7 @@ use log::debug;
 
 use self::meta::Metadata;
 use self::summary::BenchmarkKind;
-use crate::api::{BinaryBenchmark, LibraryBenchmark};
+use crate::api::{BinaryBenchmarkMain, LibraryBenchmark};
 use crate::error::Error;
 
 pub mod envs {
@@ -34,7 +34,7 @@ pub mod envs {
 
 pub const DEFAULT_TOGGLE: &str = "*::__iai_callgrind_wrapper_mod::*";
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModulePath(String);
 
 impl ModulePath {
@@ -241,7 +241,7 @@ pub fn run() -> Result<()> {
             lib_bench::run(benchmark, config)
         }
         BenchmarkKind::BinaryBenchmark => {
-            let benchmark: BinaryBenchmark = receive_benchmark(num_bytes)?;
+            let benchmark: BinaryBenchmarkMain = receive_benchmark(num_bytes)?;
             let meta = Metadata::new(&benchmark.command_line_args, &package_name, &bench_file)?;
             if meta
                 .args

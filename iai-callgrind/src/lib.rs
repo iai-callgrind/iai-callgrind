@@ -390,8 +390,8 @@ mod macros;
 
 #[cfg(feature = "default")]
 pub use bin_bench::{
-    Arg, Bench, BenchmarkId, BinaryBenchmark, BinaryBenchmarkConfig, BinaryBenchmarkGroup, Command,
-    ExitWith, Run, Sandbox,
+    Bench, BenchmarkId, BinaryBenchmark, BinaryBenchmarkConfig, BinaryBenchmarkGroup, Command,
+    ExitWith, Sandbox,
 };
 #[cfg(feature = "default")]
 pub use bincode;
@@ -402,6 +402,8 @@ pub use cty;
 #[cfg(feature = "default")]
 pub use iai_callgrind_macros::{binary_benchmark, library_benchmark};
 #[cfg(feature = "default")]
-pub use iai_callgrind_runner::api::{Direction, EventKind, FlamegraphKind, ValgrindTool};
+pub use iai_callgrind_runner::api::{
+    Direction, EventKind, FlamegraphKind, Pipe, Stdio, ValgrindTool,
+};
 #[cfg(feature = "default")]
 pub use lib_bench::LibraryBenchmarkConfig;
