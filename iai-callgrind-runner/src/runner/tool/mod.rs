@@ -8,7 +8,7 @@ use std::fmt::Display;
 use std::fs::File;
 use std::io::{stderr, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus, Output, Stdio};
+use std::process::{Command, ExitStatus, Output};
 
 use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
@@ -24,7 +24,7 @@ use super::format::{tool_headline, OutputFormat};
 use super::meta::Metadata;
 use super::summary::{BaselineKind, ToolRunSummary, ToolSummary};
 use super::ModulePath;
-use crate::api::{self, ExitWith};
+use crate::api::{self, ExitWith, Stream};
 use crate::error::Error;
 use crate::util::{self, make_relative, resolve_binary_path, truncate_str_utf8};
 
@@ -134,6 +134,7 @@ impl ToolCommand {
         executable_args: &[OsString],
         options: RunOptions,
         output_path: &ToolOutputPath,
+        module_path: &ModulePath,
     ) -> Result<ToolOutput> {
         debug!(
             "{}: Running with executable '{}'",
@@ -146,6 +147,9 @@ impl ToolCommand {
             current_dir,
             exit_with,
             envs,
+            stdin,
+            stdout,
+            stderr,
             ..
         } = options;
 
@@ -166,6 +170,21 @@ impl ToolCommand {
         tool_args.set_log_arg(output_path, config.outfile_modifier.as_ref());
 
         let executable = resolve_binary_path(executable)?;
+        if let Some(stdin) = stdin {
+            stdin
+                .apply(&mut self.command, &Stream::Stdin)
+                .map_err(|error| Error::BenchmarkError(self.tool, module_path.clone(), error))?;
+        }
+        if let Some(stdout) = stdout {
+            stdout
+                .apply(&mut self.command, &Stream::Stdout)
+                .map_err(|error| Error::BenchmarkError(self.tool, module_path.clone(), error))?;
+        }
+        if let Some(stderr) = stderr {
+            stderr
+                .apply(&mut self.command, &Stream::Stderr)
+                .map_err(|error| Error::BenchmarkError(self.tool, module_path.clone(), error))?;
+        }
 
         let output = self
             .command
@@ -173,8 +192,6 @@ impl ToolCommand {
             .arg(&executable)
             .args(executable_args)
             .envs(envs)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
             .output()
             .map_err(|error| -> anyhow::Error {
                 Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
@@ -330,6 +347,8 @@ impl ToolConfigs {
         Ok(tool_summaries)
     }
 
+    /// TODO: REARRANGE PARAMETERS
+    #[allow(clippy::too_many_arguments)]
     pub fn run(
         &self,
         meta: &Metadata,
@@ -338,6 +357,7 @@ impl ToolConfigs {
         options: &RunOptions,
         output_path: &ToolOutputPath,
         save_baseline: bool,
+        module_path: &ModulePath,
     ) -> Result<Vec<ToolSummary>> {
         let mut tool_summaries = vec![];
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
@@ -365,6 +385,7 @@ impl ToolConfigs {
                 executable_args,
                 options.clone(),
                 &output_path,
+                module_path,
             )?;
 
             let tool_summary = Self::parse(
@@ -733,6 +754,12 @@ impl ValgrindTool {
             self,
             ValgrindTool::Callgrind | ValgrindTool::DHAT | ValgrindTool::BBV | ValgrindTool::Massif
         )
+    }
+}
+
+impl Display for ValgrindTool {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.id())
     }
 }
 

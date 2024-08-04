@@ -2,7 +2,6 @@
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::fs::File;
-use std::io;
 use std::path::PathBuf;
 use std::process::{Command as StdCommand, Stdio as StdStdio};
 
@@ -563,15 +562,25 @@ where
 }
 
 impl Stdio {
-    pub fn apply(&self, command: &mut StdCommand, stream: &Stream) -> Result<(), io::Error> {
+    pub fn apply(&self, command: &mut StdCommand, stream: &Stream) -> Result<(), String> {
         let stdio = match self {
-            Stdio::Pipe => todo!(),
+            Stdio::Pipe => StdStdio::piped(),
             Stdio::Inherit => StdStdio::inherit(),
             Stdio::Null => StdStdio::null(),
             Stdio::File(path) => match stream {
-                Stream::Stdin => StdStdio::from(File::open(path)?),
+                Stream::Stdin => StdStdio::from(File::open(path).map_err(|error| {
+                    format!(
+                        "Failed to open file '{}' in read mode for {stream}: {error}",
+                        path.display()
+                    )
+                })?),
                 Stream::Stdout | Stream::Stderr => {
-                    StdStdio::from(File::options().write(true).open(path)?)
+                    StdStdio::from(File::create(path).map_err(|error| {
+                        format!(
+                            "Failed to create file '{}' for {stream}: {error}",
+                            path.display()
+                        )
+                    })?)
                 }
             },
         };

@@ -54,6 +54,8 @@ impl CallgrindCommand {
         }
     }
 
+    // TODO: REARRANGE PARAMETERS
+    #[allow(clippy::too_many_lines)]
     pub fn run(
         self,
         mut callgrind_args: Args,
@@ -61,6 +63,7 @@ impl CallgrindCommand {
         executable_args: &[OsString],
         options: RunOptions,
         output_path: &ToolOutputPath,
+        module_path: &ModulePath,
     ) -> Result<ToolOutput> {
         let mut command = self.command;
         debug!(
@@ -109,11 +112,25 @@ impl CallgrindCommand {
             .envs(envs);
 
         self.nocapture.apply(&mut command);
-        // TODO: MODULE PATH
+
         if let Some(stdin) = stdin {
-            stdin
-                .apply(&mut command, &Stream::Stdin)
-                .map_err(|error| Error::BenchmarkError(ModulePath::new(""), error.to_string()))?;
+            stdin.apply(&mut command, &Stream::Stdin).map_err(|error| {
+                Error::BenchmarkError(ValgrindTool::Callgrind, module_path.clone(), error)
+            })?;
+        }
+        if let Some(stdout) = stdout {
+            stdout
+                .apply(&mut command, &Stream::Stdout)
+                .map_err(|error| {
+                    Error::BenchmarkError(ValgrindTool::Callgrind, module_path.clone(), error)
+                })?;
+        }
+        if let Some(stderr) = stderr {
+            stderr
+                .apply(&mut command, &Stream::Stderr)
+                .map_err(|error| {
+                    Error::BenchmarkError(ValgrindTool::Callgrind, module_path.clone(), error)
+                })?;
         }
 
         let output = match self.nocapture {

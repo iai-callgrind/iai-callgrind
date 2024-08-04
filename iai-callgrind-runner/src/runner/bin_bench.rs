@@ -68,6 +68,7 @@ struct BinBench {
     setup: Option<Assistant>,
     teardown: Option<Assistant>,
     sandbox: Option<api::Sandbox>,
+    module_path: ModulePath,
 }
 
 #[derive(Debug)]
@@ -297,6 +298,7 @@ impl Benchmark for BaselineBenchmark {
             &bin_bench.command.args,
             bin_bench.run_options.clone(),
             &out_path,
+            &bin_bench.module_path,
         )?;
 
         let new_costs = SummaryParser.parse(&out_path)?;
@@ -350,6 +352,7 @@ impl Benchmark for BaselineBenchmark {
             &bin_bench.run_options,
             &out_path,
             false,
+            &bin_bench.module_path,
         )?;
 
         Ok(benchmark_summary)
@@ -512,7 +515,7 @@ impl Groups {
 
         let mut groups = vec![];
         for binary_benchmark_group in benchmark.groups {
-            let module_path = module.join(&binary_benchmark_group.id);
+            let group_module_path = module.join(&binary_benchmark_group.id);
 
             let setup = binary_benchmark_group
                 .has_setup
@@ -530,7 +533,7 @@ impl Groups {
 
             let mut group = Group {
                 name: binary_benchmark_group.id,
-                module_path,
+                module_path: group_module_path,
                 benches: vec![],
                 setup,
                 teardown,
@@ -557,6 +560,15 @@ impl Groups {
                     let callgrind_args =
                         Args::from_raw_args(&[&config.raw_callgrind_args, &meta_callgrind_args])?;
                     let flamegraph_config = config.flamegraph_config.map(Into::into);
+                    let module_path = binary_benchmark_bench.id.as_ref().map_or_else(
+                        || group.module_path.join(&binary_benchmark_bench.bench),
+                        |id| {
+                            group
+                                .module_path
+                                .join(&binary_benchmark_bench.bench)
+                                .join(id)
+                        },
+                    );
                     let bin_bench = BinBench {
                         id: binary_benchmark_bench.id,
                         args: binary_benchmark_bench.args,
@@ -592,6 +604,7 @@ impl Groups {
                             ),
                         ),
                         sandbox: config.sandbox,
+                        module_path,
                     };
                     group.benches.push(bin_bench);
                 }
@@ -898,6 +911,7 @@ impl Benchmark for SaveBaselineBenchmark {
             &bin_bench.command.args,
             bin_bench.run_options.clone(),
             &out_path,
+            &bin_bench.module_path,
         )?;
 
         let new_costs = SummaryParser.parse(&out_path)?;
@@ -943,6 +957,7 @@ impl Benchmark for SaveBaselineBenchmark {
             &bin_bench.run_options,
             &out_path,
             true,
+            &bin_bench.module_path,
         )?;
 
         Ok(benchmark_summary)

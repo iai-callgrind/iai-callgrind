@@ -3,8 +3,8 @@ groups:
       - args: []
         expected:
           files: expected_files.1.yml
-          stdout: test_lib_bench_cache_sim.stdout.1
+          stdout: expected_stdout.1
       - args: []
         expected:
           files: expected_files.2.yml
-          stdout: test_lib_bench_cache_sim.stdout.2
+          stdout: expected_stdout.2

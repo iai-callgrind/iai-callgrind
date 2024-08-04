@@ -6,7 +6,7 @@ use std::process::{ExitStatus, Output};
 
 use version_compare::Cmp;
 
-use crate::runner::tool::ToolOutputPath;
+use crate::runner::tool::{ToolOutputPath, ValgrindTool};
 use crate::runner::ModulePath;
 use crate::util::write_all_to_stderr;
 
@@ -21,7 +21,7 @@ pub enum Error {
     RegressionError(bool),
     EnvironmentVariableError((String, String)),
     SandboxError(String),
-    BenchmarkError(ModulePath, String),
+    BenchmarkError(ValgrindTool, ModulePath, String),
 }
 
 impl std::error::Error for Error {}
@@ -109,8 +109,8 @@ impl Display for Error {
             Self::SandboxError(message) => {
                 write!(f, "Error in sandbox: {message}")
             }
-            Self::BenchmarkError(module_path, message) => {
-                write!(f, "Error in benchmark {module_path}: {message}")
+            Self::BenchmarkError(tool, module_path, message) => {
+                write!(f, "Error in {tool} benchmark {module_path}: {message}")
             }
         }
     }
