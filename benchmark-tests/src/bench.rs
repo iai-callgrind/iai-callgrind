@@ -19,6 +19,10 @@ use valico::json_schema::schema::ScopedSchema;
 
 const PACKAGE: &str = "benchmark-tests";
 const TEMPLATE_BENCH_NAME: &str = "test_bench_template";
+const TEMPLATE_CONTENT: &str = r#"fn main() {
+    panic!("should be replaced by a rendered template");
+}
+"#;
 static TEMPLATE_DATA: OnceCell<HashMap<String, minijinja::Value>> = OnceCell::new();
 
 lazy_static! {
@@ -253,7 +257,10 @@ impl Benchmark {
                 .map_or(false, |e| e.stdout.is_some() || e.stderr.is_some());
 
             let output = if let Some(template) = &self.config.template {
-                self.run_template(template, &run.args, &run.template_data, meta, capture)
+                let output =
+                    self.run_template(template, &run.args, &run.template_data, meta, capture);
+                self.reset_template(meta);
+                output
             } else {
                 self.run_bench(&run.args, capture)
             };
@@ -267,6 +274,11 @@ impl Benchmark {
                 &self.bench_name,
             );
         }
+    }
+
+    fn reset_template(&self, meta: &Metadata) {
+        let mut file = File::create(meta.get_template()).unwrap();
+        file.write_all(TEMPLATE_CONTENT.as_bytes()).unwrap();
     }
 }
 
