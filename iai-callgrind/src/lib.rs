@@ -379,6 +379,9 @@ pub mod client_requests;
 mod common;
 #[cfg(feature = "default")]
 #[doc(hidden)]
+pub mod error;
+#[cfg(feature = "default")]
+#[doc(hidden)]
 pub mod internal;
 #[cfg(feature = "default")]
 mod lib_bench;

@@ -176,8 +176,7 @@ macro_rules! main {
         $( teardown = $teardown:expr ; $(;)* )?
         binary_benchmark_groups = $( $group:ident ),+ $(,)*
     ) => {
-
-        fn run() {
+        fn run() -> Result<(), $crate::error::Errors> {
             let mut this_args = std::env::args();
             let exe = option_env!("IAI_CALLGRIND_RUNNER")
                 .unwrap_or_else(|| option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner"));
@@ -207,6 +206,8 @@ macro_rules! main {
                 has_teardown: __run_teardown(false),
                 ..Default::default()
             };
+
+            let mut errors = $crate::error::Errors::default();
 
             $(
                 if $group::__IS_ATTRIBUTE {
@@ -242,6 +243,8 @@ macro_rules! main {
                     let mut group = $crate::BinaryBenchmarkGroup::default();
                     $group::$group(&mut group);
 
+                    let module_path = module_path!();
+
                     let mut internal_group = $crate::internal::InternalBinaryBenchmarkGroup {
                         id: stringify!($group).to_owned(),
                         config: $group::__get_config(),
@@ -252,9 +255,27 @@ macro_rules! main {
 
                     let mut binary_benchmark_ids =
                         std::collections::HashSet::<$crate::BenchmarkId>::new();
+
+                    if group.binary_benchmarks.is_empty() {
+                        errors.add(
+                            $crate::error::Error::GroupError(
+                                module_path.to_owned(),
+                                internal_group.id.clone(),
+                                "This group needs at least one benchmark".to_owned()
+                            )
+                        );
+                    }
+
                     for binary_benchmark in group.binary_benchmarks {
                         if !binary_benchmark_ids.insert(binary_benchmark.id.clone()) {
-                            panic!("Duplicate binary benchmark id: {}", &binary_benchmark.id);
+                            errors.add(
+                                $crate::error::Error::BinaryBenchmarkError(
+                                    module_path.to_owned(),
+                                    internal_group.id.clone(),
+                                    binary_benchmark.id.to_string(),
+                                    "Duplicate binary benchmark id".to_owned()
+                                )
+                            );
                         }
 
                         let mut internal_binary_benchmarks =
@@ -266,14 +287,41 @@ macro_rules! main {
                         let mut bench_ids =
                             std::collections::HashSet::<$crate::BenchmarkId>::new();
 
+                        if binary_benchmark.benches.is_empty() {
+                            errors.add(
+                                $crate::error::Error::BinaryBenchmarkError(
+                                    module_path.to_owned(),
+                                    internal_group.id.clone(),
+                                    binary_benchmark.id.to_string(),
+                                    "This binary benchmark needs at least one bench".to_owned()
+                                )
+                            );
+                        }
+
                         for bench in binary_benchmark.benches {
                             match bench.commands.as_slice() {
                                 [] => {
-                                    panic!("Missing command for bench with id: {}", bench.id);
+                                    errors.add(
+                                        $crate::error::Error::BenchError(
+                                            module_path.to_owned(),
+                                            internal_group.id.clone(),
+                                            binary_benchmark.id.to_string(),
+                                            bench.id.to_string(),
+                                            "Missing command".to_owned()
+                                        )
+                                    );
                                 },
                                 [command] => {
                                     if !bench_ids.insert(bench.id.clone()) {
-                                        panic!("Duplicate bench id: {}", bench.id);
+                                        errors.add(
+                                            $crate::error::Error::BenchError(
+                                                module_path.to_owned(),
+                                                internal_group.id.clone(),
+                                                binary_benchmark.id.to_string(),
+                                                bench.id.to_string(),
+                                                format!("Duplicate id: '{}'", bench.id)
+                                            )
+                                        );
                                     }
                                     let internal_bench =
                                         $crate::internal::InternalBinaryBenchmarkBench {
@@ -293,7 +341,15 @@ macro_rules! main {
                                     for (index, command) in commands.iter().enumerate() {
                                         let bench_id: $crate::BenchmarkId = format!("{}_{}", bench.id, index).into();
                                         if !bench_ids.insert(bench_id.clone()) {
-                                            panic!("Duplicate bench id: {}", bench.id);
+                                            errors.add(
+                                                $crate::error::Error::BenchError(
+                                                    module_path.to_owned(),
+                                                    internal_group.id.clone(),
+                                                    binary_benchmark.id.to_string(),
+                                                    bench.id.to_string(),
+                                                    format!("Duplicate id: '{}'", bench_id)
+                                                )
+                                            );
                                         }
                                         let internal_bench =
                                             $crate::internal::InternalBinaryBenchmarkBench {
@@ -317,6 +373,10 @@ macro_rules! main {
                 }
             )+
 
+            if !errors.is_empty() {
+                return Err(errors);
+            }
+
             let encoded = $crate::bincode::serialize(&benchmark).expect("Encoded benchmark");
             let mut child = cmd
                 .arg(encoded.len().to_string())
@@ -337,6 +397,8 @@ macro_rules! main {
             if !status.success() {
                 std::process::exit(1);
             }
+
+            Ok(())
         }
 
         fn __run_setup(__run: bool) -> bool {
@@ -411,7 +473,10 @@ macro_rules! main {
                     (name, _) => panic!("function '{}' not found in this scope", name)
                 }
             } else {
-                run();
+                if let Err(errors) = run() {
+                    eprintln!("{errors}");
+                    std::process::exit(1);
+                }
             };
         }
     };
@@ -610,6 +675,7 @@ macro_rules! main {
     };
 }
 
+/// TODO: UPDATE DOCUMENTATION
 /// Macro used to define a group of binary benchmarks
 ///
 /// A small introductory example which shows the basic setup:
@@ -794,7 +860,6 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
         $( compare_by_id = $compare:literal ; $(;)* )?
         benchmarks = $( $function:ident ),+ $(,)*
     ) => {
-        // TODO: IMPLEMENT
         pub mod $name {
             use super::*;
 
@@ -914,14 +979,13 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
                 let bench = group
                     .binary_benchmarks
                     .iter()
-                    .enumerate()
-                    .find_map(|(i, b)| (i == group_index).then_some(b))
+                    .nth(group_index)
                     .expect("The group index for setup should be present");
                 if let Some(setup) = bench
                         .benches
                         .iter()
-                        .enumerate()
-                        .find_map(|(i, b)| (i == bench_index).then_some(b.setup))
+                        .nth(bench_index)
+                        .map(|b| b.setup)
                         .expect("The bench index for setup should be present") {
                     setup();
                 } else if let Some(setup) = bench.setup {
@@ -938,14 +1002,13 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
                 let bench = group
                     .binary_benchmarks
                     .iter()
-                    .enumerate()
-                    .find_map(|(i, b)| (i == group_index).then_some(b))
+                    .nth(group_index)
                     .expect("The group index for teardown should be present");
                 if let Some(teardown) = bench
                         .benches
                         .iter()
-                        .enumerate()
-                        .find_map(|(i, b)| (i == bench_index).then_some(b.teardown))
+                        .nth(bench_index)
+                        .map(|b| b.teardown)
                         .expect("The bench index for teardown should be present") {
                     teardown();
                 } else if let Some(teardown) = bench.teardown {
