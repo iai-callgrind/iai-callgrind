@@ -1,0 +1,263 @@
+SETUP: setup_no_argument function
+test_bin_bench_setup_and_teardown::bench_group::bench_just_binary_benchmark_attribute () -> target/release/echo 1
+1
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+TEARDOWN: teardown_no_argument function
+SETUP: setup_one_argument function: 1
+test_bin_bench_setup_and_teardown::bench_group::simple_bench setup_with_args_parameter:() -> target/release/echo 2
+2
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+SETUP: setup_one_argument function: 2
+test_bin_bench_setup_and_teardown::bench_group::simple_bench setup_no_args_parameter:() -> target/release/echo 2
+2
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+SETUP: setup_one_argument function: 1
+test_bin_bench_setup_and_teardown::bench_group::bench_only_setup setup_with_one_argument:(3) -> target/release/echo 3
+3
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+SETUP: setup_one_argument function: 2
+test_bin_bench_setup_and_teardown::bench_group::bench_only_setup setup_first_then_args:(6) -> target/release/echo 6
+6
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+SETUP: setup::setup_in_module function: 3
+test_bin_bench_setup_and_teardown::bench_group::bench_only_setup setup_in_module:(24) -> target/release/echo 24
+24
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+test_bin_bench_setup_and_teardown::bench_group::bench_only_teardown teardown_with_one_argument:(2, 3, 5) -> target/release/echo 2 3 ...
+2 3 5
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+TEARDOWN: teardown_one_argument function: 1
+test_bin_bench_setup_and_teardown::bench_group::bench_only_teardown teardown_first_then_args:(4, 6, 10) -> target/release/echo 4 6...
+4 6 10
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+TEARDOWN: teardown_one_argument function: 2
+test_bin_bench_setup_and_teardown::bench_group::bench_only_teardown teardown_in_module:(8, 12, 20) -> target/release/echo 8 ...
+8 12 20
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+TEARDOWN: teardown::teardown_in_module function: 2
+SETUP: setup_one_argument function: 1
+test_bin_bench_setup_and_teardown::bench_group::bench_setup_and_teardown setup_first_then_teardown:(2) -> target/release/echo 2
+2
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+TEARDOWN: teardown_one_argument function: 1
+SETUP: setup_one_argument function: 2
+test_bin_bench_setup_and_teardown::bench_group::bench_setup_and_teardown teardown_first_then_setup:(3) -> target/release/echo 3
+3
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+TEARDOWN: teardown_one_argument function: 2
+SETUP: setup_no_argument function
+test_bin_bench_setup_and_teardown::bench_group::bench_global_setup_and_teardown no_overwrite:(1) -> target/release/echo 1
+1
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+TEARDOWN: teardown_no_argument function
+SETUP: setup_no_argument function
+test_bin_bench_setup_and_teardown::bench_group::bench_global_setup_and_teardown overwrite_teardown:(2) -> target/release/echo 2
+2
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+TEARDOWN: teardown_one_argument function: 1
+SETUP: setup_one_argument function: 2
+test_bin_bench_setup_and_teardown::bench_group::bench_global_setup_and_teardown overwrite_setup:(3) -> target/release/echo 3
+3
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+TEARDOWN: teardown_no_argument function
+SETUP: setup_one_argument function: 2
+test_bin_bench_setup_and_teardown::bench_group::bench_global_setup_and_teardown overwrite_setup_and_teardown:(4) -> target/release/echo 4
+4
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+TEARDOWN: teardown_one_argument function: 1
+SETUP: setup_one_argument function: 1
+test_bin_bench_setup_and_teardown::low_level::bench_only_setup setup_with_one_argument:() -> target/release/echo 3
+3
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+SETUP: setup::setup_in_module function: 2
+test_bin_bench_setup_and_teardown::low_level::bench_only_setup setup_in_module:() -> target/release/echo 6
+6
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+test_bin_bench_setup_and_teardown::low_level::bench_only_teardown teardown_with_one_argument:() -> target/release/echo 10
+10
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+TEARDOWN: teardown_one_argument function: 3
+test_bin_bench_setup_and_teardown::low_level::bench_only_teardown teardown_in_module:() -> target/release/echo 40
+40
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+TEARDOWN: teardown::teardown_in_module function: 4
+SETUP: setup_one_argument function: 5
+test_bin_bench_setup_and_teardown::low_level::bench_setup_and_teardown setup_first_then_teardown:() -> target/release/echo 2
+2
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+TEARDOWN: teardown_one_argument function: 6
+SETUP: setup_one_argument function: 8
+test_bin_bench_setup_and_teardown::low_level::bench_setup_and_teardown teardown_first_then_setup:() -> target/release/echo 3
+3
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+TEARDOWN: teardown_one_argument function: 7
+SETUP: setup_no_argument function
+test_bin_bench_setup_and_teardown::low_level::bench_global_setup_and_teardown no_overwrite:() -> target/release/echo 1
+1
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+TEARDOWN: teardown_no_argument function
+SETUP: setup_no_argument function
+test_bin_bench_setup_and_teardown::low_level::bench_global_setup_and_teardown overwrite_teardown:() -> target/release/echo 2
+2
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+TEARDOWN: teardown_one_argument function: 1
+SETUP: setup_one_argument function: 2
+test_bin_bench_setup_and_teardown::low_level::bench_global_setup_and_teardown overwrite_setup:() -> target/release/echo 3
+3
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+TEARDOWN: teardown_no_argument function
+SETUP: setup_one_argument function: 3
+test_bin_bench_setup_and_teardown::low_level::bench_global_setup_and_teardown overwrite_setup_and_teardown:() -> target/release/echo 4
+4
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+TEARDOWN: teardown_one_argument function: 4

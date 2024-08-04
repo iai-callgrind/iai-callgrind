@@ -39,13 +39,35 @@ name = "bench"
 path = "src/bench.rs"
 
 [[bin]]
-name = "benchmark-tests-sort"
-path = "src/benchmark-tests-sort.rs"
+name = "sort"
+path = "src/helper/sort.rs"
+
+[[bin]]
+name = "echo"
+path = "src/helper/echo.rs"
+
+[[bin]]
+name = "read-file"
+path = "src/helper/read-file.rs"
+
+[[bin]]
+name = "file-exists"
+path = "src/helper/file-exists.rs"
 
 [[bench]]
 harness = false
 path = "benches/test_bin_bench/test_bin_bench_dev/test_bin_bench_dev.rs"
 name = "test_bin_bench_dev"
+
+[[bench]]
+harness = false
+path = "benches/test_bin_bench/test_bin_bench_setup_and_teardown/test_bin_bench_setup_and_teardown.rs"
+name = "test_bin_bench_setup_and_teardown"
+
+[[bench]]
+harness = false
+path = "benches/test_bin_bench/test_bin_bench_main_and_group_setup_and_teardown/test_bin_bench_main_and_group_setup_and_teardown.rs"
+name = "test_bin_bench_main_and_group_setup_and_teardown"
 
 [[bench]]
 harness = false
