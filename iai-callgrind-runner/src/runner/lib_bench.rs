@@ -206,13 +206,16 @@ impl Benchmark for BaselineBenchmark {
         }
 
         benchmark_summary.tool_summaries = lib_bench.tools.run(
-            &config.meta,
+            config,
             &config.bench_bin,
             &bench_args,
             &lib_bench.options,
             &out_path,
             false,
             &lib_bench.module_path,
+            None,
+            None,
+            None,
         )?;
 
         Ok(benchmark_summary)
@@ -321,7 +324,7 @@ impl Groups {
 
         for group in &self.0 {
             if let Some(setup) = &group.setup {
-                setup.run(config, &group.module_path, None)?;
+                setup.run(config, &group.module_path)?;
             }
 
             let mut summaries: HashMap<String, Vec<BenchmarkSummary>> =
@@ -350,7 +353,7 @@ impl Groups {
             }
 
             if let Some(teardown) = &group.teardown {
-                teardown.run(config, &group.module_path, None)?;
+                teardown.run(config, &group.module_path)?;
             }
         }
 
@@ -589,13 +592,13 @@ impl Runner {
     /// Run all benchmarks in all groups
     fn run(&self) -> Result<()> {
         if let Some(setup) = &self.setup {
-            setup.run(&self.config, &self.config.module_path, None)?;
+            setup.run(&self.config, &self.config.module_path)?;
         }
 
         self.groups.run(self.benchmark.as_ref(), &self.config)?;
 
         if let Some(teardown) = &self.teardown {
-            teardown.run(&self.config, &self.config.module_path, None)?;
+            teardown.run(&self.config, &self.config.module_path)?;
         }
 
         Ok(())
@@ -661,6 +664,8 @@ impl Benchmark for SaveBaselineBenchmark {
             None,
         )?;
 
+        // TODO: Print no capture footer, also in BaselineBenchmark, ...
+
         let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
         let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
         VerticalFormat::default().print(&config.meta, baselines.clone(), &costs_summary)?;
@@ -698,13 +703,17 @@ impl Benchmark for SaveBaselineBenchmark {
         }
 
         benchmark_summary.tool_summaries = lib_bench.tools.run(
-            &config.meta,
+            config,
             &config.bench_bin,
             &bench_args,
             &lib_bench.options,
             &out_path,
             true,
             &lib_bench.module_path,
+            // We don't have a sandbox feature in library benchmarks
+            None,
+            None,
+            None,
         )?;
 
         Ok(benchmark_summary)

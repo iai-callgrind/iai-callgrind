@@ -8,7 +8,6 @@ use clap::{ArgAction, Parser};
 use super::format::OutputFormat;
 use super::summary::{BaselineName, SummaryFormat};
 use crate::api::{EventKind, RawArgs, RegressionConfig};
-use crate::runner::format;
 
 /// A filter for benchmarks
 ///
@@ -57,10 +56,6 @@ impl NoCapture {
                 command.stdout(Stdio::inherit()).stderr(Stdio::null());
             }
         };
-    }
-
-    pub fn print_footer(self) {
-        println!("{}", format::no_capture_footer(self));
     }
 }
 

@@ -5,19 +5,26 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use anyhow::Result;
-use log::{info, log_enabled, Level};
+use log::{debug, info, log_enabled, trace, Level};
+use tempfile::TempDir;
 
 use super::args::NoCapture;
 use super::meta::Metadata;
-use crate::api::Pipe;
+use crate::api::{self, Pipe};
 use crate::error::Error;
-use crate::util::write_all_to_stderr;
+use crate::util::{copy_directory, make_absolute, write_all_to_stderr};
+
+mod defaults {
+    pub const SANDBOX_FIXTURES_FOLLOW_SYMLINKS: bool = false;
+    pub const SANDBOX_ENABLED: bool = false;
+}
 
 #[derive(Debug, Clone)]
 pub struct Assistant {
     kind: AssistantKind,
     group_name: Option<String>,
     indices: Option<(usize, usize)>,
+    pipe: Option<Pipe>,
 }
 
 #[derive(Debug, Clone)]
@@ -38,6 +45,12 @@ pub struct Config {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModulePath(String);
 
+#[derive(Debug)]
+pub struct Sandbox {
+    current_dir: PathBuf,
+    temp_dir: Option<TempDir>,
+}
+
 impl Assistant {
     /// The setup or teardown of the `main` macro
     pub fn new_main_assistant(kind: AssistantKind) -> Self {
@@ -45,6 +58,7 @@ impl Assistant {
             kind,
             group_name: None,
             indices: None,
+            pipe: None,
         }
     }
 
@@ -54,6 +68,7 @@ impl Assistant {
             kind,
             group_name: Some(group_name.to_owned()),
             indices: None,
+            pipe: None,
         }
     }
 
@@ -66,23 +81,20 @@ impl Assistant {
         kind: AssistantKind,
         group_name: &str,
         indices: (usize, usize),
+        pipe: Option<Pipe>,
     ) -> Self {
         Self {
             kind,
             group_name: Some(group_name.to_owned()),
             indices: Some(indices),
+            pipe,
         }
     }
 
     /// Run the `Assistant` by calling the benchmark binary with the needed arguments
     ///
     /// We don't run the assistant if `--load-baseline` was given on the command-line!
-    pub fn run(
-        &self,
-        config: &Config,
-        module_path: &ModulePath,
-        pipe: Option<Pipe>,
-    ) -> Result<Option<Child>> {
+    pub fn run(&self, config: &Config, module_path: &ModulePath) -> Result<Option<Child>> {
         if config.meta.args.load_baseline.is_some() {
             return Ok(None);
         }
@@ -107,7 +119,7 @@ impl Assistant {
 
         nocapture.apply(&mut command);
 
-        if let Some(pipe) = pipe {
+        if let Some(pipe) = &self.pipe {
             match pipe {
                 Pipe::Stdout => command.stdout(StdStdio::piped()),
                 Pipe::Stderr => command.stderr(StdStdio::piped()),
@@ -220,5 +232,77 @@ impl Display for ModulePath {
 impl From<ModulePath> for String {
     fn from(value: ModulePath) -> Self {
         value.to_string()
+    }
+}
+
+impl Sandbox {
+    pub fn setup(inner: &api::Sandbox, meta: &Metadata) -> Result<Self> {
+        let enabled = inner.enabled.unwrap_or(defaults::SANDBOX_ENABLED);
+        let follow_symlinks = inner
+            .follow_symlinks
+            .unwrap_or(defaults::SANDBOX_FIXTURES_FOLLOW_SYMLINKS);
+        let current_dir = std::env::current_dir().map_err(|error| {
+            Error::SandboxError(format!("Failed to detect current directory: {error}"))
+        })?;
+
+        let temp_dir = if enabled {
+            debug!("Creating sandbox");
+
+            let temp_dir = tempfile::tempdir().map_err(|error| {
+                Error::SandboxError(format!("Failed creating temporary directory: {error}"))
+            })?;
+
+            for fixture in &inner.fixtures {
+                if fixture.is_relative() {
+                    let absolute_path = make_absolute(&meta.project_root, fixture);
+                    copy_directory(&absolute_path, temp_dir.path(), follow_symlinks)?;
+                } else {
+                    copy_directory(fixture, temp_dir.path(), follow_symlinks)?;
+                };
+            }
+
+            trace!(
+                "Changing current directory to sandbox directory: '{}'",
+                temp_dir.path().display()
+            );
+
+            let path = temp_dir.path();
+            std::env::set_current_dir(path).map_err(|error| {
+                Error::SandboxError(format!(
+                    "Failed setting current directory to sandbox directory: '{error}'"
+                ))
+            })?;
+            Some(temp_dir)
+        } else {
+            debug!(
+                "Sandbox disabled: Running benchmarks in current directory '{}'",
+                current_dir.display()
+            );
+            None
+        };
+
+        Ok(Self {
+            current_dir,
+            temp_dir,
+        })
+    }
+
+    pub fn reset(self) -> Result<()> {
+        if let Some(temp_dir) = self.temp_dir {
+            std::env::set_current_dir(&self.current_dir).map_err(|error| {
+                Error::SandboxError(format!("Failed to reset current directory: {error}"))
+            })?;
+
+            if log_enabled!(Level::Debug) {
+                debug!("Removing temporary workspace");
+                if let Err(error) = temp_dir.close() {
+                    debug!("Error trying to delete temporary workspace: {error}");
+                }
+            } else {
+                _ = temp_dir.close();
+            }
+        }
+
+        Ok(())
     }
 }

@@ -227,7 +227,7 @@ macro_rules! main {
                             let bench = $crate::internal::InternalBinaryBenchmarkBench {
                                 id: macro_bin_bench.id_display.map(|i| i.to_string()),
                                 args: macro_bin_bench.args_display.map(|i| i.to_string()),
-                                bench: bench_name.to_string(),
+                                function_name: bench_name.to_string(),
                                 command: (macro_bin_bench.func)().into(),
                                 config: macro_bin_bench.config.map(|f| f()),
                                 has_setup: macro_bin_bench.setup.is_some(),
@@ -327,7 +327,7 @@ macro_rules! main {
                                         $crate::internal::InternalBinaryBenchmarkBench {
                                             id: Some(bench.id.into()),
                                             args: None,
-                                            bench: binary_benchmark.id.clone().into(),
+                                            function_name: binary_benchmark.id.clone().into(),
                                             command: command.into(),
                                             config: bench.config.map(Into::into),
                                             has_setup: bench.setup.is_some()
@@ -339,6 +339,7 @@ macro_rules! main {
                                 },
                                 commands => {
                                     for (index, command) in commands.iter().enumerate() {
+                                        // TODO: CHANGE THIS TO double underscore
                                         let bench_id: $crate::BenchmarkId = format!("{}_{}", bench.id, index).into();
                                         if !bench_ids.insert(bench_id.clone()) {
                                             errors.add(
@@ -355,11 +356,13 @@ macro_rules! main {
                                             $crate::internal::InternalBinaryBenchmarkBench {
                                                 id: Some(bench_id.into()),
                                                 args: None,
-                                                bench: String::new(),
+                                                function_name: binary_benchmark.id.to_string(),
                                                 command: command.into(),
                                                 config: bench.config.as_ref().map(Into::into),
-                                                has_setup: bench.setup.is_some(),
-                                                has_teardown: bench.teardown.is_some(),
+                                                has_setup: bench.setup.is_some()
+                                                        || binary_benchmark.setup.is_some(),
+                                                has_teardown: bench.teardown.is_some()
+                                                        || binary_benchmark.teardown.is_some(),
                                         };
                                         internal_binary_benchmarks.benches.push(internal_bench);
                                     }

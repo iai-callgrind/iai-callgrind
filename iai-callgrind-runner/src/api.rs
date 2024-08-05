@@ -3,7 +3,7 @@ use std::ffi::OsString;
 use std::fmt::Display;
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::process::{Command as StdCommand, Stdio as StdStdio};
+use std::process::{Child, Command as StdCommand, Stdio as StdStdio};
 
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
@@ -50,7 +50,7 @@ pub struct Command {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BinaryBenchmarkBench {
     pub id: Option<String>,
-    pub bench: String,
+    pub function_name: String,
     pub args: Option<String>,
     pub command: Command,
     pub config: Option<BinaryBenchmarkConfig>,
@@ -573,16 +573,35 @@ where
 }
 
 impl Stdin {
-    pub(crate) fn apply(&self, command: &mut StdCommand, stream: Stream) -> Result<(), String> {
-        match self {
-            Stdin::Setup(_) => {
-                command.stdin(StdStdio::piped());
+    pub(crate) fn apply(
+        &self,
+        command: &mut StdCommand,
+        stream: Stream,
+        child: Option<&mut Child>,
+    ) -> Result<(), String> {
+        match (self, child) {
+            (Self::Setup(Pipe::Stdout), Some(child)) => {
+                command.stdin(
+                    child
+                        .stdout
+                        .take()
+                        .ok_or_else(|| "Error piping setup stdout".to_owned())?,
+                );
                 Ok(())
             }
-            Stdin::Inherit => Stdio::Inherit.apply(command, stream),
-            Stdin::Null => Stdio::Null.apply(command, stream),
-            Stdin::File(path) => Stdio::File(path.clone()).apply(command, stream),
-            Stdin::Pipe => Stdio::Pipe.apply(command, stream),
+            (Self::Setup(Pipe::Stderr), Some(child)) => {
+                command.stdin(
+                    child
+                        .stderr
+                        .take()
+                        .ok_or_else(|| "Error piping setup stderr".to_owned())?,
+                );
+                Ok(())
+            }
+            (Self::Setup(_) | Stdin::Pipe, _) => Stdio::Pipe.apply(command, stream),
+            (Self::Inherit, _) => Stdio::Inherit.apply(command, stream),
+            (Self::Null, _) => Stdio::Null.apply(command, stream),
+            (Self::File(path), _) => Stdio::File(path.clone()).apply(command, stream),
         }
     }
 }

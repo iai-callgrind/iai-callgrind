@@ -114,6 +114,15 @@ binary_benchmark_group!(
 fn setup_low_level_group(group: &mut BinaryBenchmarkGroup) {
     group
         .binary_benchmark(
+            BinaryBenchmark::new("bench_setup_last")
+                .bench(Bench::new("no_setup").command(iai_callgrind::Command::new(ECHO).arg("3")))
+                .bench(
+                    Bench::new("with_setup")
+                        .setup(|| setup_one_argument(2))
+                        .command(iai_callgrind::Command::new(ECHO).arg("6")),
+                ),
+        )
+        .binary_benchmark(
             BinaryBenchmark::new("bench_only_setup")
                 .bench(
                     Bench::new("setup_with_one_argument")

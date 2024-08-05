@@ -8,7 +8,7 @@ use super::common::ModulePath;
 use super::meta::Metadata;
 use super::summary::{CostsDiff, CostsSummary};
 use super::tool::ValgrindTool;
-use crate::api::EventKind;
+use crate::api::{self, EventKind};
 use crate::util::{to_string_signed_short, truncate_str_utf8};
 
 pub struct ComparisonHeader {
@@ -349,11 +349,47 @@ pub fn tool_headline(tool: ValgrindTool) -> String {
     )
 }
 
-pub fn no_capture_footer(nocapture: NoCapture) -> String {
+// Return the formatted `String` if `NoCapture` is not `False`
+pub fn no_capture_footer(nocapture: NoCapture) -> Option<String> {
     match nocapture {
-        NoCapture::True => format!("{} {}", "-".yellow(), "end of stdout/stderr".yellow()),
-        NoCapture::False => String::new(),
-        NoCapture::Stderr => format!("{} {}", "-".yellow(), "end of stderr".yellow()),
-        NoCapture::Stdout => format!("{} {}", "-".yellow(), "end of stdout".yellow()),
+        NoCapture::True => Some(format!(
+            "{} {}",
+            "-".yellow(),
+            "end of stdout/stderr".yellow()
+        )),
+        NoCapture::False => None,
+        NoCapture::Stderr => Some(format!("{} {}", "-".yellow(), "end of stderr".yellow())),
+        NoCapture::Stdout => Some(format!("{} {}", "-".yellow(), "end of stdout".yellow())),
+    }
+}
+
+pub fn print_no_capture_footer(
+    nocapture: NoCapture,
+    stdout: Option<&api::Stdio>,
+    stderr: Option<&api::Stdio>,
+) {
+    let stdout_is_pipe = stdout.map_or(
+        nocapture == NoCapture::False || nocapture == NoCapture::Stderr,
+        api::Stdio::is_pipe,
+    );
+
+    let stderr_is_pipe = stderr.map_or(
+        nocapture == NoCapture::False || nocapture == NoCapture::Stdout,
+        api::Stdio::is_pipe,
+    );
+
+    // These unwraps are safe because `no_capture_footer` returns None only if `NoCapture` is
+    // `False`
+    match (stdout_is_pipe, stderr_is_pipe) {
+        (true, true) => {}
+        (true, false) => {
+            println!("{}", no_capture_footer(NoCapture::Stderr).unwrap());
+        }
+        (false, true) => {
+            println!("{}", no_capture_footer(NoCapture::Stdout).unwrap());
+        }
+        (false, false) => {
+            println!("{}", no_capture_footer(NoCapture::True).unwrap());
+        }
     }
 }

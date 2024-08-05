@@ -22,9 +22,8 @@ use super::common::ModulePath;
 use super::meta::Metadata;
 use super::summary::{CallgrindRegressionSummary, CostsSummary};
 use super::tool::{check_exit, RunOptions, ToolOutput, ToolOutputPath, ValgrindTool};
-use crate::api::{self, EventKind, Pipe, Stream};
+use crate::api::{self, EventKind, Stream};
 use crate::error::Error;
-use crate::runner::format;
 use crate::util::{resolve_binary_path, to_string_signed_short};
 
 pub struct CallgrindCommand {
@@ -47,6 +46,7 @@ pub struct RegressionConfig {
     pub fail_fast: bool,
 }
 
+// TODO: Use ToolCommand instead?
 impl CallgrindCommand {
     pub fn new(meta: &Metadata) -> Self {
         Self {
@@ -86,6 +86,7 @@ impl CallgrindCommand {
 
         if env_clear {
             debug!("Clearing environment variables");
+            // TODO: Clear the environment variables as in Tool
             command.env_clear();
         }
         if let Some(dir) = current_dir {
@@ -117,51 +118,27 @@ impl CallgrindCommand {
         self.nocapture.apply(&mut command);
 
         if let Some(stdin) = stdin {
-            if let Some(child) = &mut child {
-                match stdin {
-                    api::Stdin::Setup(Pipe::Stdout) => {
-                        command.stdin(child.stdout.take().unwrap());
-                    }
-                    api::Stdin::Setup(Pipe::Stderr) => {
-                        command.stdin(child.stderr.take().unwrap());
-                    }
-                    _ => {
-                        stdin.apply(&mut command, Stream::Stdin).map_err(|error| {
-                            Error::BenchmarkError(
-                                ValgrindTool::Callgrind,
-                                module_path.clone(),
-                                error,
-                            )
-                        })?;
-                    }
-                }
-            } else {
-                stdin.apply(&mut command, Stream::Stdin).map_err(|error| {
+            stdin
+                .apply(&mut command, Stream::Stdin, child.as_mut())
+                .map_err(|error| {
                     Error::BenchmarkError(ValgrindTool::Callgrind, module_path.clone(), error)
                 })?;
-            }
         }
 
-        let mut stdout_is_pipe =
-            self.nocapture == NoCapture::False || self.nocapture == NoCapture::Stderr;
         if let Some(stdout) = stdout {
             stdout
                 .apply(&mut command, Stream::Stdout)
                 .map_err(|error| {
                     Error::BenchmarkError(ValgrindTool::Callgrind, module_path.clone(), error)
                 })?;
-            stdout_is_pipe = stdout.is_pipe();
         }
 
-        let mut stderr_is_pipe =
-            self.nocapture == NoCapture::False || self.nocapture == NoCapture::Stdout;
         if let Some(stderr) = stderr {
             stderr
                 .apply(&mut command, Stream::Stderr)
                 .map_err(|error| {
                     Error::BenchmarkError(ValgrindTool::Callgrind, module_path.clone(), error)
                 })?;
-            stderr_is_pipe = stderr.is_pipe();
         }
 
         let output = match self.nocapture {
@@ -200,19 +177,6 @@ impl CallgrindCommand {
                 None
             }
         };
-
-        match (stdout_is_pipe, stderr_is_pipe) {
-            (true, true) => {}
-            (true, false) => {
-                println!("{}", format::no_capture_footer(NoCapture::Stderr));
-            }
-            (false, true) => {
-                println!("{}", format::no_capture_footer(NoCapture::Stdout));
-            }
-            (false, false) => {
-                println!("{}", format::no_capture_footer(NoCapture::True));
-            }
-        }
 
         if let Some(mut child) = child {
             child.wait().unwrap();

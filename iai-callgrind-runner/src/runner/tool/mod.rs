@@ -20,8 +20,9 @@ use serde::{Deserialize, Serialize};
 use self::args::ToolArgs;
 use self::format::ToolRunSummaryFormatter;
 use self::logfile_parser::LogfileSummary;
-use super::common::ModulePath;
-use super::format::{tool_headline, OutputFormat};
+use super::args::NoCapture;
+use super::common::{Assistant, Config, ModulePath, Sandbox};
+use super::format::{print_no_capture_footer, tool_headline, OutputFormat};
 use super::meta::Metadata;
 use super::summary::{BaselineKind, ToolRunSummary, ToolSummary};
 use crate::api::{self, ExitWith, Stream};
@@ -127,6 +128,7 @@ impl ToolCommand {
         self
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn run(
         mut self,
         config: ToolConfig,
@@ -135,7 +137,8 @@ impl ToolCommand {
         options: RunOptions,
         output_path: &ToolOutputPath,
         module_path: &ModulePath,
-        child: Option<Child>,
+        // TODO: IMPLEMENT
+        mut child: Option<Child>,
     ) -> Result<ToolOutput> {
         debug!(
             "{}: Running with executable '{}'",
@@ -171,10 +174,13 @@ impl ToolCommand {
         tool_args.set_log_arg(output_path, config.outfile_modifier.as_ref());
 
         let executable = resolve_binary_path(executable)?;
+
         if let Some(stdin) = stdin {
             stdin
-                .apply(&mut self.command, Stream::Stdin)
-                .map_err(|error| Error::BenchmarkError(self.tool, module_path.clone(), error))?;
+                .apply(&mut self.command, Stream::Stdin, child.as_mut())
+                .map_err(|error| {
+                    Error::BenchmarkError(ValgrindTool::Callgrind, module_path.clone(), error)
+                })?;
         }
         if let Some(stdout) = stdout {
             stdout
@@ -208,6 +214,10 @@ impl ToolCommand {
                     exit_with.as_ref(),
                 )
             })?;
+
+        if let Some(mut child) = child {
+            child.wait().unwrap();
+        }
 
         Ok(ToolOutput {
             tool: self.tool,
@@ -352,26 +362,29 @@ impl ToolConfigs {
     #[allow(clippy::too_many_arguments)]
     pub fn run(
         &self,
-        meta: &Metadata,
+        config: &Config,
         executable: &Path,
         executable_args: &[OsString],
         options: &RunOptions,
         output_path: &ToolOutputPath,
         save_baseline: bool,
         module_path: &ModulePath,
+        sandbox: Option<&api::Sandbox>,
+        setup: Option<&Assistant>,
+        teardown: Option<&Assistant>,
     ) -> Result<Vec<ToolSummary>> {
         let mut tool_summaries = vec![];
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
             let tool = tool_config.tool;
 
-            let command = ToolCommand::new(tool, meta);
+            let command = ToolCommand::new(tool, &config.meta);
 
             let output_path = output_path.to_tool_output(tool);
             let log_path = output_path.to_log_output();
 
-            Self::print_headline(meta, tool_config);
+            Self::print_headline(&config.meta, tool_config);
 
-            let parser = tool_config.tool.to_parser(meta.project_root.clone());
+            let parser = tool_config.tool.to_parser(config.meta.project_root.clone());
 
             let old_summaries = parser.as_ref().parse(&log_path.to_base_path())?;
 
@@ -380,6 +393,22 @@ impl ToolConfigs {
                 log_path.clear()?;
             }
 
+            // We're implicitly applying the default here: In the absence of a user provided sandbox
+            // we don't run the benchmarks in a sandbox. Everything from here on runs
+            // with the current directory set to the sandbox directory until the sandbox
+            // is reset.
+            let sandbox = if let Some(api_sandbox) = &sandbox {
+                Some(Sandbox::setup(api_sandbox, &config.meta)?)
+            } else {
+                None
+            };
+
+            let child = if let Some(setup) = &setup {
+                setup.run(config, module_path)?
+            } else {
+                None
+            };
+
             let output = command.run(
                 tool_config.clone(),
                 executable,
@@ -387,20 +416,36 @@ impl ToolConfigs {
                 options.clone(),
                 &output_path,
                 module_path,
-                // TODO: IMPLEMENT
-                None,
+                child,
             )?;
+
+            // TODO: Run teardown and sandbox.reset if the command fails?
+            if let Some(teardown) = &teardown {
+                teardown.run(config, module_path)?;
+            }
+
+            // We print the no capture footer after the teardown to keep the output consistent with
+            // library benchmarks.
+            print_no_capture_footer(
+                NoCapture::False,
+                options.stdout.as_ref(),
+                options.stderr.as_ref(),
+            );
+
+            if let Some(sandbox) = sandbox {
+                sandbox.reset()?;
+            }
 
             let tool_summary = Self::parse(
                 tool_config,
-                meta,
+                &config.meta,
                 &log_path,
                 tool.has_output_file().then_some(&output_path),
                 old_summaries,
             )?;
 
             Self::print(
-                meta,
+                &config.meta,
                 tool_config,
                 &tool_summary.summaries,
                 &tool_summary.out_paths,
