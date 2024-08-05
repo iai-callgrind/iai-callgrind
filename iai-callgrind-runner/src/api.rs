@@ -2,7 +2,7 @@
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::fs::File;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command as StdCommand, Stdio as StdStdio};
 
 #[cfg(feature = "schema")]
@@ -41,7 +41,7 @@ pub struct BinaryBenchmarkConfig {
 pub struct Command {
     pub path: PathBuf,
     pub args: Vec<OsString>,
-    pub stdin: Option<Stdio>,
+    pub stdin: Option<Stdin>,
     pub stdout: Option<Stdio>,
     pub stderr: Option<Stdio>,
     pub config: BinaryBenchmarkConfig,
@@ -252,7 +252,7 @@ pub struct Sandbox {
 }
 
 /// TODO: DOCUMENTATION
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Pipe {
     #[default]
     Stdout,
@@ -260,7 +260,7 @@ pub enum Pipe {
 }
 
 /// TODO: DOCUMENTATION, just a helper struct not intended to be used in iai-callgrind
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Stream {
     Stdin,
     Stdout,
@@ -268,14 +268,24 @@ pub enum Stream {
 }
 
 /// TODO: DOCUMENTATION and IMPLEMENTATION
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Stdio {
-    Pipe,
     #[default]
     Inherit,
     Null,
     File(PathBuf),
+    Pipe,
     // TODO: FILE DESCRIPTOR ??
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Stdin {
+    Setup(Pipe),
+    #[default]
+    Inherit,
+    Null,
+    File(PathBuf),
+    Pipe,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -561,8 +571,52 @@ where
     }
 }
 
+impl Stdin {
+    pub(crate) fn apply(&self, command: &mut StdCommand, stream: Stream) -> Result<(), String> {
+        match self {
+            Stdin::Setup(_) => {
+                command.stdin(StdStdio::piped());
+                Ok(())
+            }
+            Stdin::Inherit => Stdio::Inherit.apply(command, stream),
+            Stdin::Null => Stdio::Null.apply(command, stream),
+            Stdin::File(path) => Stdio::File(path.clone()).apply(command, stream),
+            Stdin::Pipe => Stdio::Pipe.apply(command, stream),
+        }
+    }
+}
+
+impl From<Stdio> for Stdin {
+    fn from(value: Stdio) -> Self {
+        match value {
+            Stdio::Inherit => Stdin::Inherit,
+            Stdio::Null => Stdin::Null,
+            Stdio::File(file) => Stdin::File(file),
+            Stdio::Pipe => Stdin::Pipe,
+        }
+    }
+}
+
+impl From<PathBuf> for Stdin {
+    fn from(value: PathBuf) -> Self {
+        Self::File(value)
+    }
+}
+
+impl From<&PathBuf> for Stdin {
+    fn from(value: &PathBuf) -> Self {
+        Self::File(value.to_owned())
+    }
+}
+
+impl From<&Path> for Stdin {
+    fn from(value: &Path) -> Self {
+        Self::File(value.to_path_buf())
+    }
+}
+
 impl Stdio {
-    pub fn apply(&self, command: &mut StdCommand, stream: &Stream) -> Result<(), String> {
+    pub(crate) fn apply(&self, command: &mut StdCommand, stream: Stream) -> Result<(), String> {
         let stdio = match self {
             Stdio::Pipe => StdStdio::piped(),
             Stdio::Inherit => StdStdio::inherit(),
@@ -592,6 +646,31 @@ impl Stdio {
         };
 
         Ok(())
+    }
+
+    pub(crate) fn is_pipe(&self) -> bool {
+        match self {
+            Stdio::Inherit => false,
+            Stdio::Null | Stdio::File(_) | Stdio::Pipe => true,
+        }
+    }
+}
+
+impl From<PathBuf> for Stdio {
+    fn from(value: PathBuf) -> Self {
+        Self::File(value)
+    }
+}
+
+impl From<&PathBuf> for Stdio {
+    fn from(value: &PathBuf) -> Self {
+        Self::File(value.to_owned())
+    }
+}
+
+impl From<&Path> for Stdio {
+    fn from(value: &Path) -> Self {
+        Self::File(value.to_path_buf())
     }
 }
 

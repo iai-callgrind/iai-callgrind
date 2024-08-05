@@ -6,8 +6,8 @@ use std::process::{ExitStatus, Output};
 
 use version_compare::Cmp;
 
+use crate::runner::common::ModulePath;
 use crate::runner::tool::{ToolOutputPath, ValgrindTool};
-use crate::runner::ModulePath;
 use crate::util::write_all_to_stderr;
 
 #[derive(Debug, PartialEq, Clone)]

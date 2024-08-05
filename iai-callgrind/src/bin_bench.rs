@@ -2,7 +2,7 @@ use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
 use std::path::PathBuf;
 
-use crate::{internal, Stdio};
+use crate::{internal, Stdin, Stdio};
 // TODO: UPDATE DOCS
 
 /// An id for an [`Arg`] which can be used to produce unique ids from parameters
@@ -977,22 +977,37 @@ impl Command {
     }
 
     /// TODO: DOCUMENTATION
-    pub fn stdin(&mut self, stdio: Stdio) -> &mut Self {
-        self.0.stdin = Some(stdio);
+    pub fn stdin<T>(&mut self, stdio: T) -> &mut Self
+    where
+        T: Into<Stdin>,
+    {
+        self.0.stdin = Some(stdio.into());
         self
     }
 
     /// TODO: DOCUMENTATION
-    pub fn stdout(&mut self, stdio: Stdio) -> &mut Self {
-        self.0.stdout = Some(stdio);
+    pub fn stdout<T>(&mut self, stdio: T) -> &mut Self
+    where
+        T: Into<Stdio>,
+    {
+        self.0.stdout = Some(stdio.into());
         self
     }
 
     /// TODO: DOCUMENTATION
-    pub fn stderr(&mut self, stdio: Stdio) -> &mut Self {
-        self.0.stderr = Some(stdio);
+    pub fn stderr<T>(&mut self, stdio: T) -> &mut Self
+    where
+        T: Into<Stdio>,
+    {
+        self.0.stderr = Some(stdio.into());
         self
     }
+
+    // TODO: WAIT FUNCTION which tells iai-callgrind to wait for this process only this specific
+    // amount of seconds instead of blocking forever. Also, add this method to
+    // `BinaryBenchmarkConfig` (and `LibraryBenchmarkConfig`??)
+    //
+    // TODO: DELAY FUNCTION to delay the start of the main process if required.
 
     /// TODO: DOCUMENTATION
     /// Add an environment variable available in this `Run`

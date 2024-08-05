@@ -4,10 +4,10 @@ use anyhow::Result;
 use colored::{ColoredString, Colorize};
 
 use super::args::NoCapture;
+use super::common::ModulePath;
 use super::meta::Metadata;
 use super::summary::{CostsDiff, CostsSummary};
 use super::tool::ValgrindTool;
-use super::ModulePath;
 use crate::api::EventKind;
 use crate::util::{to_string_signed_short, truncate_str_utf8};
 

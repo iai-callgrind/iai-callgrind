@@ -1,6 +1,8 @@
 use std::io::stderr;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Child, Command, Stdio as StdStdio};
+use std::thread::sleep;
+use std::time::Duration;
 
 use anyhow::Result;
 use log::{debug, info, log_enabled, trace, Level};
@@ -14,6 +16,7 @@ use super::callgrind::flamegraph::{
 };
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{CallgrindCommand, RegressionConfig};
+use super::common::{Config, ModulePath};
 use super::format::{Header, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
 use super::summary::{
@@ -23,8 +26,7 @@ use super::summary::{
 use super::tool::{
     Parser, RunOptions, ToolConfigs, ToolOutputPath, ToolOutputPathKind, ValgrindTool,
 };
-use super::{Config, ModulePath};
-use crate::api::{self, BinaryBenchmarkMain};
+use crate::api::{self, BinaryBenchmarkMain, Pipe, Stdin};
 use crate::error::Error;
 use crate::runner::format::tool_headline;
 use crate::util::{copy_directory, make_absolute, make_relative, write_all_to_stderr};
@@ -117,8 +119,14 @@ struct SaveBaselineBenchmark {
 trait Benchmark: std::fmt::Debug {
     fn output_path(&self, bin_bench: &BinBench, config: &Config, group: &Group) -> ToolOutputPath;
     fn baselines(&self) -> (Option<String>, Option<String>);
-    fn run(&self, bin_bench: &BinBench, config: &Config, group: &Group)
-    -> Result<BenchmarkSummary>;
+    fn run(
+        &self,
+        bin_bench: &BinBench,
+        config: &Config,
+        group: &Group,
+        child: Option<Child>,
+        setup: Option<&Assistant>,
+    ) -> Result<BenchmarkSummary>;
 }
 
 // TODO: CHECK THIS. JUST COPIED FROM lib_bench
@@ -157,9 +165,14 @@ impl Assistant {
     /// argument. No further arguments are allowed. In order to run the assistant specified in the
     /// `#[bench]` macro we need the same arguments as if we would run a group assistant but now we
     /// also submit the two indices needed to identify the `#[bench]`.
-    fn run(&self, config: &Config, module_path: &ModulePath) -> Result<()> {
+    fn run(
+        &self,
+        config: &Config,
+        module_path: &ModulePath,
+        pipe: Option<Pipe>,
+    ) -> Result<Option<Child>> {
         if config.meta.args.load_baseline.is_some() {
-            return Ok(());
+            return Ok(None);
         }
 
         let id = self.kind.id();
@@ -180,6 +193,22 @@ impl Assistant {
         }
 
         nocapture.apply(&mut command);
+        if let Some(pipe) = pipe {
+            match pipe {
+                Pipe::Stdout => command.stdout(StdStdio::piped()),
+                Pipe::Stderr => command.stderr(StdStdio::piped()),
+            };
+            let child = command
+                .spawn()
+                .map_err(|error| Error::LaunchError(config.bench_bin.clone(), error.to_string()))?;
+
+            // Usually we block the main process and wait for setup to complete. This small
+            // artificial delay should help in cases in which the setup process starts slower than
+            // the main process.
+            sleep(Duration::from_millis(1));
+
+            return Ok(Some(child));
+        }
 
         match nocapture {
             NoCapture::False => {
@@ -233,7 +262,7 @@ impl Assistant {
             }
         };
 
-        Ok(())
+        Ok(None)
     }
 }
 
@@ -271,6 +300,8 @@ impl Benchmark for BaselineBenchmark {
         bin_bench: &BinBench,
         config: &Config,
         group: &Group,
+        child: Option<Child>,
+        setup: Option<&Assistant>,
     ) -> Result<BenchmarkSummary> {
         let callgrind_command = CallgrindCommand::new(&config.meta);
 
@@ -293,12 +324,12 @@ impl Benchmark for BaselineBenchmark {
 
         let output = callgrind_command.run(
             bin_bench.callgrind_args.clone(),
-            // TODO: WHAT IF PATH IS RELATIVE ??
             &bin_bench.command.path,
             &bin_bench.command.args,
             bin_bench.run_options.clone(),
             &out_path,
             &bin_bench.module_path,
+            child,
         )?;
 
         let new_costs = SummaryParser.parse(&out_path)?;
@@ -461,22 +492,32 @@ impl Group {
             };
 
             // The setup function runs within the sandbox
-            if let Some(setup) = &bench.setup {
+            let child = if let Some(setup) = &bench.setup {
                 setup.run(
                     config,
                     &bench.id.as_ref().map_or_else(
                         || self.module_path.join(&bench.function_name),
                         |id| self.module_path.join(&bench.function_name).join(id),
                     ),
-                )?;
-            }
+                    bench.command.stdin.as_ref().and_then(|s| {
+                        if let Stdin::Setup(p) = s {
+                            Some(p.clone())
+                        } else {
+                            None
+                        }
+                    }),
+                )?
+            } else {
+                None
+            };
 
             let fail_fast = bench
                 .regression_config
                 .as_ref()
                 .map_or(defaults::REGRESSION_FAIL_FAST, |r| r.fail_fast);
+
             // TODO: Should we run the teardown in case of errors?
-            let summary = benchmark.run(bench, config, self)?;
+            let summary = benchmark.run(bench, config, self, child, bench.setup.as_ref())?;
             summary.print_and_save(&config.meta.args.output_format)?;
 
             // Likewise to the setup function, the teardown runs within the sandbox. Also, we run
@@ -489,6 +530,7 @@ impl Group {
                         || self.module_path.join(&bench.function_name),
                         |id| self.module_path.join(&bench.function_name).join(id),
                     ),
+                    None,
                 )?;
             }
 
@@ -573,11 +615,14 @@ impl Groups {
                         id: binary_benchmark_bench.id,
                         args: binary_benchmark_bench.args,
                         function_name: binary_benchmark_bench.bench,
+                        // TODO: CHECK IF ALL OPTIONS ARE PASSED FROM COMMAND TO RunOptions
                         run_options: RunOptions {
                             env_clear: config.env_clear.unwrap_or(defaults::ENV_CLEAR),
                             entry_point: None,
                             envs,
                             stdin: command.stdin.clone(),
+                            stdout: command.stdout.clone(),
+                            stderr: command.stderr.clone(),
                             ..Default::default()
                         },
                         command,
@@ -626,13 +671,13 @@ impl Groups {
         let mut is_regressed = false;
         for group in &self.0 {
             if let Some(setup) = &group.setup {
-                setup.run(config, &group.module_path)?;
+                setup.run(config, &group.module_path, None)?;
             }
 
             group.run(benchmark, &mut is_regressed, config)?;
 
             if let Some(teardown) = &group.teardown {
-                teardown.run(config, &group.module_path)?;
+                teardown.run(config, &group.module_path, None)?;
             }
         }
 
@@ -668,6 +713,8 @@ impl Benchmark for LoadBaselineBenchmark {
         bin_bench: &BinBench,
         config: &Config,
         group: &Group,
+        _child: Option<Child>,
+        _setup: Option<&Assistant>,
     ) -> Result<BenchmarkSummary> {
         let out_path = self.output_path(bin_bench, config, group);
         let old_path = out_path.to_base_path();
@@ -774,13 +821,13 @@ impl Runner {
     fn run(&self) -> Result<()> {
         // TODO: DON'T RUN ANY SETUP OR TEARDOWN functions if --load-baseline is given
         if let Some(setup) = &self.setup {
-            setup.run(&self.config, &ModulePath::new(&self.config.module))?;
+            setup.run(&self.config, &ModulePath::new(&self.config.module), None)?;
         }
 
         self.groups.run(self.benchmark.as_ref(), &self.config)?;
 
         if let Some(teardown) = &self.teardown {
-            teardown.run(&self.config, &ModulePath::new(&self.config.module))?;
+            teardown.run(&self.config, &ModulePath::new(&self.config.module), None)?;
         }
         Ok(())
     }
@@ -882,6 +929,8 @@ impl Benchmark for SaveBaselineBenchmark {
         bin_bench: &BinBench,
         config: &Config,
         group: &Group,
+        child: Option<Child>,
+        setup: Option<&Assistant>,
     ) -> Result<BenchmarkSummary> {
         let callgrind_command = CallgrindCommand::new(&config.meta);
         let baselines = self.baselines();
@@ -912,6 +961,7 @@ impl Benchmark for SaveBaselineBenchmark {
             bin_bench.run_options.clone(),
             &out_path,
             &bin_bench.module_path,
+            child,
         )?;
 
         let new_costs = SummaryParser.parse(&out_path)?;

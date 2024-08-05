@@ -1,6 +1,7 @@
 mod args;
 mod bin_bench;
 pub mod callgrind;
+pub mod common;
 pub mod costs;
 pub mod dhat;
 mod format;
@@ -11,11 +12,11 @@ pub mod tool;
 
 use std::env::ArgsOs;
 use std::ffi::OsString;
-use std::fmt::Display;
 use std::io::{stdin, Read};
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
+use common::Config;
 use log::debug;
 
 use self::meta::Metadata;
@@ -33,40 +34,6 @@ pub mod envs {
 }
 
 pub const DEFAULT_TOGGLE: &str = "*::__iai_callgrind_wrapper_mod::*";
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct ModulePath(String);
-
-impl ModulePath {
-    pub fn new(path: &str) -> Self {
-        Self(path.to_owned())
-    }
-
-    pub fn join(&self, path: &str) -> Self {
-        let new = format!("{}::{path}", self.0);
-        Self(new)
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl Display for ModulePath {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-#[derive(Debug)]
-pub struct Config {
-    package_dir: PathBuf,
-    bench_file: PathBuf,
-    // TODO: SHOULD BE A ModulePath
-    module: String,
-    bench_bin: PathBuf,
-    meta: Metadata,
-}
 
 struct RunnerArgs {
     bench_kind: BenchmarkKind,

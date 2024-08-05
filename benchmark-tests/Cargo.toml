@@ -54,6 +54,10 @@ path = "src/helper/read-file.rs"
 name = "file-exists"
 path = "src/helper/file-exists.rs"
 
+[[bin]]
+name = "pipe"
+path = "src/helper/pipe.rs"
+
 [[bench]]
 harness = false
 path = "benches/test_bin_bench/test_bin_bench_dev/test_bin_bench_dev.rs"
@@ -68,6 +72,11 @@ name = "test_bin_bench_setup_and_teardown"
 harness = false
 path = "benches/test_bin_bench/test_bin_bench_main_and_group_setup_and_teardown/test_bin_bench_main_and_group_setup_and_teardown.rs"
 name = "test_bin_bench_main_and_group_setup_and_teardown"
+
+[[bench]]
+harness = false
+path = "benches/test_bin_bench/test_bin_bench_nocapture/test_bin_bench_nocapture.rs"
+name = "test_bin_bench_nocapture"
 
 [[bench]]
 harness = false

@@ -8,7 +8,7 @@ use std::fmt::Display;
 use std::fs::File;
 use std::io::{stderr, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus, Output};
+use std::process::{Child, Command, ExitStatus, Output};
 
 use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
@@ -20,10 +20,10 @@ use serde::{Deserialize, Serialize};
 use self::args::ToolArgs;
 use self::format::ToolRunSummaryFormatter;
 use self::logfile_parser::LogfileSummary;
+use super::common::ModulePath;
 use super::format::{tool_headline, OutputFormat};
 use super::meta::Metadata;
 use super::summary::{BaselineKind, ToolRunSummary, ToolSummary};
-use super::ModulePath;
 use crate::api::{self, ExitWith, Stream};
 use crate::error::Error;
 use crate::util::{self, make_relative, resolve_binary_path, truncate_str_utf8};
@@ -35,7 +35,7 @@ pub struct RunOptions {
     pub entry_point: Option<String>,
     pub exit_with: Option<ExitWith>,
     pub envs: Vec<(OsString, OsString)>,
-    pub stdin: Option<api::Stdio>,
+    pub stdin: Option<api::Stdin>,
     pub stdout: Option<api::Stdio>,
     pub stderr: Option<api::Stdio>,
 }
@@ -135,6 +135,7 @@ impl ToolCommand {
         options: RunOptions,
         output_path: &ToolOutputPath,
         module_path: &ModulePath,
+        child: Option<Child>,
     ) -> Result<ToolOutput> {
         debug!(
             "{}: Running with executable '{}'",
@@ -172,17 +173,17 @@ impl ToolCommand {
         let executable = resolve_binary_path(executable)?;
         if let Some(stdin) = stdin {
             stdin
-                .apply(&mut self.command, &Stream::Stdin)
+                .apply(&mut self.command, Stream::Stdin)
                 .map_err(|error| Error::BenchmarkError(self.tool, module_path.clone(), error))?;
         }
         if let Some(stdout) = stdout {
             stdout
-                .apply(&mut self.command, &Stream::Stdout)
+                .apply(&mut self.command, Stream::Stdout)
                 .map_err(|error| Error::BenchmarkError(self.tool, module_path.clone(), error))?;
         }
         if let Some(stderr) = stderr {
             stderr
-                .apply(&mut self.command, &Stream::Stderr)
+                .apply(&mut self.command, Stream::Stderr)
                 .map_err(|error| Error::BenchmarkError(self.tool, module_path.clone(), error))?;
         }
 
@@ -386,6 +387,8 @@ impl ToolConfigs {
                 options.clone(),
                 &output_path,
                 module_path,
+                // TODO: IMPLEMENT
+                None,
             )?;
 
             let tool_summary = Self::parse(

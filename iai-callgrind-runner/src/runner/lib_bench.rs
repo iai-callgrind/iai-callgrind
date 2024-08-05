@@ -18,6 +18,7 @@ use super::callgrind::flamegraph::{
 use super::callgrind::parser::Sentinel;
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::{CallgrindCommand, RegressionConfig};
+use super::common::{Config, ModulePath};
 use super::format::{tool_headline, Header, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
 use super::summary::{
@@ -27,7 +28,7 @@ use super::summary::{
 use super::tool::{
     Parser, RunOptions, ToolConfigs, ToolOutputPath, ToolOutputPathKind, ValgrindTool,
 };
-use super::{Config, Error, ModulePath, DEFAULT_TOGGLE};
+use super::{Error, DEFAULT_TOGGLE};
 use crate::api::{self, LibraryBenchmark};
 use crate::util::write_all_to_stderr;
 
@@ -254,6 +255,7 @@ impl Benchmark for BaselineBenchmark {
             lib_bench.options.clone(),
             &out_path,
             &lib_bench.module_path,
+            None,
         )?;
 
         let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
@@ -747,6 +749,7 @@ impl Benchmark for SaveBaselineBenchmark {
             lib_bench.options.clone(),
             &out_path,
             &lib_bench.module_path,
+            None,
         )?;
 
         let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
