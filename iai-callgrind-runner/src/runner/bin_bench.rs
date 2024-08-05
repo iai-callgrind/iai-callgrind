@@ -1,14 +1,11 @@
 use std::io::stderr;
 use std::path::PathBuf;
-use std::process::{Child, Command, Stdio as StdStdio};
-use std::thread::sleep;
-use std::time::Duration;
+use std::process::Child;
 
 use anyhow::Result;
-use log::{debug, info, log_enabled, trace, Level};
+use log::{debug, log_enabled, trace, Level};
 use tempfile::TempDir;
 
-use super::args::NoCapture;
 use super::callgrind::args::Args;
 use super::callgrind::flamegraph::{
     BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
@@ -16,7 +13,7 @@ use super::callgrind::flamegraph::{
 };
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{CallgrindCommand, RegressionConfig};
-use super::common::{Config, ModulePath};
+use super::common::{Assistant, AssistantKind, Config, ModulePath};
 use super::format::{Header, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
 use super::summary::{
@@ -26,29 +23,16 @@ use super::summary::{
 use super::tool::{
     Parser, RunOptions, ToolConfigs, ToolOutputPath, ToolOutputPathKind, ValgrindTool,
 };
-use crate::api::{self, BinaryBenchmarkMain, Pipe, Stdin};
+use crate::api::{self, BinaryBenchmarkMain, Stdin};
 use crate::error::Error;
 use crate::runner::format::tool_headline;
-use crate::util::{copy_directory, make_absolute, make_relative, write_all_to_stderr};
+use crate::util::{copy_directory, make_absolute, make_relative};
 
 mod defaults {
     pub const SANDBOX_FIXTURES_FOLLOW_SYMLINKS: bool = false;
     pub const SANDBOX_ENABLED: bool = false;
     pub const REGRESSION_FAIL_FAST: bool = false;
     pub const ENV_CLEAR: bool = true;
-}
-
-#[derive(Debug, Clone)]
-struct Assistant {
-    kind: AssistantKind,
-    group_name: Option<String>,
-    indices: Option<(usize, usize)>,
-}
-
-#[derive(Debug, Clone)]
-enum AssistantKind {
-    Setup,
-    Teardown,
 }
 
 #[derive(Debug)]
@@ -127,153 +111,6 @@ trait Benchmark: std::fmt::Debug {
         child: Option<Child>,
         setup: Option<&Assistant>,
     ) -> Result<BenchmarkSummary>;
-}
-
-// TODO: CHECK THIS. JUST COPIED FROM lib_bench
-impl Assistant {
-    fn new_main_assistant(kind: AssistantKind) -> Self {
-        Self {
-            kind,
-            group_name: None,
-            indices: None,
-        }
-    }
-
-    fn new_group_assistant(kind: AssistantKind, group_name: &str) -> Self {
-        Self {
-            kind,
-            group_name: Some(group_name.to_owned()),
-            indices: None,
-        }
-    }
-
-    fn new_bench_assistant(kind: AssistantKind, group_name: &str, indices: (usize, usize)) -> Self {
-        Self {
-            kind,
-            group_name: Some(group_name.to_owned()),
-            indices: Some(indices),
-        }
-    }
-
-    /// Run the `Assistant` by calling the benchmark binary with the needed arguments
-    ///
-    /// We don't run the assistant if `--load-baseline` was given on the command-line!
-    ///
-    /// In order to run the assistants from the main! macro we only need to supply the id without
-    /// any further arguments. In order to run the assistants from the `binary_benchmark_group!`
-    /// macro we need to submit the group name as first argument and the assistant id as second
-    /// argument. No further arguments are allowed. In order to run the assistant specified in the
-    /// `#[bench]` macro we need the same arguments as if we would run a group assistant but now we
-    /// also submit the two indices needed to identify the `#[bench]`.
-    fn run(
-        &self,
-        config: &Config,
-        module_path: &ModulePath,
-        pipe: Option<Pipe>,
-    ) -> Result<Option<Child>> {
-        if config.meta.args.load_baseline.is_some() {
-            return Ok(None);
-        }
-
-        let id = self.kind.id();
-        let nocapture = config.meta.args.nocapture;
-
-        let mut command = Command::new(&config.bench_bin);
-        command.env("IAI_CALLGRIND_WORKSPACE_ROOT", &config.meta.project_root);
-        command.arg("--iai-run");
-
-        if let Some(group_name) = &self.group_name {
-            command.arg(group_name);
-        }
-
-        command.arg(&id);
-
-        if let Some((group_index, bench_index)) = &self.indices {
-            command.args([group_index.to_string(), bench_index.to_string()]);
-        }
-
-        nocapture.apply(&mut command);
-        if let Some(pipe) = pipe {
-            match pipe {
-                Pipe::Stdout => command.stdout(StdStdio::piped()),
-                Pipe::Stderr => command.stderr(StdStdio::piped()),
-            };
-            let child = command
-                .spawn()
-                .map_err(|error| Error::LaunchError(config.bench_bin.clone(), error.to_string()))?;
-
-            // Usually we block the main process and wait for setup to complete. This small
-            // artificial delay should help in cases in which the setup process starts slower than
-            // the main process.
-            sleep(Duration::from_millis(1));
-
-            return Ok(Some(child));
-        }
-
-        match nocapture {
-            NoCapture::False => {
-                let output = command
-                    .output()
-                    .map_err(|error| {
-                        Error::LaunchError(config.bench_bin.clone(), error.to_string())
-                    })
-                    .and_then(|output| {
-                        if output.status.success() {
-                            Ok(output)
-                        } else {
-                            let status = output.status;
-                            Err(Error::ProcessError((
-                                module_path.join(&id).to_string(),
-                                Some(output),
-                                status,
-                                None,
-                            )))
-                        }
-                    })?;
-
-                if log_enabled!(Level::Info) && !output.stdout.is_empty() {
-                    info!("{id} function in group '{module_path}': stdout:");
-                    write_all_to_stderr(&output.stdout);
-                }
-
-                if log_enabled!(Level::Info) && !output.stderr.is_empty() {
-                    info!("{id} function in group '{module_path}': stderr:");
-                    write_all_to_stderr(&output.stderr);
-                }
-            }
-            NoCapture::True | NoCapture::Stderr | NoCapture::Stdout => {
-                command
-                    .status()
-                    .map_err(|error| {
-                        Error::LaunchError(config.bench_bin.clone(), error.to_string())
-                    })
-                    .and_then(|status| {
-                        if status.success() {
-                            Ok(())
-                        } else {
-                            Err(Error::ProcessError((
-                                format!("{module_path}::{id}"),
-                                None,
-                                status,
-                                None,
-                            )))
-                        }
-                    })?;
-            }
-        };
-
-        Ok(None)
-    }
-}
-
-impl AssistantKind {
-    fn id(&self) -> String {
-        match self {
-            AssistantKind::Setup => "setup",
-            AssistantKind::Teardown => "teardown",
-        }
-        .to_owned()
-    }
 }
 
 impl Benchmark for BaselineBenchmark {
@@ -454,8 +291,7 @@ impl BinBench {
             config.package_dir.clone(),
             config.bench_file.clone(),
             config.bench_bin.clone(),
-            // TODO: THIS SHOULD BE A ModulePath
-            &[&group.module_path.to_string(), &self.function_name],
+            &group.module_path.join(&self.function_name),
             self.id.clone(),
             self.args.clone(),
             summary_output,
@@ -776,11 +612,8 @@ impl Runner {
             .has_teardown
             .then_some(Assistant::new_main_assistant(AssistantKind::Teardown));
 
-        let groups = Groups::from_binary_benchmark(
-            &ModulePath::new(&config.module),
-            binary_benchmark,
-            &config.meta,
-        )?;
+        let groups =
+            Groups::from_binary_benchmark(&config.module_path, binary_benchmark, &config.meta)?;
 
         let benchmark: Box<dyn Benchmark> =
             if let Some(baseline_name) = &config.meta.args.save_baseline {
@@ -819,15 +652,14 @@ impl Runner {
     }
 
     fn run(&self) -> Result<()> {
-        // TODO: DON'T RUN ANY SETUP OR TEARDOWN functions if --load-baseline is given
         if let Some(setup) = &self.setup {
-            setup.run(&self.config, &ModulePath::new(&self.config.module), None)?;
+            setup.run(&self.config, &self.config.module_path, None)?;
         }
 
         self.groups.run(self.benchmark.as_ref(), &self.config)?;
 
         if let Some(teardown) = &self.teardown {
-            teardown.run(&self.config, &ModulePath::new(&self.config.module), None)?;
+            teardown.run(&self.config, &self.config.module_path, None)?;
         }
         Ok(())
     }

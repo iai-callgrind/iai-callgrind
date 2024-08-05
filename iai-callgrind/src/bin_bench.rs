@@ -255,18 +255,6 @@ pub enum ExitWith {
     Code(i32),
 }
 
-// TODO: CLEANUP
-// /// A builder of `Fixtures` to specify the fixtures directory which will be copied into the
-// sandbox ///
-// /// # Examples
-// ///
-// /// ```rust
-// /// use iai_callgrind::Fixtures;
-// /// let fixtures: Fixtures = Fixtures::new("benches/fixtures");
-// /// ```
-// #[derive(Debug, Clone)]
-// pub struct Fixtures(internal::InternalFixtures);
-
 /// TODO: DOCUMENTATION
 #[derive(Debug, Clone)]
 pub struct Sandbox(internal::InternalSandbox);
@@ -1294,67 +1282,6 @@ impl From<&ExitWith> for internal::InternalExitWith {
         }
     }
 }
-
-// TODO: CLEANUP
-// impl Fixtures {
-//     /// Create a new `Fixtures` struct
-//     ///
-//     /// The fixtures argument specifies a path to a directory containing fixtures which you want
-// to     /// be available for all benchmarks and the `before`, `after`, `setup` and `teardown`
-// functions.     /// Per default, the fixtures directory will be copied as is into the sandbox
-// directory of the     /// benchmark including symlinks. See [`Fixtures::follow_symlinks`] to
-// change that behavior.     ///
-//     /// Relative paths are interpreted relative to the benchmarked package. In a multi-package
-//     /// workspace this'll be the package name of the benchmark. Otherwise, it'll be the workspace
-//     /// root.
-//     ///
-//     /// # Examples
-//     ///
-//     /// Here, the directory `benches/my_fixtures` (with a file `test_1.txt` in it) in the root of
-//     /// the package under test will be copied into the temporary workspace (for example
-//     /// `/tmp/.tmp12345678`). So,the benchmarks can access a fixture `test_1.txt` with a relative
-//     /// path like `my_fixtures/test_1.txt`
-//     ///
-//     /// ```rust
-//     /// use iai_callgrind::Fixtures;
-//     ///
-//     /// let fixtures: Fixtures = Fixtures::new("benches/my_fixtures");
-//     /// ```
-//     pub fn new<T>(path: T) -> Self
-//     where
-//         T: Into<PathBuf>,
-//     {
-//         Self(internal::InternalFixtures {
-//             path: path.into(),
-//             follow_symlinks: false,
-//         })
-//     }
-//
-//     /// If set to `true`, resolve symlinks in the [`Fixtures`] source directory
-//     ///
-//     /// If set to `true` and the [`Fixtures`] directory contains symlinks, these symlinks are
-//     /// resolved and instead of the symlink the target file or directory will be copied into the
-//     /// fixtures directory.
-//     ///
-//     /// # Examples
-//     ///
-//     /// Here, the directory `benches/my_fixtures` (with a symlink `test_1.txt ->
-// ../../test_1.txt`     /// in it) in the root of the package under test will be copied into the
-// sandbox directory     /// (for example `/tmp/.tmp12345678`). Since `follow_symlink` is `true`,
-// the benchmarks can     /// access a fixture `test_1.txt` with a relative path like
-// `my_fixtures/test_1.txt`     ///
-//     /// ```rust
-//     /// use iai_callgrind::Fixtures;
-//     ///
-//     /// let fixtures: &mut Fixtures = Fixtures::new("benches/my_fixtures").follow_symlinks(true);
-//     /// ```
-//     pub fn follow_symlinks(&mut self, value: bool) -> &mut Self {
-//         self.0.follow_symlinks = value;
-//         self
-//     }
-// }
-//
-// impl_traits!(Fixtures, internal::InternalFixtures);
 
 /// TODO: ADD `follow_symlinks` and maybe others. See `InternalSandbox`
 impl Sandbox {

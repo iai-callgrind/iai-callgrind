@@ -16,6 +16,7 @@ use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use super::common::ModulePath;
 use super::costs::Costs;
 use super::format::{ComparisonHeader, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
@@ -314,7 +315,7 @@ impl BenchmarkSummary {
         package_dir: PathBuf,
         benchmark_file: PathBuf,
         benchmark_exe: PathBuf,
-        segments: &[&str],
+        module_path: &ModulePath,
         id: Option<String>,
         details: Option<String>,
         output: Option<SummaryOutput>,
@@ -324,8 +325,9 @@ impl BenchmarkSummary {
             kind,
             benchmark_file: make_absolute(&project_root, benchmark_file),
             benchmark_exe: make_absolute(&project_root, benchmark_exe),
-            module_path: segments.join("::"),
-            function_name: (*segments.last().unwrap()).to_owned(),
+            module_path: module_path.to_string(),
+            // TODO:BETTER WAY THAN UNWRAP ??
+            function_name: module_path.last().unwrap().to_string(),
             id,
             details,
             callgrind_summary: None,

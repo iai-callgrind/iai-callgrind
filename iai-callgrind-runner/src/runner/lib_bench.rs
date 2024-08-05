@@ -4,12 +4,9 @@
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::io::stderr;
-use std::process::Command;
 
 use anyhow::Result;
-use log::{info, log_enabled, Level};
 
-use super::args::NoCapture;
 use super::callgrind::args::Args;
 use super::callgrind::flamegraph::{
     BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
@@ -18,7 +15,7 @@ use super::callgrind::flamegraph::{
 use super::callgrind::parser::Sentinel;
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::{CallgrindCommand, RegressionConfig};
-use super::common::{Config, ModulePath};
+use super::common::{Assistant, AssistantKind, Config, ModulePath};
 use super::format::{tool_headline, Header, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
 use super::summary::{
@@ -30,18 +27,6 @@ use super::tool::{
 };
 use super::{Error, DEFAULT_TOGGLE};
 use crate::api::{self, LibraryBenchmark};
-use crate::util::write_all_to_stderr;
-
-#[derive(Debug, Clone)]
-struct Assistant {
-    kind: AssistantKind,
-}
-
-#[derive(Debug, Clone)]
-enum AssistantKind {
-    Setup,
-    Teardown,
-}
 
 /// Implements [`Benchmark`] to run a [`LibBench`] and compare against a earlier [`BenchmarkKind`]
 #[derive(Debug)]
@@ -55,8 +40,7 @@ struct Group {
     id: Option<String>,
     benches: Vec<LibBench>,
     compare: bool,
-    // TODO: CHANGE name to module_path and store a ModulePath
-    module_path: String,
+    module_path: ModulePath,
     setup: Option<Assistant>,
     teardown: Option<Assistant>,
 }
@@ -110,87 +94,6 @@ struct SaveBaselineBenchmark {
     baseline: BaselineName,
 }
 
-impl Assistant {
-    /// Run the `Assistant` but don't benchmark it
-    fn run(&self, config: &Config, group_name: Option<&str>, module_path: &str) -> Result<()> {
-        let id = self.kind.id();
-        let nocapture = config.meta.args.nocapture;
-
-        let mut command = Command::new(&config.bench_bin);
-        command.arg("--iai-run");
-        if let Some(group_name) = group_name {
-            command.arg(group_name);
-        }
-        command.arg(&id);
-
-        nocapture.apply(&mut command);
-
-        match nocapture {
-            NoCapture::False => {
-                let output = command
-                    .output()
-                    .map_err(|error| {
-                        Error::LaunchError(config.bench_bin.clone(), error.to_string())
-                    })
-                    .and_then(|output| {
-                        if output.status.success() {
-                            Ok(output)
-                        } else {
-                            let status = output.status;
-                            Err(Error::ProcessError((
-                                format!("{module_path}::{id}"),
-                                Some(output),
-                                status,
-                                None,
-                            )))
-                        }
-                    })?;
-
-                if log_enabled!(Level::Info) && !output.stdout.is_empty() {
-                    info!("{id} function in group '{module_path}': stdout:");
-                    write_all_to_stderr(&output.stdout);
-                }
-
-                if log_enabled!(Level::Info) && !output.stderr.is_empty() {
-                    info!("{id} function in group '{module_path}': stderr:");
-                    write_all_to_stderr(&output.stderr);
-                }
-            }
-            NoCapture::True | NoCapture::Stderr | NoCapture::Stdout => {
-                command
-                    .status()
-                    .map_err(|error| {
-                        Error::LaunchError(config.bench_bin.clone(), error.to_string())
-                    })
-                    .and_then(|status| {
-                        if status.success() {
-                            Ok(())
-                        } else {
-                            Err(Error::ProcessError((
-                                format!("{module_path}::{id}"),
-                                None,
-                                status,
-                                None,
-                            )))
-                        }
-                    })?;
-            }
-        };
-
-        Ok(())
-    }
-}
-
-impl AssistantKind {
-    fn id(&self) -> String {
-        match self {
-            AssistantKind::Setup => "setup",
-            AssistantKind::Teardown => "teardown",
-        }
-        .to_owned()
-    }
-}
-
 /// This trait needs to be implemented to actually run a [`LibBench`]
 ///
 /// Despite having the same name, this trait differs from `bin_bench::Benchmark` and is
@@ -209,7 +112,7 @@ impl Benchmark for BaselineBenchmark {
             ValgrindTool::Callgrind,
             &self.baseline_kind,
             &config.meta.target_dir,
-            &ModulePath::new(&group.module_path),
+            &group.module_path,
             &lib_bench.name(),
         )
     }
@@ -319,7 +222,7 @@ impl Benchmark for BaselineBenchmark {
 impl Groups {
     /// Create this `Groups` from a [`LibraryBenchmark`] submitted by the benchmarking harness
     fn from_library_benchmark(
-        module: &str,
+        module_path: &ModulePath,
         benchmark: LibraryBenchmark,
         meta: &Metadata,
     ) -> Result<Self> {
@@ -329,20 +232,28 @@ impl Groups {
 
         for library_benchmark_group in benchmark.groups {
             let group_module_path = if let Some(group_id) = &library_benchmark_group.id {
-                ModulePath::new(module).join(group_id)
+                module_path.join(group_id)
             } else {
-                ModulePath::new(module)
+                module_path.clone()
             };
-            let setup = library_benchmark_group.has_setup.then_some(Assistant {
-                kind: AssistantKind::Setup,
-            });
-            let teardown = library_benchmark_group.has_teardown.then_some(Assistant {
-                kind: AssistantKind::Teardown,
-            });
+            let setup =
+                library_benchmark_group
+                    .has_setup
+                    .then_some(Assistant::new_group_assistant(
+                        AssistantKind::Setup,
+                        library_benchmark_group.id.as_ref().unwrap(),
+                    ));
+            let teardown =
+                library_benchmark_group
+                    .has_setup
+                    .then_some(Assistant::new_group_assistant(
+                        AssistantKind::Teardown,
+                        library_benchmark_group.id.as_ref().unwrap(),
+                    ));
 
             let mut group = Group {
                 id: library_benchmark_group.id,
-                module_path: group_module_path.to_string(),
+                module_path: group_module_path.clone(),
                 compare: library_benchmark_group.compare,
                 benches: vec![],
                 setup,
@@ -409,9 +320,8 @@ impl Groups {
         let mut is_regressed = false;
 
         for group in &self.0 {
-            let group_id = group.id.as_ref().unwrap().as_str();
             if let Some(setup) = &group.setup {
-                setup.run(config, Some(group_id), &group.module_path)?;
+                setup.run(config, &group.module_path, None)?;
             }
 
             let mut summaries: HashMap<String, Vec<BenchmarkSummary>> =
@@ -440,7 +350,7 @@ impl Groups {
             }
 
             if let Some(teardown) = &group.teardown {
-                teardown.run(config, Some(group_id), &group.module_path)?;
+                teardown.run(config, &group.module_path, None)?;
             }
         }
 
@@ -508,7 +418,7 @@ impl LibBench {
             config.package_dir.clone(),
             config.bench_file.clone(),
             config.bench_bin.clone(),
-            &[&group.module_path, &self.function],
+            &group.module_path.join(&self.function),
             self.id.clone(),
             self.args.clone(),
             summary_output,
@@ -520,8 +430,8 @@ impl LibBench {
     /// If there are more tools than the usual callgrind run, this method also prints the tool
     /// summary header
     fn print_header(&self, meta: &Metadata, group: &Group) -> Header {
-        let header = Header::from_segments(
-            [&group.module_path, &self.function],
+        let header = Header::new(
+            group.module_path.join(&self.function).to_string(),
             self.id.clone(),
             self.args.clone(),
         );
@@ -556,8 +466,7 @@ impl Benchmark for LoadBaselineBenchmark {
             ValgrindTool::Callgrind,
             &BaselineKind::Name(self.baseline.clone()),
             &config.meta.target_dir,
-            // TODO: group.module should already be a ModulePath
-            &ModulePath::new(&group.module_path),
+            &group.module_path,
             &lib_bench.name(),
         )
     }
@@ -631,15 +540,15 @@ impl Benchmark for LoadBaselineBenchmark {
 impl Runner {
     /// Create a new `Runner`
     fn new(library_benchmark: LibraryBenchmark, config: Config) -> Result<Self> {
-        let setup = library_benchmark.has_setup.then_some(Assistant {
-            kind: AssistantKind::Setup,
-        });
-        let teardown = library_benchmark.has_teardown.then_some(Assistant {
-            kind: AssistantKind::Teardown,
-        });
+        let setup = library_benchmark
+            .has_setup
+            .then_some(Assistant::new_main_assistant(AssistantKind::Setup));
+        let teardown = library_benchmark
+            .has_teardown
+            .then_some(Assistant::new_main_assistant(AssistantKind::Teardown));
 
         let groups =
-            Groups::from_library_benchmark(&config.module, library_benchmark, &config.meta)?;
+            Groups::from_library_benchmark(&config.module_path, library_benchmark, &config.meta)?;
 
         let benchmark: Box<dyn Benchmark> =
             if let Some(baseline_name) = &config.meta.args.save_baseline {
@@ -680,13 +589,13 @@ impl Runner {
     /// Run all benchmarks in all groups
     fn run(&self) -> Result<()> {
         if let Some(setup) = &self.setup {
-            setup.run(&self.config, None, &self.config.module)?;
+            setup.run(&self.config, &self.config.module_path, None)?;
         }
 
         self.groups.run(self.benchmark.as_ref(), &self.config)?;
 
         if let Some(teardown) = &self.teardown {
-            teardown.run(&self.config, None, &self.config.module)?;
+            teardown.run(&self.config, &self.config.module_path, None)?;
         }
 
         Ok(())
@@ -700,7 +609,7 @@ impl Benchmark for SaveBaselineBenchmark {
             ValgrindTool::Callgrind,
             &BaselineKind::Name(self.baseline.clone()),
             &config.meta.target_dir,
-            &ModulePath::new(&group.module_path),
+            &group.module_path,
             &lib_bench.name(),
         )
     }

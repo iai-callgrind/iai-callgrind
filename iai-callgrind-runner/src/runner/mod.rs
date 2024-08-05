@@ -16,7 +16,7 @@ use std::io::{stdin, Read};
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
-use common::Config;
+use common::{Config, ModulePath};
 use log::debug;
 
 use self::meta::Metadata;
@@ -200,7 +200,7 @@ pub fn run() -> Result<()> {
             let config = Config {
                 package_dir,
                 bench_file,
-                module,
+                module_path: ModulePath::new(&module),
                 bench_bin,
                 meta,
             };
@@ -223,7 +223,7 @@ pub fn run() -> Result<()> {
             let config = Config {
                 package_dir,
                 bench_file,
-                module,
+                module_path: ModulePath::new(&module),
                 bench_bin,
                 meta,
             };
