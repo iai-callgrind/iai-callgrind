@@ -468,10 +468,10 @@ but a lot more concise especially if a lot of values are passed to the same
 `setup` function.
 
 The `file` parameter goes a step further and reads the specified file line by
-line creating a benchmark out of each line. The line is passed to the benchmark
+line creating a benchmark from each line. The line is passed to the benchmark
 function as `String` or if the `setup` parameter is also present to the `setup`
-function. A small example assuming you have a file `benches/inputs` with the
-following content
+function. A small example assuming you have a file `benches/inputs` (relative
+paths are interpreted to the workspace root) with the following content
 
 ```text
 1

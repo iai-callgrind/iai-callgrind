@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.2] - 2024-08-06
+
 ### Added
 
 * ([#210](https://github.com/iai-callgrind/iai-callgrind/pull/210)): Add the
