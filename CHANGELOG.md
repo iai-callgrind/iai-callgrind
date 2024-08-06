@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.2] - 2024-08-06
+
 ### Added
 
 * ([#210](https://github.com/iai-callgrind/iai-callgrind/pull/210)): Add the
@@ -36,13 +38,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   Similarly, the `setup` function of the `main` macro is run before any
   benchmark group and the `teardown` function after all benchmarks.
 
+### Changed
+
+* Update locked non-development dependencies:
+    * `regex`: 1.10.5 -> 1.10.6
+    * `tempfile`: 3.10.1 -> 3.11.0
+    * `serde_json`: -> 1.0.121 -> 1.0.122
+    * `indexmap`: 2.2.6 -> 2.3.0
+
+### Fixed
+
+* The library documentation in parts still mentioned
+  `EventKind::EstimatedCycles` as default regression kind instead of
+  `EventKind::Ir`. This default has changed in `v0.11.0`.
+
 ## [0.12.1] - 2024-07-31
 
 ### Changed
 
 * ([#212](https://github.com/iai-callgrind/iai-callgrind/pull/212)): Update
   transitive dependency `bytemuck` 1.15.0 (yanked) -> 1.16.3
-* Update other locked dependencies:
+* Update other locked non-development dependencies:
     * `cc`: 1.1.5 -> 1.1.7,
     * `serde_json`: 1.0.120 -> 1.0.121
 
@@ -79,7 +95,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 
-* Update locked dependencies: `syn` -> 2.0.72, `cc` -> 1.1.5, `serde` -> 1.0.204
+* Update non-development locked dependencies: `syn` -> 2.0.72, `cc` -> 1.1.5, `serde` -> 1.0.204
 * Update minimal version of `syn` -> 2.0.32
 * ([#201](https://github.com/iai-callgrind/iai-callgrind/pull/201)): The
   `BinaryBenchmarkConfig::entry_point` and `Run::entry_point` functions now use
