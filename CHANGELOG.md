@@ -38,6 +38,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   Similarly, the `setup` function of the `main` macro is run before any
   benchmark group and the `teardown` function after all benchmarks.
 
+### Fixed
+
+* The library documentation in parts still mentioned
+  `EventKind::EstimatedCycles` as default regression kind instead of
+  `EventKind::Ir`. This default has changed in `v0.11.0`.
+
 ## [0.12.1] - 2024-07-31
 
 ### Changed
