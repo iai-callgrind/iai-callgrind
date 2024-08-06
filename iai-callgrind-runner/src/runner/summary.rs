@@ -308,7 +308,6 @@ impl BenchmarkSummary {
     /// Create a new `BenchmarkSummary`
     ///
     /// Relative paths are made absolute with the `project_root` as base directory.
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         kind: BenchmarkKind,
         project_root: PathBuf,

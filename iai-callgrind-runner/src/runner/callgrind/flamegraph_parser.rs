@@ -49,7 +49,6 @@ impl FlamegraphMap {
     // # Errors
     //
     // If the event type was not present in the stacks
-    #[allow(clippy::too_many_lines)]
     pub fn to_stack_format(&self, event_kind: &EventKind) -> Result<Vec<String>> {
         if self.0.map.is_empty() {
             return Ok(vec![]);

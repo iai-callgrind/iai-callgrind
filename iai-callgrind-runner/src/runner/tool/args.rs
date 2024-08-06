@@ -84,7 +84,16 @@ impl ToolArgs {
         }
 
         match self.tool {
-            ValgrindTool::Callgrind => unreachable!("Callgrind is not managed here"),
+            ValgrindTool::Callgrind => {
+                let mut arg = OsString::from("--callgrind-out-file=");
+                let callgrind_out_path = if let Some(modifier) = modifier {
+                    output_path.with_modifiers([modifier.as_ref()])
+                } else {
+                    output_path.clone()
+                };
+                arg.push(callgrind_out_path.to_path());
+                self.output_paths.push(arg);
+            }
             ValgrindTool::Massif => {
                 let mut arg = OsString::from("--massif-out-file=");
                 let massif_out_path = if let Some(modifier) = modifier {
@@ -124,6 +133,7 @@ impl ToolArgs {
                 self.output_paths.push(bb_arg);
                 self.output_paths.push(pc_arg);
             }
+            // The other tools don't have an outfile
             _ => {}
         }
     }

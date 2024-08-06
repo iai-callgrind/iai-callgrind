@@ -14,16 +14,17 @@ use super::callgrind::flamegraph::{
 };
 use super::callgrind::parser::Sentinel;
 use super::callgrind::sentinel_parser::SentinelParser;
-use super::callgrind::{CallgrindCommand, RegressionConfig};
+use super::callgrind::RegressionConfig;
 use super::common::{Assistant, AssistantKind, Config, ModulePath};
-use super::format::{tool_headline, Header, OutputFormat, VerticalFormat};
+use super::format::{print_no_capture_footer, tool_headline, Header, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
 use super::summary::{
     BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, CallgrindRegressionSummary,
     CallgrindSummary, CostsSummary, SummaryOutput,
 };
 use super::tool::{
-    Parser, RunOptions, ToolConfigs, ToolOutputPath, ToolOutputPathKind, ValgrindTool,
+    Parser, RunOptions, ToolCommand, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind,
+    ValgrindTool,
 };
 use super::{Error, DEFAULT_TOGGLE};
 use crate::api::{self, LibraryBenchmark};
@@ -65,6 +66,7 @@ struct LibBench {
     regression_config: Option<RegressionConfig>,
     tools: ToolConfigs,
     module_path: ModulePath,
+    entry_point: Option<String>,
 }
 
 /// Implements [`Benchmark`] to load a [`LibBench`] baseline run and compare against another
@@ -130,7 +132,24 @@ impl Benchmark for BaselineBenchmark {
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
-        let callgrind_command = CallgrindCommand::new(&config.meta);
+        let callgrind_command = ToolCommand::new(
+            ValgrindTool::Callgrind,
+            &config.meta,
+            config.meta.args.nocapture,
+        );
+
+        let mut callgrind_args = lib_bench.callgrind_args.clone();
+        if let Some(entry_point) = lib_bench.entry_point.as_ref() {
+            callgrind_args.insert_toggle_collect(entry_point);
+        }
+
+        let tool_config = ToolConfig {
+            tool: ValgrindTool::Callgrind,
+            is_enabled: true,
+            args: callgrind_args.into(),
+            outfile_modifier: None,
+        };
+
         let bench_args = lib_bench.bench_args(group);
 
         let sentinel = Sentinel::default();
@@ -152,7 +171,7 @@ impl Benchmark for BaselineBenchmark {
         let header = lib_bench.print_header(&config.meta, group);
 
         let output = callgrind_command.run(
-            lib_bench.callgrind_args.clone(),
+            tool_config,
             &config.bench_bin,
             &bench_args,
             lib_bench.options.clone(),
@@ -160,6 +179,12 @@ impl Benchmark for BaselineBenchmark {
             &lib_bench.module_path,
             None,
         )?;
+
+        print_no_capture_footer(
+            config.meta.args.nocapture,
+            lib_bench.options.stdout.as_ref(),
+            lib_bench.options.stderr.as_ref(),
+        );
 
         let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
 
@@ -275,8 +300,10 @@ impl Groups {
                         library_benchmark_bench.config.as_ref(),
                     ]);
                     let envs = config.resolve_envs();
+
                     let callgrind_args =
                         Args::from_raw_args(&[&config.raw_callgrind_args, &meta_callgrind_args])?;
+
                     let flamegraph_config = config.flamegraph_config.map(Into::into);
                     let module_path = library_benchmark_bench.id.as_ref().map_or_else(
                         || group_module_path.join(&library_benchmark_bench.bench),
@@ -292,9 +319,9 @@ impl Groups {
                         id: library_benchmark_bench.id,
                         function: library_benchmark_bench.bench,
                         args: library_benchmark_bench.args,
+                        entry_point: Some(DEFAULT_TOGGLE.to_owned()),
                         options: RunOptions {
                             env_clear: config.env_clear.unwrap_or(true),
-                            entry_point: Some(DEFAULT_TOGGLE.to_owned()),
                             envs,
                             ..Default::default()
                         },
@@ -630,7 +657,18 @@ impl Benchmark for SaveBaselineBenchmark {
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
-        let callgrind_command = CallgrindCommand::new(&config.meta);
+        let callgrind_command = ToolCommand::new(
+            ValgrindTool::Callgrind,
+            &config.meta,
+            config.meta.args.nocapture,
+        );
+
+        let tool_config = ToolConfig {
+            tool: ValgrindTool::Callgrind,
+            is_enabled: true,
+            args: lib_bench.callgrind_args.clone().into(),
+            outfile_modifier: None,
+        };
         let bench_args = lib_bench.bench_args(group);
         let baselines = self.baselines();
 
@@ -655,7 +693,7 @@ impl Benchmark for SaveBaselineBenchmark {
         let header = lib_bench.print_header(&config.meta, group);
 
         let output = callgrind_command.run(
-            lib_bench.callgrind_args.clone(),
+            tool_config,
             &config.bench_bin,
             &bench_args,
             lib_bench.options.clone(),
@@ -664,7 +702,11 @@ impl Benchmark for SaveBaselineBenchmark {
             None,
         )?;
 
-        // TODO: Print no capture footer, also in BaselineBenchmark, ...
+        print_no_capture_footer(
+            config.meta.args.nocapture,
+            lib_bench.options.stdout.as_ref(),
+            lib_bench.options.stderr.as_ref(),
+        );
 
         let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
         let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());

@@ -33,7 +33,6 @@ use crate::util::{self, make_relative, resolve_binary_path, truncate_str_utf8};
 pub struct RunOptions {
     pub env_clear: bool,
     pub current_dir: Option<PathBuf>,
-    pub entry_point: Option<String>,
     pub exit_with: Option<ExitWith>,
     pub envs: Vec<(OsString, OsString)>,
     pub stdin: Option<api::Stdin>,
@@ -54,6 +53,7 @@ pub struct ToolConfigs(pub Vec<ToolConfig>);
 
 pub struct ToolCommand {
     tool: ValgrindTool,
+    nocapture: NoCapture,
     command: Command,
 }
 
@@ -101,9 +101,10 @@ pub trait Parser {
 }
 
 impl ToolCommand {
-    pub fn new(tool: ValgrindTool, meta: &Metadata) -> Self {
+    pub fn new(tool: ValgrindTool, meta: &Metadata, nocapture: NoCapture) -> Self {
         Self {
             tool,
+            nocapture,
             command: meta.into(),
         }
     }
@@ -128,7 +129,6 @@ impl ToolCommand {
         self
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn run(
         mut self,
         config: ToolConfig,
@@ -137,7 +137,6 @@ impl ToolCommand {
         options: RunOptions,
         output_path: &ToolOutputPath,
         module_path: &ModulePath,
-        // TODO: IMPLEMENT
         mut child: Option<Child>,
     ) -> Result<ToolOutput> {
         debug!(
@@ -154,12 +153,13 @@ impl ToolCommand {
             stdin,
             stdout,
             stderr,
-            ..
         } = options;
 
         if env_clear {
+            debug!("Clearing environment variables");
             self.env_clear();
         }
+
         if let Some(dir) = current_dir {
             debug!(
                 "{}: Setting current directory to '{}'",
@@ -174,6 +174,26 @@ impl ToolCommand {
         tool_args.set_log_arg(output_path, config.outfile_modifier.as_ref());
 
         let executable = resolve_binary_path(executable)?;
+        let args = tool_args.to_vec();
+        debug!(
+            "{}: Arguments: {}",
+            self.tool.id(),
+            args.iter()
+                .map(|s| s.to_string_lossy().to_string())
+                .collect::<Vec<String>>()
+                .join(" ")
+        );
+
+        self.command
+            .args(tool_args.to_vec())
+            .arg(&executable)
+            .args(executable_args)
+            .envs(envs);
+
+        if self.tool == ValgrindTool::Callgrind {
+            debug!("Applying --nocapture options");
+            self.nocapture.apply(&mut self.command);
+        }
 
         if let Some(stdin) = stdin {
             stdin
@@ -193,27 +213,45 @@ impl ToolCommand {
                 .map_err(|error| Error::BenchmarkError(self.tool, module_path.clone(), error))?;
         }
 
-        let output = self
-            .command
-            .args(tool_args.to_vec())
-            .arg(&executable)
-            .args(executable_args)
-            .envs(envs)
-            .output()
-            .map_err(|error| -> anyhow::Error {
-                Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
-            })
-            .and_then(|output| {
-                let status = output.status;
-                check_exit(
-                    self.tool,
-                    &executable,
-                    Some(output),
-                    status,
-                    &output_path.to_log_output(),
-                    exit_with.as_ref(),
-                )
-            })?;
+        let output = match self.nocapture {
+            NoCapture::True | NoCapture::Stderr | NoCapture::Stdout
+                if self.tool == ValgrindTool::Callgrind =>
+            {
+                self.command
+                    .status()
+                    .map_err(|error| {
+                        Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
+                    })
+                    .and_then(|status| {
+                        check_exit(
+                            self.tool,
+                            &executable,
+                            None,
+                            status,
+                            &output_path.to_log_output(),
+                            exit_with.as_ref(),
+                        )
+                    })?;
+                None
+            }
+            _ => self
+                .command
+                .output()
+                .map_err(|error| {
+                    Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
+                })
+                .and_then(|output| {
+                    let status = output.status;
+                    check_exit(
+                        self.tool,
+                        &executable,
+                        Some(output),
+                        status,
+                        &output_path.to_log_output(),
+                        exit_with.as_ref(),
+                    )
+                })?,
+        };
 
         if let Some(mut child) = child {
             child.wait().unwrap();
@@ -359,7 +397,6 @@ impl ToolConfigs {
     }
 
     /// TODO: REARRANGE PARAMETERS
-    #[allow(clippy::too_many_arguments)]
     pub fn run(
         &self,
         config: &Config,
@@ -377,7 +414,7 @@ impl ToolConfigs {
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
             let tool = tool_config.tool;
 
-            let command = ToolCommand::new(tool, &config.meta);
+            let command = ToolCommand::new(tool, &config.meta, NoCapture::False);
 
             let output_path = output_path.to_tool_output(tool);
             let log_path = output_path.to_log_output();

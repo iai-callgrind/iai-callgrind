@@ -118,6 +118,22 @@ test_bin_bench_setup_and_teardown::bench_group::bench_global_setup_and_teardown 
   RAM Hits:                        |                (         )
   Total read+write:                |                (No change)
   Estimated Cycles:                |                (         )
+test_bin_bench_setup_and_teardown::low_level::bench_setup_last no_setup:() -> target/release/echo 3
+  Baselines:                default|default
+  Instructions:                    |                (No change)
+  L1 Hits:                         |                (No change)
+  L2 Hits:                         |                (         )
+  RAM Hits:                        |                (         )
+  Total read+write:                |                (No change)
+  Estimated Cycles:                |                (         )
+test_bin_bench_setup_and_teardown::low_level::bench_setup_last with_setup:() -> target/release/echo 6
+  Baselines:                default|default
+  Instructions:                    |                (No change)
+  L1 Hits:                         |                (No change)
+  L2 Hits:                         |                (         )
+  RAM Hits:                        |                (         )
+  Total read+write:                |                (No change)
+  Estimated Cycles:                |                (         )
 test_bin_bench_setup_and_teardown::low_level::bench_only_setup setup_with_one_argument:() -> target/release/echo 3
   Baselines:                default|default
   Instructions:                    |                (No change)

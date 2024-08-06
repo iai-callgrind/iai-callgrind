@@ -9,7 +9,7 @@ use super::callgrind::flamegraph::{
     LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
 };
 use super::callgrind::summary_parser::SummaryParser;
-use super::callgrind::{CallgrindCommand, RegressionConfig};
+use super::callgrind::RegressionConfig;
 use super::common::{Assistant, AssistantKind, Config, ModulePath, Sandbox};
 use super::format::{Header, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
@@ -18,7 +18,8 @@ use super::summary::{
     SummaryOutput,
 };
 use super::tool::{
-    Parser, RunOptions, ToolConfigs, ToolOutputPath, ToolOutputPathKind, ValgrindTool,
+    Parser, RunOptions, ToolCommand, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind,
+    ValgrindTool,
 };
 use crate::api::{self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkMain, Stdin};
 use crate::error::Error;
@@ -121,7 +122,18 @@ impl Benchmark for BaselineBenchmark {
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
-        let callgrind_command = CallgrindCommand::new(&config.meta);
+        let callgrind_command = ToolCommand::new(
+            ValgrindTool::Callgrind,
+            &config.meta,
+            config.meta.args.nocapture,
+        );
+
+        let tool_config = ToolConfig {
+            tool: ValgrindTool::Callgrind,
+            is_enabled: true,
+            args: bin_bench.callgrind_args.clone().into(),
+            outfile_modifier: None,
+        };
 
         let out_path = self.output_path(bin_bench, config, group);
         out_path.init()?;
@@ -156,7 +168,7 @@ impl Benchmark for BaselineBenchmark {
         };
 
         let output = callgrind_command.run(
-            bin_bench.callgrind_args.clone(),
+            tool_config,
             &bin_bench.command.path,
             &bin_bench.command.args,
             bin_bench.run_options.clone(),
@@ -276,7 +288,6 @@ impl BinBench {
             // TODO: CHECK IF ALL OPTIONS ARE PASSED FROM COMMAND TO RunOptions
             run_options: RunOptions {
                 env_clear: config.env_clear.unwrap_or(defaults::ENV_CLEAR),
-                entry_point: None,
                 envs,
                 stdin: command.stdin.clone(),
                 stdout: command.stdout.clone(),
@@ -433,7 +444,6 @@ impl Group {
 }
 
 impl Groups {
-    #[allow(clippy::too_many_lines)]
     fn from_binary_benchmark(
         module: &ModulePath,
         benchmark: BinaryBenchmarkMain,
@@ -692,7 +702,19 @@ impl Benchmark for SaveBaselineBenchmark {
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
-        let callgrind_command = CallgrindCommand::new(&config.meta);
+        let callgrind_command = ToolCommand::new(
+            ValgrindTool::Callgrind,
+            &config.meta,
+            config.meta.args.nocapture,
+        );
+
+        let tool_config = ToolConfig {
+            tool: ValgrindTool::Callgrind,
+            is_enabled: true,
+            args: bin_bench.callgrind_args.clone().into(),
+            outfile_modifier: None,
+        };
+
         let baselines = self.baselines();
 
         let out_path = self.output_path(bin_bench, config, group);
@@ -717,7 +739,7 @@ impl Benchmark for SaveBaselineBenchmark {
         // TODO: ADD sandbox and setup, teardown
 
         let output = callgrind_command.run(
-            bin_bench.callgrind_args.clone(),
+            tool_config,
             &bin_bench.command.path,
             &bin_bench.command.args,
             bin_bench.run_options.clone(),

@@ -26,6 +26,8 @@
 #![allow(missing_docs)]
 #![allow(clippy::missing_panics_doc)]
 #![allow(clippy::missing_errors_doc)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::too_many_lines)]
 
 #[cfg(feature = "api")]
 pub mod api;

@@ -117,7 +117,6 @@ impl TryFrom<CurrentId> for Id {
 impl Parser for HashMapParser {
     type Output = CallgrindMap;
 
-    #[allow(clippy::too_many_lines)]
     #[allow(clippy::similar_names)]
     fn parse(&self, output_path: &ToolOutputPath) -> Result<Self::Output> {
         let mut iter = output_path.lines()?;
