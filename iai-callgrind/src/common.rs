@@ -32,7 +32,7 @@ pub struct FlamegraphConfig(internal::InternalFlamegraphConfig);
 ///
 /// A performance regression check consists of an [`EventKind`] and a percentage over which a
 /// regression is assumed. If the percentage is negative, then a regression is assumed to be below
-/// this limit. The default [`EventKind`] is [`EventKind::EstimatedCycles`] with a value of
+/// this limit. The default [`EventKind`] is [`EventKind::Ir`] with a value of
 /// `+10f64`
 ///
 /// If `fail_fast` is set to true, then the whole benchmark run fails on the first encountered
@@ -147,7 +147,7 @@ impl FlamegraphConfig {
 
     /// One or multiple [`EventKind`] for which a flamegraph is going to be created.
     ///
-    /// The default is [`EventKind::EstimatedCycles`]
+    /// The default is [`EventKind::Ir`]
     ///
     /// Currently, flamegraph creation is limited to one flamegraph for each [`EventKind`] and
     /// there's no way to merge all event kinds into a single flamegraph.
@@ -156,7 +156,8 @@ impl FlamegraphConfig {
     /// docs of the variants of [`EventKind`] which callgrind option is needed to create a record
     /// for it. See also the [Callgrind
     /// Documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options). The
-    /// [`EventKind`]s recorded by callgrind which are always available:
+    /// [`EventKind`]s recorded by callgrind which are available as long as the cache simulation is
+    /// turned on with `--cache-sim=yes` (which is the default):
     ///
     /// * [`EventKind::Ir`]
     /// * [`EventKind::Dr`]
@@ -168,7 +169,7 @@ impl FlamegraphConfig {
     /// * [`EventKind::D1mw`]
     /// * [`EventKind::DLmw`]
     ///
-    /// Additionally, the following derived `EventKinds` are available:
+    /// If the cache simulation is turned on, the following derived `EventKinds` are also available:
     ///
     /// * [`EventKind::L1hits`]
     /// * [`EventKind::LLhits`]
@@ -263,7 +264,7 @@ impl_traits!(FlamegraphConfig, internal::InternalFlamegraphConfig);
 ///
 /// A performance regression check consists of an [`EventKind`] and a percentage over which a
 /// regression is assumed. If the percentage is negative, then a regression is assumed to be below
-/// this limit. The default [`EventKind`] is [`EventKind::EstimatedCycles`] with a value of
+/// this limit. The default [`EventKind`] is [`EventKind::Ir`] with a value of
 /// `+10f64`
 ///
 /// If `fail_fast` is set to true, then the whole benchmark run fails on the first encountered
@@ -295,7 +296,7 @@ impl RegressionConfig {
     /// below this limit.
     ///
     /// If no `limits` or empty `targets` are specified with this function, the default
-    /// [`EventKind`] is [`EventKind::EstimatedCycles`] with a value of `+10f64`
+    /// [`EventKind`] is [`EventKind::Ir`] with a value of `+10f64`
     ///
     /// # Examples
     ///
