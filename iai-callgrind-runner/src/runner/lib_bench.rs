@@ -143,12 +143,7 @@ impl Benchmark for BaselineBenchmark {
             callgrind_args.insert_toggle_collect(entry_point);
         }
 
-        let tool_config = ToolConfig {
-            tool: ValgrindTool::Callgrind,
-            is_enabled: true,
-            args: callgrind_args.into(),
-            outfile_modifier: None,
-        };
+        let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, None);
 
         let bench_args = lib_bench.bench_args(group);
 
@@ -661,12 +656,13 @@ impl Benchmark for SaveBaselineBenchmark {
             config.meta.args.nocapture,
         );
 
-        let tool_config = ToolConfig {
-            tool: ValgrindTool::Callgrind,
-            is_enabled: true,
-            args: lib_bench.callgrind_args.clone().into(),
-            outfile_modifier: None,
-        };
+        let mut callgrind_args = lib_bench.callgrind_args.clone();
+        if let Some(entry_point) = lib_bench.entry_point.as_ref() {
+            callgrind_args.insert_toggle_collect(entry_point);
+        }
+
+        let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, None);
+
         let bench_args = lib_bench.bench_args(group);
         let baselines = self.baselines();
 

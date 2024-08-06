@@ -128,12 +128,12 @@ impl Benchmark for BaselineBenchmark {
             config.meta.args.nocapture,
         );
 
-        let tool_config = ToolConfig {
-            tool: ValgrindTool::Callgrind,
-            is_enabled: true,
-            args: bin_bench.callgrind_args.clone().into(),
-            outfile_modifier: None,
-        };
+        let tool_config = ToolConfig::new(
+            ValgrindTool::Callgrind,
+            true,
+            bin_bench.callgrind_args.clone(),
+            None,
+        );
 
         let out_path = self.output_path(bin_bench, config, group);
         out_path.init()?;
@@ -706,12 +706,12 @@ impl Benchmark for SaveBaselineBenchmark {
             config.meta.args.nocapture,
         );
 
-        let tool_config = ToolConfig {
-            tool: ValgrindTool::Callgrind,
-            is_enabled: true,
-            args: bin_bench.callgrind_args.clone().into(),
-            outfile_modifier: None,
-        };
+        let tool_config = ToolConfig::new(
+            ValgrindTool::Callgrind,
+            true,
+            bin_bench.callgrind_args.clone(),
+            None,
+        );
 
         let baselines = self.baselines();
 

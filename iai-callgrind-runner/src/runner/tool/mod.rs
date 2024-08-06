@@ -265,6 +265,18 @@ impl ToolCommand {
 }
 
 impl ToolConfig {
+    pub fn new<T>(tool: ValgrindTool, is_enabled: bool, args: T, modifier: Option<String>) -> Self
+    where
+        T: Into<ToolArgs>,
+    {
+        Self {
+            tool,
+            is_enabled,
+            args: args.into(),
+            outfile_modifier: modifier,
+        }
+    }
+
     fn parse_load(
         &self,
         meta: &Metadata,
