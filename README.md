@@ -100,20 +100,20 @@ To start with Iai-Callgrind, add the following to your `Cargo.toml` file:
 
 ```toml
 [dev-dependencies]
-iai-callgrind = "0.12.1"
+iai-callgrind = "0.12.2"
 ```
 
 To be able to run the benchmarks you'll also need the `iai-callgrind-runner` binary installed
 somewhere in your `$PATH`, for example with
 
 ```shell
-cargo install --version 0.12.1 iai-callgrind-runner
+cargo install --version 0.12.2 iai-callgrind-runner
 ```
 
 or with `binstall`
 
 ```shell
-cargo binstall iai-callgrind-runner@0.12.1
+cargo binstall iai-callgrind-runner@0.12.2
 ```
 
 There's also the possibility to install the binary somewhere else and point the
@@ -121,7 +121,7 @@ There's also the possibility to install the binary somewhere else and point the
 binary like so:
 
 ```shell
-cargo install --version 0.12.1 --root /tmp iai-callgrind-runner
+cargo install --version 0.12.2 --root /tmp iai-callgrind-runner
 IAI_CALLGRIND_RUNNER=/tmp/bin/iai-callgrind-runner cargo bench --bench my-bench
 ```
 
@@ -468,10 +468,10 @@ but a lot more concise especially if a lot of values are passed to the same
 `setup` function.
 
 The `file` parameter goes a step further and reads the specified file line by
-line creating a benchmark out of each line. The line is passed to the benchmark
+line creating a benchmark from each line. The line is passed to the benchmark
 function as `String` or if the `setup` parameter is also present to the `setup`
-function. A small example assuming you have a file `benches/inputs` with the
-following content
+function. A small example assuming you have a file `benches/inputs` (relative
+paths are interpreted to the workspace root) with the following content
 
 ```text
 1
@@ -950,7 +950,7 @@ Client requests are deactivated by default but can be activated with the
 
 ```toml
 [dev-dependencies]
-iai-callgrind = { version = "0.12.1", features = ["client_requests"] }
+iai-callgrind = { version = "0.12.2", features = ["client_requests"] }
 ```
 
 If you need the client requests in your production code, you usually don't want
@@ -961,12 +961,12 @@ benchmarks. You can achieve that by adding `iai-callgrind` with the
 
 ```toml
 [dependencies]
-iai-callgrind = { version = "0.12.1", default-features = false, features = [
+iai-callgrind = { version = "0.12.2", default-features = false, features = [
     "client_requests_defs"
 ] }
 
 [dev-dependencies]
-iai-callgrind = { version = "0.12.1", features = ["client_requests"] }
+iai-callgrind = { version = "0.12.2", features = ["client_requests"] }
 ```
 
 With just the `client_requests_defs` feature activated, the client requests
@@ -1004,7 +1004,7 @@ path would be `IAI_CALLGRIND_VALGRIND_INCLUDE=/home/foo/repo` (not
 `/home/foo/repo/valgrind`)
 
 This was just a small introduction, please see the
-[docs](https://docs.rs/iai-callgrind/0.12.1/iai_callgrind/client_requests) for
+[docs](https://docs.rs/iai-callgrind/0.12.2/iai_callgrind/client_requests) for
 more details!
 
 ### Flamegraphs
@@ -1389,5 +1389,5 @@ about license incompatibility.
 We have included the original license where we make use of the original header
 files.
 
-[`library documentation`]: https://docs.rs/iai-callgrind/0.12.1/iai_callgrind/
-[docs]: https://docs.rs/iai-callgrind/0.12.1/iai_callgrind/
+[`library documentation`]: https://docs.rs/iai-callgrind/0.12.2/iai_callgrind/
+[docs]: https://docs.rs/iai-callgrind/0.12.2/iai_callgrind/
