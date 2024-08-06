@@ -107,7 +107,6 @@ pub enum ExitWith {
 #[derive(Debug, Clone)]
 pub struct Sandbox(internal::InternalSandbox);
 
-// TODO: MOVE INTO impl section and add more methods
 impl Bench {
     /// TODO: DOCUMENTATION
     pub fn new<T>(id: T) -> Self
@@ -177,7 +176,8 @@ impl From<&Bench> for Bench {
 }
 
 impl BenchmarkId {
-    /// Create a new `BenchmarkId`.
+    /// TODO: UPDATE DOCUMENTATION
+    /// Create a new `BenchmarkId` with a parameter
     ///
     /// Use [`BenchmarkId`] as an argument for the `id` of an [`Arg`] if you want to create unique
     /// ids from a parameter.
@@ -201,7 +201,7 @@ impl BenchmarkId {
     /// # fn main() {
     /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
     /// # }
-    pub fn new<T, P>(id: T, parameter: P) -> Self
+    pub fn with_parameter<T, P>(id: T, parameter: P) -> Self
     where
         T: AsRef<str>,
         P: Display,
@@ -210,6 +210,14 @@ impl BenchmarkId {
         Self {
             id: format!("{}_{parameter}", id.as_ref()),
         }
+    }
+
+    /// TODO: DOCUMENTATION
+    pub fn new<T>(id: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self { id: id.into() }
     }
 }
 

@@ -231,8 +231,7 @@ pub struct LibraryBenchmarkConfig {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct LibraryBenchmarkGroup {
-    // TODO: SHOULD BE A STRING and not an Option
-    pub id: Option<String>,
+    pub id: String,
     pub config: Option<LibraryBenchmarkConfig>,
     pub compare: bool,
     pub benches: Vec<LibraryBenchmarkBenches>,

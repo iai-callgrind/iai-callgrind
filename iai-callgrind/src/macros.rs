@@ -530,7 +530,7 @@ macro_rules! main {
 
             $(
                 let mut group = $crate::internal::InternalLibraryBenchmarkGroup {
-                    id: Some(stringify!($group).to_owned()),
+                    id: stringify!($group).to_owned(),
                     config: $group::get_config(),
                     compare: $group::compare(),
                     benches: vec![],

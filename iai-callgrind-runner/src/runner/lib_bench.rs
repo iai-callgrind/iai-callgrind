@@ -38,7 +38,7 @@ struct BaselineBenchmark {
 // A `Group` is the organizational unit and counterpart of the `library_benchmark_group!` macro
 #[derive(Debug)]
 struct Group {
-    id: Option<String>,
+    id: String,
     benches: Vec<LibBench>,
     compare: bool,
     module_path: ModulePath,
@@ -252,24 +252,20 @@ impl Groups {
         let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
 
         for library_benchmark_group in benchmark.groups {
-            let group_module_path = if let Some(group_id) = &library_benchmark_group.id {
-                module_path.join(group_id)
-            } else {
-                module_path.clone()
-            };
+            let group_module_path = module_path.join(&library_benchmark_group.id);
             let setup =
                 library_benchmark_group
                     .has_setup
                     .then_some(Assistant::new_group_assistant(
                         AssistantKind::Setup,
-                        library_benchmark_group.id.as_ref().unwrap(),
+                        &library_benchmark_group.id,
                     ));
             let teardown =
                 library_benchmark_group
                     .has_setup
                     .then_some(Assistant::new_group_assistant(
                         AssistantKind::Teardown,
-                        library_benchmark_group.id.as_ref().unwrap(),
+                        &library_benchmark_group.id,
                     ));
 
             let mut group = Group {
@@ -386,11 +382,11 @@ impl Groups {
 }
 
 impl LibBench {
-    /// The name of this `LibBench` consisting of the name of the benchmark function and the id of
-    /// the bench attribute (`#[bench::ID(...)]`)
+    /// The name of this `LibBench` consisting of the name of the benchmark function and if present,
+    /// the id of the bench attribute (`#[bench::ID(...)]`)
     ///
-    /// The name is whenever it is necessary to identify a benchmark run within the same
-    /// [`Group`].
+    /// The name is used to identify a benchmark run within the same [`Group`] and has therefore to
+    /// be unique within the same [`Group`]
     fn name(&self) -> String {
         if let Some(bench_id) = &self.id {
             format!("{}.{}", &self.function, bench_id)
@@ -400,24 +396,14 @@ impl LibBench {
     }
 
     /// The arguments for the `bench_bin` to actually run the benchmark function
-    ///
-    /// Not all [`Group`]s have an id
     fn bench_args(&self, group: &Group) -> Vec<OsString> {
-        if let Some(group_id) = &group.id {
-            vec![
-                OsString::from("--iai-run".to_owned()),
-                OsString::from(group_id),
-                OsString::from(self.bench_index.to_string()),
-                OsString::from(self.index.to_string()),
-                OsString::from(format!("{}::{}", group.module_path, self.function)),
-            ]
-        } else {
-            vec![
-                OsString::from("--iai-run".to_owned()),
-                OsString::from(self.index.to_string()),
-                OsString::from(format!("{}::{}", group.module_path, self.function)),
-            ]
-        }
+        vec![
+            OsString::from("--iai-run".to_owned()),
+            OsString::from(&group.id),
+            OsString::from(self.bench_index.to_string()),
+            OsString::from(self.index.to_string()),
+            OsString::from(self.module_path.to_string()),
+        ]
     }
 
     /// This method creates the initial [`BenchmarkSummary`]
