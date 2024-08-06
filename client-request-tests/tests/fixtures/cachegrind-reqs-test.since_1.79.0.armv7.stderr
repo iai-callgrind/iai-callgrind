@@ -1,4 +1,4 @@
-Reading EXIDX entries: 396 available
+Reading EXIDX entries: 395 available
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
@@ -339,7 +339,7 @@ Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryExtract: bytecode can't be represented
 Warning: whilst reading EXIDX: ExtabEntryDecode: failed with error code: -10
-Reading EXIDX entries: 391 attempted, 51 successful
+Reading EXIDX entries: 390 attempted, 50 successful
 result: 90
 
 I refs:        <__FILTER__>
