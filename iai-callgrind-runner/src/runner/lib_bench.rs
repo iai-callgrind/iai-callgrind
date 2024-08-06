@@ -60,7 +60,7 @@ struct LibBench {
     id: Option<String>,
     function: String,
     args: Option<String>,
-    options: RunOptions,
+    run_options: RunOptions,
     callgrind_args: Args,
     flamegraph_config: Option<FlamegraphConfig>,
     regression_config: Option<RegressionConfig>,
@@ -161,7 +161,7 @@ impl Benchmark for BaselineBenchmark {
             path.to_log_output().shift()?;
         }
 
-        let mut benchmark_summary = lib_bench.create_benchmark_summary(config, group, &out_path)?;
+        let mut benchmark_summary = lib_bench.create_benchmark_summary(config, &out_path)?;
 
         let header = lib_bench.print_header(&config.meta, group);
 
@@ -169,7 +169,7 @@ impl Benchmark for BaselineBenchmark {
             tool_config,
             &config.bench_bin,
             &bench_args,
-            lib_bench.options.clone(),
+            lib_bench.run_options.clone(),
             &out_path,
             &lib_bench.module_path,
             None,
@@ -177,8 +177,8 @@ impl Benchmark for BaselineBenchmark {
 
         print_no_capture_footer(
             config.meta.args.nocapture,
-            lib_bench.options.stdout.as_ref(),
-            lib_bench.options.stderr.as_ref(),
+            lib_bench.run_options.stdout.as_ref(),
+            lib_bench.run_options.stderr.as_ref(),
         );
 
         let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
@@ -227,7 +227,7 @@ impl Benchmark for BaselineBenchmark {
             config,
             &config.bench_bin,
             &bench_args,
-            &lib_bench.options,
+            &lib_bench.run_options,
             &out_path,
             false,
             &lib_bench.module_path,
@@ -313,7 +313,7 @@ impl Groups {
                         function: library_benchmark_bench.bench,
                         args: library_benchmark_bench.args,
                         entry_point: Some(DEFAULT_TOGGLE.to_owned()),
-                        options: RunOptions {
+                        run_options: RunOptions {
                             env_clear: config.env_clear.unwrap_or(true),
                             envs,
                             ..Default::default()
@@ -424,7 +424,6 @@ impl LibBench {
     fn create_benchmark_summary(
         &self,
         config: &Config,
-        group: &Group,
         output_path: &ToolOutputPath,
     ) -> Result<BenchmarkSummary> {
         let summary_output = if let Some(format) = config.meta.args.save_summary {
@@ -441,7 +440,7 @@ impl LibBench {
             config.package_dir.clone(),
             config.bench_file.clone(),
             config.bench_bin.clone(),
-            &group.module_path.join(&self.function),
+            &self.module_path,
             self.id.clone(),
             self.args.clone(),
             summary_output,
@@ -512,7 +511,7 @@ impl Benchmark for LoadBaselineBenchmark {
         let out_path = self.output_path(lib_bench, config, group);
         let old_path = out_path.to_base_path();
         let log_path = out_path.to_log_output();
-        let mut benchmark_summary = lib_bench.create_benchmark_summary(config, group, &out_path)?;
+        let mut benchmark_summary = lib_bench.create_benchmark_summary(config, &out_path)?;
 
         let header = lib_bench.print_header(&config.meta, group);
 
@@ -682,7 +681,7 @@ impl Benchmark for SaveBaselineBenchmark {
         let log_path = out_path.to_log_output();
         log_path.clear()?;
 
-        let mut benchmark_summary = lib_bench.create_benchmark_summary(config, group, &out_path)?;
+        let mut benchmark_summary = lib_bench.create_benchmark_summary(config, &out_path)?;
 
         let header = lib_bench.print_header(&config.meta, group);
 
@@ -690,7 +689,7 @@ impl Benchmark for SaveBaselineBenchmark {
             tool_config,
             &config.bench_bin,
             &bench_args,
-            lib_bench.options.clone(),
+            lib_bench.run_options.clone(),
             &out_path,
             &lib_bench.module_path,
             None,
@@ -698,8 +697,8 @@ impl Benchmark for SaveBaselineBenchmark {
 
         print_no_capture_footer(
             config.meta.args.nocapture,
-            lib_bench.options.stdout.as_ref(),
-            lib_bench.options.stderr.as_ref(),
+            lib_bench.run_options.stdout.as_ref(),
+            lib_bench.run_options.stderr.as_ref(),
         );
 
         let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
@@ -742,7 +741,7 @@ impl Benchmark for SaveBaselineBenchmark {
             config,
             &config.bench_bin,
             &bench_args,
-            &lib_bench.options,
+            &lib_bench.run_options,
             &out_path,
             true,
             &lib_bench.module_path,

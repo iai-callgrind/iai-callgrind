@@ -109,7 +109,6 @@ impl ToolCommand {
         }
     }
 
-    // TODO: RENAME TO clear_env
     pub fn env_clear(&mut self) -> &mut Self {
         debug!("{}: Clearing environment variables", self.tool.id());
         for (key, _) in std::env::vars() {
@@ -134,7 +133,7 @@ impl ToolCommand {
         config: ToolConfig,
         executable: &Path,
         executable_args: &[OsString],
-        options: RunOptions,
+        run_options: RunOptions,
         output_path: &ToolOutputPath,
         module_path: &ModulePath,
         mut child: Option<Child>,
@@ -153,7 +152,7 @@ impl ToolCommand {
             stdin,
             stdout,
             stderr,
-        } = options;
+        } = run_options;
 
         if env_clear {
             debug!("Clearing environment variables");
@@ -408,13 +407,12 @@ impl ToolConfigs {
         Ok(tool_summaries)
     }
 
-    /// TODO: REARRANGE PARAMETERS
     pub fn run(
         &self,
         config: &Config,
         executable: &Path,
         executable_args: &[OsString],
-        options: &RunOptions,
+        run_options: &RunOptions,
         output_path: &ToolOutputPath,
         save_baseline: bool,
         module_path: &ModulePath,
@@ -442,27 +440,20 @@ impl ToolConfigs {
                 log_path.clear()?;
             }
 
-            // We're implicitly applying the default here: In the absence of a user provided sandbox
-            // we don't run the benchmarks in a sandbox. Everything from here on runs
-            // with the current directory set to the sandbox directory until the sandbox
-            // is reset.
-            let sandbox = if let Some(api_sandbox) = &sandbox {
-                Some(Sandbox::setup(api_sandbox, &config.meta)?)
-            } else {
-                None
-            };
+            let sandbox = sandbox
+                .as_ref()
+                .map(|sandbox| Sandbox::setup(sandbox, &config.meta))
+                .transpose()?;
 
-            let child = if let Some(setup) = &setup {
-                setup.run(config, module_path)?
-            } else {
-                None
-            };
+            let child = setup
+                .as_ref()
+                .map_or(Ok(None), |setup| setup.run(config, module_path))?;
 
             let output = command.run(
                 tool_config.clone(),
                 executable,
                 executable_args,
-                options.clone(),
+                run_options.clone(),
                 &output_path,
                 module_path,
                 child,
@@ -473,12 +464,10 @@ impl ToolConfigs {
                 teardown.run(config, module_path)?;
             }
 
-            // We print the no capture footer after the teardown to keep the output consistent with
-            // library benchmarks.
             print_no_capture_footer(
                 NoCapture::False,
-                options.stdout.as_ref(),
-                options.stderr.as_ref(),
+                run_options.stdout.as_ref(),
+                run_options.stderr.as_ref(),
             );
 
             if let Some(sandbox) = sandbox {

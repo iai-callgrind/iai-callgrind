@@ -71,7 +71,11 @@ fn two_lines_with_setup(value: u64) {
 
 library_benchmark_group!(
     name = bench_group;
-    benchmarks = one_line, one_line_with_setup, two_lines, two_lines_with_setup
+    benchmarks =
+        one_line,
+        one_line_with_setup,
+        two_lines,
+        two_lines_with_setup,
 );
 
 main!(library_benchmark_groups = bench_group);

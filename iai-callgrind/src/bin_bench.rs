@@ -32,34 +32,10 @@ pub struct BenchmarkId {
 pub struct BinaryBenchmarkConfig(internal::InternalBinaryBenchmarkConfig);
 
 /// TODO: UPDATE DOCUMENTATION
-/// The `BinaryBenchmarkGroup` lets you configure binary benchmark [`Run`]s
 #[derive(Debug, Default, Clone)]
 pub struct BinaryBenchmarkGroup {
     /// TODO: DOCUMENTATION
     pub binary_benchmarks: Vec<BinaryBenchmark>,
-}
-
-// TODO: MOVE INTO impl section. Add more methods??
-impl BinaryBenchmarkGroup {
-    /// TODO: DOCUMENTATION
-    pub fn binary_benchmark<T>(&mut self, binary_benchmark: T) -> &mut Self
-    where
-        T: Into<BinaryBenchmark>,
-    {
-        self.binary_benchmarks.push(binary_benchmark.into());
-        self
-    }
-
-    /// TODO: DOCUMENTATION
-    pub fn binary_benchmarks<I, T>(&mut self, binary_benchmarks: T) -> &mut Self
-    where
-        I: Into<BinaryBenchmark>,
-        T: IntoIterator<Item = I>,
-    {
-        self.binary_benchmarks
-            .extend(binary_benchmarks.into_iter().map(Into::into));
-        self
-    }
 }
 
 /// TODO: DOCUMENTATION
@@ -76,6 +52,60 @@ pub struct Bench {
     /// TODO: DOCUMENTATION
     pub teardown: Option<fn()>,
 }
+
+/// TODO: DOCUMENTATION
+#[derive(Debug, Clone)]
+pub struct BinaryBenchmark {
+    /// TODO: DOCUMENTATION
+    pub id: BenchmarkId,
+    /// TODO: DOCUMENTATION
+    pub config: Option<BinaryBenchmarkConfig>,
+    /// TODO: DOCUMENTATION
+    pub benches: Vec<Bench>,
+    /// TODO: DOCUMENTATION
+    pub setup: Option<fn()>,
+    /// TODO: DOCUMENTATION
+    pub teardown: Option<fn()>,
+}
+
+/// TODO: DOCUMENTATION
+#[derive(Debug, Default, Clone)]
+pub struct Command(internal::InternalCommand);
+
+/// Set the expected exit status of a binary benchmark
+///
+/// Per default, the benchmarked binary is expected to succeed, but if a benchmark is expected to
+/// fail, setting this option is required.
+///
+/// # Examples
+///
+/// ```rust
+/// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
+/// # binary_benchmark_group!(
+/// #    name = my_group;
+/// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
+/// use iai_callgrind::{main, BinaryBenchmarkConfig, ExitWith};
+///
+/// # fn main() {
+/// main!(
+///     config = BinaryBenchmarkConfig::default().exit_with(ExitWith::Code(1));
+///     binary_benchmark_groups = my_group
+/// );
+/// # }
+/// ```
+#[derive(Debug, Clone)]
+pub enum ExitWith {
+    /// Exit with success is similar to `ExitCode(0)`
+    Success,
+    /// Exit with failure is similar to setting the `ExitCode` to something different than `0`
+    Failure,
+    /// The exact `ExitCode` of the benchmark run
+    Code(i32),
+}
+
+/// TODO: DOCUMENTATION
+#[derive(Debug, Clone)]
+pub struct Sandbox(internal::InternalSandbox);
 
 // TODO: MOVE INTO impl section and add more methods
 impl Bench {
@@ -146,22 +176,68 @@ impl From<&Bench> for Bench {
     }
 }
 
-/// TODO: DOCUMENTATION
-#[derive(Debug, Clone)]
-pub struct BinaryBenchmark {
-    /// TODO: DOCUMENTATION
-    pub id: BenchmarkId,
-    /// TODO: DOCUMENTATION
-    pub config: Option<BinaryBenchmarkConfig>,
-    /// TODO: DOCUMENTATION
-    pub benches: Vec<Bench>,
-    /// TODO: DOCUMENTATION
-    pub setup: Option<fn()>,
-    /// TODO: DOCUMENTATION
-    pub teardown: Option<fn()>,
+impl BenchmarkId {
+    /// Create a new `BenchmarkId`.
+    ///
+    /// Use [`BenchmarkId`] as an argument for the `id` of an [`Arg`] if you want to create unique
+    /// ids from a parameter.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run, BenchmarkId};
+    /// use std::ffi::OsStr;
+    ///
+    /// binary_benchmark_group!(
+    ///     name = my_exe_group;
+    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
+    ///         for i in 0..10 {
+    ///             group.bench(Run::with_arg(
+    ///                 Arg::new(BenchmarkId::new("foo with", i), [format!("--foo={i}")])
+    ///             ));
+    ///         }
+    ///     }
+    /// );
+    /// # fn main() {
+    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
+    /// # }
+    pub fn new<T, P>(id: T, parameter: P) -> Self
+    where
+        T: AsRef<str>,
+        P: Display,
+    {
+        // TODO: CHECK VALIDITY OF ID
+        Self {
+            id: format!("{}_{parameter}", id.as_ref()),
+        }
+    }
 }
 
-// TODO: MOVE INTO impl section
+impl Display for BenchmarkId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.id)
+    }
+}
+
+// TODO: REMOVE in favour of TryFrom
+impl From<BenchmarkId> for String {
+    fn from(value: BenchmarkId) -> Self {
+        value.id
+    }
+}
+
+// TODO: CHANGE THIS to TryFrom
+impl<T> From<T> for BenchmarkId
+where
+    T: AsRef<str>,
+{
+    fn from(value: T) -> Self {
+        Self {
+            id: value.as_ref().to_owned(),
+        }
+    }
+}
+
 impl BinaryBenchmark {
     /// TODO: DOCUMENTATION
     pub fn new<T>(id: T) -> Self
@@ -217,110 +293,6 @@ impl From<&mut BinaryBenchmark> for BinaryBenchmark {
 impl From<&BinaryBenchmark> for BinaryBenchmark {
     fn from(value: &BinaryBenchmark) -> Self {
         value.clone()
-    }
-}
-
-/// TODO: DOCUMENTATION
-#[derive(Debug, Default, Clone)]
-pub struct Command(internal::InternalCommand);
-
-/// Set the expected exit status of a binary benchmark
-///
-/// Per default, the benchmarked binary is expected to succeed, but if a benchmark is expected to
-/// fail, setting this option is required.
-///
-/// # Examples
-///
-/// ```rust
-/// # use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run};
-/// # binary_benchmark_group!(
-/// #    name = my_group;
-/// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
-/// use iai_callgrind::{main, BinaryBenchmarkConfig, ExitWith};
-///
-/// # fn main() {
-/// main!(
-///     config = BinaryBenchmarkConfig::default().exit_with(ExitWith::Code(1));
-///     binary_benchmark_groups = my_group
-/// );
-/// # }
-/// ```
-#[derive(Debug, Clone)]
-pub enum ExitWith {
-    /// Exit with success is similar to `ExitCode(0)`
-    Success,
-    /// Exit with failure is similar to setting the `ExitCode` to something different than `0`
-    Failure,
-    /// The exact `ExitCode` of the benchmark run
-    Code(i32),
-}
-
-/// TODO: DOCUMENTATION
-#[derive(Debug, Clone)]
-pub struct Sandbox(internal::InternalSandbox);
-
-impl BenchmarkId {
-    /// Create a new `BenchmarkId`.
-    ///
-    /// Use [`BenchmarkId`] as an argument for the `id` of an [`Arg`] if you want to create unique
-    /// ids from a parameter.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use iai_callgrind::{binary_benchmark_group, Arg, BinaryBenchmarkGroup, Run, BenchmarkId};
-    /// use std::ffi::OsStr;
-    ///
-    /// binary_benchmark_group!(
-    ///     name = my_exe_group;
-    ///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
-    ///         for i in 0..10 {
-    ///             group.bench(Run::with_arg(
-    ///                 Arg::new(BenchmarkId::new("foo with", i), [format!("--foo={i}")])
-    ///             ));
-    ///         }
-    ///     }
-    /// );
-    /// # fn main() {
-    /// # my_exe_group::my_exe_group(&mut BinaryBenchmarkGroup::default());
-    /// # }
-    pub fn new<T, P>(id: T, parameter: P) -> Self
-    where
-        T: AsRef<str>,
-        P: Display,
-    {
-        // TODO: CHECK VALIDITY OF ID
-        Self {
-            id: format!("{}_{parameter}", id.as_ref()),
-        }
-    }
-}
-
-impl Display for BenchmarkId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.id)
-    }
-}
-
-impl From<BenchmarkId> for String {
-    fn from(value: BenchmarkId) -> Self {
-        value.id
-    }
-}
-
-// TODO: REMOVE
-impl From<String> for BenchmarkId {
-    fn from(value: String) -> Self {
-        Self { id: value }
-    }
-}
-
-// TODO: IMPLEMENT FromStr and return error when invalid benchmark id
-impl From<&str> for BenchmarkId {
-    fn from(value: &str) -> Self {
-        Self {
-            id: value.to_owned(),
-        }
     }
 }
 
@@ -932,9 +904,35 @@ impl_traits!(
     internal::InternalBinaryBenchmarkConfig
 );
 
-/// TODO: CONTINUE
+impl BinaryBenchmarkGroup {
+    /// TODO: DOCUMENTATION
+    pub fn binary_benchmark<T>(&mut self, binary_benchmark: T) -> &mut Self
+    where
+        T: Into<BinaryBenchmark>,
+    {
+        self.binary_benchmarks.push(binary_benchmark.into());
+        self
+    }
+
+    /// TODO: DOCUMENTATION
+    pub fn binary_benchmarks<I, T>(&mut self, binary_benchmarks: T) -> &mut Self
+    where
+        I: Into<BinaryBenchmark>,
+        T: IntoIterator<Item = I>,
+    {
+        self.binary_benchmarks
+            .extend(binary_benchmarks.into_iter().map(Into::into));
+        self
+    }
+}
+
+// TODO: WAIT FUNCTION which tells iai-callgrind to wait for this process only this specific
+// amount of seconds instead of blocking forever. Also, add this method to
+// `BinaryBenchmarkConfig` (and `LibraryBenchmarkConfig`??)
+//
+// TODO: DELAY FUNCTION to delay the start of the main process if required.
 impl Command {
-    /// TODO: CONTINUE
+    /// TODO: DOCUMENTATION
     pub fn new<T>(path: T) -> Self
     where
         T: AsRef<OsStr>,
@@ -990,12 +988,6 @@ impl Command {
         self.0.stderr = Some(stdio.into());
         self
     }
-
-    // TODO: WAIT FUNCTION which tells iai-callgrind to wait for this process only this specific
-    // amount of seconds instead of blocking forever. Also, add this method to
-    // `BinaryBenchmarkConfig` (and `LibraryBenchmarkConfig`??)
-    //
-    // TODO: DELAY FUNCTION to delay the start of the main process if required.
 
     /// TODO: DOCUMENTATION
     /// Add an environment variable available in this `Run`
@@ -1243,7 +1235,7 @@ impl Command {
         self
     }
 
-    /// TODO: CONTINUE
+    /// TODO: DOCUMENTATION
     pub fn build(&mut self) -> Self {
         self.clone()
     }

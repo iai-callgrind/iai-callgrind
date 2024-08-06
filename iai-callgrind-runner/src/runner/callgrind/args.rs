@@ -17,8 +17,6 @@ pub struct Args {
     d1: String,
     ll: String,
     cache_sim: bool,
-    // TODO: CLEANUP
-    // collect_atstart: bool,
     other: Vec<String>,
     toggle_collect: VecDeque<String>,
     compress_strings: bool,
@@ -48,12 +46,6 @@ impl Args {
                 Some(("--I1", value)) => value.clone_into(&mut self.i1),
                 Some(("--D1", value)) => value.clone_into(&mut self.d1),
                 Some(("--LL", value)) => value.clone_into(&mut self.ll),
-                // TODO: CLEANUP
-                // Some((key @ "--collect-atstart", value)) => {
-                //     self.collect_atstart = yesno_to_bool(value).ok_or_else(|| {
-                //         Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
-                //     })?;
-                // }
                 Some((key @ "--dump-instr", value)) => {
                     self.dump_instr = yesno_to_bool(value).ok_or_else(|| {
                         Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
@@ -127,8 +119,6 @@ impl Default for Args {
             d1: String::from("32768,8,64"),
             ll: String::from("8388608,16,64"),
             cache_sim: true,
-            // TODO: CLEANUP
-            // collect_atstart: false,
             compress_pos: false,
             compress_strings: false,
             combine_dumps: true,

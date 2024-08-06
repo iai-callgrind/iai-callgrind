@@ -9,7 +9,6 @@ use std::process::{Child, Command as StdCommand, Stdio as StdStdio};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-// TODO: RENAME TO BinaryBenchmarkMain or BinaryBenchmarks or BinaryBenchmarkGroups
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct BinaryBenchmarkMain {
     pub config: BinaryBenchmarkConfig,
@@ -19,7 +18,6 @@ pub struct BinaryBenchmarkMain {
     pub has_teardown: bool,
 }
 
-// TODO: ADJUST and cleanup fields which should be better part of Command
 // TODO: ADD WAIT parameter which is applied to all commands, setup, teardown etc. and disables
 // blocking mode to wait for the processes to exit. Wait instead this amount of time (Duration) or
 // else exit with error killing the child process. Add a similar parameter to Command but which
@@ -39,8 +37,6 @@ pub struct BinaryBenchmarkConfig {
     pub sandbox: Option<Sandbox>,
 }
 
-/* TODO: Add other fields imitating std::process::Command as
- * far as possible */
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Command {
     pub path: PathBuf,
@@ -62,6 +58,7 @@ pub struct BinaryBenchmarkBench {
     pub has_teardown: bool,
 }
 
+// TODO: Rename to BinaryBenchmark
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BinaryBenchmarkBenches {
     pub config: Option<BinaryBenchmarkConfig>,
@@ -74,6 +71,7 @@ pub struct BinaryBenchmarkGroup {
     pub config: Option<BinaryBenchmarkConfig>,
     pub has_setup: bool,
     pub has_teardown: bool,
+    // TODO: RENAME to binary_benchmarks
     pub benches: Vec<BinaryBenchmarkBenches>,
 }
 
@@ -195,6 +193,7 @@ pub enum FlamegraphKind {
     None,
 }
 
+// TODO: RENAME to LibraryBenchmarkMain
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct LibraryBenchmark {
     pub config: LibraryBenchmarkConfig,
@@ -212,6 +211,7 @@ pub struct LibraryBenchmarkBench {
     pub config: Option<LibraryBenchmarkConfig>,
 }
 
+// TODO: RENAME to LibraryBenchmark
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct LibraryBenchmarkBenches {
     pub config: Option<LibraryBenchmarkConfig>,
@@ -280,7 +280,6 @@ pub enum Stdio {
     Null,
     File(PathBuf),
     Pipe,
-    // TODO: FILE DESCRIPTOR ??
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -328,8 +327,6 @@ impl BinaryBenchmarkConfig {
         T: IntoIterator<Item = Option<&'a Self>>,
     {
         for other in others.into_iter().flatten() {
-            // TODO: DOUBLE CHECK IF WE UPDATE ALL
-            self.sandbox = update_option(&self.sandbox, &other.sandbox);
             self.env_clear = update_option(&self.env_clear, &other.env_clear);
             self.current_dir = update_option(&self.current_dir, &other.current_dir);
             self.entry_point = update_option(&self.entry_point, &other.entry_point);
@@ -350,6 +347,7 @@ impl BinaryBenchmarkConfig {
             } else {
                 // do nothing
             }
+            self.sandbox = update_option(&self.sandbox, &other.sandbox);
         }
         self
     }

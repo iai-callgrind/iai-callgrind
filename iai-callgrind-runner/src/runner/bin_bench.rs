@@ -148,24 +148,23 @@ impl Benchmark for BaselineBenchmark {
             path.to_log_output().shift()?;
         }
 
-        let mut benchmark_summary = bin_bench.create_benchmark_summary(config, group, &out_path)?;
+        let mut benchmark_summary = bin_bench.create_benchmark_summary(config, &out_path)?;
 
         let header = bin_bench.print_header(&config.meta, group);
 
         // We're implicitly applying the default here: In the absence of a user provided sandbox we
         // don't run the benchmarks in a sandbox. Everything from here on runs with the current
         // directory set to the sandbox directory until the sandbox is reset.
-        let sandbox = if let Some(api_sandbox) = &bin_bench.sandbox {
-            Some(Sandbox::setup(api_sandbox, &config.meta)?)
-        } else {
-            None
-        };
+        let sandbox = bin_bench
+            .sandbox
+            .as_ref()
+            .map(|sandbox| Sandbox::setup(sandbox, &config.meta))
+            .transpose()?;
 
-        let child = if let Some(setup) = &bin_bench.setup {
-            setup.run(config, &bin_bench.module_path)?
-        } else {
-            None
-        };
+        let child = bin_bench
+            .setup
+            .as_ref()
+            .map_or(Ok(None), |setup| setup.run(config, &bin_bench.module_path))?;
 
         let output = callgrind_command.run(
             tool_config,
@@ -177,7 +176,8 @@ impl Benchmark for BaselineBenchmark {
             child,
         )?;
 
-        // TODO: Run teardown and sandbox.reset if the callgrind command fails?
+        // TODO: Run teardown and sandbox.reset if the callgrind command fails? Also in
+        // SaveBaselineBenchmark and ToolConfigs
         if let Some(teardown) = &bin_bench.teardown {
             teardown.run(config, &bin_bench.module_path)?;
         }
@@ -283,14 +283,14 @@ impl BinBench {
             id: binary_benchmark_bench.id,
             args: binary_benchmark_bench.args,
             function_name: binary_benchmark_bench.function_name,
-            // TODO: CHECK IF ALL OPTIONS ARE PASSED FROM COMMAND TO RunOptions
             run_options: RunOptions {
                 env_clear: config.env_clear.unwrap_or(defaults::ENV_CLEAR),
                 envs,
                 stdin: command.stdin.clone(),
                 stdout: command.stdout.clone(),
                 stderr: command.stderr.clone(),
-                ..Default::default()
+                exit_with: config.exit_with,
+                current_dir: config.current_dir,
             },
             callgrind_args,
             flamegraph_config,
@@ -347,6 +347,7 @@ impl BinBench {
             .collect();
         let command_args = shlex::try_join(command_args.iter().map(String::as_str)).unwrap();
 
+        // TODO: This should be part of the format module
         let description = format!(
             "({}) -> {} {}",
             self.args.as_ref().map_or("", String::as_str),
@@ -378,11 +379,9 @@ impl BinBench {
         );
     }
 
-    // TODO: DOUBLE CHECK. Just copied from lib_bench
     fn create_benchmark_summary(
         &self,
         config: &Config,
-        group: &Group,
         output_path: &ToolOutputPath,
     ) -> Result<BenchmarkSummary> {
         let summary_output = if let Some(format) = config.meta.args.save_summary {
@@ -394,19 +393,18 @@ impl BinBench {
         };
 
         Ok(BenchmarkSummary::new(
-            BenchmarkKind::LibraryBenchmark,
+            BenchmarkKind::BinaryBenchmark,
             config.meta.project_root.clone(),
             config.package_dir.clone(),
             config.bench_file.clone(),
             config.bench_bin.clone(),
-            &group.module_path.join(&self.function_name),
+            &self.module_path,
             self.id.clone(),
             self.args.clone(),
             summary_output,
         ))
     }
 
-    // TODO: DOUBLE CHECK. Just copied from lib_bench
     fn check_and_print_regressions(
         &self,
         costs_summary: &CostsSummary,
@@ -447,7 +445,6 @@ impl Groups {
         benchmark: BinaryBenchmarkMain,
         meta: &Metadata,
     ) -> Result<Self> {
-        // TODO: Mostly copied from lib_bench, DOUBLE_CHECK !!
         let global_config = benchmark.config;
         let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
 
@@ -565,7 +562,7 @@ impl Benchmark for LoadBaselineBenchmark {
         let out_path = self.output_path(bin_bench, config, group);
         let old_path = out_path.to_base_path();
         let log_path = out_path.to_log_output();
-        let mut benchmark_summary = bin_bench.create_benchmark_summary(config, group, &out_path)?;
+        let mut benchmark_summary = bin_bench.create_benchmark_summary(config, &out_path)?;
 
         let header = bin_bench.print_header(&config.meta, group);
 
@@ -713,8 +710,6 @@ impl Benchmark for SaveBaselineBenchmark {
             None,
         );
 
-        let baselines = self.baselines();
-
         let out_path = self.output_path(bin_bench, config, group);
         out_path.init()?;
 
@@ -730,11 +725,20 @@ impl Benchmark for SaveBaselineBenchmark {
         let log_path = out_path.to_log_output();
         log_path.clear()?;
 
-        let mut benchmark_summary = bin_bench.create_benchmark_summary(config, group, &out_path)?;
+        let mut benchmark_summary = bin_bench.create_benchmark_summary(config, &out_path)?;
 
         let header = bin_bench.print_header(&config.meta, group);
 
-        // TODO: ADD sandbox and setup, teardown
+        let sandbox = bin_bench
+            .sandbox
+            .as_ref()
+            .map(|sandbox| Sandbox::setup(sandbox, &config.meta))
+            .transpose()?;
+
+        let child = bin_bench
+            .setup
+            .as_ref()
+            .map_or(Ok(None), |setup| setup.run(config, &bin_bench.module_path))?;
 
         let output = callgrind_command.run(
             tool_config,
@@ -743,15 +747,23 @@ impl Benchmark for SaveBaselineBenchmark {
             bin_bench.run_options.clone(),
             &out_path,
             &bin_bench.module_path,
-            // TODO: IMPLEMENT: See BaselineBenchmark
-            None,
+            child,
         )?;
+
+        // TODO: Run teardown and sandbox.reset if the callgrind command fails?
+        if let Some(teardown) = &bin_bench.teardown {
+            teardown.run(config, &bin_bench.module_path)?;
+        }
 
         bin_bench.print_nocapture_footer(config.meta.args.nocapture);
 
+        if let Some(sandbox) = sandbox {
+            sandbox.reset()?;
+        }
+
         let new_costs = SummaryParser.parse(&out_path)?;
         let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
-        VerticalFormat::default().print(&config.meta, baselines.clone(), &costs_summary)?;
+        VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stderr())?;

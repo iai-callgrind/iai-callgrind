@@ -104,7 +104,7 @@ impl Assistant {
 
         let mut command = Command::new(&config.bench_bin);
         // TODO: Self::envs and only in binary benchmarks
-        command.env("IAI_CALLGRIND_WORKSPACE_ROOT", &config.meta.project_root);
+        command.env("SANDBOX_WORKSPACE_ROOT", &config.meta.project_root);
         command.arg("--iai-run");
 
         if let Some(group_name) = &self.group_name {
