@@ -192,12 +192,10 @@ impl Benchmark for BaselineBenchmark {
 
         let new_costs = SummaryParser.parse(&out_path)?;
 
-        #[allow(clippy::if_then_some_else_none)]
-        let old_costs = if old_path.exists() {
-            Some(SummaryParser.parse(&old_path)?)
-        } else {
-            None
-        };
+        let old_costs = old_path
+            .exists()
+            .then(|| SummaryParser.parse(&old_path))
+            .transpose()?;
 
         let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
         VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
@@ -720,14 +718,14 @@ impl Benchmark for SaveBaselineBenchmark {
         let out_path = self.output_path(bin_bench, config, group);
         out_path.init()?;
 
-        #[allow(clippy::if_then_some_else_none)]
-        let old_costs = if out_path.exists() {
-            let old_costs = SummaryParser.parse(&out_path)?;
-            out_path.clear()?;
-            Some(old_costs)
-        } else {
-            None
-        };
+        let old_costs = out_path
+            .exists()
+            .then(|| {
+                SummaryParser
+                    .parse(&out_path)
+                    .and_then(|costs| out_path.clear().map(|()| costs))
+            })
+            .transpose()?;
 
         let log_path = out_path.to_log_output();
         log_path.clear()?;

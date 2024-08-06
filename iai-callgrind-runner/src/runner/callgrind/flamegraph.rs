@@ -234,12 +234,9 @@ impl Flamegraph {
         }
 
         let base_path = tool_output_path.to_base_path();
-        #[allow(clippy::if_then_some_else_none)]
-        let mut base_map = if !no_differential && self.is_differential() && base_path.exists() {
-            Some(parser.parse(&base_path)?)
-        } else {
-            None
-        };
+        let mut base_map = (!no_differential && self.is_differential() && base_path.exists())
+            .then(|| parser.parse(&base_path))
+            .transpose()?;
 
         if self.config.event_kinds.iter().any(EventKind::is_derived) {
             map.make_summary()?;
