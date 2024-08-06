@@ -2,4 +2,10 @@ groups:
   - runs:
       - args: ["--nocapture"]
         expected:
-          stdout: expected_stdout
+          stdout: expected_stdout.1
+      - args: ["--nocapture", "--save-baseline"]
+        expected:
+          stdout: expected_stdout.2
+      - args: ["--nocapture", "--load-baseline", "--baseline"]
+        expected:
+          stdout: expected_stdout.3

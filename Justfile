@@ -155,6 +155,10 @@ build-docs:
 build-hack:
     cargo hack --workspace --feature-powerset build
 
+# A build of the tests in all packages with `cargo hack` and the feature powerset
+build-tests-hack:
+    cargo hack --workspace --feature-powerset test --no-run
+
 # Delete all iai benchmarks
 clean:
     rm -rf target/iai

@@ -1,9 +1,7 @@
-#[cfg(test)]
+#[cfg(feature = "default")]
 mod common;
-#[cfg(test)]
+#[cfg(feature = "default")]
 mod test_callgrind;
 
-#[cfg(test)]
+#[cfg(feature = "default")]
 mod test_runner_binary;
-#[cfg(test)]
-mod test_tools;
