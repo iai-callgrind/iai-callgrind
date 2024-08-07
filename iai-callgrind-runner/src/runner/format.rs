@@ -109,25 +109,6 @@ impl Header {
         }
     }
 
-    // pub fn from_segments<I, T, U, V>(module_path: T, id: U, description: V) -> Self
-    // where
-    //     I: AsRef<str>,
-    //     T: AsRef<[I]>,
-    //     U: Into<Option<String>>,
-    //     V: Into<Option<String>>,
-    // {
-    //     Self {
-    //         module_path: module_path
-    //             .as_ref()
-    //             .iter()
-    //             .map(|s| s.as_ref().to_owned())
-    //             .collect::<Vec<String>>()
-    //             .join("::"),
-    //         id: id.into(),
-    //         description: description.into(),
-    //     }
-    // }
-
     pub fn from_module_path<U, V>(module_path: &ModulePath, id: U, description: V) -> Self
     where
         U: Into<Option<String>>,
