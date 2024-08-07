@@ -67,6 +67,7 @@ struct LibBench {
     tools: ToolConfigs,
     module_path: ModulePath,
     entry_point: Option<String>,
+    truncate_description: Option<usize>,
 }
 
 /// Implements [`Benchmark`] to load a [`LibBench`] baseline run and compare against another
@@ -325,6 +326,7 @@ impl Groups {
                         .map(Into::into),
                         tools: ToolConfigs(config.tools.0.into_iter().map(Into::into).collect()),
                         module_path,
+                        truncate_description: config.truncate_description.unwrap_or(Some(50)),
                     };
                     group.benches.push(lib_bench);
                 }
@@ -444,6 +446,7 @@ impl LibBench {
             group.module_path.join(&self.function).to_string(),
             self.id.clone(),
             self.args.clone(),
+            self.truncate_description,
         );
 
         if meta.args.output_format == OutputFormat::Default {

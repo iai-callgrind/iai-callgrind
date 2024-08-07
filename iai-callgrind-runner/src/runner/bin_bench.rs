@@ -51,6 +51,7 @@ struct BinBench {
     teardown: Option<Assistant>,
     sandbox: Option<api::Sandbox>,
     module_path: ModulePath,
+    truncate_description: Option<usize>,
 }
 
 #[derive(Debug)]
@@ -325,6 +326,7 @@ impl BinBench {
             sandbox: config.sandbox,
             module_path,
             command,
+            truncate_description: config.truncate_description.unwrap_or(Some(50)),
         })
     }
 
@@ -359,6 +361,7 @@ impl BinBench {
             &group.module_path.join(&self.function_name),
             self.id.clone(),
             description,
+            self.truncate_description,
         );
 
         if meta.args.output_format == OutputFormat::Default {

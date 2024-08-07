@@ -905,6 +905,48 @@ impl BinaryBenchmarkConfig {
         self.0.sandbox = Some(sandbox.as_ref().into());
         self
     }
+
+    /// Adjust, enable or disable the truncation of the description in the iai-callgrind output
+    ///
+    /// The default is to truncate the description to the size of 50 ascii characters. A `None`
+    /// value disables the truncation entirely and a `Some` value will truncate the description to
+    /// the given amount of characters excluding the ellipsis.
+    ///
+    /// To clearify which part of the output is meant by `DESCRIPTION`:
+    ///
+    /// ```text
+    /// benchmark_file::group_name id:DESCRIPTION
+    ///   Instructions:              352135|352135          (No change)
+    ///   L1 Hits:                   470117|470117          (No change)
+    ///   L2 Hits:                      748|748             (No change)
+    ///   RAM Hits:                    4112|4112            (No change)
+    ///   Total read+write:          474977|474977          (No change)
+    ///   Estimated Cycles:          617777|617777          (No change)
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// For example, specifying this option with a `None` value in the `main!` macro disables the
+    /// truncation of the description for all benchmarks.
+    ///
+    /// ```rust
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig};
+    /// # use iai_callgrind::binary_benchmark_group;
+    /// # binary_benchmark_group!(
+    /// #    name = some_group;
+    /// #    benchmark = |"", group: &mut BinaryBenchmarkGroup| {}
+    /// # );
+    /// # fn main() {
+    /// main!(
+    ///     config = BinaryBenchmarkConfig::default().truncate_description(None);
+    ///     binary_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn truncate_description(&mut self, value: Option<usize>) -> &mut Self {
+        self.0.truncate_description = Some(value);
+        self
+    }
 }
 
 impl_traits!(

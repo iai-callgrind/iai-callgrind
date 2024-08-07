@@ -45,6 +45,7 @@ pub struct BinaryBenchmarkConfig {
     pub tools: Tools,
     pub tools_override: Option<Tools>,
     pub sandbox: Option<Sandbox>,
+    pub truncate_description: Option<Option<usize>>,
 }
 
 /// The model for the `binary_benchmark_group` macro
@@ -221,6 +222,7 @@ pub struct LibraryBenchmarkConfig {
     pub regression_config: Option<RegressionConfig>,
     pub tools: Tools,
     pub tools_override: Option<Tools>,
+    pub truncate_description: Option<Option<usize>>,
 }
 
 /// The model for the `library_benchmark_group` macro
@@ -511,6 +513,8 @@ impl LibraryBenchmarkConfig {
             } else {
                 // do nothing
             }
+            self.truncate_description =
+                update_option(&self.truncate_description, &other.truncate_description);
         }
         self
     }
@@ -780,6 +784,7 @@ mod tests {
                 show_log: None,
             }]),
             tools_override: None,
+            truncate_description: None,
         };
 
         assert_eq!(base.update_from_all([Some(&other.clone())]), other);
@@ -802,6 +807,7 @@ mod tests {
                 show_log: None,
             }]),
             tools_override: Some(Tools(vec![])),
+            truncate_description: None,
         };
         let expected = LibraryBenchmarkConfig {
             tools: other.tools_override.as_ref().unwrap().clone(),
