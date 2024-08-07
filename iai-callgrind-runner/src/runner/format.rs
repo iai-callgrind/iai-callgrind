@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt::{Display, Write};
 
 use anyhow::Result;
@@ -10,6 +11,8 @@ use super::tool::ValgrindTool;
 use crate::api::EventKind;
 use crate::util::{to_string_signed_short, truncate_str_utf8};
 
+pub const NOT_AVAILABLE: &str = "N/A";
+
 pub struct ComparisonHeader {
     pub function_name: String,
     pub id: String,
@@ -20,6 +23,7 @@ pub struct Header {
     pub module_path: String,
     pub id: Option<String>,
     pub description: Option<String>,
+    pub truncate_description: Option<usize>,
 }
 
 pub trait Formatter {
@@ -95,7 +99,12 @@ impl Display for ComparisonHeader {
 }
 
 impl Header {
-    pub fn new<T, U, V>(module_path: T, id: U, description: V) -> Self
+    pub fn new<T, U, V>(
+        module_path: T,
+        id: U,
+        description: V,
+        truncate_description: Option<usize>,
+    ) -> Self
     where
         T: Into<String>,
         U: Into<Option<String>>,
@@ -105,10 +114,16 @@ impl Header {
             module_path: module_path.into(),
             id: id.into(),
             description: description.into(),
+            truncate_description,
         }
     }
 
-    pub fn from_segments<I, T, U, V>(module_path: T, id: U, description: V) -> Self
+    pub fn from_segments<I, T, U, V>(
+        module_path: T,
+        id: U,
+        description: V,
+        truncate_description: Option<usize>,
+    ) -> Self
     where
         I: AsRef<str>,
         T: AsRef<[I]>,
@@ -124,6 +139,7 @@ impl Header {
                 .join("::"),
             id: id.into(),
             description: description.into(),
+            truncate_description,
         }
     }
 
@@ -135,23 +151,30 @@ impl Header {
         let mut output = String::new();
         write!(&mut output, "{}", self.module_path).unwrap();
         if let Some(id) = &self.id {
-            if let Some(description) = &self.description {
-                let truncated = truncate_str_utf8(description, 37);
-                write!(
-                    &mut output,
-                    " {id}:{truncated}{}",
-                    if truncated.len() < description.len() {
-                        "..."
-                    } else {
-                        ""
-                    }
-                )
-                .unwrap();
-            } else {
-                write!(&mut output, " {id}").unwrap();
+            match &self.description {
+                Some(description) if !description.is_empty() => {
+                    let truncated = self.truncate_description(description);
+                    write!(&mut output, " {id}:{truncated}").unwrap();
+                }
+                _ => {
+                    write!(&mut output, " {id}").unwrap();
+                }
             }
         }
         output
+    }
+
+    pub fn truncate_description<'a>(&self, description: &'a str) -> Cow<'a, str> {
+        if let Some(num) = self.truncate_description {
+            let new_description = truncate_str_utf8(description, num);
+            if new_description.len() < description.len() {
+                Cow::Owned(format!("{new_description}..."))
+            } else {
+                Cow::Borrowed(description)
+            }
+        } else {
+            Cow::Borrowed(description)
+        }
     }
 }
 
@@ -159,21 +182,19 @@ impl Display for Header {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.module_path.green()))?;
         if let Some(id) = &self.id {
-            if let Some(description) = &self.description {
-                let truncated = truncate_str_utf8(description, 37);
-                f.write_fmt(format_args!(
-                    " {}{}{}{}",
-                    id.cyan(),
-                    ":".cyan(),
-                    truncated.bold().blue(),
-                    if truncated.len() < description.len() {
-                        "..."
-                    } else {
-                        ""
-                    }
-                ))?;
-            } else {
-                f.write_fmt(format_args!(" {}", id.cyan()))?;
+            match &self.description {
+                Some(description) if !description.is_empty() => {
+                    let truncated = self.truncate_description(description);
+                    f.write_fmt(format_args!(
+                        " {}{}{}",
+                        id.cyan(),
+                        ":".cyan(),
+                        truncated.bold().blue(),
+                    ))?;
+                }
+                _ => {
+                    f.write_fmt(format_args!(" {}", id.cyan()))?;
+                }
             }
         }
         Ok(())
@@ -239,8 +260,6 @@ impl Formatter for VerticalFormat {
         )
     }
 }
-
-pub const NOT_AVAILABLE: &str = "N/A";
 
 pub fn format_vertical<'a, K: Display + 'a>(
     baselines: (Option<String>, Option<String>),
@@ -329,5 +348,181 @@ pub fn no_capture_footer(nocapture: NoCapture) -> String {
         NoCapture::False => String::new(),
         NoCapture::Stderr => format!("{} {}", "-".yellow(), "end of stderr".yellow()),
         NoCapture::Stdout => format!("{} {}", "-".yellow(), "end of stdout".yellow()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+    use rstest::rstest;
+
+    use super::*;
+
+    #[rstest]
+    #[case::simple("some::module", Some("id"), Some("1, 2"), "some::module id:1, 2")]
+    #[case::no_id_but_description("some::module", None, Some("1, 2, 3"), "some::module")]
+    #[case::id_no_description("some::module", Some("id"), None, "some::module id")]
+    #[case::description_is_empty("some::module", Some("id"), Some(""), "some::module id")]
+    #[case::length_is_greater_than_default(
+        "some::module",
+        Some("id"),
+        Some("012345678901234567890123456789012345678901234567890123456789"),
+        "some::module id:012345678901234567890123456789012345678901234567890123456789"
+    )]
+    fn test_header_display_when_no_truncate(
+        #[case] module_path: &str,
+        #[case] id: Option<&str>,
+        #[case] description: Option<&str>,
+        #[case] expected: &str,
+    ) {
+        colored::control::set_override(false);
+
+        let header = Header::new(
+            module_path,
+            id.map(ToOwned::to_owned),
+            description.map(ToOwned::to_owned),
+            None,
+        );
+
+        assert_eq!(header.to_string(), expected);
+    }
+
+    #[rstest]
+    #[case::truncate_0(
+        "some::module",
+        Some("id"),
+        Some("1, 2, 3"),
+        Some(0),
+        "some::module id:..."
+    )]
+    #[case::truncate_0_when_length_is_0(
+        "some::module",
+        Some("id"),
+        Some(""),
+        Some(0),
+        "some::module id"
+    )]
+    #[case::truncate_0_when_length_is_1(
+        "some::module",
+        Some("id"),
+        Some("1"),
+        Some(0),
+        "some::module id:..."
+    )]
+    #[case::truncate_1(
+        "some::module",
+        Some("id"),
+        Some("1, 2, 3"),
+        Some(1),
+        "some::module id:1..."
+    )]
+    #[case::truncate_1_when_length_is_0(
+        "some::module",
+        Some("id"),
+        Some(""),
+        Some(1),
+        "some::module id"
+    )]
+    #[case::truncate_1_when_length_is_1(
+        "some::module",
+        Some("id"),
+        Some("1"),
+        Some(1),
+        "some::module id:1"
+    )]
+    #[case::truncate_1_when_length_is_2(
+        "some::module",
+        Some("id"),
+        Some("1,"),
+        Some(1),
+        "some::module id:1..."
+    )]
+    #[case::truncate_3(
+        "some::module",
+        Some("id"),
+        Some("1, 2, 3"),
+        Some(3),
+        "some::module id:1, ..."
+    )]
+    #[case::truncate_3_when_length_is_2(
+        "some::module",
+        Some("id"),
+        Some("1,"),
+        Some(3),
+        "some::module id:1,"
+    )]
+    #[case::truncate_3_when_length_is_3(
+        "some::module",
+        Some("id"),
+        Some("1, "),
+        Some(3),
+        "some::module id:1, "
+    )]
+    #[case::truncate_3_when_length_is_4(
+        "some::module",
+        Some("id"),
+        Some("1, 2"),
+        Some(3),
+        "some::module id:1, ..."
+    )]
+    #[case::truncate_is_smaller_than_length(
+        "some::module",
+        Some("id"),
+        Some("1, 2, 3, 4, 5"),
+        Some(4),
+        "some::module id:1, 2..."
+    )]
+    #[case::truncate_is_one_smaller_than_length(
+        "some::module",
+        Some("id"),
+        Some("1, 2, 3"),
+        Some(6),
+        "some::module id:1, 2, ..."
+    )]
+    #[case::truncate_is_one_greater_than_length(
+        "some::module",
+        Some("id"),
+        Some("1, 2, 3"),
+        Some(8),
+        "some::module id:1, 2, 3"
+    )]
+    #[case::truncate_is_far_greater_than_length(
+        "some::module",
+        Some("id"),
+        Some("1, 2, 3"),
+        Some(100),
+        "some::module id:1, 2, 3"
+    )]
+    #[case::truncate_is_equal_to_length(
+        "some::module",
+        Some("id"),
+        Some("1, 2, 3"),
+        Some(7),
+        "some::module id:1, 2, 3"
+    )]
+    #[case::description_is_empty(
+        "some::module",
+        Some("id"),
+        Some(""),
+        Some(100),
+        "some::module id"
+    )]
+    fn test_header_display_when_truncate(
+        #[case] module_path: &str,
+        #[case] id: Option<&str>,
+        #[case] description: Option<&str>,
+        #[case] truncate_description: Option<usize>,
+        #[case] expected: &str,
+    ) {
+        colored::control::set_override(false);
+
+        let header = Header::new(
+            module_path,
+            id.map(ToOwned::to_owned),
+            description.map(ToOwned::to_owned),
+            truncate_description,
+        );
+
+        assert_eq!(header.to_string(), expected);
     }
 }

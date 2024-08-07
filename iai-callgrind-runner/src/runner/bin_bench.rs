@@ -75,6 +75,7 @@ struct BinBench {
     flamegraph_config: Option<FlamegraphConfig>,
     regression_config: Option<RegressionConfig>,
     tools: ToolConfigs,
+    truncate_description: Option<usize>,
 }
 
 #[derive(Debug)]
@@ -350,6 +351,7 @@ impl Benchmarkable for Assistant {
             [&group.module_path, &self.kind.id(), &self.name],
             None,
             None,
+            None,
         );
 
         if meta.args.output_format == OutputFormat::Default {
@@ -481,7 +483,12 @@ impl Benchmarkable for BinBench {
     }
 
     fn print_header(&self, meta: &Metadata, group: &Group) -> Header {
-        let header = Header::new(&group.module_path, self.id.clone(), self.to_string());
+        let header = Header::new(
+            &group.module_path,
+            self.id.clone(),
+            self.to_string(),
+            self.truncate_description,
+        );
 
         if meta.args.output_format == OutputFormat::Default {
             header.print();
@@ -652,6 +659,7 @@ impl Groups {
                     flamegraph_config: flamegraph_config.clone(),
                     regression_config: regression_config.clone(),
                     tools: tools.clone(),
+                    truncate_description: config.truncate_description.unwrap_or(Some(50)),
                 });
             }
         }
