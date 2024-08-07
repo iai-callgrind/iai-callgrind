@@ -27,7 +27,7 @@ use super::tool::{
     ValgrindTool,
 };
 use super::{Error, DEFAULT_TOGGLE};
-use crate::api::{self, LibraryBenchmark};
+use crate::api::{self, LibraryBenchmarkGroups};
 
 /// Implements [`Benchmark`] to run a [`LibBench`] and compare against a earlier [`BenchmarkKind`]
 #[derive(Debug)]
@@ -244,14 +244,14 @@ impl Groups {
     /// Create this `Groups` from a [`LibraryBenchmark`] submitted by the benchmarking harness
     fn from_library_benchmark(
         module_path: &ModulePath,
-        benchmark: LibraryBenchmark,
+        benchmark_groups: LibraryBenchmarkGroups,
         meta: &Metadata,
     ) -> Result<Self> {
-        let global_config = benchmark.config;
+        let global_config = benchmark_groups.config;
         let mut groups = vec![];
         let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
 
-        for library_benchmark_group in benchmark.groups {
+        for library_benchmark_group in benchmark_groups.groups {
             let group_module_path = module_path.join(&library_benchmark_group.id);
             let setup =
                 library_benchmark_group
@@ -277,8 +277,10 @@ impl Groups {
                 teardown,
             };
 
-            for (bench_index, library_benchmark_benches) in
-                library_benchmark_group.benches.into_iter().enumerate()
+            for (bench_index, library_benchmark_benches) in library_benchmark_group
+                .library_benchmarks
+                .into_iter()
+                .enumerate()
             {
                 for (index, library_benchmark_bench) in
                     library_benchmark_benches.benches.into_iter().enumerate()
@@ -295,10 +297,10 @@ impl Groups {
 
                     let flamegraph_config = config.flamegraph_config.map(Into::into);
                     let module_path = library_benchmark_bench.id.as_ref().map_or_else(
-                        || group_module_path.join(&library_benchmark_bench.bench),
+                        || group_module_path.join(&library_benchmark_bench.function_name),
                         |id| {
                             group_module_path
-                                .join(&library_benchmark_bench.bench)
+                                .join(&library_benchmark_bench.function_name)
                                 .join(id)
                         },
                     );
@@ -306,7 +308,7 @@ impl Groups {
                         bench_index,
                         index,
                         id: library_benchmark_bench.id,
-                        function: library_benchmark_bench.bench,
+                        function: library_benchmark_bench.function_name,
                         args: library_benchmark_bench.args,
                         entry_point: Some(DEFAULT_TOGGLE.to_owned()),
                         run_options: RunOptions {
@@ -547,16 +549,16 @@ impl Benchmark for LoadBaselineBenchmark {
 
 impl Runner {
     /// Create a new `Runner`
-    fn new(library_benchmark: LibraryBenchmark, config: Config) -> Result<Self> {
-        let setup = library_benchmark
+    fn new(benchmark_groups: LibraryBenchmarkGroups, config: Config) -> Result<Self> {
+        let setup = benchmark_groups
             .has_setup
             .then_some(Assistant::new_main_assistant(AssistantKind::Setup));
-        let teardown = library_benchmark
+        let teardown = benchmark_groups
             .has_teardown
             .then_some(Assistant::new_main_assistant(AssistantKind::Teardown));
 
         let groups =
-            Groups::from_library_benchmark(&config.module_path, library_benchmark, &config.meta)?;
+            Groups::from_library_benchmark(&config.module_path, benchmark_groups, &config.meta)?;
 
         let benchmark: Box<dyn Benchmark> =
             if let Some(baseline_name) = &config.meta.args.save_baseline {
@@ -742,6 +744,6 @@ impl Benchmark for SaveBaselineBenchmark {
 }
 
 /// The top-level method which should be used to initiate running all benchmarks
-pub fn run(library_benchmark: LibraryBenchmark, config: Config) -> Result<()> {
-    Runner::new(library_benchmark, config)?.run()
+pub fn run(benchmark_groups: LibraryBenchmarkGroups, config: Config) -> Result<()> {
+    Runner::new(benchmark_groups, config)?.run()
 }

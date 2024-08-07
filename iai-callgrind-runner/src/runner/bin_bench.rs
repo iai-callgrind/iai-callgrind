@@ -21,7 +21,7 @@ use super::tool::{
     Parser, RunOptions, ToolCommand, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind,
     ValgrindTool,
 };
-use crate::api::{self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkMain, Stdin};
+use crate::api::{self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, Stdin};
 use crate::error::Error;
 use crate::runner::format::{self, tool_headline};
 use crate::util::make_relative;
@@ -442,14 +442,14 @@ impl Group {
 impl Groups {
     fn from_binary_benchmark(
         module: &ModulePath,
-        benchmark: BinaryBenchmarkMain,
+        benchmark_groups: BinaryBenchmarkGroups,
         meta: &Metadata,
     ) -> Result<Self> {
-        let global_config = benchmark.config;
+        let global_config = benchmark_groups.config;
         let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
 
         let mut groups = vec![];
-        for binary_benchmark_group in benchmark.groups {
+        for binary_benchmark_group in benchmark_groups.groups {
             let group_module_path = module.join(&binary_benchmark_group.id);
 
             let setup = binary_benchmark_group
@@ -474,8 +474,10 @@ impl Groups {
                 teardown,
             };
 
-            for (group_index, binary_benchmark_benches) in
-                binary_benchmark_group.benches.into_iter().enumerate()
+            for (group_index, binary_benchmark_benches) in binary_benchmark_group
+                .binary_benchmarks
+                .into_iter()
+                .enumerate()
             {
                 for (bench_index, binary_benchmark_bench) in
                     binary_benchmark_benches.benches.into_iter().enumerate()
@@ -611,16 +613,16 @@ impl Benchmark for LoadBaselineBenchmark {
 }
 
 impl Runner {
-    fn new(binary_benchmark: BinaryBenchmarkMain, config: Config) -> Result<Self> {
-        let setup = binary_benchmark
+    fn new(benchmark_groups: BinaryBenchmarkGroups, config: Config) -> Result<Self> {
+        let setup = benchmark_groups
             .has_setup
             .then_some(Assistant::new_main_assistant(AssistantKind::Setup));
-        let teardown = binary_benchmark
+        let teardown = benchmark_groups
             .has_teardown
             .then_some(Assistant::new_main_assistant(AssistantKind::Teardown));
 
         let groups =
-            Groups::from_binary_benchmark(&config.module_path, binary_benchmark, &config.meta)?;
+            Groups::from_binary_benchmark(&config.module_path, benchmark_groups, &config.meta)?;
 
         let benchmark: Box<dyn Benchmark> =
             if let Some(baseline_name) = &config.meta.args.save_baseline {
@@ -814,6 +816,6 @@ impl Benchmark for SaveBaselineBenchmark {
     }
 }
 
-pub fn run(binary_benchmark: BinaryBenchmarkMain, config: Config) -> Result<()> {
-    Runner::new(binary_benchmark, config)?.run()
+pub fn run(benchmark_groups: BinaryBenchmarkGroups, config: Config) -> Result<()> {
+    Runner::new(benchmark_groups, config)?.run()
 }

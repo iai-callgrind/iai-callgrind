@@ -9,11 +9,21 @@ use std::process::{Child, Command as StdCommand, Stdio as StdStdio};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Default, Serialize, Deserialize)]
-pub struct BinaryBenchmarkMain {
-    pub config: BinaryBenchmarkConfig,
-    pub groups: Vec<BinaryBenchmarkGroup>,
-    pub command_line_args: Vec<String>,
+/// The model for the `#[binary_benchmark]` attribute or the equivalent from the low level api
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BinaryBenchmark {
+    pub config: Option<BinaryBenchmarkConfig>,
+    pub benches: Vec<BinaryBenchmarkBench>,
+}
+
+/// The model for the `#[bench]` attribute or the low level equivalent
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BinaryBenchmarkBench {
+    pub id: Option<String>,
+    pub function_name: String,
+    pub args: Option<String>,
+    pub command: Command,
+    pub config: Option<BinaryBenchmarkConfig>,
     pub has_setup: bool,
     pub has_teardown: bool,
 }
@@ -37,6 +47,27 @@ pub struct BinaryBenchmarkConfig {
     pub sandbox: Option<Sandbox>,
 }
 
+/// The model for the `binary_benchmark_group` macro
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BinaryBenchmarkGroup {
+    pub id: String,
+    pub config: Option<BinaryBenchmarkConfig>,
+    pub has_setup: bool,
+    pub has_teardown: bool,
+    pub binary_benchmarks: Vec<BinaryBenchmark>,
+}
+
+/// The model for the main! macro
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct BinaryBenchmarkGroups {
+    pub config: BinaryBenchmarkConfig,
+    pub groups: Vec<BinaryBenchmarkGroup>,
+    /// The command line arguments as we receive them from `cargo bench`
+    pub command_line_args: Vec<String>,
+    pub has_setup: bool,
+    pub has_teardown: bool,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Command {
     pub path: PathBuf,
@@ -45,34 +76,6 @@ pub struct Command {
     pub stdout: Option<Stdio>,
     pub stderr: Option<Stdio>,
     pub config: BinaryBenchmarkConfig,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct BinaryBenchmarkBench {
-    pub id: Option<String>,
-    pub function_name: String,
-    pub args: Option<String>,
-    pub command: Command,
-    pub config: Option<BinaryBenchmarkConfig>,
-    pub has_setup: bool,
-    pub has_teardown: bool,
-}
-
-// TODO: Rename to BinaryBenchmark
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct BinaryBenchmarkBenches {
-    pub config: Option<BinaryBenchmarkConfig>,
-    pub benches: Vec<BinaryBenchmarkBench>,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct BinaryBenchmarkGroup {
-    pub id: String,
-    pub config: Option<BinaryBenchmarkConfig>,
-    pub has_setup: bool,
-    pub has_teardown: bool,
-    // TODO: RENAME to binary_benchmarks
-    pub benches: Vec<BinaryBenchmarkBenches>,
 }
 
 /// The `Direction` in which the flamegraph should grow.
@@ -193,29 +196,20 @@ pub enum FlamegraphKind {
     None,
 }
 
-// TODO: RENAME to LibraryBenchmarkMain
+/// The model for the `#[library_benchmark]` attribute
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct LibraryBenchmark {
-    pub config: LibraryBenchmarkConfig,
-    pub groups: Vec<LibraryBenchmarkGroup>,
-    pub command_line_args: Vec<String>,
-    pub has_setup: bool,
-    pub has_teardown: bool,
+    pub config: Option<LibraryBenchmarkConfig>,
+    pub benches: Vec<LibraryBenchmarkBench>,
 }
 
+/// The model for the `#[bench]` attribute in a `#[library_benchmark]`
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct LibraryBenchmarkBench {
     pub id: Option<String>,
-    pub bench: String,
+    pub function_name: String,
     pub args: Option<String>,
     pub config: Option<LibraryBenchmarkConfig>,
-}
-
-// TODO: RENAME to LibraryBenchmark
-#[derive(Debug, Default, Serialize, Deserialize)]
-pub struct LibraryBenchmarkBenches {
-    pub config: Option<LibraryBenchmarkConfig>,
-    pub benches: Vec<LibraryBenchmarkBench>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -229,12 +223,24 @@ pub struct LibraryBenchmarkConfig {
     pub tools_override: Option<Tools>,
 }
 
+/// The model for the `library_benchmark_group` macro
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct LibraryBenchmarkGroup {
     pub id: String,
     pub config: Option<LibraryBenchmarkConfig>,
     pub compare: bool,
-    pub benches: Vec<LibraryBenchmarkBenches>,
+    pub library_benchmarks: Vec<LibraryBenchmark>,
+    pub has_setup: bool,
+    pub has_teardown: bool,
+}
+
+/// The model for the `main` macro
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct LibraryBenchmarkGroups {
+    pub config: LibraryBenchmarkConfig,
+    pub groups: Vec<LibraryBenchmarkGroup>,
+    /// The command line args as we receive them from `cargo bench`
+    pub command_line_args: Vec<String>,
     pub has_setup: bool,
     pub has_teardown: bool,
 }

@@ -199,7 +199,7 @@ macro_rules! main {
             )?
 
 
-            let mut benchmark = $crate::internal::InternalBinaryBenchmarkMain {
+            let mut internal_benchmark_groups = $crate::internal::InternalBinaryBenchmarkGroups {
                 config: config.unwrap_or_default(),
                 command_line_args: this_args.collect(),
                 has_setup: __run_setup(false),
@@ -211,34 +211,35 @@ macro_rules! main {
 
             $(
                 if $group::__IS_ATTRIBUTE {
-                    let mut group = $crate::internal::InternalBinaryBenchmarkGroup {
+                    let mut internal_group = $crate::internal::InternalBinaryBenchmarkGroup {
                         id: stringify!($group).to_owned(),
                         config: $group::__get_config(),
-                        benches: vec![],
+                        binary_benchmarks: vec![],
                         has_setup: $group::__run_setup(false),
                         has_teardown: $group::__run_teardown(false),
                     };
-                    for (bench_name, get_config, macro_bin_benches) in $group::__BENCHES {
-                        let mut benches = $crate::internal::InternalBinaryBenchmarkBenches {
-                            benches: vec![],
-                            config: get_config()
+                    for (function_name, get_config, macro_bin_benches) in $group::__BENCHES {
+                        let mut internal_binary_benchmark =
+                            $crate::internal::InternalBinaryBenchmark {
+                                benches: vec![],
+                                config: get_config()
                         };
                         for macro_bin_bench in macro_bin_benches.iter() {
                             let bench = $crate::internal::InternalBinaryBenchmarkBench {
                                 id: macro_bin_bench.id_display.map(|i| i.to_string()),
                                 args: macro_bin_bench.args_display.map(|i| i.to_string()),
-                                function_name: bench_name.to_string(),
+                                function_name: function_name.to_string(),
                                 command: (macro_bin_bench.func)().into(),
                                 config: macro_bin_bench.config.map(|f| f()),
                                 has_setup: macro_bin_bench.setup.is_some(),
                                 has_teardown: macro_bin_bench.teardown.is_some()
                             };
-                            benches.benches.push(bench);
+                            internal_binary_benchmark.benches.push(bench);
                         }
-                        group.benches.push(benches);
+                        internal_group.binary_benchmarks.push(internal_binary_benchmark);
                     }
 
-                    benchmark.groups.push(group);
+                    internal_benchmark_groups.groups.push(internal_group);
                 } else {
                     let mut group = $crate::BinaryBenchmarkGroup::default();
                     $group::$group(&mut group);
@@ -248,7 +249,7 @@ macro_rules! main {
                     let mut internal_group = $crate::internal::InternalBinaryBenchmarkGroup {
                         id: stringify!($group).to_owned(),
                         config: $group::__get_config(),
-                        benches: vec![],
+                        binary_benchmarks: vec![],
                         has_setup: $group::__run_setup(false),
                         has_teardown: $group::__run_teardown(false),
                     };
@@ -278,8 +279,8 @@ macro_rules! main {
                             );
                         }
 
-                        let mut internal_binary_benchmarks =
-                            $crate::internal::InternalBinaryBenchmarkBenches {
+                        let mut internal_binary_benchmark =
+                            $crate::internal::InternalBinaryBenchmark {
                                 benches: vec![],
                                 config: binary_benchmark.config.map(Into::into)
                         };
@@ -335,7 +336,7 @@ macro_rules! main {
                                             has_teardown: bench.teardown.is_some()
                                                     || binary_benchmark.teardown.is_some(),
                                     };
-                                    internal_binary_benchmarks.benches.push(internal_bench);
+                                    internal_binary_benchmark.benches.push(internal_bench);
                                 },
                                 commands => {
                                     for (index, command) in commands.iter().enumerate() {
@@ -364,15 +365,15 @@ macro_rules! main {
                                                 has_teardown: bench.teardown.is_some()
                                                         || binary_benchmark.teardown.is_some(),
                                         };
-                                        internal_binary_benchmarks.benches.push(internal_bench);
+                                        internal_binary_benchmark.benches.push(internal_bench);
                                     }
                                 }
                             }
                         }
-                        internal_group.benches.push(internal_binary_benchmarks);
+                        internal_group.binary_benchmarks.push(internal_binary_benchmark);
                     }
 
-                    benchmark.groups.push(internal_group);
+                    internal_benchmark_groups.groups.push(internal_group);
                 }
             )+
 
@@ -380,7 +381,7 @@ macro_rules! main {
                 return Err(errors);
             }
 
-            let encoded = $crate::bincode::serialize(&benchmark).expect("Encoded benchmark");
+            let encoded = $crate::bincode::serialize(&internal_benchmark_groups).expect("Encoded benchmark");
             let mut child = cmd
                 .arg(encoded.len().to_string())
                 .stdin(std::process::Stdio::piped())
@@ -520,7 +521,7 @@ macro_rules! main {
                 config = Some($config.into());
             )?
 
-            let mut benchmark = $crate::internal::InternalLibraryBenchmark {
+            let mut internal_benchmark_groups = $crate::internal::InternalLibraryBenchmarkGroups {
                 config: config.unwrap_or_default(),
                 command_line_args: this_args.collect(),
                 has_setup: __run_setup(false),
@@ -529,15 +530,15 @@ macro_rules! main {
             };
 
             $(
-                let mut group = $crate::internal::InternalLibraryBenchmarkGroup {
+                let mut internal_group = $crate::internal::InternalLibraryBenchmarkGroup {
                     id: stringify!($group).to_owned(),
                     config: $group::get_config(),
                     compare: $group::compare(),
-                    benches: vec![],
+                    library_benchmarks: vec![],
                     has_setup: $group::run_setup(false),
                     has_teardown: $group::run_teardown(false),
                 };
-                for (bench_name, get_config, macro_lib_benches) in $group::BENCHES {
+                for (function_name, get_config, macro_lib_benches) in $group::BENCHES {
                     let mut benches = $crate::internal::InternalLibraryBenchmarkBenches {
                         benches: vec![],
                         config: get_config()
@@ -546,18 +547,18 @@ macro_rules! main {
                         let bench = $crate::internal::InternalLibraryBenchmarkBench {
                             id: macro_lib_bench.id_display.map(|i| i.to_string()),
                             args: macro_lib_bench.args_display.map(|i| i.to_string()),
-                            bench: bench_name.to_string(),
+                            function_name: function_name.to_string(),
                             config: macro_lib_bench.config.map(|f| f()),
                         };
                         benches.benches.push(bench);
                     }
-                    group.benches.push(benches);
+                    internal_group.library_benchmarks.push(benches);
                 }
 
-                benchmark.groups.push(group);
+                internal_benchmark_groups.groups.push(internal_group);
             )+
 
-            let encoded = $crate::bincode::serialize(&benchmark).expect("Encoded benchmark");
+            let encoded = $crate::bincode::serialize(&internal_benchmark_groups).expect("Encoded benchmark");
             let mut child = cmd
                 .arg(encoded.len().to_string())
                 .stdin(std::process::Stdio::piped())

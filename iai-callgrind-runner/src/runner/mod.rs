@@ -21,7 +21,7 @@ use log::debug;
 
 use self::meta::Metadata;
 use self::summary::BenchmarkKind;
-use crate::api::{BinaryBenchmarkMain, LibraryBenchmark};
+use crate::api::{BinaryBenchmarkGroups, LibraryBenchmarkGroups};
 use crate::error::Error;
 
 pub mod envs {
@@ -185,8 +185,12 @@ pub fn run() -> Result<()> {
 
     match bench_kind {
         BenchmarkKind::LibraryBenchmark => {
-            let benchmark: LibraryBenchmark = receive_benchmark(num_bytes)?;
-            let meta = Metadata::new(&benchmark.command_line_args, &package_name, &bench_file)?;
+            let benchmark_groups: LibraryBenchmarkGroups = receive_benchmark(num_bytes)?;
+            let meta = Metadata::new(
+                &benchmark_groups.command_line_args,
+                &package_name,
+                &bench_file,
+            )?;
             if meta
                 .args
                 .filter
@@ -205,11 +209,15 @@ pub fn run() -> Result<()> {
                 meta,
             };
 
-            lib_bench::run(benchmark, config)
+            lib_bench::run(benchmark_groups, config)
         }
         BenchmarkKind::BinaryBenchmark => {
-            let benchmark: BinaryBenchmarkMain = receive_benchmark(num_bytes)?;
-            let meta = Metadata::new(&benchmark.command_line_args, &package_name, &bench_file)?;
+            let benchmark_groups: BinaryBenchmarkGroups = receive_benchmark(num_bytes)?;
+            let meta = Metadata::new(
+                &benchmark_groups.command_line_args,
+                &package_name,
+                &bench_file,
+            )?;
             if meta
                 .args
                 .filter
@@ -228,7 +236,7 @@ pub fn run() -> Result<()> {
                 meta,
             };
 
-            bin_bench::run(benchmark, config)
+            bin_bench::run(benchmark_groups, config)
         }
     }
 }
