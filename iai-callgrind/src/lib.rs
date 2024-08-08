@@ -343,35 +343,6 @@
 #![allow(clippy::module_name_repetitions)]
 
 #[cfg(feature = "default")]
-macro_rules! impl_traits {
-    ($src:ty, $dst:ty) => {
-        impl From<$src> for $dst {
-            fn from(value: $src) -> Self {
-                value.0
-            }
-        }
-
-        impl From<&$src> for $dst {
-            fn from(value: &$src) -> Self {
-                value.0.clone()
-            }
-        }
-
-        impl From<&mut $src> for $dst {
-            fn from(value: &mut $src) -> Self {
-                value.0.clone()
-            }
-        }
-
-        impl AsRef<$src> for $src {
-            fn as_ref(&self) -> &$src {
-                self
-            }
-        }
-    };
-}
-
-#[cfg(feature = "default")]
 mod bin_bench;
 #[cfg(feature = "client_requests_defs")]
 pub mod client_requests;

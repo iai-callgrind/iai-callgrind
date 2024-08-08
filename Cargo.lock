@@ -725,6 +725,7 @@ dependencies = [
  "cc",
  "cfg-if",
  "cty",
+ "derive_more",
  "fs_extra",
  "iai-callgrind-macros",
  "iai-callgrind-runner",

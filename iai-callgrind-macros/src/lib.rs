@@ -26,6 +26,7 @@
 
 mod bin_bench;
 mod common;
+mod derive_macros;
 mod lib_bench;
 
 use proc_macro::TokenStream;
@@ -223,6 +224,28 @@ pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_error]
 pub fn binary_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
     match bin_bench::render(args.into(), input.into()) {
+        Ok(stream) => stream.into(),
+        Err(error) => error.to_compile_error().into(),
+    }
+}
+
+/// For internal use only.
+///
+/// The old `macro_rules! impl_traits` was easy to overlook in the source code files and this derive
+/// macro is just a much nicer way to do the same.
+///
+/// We use this derive macro to spare us the manual implementation of
+///
+/// * From<Outer> for Inner
+/// * From<&Outer> for Inner (which clones the value)
+/// * From<&mut Outer> for Inner (which also just clones the value)
+///
+/// for our builder tuple structs which wrap the inner type from the iai-callgrind-runner api. So,
+/// our builders don't need a build method, which is just cool.
+#[proc_macro_derive(IntoInner)]
+#[proc_macro_error]
+pub fn into_inner(item: TokenStream) -> TokenStream {
+    match derive_macros::render_into_inner(item.into()) {
         Ok(stream) => stream.into(),
         Err(error) => error.to_compile_error().into(),
     }

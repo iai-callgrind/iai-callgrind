@@ -2,6 +2,9 @@ use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
 use std::path::PathBuf;
 
+use derive_more::AsRef;
+use iai_callgrind_macros::IntoInner;
+
 use crate::{internal, Stdin, Stdio};
 // TODO: UPDATE DOCS
 
@@ -28,7 +31,7 @@ pub struct BenchmarkId {
 ///     binary_benchmark_groups = some_group
 /// );
 /// ```
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, IntoInner, AsRef)]
 pub struct BinaryBenchmarkConfig(internal::InternalBinaryBenchmarkConfig);
 
 /// TODO: UPDATE DOCUMENTATION
@@ -69,7 +72,7 @@ pub struct BinaryBenchmark {
 }
 
 /// TODO: DOCUMENTATION
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, IntoInner, AsRef)]
 pub struct Command(internal::InternalCommand);
 
 /// Set the expected exit status of a binary benchmark
@@ -93,7 +96,7 @@ pub struct Command(internal::InternalCommand);
 /// );
 /// # }
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum ExitWith {
     /// Exit with success is similar to `ExitCode(0)`
     Success,
@@ -104,7 +107,7 @@ pub enum ExitWith {
 }
 
 /// TODO: DOCUMENTATION
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, IntoInner, AsRef)]
 pub struct Sandbox(internal::InternalSandbox);
 
 impl Bench {
@@ -900,9 +903,9 @@ impl BinaryBenchmarkConfig {
     /// ```
     pub fn sandbox<T>(&mut self, sandbox: T) -> &mut Self
     where
-        T: AsRef<Sandbox>,
+        T: Into<internal::InternalSandbox>,
     {
-        self.0.sandbox = Some(sandbox.as_ref().into());
+        self.0.sandbox = Some(sandbox.into());
         self
     }
 
@@ -948,11 +951,6 @@ impl BinaryBenchmarkConfig {
         self
     }
 }
-
-impl_traits!(
-    BinaryBenchmarkConfig,
-    internal::InternalBinaryBenchmarkConfig
-);
 
 impl BinaryBenchmarkGroup {
     /// TODO: DOCUMENTATION
@@ -1303,8 +1301,6 @@ impl From<&Command> for Command {
     }
 }
 
-impl_traits!(Command, internal::InternalCommand);
-
 impl From<ExitWith> for internal::InternalExitWith {
     fn from(value: ExitWith) -> Self {
         match value {
@@ -1345,5 +1341,3 @@ impl Sandbox {
         self
     }
 }
-
-impl_traits!(Sandbox, internal::InternalSandbox);
