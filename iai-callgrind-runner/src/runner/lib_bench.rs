@@ -16,7 +16,9 @@ use super::callgrind::parser::Sentinel;
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::RegressionConfig;
 use super::common::{Assistant, AssistantKind, Config, ModulePath};
-use super::format::{print_no_capture_footer, tool_headline, Header, OutputFormat, VerticalFormat};
+use super::format::{
+    print_no_capture_footer, LibraryBenchmarkHeader, OutputFormat, VerticalFormat,
+};
 use super::meta::Metadata;
 use super::summary::{
     BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, CallgrindRegressionSummary,
@@ -54,20 +56,20 @@ struct Groups(Vec<Group>);
 ///
 /// It needs an implementation of `Benchmark` to be run.
 #[derive(Debug)]
-struct LibBench {
-    bench_index: usize,
-    index: usize,
-    id: Option<String>,
-    function: String,
-    args: Option<String>,
-    run_options: RunOptions,
-    callgrind_args: Args,
-    flamegraph_config: Option<FlamegraphConfig>,
-    regression_config: Option<RegressionConfig>,
-    tools: ToolConfigs,
-    module_path: ModulePath,
-    entry_point: Option<String>,
-    truncate_description: Option<usize>,
+pub struct LibBench {
+    pub bench_index: usize,
+    pub index: usize,
+    pub id: Option<String>,
+    pub function: String,
+    pub args: Option<String>,
+    pub run_options: RunOptions,
+    pub callgrind_args: Args,
+    pub flamegraph_config: Option<FlamegraphConfig>,
+    pub regression_config: Option<RegressionConfig>,
+    pub tools: ToolConfigs,
+    pub module_path: ModulePath,
+    pub entry_point: Option<String>,
+    pub truncate_description: Option<usize>,
 }
 
 /// Implements [`Benchmark`] to load a [`LibBench`] baseline run and compare against another
@@ -162,9 +164,11 @@ impl Benchmark for BaselineBenchmark {
             path.to_log_output().shift()?;
         }
 
-        let mut benchmark_summary = lib_bench.create_benchmark_summary(config, &out_path)?;
+        let header = LibraryBenchmarkHeader::new(&config.meta, lib_bench);
+        let mut benchmark_summary =
+            lib_bench.create_benchmark_summary(config, &out_path, header.description())?;
 
-        let header = lib_bench.print_header(&config.meta, group);
+        header.print();
 
         let output = callgrind_command.run(
             tool_config,
@@ -297,14 +301,9 @@ impl Groups {
                         Args::from_raw_args(&[&config.raw_callgrind_args, &meta_callgrind_args])?;
 
                     let flamegraph_config = config.flamegraph_config.map(Into::into);
-                    let module_path = library_benchmark_bench.id.as_ref().map_or_else(
-                        || group_module_path.join(&library_benchmark_bench.function_name),
-                        |id| {
-                            group_module_path
-                                .join(&library_benchmark_bench.function_name)
-                                .join(id)
-                        },
-                    );
+                    let module_path =
+                        group_module_path.join(&library_benchmark_bench.function_name);
+
                     let lib_bench = LibBench {
                         bench_index,
                         index,
@@ -415,6 +414,7 @@ impl LibBench {
         &self,
         config: &Config,
         output_path: &ToolOutputPath,
+        description: Option<String>,
     ) -> Result<BenchmarkSummary> {
         let summary_output = if let Some(format) = config.meta.args.save_summary {
             let output = SummaryOutput::new(format, &output_path.dir);
@@ -432,30 +432,9 @@ impl LibBench {
             config.bench_bin.clone(),
             &self.module_path,
             self.id.clone(),
-            self.args.clone(),
+            description,
             summary_output,
         ))
-    }
-
-    /// Print the headline of the terminal output for this benchmark run
-    ///
-    /// If there are more tools than the usual callgrind run, this method also prints the tool
-    /// summary header
-    fn print_header(&self, meta: &Metadata, group: &Group) -> Header {
-        let header = Header::new(
-            group.module_path.join(&self.function).to_string(),
-            self.id.clone(),
-            self.args.clone(),
-            self.truncate_description,
-        );
-
-        if meta.args.output_format == OutputFormat::Default {
-            header.print();
-            if self.tools.has_tools_enabled() {
-                println!("{}", tool_headline(ValgrindTool::Callgrind));
-            }
-        }
-        header
     }
 
     /// Check for regressions as defined in [`RegressionConfig`] and print an error if a regression
@@ -502,9 +481,12 @@ impl Benchmark for LoadBaselineBenchmark {
         let out_path = self.output_path(lib_bench, config, group);
         let old_path = out_path.to_base_path();
         let log_path = out_path.to_log_output();
-        let mut benchmark_summary = lib_bench.create_benchmark_summary(config, &out_path)?;
 
-        let header = lib_bench.print_header(&config.meta, group);
+        let header = LibraryBenchmarkHeader::new(&config.meta, lib_bench);
+        let mut benchmark_summary =
+            lib_bench.create_benchmark_summary(config, &out_path, header.description())?;
+
+        header.print();
 
         let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
         let old_costs = Some(SentinelParser::new(&sentinel).parse(&old_path)?);
@@ -672,9 +654,11 @@ impl Benchmark for SaveBaselineBenchmark {
         let log_path = out_path.to_log_output();
         log_path.clear()?;
 
-        let mut benchmark_summary = lib_bench.create_benchmark_summary(config, &out_path)?;
+        let header = LibraryBenchmarkHeader::new(&config.meta, lib_bench);
+        let mut benchmark_summary =
+            lib_bench.create_benchmark_summary(config, &out_path, header.description())?;
 
-        let header = lib_bench.print_header(&config.meta, group);
+        header.print();
 
         let output = callgrind_command.run(
             tool_config,

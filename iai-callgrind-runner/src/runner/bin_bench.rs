@@ -11,7 +11,7 @@ use super::callgrind::flamegraph::{
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::RegressionConfig;
 use super::common::{Assistant, AssistantKind, Config, ModulePath, Sandbox};
-use super::format::{Header, OutputFormat, VerticalFormat};
+use super::format::{BinaryBenchmarkHeader, VerticalFormat};
 use super::meta::Metadata;
 use super::summary::{
     BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, CallgrindSummary, CostsSummary,
@@ -23,8 +23,7 @@ use super::tool::{
 };
 use crate::api::{self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, Stdin};
 use crate::error::Error;
-use crate::runner::format::{self, tool_headline};
-use crate::util::make_relative;
+use crate::runner::format;
 
 mod defaults {
     pub const REGRESSION_FAIL_FAST: bool = false;
@@ -37,21 +36,21 @@ struct BaselineBenchmark {
 }
 
 #[derive(Debug)]
-struct BinBench {
-    id: Option<String>,
-    args: Option<String>,
-    function_name: String,
-    command: api::Command,
-    run_options: RunOptions,
-    callgrind_args: Args,
-    flamegraph_config: Option<FlamegraphConfig>,
-    regression_config: Option<RegressionConfig>,
-    tools: ToolConfigs,
-    setup: Option<Assistant>,
-    teardown: Option<Assistant>,
-    sandbox: Option<api::Sandbox>,
-    module_path: ModulePath,
-    truncate_description: Option<usize>,
+pub struct BinBench {
+    pub id: Option<String>,
+    pub args: Option<String>,
+    pub function_name: String,
+    pub command: api::Command,
+    pub run_options: RunOptions,
+    pub callgrind_args: Args,
+    pub flamegraph_config: Option<FlamegraphConfig>,
+    pub regression_config: Option<RegressionConfig>,
+    pub tools: ToolConfigs,
+    pub setup: Option<Assistant>,
+    pub teardown: Option<Assistant>,
+    pub sandbox: Option<api::Sandbox>,
+    pub module_path: ModulePath,
+    pub truncate_description: Option<usize>,
 }
 
 #[derive(Debug)]
@@ -149,9 +148,11 @@ impl Benchmark for BaselineBenchmark {
             path.to_log_output().shift()?;
         }
 
-        let mut benchmark_summary = bin_bench.create_benchmark_summary(config, &out_path)?;
+        let header = BinaryBenchmarkHeader::new(&config.meta, bin_bench);
+        let mut benchmark_summary =
+            bin_bench.create_benchmark_summary(config, &out_path, header.description())?;
 
-        let header = bin_bench.print_header(&config.meta, group);
+        header.print();
 
         // We're implicitly applying the default here: In the absence of a user provided sandbox we
         // don't run the benchmarks in a sandbox. Everything from here on runs with the current
@@ -266,19 +267,9 @@ impl BinBench {
 
         let callgrind_args = Args::from_raw_args(&[&config.raw_callgrind_args, raw_args])?;
         let flamegraph_config = config.flamegraph_config.map(Into::into);
-        let module_path = binary_benchmark_bench.id.as_ref().map_or_else(
-            || {
-                group
-                    .module_path
-                    .join(&binary_benchmark_bench.function_name)
-            },
-            |id| {
-                group
-                    .module_path
-                    .join(&binary_benchmark_bench.function_name)
-                    .join(id)
-            },
-        );
+        let module_path = group
+            .module_path
+            .join(&binary_benchmark_bench.function_name);
 
         Ok(Self {
             id: binary_benchmark_bench.id,
@@ -338,42 +329,6 @@ impl BinBench {
         }
     }
 
-    fn print_header(&self, meta: &Metadata, group: &Group) -> Header {
-        let path = make_relative(&meta.project_root, &self.command.path);
-
-        let command_args: Vec<String> = self
-            .command
-            .args
-            .iter()
-            .map(|s| s.to_string_lossy().to_string())
-            .collect();
-        let command_args = shlex::try_join(command_args.iter().map(String::as_str)).unwrap();
-
-        // TODO: This should be part of the format module
-        let description = format!(
-            "({}) -> {} {}",
-            self.args.as_ref().map_or("", String::as_str),
-            path.display(),
-            command_args
-        );
-
-        let header = Header::from_module_path(
-            &group.module_path.join(&self.function_name),
-            self.id.clone(),
-            description,
-            self.truncate_description,
-        );
-
-        if meta.args.output_format == OutputFormat::Default {
-            header.print();
-            if self.tools.has_tools_enabled() {
-                println!("{}", tool_headline(ValgrindTool::Callgrind));
-            }
-        }
-
-        header
-    }
-
     fn print_nocapture_footer(&self, nocapture: NoCapture) {
         format::print_no_capture_footer(
             nocapture,
@@ -386,6 +341,7 @@ impl BinBench {
         &self,
         config: &Config,
         output_path: &ToolOutputPath,
+        description: Option<String>,
     ) -> Result<BenchmarkSummary> {
         let summary_output = if let Some(format) = config.meta.args.save_summary {
             let output = SummaryOutput::new(format, &output_path.dir);
@@ -400,10 +356,10 @@ impl BinBench {
             config.meta.project_root.clone(),
             config.package_dir.clone(),
             config.bench_file.clone(),
-            config.bench_bin.clone(),
+            self.command.path.clone(),
             &self.module_path,
             self.id.clone(),
-            self.args.clone(),
+            description,
             summary_output,
         ))
     }
@@ -567,9 +523,11 @@ impl Benchmark for LoadBaselineBenchmark {
         let out_path = self.output_path(bin_bench, config, group);
         let old_path = out_path.to_base_path();
         let log_path = out_path.to_log_output();
-        let mut benchmark_summary = bin_bench.create_benchmark_summary(config, &out_path)?;
 
-        let header = bin_bench.print_header(&config.meta, group);
+        let header = BinaryBenchmarkHeader::new(&config.meta, bin_bench);
+        let mut benchmark_summary =
+            bin_bench.create_benchmark_summary(config, &out_path, header.description())?;
+        header.print();
 
         let new_costs = SummaryParser.parse(&out_path)?;
         let old_costs = Some(SummaryParser.parse(&old_path)?);
@@ -730,9 +688,11 @@ impl Benchmark for SaveBaselineBenchmark {
         let log_path = out_path.to_log_output();
         log_path.clear()?;
 
-        let mut benchmark_summary = bin_bench.create_benchmark_summary(config, &out_path)?;
+        let header = BinaryBenchmarkHeader::new(&config.meta, bin_bench);
+        let mut benchmark_summary =
+            bin_bench.create_benchmark_summary(config, &out_path, header.description())?;
 
-        let header = bin_bench.print_header(&config.meta, group);
+        header.print();
 
         let sandbox = bin_bench
             .sandbox

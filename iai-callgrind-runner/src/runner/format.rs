@@ -5,12 +5,14 @@ use anyhow::Result;
 use colored::{ColoredString, Colorize};
 
 use super::args::NoCapture;
+use super::bin_bench::BinBench;
 use super::common::ModulePath;
+use super::lib_bench::LibBench;
 use super::meta::Metadata;
 use super::summary::{CostsDiff, CostsSummary};
 use super::tool::ValgrindTool;
 use crate::api::{self, EventKind};
-use crate::util::{to_string_signed_short, truncate_str_utf8};
+use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8};
 
 pub const NOT_AVAILABLE: &str = "N/A";
 
@@ -20,11 +22,16 @@ pub struct ComparisonHeader {
     pub details: Option<String>,
 }
 
-pub struct Header {
-    pub module_path: String,
-    pub id: Option<String>,
-    pub description: Option<String>,
-    pub truncate_description: Option<usize>,
+pub struct BinaryBenchmarkHeader {
+    inner: Header,
+    has_tools_enabled: bool,
+    output_format: OutputFormat,
+}
+
+struct Header {
+    module_path: String,
+    id: Option<String>,
+    description: Option<String>,
 }
 
 pub trait Formatter {
@@ -50,6 +57,12 @@ pub trait Formatter {
     ) -> Result<String>;
 }
 
+pub struct LibraryBenchmarkHeader {
+    inner: Header,
+    has_tools_enabled: bool,
+    output_format: OutputFormat,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum OutputFormat {
     Default,
@@ -60,6 +73,55 @@ pub enum OutputFormat {
 #[derive(Clone)]
 pub struct VerticalFormat {
     event_kinds: Vec<EventKind>,
+}
+
+impl BinaryBenchmarkHeader {
+    pub fn new(meta: &Metadata, bin_bench: &BinBench) -> Self {
+        let path = make_relative(&meta.project_root, &bin_bench.command.path);
+
+        let command_args: Vec<String> = bin_bench
+            .command
+            .args
+            .iter()
+            .map(|s| s.to_string_lossy().to_string())
+            .collect();
+        let command_args = shlex::try_join(command_args.iter().map(String::as_str)).unwrap();
+
+        let description = format!(
+            "({}) -> {} {}",
+            bin_bench.args.as_ref().map_or("", String::as_str),
+            path.display(),
+            command_args
+        );
+
+        Self {
+            inner: Header::new(
+                &bin_bench.module_path,
+                bin_bench.id.clone(),
+                Some(description),
+                bin_bench.truncate_description,
+            ),
+            has_tools_enabled: bin_bench.tools.has_tools_enabled(),
+            output_format: meta.args.output_format,
+        }
+    }
+
+    pub fn print(&self) {
+        if self.output_format == OutputFormat::Default {
+            self.inner.print();
+            if self.has_tools_enabled {
+                println!("{}", tool_headline(ValgrindTool::Callgrind));
+            }
+        }
+    }
+
+    pub fn to_title(&self) -> String {
+        self.inner.to_title()
+    }
+
+    pub fn description(&self) -> Option<String> {
+        self.inner.description.clone()
+    }
 }
 
 impl ComparisonHeader {
@@ -100,40 +162,22 @@ impl Display for ComparisonHeader {
 }
 
 impl Header {
-    pub fn new<T, U, V>(
-        module_path: T,
-        id: U,
-        description: V,
-        truncate_description: Option<usize>,
-    ) -> Self
-    where
-        T: Into<String>,
-        U: Into<Option<String>>,
-        V: Into<Option<String>>,
-    {
-        Self {
-            module_path: module_path.into(),
-            id: id.into(),
-            description: description.into(),
-            truncate_description,
-        }
-    }
-
-    pub fn from_module_path<U, V>(
+    pub fn new<T>(
         module_path: &ModulePath,
-        id: U,
-        description: V,
+        id: T,
+        description: Option<String>,
         truncate_description: Option<usize>,
     ) -> Self
     where
-        U: Into<Option<String>>,
-        V: Into<Option<String>>,
+        T: Into<Option<String>>,
     {
+        let truncated =
+            description.map(|d| self::truncate_description(&d, truncate_description).to_string());
+
         Self {
             module_path: module_path.to_string(),
             id: id.into(),
-            description: description.into(),
-            truncate_description,
+            description: truncated,
         }
     }
 
@@ -147,8 +191,7 @@ impl Header {
         if let Some(id) = &self.id {
             match &self.description {
                 Some(description) if !description.is_empty() => {
-                    let truncated = self.truncate_description(description);
-                    write!(&mut output, " {id}:{truncated}").unwrap();
+                    write!(&mut output, " {id}:{description}").unwrap();
                 }
                 _ => {
                     write!(&mut output, " {id}").unwrap();
@@ -156,19 +199,6 @@ impl Header {
             }
         }
         output
-    }
-
-    pub fn truncate_description<'a>(&self, description: &'a str) -> Cow<'a, str> {
-        if let Some(num) = self.truncate_description {
-            let new_description = truncate_str_utf8(description, num);
-            if new_description.len() < description.len() {
-                Cow::Owned(format!("{new_description}..."))
-            } else {
-                Cow::Borrowed(description)
-            }
-        } else {
-            Cow::Borrowed(description)
-        }
     }
 }
 
@@ -178,12 +208,11 @@ impl Display for Header {
         if let Some(id) = &self.id {
             match &self.description {
                 Some(description) if !description.is_empty() => {
-                    let truncated = self.truncate_description(description);
                     f.write_fmt(format_args!(
                         " {}{}{}",
                         id.cyan(),
                         ":".cyan(),
-                        truncated.bold().blue(),
+                        description.bold().blue(),
                     ))?;
                 }
                 _ => {
@@ -192,13 +221,46 @@ impl Display for Header {
             }
         } else if let Some(description) = &self.description {
             if !description.is_empty() {
-                let truncated = self.truncate_description(description);
-                f.write_fmt(format_args!(" {}", truncated.bold().blue()))?;
+                f.write_fmt(format_args!(" {}", description.bold().blue()))?;
             }
         } else {
             // do nothing
         }
         Ok(())
+    }
+}
+
+impl LibraryBenchmarkHeader {
+    pub fn new(meta: &Metadata, lib_bench: &LibBench) -> Self {
+        let header = Header::new(
+            &lib_bench.module_path,
+            lib_bench.id.clone(),
+            lib_bench.args.clone(),
+            lib_bench.truncate_description,
+        );
+
+        Self {
+            inner: header,
+            has_tools_enabled: lib_bench.tools.has_tools_enabled(),
+            output_format: meta.args.output_format,
+        }
+    }
+
+    pub fn print(&self) {
+        if self.output_format == OutputFormat::Default {
+            self.inner.print();
+            if self.has_tools_enabled {
+                println!("{}", tool_headline(ValgrindTool::Callgrind));
+            }
+        }
+    }
+
+    pub fn to_title(&self) -> String {
+        self.inner.to_title()
+    }
+
+    pub fn description(&self) -> Option<String> {
+        self.inner.description.clone()
     }
 }
 
@@ -388,6 +450,19 @@ pub fn print_no_capture_footer(
     }
 }
 
+fn truncate_description(description: &str, truncate_description: Option<usize>) -> Cow<'_, str> {
+    if let Some(num) = truncate_description {
+        let new_description = truncate_str_utf8(description, num);
+        if new_description.len() < description.len() {
+            Cow::Owned(format!("{new_description}..."))
+        } else {
+            Cow::Borrowed(description)
+        }
+    } else {
+        Cow::Borrowed(description)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
@@ -417,7 +492,7 @@ mod tests {
         colored::control::set_override(false);
 
         let header = Header::new(
-            module_path,
+            &ModulePath::new(module_path),
             id.map(ToOwned::to_owned),
             description.map(ToOwned::to_owned),
             None,
@@ -556,7 +631,7 @@ mod tests {
         colored::control::set_override(false);
 
         let header = Header::new(
-            module_path,
+            &ModulePath::new(module_path),
             id.map(ToOwned::to_owned),
             description.map(ToOwned::to_owned),
             truncate_description,

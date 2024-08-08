@@ -221,6 +221,12 @@ impl ModulePath {
             .rsplit_once("::")
             .map(|(_, last)| ModulePath::new(last))
     }
+
+    pub fn parent(&self) -> Option<ModulePath> {
+        self.0
+            .rsplit_once("::")
+            .map(|(prefix, _)| ModulePath::new(prefix))
+    }
 }
 
 impl Display for ModulePath {
@@ -231,6 +237,12 @@ impl Display for ModulePath {
 
 impl From<ModulePath> for String {
     fn from(value: ModulePath) -> Self {
+        value.to_string()
+    }
+}
+
+impl From<&ModulePath> for String {
+    fn from(value: &ModulePath) -> Self {
         value.to_string()
     }
 }

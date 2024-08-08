@@ -271,9 +271,9 @@ pub enum Pipe {
     Stderr,
 }
 
-/// TODO: DOCUMENTATION, just a helper struct not intended to be used in iai-callgrind
+/// TODO: DOCUMENTATION
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Stream {
+pub(crate) enum Stream {
     Stdin,
     Stdout,
     Stderr,

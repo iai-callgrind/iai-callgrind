@@ -77,7 +77,8 @@ pub enum BenchmarkKind {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct BenchmarkSummary {
-    /// The version of this format. Only backwards incompatible cause an increase of the version
+    /// The version of this format. Only backwards incompatible changes cause an increase of the
+    /// version
     pub version: String,
     /// Whether this summary describes a library or binary benchmark
     pub kind: BenchmarkKind,
@@ -89,7 +90,9 @@ pub struct BenchmarkSummary {
     pub package_dir: PathBuf,
     /// The path to the benchmark file
     pub benchmark_file: PathBuf,
-    /// The path to the compiled and executable benchmark file
+    /// The path to the binary which is executed by valgrind. In case of a library benchmark this
+    /// is the compiled benchmark file. In case of a binary benchmark this is the path to the
+    /// command.
     pub benchmark_exe: PathBuf,
     /// The name of the function under test
     pub function_name: String,
