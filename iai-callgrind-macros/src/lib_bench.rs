@@ -15,7 +15,7 @@ use syn::{
     MetaNameValue, Token,
 };
 
-use crate::common::{self, BenchesArgs};
+use crate::common::{self, format_ident, BenchesArgs};
 use crate::CargoMetadata;
 
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
@@ -470,7 +470,7 @@ impl LibraryBenchmark {
                     #new_item_fn
                 }
 
-                pub const BENCHES: &[iai_callgrind::internal::InternalMacroLibBench]= &[
+                pub const __BENCHES: &[iai_callgrind::internal::InternalMacroLibBench]= &[
                     iai_callgrind::internal::InternalMacroLibBench {
                         id_display: None,
                         args_display: None,
@@ -567,7 +567,7 @@ impl LibraryBenchmark {
                     #new_item_fn
                 }
 
-                pub const BENCHES: &[iai_callgrind::internal::InternalMacroLibBench] = &[
+                pub const __BENCHES: &[iai_callgrind::internal::InternalMacroLibBench] = &[
                     #(#lib_benches,)*
                 ];
 
@@ -616,11 +616,16 @@ impl Parse for LibraryBenchmark {
 }
 
 impl LibraryBenchmarkConfig {
+    fn ident() -> Ident {
+        format_ident("__get_config", None)
+    }
+
     fn render_as_code(&self) -> TokenStream {
+        let ident = Self::ident();
         if let Some(config) = &self.deref().0 {
             quote!(
                 #[inline(never)]
-                pub fn get_config()
+                pub fn #ident()
                     -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
                 {
                     Some(#config.into())
@@ -629,7 +634,7 @@ impl LibraryBenchmarkConfig {
         } else {
             quote!(
                 #[inline(never)]
-                pub fn get_config()
+                pub fn #ident()
                 -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig> {
                     None
                 }

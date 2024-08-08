@@ -176,7 +176,7 @@ macro_rules! main {
         $( teardown = $teardown:expr ; $(;)* )?
         binary_benchmark_groups = $( $group:ident ),+ $(,)*
     ) => {
-        fn run() -> Result<(), $crate::error::Errors> {
+        fn __run() -> Result<(), $crate::error::Errors> {
             let mut this_args = std::env::args();
             let exe = option_env!("IAI_CALLGRIND_RUNNER")
                 .unwrap_or_else(|| option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner"));
@@ -477,7 +477,7 @@ macro_rules! main {
                     (name, _) => panic!("function '{}' not found in this scope", name)
                 }
             } else {
-                if let Err(errors) = run() {
+                if let Err(errors) = __run() {
                     eprintln!("{errors}");
                     std::process::exit(1);
                 }
@@ -499,7 +499,7 @@ macro_rules! main {
         library_benchmark_groups = $( $group:ident ),+ $(,)*
     ) => {
         #[inline(never)]
-        fn run() {
+        fn __run() {
             let mut this_args = std::env::args();
             let exe = option_env!("IAI_CALLGRIND_RUNNER")
                 .unwrap_or_else(|| option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner"));
@@ -532,13 +532,13 @@ macro_rules! main {
             $(
                 let mut internal_group = $crate::internal::InternalLibraryBenchmarkGroup {
                     id: stringify!($group).to_owned(),
-                    config: $group::get_config(),
-                    compare: $group::compare(),
+                    config: $group::__get_config(),
+                    compare: $group::__compare(),
                     library_benchmarks: vec![],
-                    has_setup: $group::run_setup(false),
-                    has_teardown: $group::run_teardown(false),
+                    has_setup: $group::__run_setup(false),
+                    has_teardown: $group::__run_teardown(false),
                 };
-                for (function_name, get_config, macro_lib_benches) in $group::BENCHES {
+                for (function_name, get_config, macro_lib_benches) in $group::__BENCHES {
                     let mut benches = $crate::internal::InternalLibraryBenchmarkBenches {
                         benches: vec![],
                         config: get_config()
@@ -628,10 +628,10 @@ macro_rules! main {
                                     .as_str()
                             ) {
                                 "setup" => {
-                                    $group::run_setup(true);
+                                    $group::__run_setup(true);
                                 },
                                 "teardown" => {
-                                    $group::run_teardown(true);
+                                    $group::__run_teardown(true);
                                 }
                                 value => {
                                     let group_index = std::hint::black_box(
@@ -646,7 +646,7 @@ macro_rules! main {
                                             .parse::<usize>()
                                             .expect("Expecting a valid bench index")
                                     );
-                                    $group::run(group_index, bench_index);
+                                    $group::__run(group_index, bench_index);
                                 }
                             }
                         }
@@ -654,7 +654,7 @@ macro_rules! main {
                     name => panic!("function '{}' not found in this scope", name)
                 }
             } else {
-                std::hint::black_box(run());
+                std::hint::black_box(__run());
             };
         }
     };
@@ -1143,7 +1143,7 @@ macro_rules! library_benchmark_group {
         mod $name {
             use super::*;
 
-            pub const BENCHES: &[&(
+            pub const __BENCHES: &[&(
                 &'static str,
                 fn() -> Option<$crate::internal::InternalLibraryBenchmarkConfig>,
                 &[$crate::internal::InternalMacroLibBench]
@@ -1151,14 +1151,14 @@ macro_rules! library_benchmark_group {
                 $(
                     &(
                         stringify!($function),
-                        super::$function::get_config,
-                        super::$function::BENCHES
+                        super::$function::__get_config,
+                        super::$function::__BENCHES
                     )
                 ),+
             ];
 
             #[inline(never)]
-            pub fn get_config() -> Option<$crate::internal::InternalLibraryBenchmarkConfig> {
+            pub fn __get_config() -> Option<$crate::internal::InternalLibraryBenchmarkConfig> {
                 let mut config: Option<$crate::internal::InternalLibraryBenchmarkConfig> = None;
                 $(
                     config = Some($config.into());
@@ -1167,7 +1167,7 @@ macro_rules! library_benchmark_group {
             }
 
             #[inline(never)]
-            pub fn compare() -> bool {
+            pub fn __compare() -> bool {
                 let mut comp: bool = false;
                 $(
                     comp = $compare;
@@ -1176,7 +1176,7 @@ macro_rules! library_benchmark_group {
             }
 
             #[inline(never)]
-            pub fn run_setup(__run: bool) -> bool {
+            pub fn __run_setup(__run: bool) -> bool {
                 let mut __has_setup = false;
                 $(
                     __has_setup = true;
@@ -1188,7 +1188,7 @@ macro_rules! library_benchmark_group {
             }
 
             #[inline(never)]
-            pub fn run_teardown(__run: bool) -> bool {
+            pub fn __run_teardown(__run: bool) -> bool {
                 let mut __has_teardown = false;
                 $(
                     __has_teardown = true;
@@ -1200,8 +1200,8 @@ macro_rules! library_benchmark_group {
             }
 
             #[inline(never)]
-            pub fn run(group_index: usize, bench_index: usize) {
-                (BENCHES[group_index].2[bench_index].func)();
+            pub fn __run(group_index: usize, bench_index: usize) {
+                (__BENCHES[group_index].2[bench_index].func)();
             }
         }
     };

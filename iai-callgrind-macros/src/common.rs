@@ -213,8 +213,7 @@ impl BenchesArgs {
 
 impl BenchConfig {
     pub fn ident(id: &Ident) -> Ident {
-        // TODO: CHANGE THIS TO __get_config
-        format_ident("get_config", Some(id))
+        format_ident("__get_config", Some(id))
     }
 
     pub fn parse_pair(&mut self, pair: &MetaNameValue) {
