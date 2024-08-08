@@ -340,8 +340,7 @@ macro_rules! main {
                                 },
                                 commands => {
                                     for (index, command) in commands.iter().enumerate() {
-                                        // TODO: CHANGE THIS TO double underscore
-                                        let bench_id: $crate::BenchmarkId = format!("{}_{}", bench.id, index).into();
+                                        let bench_id: $crate::BenchmarkId = format!("{}__{}", bench.id, index).into();
                                         if !bench_ids.insert(bench_id.clone()) {
                                             errors.add(
                                                 $crate::error::Error::BenchError(

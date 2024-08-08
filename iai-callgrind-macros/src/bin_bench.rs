@@ -4,12 +4,12 @@ use std::ops::Deref;
 use derive_more::{Deref, DerefMut};
 use proc_macro2::TokenStream;
 use proc_macro_error::abort;
-use quote::{format_ident, quote, ToTokens, TokenStreamExt};
+use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::Parse;
 use syn::punctuated::Punctuated;
 use syn::{parse2, parse_quote, Attribute, Expr, Ident, ItemFn, MetaNameValue, Token};
 
-use crate::common::{self, format_ident, pretty_expr_path, BenchesArgs};
+use crate::common::{self, format_ident, format_indexed_ident, pretty_expr_path, BenchesArgs};
 
 // TODO: CHECK FOR OCCURRENCES OF library benchmark strings in docs and else
 
@@ -170,7 +170,7 @@ impl Bench {
             .enumerate()
             .map(|(index, args)| {
                 args.check_num_arguments(expected_num_args, setup.is_some());
-                let id = format_ident!("{id}_{index}");
+                let id = format_indexed_ident(id, index);
                 Bench {
                     id,
                     args,

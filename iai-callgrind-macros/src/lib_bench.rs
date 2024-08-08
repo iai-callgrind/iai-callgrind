@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use derive_more::{Deref, DerefMut};
 use proc_macro2::TokenStream;
 use proc_macro_error::{abort, emit_error};
-use quote::{format_ident, quote, quote_spanned, ToTokens, TokenStreamExt};
+use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::Parse;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
@@ -15,7 +15,7 @@ use syn::{
     MetaNameValue, Token,
 };
 
-use crate::common::{self, format_ident, BenchesArgs};
+use crate::common::{self, format_ident, format_indexed_ident, BenchesArgs};
 use crate::CargoMetadata;
 
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
@@ -182,7 +182,7 @@ impl Bench {
                 .enumerate()
                 .map(|(index, args)| {
                     args.check_num_arguments(expected_num_args, setup.is_some());
-                    let id = format_ident!("{id}_{index}");
+                    let id = format_indexed_ident(id, index);
                     Bench {
                         id,
                         args,
@@ -199,8 +199,8 @@ impl Bench {
                 }
 
                 let mut benches = vec![];
-                for (i, string) in strings.into_iter().enumerate() {
-                    let id = format_ident!("{id}_{i}");
+                for (index, string) in strings.into_iter().enumerate() {
+                    let id = format_indexed_ident(id, index);
                     let expr = if string.is_empty() {
                         parse_quote_spanned! { literal.span() => String::new() }
                     } else {
@@ -685,6 +685,7 @@ pub fn render(args: TokenStream, input: TokenStream) -> syn::Result<TokenStream>
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
+    use quote::format_ident;
     use syn::{Expr, ExprStruct, ItemMod};
 
     use super::*;
@@ -722,7 +723,7 @@ mod tests {
         let rendered_get_config = if let Some(expr) = get_config {
             quote!(
                 #[inline(never)]
-                pub fn get_config()
+                pub fn __get_config()
                 -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
                 {
                     Some(#expr.into())
@@ -731,7 +732,7 @@ mod tests {
         } else {
             quote!(
                 #[inline(never)]
-                pub fn get_config()
+                pub fn __get_config()
                 -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig> {
                     None
                 }
@@ -741,7 +742,7 @@ mod tests {
         for (ident, args) in bench {
             let config = get_config_bench.iter().find_map(|(i, expr)| {
                 (i == ident).then(|| {
-                    let ident = format_ident!("get_config_{}", i);
+                    let ident = format_ident!("__get_config_{}", i);
                     quote!(
                         #[inline(never)]
                         pub fn #ident() -> iai_callgrind::internal::InternalLibraryBenchmarkConfig {
@@ -773,7 +774,7 @@ mod tests {
                     #new_item_fn
                 }
 
-                pub const BENCHES: &[iai_callgrind::internal::InternalMacroLibBench]= &[
+                pub const __BENCHES: &[iai_callgrind::internal::InternalMacroLibBench]= &[
                     #(#benches),*,
                 ];
 
@@ -989,7 +990,7 @@ mod tests {
                         id_display: Some("my_id"),
                         args_display: Some(""),
                         func: my_id,
-                        config: Some(get_config_my_id)
+                        config: Some(__get_config_my_id)
                     }
                 )],
                 &None,
@@ -1026,7 +1027,7 @@ mod tests {
                     id_display: Some("my_id"),
                     args_display: Some(""),
                     func: my_id,
-                    config: Some(get_config_my_id)
+                    config: Some(__get_config_my_id)
                 }
             )],
             &Some(parse_quote!(LibraryBenchmarkConfig::new())),
@@ -1144,7 +1145,7 @@ mod tests {
                     id_display: Some("first"),
                     args_display: Some("1"),
                     func: first,
-                    config: Some(get_config_first)
+                    config: Some(__get_config_first)
                 }),
                 parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
                     id_display: Some("second"),
@@ -1194,7 +1195,7 @@ mod tests {
                     id_display: Some("second"),
                     args_display: Some("2"),
                     func: second,
-                    config: Some(get_config_second)
+                    config: Some(__get_config_second)
                 }),
             ],
             &None,
@@ -1232,13 +1233,13 @@ mod tests {
                     id_display: Some("first"),
                     args_display: Some("1"),
                     func: first,
-                    config: Some(get_config_first)
+                    config: Some(__get_config_first)
                 }),
                 parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
                     id_display: Some("second"),
                     args_display: Some("2"),
                     func: second,
-                    config: Some(get_config_second)
+                    config: Some(__get_config_second)
                 }),
             ],
             &Some(parse_quote!(LibraryBenchmarkConfig::does_not_exist())),

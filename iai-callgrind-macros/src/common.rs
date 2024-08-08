@@ -318,6 +318,10 @@ pub fn format_ident(prefix: &str, ident: Option<&Ident>) -> Ident {
     }
 }
 
+pub fn format_indexed_ident(ident: &Ident, index: usize) -> Ident {
+    format_ident!("{ident}__{index}")
+}
+
 #[cfg(test)]
 mod tests {
     use rstest::rstest;
