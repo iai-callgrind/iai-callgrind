@@ -2,6 +2,11 @@ use std::ffi::OsString;
 
 use crate::internal;
 
+impl_traits!(
+    LibraryBenchmarkConfig,
+    internal::InternalLibraryBenchmarkConfig
+);
+
 /// The main configuration of a library benchmark.
 ///
 /// See [`LibraryBenchmarkConfig::raw_callgrind_args`] for more details.
@@ -564,8 +569,3 @@ impl LibraryBenchmarkConfig {
         self
     }
 }
-
-impl_traits!(
-    LibraryBenchmarkConfig,
-    internal::InternalLibraryBenchmarkConfig
-);

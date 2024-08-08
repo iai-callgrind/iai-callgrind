@@ -1,8 +1,10 @@
 //! The api contains all elements which the `runner` can understand
 use std::ffi::OsString;
 use std::fmt::Display;
+#[cfg(feature = "runner")]
 use std::fs::File;
 use std::path::{Path, PathBuf};
+#[cfg(feature = "runner")]
 use std::process::{Child, Command as StdCommand, Stdio as StdStdio};
 
 #[cfg(feature = "schema")]
@@ -272,6 +274,7 @@ pub enum Pipe {
 }
 
 /// TODO: DOCUMENTATION
+#[cfg(feature = "runner")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Stream {
     Stdin,
@@ -584,6 +587,7 @@ where
 }
 
 impl Stdin {
+    #[cfg(feature = "runner")]
     pub(crate) fn apply(
         &self,
         command: &mut StdCommand,
@@ -647,6 +651,7 @@ impl From<&Path> for Stdin {
 }
 
 impl Stdio {
+    #[cfg(feature = "runner")]
     pub(crate) fn apply(&self, command: &mut StdCommand, stream: Stream) -> Result<(), String> {
         let stdio = match self {
             Stdio::Pipe => StdStdio::piped(),
@@ -679,6 +684,7 @@ impl Stdio {
         Ok(())
     }
 
+    #[cfg(feature = "runner")]
     pub(crate) fn is_pipe(&self) -> bool {
         match self {
             Stdio::Inherit => false,
@@ -705,6 +711,7 @@ impl From<&Path> for Stdio {
     }
 }
 
+#[cfg(feature = "runner")]
 impl Display for Stream {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&format!("{self:?}").to_lowercase())

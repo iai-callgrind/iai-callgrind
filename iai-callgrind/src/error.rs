@@ -44,7 +44,7 @@ impl Display for Errors {
         f.write_str("Error in at least one benchmark group: The following errors occurred:\n")?;
 
         for error in &self.0 {
-            f.write_fmt(format_args!("  {error}\n"))?;
+            f.write_fmt(format_args!("--> {error}\n"))?;
         }
 
         Ok(())

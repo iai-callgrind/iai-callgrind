@@ -29,7 +29,7 @@ cfg-if = { version = "1" }
 clap = { version = "4", features = ["derive", "env"] }
 colored = { version = "2" }
 cty = { version = "0.2" }
-derive_more = { version = "0.99" }
+derive_more = { version = "0.99", default-features = false }
 env_logger = { version = ">=0.7, <0.12" }
 fs_extra = { version = "1.3" }
 glob = { version = "0.3" }
