@@ -304,6 +304,7 @@ impl Groups {
                     let module_path =
                         group_module_path.join(&library_benchmark_bench.function_name);
 
+                    // TODO: Move into LibBench::new
                     let lib_bench = LibBench {
                         bench_index,
                         index,

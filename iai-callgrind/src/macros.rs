@@ -198,7 +198,6 @@ macro_rules! main {
                 config = Some($config.into());
             )?
 
-
             let mut internal_benchmark_groups = $crate::internal::InternalBinaryBenchmarkGroups {
                 config: config.unwrap_or_default(),
                 command_line_args: this_args.collect(),
@@ -819,41 +818,61 @@ macro_rules! main {
 /// ```
 #[macro_export]
 macro_rules! binary_benchmark_group {
-    // TODO: DEPRECATE OLD SYNTAX
     (
+        name = $name:ident; $(;)*
+        $(before = $before:ident $(,bench = $bench_before:literal)? ; $(;)*)?
+        $(after = $after:ident $(,bench = $bench_after:literal)? ; $(;)*)?
+        $(setup = $setup:ident $(,bench = $bench_setup:literal)? ; $(;)*)?
+        $(teardown = $teardown:ident $(,bench = $bench_teardown:literal)? ; $(;)*)?
         $( config = $config:expr ; $(;)* )?
-        benchmark = |$cmd:expr, $group:ident: &mut BinaryBenchmarkGroup| $body:expr
+        benchmark = |$cmd:literal, $group:ident: &mut BinaryBenchmarkGroup| $body:expr
     ) => {
-        compile_error!("A binary_benchmark_group! needs a name\n\nbinary_benchmark_group!(name = some_ident; benchmark = ...);");
+        compile_error!(
+            "You are using a deprecated syntax of the binary_benchmark_group! macro to set up binary \
+            benchmarks. See the README (https://github.com/iai-callgrind/iai-callgrind), the \
+            CHANGELOG on the same page and docs (https://docs.rs/iai-callgrind/latest/iai_callgrind) \
+            for further details."
+        );
     };
     (
+        name = $name:ident; $(;)*
+        $( before = $before:ident $(,bench = $bench_before:literal)? ; $(;)* )?
+        $( after = $after:ident $(,bench = $bench_after:literal)? ; $(;)* )?
+        $( setup = $setup:ident $(,bench = $bench_setup:literal)? ; $(;)* )?
+        $( teardown = $teardown:ident $(,bench = $bench_teardown:literal )? ; $(;)* )?
         $( config = $config:expr ; $(;)* )?
         benchmark = |$group:ident: &mut BinaryBenchmarkGroup| $body:expr
     ) => {
-        compile_error!("A binary_benchmark_group! needs a name\n\nbinary_benchmark_group!(name = some_ident; benchmark = ...);");
+        compile_error!(
+            "You are using a deprecated syntax of the binary_benchmark_group! macro to set up binary \
+            benchmarks. See the README (https://github.com/iai-callgrind/iai-callgrind), the \
+            CHANGELOG on the same page and docs (https://docs.rs/iai-callgrind/latest/iai_callgrind) \
+            for further details."
+        );
     };
     (
-        name = $name:ident;
         $( config = $config:expr ; $(;)* )?
-        benchmark =
+        $( compare_by_id = $compare:literal ; $(;)* )?
+        benchmarks = $( $function:ident ),+ $(,)*
     ) => {
         compile_error!(
-            r#"A binary_benchmark_group! needs an expression specifying `BinaryBenchmarkGroup`:
-binary_benchmark_group!(name = some_ident; benchmark = |group: &mut BinaryBenchmarkGroup| ... );
-OR
-binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut BinaryBenchmarkGroup| ... );
-"#);
+            "A binary_benchmark_group! needs a unique name. See the documentation of this macro for
+            further details.\n\n\
+            hint = binary_benchmark_group!(name = some_ident; benchmarks = some_binary_benchmark);"
+        );
     };
     (
-        name = $name:ident;
+        name = $name:ident; $(;)*
         $( config = $config:expr ; $(;)* )?
         $( compare_by_id = $compare:literal ; $(;)* )?
         benchmarks =
     ) => {
         compile_error!(
-            "A binary_benchmark_group! needs at least 1 benchmark function \
-            annotated with #[binary_benchmark]\n\n\
-            binary_benchmark_group!(name = some_ident; benchmarks = some_library_benchmark);");
+            "A binary_benchmark_group! needs at least 1 benchmark function which is annotated with
+            #[binary_benchmark] or you can use the low level syntax. See the documentation of this
+            macro for further details.\n\n\
+            hint = binary_benchmark_group!(name = some_ident; benchmarks = some_binary_benchmark);"
+        );
     };
     (
         name = $name:ident; $(;)*
@@ -1026,25 +1045,6 @@ binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut Bi
                 $body;
             }
         }
-    };
-    (
-        name = $name:ident; $(;)*
-        $(before = $before:ident $(,bench = $bench_before:literal)? ; $(;)*)?
-        $(after = $after:ident $(,bench = $bench_after:literal)? ; $(;)*)?
-        $(setup = $setup:ident $(,bench = $bench_setup:literal)? ; $(;)*)?
-        $(teardown = $teardown:ident $(,bench = $bench_teardown:literal)? ; $(;)*)?
-        $( config = $config:expr ; $(;)* )?
-        benchmark = |$group:ident: &mut BinaryBenchmarkGroup| $body:expr
-    ) => {
-        $crate::binary_benchmark_group!(
-            name = $name;
-            $(before = $before $(,bench = $bench_before)?;)?
-            $(after = $after $(,bench = $bench_after)?;)?
-            $(setup = $setup $(,bench = $bench_setup)?;)?
-            $(teardown = $teardown $(,bench = $bench_teardown)?;)?
-            $( config = $config; )?
-            benchmark = |"", $group: &mut BinaryBenchmarkGroup| $body
-        );
     };
 }
 

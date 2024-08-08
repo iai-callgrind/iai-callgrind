@@ -733,7 +733,6 @@ pub fn enable_error_reporting() {
     );
 }
 
-// TODO: CHECK RETURN VALUE: 0 is default (when not running under valgrind)
 /// Execute a monitor command from the client program
 ///
 /// If a connection is opened with GDB, the output will be sent according to the output mode set for
