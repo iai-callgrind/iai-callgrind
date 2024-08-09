@@ -22,6 +22,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.3] - 2024-08-09
+
+### Added
+
+* ([#221](https://github.com/iai-callgrind/iai-callgrind/pull/221)): Add the
+  `LibraryBenchmarkConfig::truncate_description` and
+  `BinaryBenchmarkConfig::truncate_description` method to be able to adjust
+  the truncation behaviour of the `DESCRIPTION` (as in
+  `benchmark_file::group::function_name id:DESCRIPTION`) in the benchmark
+  output.
+
+### Changed
+
+* ([#221](https://github.com/iai-callgrind/iai-callgrind/pull/221)): Slightly
+  increase the default truncation length of the description in the benchmark
+  output to 50 ascii characters.
+* Update locked non-development dependencies:
+    * `tempfile`: 3.11.0 -> 3.12.0
+    * `serde`: 1.0.204 -> 1.0.205
+
 ## [0.12.2] - 2024-08-06
 
 ### Added
