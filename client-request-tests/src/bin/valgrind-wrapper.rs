@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt::Display;
 use std::io::{stderr, BufRead, BufReader, Write};
 use std::ops::Deref;
@@ -49,6 +50,12 @@ lazy_static! {
         regex::Regex::new(r"0x[0-9A-Za-z]+").expect("Regex should compile");
     static ref CACHEGRIND_NUM_REFS_RE: Regex =
         regex::Regex::new(r"((I|D|LL)\s*refs:\s*)([ 0-9,()+rdw]*)\s*$").expect("Regex should compile");
+    static ref WARNING_EXIDX_RE: Regex =
+        regex::Regex::new(r"^[ ]*Warning: whilst reading EXIDX:.*$").expect("Regex should compile");
+    static ref READING_EXIDX_RE: Regex =
+        regex::Regex::new(r"^[ ]*Reading EXIDX entries:.*$").expect("Regex should compile");
+    static ref NUMBER_RE: Regex =
+        regex::Regex::new(r"[0-9]+").expect("Regex should compile");
 }
 
 #[derive(Debug)]
@@ -204,6 +211,7 @@ fn cachegrind_filter(bytes: &[u8], writer: &mut impl Write) {
             }
             continue;
         }
+
         let rest = STRIP_PREFIX_RE
             .captures(&line)
             .unwrap_or_else(|| {
@@ -213,7 +221,16 @@ fn cachegrind_filter(bytes: &[u8], writer: &mut impl Write) {
             .unwrap()
             .as_str();
 
-        let replaced = CACHEGRIND_NUM_REFS_RE.replace_all(rest, "$1<__FILTER__>");
+        if WARNING_EXIDX_RE.is_match(rest) {
+            continue;
+        }
+        let rest = if READING_EXIDX_RE.is_match(rest) {
+            NUMBER_RE.replace_all(rest, "<__NUMBER__>")
+        } else {
+            Cow::Borrowed(rest)
+        };
+
+        let replaced = CACHEGRIND_NUM_REFS_RE.replace_all(&rest, "$1<__FILTER__>");
         writeln!(writer, "{replaced}").unwrap();
     }
 }
