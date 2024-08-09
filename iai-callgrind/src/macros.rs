@@ -919,6 +919,8 @@ macro_rules! binary_benchmark_group {
     (
         $( config = $config:expr ; $(;)* )?
         $( compare_by_id = $compare:literal ; $(;)* )?
+        $( setup = $setup:expr $(,bench = $bench_setup:literal)? ; $(;)* )?
+        $( teardown = $teardown:expr $(,bench = $bench_teardown:literal)? ; $(;)* )?
         benchmarks = $( $function:ident ),+ $(,)*
     ) => {
         compile_error!(
@@ -931,6 +933,8 @@ macro_rules! binary_benchmark_group {
         name = $name:ident; $(;)*
         $( config = $config:expr ; $(;)* )?
         $( compare_by_id = $compare:literal ; $(;)* )?
+        $( setup = $setup:expr $(,bench = $bench_setup:literal)? ; $(;)* )?
+        $( teardown = $teardown:expr $(,bench = $bench_teardown:literal)? ; $(;)* )?
         benchmarks =
     ) => {
         compile_error!(
@@ -942,10 +946,10 @@ macro_rules! binary_benchmark_group {
     };
     (
         name = $name:ident; $(;)*
-        $( setup = $setup:expr $(,bench = $bench_setup:literal)? ; $(;)* )?
-        $( teardown = $teardown:expr $(,bench = $bench_teardown:literal)? ; $(;)* )?
         $( config = $config:expr ; $(;)* )?
         $( compare_by_id = $compare:literal ; $(;)* )?
+        $( setup = $setup:expr $(,bench = $bench_setup:literal)? ; $(;)* )?
+        $( teardown = $teardown:expr $(,bench = $bench_teardown:literal)? ; $(;)* )?
         benchmarks = $( $function:ident ),+ $(,)*
     ) => {
         pub mod $name {
@@ -1017,6 +1021,7 @@ macro_rules! binary_benchmark_group {
         $( setup = $setup:expr; $(;)* )?
         $( teardown = $teardown:expr; $(;)* )?
         $( config = $config:expr; $(;)* )?
+        $( compare_by_id = $compare:literal ; $(;)* )?
         benchmarks = |$group:ident: &mut BinaryBenchmarkGroup| $body:expr
     ) => {
         pub mod $name {
