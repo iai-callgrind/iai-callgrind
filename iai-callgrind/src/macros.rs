@@ -1,6 +1,36 @@
 //! Contains macros which together define a benchmark harness that can be used in place of the
 //! standard benchmark harness. This allows the user to run Iai benchmarks with `cargo bench`.
 
+/// TODO: DOCUMENTATION
+/// TODO: TESTS
+#[macro_export]
+macro_rules! binary_benchmark_attribute {
+    ($name:ident) => {{
+        let mut binary_benchmark = $crate::BinaryBenchmark::new(stringify!($name));
+
+        for internal_bench in $name::__BENCHES {
+            let mut bench = if let Some(id) = internal_bench.id_display {
+                Bench::new(id)
+            } else {
+                // TODO: the output is different if we're using an id
+                Bench::new(stringify!($name))
+            };
+            let mut bench = bench.command((internal_bench.func)());
+            if let Some(setup) = internal_bench.setup {
+                bench.setup(setup);
+            }
+            if let Some(teardown) = internal_bench.teardown {
+                bench.teardown(teardown);
+            }
+            if let Some(config) = internal_bench.config {
+                bench.config(config());
+            }
+            binary_benchmark.bench(bench);
+        }
+        binary_benchmark
+    }};
+}
+
 /// The `iai_callgrind::main` macro expands to a `main` function which runs all of the benchmarks.
 ///
 /// Using Iai-callgrind requires disabling the benchmark harness. This can be done like so in the
@@ -352,7 +382,7 @@ macro_rules! main {
                                             args: None,
                                             function_name: binary_benchmark.id.clone().into(),
                                             command: command.into(),
-                                            config: bench.config.map(Into::into),
+                                            config: bench.config.clone(),
                                             has_setup: bench.setup.is_some()
                                                     || binary_benchmark.setup.is_some(),
                                             has_teardown: bench.teardown.is_some()
@@ -393,7 +423,7 @@ macro_rules! main {
                                                 args: None,
                                                 function_name: binary_benchmark.id.to_string(),
                                                 command: command.into(),
-                                                config: bench.config.as_ref().map(Into::into),
+                                                config: bench.config.clone(),
                                                 has_setup: bench.setup.is_some()
                                                         || binary_benchmark.setup.is_some(),
                                                 has_teardown: bench.teardown.is_some()

@@ -1,6 +1,6 @@
 use iai_callgrind::{
-    binary_benchmark, binary_benchmark_group, main, Bench, BinaryBenchmark, BinaryBenchmarkConfig,
-    BinaryBenchmarkGroup, Command, Sandbox,
+    binary_benchmark, binary_benchmark_attribute, binary_benchmark_group, main, Bench,
+    BinaryBenchmark, BinaryBenchmarkConfig, BinaryBenchmarkGroup, Command, Sandbox,
 };
 
 #[binary_benchmark]
@@ -64,27 +64,30 @@ binary_benchmark_group!(
 );
 
 fn setup_group(group: &mut BinaryBenchmarkGroup) {
-    group.binary_benchmark(
-        BinaryBenchmark::new("some_id")
-            .setup(|| println!("IN BINARY BENCHMARK SETUP"))
-            .teardown(|| println!("IN BINARY BENCHMARK TEARDOWN"))
-            .bench(
-                Bench::new("other id")
-                    .command(Command::new("/usr/bin/echo").arg("1"))
-                    .setup(|| {
-                        println!("IN SETUP");
-                        my_mod::setup_me("set me up");
-                    })
-                    .teardown(|| {
-                        println!("IN TEARDOWN");
-                        teardown(10);
-                    }),
-            )
-            .bench(
-                Bench::new("global setup and teardown")
-                    .command(Command::new("/usr/bin/echo").arg("2")),
-            ),
-    );
+    group
+        .binary_benchmark(
+            BinaryBenchmark::new("some_id")
+                .setup(|| println!("IN BINARY BENCHMARK SETUP"))
+                .teardown(|| println!("IN BINARY BENCHMARK TEARDOWN"))
+                .bench(
+                    Bench::new("other id")
+                        .config(BinaryBenchmarkConfig::default())
+                        .command(Command::new("/usr/bin/echo").arg("1"))
+                        .setup(|| {
+                            println!("IN SETUP");
+                            my_mod::setup_me("set me up");
+                        })
+                        .teardown(|| {
+                            println!("IN TEARDOWN");
+                            teardown(10);
+                        }),
+                )
+                .bench(
+                    Bench::new("global setup and teardown")
+                        .command(Command::new("/usr/bin/echo").arg("2")),
+                ),
+        )
+        .binary_benchmark(binary_benchmark_attribute!(benches));
 }
 
 binary_benchmark_group!(

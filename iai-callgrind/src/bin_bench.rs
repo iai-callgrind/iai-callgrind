@@ -47,7 +47,7 @@ pub struct Bench {
     /// TODO: DOCUMENTATION
     pub commands: Vec<Command>,
     /// TODO: DOCUMENTATION
-    pub config: Option<BinaryBenchmarkConfig>,
+    pub config: Option<internal::InternalBinaryBenchmarkConfig>,
     /// TODO: DOCUMENTATION
     pub setup: Option<fn()>,
     /// TODO: DOCUMENTATION
@@ -60,7 +60,7 @@ pub struct BinaryBenchmark {
     /// TODO: DOCUMENTATION
     pub id: BenchmarkId,
     /// TODO: DOCUMENTATION
-    pub config: Option<BinaryBenchmarkConfig>,
+    pub config: Option<internal::InternalBinaryBenchmarkConfig>,
     /// TODO: DOCUMENTATION
     pub benches: Vec<Bench>,
     /// TODO: DOCUMENTATION
@@ -126,7 +126,7 @@ impl Bench {
     /// TODO: DOCUMENTATION
     pub fn config<T>(&mut self, config: T) -> &mut Self
     where
-        T: Into<BinaryBenchmarkConfig>,
+        T: Into<internal::InternalBinaryBenchmarkConfig>,
     {
         self.config = Some(config.into());
         self
@@ -311,7 +311,7 @@ impl BinaryBenchmark {
     /// TODO: DOCUMENTATION
     pub fn config<T>(&mut self, config: T) -> &mut Self
     where
-        T: Into<BinaryBenchmarkConfig>,
+        T: Into<internal::InternalBinaryBenchmarkConfig>,
     {
         self.config = Some(config.into());
         self
