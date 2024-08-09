@@ -178,8 +178,6 @@ impl Benchmark for BaselineBenchmark {
             child,
         )?;
 
-        // TODO: Run teardown and sandbox.reset if the callgrind command fails? Also in
-        // SaveBaselineBenchmark and ToolConfigs
         if let Some(teardown) = &bin_bench.teardown {
             teardown.run(config, &bin_bench.module_path)?;
         }
@@ -715,7 +713,6 @@ impl Benchmark for SaveBaselineBenchmark {
             child,
         )?;
 
-        // TODO: Run teardown and sandbox.reset if the callgrind command fails?
         if let Some(teardown) = &bin_bench.teardown {
             teardown.run(config, &bin_bench.module_path)?;
         }

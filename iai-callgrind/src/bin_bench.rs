@@ -10,9 +10,7 @@ use crate::{internal, Stdin, Stdio};
 
 /// An id for an [`Arg`] which can be used to produce unique ids from parameters
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct BenchmarkId {
-    id: String,
-}
+pub struct BenchmarkId(String);
 
 /// The main configuration of a binary benchmark.
 ///
@@ -209,10 +207,7 @@ impl BenchmarkId {
         T: AsRef<str>,
         P: Display,
     {
-        // TODO: CHECK VALIDITY OF ID
-        Self {
-            id: format!("{}_{parameter}", id.as_ref()),
-        }
+        Self(format!("{}_{parameter}", id.as_ref()))
     }
 
     /// TODO: DOCUMENTATION
@@ -220,20 +215,71 @@ impl BenchmarkId {
     where
         T: Into<String>,
     {
-        Self { id: id.into() }
+        Self(id.into())
+    }
+
+    /// TODO: DOCUMENTATION
+    /// Returns the validate of this [`BenchmarkId`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if .
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if .
+    pub fn validate(&self) -> Result<(), String> {
+        if self.0.is_empty() {
+            return Err("Invalid id: Cannot be empty".to_owned());
+        }
+
+        let mut bytes = self.0.bytes();
+        // This unwrap is safe, since we just checked that the string is not empty
+        let first = bytes.next().unwrap();
+
+        if first.is_ascii_alphabetic() || first == b'_' {
+            for byte in bytes {
+                if byte.is_ascii() {
+                    if !(byte.is_ascii_alphanumeric() || byte == b'_') {
+                        return Err(format!(
+                            "Invalid id '{}': Invalid character '{}'",
+                            &self.0,
+                            char::from(byte)
+                        ));
+                    }
+                } else {
+                    return Err(format!(
+                        "Invalid id '{}': Encountered non-ascii character",
+                        &self.0
+                    ));
+                }
+            }
+        } else if first.is_ascii() {
+            return Err(format!(
+                "Invalid id '{}': As first character is '{}' not allowed",
+                &self.0,
+                char::from(first)
+            ));
+        } else {
+            return Err(format!(
+                "Invalid id '{}': Encountered non-ascii character as first character",
+                &self.0
+            ));
+        }
+        Ok(())
     }
 }
 
 impl Display for BenchmarkId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.id)
+        f.write_str(&self.0)
     }
 }
 
 // TODO: REMOVE in favour of TryFrom
 impl From<BenchmarkId> for String {
     fn from(value: BenchmarkId) -> Self {
-        value.id
+        value.0
     }
 }
 
@@ -243,9 +289,7 @@ where
     T: AsRef<str>,
 {
     fn from(value: T) -> Self {
-        Self {
-            id: value.as_ref().to_owned(),
-        }
+        Self(value.as_ref().to_owned())
     }
 }
 
@@ -1339,5 +1383,78 @@ impl Sandbox {
     {
         self.0.fixtures.extend(paths.into_iter().map(Into::into));
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use super::*;
+
+    #[rstest]
+    #[case::empty("")]
+    #[case::simple_invalid("-")]
+    #[case::when_0_char_minus_1("a\x2f")]
+    #[case::when_9_char_plus_1("a\x3a")]
+    #[case::when_big_a_char_minus_1("\x40")]
+    #[case::when_big_z_char_plus_1("\x5b")]
+    #[case::when_low_a_char_minus_1("\x60")]
+    #[case::when_low_z_char_plus_1("\x7b")]
+    #[case::invalid_2nd("a-")]
+    #[case::invalid_3rd("ab-")]
+    #[case::all_invalid("---")]
+    #[case::number_as_first("0")]
+    // This would be a valid rust identifier, but we don't allow the whole set
+    #[case::non_ascii_1st("µ")]
+    #[case::non_ascii_2nd("aµ")]
+    #[case::non_ascii_3rd("aaµ")]
+    #[case::non_ascii_middle("aµa")]
+    fn test_benchmark_id_validate_when_error(#[case] id: &str) {
+        let id = BenchmarkId::new(id);
+        assert!(id.validate().is_err());
+    }
+
+    #[rstest]
+    #[case::lowercase_a("a")]
+    #[case::lowercase_b("b")]
+    #[case::lowercase_m("m")]
+    #[case::lowercase_y("y")]
+    #[case::lowercase_z("z")]
+    #[case::uppercase_a("A")]
+    #[case::uppercase_b("B")]
+    #[case::uppercase_n("N")]
+    #[case::uppercase_y("Y")]
+    #[case::uppercase_z("Z")]
+    #[case::zero_2nd("a0")]
+    #[case::one_2nd("a1")]
+    #[case::eight_2nd("a8")]
+    #[case::nine_2nd("a9")]
+    #[case::number_middle("b4t")]
+    #[case::underscore("_")]
+    #[case::only_underscore("___")]
+    #[case::underscore_last("a_")]
+    #[case::mixed_all("auAEwer9__2xcd")]
+    fn test_benchmark_id_validate(#[case] id: &str) {
+        let id = BenchmarkId::new(id);
+        assert!(id.validate().is_ok());
+    }
+
+    #[rstest]
+    #[case::empty("", "Invalid id: Cannot be empty")]
+    #[case::non_ascii_first(
+        "µ",
+        "Invalid id 'µ': Encountered non-ascii character as first character"
+    )]
+    #[case::multibyte_middle("aµ", "Invalid id 'aµ': Encountered non-ascii character")]
+    #[case::non_ascii_middle("a-", "Invalid id 'a-': Invalid character '-'")]
+    #[case::invalid_first("-", "Invalid id '-': As first character is '-' not allowed")]
+    fn test_benchmark_id_validate_error_message(#[case] id: &str, #[case] message: &str) {
+        let id = BenchmarkId::new(id);
+        assert_eq!(
+            id.validate()
+                .expect_err("Validation should return an error"),
+            message
+        );
     }
 }

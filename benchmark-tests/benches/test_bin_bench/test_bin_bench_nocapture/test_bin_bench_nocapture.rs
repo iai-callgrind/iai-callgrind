@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use iai_callgrind::{
     self, binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Pipe, Stdin,
     Stdio, Tool, ValgrindTool,
@@ -16,7 +14,7 @@ fn setup() {
 fn bench_echo() -> iai_callgrind::Command {
     iai_callgrind::Command::new(ECHO)
         .args(["1", "2"])
-        .stdout(Stdio::File(PathBuf::from("bench.out")))
+        .stdout(Stdio::Inherit)
         .stderr(Stdio::Null)
         .build()
 }
@@ -29,8 +27,6 @@ fn bench_echo() -> iai_callgrind::Command {
 fn bench_pipe() -> iai_callgrind::Command {
     iai_callgrind::Command::new(PIPE)
         .stdin(Stdin::Setup(Pipe::Stdout))
-        // .stdout(Stdio::Null)
-        // .stderr(Stdio::Null)
         .build()
 }
 

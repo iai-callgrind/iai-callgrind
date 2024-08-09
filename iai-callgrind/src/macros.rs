@@ -267,6 +267,17 @@ macro_rules! main {
                     }
 
                     for binary_benchmark in group.binary_benchmarks {
+                        if let Err(message) = binary_benchmark.id.validate() {
+                            errors.add(
+                                $crate::error::Error::BinaryBenchmarkError(
+                                    module_path.to_owned(),
+                                    internal_group.id.clone(),
+                                    binary_benchmark.id.to_string(),
+                                    message
+                                )
+                            );
+                            continue;
+                        }
                         if !binary_benchmark_ids.insert(binary_benchmark.id.clone()) {
                             errors.add(
                                 $crate::error::Error::BinaryBenchmarkError(
@@ -276,6 +287,7 @@ macro_rules! main {
                                     "Duplicate binary benchmark id".to_owned()
                                 )
                             );
+                            continue;
                         }
 
                         let mut internal_binary_benchmark =
@@ -312,6 +324,17 @@ macro_rules! main {
                                     );
                                 },
                                 [command] => {
+                                    if let Err(message) = bench.id.validate() {
+                                        errors.add(
+                                            $crate::error::Error::BenchError(
+                                                module_path.to_owned(),
+                                                internal_group.id.clone(),
+                                                binary_benchmark.id.to_string(),
+                                                bench.id.to_string(),
+                                                message
+                                            )
+                                        );
+                                    }
                                     if !bench_ids.insert(bench.id.clone()) {
                                         errors.add(
                                             $crate::error::Error::BenchError(
@@ -340,6 +363,18 @@ macro_rules! main {
                                 commands => {
                                     for (index, command) in commands.iter().enumerate() {
                                         let bench_id: $crate::BenchmarkId = format!("{}__{}", bench.id, index).into();
+                                        if let Err(message) = bench_id.validate() {
+                                            errors.add(
+                                                $crate::error::Error::BenchError(
+                                                    module_path.to_owned(),
+                                                    internal_group.id.clone(),
+                                                    binary_benchmark.id.to_string(),
+                                                    bench_id.to_string(),
+                                                    message
+                                                )
+                                            );
+                                            continue;
+                                        }
                                         if !bench_ids.insert(bench_id.clone()) {
                                             errors.add(
                                                 $crate::error::Error::BenchError(
@@ -350,6 +385,7 @@ macro_rules! main {
                                                     format!("Duplicate id: '{}'", bench_id)
                                                 )
                                             );
+                                            continue;
                                         }
                                         let internal_bench =
                                             $crate::internal::InternalBinaryBenchmarkBench {

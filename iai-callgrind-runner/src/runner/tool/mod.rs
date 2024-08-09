@@ -459,7 +459,6 @@ impl ToolConfigs {
                 child,
             )?;
 
-            // TODO: Run teardown and sandbox.reset if the command fails?
             if let Some(teardown) = &teardown {
                 teardown.run(config, module_path)?;
             }

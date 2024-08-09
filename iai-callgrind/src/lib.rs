@@ -358,7 +358,6 @@ pub mod internal;
 mod lib_bench;
 #[cfg(feature = "default")]
 mod macros;
-
 #[cfg(feature = "default")]
 pub use bin_bench::{
     Bench, BenchmarkId, BinaryBenchmark, BinaryBenchmarkConfig, BinaryBenchmarkGroup, Command,

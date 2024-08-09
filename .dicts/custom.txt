@@ -115,6 +115,7 @@ mipsel
 mispredicted
 mmap
 msvc
+multibyte
 nanomips
 noaccess
 nocapture

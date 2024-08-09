@@ -65,7 +65,7 @@ binary_benchmark_group!(
 
 fn setup_group(group: &mut BinaryBenchmarkGroup) {
     group.binary_benchmark(
-        BinaryBenchmark::new("some id")
+        BinaryBenchmark::new("some_id")
             .setup(|| println!("IN BINARY BENCHMARK SETUP"))
             .teardown(|| println!("IN BINARY BENCHMARK TEARDOWN"))
             .bench(

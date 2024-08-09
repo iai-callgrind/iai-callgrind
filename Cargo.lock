@@ -730,6 +730,7 @@ dependencies = [
  "iai-callgrind-macros",
  "iai-callgrind-runner",
  "regex",
+ "rstest",
  "serde",
  "serde_json",
  "strum",
