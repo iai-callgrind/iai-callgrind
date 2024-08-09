@@ -81,6 +81,7 @@ dpkg
 dtolnay
 elems
 estimatedcycles
+exidx
 exitcode
 flamegraph
 flamegraphs
