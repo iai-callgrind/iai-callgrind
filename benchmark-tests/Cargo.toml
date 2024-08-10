@@ -60,22 +60,22 @@ path = "src/helper/pipe.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_bin_bench/test_bin_bench_dev/test_bin_bench_dev.rs"
+path = "benches/test_bin_bench/dev/test_bin_bench_dev.rs"
 name = "test_bin_bench_dev"
 
 [[bench]]
 harness = false
-path = "benches/test_bin_bench/test_bin_bench_setup_and_teardown/test_bin_bench_setup_and_teardown.rs"
+path = "benches/test_bin_bench/setup_and_teardown/test_bin_bench_setup_and_teardown.rs"
 name = "test_bin_bench_setup_and_teardown"
 
 [[bench]]
 harness = false
-path = "benches/test_bin_bench/test_bin_bench_main_and_group_setup_and_teardown/test_bin_bench_main_and_group_setup_and_teardown.rs"
+path = "benches/test_bin_bench/main_and_group_setup_and_teardown/test_bin_bench_main_and_group_setup_and_teardown.rs"
 name = "test_bin_bench_main_and_group_setup_and_teardown"
 
 [[bench]]
 harness = false
-path = "benches/test_bin_bench/test_bin_bench_nocapture/test_bin_bench_nocapture.rs"
+path = "benches/test_bin_bench/nocapture/test_bin_bench_nocapture.rs"
 name = "test_bin_bench_nocapture"
 
 [[bench]]
@@ -85,67 +85,67 @@ name = "test_bin_bench_compare_by_id"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/test_lib_bench_flamegraph/test_lib_bench_flamegraph.rs"
+path = "benches/test_lib_bench/flamegraph/test_lib_bench_flamegraph.rs"
 name = "test_lib_bench_flamegraph"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/test_lib_bench_cache_sim/test_lib_bench_cache_sim.rs"
+path = "benches/test_lib_bench/cache_sim/test_lib_bench_cache_sim.rs"
 name = "test_lib_bench_cache_sim"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/test_lib_bench_groups/test_lib_bench_groups.rs"
+path = "benches/test_lib_bench/groups/test_lib_bench_groups.rs"
 name = "test_lib_bench_groups"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/test_lib_bench_compare/test_lib_bench_compare.rs"
+path = "benches/test_lib_bench/compare/test_lib_bench_compare.rs"
 name = "test_lib_bench_compare"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/test_lib_bench_groups_envs/test_lib_bench_groups_envs.rs"
+path = "benches/test_lib_bench/groups_envs/test_lib_bench_groups_envs.rs"
 name = "test_lib_bench_groups_envs"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/test_lib_bench_readme_example_fibonacci/test_lib_bench_readme_example_fibonacci.rs"
+path = "benches/test_lib_bench/readme_example_fibonacci/test_lib_bench_readme_example_fibonacci.rs"
 name = "test_lib_bench_readme_example_fibonacci"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/test_lib_bench_tools/test_lib_bench_tools.rs"
+path = "benches/test_lib_bench/tools/test_lib_bench_tools.rs"
 name = "test_lib_bench_tools"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/test_lib_bench_setup_and_teardown/test_lib_bench_setup_and_teardown.rs"
+path = "benches/test_lib_bench/setup_and_teardown/test_lib_bench_setup_and_teardown.rs"
 name = "test_lib_bench_setup_and_teardown"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/test_lib_bench_nocapture/test_lib_bench_nocapture.rs"
+path = "benches/test_lib_bench/nocapture/test_lib_bench_nocapture.rs"
 name = "test_lib_bench_nocapture"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/test_lib_bench_compiler_optimization/test_lib_bench_compiler_optimization.rs"
+path = "benches/test_lib_bench/compiler_optimization/test_lib_bench_compiler_optimization.rs"
 name = "test_lib_bench_compiler_optimization"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/test_lib_bench_generics/test_lib_bench_generics.rs"
+path = "benches/test_lib_bench/generics/test_lib_bench_generics.rs"
 name = "test_lib_bench_generics"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/test_lib_bench_main_and_group_setup_and_teardown/test_lib_bench_main_and_group_setup_and_teardown.rs"
+path = "benches/test_lib_bench/main_and_group_setup_and_teardown/test_lib_bench_main_and_group_setup_and_teardown.rs"
 name = "test_lib_bench_main_and_group_setup_and_teardown"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/test_lib_bench_file_parameter/test_lib_bench_file_parameter.rs"
+path = "benches/test_lib_bench/file_parameter/test_lib_bench_file_parameter.rs"
 name = "test_lib_bench_file_parameter"
 
 [[bench]]
