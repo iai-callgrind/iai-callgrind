@@ -1,5 +1,7 @@
 use std::collections::HashMap;
+use std::ffi::OsString;
 use std::io::stderr;
+use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 
@@ -25,7 +27,9 @@ use super::tool::{
 use crate::api::{self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, Stdin};
 use crate::error::Error;
 use crate::runner::format;
+use crate::util::make_absolute;
 
+// TODO: SEARCH FOR MORE DEFAULTS, ALSO IN OTHER modules
 mod defaults {
     pub const REGRESSION_FAIL_FAST: bool = false;
     pub const ENV_CLEAR: bool = true;
@@ -42,7 +46,7 @@ pub struct BinBench {
     pub id: Option<String>,
     pub args: Option<String>,
     pub function_name: String,
-    pub command: api::Command,
+    pub command: Command,
     pub run_options: RunOptions,
     pub callgrind_args: Args,
     pub flamegraph_config: Option<FlamegraphConfig>,
@@ -53,6 +57,17 @@ pub struct BinBench {
     pub sandbox: Option<api::Sandbox>,
     pub module_path: ModulePath,
     pub truncate_description: Option<usize>,
+}
+
+/// The Command we derive from the `api::Command`
+///
+/// If the path is relative we convert it to an absolute path relative to the workspace root.
+/// `stdin`, `stdout`, `stderr` of the `api::Command` are part of the `RunOptions` and not part of
+/// this `Command`
+#[derive(Debug, Clone)]
+pub struct Command {
+    pub path: PathBuf,
+    pub args: Vec<OsString>,
 }
 
 #[derive(Debug)]
@@ -266,10 +281,16 @@ impl BinBench {
             .module_path
             .join(&binary_benchmark_bench.function_name);
 
-        let command = binary_benchmark_bench.command;
-        if command.path.display().to_string().is_empty() {
-            return Err(anyhow!("{module_path}: Empty path in command",));
-        }
+        let api::Command {
+            path,
+            args,
+            stdin,
+            stdout,
+            stderr,
+            ..
+        } = binary_benchmark_bench.command;
+
+        let command = Command::new(meta, &module_path, path, args)?;
 
         let envs = config.resolve_envs();
 
@@ -280,15 +301,6 @@ impl BinBench {
             id: binary_benchmark_bench.id,
             args: binary_benchmark_bench.args,
             function_name: binary_benchmark_bench.function_name,
-            run_options: RunOptions {
-                env_clear: config.env_clear.unwrap_or(defaults::ENV_CLEAR),
-                envs,
-                stdin: command.stdin.clone(),
-                stdout: command.stdout.clone(),
-                stderr: command.stderr.clone(),
-                exit_with: config.exit_with,
-                current_dir: config.current_dir,
-            },
             callgrind_args,
             flamegraph_config,
             regression_config: api::update_option(
@@ -303,7 +315,7 @@ impl BinBench {
                     AssistantKind::Setup,
                     &group.name,
                     (group_index, bench_index),
-                    command.stdin.as_ref().and_then(|s| {
+                    stdin.as_ref().and_then(|s| {
                         if let Stdin::Setup(p) = s {
                             Some(p.clone())
                         } else {
@@ -319,6 +331,15 @@ impl BinBench {
                     None,
                 ),
             ),
+            run_options: RunOptions {
+                env_clear: config.env_clear.unwrap_or(defaults::ENV_CLEAR),
+                envs,
+                stdin,
+                stdout,
+                stderr,
+                exit_with: config.exit_with,
+                current_dir: config.current_dir,
+            },
             sandbox: config.sandbox,
             module_path,
             command,
@@ -378,6 +399,30 @@ impl BinBench {
         } else {
             vec![]
         }
+    }
+}
+
+impl Command {
+    fn new(
+        meta: &Metadata,
+        module_path: &ModulePath,
+        path: PathBuf,
+        args: Vec<OsString>,
+    ) -> Result<Self> {
+        if path.display().to_string().is_empty() {
+            return Err(anyhow!("{module_path}: Empty path in command",));
+        }
+
+        let command = if path.is_relative() {
+            Self {
+                path: make_absolute(&meta.project_root, path),
+                args,
+            }
+        } else {
+            Self { path, args }
+        };
+
+        Ok(command)
     }
 }
 

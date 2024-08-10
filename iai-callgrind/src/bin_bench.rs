@@ -1025,6 +1025,8 @@ impl BinaryBenchmarkGroup {
 // TODO: DELAY FUNCTION to delay the start of the main process if required.
 impl Command {
     /// TODO: DOCUMENTATION
+    /// Relative paths are always interpreted as relative to the workspace root as reported by
+    /// cargo.
     pub fn new<T>(path: T) -> Self
     where
         T: AsRef<OsStr>,
