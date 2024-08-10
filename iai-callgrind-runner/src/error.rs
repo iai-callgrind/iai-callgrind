@@ -15,6 +15,7 @@ pub enum Error {
     InitError(String),
     VersionMismatch(version_compare::Cmp, String, String),
     LaunchError(PathBuf, String),
+    /// (`process_name`, [`Output`], [`ExitStatus`], [`ToolOutputPath`])
     ProcessError((String, Option<Output>, ExitStatus, Option<ToolOutputPath>)),
     InvalidCallgrindBoolArgument((String, String)),
     ParseError((PathBuf, String)),

@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::fs::File;
 use std::io::{stderr, stdout, BufRead, Read, Write as IOWrite};
+use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 
@@ -36,6 +37,9 @@ lazy_static! {
     )
     .expect("Regex should compile");
     static ref RUNNING_RE: Regex = Regex::new(r"^[ ]+Running .*$").expect("Regex should compile");
+    static ref PROCESS_DID_NOT_EXIT_SUCCESSFULLY_RE: Regex =
+        Regex::new(r"^([ ]+process didn't exit successfully: `)(.*)(` \(exit status: .*\).*)$")
+            .expect("Regex should compile");
 }
 
 #[derive(Debug, Clone)]
@@ -84,6 +88,8 @@ struct ExpectedConfig {
     stdout: Option<PathBuf>,
     #[serde(default)]
     stderr: Option<PathBuf>,
+    #[serde(default)]
+    exit_code: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -167,7 +173,7 @@ impl Benchmark {
         }
     }
 
-    pub fn run_bench(&self, args: &[String], capture: bool) -> Option<BenchmarkOutput> {
+    pub fn run_bench(&self, args: &[String], capture: bool) -> BenchmarkOutput {
         let stdio = if capture {
             std::env::set_var("IAI_CALLGRIND_COLOR", "never");
             Stdio::piped
@@ -191,9 +197,7 @@ impl Benchmark {
             .output()
             .expect("Launching benchmark should succeed");
 
-        assert!(output.status.success(), "Expected run to be successful");
-
-        capture.then_some(BenchmarkOutput(output))
+        BenchmarkOutput(output)
     }
 
     pub fn run_template(
@@ -203,7 +207,7 @@ impl Benchmark {
         template_data: &HashMap<String, minijinja::Value>,
         meta: &Metadata,
         capture: bool,
-    ) -> Option<BenchmarkOutput> {
+    ) -> BenchmarkOutput {
         let mut template_string = String::new();
         File::open(self.dir.join(template_path))
             .expect("File should exist")
@@ -286,9 +290,9 @@ impl BenchmarkOutput {
     fn assert(&self, bench_dir: &Path, _meta: &Metadata, expected: &ExpectedConfig) {
         let output = &self.0;
 
-        eprintln!("STDERR:");
+        print_info("STDERR:");
         stderr().write_all(&output.stderr).unwrap();
-        println!("STDOUT:");
+        print_info("STDOUT:");
         stdout().write_all(&output.stdout).unwrap();
 
         if let Some(stderr) = &expected.stderr {
@@ -305,6 +309,7 @@ impl BenchmarkOutput {
                     pretty_assertions::StrComparison::new(&actual, &expected_string)
                 );
             }
+            print_info("Verifying stderr successful");
         }
 
         if let Some(stdout) = &expected.stdout {
@@ -321,6 +326,7 @@ impl BenchmarkOutput {
                     pretty_assertions::StrComparison::new(&filtered, &expected_string)
                 );
             }
+            print_info("Verifying stdout successful");
         }
     }
 
@@ -334,6 +340,7 @@ impl BenchmarkOutput {
                 }
                 continue;
             }
+            let line = PROCESS_DID_NOT_EXIT_SUCCESSFULLY_RE.replace(&line, "$1<__PATH__>$3");
             writeln!(result, "{line}").unwrap();
         }
         result
@@ -435,6 +442,35 @@ impl BenchmarkOutput {
         }
 
         result
+    }
+
+    fn assert_exit(&self, exit_code: Option<i32>) {
+        match exit_code {
+            Some(expected) => {
+                print_info("Verifying exit code");
+                match self.0.status.code() {
+                    Some(code) => {
+                        assert_eq!(
+                            expected, code,
+                            "Expected benchmark to exit with code '{expected}' but exited with \
+                             code '{code}'"
+                        );
+                        print_info(format!(
+                            "Verifying exit code was successful: Process exited with '{code}'"
+                        ));
+                    }
+                    None => panic!(
+                        "Expected benchmark to exit with code '{expected}' but exited with signal \
+                         '{}'",
+                        self.0.status.signal().unwrap()
+                    ),
+                }
+            }
+            None => assert!(
+                self.0.status.success(),
+                "Expected benchmark to exit with success"
+            ),
+        }
     }
 }
 
@@ -609,15 +645,16 @@ impl RunConfig {
         &self,
         bench_dir: &Path,
         meta: &Metadata,
-        output: Option<BenchmarkOutput>,
+        output: BenchmarkOutput,
         schema: &ScopedSchema<'_>,
         home_dir: &Path,
         bench_name: &str,
     ) {
         if let Some(expected) = &self.expected {
-            if let Some(output) = output {
+            if expected.stdout.is_some() || expected.stderr.is_some() {
                 output.assert(bench_dir, meta, expected);
             }
+            output.assert_exit(expected.exit_code);
 
             if let Some(files) = &expected.files {
                 let expected_runs: ExpectedRuns = serde_yaml::from_reader(

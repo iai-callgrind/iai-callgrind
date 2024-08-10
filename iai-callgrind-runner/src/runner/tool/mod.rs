@@ -253,7 +253,17 @@ impl ToolCommand {
         };
 
         if let Some(mut child) = child {
-            child.wait().unwrap();
+            debug!("Waiting for setup child process");
+            let status = child.wait().expect("Setup child process should have run");
+            if !status.success() {
+                return Err(Error::ProcessError((
+                    module_path.join("setup").to_string(),
+                    None,
+                    status,
+                    None,
+                ))
+                .into());
+            }
         }
 
         Ok(ToolOutput {

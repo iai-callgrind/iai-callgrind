@@ -85,6 +85,16 @@ name = "test_bin_bench_compare_by_id"
 
 [[bench]]
 harness = false
+path = "benches/test_bin_bench/setup_child_exit_with_error/test_bin_bench_setup_child_exit_with_error.rs"
+name = "test_bin_bench_setup_child_exit_with_error"
+
+[[bench]]
+harness = false
+path = "benches/test_bin_bench/setup_child/test_bin_bench_setup_child.rs"
+name = "test_bin_bench_setup_child"
+
+[[bench]]
+harness = false
 path = "benches/test_lib_bench/flamegraph/test_lib_bench_flamegraph.rs"
 name = "test_lib_bench_flamegraph"
 

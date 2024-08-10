@@ -1,0 +1,6 @@
+groups:
+  - runs:
+      - args: ["--nocapture"]
+        expected:
+          exit_code: 1
+          stderr: expected_stderr
