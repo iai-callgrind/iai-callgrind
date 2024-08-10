@@ -322,6 +322,19 @@ pub fn format_indexed_ident(ident: &Ident, index: usize) -> Ident {
     format_ident!("{ident}__{index}")
 }
 
+/// Truncate a utf-8 [`std::str`] to a given `len`
+pub fn truncate_str_utf8(string: &str, len: usize) -> &str {
+    if let Some((pos, c)) = string
+        .char_indices()
+        .take_while(|(i, c)| i + c.len_utf8() <= len)
+        .last()
+    {
+        &string[..pos + c.len_utf8()]
+    } else {
+        &string[..0]
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use rstest::rstest;

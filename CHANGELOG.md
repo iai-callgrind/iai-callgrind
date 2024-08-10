@@ -123,6 +123,14 @@ binary_benchmark_group!(
 
 ### Added
 
+* Hard limit of 5000 bytes for the `DESCRIPTION` in the benchmark output
+  (`benchmark_file::group::function_name id:DESCRIPTION`). The description is
+  passed from `iai-callgrind-macros` through `iai-callgrind` to the
+  `iai-callgrind-runner`. The sole purpose of the description is to show the
+  context in which the benchmark is executed. In the case of a very large input
+  and gigabytes of data trimmed very late in the `iai-callgrind-runner`, a hard
+  limit of 5000 bytes very early in `iai-callgrind-macros` makes sense without
+  destroying the purpose of the description.
 * `binary_benchmark_group!` macro: The `compare_by_id` argument has been added
   and works the same way as the `compare_by_id` argument in the
   `library_benchmark_group`.

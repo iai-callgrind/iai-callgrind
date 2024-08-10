@@ -15,8 +15,8 @@ use syn::{
     MetaNameValue, Token,
 };
 
-use crate::common::{self, format_ident, format_indexed_ident, BenchesArgs};
-use crate::CargoMetadata;
+use crate::common::{self, format_ident, format_indexed_ident, truncate_str_utf8, BenchesArgs};
+use crate::{defaults, CargoMetadata};
 
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
 #[derive(Debug, Default, Clone, Deref, DerefMut)]
@@ -257,7 +257,8 @@ impl Bench {
     fn render_as_member(&self) -> TokenStream {
         let id = &self.id;
         let id_display = self.id.to_string();
-        let args_display = self.setup.to_string(&self.args);
+        let args_string = self.setup.to_string(&self.args);
+        let args_display = truncate_str_utf8(&args_string, defaults::MAX_BYTES_ARGS);
         let config = self.config.render_as_member(id);
         quote! {
             iai_callgrind::internal::InternalMacroLibBench {

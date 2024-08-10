@@ -26,6 +26,7 @@
 
 mod bin_bench;
 mod common;
+pub(crate) mod defaults;
 mod derive_macros;
 mod lib_bench;
 

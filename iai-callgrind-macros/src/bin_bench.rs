@@ -9,7 +9,10 @@ use syn::parse::Parse;
 use syn::punctuated::Punctuated;
 use syn::{parse2, parse_quote, Attribute, Expr, Ident, ItemFn, MetaNameValue, Token};
 
-use crate::common::{self, format_ident, format_indexed_ident, pretty_expr_path, BenchesArgs};
+use crate::common::{
+    self, format_ident, format_indexed_ident, pretty_expr_path, truncate_str_utf8, BenchesArgs,
+};
+use crate::defaults;
 
 // TODO: CHECK FOR OCCURRENCES OF library benchmark strings in docs and else
 
@@ -141,6 +144,7 @@ impl Bench {
         if let Ok(pairs) =
             meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
         {
+            // TODO: Add file parameter
             for pair in pairs {
                 if pair.path.is_ident("args") {
                     args.parse_pair(&pair)?;
@@ -210,8 +214,8 @@ impl Bench {
     fn render_as_member(&self) -> TokenStream {
         let id = &self.id;
         let id_display = self.id.to_string();
-        // TODO: TEST THE to_string method
-        let args_display = self.args.to_string();
+        let args_string = self.args.to_string();
+        let args_display = truncate_str_utf8(&args_string, defaults::MAX_BYTES_ARGS);
         let config = self.config.render_as_member(Some(id));
         let setup = self.setup.render_as_member(Some(id));
         let teardown = self.teardown.render_as_member(Some(id));
