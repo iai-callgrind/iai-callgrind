@@ -22,6 +22,141 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+!!! __IMPORTANT__ The default to run binary benchmarks in a sandbox has been
+changed from `true` to `false`. The `setup` and `teardown` functions of the
+`binary_benchmark_group!` are not executed in the sandbox anymore !!!
+
+The ui for setting up binary benchmarks has completely changed and was rewritten
+from scratch! If you were using library benchmarks but not binary benchmarks,
+this release doesn't change much. There are no BREAKING changes for library
+benchmarks and you could stop reading. Otherwise, here's a small introduction to
+the new api and the changes.
+
+There are a lot of advantages for you and honestly for us, too, because we don't
+have to maintain two completely different apis. Binary benchmarks and library
+benchmarks can now be written in a similar fashion what makes writing benchmarks
+for a crate's binaries just easier and faster.  No need to learn a completely
+different api if you already used library benchmarks and vice versa! Also, the
+feature set between library benchmarks and binary benchmarks diverged over time.
+For example comparison by id of benchmarks within the same group was available
+in library benchmarks via the `library_benchmark_group!` macro but not in binary
+benchmarks! Such differences are gone, now. Also, if you find out the new
+`#[binary_attribute]` does not provide you with the same power as the old
+builder api, you can still use a low level api and can even intermix the two
+styles. The new low level api is more intuitive than the old builder api, just
+more powerful and mirrors the `binary_benchmark` attribute as much as possible.
+
+For example,
+
+```rust
+#[binary_benchmark]
+#[bench::some_id("foo")]
+fn benchmark_echo(arg: &str) -> iai_callgrind::Command {
+    iai_callgrind::Command::new("/usr/bin/echo")
+        .arg(arg)
+        .build()
+}
+
+binary_benchmark_group!(
+    name = some_group;
+    benchmarks = benchmark_echo
+);
+```
+
+can also be written with the low level api
+
+```rust
+binary_benchmark_group!(
+    name = low_level;
+    benchmarks = |group: &mut BinaryBenchmarkGroup| {
+        group
+            .binary_benchmark(
+                BinaryBenchmark::new("benchmark_echo")
+                    .bench(
+                        Bench::new("some_id").command(
+                            iai_callgrind::Command::new("/usr/bin/echo").arg("foo")
+                        )
+                    )
+            )
+    }
+);
+```
+
+However, the first method using the `#[binary_benchmark]` attribute is the new
+and recommended way to setup binary benchmarks, since it is more descriptive and
+concise, especially with a lot of benchmarks. And, if you need to set up only
+some benchmarks in a way which stretches the `#[binary_benchmark]` attribute to
+its limits, you can intermix both styles and switch to the low level api in a
+few steps:
+
+```rust
+// No need to translate this into the low level api. Just keep it as it is and
+// have a look at the usage of the `binary_benchmark_attribute!` macro below
+#[binary_benchmark]
+#[bench::some_id("foo")]
+fn attribute_benchmark_echo(arg: &str) -> iai_callgrind::Command {
+    iai_callgrind::Command::new("/usr/bin/echo")
+        .arg(arg)
+        .build()
+}
+
+binary_benchmark_group!(
+    name = low_level;
+    benchmarks = |group: &mut BinaryBenchmarkGroup| {
+        group
+            // Add a benchmark function annotated with the #[binary_benchmark]
+            // attribute with the `binary_benchmark_attribute!` macro
+            .binary_benchmark(binary_benchmark_attribute!(attribute_benchmark_echo))
+            // For the sake of simplicity, assume this would be the benchmark you
+            // were not able to setup with the attribute
+            .binary_benchmark(
+                BinaryBenchmark::new("low_level_benchmark_echo")
+                    .bench(
+                        Bench::new("some_id").command(
+                            iai_callgrind::Command::new("/usr/bin/echo").arg("foo")
+                        )
+                    )
+            )
+    }
+);
+```
+
+### Added
+
+* `binary_benchmark_group!` macro: The `compare_by_id` argument has been added
+  and works the same way as the `compare_by_id` argument in the
+  `library_benchmark_group`.
+* `main!` macro: The `setup` and `teardown` arguments were added. The `setup`
+  argument is run before all benchmarks in the binary benchmark groups and
+  `teardown` after all benchmarks.
+* `#[binary_benchmark]` attribute: This attribute needs to be specified on a
+  function which is used in the `benchmarks` argument of the
+  `binary_benchmark_group!` macro. The attribute takes the `config`, `setup` and
+  `teardown` parameters.
+* `#[bench]`, `#[benches]` attributes for `#[binary_benchmark]`: These
+  attributes serve the same purpose as the `#[bench]` and `#[benches]` attribute
+  in a `#[library_benchmark]` annotated function and take the same parameters.
+
+### Changed
+
+* The default to run binary benchmarks in a sandbox has been changed from `true`
+  to `false`. Also, the sandbox is now set up for each benchmark instead of once
+  per group.
+* `binary_benchmark_group!` macro: The `setup` and argument now takes an
+  expressions (including function calls) and is run __once__ before all
+  benchmarks in this group. The `teardown` argument also takes an expression and
+  is run __once__ after all benchmarks in this group. __once__ in bold because
+  previously `setup` and `teardown` were run for each benchmark in this group.
+  These functions are also not executed in the sandbox anymore.
+
+### Removed
+
+* `binary_benchmark_group!` macro: The `before` and `after` arguments have been
+  removed. The possibility to benchmark the `setup` and `before` functions via
+  the `bench = bool` argument has been removed, since it caused more problems
+  than it solved. In the rare case, you really need to benchmark `setup` or
+  `teardown` you can use the functionality of library benchmarks.
+
 ## [0.12.3] - 2024-08-09
 
 ### Added

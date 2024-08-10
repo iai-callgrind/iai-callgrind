@@ -99,4 +99,65 @@ binary_benchmark_group!(
     benchmarks = |group: &mut BinaryBenchmarkGroup| setup_group(group)
 );
 
-main!(binary_benchmark_groups = low_level_group, my_group);
+#[binary_benchmark]
+#[bench::some_id("foo")]
+fn benchmark_echo(arg: &str) -> iai_callgrind::Command {
+    iai_callgrind::Command::new("/usr/bin/echo")
+        .arg(arg)
+        .build()
+}
+
+binary_benchmark_group!(
+    name = some_group;
+    benchmarks = benchmark_echo
+);
+
+binary_benchmark_group!(
+    name = low_level_old;
+    benchmarks = |group: &mut BinaryBenchmarkGroup| {
+        group
+            .binary_benchmark(
+                BinaryBenchmark::new("benchmark_echo")
+                    .bench(
+                        Bench::new("some_id").command(
+                            iai_callgrind::Command::new("/usr/bin/echo").arg("foo")
+                        )
+                    )
+            )
+    }
+);
+
+#[binary_benchmark]
+#[bench::some_id("foo")]
+fn attribute_benchmark_echo(arg: &str) -> iai_callgrind::Command {
+    iai_callgrind::Command::new("/usr/bin/echo")
+        .arg(arg)
+        .build()
+}
+
+binary_benchmark_group!(
+    name = low_level;
+    benchmarks = |group: &mut BinaryBenchmarkGroup| {
+        group
+            // Add a benchmark function with the #[binary_benchmark]
+            // attribute with the `binary_benchmark_attribute!` macro
+            .binary_benchmark(binary_benchmark_attribute!(attribute_benchmark_echo))
+            // For the sake of simplicity, assume this would be the benchmark you
+            // were not able to setup with the attribute
+            .binary_benchmark(
+                BinaryBenchmark::new("low_level_benchmark_echo")
+                    .bench(
+                        Bench::new("some_id").command(
+                            iai_callgrind::Command::new("/usr/bin/echo").arg("foo")
+                        )
+                    )
+            )
+    }
+);
+
+main!(
+    binary_benchmark_groups = low_level_group,
+    my_group,
+    some_group,
+    low_level
+);
