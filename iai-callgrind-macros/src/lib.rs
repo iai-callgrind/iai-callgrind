@@ -39,6 +39,16 @@ struct CargoMetadata {
     workspace_root: String,
 }
 
+impl CargoMetadata {
+    fn try_new() -> Option<Self> {
+        std::process::Command::new(option_env!("CARGO").unwrap_or("cargo"))
+            .args(["metadata", "--no-deps", "--format-version", "1"])
+            .output()
+            .ok()
+            .and_then(|output| serde_json::de::from_slice(&output.stdout).ok())
+    }
+}
+
 /// The `#[library_benchmark]` attribute let's you define a benchmark function which you can later
 /// use in the `library_benchmark_groups!` macro.
 ///

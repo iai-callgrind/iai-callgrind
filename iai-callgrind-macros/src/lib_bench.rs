@@ -1,21 +1,15 @@
-use std::fs::File as StdFile;
-use std::io::{BufRead, BufReader};
 use std::ops::Deref;
-use std::path::PathBuf;
 
 use derive_more::{Deref, DerefMut};
 use proc_macro2::TokenStream;
-use proc_macro_error::{abort, emit_error};
+use proc_macro_error::abort;
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::Parse;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::{
-    parse2, parse_quote, parse_quote_spanned, Attribute, Expr, Ident, ItemFn, LitStr,
-    MetaNameValue, Token,
-};
+use syn::{parse2, parse_quote, Attribute, Ident, ItemFn, MetaNameValue, Token};
 
-use crate::common::{self, format_ident, format_indexed_ident, truncate_str_utf8, BenchesArgs};
+use crate::common::{self, format_ident, truncate_str_utf8, BenchesArgs, File};
 use crate::{defaults, CargoMetadata};
 
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
@@ -36,9 +30,6 @@ struct Bench {
 
 #[derive(Debug, Default, Clone, Deref, DerefMut)]
 struct BenchConfig(common::BenchConfig);
-
-#[derive(Debug, Default, Clone)]
-struct File(Option<LitStr>);
 
 /// This is the counterpart to the `#[library_benchmark]` attribute.
 #[derive(Debug, Default)]
@@ -169,64 +160,23 @@ impl Bench {
         setup.update(other_setup);
         teardown.update(other_teardown);
 
-        let benches = match (&file.0, args.is_some()) {
-            (Some(literal), true) => {
-                abort!(
-                    literal.span(),
-                    "Only one parameter of `file` or `args` can be present"
-                );
-            }
-            (None, true) => args
-                .finalize()
-                .map(Args)
-                .enumerate()
-                .map(|(index, args)| {
-                    args.check_num_arguments(expected_num_args, setup.is_some());
-                    let id = format_indexed_ident(id, index);
-                    Bench {
-                        id,
-                        args,
-                        config: config.clone(),
-                        setup: setup.clone(),
-                        teardown: teardown.clone(),
-                    }
-                })
-                .collect(),
-            (Some(literal), false) => {
-                let strings = file.read(cargo_meta);
-                if strings.is_empty() {
-                    abort!(literal, "The provided file '{}' was empty", literal.value());
-                }
-
-                let mut benches = vec![];
-                for (index, string) in strings.into_iter().enumerate() {
-                    let id = format_indexed_ident(id, index);
-                    let expr = if string.is_empty() {
-                        parse_quote_spanned! { literal.span() => String::new() }
-                    } else {
-                        parse_quote_spanned! { literal.span() => String::from(#string) }
-                    };
-                    let args = Args(common::Args::new(literal.span(), vec![expr]));
-                    benches.push(Bench {
-                        id,
-                        args,
-                        config: config.clone(),
-                        setup: setup.clone(),
-                        teardown: teardown.clone(),
-                    });
-                }
-
-                benches
-            }
-            // Cover the case when no arguments were present for example `#[benches::id()]`,
-            (None, false) => vec![Bench {
-                id: id.clone(),
-                args: Args::default(),
-                config: config.clone(),
-                setup: setup.clone(),
-                teardown: teardown.clone(),
-            }],
-        };
+        let benches = common::Bench::from_benches_attribute(
+            id,
+            args,
+            &file,
+            cargo_meta,
+            setup.is_some(),
+            expected_num_args,
+        )
+        .into_iter()
+        .map(|b| Bench {
+            id: b.id,
+            args: Args(b.args),
+            config: config.clone(),
+            setup: setup.clone(),
+            teardown: teardown.clone(),
+        })
+        .collect();
 
         Ok(benches)
     }
@@ -293,67 +243,6 @@ impl BenchConfig {
         } else {
             quote! { None }
         }
-    }
-}
-
-impl File {
-    fn parse_pair(&mut self, pair: &MetaNameValue) {
-        if self.0.is_none() {
-            if let Expr::Lit(literal) = &pair.value {
-                self.0 = Some(parse2::<LitStr>(literal.to_token_stream()).unwrap());
-            } else {
-                abort!(
-                    pair.value, "Invalid value for `file`";
-                    help = "The `file` argument needs a literal string containing the path to an existing file at compile time";
-                    note = "`file = \"benches/some_fixture\"`"
-                );
-            }
-        } else {
-            emit_error!(
-                pair, "Duplicate argument: `file`";
-                help = "`file` is allowed only once"
-            );
-        }
-    }
-
-    /// Read this [`File`] and return all its lines
-    ///
-    /// # Panics
-    ///
-    /// Panics if there is no path present
-    fn read(&self, cargo_meta: Option<&CargoMetadata>) -> Vec<String> {
-        let expr = self.0.as_ref().expect("A file should be present");
-        let string = expr.value();
-        let mut path = PathBuf::from(&string);
-
-        if path.is_relative() {
-            if let Some(cargo_meta) = cargo_meta {
-                let root = PathBuf::from(&cargo_meta.workspace_root);
-                path = root.join(path);
-            }
-        }
-
-        let file = StdFile::open(&path)
-            .unwrap_or_else(|error| abort!(expr, "Error opening '{}': {}", path.display(), error));
-
-        let mut lines = vec![];
-        for (index, line) in BufReader::new(file).lines().enumerate() {
-            match line {
-                Ok(line) => {
-                    lines.push(line);
-                }
-                Err(error) => {
-                    abort!(
-                        self.0,
-                        "Error reading line {} in file '{}': {}",
-                        index + 1,
-                        path.display(),
-                        error
-                    );
-                }
-            }
-        }
-        lines
     }
 }
 
@@ -668,12 +557,7 @@ pub fn render(args: TokenStream, input: TokenStream) -> syn::Result<TokenStream>
     let mut library_benchmark = parse2::<LibraryBenchmark>(args)?;
     let item_fn = parse2::<ItemFn>(input)?;
 
-    let cargo_meta: Option<CargoMetadata> =
-        std::process::Command::new(option_env!("CARGO").unwrap_or("cargo"))
-            .args(["metadata", "--no-deps", "--format-version", "1"])
-            .output()
-            .ok()
-            .and_then(|output| serde_json::de::from_slice(&output.stdout).ok());
+    let cargo_meta = CargoMetadata::try_new();
 
     library_benchmark.extract_benches(&item_fn, cargo_meta.as_ref())?;
     if library_benchmark.benches.is_empty() {

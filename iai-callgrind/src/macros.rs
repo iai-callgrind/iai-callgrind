@@ -394,7 +394,7 @@ macro_rules! main {
                                 },
                                 commands => {
                                     for (index, command) in commands.iter().enumerate() {
-                                        let bench_id: $crate::BenchmarkId = format!("{}__{}", bench.id, index).into();
+                                        let bench_id: $crate::BenchmarkId = format!("{}_{}", bench.id, index).into();
                                         if let Err(message) = bench_id.validate() {
                                             errors.add(
                                                 $crate::error::Error::BenchError(

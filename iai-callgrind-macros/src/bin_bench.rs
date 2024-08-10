@@ -9,10 +9,8 @@ use syn::parse::Parse;
 use syn::punctuated::Punctuated;
 use syn::{parse2, parse_quote, Attribute, Expr, Ident, ItemFn, MetaNameValue, Token};
 
-use crate::common::{
-    self, format_ident, format_indexed_ident, pretty_expr_path, truncate_str_utf8, BenchesArgs,
-};
-use crate::defaults;
+use crate::common::{self, format_ident, pretty_expr_path, truncate_str_utf8, BenchesArgs, File};
+use crate::{defaults, CargoMetadata};
 
 // TODO: CHECK FOR OCCURRENCES OF library benchmark strings in docs and else
 
@@ -132,6 +130,7 @@ impl Bench {
         id: &Ident,
         other_setup: &Setup,
         other_teardown: &Teardown,
+        cargo_meta: Option<&CargoMetadata>,
     ) -> syn::Result<Vec<Self>> {
         let expected_num_args = item_fn.sig.inputs.len();
         let meta = attr.meta.require_list()?;
@@ -140,11 +139,11 @@ impl Bench {
         let mut setup = Setup::default();
         let mut teardown = Teardown::default();
         let mut args = BenchesArgs::default();
+        let mut file = File::default();
 
         if let Ok(pairs) =
             meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
         {
-            // TODO: Add file parameter
             for pair in pairs {
                 if pair.path.is_ident("args") {
                     args.parse_pair(&pair)?;
@@ -154,10 +153,12 @@ impl Bench {
                     setup.parse_pair(&pair);
                 } else if pair.path.is_ident("teardown") {
                     teardown.parse_pair(&pair);
+                } else if pair.path.is_ident("file") {
+                    file.parse_pair(&pair);
                 } else {
                     abort!(
                         pair, "Invalid argument: {}", pair.path.require_ident()?;
-                        help = "Valid arguments are: `args`, `config`, `setup`, `teardown`"
+                        help = "Valid arguments are: `args`, `file`, `config`, `setup`, `teardown`"
                     );
                 }
             }
@@ -168,22 +169,23 @@ impl Bench {
         setup.update(other_setup);
         teardown.update(other_teardown);
 
-        let benches = args
-            .finalize()
-            .map(Args)
-            .enumerate()
-            .map(|(index, args)| {
-                args.check_num_arguments(expected_num_args, setup.is_some());
-                let id = format_indexed_ident(id, index);
-                Bench {
-                    id,
-                    args,
-                    config: config.clone(),
-                    setup: setup.clone(),
-                    teardown: teardown.clone(),
-                }
-            })
-            .collect();
+        let benches = common::Bench::from_benches_attribute(
+            id,
+            args,
+            &file,
+            cargo_meta,
+            setup.is_some(),
+            expected_num_args,
+        )
+        .into_iter()
+        .map(|b| Bench {
+            id: b.id,
+            args: Args(b.args),
+            config: config.clone(),
+            setup: setup.clone(),
+            teardown: teardown.clone(),
+        })
+        .collect();
 
         Ok(benches)
     }
@@ -262,7 +264,11 @@ impl BenchConfig {
 }
 
 impl BinaryBenchmark {
-    fn extract_benches(&mut self, item_fn: &ItemFn) -> syn::Result<()> {
+    fn extract_benches(
+        &mut self,
+        item_fn: &ItemFn,
+        cargo_meta: Option<&CargoMetadata>,
+    ) -> syn::Result<()> {
         let bench: syn::PathSegment = parse_quote!(bench);
         let benches: syn::PathSegment = parse_quote!(benches);
 
@@ -315,6 +321,7 @@ impl BinaryBenchmark {
                         &id,
                         &self.setup,
                         &self.teardown,
+                        cargo_meta,
                     )?);
                 }
                 Some(segment) => {
@@ -599,8 +606,9 @@ impl Teardown {
 pub fn render(args: TokenStream, input: TokenStream) -> syn::Result<TokenStream> {
     let mut binary_benchmark = parse2::<BinaryBenchmark>(args)?;
     let item_fn = parse2::<ItemFn>(input)?;
+    let cargo_meta = CargoMetadata::try_new();
 
-    binary_benchmark.extract_benches(&item_fn)?;
+    binary_benchmark.extract_benches(&item_fn, cargo_meta.as_ref())?;
     if binary_benchmark.benches.is_empty() {
         Ok(binary_benchmark.render_standalone(&item_fn))
     } else {
