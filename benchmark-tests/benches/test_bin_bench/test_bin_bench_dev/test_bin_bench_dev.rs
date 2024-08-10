@@ -20,7 +20,10 @@ fn bench_with_config() -> iai_callgrind::Command {
 #[binary_benchmark]
 #[bench::some(1)]
 fn bench(first: usize) -> iai_callgrind::Command {
-    iai_callgrind::Command::new("/usr/bin/echo")
+    // iai_callgrind::Command::new("/usr/bin/echo")
+    //     .arg(first.to_string())
+    //     .build()
+    iai_callgrind::Command::new("")
         .arg(first.to_string())
         .build()
 }
@@ -63,6 +66,7 @@ binary_benchmark_group!(
     benchmarks = just_outer_attribute, bench_with_config, bench, benches
 );
 
+// TODO: Test invalid benchmark ids
 fn setup_group(group: &mut BinaryBenchmarkGroup) {
     group
         .binary_benchmark(
@@ -70,7 +74,7 @@ fn setup_group(group: &mut BinaryBenchmarkGroup) {
                 .setup(|| println!("IN BINARY BENCHMARK SETUP"))
                 .teardown(|| println!("IN BINARY BENCHMARK TEARDOWN"))
                 .bench(
-                    Bench::new("other id")
+                    Bench::new("other_id")
                         .config(BinaryBenchmarkConfig::default())
                         .command(Command::new("/usr/bin/echo").arg("1"))
                         .setup(|| {
@@ -83,7 +87,7 @@ fn setup_group(group: &mut BinaryBenchmarkGroup) {
                         }),
                 )
                 .bench(
-                    Bench::new("global setup and teardown")
+                    Bench::new("global_setup_and_teardown")
                         .command(Command::new("/usr/bin/echo").arg("2")),
                 ),
         )
@@ -95,4 +99,4 @@ binary_benchmark_group!(
     benchmarks = |group: &mut BinaryBenchmarkGroup| setup_group(group)
 );
 
-main!(binary_benchmark_groups = low_level_group);
+main!(binary_benchmark_groups = low_level_group, my_group);

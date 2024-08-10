@@ -1,6 +1,7 @@
+use std::collections::HashMap;
 use std::io::stderr;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 use super::args::NoCapture;
 use super::callgrind::args::Args;
@@ -11,7 +12,7 @@ use super::callgrind::flamegraph::{
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::RegressionConfig;
 use super::common::{Assistant, AssistantKind, Config, ModulePath, Sandbox};
-use super::format::{BinaryBenchmarkHeader, VerticalFormat};
+use super::format::{BinaryBenchmarkHeader, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
 use super::summary::{
     BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, CallgrindSummary, CostsSummary,
@@ -28,6 +29,7 @@ use crate::runner::format;
 mod defaults {
     pub const REGRESSION_FAIL_FAST: bool = false;
     pub const ENV_CLEAR: bool = true;
+    pub const COMPARE_BY_ID: bool = false;
 }
 
 #[derive(Debug)]
@@ -65,6 +67,7 @@ struct Group {
     benches: Vec<BinBench>,
     setup: Option<Assistant>,
     teardown: Option<Assistant>,
+    compare_by_id: bool,
 }
 
 #[derive(Debug)]
@@ -259,15 +262,19 @@ impl BinBench {
         raw_args: &api::RawArgs,
         binary_benchmark_bench: BinaryBenchmarkBench,
     ) -> Result<Self> {
+        let module_path = group
+            .module_path
+            .join(&binary_benchmark_bench.function_name);
+
         let command = binary_benchmark_bench.command;
+        if command.path.display().to_string().is_empty() {
+            return Err(anyhow!("{module_path}: Empty path in command",));
+        }
 
         let envs = config.resolve_envs();
 
         let callgrind_args = Args::from_raw_args(&[&config.raw_callgrind_args, raw_args])?;
         let flamegraph_config = config.flamegraph_config.map(Into::into);
-        let module_path = group
-            .module_path
-            .join(&binary_benchmark_bench.function_name);
 
         Ok(Self {
             id: binary_benchmark_bench.id,
@@ -381,6 +388,8 @@ impl Group {
         is_regressed: &mut bool,
         config: &Config,
     ) -> Result<()> {
+        let mut summaries: HashMap<String, Vec<BenchmarkSummary>> =
+            HashMap::with_capacity(self.benches.len());
         for bench in &self.benches {
             let fail_fast = bench
                 .regression_config
@@ -390,6 +399,19 @@ impl Group {
             let summary = benchmark.run(bench, config, self)?;
             summary.print_and_save(&config.meta.args.output_format)?;
             summary.check_regression(is_regressed, fail_fast)?;
+
+            if self.compare_by_id && config.meta.args.output_format == OutputFormat::Default {
+                if let Some(id) = &summary.id {
+                    if let Some(sums) = summaries.get_mut(id) {
+                        for sum in sums.iter() {
+                            sum.compare_and_print(id, &config.meta, &summary)?;
+                        }
+                        sums.push(summary);
+                    } else {
+                        summaries.insert(id.clone(), vec![summary]);
+                    }
+                }
+            }
         }
 
         Ok(())
@@ -429,6 +451,9 @@ impl Groups {
                 benches: vec![],
                 setup,
                 teardown,
+                compare_by_id: binary_benchmark_group
+                    .compare_by_id
+                    .unwrap_or(defaults::COMPARE_BY_ID),
             };
 
             for (group_index, binary_benchmark_benches) in binary_benchmark_group

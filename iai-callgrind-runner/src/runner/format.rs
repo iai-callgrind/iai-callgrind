@@ -87,12 +87,20 @@ impl BinaryBenchmarkHeader {
             .collect();
         let command_args = shlex::try_join(command_args.iter().map(String::as_str)).unwrap();
 
-        let description = format!(
-            "({}) -> {} {}",
-            bin_bench.args.as_ref().map_or("", String::as_str),
-            path.display(),
-            command_args
-        );
+        let description = if command_args.is_empty() {
+            format!(
+                "({}) -> {}",
+                bin_bench.args.as_ref().map_or("", String::as_str),
+                path.display(),
+            )
+        } else {
+            format!(
+                "({}) -> {} {}",
+                bin_bench.args.as_ref().map_or("", String::as_str),
+                path.display(),
+                command_args
+            )
+        };
 
         Self {
             inner: Header::new(
@@ -215,9 +223,10 @@ impl Display for Header {
                         description.bold().blue(),
                     ))?;
                 }
-                _ => {
+                _ if !id.is_empty() => {
                     f.write_fmt(format_args!(" {}", id.cyan()))?;
                 }
+                _ => {}
             }
         } else if let Some(description) = &self.description {
             if !description.is_empty() {

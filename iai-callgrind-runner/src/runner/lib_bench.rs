@@ -31,6 +31,10 @@ use super::tool::{
 use super::{Error, DEFAULT_TOGGLE};
 use crate::api::{self, LibraryBenchmarkGroups};
 
+mod defaults {
+    pub const COMPARE_BY_ID: bool = false;
+}
+
 /// Implements [`Benchmark`] to run a [`LibBench`] and compare against a earlier [`BenchmarkKind`]
 #[derive(Debug)]
 struct BaselineBenchmark {
@@ -42,7 +46,7 @@ struct BaselineBenchmark {
 struct Group {
     id: String,
     benches: Vec<LibBench>,
-    compare: bool,
+    compare_by_id: bool,
     module_path: ModulePath,
     setup: Option<Assistant>,
     teardown: Option<Assistant>,
@@ -276,7 +280,9 @@ impl Groups {
             let mut group = Group {
                 id: library_benchmark_group.id,
                 module_path: group_module_path.clone(),
-                compare: library_benchmark_group.compare,
+                compare_by_id: library_benchmark_group
+                    .compare_by_id
+                    .unwrap_or(defaults::COMPARE_BY_ID),
                 benches: vec![],
                 setup,
                 teardown,
@@ -358,7 +364,7 @@ impl Groups {
                 summary.print_and_save(&config.meta.args.output_format)?;
                 summary.check_regression(&mut is_regressed, fail_fast)?;
 
-                if group.compare && config.meta.args.output_format == OutputFormat::Default {
+                if group.compare_by_id && config.meta.args.output_format == OutputFormat::Default {
                     if let Some(id) = &summary.id {
                         if let Some(sums) = summaries.get_mut(id) {
                             for sum in sums.iter() {

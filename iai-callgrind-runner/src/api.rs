@@ -58,6 +58,7 @@ pub struct BinaryBenchmarkGroup {
     pub has_setup: bool,
     pub has_teardown: bool,
     pub binary_benchmarks: Vec<BinaryBenchmark>,
+    pub compare_by_id: Option<bool>,
 }
 
 /// The model for the main! macro
@@ -232,7 +233,7 @@ pub struct LibraryBenchmarkConfig {
 pub struct LibraryBenchmarkGroup {
     pub id: String,
     pub config: Option<LibraryBenchmarkConfig>,
-    pub compare: bool,
+    pub compare_by_id: Option<bool>,
     pub library_benchmarks: Vec<LibraryBenchmark>,
     pub has_setup: bool,
     pub has_teardown: bool,

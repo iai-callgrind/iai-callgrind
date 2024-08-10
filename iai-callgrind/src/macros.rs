@@ -246,6 +246,7 @@ macro_rules! main {
                         binary_benchmarks: vec![],
                         has_setup: $group::__run_setup(false),
                         has_teardown: $group::__run_teardown(false),
+                        compare_by_id: $group::__compare_by_id()
                     };
                     for (function_name, get_config, macro_bin_benches) in $group::__BENCHES {
                         let mut internal_binary_benchmark =
@@ -281,6 +282,7 @@ macro_rules! main {
                         binary_benchmarks: vec![],
                         has_setup: $group::__run_setup(false),
                         has_teardown: $group::__run_teardown(false),
+                        compare_by_id: $group::__compare_by_id()
                     };
 
                     let mut binary_benchmark_ids =
@@ -597,7 +599,7 @@ macro_rules! main {
                 let mut internal_group = $crate::internal::InternalLibraryBenchmarkGroup {
                     id: stringify!($group).to_owned(),
                     config: $group::__get_config(),
-                    compare: $group::__compare(),
+                    compare_by_id: $group::__compare_by_id(),
                     library_benchmarks: vec![],
                     has_setup: $group::__run_setup(false),
                     has_teardown: $group::__run_teardown(false),
@@ -993,6 +995,14 @@ macro_rules! binary_benchmark_group {
                 __has_teardown
             }
 
+            pub fn __compare_by_id() -> Option<bool> {
+                let mut comp = None;
+                $(
+                    comp = Some($compare);
+                )?
+                comp
+            }
+
             pub fn __get_config() -> Option<$crate::internal::InternalBinaryBenchmarkConfig> {
                 let mut config = None;
                 $(
@@ -1018,10 +1028,10 @@ macro_rules! binary_benchmark_group {
     };
     (
         name = $name:ident; $(;)*
-        $( setup = $setup:expr; $(;)* )?
-        $( teardown = $teardown:expr; $(;)* )?
         $( config = $config:expr; $(;)* )?
         $( compare_by_id = $compare:literal ; $(;)* )?
+        $( setup = $setup:expr; $(;)* )?
+        $( teardown = $teardown:expr; $(;)* )?
         benchmarks = |$group:ident: &mut BinaryBenchmarkGroup| $body:expr
     ) => {
         pub mod $name {
@@ -1063,6 +1073,14 @@ macro_rules! binary_benchmark_group {
                     config = Some($config.into());
                 )?
                 config
+            }
+
+            pub fn __compare_by_id() -> Option<bool> {
+                let mut comp = None;
+                $(
+                    comp = Some($compare);
+                )?
+                comp
             }
 
             pub fn __run_bench_setup(group_index: usize, bench_index: usize) {
@@ -1237,10 +1255,10 @@ macro_rules! library_benchmark_group {
             }
 
             #[inline(never)]
-            pub fn __compare() -> bool {
-                let mut comp: bool = false;
+            pub fn __compare_by_id() -> Option<bool> {
+                let mut comp = None;
                 $(
-                    comp = $compare;
+                    comp = Some($compare);
                 )?
                 comp
             }
