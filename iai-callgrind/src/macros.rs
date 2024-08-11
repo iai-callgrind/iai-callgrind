@@ -921,27 +921,27 @@ macro_rules! binary_benchmark_group {
     (
         $( config = $config:expr ; $(;)* )?
         $( compare_by_id = $compare:literal ; $(;)* )?
-        $( setup = $setup:expr $(,bench = $bench_setup:literal)? ; $(;)* )?
-        $( teardown = $teardown:expr $(,bench = $bench_teardown:literal)? ; $(;)* )?
+        $( setup = $setup:expr; $(;)* )?
+        $( teardown = $teardown:expr; $(;)* )?
         benchmarks = $( $function:ident ),+ $(,)*
     ) => {
         compile_error!(
-            "A binary_benchmark_group! needs a unique name. See the documentation of this macro for
+            "A binary_benchmark_group! needs a unique name. See the documentation of this macro for \
             further details.\n\n\
             hint = binary_benchmark_group!(name = some_ident; benchmarks = some_binary_benchmark);"
         );
     };
     (
         name = $name:ident; $(;)*
-        $( config = $config:expr ; $(;)* )?
-        $( compare_by_id = $compare:literal ; $(;)* )?
-        $( setup = $setup:expr $(,bench = $bench_setup:literal)? ; $(;)* )?
-        $( teardown = $teardown:expr $(,bench = $bench_teardown:literal)? ; $(;)* )?
+        $( config = $config:expr; $(;)* )?
+        $( compare_by_id = $compare:literal; $(;)* )?
+        $( setup = $setup:expr; $(;)* )?
+        $( teardown = $teardown:expr; $(;)* )?
         benchmarks =
     ) => {
         compile_error!(
-            "A binary_benchmark_group! needs at least 1 benchmark function which is annotated with
-            #[binary_benchmark] or you can use the low level syntax. See the documentation of this
+            "A binary_benchmark_group! needs at least 1 benchmark function which is annotated with \
+            #[binary_benchmark] or you can use the low level syntax. See the documentation of this \
             macro for further details.\n\n\
             hint = binary_benchmark_group!(name = some_ident; benchmarks = some_binary_benchmark);"
         );
@@ -950,8 +950,22 @@ macro_rules! binary_benchmark_group {
         name = $name:ident; $(;)*
         $( config = $config:expr ; $(;)* )?
         $( compare_by_id = $compare:literal ; $(;)* )?
-        $( setup = $setup:expr $(,bench = $bench_setup:literal)? ; $(;)* )?
-        $( teardown = $teardown:expr $(,bench = $bench_teardown:literal)? ; $(;)* )?
+        $( setup = $setup:expr; $(;)* )?
+        $( teardown = $teardown:expr; $(;)* )?
+    ) => {
+        compile_error!(
+            "A binary_benchmark_group! needs at least 1 benchmark function which is annotated with \
+            #[binary_benchmark] or you can use the low level syntax. See the documentation of this \
+            macro for further details.\n\n\
+            hint = binary_benchmark_group!(name = some_ident; benchmarks = some_binary_benchmark);"
+        );
+    };
+    (
+        name = $name:ident; $(;)*
+        $( config = $config:expr ; $(;)* )?
+        $( compare_by_id = $compare:literal ; $(;)* )?
+        $( setup = $setup:expr; $(;)* )?
+        $( teardown = $teardown:expr; $(;)* )?
         benchmarks = $( $function:ident ),+ $(,)*
     ) => {
         pub mod $name {
@@ -1025,6 +1039,64 @@ macro_rules! binary_benchmark_group {
 
             pub fn $name(_: &mut $crate::BinaryBenchmarkGroup) {}
         }
+    };
+    (
+        $( config = $config:expr; $(;)* )?
+        $( compare_by_id = $compare:literal ; $(;)* )?
+        $( setup = $setup:expr; $(;)* )?
+        $( teardown = $teardown:expr; $(;)* )?
+        benchmarks = |$group:ident: &mut BinaryBenchmarkGroup| $body:expr
+    ) => {
+        compile_error!(
+            "A binary_benchmark_group! needs a unique name. See the documentation of this macro for \
+            further details.\n\n\
+            hint = binary_benchmark_group!(name = some_ident; benchmarks = |group: &mut BinaryBenchmarkGroup| ... );"
+        );
+    };
+    (
+        $( config = $config:expr; $(;)* )?
+        $( compare_by_id = $compare:literal ; $(;)* )?
+        $( setup = $setup:expr; $(;)* )?
+        $( teardown = $teardown:expr; $(;)* )?
+        benchmarks = |$group:ident| $body:expr
+    ) => {
+        compile_error!(
+            "A binary_benchmark_group! needs a unique name. See the documentation of this macro for \
+            further details.\n\n\
+            hint = binary_benchmark_group!(name = some_ident; benchmarks = |group| ... );"
+        );
+    };
+    (
+        name = $name:ident; $(;)*
+        $( config = $config:expr; $(;)* )?
+        $( compare_by_id = $compare:literal ; $(;)* )?
+        $( setup = $setup:expr; $(;)* )?
+        $( teardown = $teardown:expr; $(;)* )?
+        benchmarks = |$group:ident|
+    ) => {
+        compile_error!(
+            "This low level form of the binary_benchmark_group! needs you to use the \
+            `BinaryBenchmarkGroup` to setup benchmarks. See the documentation of this macro for \
+            further details.\n\n\
+            hint = binary_benchmark_group!(name = some_ident; benchmarks = |group| { \
+                group.binary_benchmark(/* BinaryBenchmark::new */); });"
+        );
+    };
+    (
+        name = $name:ident; $(;)*
+        $( config = $config:expr; $(;)* )?
+        $( compare_by_id = $compare:literal ; $(;)* )?
+        $( setup = $setup:expr; $(;)* )?
+        $( teardown = $teardown:expr; $(;)* )?
+        benchmarks = |$group:ident: &mut BinaryBenchmarkGroup|
+    ) => {
+        compile_error!(
+            "This low level form of the binary_benchmark_group! needs you to use the \
+            `BinaryBenchmarkGroup` to setup benchmarks. See the documentation of this macro for \
+            further details.\n\n\
+            hint = binary_benchmark_group!(name = some_ident; benchmarks = |group: &mut \
+                BinaryBenchmarkGroup| { group.binary_benchmark(/* BinaryBenchmark::new */); });"
+        );
     };
     (
         name = $name:ident; $(;)*
@@ -1134,6 +1206,23 @@ macro_rules! binary_benchmark_group {
                 $body;
             }
         }
+    };
+    (
+        name = $name:ident; $(;)*
+        $( config = $config:expr; $(;)* )?
+        $( compare_by_id = $compare:literal ; $(;)* )?
+        $( setup = $setup:expr; $(;)* )?
+        $( teardown = $teardown:expr; $(;)* )?
+        benchmarks = |$group:ident| $body:expr
+    ) => {
+        binary_benchmark_group!(
+            name = $name:ident;
+            $( config = $config; )?
+            $( compare_by_id = $compare; )?
+            $( setup = $setup; )?
+            $( teardown = $teardown; )?
+            benchmarks = |$group: &mut BinaryBenchmarkGroup| $body:expr
+        );
     };
 }
 

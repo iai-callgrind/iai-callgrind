@@ -1,10 +1,10 @@
-error[E0425]: cannot find function `compare` in module `some_func`
+error[E0425]: cannot find function `__compare_by_id` in module `some_func`
   --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
    |
 6  |     main!(library_benchmark_groups = some_func);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in `some_func`
    |
-note: function `crate::test_main_when_invalid_config::my_group::compare` exists but is inaccessible
+note: function `crate::test_main_when_invalid_config::my_group::__compare_by_id` exists but is inaccessible
   --> tests/ui/test_main_invalid_library_benchmark_groups.rs:14:5
    |
 14 | /     library_benchmark_group!(
@@ -14,94 +14,90 @@ note: function `crate::test_main_when_invalid_config::my_group::compare` exists 
    | |_____^ not accessible
    = note: this error originates in the macro `main` which comes from the expansion of the macro `library_benchmark_group` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0425]: cannot find function `run_setup` in module `some_func`
-  --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
-   |
-6  |     main!(library_benchmark_groups = some_func);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     similarly named function `__run_setup` defined here
-   |     help: a function with a similar name exists: `__run_setup`
-   |
-note: function `crate::test_main_when_invalid_config::my_group::run_setup` exists but is inaccessible
-  --> tests/ui/test_main_invalid_library_benchmark_groups.rs:14:5
-   |
-14 | /     library_benchmark_group!(
-15 | |         name = my_group;
-16 | |         benchmarks = some_func
-17 | |     );
-   | |_____^ not accessible
-   = note: this error originates in the macro `main` which comes from the expansion of the macro `library_benchmark_group` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0425]: cannot find function `run_teardown` in module `some_func`
-  --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
-   |
-6  |     main!(library_benchmark_groups = some_func);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     similarly named function `__run_teardown` defined here
-   |     help: a function with a similar name exists: `__run_teardown`
-   |
-note: function `crate::test_main_when_invalid_config::my_group::run_teardown` exists but is inaccessible
-  --> tests/ui/test_main_invalid_library_benchmark_groups.rs:14:5
-   |
-14 | /     library_benchmark_group!(
-15 | |         name = my_group;
-16 | |         benchmarks = some_func
-17 | |     );
-   | |_____^ not accessible
-   = note: this error originates in the macro `main` which comes from the expansion of the macro `library_benchmark_group` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0425]: cannot find function `run_setup` in module `some_func`
-  --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
-   |
-6  |     main!(library_benchmark_groups = some_func);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     similarly named function `__run_setup` defined here
-   |     help: a function with a similar name exists: `__run_setup`
-   |
-note: function `crate::test_main_when_invalid_config::my_group::run_setup` exists but is inaccessible
-  --> tests/ui/test_main_invalid_library_benchmark_groups.rs:14:5
-   |
-14 | /     library_benchmark_group!(
-15 | |         name = my_group;
-16 | |         benchmarks = some_func
-17 | |     );
-   | |_____^ not accessible
-   = note: this error originates in the macro `main` which comes from the expansion of the macro `library_benchmark_group` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0425]: cannot find function `run_teardown` in module `some_func`
-  --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
-   |
-6  |     main!(library_benchmark_groups = some_func);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     similarly named function `__run_teardown` defined here
-   |     help: a function with a similar name exists: `__run_teardown`
-   |
-note: function `crate::test_main_when_invalid_config::my_group::run_teardown` exists but is inaccessible
-  --> tests/ui/test_main_invalid_library_benchmark_groups.rs:14:5
-   |
-14 | /     library_benchmark_group!(
-15 | |         name = my_group;
-16 | |         benchmarks = some_func
-17 | |     );
-   | |_____^ not accessible
-   = note: this error originates in the macro `main` which comes from the expansion of the macro `library_benchmark_group` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0603]: function import `run` is private
+error[E0603]: function import `__run_setup` is private
  --> src/macros.rs
   |
-  | ...                   $group::run(group_index, bench_index);
-  |                               ^^^ private function import
+  |                     has_setup: $group::__run_setup(false),
+  |                                        ^^^^^^^^^^^ private function import
   |
-note: the function import `run` is defined here...
+note: the function import `__run_setup` is defined here...
  --> tests/ui/test_main_invalid_library_benchmark_groups.rs:3:5
   |
 3 |     #[library_benchmark]
   |     ^^^^^^^^^^^^^^^^^^^^
-note: ...and refers to the function `run` which is defined here
+note: ...and refers to the function `__run_setup` which is defined here
+ --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
+  |
+6 |     main!(library_benchmark_groups = some_func);
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0603]: function import `__run_teardown` is private
+ --> src/macros.rs
+  |
+  |                     has_teardown: $group::__run_teardown(false),
+  |                                           ^^^^^^^^^^^^^^ private function import
+  |
+note: the function import `__run_teardown` is defined here...
+ --> tests/ui/test_main_invalid_library_benchmark_groups.rs:3:5
+  |
+3 |     #[library_benchmark]
+  |     ^^^^^^^^^^^^^^^^^^^^
+note: ...and refers to the function `__run_teardown` which is defined here
+ --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
+  |
+6 |     main!(library_benchmark_groups = some_func);
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0603]: function import `__run_setup` is private
+ --> src/macros.rs
+  |
+  | ...                   $group::__run_setup(true);
+  |                               ^^^^^^^^^^^ private function import
+  |
+note: the function import `__run_setup` is defined here...
+ --> tests/ui/test_main_invalid_library_benchmark_groups.rs:3:5
+  |
+3 |     #[library_benchmark]
+  |     ^^^^^^^^^^^^^^^^^^^^
+note: ...and refers to the function `__run_setup` which is defined here
+ --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
+  |
+6 |     main!(library_benchmark_groups = some_func);
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0603]: function import `__run_teardown` is private
+ --> src/macros.rs
+  |
+  | ...                   $group::__run_teardown(true);
+  |                               ^^^^^^^^^^^^^^ private function import
+  |
+note: the function import `__run_teardown` is defined here...
+ --> tests/ui/test_main_invalid_library_benchmark_groups.rs:3:5
+  |
+3 |     #[library_benchmark]
+  |     ^^^^^^^^^^^^^^^^^^^^
+note: ...and refers to the function `__run_teardown` which is defined here
+ --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
+  |
+6 |     main!(library_benchmark_groups = some_func);
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0603]: function import `__run` is private
+ --> src/macros.rs
+  |
+  | ...                   $group::__run(group_index, bench_index);
+  |                               ^^^^^ private function import
+  |
+note: the function import `__run` is defined here...
+ --> tests/ui/test_main_invalid_library_benchmark_groups.rs:3:5
+  |
+3 |     #[library_benchmark]
+  |     ^^^^^^^^^^^^^^^^^^^^
+note: ...and refers to the function `__run` which is defined here
  --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
   |
 6 |     main!(library_benchmark_groups = some_func);
@@ -139,8 +135,8 @@ note: function defined here
 help: remove the extra arguments
  --> src/macros.rs
   |
-  |                                     $group::run();
-  |                                                ~~
+  |                                     $group::__run();
+  |                                                  ~~
 
 error[E0277]: the trait bound `InternalLibraryBenchmarkConfig: From<&str>` is not satisfied
   --> tests/ui/test_main_invalid_library_benchmark_groups.rs:20:18

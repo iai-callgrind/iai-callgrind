@@ -1,23 +1,84 @@
-error: A binary_benchmark_group! needs a name
+error: A binary_benchmark_group! needs a unique name. See the documentation of this macro for further details.
 
-       binary_benchmark_group!(name = some_ident; benchmark = ...);
+       hint = binary_benchmark_group!(name = some_ident; benchmarks = |group| ... );
  --> tests/ui/test_binary_benchmark_group_when_invalid.rs:3:5
   |
-3 |     binary_benchmark_group!(benchmark = |_group: &mut BinaryBenchmarkGroup| {});
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+3 | /     binary_benchmark_group!(
+4 | |         benchmarks = |_group| {
+5 | |             _group;
+6 | |         }
+7 | |     );
+  | |_____^
   |
   = note: this error originates in the macro `binary_benchmark_group` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: A binary_benchmark_group! needs an expression specifying `BinaryBenchmarkGroup`:
-       binary_benchmark_group!(name = some_ident; benchmark = |group: &mut BinaryBenchmarkGroup| ... );
-       OR
-       binary_benchmark_group!(name = some_ident; benchmark = |"my_exe", group: &mut BinaryBenchmarkGroup| ... );
-  --> tests/ui/test_binary_benchmark_group_when_invalid.rs:8:5
+error: A binary_benchmark_group! needs a unique name. See the documentation of this macro for further details.
+
+       hint = binary_benchmark_group!(name = some_ident; benchmarks = |group: &mut BinaryBenchmarkGroup| ... );
+  --> tests/ui/test_binary_benchmark_group_when_invalid.rs:12:5
    |
-8  | /     binary_benchmark_group!(
-9  | |         name = some;
-10 | |         benchmark =
-11 | |     );
+12 |     binary_benchmark_group!(benchmarks = |_group: &mut BinaryBenchmarkGroup| {});
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `binary_benchmark_group` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: A binary_benchmark_group! needs a unique name. See the documentation of this macro for further details.
+
+       hint = binary_benchmark_group!(name = some_ident; benchmarks = |group| ... );
+  --> tests/ui/test_binary_benchmark_group_when_invalid.rs:17:5
+   |
+17 |     binary_benchmark_group!(benchmarks = |_group| {});
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `binary_benchmark_group` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: A binary_benchmark_group! needs at least 1 benchmark function which is annotated with #[binary_benchmark] or you can use the low level syntax. See the documentation of this macro for further details.
+
+       hint = binary_benchmark_group!(name = some_ident; benchmarks = some_binary_benchmark);
+  --> tests/ui/test_binary_benchmark_group_when_invalid.rs:22:5
+   |
+22 | /     binary_benchmark_group!(
+23 | |         name = some;
+24 | |     );
+   | |_____^
+   |
+   = note: this error originates in the macro `binary_benchmark_group` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: A binary_benchmark_group! needs at least 1 benchmark function which is annotated with #[binary_benchmark] or you can use the low level syntax. See the documentation of this macro for further details.
+
+       hint = binary_benchmark_group!(name = some_ident; benchmarks = some_binary_benchmark);
+  --> tests/ui/test_binary_benchmark_group_when_invalid.rs:29:5
+   |
+29 | /     binary_benchmark_group!(
+30 | |         name = some;
+31 | |         benchmarks =
+32 | |     );
+   | |_____^
+   |
+   = note: this error originates in the macro `binary_benchmark_group` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: This low level form of the binary_benchmark_group! needs you to use the `BinaryBenchmarkGroup` to setup benchmarks. See the documentation of this macro for further details.
+
+       hint = binary_benchmark_group!(name = some_ident; benchmarks = |group| { group.binary_benchmark(/* BinaryBenchmark::new */); });
+  --> tests/ui/test_binary_benchmark_group_when_invalid.rs:37:5
+   |
+37 | /     binary_benchmark_group!(
+38 | |         name = some;
+39 | |         benchmarks = |group|
+40 | |     );
+   | |_____^
+   |
+   = note: this error originates in the macro `binary_benchmark_group` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: This low level form of the binary_benchmark_group! needs you to use the `BinaryBenchmarkGroup` to setup benchmarks. See the documentation of this macro for further details.
+
+       hint = binary_benchmark_group!(name = some_ident; benchmarks = |group: &mut BinaryBenchmarkGroup| { group.binary_benchmark(/* BinaryBenchmark::new */); });
+  --> tests/ui/test_binary_benchmark_group_when_invalid.rs:45:5
+   |
+45 | /     binary_benchmark_group!(
+46 | |         name = some;
+47 | |         benchmarks = |group: &mut BinaryBenchmarkGroup|
+48 | |     );
    | |_____^
    |
    = note: this error originates in the macro `binary_benchmark_group` (in Nightly builds, run with -Z macro-backtrace for more info)
