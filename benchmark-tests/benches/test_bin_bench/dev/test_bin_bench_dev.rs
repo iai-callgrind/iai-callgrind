@@ -23,7 +23,7 @@ fn bench(first: usize) -> iai_callgrind::Command {
     // iai_callgrind::Command::new("/usr/bin/echo")
     //     .arg(first.to_string())
     //     .build()
-    iai_callgrind::Command::new("")
+    iai_callgrind::Command::new("/usr/bin/echo")
         .arg(first.to_string())
         .build()
 }
@@ -155,9 +155,27 @@ binary_benchmark_group!(
     }
 );
 
+fn my_setup(arg: &str) {
+    println!("SEtUP: {arg}");
+}
+
+#[binary_benchmark]
+#[bench::some(args = ("1"), setup = my_setup)]
+fn benchmark_setup(arg: &str) -> iai_callgrind::Command {
+    iai_callgrind::Command::new("/usr/bin/echo")
+        .arg(arg)
+        .build()
+}
+
+binary_benchmark_group!(
+    name = bench_with_setup;
+    benchmarks = benchmark_setup
+);
+
 main!(
     binary_benchmark_groups = low_level_group,
     my_group,
     some_group,
-    low_level
+    low_level,
+    bench_with_setup
 );

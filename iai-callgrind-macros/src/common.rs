@@ -466,10 +466,6 @@ pub fn format_indexed_ident(ident: &Ident, index: usize) -> Ident {
     format_ident!("{ident}_{index}")
 }
 
-pub fn pretty_expr_path(expr: &ExprPath) -> String {
-    expr.to_token_stream().to_string().replace(' ', "")
-}
-
 /// Truncate a utf-8 [`std::str`] to a given `len`
 pub fn truncate_str_utf8(string: &str, len: usize) -> &str {
     if let Some((pos, c)) = string
@@ -480,24 +476,5 @@ pub fn truncate_str_utf8(string: &str, len: usize) -> &str {
         &string[..pos + c.len_utf8()]
     } else {
         &string[..0]
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use rstest::rstest;
-    use syn::parse_quote;
-
-    use super::*;
-
-    #[rstest]
-    #[case::simple(parse_quote!(simple), "simple")]
-    #[case::with_segments(parse_quote!(simple::segment), "simple::segment")]
-    #[case::with_turbo_fish(parse_quote!(simple::segment::<Vec<String>>), "simple::segment::<Vec<String>>")]
-    #[case::leading_colon(parse_quote!(::segment), "::segment")]
-    #[case::leading_colon_multiple(parse_quote!(::simple::segment), "::simple::segment")]
-    #[case::leading_colon_with_turbo_fish(parse_quote!(::simple::segment::<Vec<String>>), "::simple::segment::<Vec<String>>")]
-    fn test_expr_path_to_string(#[case] expr: ExprPath, #[case] expected: &str) {
-        assert_eq!(pretty_expr_path(&expr), expected);
     }
 }

@@ -9,7 +9,7 @@ use syn::parse::Parse;
 use syn::punctuated::Punctuated;
 use syn::{parse2, parse_quote, Attribute, Expr, Ident, ItemFn, MetaNameValue, Token};
 
-use crate::common::{self, format_ident, pretty_expr_path, truncate_str_utf8, BenchesArgs, File};
+use crate::common::{self, format_ident, truncate_str_utf8, BenchesArgs, File};
 use crate::{defaults, CargoMetadata};
 
 // TODO: CHECK FOR OCCURRENCES OF library benchmark strings in docs and else
@@ -202,8 +202,8 @@ impl Bench {
         );
 
         let config = self.config.render_as_code(Some(id));
-        let setup = self.setup.render_as_code(Some(id));
-        let teardown = self.teardown.render_as_code(Some(id));
+        let setup = self.setup.render_as_code(Some(id), &self.args);
+        let teardown = self.teardown.render_as_code(Some(id), &self.args);
 
         quote! {
             #config
@@ -361,9 +361,9 @@ impl BinaryBenchmark {
         };
 
         let config = self.config.render_as_code();
-        let setup = self.setup.render_as_code(None);
+        let setup = self.setup.render_as_code(None, &Args::default());
         let setup_member = self.setup.render_as_member(None);
-        let teardown = self.teardown.render_as_code(None);
+        let teardown = self.teardown.render_as_code(None, &Args::default());
         let teardown_member = self.teardown.render_as_member(None);
 
         quote! {
@@ -494,16 +494,7 @@ impl Setup {
 
     pub fn parse_pair(&mut self, pair: &MetaNameValue) {
         if self.0.is_none() {
-            if let Expr::Path(expr) = &pair.value {
-                let string = pretty_expr_path(expr);
-                abort!(
-                    pair, "Expected an expression that is not a path";
-                    help = "Try `{0}(/* arguments */)` instead of `{0}`", string;
-                    note = "This is different to the `setup` argument in library benchmarks which only allows a path to a function"
-                );
-            } else {
-                self.0 = Some(pair.value.clone());
-            }
+            self.0 = Some(pair.value.clone());
         } else {
             abort!(
                 pair, "Duplicate argument: `setup`";
@@ -523,13 +514,18 @@ impl Setup {
         }
     }
 
-    fn render_as_code(&self, id: Option<&Ident>) -> TokenStream {
+    fn render_as_code(&self, id: Option<&Ident>, args: &Args) -> TokenStream {
         if let Some(setup) = &self.0 {
             let ident = Self::ident(id);
+            let call = if let Expr::Path(path) = &setup {
+                quote!(#path(#args))
+            } else {
+                quote!(#setup)
+            };
             quote! {
                 #[inline(never)]
                 pub fn #ident() {
-                    #setup
+                    #call;
                 }
             }
         } else {
@@ -554,16 +550,7 @@ impl Teardown {
 
     pub fn parse_pair(&mut self, pair: &MetaNameValue) {
         if self.0.is_none() {
-            if let Expr::Path(expr) = &pair.value {
-                let string = pretty_expr_path(expr);
-                abort!(
-                    pair, "Expected an expression that is not a path";
-                    help = "Try `{0}(/* arguments */)` instead of `{0}`", string;
-                    note = "This is different to the `teardown` argument in library benchmarks which only allows a path to a function"
-                );
-            } else {
-                self.0 = Some(pair.value.clone());
-            }
+            self.0 = Some(pair.value.clone());
         } else {
             abort!(
                 pair, "Duplicate argument: `teardown`";
@@ -579,13 +566,18 @@ impl Teardown {
         }
     }
 
-    fn render_as_code(&self, id: Option<&Ident>) -> TokenStream {
+    fn render_as_code(&self, id: Option<&Ident>, args: &Args) -> TokenStream {
         if let Some(teardown) = &self.0 {
             let ident = Self::ident(id);
+            let call = if let Expr::Path(path) = &teardown {
+                quote!(#path(#args))
+            } else {
+                quote!(#teardown)
+            };
             quote! {
                 #[inline(never)]
                 pub fn #ident() {
-                    #teardown
+                    #call;
                 }
             }
         } else {
