@@ -140,6 +140,9 @@ impl Benchmark for BaselineBenchmark {
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
+        let header = BinaryBenchmarkHeader::new(&config.meta, bin_bench);
+        header.print();
+
         let callgrind_command = ToolCommand::new(
             ValgrindTool::Callgrind,
             &config.meta,
@@ -166,11 +169,8 @@ impl Benchmark for BaselineBenchmark {
             path.to_log_output().shift()?;
         }
 
-        let header = BinaryBenchmarkHeader::new(&config.meta, bin_bench);
         let mut benchmark_summary =
             bin_bench.create_benchmark_summary(config, &out_path, header.description())?;
-
-        header.print();
 
         // We're implicitly applying the default here: In the absence of a user provided sandbox we
         // don't run the benchmarks in a sandbox. Everything from here on runs with the current
@@ -588,14 +588,15 @@ impl Benchmark for LoadBaselineBenchmark {
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
+        let header = BinaryBenchmarkHeader::new(&config.meta, bin_bench);
+        header.print();
+
         let out_path = self.output_path(bin_bench, config, group);
         let old_path = out_path.to_base_path();
         let log_path = out_path.to_log_output();
 
-        let header = BinaryBenchmarkHeader::new(&config.meta, bin_bench);
         let mut benchmark_summary =
             bin_bench.create_benchmark_summary(config, &out_path, header.description())?;
-        header.print();
 
         let new_costs = SummaryParser.parse(&out_path)?;
         let old_costs = Some(SummaryParser.parse(&old_path)?);
@@ -728,6 +729,9 @@ impl Benchmark for SaveBaselineBenchmark {
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
+        let header = BinaryBenchmarkHeader::new(&config.meta, bin_bench);
+        header.print();
+
         let callgrind_command = ToolCommand::new(
             ValgrindTool::Callgrind,
             &config.meta,
@@ -756,11 +760,8 @@ impl Benchmark for SaveBaselineBenchmark {
         let log_path = out_path.to_log_output();
         log_path.clear()?;
 
-        let header = BinaryBenchmarkHeader::new(&config.meta, bin_bench);
         let mut benchmark_summary =
             bin_bench.create_benchmark_summary(config, &out_path, header.description())?;
-
-        header.print();
 
         let sandbox = bin_bench
             .sandbox

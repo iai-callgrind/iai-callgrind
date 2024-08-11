@@ -139,6 +139,9 @@ impl Benchmark for BaselineBenchmark {
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
+        let header = LibraryBenchmarkHeader::new(&config.meta, lib_bench);
+        header.print();
+
         let callgrind_command = ToolCommand::new(
             ValgrindTool::Callgrind,
             &config.meta,
@@ -168,11 +171,8 @@ impl Benchmark for BaselineBenchmark {
             path.to_log_output().shift()?;
         }
 
-        let header = LibraryBenchmarkHeader::new(&config.meta, lib_bench);
         let mut benchmark_summary =
             lib_bench.create_benchmark_summary(config, &out_path, header.description())?;
-
-        header.print();
 
         let output = callgrind_command.run(
             tool_config,
@@ -483,17 +483,17 @@ impl Benchmark for LoadBaselineBenchmark {
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
+        let header = LibraryBenchmarkHeader::new(&config.meta, lib_bench);
+        header.print();
+
         let bench_args = lib_bench.bench_args(group);
         let sentinel = Sentinel::default();
         let out_path = self.output_path(lib_bench, config, group);
         let old_path = out_path.to_base_path();
         let log_path = out_path.to_log_output();
 
-        let header = LibraryBenchmarkHeader::new(&config.meta, lib_bench);
         let mut benchmark_summary =
             lib_bench.create_benchmark_summary(config, &out_path, header.description())?;
-
-        header.print();
 
         let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
         let old_costs = Some(SentinelParser::new(&sentinel).parse(&old_path)?);
@@ -629,6 +629,9 @@ impl Benchmark for SaveBaselineBenchmark {
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
+        let header = LibraryBenchmarkHeader::new(&config.meta, lib_bench);
+        header.print();
+
         let callgrind_command = ToolCommand::new(
             ValgrindTool::Callgrind,
             &config.meta,
@@ -661,11 +664,8 @@ impl Benchmark for SaveBaselineBenchmark {
         let log_path = out_path.to_log_output();
         log_path.clear()?;
 
-        let header = LibraryBenchmarkHeader::new(&config.meta, lib_bench);
         let mut benchmark_summary =
             lib_bench.create_benchmark_summary(config, &out_path, header.description())?;
-
-        header.print();
 
         let output = callgrind_command.run(
             tool_config,

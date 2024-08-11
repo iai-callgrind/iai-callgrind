@@ -1,8 +1,6 @@
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio as StdStdio};
-use std::thread::sleep;
-use std::time::Duration;
 
 use anyhow::Result;
 use log::{debug, info, log_enabled, trace, Level};
@@ -127,11 +125,6 @@ impl Assistant {
             let child = command
                 .spawn()
                 .map_err(|error| Error::LaunchError(config.bench_bin.clone(), error.to_string()))?;
-
-            // Usually we block the main process and wait for setup to complete. This small
-            // artificial delay should help in cases in which the setup process starts slower than
-            // the main process.
-            sleep(Duration::from_millis(1));
 
             return Ok(Some(child));
         }
