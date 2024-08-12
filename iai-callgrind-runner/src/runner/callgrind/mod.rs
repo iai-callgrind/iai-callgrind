@@ -78,8 +78,8 @@ impl RegressionConfig {
     ///
     /// # Errors
     ///
-    /// Returns an [`anyhow::Error`] with the only source [`Error::RegressionError`] if a regression
-    /// error occurred
+    /// Returns an [`anyhow::Error`] with the only source [`crate::error::Error::RegressionError`]
+    /// if a regression error occurred
     pub fn check_and_print(&self, costs_summary: &CostsSummary) -> Vec<CallgrindRegressionSummary> {
         let regression_summaries = self.check(costs_summary);
 

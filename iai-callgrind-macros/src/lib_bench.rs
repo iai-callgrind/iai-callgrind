@@ -18,7 +18,7 @@ struct Args(common::Args);
 
 /// This is the counterpart for the `#[bench]` attribute
 ///
-/// The #[benches] attribute is also parsed into this structure.
+/// The `#[benches]` attribute is also parsed into this structure.
 #[derive(Debug)]
 struct Bench {
     id: Ident,

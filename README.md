@@ -457,8 +457,8 @@ instead. The above `#[library_benchmark]` is pretty much the same as
 #[library_benchmark]
 #[bench::multiple_0(vec![1])]
 #[bench::multiple_1(vec![5])]
-#[bench::with_setup_0(setup_worst_case_array(1)])]
-#[bench::with_setup_1(setup_worst_case_array(5)])]
+#[bench::with_setup_0(setup_worst_case_array(1))]
+#[bench::with_setup_1(setup_worst_case_array(5))]
 fn bench_bubble_sort_with_benches_attribute(input: Vec<i32>) -> Vec<i32> {
     black_box(bubble_sort(input))
 }
@@ -466,33 +466,6 @@ fn bench_bubble_sort_with_benches_attribute(input: Vec<i32>) -> Vec<i32> {
 
 but a lot more concise especially if a lot of values are passed to the same
 `setup` function.
-
-##### The `library_benchmark_group!`
-
-The `library_benchmark_group` macro accepts the following parameters (in this
-order and separated by a semicolon):
-
-- __`name`__ (mandatory): A unique name used to identify the group for the
-  `main!` macro
-- __`config`__ (optional): A `LibraryBenchmarkConfig` which is applied
-  to all benchmarks within the same group.
-- __`compare_by_id`__ (optional): The default is false. If true, all benches in
-  the benchmark functions specified with the `benchmarks` argument, across any
-  benchmark groups, are compared with each other as long as the ids (the part
-  after the `::` in `#[bench::id(...)]`) match. See also
-  [below](#comparing-benchmark-functions)
-- __`setup`__ (optional): A setup function or any valid expression which is run
-  before all benchmarks of this group
-- __`teardown`__ (optional): A teardown function or any valid expression which
-  is run after all benchmarks of this group
-- __`benchmarks`__ (mandatory): A list of comma separated paths of benchmark
-  functions which are annotated with `#[library_benchmark]`
-
-Note the `setup` and `teardown` parameters are different to the ones of
-`#[library_benchmark]`, `#[bench]` and `#[benches]`. They accept an expression
-or function call as in `setup = group_setup_function()`. Also, these `setup` and
-`teardown` functions are not overridden by the ones from any of the before
-mentioned attributes.
 
 The `file` parameter goes a step further and reads the specified file line by
 line creating a benchmark from each line. The line is passed to the benchmark
@@ -529,6 +502,33 @@ fn some_bench(line: String) -> Result<u64> {
 Reading inputs from a file allows for example sharing the same inputs between
 different benchmarking frameworks like `criterion` or if you simply have a long
 list of inputs you might find it more convenient to read them from a file.
+
+##### The `library_benchmark_group!`
+
+The `library_benchmark_group` macro accepts the following parameters (in this
+order and separated by a semicolon):
+
+- __`name`__ (mandatory): A unique name used to identify the group for the
+  `main!` macro
+- __`config`__ (optional): A `LibraryBenchmarkConfig` which is applied
+  to all benchmarks within the same group.
+- __`compare_by_id`__ (optional): The default is false. If true, all benches in
+  the benchmark functions specified with the `benchmarks` argument, across any
+  benchmark groups, are compared with each other as long as the ids (the part
+  after the `::` in `#[bench::id(...)]`) match. See also
+  [below](#comparing-benchmark-functions)
+- __`setup`__ (optional): A setup function or any valid expression which is run
+  before all benchmarks of this group
+- __`teardown`__ (optional): A teardown function or any valid expression which
+  is run after all benchmarks of this group
+- __`benchmarks`__ (mandatory): A list of comma separated paths of benchmark
+  functions which are annotated with `#[library_benchmark]`
+
+Note the `setup` and `teardown` parameters are different to the ones of
+`#[library_benchmark]`, `#[bench]` and `#[benches]`. They accept an expression
+or function call as in `setup = group_setup_function()`. Also, these `setup` and
+`teardown` functions are not overridden by the ones from any of the before
+mentioned attributes.
 
 ##### Comparing benchmark functions
 

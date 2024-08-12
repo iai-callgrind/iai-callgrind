@@ -75,6 +75,7 @@ dldmw
 dlmr
 dlmw
 docsrs
+doctest
 doesnotexist
 dotgraphs
 dpkg

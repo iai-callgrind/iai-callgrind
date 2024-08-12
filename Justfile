@@ -149,7 +149,7 @@ build-runner:
 
 # Build the documentation
 build-docs:
-    DOCS_RS=1 cargo doc --all-features --no-deps --document-private-items
+    DOCS_RS=1 cargo doc --all-features --no-deps --workspace --document-private-items
 
 # A thorough build of all packages with `cargo hack` and the feature powerset
 build-hack:

@@ -1,8 +1,30 @@
 //! Contains macros which together define a benchmark harness that can be used in place of the
 //! standard benchmark harness. This allows the user to run Iai benchmarks with `cargo bench`.
 
-/// TODO: DOCUMENTATION
-/// TODO: TESTS
+/// [low level api](`crate::binary_benchmark_group`) only: Use to add a `#[binary_benchmark]` to a
+/// [`crate::BinaryBenchmarkGroup`]
+///
+/// # Examples
+///
+/// ```rust
+/// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+/// use iai_callgrind::{binary_benchmark_attribute, binary_benchmark_group, binary_benchmark};
+///
+/// #[binary_benchmark]
+/// fn bench_binary() -> iai_callgrind::Command {
+///     iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+///         .arg("foo")
+///         .build()
+/// }
+///
+/// binary_benchmark_group!(
+///     name = my_group;
+///     benchmarks = |group: &mut BinaryBenchmarkGroup| {
+///         group.binary_benchmark(binary_benchmark_attribute!(bench_binary));
+///     }
+/// );
+/// # fn main() {}
+/// ```
 #[macro_export]
 macro_rules! binary_benchmark_attribute {
     ($name:ident) => {{
@@ -10,10 +32,10 @@ macro_rules! binary_benchmark_attribute {
 
         for internal_bench in $name::__BENCHES {
             let mut bench = if let Some(id) = internal_bench.id_display {
-                Bench::new(id)
+                $crate::Bench::new(id)
             } else {
                 // TODO: the output is different if we're using an id
-                Bench::new(stringify!($name))
+                $crate::Bench::new(stringify!($name))
             };
             let mut bench = bench.command((internal_bench.func)());
             if let Some(setup) = internal_bench.setup {
@@ -145,23 +167,25 @@ macro_rules! binary_benchmark_attribute {
 ///
 /// # Binary Benchmarks
 ///
-/// The scheme to setup binary benchmarks makes use of [`crate::binary_benchmark_group`]
-/// and [`crate::BinaryBenchmarkGroup`] to set up benches with [`crate::Run`] roughly
-/// looking like this:
+/// Setting up binary benchmarks is almost the same as setting up library benchmarks but using the
+/// `#[binary_benchmark]` macro. For example, if you're crate's binary is called `my-foo`:
 ///
 /// ```rust
-/// use iai_callgrind::{main, binary_benchmark_group, Run, Arg};
+/// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+/// use iai_callgrind::{main, binary_benchmark_group, binary_benchmark};
+///
+/// #[binary_benchmark]
+/// #[bench::hello_world("hello world")]
+/// #[bench::foo("foo")]
+/// fn bench_binary(arg: &str) -> iai_callgrind::Command {
+///     iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+///         .arg(arg)
+///         .build()
+/// }
 ///
 /// binary_benchmark_group!(
 ///     name = my_group;
-///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
-///         group
-///         .bench(Run::with_arg(Arg::new(
-///             "positional arguments",
-///             ["foo", "foo bar"],
-///         )))
-///         .bench(Run::with_arg(Arg::empty("no argument")));
-///     }
+///     benchmarks = bench_binary
 /// );
 ///
 /// # fn main() {
@@ -169,7 +193,7 @@ macro_rules! binary_benchmark_attribute {
 /// # }
 /// ```
 ///
-/// See the documentation of [`crate::binary_benchmark_group`] and [`crate::Run`] for more
+/// See the documentation of [`crate::binary_benchmark_group`] and [`crate::Command`] for more
 /// details.
 #[macro_export]
 macro_rules! main {
@@ -536,7 +560,7 @@ macro_rules! main {
                                         $group::__run_bench_teardown(group_index, bench_index);
                                     }
                                 }
-                                (name, _)=> panic!("Invalid function '{}' in group '{}'", name, group)
+                                (name, _) => panic!("Invalid function '{}' in group '{}'", name, group)
                             }
                         }
                     )+
@@ -745,144 +769,216 @@ macro_rules! main {
     };
 }
 
-/// TODO: UPDATE DOCUMENTATION
 /// Macro used to define a group of binary benchmarks
 ///
-/// A small introductory example which shows the basic setup:
+/// There are two apis to set up binary benchmarks. The recommended way is to [use the
+/// `#[binary_benchmark]` attribute](#using-the-high-level-api-with-the-binary-benchmark-attribute).
+/// But, if you find yourself in the situation that the attribute isn't enough you can fall back to
+/// the [low level api](#the-low-level-api) or even [intermix both
+/// styles](#intermixing-both-styles).
+///
+/// # The macro's arguments in detail:
+///
+/// The following top-level arguments are accepted (in this order):
 ///
 /// ```rust
-/// use iai_callgrind::{binary_benchmark_group, BinaryBenchmarkGroup};
+/// # use iai_callgrind::{binary_benchmark, binary_benchmark_group, BinaryBenchmarkGroup, BinaryBenchmarkConfig};
+/// # fn run_setup() {}
+/// # fn run_teardown() {}
+/// # #[binary_benchmark]
+/// # fn bench_binary() -> iai_callgrind::Command { iai_callgrind::Command::new("some") }
+/// binary_benchmark_group!(
+///     name = my_group;
+///     config = BinaryBenchmarkConfig::default();
+///     compare_by_id = false;
+///     setup = run_setup();
+///     teardown = run_teardown();
+///     benchmarks = bench_binary
+/// );
+/// # fn main() {
+/// # my_group::my_group(&mut BinaryBenchmarkGroup::default());
+/// # }
+/// ```
+///
+/// * __`name`__ (mandatory): A unique name used to identify the group for the `main!` macro
+/// * __`config`__ (optional): A [`crate::BinaryBenchmarkConfig`]
+/// * __`compare_by_id`__ (optional): The default is false. If true, all commands from the functions
+///   specified in the `benchmarks` argument, are compared with each other as long as the ids (the
+///   part after the `::` in `#[bench::id(...)]`) match.
+/// * __`setup`__ (optional): A function which is executed before all benchmarks in this group
+/// * __`teardown`__ (optional): A function which is executed after all benchmarks in this group
+/// * __`benchmarks`__ (mandatory): A `,`-separated list of `#[binary_benchmark]` annotated function
+///   names you want to put into this group. Or, if you want to use the low level api
+///
+///   `|IDENTIFIER: &mut BinaryBenchmarkGroup| EXPRESSION`
+///
+///   or the shorter `|IDENTIFIER| EXPRESSION`
+///
+///   where `IDENTIFIER` is the identifier of your choice for the `BinaryBenchmarkGroup` (we use
+///   `group` throughout our examples) and `EXPRESSION` is the code where you make use of the
+///   `BinaryBenchmarkGroup` to set up the binary benchmarks
+///
+/// # Using the high-level api with the `#[binary benchmark]` attribute
+///
+/// A small introductory example which demonstrates the basic setup (assuming a crate's binary is
+/// named `my-foo`):
+///
+/// ```rust
+/// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+/// use iai_callgrind::{binary_benchmark_group, BinaryBenchmarkGroup, binary_benchmark};
+///
+/// #[binary_benchmark]
+/// #[bench::hello_world("hello world")]
+/// #[bench::foo("foo")]
+/// #[benches::multiple("bar", "baz")]
+/// fn bench_binary(arg: &str) -> iai_callgrind::Command {
+///      iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+///          .arg(arg)
+///          .build()
+/// }
 ///
 /// binary_benchmark_group!(
 ///     name = my_group;
-///     benchmark = |group: &mut BinaryBenchmarkGroup| {
-///         // code to setup and configure the benchmarks in a group
-///     }
+///     benchmarks = bench_binary
 /// );
 ///
+/// # fn main() {
 /// iai_callgrind::main!(binary_benchmark_groups = my_group);
+/// # }
 /// ```
 ///
 /// To be benchmarked a `binary_benchmark_group` has to be added to the `main!` macro by adding its
 /// name to the `binary_benchmark_groups` argument of the `main!` macro. See there for further
-/// details about the [`crate::main`] macro.
+/// details about the [`crate::main`] macro. See the documentation of [`crate::binary_benchmark`]
+/// for more details about the attribute itself and the inner attributes `#[bench]` and
+/// `#[benches]`.
 ///
-/// This macro accepts two forms which slightly differ in the `benchmark` argument. In general, each
-/// group shares the same `before`, `after`, `setup` and `teardown` functions, [`crate::Fixtures`]
-/// and [`crate::BinaryBenchmarkConfig`].
+/// # The low-level api
 ///
-/// The following top-level arguments are accepted:
+/// Using the low-level api has advantages but when it comes to stability in terms of usability, the
+/// low level api might be considered less stable. What does this mean? If we have to make changes
+/// to the inner workings of iai-callgrind which not necessarily change the high-level api it is
+/// more likely that the low-level api has to be adjusted. This implies you might have to adjust
+/// your benchmarks more often with a version update of `iai-callgrind`. Hence, it is recommended to
+/// use the high-level api as much as possible and only use the low-level api under special
+/// circumstances. You can also [intermix both styles](#intermixing-both-styles)!
+///
+/// The low-level api mirrors the high-level constructs as close as possible. The
+/// [`crate::BinaryBenchmarkGroup`] is a special case, since we use the information from the
+/// `binary_benchmark_group!` macro [arguments](#the-macros-arguments-in-detail) (__`name`__,
+/// __`config`__, ...) to create the `BinaryBenchmarkGroup` and pass it to the `benchmarks`
+/// argument.
+///
+/// That being said, here's the basic usage:
 ///
 /// ```rust
-/// # use iai_callgrind::{binary_benchmark_group, BinaryBenchmarkGroup, BinaryBenchmarkConfig};
-/// # fn run_before() {}
-/// # fn run_after() {}
-/// # fn run_setup() {}
-/// # fn run_teardown() {}
+/// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+/// use iai_callgrind::{binary_benchmark_group, BinaryBenchmark, Bench};
+///
 /// binary_benchmark_group!(
+///     // All the other options from the `binary_benchmark_group` are used as usual
 ///     name = my_group;
-///     before = run_before;
-///     after = run_after;
-///     setup = run_setup;
-///     teardown = run_teardown;
-///     config = BinaryBenchmarkConfig::default();
-///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
-///         // code to setup and configure the benchmarks in a group
+///
+///     // Note there's also the shorter form `benchmarks = |group|` but in the examples we want
+///     // to be more explicit
+///     benchmarks = |group: &mut BinaryBenchmarkGroup| {
+///
+///         // We have chosen `group` to be our identifier but it can be anything
+///         group.binary_benchmark(
+///
+///             // This is the equivalent of the `#[binary_benchmark]` attribute. The `id`
+///             // mirrors the function name of the `#[binary_benchmark]` annotated function.
+///             BinaryBenchmark::new("some_id")
+///                 .bench(
+///
+///                     // The equivalent of the `#[bench]` attribute.
+///                     Bench::new("my_bench_id")
+///                         .command(
+///
+///                             // The `Command` stays the same
+///                             iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+///                                 .arg("foo").build()
+///                         )
+///                 )
+///         )
 ///     }
 /// );
-/// # fn main() {
-/// # my_group::my_group(&mut BinaryBenchmarkGroup::default());
-/// # }
+/// # fn main() {}
 /// ```
 ///
-/// * __name__ (mandatory): A unique name used to identify the group for the `main!` macro
-/// * __before__ (optional): A function which is run before all benchmarks
-/// * __after__ (optional): A function which is run after all benchmarks
-/// * __setup__ (optional): A function which is run before any benchmarks
-/// * __teardown__ (optional): A function which is run before any benchmarks
-/// * __config__ (optional): A [`crate::BinaryBenchmarkConfig`]
-///
-/// The `before`, `after`, `setup` and `teardown` arguments accept an additional argument `bench =
-/// bool`
+/// Depending on your IDE, it's nicer to work with the code after the `|group: &mut
+/// BinaryBenchmarkGroup|` if it resides in a separate function rather than the macro itself as in
 ///
 /// ```rust
-/// # use iai_callgrind::{binary_benchmark_group, BinaryBenchmarkGroup};
-/// # fn run_before() {}
-/// # binary_benchmark_group!(
-/// # name = my_group;
-/// before = run_before, bench = true;
-/// #    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
-/// #    }
-/// # );
-/// # fn main() {
-/// # my_group::my_group(&mut BinaryBenchmarkGroup::default());
-/// # }
-/// ```
-///
-/// which enables benchmarking of the respective function if wished so. Note that setup and teardown
-/// functions are benchmarked only once the first time they are invoked, much like the before and
-/// after functions. However, both functions are run as usual before or after any benchmark.
-///
-/// Only the `benchmark` argument differs. In the first form
-///
-/// ```rust
-/// # use iai_callgrind::{binary_benchmark_group, BinaryBenchmarkGroup, Run, Arg};
-/// # binary_benchmark_group!(
-/// # name = my_group;
-/// benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
-///     group.bench(Run::with_arg(Arg::new("some id", &["--foo=bar"])))
-/// }
-/// # );
-/// # fn main() {
-/// # my_group::my_group(&mut BinaryBenchmarkGroup::default());
-/// # }
-/// ```
-///
-/// it accepts a `command` which is the default for all [`crate::Run`] of the same benchmark group.
-/// This `command` supports auto-discovery of a crate's binary. For example if a crate's binary is
-/// named `my-exe` then it is sufficient to pass `"my-exe"` to the benchmark argument as shown
-/// above.
-///
-/// In the second form:
-///
-/// ```rust
-/// # use iai_callgrind::{binary_benchmark_group, BinaryBenchmarkGroup, Run, Arg};
-/// # binary_benchmark_group!(
-/// # name = my_group;
-/// benchmark = |group: &mut BinaryBenchmarkGroup| {
-///     // Usually, you should use `env!("CARGO_BIN_EXE_my-exe")` instead of an absolute path to a
-///     // crate's binary
-///     group.bench(Run::with_cmd(
-///         "/path/to/my-exe",
-///         Arg::new("some id", &["--foo=bar"]),
-///     ))
-/// }
-/// # );
-/// # fn main() {
-/// # my_group::my_group(&mut BinaryBenchmarkGroup::default());
-/// # }
-/// ```
-///
-/// the command can be left out and each [`crate::Run`] of a benchmark group has to define a `cmd`
-/// by itself. Note that [`crate::Run`] does not support auto-discovery of a crate's binary.
-///
-/// If you feel uncomfortable working within the macro you can simply move the code to setup the
-/// group's benchmarks into a separate function like so
-///
-/// ```rust
-/// use iai_callgrind::{binary_benchmark_group, BinaryBenchmarkGroup, Run, Arg};
+/// use iai_callgrind::{binary_benchmark_group, BinaryBenchmark, Bench, BinaryBenchmarkGroup};
 ///
 /// fn setup_my_group(group: &mut BinaryBenchmarkGroup) {
-///     group.bench(Run::with_arg(Arg::new("some id", &["--foo=bar"])));
+///     // Enjoy all the features of your IDE ...
 /// }
 ///
 /// binary_benchmark_group!(
 ///     name = my_group;
-///     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| setup_my_group(group)
+///     benchmarks = |group: &mut BinaryBenchmarkGroup| setup_my_group(group)
 /// );
-/// # fn main() {
-/// # my_group::my_group(&mut BinaryBenchmarkGroup::default());
-/// # }
+/// # fn main() {}
+/// ```
+///
+/// The list of all structs and macros used exclusively in the low-level api:
+/// * [`crate::BinaryBenchmarkGroup`]
+/// * [`crate::BinaryBenchmark`]: Mirrors the `#[binary_benchmark]` attribute
+/// * [`crate::Bench`]: Mirrors the `#[bench]` attribute
+/// * [`crate::binary_benchmark_attribute`]: Used to add a `#[binary_benchmark]` attributed function
+///   in [`crate::BinaryBenchmarkGroup::binary_benchmark`]
+/// * [`crate::BenchmarkId`]: The benchmark id is for example used in
+///   [`crate::BinaryBenchmark::new`] and [`crate::Bench::new`]
+///
+/// Note there's no equivalent for the `#[benches]` attribute. The [`crate::Bench`] behaves exactly
+/// as the `#[benches]` attribute if more than a single [`crate::Command`] is added.
+///
+/// # Intermixing both apis
+///
+/// For example, if you started with the `#[binary_benchmark]` attribute and noticed you are limited
+/// by it to set up all the [`crate::Command`]s the way you want, you can intermix both styles:
+///
+/// ```rust
+/// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+/// use iai_callgrind::{
+///     binary_benchmark, binary_benchmark_group, BinaryBenchmark, Bench, BinaryBenchmarkGroup,
+///     binary_benchmark_attribute
+/// };
+///
+/// #[binary_benchmark]
+/// #[bench::foo("foo")]
+/// #[benches::multiple("bar", "baz")]
+/// fn bench_binary(arg: &str) -> iai_callgrind::Command {
+///     iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+///         .arg(arg)
+///         .build()
+/// }
+///
+/// fn setup_my_group(group: &mut BinaryBenchmarkGroup) {
+///     group
+///         // Simply add what you already have with the `binary_benchmark_attribute!` macro.
+///         // This macro returns a `BinaryBenchmark`, so you could even add more `Bench`es
+///         // to it instead of creating a new one as we do below
+///         .binary_benchmark(binary_benchmark_attribute!(bench_binary))
+///         .binary_benchmark(
+///             BinaryBenchmark::new("did_not_work_with_attribute")
+///                 .bench(Bench::new("low_level")
+///                     .command(
+///                         iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+///                             .arg("foo")
+///                             .build()
+///                     )
+///                 )
+///         );
+/// }
+///
+/// binary_benchmark_group!(
+///     name = my_group;
+///     benchmarks = |group: &mut BinaryBenchmarkGroup| setup_my_group(group)
+/// );
+/// # fn main() {}
 /// ```
 #[macro_export]
 macro_rules! binary_benchmark_group {
@@ -1216,12 +1312,12 @@ macro_rules! binary_benchmark_group {
         benchmarks = |$group:ident| $body:expr
     ) => {
         binary_benchmark_group!(
-            name = $name:ident;
+            name = $name;
             $( config = $config; )?
             $( compare_by_id = $compare; )?
             $( setup = $setup; )?
             $( teardown = $teardown; )?
-            benchmarks = |$group: &mut BinaryBenchmarkGroup| $body:expr
+            benchmarks = |$group: &mut BinaryBenchmarkGroup| $body
         );
     };
 }

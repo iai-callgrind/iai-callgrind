@@ -34,7 +34,7 @@ pub struct BinaryBenchmarkBench {
 // blocking mode to wait for the processes to exit. Wait instead this amount of time (Duration) or
 // else exit with error killing the child process. Add a similar parameter to Command but which
 // controls only the command itself.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct BinaryBenchmarkConfig {
     pub env_clear: Option<bool>,
     pub current_dir: Option<PathBuf>,
@@ -72,7 +72,7 @@ pub struct BinaryBenchmarkGroups {
     pub has_teardown: bool,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Command {
     pub path: PathBuf,
     pub args: Vec<OsString>,
@@ -161,7 +161,7 @@ pub enum EventKind {
     SpLoss2,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExitWith {
     Success,
     Failure,
@@ -201,14 +201,14 @@ pub enum FlamegraphKind {
 }
 
 /// The model for the `#[library_benchmark]` attribute
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmark {
     pub config: Option<LibraryBenchmarkConfig>,
     pub benches: Vec<LibraryBenchmarkBench>,
 }
 
 /// The model for the `#[bench]` attribute in a `#[library_benchmark]`
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmarkBench {
     pub id: Option<String>,
     pub function_name: String,
@@ -229,7 +229,7 @@ pub struct LibraryBenchmarkConfig {
 }
 
 /// The model for the `library_benchmark_group` macro
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmarkGroup {
     pub id: String,
     pub config: Option<LibraryBenchmarkConfig>,
@@ -240,7 +240,7 @@ pub struct LibraryBenchmarkGroup {
 }
 
 /// The model for the `main` macro
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmarkGroups {
     pub config: LibraryBenchmarkConfig,
     pub groups: Vec<LibraryBenchmarkGroup>,
@@ -259,22 +259,26 @@ pub struct RegressionConfig {
     pub fail_fast: Option<bool>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Sandbox {
     pub enabled: Option<bool>,
     pub fixtures: Vec<PathBuf>,
     pub follow_symlinks: Option<bool>,
 }
 
-/// TODO: DOCUMENTATION
+/// Configure the `Stream` which should be used as pipe in [`Stdin::Setup`]
+///
+/// The default is [`Pipe::Stdout`]
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Pipe {
+    /// The `Stdout` default `Stream`
     #[default]
     Stdout,
+    /// The `Stderr` error `Stream`
     Stderr,
 }
 
-/// TODO: DOCUMENTATION
+/// We use this enum only internally in the benchmark runner
 #[cfg(feature = "runner")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Stream {
@@ -283,23 +287,41 @@ pub(crate) enum Stream {
     Stderr,
 }
 
-/// TODO: DOCUMENTATION
+/// Configure the `Stdio` of `Stdin`, `Stdout` and `Stderr`
+///
+/// Describes what to do with a standard I/O stream for the [`Command`] when passed to the stdin,
+/// stdout, and stderr methods of [`Command`].
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Stdio {
+    /// The [`Command`]'s `Stream` inherits from the benchmark runner.
     #[default]
     Inherit,
+    /// This stream will be ignored. This is the equivalent of attaching the stream to `/dev/null`
     Null,
+    /// Redirect the content of a file into this `Stream`. This is equivalent to a redirection in a
+    /// shell for example for the `Stdout` of `my-command`: `my-command > some_file`
     File(PathBuf),
+    /// A new pipe should be arranged to connect the benchmark runner and the [`Command`]
     Pipe,
 }
 
+/// This is a special `Stdio` for the stdin method of [`Command`]
+///
+/// Contains all the standard [`Stdio`] options and the [`Stdin::Setup`] option
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Stdin {
+    /// Using this in [`Command::stdin`] pipes the stream specified with [`Pipe`] of the `setup`
+    /// function into the `Stdin` of the [`Command`]. In this case the `setup` and [`Command`] are
+    /// executed in parallel instead of sequentially. See [`Command::stdin`] for more details.
     Setup(Pipe),
     #[default]
+    /// See [`Stdio::Inherit`]
     Inherit,
+    /// See [`Stdio::Null`]
     Null,
+    /// See [`Stdio::File`]
     File(PathBuf),
+    /// See [`Stdio::Pipe`]
     Pipe,
 }
 

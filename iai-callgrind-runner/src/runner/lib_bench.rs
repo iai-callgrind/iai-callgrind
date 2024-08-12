@@ -250,7 +250,8 @@ impl Benchmark for BaselineBenchmark {
 }
 
 impl Groups {
-    /// Create this `Groups` from a [`LibraryBenchmark`] submitted by the benchmarking harness
+    /// Create this `Groups` from a [`crate::api::LibraryBenchmark`] submitted by the benchmarking
+    /// harness
     fn from_library_benchmark(
         module_path: &ModulePath,
         benchmark_groups: LibraryBenchmarkGroups,

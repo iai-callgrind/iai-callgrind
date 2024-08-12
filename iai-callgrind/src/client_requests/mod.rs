@@ -196,7 +196,7 @@ macro_rules! do_client_request {
 
 /// Convenience macro to create a `\0`-byte terminated [`std::ffi::CString`] from a literal string
 ///
-/// The string literal passed to this macro must contain or end with a `\0`-byte. If you need a
+/// The string literal passed to this macro must not contain or end with a `\0`-byte. If you need a
 /// checked version of [`std::ffi::CString`] you can use [`std::ffi::CString::new`].
 ///
 /// # Safety

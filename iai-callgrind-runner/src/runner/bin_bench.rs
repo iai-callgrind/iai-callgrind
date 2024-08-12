@@ -31,9 +31,12 @@ use crate::util::make_absolute;
 
 // TODO: SEARCH FOR MORE DEFAULTS, ALSO IN OTHER modules
 mod defaults {
+    use crate::api::Stdin;
+
     pub const REGRESSION_FAIL_FAST: bool = false;
     pub const ENV_CLEAR: bool = true;
     pub const COMPARE_BY_ID: bool = false;
+    pub const STDIN: Stdin = Stdin::Pipe;
 }
 
 #[derive(Debug)]
@@ -334,7 +337,7 @@ impl BinBench {
             run_options: RunOptions {
                 env_clear: config.env_clear.unwrap_or(defaults::ENV_CLEAR),
                 envs,
-                stdin,
+                stdin: stdin.or(Some(defaults::STDIN)),
                 stdout,
                 stderr,
                 exit_with: config.exit_with,
@@ -413,7 +416,9 @@ impl Command {
             return Err(anyhow!("{module_path}: Empty path in command",));
         }
 
-        let command = if path.is_relative() {
+        let command = if path.parent().is_none() && !path.starts_with("./") {
+            Self { path, args }
+        } else if path.is_relative() {
             Self {
                 path: make_absolute(&meta.project_root, path),
                 args,

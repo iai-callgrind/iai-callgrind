@@ -164,6 +164,9 @@ binary_benchmark_group!(
   the `bench = bool` argument has been removed, since it caused more problems
   than it solved. In the rare case, you really need to benchmark `setup` or
   `teardown` you can use the functionality of library benchmarks.
+* `BinaryBenchmarkConfig::entry_point`: This method was removed. Using
+  `BinaryBenchmarkConfig::raw_callgrind_args(["toggle-collect=ENTRY_POINT"])` is
+  the more idiomatic and less confusing way to achieve the same.
 
 ## [0.12.3] - 2024-08-09
 
