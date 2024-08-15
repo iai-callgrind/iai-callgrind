@@ -644,7 +644,7 @@ impl BenchmarkId {
         let first = bytes.next().unwrap();
 
         if first.is_ascii_alphabetic() || first == b'_' {
-            for (index, byte) in bytes.enumerate() {
+            for (index, byte) in (1..).zip(bytes) {
                 if index > MAX_LENGTH_ID {
                     return Err(format!(
                         "Invalid id '{}': Maximum length of {MAX_LENGTH_ID} bytes reached",
@@ -2295,8 +2295,11 @@ mod tests {
         "µ",
         "Invalid id 'µ': Encountered non-ascii character as first character"
     )]
-    #[case::multibyte_middle("aµ", "Invalid id 'aµ': Encountered non-ascii character")]
-    #[case::non_ascii_middle("a-", "Invalid id 'a-': Invalid character '-'")]
+    #[case::multibyte_middle(
+        "aµ",
+        "Invalid id 'aµ' at position 1: Encountered non-ascii character"
+    )]
+    #[case::non_ascii_middle("a-", "Invalid id 'a-' at position 1: Invalid character '-'")]
     #[case::invalid_first("-", "Invalid id '-': As first character is '-' not allowed")]
     fn test_benchmark_id_validate_error_message(#[case] id: &str, #[case] message: &str) {
         let id = BenchmarkId::new(id);
