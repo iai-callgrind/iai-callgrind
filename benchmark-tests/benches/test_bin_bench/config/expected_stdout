@@ -1,0 +1,63 @@
+test_bin_bench_config::my_group::bench_binary with_env:() -> target/release/env --check 'MAIN_ENV=1' 'GRO...
+Found env: 'MAIN_ENV' with value '1'
+Found env: 'GROUP_ENV' with value '2'
+Found env: 'BINARY_BENCHMARK_ENV' with value '3'
+Found env: 'BENCH_ENV' with value '4'
+Found env: 'COMMAND_ENV' with value '5'
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+test_bin_bench_config::my_group::check_env_is_cleared with_env:() -> target/release/env '--is-cleared=true'
+  ======= CALLGRIND =======================================================
+SETUP:
+The environment variables look like they have not been cleared
+Found env: 'MAIN_ENV' with value '1'
+Found env: 'GROUP_ENV' with value '2'
+Found env: 'BINARY_BENCHMARK_ENV' with value '3'
+Found env: 'BENCH_ENV' with value '4'
+Found env: 'COMMAND_ENV' with value '5'
+The environment variables look like they have been cleared
+TEARDOWN:
+The environment variables look like they have not been cleared
+Found env: 'MAIN_ENV' with value '1'
+Found env: 'GROUP_ENV' with value '2'
+Found env: 'BINARY_BENCHMARK_ENV' with value '3'
+Found env: 'BENCH_ENV' with value '4'
+Found env: 'COMMAND_ENV' with value '5'
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+  ======= DHAT ============================================================
+SETUP:
+The environment variables look like they have not been cleared
+Found env: 'MAIN_ENV' with value '1'
+Found env: 'GROUP_ENV' with value '2'
+Found env: 'BINARY_BENCHMARK_ENV' with value '3'
+Found env: 'BENCH_ENV' with value '4'
+Found env: 'COMMAND_ENV' with value '5'
+The environment variables look like they have been cleared
+TEARDOWN:
+The environment variables look like they have not been cleared
+Found env: 'MAIN_ENV' with value '1'
+Found env: 'GROUP_ENV' with value '2'
+Found env: 'BINARY_BENCHMARK_ENV' with value '3'
+Found env: 'BENCH_ENV' with value '4'
+Found env: 'COMMAND_ENV' with value '5'
+- end of stdout
+  Total bytes:                     |N/A             (*********)
+  Total blocks:                    |N/A             (*********)
+  At t-gmax bytes:                 |N/A             (*********)
+  At t-gmax blocks:                |N/A             (*********)
+  At t-end bytes:                  |N/A             (*********)
+  At t-end blocks:                 |N/A             (*********)
+  Reads bytes:                     |N/A             (*********)
+  Writes bytes:                    |N/A             (*********)
+  Outfile:          target/iai/benchmark-tests/test_bin_bench_config/my_group/check_env_is_cleared.with_env/dhat.check_env_is_cleared.with_env.out

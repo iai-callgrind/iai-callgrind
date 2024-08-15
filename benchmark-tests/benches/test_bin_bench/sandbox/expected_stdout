@@ -1,0 +1,40 @@
+test_bin_bench_sandbox::my_group::with_sandbox sandbox_with_fixture:("one_line.fix", true) -> target/release/file-exists one_line.fix true
+File exists: 'one_line.fix'
+File exists: 'one_line.fix'
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+test_bin_bench_sandbox::my_group::with_sandbox sandbox_without_fixture:("one_line.fix", false) -> target/release/file-exists one_line.fix false
+File does not exist: 'one_line.fix'
+File does not exist: 'one_line.fix'
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+test_bin_bench_sandbox::my_group::without_sandbox check_file:("benches/fixtures/one_line.fix", true) -> target/release/file-exists benches/fixtures/one_line.fix true
+File exists: 'benches/fixtures/one_line.fix'
+File exists: 'benches/fixtures/one_line.fix'
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)
+test_bin_bench_sandbox::my_group::with_current_dir () -> target/release/file-exists bar.txt true
+Created directory 'foo' with file 'bar.txt'
+Deleted directory 'foo' with file 'bar.txt'
+- end of stdout/stderr
+  Instructions:                    |N/A             (*********)
+  L1 Hits:                         |N/A             (*********)
+  L2 Hits:                         |N/A             (*********)
+  RAM Hits:                        |N/A             (*********)
+  Total read+write:                |N/A             (*********)
+  Estimated Cycles:                |N/A             (*********)

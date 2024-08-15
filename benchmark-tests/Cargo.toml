@@ -58,10 +58,9 @@ path = "src/helper/file-exists.rs"
 name = "pipe"
 path = "src/helper/pipe.rs"
 
-[[bench]]
-harness = false
-path = "benches/test_bin_bench/dev/test_bin_bench_dev.rs"
-name = "test_bin_bench_dev"
+[[bin]]
+name = "env"
+path = "src/helper/env.rs"
 
 [[bench]]
 harness = false
@@ -92,6 +91,16 @@ name = "test_bin_bench_setup_child_exit_with_error"
 harness = false
 path = "benches/test_bin_bench/setup_child/test_bin_bench_setup_child.rs"
 name = "test_bin_bench_setup_child"
+
+[[bench]]
+harness = false
+path = "benches/test_bin_bench/config/test_bin_bench_config.rs"
+name = "test_bin_bench_config"
+
+[[bench]]
+harness = false
+path = "benches/test_bin_bench/sandbox/test_bin_bench_sandbox.rs"
+name = "test_bin_bench_sandbox"
 
 [[bench]]
 harness = false
