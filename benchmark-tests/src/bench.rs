@@ -1,5 +1,6 @@
 // spell-checker:ignore rmdirs
 use std::collections::{HashMap, HashSet};
+use std::ffi::OsString;
 use std::fmt::Write;
 use std::fs::File;
 use std::io::{stderr, stdout, BufRead, Read, Write as IOWrite};
@@ -119,6 +120,7 @@ struct Metadata {
     target_directory: PathBuf,
     benchmarks: Vec<Benchmark>,
     benches_dir: PathBuf,
+    rust_version: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -133,6 +135,8 @@ struct RunConfig {
     runs_on: Option<String>,
     #[serde(default)]
     rmdirs: Vec<PathBuf>,
+    #[serde(default, with = "benchmark_tests::serde_rust_version")]
+    rust_version: Option<benchmark_tests::serde_rust_version::VersionComparator>,
 }
 
 impl Benchmark {
@@ -236,6 +240,9 @@ impl Benchmark {
                 r.runs_on
                     .as_ref()
                     .map_or(true, |r| r == env!("IC_BUILD_TRIPLE"))
+                    && r.rust_version.as_ref().map_or(true, |(cmp, version)| {
+                        version_compare::compare_to(&meta.rust_version, version, *cmp).unwrap()
+                    })
             })
             .enumerate()
         {
@@ -626,12 +633,14 @@ impl Metadata {
             })
             .map(|path| Benchmark::new(&path, &package_dir, &target_directory))
             .collect::<Vec<Benchmark>>();
+        let rust_version = get_rust_version().expect("Rust version should be present");
 
         Self {
             workspace_root,
             target_directory,
             benchmarks,
             benches_dir,
+            rust_version: rust_version.to_string(),
         }
     }
 
@@ -703,6 +712,22 @@ where
     T: AsRef<str>,
 {
     eprintln!("{}: {}", "bench".purple().bold(), message.as_ref());
+}
+
+fn get_rust_version() -> Option<String> {
+    let output = std::process::Command::new(
+        std::env::var_os("RUSTC").unwrap_or_else(|| OsString::from("rustc")),
+    )
+    .arg("--version")
+    .output();
+
+    output.ok().map(|o| {
+        String::from_utf8_lossy(&o.stdout)
+            .split(' ')
+            .nth(1)
+            .expect("The rust version should be present")
+            .to_string()
+    })
 }
 
 fn main() {

@@ -33,6 +33,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
 valico = { workspace = true }
+version-compare = { workspace = true }
 
 [[bin]]
 name = "bench"
