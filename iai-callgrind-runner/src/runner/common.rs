@@ -1,3 +1,4 @@
+use std::ffi::OsString;
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio as StdStdio};
@@ -23,6 +24,7 @@ pub struct Assistant {
     group_name: Option<String>,
     indices: Option<(usize, usize)>,
     pipe: Option<Pipe>,
+    envs: Vec<(OsString, OsString)>,
 }
 
 #[derive(Debug, Clone)]
@@ -51,22 +53,28 @@ pub struct Sandbox {
 
 impl Assistant {
     /// The setup or teardown of the `main` macro
-    pub fn new_main_assistant(kind: AssistantKind) -> Self {
+    pub fn new_main_assistant(kind: AssistantKind, envs: Vec<(OsString, OsString)>) -> Self {
         Self {
             kind,
             group_name: None,
             indices: None,
             pipe: None,
+            envs,
         }
     }
 
     /// The setup or teardown of a `binary_benchmark_group` or `library_benchmark_group`
-    pub fn new_group_assistant(kind: AssistantKind, group_name: &str) -> Self {
+    pub fn new_group_assistant(
+        kind: AssistantKind,
+        group_name: &str,
+        envs: Vec<(OsString, OsString)>,
+    ) -> Self {
         Self {
             kind,
             group_name: Some(group_name.to_owned()),
             indices: None,
             pipe: None,
+            envs,
         }
     }
 
@@ -80,12 +88,14 @@ impl Assistant {
         group_name: &str,
         indices: (usize, usize),
         pipe: Option<Pipe>,
+        envs: Vec<(OsString, OsString)>,
     ) -> Self {
         Self {
             kind,
             group_name: Some(group_name.to_owned()),
             indices: Some(indices),
             pipe,
+            envs,
         }
     }
 
@@ -101,8 +111,7 @@ impl Assistant {
         let nocapture = config.meta.args.nocapture;
 
         let mut command = Command::new(&config.bench_bin);
-        // TODO: Self::envs and only in binary benchmarks
-        command.env("SANDBOX_WORKSPACE_ROOT", &config.meta.project_root);
+        command.envs(self.envs.iter().cloned());
         command.arg("--iai-run");
 
         if let Some(group_name) = &self.group_name {

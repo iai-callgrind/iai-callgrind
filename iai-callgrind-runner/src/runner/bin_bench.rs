@@ -295,9 +295,15 @@ impl BinBench {
 
         let command = Command::new(meta, &module_path, path, args)?;
 
-        let envs = config.resolve_envs();
-
         let callgrind_args = Args::from_raw_args(&[&config.raw_callgrind_args, raw_args])?;
+
+        let mut assistant_envs = config.collect_envs();
+        assistant_envs.push((
+            OsString::from("_WORKSPACE_ROOT"),
+            meta.project_root.clone().into(),
+        ));
+
+        let command_envs = config.resolve_envs();
         let flamegraph_config = config.flamegraph_config.map(Into::into);
 
         Ok(Self {
@@ -325,6 +331,7 @@ impl BinBench {
                             None
                         }
                     }),
+                    assistant_envs.clone(),
                 )),
             teardown: binary_benchmark_bench.has_teardown.then_some(
                 Assistant::new_bench_assistant(
@@ -332,11 +339,12 @@ impl BinBench {
                     &group.name,
                     (group_index, bench_index),
                     None,
+                    assistant_envs,
                 ),
             ),
             run_options: RunOptions {
                 env_clear: config.env_clear.unwrap_or(defaults::ENV_CLEAR),
-                envs,
+                envs: command_envs,
                 stdin: stdin.or(Some(defaults::STDIN)),
                 stdout,
                 stderr,
@@ -480,12 +488,16 @@ impl Groups {
         let mut groups = vec![];
         for binary_benchmark_group in benchmark_groups.groups {
             let group_module_path = module.join(&binary_benchmark_group.id);
+            let group_config = global_config
+                .clone()
+                .update_from_all([binary_benchmark_group.config.as_ref()]);
 
             let setup = binary_benchmark_group
                 .has_setup
                 .then_some(Assistant::new_group_assistant(
                     AssistantKind::Setup,
                     &binary_benchmark_group.id,
+                    group_config.collect_envs(),
                 ));
             let teardown =
                 binary_benchmark_group
@@ -493,6 +505,7 @@ impl Groups {
                     .then_some(Assistant::new_group_assistant(
                         AssistantKind::Teardown,
                         &binary_benchmark_group.id,
+                        group_config.collect_envs(),
                     ));
 
             let mut group = Group {
@@ -514,8 +527,7 @@ impl Groups {
                 for (bench_index, binary_benchmark_bench) in
                     binary_benchmark_benches.benches.into_iter().enumerate()
                 {
-                    let config = global_config.clone().update_from_all([
-                        binary_benchmark_group.config.as_ref(),
+                    let config = group_config.clone().update_from_all([
                         binary_benchmark_benches.config.as_ref(),
                         binary_benchmark_bench.config.as_ref(),
                         Some(&binary_benchmark_bench.command.config),
@@ -651,10 +663,16 @@ impl Runner {
     fn new(benchmark_groups: BinaryBenchmarkGroups, config: Config) -> Result<Self> {
         let setup = benchmark_groups
             .has_setup
-            .then_some(Assistant::new_main_assistant(AssistantKind::Setup));
+            .then_some(Assistant::new_main_assistant(
+                AssistantKind::Setup,
+                benchmark_groups.config.collect_envs(),
+            ));
         let teardown = benchmark_groups
             .has_teardown
-            .then_some(Assistant::new_main_assistant(AssistantKind::Teardown));
+            .then_some(Assistant::new_main_assistant(
+                AssistantKind::Teardown,
+                benchmark_groups.config.collect_envs(),
+            ));
 
         let groups =
             Groups::from_binary_benchmark(&config.module_path, benchmark_groups, &config.meta)?;

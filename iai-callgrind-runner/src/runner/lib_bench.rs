@@ -263,12 +263,17 @@ impl Groups {
 
         for library_benchmark_group in benchmark_groups.groups {
             let group_module_path = module_path.join(&library_benchmark_group.id);
+            let group_config = global_config
+                .clone()
+                .update_from_all([library_benchmark_group.config.as_ref()]);
+
             let setup =
                 library_benchmark_group
                     .has_setup
                     .then_some(Assistant::new_group_assistant(
                         AssistantKind::Setup,
                         &library_benchmark_group.id,
+                        group_config.collect_envs(),
                     ));
             let teardown =
                 library_benchmark_group
@@ -276,6 +281,7 @@ impl Groups {
                     .then_some(Assistant::new_group_assistant(
                         AssistantKind::Teardown,
                         &library_benchmark_group.id,
+                        group_config.collect_envs(),
                     ));
 
             let mut group = Group {
@@ -297,8 +303,7 @@ impl Groups {
                 for (index, library_benchmark_bench) in
                     library_benchmark_benches.benches.into_iter().enumerate()
                 {
-                    let config = global_config.clone().update_from_all([
-                        library_benchmark_group.config.as_ref(),
+                    let config = group_config.clone().update_from_all([
                         library_benchmark_benches.config.as_ref(),
                         library_benchmark_bench.config.as_ref(),
                     ]);
@@ -545,10 +550,16 @@ impl Runner {
     fn new(benchmark_groups: LibraryBenchmarkGroups, config: Config) -> Result<Self> {
         let setup = benchmark_groups
             .has_setup
-            .then_some(Assistant::new_main_assistant(AssistantKind::Setup));
+            .then_some(Assistant::new_main_assistant(
+                AssistantKind::Setup,
+                benchmark_groups.config.collect_envs(),
+            ));
         let teardown = benchmark_groups
             .has_teardown
-            .then_some(Assistant::new_main_assistant(AssistantKind::Teardown));
+            .then_some(Assistant::new_main_assistant(
+                AssistantKind::Teardown,
+                benchmark_groups.config.collect_envs(),
+            ));
 
         let groups =
             Groups::from_library_benchmark(&config.module_path, benchmark_groups, &config.meta)?;

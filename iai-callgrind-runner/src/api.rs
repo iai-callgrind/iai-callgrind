@@ -394,6 +394,13 @@ impl BinaryBenchmarkConfig {
             })
             .collect()
     }
+
+    pub fn collect_envs(&self) -> Vec<(OsString, OsString)> {
+        self.envs
+            .iter()
+            .filter_map(|(key, option)| option.as_ref().map(|value| (key.clone(), value.clone())))
+            .collect()
+    }
 }
 
 impl Default for Direction {
@@ -552,6 +559,13 @@ impl LibraryBenchmarkConfig {
                 Some(value) => Some((key.clone(), value.clone())),
                 None => std::env::var_os(key).map(|value| (key.clone(), value)),
             })
+            .collect()
+    }
+
+    pub fn collect_envs(&self) -> Vec<(OsString, OsString)> {
+        self.envs
+            .iter()
+            .filter_map(|(key, option)| option.as_ref().map(|value| (key.clone(), value.clone())))
             .collect()
     }
 }
