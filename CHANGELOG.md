@@ -23,14 +23,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 !!! __IMPORTANT__ The default to run binary benchmarks in a sandbox has been
-changed from `true` to `false`. The `setup` and `teardown` functions of the
+changed from `true` to `false`. The `setup` and `teardown` of the
 `binary_benchmark_group!` are not executed in the sandbox anymore !!!
 
-The ui for setting up binary benchmarks has completely changed and was rewritten
-from scratch! If you were using library benchmarks but not binary benchmarks,
-this release doesn't change much. There are no BREAKING changes for library
-benchmarks and you could stop reading. Otherwise, here's a small introduction to
-the new api and the changes.
+The way to set up binary benchmarks has completely changed and was rewritten
+from scratch! The api for binary and library benchmarks is now consistent and
+most features from library benchmarks which were missing for binary benchmarks
+are now available in binary benchmarks, too. For example comparison of
+benchmarks by id. If you are using library benchmarks but not binary benchmarks,
+this release doesn't change much. There are no breaking changes for library
+benchmarks and you can jump right to the changes section of this release.
+Otherwise, here's a small introduction to the new api and the changes for binary
+benchmarks.
 
 There are a lot of advantages for you and honestly for us, too, because we don't
 have to maintain two completely different apis. Binary benchmarks and library
@@ -121,22 +125,28 @@ binary_benchmark_group!(
 );
 ```
 
+In contrast to binary benchmarks, not much has changed for library benchmarks.
+If you're just looking for the changes in library benchmarks, the changes for
+library benchmarks have been marked specifically.
+
 ### Added
 
-* Hard limit of 5000 bytes for the `DESCRIPTION` in the benchmark output
-  (`benchmark_file::group::function_name id:DESCRIPTION`). The description is
-  passed from `iai-callgrind-macros` through `iai-callgrind` to the
-  `iai-callgrind-runner`. The sole purpose of the description is to show the
-  context in which the benchmark is executed. In the case of a very large input
-  and gigabytes of data trimmed very late in the `iai-callgrind-runner`, a hard
-  limit of 5000 bytes very early in `iai-callgrind-macros` makes sense without
-  destroying the purpose of the description.
+* *(library/binary benchmarks)*: Hard limit of 5000 bytes for the `DESCRIPTION`
+  in the benchmark output (`benchmark_file::group::function_name
+  id:DESCRIPTION`). The description is passed from `iai-callgrind-macros`
+  through `iai-callgrind` to the `iai-callgrind-runner`. The sole purpose of the
+  description is to show the context in which the benchmark is executed. In the
+  case of a very large input and gigabytes of data, the description was trimmed
+  very late in the `iai-callgrind-runner` and kept in memory for a rather long
+  time. A hard limit of 5000 bytes very early in `iai-callgrind-macros`
+  drastically reduces memory usage without destroying the purpose of the
+  description.
 * `binary_benchmark_group!` macro: The `compare_by_id` argument has been added
   and works the same way as the `compare_by_id` argument in the
   `library_benchmark_group`.
-* `main!` macro: The `setup` and `teardown` arguments were added. The `setup`
-  argument is run before all benchmarks in the binary benchmark groups and
-  `teardown` after all benchmarks.
+* *(binary benchmarks)*: `main!` macro: The `setup` and `teardown` arguments
+  were added. The `setup` argument is run before all benchmarks in the binary
+  benchmark groups and `teardown` after all benchmarks.
 * `#[binary_benchmark]` attribute: This attribute needs to be specified on a
   function which is used in the `benchmarks` argument of the
   `binary_benchmark_group!` macro. The attribute takes the `config`, `setup` and
@@ -144,12 +154,17 @@ binary_benchmark_group!(
 * `#[bench]`, `#[benches]` attributes for `#[binary_benchmark]`: These
   attributes serve the same purpose as the `#[bench]` and `#[benches]` attribute
   in a `#[library_benchmark]` annotated function and take the same parameters.
+* *(library/binary benchmarks)*: The `setup`, `teardown` of the `main!` and
+  `library_benchmark_group!` (`binary_benchmark_group!`) macros now have access
+  to the environment variables of the `LibraryBenchmarkConfig`
+  (`BinaryBenchmarkConfig`) at the respective level.
 
 ### Changed
 
 * The default to run binary benchmarks in a sandbox has been changed from `true`
-  to `false`. Also, the sandbox is now set up for each benchmark instead of once
-  per group.
+  to `false`. Also, the sandbox is now set up for each benchmark individually
+  instead of once per group and can now be configured in
+  `BinaryBenchmarkConfig::sandbox`.
 * `binary_benchmark_group!` macro: The `setup` and argument now takes an
   expressions (including function calls) and is run __once__ before all
   benchmarks in this group. The `teardown` argument also takes an expression and
