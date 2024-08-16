@@ -1,4 +1,4 @@
-use std::io::{stdin, Read};
+use std::io::{stdin, stdout, Read, Write};
 
 fn main() {
     let mut stdin = stdin().lock();
@@ -6,5 +6,6 @@ fn main() {
     let mut content = vec![];
     stdin.read_to_end(&mut content).unwrap();
 
-    println!("STDIN was: '{}'", String::from_utf8_lossy(&content));
+    println!("STDIN was:");
+    stdout().write_all(&content).unwrap();
 }

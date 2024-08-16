@@ -1,4 +1,4 @@
-<!-- spell-checker: ignore fixt binstall libtest eprintln usize -->
+<!-- spell-checker: ignore fixt binstall libtest eprintln usize Gjengset -->
 
 <h1 align="center">Iai-Callgrind</h1>
 
@@ -28,12 +28,15 @@
 Iai-Callgrind is a benchmarking framework/harness which primarily uses
 [Valgrind's Callgrind](https://valgrind.org/docs/manual/cl-manual.html) and the
 other Valgrind tools to provide extremely accurate and consistent measurements
-of Rust code, making it perfectly suited to run in environments like a CI.
+of Rust code, making it perfectly suited to run in environments like a CI. Also,
+Iai-Callgrind is supported by
+[Bencher](https://bencher.dev/learn/benchmarking/rust/iai/).
 
-This crate started as a fork of the great [Iai](https://github.com/bheisler/iai) crate rewritten to
-use Valgrind's [Callgrind](https://valgrind.org/docs/manual/cl-manual.html) instead of
-[Cachegrind](https://valgrind.org/docs/manual/cg-manual.html) but also adds a lot of other
-improvements and features.
+This crate started as a fork of the great [Iai](https://github.com/bheisler/iai)
+crate rewritten to use Valgrind's
+[Callgrind](https://valgrind.org/docs/manual/cl-manual.html) instead of
+[Cachegrind](https://valgrind.org/docs/manual/cg-manual.html) but also adds a
+lot of other improvements and features.
 
 ## Table of Contents
 
@@ -658,208 +661,364 @@ values like `envs` are additive and don't overwrite configuration values of high
 
 ### Binary Benchmarks
 
-Use this scheme to benchmark one or more binaries of your crate. If you really like to, it's
-possible to benchmark any executable file in the `PATH` or any executable specified with an absolute
-path.
+Use this scheme to benchmark one or more binaries of your crate or any binary
+installed on your system. The api for setting up binary benchmarks is almost
+equivalent to library benchmarks. This section focuses on the differences. For
+the basics see [Library Benchmarks](#library-benchmarks).
 
-It's also possible to run functions of the same benchmark file `before` and `after` all benchmarks
-or to `setup` and `teardown` any benchmarked binary.
+#### Important default behavior
 
-Unlike [Library Benchmarks](#library-benchmarks), there are no setup costs for binary benchmarks to
-pay attention at, since each benchmark run's command is passed directly to valgrind's callgrind.
-
-#### Temporary Workspace and other important default behavior
-
-Per default, all binary benchmarks and the `before`, `after`, `setup` and `teardown` functions are
-executed in a temporary directory. See the [Switching off the sandbox](#switching-off-the-sandbox)
-for changing this behavior.
-
-Also, the environment variables of benchmarked binaries are cleared before the benchmark is run. See
-also [Environment variables](#environment-variables) for how to pass environment variables to the
+As in library benchmarks, the environment variables of benchmarked binaries are
+cleared before the benchmark is run. See also [Environment
+variables](#command-line-arguments-and-environment-variables) for how to pass environment variables to the
 benchmarked binary.
 
-#### Quickstart
+#### Differences to library benchmarks
 
-Suppose your crate's binary is named `benchmark-tests-printargs` and you have a
-fixtures directory in `fixtures` with a file `test1.txt` in it:
+##### Quickstart
+
+Suppose the crate's binary is called `my-foo` and this binary takes a file path
+as positional argument. This first example shows the basic usage of the
+high-level api with the `#[binary_benchmark]` attribute
 
 ```rust
-use iai_callgrind::{
-    binary_benchmark_group, main, Arg, BinaryBenchmarkConfig, BinaryBenchmarkGroup,
-    Fixtures, Run,
-};
+use iai_callgrind::{binary_benchmark, binary_benchmark_group, main};
 
-fn my_setup() {
-    println!("We can put code in here which will be run before each benchmark run");
+#[binary_benchmark]
+#[bench::some_id("foo.txt")]
+fn bench_binary(path: &str) -> iai_callgrind::Command {
+    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+        .arg(path)
+        .build()
 }
 
-// We specify a cmd `"benchmark-tests-exe"` for the whole group which is a
-// binary of our crate. This eliminates the need to specify a `cmd` for each
-// `Run` later on and we can use the auto-discovery of a crate's binary at group
-// level. We'll also use the `setup` argument to run a function before each of
-// the benchmark runs.
 binary_benchmark_group!(
-    name = my_exe_group;
-    setup = my_setup;
-    // This directory will be copied into the root of the sandbox (as `fixtures`)
-    config = BinaryBenchmarkConfig::default().fixtures(Fixtures::new("fixtures"));
-    benchmark =
-        |"benchmark-tests-printargs", group: &mut BinaryBenchmarkGroup| {
-            setup_my_exe_group(group)
+    name = my_group;
+    benchmarks = bench_binary
+);
+
+main!(binary_benchmark_groups = my_group);
+```
+
+or pretty much the same with the low-level api
+
+```rust
+use iai_callgrind::{BinaryBenchmark, Bench, binary_benchmark_group, main};
+
+binary_benchmark_group!(
+    name = my_group;
+    benchmarks = |group: &mut BinaryBenchmarkGroup| {
+        group.binary_benchmark(BinaryBenchmark::new("bench_binary")
+            .bench(Bench::new("some_id")
+                .command(iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+                    .arg("foo.txt")
+                    .build()
+                )
+            )
+        )
     }
 );
 
-// Working within a macro can be tedious sometimes so we moved the setup code
-// into this method
-fn setup_my_exe_group(group: &mut BinaryBenchmarkGroup) {
-    group
-        // Setup our first run doing something with our fixture `test1.txt`. The
-        // id (here `do foo with test1`) of an `Arg` has to be unique within the
-        // same group
-        .bench(Run::with_arg(Arg::new(
-            "do foo with test1",
-            ["--foo=fixtures/test1.txt"],
-        )))
+main!(binary_benchmark_groups = my_group);
+```
 
-        // Setup our second run with two positional arguments. We're not
-        // interested in anything happening before the main function in
-        // `benchmark-tests-printargs`, so we set the entry_point.
-        .bench(
-            Run::with_arg(
-                Arg::new(
-                    "positional arguments",
-                    ["foo", "foo bar"],
-                )
-            ).entry_point("benchmark_tests_printargs::main")
-        )
+We're not going into the details of the low-level api here because it is fully
+documented in the [`library_documentation`] and basically mirrors the high-level
+api.
 
-        // Our last run doesn't take an argument at all.
-        .bench(Run::with_arg(Arg::empty("no argument")));
+Coming from library benchmarks, the names with `library` in it change to the
+same name but `library` with `binary` replaced, so the `#[library_benchmark]`
+attribute's name changes to `#[binary_benchmark]` and `library_benchmark_group!`
+changes to `binary_benchmark_group!`, the config arguments take a
+`BinaryBenchmarkConfig` instead of a `LibraryBenchmarkConfig`...
+
+The most important difference is, that the `#[binary_benchmark]` annotated
+function always needs to return an `iai_callgrind::Command`. Note this function
+builds the command which is going to be benchmarked but doesn't executed it. So,
+the code in this function does not attribute to the event counts of the actual
+benchmark.
+
+```rust
+use iai_callgrind::binary_benchmark;
+use std::path::PathBuf;
+
+#[binary_benchmark]
+#[bench::foo("foo.txt")]
+#[bench::bar("bar.json")]
+fn bench_binary(path: &str) -> iai_callgrind::Command {
+    // We can put any code in this function which is needed to configure and
+    // build the `Command`.
+    let path = PathBuf::from(path);
+
+    // Here, if the `path` ends with `.txt` we want to see
+    // the `Stdout` output of the `Command` in the benchmark output. In all other 
+    // cases, the `Stdout` of the `Command` is redirected to a `File` with the
+    // same name as the input `path` but with the extension `out`.
+    let stdout = if path.extension() == "txt" {
+        iai_callgrind::Stdio::Inherit
+    } else {
+        iai_callgrind::Stdio::File(path.with_extension("out"))
+    };
+    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+        .stdout(stdout)
+        .arg(path)
+        .build()
+}
+// ... binary_benchmark_group! and main!
+```
+
+##### `setup` and `teardown`
+
+Since we can put any code building the `Command` in the function itself, the
+`setup` and `teardown` of `#[binary_benchmark]`, `#[bench]` and `#[benches]`
+work differently.
+
+```rust
+use iai_callgrind::binary_benchmark;
+
+fn create_file() {
+    std::fs::write("foo.txt", "some content").unwrap();
 }
 
-// As last step specify all groups we want to benchmark in the main! macro
-// argument `binary_benchmark_groups`. The main macro is always needed and
-// finally expands to a benchmarking harness
-main!(binary_benchmark_groups = my_exe_group);
+#[binary_benchmark]
+#[bench::foo("foo.txt", setup = create_file())]
+fn bench_binary(path: &str) -> iai_callgrind::Command {
+    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+        .arg(path)
+        .build()
+}
 ```
 
-You're ready to run the benchmark with `cargo bench --bench my_binary_benchmark`.
-
-The output of this benchmark run could look like this:
-
-```text
-my_binary_benchmark::my_exe_group do foo with test1:benchmark-tests-printargs "--foo=fixt...
-  Instructions:              331082|N/A             (*********)
-  L1 Hits:                   442452|N/A             (*********)
-  L2 Hits:                      720|N/A             (*********)
-  RAM Hits:                    3926|N/A             (*********)
-  Total read+write:          447098|N/A             (*********)
-  Estimated Cycles:          583462|N/A             (*********)
-my_binary_benchmark::my_exe_group positional arguments:benchmark-tests-printargs foo "foo ba...
-  Instructions:                3906|N/A             (*********)
-  L1 Hits:                     5404|N/A             (*********)
-  L2 Hits:                        8|N/A             (*********)
-  RAM Hits:                      91|N/A             (*********)
-  Total read+write:            5503|N/A             (*********)
-  Estimated Cycles:            8629|N/A             (*********)
-my_binary_benchmark::my_exe_group no argument:benchmark-tests-printargs
-  Instructions:              330070|N/A             (*********)
-  L1 Hits:                   441031|N/A             (*********)
-  L2 Hits:                      716|N/A             (*********)
-  RAM Hits:                    3925|N/A             (*********)
-  Total read+write:          445672|N/A             (*********)
-  Estimated Cycles:          581986|N/A             (*********)
-```
-
-You'll find the callgrind output files of each run of the benchmark
-`my_binary_benchmark` of the group `my_exe_group` in
-`target/iai/$CARGO_PKG_NAME/my_binary_benchmark/my_exe_group`. See also
-[customizing the output directory](#customize-the-output-directory).
-
-#### Configuration
-
-Much like the configuration of [Library Benchmarks](#configuration) it's possible to configure
-binary benchmarks at top-level in the `main!` macro and at group-level in the
-`binary_benchmark_groups!` with the `config = ...;` argument. In contrast to library benchmarks,
-binary benchmarks can be configured at a lower and last level within `Run` directly.
-
-#### Auto-discovery of a crate's binaries
-
-Auto-discovery of a crate's binary works only when specifying the name of it at group level.
+`setup`, which is here the expression `create_file()`, is not evaluated right
+away and the return value of `setup` is not used as input for the `function`!
+Instead, the expression in `setup` is getting evaluated and executed just before
+the benchmarked `Command` is __executed__. Similarly, `teardown` is executed
+after the `Command` is __executed__. In this example `setup` creates always the
+same file and is pretty static. It's possible to use the same arguments for
+`setup` (`teardown`) and the `function` using the path or file pointer to a
+function:
 
 ```rust
-binary_benchmark_group!(
-    name = my_exe_group;
-    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {});
+use iai_callgrind::binary_benchmark;
+
+fn create_file(path: &str) {
+    std::fs::write(path, "some content").unwrap();
+}
+
+fn delete_file(path: &str) {
+    std::fs::remove_file(path).unwrap();
+}
+
+#[binary_benchmark]
+// Note the missing parentheses for `setup` of the function `create_file` which
+// tells iai-callgrind to pass the `args` to the `setup` function AND the
+// function `bench_binary`
+#[bench::foo(args = ("foo.txt"), setup = create_file)]
+// Same for `teardown`
+#[bench::bar(args = ("bar.txt"), setup = create_file, teardown = delete_file)]
+fn bench_binary(path: &str) -> iai_callgrind::Command {
+    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+        .arg(path)
+        .build()
+}
+// ... binary_benchmark_group! and main!
 ```
 
-If you don't like specifying a default command at group level, you can use
-`env!("CARGO_BIN_EXE_name)` at `Run`-level like so:
+##### The `Sandbox`
+
+As seen in the section [above](#setup-and-teardown) it can become tedious to
+cleanup files which are created just for the benchmark. For this purpose and
+many other reasons it might be a good idea to run `setup`, the `Command` itself
+and `teardown` in a temporary directory. This temporary directory, the
+`Sandbox`, is getting deleted after the benchmark, no matter if the `benchmark`
+run was successful or not. The latter is not guaranteed if you just rely on
+`teardown` since `teardown` is only executed if the `Command` returned without
+error.
 
 ```rust
-binary_benchmark_group!(
-    name = my_exe_group;
-    benchmark = |group: &mut BinaryBenchmarkGroup| {
-        group.bench(Run::with_cmd(env!("CARGO_BIN_EXE_my-exe"), Arg::empty("some id")));
-    });
+use iai_callgrind::{binary_benchmark, BinaryBenchmarkConfig, Sandbox};
+
+fn create_file(path: &str) {
+    std::fs::write(path, "some content").unwrap();
+}
+
+#[binary_benchmark]
+#[bench::foo(
+    args = ("foo.txt"),
+    config = BinaryBenchmarkConfig::default().sandbox(Sandbox::new(true)),
+    setup = create_file
+)]
+fn bench_binary(path: &str) -> iai_callgrind::Command {
+    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+        .arg(path)
+        .build()
+}
+// ... binary_benchmark_group! and main!
 ```
 
-#### A benchmark run of a binary exits with error
+In this example, as part of the `setup`, the `create_file` function with the
+argument `foo.txt` is executed in the `Sandbox` before the `Command` is
+executed. The `Command` is executed in the same `Sandbox` and therefore the file
+`foo.txt` with the content `some content` exists thanks to the `setup`. After
+the execution of the `Command` and an eventual `teardown`, the `Sandbox` is
+completely removed, deleting all files created during `setup`, the `Command`
+execution and `teardown`.
 
-Usually, if a benchmark exits with a non-zero exit code, the whole benchmark run fails and stops.
-If you expect the exit code of your benchmarked binary to be different from `0`, you can set the
-expected exit code with `Options` at `Run`-level
+Since `setup` is run in the sandbox, you can't copy fixtures from your project's
+workspace into the sandbox that easily anymore. The `Sandbox` can be configured
+to copy `fixtures` into the temporary directory with `Sandbox::fixtures`:
 
 ```rust
-binary_benchmark_group!(
-    name = my_exe_group;
-    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
-        group.bench(
-            Run::with_arg(
-                Arg::empty("some id")
-            )
-            .options(Options::default().exit_with(ExitWith::Code(100)))
-        );
-    });
+use iai_callgrind::{binary_benchmark, BinaryBenchmarkConfig, Sandbox};
+
+#[binary_benchmark]
+#[bench::foo(
+    args = ("foo.txt"),
+    config = BinaryBenchmarkConfig::default()
+        .sandbox(Sandbox::new(true)
+            .fixtures(["benches/foo.txt"])),
+)]
+fn bench_binary(path: &str) -> iai_callgrind::Command {
+    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+        .arg(path)
+        .build()
+}
+// ... binary_benchmark_group! and main!
 ```
 
-#### Environment variables
+The above will copy the fixture file `foo.txt` in the `benches` directory into
+the sandbox root as `foo.txt`. Relative paths in `Sandbox::fixtures` are
+interpreted relative to the workspace root. In a multi-crate workspace this is
+the directory with the top-level `Cargo.toml` file. Paths in `Sandbox::fixtures`
+are not limited to files, they can be directories, too.
 
-Per default, the environment variables are cleared before running a benchmark.
-
-It's possible to specify environment variables at `Run`-level which should be available in the
-binary:
+If you have more complex demands, you can access the workspace root via the
+environment variable `_WORKSPACE_ROOT` in `setup` and `teardown`. Suppose, there
+is a fixture located in `/home/the_project/foo_crate/benches/fixtures/foo.txt`
+with `the_project` being the workspace root and `foo_crate` a workspace member
+with the `my-foo` executable. If the command is expected to create a file
+`bar.json`, which needs further inspection after the benchmarks have run, let's
+copy it into a temporary directory `tmp` (which may or may not exist) in
+`foo_crate`:
 
 ```rust
-binary_benchmark_group!(
-    name = my_exe_group;
-    benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| {
-        group.bench(Run::with_arg(Arg::empty("some id")).envs(["KEY=VALUE", "KEY"]));
-    });
+use iai_callgrind::{binary_benchmark, BinaryBenchmarkConfig, Sandbox};
+use std::path::PathBuf;
+
+fn copy_fixture(path: &str) {
+    let workspace_root = PathBuf::from(std::env::var_os("_WORKSPACE_ROOT").unwrap());
+    std::fs::copy(
+        workspace_root.join("foo_crate").join("benches").join("fixtures").join(path),
+        path
+    );
+}
+
+// This function will fail if `bar.json` does not exist, which is fine as this
+// file is expected to be created by `my-foo`. So, if this file does not exist,
+// an error will occur and the benchmark will fail. Although benchmarks are not
+// expected to test the correctness of the application, the `teardown` can be
+// used to check postconditions for a successful command run.
+fn copy_back(path: &str) {
+    let workspace_root = PathBuf::from(std::env::var_os("_WORKSPACE_ROOT").unwrap());
+    let dest_dir = workspace_root.join("foo_crate").join("tmp");
+    if !dest_dir.exists() {
+        std::fs::create_dir(dest_dir).unwrap();
+    }
+    std::fs::copy(path, dest_dir.join(path));
+}
+
+#[binary_benchmark]
+#[bench::foo(
+    args = ("foo.txt"),
+    config = BinaryBenchmarkConfig::default().sandbox(Sandbox::new(true)),
+    setup = copy_fixture,
+    teardown = copy_back("bar.json")
+)]
+fn bench_binary(path: &str) -> iai_callgrind::Command {
+    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+        .arg(path)
+        .build()
+}
+
+// ... binary_benchmark_group! and main!
 ```
 
-Environment variables specified in the `envs` array are usually `KEY=VALUE` pairs. But, if
-`env_clear` is true (what is the default), single `KEY`s are environment variables to pass-through
-to the `cmd`. Pass-through environment variables are ignored if they don't exist in the root
-environment.
+##### The Command's stdin and simulating piped input
 
-#### Switching off the sandbox
+The behaviour of `Stdin` of the `Command` can be changed, almost the same way as
+the `Stdin` of a `std::process::Command` with the only difference, that we use
+the enums `iai_callgrind::Stdin` and `iai_callgrind::Stdio`. These enums provide
+the variants `Inherit` (the equivalent of `std::process::Stdio::inherit`),
+`Pipe` (the equivalent of `std::process::Stdio::piped`) and so on. There's also
+`File` which takes a `PathBuf` to the file which iai-callgrind redirects as
+input to the `Stdin` of the `Command`.
 
-Per default, all binary benchmarks and the `before`, `after`, `setup` and `teardown` functions are
-executed in a temporary directory. This behavior can be switched off at group-level:
+Moreover, `iai_callgrind::Stdin` provides the `Stdin::Setup` variant specific to
+`iai-callgrind`:
+
+Applications may change their behaviour if the input or the `Stdin` of the
+`Command` is coming from a pipe. To be able to benchmark such cases, it is
+possible to use the `setup`'s output to `Stdout` or `Stderr` as input for the
+`Command`.
 
 ```rust
-binary_benchmark_group!(
-    name = my_exe_group;
-    benchmark = |group: &mut BinaryBenchmarkGroup| {
-        group.sandbox(false);
-    });
+use iai_callgrind::{binary_benchmark, Stdin, Pipe};
+
+fn setup_pipe() {
+    println!(
+        "The output to `Stdout` here will be the input or `Stdin` of the `Command`"
+    );
+}
+
+#[binary_benchmark]
+#[bench::foo(setup = setup_pipe())]
+fn bench_binary() -> iai_callgrind::Command {
+    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+        .stdin(Stdin::Setup(Pipe::Stdout))
+        .build()
+}
+
+// ... binary_benchmark_group! and main!
+```
+
+Usually, `setup` then the `Command` and then `teardown` are executed
+sequentially, each waiting for the previous process to exit successfully (See
+also [Configure the exit code of the
+Command](#configure-the-exit-code-of-the-command). If the `Command::stdin`
+changes to `Stdin::Setup`, `setup` and the `Command` are executed in parallel
+and iai-callgrind waits first for the `Command` to exit, then the `setup`. After
+the successful exit of `setup`, `teardown` is executed.
+
+##### Configure the exit code of the Command
+
+Usually, if a `Command` exits with a non-zero exit code, the whole benchmark run
+fails and stops. If the exit code of the benchmarked `Command` is to be expected
+different from `0`, the expected exit code can be set in
+`BinaryBenchmarkConfig::exit_with` or `Command::exit_with`:
+
+```rust
+use iai_callgrind::{binary_benchmark, BinaryBenchmarkConfig, ExitWith};
+
+#[binary_benchmark]
+// Here, we set the expected exit code of `my-foo` to 2
+#[bench::foo(
+    config = BinaryBenchmarkConfig::default().exit_with(ExitWith::Code(2))
+)]
+// Here, we don't know the exact exit code but know it is different from 0 (=success)
+#[bench::bar(
+    config = BinaryBenchmarkConfig::default().exit_with(ExitWith::Failure)
+)]
+fn bench_binary() -> iai_callgrind::Command {
+    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo")).build()
+}
+
+// ... binary_benchmark_group! and main!
 ```
 
 #### Examples
 
-See the [test_bin_bench_groups](benchmark-tests/benches/test_bin_bench_groups.rs) benchmark file of
-this project for a working example.
+See the [test_bin_bench_intro](benchmark-tests/benches/test_bin_bench_intro.rs)
+benchmark file of this project for a working and fully documentation example.
 
 ### Performance Regressions
 
@@ -900,7 +1059,7 @@ experimental `BBV` but also `Memcheck`, `Helgrind` and `DRD` if you need to
 check memory and thread safety of benchmarked code. See also the [Valgrind User
 Manual](https://valgrind.org/docs/manual/manual.html) for more details and
 command line arguments. The additional tools can be specified in
-`LibraryBenchmarkConfig`, `BinaryBenchmarkConfig` or `Run`. For example to run
+`LibraryBenchmarkConfig` or `BinaryBenchmarkConfig`. For example to run
 `DHAT` for all library benchmarks:
 
 ```rust
@@ -1010,8 +1169,8 @@ more details!
 ### Flamegraphs
 
 Flamegraphs are opt-in and can be created if you pass a `FlamegraphConfig` to
-the `BinaryBenchmarkConfig`, `Run` or `LibraryBenchmarkConfig`. Callgrind
-flamegraphs are meant as a complement to valgrind's visualization tools
+the `BinaryBenchmarkConfig` or `LibraryBenchmarkConfig`. Callgrind flamegraphs
+are meant as a complement to valgrind's visualization tools
 `callgrind_annotate` and `kcachegrind`.
 
 Callgrind flamegraphs show the inclusive costs for functions and a single
@@ -1365,6 +1524,10 @@ A guideline about contributing to iai-callgrind can be found in the
 
 ### See also
 
+- Iai-Callgrind is [mentioned](https://youtu.be/qfknfCsICUM?t=1228) in a talk at
+  [RustNation UK](https://www.rustnationuk.com/) about [Towards Impeccable
+  Rust](https://www.youtube.com/watch?v=qfknfCsICUM) by Jon Gjengset
+- Iai-Callgrind is supported by [Bencher](https://bencher.dev/learn/benchmarking/rust/iai/)
 - The user guide of the original Iai: <https://bheisler.github.io/criterion.rs/book/iai/iai.html>
 - A comparison of criterion-rs with Iai: <https://github.com/bheisler/iai#comparison-with-criterion-rs>
 

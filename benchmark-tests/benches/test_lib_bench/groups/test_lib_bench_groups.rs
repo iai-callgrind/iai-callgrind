@@ -1,6 +1,5 @@
-//! This is an example for setting up library benchmarks with the new api. An example for the old
-//! api is `test_lib_bench_with_skip_setup`. It's best to read all the comments from top to bottom
-//! to get a better understanding of the api.
+//! This is an example for setting up library benchmarks with the new api. It's best to read all the
+//! comments from top to bottom to get a better understanding of the api.
 //!
 //! The new api has a lot of advantages especially handling of benchmark setup costs is greatly
 //! simplified.

@@ -1,6 +1,6 @@
 test_bin_bench_setup_child::group::benchmark () -> target/release/pipe
-STDIN was: 'SETUP CHILD PROCESS'
-- end of stdout/stderr
+STDIN was:
+SETUP CHILD PROCESS- end of stdout/stderr
   Instructions:                    |N/A             (*********)
   L1 Hits:                         |N/A             (*********)
   L2 Hits:                         |N/A             (*********)

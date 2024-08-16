@@ -21,7 +21,7 @@ pub struct BenchmarkId(String);
 /// configures all benchmarks in this group inheriting the configuration of the `main` level and if
 /// not specified otherwise overwrites the values of the `main` configuration if the option is
 /// specified in both [`BinaryBenchmarkConfig`]s. The more deeper levels are the
-/// (`#[binary_benchmark] attribute`)[`crate::binary_benchmark`], the `#[bench]` and the
+/// (`#[binary_benchmark] attribute`)[`crate::binary_benchmark`], then `#[bench]` and the
 /// `#[benches]` attribute.
 ///
 /// # Examples

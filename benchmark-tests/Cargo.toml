@@ -105,6 +105,11 @@ name = "test_bin_bench_sandbox"
 
 [[bench]]
 harness = false
+path = "benches/test_bin_bench/intro/test_bin_bench_intro.rs"
+name = "test_bin_bench_intro"
+
+[[bench]]
+harness = false
 path = "benches/test_lib_bench/flamegraph/test_lib_bench_flamegraph.rs"
 name = "test_lib_bench_flamegraph"
 

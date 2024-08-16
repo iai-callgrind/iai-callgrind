@@ -423,11 +423,52 @@ pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// By example (Suppose your crate's binary is named `my-foo`)
 ///
-/// ```rust,ignore
+/// ```rust
+/// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
 /// # use iai_callgrind_macros::binary_benchmark;
+/// # pub mod iai_callgrind {
+/// # use std::path::PathBuf;
+/// # #[derive(Clone)]
+/// # pub struct Command {}
+/// # impl Command {
+/// #     pub fn new(_a: &str) -> Self { Self {}}
+/// #     pub fn stdout(&mut self, _a: Stdio) -> &mut Self {self}
+/// #     pub fn arg<T>(&mut self, _a: T) -> &mut Self where T: Into<PathBuf> {self}
+/// #     pub fn build(&mut self) -> Self {self.clone()}
+/// # }
+/// # pub enum Stdio { Inherit, File(PathBuf) }
+/// # #[derive(Clone)]
+/// # pub struct Sandbox {}
+/// # impl Sandbox {
+/// #     pub fn new(_a: bool) -> Self { Self {}}
+/// #     pub fn fixtures(&mut self, _a: [&str; 2]) -> &mut Self { self }
+/// # }
+/// # impl From<&mut Sandbox> for Sandbox { fn from(value: &mut Sandbox) -> Self {value.clone() }}
+/// # #[derive(Default)]
+/// # pub struct BinaryBenchmarkConfig {}
+/// # impl BinaryBenchmarkConfig { pub fn sandbox<T: Into<Sandbox>>(&mut self, _a: T) -> &mut Self {self}}
+/// # impl From<&mut BinaryBenchmarkConfig> for BinaryBenchmarkConfig
+/// #     { fn from(_value: &mut BinaryBenchmarkConfig) -> Self { BinaryBenchmarkConfig {}}}
+/// # pub mod internal {
+/// # use super::*;
+/// # pub struct InternalMacroBinBench {
+/// #   pub id_display: Option<&'static str>,
+/// #   pub args_display: Option<&'static str>,
+/// #   pub func: fn() -> Command,
+/// #   pub config: Option<fn() -> InternalBinaryBenchmarkConfig>,
+/// #   pub setup: Option<fn()>,
+/// #   pub teardown: Option<fn()>,
+/// # }
+/// # pub struct InternalBinaryBenchmarkConfig {}
+/// # impl From<&mut BinaryBenchmarkConfig> for InternalBinaryBenchmarkConfig
+/// #    { fn from(_value: &mut BinaryBenchmarkConfig) -> Self { InternalBinaryBenchmarkConfig {}} }
+/// # }
+/// # }
 /// use iai_callgrind::{BinaryBenchmarkConfig, Sandbox};
+/// use std::path::PathBuf;
 ///
 /// // In binary benchmarks there's no need to return a value from the setup function
+/// # #[allow(unused)]
 /// fn simple_setup() {
 ///     println!("Put code in here which will be run before the actual command");
 /// }
@@ -435,11 +476,13 @@ pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
 /// // It is good style to write any setup function idempotent, so it doesn't depend on the
 /// // `teardown` to have run. The `teardown` function isn't executed if the benchmark
 /// // command fails to run successfully.
+/// # #[allow(unused)]
 /// fn create_file(path: &str) {
 ///     // You can for example create a file here which should be available for the `Command`
 ///     std::fs::File::create(path).unwrap();
 /// }
 ///
+/// # #[allow(unused)]
 /// fn teardown() {
 ///     // Let's clean up this temporary file after we have used it
 ///     std::fs::remove_file("file_from_setup_function.txt").unwrap();
@@ -452,7 +495,7 @@ pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
 /// // `simple_setup()` is executed before the execution of the `Command`.
 /// #[bench::with_other_fixture_and_setup(args = ("benches/other_fixture.txt"), setup = simple_setup())]
 /// // Here, setup is a function pointer, what tells us to route `args` to `setup` AND `bench_foo`
-/// #[bench::file_from_setup(args = ("file_from_setup_function.txt"), setup = create_file, teardown = teardown()]
+/// #[bench::file_from_setup(args = ("file_from_setup_function.txt"), setup = create_file, teardown = teardown())]
 /// // Just an small example for the basic usage of the `#[benches]` attribute
 /// #[benches::multiple("benches/fix_1.txt", "benches/fix_2.txt")]
 /// // We're using a `BinaryBenchmarkConfig` in binary benchmarks to configure these benchmarks to
@@ -466,8 +509,9 @@ pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
 /// )]
 /// // All functions annotated with `#[binary_benchmark]` need to return a `iai_callgrind::Command`
 /// fn bench_foo(path: &str) -> iai_callgrind::Command {
+///     let path = PathBuf::from(path);
 ///     // We can put any code in here which is needed to configure the `Command`.
-///     let stdout = if path.extension() == "txt" {
+///     let stdout = if path.extension().unwrap() == "txt" {
 ///         iai_callgrind::Stdio::Inherit
 ///     } else {
 ///         iai_callgrind::Stdio::File(path.with_extension("out"))
@@ -479,7 +523,10 @@ pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
 ///         .arg(path)
 ///         .build()
 /// }
-/// # fn main() {}
+/// # fn main() {
+/// # // To avoid the unused warning
+/// # let _ = (bench_foo::__BENCHES[0].func)();
+/// # }
 /// ```
 #[proc_macro_attribute]
 #[proc_macro_error]
