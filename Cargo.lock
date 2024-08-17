@@ -734,6 +734,7 @@ dependencies = [
  "rstest",
  "serde",
  "serde_json",
+ "serial_test",
  "strum",
  "trybuild",
  "version-compare",

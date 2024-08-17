@@ -533,9 +533,9 @@ impl LibraryBenchmarkConfig {
         T: IntoIterator<Item = Option<&'a Self>>,
     {
         for other in others.into_iter().flatten() {
+            self.env_clear = update_option(&self.env_clear, &other.env_clear);
             self.raw_callgrind_args
                 .extend_ignore_flag(other.raw_callgrind_args.0.iter());
-            self.env_clear = update_option(&self.env_clear, &other.env_clear);
             self.envs.extend_from_slice(&other.envs);
             self.flamegraph_config =
                 update_option(&self.flamegraph_config, &other.flamegraph_config);

@@ -23,6 +23,7 @@ glob = { workspace = true }
 iai-callgrind = { path = "../iai-callgrind", features = [
   "client_requests_defs",
 ] }
+# Needed in the `cargo bench` wrapper
 iai-callgrind-runner = { path = "../iai-callgrind-runner" }
 lazy_static = { workspace = true }
 minijinja = { workspace = true }
@@ -107,6 +108,11 @@ name = "test_bin_bench_sandbox"
 harness = false
 path = "benches/test_bin_bench/intro/test_bin_bench_intro.rs"
 name = "test_bin_bench_intro"
+
+[[bench]]
+harness = false
+path = "benches/test_bin_bench/low_level/test_bin_bench_low_level.rs"
+name = "test_bin_bench_low_level"
 
 [[bench]]
 harness = false
