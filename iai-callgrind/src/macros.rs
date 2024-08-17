@@ -29,6 +29,7 @@
 macro_rules! binary_benchmark_attribute {
     ($name:ident) => {{
         let mut binary_benchmark = $crate::BinaryBenchmark::new(stringify!($name));
+        binary_benchmark.config = $name::__get_config();
 
         for internal_bench in $name::__BENCHES {
             let mut bench = if let Some(id) = internal_bench.id_display {
