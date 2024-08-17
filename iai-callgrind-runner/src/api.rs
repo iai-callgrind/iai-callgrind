@@ -381,6 +381,8 @@ impl BinaryBenchmarkConfig {
                 // do nothing
             }
             self.sandbox = update_option(&self.sandbox, &other.sandbox);
+            self.truncate_description =
+                update_option(&self.truncate_description, &other.truncate_description);
         }
         self
     }
@@ -860,6 +862,26 @@ mod tests {
         };
 
         assert_eq!(base.update_from_all([Some(&other)]), expected);
+    }
+
+    #[rstest]
+    #[case::truncate_description(
+        LibraryBenchmarkConfig {
+            truncate_description: Some(None),
+            ..Default::default()
+        }
+    )]
+    #[case::env_clear(
+        LibraryBenchmarkConfig {
+            env_clear: Some(true),
+            ..Default::default()
+        }
+    )]
+    fn test_library_benchmark_config_update_from_all_truncate_description(
+        #[case] config: LibraryBenchmarkConfig,
+    ) {
+        let actual = LibraryBenchmarkConfig::default().update_from_all([Some(&config)]);
+        assert_eq!(actual, config);
     }
 
     #[rstest]
