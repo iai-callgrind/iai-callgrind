@@ -30,10 +30,6 @@ pub struct BinaryBenchmarkBench {
     pub has_teardown: bool,
 }
 
-// TODO: ADD WAIT parameter which is applied to all commands, setup, teardown etc. and disables
-// blocking mode to wait for the processes to exit. Wait instead this amount of time (Duration) or
-// else exit with error killing the child process. Add a similar parameter to Command but which
-// controls only the command itself.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct BinaryBenchmarkConfig {
     pub env_clear: Option<bool>,

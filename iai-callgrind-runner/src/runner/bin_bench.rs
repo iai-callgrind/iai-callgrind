@@ -29,14 +29,15 @@ use crate::error::Error;
 use crate::runner::format;
 use crate::util::make_absolute;
 
-// TODO: SEARCH FOR MORE DEFAULTS, ALSO IN OTHER modules
 mod defaults {
     use crate::api::Stdin;
 
-    pub const REGRESSION_FAIL_FAST: bool = false;
-    pub const ENV_CLEAR: bool = true;
     pub const COMPARE_BY_ID: bool = false;
+    pub const ENV_CLEAR: bool = true;
+    pub const REGRESSION_FAIL_FAST: bool = false;
     pub const STDIN: Stdin = Stdin::Pipe;
+    pub const TRUNCATE_LENGTH: Option<usize> = Some(50);
+    pub const WORKSPACE_ROOT_ENV: &str = "_WORKSPACE_ROOT";
 }
 
 #[derive(Debug)]
@@ -172,8 +173,12 @@ impl Benchmark for BaselineBenchmark {
             path.to_log_output().shift()?;
         }
 
-        let mut benchmark_summary =
-            bin_bench.create_benchmark_summary(config, &out_path, header.description())?;
+        let mut benchmark_summary = bin_bench.create_benchmark_summary(
+            config,
+            &out_path,
+            &bin_bench.function_name,
+            header.description(),
+        )?;
 
         // We're implicitly applying the default here: In the absence of a user provided sandbox we
         // don't run the benchmarks in a sandbox. Everything from here on runs with the current
@@ -299,7 +304,7 @@ impl BinBench {
 
         let mut assistant_envs = config.collect_envs();
         assistant_envs.push((
-            OsString::from("_WORKSPACE_ROOT"),
+            OsString::from(defaults::WORKSPACE_ROOT_ENV),
             meta.project_root.clone().into(),
         ));
 
@@ -354,7 +359,9 @@ impl BinBench {
             sandbox: config.sandbox,
             module_path,
             command,
-            truncate_description: config.truncate_description.unwrap_or(Some(50)),
+            truncate_description: config
+                .truncate_description
+                .unwrap_or(defaults::TRUNCATE_LENGTH),
         })
     }
 
@@ -378,6 +385,7 @@ impl BinBench {
         &self,
         config: &Config,
         output_path: &ToolOutputPath,
+        function_name: &str,
         description: Option<String>,
     ) -> Result<BenchmarkSummary> {
         let summary_output = if let Some(format) = config.meta.args.save_summary {
@@ -395,6 +403,7 @@ impl BinBench {
             config.bench_file.clone(),
             self.command.path.clone(),
             &self.module_path,
+            function_name,
             self.id.clone(),
             description,
             summary_output,
@@ -612,8 +621,12 @@ impl Benchmark for LoadBaselineBenchmark {
         let old_path = out_path.to_base_path();
         let log_path = out_path.to_log_output();
 
-        let mut benchmark_summary =
-            bin_bench.create_benchmark_summary(config, &out_path, header.description())?;
+        let mut benchmark_summary = bin_bench.create_benchmark_summary(
+            config,
+            &out_path,
+            &bin_bench.function_name,
+            header.description(),
+        )?;
 
         let new_costs = SummaryParser.parse(&out_path)?;
         let old_costs = Some(SummaryParser.parse(&old_path)?);
@@ -783,8 +796,12 @@ impl Benchmark for SaveBaselineBenchmark {
         let log_path = out_path.to_log_output();
         log_path.clear()?;
 
-        let mut benchmark_summary =
-            bin_bench.create_benchmark_summary(config, &out_path, header.description())?;
+        let mut benchmark_summary = bin_bench.create_benchmark_summary(
+            config,
+            &out_path,
+            &bin_bench.function_name,
+            header.description(),
+        )?;
 
         let sandbox = bin_bench
             .sandbox

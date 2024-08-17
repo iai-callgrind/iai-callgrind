@@ -447,7 +447,7 @@ impl OutputPath {
                 (OutputPathKind::Base(name), BaselineKind::Name(other)) => {
                     OutputPathKind::DiffBases(name.to_string(), other.to_string())
                 }
-                // TODO: NOT UNREACHABLE
+                // TODO: NOT UNREACHABLE?
                 (OutputPathKind::Old | OutputPathKind::Base(_), _) => unreachable!(),
                 (value, _) => value.clone(),
             },

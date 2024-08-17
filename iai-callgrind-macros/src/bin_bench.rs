@@ -12,8 +12,6 @@ use syn::{parse2, parse_quote, Attribute, Expr, Ident, ItemFn, MetaNameValue, To
 use crate::common::{self, format_ident, truncate_str_utf8, BenchesArgs, File};
 use crate::{defaults, CargoMetadata};
 
-// TODO: CHECK FOR OCCURRENCES OF library benchmark strings in docs and else
-
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
 #[derive(Debug, Default, Clone, Deref, DerefMut)]
 struct Args(common::Args);
@@ -42,7 +40,7 @@ struct BinaryBenchmark {
     benches: Vec<Bench>,
 }
 
-/// The `config` parameter of the `#[library_benchmark]` attribute
+/// The `config` parameter of the `#[binary_benchmark]` attribute
 ///
 /// The `BenchConfig` and `BinaryBenchmarkConfig` are rendered differently, hence the different
 /// structures
@@ -345,7 +343,7 @@ impl BinaryBenchmark {
     /// Render the `#[binary_benchmark]` attribute when no outer attribute was present
     ///
     /// ```ignore
-    /// #[library_benchmark]
+    /// #[binary_benchmark]
     /// fn my_benchmark_function() -> u64 {
     ///     my_lib::bench_me(42)
     /// }

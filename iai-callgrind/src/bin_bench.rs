@@ -1551,12 +1551,6 @@ impl BinaryBenchmarkGroup {
     }
 }
 
-// TODO: WAIT FUNCTION which tells iai-callgrind to wait for this process only this specific
-// amount of seconds instead of blocking forever. Also, add this method to
-// `BinaryBenchmarkConfig` (and `LibraryBenchmarkConfig`??)
-//
-// TODO: DELAY FUNCTION to delay the start of the main process if required.
-
 /// Provide the [`Command`] to be benchmarked
 ///
 /// This is a builder for [`std::process::Command`]. As opposed to [`std::process::Command`] there
@@ -2148,9 +2142,6 @@ impl From<&ExitWith> for internal::InternalExitWith {
     }
 }
 
-// TODO: ADD `follow_symlinks` and maybe others. See `InternalSandbox`
-// TODO: ADD `copy_back`
-// TODO: ADD `chroot`
 /// The `Sandbox` in which the the `setup`, `teardown` and the [`Command`] are run
 ///
 /// The `Sandbox` is a temporary directory which is created before the execution of the

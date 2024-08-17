@@ -64,7 +64,7 @@ pub struct LibBench {
     pub bench_index: usize,
     pub index: usize,
     pub id: Option<String>,
-    pub function: String,
+    pub function_name: String,
     pub args: Option<String>,
     pub run_options: RunOptions,
     pub callgrind_args: Args,
@@ -171,8 +171,12 @@ impl Benchmark for BaselineBenchmark {
             path.to_log_output().shift()?;
         }
 
-        let mut benchmark_summary =
-            lib_bench.create_benchmark_summary(config, &out_path, header.description())?;
+        let mut benchmark_summary = lib_bench.create_benchmark_summary(
+            config,
+            &out_path,
+            &lib_bench.function_name,
+            header.description(),
+        )?;
 
         let output = callgrind_command.run(
             tool_config,
@@ -316,12 +320,11 @@ impl Groups {
                     let module_path =
                         group_module_path.join(&library_benchmark_bench.function_name);
 
-                    // TODO: Move into LibBench::new
                     let lib_bench = LibBench {
                         bench_index,
                         index,
                         id: library_benchmark_bench.id,
-                        function: library_benchmark_bench.function_name,
+                        function_name: library_benchmark_bench.function_name,
                         args: library_benchmark_bench.args,
                         entry_point: Some(DEFAULT_TOGGLE.to_owned()),
                         run_options: RunOptions {
@@ -405,9 +408,9 @@ impl LibBench {
     /// be unique within the same [`Group`]
     fn name(&self) -> String {
         if let Some(bench_id) = &self.id {
-            format!("{}.{}", &self.function, bench_id)
+            format!("{}.{}", &self.function_name, bench_id)
         } else {
-            self.function.clone()
+            self.function_name.clone()
         }
     }
 
@@ -427,6 +430,7 @@ impl LibBench {
         &self,
         config: &Config,
         output_path: &ToolOutputPath,
+        function_name: &str,
         description: Option<String>,
     ) -> Result<BenchmarkSummary> {
         let summary_output = if let Some(format) = config.meta.args.save_summary {
@@ -444,6 +448,7 @@ impl LibBench {
             config.bench_file.clone(),
             config.bench_bin.clone(),
             &self.module_path,
+            function_name,
             self.id.clone(),
             description,
             summary_output,
@@ -498,8 +503,12 @@ impl Benchmark for LoadBaselineBenchmark {
         let old_path = out_path.to_base_path();
         let log_path = out_path.to_log_output();
 
-        let mut benchmark_summary =
-            lib_bench.create_benchmark_summary(config, &out_path, header.description())?;
+        let mut benchmark_summary = lib_bench.create_benchmark_summary(
+            config,
+            &out_path,
+            &lib_bench.function_name,
+            header.description(),
+        )?;
 
         let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
         let old_costs = Some(SentinelParser::new(&sentinel).parse(&old_path)?);
@@ -676,8 +685,12 @@ impl Benchmark for SaveBaselineBenchmark {
         let log_path = out_path.to_log_output();
         log_path.clear()?;
 
-        let mut benchmark_summary =
-            lib_bench.create_benchmark_summary(config, &out_path, header.description())?;
+        let mut benchmark_summary = lib_bench.create_benchmark_summary(
+            config,
+            &out_path,
+            &lib_bench.function_name,
+            header.description(),
+        )?;
 
         let output = callgrind_command.run(
             tool_config,

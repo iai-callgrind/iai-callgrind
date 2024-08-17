@@ -318,6 +318,7 @@ impl BenchmarkSummary {
         benchmark_file: PathBuf,
         benchmark_exe: PathBuf,
         module_path: &ModulePath,
+        function_name: &str,
         id: Option<String>,
         details: Option<String>,
         output: Option<SummaryOutput>,
@@ -328,8 +329,7 @@ impl BenchmarkSummary {
             benchmark_file: make_absolute(&project_root, benchmark_file),
             benchmark_exe: make_absolute(&project_root, benchmark_exe),
             module_path: module_path.to_string(),
-            // TODO:BETTER WAY THAN UNWRAP ??
-            function_name: module_path.last().unwrap().to_string(),
+            function_name: function_name.to_owned(),
             id,
             details,
             callgrind_summary: None,
