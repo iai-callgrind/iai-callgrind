@@ -35,7 +35,6 @@ macro_rules! binary_benchmark_attribute {
             let mut bench = if let Some(id) = internal_bench.id_display {
                 $crate::Bench::new(id)
             } else {
-                // TODO: the output is different if we're using an id
                 $crate::Bench::new(stringify!($name))
             };
             let mut bench = bench.command((internal_bench.func)());
@@ -1261,17 +1260,29 @@ macro_rules! binary_benchmark_group {
                     .iter()
                     .nth(group_index)
                     .expect("The group index for setup should be present");
+                // In the runner each command is a `BinBench` and it is the index of the command
+                // which we're getting back from the runner. So, we have to iterate over the
+                // commands of each Bench to extract the correct setup function.
+                //
+                // commands                           => bench_index => The correct setup function
+                // bench.benches[0].commands = [a, b] => 0, 1        => bench.benches[0].setup
+                // bench.benches[1].commands = [c]    => 2           => bench.benches[1].setup
+                // bench.benches[2].commands = [d, e] => 3, 4        => bench.benches[2].setup
+                //
+                // We also need to take care of that there can be a global setup function
+                // `BinaryBenchmark::setup`, which can be overridden by a `Bench::setup`
                 if let Some(setup) = bench
                         .benches
                         .iter()
+                        .flat_map(|b| b.commands.iter().map(|c| (b.setup, c)))
                         .nth(bench_index)
-                        .map(|b| b.setup)
+                        .map(|(setup, _)| setup)
                         .expect("The bench index for setup should be present") {
                     setup();
                 } else if let Some(setup) = bench.setup {
                     setup();
                 } else {
-                    // do nothing
+                    // This branch should be unreachable so we do nothing
                 }
             }
 
@@ -1287,14 +1298,15 @@ macro_rules! binary_benchmark_group {
                 if let Some(teardown) = bench
                         .benches
                         .iter()
+                        .flat_map(|b| b.commands.iter().map(|c| (b.teardown, c)))
                         .nth(bench_index)
-                        .map(|b| b.teardown)
+                        .map(|(teardown, _)| teardown)
                         .expect("The bench index for teardown should be present") {
                     teardown();
                 } else if let Some(teardown) = bench.teardown {
                     teardown();
                 } else {
-                    // do nothing
+                    // This branch should be unreachable so we do nothing
                 }
             }
 
