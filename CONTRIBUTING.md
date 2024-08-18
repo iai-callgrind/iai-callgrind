@@ -71,15 +71,19 @@ checks in the `ci`.
 
 ## Testing
 
-iai-callgrind lacks tests and contributions expanding the test suite are also
-very welcome. Patches have to include tests to verify (at a minimum) that the
-whole pipeline runs through without errors.
+Patches have to include tests to verify (at a minimum) that the whole pipeline
+runs through without errors.
 
-The benches in the `benchmark-tests` package run the whole pipeline which is
-good for verifying that there are no panics or errors. If you've made changes in
-the `iai-callgrind-runner` package then you can point the `IAI_CALLGRIND_RUNNER`
-environment variable to your modified version of the `iai-callgrind-runner`
-binary:
+The benches in the `benchmark-tests` package are system tests and run the whole
+pipeline. We use a wrapper around `cargo --bench` (`benchmark-tests/src/bench`)
+to run the `benchmark-tests`. In order to run a single benchmark-tests use `just
+full-bench-test $BENCHMARK_NAME` or all with `just full-bench-test-all`.
+
+The user interface is tested in `iai-callgrind/tests/ui`.
+
+If you've made changes in the `iai-callgrind-runner` package then you can point
+the `IAI_CALLGRIND_RUNNER` environment variable to your modified version of the
+`iai-callgrind-runner` binary:
 
 ```shell
 cargo build -p iai-callgrind-runner --release
@@ -107,10 +111,7 @@ just full-bench-test test_lib_bench_tools
 
 which also checks that any output files that are expected to be created by the
 benchmark run are actually there. Depending on the test configuration benchmarks
-are sometimes run multiple times. Currently, we don't have any tests in place
-which verify the benchmark terminal outputs. So, for concrete results it's
-better to use unit tests or integration tests in the `iai-callgrind-runner`
-package.
+are sometimes run multiple times.
 
 ## Contact
 

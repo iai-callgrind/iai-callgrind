@@ -1522,6 +1522,10 @@ corresponding environment variable.
 A guideline about contributing to iai-callgrind can be found in the
 [CONTRIBUTING.md](./CONTRIBUTING.md) file.
 
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you shall be dual licensed as in
+[License](#license), without any additional terms or conditions.
+
 ### See also
 
 - Iai-Callgrind is [mentioned](https://youtu.be/qfknfCsICUM?t=1228) in a talk at
