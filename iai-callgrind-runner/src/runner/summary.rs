@@ -16,6 +16,7 @@ use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use super::common::ModulePath;
 use super::costs::Costs;
 use super::format::{ComparisonHeader, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
@@ -76,7 +77,8 @@ pub enum BenchmarkKind {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct BenchmarkSummary {
-    /// The version of this format. Only backwards incompatible cause an increase of the version
+    /// The version of this format. Only backwards incompatible changes cause an increase of the
+    /// version
     pub version: String,
     /// Whether this summary describes a library or binary benchmark
     pub kind: BenchmarkKind,
@@ -88,7 +90,9 @@ pub struct BenchmarkSummary {
     pub package_dir: PathBuf,
     /// The path to the benchmark file
     pub benchmark_file: PathBuf,
-    /// The path to the compiled and executable benchmark file
+    /// The path to the binary which is executed by valgrind. In case of a library benchmark this
+    /// is the compiled benchmark file. In case of a binary benchmark this is the path to the
+    /// command.
     pub benchmark_exe: PathBuf,
     /// The name of the function under test
     pub function_name: String,
@@ -307,14 +311,14 @@ impl BenchmarkSummary {
     /// Create a new `BenchmarkSummary`
     ///
     /// Relative paths are made absolute with the `project_root` as base directory.
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         kind: BenchmarkKind,
         project_root: PathBuf,
         package_dir: PathBuf,
         benchmark_file: PathBuf,
         benchmark_exe: PathBuf,
-        segments: &[&str],
+        module_path: &ModulePath,
+        function_name: &str,
         id: Option<String>,
         details: Option<String>,
         output: Option<SummaryOutput>,
@@ -324,8 +328,8 @@ impl BenchmarkSummary {
             kind,
             benchmark_file: make_absolute(&project_root, benchmark_file),
             benchmark_exe: make_absolute(&project_root, benchmark_exe),
-            module_path: segments.join("::"),
-            function_name: (*segments.last().unwrap()).to_owned(),
+            module_path: module_path.to_string(),
+            function_name: function_name.to_owned(),
             id,
             details,
             callgrind_summary: None,

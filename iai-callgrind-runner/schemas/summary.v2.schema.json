@@ -16,7 +16,7 @@
   ],
   "properties": {
     "benchmark_exe": {
-      "description": "The path to the compiled and executable benchmark file",
+      "description": "The path to the binary which is executed by valgrind. In case of a library benchmark this is the compiled benchmark file. In case of a binary benchmark this is the path to the command.",
       "type": "string"
     },
     "benchmark_file": {
@@ -85,7 +85,7 @@
       }
     },
     "version": {
-      "description": "The version of this format. Only backwards incompatible cause an increase of the version",
+      "description": "The version of this format. Only backwards incompatible changes cause an increase of the version",
       "type": "string"
     }
   },

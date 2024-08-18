@@ -11,7 +11,7 @@ mod test_main_when_config_is_not_a_binary_benchmark_config {
 
     binary_benchmark_group!(
         name = some;
-        benchmark = |group: &mut BinaryBenchmarkGroup| {
+        benchmarks = |group: &mut BinaryBenchmarkGroup| {
             // do nothing
         }
     );

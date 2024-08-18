@@ -11,8 +11,7 @@
 //!     - [Quickstart](#quickstart-library-benchmarks)
 //!     - [Configuration](#configuration-library-benchmarks)
 //!   - [Binary Benchmarks](#binary-benchmarks)
-//!     - [Temporary workspace and other important default
-//!       behavior](#temporary-workspace-and-other-important-default-behavior)
+//!     - [Important default behavior](#important-default-behavior)
 //!     - [Quickstart](#quickstart-binary-benchmarks)
 //!     - [Configuration](#configuration-binary-benchmarks)
 //! - [Valgrind Tools](#valgrind-tools)
@@ -193,85 +192,132 @@
 //!
 //! ### Binary Benchmarks
 //!
-//! Use this scheme of the [`main`] macro to benchmark one or more binaries of your crate. If you
-//! really like to, it's possible to benchmark any executable file in the PATH or any executable
-//! specified with an absolute path. The documentation for setting up binary benchmarks with the
+//! Use this scheme of the [`main`] macro to benchmark one or more binaries of your crate (or any
+//! other executable). The documentation for setting up binary benchmarks with the
 //! `binary_benchmark_group` macro can be found in the docs of [`crate::binary_benchmark_group`].
 //!
-//! #### Temporary Workspace and other important default behavior
+//! #### Important default behavior
 //!
-//! Per default, all binary benchmarks and the `before`, `after`, `setup` and `teardown` functions
-//! are executed in a temporary directory. See [`crate::BinaryBenchmarkConfig::sandbox`] for a
-//! deeper explanation and how to control and change this behavior. Also, the environment variables
-//! of benchmarked binaries are cleared before the benchmark is run. See also
+//! Per default, all binary benchmarks run with the environment variables cleared. See also
 //! [`crate::BinaryBenchmarkConfig::env_clear`] for how to change this behavior.
 //!
 //! #### Quickstart (#binary-benchmarks)
 //!
-//! Suppose your crate's binary is named `my-exe` and you have a fixtures directory in
-//! `benches/fixtures` with a file `test1.txt` in it:
+//! There are two apis to setup binary benchmarks, but we only describe the high-level api using the
+//! [`#[binary_benchmark]`](`crate::binary_benchmark`) attribute here. See the docs of
+//! [`binary_benchmark_group`] for more details about the low level api. The `#[binary_benchmark]`
+//! attribute works almost the same as the `#[library_benchmark]` attribute. You will find the same
+//! parameters `setup`, `teardown`, `config`, etc. in `#[binary_benchmark]` as in
+//! `#[library_benchmark]` and the inner attributes `#[bench]`, `#[benches]`. But, there are also
+//! substantial (differences)[#differences-to-library-benchmarks].
+//!
+//! Suppose your crate's binaries are named `my-foo` and `my-bar`
 //!
 //! ```rust
+//! # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
 //! use iai_callgrind::{
-//!     main, binary_benchmark_group, BinaryBenchmarkConfig, BinaryBenchmarkGroup,
-//!     Run, Arg, Fixtures
+//!     main, binary_benchmark, binary_benchmark_group,
 //! };
+//! use std::path::PathBuf;
+//! use std::ffi::OsString;
 //!
+//! // In binary benchmarks there's no need to return a value from the setup function
 //! fn my_setup() {
-//!     println!("We can put code in here which will be run before each benchmark run");
+//!     println!("Put code in here which will be run before the actual command");
 //! }
 //!
-//! // We specify a cmd `"my-exe"` for the whole group which is a binary of our crate. This
-//! // eliminates the need to specify a `cmd` for each `Run` later on and we can use the
-//! // auto-discovery of a crate's binary at group level. We'll also use the `setup` argument
-//! // to run a function before each of the benchmark runs.
+//! #[binary_benchmark]
+//! #[bench::just_a_fixture("benches/fixture.json")]
+//! // First big difference to library benchmarks! `my_setup` is not evaluated right away and the
+//! // return value of `my_setup` is not used as input for the `bench_foo` function. Instead,
+//! // `my_setup()` is executed before the execution of the `Command`.
+//! #[bench::with_other_fixture_and_setup(args = ("benches/other_fixture.txt"), setup = my_setup())]
+//! #[benches::multiple("benches/fix_1.txt", "benches/fix_2.txt")]
+//! // All functions annotated with `#[binary_benchmark]` need to return a `iai_callgrind::Command`
+//! fn bench_foo(path: &str) -> iai_callgrind::Command {
+//!     let path: PathBuf = path.into();
+//!     // We can put any code in here which is needed to configure the `Command`.
+//!     let stdout = if path.extension().unwrap() == "txt" {
+//!         iai_callgrind::Stdio::Inherit
+//!     } else {
+//!         iai_callgrind::Stdio::File(path.with_extension("out"))
+//!     };
+//!     // Configure the command depending on the arguments passed to this function and the code
+//!     // above
+//!     iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+//!         .stdout(stdout)
+//!         .arg(path)
+//!         .build()
+//! }
+//!
+//! #[binary_benchmark]
+//! // The id just needs to be unique within the same `#[binary_benchmark]`, so we can reuse
+//! // `just_a_fixture` if we want to
+//! #[bench::just_a_fixture("benches/fixture.json")]
+//! // The function can be generic, too.
+//! fn bench_bar<P>(path: P) -> iai_callgrind::Command
+//! where
+//!    P: Into<OsString>
+//! {
+//!     iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-bar"))
+//!         .arg(path)
+//!         .build()
+//! }
+//!
+//! // Put all `#[binary_benchmark]` annotated functions you want to benchmark into the `benchmarks`
+//! // section of this macro
 //! binary_benchmark_group!(
-//!     name = my_exe_group;
-//!     setup = my_setup;
-//!     // This directory will be copied into the root of the sandbox (as `fixtures`)
-//!     config = BinaryBenchmarkConfig::default().fixtures(Fixtures::new("benches/fixtures"));
-//!     benchmark = |"my-exe", group: &mut BinaryBenchmarkGroup| setup_my_exe_group(group));
-//!
-//! // Working within a macro can be tedious sometimes so we moved the setup code into
-//! // this method
-//! fn setup_my_exe_group(group: &mut BinaryBenchmarkGroup) {
-//!     group
-//!         // Setup our first run doing something with our fixture `test1.txt`. The
-//!         // id (here `do foo with test1`) of an `Arg` has to be unique within the
-//!         // same group
-//!         .bench(Run::with_arg(Arg::new(
-//!             "do foo with test1",
-//!             ["--foo=fixtures/test1.txt"],
-//!         )))
-//!
-//!         // Setup our second run with two positional arguments
-//!         .bench(Run::with_arg(Arg::new(
-//!             "positional arguments",
-//!             ["foo", "foo bar"],
-//!         )))
-//!
-//!         // Our last run doesn't take an argument at all.
-//!         .bench(Run::with_arg(Arg::empty("no argument")));
-//! }
+//!     name = my_group;
+//!     benchmarks = bench_foo, bench_bar
+//! );
 //!
 //! # fn main() {
-//! // As last step specify all groups we want to benchmark in the main! macro argument
-//! // `binary_benchmark_groups`. The main macro is always needed and finally expands
-//! // to a benchmarking harness
-//! main!(binary_benchmark_groups = my_exe_group);
+//! // As last step specify all groups you want to benchmark in the macro argument
+//! // `binary_benchmark_groups`. As the binary_benchmark_group macro, the main macro is
+//! // always needed and finally expands to a benchmarking harness
+//! main!(binary_benchmark_groups = my_group);
 //! # }
 //! ```
+//!
+//! #### Differences to library benchmarks
+//!
+//! As opposed to library benchmarks the function annotated with the `binary_benchmark` attribute
+//! always returns a `iai_callgrind::Command`. More specifically, this function is not a benchmark
+//! function, since we don't benchmark functions anymore but [`Command`]s instead which are the
+//! return value of the [`#[binary_benchmark]`](crate::binary_benchmark) function.
+//!
+//! This change has far-reaching consequences but also simplifies things. Since the function itself
+//! is not benchmarked you can put any code into this function and it does not influence the
+//! benchmark of the [`Command`] itself. However, this function is run only once to __build__ the
+//! [`Command`] and when we collect all commands and its configuration to be able to actually
+//! __execute__ the [`Command`]s later in the benchmark runner. Whichever code you want to run
+//! before the [`Command`] is executed has to go into the `setup`. And, into `teardown` for code you
+//! want to run after the execution of the [`Command`].
+//!
+//! In library benchmarks the `setup` argument only takes a path to a function, more specifically
+//! the function pointer. In binary benchmarks however, the `setup` (and `teardown`) parameters of
+//! the [`#[binary_benchmark]`](crate::binary_benchmark), `#[bench]` and `#[benches]` attribute
+//! take expressions which includes function calls for example `setup = my_setup()`. Only in the
+//! special case that the expression is a function pointer, we pass the `args` of the `#[bench]` and
+//! `#[benches]` attributes into the `setup`, `teardown` __and__ the function itself. Also, these
+//! expressions are not executed right away but in a separate process before the [`Command`] is
+//! executed. This is the main reason why the return value of the setup function is simply ignored
+//! and not routed back into the benchmark function as it would be the case in library benchmarks.
+//! We simply don't need to. To sum it up, put code you need to configure the [`Command`] into the
+//! annotated function and code you need to execute before (after) the execution of the [`Command`]
+//! into the `setup` (`teardown`).
+//!
 //! #### Configuration (#binary-benchmarks)
 //!
 //! Much like the configuration of library benchmarks (See above) it's possible to configure binary
 //! benchmarks at top-level in the `main!` macro and at group-level in the
 //! `binary_benchmark_groups!` with the `config = ...;` argument. In contrast to library benchmarks,
-//! binary benchmarks can be configured at a lower and last level within [`Run`] directly.
+//! binary benchmarks can be also configured at a lower and last level in [`Command`] directly.
 //!
 //! For further details see the section about binary benchmarks of the [`crate::main`] docs the docs
-//! of [`crate::binary_benchmark_group`] and [`Run`]. Also, the
-//! [README](https://github.com/iai-callgrind/iai-callgrind) of this crate includes some introductory
-//! documentation with additional examples.
+//! of [`crate::binary_benchmark_group`] and [`Command`]. Also, the
+//! [README](https://github.com/iai-callgrind/iai-callgrind) of this crate includes some
+//! introductory documentation with additional examples.
 //!
 //! ## Valgrind Tools
 //!
@@ -280,9 +326,8 @@
 //! `Memcheck`, `Helgrind` and `DRD` if you need to check memory and thread safety of benchmarked
 //! code. See also the [Valgrind User Manual](https://valgrind.org/docs/manual/manual.html) for
 //! details and command line arguments. The additional tools can be specified in
-//! [`LibraryBenchmarkConfig`], [`BinaryBenchmarkConfig`] or [`Run`]. For example to run `DHAT` for
+//! [`LibraryBenchmarkConfig`], [`BinaryBenchmarkConfig`]. For example to run `DHAT` for
 //! all library benchmarks:
-//!
 //! ```rust
 //! # use iai_callgrind::{library_benchmark, library_benchmark_group};
 //! use iai_callgrind::{main, LibraryBenchmarkConfig, Tool, ValgrindTool};
@@ -306,9 +351,9 @@
 //! ## Flamegraphs
 //!
 //! Flamegraphs are opt-in and can be created if you pass a [`FlamegraphConfig`] to the
-//! [`BinaryBenchmarkConfig::flamegraph`], [`Run::flamegraph`] or
-//! [`LibraryBenchmarkConfig::flamegraph`]. Callgrind flamegraphs are meant as a complement to
-//! valgrind's visualization tools `callgrind_annotate` and `kcachegrind`.
+//! [`BinaryBenchmarkConfig::flamegraph`] or [`LibraryBenchmarkConfig::flamegraph`]. Callgrind
+//! flamegraphs are meant as a complement to valgrind's visualization tools `callgrind_annotate` and
+//! `kcachegrind`.
 //!
 //! Callgrind flamegraphs show the inclusive costs for functions and a specific event type, much
 //! like `callgrind_annotate` does but in a nicer (and clickable) way. Especially, differential
@@ -343,35 +388,6 @@
 #![allow(clippy::module_name_repetitions)]
 
 #[cfg(feature = "default")]
-macro_rules! impl_traits {
-    ($src:ty, $dst:ty) => {
-        impl From<$src> for $dst {
-            fn from(value: $src) -> Self {
-                value.0
-            }
-        }
-
-        impl From<&$src> for $dst {
-            fn from(value: &$src) -> Self {
-                value.0.clone()
-            }
-        }
-
-        impl From<&mut $src> for $dst {
-            fn from(value: &mut $src) -> Self {
-                value.0.clone()
-            }
-        }
-
-        impl AsRef<$src> for $src {
-            fn as_ref(&self) -> &$src {
-                self
-            }
-        }
-    };
-}
-
-#[cfg(feature = "default")]
 mod bin_bench;
 #[cfg(feature = "client_requests_defs")]
 pub mod client_requests;
@@ -379,15 +395,18 @@ pub mod client_requests;
 mod common;
 #[cfg(feature = "default")]
 #[doc(hidden)]
+pub mod error;
+#[cfg(feature = "default")]
+#[doc(hidden)]
 pub mod internal;
 #[cfg(feature = "default")]
 mod lib_bench;
 #[cfg(feature = "default")]
 mod macros;
-
 #[cfg(feature = "default")]
 pub use bin_bench::{
-    Arg, BenchmarkId, BinaryBenchmarkConfig, BinaryBenchmarkGroup, ExitWith, Fixtures, Run,
+    Bench, BenchmarkId, BinaryBenchmark, BinaryBenchmarkConfig, BinaryBenchmarkGroup, Command,
+    ExitWith, Sandbox,
 };
 #[cfg(feature = "default")]
 pub use bincode;
@@ -396,8 +415,10 @@ pub use common::{black_box, FlamegraphConfig, RegressionConfig, Tool};
 #[cfg(feature = "client_requests_defs")]
 pub use cty;
 #[cfg(feature = "default")]
-pub use iai_callgrind_macros::library_benchmark;
+pub use iai_callgrind_macros::{binary_benchmark, library_benchmark};
 #[cfg(feature = "default")]
-pub use iai_callgrind_runner::api::{Direction, EventKind, FlamegraphKind, ValgrindTool};
+pub use iai_callgrind_runner::api::{
+    Direction, EventKind, FlamegraphKind, Pipe, Stdin, Stdio, ValgrindTool,
+};
 #[cfg(feature = "default")]
 pub use lib_bench::LibraryBenchmarkConfig;

@@ -1,0 +1,10 @@
+groups:
+  - runs:
+      - args: []
+        expected:
+          files: expected_files.1.yml
+          stdout: expected_stdout.1
+      - args: []
+        expected:
+          files: expected_files.2.yml
+          stdout: expected_stdout.2

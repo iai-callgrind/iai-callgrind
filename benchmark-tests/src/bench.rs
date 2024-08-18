@@ -1,8 +1,10 @@
 // spell-checker:ignore rmdirs
 use std::collections::{HashMap, HashSet};
+use std::ffi::OsString;
 use std::fmt::Write;
 use std::fs::File;
 use std::io::{stderr, stdout, BufRead, Read, Write as IOWrite};
+use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 
@@ -18,7 +20,11 @@ use valico::json_schema;
 use valico::json_schema::schema::ScopedSchema;
 
 const PACKAGE: &str = "benchmark-tests";
-const TEMPLATE_BENCH_NAME: &str = "test_bench";
+const TEMPLATE_BENCH_NAME: &str = "test_bench_template";
+const TEMPLATE_CONTENT: &str = r#"fn main() {
+    panic!("should be replaced by a rendered template");
+}
+"#;
 static TEMPLATE_DATA: OnceCell<HashMap<String, minijinja::Value>> = OnceCell::new();
 
 lazy_static! {
@@ -32,11 +38,15 @@ lazy_static! {
     )
     .expect("Regex should compile");
     static ref RUNNING_RE: Regex = Regex::new(r"^[ ]+Running .*$").expect("Regex should compile");
+    static ref PROCESS_DID_NOT_EXIT_SUCCESSFULLY_RE: Regex =
+        Regex::new(r"^([ ]+process didn't exit successfully: `)(.*)(` \(exit status: .*\).*)$")
+            .expect("Regex should compile");
 }
 
 #[derive(Debug, Clone)]
 struct Benchmark {
     name: String,
+    dir: PathBuf,
     bench_name: String,
     config: Config,
     dest_dir: PathBuf,
@@ -79,6 +89,8 @@ struct ExpectedConfig {
     stdout: Option<PathBuf>,
     #[serde(default)]
     stderr: Option<PathBuf>,
+    #[serde(default)]
+    exit_code: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -108,6 +120,7 @@ struct Metadata {
     target_directory: PathBuf,
     benchmarks: Vec<Benchmark>,
     benches_dir: PathBuf,
+    rust_version: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -122,6 +135,8 @@ struct RunConfig {
     runs_on: Option<String>,
     #[serde(default)]
     rmdirs: Vec<PathBuf>,
+    #[serde(default, with = "benchmark_tests::serde_rust_version")]
+    rust_version: Option<benchmark_tests::serde_rust_version::VersionComparator>,
 }
 
 impl Benchmark {
@@ -144,6 +159,7 @@ impl Benchmark {
             bench_name,
             name,
             config,
+            dir: path.parent().unwrap().to_path_buf(),
         }
     }
 
@@ -161,7 +177,7 @@ impl Benchmark {
         }
     }
 
-    pub fn run_bench(&self, args: &[String], capture: bool) -> Option<BenchmarkOutput> {
+    pub fn run_bench(&self, args: &[String], capture: bool) -> BenchmarkOutput {
         let stdio = if capture {
             std::env::set_var("IAI_CALLGRIND_COLOR", "never");
             Stdio::piped
@@ -185,9 +201,7 @@ impl Benchmark {
             .output()
             .expect("Launching benchmark should succeed");
 
-        assert!(output.status.success(), "Expected run to be successful");
-
-        capture.then_some(BenchmarkOutput(output))
+        BenchmarkOutput(output)
     }
 
     pub fn run_template(
@@ -197,9 +211,9 @@ impl Benchmark {
         template_data: &HashMap<String, minijinja::Value>,
         meta: &Metadata,
         capture: bool,
-    ) -> Option<BenchmarkOutput> {
+    ) -> BenchmarkOutput {
         let mut template_string = String::new();
-        File::open(meta.get_file(template_path))
+        File::open(self.dir.join(template_path))
             .expect("File should exist")
             .read_to_string(&mut template_string)
             .expect("Reading to string should succeed");
@@ -209,7 +223,7 @@ impl Benchmark {
             .unwrap();
         let template = env.get_template(&self.bench_name).unwrap();
 
-        let dest = File::create(meta.get_bench_file(&self.bench_name)).unwrap();
+        let dest = File::create(meta.get_template()).unwrap();
         template.render_to_write(template_data, dest).unwrap();
 
         self.run_bench(args, capture)
@@ -226,6 +240,9 @@ impl Benchmark {
                 r.runs_on
                     .as_ref()
                     .map_or(true, |r| r == env!("IC_BUILD_TRIPLE"))
+                    && r.rust_version.as_ref().map_or(true, |(cmp, version)| {
+                        version_compare::compare_to(&meta.rust_version, version, *cmp).unwrap()
+                    })
             })
             .enumerate()
         {
@@ -251,28 +268,43 @@ impl Benchmark {
                 .map_or(false, |e| e.stdout.is_some() || e.stderr.is_some());
 
             let output = if let Some(template) = &self.config.template {
-                self.run_template(template, &run.args, &run.template_data, meta, capture)
+                let output =
+                    self.run_template(template, &run.args, &run.template_data, meta, capture);
+                self.reset_template(meta);
+                output
             } else {
                 self.run_bench(&run.args, capture)
             };
 
-            run.assert(meta, output, schema, &self.home_dir, &self.bench_name);
+            run.assert(
+                &self.dir,
+                meta,
+                output,
+                schema,
+                &self.home_dir,
+                &self.bench_name,
+            );
         }
+    }
+
+    fn reset_template(&self, meta: &Metadata) {
+        let mut file = File::create(meta.get_template()).unwrap();
+        file.write_all(TEMPLATE_CONTENT.as_bytes()).unwrap();
     }
 }
 
 impl BenchmarkOutput {
-    fn assert(&self, meta: &Metadata, expected: &ExpectedConfig) {
+    fn assert(&self, bench_dir: &Path, _meta: &Metadata, expected: &ExpectedConfig) {
         let output = &self.0;
 
-        eprintln!("STDERR:");
+        print_info("STDERR:");
         stderr().write_all(&output.stderr).unwrap();
-        println!("STDOUT:");
+        print_info("STDOUT:");
         stdout().write_all(&output.stdout).unwrap();
 
         if let Some(stderr) = &expected.stderr {
             let mut expected_stderr: Vec<u8> = Vec::new();
-            File::open(meta.get_file(stderr))
+            File::open(bench_dir.join(stderr))
                 .expect("File should exist")
                 .read_to_end(&mut expected_stderr)
                 .expect("Reading file should succeed");
@@ -284,11 +316,12 @@ impl BenchmarkOutput {
                     pretty_assertions::StrComparison::new(&actual, &expected_string)
                 );
             }
+            print_info("Verifying stderr successful");
         }
 
         if let Some(stdout) = &expected.stdout {
             let mut expected_stdout: Vec<u8> = Vec::new();
-            File::open(meta.get_file(stdout))
+            File::open(bench_dir.join(stdout))
                 .expect("File should exist")
                 .read_to_end(&mut expected_stdout)
                 .expect("Reading file should succeed");
@@ -300,6 +333,7 @@ impl BenchmarkOutput {
                     pretty_assertions::StrComparison::new(&filtered, &expected_string)
                 );
             }
+            print_info("Verifying stdout successful");
         }
     }
 
@@ -313,6 +347,7 @@ impl BenchmarkOutput {
                 }
                 continue;
             }
+            let line = PROCESS_DID_NOT_EXIT_SUCCESSFULLY_RE.replace(&line, "$1<__PATH__>$3");
             writeln!(result, "{line}").unwrap();
         }
         result
@@ -414,6 +449,35 @@ impl BenchmarkOutput {
         }
 
         result
+    }
+
+    fn assert_exit(&self, exit_code: Option<i32>) {
+        match exit_code {
+            Some(expected) => {
+                print_info("Verifying exit code");
+                match self.0.status.code() {
+                    Some(code) => {
+                        assert_eq!(
+                            expected, code,
+                            "Expected benchmark to exit with code '{expected}' but exited with \
+                             code '{code}'"
+                        );
+                        print_info(format!(
+                            "Verifying exit code was successful: Process exited with '{code}'"
+                        ));
+                    }
+                    None => panic!(
+                        "Expected benchmark to exit with code '{expected}' but exited with signal \
+                         '{}'",
+                        self.0.status.signal().unwrap()
+                    ),
+                }
+            }
+            None => assert!(
+                self.0.status.success(),
+                "Expected benchmark to exit with success"
+            ),
+        }
     }
 }
 
@@ -556,7 +620,7 @@ impl Metadata {
         let benches_dir = package_dir.join("benches");
         let workspace_root = meta.workspace_root.clone().into_std_path_buf();
         let target_directory = meta.target_directory.clone().into_std_path_buf();
-        let benchmarks = glob(&format!("{}/*.conf.yml", benches_dir.display()))
+        let benchmarks = glob(&format!("{}/**/*.conf.yml", benches_dir.display()))
             .unwrap()
             .map(Result::unwrap)
             .filter(|path| {
@@ -569,44 +633,41 @@ impl Metadata {
             })
             .map(|path| Benchmark::new(&path, &package_dir, &target_directory))
             .collect::<Vec<Benchmark>>();
+        let rust_version = get_rust_version().expect("Rust version should be present");
 
         Self {
             workspace_root,
             target_directory,
             benchmarks,
             benches_dir,
+            rust_version: rust_version.to_string(),
         }
     }
 
-    pub fn get_bench_file(&self, bench_name: &str) -> PathBuf {
-        self.get_file(format!("{bench_name}.rs"))
-    }
-
-    pub fn get_file<T>(&self, file_name: T) -> PathBuf
-    where
-        T: AsRef<Path>,
-    {
-        self.benches_dir.join(file_name.as_ref())
+    pub fn get_template(&self) -> PathBuf {
+        self.benches_dir.join(format!("{TEMPLATE_BENCH_NAME}.rs"))
     }
 }
 
 impl RunConfig {
     fn assert(
         &self,
+        bench_dir: &Path,
         meta: &Metadata,
-        output: Option<BenchmarkOutput>,
+        output: BenchmarkOutput,
         schema: &ScopedSchema<'_>,
         home_dir: &Path,
         bench_name: &str,
     ) {
         if let Some(expected) = &self.expected {
-            if let Some(output) = output {
-                output.assert(meta, expected);
+            if expected.stdout.is_some() || expected.stderr.is_some() {
+                output.assert(bench_dir, meta, expected);
             }
+            output.assert_exit(expected.exit_code);
 
             if let Some(files) = &expected.files {
                 let expected_runs: ExpectedRuns = serde_yaml::from_reader(
-                    File::open(meta.get_file(files)).expect("File should exist"),
+                    File::open(bench_dir.join(files)).expect("File should exist"),
                 )
                 .map_err(|error| format!("Failed to deserialize '{}': {error}", files.display()))
                 .expect("File should be deserializable");
@@ -651,6 +712,22 @@ where
     T: AsRef<str>,
 {
     eprintln!("{}: {}", "bench".purple().bold(), message.as_ref());
+}
+
+fn get_rust_version() -> Option<String> {
+    let output = std::process::Command::new(
+        std::env::var_os("RUSTC").unwrap_or_else(|| OsString::from("rustc")),
+    )
+    .arg("--version")
+    .output();
+
+    output.ok().map(|o| {
+        String::from_utf8_lossy(&o.stdout)
+            .split(' ')
+            .nth(1)
+            .expect("The rust version should be present")
+            .to_string()
+    })
 }
 
 fn main() {

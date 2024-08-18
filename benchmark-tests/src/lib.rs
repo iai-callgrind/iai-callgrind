@@ -1,3 +1,5 @@
+pub mod serde_rust_version;
+
 use std::ffi::OsStr;
 use std::io;
 use std::process::Output;

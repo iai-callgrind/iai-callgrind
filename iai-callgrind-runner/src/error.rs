@@ -6,7 +6,8 @@ use std::process::{ExitStatus, Output};
 
 use version_compare::Cmp;
 
-use crate::runner::tool::ToolOutputPath;
+use crate::runner::common::ModulePath;
+use crate::runner::tool::{ToolOutputPath, ValgrindTool};
 use crate::util::write_all_to_stderr;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -14,11 +15,14 @@ pub enum Error {
     InitError(String),
     VersionMismatch(version_compare::Cmp, String, String),
     LaunchError(PathBuf, String),
+    /// (`process_name`, [`Output`], [`ExitStatus`], [`ToolOutputPath`])
     ProcessError((String, Option<Output>, ExitStatus, Option<ToolOutputPath>)),
     InvalidCallgrindBoolArgument((String, String)),
     ParseError((PathBuf, String)),
     RegressionError(bool),
     EnvironmentVariableError((String, String)),
+    SandboxError(String),
+    BenchmarkError(ValgrindTool, ModulePath, String),
 }
 
 impl std::error::Error for Error {}
@@ -102,6 +106,12 @@ impl Display for Error {
             }
             Self::EnvironmentVariableError((var, reason)) => {
                 write!(f, "Failed parsing environment variable {var}: {reason}")
+            }
+            Self::SandboxError(message) => {
+                write!(f, "Error in sandbox: {message}")
+            }
+            Self::BenchmarkError(tool, module_path, message) => {
+                write!(f, "Error in {tool} benchmark {module_path}: {message}")
             }
         }
     }

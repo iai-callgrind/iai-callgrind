@@ -1,79 +1,35 @@
-mod test_main_when_default_config {
-    use iai_callgrind::{binary_benchmark_group, main, BinaryBenchmarkConfig};
+mod test_main_when_single_group {
+    use iai_callgrind::{binary_benchmark, binary_benchmark_group, main};
+
+    #[binary_benchmark]
+    fn some_bench() -> iai_callgrind::Command {
+        iai_callgrind::Command::new("some_path")
+    }
 
     binary_benchmark_group!(
         name = some;
-        benchmark = |_group: &mut BinaryBenchmarkGroup| {
-            // do nothing
-        }
-    );
-
-    main!(
-        config = BinaryBenchmarkConfig::default();
-        binary_benchmark_groups = some
-    );
-}
-
-mod test_main_when_config_is_ref {
-    use iai_callgrind::{binary_benchmark_group, main, BinaryBenchmarkConfig};
-
-    binary_benchmark_group!(
-        name = some;
-        benchmark = |_group: &mut BinaryBenchmarkGroup| {
-            // do nothing
-        }
-    );
-
-    main!(
-        config = &BinaryBenchmarkConfig::default();
-        binary_benchmark_groups = some
-    );
-}
-
-mod test_main_when_config_is_mut_ref {
-    use iai_callgrind::{binary_benchmark_group, main, BinaryBenchmarkConfig};
-
-    binary_benchmark_group!(
-        name = some;
-        benchmark = |_group: &mut BinaryBenchmarkGroup| {
-            // do nothing
-        }
-    );
-
-    main!(
-        config = BinaryBenchmarkConfig::default().raw_callgrind_args(["--just=testing"]);
-        binary_benchmark_groups = some
-    );
-}
-
-mod test_main_when_no_config {
-    use iai_callgrind::{binary_benchmark_group, main};
-
-    binary_benchmark_group!(
-        name = some;
-        benchmark = |_group: &mut BinaryBenchmarkGroup| {
-            // do nothing
-        }
+        benchmarks = some_bench
     );
 
     main!(binary_benchmark_groups = some);
 }
 
 mod test_main_when_multiple_groups {
-    use iai_callgrind::{binary_benchmark_group, main};
+    use iai_callgrind::{binary_benchmark, binary_benchmark_group, main};
+
+    #[binary_benchmark]
+    fn some_bench() -> iai_callgrind::Command {
+        iai_callgrind::Command::new("some_path")
+    }
 
     binary_benchmark_group!(
         name = some;
-        benchmark = |_group: &mut BinaryBenchmarkGroup| {
-            // do nothing
-        }
+        benchmarks = some_bench
     );
 
     binary_benchmark_group!(
         name = some_other;
-        benchmark = |_group: &mut BinaryBenchmarkGroup| {
-            // do nothing
-        }
+        benchmarks = some_bench
     );
 
     main!(binary_benchmark_groups = some, some_other);

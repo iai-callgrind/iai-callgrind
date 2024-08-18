@@ -1,13 +1,13 @@
 use std::collections::VecDeque;
 use std::ffi::OsString;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use anyhow::Result;
 use log::{log_enabled, warn};
 
 use crate::api::RawArgs;
 use crate::error::Error;
-use crate::runner::tool::ToolOutputPath;
+use crate::runner::tool;
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
 #[allow(clippy::struct_excessive_bools)]
@@ -17,12 +17,11 @@ pub struct Args {
     d1: String,
     ll: String,
     cache_sim: bool,
-    pub(crate) collect_atstart: bool,
     other: Vec<String>,
     toggle_collect: VecDeque<String>,
     compress_strings: bool,
     compress_pos: bool,
-    pub(crate) verbose: bool,
+    verbose: bool,
     dump_instr: bool,
     dump_line: bool,
     combine_dumps: bool,
@@ -47,11 +46,6 @@ impl Args {
                 Some(("--I1", value)) => value.clone_into(&mut self.i1),
                 Some(("--D1", value)) => value.clone_into(&mut self.d1),
                 Some(("--LL", value)) => value.clone_into(&mut self.ll),
-                Some((key @ "--collect-atstart", value)) => {
-                    self.collect_atstart = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
-                    })?;
-                }
                 Some((key @ "--dump-instr", value)) => {
                     self.dump_instr = yesno_to_bool(value).ok_or_else(|| {
                         Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
@@ -107,66 +101,11 @@ impl Args {
         Ok(())
     }
 
+    // Insert the --toggle-collect argument at the start
+    //
+    // This is pure cosmetics, since callgrind doesn't prioritize the toggles by any order
     pub fn insert_toggle_collect(&mut self, arg: &str) {
         self.toggle_collect.push_front(arg.to_owned());
-    }
-
-    pub fn set_output_file<T>(&mut self, arg: T)
-    where
-        T: AsRef<Path>,
-    {
-        self.callgrind_out_file = Some(arg.as_ref().to_owned());
-    }
-
-    pub fn set_log_arg(&mut self, output_path: &ToolOutputPath) {
-        let log_output = output_path.to_log_output();
-        let mut arg = OsString::from("--log-file=");
-        arg.push(log_output.to_path());
-        self.log_arg = Some(arg);
-    }
-
-    pub fn to_vec(&self) -> Vec<String> {
-        let mut args = vec![
-            format!("--I1={}", &self.i1),
-            format!("--D1={}", &self.d1),
-            format!("--LL={}", &self.ll),
-            format!("--cache-sim={}", bool_to_yesno(self.cache_sim)),
-            format!("--collect-atstart={}", bool_to_yesno(self.collect_atstart)),
-            format!(
-                "--compress-strings={}",
-                bool_to_yesno(self.compress_strings)
-            ),
-            format!("--compress-pos={}", bool_to_yesno(self.compress_pos)),
-            format!("--dump-line={}", bool_to_yesno(self.dump_line)),
-            format!("--dump-instr={}", bool_to_yesno(self.dump_instr)),
-            format!("--combine-dumps={}", bool_to_yesno(self.combine_dumps)),
-        ];
-
-        if self.verbose {
-            args.push(String::from("--verbose"));
-        }
-
-        args.append(
-            &mut self
-                .toggle_collect
-                .iter()
-                .map(|s| format!("--toggle-collect={s}"))
-                .collect::<Vec<String>>(),
-        );
-
-        if let Some(output_file) = &self.callgrind_out_file {
-            args.push(format!(
-                "--callgrind-out-file={}",
-                output_file.to_string_lossy(),
-            ));
-        }
-
-        if let Some(log_arg) = &self.log_arg {
-            args.push(log_arg.to_string_lossy().to_string());
-        }
-
-        args.extend_from_slice(self.other.as_slice());
-        args
     }
 }
 
@@ -180,7 +119,6 @@ impl Default for Args {
             d1: String::from("32768,8,64"),
             ll: String::from("8388608,16,64"),
             cache_sim: true,
-            collect_atstart: false,
             compress_pos: false,
             compress_strings: false,
             combine_dumps: true,
@@ -191,6 +129,44 @@ impl Default for Args {
             callgrind_out_file: Option::default(),
             log_arg: Option::default(),
             other: Vec::default(),
+        }
+    }
+}
+
+impl From<Args> for tool::args::ToolArgs {
+    fn from(mut value: Args) -> Self {
+        let mut other = vec![
+            format!("--I1={}", &value.i1),
+            format!("--D1={}", &value.d1),
+            format!("--LL={}", &value.ll),
+            format!("--cache-sim={}", bool_to_yesno(value.cache_sim)),
+            format!(
+                "--compress-strings={}",
+                bool_to_yesno(value.compress_strings)
+            ),
+            format!("--compress-pos={}", bool_to_yesno(value.compress_pos)),
+            format!("--dump-line={}", bool_to_yesno(value.dump_line)),
+            format!("--dump-instr={}", bool_to_yesno(value.dump_instr)),
+            format!("--combine-dumps={}", bool_to_yesno(value.combine_dumps)),
+        ];
+        other.append(
+            &mut value
+                .toggle_collect
+                .iter()
+                .map(|s| format!("--toggle-collect={s}"))
+                .collect::<Vec<String>>(),
+        );
+        other.append(&mut value.other);
+
+        Self {
+            tool: tool::ValgrindTool::Callgrind,
+            output_paths: value
+                .callgrind_out_file
+                .map_or_else(Vec::new, |o| vec![o.into()]),
+            log_path: value.log_arg,
+            error_exitcode: "0".to_owned(),
+            verbose: value.verbose,
+            other,
         }
     }
 }

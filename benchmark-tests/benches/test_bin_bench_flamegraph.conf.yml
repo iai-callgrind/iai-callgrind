@@ -1,8 +1,0 @@
-groups:
-  - runs:
-      - args: []
-        expected:
-          files: test_bin_bench_flamegraph.expected.1.yml
-      - args: []
-        expected:
-          files: test_bin_bench_flamegraph.expected.2.yml

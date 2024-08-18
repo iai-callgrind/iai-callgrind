@@ -3,16 +3,19 @@
 #![allow(missing_docs)]
 
 pub use iai_callgrind_runner::api::{
-    Arg as InternalArg, Assistant as InternalAssistant, BinaryBenchmark as InternalBinaryBenchmark,
+    BinaryBenchmark as InternalBinaryBenchmark,
+    BinaryBenchmarkBench as InternalBinaryBenchmarkBench,
     BinaryBenchmarkConfig as InternalBinaryBenchmarkConfig,
-    BinaryBenchmarkGroup as InternalBinaryBenchmarkGroup, Cmd as InternalCmd,
+    BinaryBenchmarkGroup as InternalBinaryBenchmarkGroup,
+    BinaryBenchmarkGroups as InternalBinaryBenchmarkGroups, Command as InternalCommand,
     ExitWith as InternalExitWith, Fixtures as InternalFixtures,
-    FlamegraphConfig as InternalFlamegraphConfig, LibraryBenchmark as InternalLibraryBenchmark,
+    FlamegraphConfig as InternalFlamegraphConfig,
+    LibraryBenchmark as InternalLibraryBenchmarkBenches,
     LibraryBenchmarkBench as InternalLibraryBenchmarkBench,
-    LibraryBenchmarkBenches as InternalLibraryBenchmarkBenches,
     LibraryBenchmarkConfig as InternalLibraryBenchmarkConfig,
-    LibraryBenchmarkGroup as InternalLibraryBenchmarkGroup, RawArgs as InternalRawArgs,
-    RegressionConfig as InternalRegressionConfig, Run as InternalRun, Tool as InternalTool,
+    LibraryBenchmarkGroup as InternalLibraryBenchmarkGroup,
+    LibraryBenchmarkGroups as InternalLibraryBenchmarkGroups, RawArgs as InternalRawArgs,
+    RegressionConfig as InternalRegressionConfig, Sandbox as InternalSandbox, Tool as InternalTool,
     Tools as InternalTools,
 };
 
@@ -22,4 +25,14 @@ pub struct InternalMacroLibBench {
     pub args_display: Option<&'static str>,
     pub func: fn(),
     pub config: Option<fn() -> crate::internal::InternalLibraryBenchmarkConfig>,
+}
+
+#[derive(Debug, Clone)]
+pub struct InternalMacroBinBench {
+    pub id_display: Option<&'static str>,
+    pub args_display: Option<&'static str>,
+    pub func: fn() -> crate::Command,
+    pub setup: Option<fn()>,
+    pub teardown: Option<fn()>,
+    pub config: Option<fn() -> crate::internal::InternalBinaryBenchmarkConfig>,
 }

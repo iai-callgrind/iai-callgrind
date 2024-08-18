@@ -7,28 +7,12 @@ pub mod parser;
 pub mod sentinel_parser;
 pub mod summary_parser;
 
-use std::ffi::OsString;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-
-use anyhow::Result;
 use colored::Colorize;
-use log::debug;
 
-use self::args::Args;
 use self::model::Costs;
-use super::args::NoCapture;
-use super::meta::Metadata;
 use super::summary::{CallgrindRegressionSummary, CostsSummary};
-use super::tool::{check_exit, RunOptions, ToolOutput, ToolOutputPath, ValgrindTool};
 use crate::api::{self, EventKind};
-use crate::error::Error;
-use crate::util::{resolve_binary_path, to_string_signed_short};
-
-pub struct CallgrindCommand {
-    command: Command,
-    nocapture: NoCapture,
-}
+use crate::util::to_string_signed_short;
 
 #[derive(Clone, Debug)]
 pub struct CacheSummary {
@@ -43,113 +27,6 @@ pub struct CacheSummary {
 pub struct RegressionConfig {
     pub limits: Vec<(EventKind, f64)>,
     pub fail_fast: bool,
-}
-
-impl CallgrindCommand {
-    pub fn new(meta: &Metadata) -> Self {
-        Self {
-            nocapture: meta.args.nocapture,
-            command: meta.into(),
-        }
-    }
-
-    pub fn run(
-        self,
-        mut callgrind_args: Args,
-        executable: &Path,
-        executable_args: &[OsString],
-        options: RunOptions,
-        output_path: &ToolOutputPath,
-    ) -> Result<ToolOutput> {
-        let mut command = self.command;
-        debug!(
-            "Running callgrind with executable '{}'",
-            executable.display()
-        );
-        let RunOptions {
-            env_clear,
-            current_dir,
-            exit_with,
-            entry_point,
-            envs,
-        } = options;
-
-        if env_clear {
-            debug!("Clearing environment variables");
-            command.env_clear();
-        }
-        if let Some(dir) = current_dir {
-            debug!("Setting current directory to '{}'", dir.display());
-            command.current_dir(dir);
-        }
-
-        if let Some(entry_point) = entry_point {
-            callgrind_args.collect_atstart = false;
-            callgrind_args.insert_toggle_collect(&entry_point);
-        } else {
-            callgrind_args.collect_atstart = true;
-        }
-        callgrind_args.set_output_file(output_path.to_path());
-        callgrind_args.set_log_arg(output_path);
-
-        let callgrind_args = callgrind_args.to_vec();
-        debug!("Callgrind arguments: {}", &callgrind_args.join(" "));
-
-        let executable = resolve_binary_path(executable)?;
-
-        command
-            .arg("--tool=callgrind")
-            .args(callgrind_args)
-            .arg(&executable)
-            .args(executable_args)
-            .envs(envs);
-
-        self.nocapture.apply(&mut command);
-
-        let output = match self.nocapture {
-            NoCapture::False => command
-                .output()
-                .map_err(|error| {
-                    Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
-                })
-                .and_then(|output| {
-                    let status = output.status;
-                    check_exit(
-                        ValgrindTool::Callgrind,
-                        &executable,
-                        Some(output),
-                        status,
-                        &output_path.to_log_output(),
-                        exit_with.as_ref(),
-                    )
-                })?,
-            NoCapture::True | NoCapture::Stderr | NoCapture::Stdout => {
-                command
-                    .status()
-                    .map_err(|error| {
-                        Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
-                    })
-                    .and_then(|status| {
-                        check_exit(
-                            ValgrindTool::Callgrind,
-                            &executable,
-                            None,
-                            status,
-                            &output_path.to_log_output(),
-                            exit_with.as_ref(),
-                        )
-                    })?;
-
-                self.nocapture.print_footer();
-                None
-            }
-        };
-
-        Ok(ToolOutput {
-            tool: ValgrindTool::Callgrind,
-            output,
-        })
-    }
 }
 
 impl TryFrom<&Costs> for CacheSummary {
@@ -201,8 +78,8 @@ impl RegressionConfig {
     ///
     /// # Errors
     ///
-    /// Returns an [`anyhow::Error`] with the only source [`Error::RegressionError`] if a regression
-    /// error occurred
+    /// Returns an [`anyhow::Error`] with the only source [`crate::error::Error::RegressionError`]
+    /// if a regression error occurred
     pub fn check_and_print(&self, costs_summary: &CostsSummary) -> Vec<CallgrindRegressionSummary> {
         let regression_summaries = self.check(costs_summary);
 

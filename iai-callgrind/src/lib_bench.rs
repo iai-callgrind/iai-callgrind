@@ -1,5 +1,8 @@
 use std::ffi::OsString;
 
+use derive_more::AsRef;
+use iai_callgrind_macros::IntoInner;
+
 use crate::internal;
 
 /// The main configuration of a library benchmark.
@@ -22,7 +25,7 @@ use crate::internal;
 /// );
 /// # }
 /// ```
-#[derive(Debug, Default)]
+#[derive(Debug, Default, IntoInner, AsRef)]
 pub struct LibraryBenchmarkConfig(internal::InternalLibraryBenchmarkConfig);
 
 impl LibraryBenchmarkConfig {
@@ -564,8 +567,3 @@ impl LibraryBenchmarkConfig {
         self
     }
 }
-
-impl_traits!(
-    LibraryBenchmarkConfig,
-    internal::InternalLibraryBenchmarkConfig
-);

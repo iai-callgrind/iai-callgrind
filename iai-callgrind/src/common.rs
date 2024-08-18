@@ -1,5 +1,8 @@
 //! Common structs for `bin_bench` and `lib_bench`
 
+use derive_more::AsRef;
+use iai_callgrind_macros::IntoInner;
+
 use super::{internal, Direction, EventKind, FlamegraphKind, ValgrindTool};
 
 /// The `FlamegraphConfig` which allows the customization of the created flamegraphs
@@ -25,7 +28,7 @@ use super::{internal, Direction, EventKind, FlamegraphKind, ValgrindTool};
 /// );
 /// # }
 /// ```
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, IntoInner, AsRef)]
 pub struct FlamegraphConfig(internal::InternalFlamegraphConfig);
 
 /// Configure performance regression checks and behavior
@@ -55,7 +58,7 @@ pub struct FlamegraphConfig(internal::InternalFlamegraphConfig);
 /// );
 /// # }
 /// ```
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, IntoInner, AsRef)]
 pub struct RegressionConfig(internal::InternalRegressionConfig);
 
 /// Configure to run other valgrind tools like `DHAT` or `Massif` in addition to callgrind
@@ -81,6 +84,7 @@ pub struct RegressionConfig(internal::InternalRegressionConfig);
 /// );
 /// # }
 /// ```
+#[derive(Debug, Clone, PartialEq, Eq, IntoInner, AsRef)]
 pub struct Tool(internal::InternalTool);
 
 impl FlamegraphConfig {
@@ -258,8 +262,6 @@ impl FlamegraphConfig {
     }
 }
 
-impl_traits!(FlamegraphConfig, internal::InternalFlamegraphConfig);
-
 /// Enable performance regression checks with a [`RegressionConfig`]
 ///
 /// A performance regression check consists of an [`EventKind`] and a percentage over which a
@@ -330,8 +332,6 @@ impl RegressionConfig {
         self
     }
 }
-
-impl_traits!(RegressionConfig, internal::InternalRegressionConfig);
 
 impl Tool {
     /// Create a new `Tool` configuration
@@ -433,8 +433,6 @@ impl Tool {
         self
     }
 }
-
-impl_traits!(Tool, internal::InternalTool);
 
 /// __DEPRECATED__: A function that is opaque to the optimizer
 ///

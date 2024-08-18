@@ -20,6 +20,7 @@ benchmark = [
   "dep:bincode",
   "dep:iai-callgrind-macros",
   "dep:iai-callgrind-runner",
+  "dep:derive_more",
 ]
 client_requests = ["client_requests_defs"]
 client_requests_defs = [
@@ -49,6 +50,11 @@ rustdoc-args = ["--cfg", "docsrs"]
 bincode = { workspace = true, optional = true }
 cfg-if = { workspace = true, optional = true }
 cty = { workspace = true, optional = true }
+# We use the derive_more crate anyways in `iai-callgrind-macros`, so there's no
+# harm in using it for this small AsRef derive macro
+derive_more = { workspace = true, default-features = false, features = [
+  "as_ref",
+], optional = true }
 iai-callgrind-macros = { path = "../iai-callgrind-macros/", version = "=0.3.1", optional = true }
 iai-callgrind-runner = { path = "../iai-callgrind-runner/", version = "=0.12.3", default-features = false, features = [
   "api",
@@ -56,6 +62,8 @@ iai-callgrind-runner = { path = "../iai-callgrind-runner/", version = "=0.12.3",
 
 [dev-dependencies]
 fs_extra = { workspace = true }
+rstest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serial_test = { workspace = true }
 trybuild = { workspace = true }

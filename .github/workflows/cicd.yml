@@ -148,8 +148,9 @@ jobs:
         run: just schema-gen-diff
       - name: Bench
         run: just full-bench-test-all
-        # env:
-        # IAI_CALLGRIND_LOG: trace
+        env:
+          # IAI_CALLGRIND_LOG: trace
+          RUST_BACKTRACE: "0"
       - uses: actions/upload-artifact@v4
         with:
           name: iai-callgrind-benchmarks-${{ matrix.toolchain }}

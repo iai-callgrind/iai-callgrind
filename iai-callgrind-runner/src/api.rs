@@ -1,36 +1,37 @@
 //! The api contains all elements which the `runner` can understand
 use std::ffi::OsString;
 use std::fmt::Display;
-use std::path::PathBuf;
+#[cfg(feature = "runner")]
+use std::fs::File;
+use std::path::{Path, PathBuf};
+#[cfg(feature = "runner")]
+use std::process::{Child, Command as StdCommand, Stdio as StdStdio};
 
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Arg {
-    pub id: Option<String>,
-    pub args: Vec<OsString>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Assistant {
-    pub id: String,
-    pub name: String,
-    pub bench: bool,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-pub struct BinaryBenchmark {
-    pub config: BinaryBenchmarkConfig,
-    pub groups: Vec<BinaryBenchmarkGroup>,
-    pub command_line_args: Vec<String>,
-}
-
+/// The model for the `#[binary_benchmark]` attribute or the equivalent from the low level api
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BinaryBenchmark {
+    pub config: Option<BinaryBenchmarkConfig>,
+    pub benches: Vec<BinaryBenchmarkBench>,
+}
+
+/// The model for the `#[bench]` attribute or the low level equivalent
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BinaryBenchmarkBench {
+    pub id: Option<String>,
+    pub function_name: String,
+    pub args: Option<String>,
+    pub command: Command,
+    pub config: Option<BinaryBenchmarkConfig>,
+    pub has_setup: bool,
+    pub has_teardown: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct BinaryBenchmarkConfig {
-    pub sandbox: Option<bool>,
-    pub fixtures: Option<Fixtures>,
     pub env_clear: Option<bool>,
     pub current_dir: Option<PathBuf>,
     pub entry_point: Option<String>,
@@ -41,22 +42,40 @@ pub struct BinaryBenchmarkConfig {
     pub regression_config: Option<RegressionConfig>,
     pub tools: Tools,
     pub tools_override: Option<Tools>,
+    pub sandbox: Option<Sandbox>,
     pub truncate_description: Option<Option<usize>>,
 }
 
+/// The model for the `binary_benchmark_group` macro
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BinaryBenchmarkGroup {
-    pub id: Option<String>,
-    pub cmd: Option<Cmd>,
+    pub id: String,
     pub config: Option<BinaryBenchmarkConfig>,
-    pub benches: Vec<Run>,
-    pub assists: Vec<Assistant>,
+    pub has_setup: bool,
+    pub has_teardown: bool,
+    pub binary_benchmarks: Vec<BinaryBenchmark>,
+    pub compare_by_id: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Cmd {
-    pub display: String,
-    pub cmd: String,
+/// The model for the main! macro
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct BinaryBenchmarkGroups {
+    pub config: BinaryBenchmarkConfig,
+    pub groups: Vec<BinaryBenchmarkGroup>,
+    /// The command line arguments as we receive them from `cargo bench`
+    pub command_line_args: Vec<String>,
+    pub has_setup: bool,
+    pub has_teardown: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Command {
+    pub path: PathBuf,
+    pub args: Vec<OsString>,
+    pub stdin: Option<Stdin>,
+    pub stdout: Option<Stdio>,
+    pub stderr: Option<Stdio>,
+    pub config: BinaryBenchmarkConfig,
 }
 
 /// The `Direction` in which the flamegraph should grow.
@@ -138,7 +157,7 @@ pub enum EventKind {
     SpLoss2,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExitWith {
     Success,
     Failure,
@@ -177,27 +196,20 @@ pub enum FlamegraphKind {
     None,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+/// The model for the `#[library_benchmark]` attribute
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmark {
-    pub config: LibraryBenchmarkConfig,
-    pub groups: Vec<LibraryBenchmarkGroup>,
-    pub command_line_args: Vec<String>,
-    pub has_setup: bool,
-    pub has_teardown: bool,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-pub struct LibraryBenchmarkBench {
-    pub id: Option<String>,
-    pub bench: String,
-    pub args: Option<String>,
-    pub config: Option<LibraryBenchmarkConfig>,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-pub struct LibraryBenchmarkBenches {
     pub config: Option<LibraryBenchmarkConfig>,
     pub benches: Vec<LibraryBenchmarkBench>,
+}
+
+/// The model for the `#[bench]` attribute in a `#[library_benchmark]`
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct LibraryBenchmarkBench {
+    pub id: Option<String>,
+    pub function_name: String,
+    pub args: Option<String>,
+    pub config: Option<LibraryBenchmarkConfig>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -212,12 +224,24 @@ pub struct LibraryBenchmarkConfig {
     pub truncate_description: Option<Option<usize>>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+/// The model for the `library_benchmark_group` macro
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmarkGroup {
-    pub id: Option<String>,
+    pub id: String,
     pub config: Option<LibraryBenchmarkConfig>,
-    pub compare: bool,
-    pub benches: Vec<LibraryBenchmarkBenches>,
+    pub compare_by_id: Option<bool>,
+    pub library_benchmarks: Vec<LibraryBenchmark>,
+    pub has_setup: bool,
+    pub has_teardown: bool,
+}
+
+/// The model for the `main` macro
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct LibraryBenchmarkGroups {
+    pub config: LibraryBenchmarkConfig,
+    pub groups: Vec<LibraryBenchmarkGroup>,
+    /// The command line args as we receive them from `cargo bench`
+    pub command_line_args: Vec<String>,
     pub has_setup: bool,
     pub has_teardown: bool,
 }
@@ -231,11 +255,70 @@ pub struct RegressionConfig {
     pub fail_fast: Option<bool>,
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct Run {
-    pub cmd: Option<Cmd>,
-    pub args: Vec<Arg>,
-    pub config: BinaryBenchmarkConfig,
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Sandbox {
+    pub enabled: Option<bool>,
+    pub fixtures: Vec<PathBuf>,
+    pub follow_symlinks: Option<bool>,
+}
+
+/// Configure the `Stream` which should be used as pipe in [`Stdin::Setup`]
+///
+/// The default is [`Pipe::Stdout`]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Pipe {
+    /// The `Stdout` default `Stream`
+    #[default]
+    Stdout,
+    /// The `Stderr` error `Stream`
+    Stderr,
+}
+
+/// We use this enum only internally in the benchmark runner
+#[cfg(feature = "runner")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Stream {
+    Stdin,
+    Stdout,
+    Stderr,
+}
+
+/// Configure the `Stdio` of `Stdin`, `Stdout` and `Stderr`
+///
+/// Describes what to do with a standard I/O stream for the [`Command`] when passed to the stdin,
+/// stdout, and stderr methods of [`Command`].
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Stdio {
+    /// The [`Command`]'s `Stream` inherits from the benchmark runner.
+    #[default]
+    Inherit,
+    /// This stream will be ignored. This is the equivalent of attaching the stream to `/dev/null`
+    Null,
+    /// Redirect the content of a file into this `Stream`. This is equivalent to a redirection in a
+    /// shell for example for the `Stdout` of `my-command`: `my-command > some_file`
+    File(PathBuf),
+    /// A new pipe should be arranged to connect the benchmark runner and the [`Command`]
+    Pipe,
+}
+
+/// This is a special `Stdio` for the stdin method of [`Command`]
+///
+/// Contains all the standard [`Stdio`] options and the [`Stdin::Setup`] option
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Stdin {
+    /// Using this in [`Command::stdin`] pipes the stream specified with [`Pipe`] of the `setup`
+    /// function into the `Stdin` of the [`Command`]. In this case the `setup` and [`Command`] are
+    /// executed in parallel instead of sequentially. See [`Command::stdin`] for more details.
+    Setup(Pipe),
+    #[default]
+    /// See [`Stdio::Inherit`]
+    Inherit,
+    /// See [`Stdio::Null`]
+    Null,
+    /// See [`Stdio::File`]
+    File(PathBuf),
+    /// See [`Stdio::Pipe`]
+    Pipe,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -273,8 +356,6 @@ impl BinaryBenchmarkConfig {
         T: IntoIterator<Item = Option<&'a Self>>,
     {
         for other in others.into_iter().flatten() {
-            self.sandbox = update_option(&self.sandbox, &other.sandbox);
-            self.fixtures = update_option(&self.fixtures, &other.fixtures);
             self.env_clear = update_option(&self.env_clear, &other.env_clear);
             self.current_dir = update_option(&self.current_dir, &other.current_dir);
             self.entry_point = update_option(&self.entry_point, &other.entry_point);
@@ -295,6 +376,9 @@ impl BinaryBenchmarkConfig {
             } else {
                 // do nothing
             }
+            self.sandbox = update_option(&self.sandbox, &other.sandbox);
+            self.truncate_description =
+                update_option(&self.truncate_description, &other.truncate_description);
         }
         self
     }
@@ -306,6 +390,13 @@ impl BinaryBenchmarkConfig {
                 Some(value) => Some((key.clone(), value.clone())),
                 None => std::env::var_os(key).map(|value| (key.clone(), value)),
             })
+            .collect()
+    }
+
+    pub fn collect_envs(&self) -> Vec<(OsString, OsString)> {
+        self.envs
+            .iter()
+            .filter_map(|(key, option)| option.as_ref().map(|value| (key.clone(), value.clone())))
             .collect()
     }
 }
@@ -438,9 +529,9 @@ impl LibraryBenchmarkConfig {
         T: IntoIterator<Item = Option<&'a Self>>,
     {
         for other in others.into_iter().flatten() {
+            self.env_clear = update_option(&self.env_clear, &other.env_clear);
             self.raw_callgrind_args
                 .extend_ignore_flag(other.raw_callgrind_args.0.iter());
-            self.env_clear = update_option(&self.env_clear, &other.env_clear);
             self.envs.extend_from_slice(&other.envs);
             self.flamegraph_config =
                 update_option(&self.flamegraph_config, &other.flamegraph_config);
@@ -466,6 +557,13 @@ impl LibraryBenchmarkConfig {
                 Some(value) => Some((key.clone(), value.clone())),
                 None => std::env::var_os(key).map(|value| (key.clone(), value)),
             })
+            .collect()
+    }
+
+    pub fn collect_envs(&self) -> Vec<(OsString, OsString)> {
+        self.envs
+            .iter()
+            .filter_map(|(key, option)| option.as_ref().map(|value| (key.clone(), value.clone())))
             .collect()
     }
 }
@@ -520,6 +618,138 @@ where
         let mut this = Self::default();
         this.extend_ignore_flag(iter);
         this
+    }
+}
+
+impl Stdin {
+    #[cfg(feature = "runner")]
+    pub(crate) fn apply(
+        &self,
+        command: &mut StdCommand,
+        stream: Stream,
+        child: Option<&mut Child>,
+    ) -> Result<(), String> {
+        match (self, child) {
+            (Self::Setup(Pipe::Stdout), Some(child)) => {
+                command.stdin(
+                    child
+                        .stdout
+                        .take()
+                        .ok_or_else(|| "Error piping setup stdout".to_owned())?,
+                );
+                Ok(())
+            }
+            (Self::Setup(Pipe::Stderr), Some(child)) => {
+                command.stdin(
+                    child
+                        .stderr
+                        .take()
+                        .ok_or_else(|| "Error piping setup stderr".to_owned())?,
+                );
+                Ok(())
+            }
+            (Self::Setup(_) | Stdin::Pipe, _) => Stdio::Pipe.apply(command, stream),
+            (Self::Inherit, _) => Stdio::Inherit.apply(command, stream),
+            (Self::Null, _) => Stdio::Null.apply(command, stream),
+            (Self::File(path), _) => Stdio::File(path.clone()).apply(command, stream),
+        }
+    }
+}
+
+impl From<Stdio> for Stdin {
+    fn from(value: Stdio) -> Self {
+        match value {
+            Stdio::Inherit => Stdin::Inherit,
+            Stdio::Null => Stdin::Null,
+            Stdio::File(file) => Stdin::File(file),
+            Stdio::Pipe => Stdin::Pipe,
+        }
+    }
+}
+
+impl From<PathBuf> for Stdin {
+    fn from(value: PathBuf) -> Self {
+        Self::File(value)
+    }
+}
+
+impl From<&PathBuf> for Stdin {
+    fn from(value: &PathBuf) -> Self {
+        Self::File(value.to_owned())
+    }
+}
+
+impl From<&Path> for Stdin {
+    fn from(value: &Path) -> Self {
+        Self::File(value.to_path_buf())
+    }
+}
+
+impl Stdio {
+    #[cfg(feature = "runner")]
+    pub(crate) fn apply(&self, command: &mut StdCommand, stream: Stream) -> Result<(), String> {
+        let stdio = match self {
+            Stdio::Pipe => StdStdio::piped(),
+            Stdio::Inherit => StdStdio::inherit(),
+            Stdio::Null => StdStdio::null(),
+            Stdio::File(path) => match stream {
+                Stream::Stdin => StdStdio::from(File::open(path).map_err(|error| {
+                    format!(
+                        "Failed to open file '{}' in read mode for {stream}: {error}",
+                        path.display()
+                    )
+                })?),
+                Stream::Stdout | Stream::Stderr => {
+                    StdStdio::from(File::create(path).map_err(|error| {
+                        format!(
+                            "Failed to create file '{}' for {stream}: {error}",
+                            path.display()
+                        )
+                    })?)
+                }
+            },
+        };
+
+        match stream {
+            Stream::Stdin => command.stdin(stdio),
+            Stream::Stdout => command.stdout(stdio),
+            Stream::Stderr => command.stderr(stdio),
+        };
+
+        Ok(())
+    }
+
+    #[cfg(feature = "runner")]
+    pub(crate) fn is_pipe(&self) -> bool {
+        match self {
+            Stdio::Inherit => false,
+            Stdio::Null | Stdio::File(_) | Stdio::Pipe => true,
+        }
+    }
+}
+
+impl From<PathBuf> for Stdio {
+    fn from(value: PathBuf) -> Self {
+        Self::File(value)
+    }
+}
+
+impl From<&PathBuf> for Stdio {
+    fn from(value: &PathBuf) -> Self {
+        Self::File(value.to_owned())
+    }
+}
+
+impl From<&Path> for Stdio {
+    fn from(value: &Path) -> Self {
+        Self::File(value.to_path_buf())
+    }
+}
+
+#[cfg(feature = "runner")]
+impl Display for Stream {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("{self:?}").to_lowercase())
     }
 }
 
@@ -628,6 +858,26 @@ mod tests {
         };
 
         assert_eq!(base.update_from_all([Some(&other)]), expected);
+    }
+
+    #[rstest]
+    #[case::truncate_description(
+        LibraryBenchmarkConfig {
+            truncate_description: Some(None),
+            ..Default::default()
+        }
+    )]
+    #[case::env_clear(
+        LibraryBenchmarkConfig {
+            env_clear: Some(true),
+            ..Default::default()
+        }
+    )]
+    fn test_library_benchmark_config_update_from_all_truncate_description(
+        #[case] config: LibraryBenchmarkConfig,
+    ) {
+        let actual = LibraryBenchmarkConfig::default().update_from_all([Some(&config)]);
+        assert_eq!(actual, config);
     }
 
     #[rstest]

@@ -1,0 +1,12 @@
+groups:
+  - runs:
+      - args: ["--nocapture"]
+        rust_version: ">=1.73"
+        expected:
+          exit_code: 1
+          stderr: expected_stderr.>=1.73
+      - args: ["--nocapture"]
+        rust_version: "<1.73"
+        expected:
+          exit_code: 1
+          stderr: expected_stderr.<1.73

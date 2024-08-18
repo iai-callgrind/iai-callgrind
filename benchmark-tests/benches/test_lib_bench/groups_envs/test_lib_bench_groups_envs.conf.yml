@@ -1,0 +1,8 @@
+groups:
+  - runs:
+      - args: []
+        expected:
+          files: expected_files.1.yml
+      - args: []
+        expected:
+          files: expected_files.2.yml

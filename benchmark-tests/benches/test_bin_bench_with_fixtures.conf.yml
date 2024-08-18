@@ -1,8 +1,0 @@
-groups:
-  - runs:
-      - args: []
-        expected:
-          files: test_bin_bench_with_fixtures.expected.1.yml
-      - args: []
-        expected:
-          files: test_bin_bench_with_fixtures.expected.2.yml

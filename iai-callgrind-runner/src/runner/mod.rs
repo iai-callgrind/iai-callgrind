@@ -1,6 +1,7 @@
 mod args;
 mod bin_bench;
 pub mod callgrind;
+pub mod common;
 pub mod costs;
 pub mod dhat;
 mod format;
@@ -15,11 +16,12 @@ use std::io::{stdin, Read};
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
+use common::{Config, ModulePath};
 use log::debug;
 
 use self::meta::Metadata;
 use self::summary::BenchmarkKind;
-use crate::api::{BinaryBenchmark, LibraryBenchmark};
+use crate::api::{BinaryBenchmarkGroups, LibraryBenchmarkGroups};
 use crate::error::Error;
 
 pub mod envs {
@@ -32,15 +34,6 @@ pub mod envs {
 }
 
 pub const DEFAULT_TOGGLE: &str = "*::__iai_callgrind_wrapper_mod::*";
-
-#[derive(Debug)]
-pub struct Config {
-    package_dir: PathBuf,
-    bench_file: PathBuf,
-    module: String,
-    bench_bin: PathBuf,
-    meta: Metadata,
-}
 
 struct RunnerArgs {
     bench_kind: BenchmarkKind,
@@ -192,8 +185,12 @@ pub fn run() -> Result<()> {
 
     match bench_kind {
         BenchmarkKind::LibraryBenchmark => {
-            let benchmark: LibraryBenchmark = receive_benchmark(num_bytes)?;
-            let meta = Metadata::new(&benchmark.command_line_args, &package_name, &bench_file)?;
+            let benchmark_groups: LibraryBenchmarkGroups = receive_benchmark(num_bytes)?;
+            let meta = Metadata::new(
+                &benchmark_groups.command_line_args,
+                &package_name,
+                &bench_file,
+            )?;
             if meta
                 .args
                 .filter
@@ -207,16 +204,20 @@ pub fn run() -> Result<()> {
             let config = Config {
                 package_dir,
                 bench_file,
-                module,
+                module_path: ModulePath::new(&module),
                 bench_bin,
                 meta,
             };
 
-            lib_bench::run(benchmark, config)
+            lib_bench::run(benchmark_groups, config)
         }
         BenchmarkKind::BinaryBenchmark => {
-            let benchmark: BinaryBenchmark = receive_benchmark(num_bytes)?;
-            let meta = Metadata::new(&benchmark.command_line_args, &package_name, &bench_file)?;
+            let benchmark_groups: BinaryBenchmarkGroups = receive_benchmark(num_bytes)?;
+            let meta = Metadata::new(
+                &benchmark_groups.command_line_args,
+                &package_name,
+                &bench_file,
+            )?;
             if meta
                 .args
                 .filter
@@ -230,12 +231,12 @@ pub fn run() -> Result<()> {
             let config = Config {
                 package_dir,
                 bench_file,
-                module,
+                module_path: ModulePath::new(&module),
                 bench_bin,
                 meta,
             };
 
-            bin_bench::run(benchmark, config)
+            bin_bench::run(benchmark_groups, config)
         }
     }
 }

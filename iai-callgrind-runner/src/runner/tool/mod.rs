@@ -8,7 +8,7 @@ use std::fmt::Display;
 use std::fs::File;
 use std::io::{stderr, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus, Output, Stdio};
+use std::process::{Child, Command, ExitStatus, Output};
 
 use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
@@ -20,10 +20,12 @@ use serde::{Deserialize, Serialize};
 use self::args::ToolArgs;
 use self::format::ToolRunSummaryFormatter;
 use self::logfile_parser::LogfileSummary;
-use super::format::{tool_headline, OutputFormat};
+use super::args::NoCapture;
+use super::common::{Assistant, Config, ModulePath, Sandbox};
+use super::format::{print_no_capture_footer, tool_headline, OutputFormat};
 use super::meta::Metadata;
 use super::summary::{BaselineKind, ToolRunSummary, ToolSummary};
-use crate::api::{self, ExitWith};
+use crate::api::{self, ExitWith, Stream};
 use crate::error::Error;
 use crate::util::{self, make_relative, resolve_binary_path, truncate_str_utf8};
 
@@ -31,9 +33,11 @@ use crate::util::{self, make_relative, resolve_binary_path, truncate_str_utf8};
 pub struct RunOptions {
     pub env_clear: bool,
     pub current_dir: Option<PathBuf>,
-    pub entry_point: Option<String>,
     pub exit_with: Option<ExitWith>,
     pub envs: Vec<(OsString, OsString)>,
+    pub stdin: Option<api::Stdin>,
+    pub stdout: Option<api::Stdio>,
+    pub stderr: Option<api::Stdio>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -49,6 +53,7 @@ pub struct ToolConfigs(pub Vec<ToolConfig>);
 
 pub struct ToolCommand {
     tool: ValgrindTool,
+    nocapture: NoCapture,
     command: Command,
 }
 
@@ -96,9 +101,10 @@ pub trait Parser {
 }
 
 impl ToolCommand {
-    pub fn new(tool: ValgrindTool, meta: &Metadata) -> Self {
+    pub fn new(tool: ValgrindTool, meta: &Metadata, nocapture: NoCapture) -> Self {
         Self {
             tool,
+            nocapture,
             command: meta.into(),
         }
     }
@@ -127,8 +133,10 @@ impl ToolCommand {
         config: ToolConfig,
         executable: &Path,
         executable_args: &[OsString],
-        options: RunOptions,
+        run_options: RunOptions,
         output_path: &ToolOutputPath,
+        module_path: &ModulePath,
+        mut child: Option<Child>,
     ) -> Result<ToolOutput> {
         debug!(
             "{}: Running with executable '{}'",
@@ -141,12 +149,16 @@ impl ToolCommand {
             current_dir,
             exit_with,
             envs,
-            ..
-        } = options;
+            stdin,
+            stdout,
+            stderr,
+        } = run_options;
 
         if env_clear {
+            debug!("Clearing environment variables");
             self.env_clear();
         }
+
         if let Some(dir) = current_dir {
             debug!(
                 "{}: Setting current directory to '{}'",
@@ -161,30 +173,98 @@ impl ToolCommand {
         tool_args.set_log_arg(output_path, config.outfile_modifier.as_ref());
 
         let executable = resolve_binary_path(executable)?;
+        let args = tool_args.to_vec();
+        debug!(
+            "{}: Arguments: {}",
+            self.tool.id(),
+            args.iter()
+                .map(|s| s.to_string_lossy().to_string())
+                .collect::<Vec<String>>()
+                .join(" ")
+        );
 
-        let output = self
-            .command
+        self.command
             .args(tool_args.to_vec())
             .arg(&executable)
             .args(executable_args)
-            .envs(envs)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
-            .map_err(|error| -> anyhow::Error {
-                Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
-            })
-            .and_then(|output| {
-                let status = output.status;
-                check_exit(
-                    self.tool,
-                    &executable,
-                    Some(output),
+            .envs(envs);
+
+        if self.tool == ValgrindTool::Callgrind {
+            debug!("Applying --nocapture options");
+            self.nocapture.apply(&mut self.command);
+        }
+
+        if let Some(stdin) = stdin {
+            stdin
+                .apply(&mut self.command, Stream::Stdin, child.as_mut())
+                .map_err(|error| {
+                    Error::BenchmarkError(ValgrindTool::Callgrind, module_path.clone(), error)
+                })?;
+        }
+        if let Some(stdout) = stdout {
+            stdout
+                .apply(&mut self.command, Stream::Stdout)
+                .map_err(|error| Error::BenchmarkError(self.tool, module_path.clone(), error))?;
+        }
+        if let Some(stderr) = stderr {
+            stderr
+                .apply(&mut self.command, Stream::Stderr)
+                .map_err(|error| Error::BenchmarkError(self.tool, module_path.clone(), error))?;
+        }
+
+        let output = match self.nocapture {
+            NoCapture::True | NoCapture::Stderr | NoCapture::Stdout
+                if self.tool == ValgrindTool::Callgrind =>
+            {
+                self.command
+                    .status()
+                    .map_err(|error| {
+                        Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
+                    })
+                    .and_then(|status| {
+                        check_exit(
+                            self.tool,
+                            &executable,
+                            None,
+                            status,
+                            &output_path.to_log_output(),
+                            exit_with.as_ref(),
+                        )
+                    })?;
+                None
+            }
+            _ => self
+                .command
+                .output()
+                .map_err(|error| {
+                    Error::LaunchError(PathBuf::from("valgrind"), error.to_string()).into()
+                })
+                .and_then(|output| {
+                    let status = output.status;
+                    check_exit(
+                        self.tool,
+                        &executable,
+                        Some(output),
+                        status,
+                        &output_path.to_log_output(),
+                        exit_with.as_ref(),
+                    )
+                })?,
+        };
+
+        if let Some(mut child) = child {
+            debug!("Waiting for setup child process");
+            let status = child.wait().expect("Setup child process should have run");
+            if !status.success() {
+                return Err(Error::ProcessError((
+                    module_path.join("setup").to_string(),
+                    None,
                     status,
-                    &output_path.to_log_output(),
-                    exit_with.as_ref(),
-                )
-            })?;
+                    None,
+                ))
+                .into());
+            }
+        }
 
         Ok(ToolOutput {
             tool: self.tool,
@@ -194,6 +274,18 @@ impl ToolCommand {
 }
 
 impl ToolConfig {
+    pub fn new<T>(tool: ValgrindTool, is_enabled: bool, args: T, modifier: Option<String>) -> Self
+    where
+        T: Into<ToolArgs>,
+    {
+        Self {
+            tool,
+            is_enabled,
+            args: args.into(),
+            outfile_modifier: modifier,
+        }
+    }
+
     fn parse_load(
         &self,
         meta: &Metadata,
@@ -327,25 +419,29 @@ impl ToolConfigs {
 
     pub fn run(
         &self,
-        meta: &Metadata,
+        config: &Config,
         executable: &Path,
         executable_args: &[OsString],
-        options: &RunOptions,
+        run_options: &RunOptions,
         output_path: &ToolOutputPath,
         save_baseline: bool,
+        module_path: &ModulePath,
+        sandbox: Option<&api::Sandbox>,
+        setup: Option<&Assistant>,
+        teardown: Option<&Assistant>,
     ) -> Result<Vec<ToolSummary>> {
         let mut tool_summaries = vec![];
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
             let tool = tool_config.tool;
 
-            let command = ToolCommand::new(tool, meta);
+            let command = ToolCommand::new(tool, &config.meta, NoCapture::False);
 
             let output_path = output_path.to_tool_output(tool);
             let log_path = output_path.to_log_output();
 
-            Self::print_headline(meta, tool_config);
+            Self::print_headline(&config.meta, tool_config);
 
-            let parser = tool_config.tool.to_parser(meta.project_root.clone());
+            let parser = tool_config.tool.to_parser(config.meta.project_root.clone());
 
             let old_summaries = parser.as_ref().parse(&log_path.to_base_path())?;
 
@@ -354,24 +450,49 @@ impl ToolConfigs {
                 log_path.clear()?;
             }
 
+            let sandbox = sandbox
+                .as_ref()
+                .map(|sandbox| Sandbox::setup(sandbox, &config.meta))
+                .transpose()?;
+
+            let child = setup
+                .as_ref()
+                .map_or(Ok(None), |setup| setup.run(config, module_path))?;
+
             let output = command.run(
                 tool_config.clone(),
                 executable,
                 executable_args,
-                options.clone(),
+                run_options.clone(),
                 &output_path,
+                module_path,
+                child,
             )?;
+
+            if let Some(teardown) = &teardown {
+                teardown.run(config, module_path)?;
+            }
+
+            print_no_capture_footer(
+                NoCapture::False,
+                run_options.stdout.as_ref(),
+                run_options.stderr.as_ref(),
+            );
+
+            if let Some(sandbox) = sandbox {
+                sandbox.reset()?;
+            }
 
             let tool_summary = Self::parse(
                 tool_config,
-                meta,
+                &config.meta,
                 &log_path,
                 tool.has_output_file().then_some(&output_path),
                 old_summaries,
             )?;
 
             Self::print(
-                meta,
+                &config.meta,
                 tool_config,
                 &tool_summary.summaries,
                 &tool_summary.out_paths,
@@ -411,11 +532,11 @@ impl ToolOutputPath {
         tool: ValgrindTool,
         baseline_kind: &BaselineKind,
         base_dir: &Path,
-        module: &str,
+        module: &ModulePath,
         name: &str,
     ) -> Self {
         let current = base_dir;
-        let module_path: PathBuf = module.split("::").collect();
+        let module_path: PathBuf = module.to_string().split("::").collect();
         let sanitized_name = sanitize_filename::sanitize_with_options(
             name,
             sanitize_filename::Options {
@@ -449,7 +570,14 @@ impl ToolOutputPath {
         module: &str,
         name: &str,
     ) -> Result<Self> {
-        let output = Self::new(kind, tool, baseline_kind, base_dir, module, name);
+        let output = Self::new(
+            kind,
+            tool,
+            baseline_kind,
+            base_dir,
+            &ModulePath::new(module),
+            name,
+        );
         output.init()?;
         Ok(output)
     }
@@ -721,6 +849,12 @@ impl ValgrindTool {
             self,
             ValgrindTool::Callgrind | ValgrindTool::DHAT | ValgrindTool::BBV | ValgrindTool::Massif
         )
+    }
+}
+
+impl Display for ValgrindTool {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.id())
     }
 }
 

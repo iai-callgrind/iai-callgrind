@@ -24,932 +24,42 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::str_to_string)]
 
-use std::fs::File as StdFile;
-use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
+mod bin_bench;
+mod common;
+pub(crate) mod defaults;
+mod derive_macros;
+mod lib_bench;
 
-// TODO: CLEARIFY USAGE OF TokenStream vs TokenStream2
 use proc_macro::TokenStream;
-use proc_macro2::{Span, TokenStream as TokenStream2};
-use proc_macro_error::{abort, emit_error, proc_macro_error};
-use quote::{format_ident, quote, quote_spanned, ToTokens, TokenStreamExt};
+use proc_macro_error::proc_macro_error;
 use serde::Deserialize;
-use syn::parse::Parse;
-use syn::punctuated::Punctuated;
-use syn::spanned::Spanned;
-use syn::{
-    parse2, parse_quote, parse_quote_spanned, Attribute, Expr, ExprArray, ExprPath, Ident, ItemFn,
-    LitStr, MetaList, MetaNameValue, Token,
-};
 
 #[derive(Debug, Deserialize)]
 struct CargoMetadata {
     workspace_root: String,
 }
 
-/// This struct reflects the `args` parameter of the `#[bench]` attribute
-#[derive(Debug, Default, Clone)]
-struct Args(Option<(Span, Vec<Expr>)>);
-
-/// This is the counterpart for the `#[bench]` attribute
-///
-/// The #[benches] attribute is also parsed into this structure.
-#[derive(Debug)]
-struct Bench {
-    id: Ident,
-    args: Args,
-    config: BenchConfig,
-    setup: Setup,
-    teardown: Teardown,
-}
-
-/// The `config` parameter of the `#[bench]` or `#[benches]` attribute
-#[derive(Debug, Default, Clone)]
-struct BenchConfig(Option<Expr>);
-
-/// This is the counterpart to the `#[library_benchmark]` attribute.
-#[derive(Debug, Default)]
-struct LibraryBenchmark {
-    config: LibraryBenchmarkConfig,
-    setup: Setup,
-    teardown: Teardown,
-    benches: Vec<Bench>,
-}
-
-/// The `config` parameter of the `#[library_benchmark]` attribute
-///
-/// The `BenchConfig` and `LibraryBenchmarkConfig` are rendered differently, hence the different
-/// structures
-///
-/// Note: This struct is completely independent of the `iai_callgrind::LibraryBenchmarkConfig`
-/// struct with the same name.
-#[derive(Debug, Default, Clone)]
-struct LibraryBenchmarkConfig(Option<Expr>);
-
-/// This struct stores multiple `Args` as needed by the `#[benches]` attribute
-#[derive(Debug, Clone, Default)]
-struct MultipleArgs(Option<Vec<Args>>);
-
-#[derive(Debug, Default, Clone)]
-struct Setup(Option<ExprPath>);
-
-#[derive(Debug, Default, Clone)]
-struct Teardown(Option<ExprPath>);
-
-#[derive(Debug, Default, Clone)]
-struct File(Option<LitStr>);
-
-impl Args {
-    fn new(span: Span, data: Vec<Expr>) -> Self {
-        Self(Some((span, data)))
-    }
-
-    fn len(&self) -> usize {
-        self.0.as_ref().map_or(0, |(_, data)| data.len())
-    }
-
-    fn span(&self) -> Option<&Span> {
-        self.0.as_ref().map(|(span, _)| span)
-    }
-
-    fn set_span(&mut self, span: Span) {
-        if let Some(data) = self.0.as_mut() {
-            data.0 = span;
-        }
-    }
-
-    fn parse_pair(&mut self, pair: &MetaNameValue) -> syn::Result<()> {
-        if self.0.is_none() {
-            let expr = &pair.value;
-            let span = expr.span();
-            let args = match expr {
-                Expr::Array(items) => {
-                    let mut args = parse2::<Args>(items.elems.to_token_stream())?;
-                    // Set span explicitly (again) to overwrite the wrong span from parse2
-                    args.set_span(span);
-                    args
-                }
-                Expr::Tuple(items) => {
-                    let mut args = parse2::<Args>(items.elems.to_token_stream())?;
-                    // Set span explicitly (again) to overwrite the wrong span from parse2
-                    args.set_span(span);
-                    args
-                }
-                Expr::Paren(item) => Self::new(span, vec![(*item.expr).clone()]),
-                _ => {
-                    abort!(
-                        expr,
-                        "Failed parsing `args`";
-                        help = "`args` has to be a tuple/array which elements (expressions)
-                        match the number of parameters of the benchmarking function";
-                        note = "#[bench::id(args = (1, 2))] or
-                        #[bench::id(args = [1, 2]])]"
-                    );
-                }
-            };
-
-            *self = args;
-        } else {
-            emit_error!(
-                pair, "Duplicate argument: `args`";
-                help = "`args` is allowed only once"
-            );
-        }
-
-        Ok(())
-    }
-
-    fn parse_meta_list(&mut self, meta: &MetaList) -> syn::Result<()> {
-        let mut args = meta.parse_args::<Args>()?;
-        args.set_span(meta.tokens.span());
-
-        *self = args;
-
-        Ok(())
-    }
-
-    fn to_tokens_without_black_box(&self) -> TokenStream2 {
-        if let Some((span, exprs)) = self.0.as_ref() {
-            quote_spanned! { *span => #(#exprs),* }
-        } else {
-            TokenStream2::new()
-        }
-    }
-
-    /// Emit a compiler error if the number of actual and expected arguments do not match
-    ///
-    /// If there is a setup function present, we do not perform any checks.
-    fn check_num_arguments(&self, expected: usize, has_setup: bool) {
-        let actual = self.len();
-
-        if !has_setup && actual != expected {
-            if let Some(span) = self.span() {
-                emit_error!(
-                    span,
-                    "Expected {} arguments but found {}",
-                    expected,
-                    actual;
-                    help = "This argument is expected to have the same amount of parameters as the benchmark function";
-                );
-            } else {
-                emit_error!(
-                    self,
-                    "Expected {} arguments but found {}",
-                    expected,
-                    actual;
-                    help = "This argument is expected to have the same amount of parameters as the benchmark function";
-                );
-            }
-        };
-    }
-}
-
-impl Parse for Args {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let data = input
-            .parse_terminated(Parse::parse, Token![,])?
-            .into_iter()
-            .collect();
-
-        // We set a default span here although it is most likely wrong. It's strongly advised to set
-        // the span with `Args::set_span` to the correct value.
-        Ok(Self::new(input.span(), data))
-    }
-}
-
-impl ToTokens for Args {
-    fn to_tokens(&self, tokens: &mut TokenStream2) {
-        if let Some((span, exprs)) = self.0.as_ref() {
-            let this_tokens = quote_spanned! { *span => #(std::hint::black_box(#exprs)),* };
-            tokens.append_all(this_tokens);
-        }
-    }
-}
-
-impl Bench {
-    fn render_as_code(&self, callee: &Ident) -> TokenStream2 {
-        let id = &self.id;
-        let args = &self.args;
-
-        let inner = self.setup.render_as_code(args);
-        let call = quote! { std::hint::black_box(__iai_callgrind_wrapper_mod::#callee(#inner)) };
-
-        let call = self.teardown.render_as_code(call);
-
-        let func = quote!(
-            #[inline(never)]
-            pub fn #id() {
-                let _ = #call;
-            }
-        );
-
-        let config = self.config.render_as_code(id);
-        quote! {
-            #config
-            #func
-        }
-    }
-
-    fn render_as_member(&self) -> TokenStream2 {
-        let id = &self.id;
-        let id_display = self.id.to_string();
-        let args_display = self.setup.to_string(&self.args);
-        let config = self.config.render_as_member(id);
-        quote! {
-            iai_callgrind::internal::InternalMacroLibBench {
-                id_display: Some(#id_display),
-                args_display: Some(#args_display),
-                func: #id,
-                config: #config
-            }
-        }
-    }
-}
-
-impl BenchConfig {
-    fn ident(id: &Ident) -> Ident {
-        format_ident!("get_config_{}", id)
-    }
-
-    fn parse_pair(&mut self, pair: &MetaNameValue) {
-        if self.0.is_none() {
-            self.0 = Some(pair.value.clone());
-        } else {
-            emit_error!(
-                pair, "Duplicate argument: `config`";
-                help = "`config` is allowed only once"
-            );
-        }
-    }
-
-    fn render_as_code(&self, id: &Ident) -> TokenStream2 {
-        if let Some(config) = &self.0 {
-            let ident = Self::ident(id);
-            quote! {
-                #[inline(never)]
-                pub fn #ident() -> iai_callgrind::internal::InternalLibraryBenchmarkConfig {
-                    #config.into()
-                }
-            }
-        } else {
-            TokenStream2::new()
-        }
-    }
-
-    fn render_as_member(&self, id: &Ident) -> TokenStream2 {
-        if self.0.is_some() {
-            let ident = Self::ident(id);
-            quote! { Some(#ident) }
-        } else {
-            quote! { None }
-        }
-    }
-}
-
-impl File {
-    fn parse_pair(&mut self, pair: &MetaNameValue) {
-        if self.0.is_none() {
-            if let Expr::Lit(literal) = &pair.value {
-                self.0 = Some(parse2::<LitStr>(literal.to_token_stream()).unwrap());
-            } else {
-                abort!(
-                    pair.value, "Invalid value for `file`";
-                    help = "The `file` argument needs a literal string containing the path to an existing file at compile time";
-                    note = "`file = \"benches/some_fixture\"`"
-                );
-            }
-        } else {
-            emit_error!(
-                pair, "Duplicate argument: `file`";
-                help = "`file` is allowed only once"
-            );
-        }
-    }
-
-    /// Read this [`File`] and return all its lines
-    ///
-    /// # Panics
-    ///
-    /// Panics if there is no path present
-    fn read(&self, cargo_meta: Option<&CargoMetadata>) -> Vec<String> {
-        let expr = self.0.as_ref().expect("A file should be present");
-        let string = expr.value();
-        let mut path = PathBuf::from(&string);
-
-        if path.is_relative() {
-            if let Some(cargo_meta) = cargo_meta {
-                let root = PathBuf::from(&cargo_meta.workspace_root);
-                path = root.join(path);
-            }
-        }
-
-        let file = StdFile::open(&path)
-            .unwrap_or_else(|error| abort!(expr, "Error opening '{}': {}", path.display(), error));
-
-        let mut lines = vec![];
-        for (index, line) in BufReader::new(file).lines().enumerate() {
-            match line {
-                Ok(line) => {
-                    lines.push(line);
-                }
-                Err(error) => {
-                    abort!(
-                        self.0,
-                        "Error reading line {} in file '{}': {}",
-                        index + 1,
-                        path.display(),
-                        error
-                    );
-                }
-            }
-        }
-        lines
-    }
-}
-
-impl LibraryBenchmark {
-    fn parse_bench_attribute(
-        &mut self,
-        item_fn: &ItemFn,
-        attr: &Attribute,
-        id: Ident,
-    ) -> syn::Result<()> {
-        let expected_num_args = item_fn.sig.inputs.len();
-        let meta = attr.meta.require_list()?;
-
-        let mut args = Args::default();
-        let mut config = BenchConfig::default();
-        let mut setup = Setup::default();
-        let mut teardown = Teardown::default();
-
-        if let Ok(pairs) =
-            meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
-        {
-            for pair in pairs {
-                if pair.path.is_ident("args") {
-                    args.parse_pair(&pair)?;
-                } else if pair.path.is_ident("config") {
-                    config.parse_pair(&pair);
-                } else if pair.path.is_ident("setup") {
-                    setup.parse_pair(&pair);
-                } else if pair.path.is_ident("teardown") {
-                    teardown.parse_pair(&pair);
-                } else {
-                    abort!(
-                        pair, "Invalid argument: {}", pair.path.require_ident()?;
-                        help = "Valid arguments are: `args`, `config`, `setup`, teardown`"
-                    );
-                }
-            }
-        } else {
-            args.parse_meta_list(meta)?;
-        }
-
-        setup.update(&self.setup);
-        teardown.update(&self.teardown);
-
-        args.check_num_arguments(expected_num_args, setup.is_some());
-
-        self.benches.push(Bench {
-            id,
-            args,
-            config,
-            setup,
-            teardown,
-        });
-
-        Ok(())
-    }
-
-    fn parse_benches_attribute(
-        &mut self,
-        item_fn: &ItemFn,
-        attr: &Attribute,
-        id: &Ident,
-        cargo_meta: Option<&CargoMetadata>,
-    ) -> syn::Result<()> {
-        let expected_num_args = item_fn.sig.inputs.len();
-        let meta = attr.meta.require_list()?;
-
-        let mut config = BenchConfig::default();
-        let mut setup = Setup::default();
-        let mut teardown = Teardown::default();
-        let mut args = MultipleArgs::default();
-        let mut file = File::default();
-
-        if let Ok(pairs) =
-            meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
-        {
-            for pair in pairs {
-                if pair.path.is_ident("args") {
-                    args.parse_pair(&pair)?;
-                } else if pair.path.is_ident("config") {
-                    config.parse_pair(&pair);
-                } else if pair.path.is_ident("setup") {
-                    setup.parse_pair(&pair);
-                } else if pair.path.is_ident("teardown") {
-                    teardown.parse_pair(&pair);
-                } else if pair.path.is_ident("file") {
-                    file.parse_pair(&pair);
-                } else {
-                    abort!(
-                        pair, "Invalid argument: {}", pair.path.require_ident()?;
-                        help = "Valid arguments are: `args`, `file`, `config`, `setup`, `teardown`"
-                    );
-                }
-            }
-        } else {
-            args = MultipleArgs::from_meta_list(meta)?;
-        };
-
-        setup.update(&self.setup);
-        teardown.update(&self.teardown);
-
-        match (&file.0, args.0) {
-            (Some(literal), Some(_)) => {
-                abort!(
-                    literal.span(),
-                    "Only one parameter of `file` or `args` can be present"
-                );
-            }
-            (None, Some(mut args)) => {
-                // Make sure there is at least one `Args` present.
-                //
-                // `#[benches::id(args = [])]` has to result in a single Bench with an empty Args.
-                if args.is_empty() {
-                    args.push(Args::default());
-                }
-                for (i, args) in args.into_iter().enumerate() {
-                    args.check_num_arguments(expected_num_args, setup.is_some());
-
-                    let id = format_ident!("{id}_{i}");
-                    self.benches.push(Bench {
-                        id,
-                        args,
-                        config: config.clone(),
-                        setup: setup.clone(),
-                        teardown: teardown.clone(),
-                    });
-                }
-            }
-            (Some(literal), None) => {
-                let strings = file.read(cargo_meta);
-                if strings.is_empty() {
-                    abort!(literal, "The provided file '{}' was empty", literal.value());
-                }
-                for (i, string) in strings.into_iter().enumerate() {
-                    let id = format_ident!("{id}_{i}");
-                    let expr = if string.is_empty() {
-                        parse_quote_spanned! { literal.span() => String::new() }
-                    } else {
-                        parse_quote_spanned! { literal.span() => String::from(#string) }
-                    };
-                    let args = Args::new(literal.span(), vec![expr]);
-                    self.benches.push(Bench {
-                        id,
-                        args,
-                        config: config.clone(),
-                        setup: setup.clone(),
-                        teardown: teardown.clone(),
-                    });
-                }
-            }
-            // Cover the case when no arguments were present for example `#[benches::id()]`,
-            (None, None) => self.benches.push(Bench {
-                id: id.clone(),
-                args: Args::default(),
-                config: config.clone(),
-                setup: setup.clone(),
-                teardown: teardown.clone(),
-            }),
-        }
-
-        Ok(())
-    }
-
-    fn extract_benches(
-        &mut self,
-        item_fn: &ItemFn,
-        cargo_meta: Option<&CargoMetadata>,
-    ) -> syn::Result<()> {
-        let bench: syn::PathSegment = parse_quote!(bench);
-        let benches: syn::PathSegment = parse_quote!(benches);
-
-        for attr in &item_fn.attrs {
-            let mut path_segments = attr.path().segments.iter();
-            match path_segments.next() {
-                Some(segment) if segment == &bench => {
-                    if attr.path().segments.len() > 2 {
-                        abort!(
-                            attr, "Only one id is allowed";
-                            help = "bench followed by :: and a single unique id";
-                            note = r#"#[bench::my_id()] or #[bench::my_id("with", "args")]
-                        or #[bench::my_id(args = (arg1, ...), config = ...)]"#
-                        );
-                    }
-                    let Some(id) = path_segments.next().map(|p| p.ident.clone()) else {
-                        abort!(
-                            attr, "An id is required";
-                            help = "bench followed by :: and an unique id";
-                            note = "#[bench::my_id(...)]"
-                        );
-                    };
-                    self.parse_bench_attribute(item_fn, attr, id)?;
-                }
-                Some(segment) if segment == &benches => {
-                    if attr.path().segments.len() > 2 {
-                        abort!(
-                            attr, "Only one id is allowed";
-                            help = "benches followed by :: and a single unique id";
-                            note = r#"#[benches::my_id("with", "args")]
-                        or #[benches::my_id(args = [arg1, ...]]"#
-                        );
-                    }
-                    let Some(id) = path_segments.next().map(|p| p.ident.clone()) else {
-                        abort!(
-                            attr, "An id is required";
-                            help = "benches followed by :: and an unique id";
-                            note = "#[benches::my_id(...)]"
-                        );
-                    };
-                    self.parse_benches_attribute(item_fn, attr, &id, cargo_meta)?;
-                }
-                Some(segment) => {
-                    abort!(
-                        attr, "Invalid attribute: '{}'", segment.ident;
-                        help = "Only the `bench` and the `benches` attribute are allowed";
-                        note = r#"#[bench::my_id("with", "args")]
-                    or #[benches::my_id(args = [("with", "args"), ...])]"#
-                    );
-                }
-                None => {
-                    // #[] => Syntax error: Expected an identifier
-                    unreachable!("This case is handled by the compiler")
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Render the `#[library_benchmark]` attribute when no outer attribute was present
-    ///
-    /// ```ignore
-    /// #[library_benchmark]
-    /// fn my_benchmark_function() -> u64 {
-    ///     my_lib::bench_me(42)
-    /// }
-    /// ```
-    fn render_standalone(self, item_fn: &ItemFn) -> TokenStream2 {
-        let ident = &item_fn.sig.ident;
-        let visibility: syn::Visibility = parse_quote! { pub(super) };
-        let new_item_fn = ItemFn {
-            attrs: vec![],
-            vis: visibility,
-            sig: item_fn.sig.clone(),
-            block: item_fn.block.clone(),
-        };
-
-        let config = self.config.render_as_code();
-
-        let inner = self.setup.render_as_code(&Args::default());
-        let call = quote! { std::hint::black_box(__iai_callgrind_wrapper_mod::#ident(#inner)) };
-
-        let call = self.teardown.render_as_code(call);
-        quote! {
-            mod #ident {
-                use super::*;
-
-                mod __iai_callgrind_wrapper_mod {
-                    use super::*;
-
-                    #[inline(never)]
-                    #new_item_fn
-                }
-
-                pub const BENCHES: &[iai_callgrind::internal::InternalMacroLibBench]= &[
-                    iai_callgrind::internal::InternalMacroLibBench {
-                        id_display: None,
-                        args_display: None,
-                        func: wrapper,
-                        config: None
-                    },
-                ];
-
-                #config
-
-                #[inline(never)]
-                pub fn wrapper() {
-                    let _ = #call;
-                }
-            }
-        }
-    }
-
-    /// Render the `#[library_benchmark]` when other outer attributes like `#[bench]` were present
-    ///
-    /// We use the function name of the annotated function as module name. This new module
-    /// encloses the new functions generated from the `#[bench]` and `#[benches]` attribute as well
-    /// as the original and unmodified benchmark function.
-    ///
-    /// The original benchmark function receives additional attributes `#[inline(never)]` to prevent
-    /// the compiler from inlining this function. We also wrap the benchmark function into an extra
-    /// module. The main problem is that the compiler replaces functions with identical body. For
-    /// example the functions
-    ///
-    /// ```ignore
-    /// #[library_benchmark]
-    /// #[bench::my_id(42)]
-    /// fn my_bench(arg: u64) -> u64 {
-    ///     my_lib::bench_me()
-    /// }
-    ///
-    /// #[library_benchmark]
-    /// #[bench::my_id(84)]
-    /// fn my_bench_with_longer_function_name(arg: u64) -> u64 {
-    ///     my_lib::bench_me()
-    /// }
-    /// ```
-    ///
-    /// would be treated by the compiler as a single function (it takes the one with the shorter
-    /// function name, here `my_bench`). If we don't wrap them into a module with a constant export
-    /// name, we wouldn't be able to match for
-    /// `my_bench_with_longer_function_name::my_bench_with_longer_function_name` since this function
-    /// was replaced by the compiler with `my_bench::my_bench`.
-    ///
-    /// Next, we store all necessary information in a `BENCHES` slice of
-    /// `iai_callgrind::internal::InternalMacroLibBench` structs. This slice can be easily accessed
-    /// by the macros of the `iai-callgrind` package in which we finally can call all the benchmark
-    /// functions.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// #[library_benchmark]
-    /// #[bench::my_id(42)]
-    /// fn my_benchmark_function(arg: u64) -> u64 {
-    ///     my_lib::bench_me(arg)
-    /// }
-    /// ```
-    fn render_benches(self, item_fn: &ItemFn) -> TokenStream2 {
-        let visibility: syn::Visibility = parse_quote! { pub(super) };
-        let new_item_fn = ItemFn {
-            attrs: vec![],
-            vis: visibility,
-            sig: item_fn.sig.clone(),
-            block: item_fn.block.clone(),
-        };
-
-        let mod_name = &item_fn.sig.ident;
-        let callee = &item_fn.sig.ident;
-        let mut funcs = TokenStream2::new();
-        let mut lib_benches = vec![];
-        for bench in self.benches {
-            funcs.append_all(bench.render_as_code(callee));
-            lib_benches.push(bench.render_as_member());
-        }
-
-        let config = self.config.render_as_code();
-        quote! {
-            mod #mod_name {
-                use super::*;
-
-                mod __iai_callgrind_wrapper_mod {
-                    use super::*;
-
-                    #[inline(never)]
-                    #new_item_fn
-                }
-
-                pub const BENCHES: &[iai_callgrind::internal::InternalMacroLibBench] = &[
-                    #(#lib_benches,)*
-                ];
-
-                #config
-
-                #funcs
-            }
-        }
-    }
-}
-
-impl Parse for LibraryBenchmark {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        if input.is_empty() {
-            Ok(Self::default())
-        } else {
-            let mut config = LibraryBenchmarkConfig::default();
-            let mut setup = Setup::default();
-            let mut teardown = Teardown::default();
-
-            let pairs = input.parse_terminated(MetaNameValue::parse, Token![,])?;
-            for pair in pairs {
-                if pair.path.is_ident("config") {
-                    config.parse_pair(&pair);
-                } else if pair.path.is_ident("setup") {
-                    setup.parse_pair(&pair);
-                } else if pair.path.is_ident("teardown") {
-                    teardown.parse_pair(&pair);
-                } else {
-                    abort!(
-                        pair, "Invalid argument: {}", pair.path.require_ident()?;
-                        help = "Valid arguments are: `config`, `setup`, `teardown`"
-                    );
-                }
-            }
-
-            let library_benchmark = LibraryBenchmark {
-                config,
-                setup,
-                teardown,
-                benches: vec![],
-            };
-            Ok(library_benchmark)
-        }
-    }
-}
-
-impl LibraryBenchmarkConfig {
-    fn parse_pair(&mut self, pair: &MetaNameValue) {
-        let mut config = BenchConfig::default();
-        config.parse_pair(pair);
-        self.0 = config.0;
-    }
-
-    fn render_as_code(&self) -> TokenStream2 {
-        if let Some(config) = &self.0 {
-            quote!(
-                #[inline(never)]
-                pub fn get_config()
-                    -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
-                {
-                    Some(#config.into())
-                }
-            )
-        } else {
-            quote!(
-                #[inline(never)]
-                pub fn get_config()
-                -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig> {
-                    None
-                }
-            )
-        }
-    }
-}
-
-impl MultipleArgs {
-    fn parse_pair(&mut self, pair: &MetaNameValue) -> syn::Result<()> {
-        if self.0.is_none() {
-            *self = MultipleArgs::from_expr(&pair.value)?;
-        } else {
-            abort!(
-                pair, "Duplicate argument: `args`";
-                help = "`args` is allowed only once"
-            );
-        }
-
-        Ok(())
-    }
-
-    fn from_expr(expr: &Expr) -> syn::Result<Self> {
-        let expr_array = parse2::<ExprArray>(expr.to_token_stream())?;
-        let mut values: Vec<Args> = vec![];
-        for elem in expr_array.elems {
-            let span = elem.span();
-            let args = match elem {
-                Expr::Tuple(items) => {
-                    let mut args = parse2::<Args>(items.elems.to_token_stream())?;
-                    args.set_span(span);
-                    args
-                }
-                Expr::Paren(item) => Args::new(span, vec![*item.expr]),
-                _ => Args::new(span, vec![elem]),
-            };
-
-            values.push(args);
-        }
-        Ok(Self(Some(values)))
-    }
-
-    fn from_meta_list(meta: &MetaList) -> syn::Result<Self> {
-        let list = &meta.tokens;
-        let expr = parse2::<Expr>(quote_spanned! { list.span() => [#list] })?;
-        Self::from_expr(&expr)
-    }
-}
-
-impl Setup {
-    fn parse_pair(&mut self, pair: &MetaNameValue) {
-        if self.0.is_none() {
-            let expr = &pair.value;
-            if let Expr::Path(path) = expr {
-                self.0 = Some(path.clone());
-            } else {
-                abort!(
-                    expr, "Invalid value for `setup`";
-                    help = "The `setup` argument needs a path to an existing function
-                in a reachable scope";
-                    note = "`setup = my_setup` or `setup = my::setup::function`"
-                );
-            }
-        } else {
-            abort!(
-                pair, "Duplicate argument: `setup`";
-                help = "`setup` is allowed only once"
-            );
-        }
-    }
-
-    fn to_string(&self, args: &Args) -> String {
-        let tokens = args.to_tokens_without_black_box();
-        if let Some(setup) = self.0.as_ref() {
-            quote! { #setup(#tokens) }.to_string()
-        } else {
-            tokens.to_string()
-        }
-    }
-
-    fn render_as_code(&self, args: &Args) -> TokenStream2 {
-        if let Some(setup) = &self.0 {
-            quote_spanned! { setup.span() => std::hint::black_box(#setup(#args)) }
-        } else {
-            quote! { #args }
-        }
-    }
-
-    fn is_some(&self) -> bool {
-        self.0.is_some()
-    }
-
-    /// If this Setup is none and the other setup has a value update this `Setup` with that value
-    fn update(&mut self, other: &Self) {
-        if let (None, Some(other)) = (&self.0, &other.0) {
-            self.0 = Some(other.clone());
-        }
-    }
-}
-
-impl Teardown {
-    fn parse_pair(&mut self, pair: &MetaNameValue) {
-        if self.0.is_none() {
-            let expr = &pair.value;
-            if let Expr::Path(path) = expr {
-                self.0 = Some(path.clone());
-            } else {
-                abort!(
-                    expr, "Invalid value for `teardown`";
-                    help = "The `teardown` argument needs a path to an existing function
-                in a reachable scope";
-                    note = "`teardown = my_teardown` or `teardown = my::teardown::function`"
-                );
-            }
-        } else {
-            abort!(
-                pair, "Duplicate argument: `teardown`";
-                help = "`teardown` is allowed only once"
-            );
-        }
-    }
-
-    fn render_as_code(&self, tokens: TokenStream2) -> TokenStream2 {
-        if let Some(teardown) = &self.0 {
-            quote_spanned! { teardown.span() => std::hint::black_box(#teardown(#tokens)) }
-        } else {
-            tokens
-        }
-    }
-
-    /// If this Teardown is none and the other Teardown has a value update this Teardown with that
-    /// value
-    fn update(&mut self, other: &Self) {
-        if let (None, Some(other)) = (&self.0, &other.0) {
-            self.0 = Some(other.clone());
-        }
+impl CargoMetadata {
+    fn try_new() -> Option<Self> {
+        std::process::Command::new(option_env!("CARGO").unwrap_or("cargo"))
+            .args(["metadata", "--no-deps", "--format-version", "1"])
+            .output()
+            .ok()
+            .and_then(|output| serde_json::de::from_slice(&output.stdout).ok())
     }
 }
 
 /// The `#[library_benchmark]` attribute let's you define a benchmark function which you can later
 /// use in the `library_benchmark_groups!` macro.
 ///
-/// This attribute can be applied in two ways.
+/// This attribute accepts the following parameters:
+/// * `config`: Accepts a `LibraryBenchmarkConfig`
+/// * `setup`: A global setup function which is applied to all following [`#[bench]`][bench] and
+///   [`#[benches]`][benches] attributes if not overwritten by a `setup` parameter of these
+///   attributes.
+/// * `teardown`: Similar to `setup` but takes a global `teardown` function.
 ///
-/// Using the `#[library_benchmark]` attribute as a standalone is fine for simple function calls
-/// without parameters.
-///
-/// However, we mostly need to benchmark cases which would need to be setup for example with a
-/// vector, but everything we setup within the benchmark function itself would be attributed to the
-/// event counts. The second form of this attribute macro uses the `bench` attribute to setup
-/// benchmarks with different cases. The main advantage is, that the setup costs and event counts
-/// aren't attributed to the benchmark (and opposed to the old api we don't have to deal with
-/// callgrind arguments, toggles, inline(never), ...)
-///
-/// The `bench` attribute consists of the attribute name itself, an unique id after `::` and
-/// optionally one or more arguments with expressions which are passed to the benchmark function as
-/// parameter, as shown below. The id has to be unique within `#[library_benchmark]` where it's
-/// defined. However, the id can be the same as other id(s) in other `#[library_benchmark]` in the
-/// same 'library_benchmark_group!` macro invocation and then they can be `used with
-/// `library_benchmark_group!`'s optional parameter `compare_by_id`.
+/// A short introductory example on the usage including the `setup` parameter:
 ///
 /// ```rust
 /// # use iai_callgrind_macros::library_benchmark;
@@ -965,7 +75,69 @@ impl Teardown {
 /// # pub struct InternalLibraryBenchmarkConfig {}
 /// # }
 /// # }
-/// // Assume this is a more complicated function in your library which you want to benchmark
+/// fn my_setup(value: u64) -> String {
+///     format!("{value}")
+/// }
+///
+/// fn my_other_setup(value: u64) -> String {
+///     format!("{}", value + 10)
+/// }
+///
+/// #[library_benchmark(setup = my_setup)]
+/// #[bench::first(21)]
+/// #[benches::multiple(42, 84)]
+/// #[bench::last(args = (102), setup = my_other_setup)]
+/// fn my_bench(value: String) {
+///     println!("{value}");
+/// }
+/// # fn main() {}
+/// ```
+///
+/// The `#[library_benchmark]` attribute can be applied in two ways.
+///
+/// 1. Using the `#[library_benchmark]` attribute as a standalone without [`#[bench]`][bench] or
+///    [`#[benches]`][benches] is fine for simple function calls without parameters.
+/// 2. We mostly need to benchmark cases which would need to be setup for example with a vector, but
+///    everything we setup within the benchmark function itself would be attributed to the event
+///    counts. The second form of this attribute macro uses the [`#[bench]`][bench] and
+///    [`#[benches]`][benches] attributes to setup benchmarks with different cases. The main
+///    advantage is, that the setup costs and event counts aren't attributed to the benchmark (and
+///    opposed to the old api we don't have to deal with callgrind arguments, toggles,
+///    inline(never), ...)
+///
+/// # The `#[bench]` attribute
+///
+/// The basic structure is `#[bench::some_id(/* parameters */)]`. The part after the `::` must be an
+/// id unique within the same `#[library_benchmark]`. This attribute accepts the following
+/// parameters:
+///
+/// * __`args`__: A tuple with a list of arguments which are passed to the benchmark function. The
+///   parentheses also need to be present if there is only a single argument (`#[bench::my_id(args =
+///   (10))]`).
+/// * __`config`__: Accepts a `LibraryBenchmarkConfig`
+/// * __`setup`__: A function which takes the arguments specified in the `args` parameter and passes
+///   its return value to the benchmark function.
+/// * __`teardown`__: A function which takes the return value of the benchmark function.
+///
+/// If no other parameters besides `args` are present you can simply pass the arguments as a list of
+/// values. Instead of `#[bench::my_id(args = (10, 20))]`, you could also use the shorter
+/// `#[bench::my_id(10, 20)]`.
+///
+/// ```rust
+/// # use iai_callgrind_macros::library_benchmark;
+/// # mod iai_callgrind {
+/// # pub struct LibraryBenchmarkConfig {}
+/// # pub mod internal {
+/// # pub struct InternalMacroLibBench {
+/// #   pub id_display: Option<&'static str>,
+/// #   pub args_display: Option<&'static str>,
+/// #   pub func: fn(),
+/// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
+/// # }
+/// # pub struct InternalLibraryBenchmarkConfig {}
+/// # }
+/// # }
+/// // Assume this is a function in your library which you want to benchmark
 /// fn some_func(value: u64) -> u64 {
 ///     42
 /// }
@@ -978,8 +150,53 @@ impl Teardown {
 /// # fn main() {}
 /// ```
 ///
-/// Assuming the same function `some_func`, the `benches` attribute lets you define multiple
-/// benchmarks in one go:
+/// # The `#[benches]` attribute
+///
+/// The `#[benches]` attribute lets you define multiple benchmarks in one go. This attribute accepts
+/// the same parameters as the [`#[bench]`][bench] attribute: `args`, `config`, `setup` and
+/// `teardown` and additionally the `file` parameter. In contrast to the `args` parameter in
+/// [`#[bench]`][bench], `args` takes an array of arguments. The id (`#[benches::id(*/ parameters
+/// */)]`) is getting suffixed with the index of the current element of the `args` array.
+///
+/// ```rust
+/// # use iai_callgrind_macros::library_benchmark;
+/// # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
+/// # mod iai_callgrind {
+/// # pub struct LibraryBenchmarkConfig {}
+/// # pub mod internal {
+/// # pub struct InternalMacroLibBench {
+/// #   pub id_display: Option<&'static str>,
+/// #   pub args_display: Option<&'static str>,
+/// #   pub func: fn(),
+/// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
+/// # }
+/// # pub struct InternalLibraryBenchmarkConfig {}
+/// # }
+/// # }
+/// use std::hint::black_box;
+///
+/// fn setup_worst_case_array(start: i32) -> Vec<i32> {
+///     if start.is_negative() {
+///         (start..0).rev().collect()
+///     } else {
+///         (0..start).rev().collect()
+///     }
+/// }
+///
+/// #[library_benchmark]
+/// #[benches::multiple(vec![1], vec![5])]
+/// #[benches::with_setup(args = [1, 5], setup = setup_worst_case_array)]
+/// fn bench_bubble_sort_with_benches_attribute(input: Vec<i32>) -> Vec<i32> {
+///     black_box(my_lib::bubble_sort(input))
+/// }
+/// # fn main() {}
+/// ```
+///
+/// Usually the `arguments` are passed directly to the benchmarking function as it can be seen in
+/// the `#[benches::multiple(...)]` case. In `#[benches::with_setup(...)]`, the arguments are passed
+/// to the `setup` function and the return value of the `setup` function is passed as argument to
+/// the benchmark function. The above `#[library_benchmark]` is pretty much the same as
+///
 /// ```rust
 /// # use iai_callgrind_macros::library_benchmark;
 /// # mod iai_callgrind {
@@ -994,18 +211,88 @@ impl Teardown {
 /// # pub struct InternalLibraryBenchmarkConfig {}
 /// # }
 /// # }
-/// # fn some_func(value: u64) -> u64 {
-/// #    value
-/// # }
+/// # fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] }
+/// # fn setup_worst_case_array(_: i32) -> Vec<i32> { vec![] }
+/// use std::hint::black_box;
+///
 /// #[library_benchmark]
-/// #[benches::some_id(21, 42, 84)]
-/// fn bench_some_func(value: u64) -> u64 {
-///     std::hint::black_box(some_func(value))
+/// #[bench::multiple_0(vec![1])]
+/// #[bench::multiple_1(vec![5])]
+/// #[bench::with_setup_0(setup_worst_case_array(1))]
+/// #[bench::with_setup_1(setup_worst_case_array(5))]
+/// fn bench_bubble_sort_with_benches_attribute(input: Vec<i32>) -> Vec<i32> {
+///     black_box(bubble_sort(input))
 /// }
 /// # fn main() {}
 /// ```
 ///
-/// # Examples
+/// but a lot more concise especially if a lot of values are passed to the same `setup` function.
+///
+/// The `file` parameter goes a step further and reads the specified file line by line creating a
+/// benchmark from each line. The line is passed to the benchmark function as `String` or if the
+/// `setup` parameter is also present to the `setup` function. A small example assuming you have a
+/// file `benches/inputs` (relative paths are interpreted to the workspace root) with the following
+/// content
+///
+/// ```text
+/// 1
+/// 11
+/// 111
+/// ```
+///
+/// then
+///
+/// ```rust
+/// # use iai_callgrind_macros::library_benchmark;
+/// # mod iai_callgrind {
+/// # pub struct LibraryBenchmarkConfig {}
+/// # pub mod internal {
+/// # pub struct InternalMacroLibBench {
+/// #   pub id_display: Option<&'static str>,
+/// #   pub args_display: Option<&'static str>,
+/// #   pub func: fn(),
+/// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
+/// # }
+/// # pub struct InternalLibraryBenchmarkConfig {}
+/// # }
+/// # }
+/// # mod my_lib { pub fn string_to_u64(_line: String) -> Result<u64, String> { Ok(0) } }
+/// use std::hint::black_box;
+/// #[library_benchmark]
+/// #[benches::by_file(file = "iai-callgrind-macros/fixtures/inputs")]
+/// fn some_bench(line: String) -> Result<u64, String> {
+///     black_box(my_lib::string_to_u64(line))
+/// }
+/// # fn main() {}
+/// ```
+///
+/// The above is roughly equivalent to the following but with the `args` parameter
+///
+/// ```rust,ignore
+/// # use iai_callgrind_macros::library_benchmark;
+/// # mod iai_callgrind {
+/// # pub struct LibraryBenchmarkConfig {}
+/// # pub mod internal {
+/// # pub struct InternalMacroLibBench {
+/// #   pub id_display: Option<&'static str>,
+/// #   pub args_display: Option<&'static str>,
+/// #   pub func: fn(),
+/// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
+/// # }
+/// # pub struct InternalLibraryBenchmarkConfig {}
+/// # }
+/// # }
+/// # mod my_lib { pub fn string_to_u64(_line: String) -> Result<u64, String> { Ok(0) } }
+/// use std::hint::black_box;
+/// #[library_benchmark]
+/// #[benches::by_file(args = [1.to_string(), 11.to_string(), 111.to_string()])]
+/// fn some_bench(line: String) -> Result<u64, String> {
+///     black_box(my_lib::string_to_u64(line))
+/// }
+/// # fn main() {}
+/// ```
+///
+/// # More Examples
 ///
 /// The `#[library_benchmark]` attribute as a standalone
 ///
@@ -1038,7 +325,6 @@ impl Teardown {
 /// # }
 /// ```
 ///
-///
 /// In the following example we pass a single argument with `Vec<i32>` type to the benchmark. All
 /// arguments are already wrapped in a black box and don't need to be put in a `black_box` again.
 ///
@@ -1056,8 +342,7 @@ impl Teardown {
 /// # pub struct InternalLibraryBenchmarkConfig {}
 /// # }
 /// # }
-/// // Our function we want to test. Just assume this is a public function in your
-/// // library.
+/// // Our function we want to test
 /// fn some_func_with_array(array: Vec<i32>) -> Vec<i32> {
 ///     // do something with the array and return a new array
 ///     # array
@@ -1101,623 +386,175 @@ impl Teardown {
 /// # fn main() {
 /// # }
 /// ```
+///
+/// [bench]: #the-bench-attribute
+/// [benches]: #the-benches-attribute
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
-    match render_library_benchmark(args.into(), input.into()) {
+    match lib_bench::render(args.into(), input.into()) {
         Ok(stream) => stream.into(),
         Err(error) => error.to_compile_error().into(),
     }
 }
 
-fn render_library_benchmark(args: TokenStream2, input: TokenStream2) -> syn::Result<TokenStream2> {
-    let mut library_benchmark = parse2::<LibraryBenchmark>(args)?;
-    let item_fn = parse2::<ItemFn>(input)?;
-
-    let cargo_meta: Option<CargoMetadata> =
-        std::process::Command::new(option_env!("CARGO").unwrap_or("cargo"))
-            .args(["metadata", "--no-deps", "--format-version", "1"])
-            .output()
-            .ok()
-            .and_then(|output| serde_json::de::from_slice(&output.stdout).ok());
-
-    library_benchmark.extract_benches(&item_fn, cargo_meta.as_ref())?;
-    if library_benchmark.benches.is_empty() {
-        Ok(library_benchmark.render_standalone(&item_fn))
-    } else {
-        Ok(library_benchmark.render_benches(&item_fn))
+/// Used to annotate functions building the to be benchmarked `iai_callgrind::Command`
+///
+/// This macro works almost the same way as the [`macro@crate::library_benchmark`] attribute. Please
+/// see there for the basic usage.
+///
+/// # Differences to the `#[library_benchmark]` attribute
+///
+/// Any `config` parameter takes a `BinaryBenchmarkConfig` instead of a `LibraryBenchmarkConfig`.
+/// All functions annotated with the `#[binary_benchmark]` attribute need to return an
+/// `iai_callgrind::Command`. Also, the annotated function itself is not benchmarked. Instead, this
+/// function serves the purpose of a builder for the `Command` which is getting benchmarked.
+/// So, any code within this function is evaluated only once when all `Commands` in this benchmark
+/// file are collected and built. You can put any code in the function which is necessary to build
+/// the `Command` without attributing any event counts to the benchmark results which is why the
+/// `setup` and `teardown` parameters work differently in binary benchmarks.
+///
+/// The `setup` and `teardown` parameters of `#[binary_benchmark]`, `#[bench]` and of `#[benches]`
+/// take an expression instead of a function pointer. The expression of the `setup` (`teardown`)
+/// parameter is evaluated and executed not until before (after) the `Command` is executed (not
+/// __built__). There's a special case if `setup` or `teardown` are a function pointer like in
+/// library benchmarks. In this case the `args` from `#[bench]` or `#[benches]` are passed to the
+/// function AND `setup` or `teardown` respectively.
+///
+/// By example (Suppose your crate's binary is named `my-foo`)
+///
+/// ```rust
+/// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+/// # use iai_callgrind_macros::binary_benchmark;
+/// # pub mod iai_callgrind {
+/// # use std::path::PathBuf;
+/// # #[derive(Clone)]
+/// # pub struct Command {}
+/// # impl Command {
+/// #     pub fn new(_a: &str) -> Self { Self {}}
+/// #     pub fn stdout(&mut self, _a: Stdio) -> &mut Self {self}
+/// #     pub fn arg<T>(&mut self, _a: T) -> &mut Self where T: Into<PathBuf> {self}
+/// #     pub fn build(&mut self) -> Self {self.clone()}
+/// # }
+/// # pub enum Stdio { Inherit, File(PathBuf) }
+/// # #[derive(Clone)]
+/// # pub struct Sandbox {}
+/// # impl Sandbox {
+/// #     pub fn new(_a: bool) -> Self { Self {}}
+/// #     pub fn fixtures(&mut self, _a: [&str; 2]) -> &mut Self { self }
+/// # }
+/// # impl From<&mut Sandbox> for Sandbox { fn from(value: &mut Sandbox) -> Self {value.clone() }}
+/// # #[derive(Default)]
+/// # pub struct BinaryBenchmarkConfig {}
+/// # impl BinaryBenchmarkConfig { pub fn sandbox<T: Into<Sandbox>>(&mut self, _a: T) -> &mut Self {self}}
+/// # impl From<&mut BinaryBenchmarkConfig> for BinaryBenchmarkConfig
+/// #     { fn from(_value: &mut BinaryBenchmarkConfig) -> Self { BinaryBenchmarkConfig {}}}
+/// # pub mod internal {
+/// # use super::*;
+/// # pub struct InternalMacroBinBench {
+/// #   pub id_display: Option<&'static str>,
+/// #   pub args_display: Option<&'static str>,
+/// #   pub func: fn() -> Command,
+/// #   pub config: Option<fn() -> InternalBinaryBenchmarkConfig>,
+/// #   pub setup: Option<fn()>,
+/// #   pub teardown: Option<fn()>,
+/// # }
+/// # pub struct InternalBinaryBenchmarkConfig {}
+/// # impl From<&mut BinaryBenchmarkConfig> for InternalBinaryBenchmarkConfig
+/// #    { fn from(_value: &mut BinaryBenchmarkConfig) -> Self { InternalBinaryBenchmarkConfig {}} }
+/// # }
+/// # }
+/// use iai_callgrind::{BinaryBenchmarkConfig, Sandbox};
+/// use std::path::PathBuf;
+///
+/// // In binary benchmarks there's no need to return a value from the setup function
+/// # #[allow(unused)]
+/// fn simple_setup() {
+///     println!("Put code in here which will be run before the actual command");
+/// }
+///
+/// // It is good style to write any setup function idempotent, so it doesn't depend on the
+/// // `teardown` to have run. The `teardown` function isn't executed if the benchmark
+/// // command fails to run successfully.
+/// # #[allow(unused)]
+/// fn create_file(path: &str) {
+///     // You can for example create a file here which should be available for the `Command`
+///     std::fs::File::create(path).unwrap();
+/// }
+///
+/// # #[allow(unused)]
+/// fn teardown() {
+///     // Let's clean up this temporary file after we have used it
+///     std::fs::remove_file("file_from_setup_function.txt").unwrap();
+/// }
+///
+/// #[binary_benchmark]
+/// #[bench::just_a_fixture("benches/fixture.json")]
+/// // First big difference to library benchmarks! `my_setup` is not evaluated right away and the
+/// // return value of `simple_setup` is not used as input for the `bench_foo` function. Instead,
+/// // `simple_setup()` is executed before the execution of the `Command`.
+/// #[bench::with_other_fixture_and_setup(args = ("benches/other_fixture.txt"), setup = simple_setup())]
+/// // Here, setup is a function pointer, what tells us to route `args` to `setup` AND `bench_foo`
+/// #[bench::file_from_setup(args = ("file_from_setup_function.txt"), setup = create_file, teardown = teardown())]
+/// // Just an small example for the basic usage of the `#[benches]` attribute
+/// #[benches::multiple("benches/fix_1.txt", "benches/fix_2.txt")]
+/// // We're using a `BinaryBenchmarkConfig` in binary benchmarks to configure these benchmarks to
+/// // run in a sandbox.
+/// #[benches::multiple_with_config(
+///     args = ["benches/fix_1.txt", "benches/fix_2.txt"],
+///     config = BinaryBenchmarkConfig::default()
+///         .sandbox(Sandbox::new(true)
+///             .fixtures(["benches/fix_1.txt", "benches/fix_2.txt"])
+///         )
+/// )]
+/// // All functions annotated with `#[binary_benchmark]` need to return a `iai_callgrind::Command`
+/// fn bench_foo(path: &str) -> iai_callgrind::Command {
+///     let path = PathBuf::from(path);
+///     // We can put any code in here which is needed to configure the `Command`.
+///     let stdout = if path.extension().unwrap() == "txt" {
+///         iai_callgrind::Stdio::Inherit
+///     } else {
+///         iai_callgrind::Stdio::File(path.with_extension("out"))
+///     };
+///     // Configure the command depending on the arguments passed to this function and the code
+///     // above
+///     iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+///         .stdout(stdout)
+///         .arg(path)
+///         .build()
+/// }
+/// # fn main() {
+/// # // To avoid the unused warning
+/// # let _ = (bench_foo::__BENCHES[0].func)();
+/// # }
+/// ```
+#[proc_macro_attribute]
+#[proc_macro_error]
+pub fn binary_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
+    match bin_bench::render(args.into(), input.into()) {
+        Ok(stream) => stream.into(),
+        Err(error) => error.to_compile_error().into(),
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use pretty_assertions::assert_eq;
-    use syn::{ExprStruct, ItemMod};
-
-    use super::*;
-
-    #[derive(Debug, PartialEq, Eq)]
-    struct Model {
-        item: ItemMod,
-    }
-
-    impl Parse for Model {
-        fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-            Ok(Self {
-                item: input.parse::<ItemMod>()?,
-            })
-        }
-    }
-
-    fn expected_model(
-        func: &ItemFn,
-        benches: &[ExprStruct],
-        get_config: &Option<Expr>,
-        get_config_bench: &[(Ident, Expr)],
-        bench: &[(Ident, Vec<Expr>)],
-    ) -> Model {
-        let callee = &func.sig.ident;
-
-        let visibility = parse_quote! { pub(super) };
-        let new_item_fn = ItemFn {
-            attrs: vec![],
-            vis: visibility,
-            sig: func.sig.clone(),
-            block: func.block.clone(),
-        };
-
-        let rendered_get_config = if let Some(expr) = get_config {
-            quote!(
-                #[inline(never)]
-                pub fn get_config()
-                -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
-                {
-                    Some(#expr.into())
-                }
-            )
-        } else {
-            quote!(
-                #[inline(never)]
-                pub fn get_config()
-                -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig> {
-                    None
-                }
-            )
-        };
-        let mut rendered_benches = vec![];
-        for (ident, args) in bench {
-            let config = get_config_bench.iter().find_map(|(i, expr)| {
-                (i == ident).then(|| {
-                    let ident = format_ident!("get_config_{}", i);
-                    quote!(
-                        #[inline(never)]
-                        pub fn #ident() -> iai_callgrind::internal::InternalLibraryBenchmarkConfig {
-                            #expr.into()
-                        }
-                    )
-                })
-            });
-            if let Some(config) = config {
-                rendered_benches.push(config);
-            }
-            rendered_benches.push(quote!(
-                #[inline(never)]
-                pub fn #ident() {
-                    let _ = std::hint::black_box(__iai_callgrind_wrapper_mod::#callee(
-                        #(std::hint::black_box(#args)),*
-                    ));
-                }
-            ));
-        }
-        parse_quote!(
-            mod #callee {
-                use super::*;
-
-                mod __iai_callgrind_wrapper_mod {
-                    use super::*;
-
-                    #[inline(never)]
-                    #new_item_fn
-                }
-
-                pub const BENCHES: &[iai_callgrind::internal::InternalMacroLibBench]= &[
-                    #(#benches),*,
-                ];
-
-                #rendered_get_config
-
-                #(#rendered_benches)*
-            }
-        )
-    }
-
-    #[test]
-    fn test_only_library_benchmark_attribute() {
-        let input = quote!(
-            fn some() -> u8 {
-                1 + 2
-            }
-        );
-
-        let expected = expected_model(
-            &parse_quote!(
-                fn some() -> u8 {
-                    1 + 2
-                }
-            ),
-            &[parse_quote!(
-                iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: None,
-                    args_display: None,
-                    func: wrapper,
-                    config: None
-                }
-            )],
-            &None,
-            &[],
-            &[(parse_quote!(wrapper), vec![])],
-        );
-        let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_only_library_benchmark_attribute_with_config() {
-        let input = quote!(
-            fn some() -> u8 {
-                1 + 2
-            }
-        );
-
-        let expected = expected_model(
-            &parse_quote!(
-                fn some() -> u8 {
-                    1 + 2
-                }
-            ),
-            &[parse_quote!(
-                iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: None,
-                    args_display: None,
-                    func: wrapper,
-                    config: None
-                }
-            )],
-            &Some(parse_quote!(LibraryBenchmarkConfig::default())),
-            &[],
-            &[(parse_quote!(wrapper), vec![])],
-        );
-        let actual: Model = parse2(
-            render_library_benchmark(quote!(config = LibraryBenchmarkConfig::default()), input)
-                .unwrap(),
-        )
-        .unwrap();
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_bench_when_func_no_arg() {
-        for attribute in [
-            quote!(bench::my_id()),
-            quote!(bench::my_id(args = ())),
-            quote!(bench::my_id(args = [])),
-        ] {
-            dbg!(&attribute);
-            let input = quote!(
-                #[#attribute]
-                fn some() -> u8 {
-                    1 + 2
-                }
-            );
-
-            let expected = expected_model(
-                &parse_quote!(
-                    fn some() -> u8 {
-                        1 + 2
-                    }
-                ),
-                &[parse_quote!(
-                    iai_callgrind::internal::InternalMacroLibBench {
-                        id_display: Some("my_id"),
-                        args_display: Some(""),
-                        func: my_id,
-                        config: None
-                    }
-                )],
-                &None,
-                &[],
-                &[(parse_quote!(my_id), vec![])],
-            );
-            let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
-            assert_eq!(actual, expected);
-        }
-    }
-
-    #[test]
-    fn test_bench_when_func_one_arg() {
-        for attribute in [
-            quote!(bench::my_id(1)),
-            quote!(bench::my_id(args = (1,))),
-            quote!(bench::my_id(args = (1))),
-            quote!(bench::my_id(args = [1])),
-        ] {
-            dbg!(&attribute);
-            let input = quote!(
-                #[#attribute]
-                fn some(var: u8) -> u8 {
-                    var + 2
-                }
-            );
-
-            let expected = expected_model(
-                &parse_quote!(
-                    fn some(var: u8) -> u8 {
-                        var + 2
-                    }
-                ),
-                &[parse_quote!(
-                    iai_callgrind::internal::InternalMacroLibBench {
-                        id_display: Some("my_id"),
-                        args_display: Some("1"),
-                        func: my_id,
-                        config: None
-                    }
-                )],
-                &None,
-                &[],
-                &[(parse_quote!(my_id), vec![parse_quote!(1)])],
-            );
-            let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
-            assert_eq!(actual, expected);
-        }
-    }
-
-    #[test]
-    fn test_bench_when_func_two_args() {
-        for attribute in [
-            quote!(bench::my_id(1, 2)),
-            quote!(bench::my_id(args = (1, 2))),
-            quote!(bench::my_id(args = [1, 2])),
-        ] {
-            dbg!(&attribute);
-            let input = quote!(
-                #[#attribute]
-                fn some(one: u8, two: u8) -> u8 {
-                    one + two
-                }
-            );
-
-            let expected = expected_model(
-                &parse_quote!(
-                    fn some(one: u8, two: u8) -> u8 {
-                        one + two
-                    }
-                ),
-                &[parse_quote!(
-                    iai_callgrind::internal::InternalMacroLibBench {
-                        id_display: Some("my_id"),
-                        args_display: Some("1 , 2"),
-                        func: my_id,
-                        config: None
-                    }
-                )],
-                &None,
-                &[],
-                &[(parse_quote!(my_id), vec![parse_quote!(1), parse_quote!(2)])],
-            );
-            let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
-            assert_eq!(actual, expected);
-        }
-    }
-
-    #[test]
-    fn test_bench_when_config_no_args() {
-        for attribute in [
-            quote!(bench::my_id(config = LibraryBenchmarkConfig::default())),
-            quote!(bench::my_id(
-                args = (),
-                config = LibraryBenchmarkConfig::default()
-            )),
-        ] {
-            dbg!(&attribute);
-            let input = quote!(
-                #[#attribute]
-                fn some() -> u8 {
-                    1 + 2
-                }
-            );
-
-            let expected = expected_model(
-                &parse_quote!(
-                    fn some() -> u8 {
-                        1 + 2
-                    }
-                ),
-                &[parse_quote!(
-                    iai_callgrind::internal::InternalMacroLibBench {
-                        id_display: Some("my_id"),
-                        args_display: Some(""),
-                        func: my_id,
-                        config: Some(get_config_my_id)
-                    }
-                )],
-                &None,
-                &[(
-                    parse_quote!(my_id),
-                    parse_quote!(LibraryBenchmarkConfig::default()),
-                )],
-                &[(parse_quote!(my_id), vec![])],
-            );
-            let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
-            assert_eq!(actual, expected);
-        }
-    }
-
-    #[test]
-    fn test_bench_when_config_and_library_benchmark_config() {
-        let attribute = quote!(bench::my_id(config = LibraryBenchmarkConfig::default()));
-        dbg!(&attribute);
-        let input = quote!(
-            #[#attribute]
-            fn some() -> u8 {
-                1 + 2
-            }
-        );
-
-        let expected = expected_model(
-            &parse_quote!(
-                fn some() -> u8 {
-                    1 + 2
-                }
-            ),
-            &[parse_quote!(
-                iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some("my_id"),
-                    args_display: Some(""),
-                    func: my_id,
-                    config: Some(get_config_my_id)
-                }
-            )],
-            &Some(parse_quote!(LibraryBenchmarkConfig::new())),
-            &[(
-                parse_quote!(my_id),
-                parse_quote!(LibraryBenchmarkConfig::default()),
-            )],
-            &[(parse_quote!(my_id), vec![])],
-        );
-        let actual: Model = parse2(
-            render_library_benchmark(quote!(config = LibraryBenchmarkConfig::new()), input)
-                .unwrap(),
-        )
-        .unwrap();
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_bench_when_multiple_no_args() {
-        let input = quote!(
-            #[bench::first()]
-            #[bench::second()]
-            fn some() -> u8 {
-                1 + 2
-            }
-        );
-
-        let expected = expected_model(
-            &parse_quote!(
-                fn some() -> u8 {
-                    1 + 2
-                }
-            ),
-            &[
-                parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some("first"),
-                    args_display: Some(""),
-                    func: first,
-                    config: None
-                }),
-                parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some("second"),
-                    args_display: Some(""),
-                    func: second,
-                    config: None
-                }),
-            ],
-            &None,
-            &[],
-            &[
-                (parse_quote!(first), vec![]),
-                (parse_quote!(second), vec![]),
-            ],
-        );
-        let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_bench_when_multiple_one_arg() {
-        let input = quote!(
-            #[bench::first(1)]
-            #[bench::second(2)]
-            fn some(var: u8) -> u8 {
-                var + 2
-            }
-        );
-
-        let expected = expected_model(
-            &parse_quote!(
-                fn some(var: u8) -> u8 {
-                    var + 2
-                }
-            ),
-            &[
-                parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some("first"),
-                    args_display: Some("1"),
-                    func: first,
-                    config: None
-                }),
-                parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some("second"),
-                    args_display: Some("2"),
-                    func: second,
-                    config: None
-                }),
-            ],
-            &None,
-            &[],
-            &[
-                (parse_quote!(first), vec![parse_quote!(1)]),
-                (parse_quote!(second), vec![parse_quote!(2)]),
-            ],
-        );
-        let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_bench_when_multiple_with_config_first() {
-        let input = quote!(
-            #[bench::first(args = (1), config = LibraryBenchmarkConfig::default())]
-            #[bench::second(2)]
-            fn some(var: u8) -> u8 {
-                var + 2
-            }
-        );
-
-        let expected = expected_model(
-            &parse_quote!(
-                fn some(var: u8) -> u8 {
-                    var + 2
-                }
-            ),
-            &[
-                parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some("first"),
-                    args_display: Some("1"),
-                    func: first,
-                    config: Some(get_config_first)
-                }),
-                parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some("second"),
-                    args_display: Some("2"),
-                    func: second,
-                    config: None
-                }),
-            ],
-            &None,
-            &[(
-                parse_quote!(first),
-                parse_quote!(LibraryBenchmarkConfig::default()),
-            )],
-            &[
-                (parse_quote!(first), vec![parse_quote!(1)]),
-                (parse_quote!(second), vec![parse_quote!(2)]),
-            ],
-        );
-        let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_bench_when_multiple_with_config_second() {
-        let input = quote!(
-            #[bench::first(1)]
-            #[bench::second(args = (2), config = LibraryBenchmarkConfig::default())]
-            fn some(var: u8) -> u8 {
-                var + 2
-            }
-        );
-
-        let expected = expected_model(
-            &parse_quote!(
-                fn some(var: u8) -> u8 {
-                    var + 2
-                }
-            ),
-            &[
-                parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some("first"),
-                    args_display: Some("1"),
-                    func: first,
-                    config: None
-                }),
-                parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some("second"),
-                    args_display: Some("2"),
-                    func: second,
-                    config: Some(get_config_second)
-                }),
-            ],
-            &None,
-            &[(
-                parse_quote!(second),
-                parse_quote!(LibraryBenchmarkConfig::default()),
-            )],
-            &[
-                (parse_quote!(first), vec![parse_quote!(1)]),
-                (parse_quote!(second), vec![parse_quote!(2)]),
-            ],
-        );
-        let actual: Model = parse2(render_library_benchmark(quote!(), input).unwrap()).unwrap();
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn test_bench_when_multiple_with_config_all() {
-        let input = quote!(
-            #[bench::first(args = (1), config = LibraryBenchmarkConfig::new())]
-            #[bench::second(args = (2), config = LibraryBenchmarkConfig::default())]
-            fn some(var: u8) -> u8 {
-                var + 2
-            }
-        );
-
-        let expected = expected_model(
-            &parse_quote!(
-                fn some(var: u8) -> u8 {
-                    var + 2
-                }
-            ),
-            &[
-                parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some("first"),
-                    args_display: Some("1"),
-                    func: first,
-                    config: Some(get_config_first)
-                }),
-                parse_quote!(iai_callgrind::internal::InternalMacroLibBench {
-                    id_display: Some("second"),
-                    args_display: Some("2"),
-                    func: second,
-                    config: Some(get_config_second)
-                }),
-            ],
-            &Some(parse_quote!(LibraryBenchmarkConfig::does_not_exist())),
-            &[
-                (
-                    parse_quote!(first),
-                    parse_quote!(LibraryBenchmarkConfig::new()),
-                ),
-                (
-                    parse_quote!(second),
-                    parse_quote!(LibraryBenchmarkConfig::default()),
-                ),
-            ],
-            &[
-                (parse_quote!(first), vec![parse_quote!(1)]),
-                (parse_quote!(second), vec![parse_quote!(2)]),
-            ],
-        );
-
-        let actual: Model = parse2(
-            render_library_benchmark(
-                quote!(config = LibraryBenchmarkConfig::does_not_exist()),
-                input,
-            )
-            .unwrap(),
-        )
-        .unwrap();
-        assert_eq!(actual, expected);
+/// For internal use only.
+///
+/// The old `macro_rules! impl_traits` was easy to overlook in the source code files and this derive
+/// macro is just a much nicer way to do the same.
+///
+/// We use this derive macro to spare us the manual implementation of
+///
+/// * `From<Outer> for Inner`
+/// * `From<&Outer> for Inner` (which clones the value)
+/// * `From<&mut Outer> for Inner` (which also just clones the value)
+///
+/// for our builder tuple structs which wrap the inner type from the iai-callgrind-runner api. So,
+/// our builders don't need a build method, which is just cool.
+#[proc_macro_derive(IntoInner)]
+#[proc_macro_error]
+pub fn into_inner(item: TokenStream) -> TokenStream {
+    match derive_macros::render_into_inner(item.into()) {
+        Ok(stream) => stream.into(),
+        Err(error) => error.to_compile_error().into(),
     }
 }

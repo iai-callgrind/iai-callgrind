@@ -5,11 +5,14 @@ use anyhow::Result;
 use colored::{ColoredString, Colorize};
 
 use super::args::NoCapture;
+use super::bin_bench::BinBench;
+use super::common::ModulePath;
+use super::lib_bench::LibBench;
 use super::meta::Metadata;
 use super::summary::{CostsDiff, CostsSummary};
 use super::tool::ValgrindTool;
-use crate::api::EventKind;
-use crate::util::{to_string_signed_short, truncate_str_utf8};
+use crate::api::{self, EventKind};
+use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8};
 
 pub const NOT_AVAILABLE: &str = "N/A";
 
@@ -19,11 +22,16 @@ pub struct ComparisonHeader {
     pub details: Option<String>,
 }
 
-pub struct Header {
-    pub module_path: String,
-    pub id: Option<String>,
-    pub description: Option<String>,
-    pub truncate_description: Option<usize>,
+pub struct BinaryBenchmarkHeader {
+    inner: Header,
+    has_tools_enabled: bool,
+    output_format: OutputFormat,
+}
+
+struct Header {
+    module_path: String,
+    id: Option<String>,
+    description: Option<String>,
 }
 
 pub trait Formatter {
@@ -49,6 +57,12 @@ pub trait Formatter {
     ) -> Result<String>;
 }
 
+pub struct LibraryBenchmarkHeader {
+    inner: Header,
+    has_tools_enabled: bool,
+    output_format: OutputFormat,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum OutputFormat {
     Default,
@@ -59,6 +73,63 @@ pub enum OutputFormat {
 #[derive(Clone)]
 pub struct VerticalFormat {
     event_kinds: Vec<EventKind>,
+}
+
+impl BinaryBenchmarkHeader {
+    pub fn new(meta: &Metadata, bin_bench: &BinBench) -> Self {
+        let path = make_relative(&meta.project_root, &bin_bench.command.path);
+
+        let command_args: Vec<String> = bin_bench
+            .command
+            .args
+            .iter()
+            .map(|s| s.to_string_lossy().to_string())
+            .collect();
+        let command_args = shlex::try_join(command_args.iter().map(String::as_str)).unwrap();
+
+        let description = if command_args.is_empty() {
+            format!(
+                "({}) -> {}",
+                bin_bench.args.as_ref().map_or("", String::as_str),
+                path.display(),
+            )
+        } else {
+            format!(
+                "({}) -> {} {}",
+                bin_bench.args.as_ref().map_or("", String::as_str),
+                path.display(),
+                command_args
+            )
+        };
+
+        Self {
+            inner: Header::new(
+                &bin_bench.module_path,
+                bin_bench.id.clone(),
+                Some(description),
+                bin_bench.truncate_description,
+            ),
+            has_tools_enabled: bin_bench.tools.has_tools_enabled(),
+            output_format: meta.args.output_format,
+        }
+    }
+
+    pub fn print(&self) {
+        if self.output_format == OutputFormat::Default {
+            self.inner.print();
+            if self.has_tools_enabled {
+                println!("{}", tool_headline(ValgrindTool::Callgrind));
+            }
+        }
+    }
+
+    pub fn to_title(&self) -> String {
+        self.inner.to_title()
+    }
+
+    pub fn description(&self) -> Option<String> {
+        self.inner.description.clone()
+    }
 }
 
 impl ComparisonHeader {
@@ -99,47 +170,22 @@ impl Display for ComparisonHeader {
 }
 
 impl Header {
-    pub fn new<T, U, V>(
-        module_path: T,
-        id: U,
-        description: V,
+    pub fn new<T>(
+        module_path: &ModulePath,
+        id: T,
+        description: Option<String>,
         truncate_description: Option<usize>,
     ) -> Self
     where
-        T: Into<String>,
-        U: Into<Option<String>>,
-        V: Into<Option<String>>,
+        T: Into<Option<String>>,
     {
-        Self {
-            module_path: module_path.into(),
-            id: id.into(),
-            description: description.into(),
-            truncate_description,
-        }
-    }
+        let truncated =
+            description.map(|d| self::truncate_description(&d, truncate_description).to_string());
 
-    pub fn from_segments<I, T, U, V>(
-        module_path: T,
-        id: U,
-        description: V,
-        truncate_description: Option<usize>,
-    ) -> Self
-    where
-        I: AsRef<str>,
-        T: AsRef<[I]>,
-        U: Into<Option<String>>,
-        V: Into<Option<String>>,
-    {
         Self {
-            module_path: module_path
-                .as_ref()
-                .iter()
-                .map(|s| s.as_ref().to_owned())
-                .collect::<Vec<String>>()
-                .join("::"),
+            module_path: module_path.to_string(),
             id: id.into(),
-            description: description.into(),
-            truncate_description,
+            description: truncated,
         }
     }
 
@@ -153,8 +199,7 @@ impl Header {
         if let Some(id) = &self.id {
             match &self.description {
                 Some(description) if !description.is_empty() => {
-                    let truncated = self.truncate_description(description);
-                    write!(&mut output, " {id}:{truncated}").unwrap();
+                    write!(&mut output, " {id}:{description}").unwrap();
                 }
                 _ => {
                     write!(&mut output, " {id}").unwrap();
@@ -162,19 +207,6 @@ impl Header {
             }
         }
         output
-    }
-
-    pub fn truncate_description<'a>(&self, description: &'a str) -> Cow<'a, str> {
-        if let Some(num) = self.truncate_description {
-            let new_description = truncate_str_utf8(description, num);
-            if new_description.len() < description.len() {
-                Cow::Owned(format!("{new_description}..."))
-            } else {
-                Cow::Borrowed(description)
-            }
-        } else {
-            Cow::Borrowed(description)
-        }
     }
 }
 
@@ -184,20 +216,60 @@ impl Display for Header {
         if let Some(id) = &self.id {
             match &self.description {
                 Some(description) if !description.is_empty() => {
-                    let truncated = self.truncate_description(description);
                     f.write_fmt(format_args!(
                         " {}{}{}",
                         id.cyan(),
                         ":".cyan(),
-                        truncated.bold().blue(),
+                        description.bold().blue(),
                     ))?;
                 }
-                _ => {
+                _ if !id.is_empty() => {
                     f.write_fmt(format_args!(" {}", id.cyan()))?;
                 }
+                _ => {}
             }
+        } else if let Some(description) = &self.description {
+            if !description.is_empty() {
+                f.write_fmt(format_args!(" {}", description.bold().blue()))?;
+            }
+        } else {
+            // do nothing
         }
         Ok(())
+    }
+}
+
+impl LibraryBenchmarkHeader {
+    pub fn new(meta: &Metadata, lib_bench: &LibBench) -> Self {
+        let header = Header::new(
+            &lib_bench.module_path,
+            lib_bench.id.clone(),
+            lib_bench.args.clone(),
+            lib_bench.truncate_description,
+        );
+
+        Self {
+            inner: header,
+            has_tools_enabled: lib_bench.tools.has_tools_enabled(),
+            output_format: meta.args.output_format,
+        }
+    }
+
+    pub fn print(&self) {
+        if self.output_format == OutputFormat::Default {
+            self.inner.print();
+            if self.has_tools_enabled {
+                println!("{}", tool_headline(ValgrindTool::Callgrind));
+            }
+        }
+    }
+
+    pub fn to_title(&self) -> String {
+        self.inner.to_title()
+    }
+
+    pub fn description(&self) -> Option<String> {
+        self.inner.description.clone()
     }
 }
 
@@ -342,12 +414,61 @@ pub fn tool_headline(tool: ValgrindTool) -> String {
     )
 }
 
-pub fn no_capture_footer(nocapture: NoCapture) -> String {
+// Return the formatted `String` if `NoCapture` is not `False`
+pub fn no_capture_footer(nocapture: NoCapture) -> Option<String> {
     match nocapture {
-        NoCapture::True => format!("{} {}", "-".yellow(), "end of stdout/stderr".yellow()),
-        NoCapture::False => String::new(),
-        NoCapture::Stderr => format!("{} {}", "-".yellow(), "end of stderr".yellow()),
-        NoCapture::Stdout => format!("{} {}", "-".yellow(), "end of stdout".yellow()),
+        NoCapture::True => Some(format!(
+            "{} {}",
+            "-".yellow(),
+            "end of stdout/stderr".yellow()
+        )),
+        NoCapture::False => None,
+        NoCapture::Stderr => Some(format!("{} {}", "-".yellow(), "end of stderr".yellow())),
+        NoCapture::Stdout => Some(format!("{} {}", "-".yellow(), "end of stdout".yellow())),
+    }
+}
+
+pub fn print_no_capture_footer(
+    nocapture: NoCapture,
+    stdout: Option<&api::Stdio>,
+    stderr: Option<&api::Stdio>,
+) {
+    let stdout_is_pipe = stdout.map_or(
+        nocapture == NoCapture::False || nocapture == NoCapture::Stderr,
+        api::Stdio::is_pipe,
+    );
+
+    let stderr_is_pipe = stderr.map_or(
+        nocapture == NoCapture::False || nocapture == NoCapture::Stdout,
+        api::Stdio::is_pipe,
+    );
+
+    // These unwraps are safe because `no_capture_footer` returns None only if `NoCapture` is
+    // `False`
+    match (stdout_is_pipe, stderr_is_pipe) {
+        (true, true) => {}
+        (true, false) => {
+            println!("{}", no_capture_footer(NoCapture::Stderr).unwrap());
+        }
+        (false, true) => {
+            println!("{}", no_capture_footer(NoCapture::Stdout).unwrap());
+        }
+        (false, false) => {
+            println!("{}", no_capture_footer(NoCapture::True).unwrap());
+        }
+    }
+}
+
+fn truncate_description(description: &str, truncate_description: Option<usize>) -> Cow<'_, str> {
+    if let Some(num) = truncate_description {
+        let new_description = truncate_str_utf8(description, num);
+        if new_description.len() < description.len() {
+            Cow::Owned(format!("{new_description}..."))
+        } else {
+            Cow::Borrowed(description)
+        }
+    } else {
+        Cow::Borrowed(description)
     }
 }
 
@@ -360,9 +481,11 @@ mod tests {
 
     #[rstest]
     #[case::simple("some::module", Some("id"), Some("1, 2"), "some::module id:1, 2")]
-    #[case::no_id_but_description("some::module", None, Some("1, 2, 3"), "some::module")]
-    #[case::id_no_description("some::module", Some("id"), None, "some::module id")]
-    #[case::description_is_empty("some::module", Some("id"), Some(""), "some::module id")]
+    #[case::id_but_no_description("some::module", Some("id"), None, "some::module id")]
+    #[case::id_but_empty_description("some::module", Some("id"), Some(""), "some::module id")]
+    #[case::no_id_but_description("some::module", None, Some("1, 2, 3"), "some::module 1, 2, 3")]
+    #[case::no_id_no_description("some::module", None, None, "some::module")]
+    #[case::no_id_empty_description("some::module", None, Some(""), "some::module")]
     #[case::length_is_greater_than_default(
         "some::module",
         Some("id"),
@@ -378,7 +501,7 @@ mod tests {
         colored::control::set_override(false);
 
         let header = Header::new(
-            module_path,
+            &ModulePath::new(module_path),
             id.map(ToOwned::to_owned),
             description.map(ToOwned::to_owned),
             None,
@@ -517,7 +640,7 @@ mod tests {
         colored::control::set_override(false);
 
         let header = Header::new(
-            module_path,
+            &ModulePath::new(module_path),
             id.map(ToOwned::to_owned),
             description.map(ToOwned::to_owned),
             truncate_description,
