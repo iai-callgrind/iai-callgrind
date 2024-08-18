@@ -775,7 +775,7 @@ macro_rules! main {
 /// `#[binary_benchmark]` attribute](#using-the-high-level-api-with-the-binary-benchmark-attribute).
 /// But, if you find yourself in the situation that the attribute isn't enough you can fall back to
 /// the [low level api](#the-low-level-api) or even [intermix both
-/// styles](#intermixing-both-styles).
+/// styles](#intermixing-both-apis).
 ///
 /// # The macro's arguments in detail:
 ///
@@ -861,7 +861,7 @@ macro_rules! main {
 /// more likely that the low-level api has to be adjusted. This implies you might have to adjust
 /// your benchmarks more often with a version update of `iai-callgrind`. Hence, it is recommended to
 /// use the high-level api as much as possible and only use the low-level api under special
-/// circumstances. You can also [intermix both styles](#intermixing-both-styles)!
+/// circumstances. You can also [intermix both styles](#intermixing-both-apis)!
 ///
 /// The low-level api mirrors the high-level constructs as close as possible. The
 /// [`crate::BinaryBenchmarkGroup`] is a special case, since we use the information from the

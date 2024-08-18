@@ -607,8 +607,8 @@ impl BenchmarkId {
     /// differ for the structs where a `BenchmarkId` is used and is further described there.
     ///
     /// We use a minimal subset of rust's identifiers. A valid `BenchmarkId` starts with an ascii
-    /// alphabetic letter [a-zA-Z] or underscore [_]. All following characters can be an ascii
-    /// alphabetic letter, underscore or a digit [0-9]. At least one valid character must be
+    /// alphabetic letter `[a-zA-Z]` or underscore `[_]`. All following characters can be an ascii
+    /// alphabetic letter, underscore or a digit `[0-9]`. At least one valid character must be
     /// present.
     ///
     /// The `BenchmarkId` is used by `iai-callgrind` as file and directory name for the output files

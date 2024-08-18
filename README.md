@@ -29,7 +29,7 @@ Iai-Callgrind is a benchmarking framework/harness which primarily uses
 [Valgrind's Callgrind](https://valgrind.org/docs/manual/cl-manual.html) and the
 other Valgrind tools to provide extremely accurate and consistent measurements
 of Rust code, making it perfectly suited to run in environments like a CI. Also,
-Iai-Callgrind is supported by
+Iai-Callgrind is integrated in
 [Bencher](https://bencher.dev/learn/benchmarking/rust/iai/).
 
 This crate started as a fork of the great [Iai](https://github.com/bheisler/iai)
@@ -167,7 +167,7 @@ sections.
 
 For a quickstart and examples of benchmarking libraries see the [Library Benchmark
 Section](#library-benchmarks) and for executables see the [Binary Benchmark
-Section](#binary-benchmarks). Read the [docs]!
+Section](#binary-benchmarks). Read the [`docs`]!
 
 As mentioned in above in the `Installation` section, it's required to run the
 benchmarks with debugging symbols switched on. For example in your
@@ -612,16 +612,11 @@ Neither the order nor the amount of benches within the benchmark functions
 matters, so it is not strictly necessary to mirror the bench ids of the first
 benchmark function in the second, third, etc. benchmark function.
 
-##### Examples
-
-For a fully documented and working benchmark see the
-[test_lib_bench_groups](benchmark-tests/benches/test_lib_bench_groups.rs) benchmark file and read
-the [`library documentation`]!
-
 ##### Configuration
 
-It's possible to configure some of the behavior of `iai-callgrind`. See the [docs] of
-`LibraryBenchmarkConfig` for more details. At top-level with the `main!` macro:
+It's possible to configure some of the behavior of `iai-callgrind`. See the
+[`docs`] of `LibraryBenchmarkConfig` for more details. At top-level with the
+`main!` macro:
 
 ```rust
 main!(
@@ -659,21 +654,25 @@ The config at `bench` level overwrites the config at `library_benchmark` level. 
 `library_benchmark` level overwrites the config at group level and so on. Note that configuration
 values like `envs` are additive and don't overwrite configuration values of higher levels.
 
-### Binary Benchmarks
+##### Examples
+
+For a fully documented and working benchmark see the
+[test_lib_bench_groups](benchmark-tests/benches/test_lib_bench/groups/test_lib_bench_groups.rs)
+benchmark file and read the [`library documentation`]!
+
+#### Binary Benchmarks
 
 Use this scheme to benchmark one or more binaries of your crate or any binary
 installed on your system. The api for setting up binary benchmarks is almost
 equivalent to library benchmarks. This section focuses on the differences. For
 the basics see [Library Benchmarks](#library-benchmarks).
 
-#### Important default behavior
+##### Important default behavior
 
 As in library benchmarks, the environment variables of benchmarked binaries are
 cleared before the benchmark is run. See also [Environment
-variables](#command-line-arguments-and-environment-variables) for how to pass environment variables to the
-benchmarked binary.
-
-#### Differences to library benchmarks
+variables](#command-line-arguments-and-environment-variables) for how to pass
+environment variables to the benchmarked binary.
 
 ##### Quickstart
 
@@ -723,8 +722,7 @@ main!(binary_benchmark_groups = my_group);
 ```
 
 We're not going into the details of the low-level api here because it is fully
-documented in the [`library_documentation`] and basically mirrors the high-level
-api.
+documented in the [`docs`] and basically mirrors the high-level api.
 
 Coming from library benchmarks, the names with `library` in it change to the
 same name but `library` with `binary` replaced, so the `#[library_benchmark]`
@@ -1015,9 +1013,10 @@ fn bench_binary() -> iai_callgrind::Command {
 // ... binary_benchmark_group! and main!
 ```
 
-#### Examples
+##### Examples
 
-See the [test_bin_bench_intro](benchmark-tests/benches/test_bin_bench_intro.rs)
+See the
+[test_bin_bench_intro](benchmark-tests/benches/test_bin_bench/intro/test_bin_bench_intro.rs)
 benchmark file of this project for a working and fully documentation example.
 
 ### Performance Regressions
@@ -1049,7 +1048,7 @@ main!(
 For example [SQLite](https://sqlite.org/cpu.html#performance_measurement) uses
 mainly cpu instructions to measure performance improvements (and regressions).
 
-For more details on regression checks consult the iai-callgrind [docs].
+For more details on regression checks consult the iai-callgrind [`docs`].
 
 ### Valgrind Tools
 
@@ -1163,7 +1162,7 @@ path would be `IAI_CALLGRIND_VALGRIND_INCLUDE=/home/foo/repo` (not
 `/home/foo/repo/valgrind`)
 
 This was just a small introduction, please see the
-[docs](https://docs.rs/iai-callgrind/0.12.3/iai_callgrind/client_requests) for
+[`docs`](https://docs.rs/iai-callgrind/0.12.3/iai_callgrind/client_requests) for
 more details!
 
 ### Flamegraphs
@@ -1557,4 +1556,4 @@ We have included the original license where we make use of the original header
 files.
 
 [`library documentation`]: https://docs.rs/iai-callgrind/0.12.3/iai_callgrind/
-[docs]: https://docs.rs/iai-callgrind/0.12.3/iai_callgrind/
+[`docs`]: https://docs.rs/iai-callgrind/0.12.3/iai_callgrind/
