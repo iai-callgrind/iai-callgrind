@@ -22,7 +22,7 @@ version = "0.12.3"
 anyhow = { version = "1.0.46" }
 assert_cmd = { version = "2.0" }
 bincode = { version = "1" }
-bindgen = { version = "0.69" }
+bindgen = { version = ">=0.69, <0.71" }
 cargo_metadata = { version = "0.18" }
 cc = { version = "1" }
 cfg-if = { version = "1" }
@@ -47,7 +47,7 @@ proc-macro-error = "1"
 proc-macro2 = "1.0.63"
 quote = "1.0.28"
 regex = { version = "1.9" }
-rstest = ">=0.17, <0.20"
+rstest = ">=0.17, <0.23"
 sanitize-filename = { version = "0.5" }
 schemars = { version = "0.8.16", features = ["indexmap2"] }
 serde = { version = "1.0.139", features = ["derive"] }
