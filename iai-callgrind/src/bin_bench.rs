@@ -150,12 +150,17 @@ pub struct BinaryBenchmark {
     pub teardown: Option<fn()>,
 }
 
-/// A builder for a [`std::process::Command`] providing fine-grained control over how the
-/// [`std::process::Command`] for the valgrind benchmark should be created.
+/// Provide the [`Command`] to be benchmarked
 ///
-/// The default configuration is generated with [`Command::new`] providing a path to an executable.
+/// `Command` is a builder for the binary which is going to be benchmarked providing fine-grained
+/// control over how the `Command` for the valgrind benchmark should be executed.
+///
+/// The default configuration is created with [`Command::new`] providing a path to an executable.
 /// Adding a crate's binary is usually done with `env!("CARGO_BIN_EXE_<name>")` where `<name>` is
-/// the name of the binary.
+/// the name of the binary. The builder methods allow the configuration to be changed prior to
+/// [`Command::build`]. The [`Command`] can be reused to build multiple processes.
+///
+/// # Examples
 ///
 /// Suppose your crate's binary is called `my-echo`:
 ///
@@ -166,7 +171,13 @@ pub struct BinaryBenchmark {
 /// ```
 ///
 /// However, an iai-callgrind benchmark is not limited to a crate's binaries, it can be any
-/// executable in the `$PATH`, or a absolute path to a binary.
+/// executable in the `$PATH`, or a absolute path to a binary. The following will create a `Command`
+/// for the system's `echo` from the `$PATH`:
+///
+/// ```rust
+/// use iai_callgrind::Command;
+/// let command = Command::new("echo");
+/// ```
 #[derive(Debug, Default, Clone, PartialEq, IntoInner, AsRef)]
 pub struct Command(internal::InternalCommand);
 
@@ -1551,26 +1562,16 @@ impl BinaryBenchmarkGroup {
     }
 }
 
-/// Provide the [`Command`] to be benchmarked
-///
-/// This is a builder for [`std::process::Command`]. As opposed to [`std::process::Command`] there
-/// is no option to execute this command immediately. Instead, we collect all commands in this
-/// benchmark file and execute them later.
-///
-/// The default configuration is created with [`Command::new`]. The builder methods allow the
-/// configuration to be changed prior to [`Command::build`]. The [`Command`] can be reused to build
-/// multiple processes. However, this is only possible with the [low level
-/// api](crate::binary_benchmark_group)
 impl Command {
     /// Create a new [`Command`] which is run under valgrind.
     ///
     /// Use
     /// [`env!("CARGO_BIN_EXE_<name>)`](https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-crates)
     /// to provide the path to an executable of your project instead of `target/release/<name>`.
-    /// This command is a builder for a [`std::process::Command`] and is not executed right away. We
-    /// simply gather all the information to be finally able to execute the command under valgrind,
-    /// later (after we collected all the commands in this benchmark file). As opposed to
-    /// [`std::process::Command`], the build is finalized with [`Command::build`].
+    /// This `Command` is a builder for the binary which is going to be benchmarked but is not
+    /// executed right away. We simply gather all the information to be finally able to execute the
+    /// command under valgrind, later (after we collected all the commands in this benchmark file).
+    /// As opposed to [`std::process::Command`], the build is finalized with [`Command::build`].
     ///
     /// # Relative paths
     ///
@@ -2216,6 +2217,34 @@ impl Sandbox {
     /// The paths are interpreted relative to the workspace root as it is reported by `cargo`. In a
     /// multi-crate project this is the directory with the top-level `Cargo.toml`. Otherwise, it is
     /// simply the directory with your `Cargo.toml` file in it.
+    ///
+    /// # Examples
+    ///
+    /// Assuming you crate's binary is called `my-foo` taking a file path as the first argument and
+    /// the fixtures directory is `$WORKSPACE_ROOT/benches/fixtures` containing a fixture
+    /// `fix_1.txt`:
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    /// # use iai_callgrind::{binary_benchmark_group, main};
+    /// use iai_callgrind::{binary_benchmark, BinaryBenchmarkConfig, Sandbox};
+    ///
+    /// #[binary_benchmark]
+    /// #[bench::fix_1(
+    ///      args = ("fix_1.txt"),
+    ///      config = BinaryBenchmarkConfig::default()
+    ///          .sandbox(Sandbox::new(true)
+    ///              .fixtures(["benches/fixtures/fix_1.txt"])
+    ///         )
+    /// )]
+    /// fn bench_with_fixtures(path: &str) -> iai_callgrind::Command {
+    ///     iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+    ///         .arg(path)
+    ///         .build()
+    /// }
+    /// # binary_benchmark_group!(name = my_group; benchmarks = bench_with_fixtures);
+    /// # fn main() { main!(binary_benchmark_groups = my_group); }
+    /// ```
     pub fn fixtures<I, T>(&mut self, paths: T) -> &mut Self
     where
         I: Into<PathBuf>,
