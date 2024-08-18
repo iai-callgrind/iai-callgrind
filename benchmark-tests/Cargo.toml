@@ -64,6 +64,10 @@ path = "src/helper/pipe.rs"
 name = "env"
 path = "src/helper/env.rs"
 
+[[bin]]
+name = "exit-with"
+path = "src/helper/exit-with.rs"
+
 [[bench]]
 harness = false
 path = "benches/test_bin_bench/setup_and_teardown/test_bin_bench_setup_and_teardown.rs"

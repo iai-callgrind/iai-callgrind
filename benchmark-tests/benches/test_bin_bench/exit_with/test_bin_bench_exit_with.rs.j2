@@ -1,0 +1,22 @@
+use iai_callgrind::{
+  binary_benchmark, binary_benchmark_group, main, ExitWith, BinaryBenchmarkConfig
+};
+
+#[binary_benchmark]
+#[bench::exit_with({{ exit_with }})]
+fn bench_exit_with(exit_with: ExitWith) -> iai_callgrind::Command {
+    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_exit-with"))
+        .arg("{{ exit_code }}")
+        .exit_with(exit_with)
+        .build()
+}
+
+binary_benchmark_group!(
+    name = my_group;
+    benchmarks = bench_exit_with
+);
+
+main!(
+     config = BinaryBenchmarkConfig::default().truncate_description(None);
+     binary_benchmark_groups = my_group
+);
