@@ -1,0 +1,19 @@
+[book]
+authors = ["gamma0987"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Iai-Callgrind Documentation"
+description = "Iai-Callgrind, a high-precision and consistent one-shot benchmarking framework/harness for Rust"
+
+[rust]
+edition = "2021"
+
+[build]
+build-dir = "book/0.12.3"
+
+[output.html]
+git-repository-url = "https://github.com/iai-callgrind/iai-callgrind"
+edit-url-template = "https://github.com/iai-callgrind/iai-callgrind/master/docs/{path}"
+additional-css = ["css/dropdown.css"]
+additional-js = ["js/dropdown.js"]
