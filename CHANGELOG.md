@@ -22,19 +22,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### [0.13.0] - 2024-08-19
+
 !!! __IMPORTANT__ The default to run binary benchmarks in a sandbox has been
 changed from `true` to `false`. The `setup` and `teardown` of the
 `binary_benchmark_group!` are not executed in the sandbox anymore !!!
 
-The way to set up binary benchmarks has completely changed and was rewritten
-from scratch! The api for binary and library benchmarks is now consistent and
-most features from library benchmarks which were missing for binary benchmarks
-are now available in binary benchmarks, too. For example comparison of
-benchmarks by id. If you are using library benchmarks but not binary benchmarks,
-this release doesn't change much. There are no breaking changes for library
-benchmarks and you can jump right to the changes section of this release.
-Otherwise, here's a small introduction to the new api and the changes for binary
-benchmarks.
+The way to set up binary benchmarks has completely changed and has been
+rewritten from scratch! The api for binary and library benchmarks is now
+consistent and most features from library benchmarks which were missing for
+binary benchmarks are now available in binary benchmarks, too. For example
+comparison of benchmarks by id. If you are using library benchmarks but not
+binary benchmarks, this release doesn't change much. There are no breaking
+changes for library benchmarks and you can jump right to the changes section of
+this release. Otherwise, here's a small introduction to the new api and the
+changes for binary benchmarks.
 
 There are a lot of advantages for you and honestly for us, too, because we don't
 have to maintain two completely different apis. Binary benchmarks and library
@@ -138,9 +140,8 @@ library benchmarks have been marked specifically.
   description is to show the context in which the benchmark is executed. In the
   case of a very large input and gigabytes of data, the description was trimmed
   very late in the `iai-callgrind-runner` and kept in memory for a rather long
-  time. A hard limit of 5000 bytes very early in `iai-callgrind-macros`
-  drastically reduces memory usage without destroying the purpose of the
-  description.
+  time. A hard limit of 5000 bytes very early in `iai-callgrind-macros` reduces
+  memory usage without destroying the purpose of the description.
 * `binary_benchmark_group!` macro: The `compare_by_id` argument has been added
   and works the same way as the `compare_by_id` argument in the
   `library_benchmark_group`.
