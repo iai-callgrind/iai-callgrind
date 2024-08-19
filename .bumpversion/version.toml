@@ -1,6 +1,6 @@
 [tool.bumpversion]
 commit = true
-current_version = "0.12.3"
+current_version = "0.13.0"
 message = "Bump version v{current_version} -> v{new_version}"
 
 [[tool.bumpversion.files]]
