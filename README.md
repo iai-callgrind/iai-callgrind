@@ -200,10 +200,15 @@ simulation turned on (`--cache-sim=yes`) in order to calculate an estimation for
 the total cpu cycles. See also the [Metrics Output](#rework-the-metrics-output)
 section for more infos. However, if you want to opt-out of the cache simulation
 and the calculation of estimated cycles, you can easily do so within the
-benchmark with the `LibraryBenchmarkConfig` (or `BinaryBenchmarkConfig`):
+benchmark with the `LibraryBenchmarkConfig` (or `BinaryBenchmarkConfig`).
 
 ```rust
-LibraryBenchmarkConfig::default().raw_callgrind_args(["--cache-sim=no"])
+use iai_callgrind::{LibraryBenchmarkConfig, main};
+/* library benchmarks and groups */
+main!(
+    config = LibraryBenchmarkConfig::default().raw_callgrind_args(["--cache-sim=no"]);
+    library_benchmark_groups = /* ... */
+);
 ```
 
 in the cli with environment variables
@@ -279,8 +284,10 @@ setup code within the benchmark function eliminating the need to pass `toggle-co
 callgrind:
 
 ```rust
+/* ... */
+
 fn some_setup_func(value: u64) -> u64 {
-    value
+    value + 10
 }
 
 #[library_benchmark]
@@ -288,6 +295,8 @@ fn some_setup_func(value: u64) -> u64 {
 fn bench_fibonacci(value: u64) -> u64 {
     black_box(fibonacci(value))
 }
+
+/* ... */
 ```
 
 Now, you can run this benchmark with `cargo bench --bench my_benchmark` in your project root and you
@@ -339,6 +348,8 @@ This attribute needs to be present on all benchmark functions specified in the
 with the `#[bench]` or `#[benches]` attributes.
 
 ```rust
+use iai_callgrind::{library_benchmark, library_benchmark_group};
+
 #[library_benchmark]
 #[bench::first(21)]
 fn my_bench(value: u64) -> u64 {
@@ -359,6 +370,8 @@ The following parameters are accepted:
 A short example on the usage of the `setup` parameter:
 
 ```rust
+use iai_callgrind::library_benchmark;
+
 fn my_setup(value: u64) -> String {
      format!("{value}")
 }
@@ -382,6 +395,9 @@ function, and `last` uses `my_other_setup`.
 And a short example of the `teardown` parameter:
 
 ```rust
+use iai_callgrind::library_benchmark;
+use std::hint::black_box;
+
 fn my_teardown(value: usize) {
      println!("The length of the input string was: {value}");
 }
@@ -435,6 +451,10 @@ arguments.
 Let's start with an example:
 
 ```rust
+use iai_callgrind::library_benchmark;
+use std::hint::black_box;
+use my_lib::bubble_sort;
+
 fn setup_worst_case_array(start: i32) -> Vec<i32> {
     if start.is_negative() {
         (start..0).rev().collect()
@@ -457,6 +477,10 @@ can be seen in the `#[benches::multiple(...)]` case. In
 instead. The above `#[library_benchmark]` is pretty much the same as
 
 ```rust
+use iai_callgrind::library_benchmark;
+use std::hint::black_box;
+use my_lib::bubble_sort;
+
 #[library_benchmark]
 #[bench::multiple_0(vec![1])]
 #[bench::multiple_1(vec![5])]
@@ -485,21 +509,31 @@ paths are interpreted to the workspace root) with the following content
 then
 
 ```rust
+use iai_callgrind::library_benchmark;
+use std::hint::black_box;
+
 #[library_benchmark]
 #[benches::by_file(file = "benches/inputs")]
-fn some_bench(line: String) -> Result<u64> {
+fn some_bench(line: String) -> Result<u64, String> {
     black_box(my_lib::string_to_u64(line))
 }
+
+/* ... */
 ```
 
 The above is roughly equivalent to the following but with the `args` parameter
 
 ```rust
+use iai_callgrind::library_benchmark;
+use std::hint::black_box;
+
 #[library_benchmark]
 #[benches::by_file(args = [1.to_string(), 11.to_string(), 111.to_string()])]
-fn some_bench(line: String) -> Result<u64> {
+fn some_bench(line: String) -> Result<u64, String> {
     black_box(my_lib::string_to_u64(line))
 }
+
+/* ... */
 ```
 
 Reading inputs from a file allows for example sharing the same inputs between
@@ -543,6 +577,10 @@ example, the `case_3` and `multiple` bench are compared with each other in
 addition to the usual comparison with the previous run:
 
 ```rust
+use iai_callgrind::{library_benchmark, library_benchmark_group};
+use std::hint::black_box;
+use my_lib::bubble_sort;
+
 #[library_benchmark]
 #[bench::case_3(vec![1, 2, 3])]
 #[benches::multiple(args = [vec![1, 2], vec![1, 2, 3, 4]])]
@@ -619,35 +657,43 @@ It's possible to configure some of the behavior of `iai-callgrind`. See the
 `main!` macro:
 
 ```rust
+use iai_callgrind::{main, LibraryBenchmarkConfig};
+
 main!(
     config = LibraryBenchmarkConfig::default();
-    library_benchmark_groups = ...
+    library_benchmark_groups = /* ... */
 );
 ```
 
 At group-level:
 
 ```rust
-library_benchmark_groups!(
+use iai_callgrind::{library_benchmark_group, LibraryBenchmarkConfig};
+
+library_benchmark_group!(
     name = some_name;
     config = LibraryBenchmarkConfig::default();
-    benchmarks = ...
+    benchmarks = /* ... */
 );
 ```
 
 At `library_benchmark` level:
 
 ```rust
+use iai_callgrind::{library_benchmark, LibraryBenchmarkConfig};
+
 #[library_benchmark(config = LibraryBenchmarkConfig::default())]
-...
+/* ... */
 ```
 
 and at `bench` level:
 
 ```rust
+use iai_callgrind::{library_benchmark, LibraryBenchmarkConfig};
+
 #[library_benchmark]
-#[bench::some_id(args = (1, 2), config = LibraryBenchmarkConfig::default()]
-...
+#[bench::some_id(args = (1, 2), config = LibraryBenchmarkConfig::default())]
+/* ... */
 ```
 
 The config at `bench` level overwrites the config at `library_benchmark` level. The config at
@@ -1035,6 +1081,8 @@ Benchmark](#library-benchmarks), let's overwrite the default limit with a global
 limit of `+5%` for the total instructions executed (the `Ir` event kind):
 
 ```rust
+use iai_callgrind::{main, LibraryBenchmarkConfig, RegressionConfig, EventKind};
+/* library benchmarks and groups */
 main!(
     config = LibraryBenchmarkConfig::default()
         .regression(
@@ -1088,7 +1136,9 @@ set, so if there are any errors, the benchmark run fails with `201`. You can
 overwrite this default with
 
 ```rust
-Tool::new(ValgrindTool::Memcheck).args("--error-exitcode=0")
+use iai_callgrind::{Tool, ValgrindTool};
+
+Tool::new(ValgrindTool::Memcheck).args(["--error-exitcode=0"]);
 ```
 
 which would restore the default of `0` from valgrind.
@@ -1253,12 +1303,12 @@ benchmark file name is `bench_file` in the package `my_package`:
 
 ```rust
 use iai_callgrind::{main, library_benchmark_group, library_benchmark};
-use my_lib::my_function;
+use my_lib::some_function;
 
 #[library_benchmark]
 #[bench::short(10)]
 fn bench_function(value: u64) -> u64 {
-    my_function(value)
+    some_function(value)
 }
 
 library_benchmark_group!(
@@ -1334,7 +1384,7 @@ fn to_be_benchmarked(value: u64) -> u64 {
 }
 
 #[library_benchmark]
-#[bench::some_id(args = (10), teardown = my_teardown]
+#[bench::some_id(args = (10), teardown = my_teardown)]
 fn my_bench(value: u64) -> u64 {
     to_be_benchmarked(value)
 }
