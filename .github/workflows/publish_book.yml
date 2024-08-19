@@ -1,0 +1,43 @@
+name: github pages
+
+on:
+  push:
+    branches:
+      - mdbook
+      - main
+    tags:
+      - "v*"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-22.04
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./docs
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup mdBook
+        uses: peaceiris/actions-mdbook@v2
+        with:
+          mdbook-version: "0.4.10"
+
+      - name: Build the book
+        run: mdbook build
+      - name: Create link to latest
+        run: |
+          cd book
+          latest=$(find -maxdepth 1 -type d -printf '%f\n' | grep -E '^\./[0-9]+.*$' | sort -V | tail -1)
+          ln -sf "$latest" latest
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        # if: ${{ github.ref == 'refs/heads/main' }}
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/book
+          keep_files: true
