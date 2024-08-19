@@ -41,46 +41,51 @@ changes for binary benchmarks.
 There are a lot of advantages for you and honestly for us, too, because we don't
 have to maintain two completely different apis. Binary benchmarks and library
 benchmarks can now be written in a similar fashion what makes writing benchmarks
-for a crate's binaries just easier and faster.  No need to learn a completely
+for a crate's binaries just easier and faster. No need to learn a completely
 different api if you already used library benchmarks and vice versa! Also, the
 feature set between library benchmarks and binary benchmarks diverged over time.
 For example comparison by id of benchmarks within the same group was available
 in library benchmarks via the `library_benchmark_group!` macro but not in binary
-benchmarks! Such differences are gone, now. Also, if you find out the new
+benchmarks. Such differences are gone, now. Also, if you find out the new
 `#[binary_attribute]` does not provide you with the same power as the old
 builder api, you can still use a low level api and can even intermix the two
 styles. The new low level api is more intuitive than the old builder api, just
 more powerful and mirrors the `binary_benchmark` attribute as much as possible.
 
-For example,
+For example if the crate's binary is named `my-binary`:
 
 ```rust
+use iai_callgrind::{binary_benchmark, binary_benchmark_group};
+
 #[binary_benchmark]
 #[bench::some_id("foo")]
-fn benchmark_echo(arg: &str) -> iai_callgrind::Command {
-    iai_callgrind::Command::new("/usr/bin/echo")
+fn bench_binary(arg: &str) -> iai_callgrind::Command {
+    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-binary"))
         .arg(arg)
         .build()
 }
 
 binary_benchmark_group!(
     name = some_group;
-    benchmarks = benchmark_echo
+    benchmarks = bench_binary
 );
 ```
 
 can also be written with the low level api
 
 ```rust
+use iai_callgrind::{binary_benchmark_group, BinaryBenchmark, Bench};
+
 binary_benchmark_group!(
     name = low_level;
     benchmarks = |group: &mut BinaryBenchmarkGroup| {
         group
             .binary_benchmark(
-                BinaryBenchmark::new("benchmark_echo")
+                BinaryBenchmark::new("bench_binary")
                     .bench(
                         Bench::new("some_id").command(
-                            iai_callgrind::Command::new("/usr/bin/echo").arg("foo")
+                            iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-binary"))
+                                .arg("foo")
                         )
                     )
             )
@@ -96,12 +101,16 @@ its limits, you can intermix both styles and switch to the low level api in a
 few steps:
 
 ```rust
+use iai_callgrind::{
+     binary_benchmark, binary_benchmark_attribute, binary_benchmark_group, BinaryBenchmark, Bench
+};
+
 // No need to translate this into the low level api. Just keep it as it is and
 // have a look at the usage of the `binary_benchmark_attribute!` macro below
 #[binary_benchmark]
 #[bench::some_id("foo")]
-fn attribute_benchmark_echo(arg: &str) -> iai_callgrind::Command {
-    iai_callgrind::Command::new("/usr/bin/echo")
+fn attribute_benchmark(arg: &str) -> iai_callgrind::Command {
+    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-binary"))
         .arg(arg)
         .build()
 }
@@ -110,16 +119,18 @@ binary_benchmark_group!(
     name = low_level;
     benchmarks = |group: &mut BinaryBenchmarkGroup| {
         group
-            // Add a benchmark function annotated with the #[binary_benchmark]
-            // attribute with the `binary_benchmark_attribute!` macro
-            .binary_benchmark(binary_benchmark_attribute!(attribute_benchmark_echo))
+            // Add the benchmark function `attribute_benchmark` annotated with the
+            // #[binary_benchmark] attribute with the `binary_benchmark_attribute!` macro
+            .binary_benchmark(binary_benchmark_attribute!(attribute_benchmark))
             // For the sake of simplicity, assume this would be the benchmark you
             // were not able to setup with the attribute
             .binary_benchmark(
-                BinaryBenchmark::new("low_level_benchmark_echo")
+                BinaryBenchmark::new("low_level_benchmark")
                     .bench(
                         Bench::new("some_id").command(
-                            iai_callgrind::Command::new("/usr/bin/echo").arg("foo")
+                            iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-binary"))
+                                .arg("bar")
+                                .build()
                         )
                     )
             )
