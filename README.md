@@ -29,7 +29,7 @@ Iai-Callgrind is a benchmarking framework/harness which primarily uses
 [Valgrind's Callgrind](https://valgrind.org/docs/manual/cl-manual.html) and the
 other Valgrind tools to provide extremely accurate and consistent measurements
 of Rust code, making it perfectly suited to run in environments like a CI. Also,
-Iai-Callgrind is supported by
+Iai-Callgrind is integrated in
 [Bencher](https://bencher.dev/learn/benchmarking/rust/iai/).
 
 This crate started as a fork of the great [Iai](https://github.com/bheisler/iai)
@@ -103,20 +103,20 @@ To start with Iai-Callgrind, add the following to your `Cargo.toml` file:
 
 ```toml
 [dev-dependencies]
-iai-callgrind = "0.12.3"
+iai-callgrind = "0.13.0"
 ```
 
 To be able to run the benchmarks you'll also need the `iai-callgrind-runner` binary installed
 somewhere in your `$PATH`, for example with
 
 ```shell
-cargo install --version 0.12.3 iai-callgrind-runner
+cargo install --version 0.13.0 iai-callgrind-runner
 ```
 
 or with `binstall`
 
 ```shell
-cargo binstall iai-callgrind-runner@0.12.3
+cargo binstall iai-callgrind-runner@0.13.0
 ```
 
 There's also the possibility to install the binary somewhere else and point the
@@ -124,7 +124,7 @@ There's also the possibility to install the binary somewhere else and point the
 binary like so:
 
 ```shell
-cargo install --version 0.12.3 --root /tmp iai-callgrind-runner
+cargo install --version 0.13.0 --root /tmp iai-callgrind-runner
 IAI_CALLGRIND_RUNNER=/tmp/bin/iai-callgrind-runner cargo bench --bench my-bench
 ```
 
@@ -167,7 +167,7 @@ sections.
 
 For a quickstart and examples of benchmarking libraries see the [Library Benchmark
 Section](#library-benchmarks) and for executables see the [Binary Benchmark
-Section](#binary-benchmarks). Read the [docs]!
+Section](#binary-benchmarks). Read the [`docs`]!
 
 As mentioned in above in the `Installation` section, it's required to run the
 benchmarks with debugging symbols switched on. For example in your
@@ -200,10 +200,15 @@ simulation turned on (`--cache-sim=yes`) in order to calculate an estimation for
 the total cpu cycles. See also the [Metrics Output](#rework-the-metrics-output)
 section for more infos. However, if you want to opt-out of the cache simulation
 and the calculation of estimated cycles, you can easily do so within the
-benchmark with the `LibraryBenchmarkConfig` (or `BinaryBenchmarkConfig`):
+benchmark with the `LibraryBenchmarkConfig` (or `BinaryBenchmarkConfig`).
 
 ```rust
-LibraryBenchmarkConfig::default().raw_callgrind_args(["--cache-sim=no"])
+use iai_callgrind::{LibraryBenchmarkConfig, main};
+/* library benchmarks and groups */
+main!(
+    config = LibraryBenchmarkConfig::default().raw_callgrind_args(["--cache-sim=no"]);
+    library_benchmark_groups = /* ... */
+);
 ```
 
 in the cli with environment variables
@@ -279,8 +284,10 @@ setup code within the benchmark function eliminating the need to pass `toggle-co
 callgrind:
 
 ```rust
+/* ... */
+
 fn some_setup_func(value: u64) -> u64 {
-    value
+    value + 10
 }
 
 #[library_benchmark]
@@ -288,6 +295,8 @@ fn some_setup_func(value: u64) -> u64 {
 fn bench_fibonacci(value: u64) -> u64 {
     black_box(fibonacci(value))
 }
+
+/* ... */
 ```
 
 Now, you can run this benchmark with `cargo bench --bench my_benchmark` in your project root and you
@@ -339,6 +348,8 @@ This attribute needs to be present on all benchmark functions specified in the
 with the `#[bench]` or `#[benches]` attributes.
 
 ```rust
+use iai_callgrind::{library_benchmark, library_benchmark_group};
+
 #[library_benchmark]
 #[bench::first(21)]
 fn my_bench(value: u64) -> u64 {
@@ -359,6 +370,8 @@ The following parameters are accepted:
 A short example on the usage of the `setup` parameter:
 
 ```rust
+use iai_callgrind::library_benchmark;
+
 fn my_setup(value: u64) -> String {
      format!("{value}")
 }
@@ -382,6 +395,9 @@ function, and `last` uses `my_other_setup`.
 And a short example of the `teardown` parameter:
 
 ```rust
+use iai_callgrind::library_benchmark;
+use std::hint::black_box;
+
 fn my_teardown(value: usize) {
      println!("The length of the input string was: {value}");
 }
@@ -435,6 +451,10 @@ arguments.
 Let's start with an example:
 
 ```rust
+use iai_callgrind::library_benchmark;
+use std::hint::black_box;
+use my_lib::bubble_sort;
+
 fn setup_worst_case_array(start: i32) -> Vec<i32> {
     if start.is_negative() {
         (start..0).rev().collect()
@@ -457,6 +477,10 @@ can be seen in the `#[benches::multiple(...)]` case. In
 instead. The above `#[library_benchmark]` is pretty much the same as
 
 ```rust
+use iai_callgrind::library_benchmark;
+use std::hint::black_box;
+use my_lib::bubble_sort;
+
 #[library_benchmark]
 #[bench::multiple_0(vec![1])]
 #[bench::multiple_1(vec![5])]
@@ -485,21 +509,31 @@ paths are interpreted to the workspace root) with the following content
 then
 
 ```rust
+use iai_callgrind::library_benchmark;
+use std::hint::black_box;
+
 #[library_benchmark]
 #[benches::by_file(file = "benches/inputs")]
-fn some_bench(line: String) -> Result<u64> {
+fn some_bench(line: String) -> Result<u64, String> {
     black_box(my_lib::string_to_u64(line))
 }
+
+/* ... */
 ```
 
 The above is roughly equivalent to the following but with the `args` parameter
 
 ```rust
+use iai_callgrind::library_benchmark;
+use std::hint::black_box;
+
 #[library_benchmark]
 #[benches::by_file(args = [1.to_string(), 11.to_string(), 111.to_string()])]
-fn some_bench(line: String) -> Result<u64> {
+fn some_bench(line: String) -> Result<u64, String> {
     black_box(my_lib::string_to_u64(line))
 }
+
+/* ... */
 ```
 
 Reading inputs from a file allows for example sharing the same inputs between
@@ -543,6 +577,10 @@ example, the `case_3` and `multiple` bench are compared with each other in
 addition to the usual comparison with the previous run:
 
 ```rust
+use iai_callgrind::{library_benchmark, library_benchmark_group};
+use std::hint::black_box;
+use my_lib::bubble_sort;
+
 #[library_benchmark]
 #[bench::case_3(vec![1, 2, 3])]
 #[benches::multiple(args = [vec![1, 2], vec![1, 2, 3, 4]])]
@@ -612,68 +650,75 @@ Neither the order nor the amount of benches within the benchmark functions
 matters, so it is not strictly necessary to mirror the bench ids of the first
 benchmark function in the second, third, etc. benchmark function.
 
-##### Examples
-
-For a fully documented and working benchmark see the
-[test_lib_bench_groups](benchmark-tests/benches/test_lib_bench_groups.rs) benchmark file and read
-the [`library documentation`]!
-
 ##### Configuration
 
-It's possible to configure some of the behavior of `iai-callgrind`. See the [docs] of
-`LibraryBenchmarkConfig` for more details. At top-level with the `main!` macro:
+It's possible to configure some of the behavior of `iai-callgrind`. See the
+[`docs`] of `LibraryBenchmarkConfig` for more details. At top-level with the
+`main!` macro:
 
 ```rust
+use iai_callgrind::{main, LibraryBenchmarkConfig};
+
 main!(
     config = LibraryBenchmarkConfig::default();
-    library_benchmark_groups = ...
+    library_benchmark_groups = /* ... */
 );
 ```
 
 At group-level:
 
 ```rust
-library_benchmark_groups!(
+use iai_callgrind::{library_benchmark_group, LibraryBenchmarkConfig};
+
+library_benchmark_group!(
     name = some_name;
     config = LibraryBenchmarkConfig::default();
-    benchmarks = ...
+    benchmarks = /* ... */
 );
 ```
 
 At `library_benchmark` level:
 
 ```rust
+use iai_callgrind::{library_benchmark, LibraryBenchmarkConfig};
+
 #[library_benchmark(config = LibraryBenchmarkConfig::default())]
-...
+/* ... */
 ```
 
 and at `bench` level:
 
 ```rust
+use iai_callgrind::{library_benchmark, LibraryBenchmarkConfig};
+
 #[library_benchmark]
-#[bench::some_id(args = (1, 2), config = LibraryBenchmarkConfig::default()]
-...
+#[bench::some_id(args = (1, 2), config = LibraryBenchmarkConfig::default())]
+/* ... */
 ```
 
 The config at `bench` level overwrites the config at `library_benchmark` level. The config at
 `library_benchmark` level overwrites the config at group level and so on. Note that configuration
 values like `envs` are additive and don't overwrite configuration values of higher levels.
 
-### Binary Benchmarks
+##### Examples
+
+For a fully documented and working benchmark see the
+[test_lib_bench_groups](benchmark-tests/benches/test_lib_bench/groups/test_lib_bench_groups.rs)
+benchmark file and read the [`library documentation`]!
+
+#### Binary Benchmarks
 
 Use this scheme to benchmark one or more binaries of your crate or any binary
 installed on your system. The api for setting up binary benchmarks is almost
 equivalent to library benchmarks. This section focuses on the differences. For
 the basics see [Library Benchmarks](#library-benchmarks).
 
-#### Important default behavior
+##### Important default behavior
 
 As in library benchmarks, the environment variables of benchmarked binaries are
 cleared before the benchmark is run. See also [Environment
-variables](#command-line-arguments-and-environment-variables) for how to pass environment variables to the
-benchmarked binary.
-
-#### Differences to library benchmarks
+variables](#command-line-arguments-and-environment-variables) for how to pass
+environment variables to the benchmarked binary.
 
 ##### Quickstart
 
@@ -723,8 +768,7 @@ main!(binary_benchmark_groups = my_group);
 ```
 
 We're not going into the details of the low-level api here because it is fully
-documented in the [`library_documentation`] and basically mirrors the high-level
-api.
+documented in the [`docs`] and basically mirrors the high-level api.
 
 Coming from library benchmarks, the names with `library` in it change to the
 same name but `library` with `binary` replaced, so the `#[library_benchmark]`
@@ -1015,9 +1059,10 @@ fn bench_binary() -> iai_callgrind::Command {
 // ... binary_benchmark_group! and main!
 ```
 
-#### Examples
+##### Examples
 
-See the [test_bin_bench_intro](benchmark-tests/benches/test_bin_bench_intro.rs)
+See the
+[test_bin_bench_intro](benchmark-tests/benches/test_bin_bench/intro/test_bin_bench_intro.rs)
 benchmark file of this project for a working and fully documentation example.
 
 ### Performance Regressions
@@ -1036,6 +1081,8 @@ Benchmark](#library-benchmarks), let's overwrite the default limit with a global
 limit of `+5%` for the total instructions executed (the `Ir` event kind):
 
 ```rust
+use iai_callgrind::{main, LibraryBenchmarkConfig, RegressionConfig, EventKind};
+/* library benchmarks and groups */
 main!(
     config = LibraryBenchmarkConfig::default()
         .regression(
@@ -1049,7 +1096,7 @@ main!(
 For example [SQLite](https://sqlite.org/cpu.html#performance_measurement) uses
 mainly cpu instructions to measure performance improvements (and regressions).
 
-For more details on regression checks consult the iai-callgrind [docs].
+For more details on regression checks consult the iai-callgrind [`docs`].
 
 ### Valgrind Tools
 
@@ -1089,7 +1136,9 @@ set, so if there are any errors, the benchmark run fails with `201`. You can
 overwrite this default with
 
 ```rust
-Tool::new(ValgrindTool::Memcheck).args("--error-exitcode=0")
+use iai_callgrind::{Tool, ValgrindTool};
+
+Tool::new(ValgrindTool::Memcheck).args(["--error-exitcode=0"]);
 ```
 
 which would restore the default of `0` from valgrind.
@@ -1109,7 +1158,7 @@ Client requests are deactivated by default but can be activated with the
 
 ```toml
 [dev-dependencies]
-iai-callgrind = { version = "0.12.3", features = ["client_requests"] }
+iai-callgrind = { version = "0.13.0", features = ["client_requests"] }
 ```
 
 If you need the client requests in your production code, you usually don't want
@@ -1120,12 +1169,12 @@ benchmarks. You can achieve that by adding `iai-callgrind` with the
 
 ```toml
 [dependencies]
-iai-callgrind = { version = "0.12.3", default-features = false, features = [
+iai-callgrind = { version = "0.13.0", default-features = false, features = [
     "client_requests_defs"
 ] }
 
 [dev-dependencies]
-iai-callgrind = { version = "0.12.3", features = ["client_requests"] }
+iai-callgrind = { version = "0.13.0", features = ["client_requests"] }
 ```
 
 With just the `client_requests_defs` feature activated, the client requests
@@ -1163,7 +1212,7 @@ path would be `IAI_CALLGRIND_VALGRIND_INCLUDE=/home/foo/repo` (not
 `/home/foo/repo/valgrind`)
 
 This was just a small introduction, please see the
-[docs](https://docs.rs/iai-callgrind/0.12.3/iai_callgrind/client_requests) for
+[`docs`](https://docs.rs/iai-callgrind/0.13.0/iai_callgrind/client_requests) for
 more details!
 
 ### Flamegraphs
@@ -1254,12 +1303,12 @@ benchmark file name is `bench_file` in the package `my_package`:
 
 ```rust
 use iai_callgrind::{main, library_benchmark_group, library_benchmark};
-use my_lib::my_function;
+use my_lib::some_function;
 
 #[library_benchmark]
 #[bench::short(10)]
 fn bench_function(value: u64) -> u64 {
-    my_function(value)
+    some_function(value)
 }
 
 library_benchmark_group!(
@@ -1335,7 +1384,7 @@ fn to_be_benchmarked(value: u64) -> u64 {
 }
 
 #[library_benchmark]
-#[bench::some_id(args = (10), teardown = my_teardown]
+#[bench::some_id(args = (10), teardown = my_teardown)]
 fn my_bench(value: u64) -> u64 {
     to_be_benchmarked(value)
 }
@@ -1522,6 +1571,10 @@ corresponding environment variable.
 A guideline about contributing to iai-callgrind can be found in the
 [CONTRIBUTING.md](./CONTRIBUTING.md) file.
 
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you shall be dual licensed as in
+[License](#license), without any additional terms or conditions.
+
 ### See also
 
 - Iai-Callgrind is [mentioned](https://youtu.be/qfknfCsICUM?t=1228) in a talk at
@@ -1552,5 +1605,5 @@ about license incompatibility.
 We have included the original license where we make use of the original header
 files.
 
-[`library documentation`]: https://docs.rs/iai-callgrind/0.12.3/iai_callgrind/
-[docs]: https://docs.rs/iai-callgrind/0.12.3/iai_callgrind/
+[`library documentation`]: https://docs.rs/iai-callgrind/0.13.0/iai_callgrind/
+[`docs`]: https://docs.rs/iai-callgrind/0.13.0/iai_callgrind/
