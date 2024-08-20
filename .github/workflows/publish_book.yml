@@ -35,7 +35,7 @@ jobs:
         run: |
           ls -la book
           cd book
-          latest=$(find -maxdepth 1 -type d -printf '%f\n' | grep -E '^\./[0-9]+.*$' | sort -V | tail -1)
+          latest=$(find -maxdepth 1 -type d -printf '%f\n' | grep -E '^[0-9]+.*$' | sort -V | tail -1)
           ln -sf "$latest" latest
 
       - name: Deploy
