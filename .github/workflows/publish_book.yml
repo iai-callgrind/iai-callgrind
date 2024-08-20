@@ -18,7 +18,7 @@ jobs:
         shell: bash
         working-directory: ./docs
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Setup mdBook
@@ -27,15 +27,19 @@ jobs:
           mdbook-version: "0.4.40"
 
       - name: Build the book
-        run: mdbook build
+        run: |
+          mdbook --version
+          mdbook build
+
       - name: Create link to latest
         run: |
+          ls -la book
           cd book
           latest=$(find -maxdepth 1 -type d -printf '%f\n' | grep -E '^\./[0-9]+.*$' | sort -V | tail -1)
           ln -sf "$latest" latest
 
       - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         # if: ${{ github.ref == 'refs/heads/main' }}
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
