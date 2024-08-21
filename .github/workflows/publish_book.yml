@@ -54,5 +54,8 @@ jobs:
           rm -rf ./latest
           ln -s "$latest" latest
           git add .
-          git commit -m "docs(book): Create link to latest version ${latest}"
-          git push
+
+          if ! git status -uno | grep 'nothing to commit'; then
+            git commit -m "docs(book): Create link to latest version ${latest}"
+            git push
+          fi
