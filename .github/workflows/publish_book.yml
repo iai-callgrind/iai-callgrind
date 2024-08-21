@@ -18,7 +18,6 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: ./docs
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -32,13 +31,7 @@ jobs:
         run: |
           mdbook --version
           mdbook build
-
-      - name: Create link to latest
-        run: |
-          ls -la book
-          cd book
-          latest=$(find -maxdepth 1 -type d -printf '%f\n' | grep -E '^[0-9]+.*$' | sort -V | tail -1)
-          ln -sf "$latest" latest
+        working-directory: ./docs
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v4
@@ -47,3 +40,19 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/book
           keep_files: true
+
+      - name: Create/Overwrite link to latest on gh-pages branch
+        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/mdbook' }}
+        run: |
+          git config user.email "bot@publish_book"
+          git config user.name "bot@publish_book"
+
+          git fetch origin
+          git checkout gh-pages
+
+          latest=$(find -maxdepth 1 -type d -printf '%f\n' | grep -E '^[0-9]+.*$' | sort -V | tail -1)
+          rm -rf ./latest
+          ln -s "$latest" latest
+          git add .
+          git commit -m "docs(book): Create link to latest version ${latest}"
+          git push
