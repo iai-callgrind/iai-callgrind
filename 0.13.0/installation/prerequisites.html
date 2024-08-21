@@ -212,6 +212,15 @@ strip = true
 debug = true
 strip = false
 </code></pre>
+<h2 id="valgrind-client-requests"><a class="header" href="#valgrind-client-requests">Valgrind Client Requests</a></h2>
+<p>If you want to make use of the mighty <a href="https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq">Valgrind Client Request
+Mechanism</a>
+shipped with Iai-Callgrind, you also need <code>libclang</code> (clang &gt;= 5.0) installed.
+See also the requirements of
+<a href="https://rust-lang.github.io/rust-bindgen/requirements.html">bindgen</a>) and of
+<a href="https://github.com/rust-lang/cc-rs">cc</a>.</p>
+<p>More details on the usage and requirements of Valgrind Client Requests in
+<a href="../client_requests.html">this</a> chapter of the guide.</p>
 <h2 id="installation-of-valgrind"><a class="header" href="#installation-of-valgrind">Installation of Valgrind</a></h2>
 <p>Iai-Callgrind is intentionally independent from a specific version of valgrind.
 However, Iai-Callgrind was only tested with versions of valgrind &gt;= <code>3.20.0</code>. It
