@@ -93,6 +93,7 @@ gnuabi
 gnueabi
 gnueabihf
 grcov
+hljs
 ildmr
 ilmr
 iname
@@ -124,6 +125,7 @@ nocapture
 noninteractive
 nsec
 outfile
+pacman
 peaceiris
 pipefail
 posix
@@ -176,6 +178,7 @@ synchronisation
 syscount
 syscputime
 systime
+taiki
 taplo
 tempdir
 tempfile
@@ -192,6 +195,7 @@ valico
 valist
 vbits
 vgdb
+visualizable
 vulnaribility
 walkdir
 xchg
