@@ -147,7 +147,7 @@ install-checks:
 install-workspace: install-hooks install-toolchains show-tips install-checks
 
 # Build a package with the optional toolchain
-build package +toolchain="1.66.0":
+build package +toolchain=msrv:
     cargo +{{ toolchain }} build -p {{ package }} {{ if args != '' { args } else { '' } }}
 
 # Build iai-callgrind-runner
@@ -233,6 +233,9 @@ reqs-test target:
 minimal-versions:
     cargo minimal-versions check --workspace --all-targets --ignore-private --direct
 
+book-install:
+    if command -V cargo-binstall; then cargo binstall mdbook@0.4.40 mdbook-linkcheck; else cargo install mdbook@0.4.40 mdbook-linkcheck; fi
+
 # Run tests for the book. (Uses: `mdbook`, `RUSTUP_TOOLCHAIN=stable`)
 book-tests:
     # Avoid the error `multiple candidates for `rlib` dependency `iai_callgrind` found`
@@ -264,14 +267,35 @@ book-serve-github:
     mkdir "$serve_dir"
     cd "$serve_dir"
     ln -s "{{ book_build_dir }}" iai-callgrind
-    npx nodemon --delay 2.0 --ext 'js,html,css,png,svg,ttf,eot,woff,woff2,txt' --watch "{{ book_build_dir }}" --signal SIGINT --exec 'npx http-server -c-1 -a localhost -p 4000'
+    npx nodemon --delay 2.0 --ext 'js,html,css,png,svg,ttf,eot,woff,woff2,txt' --watch "{{ book_build_dir }}" --signal SIGINT --exec 'npx http-server -d false -c-1 -a localhost -p 4000'
 
 # Takes a path to the file with colored output of iai-callgrind and prints the resulting (colored) html for the book to `stdout`. (Uses: `npx ansi-to-html`)
 book-term-output path:
     #!/usr/bin/env -S sh -e
-    output=$(npx ansi-to-html -f#000 "{{ path }}" | head -c -1)
-    cat <<EOF
-    <pre>
-       <code class="hljs">${output}</code>
-    </pre>
-    EOF
+    output=$(npx ansi-to-html -f#000 "{{ path }}" | head -c -1 | sed 's/#5F5/#42c142/g')
+    echo "<pre><code class=\"hljs\">${output}</code></pre>"
+
+# Bump the iai-callgrind version in the book
+book-bump old_version new_version:
+    #!/usr/bin/env -S sh -e
+    old_version_escaped=$(echo {{ old_version }} | sed -E 's/[.]/\\./g')
+    # Add new version to versions.js
+    sed -Ei 's:(.*<!-- Insert new version here -->.*):\1\n<a href="/iai-callgrind/{{ new_version }}/html/index.html">{{ new_version }}</a>\\:' docs/book/versions.js
+    # Set the build directory to new version
+    sed -Ei 's:(build-dir\s*=\s*"book)(/'"${old_version_escaped}"')(".*):\1/{{ new_version }}\3:' docs/book.toml
+    # Replace occurences of old version in source files
+    find docs/src/ -type f -iname '*.md' -exec sed -Ei "s:${old_version_escaped}:{{ new_version }}:g" '{}' \;
+
+# Bump the version of iai-callgrind (and iai-callgrind-runner, and the guide),iai-callgrind-macros or the MSRV
+bump config part:
+    #!/usr/bin/env -S sh -e
+    current_version=$(bump-my-version show-bump --config-file ".bumpversion/{{ config }}.toml" --ascii | grep -Eo '^[0-9]+\.[0-9]+\.[0-9]+')
+    new_version=$(bump-my-version show-bump --config-file ".bumpversion/{{ config }}.toml" --ascii | grep -Po '(?<={{ part }} - )[0-9]+\.[0-9]+\.[0-9]+')
+
+    bump-my-version bump --no-commit --config-file ".bumpversion/{{ config }}.toml" {{ part }}
+    if [[ "{{config}}" = "version" ]]; then
+        just book-bump "$current_version" "$new_version"
+    fi
+    # We also need the changed version in Cargo.lock. Building iai-callgrind
+    # should be enough to also update the runner
+    just args="--all-features --lib" build iai-callgrind

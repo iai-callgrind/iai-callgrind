@@ -70,8 +70,8 @@ lot of other improvements and features.
 - __Consistency__: Iai-Callgrind can take accurate measurements even in
   virtualized CI environments
 - __Performance__: Since Iai-Callgrind only executes a benchmark once, it is
-  typically a lot faster to run than benchmarks measuring the execution and wall
-  time
+  typically a lot faster to run than benchmarks measuring the execution and
+  wall-clock time
 - __Regression__: Iai-Callgrind reports the difference between benchmark runs to
   make it easy to spot detailed performance regressions and improvements. You
   can define limits for specific event kinds to fail a benchmark if that limit
@@ -169,7 +169,7 @@ For a quickstart and examples of benchmarking libraries see the [Library Benchma
 Section](#library-benchmarks) and for executables see the [Binary Benchmark
 Section](#binary-benchmarks). Read the [`docs`]!
 
-As mentioned in above in the `Installation` section, it's required to run the
+As mentioned above in the `Installation` section, it's required to run the
 benchmarks with debugging symbols switched on. For example in your
 `~/.cargo/config` or your project's `Cargo.toml`:
 
@@ -1145,7 +1145,7 @@ which would restore the default of `0` from valgrind.
 
 ### Valgrind Client Requests
 
-`iai-callgrind` ships with it's own interface to [Valgrind's Client Request
+`iai-callgrind` ships with its own interface to [Valgrind's Client Request
 Mechanism](https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq).
 `iai-callgrind's` client requests have (compared to the valgrind's client
 requests used in `C` code) zero overhead on many targets which are also natively

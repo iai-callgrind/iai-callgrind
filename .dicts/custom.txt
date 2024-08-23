@@ -63,6 +63,7 @@ cicd
 clippy
 condi
 consts
+crabgrind
 cstring
 deallocations
 debuginfo
@@ -81,6 +82,7 @@ dotgraphs
 dpkg
 dtolnay
 elems
+eprintln
 estimatedcycles
 exidx
 exitcode
@@ -106,12 +108,16 @@ kcachegrind
 lateout
 lcov
 libclang
+libtest
+linkcheck
 llhits
 malloclike
 massif
 mdbook
 memalign
 metapool
+microoptimization
+microoptimizations
 minijinja
 mips
 mipsel
@@ -126,6 +132,7 @@ noninteractive
 nsec
 outfile
 pacman
+pathbuf
 peaceiris
 pipefail
 posix
@@ -172,6 +179,7 @@ sploss1
 sploss2
 srcloc
 struct
+structifying
 structs
 superblocks
 synchronisation

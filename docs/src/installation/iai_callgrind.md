@@ -1,8 +1,5 @@
 # Iai-Callgrind
 
-<!-- TODO: delete under construction notice -->
-This site is currently under construction !!
-
 Iai-Callgrind is divided into the library `iai-callgrind` and the benchmark runner
 `iai-callgrind-runner`.
 

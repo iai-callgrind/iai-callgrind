@@ -118,6 +118,12 @@ harness = false
 path = "benches/test_bin_bench/low_level/test_bin_bench_low_level.rs"
 name = "test_bin_bench_low_level"
 
+# TODO: CLEANUP
+[[bench]]
+harness = false
+path = "benches/test_bin_bench/dev/dev.rs"
+name = "test_bin_bench_dev"
+
 [[bench]]
 harness = false
 path = "benches/test_lib_bench/flamegraph/test_lib_bench_flamegraph.rs"
@@ -182,6 +188,12 @@ name = "test_lib_bench_main_and_group_setup_and_teardown"
 harness = false
 path = "benches/test_lib_bench/file_parameter/test_lib_bench_file_parameter.rs"
 name = "test_lib_bench_file_parameter"
+
+# TODO: CLEANUP
+[[bench]]
+harness = false
+path = "benches/test_lib_bench/dev/dev.rs"
+name = "test_lib_bench_dev"
 
 [[bench]]
 harness = false

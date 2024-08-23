@@ -5,7 +5,7 @@ means that Iai-Callgrind cannot be used on platforms that are not supported by V
 
 ## Debug Symbols
 
-It's required to run the iai-callgrind benchmarks with debugging symbols
+It's required to run the Iai-Callgrind benchmarks with debugging symbols
 switched on. For example in your `~/.cargo/config` or your project's
 `Cargo.toml`:
 
@@ -38,7 +38,7 @@ If you want to make use of the mighty [Valgrind Client Request
 Mechanism](https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq)
 shipped with Iai-Callgrind, you also need `libclang` (clang >= 5.0) installed.
 See also the requirements of
-[bindgen](https://rust-lang.github.io/rust-bindgen/requirements.html)) and of
+[bindgen](https://rust-lang.github.io/rust-bindgen/requirements.html) and of
 [cc](https://github.com/rust-lang/cc-rs).
 
 More details on the usage and requirements of Valgrind Client Requests in
@@ -53,7 +53,7 @@ fixed, the supported platforms are expanded ... Also, if you want or need to,
 [building valgrind from
 source](https://sourceware.org/git/?p=valgrind.git;a=blob;f=README;h=eabcc6ad88c8cab6dfe73cfaaaf5543023c2e941;hb=HEAD)
 is usually a straight-forward process. Just make sure the `valgrind` binary is
-in your `$PATH` so that `iai-callgrind` can find it.
+in your `$PATH` so that Iai-callgrind can find it.
 
 ### Installation of valgrind with your package manager
 

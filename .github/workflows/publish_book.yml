@@ -21,17 +21,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@cargo-binstall
 
-      - name: Setup mdBook
-        uses: peaceiris/actions-mdbook@v2
-        with:
-          mdbook-version: "0.4.40"
+      - name: Install mdbook
+        run: just book-install
 
       - name: Build the book
-        run: |
-          mdbook --version
-          mdbook build
-        working-directory: ./docs
+        run: just book-build
+
+      - name: Test the book
+        run: just book-tests
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v4
@@ -59,3 +58,4 @@ jobs:
             git commit -m "docs(book): Create link to latest version ${latest}"
             git push
           fi
+        working-directory: docs/book
