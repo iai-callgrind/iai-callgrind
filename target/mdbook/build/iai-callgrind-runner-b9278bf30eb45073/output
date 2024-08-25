@@ -1,0 +1,1 @@
+cargo:rustc-env=IC_BUILD_TRIPLE=x86_64-unknown-linux-gnu
