@@ -3,6 +3,8 @@
 prettier_bin := if `command -V prettier || true` =~ 'not found' { "npx prettier" } else { "prettier" }
 cspell_bin := if `command -V cspell || true` =~ 'not found' { "npx cspell" } else { "cspell" }
 schema_path := 'summary.schema.json'
+this_dir := `realpath .`
+book_build_dir := this_dir + "/docs/book"
 args := ''
 msrv := '1.66.0'
 required_tools := 'valgrind|the essential tool
@@ -12,6 +14,7 @@ cargo-minimal-versions'
 tools := 'docker|to be able to run the client request tests
 cross|to be able to run the client request tests
 cspell|check spelling
+mdbook|build and develop the guide
 taplo|formatting of *.toml files
 prettier|formatting of *.json and *.yml files'
 ide_recommends := 'Depending on your IDE you can use rust-analyzer overrides to adjust clippy
@@ -143,6 +146,10 @@ install-checks:
 # Install everything needed to start working on iai-callgrind
 install-workspace: install-hooks install-toolchains show-tips install-checks
 
+# Build a package with the optional toolchain
+build package +toolchain=msrv:
+    cargo +{{ toolchain }} build -p {{ package }} {{ if args != '' { args } else { '' } }}
+
 # Build iai-callgrind-runner
 build-runner:
     cargo build -p iai-callgrind-runner --release
@@ -199,6 +206,7 @@ schema-gen-move: schema-gen
 test package:
     {{ if package == 'iai-callgrind' { "cargo test --package " + package + " --features ui_tests" } else { "cargo test --package " + package } }}
 
+
 # Run all doc tests
 test-doc:
     DOCS_RS=1 cargo test --all-features --doc
@@ -215,12 +223,83 @@ test-all:
 reqs-test-targets:
     @sed -En 's/\[target\.([^.]+)\]/\1/p' Cross.toml
 
-# Run the client request tests for a specific target on the stable toolchain
+# Run the client request tests for a specific target on the stable toolchain. (Uses: `cross`, `docker`)
 reqs-test target:
     @just reqs-test-targets | grep -q '{{ target }}' \
         || { echo "Unsupported target: '{{ target }}'. Run 'just reqs-test-targets' to get a list of supported targets"; exit 1; }
     CROSS_CONTAINER_OPTS='--ulimit nofile=1024:4096' cross test -p client-request-tests --test tests --target {{ target }} --release -- --nocapture
 
-# Check minimal version requirements of dependencies
+# Check minimal version requirements of dependencies. (Uses: `cargo-minimal-versions`)
 minimal-versions:
     cargo minimal-versions check --workspace --all-targets --ignore-private --direct
+
+book-install:
+    if command -V cargo-binstall; then cargo binstall {{ if args != '' { args } else { '' } }} mdbook@0.4.40 mdbook-linkcheck; else cargo install {{ if args != '' { args } else { '' } }} mdbook@0.4.40 mdbook-linkcheck; fi
+
+# Run tests for the book. (Uses: `mdbook`, `RUSTUP_TOOLCHAIN=stable`)
+book-tests:
+    # Avoid the error `multiple candidates for `rlib` dependency `iai_callgrind` found`
+    cargo clean --profile mdbook
+    # We need the stable build because mdbook is built with the stable toolchain
+    # and to avoid the error `found invalid metadata files for ...`
+    just args="--all-features --lib --profile=mdbook" build iai-callgrind stable
+    # The exact values for the environment variables don't matter, we just need
+    # them to be present.
+    CARGO_MANIFEST_DIR=$(realpath .) CARGO_PKG_NAME="mdbook-tests" mdbook test -L target/mdbook/deps docs/
+
+# Build the book. (Uses: `mdbook`)
+book-build:
+    mdbook build docs
+
+# Clean the current book. (Uses: `mdbook`)
+book-clean:
+    mdbook clean docs
+
+# Serve the book at localhost:3000 and reload on changes. Some links may be broken. Run `just book-serve-github` for a real world environment. (Uses: `mdbook`)
+book-serve:
+    mdbook serve docs
+
+# Watch for changes and rebuild the book on a change. (Uses: `mdbook`)
+book-watch:
+    mdbook watch docs
+
+# Serve the book under the same conditions as on github pages at localhost:4000. Reload on changes. Use `just book-watch` in a different terminal to populate the changes and make this job restart the server. (Uses: `npx nodemon`, `npx http-server`)
+book-serve-github:
+    #!/usr/bin/env -S sh -e
+    serve_dir="/tmp/iai_callgrind_serve_dir"
+    if [[ -e "$serve_dir" ]]; then rm -I "${serve_dir}"/* && rmdir "$serve_dir"; fi
+    mkdir "$serve_dir"
+    cd "$serve_dir"
+    ln -s "{{ book_build_dir }}" iai-callgrind
+    npx nodemon --delay 2.0 --ext 'js,html,css,png,svg,ttf,eot,woff,woff2,txt' --watch "{{ book_build_dir }}" --signal SIGINT --exec 'npx http-server -d false -c-1 -a localhost -p 4000'
+
+# Takes a path to the file with colored output of iai-callgrind and prints the resulting (colored) html for the book to `stdout`. (Uses: `npx ansi-to-html`)
+book-term-output path:
+    #!/usr/bin/env -S sh -e
+    output=$(npx ansi-to-html -f#000 "{{ path }}" | head -c -1 | sed 's/#5F5/#42c142/g')
+    echo "<pre><code class=\"hljs\">${output}</code></pre>"
+
+# Bump the iai-callgrind version in the book
+book-bump old_version new_version:
+    #!/usr/bin/env -S sh -e
+    old_version_escaped=$(echo {{ old_version }} | sed -E 's/[.]/\\./g')
+    # Add new version to versions.js
+    sed -Ei 's:(.*<!-- Insert new version here -->.*):\1\n<a href="/iai-callgrind/{{ new_version }}/html/index.html">{{ new_version }}</a>\\:' docs/book/versions.js
+    # Set the build directory to new version
+    sed -Ei 's:(build-dir\s*=\s*"book)(/'"${old_version_escaped}"')(".*):\1/{{ new_version }}\3:' docs/book.toml
+    # Replace occurrences of old version in source files
+    find docs/src/ -type f -iname '*.md' -exec sed -Ei "s:${old_version_escaped}:{{ new_version }}:g" '{}' \;
+
+# Bump the version of iai-callgrind (and iai-callgrind-runner, and the guide),iai-callgrind-macros or the MSRV
+bump config part:
+    #!/usr/bin/env -S sh -e
+    current_version=$(bump-my-version show-bump --config-file ".bumpversion/{{ config }}.toml" --ascii | grep -Eo '^[0-9]+\.[0-9]+\.[0-9]+')
+    new_version=$(bump-my-version show-bump --config-file ".bumpversion/{{ config }}.toml" --ascii | grep -Po '(?<={{ part }} - )[0-9]+\.[0-9]+\.[0-9]+')
+
+    bump-my-version bump --no-commit --config-file ".bumpversion/{{ config }}.toml" {{ part }}
+    if [[ "{{config}}" = "version" ]]; then
+        just book-bump "$current_version" "$new_version"
+    fi
+    # We also need the changed version in Cargo.lock. Building iai-callgrind
+    # should be enough to also update the runner
+    just args="--all-features --lib" build iai-callgrind

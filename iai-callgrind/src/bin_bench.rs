@@ -213,7 +213,43 @@ pub enum ExitWith {
     Code(i32),
 }
 
-/// Configure the sandboxing behaviour of binary benchmarks
+/// The `Sandbox` in which the the `setup`, `teardown` and the [`Command`] are run
+///
+/// The `Sandbox` is a temporary directory which is created before the execution of the
+/// [`setup`](`crate::binary_benchmark`) and deleted after the
+/// [`teardown`](`crate::binary_benchmark`). `setup`, the [`Command`] and `teardown` are executed
+/// inside this temporary directory.
+///
+/// # Background and reasons for using a `Sandbox`
+///
+/// A [`Sandbox`] can help mitigating differences in benchmark results on different machines. As
+/// long as `$TMP_DIR` is unset or set to `/tmp`, the temporary directory has a constant length on
+/// unix machines (with the exception of android which uses `/data/local/tmp`). The directory itself
+/// is created with a constant length but random name like `/tmp/.a23sr8fk`. It is not implausible
+/// that an executable has different event counts just because the directory it is executed in has a
+/// different length. For example, if a member of your project has set up the project in
+/// `/home/bob/workspace/our-project` running the benchmarks in this directory, and the ci runs the
+/// benchmarks in `/runner/our-project`, the event counts might differ. If possible, the benchmarks
+/// should be run in a as constant as possible environment. Clearing the environment variables is
+/// also such a counter-measure.
+///
+/// Other reasons for using a `Sandbox` are convenience, such as if you're creating files during
+/// `setup` and the [`Command`] run and don't want to delete all the files manually. Or, more
+/// importantly, if the [`Command`] is destructive and deletes files, it is usually safer to execute
+/// such a [`Command`] in a temporary directory where it cannot do any harm to your or others file
+/// systems during the benchmark runs.
+///
+/// # Sandbox cleanup
+///
+/// The changes the `setup` makes in this directory persist until the `teardown` has finished. So,
+/// the [`Command`] can for example pick up any files created by the `setup` method. If run in a
+/// `Sandbox`, the `teardown` usually doesn't have to delete any files, because the whole
+/// directory is deleted after its usage. There is an exception to the rule. If any of the files
+/// inside the directory is not removable, for example because the permissions of a file don't allow
+/// the file to be deleted, then the whole directory persists. You can use the `teardown` to reset
+/// all permission bits to be readable and writable, so the cleanup can succeed.
+///
+/// To simply copy fixtures or whole directories into the `Sandbox` use [`Sandbox::fixtures`].
 #[derive(Debug, Clone, IntoInner, AsRef)]
 pub struct Sandbox(internal::InternalSandbox);
 
@@ -2143,43 +2179,6 @@ impl From<&ExitWith> for internal::InternalExitWith {
     }
 }
 
-/// The `Sandbox` in which the the `setup`, `teardown` and the [`Command`] are run
-///
-/// The `Sandbox` is a temporary directory which is created before the execution of the
-/// [`setup`](`crate::binary_benchmark`) and deleted after the
-/// [`teardown`](`crate::binary_benchmark`). `setup`, the [`Command`] and `teardown` are executed
-/// inside this temporary directory.
-///
-/// # Background and reasons for using a `Sandbox`
-///
-/// A [`Sandbox`] can help mitigating differences in benchmark results on different machines. As
-/// long as `$TMP_DIR` is unset or set to `/tmp`, the temporary directory has a constant length on
-/// unix machines (with the exception of android which uses `/data/local/tmp`). The directory itself
-/// is created with a constant length but random name like `/tmp/.a23sr8fk`. It is not implausible
-/// that an executable has different event counts just because the directory it is executed in has a
-/// different length. For example, if a member of your project has set up the project in
-/// `/home/bob/workspace/our-project` running the benchmarks in this directory, and the ci runs the
-/// benchmarks in `/runner/our-project`, the event counts might differ. If possible, the benchmarks
-/// should be run in a as constant as possible environment. Clearing the environment variables is
-/// also such a counter-measure.
-///
-/// Other reasons for using a `Sandbox` are convenience, such as if you're creating files during
-/// `setup` and the [`Command`] run and don't want to delete all the files manually. Or, more
-/// importantly, if the [`Command`] is destructive and deletes files, it is usually safer to execute
-/// such a [`Command`] in a temporary directory where it cannot do any harm to your or others file
-/// systems during the benchmark runs.
-///
-/// # Sandbox cleanup
-///
-/// The changes the `setup` makes in this directory persist until the `teardown` has finished. So,
-/// the [`Command`] can for example pick up any files created by the `setup` method. If run in a
-/// `Sandbox`, the `teardown` usually doesn't have to delete any files, because the whole
-/// directory is deleted after its usage. There is an exception to the rule. If any of the files
-/// inside the directory is not removable, for example because the permissions of a file don't allow
-/// the file to be deleted, then the whole directory persists. You can use the `teardown` to reset
-/// all permission bits to be readable and writable, so the cleanup can succeed.
-///
-/// To simply copy fixtures or whole directories into the `Sandbox` use [`Sandbox::fixtures`].
 impl Sandbox {
     /// Create a new `Sandbox` builder
     ///

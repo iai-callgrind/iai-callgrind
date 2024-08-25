@@ -24,7 +24,7 @@
 //! - __Consistency__: Iai-Callgrind can take accurate measurements even in virtualized CI
 //!   environments
 //! - __Performance__: Since Iai-Callgrind only executes a benchmark once, it is typically a lot
-//!   faster to run than benchmarks measuring the execution and wall time
+//!   faster to run than benchmarks measuring the execution and wall-clock time
 //! - __Regression__: Iai-Callgrind reports the difference between benchmark runs to make it easy to
 //!   spot detailed performance regressions and improvements.
 //! - __CPU and Cache Profiling__: Iai-Callgrind generates a Callgrind profile of your code while

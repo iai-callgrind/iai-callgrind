@@ -63,6 +63,7 @@ cicd
 clippy
 condi
 consts
+crabgrind
 cstring
 deallocations
 debuginfo
@@ -81,6 +82,7 @@ dotgraphs
 dpkg
 dtolnay
 elems
+eprintln
 estimatedcycles
 exidx
 exitcode
@@ -93,6 +95,7 @@ gnuabi
 gnueabi
 gnueabihf
 grcov
+hljs
 ildmr
 ilmr
 iname
@@ -105,12 +108,16 @@ kcachegrind
 lateout
 lcov
 libclang
+libtest
+linkcheck
 llhits
 malloclike
 massif
 mdbook
 memalign
 metapool
+microoptimization
+microoptimizations
 minijinja
 mips
 mipsel
@@ -121,9 +128,12 @@ multibyte
 nanomips
 noaccess
 nocapture
+nodemon
 noninteractive
 nsec
 outfile
+pacman
+pathbuf
 peaceiris
 pipefail
 posix
@@ -146,6 +156,7 @@ redzone
 redzones
 reqs
 resizeinplace
+rlib
 rlval
 rolq
 rposition
@@ -170,12 +181,14 @@ sploss1
 sploss2
 srcloc
 struct
+structifying
 structs
 superblocks
 synchronisation
 syscount
 syscputime
 systime
+taiki
 taplo
 tempdir
 tempfile
@@ -192,8 +205,10 @@ valico
 valist
 vbits
 vgdb
+visualizable
 vulnaribility
 walkdir
+worktree
 xchg
 xchgq
 xtleak

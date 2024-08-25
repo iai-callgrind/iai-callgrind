@@ -3,17 +3,24 @@ authors = ["gamma0987"]
 language = "en"
 multilingual = false
 src = "src"
-title = "Iai-Callgrind Documentation"
+title = "Iai-Callgrind Guide"
 description = "Iai-Callgrind, a high-precision and consistent one-shot benchmarking framework/harness for Rust"
 
 [rust]
 edition = "2021"
 
 [build]
-build-dir = "book/0.12.3"
+build-dir = "book/0.13.0"
 
 [output.html]
 git-repository-url = "https://github.com/iai-callgrind/iai-callgrind"
 edit-url-template = "https://github.com/iai-callgrind/iai-callgrind/master/docs/{path}"
-additional-css = ["css/dropdown.css"]
+additional-css = ["css/my.css", "css/dropdown.css"]
 additional-js = ["js/dropdown.js"]
+site-url = "/iai-callgrind/"
+
+# https://github.com/Michael-F-Bryan/mdbook-linkcheck
+[output.linkcheck]
+follow-web-links = false
+traverse-parent-directories = true
+warning-policy = "error"
