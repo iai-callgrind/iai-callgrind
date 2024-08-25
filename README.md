@@ -59,7 +59,7 @@ See the [Guide] and api
 documentation at [docs.rs](https://docs.rs/iai-callgrind/latest/iai_callgrind/)
 for all the details.
 
-## Design philosophy and Goals
+## Design philosophy and goals
 
 Iai-Callgrind benchmarks are designed to be runnable with `cargo bench`. The
 benchmark files are expanded to a benchmarking harness which replaces the native

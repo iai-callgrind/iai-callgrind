@@ -31,7 +31,7 @@ Iai-Callgrind is
   quickly create concise and clear benchmarks. Focus more on profiling and your
   code than on the framework.
 
-## Design philosophy and Goals
+## Design philosophy and goals
 
 Iai-Callgrind benchmarks are designed to be runnable with `cargo bench`. The
 benchmark files are expanded to a benchmarking harness which replaces the native
@@ -50,8 +50,8 @@ Iai-Callgrind is not a good fit.
 
 - If you need wall-clock times, Iai-Callgrind cannot help you much. The
   estimation of cpu cycles merely correlates to wall-clock times but is not a
-  replacement for wall-clock times. It is primarily designed to be a relative
-  metric to be used for comparison.
+  replacement for wall-clock times. The cycles estimation is primarily designed
+  to be a relative metric to be used for comparison.
 - Iai-Callgrind cannot be run on Windows and platforms not supported by
   Valgrind.
 
