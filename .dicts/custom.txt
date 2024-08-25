@@ -208,6 +208,7 @@ vgdb
 visualizable
 vulnaribility
 walkdir
+worktree
 xchg
 xchgq
 xtleak

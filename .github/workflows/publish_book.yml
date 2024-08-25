@@ -55,7 +55,8 @@ jobs:
           git config user.name "bot@publish_book"
 
           git fetch origin
-          git checkout gh-pages
+          git worktree add ../gh-pages gh-pages
+          cd ../gh-pages
 
           latest=$(find -maxdepth 1 -type d -printf '%f\n' | grep -E '^[0-9]+.*$' | sort -V | tail -1)
           rm -rf ./latest
