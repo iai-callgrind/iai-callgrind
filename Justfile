@@ -234,7 +234,7 @@ minimal-versions:
     cargo minimal-versions check --workspace --all-targets --ignore-private --direct
 
 book-install:
-    if command -V cargo-binstall; then cargo binstall mdbook@0.4.40 mdbook-linkcheck; else cargo install mdbook@0.4.40 mdbook-linkcheck; fi
+    if command -V cargo-binstall; then cargo binstall {{ if args != '' { args } else { '' } }} mdbook@0.4.40 mdbook-linkcheck; else cargo install {{ if args != '' { args } else { '' } }} mdbook@0.4.40 mdbook-linkcheck; fi
 
 # Run tests for the book. (Uses: `mdbook`, `RUSTUP_TOOLCHAIN=stable`)
 book-tests:
