@@ -3,7 +3,7 @@
 prettier_bin := if `command -V prettier || true` =~ 'not found' { "npx prettier" } else { "prettier" }
 cspell_bin := if `command -V cspell || true` =~ 'not found' { "npx cspell" } else { "cspell" }
 schema_path := 'summary.schema.json'
-this_dir := `realpath -e .`
+this_dir := `realpath .`
 book_build_dir := this_dir + "/docs/book"
 args := ''
 msrv := '1.66.0'
@@ -245,7 +245,7 @@ book-tests:
     just args="--all-features --lib --profile=mdbook" build iai-callgrind stable
     # The exact values for the environment variables don't matter, we just need
     # them to be present.
-    CARGO_MANIFEST_DIR=$(realpath -e .) CARGO_PKG_NAME="mdbook-tests" mdbook test -L target/mdbook/deps docs/
+    CARGO_MANIFEST_DIR=$(realpath .) CARGO_PKG_NAME="mdbook-tests" mdbook test -L target/mdbook/deps docs/
 
 # Build the book. (Uses: `mdbook`)
 book-build:
