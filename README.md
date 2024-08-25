@@ -6,6 +6,8 @@
 <div align="center">High-precision and consistent benchmarking framework/harness for Rust</div>
 
 <div align="center">
+    <a href="https://iai-callgrind.github.io/iai-callgrind">Guide</a>
+    |
     <a href="https://docs.rs/crate/iai-callgrind/">Released API Docs</a>
     |
     <a href="https://github.com/iai-callgrind/iai-callgrind/blob/main/CHANGELOG.md">Changelog</a>
@@ -27,11 +29,10 @@
 </div>
 
 This is the guide for Iai-Callgrind, a benchmarking framework/harness which uses
-[Valgrind's Callgrind](https://valgrind.org/docs/manual/cl-manual.html) and
-other Valgrind tools like DHAT, Massif, ... to provide extremely accurate and
-consistent measurements of Rust code, making it perfectly suited to run in
-environments like a CI. Iai-Callgrind is integrated in
-[Bencher](https://bencher.dev/learn/benchmarking/rust/iai/).
+[Valgrind's Callgrind][Callgrind Manual] and other Valgrind tools like DHAT,
+Massif, ... to provide extremely accurate and consistent measurements of Rust
+code, making it perfectly suited to run in environments like a CI. Iai-Callgrind
+is integrated in [Bencher].
 
 Iai-Callgrind is:
 
@@ -48,16 +49,15 @@ Iai-Callgrind is:
 - __Visualizable__: Iai-Callgrind generates a Callgrind (DHAT, ...) profile of
   the benchmarked code and can be configured to create flamegraph-like charts
   from Callgrind metrics. In general, all Valgrind-compatible tools like
-  [callgrind_annotate](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.callgrind_annotate-options),
-  [kcachegrind](https://kcachegrind.github.io/html/Home.html) or `dh_view.html`
+  [callgrind_annotate][Callgrind Annotate],
+  [kcachegrind] or `dh_view.html`
   and others to analyze the results in detail are fully supported.
 - __Easy__: The API for setting up benchmarks is easy to use and allows you to
   quickly create concise and clear benchmarks. Focus more on profiling and your
   code than on the framework.
 
-See the [Guide] and api
-documentation at [docs.rs](https://docs.rs/iai-callgrind/latest/iai_callgrind/)
-for all the details.
+See the [Guide] and api documentation at [docs.rs][Api Docs] for all the
+details.
 
 ## Design philosophy and goals
 
@@ -87,8 +87,14 @@ Iai-Callgrind is not a good fit.
 
 You're missing the old README? To get started read the [Guide].
 
-Here's just a small introductory example, assuming you have a benchmark ready in
-`benches/library_benchmark.rs` with the following content.
+The guide maintains only the versions `0.12.3` upwards. For older versions
+checkout the README of this repo using a specific tagged version for example
+<https://github.com/iai-callgrind/iai-callgrind/tree/v0.12.2> or using the
+github ui.
+
+Here's just a small introductory example, assuming you have a everything
+[installed][Guide Prerequisites] and a benchmark with the following content in
+`benches/library_benchmark.rs` ready:
 
 ```rust
 use iai_callgrind::{main, library_benchmark_group, library_benchmark};
@@ -154,8 +160,7 @@ for inclusion in the work by you shall be dual licensed as in
 - Iai-Callgrind is [mentioned](https://youtu.be/qfknfCsICUM?t=1228) in a talk at
   [RustNation UK](https://www.rustnationuk.com/) about [Towards Impeccable
   Rust](https://www.youtube.com/watch?v=qfknfCsICUM) by Jon Gjengset
-- Iai-Callgrind is supported by
-  [Bencher](https://bencher.dev/learn/benchmarking/rust/iai/)
+- Iai-Callgrind is supported by [Bencher]
 
 ### Related Projects
 
@@ -182,7 +187,7 @@ for inclusion in the work by you shall be dual licensed as in
 Iai-Callgrind is forked from <https://github.com/bheisler/iai> and was
 originally written by Brook Heisler (@bheisler).
 
-Iai-Callgrind wouldn't be possible without [Valgrind](https://valgrind.org/).
+Iai-Callgrind wouldn't be possible without [Valgrind].
 
 ### License
 
@@ -190,7 +195,7 @@ Iai-Callgrind is like Iai dual licensed under the Apache 2.0 license and the MIT
 license at your option.
 
 According to [Valgrind's
-documentation](https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq):
+documentation][Valgrind Client Request Mechanism]:
 
 > The Valgrind headers, unlike most of the rest of
 the code, are under a BSD-style license so you may include them without worrying
@@ -199,4 +204,12 @@ about license incompatibility.
 We have included the original license where we made use of the original header
 files.
 
+[Api Docs]: https://docs.rs/iai-callgrind/latest/iai_callgrind/
+[Bencher]: https://bencher.dev/learn/benchmarking/rust/iai/
 [Guide]: https://iai-callgrind.github.io/iai-callgrind/
+[Guide Prerequisites]: https://iai-callgrind.github.io/iai-callgrind/latest/html/installation/prerequisites.html
+[kcachegrind]: https://kcachegrind.github.io/html/Home.html
+[Valgrind]: https://valgrind.org/
+[Valgrind Client Request Mechanism]: https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq
+[Callgrind Manual]: https://valgrind.org/docs/manual/cl-manual.html
+[Callgrind Annotate]: https://valgrind.org/docs/manual/cl-manual.html#cl-manual.callgrind_annotate-options

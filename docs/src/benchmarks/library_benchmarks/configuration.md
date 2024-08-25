@@ -1,17 +1,14 @@
 # Configuration
 
-Library benchmarks can be configured with the
-[`LibraryBenchmarkConfig`](https://docs.rs/iai-callgrind/0.13.0/iai_callgrind/struct.LibraryBenchmarkConfig.html)
-and with [Command-line arguments and Environment
+Library benchmarks can be configured with the [`LibraryBenchmarkConfig`] and
+with [Command-line arguments and Environment
 variables](../../cli_and_env/basics.md).
 
 The `LibraryBenchmarkConfig` can be specified at different levels and sets the
 configuration values for the same and lower levels. The values of the
 `LibraryBenchmarkConfig` at higher levels can be overridden at a lower level.
 Note that some values are additive rather than substitutive. Please see the docs
-of the respective functions in
-[`LibraryBenchmarkConfig`](https://docs.rs/iai-callgrind/0.13.0/iai_callgrind/struct.LibraryBenchmarkConfig.html)
-for more details.
+of the respective functions in [`LibraryBenchmarkConfig`] for more details.
 
 The different levels where a `LibraryBenchmarkConfig` can be specified.
 
@@ -108,3 +105,5 @@ library_benchmark_group!(
 main!(library_benchmark_groups = my_group);
 # }
 ```
+
+[`LibraryBenchmarkConfig`]: https://docs.rs/iai-callgrind/0.13.0/iai_callgrind/struct.LibraryBenchmarkConfig.html
