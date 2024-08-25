@@ -287,7 +287,7 @@ book-bump old_version new_version:
     sed -Ei 's:(.*<!-- Insert new version here -->.*):\1\n<a href="/iai-callgrind/{{ new_version }}/html/index.html">{{ new_version }}</a>\\:' docs/book/versions.js
     # Set the build directory to new version
     sed -Ei 's:(build-dir\s*=\s*"book)(/'"${old_version_escaped}"')(".*):\1/{{ new_version }}\3:' docs/book.toml
-    # Replace occurences of old version in source files
+    # Replace occurrences of old version in source files
     find docs/src/ -type f -iname '*.md' -exec sed -Ei "s:${old_version_escaped}:{{ new_version }}:g" '{}' \;
 
 # Bump the version of iai-callgrind (and iai-callgrind-runner, and the guide),iai-callgrind-macros or the MSRV

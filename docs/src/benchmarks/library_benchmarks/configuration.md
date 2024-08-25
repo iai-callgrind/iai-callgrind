@@ -8,8 +8,8 @@ variables](../../cli_and_env/basics.md).
 The `LibraryBenchmarkConfig` can be specified at different levels and sets the
 configuration values for the same and lower levels. The values of the
 `LibraryBenchmarkConfig` at higher levels can be overridden at a lower level.
-Note some values are additive instead of rewritable. Please see the docs of the
-respective functions in
+Note that some values are additive rather than substitutive. Please see the docs
+of the respective functions in
 [`LibraryBenchmarkConfig`](https://docs.rs/iai-callgrind/0.13.0/iai_callgrind/struct.LibraryBenchmarkConfig.html)
 for more details.
 

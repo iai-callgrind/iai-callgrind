@@ -2,6 +2,7 @@
 
 [package]
 authors = ["Joining7943 <joining@posteo.de>"]
+autobenches = false
 categories.workspace = true
 description = "Tests for iai-callgrind"
 edition.workspace = true
@@ -14,7 +15,6 @@ readme = "../README.md"
 repository.workspace = true
 rust-version.workspace = true
 version = "0.1.0"
-autobenches = false
 
 [dependencies]
 cargo_metadata = { workspace = true }
@@ -70,130 +70,118 @@ path = "src/helper/exit-with.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_bin_bench/setup_and_teardown/test_bin_bench_setup_and_teardown.rs"
 name = "test_bin_bench_setup_and_teardown"
+path = "benches/test_bin_bench/setup_and_teardown/test_bin_bench_setup_and_teardown.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_bin_bench/main_and_group_setup_and_teardown/test_bin_bench_main_and_group_setup_and_teardown.rs"
 name = "test_bin_bench_main_and_group_setup_and_teardown"
+path = "benches/test_bin_bench/main_and_group_setup_and_teardown/test_bin_bench_main_and_group_setup_and_teardown.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_bin_bench/nocapture/test_bin_bench_nocapture.rs"
 name = "test_bin_bench_nocapture"
+path = "benches/test_bin_bench/nocapture/test_bin_bench_nocapture.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_bin_bench/compare_by_id/test_bin_bench_compare_by_id.rs"
 name = "test_bin_bench_compare_by_id"
+path = "benches/test_bin_bench/compare_by_id/test_bin_bench_compare_by_id.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_bin_bench/setup_child_exit_with_error/test_bin_bench_setup_child_exit_with_error.rs"
 name = "test_bin_bench_setup_child_exit_with_error"
+path = "benches/test_bin_bench/setup_child_exit_with_error/test_bin_bench_setup_child_exit_with_error.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_bin_bench/setup_child/test_bin_bench_setup_child.rs"
 name = "test_bin_bench_setup_child"
+path = "benches/test_bin_bench/setup_child/test_bin_bench_setup_child.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_bin_bench/config/test_bin_bench_config.rs"
 name = "test_bin_bench_config"
+path = "benches/test_bin_bench/config/test_bin_bench_config.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_bin_bench/sandbox/test_bin_bench_sandbox.rs"
 name = "test_bin_bench_sandbox"
+path = "benches/test_bin_bench/sandbox/test_bin_bench_sandbox.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_bin_bench/intro/test_bin_bench_intro.rs"
 name = "test_bin_bench_intro"
+path = "benches/test_bin_bench/intro/test_bin_bench_intro.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_bin_bench/low_level/test_bin_bench_low_level.rs"
 name = "test_bin_bench_low_level"
-
-# TODO: CLEANUP
-[[bench]]
-harness = false
-path = "benches/test_bin_bench/dev/dev.rs"
-name = "test_bin_bench_dev"
+path = "benches/test_bin_bench/low_level/test_bin_bench_low_level.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/flamegraph/test_lib_bench_flamegraph.rs"
 name = "test_lib_bench_flamegraph"
+path = "benches/test_lib_bench/flamegraph/test_lib_bench_flamegraph.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/cache_sim/test_lib_bench_cache_sim.rs"
 name = "test_lib_bench_cache_sim"
+path = "benches/test_lib_bench/cache_sim/test_lib_bench_cache_sim.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/groups/test_lib_bench_groups.rs"
 name = "test_lib_bench_groups"
+path = "benches/test_lib_bench/groups/test_lib_bench_groups.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/compare/test_lib_bench_compare.rs"
 name = "test_lib_bench_compare"
+path = "benches/test_lib_bench/compare/test_lib_bench_compare.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/groups_envs/test_lib_bench_groups_envs.rs"
 name = "test_lib_bench_groups_envs"
+path = "benches/test_lib_bench/groups_envs/test_lib_bench_groups_envs.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/readme_example_fibonacci/test_lib_bench_readme_example_fibonacci.rs"
 name = "test_lib_bench_readme_example_fibonacci"
+path = "benches/test_lib_bench/readme_example_fibonacci/test_lib_bench_readme_example_fibonacci.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/tools/test_lib_bench_tools.rs"
 name = "test_lib_bench_tools"
+path = "benches/test_lib_bench/tools/test_lib_bench_tools.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/setup_and_teardown/test_lib_bench_setup_and_teardown.rs"
 name = "test_lib_bench_setup_and_teardown"
+path = "benches/test_lib_bench/setup_and_teardown/test_lib_bench_setup_and_teardown.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/nocapture/test_lib_bench_nocapture.rs"
 name = "test_lib_bench_nocapture"
+path = "benches/test_lib_bench/nocapture/test_lib_bench_nocapture.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/compiler_optimization/test_lib_bench_compiler_optimization.rs"
 name = "test_lib_bench_compiler_optimization"
+path = "benches/test_lib_bench/compiler_optimization/test_lib_bench_compiler_optimization.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/generics/test_lib_bench_generics.rs"
 name = "test_lib_bench_generics"
+path = "benches/test_lib_bench/generics/test_lib_bench_generics.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/main_and_group_setup_and_teardown/test_lib_bench_main_and_group_setup_and_teardown.rs"
 name = "test_lib_bench_main_and_group_setup_and_teardown"
+path = "benches/test_lib_bench/main_and_group_setup_and_teardown/test_lib_bench_main_and_group_setup_and_teardown.rs"
 
 [[bench]]
 harness = false
-path = "benches/test_lib_bench/file_parameter/test_lib_bench_file_parameter.rs"
 name = "test_lib_bench_file_parameter"
-
-# TODO: CLEANUP
-[[bench]]
-harness = false
-path = "benches/test_lib_bench/dev/dev.rs"
-name = "test_lib_bench_dev"
+path = "benches/test_lib_bench/file_parameter/test_lib_bench_file_parameter.rs"
 
 [[bench]]
 harness = false

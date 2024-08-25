@@ -36,6 +36,9 @@ jobs:
       - name: Test the book
         run: just book-tests
 
+      - name: Cleanup test artifacts
+        run: cargo clean
+
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v4
         if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/mdbook' }}
