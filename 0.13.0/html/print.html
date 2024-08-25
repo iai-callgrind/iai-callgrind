@@ -1282,17 +1282,14 @@ bench with the same id in the second benchmark function compare them.</li>
 matters, so it is not strictly necessary to mirror the bench ids of the first
 benchmark function in the second, third, etc. benchmark function.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
-<p>Library benchmarks can be configured with the
-<a href="https://docs.rs/iai-callgrind/0.13.0/iai_callgrind/struct.LibraryBenchmarkConfig.html"><code>LibraryBenchmarkConfig</code></a>
-and with <a href="benchmarks/library_benchmarks/../../cli_and_env/basics.html">Command-line arguments and Environment
+<p>Library benchmarks can be configured with the <a href="https://docs.rs/iai-callgrind/0.13.0/iai_callgrind/struct.LibraryBenchmarkConfig.html"><code>LibraryBenchmarkConfig</code></a> and
+with <a href="benchmarks/library_benchmarks/../../cli_and_env/basics.html">Command-line arguments and Environment
 variables</a>.</p>
 <p>The <code>LibraryBenchmarkConfig</code> can be specified at different levels and sets the
 configuration values for the same and lower levels. The values of the
 <code>LibraryBenchmarkConfig</code> at higher levels can be overridden at a lower level.
 Note that some values are additive rather than substitutive. Please see the docs
-of the respective functions in
-<a href="https://docs.rs/iai-callgrind/0.13.0/iai_callgrind/struct.LibraryBenchmarkConfig.html"><code>LibraryBenchmarkConfig</code></a>
-for more details.</p>
+of the respective functions in <a href="https://docs.rs/iai-callgrind/0.13.0/iai_callgrind/struct.LibraryBenchmarkConfig.html"><code>LibraryBenchmarkConfig</code></a> for more details.</p>
 <p>The different levels where a <code>LibraryBenchmarkConfig</code> can be specified.</p>
 <ul>
 <li>At top-level with the <code>main!</code> macro</li>
