@@ -3,7 +3,8 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>README - Iai-Callgrind Documentation</title>
+        <title>Iai-Callgrind Documentation</title>
+        <meta name="robots" content="noindex">
 
 
         <!-- Custom HTML head -->
@@ -89,7 +90,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="index.html" class="active"><strong aria-hidden="true">2.</strong> README</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="index.html"><strong aria-hidden="true">2.</strong> README</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -159,9 +160,6 @@
                         <a href="https://github.com/iai-callgrind/iai-callgrind" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        <a href="https://github.com/iai-callgrind/iai-callgrind/master/docs/src/README.md" title="Suggest an edit" aria-label="Suggest an edit">
-                            <i id="git-edit-button" class="fa fa-edit"></i>
-                        </a>
 
                     </div>
                 </div>
@@ -188,7 +186,12 @@
 
                 <div id="content" class="content">
                     <main>
-                        <!-- spell-checker: ignore fixt binstall libtest eprintln usize -->
+                        <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
+<p>This page is under construction.</p>
+<p>This first version of the mdbook documentation of iai-callgrind uses the README
+from version <code>v0.12.3</code>. The structure will completely change with the next
+version.</p>
+<div style="break-before: page; page-break-before: always;"></div><!-- spell-checker: ignore fixt binstall libtest eprintln usize -->
 <h1 align="center">Iai-Callgrind</h1>
 <div align="center">High-precision and consistent benchmarking framework/harness for Rust</div>
 <div align="center">
@@ -221,35 +224,35 @@ use Valgrind's <a href="https://valgrind.org/docs/manual/cl-manual.html">Callgri
 improvements and features.</p>
 <h2 id="table-of-contents"><a class="header" href="#table-of-contents">Table of Contents</a></h2>
 <ul>
-<li><a href="#table-of-contents">Table of Contents</a>
+<li><a href="index.html#table-of-contents">Table of Contents</a>
 <ul>
-<li><a href="#features">Features</a></li>
-<li><a href="#installation">Installation</a></li>
-<li><a href="#benchmarking">Benchmarking</a>
+<li><a href="index.html#features">Features</a></li>
+<li><a href="index.html#installation">Installation</a></li>
+<li><a href="index.html#benchmarking">Benchmarking</a>
 <ul>
-<li><a href="#library-benchmarks">Library Benchmarks</a></li>
-<li><a href="#binary-benchmarks">Binary Benchmarks</a></li>
+<li><a href="index.html#library-benchmarks">Library Benchmarks</a></li>
+<li><a href="index.html#binary-benchmarks">Binary Benchmarks</a></li>
 </ul>
 </li>
-<li><a href="#performance-regressions">Performance Regressions</a></li>
-<li><a href="#valgrind-tools">Valgrind Tools</a></li>
-<li><a href="#valgrind-client-requests">Valgrind Client Requests</a></li>
-<li><a href="#flamegraphs">Flamegraphs</a></li>
-<li><a href="#command-line-arguments-and-environment-variables">Command-line arguments and environment variables</a>
+<li><a href="index.html#performance-regressions">Performance Regressions</a></li>
+<li><a href="index.html#valgrind-tools">Valgrind Tools</a></li>
+<li><a href="index.html#valgrind-client-requests">Valgrind Client Requests</a></li>
+<li><a href="index.html#flamegraphs">Flamegraphs</a></li>
+<li><a href="index.html#command-line-arguments-and-environment-variables">Command-line arguments and environment variables</a>
 <ul>
-<li><a href="#comparing-with-baselines">Baselines</a></li>
-<li><a href="#customize-the-output-directory">Output directory</a></li>
-<li><a href="#machine-readable-output">Machine-readable output</a></li>
-<li><a href="#other-output-options">Other output options</a></li>
+<li><a href="index.html#comparing-with-baselines">Baselines</a></li>
+<li><a href="index.html#customize-the-output-directory">Output directory</a></li>
+<li><a href="index.html#machine-readable-output">Machine-readable output</a></li>
+<li><a href="index.html#other-output-options">Other output options</a></li>
 </ul>
 </li>
-<li><a href="#features-and-differences-to-iai">Features and differences to Iai</a></li>
-<li><a href="#faq">FAQ</a></li>
-<li><a href="#what-hasnt-changed">What hasn't changed</a></li>
-<li><a href="#see-also">See also</a></li>
-<li><a href="#contributing">Contributing</a></li>
-<li><a href="#credits">Credits</a></li>
-<li><a href="#license">License</a></li>
+<li><a href="index.html#features-and-differences-to-iai">Features and differences to Iai</a></li>
+<li><a href="index.html#faq">FAQ</a></li>
+<li><a href="index.html#what-hasnt-changed">What hasn't changed</a></li>
+<li><a href="index.html#see-also">See also</a></li>
+<li><a href="index.html#contributing">Contributing</a></li>
+<li><a href="index.html#credits">Credits</a></li>
+<li><a href="index.html#license">License</a></li>
 </ul>
 </li>
 </ul>
@@ -319,22 +322,22 @@ actions ci could look like this</p>
     )
     cargo install iai-callgrind-runner --version $version
 </code></pre>
-<p>If you want to make use of the <a href="#valgrind-client-requests">Valgrind Client
+<p>If you want to make use of the <a href="index.html#valgrind-client-requests">Valgrind Client
 Requests</a> you need <code>libclang</code> (clang &gt;= 5.0)
 installed. See also the requirements of
 <a href="https://rust-lang.github.io/rust-bindgen/requirements.html">bindgen</a>) and of
 <a href="https://github.com/rust-lang/cc-rs">cc</a>.</p>
 <p><code>iai-callgrind</code> needs the debug symbols when running the benchmarks. There are
 multiple places where you can configure profiles, see the
-<a href="#benchmarking">Benchmarking</a> section below for more details.</p>
+<a href="index.html#benchmarking">Benchmarking</a> section below for more details.</p>
 <h3 id="benchmarking"><a class="header" href="#benchmarking">Benchmarking</a></h3>
 <p><code>iai-callgrind</code> can be used to benchmark libraries or binaries. Library benchmarks benchmark
 functions and methods of a crate and binary benchmarks benchmark the executables of a crate. The
 different benchmark types cannot be intermixed in the same benchmark file but having different
 benchmark files for library and binary benchmarks is no problem. More on that in the following
 sections.</p>
-<p>For a quickstart and examples of benchmarking libraries see the <a href="#library-benchmarks">Library Benchmark
-Section</a> and for executables see the <a href="#binary-benchmarks">Binary Benchmark
+<p>For a quickstart and examples of benchmarking libraries see the <a href="index.html#library-benchmarks">Library Benchmark
+Section</a> and for executables see the <a href="index.html#binary-benchmarks">Binary Benchmark
 Section</a>. Read the <a href="https://docs.rs/iai-callgrind/0.12.3/iai_callgrind/">docs</a>!</p>
 <p>As mentioned in above in the <code>Installation</code> section, it's required to run the
 benchmarks with debugging symbols switched on. For example in your
@@ -357,7 +360,7 @@ strip = false
 </code></pre>
 <p>Per default, <code>iai-callgrind</code> runs all benchmarks with Valgrind's cache
 simulation turned on (<code>--cache-sim=yes</code>) in order to calculate an estimation for
-the total cpu cycles. See also the <a href="#rework-the-metrics-output">Metrics Output</a>
+the total cpu cycles. See also the <a href="index.html#rework-the-metrics-output">Metrics Output</a>
 section for more infos. However, if you want to opt-out of the cache simulation
 and the calculation of estimated cycles, you can easily do so within the
 benchmark with the <code>LibraryBenchmarkConfig</code> (or <code>BinaryBenchmarkConfig</code>):</p>
@@ -371,14 +374,14 @@ benchmark with the <code>LibraryBenchmarkConfig</code> (or <code>BinaryBenchmark
 <p>or with arguments</p>
 <pre><code class="language-shell">cargo bench -- --callgrind-args="--cache-sim=no"
 </code></pre>
-<p>To be able to run the latter command, some <a href="#running-cargo-bench-results-in-an-unrecognized-option-error">additional
+<p>To be able to run the latter command, some <a href="index.html#running-cargo-bench-results-in-an-unrecognized-option-error">additional
 configuration</a>
 might be needed.</p>
 <h4 id="library-benchmarks"><a class="header" href="#library-benchmarks">Library Benchmarks</a></h4>
 <p>Use this scheme if you want to micro-benchmark specific functions of your crate's library.</p>
 <h5 id="important-default-behavior"><a class="header" href="#important-default-behavior">Important default behavior</a></h5>
 <p>The environment variables are cleared before running a library benchmark. Have a
-look into the <a href="#configuration">Configuration</a> section if you need to change that
+look into the <a href="index.html#configuration">Configuration</a> section if you need to change that
 behavior.</p>
 <h5 id="quickstart"><a class="header" href="#quickstart">Quickstart</a></h5>
 <p>Add</p>
@@ -534,7 +537,7 @@ fn my_bench(value: &amp;str) -&gt; usize {
 }
 <span class="boring">}</span></code></pre></pre>
 <p>This example works well with the <code>--nocapture</code> option (env: <code>IAI_CALLGRIND_NOCAPTURE</code>,
-see also <a href="#show-terminal-output-of-benchmarks">Show terminal output of
+see also <a href="index.html#show-terminal-output-of-benchmarks">Show terminal output of
 benchmarks</a>), so you can actually see
 the output of the <code>my_teardown</code> function.</p>
 <h5 id="the-bench-attribute"><a class="header" href="#the-bench-attribute">The #[bench] attribute</a></h5>
@@ -635,7 +638,7 @@ to all benchmarks within the same group.</li>
 the benchmark functions specified with the <code>benchmarks</code> argument, across any
 benchmark groups, are compared with each other as long as the ids (the part
 after the <code>::</code> in <code>#[bench::id(...)]</code>) match. See also
-<a href="#comparing-benchmark-functions">below</a></li>
+<a href="index.html#comparing-benchmark-functions">below</a></li>
 <li><strong><code>setup</code></strong> (optional): A setup function or any valid expression which is run
 before all benchmarks of this group</li>
 <li><strong><code>teardown</code></strong> (optional): A teardown function or any valid expression which
@@ -765,14 +768,14 @@ possible to benchmark any executable file in the <code>PATH</code> or any execut
 path.</p>
 <p>It's also possible to run functions of the same benchmark file <code>before</code> and <code>after</code> all benchmarks
 or to <code>setup</code> and <code>teardown</code> any benchmarked binary.</p>
-<p>Unlike <a href="#library-benchmarks">Library Benchmarks</a>, there are no setup costs for binary benchmarks to
+<p>Unlike <a href="index.html#library-benchmarks">Library Benchmarks</a>, there are no setup costs for binary benchmarks to
 pay attention at, since each benchmark run's command is passed directly to valgrind's callgrind.</p>
 <h4 id="temporary-workspace-and-other-important-default-behavior"><a class="header" href="#temporary-workspace-and-other-important-default-behavior">Temporary Workspace and other important default behavior</a></h4>
 <p>Per default, all binary benchmarks and the <code>before</code>, <code>after</code>, <code>setup</code> and <code>teardown</code> functions are
-executed in a temporary directory. See the <a href="#switching-off-the-sandbox">Switching off the sandbox</a>
+executed in a temporary directory. See the <a href="index.html#switching-off-the-sandbox">Switching off the sandbox</a>
 for changing this behavior.</p>
 <p>Also, the environment variables of benchmarked binaries are cleared before the benchmark is run. See
-also <a href="#environment-variables">Environment variables</a> for how to pass environment variables to the
+also <a href="index.html#environment-variables">Environment variables</a> for how to pass environment variables to the
 benchmarked binary.</p>
 <h4 id="quickstart-1"><a class="header" href="#quickstart-1">Quickstart</a></h4>
 <p>Suppose your crate's binary is named <code>benchmark-tests-printargs</code> and you have a
@@ -864,9 +867,9 @@ my_binary_benchmark::my_exe_group no argument:benchmark-tests-printargs
 <p>You'll find the callgrind output files of each run of the benchmark
 <code>my_binary_benchmark</code> of the group <code>my_exe_group</code> in
 <code>target/iai/$CARGO_PKG_NAME/my_binary_benchmark/my_exe_group</code>. See also
-<a href="#customize-the-output-directory">customizing the output directory</a>.</p>
+<a href="index.html#customize-the-output-directory">customizing the output directory</a>.</p>
 <h4 id="configuration-1"><a class="header" href="#configuration-1">Configuration</a></h4>
-<p>Much like the configuration of <a href="#configuration">Library Benchmarks</a> it's possible to configure
+<p>Much like the configuration of <a href="index.html#configuration">Library Benchmarks</a> it's possible to configure
 binary benchmarks at top-level in the <code>main!</code> macro and at group-level in the
 <code>binary_benchmark_groups!</code> with the <code>config = ...;</code> argument. In contrast to library benchmarks,
 binary benchmarks can be configured at a lower and last level within <code>Run</code> directly.</p>
@@ -939,12 +942,12 @@ this project for a working example.</p>
 <p>With Iai-Callgrind you can define limits for each event kinds over which a
 performance regression can be assumed. There are no default regression checks
 and you have to opt-in with a <code>RegressionConfig</code> at benchmark level or at a
-global level with <a href="#command-line-arguments-and-environment-variables">Command-line arguments or Environment
+global level with <a href="index.html#command-line-arguments-and-environment-variables">Command-line arguments or Environment
 variables</a>.</p>
 <p>A performance regression check consists of an <code>EventKind</code> and a percentage over
 which a regression is assumed. If the percentage is negative, then a regression
 is assumed to be below this limit. The default <code>EventKind</code> is
-<code>EventKind::Ir</code> with a value of <code>+10%</code>.For example, in a <a href="#library-benchmarks">Library
+<code>EventKind::Ir</code> with a value of <code>+10%</code>.For example, in a <a href="index.html#library-benchmarks">Library
 Benchmark</a>, let's overwrite the default limit with a global
 limit of <code>+5%</code> for the total instructions executed (the <code>Ir</code> event kind):</p>
 <pre><pre class="playground"><code class="language-rust edition2021"><span class="boring">#![allow(unused)]
@@ -1071,7 +1074,7 @@ regressions etc.</p>
 output file in the <code>target/iai</code> directory.</p>
 <h3 id="command-line-arguments-and-environment-variables"><a class="header" href="#command-line-arguments-and-environment-variables">Command-line arguments and environment variables</a></h3>
 <p>It's possible to pass arguments to iai-callgrind separated by <code>--</code> (<code>cargo bench -- ARGS</code>). If you're running into the error <code>Unrecognized Option</code>, see the
-<a href="#running-cargo-bench-results-in-an-unrecognized-option-error">FAQ</a>. For a
+<a href="index.html#running-cargo-bench-results-in-an-unrecognized-option-error">FAQ</a>. For a
 complete rundown of possible arguments, execute <code>cargo bench --bench &lt;benchmark&gt; -- --help</code>. Almost all command-line arguments have a corresponding environment
 variable. The environment variables which don't have a corresponding
 command-line argument are:</p>
@@ -1174,7 +1177,7 @@ benchmark run. To show any captured output, you can use
 capture output with the <code>--nocapture</code> (env: <code>IAI_CALLGRIND_NOCAPTURE</code>) option.
 This is currently restricted to the <code>callgrind</code> run to prevent showing the same
 output multiple times. So, any terminal output of other tool runs (see also
-<a href="#valgrind-tools">Valgrind Tools</a>) is still captured.</p>
+<a href="index.html#valgrind-tools">Valgrind Tools</a>) is still captured.</p>
 <p>The <code>--nocapture</code> flag takes the special values <code>stdout</code> and <code>stderr</code> in
 addition to <code>true</code> and <code>false</code>. In the <code>--nocapture=stdout</code> case, terminal
 output to <code>stdout</code> is not captured and shown during the benchmark run but output
@@ -1310,7 +1313,7 @@ profile. This can originate in an option you've added to the <code>release</code
 since the <code>bench</code> profile inherits the <code>release</code> profile. For example, if you've
 added <code>strip = true</code> to your <code>release</code> profile which is perfectly fine, you need
 to disable this option in your <code>bench</code> profile to be able to run <code>iai-callgrind</code>
-benchmarks. See also the <a href="#benchmarking">Benchmarking</a> section for a more
+benchmarks. See also the <a href="index.html#benchmarking">Benchmarking</a> section for a more
 thorough example.</p>
 <h4 id="running-cargo-bench-results-in-an-unrecognized-option-error"><a class="header" href="#running-cargo-bench-results-in-an-unrecognized-option-error">Running <code>cargo bench</code> results in an "Unrecognized Option" error</a></h4>
 <p>For <code>cargo bench -- --some-valid-arg</code> to work you can either specify the benchmark with
@@ -1329,7 +1332,7 @@ harness which is added even if you haven't used <code>#[bench]</code> functions 
 library or binary. Naturally, the default harness doesn't know of the
 <code>iai-callgrind</code> arguments and aborts execution printing the <code>Unrecognized Option</code> error.</p>
 <p>If you cannot or don't want to add <code>bench = false</code> to your <code>Cargo.toml</code>, you can
-alternatively use environment variables. For every <a href="#command-line-arguments-and-environment-variables">command-line
+alternatively use environment variables. For every <a href="index.html#command-line-arguments-and-environment-variables">command-line
 argument</a> exists a
 corresponding environment variable.</p>
 <h3 id="contributing"><a class="header" href="#contributing">Contributing</a></h3>
@@ -1360,9 +1363,6 @@ files.</p>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="intro.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
-                                <i class="fa fa-angle-left"></i>
-                            </a>
 
 
                         <div style="clear: both"></div>
@@ -1371,9 +1371,6 @@ files.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="intro.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
-                        <i class="fa fa-angle-left"></i>
-                    </a>
 
             </nav>
 
@@ -1398,6 +1395,11 @@ files.</p>
         <!-- Custom JS scripts -->
         <script src="js/dropdown.js"></script>
 
+        <script>
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
 
     </div>
     </body>
