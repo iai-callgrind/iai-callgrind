@@ -251,6 +251,10 @@ book-tests:
 book-build:
     mdbook build docs
 
+# Clean the current book. (Uses: `mdbook`)
+book-clean:
+    mdbook clean docs
+
 # Serve the book at localhost:3000 and reload on changes. Some links may be broken. Run `just book-serve-github` for a real world environment. (Uses: `mdbook`)
 book-serve:
     mdbook serve docs
