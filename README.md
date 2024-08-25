@@ -28,11 +28,11 @@
     </a>
 </div>
 
-This is the guide for Iai-Callgrind, a benchmarking framework/harness which uses
-[Valgrind's Callgrind][Callgrind Manual] and other Valgrind tools like DHAT,
-Massif, ... to provide extremely accurate and consistent measurements of Rust
-code, making it perfectly suited to run in environments like a CI. Iai-Callgrind
-is integrated in [Bencher].
+Iai-Callgrind is a benchmarking framework/harness which uses [Valgrind's
+Callgrind][Callgrind Manual] and other Valgrind tools like DHAT, Massif, ... to
+provide extremely accurate and consistent measurements of Rust code, making it
+perfectly suited to run in environments like a CI. Iai-Callgrind is integrated
+in [Bencher].
 
 Iai-Callgrind is:
 
@@ -49,9 +49,8 @@ Iai-Callgrind is:
 - __Visualizable__: Iai-Callgrind generates a Callgrind (DHAT, ...) profile of
   the benchmarked code and can be configured to create flamegraph-like charts
   from Callgrind metrics. In general, all Valgrind-compatible tools like
-  [callgrind_annotate][Callgrind Annotate],
-  [kcachegrind] or `dh_view.html`
-  and others to analyze the results in detail are fully supported.
+  [callgrind_annotate][Callgrind Annotate], [kcachegrind] or `dh_view.html` and
+  others to analyze the results in detail are fully supported.
 - __Easy__: The API for setting up benchmarks is easy to use and allows you to
   quickly create concise and clear benchmarks. Focus more on profiling and your
   code than on the framework.
@@ -92,7 +91,7 @@ checkout the README of this repo using a specific tagged version for example
 <https://github.com/iai-callgrind/iai-callgrind/tree/v0.12.2> or using the
 github ui.
 
-Here's just a small introductory example, assuming you have a everything
+Here's just a small introductory example, assuming you have everything
 [installed][Guide Prerequisites] and a benchmark with the following content in
 `benches/library_benchmark.rs` ready:
 
@@ -194,8 +193,7 @@ Iai-Callgrind wouldn't be possible without [Valgrind].
 Iai-Callgrind is like Iai dual licensed under the Apache 2.0 license and the MIT
 license at your option.
 
-According to [Valgrind's
-documentation][Valgrind Client Request Mechanism]:
+According to [Valgrind's documentation][Valgrind Client Request Mechanism]:
 
 > The Valgrind headers, unlike most of the rest of
 the code, are under a BSD-style license so you may include them without worrying
