@@ -219,7 +219,7 @@ and others to analyze the results in detail are fully supported.</li>
 quickly create concise and clear benchmarks. Focus more on profiling and your
 code than on the framework.</li>
 </ul>
-<h2 id="design-philosophy-and-goals"><a class="header" href="#design-philosophy-and-goals">Design philosophy and Goals</a></h2>
+<h2 id="design-philosophy-and-goals"><a class="header" href="#design-philosophy-and-goals">Design philosophy and goals</a></h2>
 <p>Iai-Callgrind benchmarks are designed to be runnable with <code>cargo bench</code>. The
 benchmark files are expanded to a benchmarking harness which replaces the native
 benchmark harness of <code>rust</code>. Iai-Callgrind is a profiling framework that can
@@ -235,8 +235,8 @@ Iai-Callgrind is not a good fit.</p>
 <ul>
 <li>If you need wall-clock times, Iai-Callgrind cannot help you much. The
 estimation of cpu cycles merely correlates to wall-clock times but is not a
-replacement for wall-clock times. It is primarily designed to be a relative
-metric to be used for comparison.</li>
+replacement for wall-clock times. The cycles estimation is primarily designed
+to be a relative metric to be used for comparison.</li>
 <li>Iai-Callgrind cannot be run on Windows and platforms not supported by
 Valgrind.</li>
 </ul>
