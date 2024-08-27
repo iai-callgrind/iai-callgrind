@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
+# spell-checker:ignore tlsv
 
 set -e
 
@@ -6,8 +7,13 @@ set -e
 . ~/.cargo/env
 
 echo Prepare
-cargo +stable install cargo-binstall
-cargo +stable binstall --no-confirm cargo-hack
+
+# Generic approach
+# host=$(rustc -vV | grep '^host:' | cut -d' ' -f2)
+# curl --proto '=https' --tlsv1.2 -fsSL "https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-$host.tar.gz" | tar xzf - -C "$HOME/.cargo/bin"
+
+# Download binary and install to $HOME/.cargo/bin
+curl --proto '=https' --tlsv1.2 -fsSL "https://github.com/taiki-e/cargo-hack/releases/latest/download/cargo-hack-x86_64-unknown-freebsd.tar.gz" | tar xzf - -C "$HOME/.cargo/bin"
 
 cargo update
 
