@@ -1,0 +1,41 @@
+data:
+  - group: my_group
+    function: bench_paths
+    id: absolute
+    expected:
+      files:
+        - callgrind.bench_paths.absolute.log
+        - callgrind.bench_paths.absolute.out
+        - callgrind.bench_paths.absolute.log.old
+        - callgrind.bench_paths.absolute.out.old
+        - summary.json
+  - group: my_group
+    function: bench_paths
+    id: relative
+    expected:
+      files:
+        - callgrind.bench_paths.relative.log
+        - callgrind.bench_paths.relative.out
+        - callgrind.bench_paths.relative.log.old
+        - callgrind.bench_paths.relative.out.old
+        - summary.json
+  - group: my_group
+    function: bench_paths
+    id: use_path
+    expected:
+      files:
+        - callgrind.bench_paths.use_path.log
+        - callgrind.bench_paths.use_path.out
+        - callgrind.bench_paths.use_path.log.old
+        - callgrind.bench_paths.use_path.out.old
+        - summary.json
+  - group: my_group
+    function: bench_paths
+    id: crate_binary
+    expected:
+      files:
+        - callgrind.bench_paths.crate_binary.log
+        - callgrind.bench_paths.crate_binary.out
+        - callgrind.bench_paths.crate_binary.log.old
+        - callgrind.bench_paths.crate_binary.out.old
+        - summary.json

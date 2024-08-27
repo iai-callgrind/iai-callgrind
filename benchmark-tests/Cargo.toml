@@ -49,6 +49,10 @@ name = "echo"
 path = "src/helper/echo.rs"
 
 [[bin]]
+name = "cat"
+path = "src/helper/cat.rs"
+
+[[bin]]
 name = "read-file"
 path = "src/helper/read-file.rs"
 
@@ -117,6 +121,11 @@ path = "benches/test_bin_bench/intro/test_bin_bench_intro.rs"
 harness = false
 name = "test_bin_bench_low_level"
 path = "benches/test_bin_bench/low_level/test_bin_bench_low_level.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_paths"
+path = "benches/test_bin_bench/paths/test_bin_bench_paths.rs"
 
 [[bench]]
 harness = false

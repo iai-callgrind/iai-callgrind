@@ -27,7 +27,6 @@ use super::tool::{
 use crate::api::{self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, Stdin};
 use crate::error::Error;
 use crate::runner::format;
-use crate::util::make_absolute;
 
 mod defaults {
     use crate::api::Stdin;
@@ -298,7 +297,7 @@ impl BinBench {
             ..
         } = binary_benchmark_bench.command;
 
-        let command = Command::new(meta, &module_path, path, args)?;
+        let command = Command::new(&module_path, path, args)?;
 
         let callgrind_args = Args::from_raw_args(&[&config.raw_callgrind_args, raw_args])?;
 
@@ -423,28 +422,12 @@ impl BinBench {
 }
 
 impl Command {
-    fn new(
-        meta: &Metadata,
-        module_path: &ModulePath,
-        path: PathBuf,
-        args: Vec<OsString>,
-    ) -> Result<Self> {
-        if path.display().to_string().is_empty() {
+    fn new(module_path: &ModulePath, path: PathBuf, args: Vec<OsString>) -> Result<Self> {
+        if path.as_os_str().is_empty() {
             return Err(anyhow!("{module_path}: Empty path in command",));
         }
 
-        let command = if path.parent().is_none() && !path.starts_with("./") {
-            Self { path, args }
-        } else if path.is_relative() {
-            Self {
-                path: make_absolute(&meta.project_root, path),
-                args,
-            }
-        } else {
-            Self { path, args }
-        };
-
-        Ok(command)
+        Ok(Self { path, args })
     }
 }
 
