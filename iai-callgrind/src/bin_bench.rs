@@ -171,8 +171,8 @@ pub struct BinaryBenchmark {
 /// ```
 ///
 /// However, an iai-callgrind benchmark is not limited to a crate's binaries, it can be any
-/// executable in the `$PATH`, or a absolute path to a binary. The following will create a `Command`
-/// for the system's `echo` from the `$PATH`:
+/// executable in the `$PATH`, orn a absolute path to a binary installed on your system. The
+/// following will create a `Command` for the system's `echo` from the `$PATH`:
 ///
 /// ```rust
 /// use iai_callgrind::Command;
@@ -1604,6 +1604,7 @@ impl Command {
     /// Use
     /// [`env!("CARGO_BIN_EXE_<name>)`](https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-crates)
     /// to provide the path to an executable of your project instead of `target/release/<name>`.
+    ///
     /// This `Command` is a builder for the binary which is going to be benchmarked but is not
     /// executed right away. We simply gather all the information to be finally able to execute the
     /// command under valgrind, later (after we collected all the commands in this benchmark file).
@@ -1611,12 +1612,14 @@ impl Command {
     ///
     /// # Relative paths
     ///
-    /// Even though relative paths are discouraged, they are always interpreted relative to the
-    /// workspace root as reported by cargo. This is usually the directory with the top-level
-    /// `Cargo.toml` file. We try to resolve simple names like `Command::new("echo")` using the
-    /// `$PATH`. To disambiguate between simple names and relative paths, use `./` as prefix for
-    /// relative paths. For example `echo` is searched in the `$PATH` and `./echo` is interpreted as
-    /// relative to the workspace root.
+    /// Relative paths are interpreted relative to the current directory and if not running the
+    /// benchmarks in a [`Sandbox`], depends on where `cargo bench` sets the current directory.
+    /// Usually, it's best to use [`Path::canonicalize`] to resolve the relative path to a binary in
+    /// your project's directory. In case you're running the benchmark in a [`Sandbox`], the path is
+    /// interpreted relative to the root directory of the `Sandbox`. Iai-Callgrind tries to resolve
+    /// simple names like `Command::new("echo")` searching the `$PATH`. To disambiguate between
+    /// simple names and relative paths, use `./`. For example `echo` is searched in the `$PATH` and
+    /// `./echo` is interpreted relative.
     ///
     /// # Examples
     ///
