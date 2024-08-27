@@ -30,6 +30,13 @@ impl Parser for SummaryParser {
             if let Some(stripped) = line.strip_prefix("summary:") {
                 trace!("Found line with summary: '{}'", line);
                 costs.add_iter_str(stripped.split_ascii_whitespace());
+                if costs.iter().all(|(_c, u)| *u == 0) {
+                    trace!(
+                        "Continuing file processing as summary indicates \"client_request\" are \
+                         used."
+                    );
+                    continue;
+                };
                 trace!("Updated counters to '{:?}'", &costs);
                 found = true;
                 break;
