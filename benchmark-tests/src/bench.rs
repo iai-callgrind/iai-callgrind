@@ -557,6 +557,12 @@ impl ExpectedRun {
                     summary = Some(file.clone());
                 }
             }
+            // Iai-Callgrind does not produce empty files and if so we treat it as an error
+            assert!(
+                std::fs::metadata(&file).unwrap().len() != 0,
+                "Expected file '{}' was empty",
+                file.display()
+            );
             assert!(
                 real_files.remove(&file),
                 "Expected file '{}' does not exist",
