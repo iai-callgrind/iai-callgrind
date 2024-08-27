@@ -203,6 +203,30 @@ jobs:
           RUSTUP_TOOLCHAIN: "stable"
         #   CROSS_DEBUG: "1"
 
+  freebsd:
+    name: Build, check and test/FreeBSD
+    needs: [format]
+    runs-on: ubuntu-latest
+    env:
+      IAI_CALLGRIND_VALGRIND_INCLUDE: "/usr/local/include"
+      IAI_CALLGRIND_VALGRIND_PATH: "/usr/local/bin"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup and run tests
+        id: test
+        uses: vmactions/freebsd-vm@v1
+        with:
+          envs: "IAI_CALLGRIND_VALGRIND_INCLUDE IAI_CALLGRIND_VALGRIND_PATH"
+          usesh: true
+          sync: rsync
+          copyback: false
+          prepare: |
+            pkg install -y valgrind curl llvm18 just npm-node22
+            curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSL "https://sh.rustup.rs" | sh -s -- --default-toolchain stable --profile minimal -y
+          run: |
+            ./scripts/freebsd_print_info.sh
+            ./scripts/freebsd_build_and_test.sh
+
   docs:
     needs: [base, client_requests]
     name: Docs/ubuntu-latest
