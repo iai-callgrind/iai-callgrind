@@ -12,7 +12,7 @@ fn bench_print_env_single(args: &[&str]) {
 }
 
 #[library_benchmark]
-#[bench::multiple(&["HOME", "USER"])]
+#[bench::multiple(&["HOME", "PATH"])]
 fn bench_print_env_multiple(args: &[&str]) {
     black_box(print_env(args))
 }
@@ -46,7 +46,7 @@ library_benchmark_group!(
 
 library_benchmark_group!(
     name = pass_through_multiple;
-    config = LibraryBenchmarkConfig::default().env_clear(true).pass_through_envs(["HOME", "USER"]);
+    config = LibraryBenchmarkConfig::default().env_clear(true).pass_through_envs(["HOME", "PATH"]);
     benchmarks = bench_print_env_multiple
 );
 
