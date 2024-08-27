@@ -1,6 +1,4 @@
-container:
-  image: rust:latest
-
+# spell-checker:ignore connrefused tlsv
 freebsd_instance:
   image_family: freebsd-14-0
 
@@ -8,6 +6,8 @@ test_task:
   env:
     IAI_CALLGRIND_VALGRIND_INCLUDE: "/usr/local/include"
     IAI_CALLGRIND_VALGRIND_PATH: "/usr/local/bin"
-  install_script: pkg install -y valgrind curl llvm18 just npm-node22
+  install_script: |
+    pkg install -y valgrind curl llvm18 just npm-node22
+    curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSL "https://sh.rustup.rs" | sh -s -- --default-toolchain stable --profile minimal -y
   info_script: ./scripts/freebsd_print_info.sh
   build_and_test_script: ./scripts/freebsd_build_and_test.sh
