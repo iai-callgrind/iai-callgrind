@@ -63,6 +63,7 @@ cicd
 clippy
 condi
 consts
+coreutils
 crabgrind
 cstring
 deallocations

@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# spell-checker:ignore tlsv
+# spell-checker:ignore tlsv proto
 
 set -e
 
