@@ -14,7 +14,7 @@ Client requests are deactivated by default but can be activated with the
 
 ```toml
 [dev-dependencies]
-iai-callgrind = { version = "0.13.0", features = ["client_requests"] }
+iai-callgrind = { version = "0.13.1", features = ["client_requests"] }
 ```
 
 If you need the client requests in your production code, you don't want them to
@@ -25,12 +25,12 @@ to your runtime dependencies and with the `client_requests` feature to your
 
 ```toml
 [dependencies]
-iai-callgrind = { version = "0.13.0", default-features = false, features = [
+iai-callgrind = { version = "0.13.1", default-features = false, features = [
     "client_requests_defs"
 ] }
 
 [dev-dependencies]
-iai-callgrind = { version = "0.13.0", features = ["client_requests"] }
+iai-callgrind = { version = "0.13.1", features = ["client_requests"] }
 ```
 
 With just the `client_requests_defs` feature activated, the client requests
@@ -72,5 +72,5 @@ fn main() {
 ```
 
 This was just a small introduction, please see the
-[`docs`](https://docs.rs/iai-callgrind/0.13.0/iai_callgrind/client_requests) for
+[`docs`](https://docs.rs/iai-callgrind/0.13.1/iai_callgrind/client_requests) for
 more details!
