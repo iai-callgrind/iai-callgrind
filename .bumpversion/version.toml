@@ -1,5 +1,5 @@
 [tool.bumpversion]
-current_version = "0.13.0"
+current_version = "0.13.1"
 commit = true
 message = "Bump version v{current_version} -> v{new_version}"
 
@@ -27,6 +27,3 @@ replace = "version = \"{new_version}\""
 filename = "client-request-tests/Cargo.toml"
 search = "version = \"={current_version}\""
 replace = "version = \"={new_version}\""
-
-[[tool.bumpversion.files]]
-filename = "README.md"
