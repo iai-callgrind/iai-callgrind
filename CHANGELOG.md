@@ -22,7 +22,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-### [0.13.0] - 2024-08-19
+## [0.13.1] - 2024-08-28
+
+### Changed
+
+* Updated locked non-development dependencies:
+    * `cc`: 1.1.13 -> 1.1.15
+    * `quote`: 1.0.36 -> 1.0.37
+    * `serde`: 1.0.208 -> 1.0.209
+    * `serde_json`: 1.0.126 -> 1.0.127
+    * `syn`: 2.0.75 -> 2.0.76
+
+### Fixed
+
+* ([#221](https://github.com/iai-callgrind/iai-callgrind/pull/221)): If the
+  Command's path was a simple command name like `echo`, `cat`, the path was
+  interpreted as relative path instead of searched in the `$PATH`. Relative
+  paths like `./echo` are now interpreted as relative to the current directory.
+  If running the Command in a Sandbox, this is the root directory of the
+  Sandbox. Otherwise, it is the directory which is set by cargo bench.
+
+## [0.13.0] - 2024-08-19
 
 !!! __IMPORTANT__ The default to run binary benchmarks in a sandbox has been
 changed from `true` to `false`. The `setup` and `teardown` of the
@@ -140,7 +160,8 @@ binary_benchmark_group!(
 
 In contrast to binary benchmarks, not much has changed for library benchmarks.
 If you're just looking for the changes in library benchmarks, the changes for
-library benchmarks have been marked specifically.
+library benchmarks have been marked specifically. The changes below were
+introduced in ([#229](https://github.com/iai-callgrind/iai-callgrind/pull/229)).
 
 ### Added
 
