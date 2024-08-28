@@ -27,6 +27,3 @@ replace = "version = \"{new_version}\""
 filename = "client-request-tests/Cargo.toml"
 search = "version = \"={current_version}\""
 replace = "version = \"={new_version}\""
-
-[[tool.bumpversion.files]]
-filename = "README.md"
