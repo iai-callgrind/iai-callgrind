@@ -40,7 +40,7 @@ jobs:
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v4
-        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/mdbook' }}
+        if: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/mdbook' }}
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/book
@@ -48,7 +48,7 @@ jobs:
 
       # On the gh-pages branch the root is the content of docs/book
       - name: Create/Overwrite link to latest on gh-pages branch
-        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/mdbook' }}
+        if: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/mdbook' }}
         run: |
           git config user.email "bot@publish_book"
           git config user.name "bot@publish_book"
