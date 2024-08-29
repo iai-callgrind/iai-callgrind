@@ -89,6 +89,14 @@ pub enum Direction {
     BottomToTop,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub enum EntryPoint {
+    None,
+    #[default]
+    Default,
+    Custom(String),
+}
+
 /// All `EventKind`s callgrind produces and additionally some derived events
 ///
 /// Depending on the options passed to Callgrind, these are the events that Callgrind can produce.
@@ -222,6 +230,7 @@ pub struct LibraryBenchmarkConfig {
     pub tools: Tools,
     pub tools_override: Option<Tools>,
     pub truncate_description: Option<Option<usize>>,
+    pub entry_point: Option<EntryPoint>,
 }
 
 /// The model for the `library_benchmark_group` macro
@@ -407,6 +416,15 @@ impl Default for Direction {
     }
 }
 
+impl<T> From<T> for EntryPoint
+where
+    T: Into<String>,
+{
+    fn from(value: T) -> Self {
+        EntryPoint::Custom(value.into())
+    }
+}
+
 impl EventKind {
     /// Return true if this `EventKind` is a derived event
     ///
@@ -544,8 +562,10 @@ impl LibraryBenchmarkConfig {
             } else {
                 // do nothing
             }
+
             self.truncate_description =
                 update_option(&self.truncate_description, &other.truncate_description);
+            self.entry_point = update_option(&self.entry_point, &other.entry_point);
         }
         self
     }
@@ -827,6 +847,7 @@ mod tests {
             }]),
             tools_override: None,
             truncate_description: None,
+            entry_point: None,
         };
 
         assert_eq!(base.update_from_all([Some(&other.clone())]), other);
@@ -849,7 +870,8 @@ mod tests {
                 show_log: None,
             }]),
             tools_override: Some(Tools(vec![])),
-            truncate_description: None,
+            truncate_description: Some(Some(10)),
+            entry_point: Some(EntryPoint::default()),
         };
         let expected = LibraryBenchmarkConfig {
             tools: other.tools_override.as_ref().unwrap().clone(),

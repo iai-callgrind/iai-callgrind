@@ -13,6 +13,11 @@ Please make sure you have debug symbols enabled in your benchmark profile.
 See also the Installation section in the iai-callgrind README:
 https://github.com/iai-callgrind/iai-callgrind?tab=readme-ov-file#installation";
 
+/// A parser for callgrind output files which collects all costs for a [`Sentinel`].
+///
+/// This parser is limited to `Sentinels` which can occur only once per callgrind output file and
+/// are not recursive. This includes the Sentinel created from the
+/// [`crate::runner::DEFAULT_TOGGLE`].
 pub struct SentinelParser {
     sentinel: Sentinel,
 }
@@ -41,7 +46,6 @@ impl Parser for SentinelParser {
         let properties = parse_header(&mut iter)
             .map_err(|error| Error::ParseError((output_path.to_path(), error.to_string())))?;
 
-        let mut found = false;
         let mut costs = properties.costs_prototype;
         let mut start_record = false;
 
@@ -58,7 +62,6 @@ impl Parser for SentinelParser {
                             trace!("Found line with sentinel: '{}'", line);
                             start_record = true;
                         }
-                        found = true;
                     }
                 }
                 continue;
@@ -82,17 +85,20 @@ impl Parser for SentinelParser {
             }
         }
 
-        if found {
-            Ok(costs)
-        } else {
-            Err(Error::ParseError((
-                output_path.to_path(),
-                format!(
-                    "Sentinel '{}' not found.{}",
-                    &self.sentinel, ERROR_MESSAGE_DEBUG_SYMBOLS
-                ),
-            ))
-            .into())
-        }
+        Ok(costs)
+
+        // TODO: CLEANUP
+        // if found {
+        //     Ok(costs)
+        // } else {
+        //     Err(Error::ParseError((
+        //         output_path.to_path(),
+        //         format!(
+        //             "Sentinel '{}' not found.{}",
+        //             &self.sentinel, ERROR_MESSAGE_DEBUG_SYMBOLS
+        //         ),
+        //     ))
+        //     .into())
+        // }
     }
 }

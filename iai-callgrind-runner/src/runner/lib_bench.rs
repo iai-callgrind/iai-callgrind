@@ -12,8 +12,10 @@ use super::callgrind::flamegraph::{
     BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
     LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
 };
+use super::callgrind::model::Costs;
 use super::callgrind::parser::Sentinel;
 use super::callgrind::sentinel_parser::SentinelParser;
+use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::RegressionConfig;
 use super::common::{Assistant, AssistantKind, Config, ModulePath};
 use super::format::{
@@ -29,7 +31,7 @@ use super::tool::{
     ValgrindTool,
 };
 use super::{Error, DEFAULT_TOGGLE};
-use crate::api::{self, LibraryBenchmarkGroups};
+use crate::api::{self, EntryPoint, LibraryBenchmarkGroups};
 
 mod defaults {
     pub const COMPARE_BY_ID: bool = false;
@@ -72,7 +74,7 @@ pub struct LibBench {
     pub regression_config: Option<RegressionConfig>,
     pub tools: ToolConfigs,
     pub module_path: ModulePath,
-    pub entry_point: Option<String>,
+    pub entry_point: EntryPoint,
     pub truncate_description: Option<usize>,
 }
 
@@ -149,15 +151,24 @@ impl Benchmark for BaselineBenchmark {
         );
 
         let mut callgrind_args = lib_bench.callgrind_args.clone();
-        if let Some(entry_point) = lib_bench.entry_point.as_ref() {
-            callgrind_args.insert_toggle_collect(entry_point);
-        }
+
+        let parser: Box<dyn Parser<Output = Costs>> = match &lib_bench.entry_point {
+            EntryPoint::None => Box::new(SummaryParser),
+            EntryPoint::Default => {
+                callgrind_args.insert_toggle_collect(DEFAULT_TOGGLE);
+                Box::new(SentinelParser::new(&Sentinel::default()))
+            }
+            EntryPoint::Custom(custom) => {
+                // TODO: Change to SummaryParser in LoadBaselineBenchmark, ...
+                callgrind_args.insert_toggle_collect(custom);
+                Box::new(SummaryParser)
+            }
+        };
 
         let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, None);
 
         let bench_args = lib_bench.bench_args(group);
 
-        let sentinel = Sentinel::default();
         let out_path = self.output_path(lib_bench, config, group);
         out_path.init()?;
         out_path.shift()?;
@@ -194,11 +205,11 @@ impl Benchmark for BaselineBenchmark {
             lib_bench.run_options.stderr.as_ref(),
         );
 
-        let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
+        let new_costs = parser.parse(&out_path)?;
 
         let old_costs = old_path
             .exists()
-            .then(|| SentinelParser::new(&sentinel).parse(&old_path))
+            .then(|| parser.parse(&old_path))
             .transpose()?;
 
         let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
@@ -231,7 +242,9 @@ impl Benchmark for BaselineBenchmark {
             .create(
                 &Flamegraph::new(header.to_title(), flamegraph_config),
                 &out_path,
-                Some(&sentinel),
+                // TODO: Check if this correct
+                /* Some(&sentinel) */
+                None,
                 &config.meta.project_root,
             )?;
         }
@@ -326,7 +339,7 @@ impl Groups {
                         id: library_benchmark_bench.id,
                         function_name: library_benchmark_bench.function_name,
                         args: library_benchmark_bench.args,
-                        entry_point: Some(DEFAULT_TOGGLE.to_owned()),
+                        entry_point: config.entry_point.unwrap_or(EntryPoint::Default),
                         run_options: RunOptions {
                             env_clear: config.env_clear.unwrap_or(true),
                             envs,
@@ -497,8 +510,17 @@ impl Benchmark for LoadBaselineBenchmark {
         let header = LibraryBenchmarkHeader::new(&config.meta, lib_bench);
         header.print();
 
+        let parser: Box<dyn Parser<Output = Costs>> = match &lib_bench.entry_point {
+            EntryPoint::None => Box::new(SummaryParser),
+            EntryPoint::Default => Box::new(SentinelParser::new(&Sentinel::default())),
+            EntryPoint::Custom(custom) => {
+                // Fail early if sentinel is invalid
+                // TODO: REMOVE UNWRAP
+                Box::new(SentinelParser::new(&Sentinel::new(custom).unwrap()))
+            }
+        };
+
         let bench_args = lib_bench.bench_args(group);
-        let sentinel = Sentinel::default();
         let out_path = self.output_path(lib_bench, config, group);
         let old_path = out_path.to_base_path();
         let log_path = out_path.to_log_output();
@@ -510,8 +532,8 @@ impl Benchmark for LoadBaselineBenchmark {
             header.description(),
         )?;
 
-        let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
-        let old_costs = Some(SentinelParser::new(&sentinel).parse(&old_path)?);
+        let new_costs = parser.parse(&out_path)?;
+        let old_costs = Some(parser.parse(&old_path)?);
         let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
 
         VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
@@ -541,7 +563,8 @@ impl Benchmark for LoadBaselineBenchmark {
             .create(
                 &Flamegraph::new(header.to_title(), flamegraph_config),
                 &out_path,
-                Some(&sentinel),
+                // TODO: ADJUST TO SENTINEL PRESENT OR NOT
+                None,
                 &config.meta.project_root,
             )?;
         }
@@ -660,23 +683,33 @@ impl Benchmark for SaveBaselineBenchmark {
         );
 
         let mut callgrind_args = lib_bench.callgrind_args.clone();
-        if let Some(entry_point) = lib_bench.entry_point.as_ref() {
-            callgrind_args.insert_toggle_collect(entry_point);
-        }
+        let parser: Box<dyn Parser<Output = Costs>> = match &lib_bench.entry_point {
+            EntryPoint::None => Box::new(SummaryParser),
+            EntryPoint::Default => {
+                callgrind_args.insert_toggle_collect(DEFAULT_TOGGLE);
+                Box::new(SentinelParser::new(&Sentinel::default()))
+            }
+            EntryPoint::Custom(custom) => {
+                // TODO: REMOVE UNWRAP
+                // Fail early before shifting the files if the custom entry point is invalid
+                let sentinel = Sentinel::new(custom).unwrap();
+                callgrind_args.insert_toggle_collect(custom);
+                Box::new(SentinelParser::new(&sentinel))
+            }
+        };
 
         let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, None);
 
         let bench_args = lib_bench.bench_args(group);
         let baselines = self.baselines();
 
-        let sentinel = Sentinel::default();
         let out_path = self.output_path(lib_bench, config, group);
         out_path.init()?;
 
         let old_costs = out_path
             .exists()
             .then(|| {
-                SentinelParser::new(&sentinel)
+                parser
                     .parse(&out_path)
                     .and_then(|costs| out_path.clear().map(|()| costs))
             })
@@ -708,7 +741,7 @@ impl Benchmark for SaveBaselineBenchmark {
             lib_bench.run_options.stderr.as_ref(),
         );
 
-        let new_costs = SentinelParser::new(&sentinel).parse(&out_path)?;
+        let new_costs = parser.parse(&out_path)?;
         let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
         VerticalFormat::default().print(&config.meta, baselines.clone(), &costs_summary)?;
 
@@ -739,7 +772,8 @@ impl Benchmark for SaveBaselineBenchmark {
             .create(
                 &Flamegraph::new(header.to_title(), flamegraph_config),
                 &out_path,
-                Some(&sentinel),
+                // TODO: ADJUST TO SENTINEL PRESENT OR NOT
+                None,
                 &config.meta.project_root,
             )?;
         }

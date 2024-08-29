@@ -197,6 +197,11 @@ path = "benches/test_lib_bench/file_parameter/test_lib_bench_file_parameter.rs"
 
 [[bench]]
 harness = false
+name = "test_lib_bench_entry_point"
+path = "benches/test_lib_bench/entry_point/test_lib_bench_entry_point.rs"
+
+[[bench]]
+harness = false
 name = "test_bench_template"
 
 [[bench]]

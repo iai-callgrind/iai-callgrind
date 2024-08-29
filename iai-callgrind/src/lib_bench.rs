@@ -3,7 +3,7 @@ use std::ffi::OsString;
 use derive_more::AsRef;
 use iai_callgrind_macros::IntoInner;
 
-use crate::internal;
+use crate::{internal, EntryPoint};
 
 /// The main configuration of a library benchmark.
 ///
@@ -64,6 +64,7 @@ impl LibraryBenchmarkConfig {
             tools: internal::InternalTools::default(),
             tools_override: Option::default(),
             truncate_description: Option::default(),
+            entry_point: Option::default(),
         })
     }
 
@@ -564,6 +565,15 @@ impl LibraryBenchmarkConfig {
     /// ```
     pub fn truncate_description(&mut self, value: Option<usize>) -> &mut Self {
         self.0.truncate_description = Some(value);
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn entry_point<T>(&mut self, entry_point: T) -> &mut Self
+    where
+        T: Into<EntryPoint>,
+    {
+        self.0.entry_point = Some(entry_point.into());
         self
     }
 }
