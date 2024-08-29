@@ -185,7 +185,7 @@ build package +toolchain=msrv:
 # Build iai-callgrind-runner (uses 'cargo')
 [group('build')]
 build-runner:
-    just args=--release iai-callgrind-runner
+    just args=--release build iai-callgrind-runner
 
 # Build the documentation (Uses: 'cargo')
 [group('build')]
