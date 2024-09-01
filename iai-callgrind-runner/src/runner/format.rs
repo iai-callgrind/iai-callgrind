@@ -41,7 +41,7 @@ pub trait Formatter {
             if float.is_sign_positive() {
                 format!("{signed_short:+^9}").bright_red().bold()
             } else {
-                format!("{signed_short:+^9}").bright_green().bold()
+                format!("{signed_short:-^9}").bright_green().bold()
             }
         } else if float.is_sign_positive() {
             format!("{signed_short:^+8}{unit}").bright_red().bold()
