@@ -281,7 +281,7 @@ impl Groups {
                     ));
             let teardown =
                 library_benchmark_group
-                    .has_setup
+                    .has_teardown
                     .then_some(Assistant::new_group_assistant(
                         AssistantKind::Teardown,
                         &library_benchmark_group.id,
