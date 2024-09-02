@@ -78,7 +78,6 @@ struct Expected {
     files: Vec<PathBuf>,
     #[serde(default)]
     globs: Vec<ExpectedGlob>,
-    summary: Option<BenchmarkSummary>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -139,6 +138,8 @@ struct RunConfig {
     rust_version: Option<benchmark_tests::serde_rust_version::VersionComparator>,
 }
 
+#[derive(Debug)]
+struct Summary(BenchmarkSummary);
 impl Benchmark {
     pub fn new(path: &Path, _package_dir: &Path, target_dir: &Path) -> Self {
         let config: Config = serde_yaml::from_reader(File::open(path).expect("File should exist"))
@@ -482,7 +483,6 @@ impl BenchmarkOutput {
 }
 
 impl BenchmarkRunner {
-    #[allow(clippy::new_without_default)]
     pub fn new(benches: &[String]) -> Self {
         Self {
             metadata: Metadata::new(benches),
@@ -490,6 +490,8 @@ impl BenchmarkRunner {
     }
 
     pub fn run(&self) -> Result<(), String> {
+        // We need the `summary.json` files to verify that not all costs are zero. Extracting this
+        // info from the summary is much easier than doing it from the output.
         std::env::set_var("IAI_CALLGRIND_SAVE_SUMMARY", "json");
         std::env::set_var(
             "IAI_CALLGRIND_RUNNER",
@@ -686,6 +688,41 @@ impl RunConfig {
 
                 for expected in expected_runs.data {
                     expected.assert(&dest_dir, schema);
+                }
+            }
+        }
+
+        let base_dir = home_dir.join(PACKAGE).join(bench_name);
+        // These checks heavily depends on the creation of the `summary.json` files
+        for path in glob(&format!("{}/**/summary.json", base_dir.display()))
+            .unwrap()
+            .map(Result::unwrap)
+        {
+            let file = File::open(&path).unwrap();
+            let summary = Summary(serde_json::from_reader(file).unwrap());
+            summary.assert(path.strip_prefix(&base_dir).unwrap_or_else(|_| &path));
+        }
+    }
+}
+
+impl Summary {
+    fn assert(&self, path: &Path) {
+        if let Some(callgrind_summary) = &self.0.callgrind_summary {
+            for summary in &callgrind_summary.summaries {
+                let (new_costs, old_costs) = summary.events.extract_costs();
+                if let Some(new_costs) = new_costs {
+                    print_info(format!(
+                        "Verifying not all new costs are zero in '{}'",
+                        path.display()
+                    ));
+                    assert!(!new_costs.0.iter().all(|(_, c)| *c == 0));
+                }
+                if let Some(old_costs) = old_costs {
+                    print_info(format!(
+                        "Verifying not all old costs are zero in '{}'",
+                        path.display()
+                    ));
+                    assert!(!old_costs.0.iter().all(|(_, c)| *c == 0));
                 }
             }
         }
