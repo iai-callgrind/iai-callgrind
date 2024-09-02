@@ -1,11 +1,14 @@
 groups:
   - runs:
+      # A normal benchmark run
       - args: ["--nocapture"]
         expected:
           stdout: expected_stdout.1
+      # --save-baseline should run all setup and teardown functions as usual
       - args: ["--nocapture", "--save-baseline"]
         expected:
           stdout: expected_stdout.2
+      # --load-baseline should not run any setup and teardown functions
       - args: ["--nocapture", "--load-baseline", "--baseline"]
         expected:
           stdout: expected_stdout.3
