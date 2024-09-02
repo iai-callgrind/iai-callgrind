@@ -67,6 +67,7 @@ pub struct ToolOutputPath {
     pub kind: ToolOutputPathKind,
     pub tool: ValgrindTool,
     pub baseline_kind: BaselineKind,
+    /// The final directory of all the output files
     pub dir: PathBuf,
     pub name: String,
     pub modifiers: Vec<String>,
@@ -527,6 +528,9 @@ impl ToolOutput {
 }
 
 impl ToolOutputPath {
+    /// Create a new `ToolOutputPath`.
+    ///
+    /// The `base_dir` is supposed to be the same as [`Metadata::target_dir`].
     pub fn new(
         kind: ToolOutputPathKind,
         tool: ValgrindTool,

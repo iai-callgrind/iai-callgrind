@@ -23,6 +23,13 @@ pub struct Cmd {
 pub struct Metadata {
     pub arch: String,
     pub project_root: PathBuf,
+    /// The absolute path of the `HOME` (per default `$WORKSPACE_ROOT/target/iai`). Plus, if
+    /// configured, the target of the host like `x86_64-linux-unknown-gnu`. The final component is
+    /// the `CARGO_PKG_NAME`.
+    ///
+    /// Examples:
+    /// * `/home/my/workspace/my-project/target/iai/my-project` or
+    /// * `/home/my/workspace/my-project/target/iai/x86_64-linux-unknown-gnu/my-project`
     pub target_dir: PathBuf,
     pub valgrind: Cmd,
     pub valgrind_wrapper: Option<Cmd>,
