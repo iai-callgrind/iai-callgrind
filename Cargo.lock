@@ -150,6 +150,7 @@ dependencies = [
 name = "benchmark-tests"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "cargo_metadata",
  "colored",
  "glob",

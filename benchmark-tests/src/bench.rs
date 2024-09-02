@@ -8,9 +8,9 @@ use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 
+use benchmark_tests::common::Summary;
 use colored::Colorize;
 use glob::glob;
-use iai_callgrind_runner::runner::summary::BenchmarkSummary;
 use lazy_static::lazy_static;
 use minijinja::Environment;
 use once_cell::sync::OnceCell;
@@ -138,8 +138,6 @@ struct RunConfig {
     rust_version: Option<benchmark_tests::serde_rust_version::VersionComparator>,
 }
 
-#[derive(Debug)]
-struct Summary(BenchmarkSummary);
 impl Benchmark {
     pub fn new(path: &Path, _package_dir: &Path, target_dir: &Path) -> Self {
         let config: Config = serde_yaml::from_reader(File::open(path).expect("File should exist"))
@@ -693,38 +691,15 @@ impl RunConfig {
         }
 
         let base_dir = home_dir.join(PACKAGE).join(bench_name);
-        // These checks heavily depends on the creation of the `summary.json` files
+        // These checks heavily depends on the creation of the `summary.json` files, but we create
+        // them per default.
         for path in glob(&format!("{}/**/summary.json", base_dir.display()))
             .unwrap()
             .map(Result::unwrap)
         {
-            let file = File::open(&path).unwrap();
-            let summary = Summary(serde_json::from_reader(file).unwrap());
-            summary.assert(path.strip_prefix(&base_dir).unwrap_or_else(|_| &path));
-        }
-    }
-}
-
-impl Summary {
-    fn assert(&self, path: &Path) {
-        if let Some(callgrind_summary) = &self.0.callgrind_summary {
-            for summary in &callgrind_summary.summaries {
-                let (new_costs, old_costs) = summary.events.extract_costs();
-                if let Some(new_costs) = new_costs {
-                    print_info(format!(
-                        "Verifying not all new costs are zero in '{}'",
-                        path.display()
-                    ));
-                    assert!(!new_costs.0.iter().all(|(_, c)| *c == 0));
-                }
-                if let Some(old_costs) = old_costs {
-                    print_info(format!(
-                        "Verifying not all old costs are zero in '{}'",
-                        path.display()
-                    ));
-                    assert!(!old_costs.0.iter().all(|(_, c)| *c == 0));
-                }
-            }
+            let summary = Summary::new(&path).unwrap();
+            summary.assert_not_zero();
+            print_info("Verifying costs are not zero successful");
         }
     }
 }
