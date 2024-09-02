@@ -46,6 +46,7 @@ impl Parser for SentinelParser {
         let properties = parse_header(&mut iter)
             .map_err(|error| Error::ParseError((output_path.to_path(), error.to_string())))?;
 
+        let mut found = false;
         let mut costs = properties.costs_prototype;
         let mut start_record = false;
 
@@ -62,6 +63,7 @@ impl Parser for SentinelParser {
                             trace!("Found line with sentinel: '{}'", line);
                             start_record = true;
                         }
+                        found = true;
                     }
                 }
                 continue;
@@ -85,20 +87,17 @@ impl Parser for SentinelParser {
             }
         }
 
-        Ok(costs)
-
-        // TODO: CLEANUP
-        // if found {
-        //     Ok(costs)
-        // } else {
-        //     Err(Error::ParseError((
-        //         output_path.to_path(),
-        //         format!(
-        //             "Sentinel '{}' not found.{}",
-        //             &self.sentinel, ERROR_MESSAGE_DEBUG_SYMBOLS
-        //         ),
-        //     ))
-        //     .into())
-        // }
+        if found {
+            Ok(costs)
+        } else {
+            Err(Error::ParseError((
+                output_path.to_path(),
+                format!(
+                    "Sentinel '{}' not found.{}",
+                    &self.sentinel, ERROR_MESSAGE_DEBUG_SYMBOLS
+                ),
+            ))
+            .into())
+        }
     }
 }
