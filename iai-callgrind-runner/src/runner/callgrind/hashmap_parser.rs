@@ -129,6 +129,9 @@ impl Parser for HashMapParser {
         let mut cfn_totals = HashMap::<Id, Value>::new();
         let mut fn_totals = HashMap::<Id, Value>::new();
 
+        // FIXME: This should be a vec. The sentinel can match many functions. This is only ok,
+        // since we currently use the sentinel for the benchmark function exclusively. The benchmark
+        // function is very special in that it is called exactly once, is not recursive etc.
         let mut sentinel_key = None;
 
         // We start within he header

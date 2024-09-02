@@ -54,62 +54,63 @@ impl FlamegraphMap {
             return Ok(vec![]);
         }
 
-        // Let's find our entry point which defaults to "main"
-        let reference_cost = if let Some(key) = &self.0.sentinel_key {
-            self.0
-                .map
-                .get(key)
-                .expect("Resolved sentinel must be present in map")
-                .costs
-                .cost_by_kind(event_kind)
-                .ok_or_else(|| {
-                    anyhow!("Failed creating flamegraph stack: Missing event type '{event_kind}'")
-                })?
-        } else {
-            self.0
-                .map
-                .iter()
-                .find(|(k, _)| k.func == "main")
-                .expect("'main' function must be present in callgrind output")
-                .1
-                .costs
-                .cost_by_kind(event_kind)
-                .ok_or_else(|| {
-                    anyhow!("Failed creating flamegraph stack: Missing event type '{event_kind}'")
-                })?
-        };
-
         let mut heap = BinaryHeap::new();
+        let sentinel_value = self
+            .0
+            .sentinel_key
+            .as_ref()
+            .map(|key| {
+                self.0
+                    .map
+                    .get(key)
+                    .expect("Resolved sentinel must be present in map")
+                    .costs
+                    .cost_by_kind(event_kind)
+                    .ok_or_else(|| {
+                        anyhow!(
+                            "Failed creating flamegraph stack: Missing event type '{event_kind}'"
+                        )
+                    })
+            })
+            .transpose()?;
+
         for (id, value) in &self.0.map {
             let cost = value.costs.cost_by_kind(event_kind).ok_or_else(|| {
                 anyhow!("Failed creating flamegraph stack: Missing event type '{event_kind}'")
             })?;
-            if cost <= reference_cost {
-                let mut source = String::new();
-                if let Some(file) = &id.file {
-                    match file {
-                        SourcePath::Unknown => write!(source, "{}", id.func).unwrap(),
-                        SourcePath::Rust(path)
-                        | SourcePath::Relative(path)
-                        | SourcePath::Absolute(path) => {
-                            write!(source, "{}:{}", path.display(), id.func).unwrap();
-                        }
-                    }
-                } else {
-                    write!(source, "{}", id.func).unwrap();
-                };
-                if let Some(path) = &id.obj {
-                    match path {
-                        SourcePath::Unknown => {}
-                        SourcePath::Rust(path)
-                        | SourcePath::Relative(path)
-                        | SourcePath::Absolute(path) => {
-                            write!(source, " [{}]", path.display()).unwrap();
-                        }
+
+            if let Some(reference_cost) = sentinel_value {
+                if cost > reference_cost {
+                    continue;
+                }
+            };
+
+            let mut source = String::new();
+            if let Some(file) = &id.file {
+                match file {
+                    SourcePath::Unknown => write!(source, "{}", id.func).unwrap(),
+                    SourcePath::Rust(path)
+                    | SourcePath::Relative(path)
+                    | SourcePath::Absolute(path) => {
+                        write!(source, "{}:{}", path.display(), id.func).unwrap();
                     }
                 }
-                heap.push(HeapElem { source, cost });
+            } else {
+                write!(source, "{}", id.func).unwrap();
+            };
+
+            if let Some(path) = &id.obj {
+                match path {
+                    SourcePath::Unknown => {}
+                    SourcePath::Rust(path)
+                    | SourcePath::Relative(path)
+                    | SourcePath::Absolute(path) => {
+                        write!(source, " [{}]", path.display()).unwrap();
+                    }
+                }
             }
+
+            heap.push(HeapElem { source, cost });
         }
 
         let mut stacks: Vec<String> = vec![];

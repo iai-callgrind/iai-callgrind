@@ -2,7 +2,8 @@ use std::hint::black_box;
 
 use benchmark_tests::assert::Assert;
 use iai_callgrind::{
-    library_benchmark, library_benchmark_group, main, EntryPoint, EventKind, LibraryBenchmarkConfig,
+    library_benchmark, library_benchmark_group, main, EntryPoint, EventKind, FlamegraphConfig,
+    LibraryBenchmarkConfig,
 };
 use iai_callgrind_runner::runner::callgrind::hashmap_parser::SourcePath;
 use iai_callgrind_runner::runner::summary::BenchmarkSummary;
@@ -126,5 +127,10 @@ fn assert_benchmarks() {
     assert_nested();
 }
 
-library_benchmark_group!(name = my_group; teardown = assert_benchmarks(); benchmarks = bench_lib);
+library_benchmark_group!(
+    name = my_group;
+    config = LibraryBenchmarkConfig::default().flamegraph(FlamegraphConfig::default());
+    teardown = assert_benchmarks();
+    benchmarks = bench_lib
+);
 main!(library_benchmark_groups = my_group);
