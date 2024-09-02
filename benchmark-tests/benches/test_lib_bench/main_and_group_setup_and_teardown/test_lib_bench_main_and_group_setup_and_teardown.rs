@@ -47,6 +47,28 @@ library_benchmark_group!(
     benchmarks = simple_bench, check_file_exists
 );
 
+#[library_benchmark]
+fn create_file_bench() {
+    std::fs::write(GROUP_SETUP_FILE, "content").unwrap();
+}
+
+library_benchmark_group!(
+    name = group_only_teardown;
+    teardown = group_teardown();
+    benchmarks = create_file_bench
+);
+
+#[library_benchmark]
+fn delete_file_bench() {
+    std::fs::remove_file(GROUP_SETUP_FILE).unwrap();
+}
+
+library_benchmark_group!(
+    name = group_only_setup;
+    setup = group_setup();
+    benchmarks = delete_file_bench
+);
+
 library_benchmark_group!(
     name = check_group;
     benchmarks = check_file_not_exists
@@ -64,5 +86,6 @@ main!(
     setup = main_setup();
     teardown = main_teardown();
     library_benchmark_groups = simple_group_with_setup,
-    check_group
+    check_group,
+    group_only_teardown
 );
