@@ -132,6 +132,11 @@ path = "benches/test_bin_bench/paths/test_bin_bench_paths.rs"
 
 [[bench]]
 harness = false
+name = "test_bin_bench_command_delay"
+path = "benches/test_bin_bench/command_delay/test_bin_bench_command_delay.rs"
+
+[[bench]]
+harness = false
 name = "test_lib_bench_flamegraph"
 path = "benches/test_lib_bench/flamegraph/test_lib_bench_flamegraph.rs"
 

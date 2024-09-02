@@ -406,7 +406,7 @@ mod macros;
 #[cfg(feature = "default")]
 pub use bin_bench::{
     Bench, BenchmarkId, BinaryBenchmark, BinaryBenchmarkConfig, BinaryBenchmarkGroup, Command,
-    ExitWith, Sandbox,
+    Delay, DelayKind, ExitWith, Sandbox,
 };
 #[cfg(feature = "default")]
 pub use bincode;
