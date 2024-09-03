@@ -35,6 +35,9 @@ main!(
 # }
 ```
 
+<!-- TODO: Add a flamegraph example svg -->
+<!-- TODO: Talk about the flamegraphs if entry point is custom -->
+
 Callgrind flamegraphs show the inclusive costs for functions and a single
 `EventKind` (default is `EventKind::Ir`), similar to `callgrind_annotate` but in
 a nicer (and clickable) way. Especially, differential flamegraphs facilitate a

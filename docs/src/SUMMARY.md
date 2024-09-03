@@ -1,4 +1,5 @@
 <!-- markdownlint-disable MD025 MD042 -->
+<!-- TODO: Add entry point customization -->
 # Summary
 
 - [Introduction](./intro.md)

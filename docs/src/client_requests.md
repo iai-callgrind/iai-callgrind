@@ -71,6 +71,8 @@ fn main() {
 # }
 ```
 
+<!-- TODO: Add needed entry point customization -->
+
 This was just a small introduction, please see the
 [`docs`](https://docs.rs/iai-callgrind/0.13.2/iai_callgrind/client_requests) for
 more details!
