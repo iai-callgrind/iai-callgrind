@@ -41,7 +41,7 @@ pub trait Formatter {
             if float.is_sign_positive() {
                 format!("{signed_short:+^9}").bright_red().bold()
             } else {
-                format!("{signed_short:+^9}").bright_green().bold()
+                format!("{signed_short:-^9}").bright_green().bold()
             }
         } else if float.is_sign_positive() {
             format!("{signed_short:^+8}{unit}").bright_red().bold()
@@ -474,10 +474,12 @@ fn truncate_description(description: &str, truncate_description: Option<usize>) 
 
 #[cfg(test)]
 mod tests {
+    use indexmap::indexmap;
     use pretty_assertions::assert_eq;
     use rstest::rstest;
 
     use super::*;
+    use crate::runner::costs::Costs;
 
     #[rstest]
     #[case::simple("some::module", Some("id"), Some("1, 2"), "some::module id:1, 2")]
@@ -647,5 +649,41 @@ mod tests {
         );
 
         assert_eq!(header.to_string(), expected);
+    }
+
+    // TODO: Add more tests for the format. This tests only very basically only a single line and if
+    // new costs are present.
+    #[rstest]
+    #[case::new_costs_0(EventKind::Ir, 0, None, "*********", None)]
+    #[case::old_costs_0(EventKind::Ir, 1, Some(0), "+++inf+++", Some("+++inf+++"))]
+    #[case::all_costs_0(EventKind::Ir, 0, Some(0), "No change", None)]
+    #[case::new_costs_u64_max(EventKind::Ir, u64::MAX, None, "*********", None)]
+    #[case::old_costs_u64_max(EventKind::Ir, u64::MAX / 10, Some(u64::MAX), "-90.0000%", Some("-10.0000x"))]
+    #[case::all_costs_u64_max(EventKind::Ir, u64::MAX, Some(u64::MAX), "No change", None)]
+    #[case::no_change_when_not_0(EventKind::Ir, 1000, Some(1000), "No change", None)]
+    #[case::neg_change_when_not_0(EventKind::Ir, 2000, Some(3000), "-33.3333%", Some("-1.50000x"))]
+    #[case::pos_change_when_not_0(EventKind::Ir, 2000, Some(1000), "+100.000%", Some("+2.00000x"))]
+    #[case::pos_inf(EventKind::Ir, 2000, Some(0), "+++inf+++", Some("+++inf+++"))]
+    #[case::neg_inf(EventKind::Ir, 0, Some(2000), "-100.000%", Some("---inf---"))]
+    fn test_format_vertical_when_new_costs_are_present(
+        #[case] event_kind: EventKind,
+        #[case] new: u64,
+        #[case] old: Option<u64>,
+        #[case] diff_pct: &str,
+        #[case] diff_fact: Option<&str>,
+    ) {
+        let new_costs = Costs(indexmap! {event_kind => new});
+        let old_costs = old.map(|old| Costs(indexmap! {event_kind => old}));
+        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
+        let formatted = format_vertical((None, None), costs_summary.all_diffs()).unwrap();
+
+        let expected = format!(
+            "  {:<18}{new:>15}|{:<15} ({diff_pct}){}\n",
+            format!("{event_kind}:"),
+            old.map_or(NOT_AVAILABLE.to_owned(), |o| o.to_string()),
+            diff_fact.map_or_else(String::new, |f| format!(" [{f}]"))
+        );
+
+        assert_eq!(formatted, expected);
     }
 }
