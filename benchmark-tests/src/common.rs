@@ -15,16 +15,32 @@ impl Summary {
             .map_err(|error| anyhow!(error))
     }
 
+    pub fn get_name(&self) -> String {
+        if let Some(id) = self.0.id.as_ref() {
+            format!("{} {id}", self.0.module_path)
+        } else {
+            self.0.module_path.to_string()
+        }
+    }
+
     #[track_caller]
-    pub fn assert_not_zero(&self) {
+    pub fn assert_costs_not_all_zero(&self) {
         if let Some(callgrind_summary) = &self.0.callgrind_summary {
             for summary in &callgrind_summary.summaries {
                 let (new_costs, old_costs) = summary.events.extract_costs();
                 if let Some(new_costs) = new_costs {
-                    assert!(!new_costs.0.iter().all(|(_, c)| *c == 0));
+                    assert!(
+                        !new_costs.0.iter().all(|(_, c)| *c == 0),
+                        "All *new* costs were zero for '{}'",
+                        self.get_name()
+                    );
                 }
                 if let Some(old_costs) = old_costs {
-                    assert!(!old_costs.0.iter().all(|(_, c)| *c == 0));
+                    assert!(
+                        !old_costs.0.iter().all(|(_, c)| *c == 0),
+                        "All *old* costs were zero for '{}'",
+                        self.get_name()
+                    );
                 }
             }
         }

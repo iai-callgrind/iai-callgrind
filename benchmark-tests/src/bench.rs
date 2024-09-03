@@ -452,26 +452,22 @@ impl BenchmarkOutput {
 
     fn assert_exit(&self, exit_code: Option<i32>) {
         match exit_code {
-            Some(expected) => {
-                print_info("Verifying exit code");
-                match self.0.status.code() {
-                    Some(code) => {
-                        assert_eq!(
-                            expected, code,
-                            "Expected benchmark to exit with code '{expected}' but exited with \
-                             code '{code}'"
-                        );
-                        print_info(format!(
-                            "Verifying exit code was successful: Process exited with '{code}'"
-                        ));
-                    }
-                    None => panic!(
-                        "Expected benchmark to exit with code '{expected}' but exited with signal \
-                         '{}'",
-                        self.0.status.signal().unwrap()
-                    ),
+            Some(expected) => match self.0.status.code() {
+                Some(code) => {
+                    assert_eq!(
+                        expected, code,
+                        "Expected benchmark to exit with code '{expected}' but exited with code \
+                         '{code}'"
+                    );
+                    print_info(format!(
+                        "Verifying exit code was successful: Process exited with '{code}'"
+                    ));
                 }
-            }
+                None => panic!(
+                    "Expected benchmark to exit with code '{expected}' but exited with signal '{}'",
+                    self.0.status.signal().unwrap()
+                ),
+            },
             None => assert!(
                 self.0.status.success(),
                 "Expected benchmark to exit with success"
@@ -698,8 +694,8 @@ impl RunConfig {
             .map(Result::unwrap)
         {
             let summary = Summary::new(&path).unwrap();
-            summary.assert_not_zero();
-            print_info("Verifying costs are not zero successful");
+            summary.assert_costs_not_all_zero();
+            print_info("Verifying costs not all zero successful");
         }
     }
 }
