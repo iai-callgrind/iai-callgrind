@@ -20,9 +20,7 @@ version = "0.1.0"
 cargo_metadata = { workspace = true }
 colored = { workspace = true }
 glob = { workspace = true }
-iai-callgrind = { path = "../iai-callgrind", features = [
-  "client_requests_defs",
-] }
+iai-callgrind = { path = "../iai-callgrind", features = ["client_requests"] }
 # Needed in the `cargo bench` wrapper
 iai-callgrind-runner = { path = "../iai-callgrind-runner" }
 lazy_static = { workspace = true }
@@ -71,6 +69,10 @@ path = "src/helper/env.rs"
 [[bin]]
 name = "exit-with"
 path = "src/helper/exit-with.rs"
+
+[[bin]]
+name = "client-requests"
+path = "src/helper/client-requests.rs"
 
 [[bench]]
 harness = false
@@ -195,3 +197,8 @@ path = "benches/test_lib_bench/file_parameter/test_lib_bench_file_parameter.rs"
 [[bench]]
 harness = false
 name = "test_bench_template"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_client_requests"
+path = "benches/test_bin_bench/client_requests/test_bin_bench_client_requests.rs"
