@@ -89,11 +89,17 @@ pub enum Direction {
     BottomToTop,
 }
 
+/// The `EntryPoint` of a library benchmark
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub enum EntryPoint {
+    /// Disable the entry point and default toggle entirely
     None,
+    /// The default entry point is the benchmark function
     #[default]
     Default,
+    /// A custom entry point. The argument allows the same glob patterns as the
+    /// [`--toggle-collect`](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options)
+    /// argument of callgrind.
     Custom(String),
 }
 

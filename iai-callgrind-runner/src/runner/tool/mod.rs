@@ -530,7 +530,7 @@ impl ToolOutput {
 impl ToolOutputPath {
     /// Create a new `ToolOutputPath`.
     ///
-    /// The `base_dir` is supposed to be the same as [`Metadata::target_dir`].
+    /// The `base_dir` is supposed to be the same as [`crate::runner::meta::Metadata::target_dir`].
     pub fn new(
         kind: ToolOutputPathKind,
         tool: ValgrindTool,

@@ -74,25 +74,20 @@ impl LibraryBenchmarkConfig {
     /// `toggle-collect=some` are both understood.
     ///
     /// Not all callgrind arguments are understood by `iai-callgrind` or cause problems in
-    /// `iai-callgrind` if they would be applied. `iai-callgrind` will issue a warning in
-    /// such cases. Some of the defaults can be overwritten. The default settings are:
+    /// `iai-callgrind` if they would be applied. `iai-callgrind` will issue a warning in such
+    /// cases. Most of the defaults can be overwritten. The default settings are:
     ///
     /// * `--I1=32768,8,64`
     /// * `--D1=32768,8,64`
     /// * `--LL=8388608,16,64`
-    /// * `--cache-sim=yes` (can't be changed)
-    /// * `--toggle-collect=*BENCHMARK_FILE::BENCHMARK_FUNCTION` (this first toggle can't be
-    ///   changed)
-    /// * `--collect-atstart=no` (overwriting this setting will have no effect)
+    /// * `--cache-sim=yes`
+    /// * `--toggle-collect=...` (see also [`LibraryBenchmarkConfig::entry_point`])
+    /// * `--collect-atstart=no`
     /// * `--compress-pos=no`
     /// * `--compress-strings=no`
     ///
-    /// Note that `toggle-collect` is an array and the entry point for library benchmarks
-    /// is the benchmark function. This default toggle switches event counting on when
-    /// entering this benchmark function and off when leaving it. So, additional toggles
-    /// for example matching a function within the benchmark function will switch the
-    /// event counting off when entering the matched function and on again when leaving
-    /// it!
+    /// Note that `toggle-collect` is an array and the default [`EntryPoint`] for library benchmarks
+    /// is the benchmark function.
     ///
     /// See also [Callgrind Command-line
     /// Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options)
@@ -175,6 +170,7 @@ impl LibraryBenchmarkConfig {
         self.0.env_clear = Some(value);
         self
     }
+
     /// Add an environment variables which will be available in library benchmarks
     ///
     /// These environment variables are available independently of the setting of
@@ -568,7 +564,96 @@ impl LibraryBenchmarkConfig {
         self
     }
 
-    /// TODO: DOCS
+    /// Set or unset the entry point for a benchmark
+    ///
+    /// Iai-Callgrind sets the [`--toggle-collect`] argument of callgrind to the benchmark function
+    /// which we call [`EntryPoint::Default`]. Specifying a `--toggle-collect` argument, sets
+    /// automatically `--collect-at-start=no`. This ensures that only the costs from the benchmark
+    /// itself are collected and not the `setup` or `teardown` or anything before/after the
+    /// benchmark function.
+    ///
+    ///
+    /// However, there are cases when the default toggle is not enough [`EntryPoint::Custom`] or in
+    /// the way [`EntryPoint::None`].
+    ///
+    /// Setting [`EntryPoint::Custom`] is convenience for disabling the entry point with
+    /// [`EntryPoint::None`] and setting `--toggle-collect=CUSTOM_ENTRY_POINT` in
+    /// [`LibraryBenchmarkConfig::raw_callgrind_args`]. [`EntryPoint::Custom`] can be useful if you
+    /// want to benchmark a private function and only need the function in the benchmark function as
+    /// access point. [`EntryPoint::Custom`] accepts glob patterns the same way as
+    /// [`--toggle-collect`] does.
+    ///
+    /// # Examples
+    ///
+    /// If you're using callgrind client requests either in the benchmark function itself or in your
+    /// library, then using [`EntryPoint::None`] is presumably be required. Consider the following
+    /// example (`DEFAULT_ENTRY_POINT` marks the default entry point):
+    ///
+    /// ```rust
+    /// use iai_callgrind::{
+    ///     main, LibraryBenchmarkConfig,library_benchmark, library_benchmark_group
+    /// };
+    /// use std::hint::black_box;
+    ///
+    /// fn to_be_benchmarked() -> u64 {
+    ///     println!("Some info output");
+    ///     iai_callgrind::client_requests::callgrind::start_instrumentation();
+    ///     let result = {
+    ///         // some heavy calculations
+    /// #       10
+    ///     };
+    ///     iai_callgrind::client_requests::callgrind::stop_instrumentation();
+    ///
+    ///     result
+    /// }
+    ///
+    /// #[library_benchmark]
+    /// fn some_bench() -> u64 { // <-- DEFAULT ENTRY POINT
+    ///     black_box(to_be_benchmarked())
+    /// }
+    ///
+    /// library_benchmark_group!(name = some_group; benchmarks = some_bench);
+    /// # fn main() {
+    /// main!(library_benchmark_groups = some_group);
+    /// # }
+    /// ```
+    ///
+    /// In the example above [`EntryPoint::Default`] is active, so the counting of events starts
+    /// when the `some_bench` function is entered. In `to_be_benchmarked`, the client request
+    /// `start_instrumentation` does effectively nothing and `stop_instrumentation` will stop the
+    /// event counting as requested. This is most likely not what you intended. The event counting
+    /// should start with `start_instrumentation`. To achieve this, you can set [`EntryPoint::None`]
+    /// which removes the default toggle, but also `--collect-at-start=no`. So, you need to specify
+    /// `--collect-at-start=no` in [`LibraryBenchmarkConfig::raw_callgrind_args`]. The example would
+    /// then look like this:
+    ///
+    /// ```rust
+    /// use std::hint::black_box;
+    ///
+    /// use iai_callgrind::{library_benchmark, EntryPoint, LibraryBenchmarkConfig};
+    /// # use iai_callgrind::{library_benchmark_group, main};
+    /// # fn to_be_benchmarked() -> u64 { 10 }
+    ///
+    /// // ...
+    ///
+    /// #[library_benchmark(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .raw_callgrind_args(["--collect-at-start=no"])
+    ///         .entry_point(EntryPoint::None)
+    /// )]
+    /// fn some_bench() -> u64 {
+    ///     black_box(to_be_benchmarked())
+    /// }
+    ///
+    /// // ...
+    ///
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_bench);
+    /// # fn main() {
+    /// # main!(library_benchmark_groups = some_group);
+    /// # }
+    /// ```
+    ///
+    /// [`--toggle-collect`]: https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options
     pub fn entry_point<T>(&mut self, entry_point: T) -> &mut Self
     where
         T: Into<EntryPoint>,

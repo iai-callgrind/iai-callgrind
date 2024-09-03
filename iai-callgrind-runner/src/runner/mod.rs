@@ -6,7 +6,7 @@ pub mod costs;
 pub mod dhat;
 mod format;
 mod lib_bench;
-mod meta;
+pub mod meta;
 pub mod summary;
 pub mod tool;
 
