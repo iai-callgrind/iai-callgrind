@@ -10,8 +10,13 @@ replace = "version = \"{new_version}\""
 
 [[tool.bumpversion.files]]
 filename = "iai-callgrind/Cargo.toml"
-search = "version = \"={current_version}\""
-replace = "version = \"={new_version}\""
+search = 'path = "../iai-callgrind-runner/", version = "={current_version}"'
+replace = 'path = "../iai-callgrind-runner/", version = "={new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "schema-gen/Cargo.toml"
+search = 'path = "../iai-callgrind-runner/", version = "={current_version}"'
+replace = 'path = "../iai-callgrind-runner/", version = "={new_version}"'
 
 [[tool.bumpversion.files]]
 filename = "iai-callgrind/src/macros.rs"
