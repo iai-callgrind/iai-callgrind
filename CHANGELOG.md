@@ -1,4 +1,4 @@
-<!-- spell-checker:ignore serde dewert binstall jembishop kehl DaniPopes bytemuck -->
+<!-- spell-checker:ignore serde dewert binstall jembishop kehl DaniPopes bytemuck hargut -->
 <!--
 Added for new features.
 Changed for changes in existing functionality.
@@ -21,6 +21,21 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.13.2] - 2024-09-03
+
+### Fixed
+
+* ([#252](https://github.com/iai-callgrind/iai-callgrind/pull/252)): When using
+  callgrind client requests like `start_instrumentation`, `stop_instrumentation`
+  together with `--collect-at-start=no` then all metrics were zero. Thanks to
+  @hargut
+* ([#257](https://github.com/iai-callgrind/iai-callgrind/pull/257)): A small
+  cosmetic fix for the factor in the benchmark output if it was negative
+  infinite. `[++-inf+++]` was changed to `[---inf---]`.
+* ([#258](https://github.com/iai-callgrind/iai-callgrind/pull/258)): The
+  `teardown` function of a `library_benchmark_group!` was only executed if a
+  `setup` function was present, too.
 
 ## [0.13.1] - 2024-08-28
 
