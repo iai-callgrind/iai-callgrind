@@ -8,9 +8,9 @@ use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 
+use benchmark_tests::common::Summary;
 use colored::Colorize;
 use glob::glob;
-use iai_callgrind_runner::runner::summary::BenchmarkSummary;
 use lazy_static::lazy_static;
 use minijinja::Environment;
 use once_cell::sync::OnceCell;
@@ -78,7 +78,6 @@ struct Expected {
     files: Vec<PathBuf>,
     #[serde(default)]
     globs: Vec<ExpectedGlob>,
-    summary: Option<BenchmarkSummary>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -453,26 +452,22 @@ impl BenchmarkOutput {
 
     fn assert_exit(&self, exit_code: Option<i32>) {
         match exit_code {
-            Some(expected) => {
-                print_info("Verifying exit code");
-                match self.0.status.code() {
-                    Some(code) => {
-                        assert_eq!(
-                            expected, code,
-                            "Expected benchmark to exit with code '{expected}' but exited with \
-                             code '{code}'"
-                        );
-                        print_info(format!(
-                            "Verifying exit code was successful: Process exited with '{code}'"
-                        ));
-                    }
-                    None => panic!(
-                        "Expected benchmark to exit with code '{expected}' but exited with signal \
-                         '{}'",
-                        self.0.status.signal().unwrap()
-                    ),
+            Some(expected) => match self.0.status.code() {
+                Some(code) => {
+                    assert_eq!(
+                        expected, code,
+                        "Expected benchmark to exit with code '{expected}' but exited with code \
+                         '{code}'"
+                    );
+                    print_info(format!(
+                        "Verifying exit code was successful: Process exited with '{code}'"
+                    ));
                 }
-            }
+                None => panic!(
+                    "Expected benchmark to exit with code '{expected}' but exited with signal '{}'",
+                    self.0.status.signal().unwrap()
+                ),
+            },
             None => assert!(
                 self.0.status.success(),
                 "Expected benchmark to exit with success"
@@ -482,7 +477,6 @@ impl BenchmarkOutput {
 }
 
 impl BenchmarkRunner {
-    #[allow(clippy::new_without_default)]
     pub fn new(benches: &[String]) -> Self {
         Self {
             metadata: Metadata::new(benches),
@@ -490,6 +484,8 @@ impl BenchmarkRunner {
     }
 
     pub fn run(&self) -> Result<(), String> {
+        // We need the `summary.json` files to verify that not all costs are zero. Extracting this
+        // info from the summary is much easier than doing it from the output.
         std::env::set_var("IAI_CALLGRIND_SAVE_SUMMARY", "json");
         std::env::set_var(
             "IAI_CALLGRIND_RUNNER",
@@ -688,6 +684,18 @@ impl RunConfig {
                     expected.assert(&dest_dir, schema);
                 }
             }
+        }
+
+        let base_dir = home_dir.join(PACKAGE).join(bench_name);
+        // These checks heavily depends on the creation of the `summary.json` files, but we create
+        // them per default.
+        for path in glob(&format!("{}/**/summary.json", base_dir.display()))
+            .unwrap()
+            .map(Result::unwrap)
+        {
+            let summary = Summary::new(&path).unwrap();
+            summary.assert_costs_not_all_zero();
+            print_info("Verifying costs not all zero successful");
         }
     }
 }
