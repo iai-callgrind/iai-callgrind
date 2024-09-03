@@ -1,0 +1,21 @@
+[package]
+authors = ["gamma0987 <gamma0987@posteo.de>", "Joining7943 <joining@posteo.de>"]
+categories.workspace = true
+description = "Generate the schema for the summary.json"
+edition.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+license.workspace = true
+name = "schema-gen"
+publish = false
+readme = "../README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+iai-callgrind-runner = { path = "../iai-callgrind-runner/", version = "=0.13.2", default-features = false, features = [
+  "schema",
+] }
+schemars = { workspace = true, features = ["indexmap1"] }
+serde_json = { workspace = true }

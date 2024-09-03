@@ -1393,6 +1393,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "schema-gen"
+version = "0.13.2"
+dependencies = [
+ "iai-callgrind-runner",
+ "schemars",
+ "serde_json",
+]
+
+[[package]]
 name = "schemars"
 version = "0.8.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"

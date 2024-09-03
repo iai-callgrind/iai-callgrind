@@ -80,15 +80,5 @@ serial_test = { workspace = true }
 tempfile = { workspace = true }
 
 [[bin]]
-bench = true
 name = "iai-callgrind-runner"
 path = "src/main.rs"
-required-features = ["default"]
-test = true
-
-[[bin]]
-bench = false
-name = "schema-gen"
-path = "src/schema_gen.rs"
-required-features = ["schema"]
-test = false
