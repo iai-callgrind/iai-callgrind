@@ -194,13 +194,23 @@ build-docs:
 
 # A thorough build of all packages with `cargo hack` and the feature powerset (Uses: 'cargo-hack')
 [group('build')]
-build-hack:
-    cargo hack --workspace --feature-powerset build
+build-hack: build-hack-runner
+    cargo hack --workspace --feature-powerset --exclude iai-callgrind-runner build
+
+# A thorough build of the iai-callgrind-runner package (Uses: 'cargo-hack')
+[group('build')]
+build-hack-runner:
+    cargo hack --package iai-callgrind-runner --feature-powerset --exclude-no-default-features --exclude-features api build
 
 # A build of the tests in all packages with `cargo hack` and the feature powerset (Uses: 'cargo-hack')
 [group('build')]
-build-tests-hack:
-    cargo hack --workspace --feature-powerset test --no-run
+build-tests-hack: build-tests-hack-runner
+    cargo hack --workspace --feature-powerset --exclude iai-callgrind-runner test --no-run
+
+# A build of the tests in the iai-callgrind-runner package with `cargo hack` (Uses: 'cargo-hack')
+[group('build')]
+build-tests-hack-runner:
+    cargo hack --package iai-callgrind-runner --feature-powerset --exclude-no-default-features --exclude-features api test --no-run
 
 # Delete all iai benchmarks (Uses: 'coreutils')
 [group('clean')]
