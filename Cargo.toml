@@ -17,7 +17,7 @@ keywords = ["iai", "benchmark", "callgrind", "valgrind"]
 license = "Apache-2.0 OR MIT"
 repository = "https://github.com/iai-callgrind/iai-callgrind"
 rust-version = "1.66.0"
-version = "0.13.2"
+version = "0.13.3"
 
 [workspace.dependencies]
 anyhow = { version = "1.0.46" }

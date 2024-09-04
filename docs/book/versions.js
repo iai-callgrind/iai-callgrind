@@ -1,6 +1,7 @@
 document.write(
   '\
 <!-- Insert new version here -->\
+<a href="/iai-callgrind/0.13.3/html/index.html">0.13.3</a>\
 <a href="/iai-callgrind/0.13.2/html/index.html">0.13.2</a>\
 <a href="/iai-callgrind/0.13.1/html/index.html">0.13.1</a>\
 <a href="/iai-callgrind/0.13.0/html/index.html">0.13.0</a>\
