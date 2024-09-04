@@ -37,8 +37,7 @@ struct CurrentId {
 
 /// Parse a callgrind outfile into a `HashMap`
 ///
-/// This parser is a based on `callgrind_annotate` and how the summarize the function inclusive
-/// costs.
+/// This parser is a based on `callgrind_annotate` and how `it` summarizes the inclusive costs.
 #[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HashMapParser {
     pub sentinel: Option<Sentinel>,

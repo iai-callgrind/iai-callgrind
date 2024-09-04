@@ -588,8 +588,8 @@ impl LibraryBenchmarkConfig {
     /// If you're using callgrind client requests either in the benchmark function itself or in your
     /// library, then using [`EntryPoint::None`] is presumably be required. Consider the following
     /// example (`DEFAULT_ENTRY_POINT` marks the default entry point):
-    ///
-    /// ```rust
+    #[cfg_attr(not(feature = "client_requests_defs"), doc = "```rust,ignore")]
+    #[cfg_attr(feature = "client_requests_defs", doc = "```rust")]
     /// use iai_callgrind::{
     ///     main, LibraryBenchmarkConfig,library_benchmark, library_benchmark_group
     /// };
@@ -617,7 +617,7 @@ impl LibraryBenchmarkConfig {
     /// main!(library_benchmark_groups = some_group);
     /// # }
     /// ```
-    ///
+    /// 
     /// In the example above [`EntryPoint::Default`] is active, so the counting of events starts
     /// when the `some_bench` function is entered. In `to_be_benchmarked`, the client request
     /// `start_instrumentation` does effectively nothing and `stop_instrumentation` will stop the
@@ -626,7 +626,6 @@ impl LibraryBenchmarkConfig {
     /// which removes the default toggle, but also `--collect-at-start=no`. So, you need to specify
     /// `--collect-at-start=no` in [`LibraryBenchmarkConfig::raw_callgrind_args`]. The example would
     /// then look like this:
-    ///
     /// ```rust
     /// use std::hint::black_box;
     ///
@@ -652,7 +651,7 @@ impl LibraryBenchmarkConfig {
     /// # main!(library_benchmark_groups = some_group);
     /// # }
     /// ```
-    ///
+    /// 
     /// [`--toggle-collect`]: https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options
     pub fn entry_point<T>(&mut self, entry_point: T) -> &mut Self
     where

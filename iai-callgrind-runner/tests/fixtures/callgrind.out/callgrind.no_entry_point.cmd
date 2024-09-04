@@ -4,6 +4,9 @@ cd $(dirname ${BASH_SOURCE[0]}) || exit 1
 
 callgrind_annotate --threshold=100 --inclusive=yes callgrind.no_entry_point.out |\
     ../../../../scripts/callgrind_annotate_to_stacks.pl \
+        --sentinel=0x000000000001b530 \
+        --insert='0 (below main) [/usr/lib/libc.so.6] 103210' \
+        --modify='(below main) [target/release/benchmark-tests-exit] 103222' \
         --modify='0x0000000000005040 [/usr/lib/ld-linux-x86-64.so.2] 806' \
         --insert='0 0x0000000000005040 [/usr/lib/libgcc_s.so.1] 5' \
         --add-missing-ob='target/release/benchmark-tests-exit' \
