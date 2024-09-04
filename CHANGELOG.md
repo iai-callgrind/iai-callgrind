@@ -22,6 +22,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+* ([#254](https://github.com/iai-callgrind/iai-callgrind/pull/254)): Added the
+  option to switch off the entry point `EntryPoint::None` or use a custom entry
+  point (`EntryPoint::Custom`). The default entry point stays the same and is
+  the toggle Iai-Callgrind sets with `--toggle-collect` to the benchmark
+  function.
+
+### Changed
+
+* ([#254](https://github.com/iai-callgrind/iai-callgrind/pull/254)): Due to the
+  changes required to handle the different entry points options, the flamegraphs
+  created in binary benchmarks and flamegraphs from library benchmarks with
+  `EntryPoint::None` include all events, not only the events from `main`
+  downwards.
+
 ## [0.13.2] - 2024-09-03
 
 ### Fixed
