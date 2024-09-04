@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use anyhow::{anyhow, Context, Result};
+use lazy_static::lazy_static;
 use log::{trace, warn};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -14,13 +15,22 @@ pub struct CallgrindProperties {
     pub positions_prototype: Positions,
 }
 
+lazy_static! {
+    static ref GLOB_TO_REGEX_RE: Regex =
+        Regex::new(r"(\\)([*]|[?])").expect("Regex should compile");
+}
+
+#[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Sentinel(#[serde(with = "serde_regex")] Regex);
 
 impl Sentinel {
     /// Create a new Sentinel
     ///
-    /// A Sentinel is converted to a regex internally which matches from line start to line end.
+    /// The value is converted to a regex internally which matches from line start to line end.
+    ///
+    /// Do not use this method if the input is a glob pattern or cannot be trusted! Use
+    /// [`Sentinel::from_glob`] instead.
     ///
     /// # Examples
     ///
@@ -41,8 +51,13 @@ impl Sentinel {
 
     /// Create a new Sentinel from a glob pattern
     ///
-    /// The `*` are replaced with `.*` because we need the glob as regex. Additionally, the glob
-    /// matches from the start to end of the string.
+    /// Any `*` is replaced with `.*` and `?` with `.?` because we need the glob as regex
+    /// internally. A Character will be [escaped](https://docs.rs/regex/latest/regex/fn.escape.html)
+    /// if it is a regex meta character so this method produces a safe regular expression.
+    /// Additionally, the glob matches from the start to end of the string
+    ///
+    /// The glob pattern is defined in more detail
+    /// [here](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.optionshttps://valgrind.org/docs/manual/cl-manual.html#cl-manual.options)
     ///
     /// # Examples
     ///
@@ -56,8 +71,9 @@ impl Sentinel {
     where
         T: AsRef<str>,
     {
-        let regex = glob.as_ref().replace('*', ".*");
-        Self::new(regex)
+        let escaped = regex::escape(glob.as_ref());
+        let replaced = GLOB_TO_REGEX_RE.replace_all(&escaped, ".$2");
+        Self::new(replaced)
     }
 
     pub fn from_path(module: &str, function: &str) -> Self {
@@ -166,4 +182,74 @@ pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<Callgrind
             .ok_or_else(|| anyhow!("Header field 'events' must be present"))?,
         positions_prototype: positions_prototype.unwrap_or_default(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+    use rstest::rstest;
+
+    use super::*;
+
+    #[rstest]
+    #[case::simple("foo", "^foo$")]
+    #[case::glob(r"?*", r"^?*$")] // Does not interpret glob patterns
+    fn test_sentinel_new(#[case] input: &str, #[case] expected: &str) {
+        let expected_sentinel = Sentinel(Regex::new(expected).unwrap());
+        let sentinel = Sentinel::new(input).unwrap();
+
+        assert_eq!(sentinel, expected_sentinel);
+    }
+
+    #[rstest]
+    #[case::simple("foo", "^foo$")]
+    #[case::only_star("*", "^.*$")]
+    #[case::with_star_in_the_middle("f*oo", "^f.*oo$")]
+    #[case::star_at_start("*foo", "^.*foo$")]
+    #[case::star_at_end("foo*", "^foo.*$")]
+    #[case::two_stars("f**o", "^f.*.*o$")]
+    #[case::only_question_mark("?", "^.?$")]
+    #[case::with_question_mark("f?o", "^f.?o$")]
+    #[case::two_question_marks("f??o", "^f.?.?o$")]
+    #[case::question_mark_at_start("?foo", "^.?foo$")]
+    #[case::question_mark_at_end("foo?", "^foo.?$")]
+    #[case::mixed("f*o?o", "^f.*o.?o$")]
+    fn test_sentinel_from_glob(#[case] input: &str, #[case] expected: &str) {
+        let expected_sentinel = Sentinel(Regex::new(expected).unwrap());
+        let sentinel = Sentinel::from_glob(input).unwrap();
+
+        assert_eq!(sentinel, expected_sentinel);
+    }
+
+    /// These are some non-exhaustive real world examples which a sentinel should be able to match
+    #[rstest]
+    #[case::main_binary("*::main", "by_binary::main")]
+    #[case::below_main_exact("(below_main)", "(below_main)")]
+    #[case::below_main_with_glob("?below_main?", "(below_main)")]
+    #[case::exit("*exit*", "exit")]
+    #[case::with_at_sign("__cpu_indicator_init*", "__cpu_indicator_init@GCC_4.8.0")]
+    #[case::simple_function(
+        "*::stack_overflow::*",
+        "std::sys::unix::stack_overflow::imp::make_handler"
+    )]
+    #[case::generic(
+        "std::sync::once_lock::OnceLock<*>*",
+        "std::sync::once_lock::OnceLock<T>::initialize"
+    )]
+    #[case::generic_with_as(
+        "<* as core::fmt::Write>::write_str",
+        "<std::io::Write::write_fmt::Adapter<T> as core::fmt::Write>::write_str"
+    )]
+    #[case::generic_with_as_reference(
+        "<&*>::write_fmt",
+        "<&std::io::stdio::Stdout as std::io::Write>::write_fmt"
+    )]
+    #[case::generic_match_all(
+        "*::write_fmt",
+        "<&std::io::stdio::Stdout as std::io::Write>::write_fmt"
+    )]
+    #[case::hex("0x*", "0x00000000000083f0")]
+    fn test_sentinel_from_glob_matches(#[case] input: &str, #[case] haystack: &str) {
+        assert!(Sentinel::from_glob(input).unwrap().matches(haystack));
+    }
 }

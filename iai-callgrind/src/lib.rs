@@ -418,7 +418,7 @@ pub use cty;
 pub use iai_callgrind_macros::{binary_benchmark, library_benchmark};
 #[cfg(feature = "default")]
 pub use iai_callgrind_runner::api::{
-    Direction, EventKind, FlamegraphKind, Pipe, Stdin, Stdio, ValgrindTool,
+    Direction, EntryPoint, EventKind, FlamegraphKind, Pipe, Stdin, Stdio, ValgrindTool,
 };
 #[cfg(feature = "default")]
 pub use lib_bench::LibraryBenchmarkConfig;

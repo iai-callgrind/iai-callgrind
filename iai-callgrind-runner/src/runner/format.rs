@@ -672,6 +672,8 @@ mod tests {
         #[case] diff_pct: &str,
         #[case] diff_fact: Option<&str>,
     ) {
+        colored::control::set_override(false);
+
         let new_costs = Costs(indexmap! {event_kind => new});
         let old_costs = old.map(|old| Costs(indexmap! {event_kind => old}));
         let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());

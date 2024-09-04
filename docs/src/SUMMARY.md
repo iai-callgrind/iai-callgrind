@@ -22,6 +22,7 @@
     - [Generic benchmark functions](./benchmarks/library_benchmarks/generic.md)
     - [Comparing benchmark functions](./benchmarks/library_benchmarks/compare_by_id.md)
     - [Configuration](./benchmarks/library_benchmarks/configuration.md)
+    - [Custom entry points](./benchmarks/library_benchmarks/custom_entry_point.md)
     - [More Examples, please!](./benchmarks/library_benchmarks/examples.md)
 - [Binary Benchmarks](./benchmarks/binary_benchmarks.md)
     - [Important default behaviour](./benchmarks/binary_benchmarks/important.md)

@@ -13,6 +13,11 @@ Please make sure you have debug symbols enabled in your benchmark profile.
 See also the Installation section in the iai-callgrind README:
 https://github.com/iai-callgrind/iai-callgrind?tab=readme-ov-file#installation";
 
+/// A parser for callgrind output files which collects all costs for a [`Sentinel`].
+///
+/// This parser is limited to `Sentinels` which can occur only once per callgrind output file and
+/// are not recursive. This includes the Sentinel created from the
+/// [`crate::runner::DEFAULT_TOGGLE`].
 pub struct SentinelParser {
     sentinel: Sentinel,
 }
