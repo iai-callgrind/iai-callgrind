@@ -71,8 +71,105 @@ fn main() {
 # }
 ```
 
-<!-- TODO: Add needed entry point customization -->
+### Library Benchmarks
 
-This was just a small introduction, please see the
+In [library benchmarks](./benchmarks/library_benchmarks.md) you might need to
+use [`EntryPoint::None`][EntryPoint] in order to make the client requests work
+as expected:
+
+```rust
+# extern crate iai_callgrind;
+use iai_callgrind::{main, library_benchmark_group, library_benchmark};
+use std::hint::black_box;
+
+pub mod my_lib {
+     #[inline(never)]
+     fn bubble_sort(input: Vec<i32>) -> Vec<i32> {
+         // The algorithm
+#        input
+     }
+
+     pub fn pre_bubble_sort(input: Vec<i32>) -> Vec<i32> {
+         println!("Doing something before the function call");
+         iai_callgrind::client_requests::callgrind::start_instrumentation();
+
+         let result = bubble_sort(input);
+
+         iai_callgrind::client_requests::callgrind::stop_instrumentation();
+         result
+     }
+}
+
+#[library_benchmark]
+#[bench::small(vec![3, 2, 1])]
+#[bench::bigger(vec![5, 4, 3, 2, 1])]
+fn bench_function(array: Vec<i32>) -> Vec<i32> {
+    black_box(my_lib::pre_bubble_sort(array))
+}
+
+library_benchmark_group!(name = my_group; benchmarks = bench_function);
+# fn main() {
+main!(library_benchmark_groups = my_group);
+# }
+```
+
+The default [`EntryPoint`][EntryPoint] sets the [`--toggle-collect`][Callgrind
+Arguments] to the benchmark function (here `bench_function`) and
+`--collect-at-start=no`. So, `Callgrind` starts collecting the events when
+entering the benchmark function, not the moment `start_instrumentation` is
+called. This behaviour can be remedied with `EntryPoint::None`:
+
+```rust
+# extern crate iai_callgrind;
+use iai_callgrind::{
+    main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
+    client_requests, EntryPoint
+};
+use std::hint::black_box;
+
+pub mod my_lib {
+     #[inline(never)]
+     fn bubble_sort(input: Vec<i32>) -> Vec<i32> {
+         // The algorithm
+#        input
+     }
+
+     pub fn pre_bubble_sort(input: Vec<i32>) -> Vec<i32> {
+         println!("Doing something before the function call");
+         iai_callgrind::client_requests::callgrind::start_instrumentation();
+
+         let result = bubble_sort(input);
+
+         iai_callgrind::client_requests::callgrind::stop_instrumentation();
+         result
+     }
+}
+
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .raw_callgrind_args(["--collect-at-start=no"])
+        .entry_point(EntryPoint::None)
+)]
+#[bench::small(vec![3, 2, 1])]
+#[bench::bigger(vec![5, 4, 3, 2, 1])]
+fn bench_function(array: Vec<i32>) -> Vec<i32> {
+    black_box(my_lib::pre_bubble_sort(array))
+}
+
+library_benchmark_group!(name = my_group; benchmarks = bench_function);
+# fn main() {
+main!(library_benchmark_groups = my_group);
+# }
+```
+
+As the standard toggle is now switched off and the option
+`--collect-at-start=no` is also omitted, you must specify
+`--collect-at-start=no` manually in
+`LibraryBenchmarkConfig::raw_callgrind_args`.
+
+Please see the
 [`docs`](https://docs.rs/iai-callgrind/0.13.2/iai_callgrind/client_requests) for
 more details!
+
+[Callgrind Arguments]: https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options
+[EntryPoint]: https://docs.rs/iai-callgrind/0.13.2/iai_callgrind/enum.EntryPoint.html

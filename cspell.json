@@ -23,6 +23,7 @@
     "benchmark-tests/fixtures",
     "benchmark-tests/fixtures-with-symlinks",
     "benchmark-tests/benches/test_bin_bench_groups.fixtures",
-    "docs/theme/*"
+    "docs/theme/*",
+    "**/*.svg"
   ]
 }
