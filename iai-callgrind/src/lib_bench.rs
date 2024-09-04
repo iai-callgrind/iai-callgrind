@@ -617,7 +617,6 @@ impl LibraryBenchmarkConfig {
     /// main!(library_benchmark_groups = some_group);
     /// # }
     /// ```
-    /// 
     /// In the example above [`EntryPoint::Default`] is active, so the counting of events starts
     /// when the `some_bench` function is entered. In `to_be_benchmarked`, the client request
     /// `start_instrumentation` does effectively nothing and `stop_instrumentation` will stop the
@@ -651,7 +650,6 @@ impl LibraryBenchmarkConfig {
     /// # main!(library_benchmark_groups = some_group);
     /// # }
     /// ```
-    /// 
     /// [`--toggle-collect`]: https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options
     pub fn entry_point<T>(&mut self, entry_point: T) -> &mut Self
     where
