@@ -22,6 +22,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.13.3] - 2024-09-05
+
+The installation of `iai-callgrind-runner` with `cargo install` did not use the
+cache when trying to install the same version again and acted as if `cargo
+install --force` was given which leads to longer installation times in case the
+binary was already installed. See this
+[issue](https://github.com/iai-callgrind/iai-callgrind/issues/260) for more
+details.
+
+This problem is fixed in this and the following releases, but not in older
+versions of `iai-callgrind-runner`. Please use
+[`binstall`](https://github.com/cargo-bins/cargo-binstall) instead of `cargo
+binstall` for these versions if installation time is a concern. `binstall` seems
+to correctly recognize the same installation and does not install
+`iai-callgrind-runner` from scratch again.
+
 ### Added
 
 * ([#254](https://github.com/iai-callgrind/iai-callgrind/pull/254)): Added the
@@ -37,6 +53,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   created in binary benchmarks and flamegraphs from library benchmarks with
   `EntryPoint::None` include all events, not only the events from `main`
   downwards.
+
+### Fixed
+
+* ([#261](https://github.com/iai-callgrind/iai-callgrind/pull/261)):
+  Reinstalling iai-callgrind-runner with `cargo install` when it was already
+  installed acted as if `cargo install --force` was given.
 
 ## [0.13.2] - 2024-09-03
 
@@ -66,7 +88,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
-* ([#221](https://github.com/iai-callgrind/iai-callgrind/pull/221)): If the
+* ([#248](https://github.com/iai-callgrind/iai-callgrind/pull/248)): If the
   Command's path was a simple command name like `echo`, `cat`, the path was
   interpreted as relative path instead of searched in the `$PATH`. Relative
   paths like `./echo` are now interpreted as relative to the current directory.
