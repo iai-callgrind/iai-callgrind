@@ -69,6 +69,8 @@ serde_json = { workspace = true, optional = true }
 serde_regex = { workspace = true, optional = true }
 shlex = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
+# TODO: Remove fs feature if not required
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "fs"] }
 version-compare = { workspace = true, optional = true }
 which = { workspace = true, optional = true }
 

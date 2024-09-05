@@ -1,10 +1,9 @@
 use benchmark_tests::find_primes;
+use iai_callgrind::{library_benchmark, library_benchmark_group, main};
 
-fn main() {
-    let mut args_iter = std::env::args().skip(1);
-
-    let num = args_iter.next().map_or(0, |a| a.parse::<usize>().unwrap());
-
+#[library_benchmark]
+#[bench::some(3)]
+fn bench_library(num: u64) {
     let mut handles = vec![];
     let mut low = 0;
     for _ in 0..num {
@@ -25,3 +24,6 @@ fn main() {
         primes.len()
     );
 }
+
+library_benchmark_group!(name = my_group; benchmarks = bench_library);
+main!(library_benchmark_groups = my_group);

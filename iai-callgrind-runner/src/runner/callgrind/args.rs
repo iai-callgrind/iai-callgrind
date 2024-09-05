@@ -27,6 +27,8 @@ pub struct Args {
     combine_dumps: bool,
     callgrind_out_file: Option<PathBuf>,
     log_arg: Option<OsString>,
+    trace_children: bool,
+    separate_threads: bool,
 }
 
 impl Args {
@@ -60,11 +62,9 @@ impl Args {
                     self.toggle_collect.push_back(value.to_owned());
                 }
                 Some((
-                    key @ ("--separate-threads"
-                    | "--callgrind-out-file"
+                    key @ ("--callgrind-out-file"
                     | "--compress-strings"
                     | "--compress-pos"
-                    | "--combine-dumps"
                     | "--log-file"
                     | "--log-fd"
                     | "--log-socket"
@@ -107,6 +107,10 @@ impl Args {
     pub fn insert_toggle_collect(&mut self, arg: &str) {
         self.toggle_collect.push_front(arg.to_owned());
     }
+
+    pub fn get_outfile_modifier(&self) -> Option<String> {
+        self.trace_children.then(|| "%p".to_owned())
+    }
 }
 
 impl Default for Args {
@@ -121,7 +125,7 @@ impl Default for Args {
             cache_sim: true,
             compress_pos: false,
             compress_strings: false,
-            combine_dumps: true,
+            combine_dumps: false,
             verbose: log_enabled!(log::Level::Debug),
             dump_line: true,
             dump_instr: false,
@@ -129,6 +133,8 @@ impl Default for Args {
             callgrind_out_file: Option::default(),
             log_arg: Option::default(),
             other: Vec::default(),
+            trace_children: false,
+            separate_threads: false,
         }
     }
 }
@@ -148,6 +154,11 @@ impl From<Args> for tool::args::ToolArgs {
             format!("--dump-line={}", bool_to_yesno(value.dump_line)),
             format!("--dump-instr={}", bool_to_yesno(value.dump_instr)),
             format!("--combine-dumps={}", bool_to_yesno(value.combine_dumps)),
+            format!("--trace-children={}", bool_to_yesno(value.trace_children)),
+            format!(
+                "--separate-threads={}",
+                bool_to_yesno(value.separate_threads)
+            ),
         ];
         other.append(
             &mut value

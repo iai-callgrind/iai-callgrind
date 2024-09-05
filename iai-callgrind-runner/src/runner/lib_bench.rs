@@ -164,7 +164,13 @@ impl Benchmark for BaselineBenchmark {
             }
         };
 
-        let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, None);
+        // TODO: ADD TO OTHERS SaveBaselineBenchmark, LoadBaselineBenchmark outfile modifier
+        let tool_config = ToolConfig::new(
+            ValgrindTool::Callgrind,
+            true,
+            callgrind_args,
+            lib_bench.callgrind_args.get_outfile_modifier(),
+        );
 
         let bench_args = lib_bench.bench_args(group);
 

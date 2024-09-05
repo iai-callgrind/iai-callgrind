@@ -211,6 +211,11 @@ path = "benches/test_lib_bench/entry_point/test_lib_bench_entry_point.rs"
 
 [[bench]]
 harness = false
+name = "test_lib_bench_threads"
+path = "benches/test_lib_bench/threads/test_lib_bench_threads.rs"
+
+[[bench]]
+harness = false
 name = "test_bench_template"
 
 [[bench]]

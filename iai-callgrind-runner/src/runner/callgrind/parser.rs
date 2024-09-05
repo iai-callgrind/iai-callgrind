@@ -13,6 +13,12 @@ use crate::runner::DEFAULT_TOGGLE;
 pub struct CallgrindProperties {
     pub costs_prototype: Costs,
     pub positions_prototype: Positions,
+    pub pid: Option<i32>,
+    pub thread: Option<usize>,
+    pub part: Option<u64>,
+    pub desc: Vec<String>,
+    pub cmd: Option<String>,
+    pub creator: Option<String>,
 }
 
 lazy_static! {
@@ -146,31 +152,61 @@ pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<Callgrind
 
     let mut positions_prototype: Option<Positions> = None;
     let mut costs_prototype: Option<Costs> = None;
+    let mut pid: Option<i32> = None;
+    let mut thread: Option<usize> = None;
+    let mut part: Option<u64> = None;
+    let mut desc: Vec<String> = vec![];
+    let mut cmd: Option<String> = None;
+    let mut creator: Option<String> = None;
 
-    for line in iter {
-        if line.is_empty() || line.starts_with('#') {
-            // skip empty lines or comments
-            continue;
-        }
+    for line in iter.filter(|line| {
+        let line = line.trim();
+        !line.is_empty() && !line.starts_with('#')
+    }) {
         match line.split_once(':').map(|(k, v)| (k.trim(), v.trim())) {
             Some(("version", version)) if version != "1" => {
                 return Err(anyhow!(
                     "Version mismatch: Requires callgrind format version '1' but was '{version}'"
                 ));
             }
+            Some(("pid", value)) => {
+                trace!("Using pid '{value}' from line: '{line}'");
+                pid = Some(value.parse::<i32>().unwrap());
+            }
+            Some(("thread", value)) => {
+                trace!("Using thread '{value}' from line: '{line}'");
+                thread = Some(value.parse::<usize>().unwrap());
+            }
+            Some(("part", value)) => {
+                trace!("Using part '{value}' from line: '{line}'");
+                part = Some(value.parse::<u64>().unwrap());
+            }
+            Some(("desc", value)) if !value.starts_with("Option:") => {
+                trace!("Using description '{value}' from line: '{line}'");
+                desc.push(value.to_owned());
+            }
+            Some(("cmd", value)) => {
+                trace!("Using cmd '{value}' from line: '{line}'");
+                cmd = Some(value.to_owned());
+            }
+            Some(("creator", value)) => {
+                trace!("Using creator '{value}' from line: '{line}'");
+                creator = Some(value.to_owned());
+            }
             Some(("positions", positions)) => {
+                trace!("Using positions '{positions}' from line: '{line}'");
                 positions_prototype = Some(positions.split_ascii_whitespace().collect());
-                trace!("Using positions: '{:?}'", positions_prototype);
             }
             // The events line is the last line in the header which is mandatory (according to
             // the source code of callgrind_annotate). The summary line is usually the last line
             // but it is only optional. So, we break out of the loop here and stop the parsing.
             Some(("events", events)) => {
-                trace!("Using events from line: '{line}'");
+                trace!("Using events '{events}' from line: '{line}'");
                 costs_prototype = Some(events.split_ascii_whitespace().collect());
                 break;
             }
             // None is actually a malformed header line we just ignore here
+            // Some(_) includes `^event:` lines
             None | Some(_) => {
                 continue;
             }
@@ -181,6 +217,12 @@ pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<Callgrind
         costs_prototype: costs_prototype
             .ok_or_else(|| anyhow!("Header field 'events' must be present"))?,
         positions_prototype: positions_prototype.unwrap_or_default(),
+        pid,
+        thread,
+        part,
+        desc,
+        cmd,
+        creator,
     })
 }
 

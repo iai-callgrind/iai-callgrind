@@ -6,6 +6,24 @@ use std::ffi::OsStr;
 use std::io;
 use std::process::Output;
 
+pub fn is_prime(num: u64) -> bool {
+    if num <= 1 {
+        return false;
+    }
+
+    for i in 2..=(num as f64).sqrt() as u64 {
+        if num % i == 0 {
+            return false;
+        }
+    }
+
+    true
+}
+
+pub fn find_primes(low: u64, high: u64) -> Vec<u64> {
+    (low..=high).filter(|n| is_prime(*n)).collect()
+}
+
 // This function is used to create a worst case array we want to sort with our implementation of
 // bubble sort
 pub fn setup_worst_case_array(start: i32) -> Vec<i32> {

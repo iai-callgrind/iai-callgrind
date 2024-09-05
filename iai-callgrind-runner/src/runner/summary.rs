@@ -145,7 +145,7 @@ pub struct CallgrindRunSummary {
 pub struct CallgrindSummary {
     /// The paths to the `*.log` files
     pub log_paths: Vec<PathBuf>,
-    /// The paths to the `*.old` files
+    /// The paths to the `*.out` files
     pub out_paths: Vec<PathBuf>,
     /// The summaries of possibly created flamegraphs
     pub flamegraphs: Vec<FlamegraphSummary>,

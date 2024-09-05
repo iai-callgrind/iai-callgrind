@@ -4,24 +4,29 @@ pub mod format;
 pub mod logfile_parser;
 
 use std::ffi::OsString;
-use std::fmt::Display;
+use std::fmt::{Display, Write as FmtWrite};
 use std::fs::File;
 use std::io::{stderr, BufRead, BufReader, Write};
+use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output};
 
 use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
+use lazy_static::lazy_static;
 use log::{debug, error, log_enabled, Level};
+use regex::Regex;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use tokio::task::JoinHandle;
 
 use self::args::ToolArgs;
 use self::format::ToolRunSummaryFormatter;
 use self::logfile_parser::LogfileSummary;
 use super::args::NoCapture;
 use super::bin_bench::Delay;
+use super::callgrind::parser::{parse_header, CallgrindProperties};
 use super::common::{Assistant, Config, ModulePath, Sandbox};
 use super::format::{print_no_capture_footer, tool_headline, OutputFormat};
 use super::meta::Metadata;
@@ -29,6 +34,16 @@ use super::summary::{BaselineKind, ToolRunSummary, ToolSummary};
 use crate::api::{self, ExitWith, Stream};
 use crate::error::Error;
 use crate::util::{self, make_relative, resolve_binary_path, truncate_str_utf8};
+
+lazy_static! {
+    // This regex matches the original file name as it is created by callgrind. The baseline <name>
+    // (base@<name>) can only consist of ascii and underscore characters. Flamegraph files are
+    // ignored by this regex
+    static ref CALLGRIND_ORIG_FILENAME_RE: Regex = regex::Regex::new(
+        r"^(?<tool>callgrind)(?<name>[.].*[.].*)(?<pid>[.][0-9]+)?(?<type>[.](out|log))(?<base>[.](old|base@[^.]*))?(?<part>[.][0-9]+)?(?<thread>-[0-9]+)?$"
+    )
+    .expect("Regex should compile");
+}
 
 #[derive(Debug, Default, Clone)]
 pub struct RunOptions {
@@ -267,6 +282,8 @@ impl ToolCommand {
                 .into());
             }
         }
+
+        output_path.sanitize()?;
 
         Ok(ToolOutput {
             tool: self.tool,
@@ -796,6 +813,7 @@ impl ToolOutputPath {
         })? {
             let path = entry?;
             let file_name = path.file_name().to_string_lossy().to_string();
+            // TODO: RETURN ERROR instead of failing silently?
             if let Some(suffix) =
                 file_name.strip_prefix(format!("{}.{}.", self.tool.id(), self.name).as_str())
             {
@@ -837,6 +855,107 @@ impl ToolOutputPath {
             }
         }
         Ok(paths)
+    }
+
+    #[tokio::main]
+    pub async fn sanitize(&self) -> Result<()> {
+        if self.tool == ValgrindTool::Callgrind {
+            #[derive(Debug)]
+            struct WorkerResult {
+                callgrind_properties: CallgrindProperties,
+                name: String,
+                base: Option<String>,
+                file_name: String,
+            }
+
+            let mut handles: Vec<JoinHandle<Result<Option<WorkerResult>>>> = vec![];
+            // TODO: USE tokio::fs ??
+            for entry in std::fs::read_dir(&self.dir).with_context(|| {
+                format!(
+                    "Failed opening benchmark directory: '{}'",
+                    self.dir.display()
+                )
+            })? {
+                let handle = tokio::spawn(async move {
+                    let path = entry?;
+                    let file_name = path.file_name().to_string_lossy().to_string();
+                    if let Some(caps) =
+                        async { CALLGRIND_ORIG_FILENAME_RE.captures(&file_name) }.await
+                    {
+                        if caps.name("type").unwrap().as_str() == ".out" {
+                            if let Some(base) = caps.name("base") {
+                                if base.as_str() == ".old" {
+                                    return Ok(None);
+                                }
+                            };
+
+                            // Callgrind sometimes creates empty files for no reason. We clean them
+                            // up here
+                            if path.metadata()?.size() == 0 {
+                                std::fs::remove_file(path.path())?;
+                                return Ok(None);
+                            }
+                            let properties = async {
+                                parse_header(
+                                    &mut BufReader::new(File::open(path.path())?)
+                                        .lines()
+                                        .map(Result::unwrap),
+                                )
+                            }
+                            .await?;
+
+                            let result = WorkerResult {
+                                callgrind_properties: properties,
+                                name: caps.name("name").unwrap().as_str().to_owned(),
+                                base: caps.name("base").map(|b| b.as_str().to_owned()),
+                                file_name,
+                            };
+                            Ok(Some(result))
+                        } else {
+                            Ok(None)
+                        }
+                    } else {
+                        Ok(None)
+                    }
+                });
+                handles.push(handle);
+            }
+
+            let mut results = vec![];
+            for handle in handles {
+                let result = handle.await??;
+                if let Some(result) = result {
+                    results.push(result);
+                }
+            }
+
+            // TODO: STOPPED HERE
+            // The capture groups already include a point as prefix:
+            //
+            // <name> = `.NAME`
+            // <base> = `.BASE`
+            for result in results {
+                let mut new_file_name = format!("callgrind{}", result.name);
+                if let Some(pid) = result.callgrind_properties.pid {
+                    write!(new_file_name, ".{pid}").unwrap();
+                }
+                if let Some(part) = result.callgrind_properties.part {
+                    write!(new_file_name, ".p{part}").unwrap();
+                }
+                if let Some(thread) = result.callgrind_properties.thread {
+                    write!(new_file_name, ".t{thread}").unwrap();
+                }
+                new_file_name.push_str(".out");
+                if let Some(base) = result.base {
+                    new_file_name.push_str(&base);
+                }
+
+                let from = self.dir.join(result.file_name);
+                let to = from.with_file_name(new_file_name);
+                std::fs::rename(from, to).unwrap();
+            }
+        }
+        Ok(())
     }
 }
 
@@ -963,5 +1082,37 @@ pub fn check_exit(
         _ => {
             Err(Error::ProcessError((tool.id(), output, status, Some(output_path.clone()))).into())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use rstest::rstest;
+
+    use super::*;
+
+    #[rstest]
+    #[case::out("callgrind.some.name.out")]
+    #[case::out_with_pid("callgrind.some.name.1234.out")]
+    #[case::out_with_part("callgrind.some.name.out.1")]
+    #[case::out_with_thread("callgrind.some.name.out-01")]
+    #[case::out_with_part_and_thread("callgrind.some.name.out.1-01")]
+    #[case::out_old("callgrind.some.name.out.old")]
+    #[case::out_old_with_pid("callgrind.some.name.1234.out.old")]
+    #[case::out_old_with_part("callgrind.some.name.out.old.1")]
+    #[case::out_old_with_thread("callgrind.some.name.out.old-01")]
+    #[case::out_old_with_part_and_thread("callgrind.some.name.out.old.1-01")]
+    #[case::out_base("callgrind.some.name.out.base@default")]
+    #[case::out_base_with_pid("callgrind.some.name.1234.out.base@default")]
+    #[case::out_base_with_part("callgrind.some.name.out.base@default.1")]
+    #[case::out_base_with_thread("callgrind.some.name.out.base@default-01")]
+    #[case::out_base_with_part_and_thread("callgrind.some.name.out.base@default.1-01")]
+    #[case::log("callgrind.some.name.log")]
+    #[case::log_with_pid("callgrind.some.name.1234.log.1")]
+    #[case::log_base("callgrind.some.name.log.base@default")]
+    #[case::log_base_with_pid("callgrind.some.name.1234.log.base@default.1")]
+    fn test_callgrind_filename_regex(#[case] haystack: &str) {
+        assert!(CALLGRIND_ORIG_FILENAME_RE.is_match(haystack));
     }
 }
