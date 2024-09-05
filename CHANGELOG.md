@@ -34,7 +34,7 @@ details.
 This problem is fixed in this and the following releases, but not in older
 versions of `iai-callgrind-runner`. Please use
 [`binstall`](https://github.com/cargo-bins/cargo-binstall) instead of `cargo
-binstall` for these versions if installation time is a concern. `binstall` seems
+install` for these versions if installation time is a concern. `binstall` seems
 to correctly recognize the same installation and does not install
 `iai-callgrind-runner` from scratch again.
 
