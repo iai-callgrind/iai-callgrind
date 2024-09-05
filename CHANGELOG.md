@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.13.3] - 2024-09-04
+## [0.13.3] - 2024-09-05
 
 The installation of `iai-callgrind-runner` with `cargo install` did not use the
 cache when trying to install the same version again and acted as if `cargo
@@ -34,7 +34,7 @@ details.
 This problem is fixed in this and the following releases, but not in older
 versions of `iai-callgrind-runner`. Please use
 [`binstall`](https://github.com/cargo-bins/cargo-binstall) instead of `cargo
-install` for these versions if installation time is a concern. `binstall` seems
+binstall` for these versions if installation time is a concern. `binstall` seems
 to correctly recognize the same installation and does not install
 `iai-callgrind-runner` from scratch again.
 
@@ -58,9 +58,7 @@ to correctly recognize the same installation and does not install
 
 * ([#261](https://github.com/iai-callgrind/iai-callgrind/pull/261)):
   Reinstalling iai-callgrind-runner with `cargo install` when it was already
-  installed acted as if `cargo install --force` was given. This happens due to a
-  [cargo issue](https://github.com/rust-lang/cargo/issues/8703) but was fixed
-  for this version upwards.
+  installed acted as if `cargo install --force` was given.
 
 ## [0.13.2] - 2024-09-03
 
