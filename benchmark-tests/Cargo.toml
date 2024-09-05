@@ -75,6 +75,10 @@ path = "src/helper/exit-with.rs"
 name = "client-requests"
 path = "src/helper/client-requests.rs"
 
+[[bin]]
+name = "thread"
+path = "src/helper/thread.rs"
+
 [[bench]]
 harness = false
 name = "test_bin_bench_setup_and_teardown"
