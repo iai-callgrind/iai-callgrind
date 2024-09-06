@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use derive_more::{Deref, DerefMut};
 use proc_macro2::TokenStream;
-use proc_macro_error::abort;
+use proc_macro_error2::abort;
 use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::Parse;
 use syn::punctuated::Punctuated;

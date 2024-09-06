@@ -3,7 +3,7 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
 use proc_macro2::{Span, TokenStream};
-use proc_macro_error::{abort, emit_error};
+use proc_macro_error2::{abort, emit_error};
 use quote::{format_ident, quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::Parse;
 use syn::spanned::Spanned;

@@ -44,7 +44,7 @@ minijinja = { version = "2.0.1" }
 once_cell = { version = "1" }
 predicates = { version = "3" }
 pretty_assertions = "1.1"
-proc-macro-error = "1"
+proc-macro-error2 = "2"
 proc-macro2 = "1.0.63"
 quote = "1.0.28"
 regex = { version = "1.9" }
