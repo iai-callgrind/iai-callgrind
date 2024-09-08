@@ -16,7 +16,7 @@ use super::callgrind::model::Costs;
 use super::callgrind::parser::Sentinel;
 use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::summary_parser::SummaryParser;
-use super::callgrind::RegressionConfig;
+use super::callgrind::{RegressionConfig, Summaries};
 use super::common::{Assistant, AssistantKind, Config, ModulePath};
 use super::format::{
     print_no_capture_footer, LibraryBenchmarkHeader, OutputFormat, VerticalFormat,
@@ -135,6 +135,7 @@ impl Benchmark for BaselineBenchmark {
         }
     }
 
+    /// TODO: USE `self` instead of `&self` and `lib_bench` instead of `&lib_bench` ? Avoid cloning
     fn run(
         &self,
         lib_bench: &LibBench,
@@ -152,25 +153,18 @@ impl Benchmark for BaselineBenchmark {
 
         let mut callgrind_args = lib_bench.callgrind_args.clone();
 
-        let parser: Box<dyn Parser<Output = Costs>> = match &lib_bench.entry_point {
-            EntryPoint::None => Box::new(SummaryParser),
+        match &lib_bench.entry_point {
+            EntryPoint::None => {}
             EntryPoint::Default => {
                 callgrind_args.insert_toggle_collect(DEFAULT_TOGGLE);
-                Box::new(SentinelParser::new(&Sentinel::default()))
             }
             EntryPoint::Custom(custom) => {
                 callgrind_args.insert_toggle_collect(custom);
-                Box::new(SummaryParser)
             }
         };
 
         // TODO: ADD TO OTHERS SaveBaselineBenchmark, LoadBaselineBenchmark outfile modifier
-        let tool_config = ToolConfig::new(
-            ValgrindTool::Callgrind,
-            true,
-            callgrind_args,
-            lib_bench.callgrind_args.get_outfile_modifier(),
-        );
+        let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, None);
 
         let bench_args = lib_bench.bench_args(group);
 
@@ -210,20 +204,21 @@ impl Benchmark for BaselineBenchmark {
             lib_bench.run_options.stderr.as_ref(),
         );
 
-        let new_costs = parser.parse(&out_path)?;
-
-        let old_costs = old_path
+        let parser = SummaryParser;
+        let parsed_new = parser.parse_multiple_alt(&out_path)?;
+        let parsed_old = old_path
             .exists()
-            .then(|| parser.parse(&old_path))
+            .then(|| parser.parse_multiple_alt(&old_path))
             .transpose()?;
 
-        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
-        VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
+        let summaries = Summaries::new(parsed_new, parsed_old);
+
+        VerticalFormat::default().print_multiple_alt(&config.meta, self.baselines(), &summaries)?;
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stderr())?;
 
-        let regressions = lib_bench.check_and_print_regressions(&costs_summary);
+        let regressions = lib_bench.check_and_print_regressions(&summaries.total);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
@@ -232,14 +227,15 @@ impl Benchmark for BaselineBenchmark {
                 out_path.real_paths()?,
             ));
 
-        callgrind_summary.add_summary(
+        callgrind_summary.add_summaries(
             &config.bench_bin,
             &bench_args,
-            &old_path,
-            costs_summary,
+            &self.baselines(),
+            summaries,
             regressions,
         );
 
+        // TODO: Create multiple flamegraphs from multiple files
         if let Some(flamegraph_config) = lib_bench.flamegraph_config.clone() {
             callgrind_summary.flamegraphs = BaselineFlamegraphGenerator {
                 baseline_kind: self.baseline_kind.clone(),

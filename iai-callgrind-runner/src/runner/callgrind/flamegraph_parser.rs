@@ -1,12 +1,12 @@
 use std::collections::BinaryHeap;
 use std::fmt::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
 use log::debug;
 
 use super::hashmap_parser::{CallgrindMap, HashMapParser, SourcePath};
-use super::parser::Sentinel;
+use super::parser::{CallgrindProperties, Sentinel};
 use crate::api::EventKind;
 use crate::runner::tool::{Parser, ToolOutputPath};
 
@@ -174,6 +174,19 @@ impl Parser for FlamegraphParser {
         };
 
         parser.parse(output_path).map(FlamegraphMap)
+    }
+
+    fn parse_single_alt(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {
+        debug!("Parsing flamegraph from file '{}'", path.display());
+
+        let parser = HashMapParser {
+            project_root: self.project_root.clone(),
+            sentinel: self.sentinel.clone(),
+        };
+
+        parser
+            .parse_single_alt(path)
+            .map(|(props, map)| (props, FlamegraphMap(map)))
     }
 }
 

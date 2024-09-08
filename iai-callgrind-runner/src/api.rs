@@ -374,6 +374,8 @@ pub struct Tool {
     pub kind: ValgrindTool,
     pub enable: Option<bool>,
     pub raw_args: RawArgs,
+    // TODO: Remove support for modifier ?? Or, Set pid modifier automatically and only support
+    // environment variable modifier
     pub outfile_modifier: Option<String>,
     pub show_log: Option<bool>,
 }

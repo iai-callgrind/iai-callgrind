@@ -1,4 +1,3 @@
-inlines
 ASLR
 Aparicio
 Assche
@@ -104,6 +103,8 @@ ilmr
 iname
 indexmap
 indexset
+inlines
+itertools
 jcnd
 jitter
 jsonschema
@@ -174,6 +175,7 @@ rustversion
 rwlock
 rwlocks
 sandboxing
+sched
 schemars
 serde
 setarch

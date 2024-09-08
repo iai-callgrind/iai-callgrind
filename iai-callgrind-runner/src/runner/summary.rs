@@ -9,14 +9,15 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, Context, Result};
 use glob::glob;
-use indexmap::{indexmap, IndexMap};
+use indexmap::{indexmap, IndexMap, IndexSet};
 use lazy_static::lazy_static;
 use regex::Regex;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::common::ModulePath;
+use super::callgrind::Summaries;
+use super::common::{EitherOrBoth, ModulePath};
 use super::costs::Costs;
 use super::format::{ComparisonHeader, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
@@ -36,7 +37,7 @@ lazy_static! {
 /// A `Baseline` depending on the [`BaselineKind`] which points to the corresponding path
 ///
 /// This baseline is used for comparisons with the new output of valgrind tools.
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Baseline {
     /// The kind of the `Baseline`
@@ -49,9 +50,8 @@ pub struct Baseline {
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct BaselineName(String);
 
+/// TODO: Add a None or Default variant
 /// The `BaselineKind` describing the baseline
-///
-/// Currently, iai-callgrind can only compare callgrind output with `.old` files.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum BaselineKind {
@@ -109,7 +109,7 @@ pub struct BenchmarkSummary {
 }
 
 /// The `CallgrindRegressionSummary` describing a single event based performance regression
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindRegressionSummary {
     /// The [`EventKind`] which is affected by a performance regression
@@ -153,12 +153,13 @@ pub struct CallgrindSummary {
     pub summaries: Vec<CallgrindRunSummary>,
 }
 
+/// TODO: USE `EitherOrBoth`
 /// The `CostsDiff` describes the difference between an single optional `new` and `old` cost as
 /// percentage and factor.
 ///
 /// There is either a `new` or an `old` value present. Never can both be absent. If both values are
 /// present, then there is also a `diff_pct` and `factor` present.
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CostsDiff {
     /// The value of the new cost
@@ -171,10 +172,44 @@ pub struct CostsDiff {
     pub factor: Option<f64>,
 }
 
+// TODO: SORT INTO impl section
+// TODO: `EitherOrBoth`
+impl CostsDiff {
+    pub fn new(new: Option<u64>, old: Option<u64>) -> Self {
+        match (new, old) {
+            (None, Some(cost)) => CostsDiff {
+                new: None,
+                old: Some(cost),
+                diff_pct: None,
+                factor: None,
+            },
+            (Some(cost), None) => CostsDiff {
+                new: Some(cost),
+                old: None,
+                diff_pct: None,
+                factor: None,
+            },
+            (Some(new), Some(old)) => CostsDiff {
+                new: Some(new),
+                old: Some(old),
+                diff_pct: Some(percentage_diff(new, old)),
+                factor: Some(factor_diff(new, old)),
+            },
+            (None, None) => unreachable!(),
+        }
+    }
+}
+
 /// The `CostsSummary` contains all differences for affected [`EventKind`]s
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CostsSummary<K: Hash + Eq = EventKind>(IndexMap<K, CostsDiff>);
+
+impl<K: Hash + Eq> Default for CostsSummary<K> {
+    fn default() -> Self {
+        Self(IndexMap::default())
+    }
+}
 
 /// The `ErrorSummary` of tools which have it (Memcheck, DRD, Helgrind)
 ///
@@ -447,6 +482,7 @@ impl CallgrindSummary {
         self.summaries.iter().any(|r| !r.regressions.is_empty())
     }
 
+    /// TODO: REMOVE
     /// Create and add a [`CallgrindRunSummary`] to this `CallgrindSummary`
     pub fn add_summary(
         &mut self,
@@ -479,6 +515,56 @@ impl CallgrindSummary {
             regressions,
         });
     }
+
+    pub fn add_summaries(
+        &mut self,
+        bench_bin: &Path,
+        bench_args: &[OsString],
+        // TODO: USE a type Baselines = (Option<Baseline, ...)
+        baselines: &(Option<String>, Option<String>),
+        summaries: Summaries,
+        regressions: Vec<CallgrindRegressionSummary>,
+    ) {
+        let command = format!(
+            "{} {}",
+            bench_bin.display(),
+            shlex::try_join(
+                bench_args
+                    .iter()
+                    .map(|s| s.to_string_lossy().to_string())
+                    .collect::<Vec<String>>()
+                    .as_slice()
+                    .iter()
+                    .map(String::as_str)
+            )
+            .unwrap()
+        );
+        for summary in summaries.data {
+            let old_baseline = match summary.details {
+                EitherOrBoth::Left(_) => None,
+                EitherOrBoth::Both((_, old)) | EitherOrBoth::Right(old) => Some(Baseline {
+                    kind: baselines.1.as_ref().map_or(BaselineKind::Old, |name| {
+                        BaselineKind::Name(BaselineName(name.to_owned()))
+                    }),
+                    path: old.0,
+                }),
+            };
+
+            self.summaries.push(CallgrindRunSummary {
+                command: command.clone(),
+                baseline: old_baseline,
+                events: summary.costs_summary,
+                regressions: vec![],
+            });
+        }
+
+        self.summaries.push(CallgrindRunSummary {
+            command: command.clone(),
+            baseline: None,
+            events: summaries.total.clone(),
+            regressions,
+        });
+    }
 }
 
 impl<K: Hash + Eq + Summarize + Display + Clone> CostsSummary<K> {
@@ -497,6 +583,7 @@ impl<K: Hash + Eq + Summarize + Display + Clone> CostsSummary<K> {
                     new_costs.cost_by_kind(&event_kind),
                     old_costs.cost_by_kind(&event_kind),
                 ) {
+                    // TODO: USE CostsDiff::new()
                     (None, Some(cost)) => CostsDiff {
                         new: None,
                         old: Some(cost),
@@ -549,6 +636,7 @@ impl<K: Hash + Eq + Summarize + Display + Clone> CostsSummary<K> {
         self.0.iter()
     }
 
+    // TODO: RETURN `EitherOrBoth`
     pub fn extract_costs(&self) -> (Option<Costs<K>>, Option<Costs<K>>) {
         let mut new_costs: Costs<K> = Costs::empty();
         let mut old_costs: Costs<K> = Costs::empty();
@@ -566,6 +654,42 @@ impl<K: Hash + Eq + Summarize + Display + Clone> CostsSummary<K> {
             (false, true) => (Some(new_costs), None),
             (true, false) => (None, Some(old_costs)),
             (true, true) => unreachable!("A costs diff must contain new or old values"),
+        }
+    }
+
+    pub fn add(&mut self, other: &Self) {
+        let other_keys = other.0.keys().cloned().collect::<IndexSet<_>>();
+        let keys = &self.0.keys().cloned().collect::<IndexSet<_>>();
+        let union = keys.union(&other_keys);
+
+        for key in union {
+            match (self.diff_by_kind(key), other.diff_by_kind(key)) {
+                (None, None) => unreachable!("The key of the union set must be present"),
+                (None, Some(other_diff)) => {
+                    self.0.insert(key.clone(), other_diff.clone());
+                }
+                (Some(_), None) => {}
+                (Some(this_diff), Some(other_diff)) => {
+                    let new_cost = match (this_diff.new.as_ref(), other_diff.new.as_ref()) {
+                        (None, None) => None,
+                        (None, Some(cost)) | (Some(cost), None) => Some(*cost),
+                        (Some(this_cost), Some(other_cost)) => {
+                            Some(this_cost.saturating_add(*other_cost))
+                        }
+                    };
+                    let old_cost = match (this_diff.old.as_ref(), other_diff.old.as_ref()) {
+                        (None, None) => None,
+                        (None, Some(cost)) | (Some(cost), None) => Some(*cost),
+                        (Some(this_cost), Some(other_cost)) => {
+                            Some(this_cost.saturating_add(*other_cost))
+                        }
+                    };
+
+                    assert!(new_cost.is_some() || old_cost.is_some());
+                    let new_diff = CostsDiff::new(new_cost, old_cost);
+                    self.0.insert(key.clone(), new_diff);
+                }
+            }
         }
     }
 }
@@ -646,5 +770,22 @@ impl SummaryOutput {
     /// Try to create an empty summary file returning the [`File`] object
     pub fn create(&self) -> Result<File> {
         File::create(&self.path).with_context(|| "Failed to create json summary file")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use indexmap::indexmap;
+    use rstest::rstest;
+    use EventKind::*;
+
+    use super::*;
+
+    /// TODO: ADD TESTS
+    #[rstest]
+    #[case::simple(indexmap!(Ir => CostsDiff::default()))]
+    fn test_costs_summary_zero(#[case] map: IndexMap<EventKind, CostsDiff>) {
+        // TODO: REMOVE STUB AND CONTINUE TESTING
+        assert!(map.is_empty());
     }
 }

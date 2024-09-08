@@ -24,6 +24,7 @@ pub struct Args {
     verbose: bool,
     dump_instr: bool,
     dump_line: bool,
+    /// --combine-dumps is currently not supported by the callgrind parsers, so we print a warning
     combine_dumps: bool,
     callgrind_out_file: Option<PathBuf>,
     log_arg: Option<OsString>,
@@ -48,6 +49,14 @@ impl Args {
                 Some(("--I1", value)) => value.clone_into(&mut self.i1),
                 Some(("--D1", value)) => value.clone_into(&mut self.d1),
                 Some(("--LL", value)) => value.clone_into(&mut self.ll),
+                Some((key @ "--cache-sim", value)) => {
+                    self.cache_sim = yesno_to_bool(value).ok_or_else(|| {
+                        Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
+                    })?;
+                }
+                Some(("--toggle-collect", value)) => {
+                    self.toggle_collect.push_back(value.to_owned());
+                }
                 Some((key @ "--dump-instr", value)) => {
                     self.dump_instr = yesno_to_bool(value).ok_or_else(|| {
                         Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
@@ -58,11 +67,19 @@ impl Args {
                         Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
-                Some(("--toggle-collect", value)) => {
-                    self.toggle_collect.push_back(value.to_owned());
+                Some((key @ "--trace-children", value)) => {
+                    self.trace_children = yesno_to_bool(value).ok_or_else(|| {
+                        Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
+                    })?;
+                }
+                Some((key @ "--separate-threads", value)) => {
+                    self.separate_threads = yesno_to_bool(value).ok_or_else(|| {
+                        Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
+                    })?;
                 }
                 Some((
-                    key @ ("--callgrind-out-file"
+                    key @ ("--combine-dumps"
+                    | "--callgrind-out-file"
                     | "--compress-strings"
                     | "--compress-pos"
                     | "--log-file"

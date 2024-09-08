@@ -5,6 +5,7 @@ use log::warn;
 use super::{ToolOutputPath, ValgrindTool};
 use crate::api::{self};
 
+/// TODO: Add `trace_children` and set outfile modifier automatically if true
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolArgs {
     pub tool: ValgrindTool,
@@ -48,7 +49,7 @@ impl ToolArgs {
                     _,
                 )) => warn!(
                     "Ignoring {} argument '{arg}': Output/Log files of tools are managed by \
-                     iai-callgrind",
+                     Iai-Callgrind",
                     tool.id()
                 ),
                 Some(("--error-exitcode", value)) => {

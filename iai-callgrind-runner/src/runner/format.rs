@@ -1,12 +1,15 @@
 use std::borrow::Cow;
 use std::fmt::{Display, Write};
+use std::path::PathBuf;
 
 use anyhow::Result;
 use colored::{ColoredString, Colorize};
 
 use super::args::NoCapture;
 use super::bin_bench::BinBench;
-use super::common::ModulePath;
+use super::callgrind::parser::CallgrindProperties;
+use super::callgrind::Summaries;
+use super::common::{EitherOrBoth, ModulePath};
 use super::lib_bench::LibBench;
 use super::meta::Metadata;
 use super::summary::{CostsDiff, CostsSummary};
@@ -285,6 +288,29 @@ impl VerticalFormat {
         }
         Ok(())
     }
+
+    // TODO: REPLACE print with print_multiple
+    pub fn print_multiple_alt(
+        &self,
+        meta: &Metadata,
+        baselines: (Option<String>, Option<String>),
+        summaries: &Summaries,
+    ) -> Result<()> {
+        if meta.args.output_format == OutputFormat::Default {
+            if summaries.has_multiple() {
+                for summary in &summaries.data {
+                    println!("{}", callgrind_multiple_files_header(&summary.details));
+                    print!(
+                        "{}",
+                        self.format(baselines.clone(), &summary.costs_summary)?
+                    );
+                }
+                println!("{}", callgrind_total_header());
+            }
+            print!("{}", self.format(baselines, &summaries.total)?);
+        }
+        Ok(())
+    }
 }
 
 impl Default for VerticalFormat {
@@ -334,6 +360,7 @@ impl Formatter for VerticalFormat {
 }
 
 pub fn format_vertical<'a, K: Display + 'a>(
+    // TODO: MAKE USE OF EitherOrBoth
     baselines: (Option<String>, Option<String>),
     costs_summary: impl Iterator<Item = (&'a K, &'a CostsDiff)>,
 ) -> Result<String> {
@@ -401,6 +428,72 @@ pub fn format_vertical<'a, K: Display + 'a>(
         }
     }
     Ok(result)
+}
+
+pub fn callgrind_multiple_files_header(
+    properties: &EitherOrBoth<(PathBuf, CallgrindProperties)>,
+) -> String {
+    fn fields(property: &CallgrindProperties) -> (usize, String) {
+        // "pid: ".len() + " part: ".len() + " thread: ".len()
+        let mut len = 5 + 7 + 9;
+        let pid = property
+            .pid
+            .map_or(NOT_AVAILABLE.to_owned(), |v| v.to_string());
+        let part = property
+            .part
+            .map_or(NOT_AVAILABLE.to_owned(), |v| v.to_string());
+        let thread = property
+            .thread
+            .map_or(NOT_AVAILABLE.to_owned(), |v| v.to_string());
+        // TODO: REMOVE THIS len calculation and returning len if not colored in this function
+        len += pid.len() + part.len() + thread.len();
+        (len, format!("pid: {pid} part: {part} thread: {thread}"))
+    }
+
+    let max_left = 31;
+    let hash = "##".yellow();
+    match properties {
+        EitherOrBoth::Left(new) => {
+            let (len, left) = fields(&new.1);
+            let left = left.bold();
+            if len > max_left {
+                format!(
+                    "  {hash} {left}\n{}|{NOT_AVAILABLE}",
+                    " ".repeat(max_left + 4).yellow()
+                )
+            } else {
+                format!(
+                    "  {hash} {left}{}|{NOT_AVAILABLE}",
+                    " ".repeat(max_left - len - 1)
+                )
+            }
+        }
+        EitherOrBoth::Right(old) => {
+            let (_, right) = fields(&old.1);
+            format!(
+                "  {hash} {}{}|{right}",
+                NOT_AVAILABLE.bold(),
+                " ".repeat(max_left - NOT_AVAILABLE.len() - 1)
+            )
+        }
+        EitherOrBoth::Both((new, old)) => {
+            let (len, left) = fields(&new.1);
+            let right = fields(&old.1).1;
+            let left = left.bold();
+            if len > max_left {
+                format!(
+                    "  {hash} {left}\n{}|{right}",
+                    " ".repeat(max_left + 4).yellow()
+                )
+            } else {
+                format!("  {hash} {left}{}|{right}", " ".repeat(max_left - len - 1))
+            }
+        }
+    }
+}
+
+pub fn callgrind_total_header() -> String {
+    format!("  {} Total", "##".yellow())
 }
 
 pub fn tool_headline(tool: ValgrindTool) -> String {

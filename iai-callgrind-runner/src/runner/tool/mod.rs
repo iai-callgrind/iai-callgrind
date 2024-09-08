@@ -14,12 +14,11 @@ use std::process::{Child, Command, ExitStatus, Output};
 use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
 use lazy_static::lazy_static;
-use log::{debug, error, log_enabled, Level};
+use log::{debug, error, log_enabled};
 use regex::Regex;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use tokio::task::JoinHandle;
 
 use self::args::ToolArgs;
 use self::format::ToolRunSummaryFormatter;
@@ -39,7 +38,7 @@ lazy_static! {
     // This regex matches the original file name as it is created by callgrind. The baseline <name>
     // (base@<name>) can only consist of ascii and underscore characters. Flamegraph files are
     // ignored by this regex
-    static ref CALLGRIND_ORIG_FILENAME_RE: Regex = regex::Regex::new(
+    static ref CALLGRIND_ORIG_FILENAME_RE: Regex = Regex::new(
         r"^(?<tool>callgrind)(?<name>[.].*[.].*)(?<pid>[.][0-9]+)?(?<type>[.](out|log))(?<base>[.](old|base@[^.]*))?(?<part>[.][0-9]+)?(?<thread>-[0-9]+)?$"
     )
     .expect("Regex should compile");
@@ -115,6 +114,26 @@ pub trait Parser {
     type Output;
 
     fn parse(&self, output: &ToolOutputPath) -> Result<Self::Output>;
+    fn parse_single_alt(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)>;
+    fn parse_multiple_alt(
+        &self,
+        output: &ToolOutputPath,
+    ) -> Result<Vec<(PathBuf, CallgrindProperties, Self::Output)>> {
+        let paths = output.real_paths()?;
+        let mut results: Vec<(PathBuf, CallgrindProperties, Self::Output)> =
+            Vec::with_capacity(paths.len());
+        for path in paths {
+            let parsed = self.parse_single_alt(&path).map(|(p, c)| (path, p, c))?;
+
+            let position = results
+                .binary_search_by(|probe| probe.1.compare_target_ids(&parsed.1))
+                .unwrap_or_else(|e| e);
+
+            results.insert(position, parsed);
+        }
+
+        Ok(results)
+    }
 }
 
 impl ToolCommand {
@@ -521,6 +540,7 @@ impl ToolConfigs {
                 old_summaries,
             )?;
 
+            // TODO: Print multiple files with a headline as in callgrind format
             Self::print(
                 &config.meta,
                 tool_config,
@@ -539,9 +559,9 @@ impl ToolConfigs {
 }
 
 impl ToolOutput {
-    pub fn dump_log(&self, log_level: Level) {
+    pub fn dump_log(&self, log_level: log::Level) {
         if let Some(output) = &self.output {
-            if log::log_enabled!(log_level) {
+            if log_enabled!(log_level) {
                 let (stdout, stderr) = (&output.stdout, &output.stderr);
                 if !stdout.is_empty() {
                     log::log!(log_level, "{} output on stdout:", self.tool.id());
@@ -713,6 +733,7 @@ impl ToolOutputPath {
         }
     }
 
+    // TODO: REMOVE
     pub fn open(&self) -> Result<File> {
         let path = self.to_path();
         File::open(&path).with_context(|| {
@@ -724,11 +745,10 @@ impl ToolOutputPath {
         })
     }
 
+    // TODO: REMOVE
     pub fn lines(&self) -> Result<impl Iterator<Item = String>> {
         let file = self.open()?;
-        Ok(BufReader::new(file)
-            .lines()
-            .map(std::result::Result::unwrap))
+        Ok(BufReader::new(file).lines().map(Result::unwrap))
     }
 
     pub fn dump_log(&self, log_level: log::Level, writer: &mut impl Write) -> Result<()> {
@@ -759,22 +779,22 @@ impl ToolOutputPath {
     pub fn extension(&self) -> String {
         match (&self.kind, self.modifiers.is_empty()) {
             (ToolOutputPathKind::Out, true) => "out".to_owned(),
-            (ToolOutputPathKind::Out, false) => format!("out.{}", self.modifiers.join(".")),
+            (ToolOutputPathKind::Out, false) => format!("{}.out", self.modifiers.join(".")),
             (ToolOutputPathKind::Log, true) => "log".to_owned(),
-            (ToolOutputPathKind::Log, false) => format!("log.{}", self.modifiers.join(".")),
+            (ToolOutputPathKind::Log, false) => format!("{}.log", self.modifiers.join(".")),
             (ToolOutputPathKind::OldOut, true) => "out.old".to_owned(),
-            (ToolOutputPathKind::OldOut, false) => format!("out.{}.old", self.modifiers.join(".")),
+            (ToolOutputPathKind::OldOut, false) => format!("{}.out.old", self.modifiers.join(".")),
             (ToolOutputPathKind::OldLog, true) => "log.old".to_owned(),
-            (ToolOutputPathKind::OldLog, false) => format!("log.{}.old", self.modifiers.join(".")),
+            (ToolOutputPathKind::OldLog, false) => format!("{}.log.old", self.modifiers.join(".")),
             (ToolOutputPathKind::BaseLog(name), true) => {
                 format!("log.base@{name}")
             }
             (ToolOutputPathKind::BaseLog(name), false) => {
-                format!("log.{}.base@{name}", self.modifiers.join("."))
+                format!("{}.log.base@{name}", self.modifiers.join("."))
             }
             (ToolOutputPathKind::Base(name), true) => format!("out.base@{name}"),
             (ToolOutputPathKind::Base(name), false) => {
-                format!("out.{}.base@{name}", self.modifiers.join("."))
+                format!("{}.out.base@{name}", self.modifiers.join("."))
             }
         }
     }
@@ -794,6 +814,7 @@ impl ToolOutputPath {
         }
     }
 
+    // TODO: RENAME to something less confusing and return String
     pub fn to_path(&self) -> PathBuf {
         self.dir.join(format!(
             "{}.{}.{}",
@@ -815,37 +836,19 @@ impl ToolOutputPath {
             let file_name = path.file_name().to_string_lossy().to_string();
             // TODO: RETURN ERROR instead of failing silently?
             if let Some(suffix) =
-                file_name.strip_prefix(format!("{}.{}.", self.tool.id(), self.name).as_str())
+                file_name.strip_prefix(format!("{}.{}", self.tool.id(), self.name).as_str())
             {
                 #[allow(clippy::case_sensitive_file_extension_comparisons)]
                 let is_match = match &self.kind {
-                    ToolOutputPathKind::Out => {
-                        suffix.starts_with("out")
-                            && !(suffix.ends_with(".old")
-                                || suffix
-                                    .rsplit_once('.')
-                                    .map_or(false, |(_, b)| b.starts_with("base@")))
-                    }
-                    ToolOutputPathKind::Log => {
-                        suffix.starts_with("log")
-                            && !(suffix.ends_with(".old")
-                                || suffix
-                                    .rsplit_once('.')
-                                    .map_or(false, |(_, b)| b.starts_with("base@")))
-                    }
-                    ToolOutputPathKind::OldOut => {
-                        suffix.starts_with("out") && suffix.ends_with(".old")
-                    }
-                    ToolOutputPathKind::OldLog => {
-                        suffix.starts_with("log") && suffix.ends_with(".old")
-                    }
+                    ToolOutputPathKind::Out => suffix.ends_with(".out"),
+                    ToolOutputPathKind::Log => suffix.ends_with(".log"),
+                    ToolOutputPathKind::OldOut => suffix.ends_with(".out.old"),
+                    ToolOutputPathKind::OldLog => suffix.ends_with(".log.old"),
                     ToolOutputPathKind::BaseLog(name) => {
-                        suffix.starts_with("log")
-                            && suffix.ends_with(format!(".base@{name}").as_str())
+                        suffix.ends_with(format!(".log.base@{name}").as_str())
                     }
                     ToolOutputPathKind::Base(name) => {
-                        suffix.starts_with("out")
-                            && suffix.ends_with(format!(".base@{name}").as_str())
+                        suffix.ends_with(format!(".out.base@{name}").as_str())
                     }
                 };
 
@@ -857,104 +860,70 @@ impl ToolOutputPath {
         Ok(paths)
     }
 
-    #[tokio::main]
-    pub async fn sanitize(&self) -> Result<()> {
-        if self.tool == ValgrindTool::Callgrind {
-            #[derive(Debug)]
-            struct WorkerResult {
-                callgrind_properties: CallgrindProperties,
-                name: String,
-                base: Option<String>,
-                file_name: String,
-            }
-
-            let mut handles: Vec<JoinHandle<Result<Option<WorkerResult>>>> = vec![];
-            // TODO: USE tokio::fs ??
-            for entry in std::fs::read_dir(&self.dir).with_context(|| {
-                format!(
-                    "Failed opening benchmark directory: '{}'",
-                    self.dir.display()
-                )
-            })? {
-                let handle = tokio::spawn(async move {
-                    let path = entry?;
-                    let file_name = path.file_name().to_string_lossy().to_string();
-                    if let Some(caps) =
-                        async { CALLGRIND_ORIG_FILENAME_RE.captures(&file_name) }.await
-                    {
-                        if caps.name("type").unwrap().as_str() == ".out" {
-                            if let Some(base) = caps.name("base") {
-                                if base.as_str() == ".old" {
-                                    return Ok(None);
-                                }
-                            };
-
-                            // Callgrind sometimes creates empty files for no reason. We clean them
-                            // up here
-                            if path.metadata()?.size() == 0 {
-                                std::fs::remove_file(path.path())?;
-                                return Ok(None);
-                            }
-                            let properties = async {
-                                parse_header(
-                                    &mut BufReader::new(File::open(path.path())?)
-                                        .lines()
-                                        .map(Result::unwrap),
-                                )
-                            }
-                            .await?;
-
-                            let result = WorkerResult {
-                                callgrind_properties: properties,
-                                name: caps.name("name").unwrap().as_str().to_owned(),
-                                base: caps.name("base").map(|b| b.as_str().to_owned()),
-                                file_name,
-                            };
-                            Ok(Some(result))
-                        } else {
-                            Ok(None)
+    fn sanitize_callgrind(&self) -> Result<()> {
+        for entry in std::fs::read_dir(&self.dir).with_context(|| {
+            format!(
+                "Failed opening benchmark directory: '{}'",
+                self.dir.display()
+            )
+        })? {
+            let path = entry?;
+            let file_name = path.file_name().to_string_lossy().to_string();
+            if let Some(caps) = CALLGRIND_ORIG_FILENAME_RE.captures(&file_name) {
+                if caps.name("type").unwrap().as_str() == ".out" {
+                    if let Some(base) = caps.name("base") {
+                        if base.as_str() == ".old" {
+                            continue;
                         }
-                    } else {
-                        Ok(None)
+                    };
+
+                    // Callgrind sometimes creates empty files for no reason. We clean them
+                    // up here
+                    if path.metadata()?.size() == 0 {
+                        std::fs::remove_file(path.path())?;
+                        continue;
                     }
-                });
-                handles.push(handle);
-            }
+                    let properties = parse_header(
+                        &mut BufReader::new(File::open(path.path())?)
+                            .lines()
+                            .map(Result::unwrap),
+                    )?;
 
-            let mut results = vec![];
-            for handle in handles {
-                let result = handle.await??;
-                if let Some(result) = result {
-                    results.push(result);
-                }
-            }
+                    let name = caps.name("name").unwrap().as_str().to_owned();
+                    let base = caps.name("base").map(|b| b.as_str().to_owned());
+                    let mut new_file_name = format!("callgrind{name}");
 
-            // TODO: STOPPED HERE
-            // The capture groups already include a point as prefix:
-            //
-            // <name> = `.NAME`
-            // <base> = `.BASE`
-            for result in results {
-                let mut new_file_name = format!("callgrind{}", result.name);
-                if let Some(pid) = result.callgrind_properties.pid {
-                    write!(new_file_name, ".{pid}").unwrap();
-                }
-                if let Some(part) = result.callgrind_properties.part {
-                    write!(new_file_name, ".p{part}").unwrap();
-                }
-                if let Some(thread) = result.callgrind_properties.thread {
-                    write!(new_file_name, ".t{thread}").unwrap();
-                }
-                new_file_name.push_str(".out");
-                if let Some(base) = result.base {
-                    new_file_name.push_str(&base);
-                }
+                    if let Some(pid) = properties.pid {
+                        write!(new_file_name, ".{pid}")?;
+                    }
+                    if let Some(part) = properties.part {
+                        write!(new_file_name, ".p{part}")?;
+                    }
+                    if let Some(thread) = properties.thread {
+                        write!(new_file_name, ".t{thread}")?;
+                    }
 
-                let from = self.dir.join(result.file_name);
-                let to = from.with_file_name(new_file_name);
-                std::fs::rename(from, to).unwrap();
+                    new_file_name.push_str(".out");
+                    if let Some(base) = base {
+                        new_file_name.push_str(&base);
+                    }
+
+                    let from = self.dir.join(file_name);
+                    let to = from.with_file_name(new_file_name);
+                    std::fs::rename(from, to)?;
+                }
             }
         }
+
+        Ok(())
+    }
+
+    /// TODO: DOCS
+    pub fn sanitize(&self) -> Result<()> {
+        if self.tool == ValgrindTool::Callgrind {
+            self.sanitize_callgrind()?;
+        }
+        // TODO: sanitize dhat
         Ok(())
     }
 }

@@ -1,4 +1,6 @@
+use std::cmp::Ordering;
 use std::fmt::Display;
+use std::path::PathBuf;
 
 use anyhow::{anyhow, Context, Result};
 use lazy_static::lazy_static;
@@ -8,6 +10,13 @@ use serde::{Deserialize, Serialize};
 
 use super::model::{Costs, Positions};
 use crate::runner::DEFAULT_TOGGLE;
+
+lazy_static! {
+    static ref GLOB_TO_REGEX_RE: Regex =
+        Regex::new(r"(\\)([*]|[?])").expect("Regex should compile");
+}
+
+pub type ParserOutput = Vec<(PathBuf, CallgrindProperties, Costs)>;
 
 #[derive(Debug, Default)]
 pub struct CallgrindProperties {
@@ -21,9 +30,19 @@ pub struct CallgrindProperties {
     pub creator: Option<String>,
 }
 
-lazy_static! {
-    static ref GLOB_TO_REGEX_RE: Regex =
-        Regex::new(r"(\\)([*]|[?])").expect("Regex should compile");
+/// TODO: MOVE INTO impl Section and sort also the others below
+impl CallgrindProperties {
+    /// Compare by target ids `pid`, `part` and `thread`
+    ///
+    /// Highest precedence takes `pid`. Second is `part` and third is `thread` all sorted ascending.
+    /// See also [Callgrind Format](https://valgrind.org/docs/manual/cl-format.html#cl-format.reference.grammar)
+    pub fn compare_target_ids(&self, other: &Self) -> Ordering {
+        self.pid.cmp(&other.pid).then_with(|| {
+            self.part
+                .cmp(&other.part)
+                .then_with(|| self.thread.cmp(&other.thread))
+        })
+    }
 }
 
 #[allow(clippy::unsafe_derive_deserialize)]

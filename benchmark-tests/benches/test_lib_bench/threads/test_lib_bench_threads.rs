@@ -1,8 +1,19 @@
 use benchmark_tests::find_primes;
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use iai_callgrind::{
+    library_benchmark, library_benchmark_group, main, EntryPoint, LibraryBenchmarkConfig, Tool,
+    ValgrindTool,
+};
 
-#[library_benchmark]
-#[bench::some(3)]
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .entry_point(EntryPoint::None)
+        .raw_callgrind_args(["--fair-sched=yes"])
+        .tool(Tool::new(ValgrindTool::DHAT)
+            .args(["--trace-children=yes"])
+            .outfile_modifier("%p"))
+)]
+#[bench::two(4)]
+#[bench::three(3)]
 fn bench_library(num: u64) {
     let mut handles = vec![];
     let mut low = 0;

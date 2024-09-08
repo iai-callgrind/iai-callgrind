@@ -43,6 +43,14 @@ pub struct Config {
     pub meta: Metadata,
 }
 
+// TODO: IS THIS THE PERFECT PLACE for this enum
+#[derive(Debug)]
+pub enum EitherOrBoth<T> {
+    Left(T),
+    Right(T),
+    Both((T, T)),
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModulePath(String);
 

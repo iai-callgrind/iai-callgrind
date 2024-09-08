@@ -7,12 +7,87 @@ pub mod parser;
 pub mod sentinel_parser;
 pub mod summary_parser;
 
+use std::path::PathBuf;
+
 use colored::Colorize;
+use itertools::Itertools;
+use parser::{CallgrindProperties, ParserOutput};
 
 use self::model::Costs;
+use super::common::EitherOrBoth;
 use super::summary::{CallgrindRegressionSummary, CostsSummary};
 use crate::api::{self, EventKind};
 use crate::util::to_string_signed_short;
+
+#[derive(Debug)]
+pub struct Summary {
+    pub details: EitherOrBoth<(PathBuf, CallgrindProperties)>,
+    pub costs_summary: CostsSummary,
+}
+
+impl Summary {
+    pub fn new(
+        details: EitherOrBoth<(PathBuf, CallgrindProperties)>,
+        costs_summary: CostsSummary,
+    ) -> Self {
+        Self {
+            details,
+            costs_summary,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Summaries {
+    pub data: Vec<Summary>,
+    pub total: CostsSummary,
+}
+
+impl Summaries {
+    pub fn new(parsed_new: ParserOutput, parsed_old: Option<ParserOutput>) -> Self {
+        let mut total = CostsSummary::default();
+        let summaries: Vec<Summary> = parsed_new
+            .into_iter()
+            .zip_longest(parsed_old.into_iter().flatten())
+            .map(|e| match e {
+                itertools::EitherOrBoth::Both(
+                    (new_path, new_props, new_costs),
+                    (old_path, old_props, old_costs),
+                ) => {
+                    let summary = CostsSummary::new(&new_costs, Some(&old_costs));
+                    total.add(&summary);
+                    Summary::new(
+                        EitherOrBoth::Both(((new_path, new_props), (old_path, old_props))),
+                        summary,
+                    )
+                }
+                itertools::EitherOrBoth::Left((path, new_props, new_costs)) => {
+                    let summary = CostsSummary::new(&new_costs, None);
+                    total.add(&summary);
+                    Summary::new(EitherOrBoth::Left((path, new_props)), summary)
+                }
+                itertools::EitherOrBoth::Right((path, old_props, old_costs)) => {
+                    // TODO: CostsSummary should take an Option for new or `EitherOrBoth`
+                    let summary = CostsSummary::new(&Costs::empty(), Some(&old_costs));
+                    total.add(&summary);
+                    Summary::new(EitherOrBoth::Right((path, old_props)), summary)
+                }
+            })
+            .collect();
+        assert!(
+            !summaries.is_empty(),
+            "At least one summary must be present"
+        );
+        Self {
+            data: summaries,
+            total,
+        }
+    }
+
+    pub fn has_multiple(&self) -> bool {
+        self.data.len() > 1
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct CacheSummary {

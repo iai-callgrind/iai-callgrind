@@ -40,6 +40,7 @@ runner = [
   "dep:tempfile",
   "dep:version-compare",
   "dep:which",
+  "dep:itertools",
 ]
 schema = ["default", "dep:schemars"]
 
@@ -59,6 +60,7 @@ indexmap = { workspace = true, optional = true, features = ["serde"] }
 inferno = { workspace = true, optional = true, default-features = false, features = [
   'multithreaded',
 ] }
+itertools = { workspace = true, optional = true }
 lazy_static = { workspace = true, optional = true }
 log = { workspace = true, optional = true }
 regex = { workspace = true, optional = true }
@@ -69,8 +71,6 @@ serde_json = { workspace = true, optional = true }
 serde_regex = { workspace = true, optional = true }
 shlex = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
-# TODO: Remove fs feature if not required
-tokio = { workspace = true, features = ["rt-multi-thread", "macros", "fs"] }
 version-compare = { workspace = true, optional = true }
 which = { workspace = true, optional = true }
 
