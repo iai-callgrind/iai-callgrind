@@ -31,6 +31,9 @@ First value of leaked memory: <__NUMBER__>
 Searching for pointers to <__NUMBER__> not-freed blocks
 Checked <__FILTER__> bytes
 
+<__NUMBER__> (<__NUMBER__>) bytes in <__NUMBER__> (<__NUMBER__>) blocks are definitely lost in new loss record <__NUMBER__> of <__NUMBER__>
+<__BACKTRACE__>
+
 LEAK SUMMARY:
 definitely lost: <__FILTER__> bytes in <__FILTER__> blocks
 indirectly lost: <__FILTER__> bytes in <__FILTER__> blocks
