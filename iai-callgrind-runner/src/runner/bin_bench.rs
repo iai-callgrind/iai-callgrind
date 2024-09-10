@@ -18,7 +18,7 @@ use super::callgrind::flamegraph::{
     LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
 };
 use super::callgrind::summary_parser::SummaryParser;
-use super::callgrind::RegressionConfig;
+use super::callgrind::{RegressionConfig, Summaries};
 use super::common::{Assistant, AssistantKind, Config, ModulePath, Sandbox};
 use super::format::{BinaryBenchmarkHeader, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
@@ -241,20 +241,19 @@ impl Benchmark for BaselineBenchmark {
             sandbox.reset()?;
         }
 
-        let new_costs = SummaryParser.parse(&out_path)?;
-
-        let old_costs = old_path
+        let parsed_new = SummaryParser.parse_multiple_alt(&out_path)?;
+        let parsed_old = old_path
             .exists()
-            .then(|| SummaryParser.parse(&old_path))
+            .then(|| SummaryParser.parse_multiple_alt(&old_path))
             .transpose()?;
 
-        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
-        VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
+        let summaries = Summaries::new(parsed_new, parsed_old);
+        VerticalFormat::default().print_multiple_alt(&config.meta, self.baselines(), &summaries)?;
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stderr())?;
 
-        let regressions = bin_bench.check_and_print_regressions(&costs_summary);
+        let regressions = bin_bench.check_and_print_regressions(&summaries.total);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
@@ -263,11 +262,11 @@ impl Benchmark for BaselineBenchmark {
                 out_path.real_paths()?,
             ));
 
-        callgrind_summary.add_summary(
+        callgrind_summary.add_summaries(
             &bin_bench.command.path,
             &bin_bench.command.args,
-            &old_path,
-            costs_summary,
+            &self.baselines(),
+            summaries,
             regressions,
         );
 
@@ -788,13 +787,13 @@ impl Benchmark for LoadBaselineBenchmark {
             header.description(),
         )?;
 
-        let new_costs = SummaryParser.parse(&out_path)?;
-        let old_costs = Some(SummaryParser.parse(&old_path)?);
-        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
+        let parsed_new = SummaryParser.parse_multiple_alt(&out_path)?;
+        let parsed_old = Some(SummaryParser.parse_multiple_alt(&old_path)?);
+        let summaries = Summaries::new(parsed_new, parsed_old);
 
-        VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
+        VerticalFormat::default().print_multiple_alt(&config.meta, self.baselines(), &summaries)?;
 
-        let regressions = bin_bench.check_and_print_regressions(&costs_summary);
+        let regressions = bin_bench.check_and_print_regressions(&summaries.total);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
@@ -803,11 +802,11 @@ impl Benchmark for LoadBaselineBenchmark {
                 out_path.real_paths()?,
             ));
 
-        callgrind_summary.add_summary(
+        callgrind_summary.add_summaries(
             &bin_bench.command.path,
             &bin_bench.command.args,
-            &old_path,
-            costs_summary,
+            &self.baselines(),
+            summaries,
             regressions,
         );
 
@@ -946,11 +945,11 @@ impl Benchmark for SaveBaselineBenchmark {
         let out_path = self.output_path(bin_bench, config, group);
         out_path.init()?;
 
-        let old_costs = out_path
+        let parsed_old = out_path
             .exists()
             .then(|| {
                 SummaryParser
-                    .parse(&out_path)
+                    .parse_multiple_alt(&out_path)
                     .and_then(|costs| out_path.clear().map(|()| costs))
             })
             .transpose()?;
@@ -1006,14 +1005,14 @@ impl Benchmark for SaveBaselineBenchmark {
             sandbox.reset()?;
         }
 
-        let new_costs = SummaryParser.parse(&out_path)?;
-        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
-        VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
+        let parsed_new = SummaryParser.parse_multiple_alt(&out_path)?;
+        let summaries = Summaries::new(parsed_new, parsed_old);
+        VerticalFormat::default().print_multiple_alt(&config.meta, self.baselines(), &summaries)?;
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stderr())?;
 
-        let regressions = bin_bench.check_and_print_regressions(&costs_summary);
+        let regressions = bin_bench.check_and_print_regressions(&summaries.total);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
@@ -1022,11 +1021,11 @@ impl Benchmark for SaveBaselineBenchmark {
                 out_path.real_paths()?,
             ));
 
-        callgrind_summary.add_summary(
+        callgrind_summary.add_summaries(
             &bin_bench.command.path,
             &bin_bench.command.args,
-            &out_path,
-            costs_summary,
+            &self.baselines(),
+            summaries,
             regressions,
         );
 

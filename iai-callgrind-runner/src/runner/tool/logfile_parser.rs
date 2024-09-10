@@ -60,6 +60,7 @@ enum State {
     Body,
 }
 
+/// TODO: Use the Parser trait instead if possible
 pub trait LogfileParser {
     fn parse_single(&self, path: PathBuf) -> Result<LogfileSummary>;
 

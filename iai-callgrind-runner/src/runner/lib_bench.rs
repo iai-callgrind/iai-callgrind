@@ -162,7 +162,8 @@ impl Benchmark for BaselineBenchmark {
         };
 
         // TODO: ADD TO OTHERS SaveBaselineBenchmark, LoadBaselineBenchmark outfile modifier
-        let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, None);
+        let modifier = callgrind_args.get_outfile_modifier();
+        let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, modifier);
 
         let bench_args = lib_bench.bench_args(group);
 
@@ -233,7 +234,6 @@ impl Benchmark for BaselineBenchmark {
             regressions,
         );
 
-        // TODO: Create multiple flamegraphs from multiple files
         if let Some(flamegraph_config) = lib_bench.flamegraph_config.clone() {
             callgrind_summary.flamegraphs = BaselineFlamegraphGenerator {
                 baseline_kind: self.baseline_kind.clone(),
@@ -525,13 +525,13 @@ impl Benchmark for LoadBaselineBenchmark {
         )?;
 
         let parser = SummaryParser;
-        let new_costs = parser.parse(&out_path)?;
-        let old_costs = Some(parser.parse(&old_path)?);
-        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
+        let parsed_new = parser.parse_multiple_alt(&out_path)?;
+        let parsed_old = Some(parser.parse_multiple_alt(&old_path)?);
+        let summaries = Summaries::new(parsed_new, parsed_old);
 
-        VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
+        VerticalFormat::default().print_multiple_alt(&config.meta, self.baselines(), &summaries)?;
 
-        let regressions = lib_bench.check_and_print_regressions(&costs_summary);
+        let regressions = lib_bench.check_and_print_regressions(&summaries.total);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
@@ -540,11 +540,11 @@ impl Benchmark for LoadBaselineBenchmark {
                 out_path.real_paths()?,
             ));
 
-        callgrind_summary.add_summary(
+        callgrind_summary.add_summaries(
             &config.bench_bin,
             &bench_args,
-            &old_path,
-            costs_summary,
+            &self.baselines(),
+            summaries,
             regressions,
         );
 
@@ -689,7 +689,9 @@ impl Benchmark for SaveBaselineBenchmark {
             }
         };
 
-        let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, None);
+        let modifier = callgrind_args.get_outfile_modifier();
+        // TODO: REFACTOR move this and ToolCommand::new from above into LibBench::new
+        let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, modifier);
 
         let bench_args = lib_bench.bench_args(group);
         let baselines = self.baselines();
@@ -698,11 +700,11 @@ impl Benchmark for SaveBaselineBenchmark {
         out_path.init()?;
 
         let parser = SummaryParser;
-        let old_costs = out_path
+        let parsed_old = out_path
             .exists()
             .then(|| {
                 parser
-                    .parse(&out_path)
+                    .parse_multiple_alt(&out_path)
                     .and_then(|costs| out_path.clear().map(|()| costs))
             })
             .transpose()?;
@@ -733,14 +735,18 @@ impl Benchmark for SaveBaselineBenchmark {
             lib_bench.run_options.stderr.as_ref(),
         );
 
-        let new_costs = parser.parse(&out_path)?;
-        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
-        VerticalFormat::default().print(&config.meta, baselines.clone(), &costs_summary)?;
+        let parsed_new = parser.parse_multiple_alt(&out_path)?;
+        let summaries = Summaries::new(parsed_new, parsed_old);
+        VerticalFormat::default().print_multiple_alt(
+            &config.meta,
+            baselines.clone(),
+            &summaries,
+        )?;
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stderr())?;
 
-        let regressions = lib_bench.check_and_print_regressions(&costs_summary);
+        let regressions = lib_bench.check_and_print_regressions(&summaries.total);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
@@ -749,11 +755,11 @@ impl Benchmark for SaveBaselineBenchmark {
                 out_path.real_paths()?,
             ));
 
-        callgrind_summary.add_summary(
+        callgrind_summary.add_summaries(
             &config.bench_bin,
             &bench_args,
-            &out_path,
-            costs_summary,
+            &self.baselines(),
+            summaries,
             regressions,
         );
 
@@ -780,6 +786,7 @@ impl Benchmark for SaveBaselineBenchmark {
             true,
             &lib_bench.module_path,
             // We don't have a sandbox feature in library benchmarks
+            // TODO: Move this into ToolConfig?
             None,
             None,
             None,
