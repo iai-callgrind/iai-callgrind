@@ -768,6 +768,7 @@ dependencies = [
  "cargo_metadata",
  "clap",
  "colored",
+ "derive_more",
  "env_logger",
  "glob",
  "indexmap 2.5.0",

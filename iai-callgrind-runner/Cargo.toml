@@ -41,6 +41,7 @@ runner = [
   "dep:version-compare",
   "dep:which",
   "dep:itertools",
+  "dep:derive_more",
 ]
 schema = ["default", "dep:schemars"]
 
@@ -54,6 +55,7 @@ bincode = { workspace = true, optional = true }
 cargo_metadata = { workspace = true, optional = true }
 clap = { workspace = true, optional = true, features = ["derive", "env"] }
 colored = { workspace = true, optional = true }
+derive_more = { workspace = true, optional = true, features = ["as_ref"] }
 env_logger = { workspace = true, optional = true }
 glob = { workspace = true, optional = true }
 indexmap = { workspace = true, optional = true, features = ["serde"] }

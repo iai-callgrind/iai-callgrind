@@ -46,6 +46,7 @@ impl Parser for SummaryParser {
                 break;
             }
 
+            // TODO: Scan to end of file
             if let Some(stripped) = line.strip_prefix("totals:") {
                 trace!("Found line with totals: '{}'", line);
                 costs.add_iter_str(stripped.split_ascii_whitespace());

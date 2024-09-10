@@ -145,7 +145,7 @@ impl Bench {
                 } else if pair.path.is_ident("teardown") {
                     teardown.parse_pair(&pair);
                 } else if pair.path.is_ident("file") {
-                    file.parse_pair(&pair);
+                    file.parse_pair(&pair)?;
                 } else {
                     abort!(
                         pair, "Invalid argument: {}", pair.path.require_ident()?;
@@ -565,6 +565,7 @@ pub fn render(args: TokenStream, input: TokenStream) -> syn::Result<TokenStream>
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;

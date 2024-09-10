@@ -139,6 +139,7 @@ outfile
 pacman
 pathbuf
 peaceiris
+peekable
 pipefail
 posix
 postconditions

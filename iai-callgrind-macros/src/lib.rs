@@ -18,6 +18,7 @@
 #![warn(clippy::try_err)]
 #![warn(clippy::undocumented_unsafe_blocks)]
 #![warn(clippy::unneeded_field_pattern)]
+#![warn(clippy::unwrap_used)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
 #![allow(clippy::enum_glob_use)]

@@ -74,6 +74,7 @@ impl Summaries {
                 }
             })
             .collect();
+
         assert!(
             !summaries.is_empty(),
             "At least one summary must be present"

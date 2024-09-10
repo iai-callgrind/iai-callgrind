@@ -320,10 +320,10 @@ impl BenchConfig {
 }
 
 impl File {
-    pub fn parse_pair(&mut self, pair: &MetaNameValue) {
+    pub fn parse_pair(&mut self, pair: &MetaNameValue) -> syn::Result<()> {
         if self.0.is_none() {
             if let Expr::Lit(literal) = &pair.value {
-                self.0 = Some(parse2::<LitStr>(literal.to_token_stream()).unwrap());
+                self.0 = Some(parse2::<LitStr>(literal.to_token_stream())?);
             } else {
                 abort!(
                     pair.value, "Invalid value for `file`";
@@ -337,6 +337,8 @@ impl File {
                 help = "`file` is allowed only once"
             );
         }
+
+        Ok(())
     }
 
     /// Read this [`File`] and return all its lines

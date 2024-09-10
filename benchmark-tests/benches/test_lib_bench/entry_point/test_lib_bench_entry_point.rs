@@ -41,7 +41,7 @@ fn assert_none() {
     let assert = Assert::new(module_path!(), "my_group", "bench_lib", "none").unwrap();
     assert
         .summary(|b| {
-            let new_ir = b.callgrind_summary.unwrap().summaries[0]
+            let new_ir = b.callgrind_summary.unwrap().summaries.summaries[0]
                 .events
                 .diff_by_kind(&EventKind::Ir)
                 .unwrap()
@@ -54,7 +54,7 @@ fn assert_none() {
 
 fn assert_default() {
     let check_summary = |b: BenchmarkSummary| {
-        let new_ir = b.callgrind_summary.unwrap().summaries[0]
+        let new_ir = b.callgrind_summary.unwrap().summaries.summaries[0]
             .events
             .diff_by_kind(&EventKind::Ir)
             .unwrap()
@@ -89,7 +89,7 @@ fn assert_default() {
 
 fn assert_nested() {
     let check_summary = |b: BenchmarkSummary| {
-        let new_ir = b.callgrind_summary.unwrap().summaries[0]
+        let new_ir = b.callgrind_summary.unwrap().summaries.summaries[0]
             .events
             .diff_by_kind(&EventKind::Ir)
             .unwrap()

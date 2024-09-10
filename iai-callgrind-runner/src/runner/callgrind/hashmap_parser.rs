@@ -15,7 +15,7 @@ use super::parser::{parse_header, CallgrindProperties, Sentinel};
 use crate::error::Error;
 use crate::runner::tool::{Parser, ToolOutputPath};
 
-#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CallgrindMap {
     pub map: HashMap<Id, Value>,
     pub sentinel: Option<Sentinel>,

@@ -3,7 +3,8 @@ use std::fmt::Display;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio as StdStdio};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
+use derive_more::AsRef;
 use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
@@ -43,12 +44,32 @@ pub struct Config {
     pub meta: Metadata,
 }
 
-// TODO: IS THIS THE PERFECT PLACE for this enum
+/// TODO: IS THIS THE PERFECT PLACE for this enum
 #[derive(Debug)]
 pub enum EitherOrBoth<T> {
     Left(T),
     Right(T),
     Both((T, T)),
+}
+
+/// TODO: IS THIS THE PERFECT PLACE for this enum
+/// A vector with at least one element
+#[derive(Debug, PartialEq, Eq, Clone, AsRef)]
+pub struct Vec1<T>(Vec<T>);
+
+// TODO: SORT INTO impl section
+impl<T> Vec1<T> {
+    pub fn new(inner: Vec<T>) -> Result<Self> {
+        if inner.is_empty() {
+            Err(anyhow!("The inner vector should have at least one element"))
+        } else {
+            Ok(Self(inner))
+        }
+    }
+
+    pub fn new_without_check(inner: Vec<T>) -> Self {
+        Self(inner)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]

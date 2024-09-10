@@ -10,7 +10,7 @@ use super::parser::{CallgrindProperties, Sentinel};
 use crate::api::EventKind;
 use crate::runner::tool::{Parser, ToolOutputPath};
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FlamegraphMap(CallgrindMap);
 
 #[derive(Debug)]
@@ -31,17 +31,32 @@ impl FlamegraphMap {
     }
 
     pub fn make_summary(&mut self) -> Result<()> {
-        for value in self.0.map.values_mut() {
+        let mut iter = self.0.map.values_mut().peekable();
+        if let Some(value) = iter.peek() {
+            // If one cost can be summarized then all costs can be summarized.
             if value.costs.can_summarize() {
-                value
-                    .costs
-                    .make_summary()
-                    .map_err(|error| anyhow!("Failed calculating summary events: {error}"))?;
-            } else {
-                return Ok(());
+                for value in iter {
+                    value
+                        .costs
+                        .make_summary()
+                        .map_err(|error| anyhow!("Failed calculating summary events: {error}"))?;
+                }
             }
         }
+
         Ok(())
+    }
+
+    pub fn add(&mut self, other: &Self) {
+        for (other_id, other_value) in &other.0 {
+            // The performance of HashMap::entry is worse than the following method because we have
+            // a heavy id which needs to be cloned although it is already present in the map.
+            if let Some(value) = self.0.map.get_mut(other_id) {
+                value.costs.add(&other_value.costs);
+            } else {
+                self.0.map.insert(other_id.clone(), other_value.clone());
+            }
+        }
     }
 
     // Convert to stacks string format for this `EventType`

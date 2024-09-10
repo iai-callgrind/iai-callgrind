@@ -217,6 +217,7 @@ pub struct Fixtures {
     pub follow_symlinks: bool,
 }
 
+/// TODO: ADD OPTION to create flamegraphs for all files not just the total
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct FlamegraphConfig {
     pub kind: Option<FlamegraphKind>,

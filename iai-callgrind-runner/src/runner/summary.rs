@@ -124,6 +124,14 @@ pub struct CallgrindRegressionSummary {
     pub limit: f64,
 }
 
+/// TODO: DOCS
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct CallgrindRunSummaries {
+    pub summaries: Vec<CallgrindRunSummary>,
+    pub total: CallgrindTotal,
+}
+
 /// The `CallgrindRunSummary` containing the recorded events, performance regressions of a single
 /// callgrind run
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -135,7 +143,16 @@ pub struct CallgrindRunSummary {
     pub baseline: Option<Baseline>,
     /// All recorded costs for `EventKinds`
     pub events: CostsSummary<EventKind>,
+    /// TODO: REMOVE THIS ? Only total is checked for regressions
     /// All detected performance regressions
+    pub regressions: Vec<CallgrindRegressionSummary>,
+}
+
+/// TODO: DOCS
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct CallgrindTotal {
+    pub total: CostsSummary,
     pub regressions: Vec<CallgrindRegressionSummary>,
 }
 
@@ -150,7 +167,7 @@ pub struct CallgrindSummary {
     /// The summaries of possibly created flamegraphs
     pub flamegraphs: Vec<FlamegraphSummary>,
     /// The summaries of all callgrind runs
-    pub summaries: Vec<CallgrindRunSummary>,
+    pub summaries: CallgrindRunSummaries,
 }
 
 /// TODO: USE `EitherOrBoth`
@@ -172,44 +189,10 @@ pub struct CostsDiff {
     pub factor: Option<f64>,
 }
 
-// TODO: SORT INTO impl section
-// TODO: `EitherOrBoth`
-impl CostsDiff {
-    pub fn new(new: Option<u64>, old: Option<u64>) -> Self {
-        match (new, old) {
-            (None, Some(cost)) => CostsDiff {
-                new: None,
-                old: Some(cost),
-                diff_pct: None,
-                factor: None,
-            },
-            (Some(cost), None) => CostsDiff {
-                new: Some(cost),
-                old: None,
-                diff_pct: None,
-                factor: None,
-            },
-            (Some(new), Some(old)) => CostsDiff {
-                new: Some(new),
-                old: Some(old),
-                diff_pct: Some(percentage_diff(new, old)),
-                factor: Some(factor_diff(new, old)),
-            },
-            (None, None) => unreachable!(),
-        }
-    }
-}
-
 /// The `CostsSummary` contains all differences for affected [`EventKind`]s
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CostsSummary<K: Hash + Eq = EventKind>(IndexMap<K, CostsDiff>);
-
-impl<K: Hash + Eq> Default for CostsSummary<K> {
-    fn default() -> Self {
-        Self(IndexMap::default())
-    }
-}
 
 /// The `ErrorSummary` of tools which have it (Memcheck, DRD, Helgrind)
 ///
@@ -226,6 +209,28 @@ pub struct ErrorSummary {
     /// The number of contexts from suppressed errors
     pub supp_contexts: u64,
 }
+
+#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct FlamegraphSummaries {
+    pub summaries: Vec<FlamegraphSummary>,
+    pub totals: Vec<FlamegraphSummary>,
+}
+// TODO: CLEANUP
+//
+// impl FlamegraphSummaries {
+//     pub fn new(event_kind: EventKind) -> Self {
+//         Self {
+//             summaries: Vec::default(),
+//             total: FlamegraphSummary {
+//                 event_kind,
+//                 regular_path: Option::default(),
+//                 base_path: Option::default(),
+//                 diff_path: Option::default(),
+//             },
+//         }
+//     }
+// }
 
 /// The `FlamegraphSummary` records all created paths for an [`EventKind`] specific flamegraph
 ///
@@ -305,6 +310,7 @@ impl ToolRunSummary {
     }
 }
 
+/// TODO: There should be a total at least for DHAT
 /// The `ToolSummary` containing all information about a valgrind tool run
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
@@ -444,10 +450,12 @@ impl BenchmarkSummary {
         if let (Some(callgrind_summary), Some(other_callgrind_summary)) =
             (&self.callgrind_summary, &other.callgrind_summary)
         {
+            // TODO: what about the total? Only compare the total?
             for (summary, other_summary) in callgrind_summary
                 .summaries
+                .summaries
                 .iter()
-                .zip(&other_callgrind_summary.summaries)
+                .zip(&other_callgrind_summary.summaries.summaries)
             {
                 if let ((Some(new_costs), _), (Some(other_costs), _)) = (
                     summary.events.extract_costs(),
@@ -473,13 +481,16 @@ impl CallgrindSummary {
             log_paths,
             out_paths,
             flamegraphs: Vec::default(),
-            summaries: Vec::default(),
+            summaries: CallgrindRunSummaries::default(),
         }
     }
 
     /// Return true if there are any recorded regressions in this `CallgrindSummary`
     pub fn is_regressed(&self) -> bool {
-        self.summaries.iter().any(|r| !r.regressions.is_empty())
+        self.summaries
+            .summaries
+            .iter()
+            .any(|r| !r.regressions.is_empty())
     }
 
     /// TODO: REMOVE
@@ -492,7 +503,7 @@ impl CallgrindSummary {
         events: CostsSummary,
         regressions: Vec<CallgrindRegressionSummary>,
     ) {
-        self.summaries.push(CallgrindRunSummary {
+        self.summaries.summaries.push(CallgrindRunSummary {
             command: format!(
                 "{} {}",
                 bench_bin.display(),
@@ -550,7 +561,7 @@ impl CallgrindSummary {
                 }),
             };
 
-            self.summaries.push(CallgrindRunSummary {
+            self.summaries.summaries.push(CallgrindRunSummary {
                 command: command.clone(),
                 baseline: old_baseline,
                 events: summary.costs_summary,
@@ -558,16 +569,42 @@ impl CallgrindSummary {
             });
         }
 
-        self.summaries.push(CallgrindRunSummary {
-            command: command.clone(),
-            baseline: None,
-            events: summaries.total.clone(),
-            regressions,
-        });
+        self.summaries.total.total = summaries.total.clone();
+        self.summaries.total.regressions = regressions;
     }
 }
 
-impl<K: Hash + Eq + Summarize + Display + Clone> CostsSummary<K> {
+// TODO: `EitherOrBoth`
+impl CostsDiff {
+    pub fn new(new: Option<u64>, old: Option<u64>) -> Self {
+        match (new, old) {
+            (None, Some(cost)) => Self {
+                new: None,
+                old: Some(cost),
+                diff_pct: None,
+                factor: None,
+            },
+            (Some(cost), None) => Self {
+                new: Some(cost),
+                old: None,
+                diff_pct: None,
+                factor: None,
+            },
+            (Some(new), Some(old)) => Self {
+                new: Some(new),
+                old: Some(old),
+                diff_pct: Some(percentage_diff(new, old)),
+                factor: Some(factor_diff(new, old)),
+            },
+            (None, None) => unreachable!(),
+        }
+    }
+}
+
+impl<K> CostsSummary<K>
+where
+    K: Hash + Eq + Summarize + Display + Clone,
+{
     /// Create a new `CostsSummary` calculating the differences between new and old (if any)
     /// [`Costs`]
     pub fn new(new_costs: &Costs<K>, old_costs: Option<&Costs<K>>) -> Self {
@@ -657,6 +694,7 @@ impl<K: Hash + Eq + Summarize + Display + Clone> CostsSummary<K> {
         }
     }
 
+    // TODO: TEST
     pub fn add(&mut self, other: &Self) {
         let other_keys = other.0.keys().cloned().collect::<IndexSet<_>>();
         let keys = &self.0.keys().cloned().collect::<IndexSet<_>>();
@@ -668,8 +706,11 @@ impl<K: Hash + Eq + Summarize + Display + Clone> CostsSummary<K> {
                 (None, Some(other_diff)) => {
                     self.0.insert(key.clone(), other_diff.clone());
                 }
-                (Some(_), None) => {}
+                (Some(_), None) => {
+                    // Nothing to be done
+                }
                 (Some(this_diff), Some(other_diff)) => {
+                    // TODO: MOVE THIS INTO CostsDiff::add
                     let new_cost = match (this_diff.new.as_ref(), other_diff.new.as_ref()) {
                         (None, None) => None,
                         (None, Some(cost)) | (Some(cost), None) => Some(*cost),
@@ -691,6 +732,15 @@ impl<K: Hash + Eq + Summarize + Display + Clone> CostsSummary<K> {
                 }
             }
         }
+    }
+}
+
+impl<K> Default for CostsSummary<K>
+where
+    K: Hash + Eq,
+{
+    fn default() -> Self {
+        Self(IndexMap::default())
     }
 }
 

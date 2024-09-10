@@ -26,7 +26,8 @@ impl Summary {
     #[track_caller]
     pub fn assert_costs_not_all_zero(&self) {
         if let Some(callgrind_summary) = &self.0.callgrind_summary {
-            for summary in &callgrind_summary.summaries {
+            // TODO: Also check the total
+            for summary in &callgrind_summary.summaries.summaries {
                 let (new_costs, old_costs) = summary.events.extract_costs();
                 if let Some(new_costs) = new_costs {
                     assert!(

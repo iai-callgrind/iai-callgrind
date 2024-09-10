@@ -5,7 +5,7 @@ pub mod logfile_parser;
 
 use std::ffi::OsString;
 use std::fmt::{Display, Write as FmtWrite};
-use std::fs::File;
+use std::fs::{DirEntry, File};
 use std::io::{stderr, BufRead, BufReader, Write};
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
@@ -824,21 +824,36 @@ impl ToolOutputPath {
         ))
     }
 
+    /// Walk the benchmark directory (non-recursive)
+    pub fn walk_dir(&self) -> Result<impl Iterator<Item = DirEntry>> {
+        std::fs::read_dir(&self.dir)
+            .with_context(|| {
+                format!(
+                    "Failed opening benchmark directory: '{}'",
+                    self.dir.display()
+                )
+            })
+            .map(|i| i.into_iter().filter_map(Result::ok))
+    }
+
+    /// Strip the `<tool>.<name>` prefix from a `file_name`
+    pub fn strip_prefix<'a>(&self, file_name: &'a str) -> Option<&'a str> {
+        file_name.strip_prefix(format!("{}.{}", self.tool.id(), self.name).as_str())
+    }
+
+    /// Return the `real` paths of a tool
+    ///
+    /// A tool can have many output files so [`Self::to_path`] is not enough
+    #[allow(clippy::case_sensitive_file_extension_comparisons)]
     pub fn real_paths(&self) -> Result<Vec<PathBuf>> {
         let mut paths = vec![];
-        for entry in std::fs::read_dir(&self.dir).with_context(|| {
-            format!(
-                "Failed opening benchmark directory: '{}'",
-                self.dir.display()
-            )
-        })? {
-            let path = entry?;
-            let file_name = path.file_name().to_string_lossy().to_string();
-            // TODO: RETURN ERROR instead of failing silently?
-            if let Some(suffix) =
-                file_name.strip_prefix(format!("{}.{}", self.tool.id(), self.name).as_str())
-            {
-                #[allow(clippy::case_sensitive_file_extension_comparisons)]
+        for entry in self.walk_dir()? {
+            let file_name = entry.file_name();
+            let file_name = file_name.to_string_lossy();
+
+            // We can silently ignore all paths which don't follow this scheme, for example
+            // (`summary.json`)
+            if let Some(suffix) = self.strip_prefix(&file_name) {
                 let is_match = match &self.kind {
                     ToolOutputPathKind::Out => suffix.ends_with(".out"),
                     ToolOutputPathKind::Log => suffix.ends_with(".log"),
@@ -853,44 +868,79 @@ impl ToolOutputPath {
                 };
 
                 if is_match {
-                    paths.push(path.path());
+                    paths.push(entry.path());
                 }
             }
         }
         Ok(paths)
     }
 
-    fn sanitize_callgrind(&self) -> Result<()> {
-        for entry in std::fs::read_dir(&self.dir).with_context(|| {
-            format!(
-                "Failed opening benchmark directory: '{}'",
-                self.dir.display()
-            )
-        })? {
-            let path = entry?;
-            let file_name = path.file_name().to_string_lossy().to_string();
+    pub fn real_paths_with_modifier(&self) -> Result<Vec<(PathBuf, String)>> {
+        let mut paths = vec![];
+        for entry in self.walk_dir()? {
+            let file_name = entry.file_name().to_string_lossy().to_string();
+
+            // We can silently ignore all paths which don't follow this scheme, for example
+            // (`summary.json`)
+            if let Some(suffix) = self.strip_prefix(&file_name) {
+                let modifiers = match &self.kind {
+                    ToolOutputPathKind::Out => suffix.strip_suffix(".out"),
+                    ToolOutputPathKind::Log => suffix.strip_suffix(".log"),
+                    ToolOutputPathKind::OldOut => suffix.strip_suffix(".out.old"),
+                    ToolOutputPathKind::OldLog => suffix.strip_suffix(".log.old"),
+                    ToolOutputPathKind::BaseLog(name) => {
+                        suffix.strip_suffix(format!(".log.base@{name}").as_str())
+                    }
+                    ToolOutputPathKind::Base(name) => {
+                        suffix.strip_suffix(format!(".out.base@{name}").as_str())
+                    }
+                };
+
+                if let Some(modifiers) = modifiers {
+                    paths.push((entry.path(), modifiers.to_owned()));
+                }
+            }
+        }
+        Ok(paths)
+    }
+
+    /// Sanitize callgrind output file names
+    ///
+    /// This method will remove empty files which are occasionally produced by callgrind. The files
+    /// are renamed from the callgrind file naming scheme to ours which is easier to handle and more
+    /// informative with regard to output files for multiple threads and processes.
+    pub fn sanitize_callgrind(&self) -> Result<()> {
+        for entry in self.walk_dir()? {
+            let file_name = entry.file_name();
+            let file_name = file_name.to_string_lossy();
+
             if let Some(caps) = CALLGRIND_ORIG_FILENAME_RE.captures(&file_name) {
                 if caps.name("type").unwrap().as_str() == ".out" {
+                    // Callgrind sometimes creates empty files for no reason. We clean them
+                    // up here
+                    if entry.metadata()?.size() == 0 {
+                        std::fs::remove_file(entry.path())?;
+                        continue;
+                    }
+
+                    // We don't sanitize old files. It's not needed if the new files are always
+                    // sanitized. However, we do sanitize `base@<name>` file names.
                     if let Some(base) = caps.name("base") {
                         if base.as_str() == ".old" {
                             continue;
                         }
                     };
 
-                    // Callgrind sometimes creates empty files for no reason. We clean them
-                    // up here
-                    if path.metadata()?.size() == 0 {
-                        std::fs::remove_file(path.path())?;
-                        continue;
-                    }
                     let properties = parse_header(
-                        &mut BufReader::new(File::open(path.path())?)
+                        &mut BufReader::new(File::open(entry.path())?)
                             .lines()
                             .map(Result::unwrap),
                     )?;
 
-                    let name = caps.name("name").unwrap().as_str().to_owned();
-                    let base = caps.name("base").map(|b| b.as_str().to_owned());
+                    let name = caps
+                        .name("name")
+                        .expect("The name should always be present")
+                        .as_str();
                     let mut new_file_name = format!("callgrind{name}");
 
                     if let Some(pid) = properties.pid {
@@ -904,11 +954,11 @@ impl ToolOutputPath {
                     }
 
                     new_file_name.push_str(".out");
-                    if let Some(base) = base {
-                        new_file_name.push_str(&base);
+                    if let Some(base) = caps.name("base") {
+                        new_file_name.push_str(base.as_str());
                     }
 
-                    let from = self.dir.join(file_name);
+                    let from = entry.path();
                     let to = from.with_file_name(new_file_name);
                     std::fs::rename(from, to)?;
                 }

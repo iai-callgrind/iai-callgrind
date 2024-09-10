@@ -152,7 +152,7 @@ impl Bench {
                 } else if pair.path.is_ident("teardown") {
                     teardown.parse_pair(&pair);
                 } else if pair.path.is_ident("file") {
-                    file.parse_pair(&pair);
+                    file.parse_pair(&pair)?;
                 } else {
                     abort!(
                         pair, "Invalid argument: {}", pair.path.require_ident()?;

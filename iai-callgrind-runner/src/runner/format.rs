@@ -369,6 +369,7 @@ pub fn format_vertical<'a, K: Display + 'a>(
     let unknown = "*********";
     let no_change = "No change";
 
+    // Move this into a function format_baselines_header
     match baselines {
         (None, None) => {}
         (None, Some(base)) => {
