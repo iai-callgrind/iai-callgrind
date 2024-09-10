@@ -9,13 +9,13 @@ use super::args::NoCapture;
 use super::bin_bench::BinBench;
 use super::callgrind::parser::CallgrindProperties;
 use super::callgrind::Summaries;
-use super::common::{EitherOrBoth, ModulePath};
+use super::common::ModulePath;
 use super::lib_bench::LibBench;
 use super::meta::Metadata;
 use super::summary::{CostsDiff, CostsSummary};
 use super::tool::ValgrindTool;
 use crate::api::{self, EventKind};
-use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8};
+use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8, EitherOrBoth};
 
 pub const NOT_AVAILABLE: &str = "N/A";
 

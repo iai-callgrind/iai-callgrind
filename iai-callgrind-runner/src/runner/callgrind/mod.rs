@@ -13,10 +13,9 @@ use itertools::Itertools;
 use parser::{CallgrindProperties, ParserOutput};
 
 use self::model::Costs;
-use super::common::EitherOrBoth;
 use super::summary::{CallgrindRegressionSummary, CostsSummary};
 use crate::api::{self, EventKind};
-use crate::util::to_string_signed_short;
+use crate::util::{to_string_signed_short, EitherOrBoth};
 
 #[derive(Debug)]
 pub struct Summary {

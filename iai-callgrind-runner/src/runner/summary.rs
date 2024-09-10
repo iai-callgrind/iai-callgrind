@@ -17,7 +17,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::callgrind::Summaries;
-use super::common::{EitherOrBoth, ModulePath};
+use super::common::ModulePath;
 use super::costs::Costs;
 use super::format::{ComparisonHeader, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
@@ -25,7 +25,7 @@ use super::tool::{ToolOutputPath, ValgrindTool};
 use crate::api::EventKind;
 use crate::error::Error;
 use crate::runner::costs::Summarize;
-use crate::util::{factor_diff, make_absolute, percentage_diff};
+use crate::util::{factor_diff, make_absolute, percentage_diff, EitherOrBoth};
 
 lazy_static! {
     static ref EXTRACT_ERROR_SUMMARY_RE: Regex = regex::Regex::new(

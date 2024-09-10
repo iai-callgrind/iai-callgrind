@@ -6,10 +6,36 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{anyhow, Result};
+use derive_more::AsRef;
 use log::{debug, log_enabled, trace, Level};
 use which::which;
 
 use crate::error::Error;
+
+#[derive(Debug)]
+pub enum EitherOrBoth<T> {
+    Left(T),
+    Right(T),
+    Both((T, T)),
+}
+
+/// A vector with at least one element
+#[derive(Debug, PartialEq, Eq, Clone, AsRef)]
+pub struct Vec1<T>(Vec<T>);
+
+impl<T> Vec1<T> {
+    pub fn try_from_vec(inner: Vec<T>) -> Result<Self> {
+        if inner.is_empty() {
+            Err(anyhow!("The inner vector should have at least one element"))
+        } else {
+            Ok(Self(inner))
+        }
+    }
+
+    pub fn from_vec(inner: Vec<T>) -> Self {
+        Self(inner)
+    }
+}
 
 /// Convert a boolean value to a `yes` or `no` string
 pub fn bool_to_yesno(value: bool) -> String {
