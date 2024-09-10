@@ -64,6 +64,7 @@ enum State {
 pub trait LogfileParser {
     fn parse_single(&self, path: PathBuf) -> Result<LogfileSummary>;
 
+    // TODO: RETURN SORTED by pid or whatever
     fn parse(&self, output_path: &ToolOutputPath) -> Result<Vec<LogfileSummary>> {
         let log_path = output_path.to_log_output();
         debug!("{}: Parsing log file '{}'", output_path.tool.id(), log_path);

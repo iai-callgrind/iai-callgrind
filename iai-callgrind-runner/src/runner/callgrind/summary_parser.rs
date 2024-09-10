@@ -6,9 +6,8 @@ use anyhow::Result;
 use log::{debug, trace};
 
 use super::model::Costs;
-use super::parser::{parse_header, CallgrindProperties};
+use super::parser::{parse_header, CallgrindParser, CallgrindProperties};
 use crate::error::Error;
-use crate::runner::tool::Parser;
 
 /// Parse the `summary:` line in the callgrind output or `total:` if summary is not present
 ///
@@ -26,7 +25,7 @@ use crate::runner::tool::Parser;
 #[derive(Debug)]
 pub struct SummaryParser;
 
-impl Parser for SummaryParser {
+impl CallgrindParser for SummaryParser {
     type Output = Costs;
 
     fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {

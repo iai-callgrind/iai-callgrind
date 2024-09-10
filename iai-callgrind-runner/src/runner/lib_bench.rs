@@ -12,7 +12,7 @@ use super::callgrind::flamegraph::{
     BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
     LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
 };
-use super::callgrind::parser::Sentinel;
+use super::callgrind::parser::{CallgrindParser, Sentinel};
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{RegressionConfig, Summaries};
 use super::common::{Assistant, AssistantKind, Config, ModulePath};
@@ -25,7 +25,7 @@ use super::summary::{
     CallgrindSummary, CostsSummary, SummaryOutput,
 };
 use super::tool::{
-    Parser, RunOptions, ToolCommand, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind,
+    RunOptions, ToolCommand, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind,
     ValgrindTool,
 };
 use super::{Error, DEFAULT_TOGGLE};

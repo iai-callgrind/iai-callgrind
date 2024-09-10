@@ -2,9 +2,10 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 use iai_callgrind_runner::runner::callgrind::hashmap_parser::{CallgrindMap, HashMapParser};
+use iai_callgrind_runner::runner::callgrind::parser::CallgrindParser;
 use iai_callgrind_runner::runner::common::ModulePath;
 use iai_callgrind_runner::runner::summary::{BaselineKind, BenchmarkSummary};
-use iai_callgrind_runner::runner::tool::{self, Parser, ToolOutputPath};
+use iai_callgrind_runner::runner::tool::{self, ToolOutputPath};
 
 use crate::common::Summary;
 

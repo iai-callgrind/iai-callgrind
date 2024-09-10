@@ -25,7 +25,7 @@ use self::format::ToolRunSummaryFormatter;
 use self::logfile_parser::LogfileSummary;
 use super::args::NoCapture;
 use super::bin_bench::Delay;
-use super::callgrind::parser::{parse_header, CallgrindProperties};
+use super::callgrind::parser::parse_header;
 use super::common::{Assistant, Config, ModulePath, Sandbox};
 use super::format::{print_no_capture_footer, tool_headline, OutputFormat};
 use super::meta::Metadata;
@@ -108,31 +108,6 @@ pub enum ValgrindTool {
     Massif,
     DHAT,
     BBV,
-}
-
-pub trait Parser {
-    type Output;
-
-    fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)>;
-    fn parse(
-        &self,
-        output: &ToolOutputPath,
-    ) -> Result<Vec<(PathBuf, CallgrindProperties, Self::Output)>> {
-        let paths = output.real_paths()?;
-        let mut results: Vec<(PathBuf, CallgrindProperties, Self::Output)> =
-            Vec::with_capacity(paths.len());
-        for path in paths {
-            let parsed = self.parse_single(&path).map(|(p, c)| (path, p, c))?;
-
-            let position = results
-                .binary_search_by(|probe| probe.1.compare_target_ids(&parsed.1))
-                .unwrap_or_else(|e| e);
-
-            results.insert(position, parsed);
-        }
-
-        Ok(results)
-    }
 }
 
 impl ToolCommand {

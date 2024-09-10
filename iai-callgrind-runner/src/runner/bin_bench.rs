@@ -17,6 +17,7 @@ use super::callgrind::flamegraph::{
     BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
     LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
 };
+use super::callgrind::parser::CallgrindParser;
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{RegressionConfig, Summaries};
 use super::common::{Assistant, AssistantKind, Config, ModulePath, Sandbox};
@@ -27,7 +28,7 @@ use super::summary::{
     SummaryOutput,
 };
 use super::tool::{
-    Parser, RunOptions, ToolCommand, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind,
+    RunOptions, ToolCommand, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind,
     ValgrindTool,
 };
 use crate::api::{

@@ -1,7 +1,8 @@
 use iai_callgrind_runner::api::EventKind;
 use iai_callgrind_runner::runner::callgrind::model::Costs;
+use iai_callgrind_runner::runner::callgrind::parser::CallgrindParser;
 use iai_callgrind_runner::runner::callgrind::summary_parser::SummaryParser;
-use iai_callgrind_runner::runner::tool::{Parser, ToolOutputPathKind, ValgrindTool};
+use iai_callgrind_runner::runner::tool::{ToolOutputPathKind, ValgrindTool};
 use rstest::rstest;
 
 use crate::common::{assert_parse_error, Fixtures};

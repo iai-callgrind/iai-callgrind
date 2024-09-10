@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use std::fmt::Display;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
 use lazy_static::lazy_static;
@@ -9,6 +9,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use super::model::{Costs, Positions};
+use crate::runner::tool::ToolOutputPath;
 use crate::runner::DEFAULT_TOGGLE;
 
 lazy_static! {
@@ -17,6 +18,31 @@ lazy_static! {
 }
 
 pub type ParserOutput = Vec<(PathBuf, CallgrindProperties, Costs)>;
+
+pub trait CallgrindParser {
+    type Output;
+
+    fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)>;
+    fn parse(
+        &self,
+        output: &ToolOutputPath,
+    ) -> Result<Vec<(PathBuf, CallgrindProperties, Self::Output)>> {
+        let paths = output.real_paths()?;
+        let mut results: Vec<(PathBuf, CallgrindProperties, Self::Output)> =
+            Vec::with_capacity(paths.len());
+        for path in paths {
+            let parsed = self.parse_single(&path).map(|(p, c)| (path, p, c))?;
+
+            let position = results
+                .binary_search_by(|probe| probe.1.compare_target_ids(&parsed.1))
+                .unwrap_or_else(|e| e);
+
+            results.insert(position, parsed);
+        }
+
+        Ok(results)
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct CallgrindProperties {

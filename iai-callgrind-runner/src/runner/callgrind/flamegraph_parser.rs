@@ -6,9 +6,8 @@ use anyhow::{anyhow, Result};
 use log::debug;
 
 use super::hashmap_parser::{CallgrindMap, HashMapParser, SourcePath};
-use super::parser::{CallgrindProperties, Sentinel};
+use super::parser::{CallgrindParser, CallgrindProperties, Sentinel};
 use crate::api::EventKind;
-use crate::runner::tool::Parser;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FlamegraphMap(CallgrindMap);
@@ -177,7 +176,7 @@ impl FlamegraphParser {
     }
 }
 
-impl Parser for FlamegraphParser {
+impl CallgrindParser for FlamegraphParser {
     type Output = FlamegraphMap;
 
     fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {

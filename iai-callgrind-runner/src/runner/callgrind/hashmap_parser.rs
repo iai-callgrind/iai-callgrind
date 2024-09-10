@@ -11,9 +11,8 @@ use log::trace;
 use serde::{Deserialize, Serialize};
 
 use super::model::Costs;
-use super::parser::{parse_header, CallgrindProperties, Sentinel};
+use super::parser::{parse_header, CallgrindParser, CallgrindProperties, Sentinel};
 use crate::error::Error;
-use crate::runner::tool::Parser;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CallgrindMap {
@@ -115,7 +114,7 @@ impl TryFrom<CurrentId> for Id {
     }
 }
 
-impl Parser for HashMapParser {
+impl CallgrindParser for HashMapParser {
     type Output = CallgrindMap;
 
     fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {

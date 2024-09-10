@@ -8,10 +8,10 @@ use anyhow::{Context, Result};
 use inferno::flamegraph::{Direction, Options};
 
 use super::flamegraph_parser::{FlamegraphMap, FlamegraphParser};
-use super::parser::{CallgrindProperties, Sentinel};
+use super::parser::{CallgrindParser, CallgrindProperties, Sentinel};
 use crate::api::{self, EventKind, FlamegraphKind};
 use crate::runner::summary::{BaselineKind, BaselineName, FlamegraphSummaries, FlamegraphSummary};
-use crate::runner::tool::{Parser, ToolOutputPath, ToolOutputPathKind};
+use crate::runner::tool::{ToolOutputPath, ToolOutputPathKind};
 
 type ParserOutput = Vec<(PathBuf, CallgrindProperties, FlamegraphMap)>;
 
