@@ -97,7 +97,7 @@ impl Assert {
         };
 
         let map = parser
-            .parse_multiple_alt(&ToolOutputPath::new(
+            .parse(&ToolOutputPath::new(
                 tool::ToolOutputPathKind::Out,
                 tool::ValgrindTool::Callgrind,
                 &BaselineKind::Old,

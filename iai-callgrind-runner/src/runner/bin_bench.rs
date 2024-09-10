@@ -241,10 +241,10 @@ impl Benchmark for BaselineBenchmark {
             sandbox.reset()?;
         }
 
-        let parsed_new = SummaryParser.parse_multiple_alt(&out_path)?;
+        let parsed_new = SummaryParser.parse(&out_path)?;
         let parsed_old = old_path
             .exists()
-            .then(|| SummaryParser.parse_multiple_alt(&old_path))
+            .then(|| SummaryParser.parse(&old_path))
             .transpose()?;
 
         let summaries = Summaries::new(parsed_new, parsed_old);
@@ -787,8 +787,8 @@ impl Benchmark for LoadBaselineBenchmark {
             header.description(),
         )?;
 
-        let parsed_new = SummaryParser.parse_multiple_alt(&out_path)?;
-        let parsed_old = Some(SummaryParser.parse_multiple_alt(&old_path)?);
+        let parsed_new = SummaryParser.parse(&out_path)?;
+        let parsed_old = Some(SummaryParser.parse(&old_path)?);
         let summaries = Summaries::new(parsed_new, parsed_old);
 
         VerticalFormat::default().print_multiple_alt(&config.meta, self.baselines(), &summaries)?;
@@ -949,7 +949,7 @@ impl Benchmark for SaveBaselineBenchmark {
             .exists()
             .then(|| {
                 SummaryParser
-                    .parse_multiple_alt(&out_path)
+                    .parse(&out_path)
                     .and_then(|costs| out_path.clear().map(|()| costs))
             })
             .transpose()?;
@@ -1005,7 +1005,7 @@ impl Benchmark for SaveBaselineBenchmark {
             sandbox.reset()?;
         }
 
-        let parsed_new = SummaryParser.parse_multiple_alt(&out_path)?;
+        let parsed_new = SummaryParser.parse(&out_path)?;
         let summaries = Summaries::new(parsed_new, parsed_old);
         VerticalFormat::default().print_multiple_alt(&config.meta, self.baselines(), &summaries)?;
 

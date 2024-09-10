@@ -113,8 +113,8 @@ pub enum ValgrindTool {
 pub trait Parser {
     type Output;
 
-    fn parse_single_alt(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)>;
-    fn parse_multiple_alt(
+    fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)>;
+    fn parse(
         &self,
         output: &ToolOutputPath,
     ) -> Result<Vec<(PathBuf, CallgrindProperties, Self::Output)>> {
@@ -122,7 +122,7 @@ pub trait Parser {
         let mut results: Vec<(PathBuf, CallgrindProperties, Self::Output)> =
             Vec::with_capacity(paths.len());
         for path in paths {
-            let parsed = self.parse_single_alt(&path).map(|(p, c)| (path, p, c))?;
+            let parsed = self.parse_single(&path).map(|(p, c)| (path, p, c))?;
 
             let position = results
                 .binary_search_by(|probe| probe.1.compare_target_ids(&parsed.1))

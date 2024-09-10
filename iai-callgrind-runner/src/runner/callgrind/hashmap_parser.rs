@@ -118,7 +118,7 @@ impl TryFrom<CurrentId> for Id {
 impl Parser for HashMapParser {
     type Output = CallgrindMap;
 
-    fn parse_single_alt(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {
+    fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {
         let mut iter = BufReader::new(File::open(path)?)
             .lines()
             .map(Result::unwrap);

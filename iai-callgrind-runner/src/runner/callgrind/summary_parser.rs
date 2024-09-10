@@ -29,7 +29,7 @@ pub struct SummaryParser;
 impl Parser for SummaryParser {
     type Output = Costs;
 
-    fn parse_single_alt(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {
+    fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {
         debug!(
             "Parsing callgrind output file '{}' for a summary or totals",
             path.display()

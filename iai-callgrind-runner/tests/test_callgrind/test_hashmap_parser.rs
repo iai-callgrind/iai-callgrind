@@ -17,7 +17,7 @@ fn test_when_version_mismatch_then_should_return_error() {
     );
     assert_parse_error(
         &output.to_path(),
-        parser.parse_multiple_alt(&output),
+        parser.parse(&output),
         "Version mismatch: Requires callgrind format version '1' but was '2'",
     );
 }
@@ -31,11 +31,7 @@ fn test_when_empty_file_then_should_return_error() {
         ToolOutputPathKind::Out,
         "empty",
     );
-    assert_parse_error(
-        &output.to_path(),
-        parser.parse_multiple_alt(&output),
-        "Empty file",
-    );
+    assert_parse_error(&output.to_path(), parser.parse(&output), "Empty file");
 }
 
 #[test]
@@ -50,7 +46,7 @@ fn test_valid_just_main() {
     let expected_map =
         Fixtures::load_serialized("callgrind.out/callgrind.valid.minimal_main.exp_map").unwrap();
 
-    let actual_map = parser.parse_multiple_alt(&output).unwrap();
+    let actual_map = parser.parse(&output).unwrap();
 
     assert_eq!(actual_map[0].2, expected_map);
 }
@@ -68,7 +64,7 @@ fn test_when_no_records(#[case] name: &str) {
     );
     let expected_map = CallgrindMap::default();
 
-    let actual_map = parser.parse_multiple_alt(&output).unwrap();
+    let actual_map = parser.parse(&output).unwrap();
 
     assert_eq!(actual_map[0].2, expected_map);
 }

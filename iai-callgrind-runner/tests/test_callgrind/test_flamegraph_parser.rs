@@ -23,7 +23,7 @@ fn test_flamegraph_parser(#[case] name: &str, #[case] sentinel: Option<Result<Se
     let parser = FlamegraphParser::new(sentinel.as_ref(), get_project_root());
 
     // TODO: ADJUST TESTS TO new multiple files parsing
-    let result = parser.parse_multiple_alt(&output).unwrap();
+    let result = parser.parse(&output).unwrap();
     let stacks = result[0].2.to_stack_format(&EventKind::Ir).unwrap();
 
     assert_eq!(stacks.len(), expected_stacks.len());

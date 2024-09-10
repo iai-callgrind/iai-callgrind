@@ -33,7 +33,7 @@ fn test_sentinel_parser(#[case] fixture: &str, #[case] costs: [u64; 9]) {
     );
 
     let parser = SummaryParser;
-    let actual_costs = parser.parse_multiple_alt(&callgrind_output).unwrap();
+    let actual_costs = parser.parse(&callgrind_output).unwrap();
 
     assert_eq!(actual_costs[0].2, expected_costs);
 }
@@ -47,7 +47,7 @@ fn test_summary_parser_when_not_found_then_error() {
         "no_records.no_summary_and_totals",
     );
 
-    let result = SummaryParser.parse_multiple_alt(&callgrind_output);
+    let result = SummaryParser.parse(&callgrind_output);
     assert_parse_error(
         &callgrind_output.to_path(),
         result,

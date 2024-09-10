@@ -180,7 +180,7 @@ impl FlamegraphParser {
 impl Parser for FlamegraphParser {
     type Output = FlamegraphMap;
 
-    fn parse_single_alt(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {
+    fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {
         debug!("Parsing flamegraph from file '{}'", path.display());
 
         let parser = HashMapParser {
@@ -189,7 +189,7 @@ impl Parser for FlamegraphParser {
         };
 
         parser
-            .parse_single_alt(path)
+            .parse_single(path)
             .map(|(props, map)| (props, FlamegraphMap(map)))
     }
 }
