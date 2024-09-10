@@ -8,7 +8,7 @@ use log::debug;
 use super::hashmap_parser::{CallgrindMap, HashMapParser, SourcePath};
 use super::parser::{CallgrindProperties, Sentinel};
 use crate::api::EventKind;
-use crate::runner::tool::{Parser, ToolOutputPath};
+use crate::runner::tool::Parser;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FlamegraphMap(CallgrindMap);
@@ -179,17 +179,6 @@ impl FlamegraphParser {
 
 impl Parser for FlamegraphParser {
     type Output = FlamegraphMap;
-
-    fn parse(&self, output_path: &ToolOutputPath) -> Result<Self::Output> {
-        debug!("Parsing flamegraph from file '{}'", output_path);
-
-        let parser = HashMapParser {
-            project_root: self.project_root.clone(),
-            sentinel: self.sentinel.clone(),
-        };
-
-        parser.parse(output_path).map(FlamegraphMap)
-    }
 
     fn parse_single_alt(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {
         debug!("Parsing flamegraph from file '{}'", path.display());

@@ -113,7 +113,6 @@ pub enum ValgrindTool {
 pub trait Parser {
     type Output;
 
-    fn parse(&self, output: &ToolOutputPath) -> Result<Self::Output>;
     fn parse_single_alt(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)>;
     fn parse_multiple_alt(
         &self,

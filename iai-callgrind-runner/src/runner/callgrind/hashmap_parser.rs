@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use super::model::Costs;
 use super::parser::{parse_header, CallgrindProperties, Sentinel};
 use crate::error::Error;
-use crate::runner::tool::{Parser, ToolOutputPath};
+use crate::runner::tool::Parser;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CallgrindMap {
@@ -117,137 +117,6 @@ impl TryFrom<CurrentId> for Id {
 
 impl Parser for HashMapParser {
     type Output = CallgrindMap;
-
-    #[allow(clippy::similar_names)]
-    fn parse(&self, output_path: &ToolOutputPath) -> Result<Self::Output> {
-        let mut iter = output_path.lines()?;
-        let config = parse_header(&mut iter)
-            .map_err(|error| Error::ParseError((output_path.to_path(), error.to_string())))?;
-
-        let mut current_id = CurrentId::default();
-        let mut cfn_record = None;
-
-        let mut cfn_totals = HashMap::<Id, Value>::new();
-        let mut fn_totals = HashMap::<Id, Value>::new();
-
-        // FIXME: This should be a vec. The sentinel can match many functions. This is only ok,
-        // since we currently use the sentinel for the benchmark function exclusively. The benchmark
-        // function is very special in that it is called exactly once, is not recursive etc.
-        let mut sentinel_key = None;
-
-        // We start within he header
-        let mut is_header = true;
-        for line in iter {
-            let line = line.trim();
-
-            if line.is_empty() || line.starts_with('#') {
-                continue;
-            }
-
-            // The first line which can be split around '=' is a non header line
-            let split = if is_header {
-                if let Some(split) = line.split_once('=') {
-                    is_header = false;
-                    Some(split)
-                } else {
-                    continue;
-                }
-            } else {
-                line.split_once('=')
-            };
-
-            match split {
-                Some(("ob", obj)) => {
-                    current_id.obj = Some(make_path(&self.project_root, obj));
-                }
-                Some(("fl", file)) => {
-                    current_id.file = Some(make_path(&self.project_root, file));
-                }
-                Some(("fn", func)) => {
-                    current_id.func = Some(func.to_owned());
-
-                    if self
-                        .sentinel
-                        .as_ref()
-                        .map_or(false, |sentinel| sentinel.matches(func))
-                    {
-                        trace!("Found sentinel: {}", func);
-                        sentinel_key = Some(current_id.clone().try_into().expect("A valid id"));
-                    }
-                }
-                Some(("fi" | "fe", inline)) => {
-                    current_id.file = Some(make_path(&self.project_root, inline));
-                }
-                Some(("cob", cob)) => {
-                    let record = cfn_record.get_or_insert(CfnRecord::default());
-                    record.obj = Some(make_path(&self.project_root, cob));
-                }
-                Some(("cfi" | "cfl", inline)) => {
-                    let record = cfn_record.get_or_insert(CfnRecord::default());
-                    record.file = Some(make_path(&self.project_root, inline));
-                }
-                Some(("cfn", cfn)) => {
-                    let record = cfn_record.get_or_insert(CfnRecord::default());
-                    record.id = Some(Id {
-                        obj: record.obj.take().or(current_id.obj.clone()),
-                        func: cfn.to_owned(),
-                        file: record.file.take().or(current_id.file.clone()),
-                    });
-                }
-                Some(("calls", calls)) => {
-                    let record = cfn_record.as_mut().expect("Valid calls line");
-                    record.calls = calls
-                        .split_ascii_whitespace()
-                        .take(1)
-                        .map(|s| s.parse::<u64>().unwrap())
-                        .sum();
-                }
-                None if line.starts_with(|c: char| c.is_ascii_digit()) => {
-                    let mut costs = config.costs_prototype.clone();
-                    costs.add_iter_str(
-                        line.split_whitespace()
-                            .skip(config.positions_prototype.len()),
-                    );
-
-                    if let Some(cfn_record) = cfn_record.take() {
-                        cfn_totals
-                            .entry(cfn_record.id.expect("cfn record id must be present"))
-                            .and_modify(|value| value.costs.add(&costs))
-                            .or_insert(Value {
-                                costs: costs.clone(),
-                            });
-                    }
-
-                    let id = current_id.try_into().expect("A valid id");
-                    match fn_totals.get_mut(&id) {
-                        Some(value) => value.costs.add(&costs),
-                        None => {
-                            fn_totals.insert(id.clone(), Value { costs });
-                        }
-                    }
-                    current_id = id.into();
-                }
-                Some(("jump" | "jcnd" | "jfi" | "jfn", _)) => {
-                    // we ignore these
-                }
-                None if line.starts_with("totals:") || line.starts_with("summary:") => {
-                    // we ignore these
-                }
-                Some(_) | None => panic!("Malformed line: '{line}'"),
-            }
-        }
-
-        // Correct inclusive totals
-        for (key, value) in cfn_totals {
-            fn_totals.insert(key, value);
-        }
-
-        Ok(CallgrindMap {
-            map: fn_totals,
-            sentinel: self.sentinel.clone(),
-            sentinel_key,
-        })
-    }
 
     fn parse_single_alt(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {
         let mut iter = BufReader::new(File::open(path)?)

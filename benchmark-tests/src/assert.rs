@@ -97,7 +97,7 @@ impl Assert {
         };
 
         let map = parser
-            .parse(&ToolOutputPath::new(
+            .parse_multiple_alt(&ToolOutputPath::new(
                 tool::ToolOutputPathKind::Out,
                 tool::ValgrindTool::Callgrind,
                 &BaselineKind::Old,
@@ -107,7 +107,8 @@ impl Assert {
             ))
             .unwrap();
 
-        assert!(assert(map));
+        // TODO: FIX THIS to new situation. Assert only total?
+        assert!(assert(map[0].2.clone()));
 
         Ok(())
     }

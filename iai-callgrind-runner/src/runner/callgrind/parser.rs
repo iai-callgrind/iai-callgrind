@@ -18,7 +18,7 @@ lazy_static! {
 
 pub type ParserOutput = Vec<(PathBuf, CallgrindProperties, Costs)>;
 
-#[derive(Debug, Default)]
+#[derive(Debug, PartialEq, Eq, Default)]
 pub struct CallgrindProperties {
     pub costs_prototype: Costs,
     pub positions_prototype: Positions,
