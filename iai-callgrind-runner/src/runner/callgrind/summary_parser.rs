@@ -10,6 +10,20 @@ use super::parser::{parse_header, CallgrindProperties};
 use crate::error::Error;
 use crate::runner::tool::{Parser, ToolOutputPath};
 
+/// Parse the `summary:` line in the callgrind output or `total:` if summary is not present
+///
+/// The format is described [here](https://valgrind.org/docs/manual/cl-format.html)
+///
+/// Regarding the summary:
+///
+/// For the visualization to be able to show cost percentage, a sum of the cost of the full run has
+/// to be known. Usually, it is assumed that this is the sum of all cost lines in a file. But
+/// sometimes, this is not correct. The "summary:" line in the header gives the full cost for the
+/// profile run.
+///
+/// This header line specifies a summary cost, which should be equal or larger than a total over all
+/// self costs. It may be larger as the cost lines may not represent all cost of the program run.
+#[derive(Debug)]
 pub struct SummaryParser;
 
 impl Parser for SummaryParser {
