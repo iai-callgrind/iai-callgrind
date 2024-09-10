@@ -59,7 +59,7 @@ pub struct Vec1<T>(Vec<T>);
 
 // TODO: SORT INTO impl section
 impl<T> Vec1<T> {
-    pub fn new(inner: Vec<T>) -> Result<Self> {
+    pub fn try_from_vec(inner: Vec<T>) -> Result<Self> {
         if inner.is_empty() {
             Err(anyhow!("The inner vector should have at least one element"))
         } else {
@@ -67,7 +67,7 @@ impl<T> Vec1<T> {
         }
     }
 
-    pub fn new_without_check(inner: Vec<T>) -> Self {
+    pub fn from_vec(inner: Vec<T>) -> Self {
         Self(inner)
     }
 }

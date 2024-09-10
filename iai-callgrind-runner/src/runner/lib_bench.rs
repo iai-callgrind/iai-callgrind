@@ -12,9 +12,7 @@ use super::callgrind::flamegraph::{
     BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
     LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
 };
-use super::callgrind::model::Costs;
 use super::callgrind::parser::Sentinel;
-use super::callgrind::sentinel_parser::SentinelParser;
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{RegressionConfig, Summaries};
 use super::common::{Assistant, AssistantKind, Config, ModulePath};
@@ -526,11 +524,7 @@ impl Benchmark for LoadBaselineBenchmark {
             header.description(),
         )?;
 
-        let parser: Box<dyn Parser<Output = Costs>> = match &lib_bench.entry_point {
-            EntryPoint::Default => Box::new(SentinelParser::new(&Sentinel::default())),
-            EntryPoint::Custom(_) | EntryPoint::None => Box::new(SummaryParser),
-        };
-
+        let parser = SummaryParser;
         let new_costs = parser.parse(&out_path)?;
         let old_costs = Some(parser.parse(&old_path)?);
         let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
@@ -685,15 +679,13 @@ impl Benchmark for SaveBaselineBenchmark {
         );
 
         let mut callgrind_args = lib_bench.callgrind_args.clone();
-        let parser: Box<dyn Parser<Output = Costs>> = match &lib_bench.entry_point {
-            EntryPoint::None => Box::new(SummaryParser),
+        match &lib_bench.entry_point {
+            EntryPoint::None => {}
             EntryPoint::Default => {
                 callgrind_args.insert_toggle_collect(DEFAULT_TOGGLE);
-                Box::new(SentinelParser::new(&Sentinel::default()))
             }
             EntryPoint::Custom(custom) => {
                 callgrind_args.insert_toggle_collect(custom);
-                Box::new(SummaryParser)
             }
         };
 
@@ -705,6 +697,7 @@ impl Benchmark for SaveBaselineBenchmark {
         let out_path = self.output_path(lib_bench, config, group);
         out_path.init()?;
 
+        let parser = SummaryParser;
         let old_costs = out_path
             .exists()
             .then(|| {

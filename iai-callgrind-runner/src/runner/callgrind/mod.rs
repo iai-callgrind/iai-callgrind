@@ -4,7 +4,6 @@ pub mod flamegraph_parser;
 pub mod hashmap_parser;
 pub mod model;
 pub mod parser;
-pub mod sentinel_parser;
 pub mod summary_parser;
 
 use std::path::PathBuf;
