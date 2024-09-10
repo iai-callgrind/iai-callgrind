@@ -1,14 +1,23 @@
 use std::collections::VecDeque;
 use std::ffi::OsString;
+use std::fmt::Display;
 use std::path::PathBuf;
+use std::str::FromStr;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use log::{log_enabled, warn};
 
 use crate::api::RawArgs;
 use crate::error::Error;
 use crate::runner::tool;
 use crate::util::{bool_to_yesno, yesno_to_bool};
+
+#[derive(Debug, Clone)]
+enum FairSched {
+    Yes,
+    No,
+    Try,
+}
 
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone)]
@@ -30,6 +39,7 @@ pub struct Args {
     log_arg: Option<OsString>,
     trace_children: bool,
     separate_threads: bool,
+    fair_sched: FairSched,
 }
 
 impl Args {
@@ -76,6 +86,9 @@ impl Args {
                     self.separate_threads = yesno_to_bool(value).ok_or_else(|| {
                         Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
+                }
+                Some(("--fair-sched", value)) => {
+                    self.fair_sched = FairSched::from_str(value)?;
                 }
                 Some((
                     key @ ("--combine-dumps"
@@ -150,8 +163,10 @@ impl Default for Args {
             callgrind_out_file: Option::default(),
             log_arg: Option::default(),
             other: Vec::default(),
+            // TODO: Adjust the defaults
             trace_children: false,
             separate_threads: false,
+            fair_sched: FairSched::No,
         }
     }
 }
@@ -176,6 +191,7 @@ impl From<Args> for tool::args::ToolArgs {
                 "--separate-threads={}",
                 bool_to_yesno(value.separate_threads)
             ),
+            format!("--fair-sched={}", value.fair_sched.to_string(),),
         ];
         other.append(
             &mut value
@@ -195,6 +211,32 @@ impl From<Args> for tool::args::ToolArgs {
             error_exitcode: "0".to_owned(),
             verbose: value.verbose,
             other,
+        }
+    }
+}
+
+impl Display for FairSched {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let string = match self {
+            FairSched::Yes => "yes",
+            FairSched::No => "no",
+            FairSched::Try => "try",
+        };
+        write!(f, "{string}")
+    }
+}
+
+impl FromStr for FairSched {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "no" => Ok(FairSched::No),
+            "yes" => Ok(FairSched::Yes),
+            "try" => Ok(FairSched::Try),
+            _ => Err(anyhow!(
+                "Invalid argument for --fair-sched. Valid arguments are: 'yes', 'no', 'try'"
+            )),
         }
     }
 }

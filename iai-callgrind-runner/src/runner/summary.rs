@@ -836,6 +836,6 @@ mod tests {
     #[case::simple(indexmap!(Ir => CostsDiff::default()))]
     fn test_costs_summary_zero(#[case] map: IndexMap<EventKind, CostsDiff>) {
         // TODO: REMOVE STUB AND CONTINUE TESTING
-        assert!(map.is_empty());
+        assert!(!map.is_empty());
     }
 }
