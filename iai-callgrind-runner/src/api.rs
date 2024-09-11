@@ -13,7 +13,9 @@ use std::time::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-// TODO: Move all defaults here into a mod so they are available in iai-callgrind, too
+use crate::runner::costs::Summarize;
+
+// TODO: Move all defaults here into a mod so they are available in iai-callgrind, too ?
 
 /// The model for the `#[binary_benchmark]` attribute or the equivalent from the low level api
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -34,12 +36,14 @@ pub struct BinaryBenchmarkBench {
     pub has_teardown: bool,
 }
 
+// TODO: ADD valgrind args which are applied to all tools, Same for LibraryBenchmarkConfig
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct BinaryBenchmarkConfig {
     pub env_clear: Option<bool>,
     pub current_dir: Option<PathBuf>,
     pub entry_point: Option<String>,
     pub exit_with: Option<ExitWith>,
+    // TODO: RENAME TO callgrind_args
     pub raw_callgrind_args: RawArgs,
     pub envs: Vec<(OsString, Option<OsString>)>,
     pub flamegraph_config: Option<FlamegraphConfig>,
@@ -122,6 +126,23 @@ pub enum Direction {
     BottomToTop,
 }
 
+/// TODO: DOCS
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum DhatMetricKind {
+    TotalBytes,
+    TotalBlocks,
+    AtTGmaxBytes,
+    AtTGmaxBlocks,
+    AtTEndBytes,
+    AtTEndBlocks,
+    ReadsBytes,
+    WritesBytes,
+    TotalLifetimes,
+    MaximumBytes,
+    MaximumBlocks,
+}
+
 /// The `EntryPoint` of a library benchmark
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub enum EntryPoint {
@@ -202,6 +223,15 @@ pub enum EventKind {
     SpLoss1,
     /// Counter showing bad spatial locality for LL caches (--cachuse=yes)
     SpLoss2,
+}
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum ErrorMetricKind {
+    Errors,
+    Contexts,
+    SuppressedErrors,
+    SuppressedContexts,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -460,12 +490,46 @@ impl Default for Direction {
     }
 }
 
+/// TODO: USE a Formattable trait instead
+impl Display for DhatMetricKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DhatMetricKind::TotalBytes => f.write_str("Total bytes"),
+            DhatMetricKind::TotalBlocks => f.write_str("Total blocks"),
+            DhatMetricKind::AtTGmaxBytes => f.write_str("At t-gmax bytes"),
+            DhatMetricKind::AtTGmaxBlocks => f.write_str("At t-gmax blocks"),
+            DhatMetricKind::AtTEndBytes => f.write_str("At t-end bytes"),
+            DhatMetricKind::AtTEndBlocks => f.write_str("At t-end blocks"),
+            DhatMetricKind::ReadsBytes => f.write_str("Reads bytes"),
+            DhatMetricKind::WritesBytes => f.write_str("Writes bytes"),
+            DhatMetricKind::TotalLifetimes => f.write_str("Total lifetimes"),
+            DhatMetricKind::MaximumBytes => f.write_str("Maximum bytes"),
+            DhatMetricKind::MaximumBlocks => f.write_str("Maximum blocks"),
+        }
+    }
+}
+
+impl Summarize for DhatMetricKind {}
+
 impl<T> From<T> for EntryPoint
 where
     T: Into<String>,
 {
     fn from(value: T) -> Self {
         EntryPoint::Custom(value.into())
+    }
+}
+
+impl Summarize for ErrorMetricKind {}
+
+impl Display for ErrorMetricKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ErrorMetricKind::Errors => f.write_str("Errors"),
+            ErrorMetricKind::Contexts => f.write_str("Contexts"),
+            ErrorMetricKind::SuppressedErrors => f.write_str("Suppressed Errors"),
+            ErrorMetricKind::SuppressedContexts => f.write_str("SuppressedContexts"),
+        }
     }
 }
 

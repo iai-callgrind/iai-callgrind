@@ -22,7 +22,7 @@ use super::costs::Costs;
 use super::format::{ComparisonHeader, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
 use super::tool::{ToolOutputPath, ValgrindTool};
-use crate::api::EventKind;
+use crate::api::{DhatMetricKind, ErrorMetricKind, EventKind};
 use crate::error::Error;
 use crate::runner::costs::Summarize;
 use crate::util::{factor_diff, make_absolute, percentage_diff, EitherOrBoth};
@@ -181,10 +181,32 @@ pub struct CostsDiff {
     pub diffs: Option<Diffs>,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum CostsKind {
+    #[default]
+    None,
+    DhatCosts(Costs<DhatMetricKind>),
+    ErrorCosts(Costs<ErrorMetricKind>),
+    // TODO: ADD CallgrindCosts
+    // TODO: ADD Generic costs using Costs<String> ?
+}
+
 /// The `CostsSummary` contains all differences for affected [`EventKind`]s
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CostsSummary<K: Hash + Eq = EventKind>(IndexMap<K, CostsDiff>);
+///
+/// TODO: SORT
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum CostsSummaryType {
+    #[default]
+    None,
+    ErrorSummary(CostsSummary<ErrorMetricKind>),
+    DhatSummary(CostsSummary<DhatMetricKind>),
+    CallgrindSummary(CostsSummary<EventKind>),
+}
 
 /// TODO: DOCS
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -194,6 +216,7 @@ pub struct Diffs {
     pub factor: f64,
 }
 
+/// TODO: DELETE
 /// The `ErrorSummary` of tools which have it (Memcheck, DRD, Helgrind)
 ///
 /// The `ErrorSummary` is extracted from the `ERROR SUMMARY` line in the log file output.
@@ -271,20 +294,21 @@ pub struct ToolRunSummary {
     pub pid: Option<i32>,
     /// The parent pid of this process
     pub parent_pid: Option<i32>,
+    /// TODO: REMOVE
     /// The tool specific summary extracted from Valgrind output
     pub summary: IndexMap<String, String>,
     /// More details from the logging output of the tool run
     pub details: Option<String>,
+    /// TODO: REMOVE
     /// The error summary string of tools that have an error summary like Memcheck, DRD, Helgrind
     ///
     /// The error summary is extracted from the ERROR SUMMARY line in log files. For example
     /// `4 errors from 3 contexts (suppressed: 2 from 1)`
     /// results in `ErrorSummary {errors: 4, contexts: 3, supp_errors: 2, supp_contexts: 1}`
     pub error_summary: Option<ErrorSummary>,
-    /// The tool specific cost summary extracted from Valgrind output
-    pub costs_summary: Option<CostsSummary<String>>,
     /// The path to the full logfile from the tool run
     pub log_path: PathBuf,
+    pub costs_summary: CostsSummaryType,
 }
 
 /// TODO: There should be a total at least for DHAT
@@ -733,6 +757,16 @@ where
 {
     fn default() -> Self {
         Self(IndexMap::default())
+    }
+}
+
+impl CostsSummaryType {
+    pub fn is_some(&self) -> bool {
+        !self.is_none()
+    }
+
+    pub fn is_none(&self) -> bool {
+        matches!(self, Self::None)
     }
 }
 

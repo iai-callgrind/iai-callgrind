@@ -5,6 +5,8 @@ use std::hash::Hash;
 use anyhow::{anyhow, Result};
 use indexmap::map::Iter;
 use indexmap::{IndexMap, IndexSet};
+#[cfg(feature = "schema")]
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 pub trait Summarize: Hash + Eq + Clone {
@@ -12,8 +14,10 @@ pub trait Summarize: Hash + Eq + Clone {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Costs<K: Hash + Eq>(pub IndexMap<K, u64>);
 
+/// TODO: Rename all occurrences of `event_kinds` to metric kind
 impl<K: Hash + Eq + Display + Clone> Costs<K> {
     // The order matters. The index is derived from the insertion order
     pub fn with_event_kinds<T>(kinds: T) -> Self
@@ -23,6 +27,7 @@ impl<K: Hash + Eq + Display + Clone> Costs<K> {
         Self(kinds.into_iter().collect())
     }
 
+    /// TODO: Check if zip is still applicable
     pub fn add_iter_str<I, T>(&mut self, iter: T)
     where
         I: AsRef<str>,
@@ -36,6 +41,8 @@ impl<K: Hash + Eq + Display + Clone> Costs<K> {
         }
     }
 
+    /// TODO: Check if zip is still applicable
+    /// Sum this `Cost's` events with other `Costs`
     pub fn add(&mut self, other: &Self) {
         for ((_, old), cost) in self.0.iter_mut().zip(other.0.iter().map(|(_, c)| c)) {
             *old += cost;

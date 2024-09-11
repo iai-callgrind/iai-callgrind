@@ -21,6 +21,7 @@ use crate::error::Error;
 pub enum EitherOrBoth<T> {
     Left(T),
     Right(T),
+    // TODO: MAKE THIS Both(T, T) instead of tuple
     Both((T, T)),
 }
 

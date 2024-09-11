@@ -289,8 +289,7 @@ impl VerticalFormat {
         Ok(())
     }
 
-    // TODO: REPLACE print with print_multiple
-    pub fn print_multiple_alt(
+    pub fn print_multiple(
         &self,
         meta: &Metadata,
         baselines: (Option<String>, Option<String>),
@@ -425,9 +424,7 @@ pub fn format_vertical<'a, K: Display + 'a>(
 pub fn callgrind_multiple_files_header(
     properties: &EitherOrBoth<(PathBuf, CallgrindProperties)>,
 ) -> String {
-    fn fields(property: &CallgrindProperties) -> (usize, String) {
-        // "pid: ".len() + " part: ".len() + " thread: ".len()
-        let mut len = 5 + 7 + 9;
+    fn fields(property: &CallgrindProperties) -> String {
         let pid = property
             .pid
             .map_or(NOT_AVAILABLE.to_owned(), |v| v.to_string());
@@ -437,16 +434,15 @@ pub fn callgrind_multiple_files_header(
         let thread = property
             .thread
             .map_or(NOT_AVAILABLE.to_owned(), |v| v.to_string());
-        // TODO: REMOVE THIS len calculation and returning len if not colored in this function
-        len += pid.len() + part.len() + thread.len();
-        (len, format!("pid: {pid} part: {part} thread: {thread}"))
+        format!("pid: {pid} part: {part} thread: {thread}")
     }
 
     let max_left = 31;
     let hash = "##".yellow();
     match properties {
         EitherOrBoth::Left(new) => {
-            let (len, left) = fields(&new.1);
+            let left = fields(&new.1);
+            let len = left.len();
             let left = left.bold();
             if len > max_left {
                 format!(
@@ -461,7 +457,7 @@ pub fn callgrind_multiple_files_header(
             }
         }
         EitherOrBoth::Right(old) => {
-            let (_, right) = fields(&old.1);
+            let right = fields(&old.1);
             format!(
                 "  {hash} {}{}|{right}",
                 NOT_AVAILABLE.bold(),
@@ -469,8 +465,9 @@ pub fn callgrind_multiple_files_header(
             )
         }
         EitherOrBoth::Both((new, old)) => {
-            let (len, left) = fields(&new.1);
-            let right = fields(&old.1).1;
+            let left = fields(&new.1);
+            let len = left.len();
+            let right = fields(&old.1);
             let left = left.bold();
             if len > max_left {
                 format!(

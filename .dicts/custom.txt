@@ -90,6 +90,7 @@ exidx
 exitcode
 flamegraph
 flamegraphs
+formattable
 freelike
 funcs
 gmax

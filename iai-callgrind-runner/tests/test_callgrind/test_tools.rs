@@ -1,14 +1,18 @@
 use std::path::PathBuf;
 
+use iai_callgrind_runner::api::DhatMetricKind;
 use iai_callgrind_runner::runner::costs::Costs;
 use iai_callgrind_runner::runner::dhat::logfile_parser::DhatLogfileParser;
-use iai_callgrind_runner::runner::summary::{CostsSummary, ToolRunSummary};
+use iai_callgrind_runner::runner::summary::{
+    CostsKind, CostsSummary, CostsSummaryType, ToolRunSummary,
+};
 use iai_callgrind_runner::runner::tool::logfile_parser::{LogfileParser, LogfileSummary};
 use iai_callgrind_runner::util::EitherOrBoth;
 
-fn dummy_cost(cost: u64) -> Costs<String> {
-    Costs::with_event_kinds([("cost".to_string(), cost)])
+fn dummy_cost(cost: u64) -> Costs<DhatMetricKind> {
+    Costs::with_event_kinds([(DhatMetricKind::TotalBytes, cost)])
 }
+
 fn dummy_summary(cmd: &str, pid: i32, cost: u64) -> LogfileSummary {
     LogfileSummary {
         command: cmd.parse().unwrap(),
@@ -17,8 +21,9 @@ fn dummy_summary(cmd: &str, pid: i32, cost: u64) -> LogfileSummary {
         fields: vec![],
         details: vec![],
         error_summary: None,
-        costs: Some(dummy_cost(cost)),
         log_path: PathBuf::new(),
+        // TODO: ADJUST
+        costs: CostsKind::DhatCosts(dummy_cost(cost)),
     }
 }
 
@@ -47,8 +52,8 @@ fn dummy_tool_run_summary(
         summary: Default::default(),
         details: None,
         error_summary: None,
-        costs_summary: Some(costs_summary),
         log_path: Default::default(),
+        costs_summary: CostsSummaryType::DhatSummary(costs_summary),
     }
 }
 

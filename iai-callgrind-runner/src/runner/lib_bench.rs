@@ -213,7 +213,7 @@ impl Benchmark for BaselineBenchmark {
 
         let summaries = Summaries::new(parsed_new, parsed_old);
 
-        VerticalFormat::default().print_multiple_alt(&config.meta, self.baselines(), &summaries)?;
+        VerticalFormat::default().print_multiple(&config.meta, self.baselines(), &summaries)?;
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stderr())?;
@@ -530,7 +530,7 @@ impl Benchmark for LoadBaselineBenchmark {
         let parsed_old = Some(parser.parse(&old_path)?);
         let summaries = Summaries::new(parsed_new, parsed_old);
 
-        VerticalFormat::default().print_multiple_alt(&config.meta, self.baselines(), &summaries)?;
+        VerticalFormat::default().print_multiple(&config.meta, self.baselines(), &summaries)?;
 
         let regressions = lib_bench.check_and_print_regressions(&summaries.total);
 
@@ -738,11 +738,7 @@ impl Benchmark for SaveBaselineBenchmark {
 
         let parsed_new = parser.parse(&out_path)?;
         let summaries = Summaries::new(parsed_new, parsed_old);
-        VerticalFormat::default().print_multiple_alt(
-            &config.meta,
-            baselines.clone(),
-            &summaries,
-        )?;
+        VerticalFormat::default().print_multiple(&config.meta, baselines.clone(), &summaries)?;
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stderr())?;

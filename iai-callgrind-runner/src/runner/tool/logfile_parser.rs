@@ -12,7 +12,9 @@ use super::{ToolOutputPath, ValgrindTool};
 use crate::error::Error;
 use crate::runner::costs::Costs;
 use crate::runner::dhat::logfile_parser::DhatLogfileParser;
-use crate::runner::summary::{CostsSummary, ErrorSummary, ToolRunSummary};
+use crate::runner::summary::{
+    CostsKind, CostsSummary, CostsSummaryType, ErrorSummary, ToolRunSummary,
+};
 use crate::util::{make_relative, EitherOrBoth};
 
 // The different regex have to consider --time-stamp=yes
@@ -38,10 +40,6 @@ lazy_static! {
     .expect("Regex should compile");
 }
 
-pub struct ToolLogfileParser {
-    pub root_dir: PathBuf,
-}
-
 #[derive(Debug, Clone)]
 pub struct LogfileSummary {
     pub command: PathBuf,
@@ -50,8 +48,8 @@ pub struct LogfileSummary {
     pub fields: Vec<(String, String)>,
     pub details: Vec<String>,
     pub error_summary: Option<ErrorSummary>,
-    pub costs: Option<Costs<String>>,
     pub log_path: PathBuf,
+    pub costs: CostsKind,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -65,7 +63,6 @@ enum State {
 pub trait LogfileParser {
     fn parse_single(&self, path: PathBuf) -> Result<LogfileSummary>;
 
-    // TODO: RETURN SORTED by pid or whatever
     fn parse(&self, output_path: &ToolOutputPath) -> Result<Vec<LogfileSummary>> {
         let log_path = output_path.to_log_output();
         debug!("{}: Parsing log file '{}'", output_path.tool.id(), log_path);
@@ -74,10 +71,12 @@ pub trait LogfileParser {
         let Ok(paths) = log_path.real_paths() else {
             return Ok(vec![]);
         };
+
         for path in paths {
             let summary = self.parse_single(path)?;
             summaries.push(summary);
         }
+
         summaries.sort_by_key(|x| x.pid);
         Ok(summaries)
     }
@@ -109,15 +108,21 @@ impl LogfileSummary {
             summary: self.fields.into_iter().collect(),
             details: (!self.details.is_empty()).then(|| self.details.join("\n")),
             error_summary: self.error_summary,
-            costs_summary: None,
             log_path: self.log_path,
+            costs_summary: CostsSummaryType::default(),
         }
     }
+
     pub fn old_into_tool_run(self) -> ToolRunSummary {
-        let costs_summary = self
-            .costs
-            .as_ref()
-            .map(|x| CostsSummary::new(EitherOrBoth::Right(x.clone())));
+        let costs_summary = match self.costs {
+            CostsKind::None => CostsSummaryType::None,
+            CostsKind::DhatCosts(ref costs) => {
+                CostsSummaryType::DhatSummary(CostsSummary::new(EitherOrBoth::Right(costs.clone())))
+            }
+            CostsKind::ErrorCosts(ref costs) => CostsSummaryType::ErrorSummary(CostsSummary::new(
+                EitherOrBoth::Right(costs.clone()),
+            )),
+        };
         let old_pid = Some(self.pid);
         let old_parent_pid = self.parent_pid;
         ToolRunSummary {
@@ -129,10 +134,15 @@ impl LogfileSummary {
     }
 
     pub fn new_into_tool_run(self) -> ToolRunSummary {
-        let costs_summary = self
-            .costs
-            .as_ref()
-            .map(|x| CostsSummary::new(EitherOrBoth::Left(x.clone())));
+        let costs_summary = match self.costs {
+            CostsKind::DhatCosts(ref costs) => {
+                CostsSummaryType::DhatSummary(CostsSummary::new(EitherOrBoth::Left(costs.clone())))
+            }
+            CostsKind::ErrorCosts(ref costs) => {
+                CostsSummaryType::ErrorSummary(CostsSummary::new(EitherOrBoth::Left(costs.clone())))
+            }
+            CostsKind::None => CostsSummaryType::None,
+        };
         let pid = Some(self.pid);
         let parent_pid = self.parent_pid;
         ToolRunSummary {
@@ -146,18 +156,47 @@ impl LogfileSummary {
     pub fn merge(self, old: &LogfileSummary) -> ToolRunSummary {
         assert_eq!(self.command, old.command);
         let costs_summary = match (&self.costs, &old.costs) {
-            (None, None) => None,
-            (None, Some(old_costs)) => {
-                Some(CostsSummary::new(EitherOrBoth::Right(old_costs.clone())))
+            (CostsKind::None, CostsKind::None) => CostsSummaryType::None,
+            (CostsKind::DhatCosts(new), CostsKind::DhatCosts(old)) => {
+                CostsSummaryType::DhatSummary(CostsSummary::new(EitherOrBoth::Both((
+                    new.clone(),
+                    old.clone(),
+                ))))
             }
-            (Some(new_costs), None) => {
-                Some(CostsSummary::new(EitherOrBoth::Left(new_costs.clone())))
+            (CostsKind::ErrorCosts(new), CostsKind::ErrorCosts(old)) => {
+                CostsSummaryType::ErrorSummary(CostsSummary::new(EitherOrBoth::Both((
+                    new.clone(),
+                    old.clone(),
+                ))))
             }
-            (Some(new_costs), Some(old_costs)) => Some(CostsSummary::new(EitherOrBoth::Both((
-                new_costs.clone(),
-                old_costs.clone(),
-            )))),
+            (CostsKind::None, CostsKind::DhatCosts(old)) => {
+                CostsSummaryType::DhatSummary(CostsSummary::new(EitherOrBoth::Right(old.clone())))
+            }
+            (CostsKind::None, CostsKind::ErrorCosts(old)) => {
+                CostsSummaryType::ErrorSummary(CostsSummary::new(EitherOrBoth::Right(old.clone())))
+            }
+            (CostsKind::DhatCosts(new), CostsKind::None) => {
+                CostsSummaryType::DhatSummary(CostsSummary::new(EitherOrBoth::Left(new.clone())))
+            }
+            (CostsKind::ErrorCosts(new), CostsKind::None) => {
+                CostsSummaryType::ErrorSummary(CostsSummary::new(EitherOrBoth::Left(new.clone())))
+            }
+            _ => panic!("The logfile summaries of new and old costs should match"),
         };
+
+        //     (None, None) => None,
+        //     (None, Some(old_costs)) => {
+        //         Some(CostsSummary::new(EitherOrBoth::Right(old_costs.clone())))
+        //     }
+        //     (Some(new_costs), None) => {
+        //         Some(CostsSummary::new(EitherOrBoth::Left(new_costs.clone())))
+        //     }
+        //     (Some(new_costs), Some(old_costs)) => Some(CostsSummary::new(EitherOrBoth::Both((
+        //         new_costs.clone(),
+        //         old_costs.clone(),
+        //     )))),
+        // };
+
         let old_pid = Some(old.pid);
         let old_parent_pid = old.parent_pid;
         let pid = Some(self.pid);
@@ -172,7 +211,12 @@ impl LogfileSummary {
         }
     }
 }
-impl LogfileParser for ToolLogfileParser {
+
+struct ErrorMetricLogfileParser {
+    root_dir: PathBuf,
+}
+
+impl LogfileParser for ErrorMetricLogfileParser {
     fn parse_single(&self, path: PathBuf) -> Result<LogfileSummary> {
         let file = File::open(&path)
             .with_context(|| format!("Error opening log file '{}'", path.display()))?;
@@ -257,7 +301,8 @@ impl LogfileParser for ToolLogfileParser {
             details,
             error_summary,
             log_path: make_relative(&self.root_dir, path),
-            costs: None,
+            // TODO: FIX
+            costs: CostsKind::ErrorCosts(Costs::empty()),
         })
     }
 
@@ -287,7 +332,7 @@ impl ValgrindTool {
     pub fn to_parser(self, root_dir: PathBuf) -> Box<dyn LogfileParser> {
         match self {
             ValgrindTool::DHAT => Box::new(DhatLogfileParser { root_dir }),
-            _ => Box::new(ToolLogfileParser { root_dir }),
+            _ => Box::new(ErrorMetricLogfileParser { root_dir }),
         }
     }
 }

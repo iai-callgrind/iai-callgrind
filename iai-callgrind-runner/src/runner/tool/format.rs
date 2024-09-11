@@ -4,7 +4,7 @@ use anyhow::Result;
 use colored::Colorize;
 
 use crate::runner::format::{format_vertical, NOT_AVAILABLE};
-use crate::runner::summary::ToolRunSummary;
+use crate::runner::summary::{CostsSummaryType, ToolRunSummary};
 
 pub struct ToolRunSummaryFormatter;
 
@@ -52,8 +52,15 @@ impl ToolRunSummaryFormatter {
             );
         }
 
-        if let Some(costs) = &summary.costs_summary {
-            print!("{}", format_vertical((None, None), costs.all_diffs())?);
+        // The callgrind summary was already printed
+        match &summary.costs_summary {
+            CostsSummaryType::None | CostsSummaryType::CallgrindSummary(_) => {}
+            CostsSummaryType::ErrorSummary(costs) => {
+                print!("{}", format_vertical((None, None), costs.all_diffs())?);
+            }
+            CostsSummaryType::DhatSummary(costs) => {
+                print!("{}", format_vertical((None, None), costs.all_diffs())?);
+            }
         }
 
         for field in &summary.summary {

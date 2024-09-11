@@ -460,7 +460,6 @@ impl ToolConfigs {
             let parser = tool_config.tool.to_parser(config.meta.project_root.clone());
 
             let old_summaries = parser.as_ref().parse(&log_path.to_base_path())?;
-
             if save_baseline {
                 output_path.clear()?;
                 log_path.clear()?;
