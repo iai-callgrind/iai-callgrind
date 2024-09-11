@@ -11,13 +11,13 @@ use super::CacheSummary;
 use crate::api::EventKind;
 use crate::runner::costs::Summarize;
 
+pub type Costs = crate::runner::costs::Costs<EventKind>;
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Calls {
     amount: u64,
     positions: Positions,
 }
-
-pub type Costs = crate::runner::costs::Costs<EventKind>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PositionType {
@@ -82,30 +82,16 @@ impl Costs {
     }
 }
 
-impl Summarize for EventKind {
-    fn summarize(costs: &mut Cow<Costs>) {
-        if !costs.is_summarized() {
-            let _ = costs.to_mut().make_summary();
-        }
-    }
-}
 impl Default for Costs {
     fn default() -> Self {
         Self(indexmap! {EventKind::Ir => 0})
     }
 }
 
-impl<T> From<T> for PositionType
-where
-    T: AsRef<str>,
-{
-    fn from(value: T) -> Self {
-        let value = value.as_ref();
-        // "addr" is taken from the callgrind_annotate script although not officially documented
-        match value.to_lowercase().as_str() {
-            "instr" | "addr" => Self::Instr,
-            "line" => Self::Line,
-            _ => panic!("Unknown positions type: '{value}"),
+impl Summarize for EventKind {
+    fn summarize(costs: &mut Cow<Costs>) {
+        if !costs.is_summarized() {
+            let _ = costs.to_mut().make_summary();
         }
     }
 }
@@ -154,5 +140,20 @@ where
                 .map(|p| (PositionType::from(p), 0))
                 .collect::<IndexMap<_, _>>(),
         )
+    }
+}
+
+impl<T> From<T> for PositionType
+where
+    T: AsRef<str>,
+{
+    fn from(value: T) -> Self {
+        let value = value.as_ref();
+        // "addr" is taken from the callgrind_annotate script although not officially documented
+        match value.to_lowercase().as_str() {
+            "instr" | "addr" => Self::Instr,
+            "line" => Self::Line,
+            _ => panic!("Unknown positions type: '{value}"),
+        }
     }
 }

@@ -211,11 +211,13 @@ impl ToolCommand {
                     Error::BenchmarkError(ValgrindTool::Callgrind, module_path.clone(), error)
                 })?;
         }
+
         if let Some(stdout) = stdout {
             stdout
                 .apply(&mut self.command, Stream::Stdout)
                 .map_err(|error| Error::BenchmarkError(self.tool, module_path.clone(), error))?;
         }
+
         if let Some(stderr) = stderr {
             stderr
                 .apply(&mut self.command, Stream::Stderr)
@@ -376,6 +378,7 @@ impl ToolConfigs {
                 );
             }
         }
+
         Ok(())
     }
 

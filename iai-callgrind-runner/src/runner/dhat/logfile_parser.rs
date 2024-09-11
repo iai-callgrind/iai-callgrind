@@ -66,6 +66,7 @@ impl LogfileParser for DhatLogfileParser {
         let line = iter
             .next()
             .ok_or_else(|| Error::ParseError((path.clone(), "Empty file".to_owned())))?;
+
         let pid = extract_pid(&line);
 
         let mut state = State::Header;
@@ -102,6 +103,7 @@ impl LogfileParser for DhatLogfileParser {
                     if state == State::HeaderSpace {
                         state = State::Body;
                     }
+
                     if let Some(caps) = EXTRACT_FIELDS_RE.captures(&line) {
                         let key = caps.name("key").unwrap().as_str();
 
@@ -115,8 +117,10 @@ impl LogfileParser for DhatLogfileParser {
                             continue;
                         }
                     }
+
                     if let Some(caps) = STRIP_PREFIX_RE.captures(&line) {
                         let rest_of_line = caps.name("rest").unwrap().as_str();
+
                         details.push(rest_of_line.to_owned());
                     } else {
                         details.push(line);
@@ -127,6 +131,7 @@ impl LogfileParser for DhatLogfileParser {
                         let key = caps.name("key").unwrap().as_str();
                         let value = caps.name("value").unwrap().as_str();
                         let value = FIXUP_NUMBERS_RE.replace_all(value, "$1$2");
+
                         fields.push((key.to_owned(), value.to_string()));
                     } else {
                         state = State::Footer;

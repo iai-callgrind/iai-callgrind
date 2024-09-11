@@ -7,6 +7,10 @@ use indexmap::map::Iter;
 use indexmap::{IndexMap, IndexSet};
 use serde::{Deserialize, Serialize};
 
+pub trait Summarize: Hash + Eq + Clone {
+    fn summarize(_: &mut Cow<Costs<Self>>) {}
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Costs<K: Hash + Eq>(pub IndexMap<K, u64>);
 
@@ -78,10 +82,6 @@ impl<K: Hash + Eq + Display + Clone> Costs<K> {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
-}
-
-pub trait Summarize: Hash + Eq + Clone {
-    fn summarize(_: &mut Cow<Costs<Self>>) {}
 }
 
 impl Summarize for String {}

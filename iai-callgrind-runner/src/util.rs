@@ -15,6 +15,7 @@ use which::which;
 
 use crate::error::Error;
 
+/// Either left, right or both can be present
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum EitherOrBoth<T> {

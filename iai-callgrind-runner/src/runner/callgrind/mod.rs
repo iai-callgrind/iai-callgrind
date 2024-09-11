@@ -208,6 +208,7 @@ impl Default for RegressionConfig {
 impl Summaries {
     pub fn new(parsed_new: ParserOutput, parsed_old: Option<ParserOutput>) -> Self {
         let mut total = CostsSummary::default();
+
         let summaries: Vec<Summary> = parsed_new
             .into_iter()
             .zip_longest(parsed_old.into_iter().flatten())
@@ -218,6 +219,7 @@ impl Summaries {
                 ) => {
                     let summary = CostsSummary::new(EitherOrBoth::Both((new_costs, old_costs)));
                     total.add(&summary);
+
                     Summary::new(
                         EitherOrBoth::Both(((new_path, new_props), (old_path, old_props))),
                         summary,
@@ -226,11 +228,13 @@ impl Summaries {
                 itertools::EitherOrBoth::Left((path, new_props, new_costs)) => {
                     let summary = CostsSummary::new(EitherOrBoth::Left(new_costs));
                     total.add(&summary);
+
                     Summary::new(EitherOrBoth::Left((path, new_props)), summary)
                 }
                 itertools::EitherOrBoth::Right((path, old_props, old_costs)) => {
                     let summary = CostsSummary::new(EitherOrBoth::Right(old_costs));
                     total.add(&summary);
+
                     Summary::new(EitherOrBoth::Right((path, old_props)), summary)
                 }
             })

@@ -32,7 +32,7 @@ impl Summary {
                 .summaries
                 .iter()
                 .map(|s| &s.events)
-                .chain(std::iter::once(&callgrind_summary.summaries.total.total))
+                .chain(std::iter::once(&callgrind_summary.summaries.total.summary))
             {
                 match summary.extract_costs() {
                     EitherOrBoth::Left(new_costs) => {

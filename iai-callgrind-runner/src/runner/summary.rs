@@ -50,7 +50,7 @@ pub struct Baseline {
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct BaselineName(String);
 
-/// TODO: Add a None or Default variant
+/// TODO: Add a None or Default variant ??
 /// The `BaselineKind` describing the baseline
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
@@ -128,7 +128,6 @@ pub struct CallgrindRegressionSummary {
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindRunSummaries {
-    // TODO: THIS SHOULD BE A Vec1
     pub summaries: Vec<CallgrindRunSummary>,
     pub total: CallgrindTotal,
 }
@@ -144,8 +143,7 @@ pub struct CallgrindRunSummary {
     pub baseline: Option<Baseline>,
     /// All recorded costs for `EventKinds`
     pub events: CostsSummary<EventKind>,
-    /// TODO: REMOVE THIS ? Only total is checked for regressions
-    /// All detected performance regressions
+    /// All detected performance regressions per callgrind run
     pub regressions: Vec<CallgrindRegressionSummary>,
 }
 
@@ -153,7 +151,7 @@ pub struct CallgrindRunSummary {
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindTotal {
-    pub total: CostsSummary,
+    pub summary: CostsSummary,
     pub regressions: Vec<CallgrindRegressionSummary>,
 }
 
@@ -171,28 +169,11 @@ pub struct CallgrindSummary {
     pub summaries: CallgrindRunSummaries,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct Diffs {
-    pub diff_pct: f64,
-    pub factor: f64,
-}
-
-impl Diffs {
-    pub fn new(new: u64, old: u64) -> Self {
-        Self {
-            diff_pct: percentage_diff(new, old),
-            factor: factor_diff(new, old),
-        }
-    }
-}
-
-/// TODO: USE `EitherOrBoth`
 /// The `CostsDiff` describes the difference between an single optional `new` and `old` cost as
 /// percentage and factor.
 ///
-/// There is either a `new` or an `old` value present. Never can both be absent. If both values are
-/// present, then there is also a `diff_pct` and `factor` present.
+/// There is either a `new`, `old` value present or both. If both values are present, then there is
+/// also the `Diffs` present.
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CostsDiff {
@@ -204,6 +185,14 @@ pub struct CostsDiff {
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CostsSummary<K: Hash + Eq = EventKind>(IndexMap<K, CostsDiff>);
+
+/// TODO: DOCS
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct Diffs {
+    pub diff_pct: f64,
+    pub factor: f64,
+}
 
 /// The `ErrorSummary` of tools which have it (Memcheck, DRD, Helgrind)
 ///
@@ -227,21 +216,6 @@ pub struct FlamegraphSummaries {
     pub summaries: Vec<FlamegraphSummary>,
     pub totals: Vec<FlamegraphSummary>,
 }
-// TODO: CLEANUP
-//
-// impl FlamegraphSummaries {
-//     pub fn new(event_kind: EventKind) -> Self {
-//         Self {
-//             summaries: Vec::default(),
-//             total: FlamegraphSummary {
-//                 event_kind,
-//                 regular_path: Option::default(),
-//                 base_path: Option::default(),
-//                 diff_path: Option::default(),
-//             },
-//         }
-//     }
-// }
 
 /// The `FlamegraphSummary` records all created paths for an [`EventKind`] specific flamegraph
 ///
@@ -311,14 +285,6 @@ pub struct ToolRunSummary {
     pub costs_summary: Option<CostsSummary<String>>,
     /// The path to the full logfile from the tool run
     pub log_path: PathBuf,
-}
-
-impl ToolRunSummary {
-    pub fn has_errors(&self) -> bool {
-        self.error_summary
-            .as_ref()
-            .map_or(false, ErrorSummary::has_errors)
-    }
 }
 
 /// TODO: There should be a total at least for DHAT
@@ -457,24 +423,24 @@ impl BenchmarkSummary {
         Ok(())
     }
 
+    // TODO: Compare not only the total??
+    // TODO: Compare dhat
     pub fn compare_and_print(&self, id: &str, meta: &Metadata, other: &Self) -> Result<()> {
         if let (Some(callgrind_summary), Some(other_callgrind_summary)) =
             (&self.callgrind_summary, &other.callgrind_summary)
         {
-            // TODO: Compare not only the total
             if let (
-                EitherOrBoth::Left(mut new) | EitherOrBoth::Both((mut new, _)),
+                EitherOrBoth::Left(new) | EitherOrBoth::Both((new, _)),
                 EitherOrBoth::Left(other_new) | EitherOrBoth::Both((other_new, _)),
             ) = (
-                callgrind_summary.summaries.total.total.extract_costs(),
+                callgrind_summary.summaries.total.summary.extract_costs(),
                 other_callgrind_summary
                     .summaries
                     .total
-                    .total
+                    .summary
                     .extract_costs(),
             ) {
-                new.add(&other_new);
-                let new_summary = CostsSummary::new(EitherOrBoth::Left(new));
+                let new_summary = CostsSummary::new(EitherOrBoth::Both((new, other_new)));
                 ComparisonHeader::new(self.function_name.clone(), id, self.details.clone()).print();
                 VerticalFormat::default().print(meta, (None, None), &new_summary)?;
             }
@@ -579,7 +545,7 @@ impl CallgrindSummary {
             });
         }
 
-        self.summaries.total.total = summaries.total.clone();
+        self.summaries.total.summary = summaries.total.clone();
         self.summaries.total.regressions = regressions;
     }
 }
@@ -622,6 +588,15 @@ impl CostsDiff {
                     old.saturating_add(*other_old),
                 )))
             }
+        }
+    }
+}
+
+impl Diffs {
+    pub fn new(new: u64, old: u64) -> Self {
+        Self {
+            diff_pct: percentage_diff(new, old),
+            factor: factor_diff(new, old),
         }
     }
 }
@@ -692,7 +667,7 @@ where
         }
     }
 
-    /// Try to return a [`CostsDiff`] for the specified [`crate::api::EventKind`]
+    /// Try to return a [`CostsDiff`] for the specified `EventKind`
     pub fn diff_by_kind(&self, event_kind: &K) -> Option<&CostsDiff> {
         self.0.get(event_kind)
     }
@@ -705,7 +680,6 @@ where
         let mut new_costs: Costs<K> = Costs::empty();
         let mut old_costs: Costs<K> = Costs::empty();
         // The diffs should not be empty
-        // TODO: USE something like IndexMap1
         for (event_kind, diff) in self.all_diffs() {
             match diff.costs {
                 EitherOrBoth::Left(new) => {
@@ -838,6 +812,14 @@ impl SummaryOutput {
     /// Try to create an empty summary file returning the [`File`] object
     pub fn create(&self) -> Result<File> {
         File::create(&self.path).with_context(|| "Failed to create json summary file")
+    }
+}
+
+impl ToolRunSummary {
+    pub fn has_errors(&self) -> bool {
+        self.error_summary
+            .as_ref()
+            .map_or(false, ErrorSummary::has_errors)
     }
 }
 
