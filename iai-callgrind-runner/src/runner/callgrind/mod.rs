@@ -17,75 +17,17 @@ use super::summary::{CallgrindRegressionSummary, CostsSummary};
 use crate::api::{self, EventKind};
 use crate::util::{to_string_signed_short, EitherOrBoth};
 
+/// TODO: DOCS
 #[derive(Debug)]
 pub struct Summary {
     pub details: EitherOrBoth<(PathBuf, CallgrindProperties)>,
     pub costs_summary: CostsSummary,
 }
 
-impl Summary {
-    pub fn new(
-        details: EitherOrBoth<(PathBuf, CallgrindProperties)>,
-        costs_summary: CostsSummary,
-    ) -> Self {
-        Self {
-            details,
-            costs_summary,
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct Summaries {
     pub data: Vec<Summary>,
     pub total: CostsSummary,
-}
-
-impl Summaries {
-    pub fn new(parsed_new: ParserOutput, parsed_old: Option<ParserOutput>) -> Self {
-        let mut total = CostsSummary::default();
-        let summaries: Vec<Summary> = parsed_new
-            .into_iter()
-            .zip_longest(parsed_old.into_iter().flatten())
-            .map(|e| match e {
-                itertools::EitherOrBoth::Both(
-                    (new_path, new_props, new_costs),
-                    (old_path, old_props, old_costs),
-                ) => {
-                    let summary = CostsSummary::new(&new_costs, Some(&old_costs));
-                    total.add(&summary);
-                    Summary::new(
-                        EitherOrBoth::Both(((new_path, new_props), (old_path, old_props))),
-                        summary,
-                    )
-                }
-                itertools::EitherOrBoth::Left((path, new_props, new_costs)) => {
-                    let summary = CostsSummary::new(&new_costs, None);
-                    total.add(&summary);
-                    Summary::new(EitherOrBoth::Left((path, new_props)), summary)
-                }
-                itertools::EitherOrBoth::Right((path, old_props, old_costs)) => {
-                    // TODO: CostsSummary should take an Option for new or `EitherOrBoth`
-                    let summary = CostsSummary::new(&Costs::empty(), Some(&old_costs));
-                    total.add(&summary);
-                    Summary::new(EitherOrBoth::Right((path, old_props)), summary)
-                }
-            })
-            .collect();
-
-        assert!(
-            !summaries.is_empty(),
-            "At least one summary must be present"
-        );
-        Self {
-            data: summaries,
-            total,
-        }
-    }
-
-    pub fn has_multiple(&self) -> bool {
-        self.data.len() > 1
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -191,27 +133,27 @@ impl RegressionConfig {
         regression_summaries
     }
 
+    // Check the `CostsSummary` for regressions.
+    //
+    // The limits for event kinds which are not present in the `CostsSummary` are ignored. A
+    // `CostsDiff` which does not have both `new` and `old` is also ignored.
     pub fn check(&self, costs_summary: &CostsSummary) -> Vec<CallgrindRegressionSummary> {
         let mut regressions = vec![];
-        for (event_kind, limit) in &self.limits {
-            if let Some((new_cost, old_cost, pct)) = costs_summary
-                .diff_by_kind(event_kind)
-                .filter(|d| d.diff_pct.is_some())
-                // These unwraps are safe since if diff_pct is present new and old are also present
-                .map(|d| (d.new.unwrap(), d.old.unwrap(), d.diff_pct.unwrap()))
-            {
-                if limit.is_sign_positive() {
-                    if pct > *limit {
-                        let summary = CallgrindRegressionSummary {
-                            event_kind: *event_kind,
-                            new: new_cost,
-                            old: old_cost,
-                            diff_pct: pct,
-                            limit: *limit,
-                        };
-                        regressions.push(summary);
+        for (event_kind, new_cost, old_cost, pct, limit) in
+            self.limits.iter().filter_map(|(event_kind, limit)| {
+                costs_summary.diff_by_kind(event_kind).and_then(|d| {
+                    if let EitherOrBoth::Both((new, old)) = d.costs {
+                        // This unwrap is safe since the diffs are calculated if both costs are
+                        // present
+                        Some((event_kind, new, old, d.diffs.unwrap().diff_pct, limit))
+                    } else {
+                        None
                     }
-                } else if pct < *limit {
+                })
+            })
+        {
+            if limit.is_sign_positive() {
+                if pct > *limit {
                     let summary = CallgrindRegressionSummary {
                         event_kind: *event_kind,
                         new: new_cost,
@@ -220,15 +162,25 @@ impl RegressionConfig {
                         limit: *limit,
                     };
                     regressions.push(summary);
-                } else {
-                    // no regression
                 }
+            } else if pct < *limit {
+                let summary = CallgrindRegressionSummary {
+                    event_kind: *event_kind,
+                    new: new_cost,
+                    old: old_cost,
+                    diff_pct: pct,
+                    limit: *limit,
+                };
+                regressions.push(summary);
+            } else {
+                // no regression
             }
         }
         regressions
     }
 }
 
+/// TODO: MOVE DEFAULT values into defaults mod
 impl From<api::RegressionConfig> for RegressionConfig {
     fn from(value: api::RegressionConfig) -> Self {
         let api::RegressionConfig { limits, fail_fast } = value;
@@ -243,11 +195,70 @@ impl From<api::RegressionConfig> for RegressionConfig {
     }
 }
 
+/// TODO: MOVE DEFAULT values into defaults mod
 impl Default for RegressionConfig {
     fn default() -> Self {
         Self {
             limits: vec![(EventKind::Ir, 10f64)],
             fail_fast: Default::default(),
+        }
+    }
+}
+
+impl Summaries {
+    pub fn new(parsed_new: ParserOutput, parsed_old: Option<ParserOutput>) -> Self {
+        let mut total = CostsSummary::default();
+        let summaries: Vec<Summary> = parsed_new
+            .into_iter()
+            .zip_longest(parsed_old.into_iter().flatten())
+            .map(|e| match e {
+                itertools::EitherOrBoth::Both(
+                    (new_path, new_props, new_costs),
+                    (old_path, old_props, old_costs),
+                ) => {
+                    let summary = CostsSummary::new(EitherOrBoth::Both((new_costs, old_costs)));
+                    total.add(&summary);
+                    Summary::new(
+                        EitherOrBoth::Both(((new_path, new_props), (old_path, old_props))),
+                        summary,
+                    )
+                }
+                itertools::EitherOrBoth::Left((path, new_props, new_costs)) => {
+                    let summary = CostsSummary::new(EitherOrBoth::Left(new_costs));
+                    total.add(&summary);
+                    Summary::new(EitherOrBoth::Left((path, new_props)), summary)
+                }
+                itertools::EitherOrBoth::Right((path, old_props, old_costs)) => {
+                    let summary = CostsSummary::new(EitherOrBoth::Right(old_costs));
+                    total.add(&summary);
+                    Summary::new(EitherOrBoth::Right((path, old_props)), summary)
+                }
+            })
+            .collect();
+
+        assert!(
+            !summaries.is_empty(),
+            "At least one summary must be present"
+        );
+        Self {
+            data: summaries,
+            total,
+        }
+    }
+
+    pub fn has_multiple(&self) -> bool {
+        self.data.len() > 1
+    }
+}
+
+impl Summary {
+    pub fn new(
+        details: EitherOrBoth<(PathBuf, CallgrindProperties)>,
+        costs_summary: CostsSummary,
+    ) -> Self {
+        Self {
+            details,
+            costs_summary,
         }
     }
 }
@@ -277,8 +288,7 @@ mod tests {
     fn test_regression_check_when_old_is_none() {
         let regression = RegressionConfig::default();
         let new = cachesim_costs([0, 0, 0, 0, 0, 0, 0, 0, 0]);
-        let old = None;
-        let summary = CostsSummary::new(&new, old);
+        let summary = CostsSummary::new(EitherOrBoth::Left(new));
 
         assert!(regression.check(&summary).is_empty());
     }
@@ -350,8 +360,8 @@ mod tests {
         };
 
         let new = cachesim_costs(new);
-        let old = Some(cachesim_costs(old));
-        let summary = CostsSummary::new(&new, old.as_ref());
+        let old = cachesim_costs(old);
+        let summary = CostsSummary::new(EitherOrBoth::Both((new, old)));
         let expected = expected
             .iter()
             .map(|(e, n, o, d, l)| CallgrindRegressionSummary {

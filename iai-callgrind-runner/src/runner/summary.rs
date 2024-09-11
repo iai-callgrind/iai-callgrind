@@ -128,6 +128,7 @@ pub struct CallgrindRegressionSummary {
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindRunSummaries {
+    // TODO: THIS SHOULD BE A Vec1
     pub summaries: Vec<CallgrindRunSummary>,
     pub total: CallgrindTotal,
 }
@@ -170,23 +171,33 @@ pub struct CallgrindSummary {
     pub summaries: CallgrindRunSummaries,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct Diffs {
+    pub diff_pct: f64,
+    pub factor: f64,
+}
+
+impl Diffs {
+    pub fn new(new: u64, old: u64) -> Self {
+        Self {
+            diff_pct: percentage_diff(new, old),
+            factor: factor_diff(new, old),
+        }
+    }
+}
+
 /// TODO: USE `EitherOrBoth`
 /// The `CostsDiff` describes the difference between an single optional `new` and `old` cost as
 /// percentage and factor.
 ///
 /// There is either a `new` or an `old` value present. Never can both be absent. If both values are
 /// present, then there is also a `diff_pct` and `factor` present.
-#[derive(Debug, Default, PartialEq, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CostsDiff {
-    /// The value of the new cost
-    pub new: Option<u64>,
-    /// The value of the old cost
-    pub old: Option<u64>,
-    /// The difference between new and old in percent
-    pub diff_pct: Option<f64>,
-    /// The difference between new and old expressed as a factor
-    pub factor: Option<f64>,
+    pub costs: EitherOrBoth<u64>,
+    pub diffs: Option<Diffs>,
 }
 
 /// The `CostsSummary` contains all differences for affected [`EventKind`]s
@@ -450,23 +461,22 @@ impl BenchmarkSummary {
         if let (Some(callgrind_summary), Some(other_callgrind_summary)) =
             (&self.callgrind_summary, &other.callgrind_summary)
         {
-            // TODO: what about the total? Only compare the total?
-            for (summary, other_summary) in callgrind_summary
-                .summaries
-                .summaries
-                .iter()
-                .zip(&other_callgrind_summary.summaries.summaries)
-            {
-                if let ((Some(new_costs), _), (Some(other_costs), _)) = (
-                    summary.events.extract_costs(),
-                    other_summary.events.extract_costs(),
-                ) {
-                    let costs_summary = CostsSummary::new(&new_costs, Some(&other_costs));
-
-                    ComparisonHeader::new(self.function_name.clone(), id, self.details.clone())
-                        .print();
-                    VerticalFormat::default().print(meta, (None, None), &costs_summary)?;
-                }
+            // TODO: Compare not only the total
+            if let (
+                EitherOrBoth::Left(mut new) | EitherOrBoth::Both((mut new, _)),
+                EitherOrBoth::Left(other_new) | EitherOrBoth::Both((other_new, _)),
+            ) = (
+                callgrind_summary.summaries.total.total.extract_costs(),
+                other_callgrind_summary
+                    .summaries
+                    .total
+                    .total
+                    .extract_costs(),
+            ) {
+                new.add(&other_new);
+                let new_summary = CostsSummary::new(EitherOrBoth::Left(new));
+                ComparisonHeader::new(self.function_name.clone(), id, self.details.clone()).print();
+                VerticalFormat::default().print(meta, (None, None), &new_summary)?;
             }
         }
 
@@ -574,29 +584,44 @@ impl CallgrindSummary {
     }
 }
 
-// TODO: `EitherOrBoth`
 impl CostsDiff {
-    pub fn new(new: Option<u64>, old: Option<u64>) -> Self {
-        match (new, old) {
-            (None, Some(cost)) => Self {
-                new: None,
-                old: Some(cost),
-                diff_pct: None,
-                factor: None,
-            },
-            (Some(cost), None) => Self {
-                new: Some(cost),
-                old: None,
-                diff_pct: None,
-                factor: None,
-            },
-            (Some(new), Some(old)) => Self {
-                new: Some(new),
-                old: Some(old),
-                diff_pct: Some(percentage_diff(new, old)),
-                factor: Some(factor_diff(new, old)),
-            },
-            (None, None) => unreachable!(),
+    pub fn new(costs: EitherOrBoth<u64>) -> Self {
+        if let EitherOrBoth::Both((new, old)) = costs {
+            Self {
+                costs,
+                diffs: Some(Diffs::new(new, old)),
+            }
+        } else {
+            Self { costs, diffs: None }
+        }
+    }
+
+    pub fn add(&self, other: &Self) -> Self {
+        match (&self.costs, &other.costs) {
+            (EitherOrBoth::Left(new), EitherOrBoth::Left(other_new)) => {
+                Self::new(EitherOrBoth::Left(new.saturating_add(*other_new)))
+            }
+            (EitherOrBoth::Right(old), EitherOrBoth::Left(new))
+            | (EitherOrBoth::Left(new), EitherOrBoth::Right(old)) => {
+                Self::new(EitherOrBoth::Both((*new, *old)))
+            }
+            (EitherOrBoth::Right(old), EitherOrBoth::Right(other_old)) => {
+                Self::new(EitherOrBoth::Right(old.saturating_add(*other_old)))
+            }
+            (EitherOrBoth::Both((new, old)), EitherOrBoth::Left(other_new))
+            | (EitherOrBoth::Left(new), EitherOrBoth::Both((other_new, old))) => {
+                Self::new(EitherOrBoth::Both((new.saturating_add(*other_new), *old)))
+            }
+            (EitherOrBoth::Both((new, old)), EitherOrBoth::Right(other_old))
+            | (EitherOrBoth::Right(old), EitherOrBoth::Both((new, other_old))) => {
+                Self::new(EitherOrBoth::Both((*new, old.saturating_add(*other_old))))
+            }
+            (EitherOrBoth::Both((new, old)), EitherOrBoth::Both((other_new, other_old))) => {
+                Self::new(EitherOrBoth::Both((
+                    new.saturating_add(*other_new),
+                    old.saturating_add(*other_old),
+                )))
+            }
         }
     }
 }
@@ -605,62 +630,65 @@ impl<K> CostsSummary<K>
 where
     K: Hash + Eq + Summarize + Display + Clone,
 {
+    /// TODO: TEST
     /// Create a new `CostsSummary` calculating the differences between new and old (if any)
     /// [`Costs`]
-    pub fn new(new_costs: &Costs<K>, old_costs: Option<&Costs<K>>) -> Self {
-        let mut new_costs = Cow::Borrowed(new_costs);
-        K::summarize(&mut new_costs);
+    pub fn new(costs: EitherOrBoth<Costs<K>>) -> Self {
+        match costs {
+            EitherOrBoth::Left(new) => {
+                let mut new = Cow::Owned(new);
+                K::summarize(&mut new);
 
-        if let Some(old_costs) = old_costs {
-            let mut old_costs = Cow::Borrowed(old_costs);
-            K::summarize(&mut old_costs);
-            let mut map = indexmap! {};
-            for event_kind in new_costs.event_kinds_union(old_costs.as_ref()) {
-                let diff = match (
-                    new_costs.cost_by_kind(&event_kind),
-                    old_costs.cost_by_kind(&event_kind),
-                ) {
-                    // TODO: USE CostsDiff::new()
-                    (None, Some(cost)) => CostsDiff {
-                        new: None,
-                        old: Some(cost),
-                        diff_pct: None,
-                        factor: None,
-                    },
-                    (Some(cost), None) => CostsDiff {
-                        new: Some(cost),
-                        old: None,
-                        diff_pct: None,
-                        factor: None,
-                    },
-                    (Some(new), Some(old)) => CostsDiff {
-                        new: Some(new),
-                        old: Some(old),
-                        diff_pct: Some(percentage_diff(new, old)),
-                        factor: Some(factor_diff(new, old)),
-                    },
-                    (None, None) => unreachable!(),
-                };
-                map.insert(event_kind, diff);
+                Self(
+                    new.iter()
+                        .map(|(event_kind, cost)| {
+                            (
+                                event_kind.clone(),
+                                CostsDiff::new(EitherOrBoth::Left(*cost)),
+                            )
+                        })
+                        .collect::<IndexMap<_, _>>(),
+                )
             }
-            Self(map)
-        } else {
-            CostsSummary(
-                new_costs
-                    .iter()
-                    .map(|(event_kind, cost)| {
-                        (
-                            event_kind.clone(),
-                            CostsDiff {
-                                new: Some(*cost),
-                                old: None,
-                                diff_pct: None,
-                                factor: None,
-                            },
-                        )
-                    })
-                    .collect::<IndexMap<_, _>>(),
-            )
+            EitherOrBoth::Right(old) => {
+                let mut old = Cow::Owned(old);
+                K::summarize(&mut old);
+
+                Self(
+                    old.iter()
+                        .map(|(event_kind, cost)| {
+                            (
+                                event_kind.clone(),
+                                CostsDiff::new(EitherOrBoth::Right(*cost)),
+                            )
+                        })
+                        .collect::<IndexMap<_, _>>(),
+                )
+            }
+            EitherOrBoth::Both((new, old)) => {
+                let mut new = Cow::Owned(new);
+                K::summarize(&mut new);
+                let mut old = Cow::Owned(old);
+                K::summarize(&mut old);
+
+                let mut map = indexmap! {};
+                for event_kind in new.event_kinds_union(&old) {
+                    let diff = match (new.cost_by_kind(&event_kind), old.cost_by_kind(&event_kind))
+                    {
+                        (Some(cost), None) => CostsDiff::new(EitherOrBoth::Left(cost)),
+                        (None, Some(cost)) => CostsDiff::new(EitherOrBoth::Right(cost)),
+                        (Some(new), Some(old)) => CostsDiff::new(EitherOrBoth::Both((new, old))),
+                        (None, None) => {
+                            unreachable!(
+                                "The union contains the event kinds either from new or old or \
+                                 from both"
+                            )
+                        }
+                    };
+                    map.insert(event_kind, diff);
+                }
+                Self(map)
+            }
         }
     }
 
@@ -673,36 +701,43 @@ where
         self.0.iter()
     }
 
-    // TODO: RETURN `EitherOrBoth`
-    pub fn extract_costs(&self) -> (Option<Costs<K>>, Option<Costs<K>>) {
+    pub fn extract_costs(&self) -> EitherOrBoth<Costs<K>> {
         let mut new_costs: Costs<K> = Costs::empty();
         let mut old_costs: Costs<K> = Costs::empty();
+        // The diffs should not be empty
+        // TODO: USE something like IndexMap1
         for (event_kind, diff) in self.all_diffs() {
-            if let Some(new) = diff.new {
-                new_costs.0.insert(event_kind.clone(), new);
-            }
-            if let Some(old) = diff.old {
-                old_costs.0.insert(event_kind.clone(), old);
+            match diff.costs {
+                EitherOrBoth::Left(new) => {
+                    new_costs.0.insert(event_kind.clone(), new);
+                }
+                EitherOrBoth::Right(old) => {
+                    old_costs.0.insert(event_kind.clone(), old);
+                }
+                EitherOrBoth::Both((new, old)) => {
+                    new_costs.0.insert(event_kind.clone(), new);
+                    old_costs.0.insert(event_kind.clone(), old);
+                }
             }
         }
 
         match (new_costs.is_empty(), old_costs.is_empty()) {
-            (false, false) => (Some(new_costs), Some(old_costs)),
-            (false, true) => (Some(new_costs), None),
-            (true, false) => (None, Some(old_costs)),
-            (true, true) => unreachable!("A costs diff must contain new or old values"),
+            (false, false) => EitherOrBoth::Both((new_costs, old_costs)),
+            (false, true) => EitherOrBoth::Left(new_costs),
+            (true, false) => EitherOrBoth::Right(old_costs),
+            (true, true) => unreachable!("A costs diffs contain new or old values or both."),
         }
     }
 
     // TODO: TEST
     pub fn add(&mut self, other: &Self) {
         let other_keys = other.0.keys().cloned().collect::<IndexSet<_>>();
-        let keys = &self.0.keys().cloned().collect::<IndexSet<_>>();
+        let keys = self.0.keys().cloned().collect::<IndexSet<_>>();
         let union = keys.union(&other_keys);
 
         for key in union {
             match (self.diff_by_kind(key), other.diff_by_kind(key)) {
-                (None, None) => unreachable!("The key of the union set must be present"),
+                (None, None) => unreachable!("One key of the union set must be present"),
                 (None, Some(other_diff)) => {
                     self.0.insert(key.clone(), other_diff.clone());
                 }
@@ -710,24 +745,7 @@ where
                     // Nothing to be done
                 }
                 (Some(this_diff), Some(other_diff)) => {
-                    // TODO: MOVE THIS INTO CostsDiff::add
-                    let new_cost = match (this_diff.new.as_ref(), other_diff.new.as_ref()) {
-                        (None, None) => None,
-                        (None, Some(cost)) | (Some(cost), None) => Some(*cost),
-                        (Some(this_cost), Some(other_cost)) => {
-                            Some(this_cost.saturating_add(*other_cost))
-                        }
-                    };
-                    let old_cost = match (this_diff.old.as_ref(), other_diff.old.as_ref()) {
-                        (None, None) => None,
-                        (None, Some(cost)) | (Some(cost), None) => Some(*cost),
-                        (Some(this_cost), Some(other_cost)) => {
-                            Some(this_cost.saturating_add(*other_cost))
-                        }
-                    };
-
-                    assert!(new_cost.is_some() || old_cost.is_some());
-                    let new_diff = CostsDiff::new(new_cost, old_cost);
+                    let new_diff = this_diff.add(other_diff);
                     self.0.insert(key.clone(), new_diff);
                 }
             }
@@ -825,17 +843,38 @@ impl SummaryOutput {
 
 #[cfg(test)]
 mod tests {
-    use indexmap::indexmap;
     use rstest::rstest;
-    use EventKind::*;
 
     use super::*;
 
-    /// TODO: ADD TESTS
     #[rstest]
-    #[case::simple(indexmap!(Ir => CostsDiff::default()))]
-    fn test_costs_summary_zero(#[case] map: IndexMap<EventKind, CostsDiff>) {
-        // TODO: REMOVE STUB AND CONTINUE TESTING
-        assert!(!map.is_empty());
+    #[case::new_new(EitherOrBoth::Left(1), EitherOrBoth::Left(2), EitherOrBoth::Left(3))]
+    #[case::new_old(EitherOrBoth::Left(1), EitherOrBoth::Right(2), EitherOrBoth::Both((1, 2)))]
+    #[case::new_both(EitherOrBoth::Left(1), EitherOrBoth::Both((2, 5)), EitherOrBoth::Both((3, 5)))]
+    #[case::old_old(EitherOrBoth::Right(1), EitherOrBoth::Right(2), EitherOrBoth::Right(3))]
+    #[case::old_new(EitherOrBoth::Right(1), EitherOrBoth::Left(2), EitherOrBoth::Both((2, 1)))]
+    #[case::old_both(
+        EitherOrBoth::Right(1),
+        EitherOrBoth::Both((2, 5)),
+        EitherOrBoth::Both((2, 6))
+    )]
+    #[case::both_new(EitherOrBoth::Both((2,5)), EitherOrBoth::Left(1), EitherOrBoth::Both((3, 5)))]
+    #[case::both_old(EitherOrBoth::Both((2,5)), EitherOrBoth::Right(1), EitherOrBoth::Both((2, 6)))]
+    #[case::both_both(
+        EitherOrBoth::Both((2, 5)),
+        EitherOrBoth::Both((1, 3)),
+        EitherOrBoth::Both((3, 8))
+    )]
+    fn test_costs_diff_add(
+        #[case] cost: EitherOrBoth<u64>,
+        #[case] other_cost: EitherOrBoth<u64>,
+        #[case] expected: EitherOrBoth<u64>,
+    ) {
+        let new_diff = CostsDiff::new(cost);
+        let old_diff = CostsDiff::new(other_cost);
+        let expected = CostsDiff::new(expected);
+
+        assert_eq!(new_diff.add(&old_diff), expected);
+        assert_eq!(old_diff.add(&new_diff), expected);
     }
 }

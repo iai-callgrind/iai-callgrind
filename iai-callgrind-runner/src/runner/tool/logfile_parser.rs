@@ -13,7 +13,7 @@ use crate::error::Error;
 use crate::runner::costs::Costs;
 use crate::runner::dhat::logfile_parser::DhatLogfileParser;
 use crate::runner::summary::{CostsSummary, ErrorSummary, ToolRunSummary};
-use crate::util::make_relative;
+use crate::util::{make_relative, EitherOrBoth};
 
 // The different regex have to consider --time-stamp=yes
 lazy_static! {
@@ -53,6 +53,7 @@ pub struct LogfileSummary {
     pub costs: Option<Costs<String>>,
     pub log_path: PathBuf,
 }
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum State {
     Header,
@@ -116,7 +117,7 @@ impl LogfileSummary {
         let costs_summary = self
             .costs
             .as_ref()
-            .map(|x| CostsSummary::new(&Costs::empty(), Some(x)));
+            .map(|x| CostsSummary::new(EitherOrBoth::Right(x.clone())));
         let old_pid = Some(self.pid);
         let old_parent_pid = self.parent_pid;
         ToolRunSummary {
@@ -128,7 +129,10 @@ impl LogfileSummary {
     }
 
     pub fn new_into_tool_run(self) -> ToolRunSummary {
-        let costs_summary = self.costs.as_ref().map(|x| CostsSummary::new(x, None));
+        let costs_summary = self
+            .costs
+            .as_ref()
+            .map(|x| CostsSummary::new(EitherOrBoth::Left(x.clone())));
         let pid = Some(self.pid);
         let parent_pid = self.parent_pid;
         ToolRunSummary {
@@ -141,10 +145,19 @@ impl LogfileSummary {
 
     pub fn merge(self, old: &LogfileSummary) -> ToolRunSummary {
         assert_eq!(self.command, old.command);
-        let costs_summary = (self.costs.is_some() || old.costs.is_some()).then(|| {
-            let emp = Costs::empty();
-            CostsSummary::new(self.costs.as_ref().unwrap_or(&emp), old.costs.as_ref())
-        });
+        let costs_summary = match (&self.costs, &old.costs) {
+            (None, None) => None,
+            (None, Some(old_costs)) => {
+                Some(CostsSummary::new(EitherOrBoth::Right(old_costs.clone())))
+            }
+            (Some(new_costs), None) => {
+                Some(CostsSummary::new(EitherOrBoth::Left(new_costs.clone())))
+            }
+            (Some(new_costs), Some(old_costs)) => Some(CostsSummary::new(EitherOrBoth::Both((
+                new_costs.clone(),
+                old_costs.clone(),
+            )))),
+        };
         let old_pid = Some(old.pid);
         let old_parent_pid = old.parent_pid;
         let pid = Some(self.pid);

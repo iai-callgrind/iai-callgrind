@@ -3,6 +3,7 @@ use std::path::Path;
 
 use anyhow::{anyhow, Result};
 use iai_callgrind_runner::runner::summary::BenchmarkSummary;
+use iai_callgrind_runner::util::EitherOrBoth;
 
 #[derive(Debug)]
 pub struct Summary(pub BenchmarkSummary);
@@ -26,22 +27,40 @@ impl Summary {
     #[track_caller]
     pub fn assert_costs_not_all_zero(&self) {
         if let Some(callgrind_summary) = &self.0.callgrind_summary {
-            // TODO: Also check the total
-            for summary in &callgrind_summary.summaries.summaries {
-                let (new_costs, old_costs) = summary.events.extract_costs();
-                if let Some(new_costs) = new_costs {
-                    assert!(
-                        !new_costs.0.iter().all(|(_, c)| *c == 0),
-                        "All *new* costs were zero for '{}'",
-                        self.get_name()
-                    );
-                }
-                if let Some(old_costs) = old_costs {
-                    assert!(
-                        !old_costs.0.iter().all(|(_, c)| *c == 0),
-                        "All *old* costs were zero for '{}'",
-                        self.get_name()
-                    );
+            for summary in callgrind_summary
+                .summaries
+                .summaries
+                .iter()
+                .map(|s| &s.events)
+                .chain(std::iter::once(&callgrind_summary.summaries.total.total))
+            {
+                match summary.extract_costs() {
+                    EitherOrBoth::Left(new_costs) => {
+                        assert!(
+                            !new_costs.0.iter().all(|(_, c)| *c == 0),
+                            "All *new* costs were zero for '{}'",
+                            self.get_name()
+                        );
+                    }
+                    EitherOrBoth::Right(old_costs) => {
+                        assert!(
+                            !old_costs.0.iter().all(|(_, c)| *c == 0),
+                            "All *old* costs were zero for '{}'",
+                            self.get_name()
+                        );
+                    }
+                    EitherOrBoth::Both((new_costs, old_costs)) => {
+                        assert!(
+                            !new_costs.0.iter().all(|(_, c)| *c == 0),
+                            "All *new* costs were zero for '{}'",
+                            self.get_name()
+                        );
+                        assert!(
+                            !old_costs.0.iter().all(|(_, c)| *c == 0),
+                            "All *old* costs were zero for '{}'",
+                            self.get_name()
+                        );
+                    }
                 }
             }
         }

@@ -4,6 +4,7 @@ use iai_callgrind_runner::runner::costs::Costs;
 use iai_callgrind_runner::runner::dhat::logfile_parser::DhatLogfileParser;
 use iai_callgrind_runner::runner::summary::{CostsSummary, ToolRunSummary};
 use iai_callgrind_runner::runner::tool::logfile_parser::{LogfileParser, LogfileSummary};
+use iai_callgrind_runner::util::EitherOrBoth;
 
 fn dummy_cost(cost: u64) -> Costs<String> {
     Costs::with_event_kinds([("cost".to_string(), cost)])
@@ -28,9 +29,15 @@ fn dummy_tool_run_summary(
     cost: Option<u64>,
     old_cost: Option<u64>,
 ) -> ToolRunSummary {
-    let old_cost = old_cost.map(dummy_cost);
-    let cost = cost.map(dummy_cost).unwrap_or(Costs::empty());
-    let costs_summary = Some(CostsSummary::new(&cost, old_cost.as_ref()));
+    let costs_summary = match (cost, old_cost) {
+        (None, None) => panic!("new or old cost must be present"),
+        (Some(new_cost), None) => CostsSummary::new(EitherOrBoth::Left(dummy_cost(new_cost))),
+        (None, Some(old_cost)) => CostsSummary::new(EitherOrBoth::Right(dummy_cost(old_cost))),
+        (Some(new_cost), Some(old_cost)) => CostsSummary::new(EitherOrBoth::Both((
+            dummy_cost(new_cost),
+            dummy_cost(old_cost),
+        ))),
+    };
     ToolRunSummary {
         command: cmd.to_string(),
         old_pid,
@@ -40,7 +47,7 @@ fn dummy_tool_run_summary(
         summary: Default::default(),
         details: None,
         error_summary: None,
-        costs_summary,
+        costs_summary: Some(costs_summary),
         log_path: Default::default(),
     }
 }

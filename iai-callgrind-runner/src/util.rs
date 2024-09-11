@@ -8,15 +8,35 @@ use std::process::Command;
 use anyhow::{anyhow, Result};
 use derive_more::AsRef;
 use log::{debug, log_enabled, trace, Level};
+#[cfg(feature = "schema")]
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use which::which;
 
 use crate::error::Error;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum EitherOrBoth<T> {
     Left(T),
     Right(T),
     Both((T, T)),
+}
+
+impl<T> EitherOrBoth<T> {
+    pub fn left(&self) -> Option<&T> {
+        match self {
+            EitherOrBoth::Right(_) => None,
+            EitherOrBoth::Both((left, _)) | EitherOrBoth::Left(left) => Some(left),
+        }
+    }
+
+    pub fn right(&self) -> Option<&T> {
+        match self {
+            EitherOrBoth::Left(_) => None,
+            EitherOrBoth::Right(right) | EitherOrBoth::Both((_, right)) => Some(right),
+        }
+    }
 }
 
 /// A vector with at least one element

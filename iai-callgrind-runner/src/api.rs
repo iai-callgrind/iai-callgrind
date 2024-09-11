@@ -13,7 +13,7 @@ use std::time::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::api::DelayKind::DurationElapse;
+// TODO: Move all defaults here into a mod so they are available in iai-callgrind, too
 
 /// The model for the `#[binary_benchmark]` attribute or the equivalent from the low level api
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -96,7 +96,7 @@ pub enum DelayKind {
 
 impl Default for DelayKind {
     fn default() -> Self {
-        DurationElapse(Duration::from_secs(60))
+        Self::DurationElapse(Duration::from_secs(60))
     }
 }
 

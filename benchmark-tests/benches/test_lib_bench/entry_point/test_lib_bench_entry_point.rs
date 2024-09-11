@@ -41,26 +41,30 @@ fn assert_none() {
     let assert = Assert::new(module_path!(), "my_group", "bench_lib", "none").unwrap();
     assert
         .summary(|b| {
-            let new_ir = b.callgrind_summary.unwrap().summaries.summaries[0]
+            let callgrind_summary = b.callgrind_summary.unwrap();
+            let new_ir = callgrind_summary.summaries.summaries[0]
                 .events
                 .diff_by_kind(&EventKind::Ir)
                 .unwrap()
-                .new
+                .costs
+                .left()
                 .unwrap();
-            new_ir > 400000
+            *new_ir > 400000
         })
         .unwrap();
 }
 
 fn assert_default() {
     let check_summary = |b: BenchmarkSummary| {
-        let new_ir = b.callgrind_summary.unwrap().summaries.summaries[0]
+        let callgrind_summary = b.callgrind_summary.unwrap();
+        let new_ir = callgrind_summary.summaries.summaries[0]
             .events
             .diff_by_kind(&EventKind::Ir)
             .unwrap()
-            .new
+            .costs
+            .left()
             .unwrap();
-        new_ir < 3000
+        *new_ir < 3000
     };
 
     let assert = Assert::new(module_path!(), "my_group", "bench_lib", "default").unwrap();
@@ -89,13 +93,15 @@ fn assert_default() {
 
 fn assert_nested() {
     let check_summary = |b: BenchmarkSummary| {
-        let new_ir = b.callgrind_summary.unwrap().summaries.summaries[0]
+        let callgrind_summary = b.callgrind_summary.unwrap();
+        let new_ir = callgrind_summary.summaries.summaries[0]
             .events
             .diff_by_kind(&EventKind::Ir)
             .unwrap()
-            .new
+            .costs
+            .left()
             .unwrap();
-        new_ir < 3000
+        *new_ir < 3000
     };
 
     let assert = Assert::new(module_path!(), "my_group", "bench_lib", "nested").unwrap();

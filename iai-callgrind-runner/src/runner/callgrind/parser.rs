@@ -56,7 +56,10 @@ pub struct CallgrindProperties {
     pub creator: Option<String>,
 }
 
-/// TODO: MOVE INTO impl Section and sort also the others below
+#[allow(clippy::unsafe_derive_deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Sentinel(#[serde(with = "serde_regex")] Regex);
+
 impl CallgrindProperties {
     /// Compare by target ids `pid`, `part` and `thread`
     ///
@@ -70,10 +73,6 @@ impl CallgrindProperties {
         })
     }
 }
-
-#[allow(clippy::unsafe_derive_deserialize)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Sentinel(#[serde(with = "serde_regex")] Regex);
 
 impl Sentinel {
     /// Create a new Sentinel

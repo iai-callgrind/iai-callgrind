@@ -161,7 +161,6 @@ impl Benchmark for BaselineBenchmark {
             }
         };
 
-        // TODO: ADD TO OTHERS SaveBaselineBenchmark, LoadBaselineBenchmark outfile modifier
         let modifier = callgrind_args.get_outfile_modifier();
         let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, modifier);
 
@@ -179,6 +178,8 @@ impl Benchmark for BaselineBenchmark {
             path.shift()?;
             path.to_log_output().shift()?;
         }
+
+        // TODO: SHIFT flamegraph files, too. Also in SaveBaselineBenchmark, ...
 
         let mut benchmark_summary = lib_bench.create_benchmark_summary(
             config,

@@ -385,39 +385,31 @@ pub fn format_vertical<'a, K: Display + 'a>(
 
     for (event_kind, diff) in costs_summary {
         let description = format!("{event_kind}:");
-        match (diff.new, diff.old) {
-            (None, Some(old_cost)) => writeln!(
-                result,
-                "  {description:<18}{:>15}|{old_cost:<15} ({:^9})",
-                NOT_AVAILABLE.bold(),
-                unknown.bright_black()
-            )?,
-            (Some(new_cost), None) => writeln!(
+        match diff.costs {
+            EitherOrBoth::Left(new_cost) => writeln!(
                 result,
                 "  {description:<18}{:>15}|{NOT_AVAILABLE:<15} ({:^9})",
                 new_cost.to_string().bold(),
                 unknown.bright_black()
             )?,
-            (Some(new_cost), Some(old_cost)) if new_cost == old_cost => writeln!(
+            EitherOrBoth::Right(old_cost) => writeln!(
+                result,
+                "  {description:<18}{:>15}|{old_cost:<15} ({:^9})",
+                NOT_AVAILABLE.bold(),
+                unknown.bright_black()
+            )?,
+            EitherOrBoth::Both((new_cost, old_cost)) if new_cost == old_cost => writeln!(
                 result,
                 "  {description:<18}{:>15}|{old_cost:<15} ({:^9})",
                 new_cost.to_string().bold(),
                 no_change.bright_black()
             )?,
-            (Some(new_cost), Some(old_cost)) => {
-                let pct_string = {
-                    let pct = diff.diff_pct.expect(
-                        "If there are new costs and old costs there should be a difference in \
-                         percent",
-                    );
-                    VerticalFormat::format_float(pct, "%")
-                };
-                let factor_string = {
-                    let factor = diff.factor.expect(
-                        "If there are new costs and old costs there should be a difference factor",
-                    );
-                    VerticalFormat::format_float(factor, "x")
-                };
+            EitherOrBoth::Both((new_cost, old_cost)) => {
+                let diffs = diff.diffs.expect(
+                    "If there are new costs and old costs there should be a difference present",
+                );
+                let pct_string = VerticalFormat::format_float(diffs.diff_pct, "%");
+                let factor_string = VerticalFormat::format_float(diffs.factor, "x");
                 writeln!(
                     result,
                     "  {description:<18}{:>15}|{old_cost:<15} ({pct_string:^9}) \
@@ -425,7 +417,6 @@ pub fn format_vertical<'a, K: Display + 'a>(
                     new_cost.to_string().bold(),
                 )?;
             }
-            _ => {}
         }
     }
     Ok(result)
@@ -768,9 +759,14 @@ mod tests {
     ) {
         colored::control::set_override(false);
 
-        let new_costs = Costs(indexmap! {event_kind => new});
-        let old_costs = old.map(|old| Costs(indexmap! {event_kind => old}));
-        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
+        let costs = match old {
+            Some(old) => EitherOrBoth::Both((
+                Costs(indexmap! {event_kind => new}),
+                Costs(indexmap! {event_kind => old}),
+            )),
+            None => EitherOrBoth::Left(Costs(indexmap! {event_kind => new})),
+        };
+        let costs_summary = CostsSummary::new(costs);
         let formatted = format_vertical((None, None), costs_summary.all_diffs()).unwrap();
 
         let expected = format!(
