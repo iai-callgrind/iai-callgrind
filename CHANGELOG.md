@@ -22,6 +22,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.13.4] - 2024-09-12
+
+### Changed
+
+* ([#264](https://github.com/iai-callgrind/iai-callgrind/pull/264)): Migrate
+  from unmaintained proc-macro-error to proc-macro-error2 due to
+  <https://rustsec.org/advisories/RUSTSEC-2024-0370>. This also removes the
+  duplicate dependency on `syn v2` and `syn v1`.
+
 ## [0.13.3] - 2024-09-05
 
 The installation of `iai-callgrind-runner` with `cargo install` did not use the
