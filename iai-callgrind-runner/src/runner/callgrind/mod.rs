@@ -209,6 +209,7 @@ impl Summaries {
     pub fn new(parsed_new: ParserOutput, parsed_old: Option<ParserOutput>) -> Self {
         let mut total = CostsSummary::default();
 
+        // TODO: What if one process has more threads than the other?
         let summaries: Vec<Summary> = parsed_new
             .into_iter()
             .zip_longest(parsed_old.into_iter().flatten())

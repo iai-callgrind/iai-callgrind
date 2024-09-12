@@ -189,6 +189,7 @@ pub enum CostsKind {
 pub struct CostsSummary<K: Hash + Eq = EventKind>(IndexMap<K, CostsDiff>);
 
 /// TODO: DOCS
+/// TODO: RENAME
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum CostsSummaryType {

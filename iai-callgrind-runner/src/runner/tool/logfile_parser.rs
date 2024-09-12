@@ -184,6 +184,7 @@ impl LogfileSummary {
 }
 
 pub fn extract_pid(line: &str) -> i32 {
+    // TODO: Return error instead of unwraps
     EXTRACT_PID_RE
         .captures(line.trim())
         .expect("Log output should not be malformed")
@@ -195,8 +196,10 @@ pub fn extract_pid(line: &str) -> i32 {
 }
 
 impl ValgrindTool {
+    // TODO: RENAME TO PARSER FACTORY and don't put this into ValgrindTool
     pub fn to_parser(self, root_dir: PathBuf) -> Box<dyn LogfileParser> {
         match self {
+            // TODO: USE different more generic parser for bbv
             ValgrindTool::DHAT => Box::new(DhatLogfileParser { root_dir }),
             _ => Box::new(ErrorMetricLogfileParser { root_dir }),
         }

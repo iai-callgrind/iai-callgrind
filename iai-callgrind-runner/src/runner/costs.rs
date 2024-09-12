@@ -94,6 +94,12 @@ impl<K: Hash + Eq + Display + Clone> Costs<K> {
     pub fn insert(&mut self, key: K, value: u64) -> Option<u64> {
         self.0.insert(key, value)
     }
+
+    pub fn insert_all(&mut self, entries: &[(K, u64)]) {
+        for (key, value) in entries {
+            self.insert(key.clone(), *value);
+        }
+    }
 }
 
 impl Summarize for String {}

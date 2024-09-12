@@ -46,6 +46,9 @@ fn bench_library(num: u64) {
             .args(["--trace-children=yes"])
             .outfile_modifier("%p"))
         .tool(Tool::new(ValgrindTool::Memcheck))
+        // .tool(Tool::new(ValgrindTool::Helgrind))
+        .tool(Tool::new(ValgrindTool::DRD).args(["-s"]))
+        .tool(Tool::new(ValgrindTool::Massif))
 )]
 #[bench::two(3)]
 #[bench::three(3)]

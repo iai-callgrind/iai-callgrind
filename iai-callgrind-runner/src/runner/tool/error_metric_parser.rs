@@ -49,15 +49,17 @@ impl LogfileParser for ErrorMetricLogfileParser {
 
         let pid = extract_pid(&line);
 
-        let mut parent_pid = None;
-        let mut command = None;
-        let mut details = vec![];
-        let mut costs = Costs::from_iter([
+        let costs_prototype = Costs::from_iter([
             ErrorMetricKind::Errors,
             ErrorMetricKind::Contexts,
             ErrorMetricKind::SuppressedErrors,
             ErrorMetricKind::SuppressedContexts,
         ]);
+
+        let mut parent_pid = None;
+        let mut command = None;
+        let mut details = vec![];
+        let mut costs = None;
 
         let mut state = State::Header;
         for line in iter {
@@ -66,6 +68,7 @@ impl LogfileParser for ErrorMetricLogfileParser {
                     if let Some(caps) = EXTRACT_FIELDS_RE.captures(&line) {
                         let key = caps.name("key").unwrap().as_str();
 
+                        // These unwraps are safe. If there is a key, there is also a value present
                         match key.to_ascii_lowercase().as_str() {
                             "command" => {
                                 let value = caps.name("value").unwrap().as_str();
@@ -73,14 +76,13 @@ impl LogfileParser for ErrorMetricLogfileParser {
                             }
                             "parent pid" => {
                                 let value = caps.name("value").unwrap().as_str().to_owned();
-                                parent_pid = Some(
-                                    value
-                                        .as_str()
-                                        .parse::<i32>()
-                                        .expect("Parent PID should be valid"),
-                                );
+                                parent_pid = Some(value.as_str().parse::<i32>().context(
+                                    "Failed parsing log file: Parent pid should be valid",
+                                )?);
                             }
-                            _ => {}
+                            _ => {
+                                // Ignore other header lines
+                            }
                         }
                     }
                 }
@@ -91,6 +93,8 @@ impl LogfileParser for ErrorMetricLogfileParser {
                         state = State::Body;
                     }
 
+                    // TODO: THIS could be improved and match the EXTRACT_ERROR_SUMMARY_RE directly
+                    // stripping the prefix first if possible
                     if let Some(caps) = EXTRACT_FIELDS_RE.captures(&line) {
                         let key = caps.name("key").unwrap().as_str();
 
@@ -103,12 +107,16 @@ impl LogfileParser for ErrorMetricLogfileParser {
                                     "Failed to extract error summary from string".to_owned()
                                 ))?;
 
-                            costs.add_iter_str([
+                            // There might be multiple `ERROR SUMMARY` lines. We only use the last
+                            let mut new_costs: Costs<ErrorMetricKind> = costs_prototype.clone();
+                            new_costs.add_iter_str([
                                 caps.name("errs").unwrap().as_str(),
                                 caps.name("ctxs").unwrap().as_str(),
                                 caps.name("s_errs").unwrap().as_str(),
                                 caps.name("s_ctxs").unwrap().as_str(),
                             ]);
+
+                            costs = Some(new_costs);
                             continue;
                         }
                     }
@@ -134,12 +142,15 @@ impl LogfileParser for ErrorMetricLogfileParser {
         }
 
         Ok(LogfileSummary {
-            command: command.expect("A command should be present"),
+            command: command
+                .context("Failed parsing error metrics: A command should be present")?,
             pid,
             parent_pid,
             details,
             log_path: make_relative(&self.root_dir, path),
-            costs: CostsKind::ErrorCosts(costs),
+            costs: CostsKind::ErrorCosts(costs.context(
+                "Failed collecting error metrics: An error summary line should be present",
+            )?),
         })
     }
 
