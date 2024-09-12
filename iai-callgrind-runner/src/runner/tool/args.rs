@@ -4,8 +4,8 @@ use log::warn;
 
 use super::{ToolOutputPath, ValgrindTool};
 use crate::api::{self};
+use crate::util::{bool_to_yesno, yesno_to_bool};
 
-/// TODO: Add `trace_children` and set outfile modifier automatically if true
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolArgs {
     pub tool: ValgrindTool,
@@ -13,6 +13,7 @@ pub struct ToolArgs {
     pub log_path: Option<OsString>,
     pub error_exitcode: String,
     pub verbose: bool,
+    pub trace_children: bool,
     pub other: Vec<String>,
 }
 
@@ -33,6 +34,7 @@ impl ToolArgs {
             },
             verbose: false,
             other: Vec::default(),
+            trace_children: false,
         };
 
         for arg in raw_args.0 {
@@ -54,6 +56,16 @@ impl ToolArgs {
                 ),
                 Some(("--error-exitcode", value)) => {
                     value.clone_into(&mut tool_args.error_exitcode);
+                }
+                Some(("--trace-children", value)) => {
+                    if let Some(arg) = yesno_to_bool(value) {
+                        tool_args.trace_children = arg;
+                    } else {
+                        warn!(
+                            "Ignoring malformed value '{value}' for --trace-children. Expecting \
+                             'yes' or 'no'"
+                        );
+                    }
                 }
                 None if matches!(
                     arg.as_str(),
@@ -89,6 +101,8 @@ impl ToolArgs {
                 let mut arg = OsString::from("--callgrind-out-file=");
                 let callgrind_out_path = if let Some(modifier) = modifier {
                     output_path.with_modifiers([modifier.as_ref()])
+                } else if self.trace_children {
+                    output_path.with_modifiers(["%p"])
                 } else {
                     output_path.clone()
                 };
@@ -99,6 +113,8 @@ impl ToolArgs {
                 let mut arg = OsString::from("--massif-out-file=");
                 let massif_out_path = if let Some(modifier) = modifier {
                     output_path.with_modifiers([modifier.as_ref()])
+                } else if self.trace_children {
+                    output_path.with_modifiers(["%p"])
                 } else {
                     output_path.clone()
                 };
@@ -109,6 +125,8 @@ impl ToolArgs {
                 let mut arg = OsString::from("--dhat-out-file=");
                 let dhat_out_path = if let Some(modifier) = modifier {
                     output_path.with_modifiers([modifier.as_ref()])
+                } else if self.trace_children {
+                    output_path.with_modifiers(["%p"])
                 } else {
                     output_path.clone()
                 };
@@ -122,6 +140,11 @@ impl ToolArgs {
                     (
                         output_path.with_modifiers(["bb", modifier.as_ref()]),
                         output_path.with_modifiers(["pc", modifier.as_ref()]),
+                    )
+                } else if self.trace_children {
+                    (
+                        output_path.with_modifiers(["bb", "%p"]),
+                        output_path.with_modifiers(["pc", "%p"]),
                     )
                 } else {
                     (
@@ -147,6 +170,8 @@ impl ToolArgs {
             output_path
                 .to_log_output()
                 .with_modifiers([modifier.as_ref()])
+        } else if self.trace_children {
+            output_path.to_log_output().with_modifiers(["%p"])
         } else {
             output_path.to_log_output()
         };
@@ -160,6 +185,8 @@ impl ToolArgs {
 
         vec.push(format!("--tool={}", self.tool.id()).into());
         vec.push(format!("--error-exitcode={}", &self.error_exitcode).into());
+        vec.push(format!("--trace-children={}", &bool_to_yesno(self.trace_children)).into());
+        // FIXME: ADD verbose
         vec.extend(self.other.iter().map(OsString::from));
         vec.extend_from_slice(&self.output_paths);
         if let Some(log_arg) = self.log_path.as_ref() {

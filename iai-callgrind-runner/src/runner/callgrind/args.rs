@@ -138,6 +138,7 @@ impl Args {
         self.toggle_collect.push_front(arg.to_owned());
     }
 
+    // TODO: STILL NEEDED IF WE SET THE MODIFIER anyways in tool::args ??
     pub fn get_outfile_modifier(&self) -> Option<String> {
         self.trace_children.then(|| "%p".to_owned())
     }
@@ -186,7 +187,6 @@ impl From<Args> for tool::args::ToolArgs {
             format!("--dump-line={}", bool_to_yesno(value.dump_line)),
             format!("--dump-instr={}", bool_to_yesno(value.dump_instr)),
             format!("--combine-dumps={}", bool_to_yesno(value.combine_dumps)),
-            format!("--trace-children={}", bool_to_yesno(value.trace_children)),
             format!(
                 "--separate-threads={}",
                 bool_to_yesno(value.separate_threads)
@@ -210,6 +210,7 @@ impl From<Args> for tool::args::ToolArgs {
             log_path: value.log_arg,
             error_exitcode: "0".to_owned(),
             verbose: value.verbose,
+            trace_children: value.trace_children,
             other,
         }
     }
