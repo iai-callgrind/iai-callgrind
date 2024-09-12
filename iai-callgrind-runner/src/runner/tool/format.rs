@@ -63,10 +63,6 @@ impl ToolRunSummaryFormatter {
             }
         }
 
-        for field in &summary.summary {
-            println!("  {:<18}{}", format!("{}:", field.0), field.1.bold());
-        }
-
         if force_show_body || verbose || summary.new_has_errors() {
             let mut details = summary.details.iter().flat_map(|x| x.lines());
             if let Some(head_line) = details.next() {

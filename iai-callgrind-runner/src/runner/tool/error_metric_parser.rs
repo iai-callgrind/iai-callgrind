@@ -109,8 +109,12 @@ impl LogfileParser for ErrorMetricLogfileParser {
                                 caps.name("s_errs").unwrap().as_str(),
                                 caps.name("s_ctxs").unwrap().as_str(),
                             ]);
+                            continue;
                         }
-                    } else if let Some(caps) = STRIP_PREFIX_RE.captures(&line) {
+                    }
+
+                    // Detail lines might also be matched with `EXTRACT_FIELDS_RE`
+                    if let Some(caps) = STRIP_PREFIX_RE.captures(&line) {
                         let rest_of_line = caps.name("rest").unwrap().as_str();
                         details.push(rest_of_line.to_owned());
                     } else {
@@ -133,7 +137,6 @@ impl LogfileParser for ErrorMetricLogfileParser {
             command: command.expect("A command should be present"),
             pid,
             parent_pid,
-            fields: Vec::default(),
             details,
             log_path: make_relative(&self.root_dir, path),
             costs: CostsKind::ErrorCosts(costs),

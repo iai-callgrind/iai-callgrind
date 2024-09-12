@@ -216,7 +216,6 @@ impl LogfileParser for DhatLogfileParser {
             command: command.expect("A command should be present"),
             pid,
             parent_pid,
-            fields: vec![],
             details,
             log_path: make_relative(&self.root_dir, path),
             costs: CostsKind::DhatCosts(costs),

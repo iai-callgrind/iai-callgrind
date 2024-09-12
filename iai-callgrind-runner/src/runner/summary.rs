@@ -270,9 +270,6 @@ pub struct ToolRunSummary {
     pub pid: Option<i32>,
     /// The parent pid of this process
     pub parent_pid: Option<i32>,
-    /// TODO: REMOVE
-    /// The tool specific summary extracted from Valgrind output
-    pub summary: IndexMap<String, String>,
     /// More details from the logging output of the tool run
     pub details: Option<String>,
     /// The path to the full logfile from the tool run
