@@ -106,4 +106,4 @@ main!(library_benchmark_groups = my_group);
 # }
 ```
 
-[`LibraryBenchmarkConfig`]: https://docs.rs/iai-callgrind/0.13.3/iai_callgrind/struct.LibraryBenchmarkConfig.html
+[`LibraryBenchmarkConfig`]: https://docs.rs/iai-callgrind/0.13.4/iai_callgrind/struct.LibraryBenchmarkConfig.html

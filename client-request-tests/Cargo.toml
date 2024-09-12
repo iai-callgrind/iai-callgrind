@@ -18,7 +18,7 @@ fs_extra = { workspace = true }
 
 [dependencies]
 cty = { workspace = true }
-iai-callgrind = { path = "../iai-callgrind/", version = "=0.13.3", default-features = false, features = [
+iai-callgrind = { path = "../iai-callgrind/", version = "=0.13.4", default-features = false, features = [
   "client_requests_defs",
 ] }
 lazy_static = { workspace = true }
@@ -29,7 +29,7 @@ which = { workspace = true }
 [dev-dependencies]
 assert_cmd = { workspace = true }
 fs_extra = { workspace = true }
-iai-callgrind = { path = "../iai-callgrind/", version = "=0.13.3", default-features = false, features = [
+iai-callgrind = { path = "../iai-callgrind/", version = "=0.13.4", default-features = false, features = [
   "client_requests",
 ] }
 predicates = { workspace = true }
