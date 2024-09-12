@@ -889,6 +889,11 @@ impl ToolOutputPath {
     /// informative with regard to output files for multiple threads and processes.
     pub fn sanitize_callgrind(&self) -> Result<()> {
         for entry in self.walk_dir()? {
+            if entry.metadata()?.size() == 0 {
+                std::fs::remove_file(entry.path())?;
+                continue;
+            }
+
             let file_name = entry.file_name();
             let file_name = file_name.to_string_lossy();
 
@@ -896,10 +901,6 @@ impl ToolOutputPath {
                 if caps.name("type").unwrap().as_str() == ".out" {
                     // Callgrind sometimes creates empty files for no reason. We clean them
                     // up here
-                    if entry.metadata()?.size() == 0 {
-                        std::fs::remove_file(entry.path())?;
-                        continue;
-                    }
 
                     // We don't sanitize old files. It's not needed if the new files are always
                     // sanitized. However, we do sanitize `base@<name>` file names.
