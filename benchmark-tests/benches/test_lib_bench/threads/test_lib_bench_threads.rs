@@ -45,6 +45,7 @@ fn bench_library(num: u64) {
         .tool(Tool::new(ValgrindTool::DHAT)
             .args(["--trace-children=yes"])
             .outfile_modifier("%p"))
+        .tool(Tool::new(ValgrindTool::Memcheck))
 )]
 #[bench::two(3)]
 #[bench::three(3)]

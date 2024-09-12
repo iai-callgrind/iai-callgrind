@@ -57,11 +57,11 @@ impl Costs {
             cycles,
         } = (&*self).try_into()?;
 
-        self.0.insert(EventKind::L1hits, l1_hits);
-        self.0.insert(EventKind::LLhits, l3_hits);
-        self.0.insert(EventKind::RamHits, ram_hits);
-        self.0.insert(EventKind::TotalRW, total_memory_rw);
-        self.0.insert(EventKind::EstimatedCycles, cycles);
+        self.insert(EventKind::L1hits, l1_hits);
+        self.insert(EventKind::LLhits, l3_hits);
+        self.insert(EventKind::RamHits, ram_hits);
+        self.insert(EventKind::TotalRW, total_memory_rw);
+        self.insert(EventKind::EstimatedCycles, cycles);
 
         Ok(())
     }

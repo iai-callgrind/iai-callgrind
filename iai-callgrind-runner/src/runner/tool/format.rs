@@ -67,7 +67,7 @@ impl ToolRunSummaryFormatter {
             println!("  {:<18}{}", format!("{}:", field.0), field.1.bold());
         }
 
-        if force_show_body || verbose || summary.has_errors() {
+        if force_show_body || verbose || summary.new_has_errors() {
             let mut details = summary.details.iter().flat_map(|x| x.lines());
             if let Some(head_line) = details.next() {
                 println!("  {:<18}{}", "Details:", head_line);
@@ -77,21 +77,7 @@ impl ToolRunSummaryFormatter {
             }
         }
 
-        if let Some(error_summary) = summary.error_summary.as_ref() {
-            println!(
-                "  {:<18}{}",
-                "Error Summary:",
-                format!(
-                    "{} errors from {} contexts (suppressed: {} from {})",
-                    error_summary.errors,
-                    error_summary.contexts,
-                    error_summary.supp_errors,
-                    error_summary.supp_contexts
-                )
-                .bold()
-            );
-        }
-
+        // TODO: Don't show the outfile
         if summary.costs_summary.is_none() || verbose {
             println!(
                 "  {:<18}{}",

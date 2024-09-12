@@ -27,7 +27,8 @@ impl<K: Hash + Eq + Display + Clone> Costs<K> {
         Self(kinds.into_iter().collect())
     }
 
-    /// TODO: Check if zip is still applicable
+    /// TODO: zip is applicable for callgrind metrics but this method needs to be documented
+    /// properly that we expect the new values in the same order
     pub fn add_iter_str<I, T>(&mut self, iter: T)
     where
         I: AsRef<str>,
@@ -88,6 +89,10 @@ impl<K: Hash + Eq + Display + Clone> Costs<K> {
 
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    pub fn insert(&mut self, key: K, value: u64) -> Option<u64> {
+        self.0.insert(key, value)
     }
 }
 

@@ -118,33 +118,33 @@ fn parse_line(
 
                     match key {
                         "Total" => {
-                            costs.0.insert(DhatMetricKind::TotalBytes, num_bytes);
-                            costs.0.insert(
+                            costs.insert(DhatMetricKind::TotalBytes, num_bytes);
+                            costs.insert(
                                 DhatMetricKind::TotalBlocks,
                                 num_blocks.ok_or_else(|| anyhow!("Error parsing blocks"))?,
                             );
                         }
                         "At t-gmax" => {
-                            costs.0.insert(DhatMetricKind::AtTGmaxBytes, num_bytes);
-                            costs.0.insert(
+                            costs.insert(DhatMetricKind::AtTGmaxBytes, num_bytes);
+                            costs.insert(
                                 DhatMetricKind::AtTGmaxBlocks,
                                 num_blocks.ok_or_else(|| anyhow!("Error parsing blocks"))?,
                             );
                         }
                         "At t-end" => {
-                            costs.0.insert(DhatMetricKind::AtTEndBytes, num_bytes);
-                            costs.0.insert(
+                            costs.insert(DhatMetricKind::AtTEndBytes, num_bytes);
+                            costs.insert(
                                 DhatMetricKind::AtTEndBlocks,
                                 num_blocks.ok_or_else(|| anyhow!("Error parsing blocks"))?,
                             );
                         }
                         "Reads" => {
                             let metric_kind = DhatMetricKind::ReadsBytes;
-                            costs.0.insert(metric_kind, num_bytes);
+                            costs.insert(metric_kind, num_bytes);
                         }
                         "Writes" => {
                             let metric_kind = DhatMetricKind::WritesBytes;
-                            costs.0.insert(metric_kind, num_bytes);
+                            costs.insert(metric_kind, num_bytes);
                         }
                         _ => {
                             debug!("Ignoring invalid dhat metric kind: {key}");
@@ -216,7 +216,6 @@ impl LogfileParser for DhatLogfileParser {
             parent_pid,
             fields: vec![],
             details,
-            error_summary: None,
             log_path: make_relative(&self.root_dir, path),
             costs: CostsKind::DhatCosts(costs),
         })

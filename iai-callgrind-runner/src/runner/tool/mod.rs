@@ -1,5 +1,6 @@
 // spell-checker: ignore extbase extbasename extold
 pub mod args;
+pub mod error_metric_parser;
 pub mod format;
 pub mod logfile_parser;
 
@@ -880,6 +881,7 @@ impl ToolOutputPath {
         Ok(paths)
     }
 
+    /// TODO: Use pid, part, threads only if multiple present
     /// Sanitize callgrind output file names
     ///
     /// This method will remove empty files which are occasionally produced by callgrind. The files

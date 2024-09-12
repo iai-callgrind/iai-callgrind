@@ -20,9 +20,7 @@ fn dummy_summary(cmd: &str, pid: i32, cost: u64) -> LogfileSummary {
         parent_pid: Some(pid + 1),
         fields: vec![],
         details: vec![],
-        error_summary: None,
         log_path: PathBuf::new(),
-        // TODO: ADJUST
         costs: CostsKind::DhatCosts(dummy_cost(cost)),
     }
 }
@@ -43,6 +41,7 @@ fn dummy_tool_run_summary(
             dummy_cost(old_cost),
         ))),
     };
+
     ToolRunSummary {
         command: cmd.to_string(),
         old_pid,
@@ -51,7 +50,6 @@ fn dummy_tool_run_summary(
         parent_pid: pid.map(|x| x + 1),
         summary: Default::default(),
         details: None,
-        error_summary: None,
         log_path: Default::default(),
         costs_summary: CostsSummaryType::DhatSummary(costs_summary),
     }

@@ -17,6 +17,10 @@ use super::tool::ValgrindTool;
 use crate::api::{self, EventKind};
 use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8, EitherOrBoth};
 
+// TODO: Increase the possible length of the keys in the vertical output. Increase the space for
+// numbers a little bit? Increase the precision of the percentage and factor to 7 significant
+// numbers.
+
 pub const NOT_AVAILABLE: &str = "N/A";
 
 pub struct ComparisonHeader {

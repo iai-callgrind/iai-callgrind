@@ -7,11 +7,9 @@ use std::io::stdout;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use glob::glob;
 use indexmap::{indexmap, IndexMap, IndexSet};
-use lazy_static::lazy_static;
-use regex::Regex;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -26,13 +24,6 @@ use crate::api::{DhatMetricKind, ErrorMetricKind, EventKind};
 use crate::error::Error;
 use crate::runner::costs::Summarize;
 use crate::util::{factor_diff, make_absolute, percentage_diff, EitherOrBoth};
-
-lazy_static! {
-    static ref EXTRACT_ERROR_SUMMARY_RE: Regex = regex::Regex::new(
-        r"^.*(?<errs>[0-9]+).*(?<ctxs>[0-9]+).*(?<s_errs>[0-9]+).*(?<s_ctxs>[0-9]+).*$"
-    )
-    .expect("Regex should compile");
-}
 
 /// A `Baseline` depending on the [`BaselineKind`] which points to the corresponding path
 ///
@@ -196,8 +187,8 @@ pub enum CostsKind {
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CostsSummary<K: Hash + Eq = EventKind>(IndexMap<K, CostsDiff>);
-///
-/// TODO: SORT
+
+/// TODO: DOCS
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum CostsSummaryType {
@@ -205,6 +196,7 @@ pub enum CostsSummaryType {
     None,
     ErrorSummary(CostsSummary<ErrorMetricKind>),
     DhatSummary(CostsSummary<DhatMetricKind>),
+    // TODO: REMOVE CALLGRINDSummary for now
     CallgrindSummary(CostsSummary<EventKind>),
 }
 
@@ -216,23 +208,7 @@ pub struct Diffs {
     pub factor: f64,
 }
 
-/// TODO: DELETE
-/// The `ErrorSummary` of tools which have it (Memcheck, DRD, Helgrind)
-///
-/// The `ErrorSummary` is extracted from the `ERROR SUMMARY` line in the log file output.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct ErrorSummary {
-    /// The number of total errors
-    pub errors: u64,
-    /// The number of contexts in which the errors appeared
-    pub contexts: u64,
-    /// The number of suppressed errors
-    pub supp_errors: u64,
-    /// The number of contexts from suppressed errors
-    pub supp_contexts: u64,
-}
-
+/// TODO: DOCS
 #[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct FlamegraphSummaries {
@@ -299,13 +275,6 @@ pub struct ToolRunSummary {
     pub summary: IndexMap<String, String>,
     /// More details from the logging output of the tool run
     pub details: Option<String>,
-    /// TODO: REMOVE
-    /// The error summary string of tools that have an error summary like Memcheck, DRD, Helgrind
-    ///
-    /// The error summary is extracted from the ERROR SUMMARY line in log files. For example
-    /// `4 errors from 3 contexts (suppressed: 2 from 1)`
-    /// results in `ErrorSummary {errors: 4, contexts: 3, supp_errors: 2, supp_contexts: 1}`
-    pub error_summary: Option<ErrorSummary>,
     /// The path to the full logfile from the tool run
     pub log_path: PathBuf,
     pub costs_summary: CostsSummaryType,
@@ -707,14 +676,14 @@ where
         for (event_kind, diff) in self.all_diffs() {
             match diff.costs {
                 EitherOrBoth::Left(new) => {
-                    new_costs.0.insert(event_kind.clone(), new);
+                    new_costs.insert(event_kind.clone(), new);
                 }
                 EitherOrBoth::Right(old) => {
-                    old_costs.0.insert(event_kind.clone(), old);
+                    old_costs.insert(event_kind.clone(), old);
                 }
                 EitherOrBoth::Both((new, old)) => {
-                    new_costs.0.insert(event_kind.clone(), new);
-                    old_costs.0.insert(event_kind.clone(), old);
+                    new_costs.insert(event_kind.clone(), new);
+                    old_costs.insert(event_kind.clone(), old);
                 }
             }
         }
@@ -770,40 +739,6 @@ impl CostsSummaryType {
     }
 }
 
-impl ErrorSummary {
-    pub fn has_errors(&self) -> bool {
-        self.errors > 0
-    }
-}
-
-impl FromStr for ErrorSummary {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let caps = EXTRACT_ERROR_SUMMARY_RE
-            .captures(s)
-            .ok_or(anyhow!(
-                "Failed to extract error summary from string".to_owned()
-            ))?;
-        Ok(ErrorSummary {
-            errors: caps.name("errs").unwrap().as_str().parse::<u64>().unwrap(),
-            contexts: caps.name("ctxs").unwrap().as_str().parse::<u64>().unwrap(),
-            supp_errors: caps
-                .name("s_errs")
-                .unwrap()
-                .as_str()
-                .parse::<u64>()
-                .unwrap(),
-            supp_contexts: caps
-                .name("s_ctxs")
-                .unwrap()
-                .as_str()
-                .parse::<u64>()
-                .unwrap(),
-        })
-    }
-}
-
 impl FlamegraphSummary {
     /// Create a new `FlamegraphSummary`
     pub fn new(event_kind: EventKind) -> Self {
@@ -850,10 +785,18 @@ impl SummaryOutput {
 }
 
 impl ToolRunSummary {
-    pub fn has_errors(&self) -> bool {
-        self.error_summary
-            .as_ref()
-            .map_or(false, ErrorSummary::has_errors)
+    pub fn new_has_errors(&self) -> bool {
+        match &self.costs_summary {
+            CostsSummaryType::None
+            | CostsSummaryType::DhatSummary(_)
+            | CostsSummaryType::CallgrindSummary(_) => false,
+            CostsSummaryType::ErrorSummary(costs) => costs
+                .diff_by_kind(&ErrorMetricKind::Errors)
+                .map_or(false, |e| match e.costs {
+                    EitherOrBoth::Left(new) | EitherOrBoth::Both((new, _)) => new > 0,
+                    EitherOrBoth::Right(_) => false,
+                }),
+        }
     }
 }
 

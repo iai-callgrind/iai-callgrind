@@ -528,7 +528,7 @@ impl Display for ErrorMetricKind {
             ErrorMetricKind::Errors => f.write_str("Errors"),
             ErrorMetricKind::Contexts => f.write_str("Contexts"),
             ErrorMetricKind::SuppressedErrors => f.write_str("Suppressed Errors"),
-            ErrorMetricKind::SuppressedContexts => f.write_str("SuppressedContexts"),
+            ErrorMetricKind::SuppressedContexts => f.write_str("Suppressed Contexts"),
         }
     }
 }
