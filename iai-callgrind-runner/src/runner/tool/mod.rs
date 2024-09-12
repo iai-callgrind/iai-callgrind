@@ -40,7 +40,7 @@ lazy_static! {
     // (base@<name>) can only consist of ascii and underscore characters. Flamegraph files are
     // ignored by this regex
     static ref CALLGRIND_ORIG_FILENAME_RE: Regex = Regex::new(
-        r"^(?<tool>callgrind)(?<name>[.].*[.].*)(?<pid>[.][0-9]+)?(?<type>[.](out|log))(?<base>[.](old|base@[^.]*))?(?<part>[.][0-9]+)?(?<thread>-[0-9]+)?$"
+        r"^(?<tool>callgrind)(?<name>[.].*([.].*)?)(?<pid>[.][0-9]+)?(?<type>[.](out|log))(?<base>[.](old|base@[^.]*))?(?<part>[.][0-9]+)?(?<thread>-[0-9]+)?$"
     )
     .expect("Regex should compile");
 }
@@ -1110,6 +1110,10 @@ mod tests {
     #[case::log_with_pid("callgrind.some.name.1234.log.1")]
     #[case::log_base("callgrind.some.name.log.base@default")]
     #[case::log_base_with_pid("callgrind.some.name.1234.log.base@default.1")]
+    #[case::without_id("callgrind.bench_bubble_sort_allocate.out")]
+    #[case::without_id_but_pid("callgrind.bench_bubble_sort_allocate.1234.out")]
+    #[case::without_id_but_thread("callgrind.bench_bubble_sort_allocate.out-01")]
+    #[case::without_id_but_part("callgrind.bench_bubble_sort_allocate.out.1")]
     fn test_callgrind_filename_regex(#[case] haystack: &str) {
         assert!(CALLGRIND_ORIG_FILENAME_RE.is_match(haystack));
     }
