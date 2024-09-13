@@ -42,7 +42,7 @@ iai-callgrind-runner = ["dep:iai-callgrind-runner"]
 bindgen = { workspace = true, optional = true }
 cc = { workspace = true, optional = true }
 regex = { workspace = true, optional = true }
-strum = { workspace = true, optional = true }
+strum = { workspace = true, optional = true, features = ["derive"] }
 version-compare = { workspace = true, optional = true }
 
 [package.metadata.docs.rs]

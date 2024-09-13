@@ -12,7 +12,7 @@ use super::{ToolOutputPath, ValgrindTool};
 use crate::runner::costs::Costs;
 use crate::runner::dhat::logfile_parser::DhatLogfileParser;
 use crate::runner::summary::{
-    CostsKind, CostsSummary, CostsSummaryType, ToolRunInfo, ToolRunSummary,
+    CostsKind, CostsSummary, CostsSummaryType, ToolRunInfo, ToolRunSummaries, ToolRunSummary,
 };
 use crate::util::EitherOrBoth;
 
@@ -113,6 +113,17 @@ impl LogfileSummaries {
                             total_mut.add_mut(&summary);
                             summary
                         }
+                        CostsKind::CallgrindCosts(costs) => {
+                            let summary = CostsSummaryType::CallgrindSummary(CostsSummary::new(
+                                EitherOrBoth::Left(costs.clone()),
+                            ));
+                            let total_mut =
+                                total.get_or_insert(CostsSummaryType::CallgrindSummary(
+                                    CostsSummary::new(EitherOrBoth::Left(Costs::empty())),
+                                ));
+                            total_mut.add_mut(&summary);
+                            summary
+                        }
                     };
 
                     LogfileSummary {
@@ -146,6 +157,17 @@ impl LogfileSummaries {
                             let total_mut = total.get_or_insert(CostsSummaryType::ErrorSummary(
                                 CostsSummary::new(EitherOrBoth::Right(Costs::empty())),
                             ));
+                            total_mut.add_mut(&summary);
+                            summary
+                        }
+                        CostsKind::CallgrindCosts(costs) => {
+                            let summary = CostsSummaryType::CallgrindSummary(CostsSummary::new(
+                                EitherOrBoth::Right(costs.clone()),
+                            ));
+                            let total_mut =
+                                total.get_or_insert(CostsSummaryType::CallgrindSummary(
+                                    CostsSummary::new(EitherOrBoth::Right(Costs::empty())),
+                                ));
                             total_mut.add_mut(&summary);
                             summary
                         }
@@ -201,6 +223,25 @@ impl LogfileSummaries {
                                 logfile: EitherOrBoth::Both(new, old),
                             }
                         }
+                        (
+                            CostsKind::CallgrindCosts(new_costs),
+                            CostsKind::CallgrindCosts(old_costs),
+                        ) => {
+                            let costs_summary =
+                                CostsSummaryType::CallgrindSummary(CostsSummary::new(
+                                    EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
+                                ));
+                            let total_mut = total.get_or_insert(
+                                CostsSummaryType::CallgrindSummary(CostsSummary::new(
+                                    EitherOrBoth::Both(Costs::empty(), Costs::empty()),
+                                )),
+                            );
+                            total_mut.add_mut(&costs_summary);
+                            LogfileSummary {
+                                costs_summary,
+                                logfile: EitherOrBoth::Both(new, old),
+                            }
+                        }
                         _ => panic!("Cannot summarize incompatible log files"),
                     },
                     itertools::EitherOrBoth::Left(new) => match &new.costs {
@@ -231,6 +272,20 @@ impl LogfileSummaries {
                             let total_mut = total.get_or_insert(CostsSummaryType::ErrorSummary(
                                 CostsSummary::new(EitherOrBoth::Left(Costs::empty())),
                             ));
+                            total_mut.add_mut(&costs_summary);
+                            LogfileSummary {
+                                costs_summary,
+                                logfile: EitherOrBoth::Left(new),
+                            }
+                        }
+                        CostsKind::CallgrindCosts(new_costs) => {
+                            let costs_summary = CostsSummaryType::CallgrindSummary(
+                                CostsSummary::new(EitherOrBoth::Left(new_costs.clone())),
+                            );
+                            let total_mut =
+                                total.get_or_insert(CostsSummaryType::CallgrindSummary(
+                                    CostsSummary::new(EitherOrBoth::Left(Costs::empty())),
+                                ));
                             total_mut.add_mut(&costs_summary);
                             LogfileSummary {
                                 costs_summary,
@@ -273,6 +328,20 @@ impl LogfileSummaries {
                                 logfile: EitherOrBoth::Right(old),
                             }
                         }
+                        CostsKind::CallgrindCosts(old_costs) => {
+                            let costs_summary = CostsSummaryType::CallgrindSummary(
+                                CostsSummary::new(EitherOrBoth::Right(old_costs.clone())),
+                            );
+                            let total_mut =
+                                total.get_or_insert(CostsSummaryType::CallgrindSummary(
+                                    CostsSummary::new(EitherOrBoth::Right(Costs::empty())),
+                                ));
+                            total_mut.add_mut(&costs_summary);
+                            LogfileSummary {
+                                costs_summary,
+                                logfile: EitherOrBoth::Right(old),
+                            }
+                        }
                     },
                 })
                 .collect(),
@@ -284,8 +353,9 @@ impl LogfileSummaries {
         }
     }
 
-    pub fn into_tool_run_summaries(self) -> Vec<ToolRunSummary> {
-        self.data
+    pub fn into_tool_run_summaries(self) -> ToolRunSummaries {
+        let summaries = self
+            .data
             .into_iter()
             .map(|logfile_summary| match logfile_summary.logfile {
                 EitherOrBoth::Left(new_logfile) => ToolRunSummary {
@@ -301,7 +371,12 @@ impl LogfileSummaries {
                     costs_summary: logfile_summary.costs_summary,
                 },
             })
-            .collect()
+            .collect();
+
+        ToolRunSummaries {
+            data: summaries,
+            total: self.total,
+        }
     }
 }
 

@@ -12,6 +12,7 @@ use std::time::Duration;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use strum::EnumIter;
 
 use crate::runner::costs::Summarize;
 
@@ -127,7 +128,7 @@ pub enum Direction {
 }
 
 /// TODO: DOCS
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(EnumIter, Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum DhatMetricKind {
     TotalBytes,
@@ -157,12 +158,26 @@ pub enum EntryPoint {
     Custom(String),
 }
 
+// The error metrics from a tool which reports errors
+//
+// The tools which report only errors are `helgrind`, `drd` and `memcheck`. The order in which the
+// variants are defined in this enum determines the order of the metrics in the benchmark terminal
+// output.
+#[derive(EnumIter, Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum ErrorMetricKind {
+    Errors,
+    Contexts,
+    SuppressedErrors,
+    SuppressedContexts,
+}
+
 /// All `EventKind`s callgrind produces and additionally some derived events
 ///
 /// Depending on the options passed to Callgrind, these are the events that Callgrind can produce.
 /// See the [Callgrind
 /// documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(EnumIter, Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum EventKind {
     /// The default event. I cache reads (which equals the number of instructions executed)
@@ -223,15 +238,6 @@ pub enum EventKind {
     SpLoss1,
     /// Counter showing bad spatial locality for LL caches (--cachuse=yes)
     SpLoss2,
-}
-
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub enum ErrorMetricKind {
-    Errors,
-    Contexts,
-    SuppressedErrors,
-    SuppressedContexts,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

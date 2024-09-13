@@ -25,10 +25,12 @@ runner = [
   "dep:cargo_metadata",
   "dep:clap",
   "dep:colored",
+  "dep:derive_more",
   "dep:env_logger",
   "dep:glob",
   "dep:indexmap",
   "dep:inferno",
+  "dep:itertools",
   "dep:lazy_static",
   "dep:log",
   "dep:regex",
@@ -37,11 +39,10 @@ runner = [
   "dep:serde_json",
   "dep:serde_regex",
   "dep:shlex",
+  "dep:strum",
   "dep:tempfile",
   "dep:version-compare",
   "dep:which",
-  "dep:itertools",
-  "dep:derive_more",
 ]
 schema = ["default", "dep:schemars"]
 
@@ -72,6 +73,7 @@ serde = { workspace = true, features = ["derive"], optional = true }
 serde_json = { workspace = true, optional = true }
 serde_regex = { workspace = true, optional = true }
 shlex = { workspace = true, optional = true }
+strum = { workspace = true, optional = true, features = ["derive"] }
 tempfile = { workspace = true, optional = true }
 version-compare = { workspace = true, optional = true }
 which = { workspace = true, optional = true }

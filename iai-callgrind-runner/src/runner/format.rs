@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use colored::{ColoredString, Colorize};
+use strum::IntoEnumIterator;
 
 use super::args::NoCapture;
 use super::bin_bench::BinBench;
@@ -12,9 +13,9 @@ use super::callgrind::Summaries;
 use super::common::ModulePath;
 use super::lib_bench::LibBench;
 use super::meta::Metadata;
-use super::summary::{CostsDiff, CostsSummary};
+use super::summary::{CostsDiff, CostsSummary, CostsSummaryType, ToolRunInfo, ToolRunSummaries};
 use super::tool::ValgrindTool;
-use crate::api::{self, EventKind};
+use crate::api::{self, DhatMetricKind, ErrorMetricKind, EventKind};
 use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8, EitherOrBoth};
 
 // TODO: Increase the possible length of the keys in the vertical output. Increase the space for
@@ -62,8 +63,37 @@ pub trait Formatter {
         baselines: (Option<String>, Option<String>),
         costs_summary: &CostsSummary,
     ) -> Result<String>;
+
+    fn refactor_format<'a>(
+        &self,
+        baselines: (Option<String>, Option<String>),
+        info: Option<&EitherOrBoth<ToolRunInfo>>,
+        costs_summary: &CostsSummaryType,
+    ) -> Result<String>;
+
+    fn format_single(&self, costs_summary: &CostsSummaryType) -> Result<String>;
+
+    fn format_multiple(
+        &self,
+        baselines: (Option<String>, Option<String>),
+        summaries: &ToolRunSummaries,
+    ) -> Result<String>;
+
+    // TODO: Add verbose, force_show_body
+    fn print(
+        &self,
+        meta: &Metadata,
+        baselines: (Option<String>, Option<String>),
+        summaries: &ToolRunSummaries,
+    ) -> Result<()> {
+        if meta.args.output_format == OutputFormat::Default {
+            print!("{}", self.format_multiple(baselines, summaries)?);
+        }
+        Ok(())
+    }
 }
 
+// TODO: Merge with BinaryBenchmarkHeader?
 pub struct LibraryBenchmarkHeader {
     inner: Header,
     has_tools_enabled: bool,
@@ -77,9 +107,302 @@ pub enum OutputFormat {
     PrettyJson,
 }
 
-#[derive(Clone)]
+// TODO: CLEANUP
+#[derive(Debug, Clone)]
 pub struct VerticalFormat {
     event_kinds: Vec<EventKind>,
+}
+
+#[derive(Debug, Clone)]
+pub struct NewVerticalFormat;
+
+fn format_details(details: &str) -> Result<String> {
+    let mut result = String::new();
+    let mut details = details.lines();
+    if let Some(head_line) = details.next() {
+        writeln!(result, "  {:<18}{}", "Details:", head_line)?;
+        for body_line in details {
+            writeln!(result, "{}{body_line}", " ".repeat(20))?;
+        }
+    }
+    Ok(result)
+}
+
+impl Formatter for NewVerticalFormat {
+    fn format(
+        &self,
+        baselines: (Option<String>, Option<String>),
+        costs_summary: &CostsSummary,
+    ) -> Result<String> {
+        todo!("Delete this method")
+    }
+
+    fn refactor_format<'a>(
+        &self,
+        baselines: (Option<String>, Option<String>),
+        info: Option<&EitherOrBoth<ToolRunInfo>>,
+        costs_summary: &CostsSummaryType,
+    ) -> Result<String> {
+        match costs_summary {
+            CostsSummaryType::None => {
+                // TODO: if force_show_body || verbose || summary.new_has_errors() {
+                let mut result = String::new();
+                if let Some(info) = info {
+                    if let Some(new) = info.left() {
+                        result = new
+                            .details
+                            .as_ref()
+                            .map_or_else(|| Ok(String::new()), |d| format_details(d))?;
+                    }
+                }
+                Ok(result)
+            }
+            CostsSummaryType::ErrorSummary(summary) => {
+                use ErrorMetricKind::*;
+
+                const TO_FORMAT: [ErrorMetricKind; 4] =
+                    [Errors, Contexts, SuppressedErrors, SuppressedContexts];
+
+                let mut formatted = format_vertical(
+                    (None, None),
+                    TO_FORMAT
+                        .iter()
+                        .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+                )?;
+
+                if let Some(info) = info {
+                    // TODO: Check for `old` errors too?
+                    // We only check for `new` errors
+                    if summary
+                        .diff_by_kind(&Errors)
+                        .map_or(false, |e| e.costs.left().map_or(false, |l| *l > 0))
+                    {
+                        if let Some(new) = info.left() {
+                            let mut details = new.details.iter().flat_map(|x| x.lines());
+                            if let Some(head_line) = details.next() {
+                                writeln!(formatted, "  {:<18}{}", "Details:", head_line)?;
+                                for body_line in details {
+                                    writeln!(formatted, "{}{body_line}", " ".repeat(20))?;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Ok(formatted)
+            }
+            CostsSummaryType::DhatSummary(summary) => {
+                use DhatMetricKind::*;
+
+                const TO_FORMAT: [DhatMetricKind; 8] = [
+                    TotalBytes,
+                    TotalBlocks,
+                    AtTGmaxBytes,
+                    AtTGmaxBlocks,
+                    AtTEndBytes,
+                    AtTEndBlocks,
+                    ReadsBytes,
+                    WritesBytes,
+                ];
+                format_vertical(
+                    (None, None),
+                    TO_FORMAT
+                        .iter()
+                        .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+                )
+            }
+            CostsSummaryType::CallgrindSummary(summary) => {
+                use EventKind::*;
+
+                const TO_FORMAT: [EventKind; 21] = [
+                    Ir,
+                    L1hits,
+                    LLhits,
+                    RamHits,
+                    TotalRW,
+                    EstimatedCycles,
+                    SysCount,
+                    SysTime,
+                    SysCpuTime,
+                    Ge,
+                    Bc,
+                    Bcm,
+                    Bi,
+                    Bim,
+                    ILdmr,
+                    DLdmr,
+                    DLdmw,
+                    AcCost1,
+                    AcCost2,
+                    SpLoss1,
+                    SpLoss2,
+                ];
+
+                format_vertical(
+                    baselines,
+                    TO_FORMAT
+                        .iter()
+                        .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+                )
+            }
+        }
+    }
+
+    fn format_single(&self, costs_summary: &CostsSummaryType) -> Result<String> {
+        todo!("Delete this method");
+        // match costs_summary {
+        //     CostsSummaryType::None => {}
+        //     CostsSummaryType::ErrorSummary(summary) => {
+        //         format_vertical(
+        //             (None, None),
+        //             ErrorMetricKind::iter()
+        //                 .filter_map(|e| summary.diff_by_kind(&e).map(|d| (e, d))),
+        //         )?;
+        //     }
+        //     CostsSummaryType::DhatSummary(_) => todo!(),
+        //     CostsSummaryType::CallgrindSummary(_) => todo!(),
+        // };
+        // Ok(String::new())
+    }
+
+    fn format_multiple(
+        &self,
+        baselines: (Option<String>, Option<String>),
+        summaries: &ToolRunSummaries,
+    ) -> Result<String> {
+        let mut result = String::new();
+
+        if summaries.has_multiple() {
+            let mut first = true;
+            for summary in &summaries.data {
+                writeln!(result, "{}", multiple_files_header(&summary.info))?;
+
+                // TODO: Print command only if there are multiple pids present (new or old)
+                match &summary.info {
+                    EitherOrBoth::Left(new) => {
+                        writeln!(result, "  {:<18}{}", "Command:", new.command.blue().bold())?;
+                    }
+                    EitherOrBoth::Right(old) => {
+                        writeln!(
+                            result,
+                            "  {:<18}{}|{}",
+                            "Command:",
+                            " ".repeat(15),
+                            old.command.blue()
+                        )?;
+                    }
+                    EitherOrBoth::Both(new, old) => {
+                        let split = format_split(
+                            "Command:",
+                            new.command.blue().bold(),
+                            old.command.blue(),
+                        )?;
+                        writeln!(result, "{split}")?;
+                    }
+                }
+
+                if first {
+                    write!(
+                        result,
+                        "{}",
+                        self.refactor_format(
+                            baselines.clone(),
+                            Some(&summary.info),
+                            &summary.costs_summary
+                        )?
+                    )?;
+                    first = false;
+                } else {
+                    write!(
+                        result,
+                        "{}",
+                        self.refactor_format(
+                            (None, None),
+                            Some(&summary.info),
+                            &summary.costs_summary
+                        )?
+                    )?;
+                }
+
+                // TODO: Use force_show_body for bbv and verbose, Move into format_single?
+            }
+
+            writeln!(result, "{}", tool_total_header())?;
+        } else if summaries.total.is_none() && !summaries.data.is_empty() {
+            // This is safe since we always have at least one summary present
+            let summary = &summaries.data[0];
+            match &summary.info {
+                EitherOrBoth::Left(new) => {
+                    writeln!(result, "  {:<18}{}", "Command:", new.command.blue().bold())?;
+                    writeln!(
+                        result,
+                        "  {:<18}{}",
+                        "Path:",
+                        new.path.display().to_string().blue().bold()
+                    )?;
+                }
+                EitherOrBoth::Right(old) => {
+                    writeln!(
+                        result,
+                        "  {:<18}{}|{}",
+                        "Command:",
+                        " ".repeat(15),
+                        old.command.blue()
+                    )?;
+                    writeln!(
+                        result,
+                        "  {:<18}{}|{}",
+                        "Path:",
+                        " ".repeat(15),
+                        old.path.display().to_string().blue()
+                    )?;
+                }
+                EitherOrBoth::Both(new, old) => {
+                    let split =
+                        format_split("Command:", new.command.blue().bold(), old.command.blue())?;
+                    writeln!(result, "{split}")?;
+
+                    let split = format_split(
+                        "Path:",
+                        new.path.display().to_string().blue().bold(),
+                        old.path.display().to_string().blue(),
+                    )?;
+                    writeln!(result, "{split}")?;
+                }
+            }
+
+            if let Some(new) = summary.info.left() {
+                if let Some(details) = &new.details {
+                    let formatted = format_details(details)?;
+                    write!(result, "{formatted}")?;
+                }
+            }
+        } else {
+            // Since a total is present here just pass through
+        }
+
+        // TODO: what to do if summaries is empty (what actually can't be)?
+        if summaries.total.is_some() {
+            write!(
+                result,
+                "{}",
+                self.refactor_format((None, None), None, &summaries.total)?
+            )?;
+        }
+
+        Ok(result)
+    }
+}
+
+fn format_split<T, U>(name: U, left: T, right: T) -> Result<String>
+where
+    T: Display,
+    U: Display,
+{
+    let mut result = String::new();
+    writeln!(result, "  {name:<18}{left}")?;
+    write!(result, "  {}|{right}", " ".repeat(33))?;
+    Ok(result)
 }
 
 impl BinaryBenchmarkHeader {
@@ -309,7 +632,7 @@ impl VerticalFormat {
                         self.format(baselines.clone(), &summary.costs_summary)?
                     );
                 }
-                println!("{}", callgrind_total_header());
+                println!("{}", tool_total_header());
             }
             print!("{}", self.format(baselines, &summaries.total)?);
         }
@@ -349,6 +672,7 @@ impl Default for VerticalFormat {
 }
 
 impl Formatter for VerticalFormat {
+    // TODO: DELETE THIS METHOD
     fn format(
         &self,
         baselines: (Option<String>, Option<String>),
@@ -361,11 +685,33 @@ impl Formatter for VerticalFormat {
                 .filter_map(|e| costs_summary.diff_by_kind(e).map(|d| (e, d))),
         )
     }
+
+    fn refactor_format(
+        &self,
+        baselines: (Option<String>, Option<String>),
+        info: Option<&EitherOrBoth<ToolRunInfo>>,
+        costs_summary: &CostsSummaryType,
+    ) -> Result<String> {
+        todo!("Implement")
+    }
+
+    fn format_single(&self, costs_summary: &CostsSummaryType) -> Result<String> {
+        todo!()
+    }
+
+    fn format_multiple(
+        &self,
+        baselines: (Option<String>, Option<String>),
+        summaries: &ToolRunSummaries,
+    ) -> Result<String> {
+        todo!()
+    }
+    // TODO: Add print, print_multiple
 }
 
-pub fn format_vertical<'a, K: Display + 'a>(
+pub fn format_vertical<'a, K: Display>(
     baselines: (Option<String>, Option<String>),
-    costs_summary: impl Iterator<Item = (&'a K, &'a CostsDiff)>,
+    costs_summary: impl Iterator<Item = (K, &'a CostsDiff)>,
 ) -> Result<String> {
     let mut result = String::new();
 
@@ -485,7 +831,12 @@ pub fn callgrind_multiple_files_header(
     }
 }
 
-pub fn callgrind_total_header() -> String {
+pub fn multiple_files_header(properties: &EitherOrBoth<ToolRunInfo>) -> String {
+    // TODO: IMPLEMENT
+    String::from("TODO")
+}
+
+pub fn tool_total_header() -> String {
     format!("  {} Total", "##".yellow())
 }
 

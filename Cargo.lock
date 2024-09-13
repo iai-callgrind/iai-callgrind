@@ -787,6 +787,7 @@ dependencies = [
  "serde_yaml",
  "serial_test",
  "shlex",
+ "strum",
  "tempfile",
  "version-compare",
  "which 5.0.0",

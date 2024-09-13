@@ -139,10 +139,12 @@ nodemon
 noninteractive
 nsec
 outfile
+outfiles
 pacman
 pathbuf
 peaceiris
 peekable
+pids
 pipefail
 posix
 postconditions

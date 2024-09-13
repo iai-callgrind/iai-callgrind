@@ -23,14 +23,15 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use self::args::ToolArgs;
-use self::format::ToolRunSummaryFormatter;
 use super::args::NoCapture;
 use super::bin_bench::Delay;
 use super::callgrind::parser::parse_header;
 use super::common::{Assistant, Config, ModulePath, Sandbox};
-use super::format::{print_no_capture_footer, tool_headline, OutputFormat};
+use super::format::{
+    print_no_capture_footer, tool_headline, Formatter, NewVerticalFormat, OutputFormat,
+};
 use super::meta::Metadata;
-use super::summary::{BaselineKind, ToolRunSummary, ToolSummary};
+use super::summary::{BaselineKind, ToolRunSummaries, ToolRunSummary, ToolSummary};
 use crate::api::{self, ExitWith, Stream};
 use crate::error::Error;
 use crate::util::{self, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
@@ -366,35 +367,40 @@ impl ToolConfigs {
 
     fn print(
         meta: &Metadata,
-        tool_config: &ToolConfig,
-        tool_run_summaries: &[ToolRunSummary],
-        // TODO: CLEANUP
+        _tool_config: &ToolConfig,
+        tool_run_summaries: &ToolRunSummaries,
+        // TODO: CLEANUP ?
         _output_paths: &[PathBuf],
     ) -> Result<()> {
-        if meta.args.output_format == OutputFormat::Default {
-            for logfile_summary in tool_run_summaries {
-                ToolRunSummaryFormatter::print(
-                    logfile_summary,
-                    tool_config.args.verbose,
-                    tool_run_summaries.len() > 1,
-                    matches!(tool_config.tool, ValgrindTool::BBV),
-                )?;
-            }
+        // TODO: CONTINUE
+        NewVerticalFormat.print(meta, (None, None), tool_run_summaries)
+        // ToolRunSummaryFormatter::print_multiple(
+        //     tool_run_summaries,
+        //     tool_config.args.verbose,
+        //     matches!(tool_config.tool, ValgrindTool::BBV),
+        // )
 
-            // TODO: CLEANUP
-            // for path in output_paths
-            //     .iter()
-            //     .map(|p| make_relative(&meta.project_root, p))
-            // {
-            //     println!(
-            //         "  {:<18}{}",
-            //         "Outfile:",
-            //         path.display().to_string().blue().bold()
-            //     );
-            // }
-        }
+        // TODO: CLEANUP
+        // for logfile_summary in tool_run_summaries {
+        //     ToolRunSummaryFormatter::print(
+        //         logfile_summary,
+        //         tool_config.args.verbose,
+        //         tool_run_summaries.len() > 1,
+        //         matches!(tool_config.tool, ValgrindTool::BBV),
+        //     )?;
+        // }
 
-        Ok(())
+        // TODO: CLEANUP
+        // for path in output_paths
+        //     .iter()
+        //     .map(|p| make_relative(&meta.project_root, p))
+        // {
+        //     println!(
+        //         "  {:<18}{}",
+        //         "Outfile:",
+        //         path.display().to_string().blue().bold()
+        //     );
+        // }
     }
 
     // TODO: ADJUST
@@ -408,6 +414,7 @@ impl ToolConfigs {
         let parser = tool_config.tool.to_parser(meta.project_root.clone());
 
         let parsed_new = parser.parse(log_path)?;
+        // TODO: Convert into ToolRunSummaries directly and remove LogfileSummaries
         let summaries = match (parsed_new.is_empty(), old_summaries.is_empty()) {
             (true, true) => todo!("should not happen"),
             (true, false) => todo!("new should never be empty"),

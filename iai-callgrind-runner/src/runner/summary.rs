@@ -172,6 +172,7 @@ pub struct CostsDiff {
     pub diffs: Option<Diffs>,
 }
 
+/// TODO: DOCS
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum CostsKind {
@@ -179,9 +180,10 @@ pub enum CostsKind {
     None,
     DhatCosts(Costs<DhatMetricKind>),
     ErrorCosts(Costs<ErrorMetricKind>),
-    // TODO: ADD CallgrindCosts
+    CallgrindCosts(Costs<EventKind>),
 }
 
+/// FIX: docs
 /// The `CostsSummary` contains all differences for affected [`EventKind`]s
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
@@ -196,8 +198,7 @@ pub enum CostsSummaryType {
     None,
     ErrorSummary(CostsSummary<ErrorMetricKind>),
     DhatSummary(CostsSummary<DhatMetricKind>),
-    // TODO: REMOVE CALLGRINDSummary for now
-    // CallgrindSummary(CostsSummary<EventKind>),
+    CallgrindSummary(CostsSummary<EventKind>),
 }
 
 impl CostsSummaryType {
@@ -207,6 +208,12 @@ impl CostsSummaryType {
                 this.add(other);
             }
             (CostsSummaryType::DhatSummary(this), CostsSummaryType::DhatSummary(other)) => {
+                this.add(other);
+            }
+            (
+                CostsSummaryType::CallgrindSummary(this),
+                CostsSummaryType::CallgrindSummary(other),
+            ) => {
                 this.add(other);
             }
             _ => {}
@@ -282,13 +289,23 @@ pub struct ToolRunInfo {
     /// The path to the full logfile from the tool run
     pub path: PathBuf,
 }
-///
+
 /// TODO: Make use of it in `ToolSummary`, DOCS
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ToolRunSummaries {
     pub data: Vec<ToolRunSummary>,
     pub total: CostsSummaryType,
+}
+
+impl ToolRunSummaries {
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
+    pub fn has_multiple(&self) -> bool {
+        self.data.len() > 1
+    }
 }
 
 /// The `ToolRunSummary` which contains all information about a single tool run process
@@ -315,7 +332,7 @@ pub struct ToolSummary {
     /// files
     pub out_paths: Vec<PathBuf>,
     /// All [`ToolRunSummary`]s
-    pub summaries: Vec<ToolRunSummary>,
+    pub summaries: ToolRunSummaries,
 }
 
 impl FromStr for BaselineName {
@@ -810,7 +827,9 @@ impl SummaryOutput {
 impl ToolRunSummary {
     pub fn new_has_errors(&self) -> bool {
         match &self.costs_summary {
-            CostsSummaryType::None | CostsSummaryType::DhatSummary(_) => false,
+            CostsSummaryType::None
+            | CostsSummaryType::DhatSummary(_)
+            | CostsSummaryType::CallgrindSummary(_) => false,
             CostsSummaryType::ErrorSummary(costs) => costs
                 .diff_by_kind(&ErrorMetricKind::Errors)
                 .map_or(false, |e| match e.costs {

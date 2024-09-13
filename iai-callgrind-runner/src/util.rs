@@ -39,6 +39,17 @@ impl<T> EitherOrBoth<T> {
             EitherOrBoth::Right(right) | EitherOrBoth::Both(_, right) => Some(right),
         }
     }
+
+    pub fn map<F, N>(self, f: F) -> EitherOrBoth<N>
+    where
+        F: Fn(T) -> N,
+    {
+        match self {
+            Self::Left(left) => EitherOrBoth::Left(f(left)),
+            Self::Right(right) => EitherOrBoth::Right(f(right)),
+            Self::Both(l, r) => EitherOrBoth::Both(f(l), f(r)),
+        }
+    }
 }
 
 /// A vector with at least one element
