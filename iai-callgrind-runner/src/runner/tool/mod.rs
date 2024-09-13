@@ -14,7 +14,6 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output};
 
 use anyhow::{anyhow, Context, Result};
-use colored::Colorize;
 use lazy_static::lazy_static;
 use log::{debug, error, log_enabled};
 use logfile_parser::{Logfile, LogfileSummaries};
@@ -34,7 +33,7 @@ use super::meta::Metadata;
 use super::summary::{BaselineKind, ToolRunSummary, ToolSummary};
 use crate::api::{self, ExitWith, Stream};
 use crate::error::Error;
-use crate::util::{self, make_relative, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
+use crate::util::{self, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
 
 lazy_static! {
     // This regex matches the original file name as it is created by callgrind. The baseline <name>
@@ -413,9 +412,7 @@ impl ToolConfigs {
             (true, true) => todo!("should not happen"),
             (true, false) => todo!("new should never be empty"),
             (false, true) => LogfileSummaries::new(EitherOrBoth::Left(parsed_new)),
-            (false, false) => {
-                LogfileSummaries::new(EitherOrBoth::Both((parsed_new, old_summaries)))
-            }
+            (false, false) => LogfileSummaries::new(EitherOrBoth::Both(parsed_new, old_summaries)),
         };
 
         Ok(ToolSummary {

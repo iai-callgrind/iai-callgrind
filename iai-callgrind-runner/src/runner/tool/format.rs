@@ -64,7 +64,7 @@ impl ToolRunSummaryFormatter {
                         old.command.blue()
                     );
                 }
-                EitherOrBoth::Both((new, old)) => {
+                EitherOrBoth::Both(new, old) => {
                     print_split("Command:", new.command.blue().bold(), old.command.blue());
                 }
             }
@@ -91,7 +91,7 @@ impl ToolRunSummaryFormatter {
 
         if force_show_body || verbose || summary.new_has_errors() {
             match &summary.info {
-                EitherOrBoth::Left(new) | EitherOrBoth::Both((new, _)) => {
+                EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _) => {
                     let mut details = new.details.iter().flat_map(|x| x.lines());
                     if let Some(head_line) = details.next() {
                         println!("  {:<18}{}", "Details:", head_line);
@@ -123,7 +123,7 @@ impl ToolRunSummaryFormatter {
                         old.path.display().to_string().blue().bold()
                     );
                 }
-                EitherOrBoth::Both((new, old)) => {
+                EitherOrBoth::Both(new, old) => {
                     print_split(
                         "Logfile:",
                         new.path.display().to_string().blue().bold(),

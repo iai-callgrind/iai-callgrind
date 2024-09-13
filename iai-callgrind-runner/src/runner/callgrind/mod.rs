@@ -13,7 +13,7 @@ use itertools::Itertools;
 use parser::{CallgrindProperties, ParserOutput};
 
 use self::model::Costs;
-use super::summary::{CallgrindRegressionSummary, CostsSummary, ToolRunSummaries};
+use super::summary::{CallgrindRegressionSummary, CostsSummary};
 use crate::api::{self, EventKind};
 use crate::util::{to_string_signed_short, EitherOrBoth};
 
@@ -150,7 +150,7 @@ impl RegressionConfig {
         for (event_kind, new_cost, old_cost, pct, limit) in
             self.limits.iter().filter_map(|(event_kind, limit)| {
                 costs_summary.diff_by_kind(event_kind).and_then(|d| {
-                    if let EitherOrBoth::Both((new, old)) = d.costs {
+                    if let EitherOrBoth::Both(new, old) = d.costs {
                         // This unwrap is safe since the diffs are calculated if both costs are
                         // present
                         Some((event_kind, new, old, d.diffs.unwrap().diff_pct, limit))
@@ -226,11 +226,11 @@ impl Summaries {
                     (new_path, new_props, new_costs),
                     (old_path, old_props, old_costs),
                 ) => {
-                    let summary = CostsSummary::new(EitherOrBoth::Both((new_costs, old_costs)));
+                    let summary = CostsSummary::new(EitherOrBoth::Both(new_costs, old_costs));
                     total.add(&summary);
 
                     Summary::new(
-                        EitherOrBoth::Both(((new_path, new_props), (old_path, old_props))),
+                        EitherOrBoth::Both((new_path, new_props), (old_path, old_props)),
                         summary,
                     )
                 }
@@ -374,7 +374,7 @@ mod tests {
 
         let new = cachesim_costs(new);
         let old = cachesim_costs(old);
-        let summary = CostsSummary::new(EitherOrBoth::Both((new, old)));
+        let summary = CostsSummary::new(EitherOrBoth::Both(new, old));
         let expected = expected
             .iter()
             .map(|(e, n, o, d, l)| CallgrindRegressionSummary {

@@ -401,13 +401,13 @@ pub fn format_vertical<'a, K: Display + 'a>(
                 NOT_AVAILABLE.bold(),
                 unknown.bright_black()
             )?,
-            EitherOrBoth::Both((new_cost, old_cost)) if new_cost == old_cost => writeln!(
+            EitherOrBoth::Both(new_cost, old_cost) if new_cost == old_cost => writeln!(
                 result,
                 "  {description:<18}{:>15}|{old_cost:<15} ({:^9})",
                 new_cost.to_string().bold(),
                 no_change.bright_black()
             )?,
-            EitherOrBoth::Both((new_cost, old_cost)) => {
+            EitherOrBoth::Both(new_cost, old_cost) => {
                 let diffs = diff.diffs.expect(
                     "If there are new costs and old costs there should be a difference present",
                 );
@@ -468,7 +468,7 @@ pub fn callgrind_multiple_files_header(
                 " ".repeat(max_left - NOT_AVAILABLE.len() - 1)
             )
         }
-        EitherOrBoth::Both((new, old)) => {
+        EitherOrBoth::Both(new, old) => {
             let left = fields(&new.1);
             let len = left.len();
             let right = fields(&old.1);
@@ -761,10 +761,10 @@ mod tests {
         colored::control::set_override(false);
 
         let costs = match old {
-            Some(old) => EitherOrBoth::Both((
+            Some(old) => EitherOrBoth::Both(
                 Costs(indexmap! {event_kind => new}),
                 Costs(indexmap! {event_kind => old}),
-            )),
+            ),
             None => EitherOrBoth::Left(Costs(indexmap! {event_kind => new})),
         };
         let costs_summary = CostsSummary::new(costs);

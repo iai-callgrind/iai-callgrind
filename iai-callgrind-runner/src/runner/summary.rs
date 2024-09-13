@@ -446,8 +446,8 @@ impl BenchmarkSummary {
             (&self.callgrind_summary, &other.callgrind_summary)
         {
             if let (
-                EitherOrBoth::Left(new) | EitherOrBoth::Both((new, _)),
-                EitherOrBoth::Left(other_new) | EitherOrBoth::Both((other_new, _)),
+                EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _),
+                EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
             ) = (
                 callgrind_summary.summaries.total.summary.extract_costs(),
                 other_callgrind_summary
@@ -456,7 +456,7 @@ impl BenchmarkSummary {
                     .summary
                     .extract_costs(),
             ) {
-                let new_summary = CostsSummary::new(EitherOrBoth::Both((new, other_new)));
+                let new_summary = CostsSummary::new(EitherOrBoth::Both(new, other_new));
                 ComparisonHeader::new(self.function_name.clone(), id, self.details.clone()).print();
                 VerticalFormat::default().print(meta, (None, None), &new_summary)?;
             }
@@ -545,7 +545,7 @@ impl CallgrindSummary {
         for summary in summaries.data {
             let old_baseline = match summary.details {
                 EitherOrBoth::Left(_) => None,
-                EitherOrBoth::Both((_, old)) | EitherOrBoth::Right(old) => Some(Baseline {
+                EitherOrBoth::Both(_, old) | EitherOrBoth::Right(old) => Some(Baseline {
                     kind: baselines.1.as_ref().map_or(BaselineKind::Old, |name| {
                         BaselineKind::Name(BaselineName(name.to_owned()))
                     }),
@@ -568,7 +568,7 @@ impl CallgrindSummary {
 
 impl CostsDiff {
     pub fn new(costs: EitherOrBoth<u64>) -> Self {
-        if let EitherOrBoth::Both((new, old)) = costs {
+        if let EitherOrBoth::Both(new, old) = costs {
             Self {
                 costs,
                 diffs: Some(Diffs::new(new, old)),
@@ -585,24 +585,24 @@ impl CostsDiff {
             }
             (EitherOrBoth::Right(old), EitherOrBoth::Left(new))
             | (EitherOrBoth::Left(new), EitherOrBoth::Right(old)) => {
-                Self::new(EitherOrBoth::Both((*new, *old)))
+                Self::new(EitherOrBoth::Both(*new, *old))
             }
             (EitherOrBoth::Right(old), EitherOrBoth::Right(other_old)) => {
                 Self::new(EitherOrBoth::Right(old.saturating_add(*other_old)))
             }
-            (EitherOrBoth::Both((new, old)), EitherOrBoth::Left(other_new))
-            | (EitherOrBoth::Left(new), EitherOrBoth::Both((other_new, old))) => {
-                Self::new(EitherOrBoth::Both((new.saturating_add(*other_new), *old)))
+            (EitherOrBoth::Both(new, old), EitherOrBoth::Left(other_new))
+            | (EitherOrBoth::Left(new), EitherOrBoth::Both(other_new, old)) => {
+                Self::new(EitherOrBoth::Both(new.saturating_add(*other_new), *old))
             }
-            (EitherOrBoth::Both((new, old)), EitherOrBoth::Right(other_old))
-            | (EitherOrBoth::Right(old), EitherOrBoth::Both((new, other_old))) => {
-                Self::new(EitherOrBoth::Both((*new, old.saturating_add(*other_old))))
+            (EitherOrBoth::Both(new, old), EitherOrBoth::Right(other_old))
+            | (EitherOrBoth::Right(old), EitherOrBoth::Both(new, other_old)) => {
+                Self::new(EitherOrBoth::Both(*new, old.saturating_add(*other_old)))
             }
-            (EitherOrBoth::Both((new, old)), EitherOrBoth::Both((other_new, other_old))) => {
-                Self::new(EitherOrBoth::Both((
+            (EitherOrBoth::Both(new, old), EitherOrBoth::Both(other_new, other_old)) => {
+                Self::new(EitherOrBoth::Both(
                     new.saturating_add(*other_new),
                     old.saturating_add(*other_old),
-                )))
+                ))
             }
         }
     }
@@ -656,7 +656,7 @@ where
                         .collect::<IndexMap<_, _>>(),
                 )
             }
-            EitherOrBoth::Both((new, old)) => {
+            EitherOrBoth::Both(new, old) => {
                 let mut new = Cow::Owned(new);
                 K::summarize(&mut new);
                 let mut old = Cow::Owned(old);
@@ -668,7 +668,7 @@ where
                     {
                         (Some(cost), None) => CostsDiff::new(EitherOrBoth::Left(cost)),
                         (None, Some(cost)) => CostsDiff::new(EitherOrBoth::Right(cost)),
-                        (Some(new), Some(old)) => CostsDiff::new(EitherOrBoth::Both((new, old))),
+                        (Some(new), Some(old)) => CostsDiff::new(EitherOrBoth::Both(new, old)),
                         (None, None) => {
                             unreachable!(
                                 "The union contains the event kinds either from new or old or \
@@ -704,7 +704,7 @@ where
                 EitherOrBoth::Right(old) => {
                     old_costs.insert(event_kind.clone(), old);
                 }
-                EitherOrBoth::Both((new, old)) => {
+                EitherOrBoth::Both(new, old) => {
                     new_costs.insert(event_kind.clone(), new);
                     old_costs.insert(event_kind.clone(), old);
                 }
@@ -712,7 +712,7 @@ where
         }
 
         match (new_costs.is_empty(), old_costs.is_empty()) {
-            (false, false) => EitherOrBoth::Both((new_costs, old_costs)),
+            (false, false) => EitherOrBoth::Both(new_costs, old_costs),
             (false, true) => EitherOrBoth::Left(new_costs),
             (true, false) => EitherOrBoth::Right(old_costs),
             (true, true) => unreachable!("A costs diff contains new or old values or both."),
@@ -815,7 +815,7 @@ impl ToolRunSummary {
             CostsSummaryType::ErrorSummary(costs) => costs
                 .diff_by_kind(&ErrorMetricKind::Errors)
                 .map_or(false, |e| match e.costs {
-                    EitherOrBoth::Left(new) | EitherOrBoth::Both((new, _)) => new > 0,
+                    EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _) => new > 0,
                     EitherOrBoth::Right(_) => false,
                 }),
         }
@@ -830,21 +830,41 @@ mod tests {
 
     #[rstest]
     #[case::new_new(EitherOrBoth::Left(1), EitherOrBoth::Left(2), EitherOrBoth::Left(3))]
-    #[case::new_old(EitherOrBoth::Left(1), EitherOrBoth::Right(2), EitherOrBoth::Both((1, 2)))]
-    #[case::new_both(EitherOrBoth::Left(1), EitherOrBoth::Both((2, 5)), EitherOrBoth::Both((3, 5)))]
+    #[case::new_old(
+        EitherOrBoth::Left(1),
+        EitherOrBoth::Right(2),
+        EitherOrBoth::Both(1, 2)
+    )]
+    #[case::new_both(
+        EitherOrBoth::Left(1),
+        EitherOrBoth::Both(2, 5),
+        EitherOrBoth::Both(3, 5)
+    )]
     #[case::old_old(EitherOrBoth::Right(1), EitherOrBoth::Right(2), EitherOrBoth::Right(3))]
-    #[case::old_new(EitherOrBoth::Right(1), EitherOrBoth::Left(2), EitherOrBoth::Both((2, 1)))]
+    #[case::old_new(
+        EitherOrBoth::Right(1),
+        EitherOrBoth::Left(2),
+        EitherOrBoth::Both(2, 1)
+    )]
     #[case::old_both(
         EitherOrBoth::Right(1),
-        EitherOrBoth::Both((2, 5)),
-        EitherOrBoth::Both((2, 6))
+        EitherOrBoth::Both(2, 5),
+        EitherOrBoth::Both(2, 6)
     )]
-    #[case::both_new(EitherOrBoth::Both((2,5)), EitherOrBoth::Left(1), EitherOrBoth::Both((3, 5)))]
-    #[case::both_old(EitherOrBoth::Both((2,5)), EitherOrBoth::Right(1), EitherOrBoth::Both((2, 6)))]
+    #[case::both_new(
+        EitherOrBoth::Both(2, 5),
+        EitherOrBoth::Left(1),
+        EitherOrBoth::Both(3, 5)
+    )]
+    #[case::both_old(
+        EitherOrBoth::Both(2, 5),
+        EitherOrBoth::Right(1),
+        EitherOrBoth::Both(2, 6)
+    )]
     #[case::both_both(
-        EitherOrBoth::Both((2, 5)),
-        EitherOrBoth::Both((1, 3)),
-        EitherOrBoth::Both((3, 8))
+        EitherOrBoth::Both(2, 5),
+        EitherOrBoth::Both(1, 3),
+        EitherOrBoth::Both(3, 8)
     )]
     fn test_costs_diff_add(
         #[case] cost: EitherOrBoth<u64>,

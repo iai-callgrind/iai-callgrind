@@ -49,7 +49,7 @@ impl Summary {
                             self.get_name()
                         );
                     }
-                    EitherOrBoth::Both((new_costs, old_costs)) => {
+                    EitherOrBoth::Both(new_costs, old_costs) => {
                         assert!(
                             !new_costs.0.iter().all(|(_, c)| *c == 0),
                             "All *new* costs were zero for '{}'",

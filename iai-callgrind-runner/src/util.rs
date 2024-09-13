@@ -22,22 +22,21 @@ use crate::error::Error;
 pub enum EitherOrBoth<T> {
     Left(T),
     Right(T),
-    // TODO: MAKE THIS Both(T, T) instead of tuple
-    Both((T, T)),
+    Both(T, T),
 }
 
 impl<T> EitherOrBoth<T> {
     pub fn left(&self) -> Option<&T> {
         match self {
             EitherOrBoth::Right(_) => None,
-            EitherOrBoth::Both((left, _)) | EitherOrBoth::Left(left) => Some(left),
+            EitherOrBoth::Both(left, _) | EitherOrBoth::Left(left) => Some(left),
         }
     }
 
     pub fn right(&self) -> Option<&T> {
         match self {
             EitherOrBoth::Left(_) => None,
-            EitherOrBoth::Right(right) | EitherOrBoth::Both((_, right)) => Some(right),
+            EitherOrBoth::Right(right) | EitherOrBoth::Both(_, right) => Some(right),
         }
     }
 }

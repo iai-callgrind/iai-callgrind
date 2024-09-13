@@ -78,6 +78,7 @@ pub struct LogfileSummaries {
     total: CostsSummaryType,
 }
 
+// TODO: REFACTOR THIS
 // TODO: IMPLEMENT AND SORT INTO IMPL SECTION
 // Logfiles are separated per process but not per threads by any tool
 impl LogfileSummaries {
@@ -156,7 +157,7 @@ impl LogfileSummaries {
                     }
                 })
                 .collect(),
-            EitherOrBoth::Both((new, old)) => new
+            EitherOrBoth::Both(new, old) => new
                 .into_iter()
                 .zip_longest(old)
                 .map(|either_or_both| match either_or_both {
@@ -164,40 +165,40 @@ impl LogfileSummaries {
                         (CostsKind::None, CostsKind::None) => {
                             total.get_or_insert(CostsSummaryType::None);
                             LogfileSummary {
-                                logfile: EitherOrBoth::Both((new, old)),
+                                logfile: EitherOrBoth::Both(new, old),
                                 costs_summary: CostsSummaryType::None,
                             }
                         }
                         (CostsKind::DhatCosts(new_costs), CostsKind::DhatCosts(old_costs)) => {
                             let costs_summary = CostsSummaryType::DhatSummary(CostsSummary::new(
-                                EitherOrBoth::Both((new_costs.clone(), old_costs.clone())),
+                                EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
                             ));
                             let total_mut = total.get_or_insert(CostsSummaryType::DhatSummary(
-                                CostsSummary::new(EitherOrBoth::Both((
+                                CostsSummary::new(EitherOrBoth::Both(
                                     Costs::empty(),
                                     Costs::empty(),
-                                ))),
+                                )),
                             ));
                             total_mut.add_mut(&costs_summary);
                             LogfileSummary {
                                 costs_summary,
-                                logfile: EitherOrBoth::Both((new, old)),
+                                logfile: EitherOrBoth::Both(new, old),
                             }
                         }
                         (CostsKind::ErrorCosts(new_costs), CostsKind::ErrorCosts(old_costs)) => {
                             let costs_summary = CostsSummaryType::ErrorSummary(CostsSummary::new(
-                                EitherOrBoth::Both((new_costs.clone(), old_costs.clone())),
+                                EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
                             ));
                             let total_mut = total.get_or_insert(CostsSummaryType::ErrorSummary(
-                                CostsSummary::new(EitherOrBoth::Both((
+                                CostsSummary::new(EitherOrBoth::Both(
                                     Costs::empty(),
                                     Costs::empty(),
-                                ))),
+                                )),
                             ));
                             total_mut.add_mut(&costs_summary);
                             LogfileSummary {
                                 costs_summary,
-                                logfile: EitherOrBoth::Both((new, old)),
+                                logfile: EitherOrBoth::Both(new, old),
                             }
                         }
                         _ => panic!("Cannot summarize incompatible log files"),
@@ -295,8 +296,8 @@ impl LogfileSummaries {
                     info: EitherOrBoth::Right(old_logfile.into()),
                     costs_summary: logfile_summary.costs_summary,
                 },
-                EitherOrBoth::Both((new_logfile, old_logfile)) => ToolRunSummary {
-                    info: EitherOrBoth::Both((new_logfile.into(), old_logfile.into())),
+                EitherOrBoth::Both(new_logfile, old_logfile) => ToolRunSummary {
+                    info: EitherOrBoth::Both(new_logfile.into(), old_logfile.into()),
                     costs_summary: logfile_summary.costs_summary,
                 },
             })
