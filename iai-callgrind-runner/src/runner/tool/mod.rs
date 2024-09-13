@@ -2,6 +2,7 @@
 pub mod args;
 pub mod error_metric_parser;
 pub mod format;
+pub mod generic_parser;
 pub mod logfile_parser;
 
 use std::ffi::OsString;

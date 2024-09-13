@@ -6,6 +6,7 @@ use log::debug;
 use regex::Regex;
 
 use super::error_metric_parser::ErrorMetricLogfileParser;
+use super::generic_parser::GenericLogfileParser;
 use super::{ToolOutputPath, ValgrindTool};
 use crate::api::ErrorMetricKind;
 use crate::runner::dhat::logfile_parser::DhatLogfileParser;
@@ -199,9 +200,11 @@ impl ValgrindTool {
     // TODO: RENAME TO PARSER FACTORY and don't put this into ValgrindTool
     pub fn to_parser(self, root_dir: PathBuf) -> Box<dyn LogfileParser> {
         match self {
-            // TODO: USE different more generic parser for bbv
             ValgrindTool::DHAT => Box::new(DhatLogfileParser { root_dir }),
-            _ => Box::new(ErrorMetricLogfileParser { root_dir }),
+            ValgrindTool::Memcheck | ValgrindTool::DRD | ValgrindTool::Helgrind => {
+                Box::new(ErrorMetricLogfileParser { root_dir })
+            }
+            _ => Box::new(GenericLogfileParser { root_dir }),
         }
     }
 }

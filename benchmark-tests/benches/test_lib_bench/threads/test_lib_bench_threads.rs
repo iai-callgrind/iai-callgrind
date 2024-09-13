@@ -46,9 +46,11 @@ fn bench_library(num: u64) {
             .args(["--trace-children=yes"])
             .outfile_modifier("%p"))
         .tool(Tool::new(ValgrindTool::Memcheck))
+        // TODO: FOR some reason helgrind exits with error
         // .tool(Tool::new(ValgrindTool::Helgrind))
         .tool(Tool::new(ValgrindTool::DRD).args(["-s"]))
         .tool(Tool::new(ValgrindTool::Massif))
+        .tool(Tool::new(ValgrindTool::BBV))
 )]
 #[bench::two(3)]
 #[bench::three(3)]
