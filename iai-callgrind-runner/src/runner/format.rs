@@ -281,6 +281,7 @@ impl LibraryBenchmarkHeader {
 }
 
 impl VerticalFormat {
+    // TODO: CLEANUP?
     pub fn print(
         &self,
         meta: &Metadata,
@@ -363,7 +364,6 @@ impl Formatter for VerticalFormat {
 }
 
 pub fn format_vertical<'a, K: Display + 'a>(
-    // TODO: MAKE USE OF EitherOrBoth
     baselines: (Option<String>, Option<String>),
     costs_summary: impl Iterator<Item = (&'a K, &'a CostsDiff)>,
 ) -> Result<String> {

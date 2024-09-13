@@ -15,6 +15,7 @@ use which::which;
 
 use crate::error::Error;
 
+/// TODO: How does either or both serialize?
 /// Either left, right or both can be present
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]

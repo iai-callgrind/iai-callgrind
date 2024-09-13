@@ -189,7 +189,7 @@ pub enum CostsKind {
 pub struct CostsSummary<K: Hash + Eq = EventKind>(IndexMap<K, CostsDiff>);
 
 /// TODO: DOCS
-/// TODO: RENAME
+/// TODO: RENAME (`CostsSummaryByKind`?)
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum CostsSummaryType {
@@ -198,7 +198,21 @@ pub enum CostsSummaryType {
     ErrorSummary(CostsSummary<ErrorMetricKind>),
     DhatSummary(CostsSummary<DhatMetricKind>),
     // TODO: REMOVE CALLGRINDSummary for now
-    CallgrindSummary(CostsSummary<EventKind>),
+    // CallgrindSummary(CostsSummary<EventKind>),
+}
+
+impl CostsSummaryType {
+    pub fn add_mut(&mut self, other: &Self) {
+        match (self, other) {
+            (CostsSummaryType::ErrorSummary(this), CostsSummaryType::ErrorSummary(other)) => {
+                this.add(other);
+            }
+            (CostsSummaryType::DhatSummary(this), CostsSummaryType::DhatSummary(other)) => {
+                this.add(other);
+            }
+            _ => {}
+        }
+    }
 }
 
 /// TODO: DOCS
@@ -254,6 +268,30 @@ pub struct SummaryOutput {
     path: PathBuf,
 }
 
+/// TODO: check DOCS
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct ToolRunInfo {
+    /// The executed command extracted from Valgrind output
+    pub command: String,
+    /// The pid of this process
+    pub pid: i32,
+    /// The parent pid of this process
+    pub parent_pid: Option<i32>,
+    /// More details from the logging output of the tool run
+    pub details: Option<String>,
+    /// The path to the full logfile from the tool run
+    pub path: PathBuf,
+}
+///
+/// TODO: Make use of it in `ToolSummary`, DOCS
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct ToolRunSummaries {
+    pub data: Vec<ToolRunSummary>,
+    pub total: CostsSummaryType,
+}
+
 /// The `ToolRunSummary` which contains all information about a single tool run process
 ///
 /// There's a separate process and therefore `ToolRunSummary` for the parent process and each child
@@ -261,20 +299,7 @@ pub struct SummaryOutput {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ToolRunSummary {
-    /// The executed command extracted from Valgrind output
-    pub command: String,
-    /// The old pid of this process
-    pub old_pid: Option<i32>,
-    /// The old parent pid of this process
-    pub old_parent_pid: Option<i32>,
-    /// The pid of this process
-    pub pid: Option<i32>,
-    /// The parent pid of this process
-    pub parent_pid: Option<i32>,
-    /// More details from the logging output of the tool run
-    pub details: Option<String>,
-    /// The path to the full logfile from the tool run
-    pub log_path: PathBuf,
+    pub info: EitherOrBoth<ToolRunInfo>,
     pub costs_summary: CostsSummaryType,
 }
 
@@ -690,11 +715,12 @@ where
             (false, false) => EitherOrBoth::Both((new_costs, old_costs)),
             (false, true) => EitherOrBoth::Left(new_costs),
             (true, false) => EitherOrBoth::Right(old_costs),
-            (true, true) => unreachable!("A costs diffs contain new or old values or both."),
+            (true, true) => unreachable!("A costs diff contains new or old values or both."),
         }
     }
 
     // TODO: TEST
+    // TODO: RENAME TO add_mut
     pub fn add(&mut self, other: &Self) {
         let other_keys = other.0.keys().cloned().collect::<IndexSet<_>>();
         let keys = self.0.keys().cloned().collect::<IndexSet<_>>();
@@ -785,9 +811,7 @@ impl SummaryOutput {
 impl ToolRunSummary {
     pub fn new_has_errors(&self) -> bool {
         match &self.costs_summary {
-            CostsSummaryType::None
-            | CostsSummaryType::DhatSummary(_)
-            | CostsSummaryType::CallgrindSummary(_) => false,
+            CostsSummaryType::None | CostsSummaryType::DhatSummary(_) => false,
             CostsSummaryType::ErrorSummary(costs) => costs
                 .diff_by_kind(&ErrorMetricKind::Errors)
                 .map_or(false, |e| match e.costs {

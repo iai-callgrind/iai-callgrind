@@ -13,7 +13,7 @@ use itertools::Itertools;
 use parser::{CallgrindProperties, ParserOutput};
 
 use self::model::Costs;
-use super::summary::{CallgrindRegressionSummary, CostsSummary};
+use super::summary::{CallgrindRegressionSummary, CostsSummary, ToolRunSummaries};
 use crate::api::{self, EventKind};
 use crate::util::{to_string_signed_short, EitherOrBoth};
 
@@ -29,6 +29,14 @@ pub struct Summaries {
     pub data: Vec<Summary>,
     pub total: CostsSummary,
 }
+
+// TODO: CONTINUE
+// impl From<Summaries> for ToolRunSummaries {
+//     fn from(value: Summaries) -> Self {
+//         Self {
+//         }
+//     }
+// }
 
 #[derive(Clone, Debug)]
 pub struct CacheSummary {

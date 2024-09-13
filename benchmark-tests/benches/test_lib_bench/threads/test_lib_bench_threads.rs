@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::process::Command;
 
 use benchmark_tests::find_primes;
 use iai_callgrind::{
@@ -76,6 +77,28 @@ fn bench_library_compare(num: u64) {
     );
 }
 
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .entry_point(EntryPoint::None)
+        .raw_callgrind_args(["--separate-threads=yes", "--trace-children=yes"])
+        .raw_callgrind_args(["--fair-sched=yes"])
+        .tool(Tool::new(ValgrindTool::DHAT)
+            .args(["--trace-children=yes"])
+            .outfile_modifier("%p"))
+        .tool(Tool::new(ValgrindTool::Memcheck).args(["trace-children=yes"]))
+        // TODO: FOR some reason helgrind exits with error
+        // .tool(Tool::new(ValgrindTool::Helgrind))
+        .tool(Tool::new(ValgrindTool::DRD).args(["-s", "trace-children=yes"]))
+        .tool(Tool::new(ValgrindTool::Massif).args(["trace-children=yes"]))
+        .tool(Tool::new(ValgrindTool::BBV).args(["trace-children=yes"]))
+)]
+fn bench_thread_in_subprocess() {
+    Command::new(env!("CARGO_BIN_EXE_thread"))
+        .arg("2")
+        .status()
+        .unwrap();
+}
+
 fn get_complex_map() -> HashMap<(String, String, String), u64> {
     let mut map = HashMap::new();
     map.insert(
@@ -142,4 +165,10 @@ library_benchmark_group!(
     compare_by_id = true;
     benchmarks = bench_library, bench_library_compare, normal, with_entry
 );
-main!(library_benchmark_groups = my_group);
+
+library_benchmark_group!(
+    name = subprocess;
+    benchmarks = bench_thread_in_subprocess
+);
+
+main!(library_benchmark_groups = my_group, subprocess);

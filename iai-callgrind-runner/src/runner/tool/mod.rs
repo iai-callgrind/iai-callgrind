@@ -17,6 +17,7 @@ use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
 use lazy_static::lazy_static;
 use log::{debug, error, log_enabled};
+use logfile_parser::{Logfile, LogfileSummaries};
 use regex::Regex;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
@@ -24,7 +25,6 @@ use serde::{Deserialize, Serialize};
 
 use self::args::ToolArgs;
 use self::format::ToolRunSummaryFormatter;
-use self::logfile_parser::LogfileSummary;
 use super::args::NoCapture;
 use super::bin_bench::Delay;
 use super::callgrind::parser::parse_header;
@@ -34,7 +34,7 @@ use super::meta::Metadata;
 use super::summary::{BaselineKind, ToolRunSummary, ToolSummary};
 use crate::api::{self, ExitWith, Stream};
 use crate::error::Error;
-use crate::util::{self, make_relative, resolve_binary_path, truncate_str_utf8};
+use crate::util::{self, make_relative, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
 
 lazy_static! {
     // This regex matches the original file name as it is created by callgrind. The baseline <name>
@@ -309,16 +309,28 @@ impl ToolConfig {
         out_path: Option<&ToolOutputPath>,
     ) -> Result<ToolSummary> {
         let parser = self.tool.to_parser(meta.project_root.clone());
-        let old_summaries = parser.as_ref().parse(&log_path.to_base_path())?;
-        let summaries = parser.as_ref().parse_merge(log_path, old_summaries)?;
-        let tool_summary = ToolSummary {
-            tool: self.tool,
-            log_paths: log_path.real_paths()?,
-            out_paths: out_path.map_or_else(|| Ok(Vec::default()), ToolOutputPath::real_paths)?,
-            summaries,
-        };
+        let parsed_new = parser.parse(log_path)?;
+        let parsed_old = parser.parse(&log_path.to_base_path())?;
 
-        Ok(tool_summary)
+        // TODO: CONTINUE ADJUST
+        match (parsed_new.is_empty(), parsed_old.is_empty()) {
+            (true, true) => Err(anyhow!(
+                "The baselines '{}' and '{}' don't exist",
+                &meta.args.baseline.as_ref().unwrap(),
+                &meta.args.load_baseline.as_ref().unwrap()
+            )),
+            (true, false) => todo!(),
+            (false, true) => todo!(),
+            (false, false) => todo!(),
+        }
+        // let tool_summary = ToolSummary {
+        //     tool: self.tool,
+        //     log_paths: log_path.real_paths()?,
+        //     out_paths: out_path.map_or_else(|| Ok(Vec::default()), ToolOutputPath::real_paths)?,
+        //     summaries: summaries.into_tool_run_summaries(),
+        // };
+
+        // Ok(summary)
     }
 }
 
@@ -356,50 +368,61 @@ impl ToolConfigs {
     fn print(
         meta: &Metadata,
         tool_config: &ToolConfig,
-        logfile_summaries: &[ToolRunSummary],
-        output_paths: &[PathBuf],
+        tool_run_summaries: &[ToolRunSummary],
+        // TODO: CLEANUP
+        _output_paths: &[PathBuf],
     ) -> Result<()> {
         if meta.args.output_format == OutputFormat::Default {
-            for logfile_summary in logfile_summaries {
+            for logfile_summary in tool_run_summaries {
                 ToolRunSummaryFormatter::print(
                     logfile_summary,
                     tool_config.args.verbose,
-                    logfile_summaries.len() > 1,
+                    tool_run_summaries.len() > 1,
                     matches!(tool_config.tool, ValgrindTool::BBV),
                 )?;
             }
 
-            for path in output_paths
-                .iter()
-                .map(|p| make_relative(&meta.project_root, p))
-            {
-                println!(
-                    "  {:<18}{}",
-                    "Outfile:",
-                    path.display().to_string().blue().bold()
-                );
-            }
+            // TODO: CLEANUP
+            // for path in output_paths
+            //     .iter()
+            //     .map(|p| make_relative(&meta.project_root, p))
+            // {
+            //     println!(
+            //         "  {:<18}{}",
+            //         "Outfile:",
+            //         path.display().to_string().blue().bold()
+            //     );
+            // }
         }
 
         Ok(())
     }
 
+    // TODO: ADJUST
     pub fn parse(
         tool_config: &ToolConfig,
         meta: &Metadata,
         log_path: &ToolOutputPath,
         out_path: Option<&ToolOutputPath>,
-        old_summaries: Vec<LogfileSummary>,
+        old_summaries: Vec<Logfile>,
     ) -> Result<ToolSummary> {
         let parser = tool_config.tool.to_parser(meta.project_root.clone());
 
-        let summaries = parser.as_ref().parse_merge(log_path, old_summaries)?;
+        let parsed_new = parser.parse(log_path)?;
+        let summaries = match (parsed_new.is_empty(), old_summaries.is_empty()) {
+            (true, true) => todo!("should not happen"),
+            (true, false) => todo!("new should never be empty"),
+            (false, true) => LogfileSummaries::new(EitherOrBoth::Left(parsed_new)),
+            (false, false) => {
+                LogfileSummaries::new(EitherOrBoth::Both((parsed_new, old_summaries)))
+            }
+        };
 
         Ok(ToolSummary {
             tool: tool_config.tool,
             log_paths: log_path.real_paths()?,
             out_paths: out_path.map_or_else(|| Ok(Vec::default()), ToolOutputPath::real_paths)?,
-            summaries,
+            summaries: summaries.into_tool_run_summaries(),
         })
     }
 
@@ -461,7 +484,7 @@ impl ToolConfigs {
 
             let parser = tool_config.tool.to_parser(config.meta.project_root.clone());
 
-            let old_summaries = parser.as_ref().parse(&log_path.to_base_path())?;
+            let old_summaries = parser.parse(&log_path.to_base_path())?;
             if save_baseline {
                 output_path.clear()?;
                 log_path.clear()?;
@@ -518,7 +541,7 @@ impl ToolConfigs {
                 old_summaries,
             )?;
 
-            // TODO: Print multiple files with a headline as in callgrind format
+            // TODO: Print multiple files with a headline as in callgrind format and the total
             Self::print(
                 &config.meta,
                 tool_config,
@@ -954,6 +977,7 @@ impl ToolOutputPath {
             self.sanitize_callgrind()?;
         }
         // TODO: sanitize dhat
+        // TODO: sanitize bbv (bb file has .x suffix for each thread, multiple processes?)
         Ok(())
     }
 }

@@ -5,10 +5,10 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 
 use super::logfile_parser::{
-    extract_pid, LogfileParser, LogfileSummary, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
+    extract_pid, Header, Logfile, LogfileParser, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
 };
 use crate::error::Error;
-use crate::runner::summary::{CostsKind, ToolRunSummary};
+use crate::runner::summary::CostsKind;
 use crate::util::make_relative;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -23,7 +23,7 @@ pub struct GenericLogfileParser {
 }
 
 impl LogfileParser for GenericLogfileParser {
-    fn parse_single(&self, path: PathBuf) -> Result<LogfileSummary> {
+    fn parse_single(&self, path: PathBuf) -> Result<Logfile> {
         let file = File::open(&path)
             .with_context(|| format!("Error opening log file '{}'", path.display()))?;
 
@@ -45,6 +45,8 @@ impl LogfileParser for GenericLogfileParser {
         let mut state = State::Header;
         for line in iter {
             match &state {
+                // TODO: Move parsing the header into a separate function. The header is the same
+                // for all logfile parsers
                 State::Header if !EMPTY_LINE_RE.is_match(&line) => {
                     if let Some(caps) = EXTRACT_FIELDS_RE.captures(&line) {
                         let key = caps.name("key").unwrap().as_str();
@@ -93,24 +95,17 @@ impl LogfileParser for GenericLogfileParser {
             }
         }
 
-        Ok(LogfileSummary {
-            command: command
-                .context("Failed parsing error metrics: A command should be present")?,
+        let header = Header {
             pid,
             parent_pid,
+            command: command
+                .context("Failed parsing error metrics: A command should be present")?,
+        };
+        Ok(Logfile {
+            header,
             details,
-            log_path: make_relative(&self.root_dir, path),
+            path: make_relative(&self.root_dir, path),
             costs: CostsKind::None,
         })
-    }
-
-    fn merge_logfile_summaries(
-        &self,
-        _: Vec<LogfileSummary>,
-        new: Vec<LogfileSummary>,
-    ) -> Vec<ToolRunSummary> {
-        new.into_iter()
-            .map(LogfileSummary::new_into_tool_run)
-            .collect()
     }
 }

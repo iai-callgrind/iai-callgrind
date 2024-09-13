@@ -138,13 +138,13 @@ impl ToolArgs {
                 let mut pc_arg = OsString::from("--pc-out-file=");
                 let (bb_out, pc_out) = if let Some(modifier) = modifier {
                     (
-                        output_path.with_modifiers(["bb", modifier.as_ref()]),
-                        output_path.with_modifiers(["pc", modifier.as_ref()]),
+                        output_path.with_modifiers([modifier.as_ref(), "bb"]),
+                        output_path.with_modifiers([modifier.as_ref(), "pc"]),
                     )
                 } else if self.trace_children {
                     (
-                        output_path.with_modifiers(["bb", "%p"]),
-                        output_path.with_modifiers(["pc", "%p"]),
+                        output_path.with_modifiers(["%p", "bb"]),
+                        output_path.with_modifiers(["%p", "pc"]),
                     )
                 } else {
                     (

@@ -5,6 +5,7 @@ use colored::Colorize;
 
 use crate::runner::format::{format_vertical, NOT_AVAILABLE};
 use crate::runner::summary::{CostsSummaryType, ToolRunSummary};
+use crate::util::EitherOrBoth;
 
 pub struct ToolRunSummaryFormatter;
 
@@ -33,6 +34,16 @@ fn print_compare<T: Display>(
     }
 }
 
+fn print_split<T, U>(name: U, left: T, right: T)
+where
+    T: Display,
+    U: Display,
+{
+    println!("  {name:<18}{left}");
+    println!("  {}|{right}", " ".repeat(33));
+}
+
+// TODO: TRY to use only VerticalFormat
 impl ToolRunSummaryFormatter {
     pub fn print(
         summary: &ToolRunSummary,
@@ -40,21 +51,36 @@ impl ToolRunSummaryFormatter {
         is_multiple: bool,
         force_show_body: bool,
     ) -> Result<()> {
-        if verbose || is_multiple {
-            println!("  {:<18}{}", "Command:", summary.command.blue().bold());
-            let should_compare = summary.costs_summary.is_some();
-            print_compare("PID:", summary.old_pid, summary.pid, should_compare);
-            print_compare(
-                "Parent PID:",
-                summary.old_parent_pid,
-                summary.parent_pid,
-                should_compare,
-            );
+        if summary.costs_summary.is_none() || verbose || is_multiple {
+            match &summary.info {
+                EitherOrBoth::Left(new) => {
+                    println!("  {:<18}{}", "Command:", new.command.blue().bold());
+                }
+                EitherOrBoth::Right(old) => {
+                    println!(
+                        "  {:<18}{}|{}",
+                        "Command:",
+                        " ".repeat(15),
+                        old.command.blue()
+                    );
+                }
+                EitherOrBoth::Both((new, old)) => {
+                    print_split("Command:", new.command.blue().bold(), old.command.blue());
+                }
+            }
+            // TODO: CLEANUP
+            // let should_compare = summary.costs_summary.is_some();
+            // print_compare("PID:", summary.old_pid, summary.pid, should_compare);
+            // print_compare(
+            //     "Parent PID:",
+            //     summary.old_parent_pid,
+            //     summary.parent_pid,
+            //     should_compare,
+            // );
         }
 
-        // The callgrind summary was already printed
         match &summary.costs_summary {
-            CostsSummaryType::None | CostsSummaryType::CallgrindSummary(_) => {}
+            CostsSummaryType::None => {}
             CostsSummaryType::ErrorSummary(costs) => {
                 print!("{}", format_vertical((None, None), costs.all_diffs())?);
             }
@@ -64,22 +90,47 @@ impl ToolRunSummaryFormatter {
         }
 
         if force_show_body || verbose || summary.new_has_errors() {
-            let mut details = summary.details.iter().flat_map(|x| x.lines());
-            if let Some(head_line) = details.next() {
-                println!("  {:<18}{}", "Details:", head_line);
-                for body_line in details {
-                    println!("                    {body_line}");
+            match &summary.info {
+                EitherOrBoth::Left(new) | EitherOrBoth::Both((new, _)) => {
+                    let mut details = new.details.iter().flat_map(|x| x.lines());
+                    if let Some(head_line) = details.next() {
+                        println!("  {:<18}{}", "Details:", head_line);
+                        for body_line in details {
+                            println!("                    {body_line}");
+                        }
+                    }
                 }
+                EitherOrBoth::Right(_) => {}
             }
         }
 
-        // TODO: Don't show the outfile
-        if summary.costs_summary.is_none() || verbose {
-            println!(
-                "  {:<18}{}",
-                "Logfile:",
-                summary.log_path.display().to_string().blue().bold()
-            );
+        // TODO: CLEANUP
+        // if summary.costs_summary.is_none() || verbose {
+        if verbose {
+            match &summary.info {
+                EitherOrBoth::Left(new) => {
+                    println!(
+                        "  {:<18}{}",
+                        "Logfile:",
+                        new.path.display().to_string().blue().bold()
+                    );
+                }
+                EitherOrBoth::Right(old) => {
+                    println!(
+                        "  {:<18}{}|{}",
+                        "Logfile:",
+                        " ".repeat(15),
+                        old.path.display().to_string().blue().bold()
+                    );
+                }
+                EitherOrBoth::Both((new, old)) => {
+                    print_split(
+                        "Logfile:",
+                        new.path.display().to_string().blue().bold(),
+                        old.path.display().to_string().blue(),
+                    );
+                }
+            }
         }
 
         Ok(())

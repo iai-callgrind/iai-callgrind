@@ -116,6 +116,8 @@ libclang
 libtest
 linkcheck
 llhits
+logfile
+logfiles
 malloclike
 massif
 mdbook
