@@ -161,8 +161,7 @@ impl Benchmark for BaselineBenchmark {
             }
         };
 
-        let modifier = callgrind_args.get_outfile_modifier();
-        let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, modifier);
+        let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, None);
 
         let bench_args = lib_bench.bench_args(group);
 
@@ -690,9 +689,8 @@ impl Benchmark for SaveBaselineBenchmark {
             }
         };
 
-        let modifier = callgrind_args.get_outfile_modifier();
         // TODO: REFACTOR move this and ToolCommand::new from above into LibBench::new
-        let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, modifier);
+        let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, None);
 
         let bench_args = lib_bench.bench_args(group);
         let baselines = self.baselines();

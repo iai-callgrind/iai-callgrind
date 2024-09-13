@@ -40,7 +40,7 @@ lazy_static! {
     // (base@<name>) can only consist of ascii and underscore characters. Flamegraph files are
     // ignored by this regex
     static ref CALLGRIND_ORIG_FILENAME_RE: Regex = Regex::new(
-        r"^(?<tool>callgrind)(?<name>[.].*([.].*)?)(?<pid>[.][0-9]+)?(?<type>[.](out|log))(?<base>[.](old|base@[^.]*))?(?<part>[.][0-9]+)?(?<thread>-[0-9]+)?$"
+        r"^(?<tool>callgrind)(?<name>[.][^.]+?([.][^0-9][^.]*?)?)(?<pid>[.][0-9]+)?(?<type>[.](out|log))(?<base>[.](old|base@[^.]+))?(?<part>[.][0-9]+)?(?<thread>-[0-9]+)?$"
     )
     .expect("Regex should compile");
 }
@@ -972,6 +972,13 @@ impl ToolOutputPath {
     pub fn sanitize(&self) -> Result<()> {
         if self.tool == ValgrindTool::Callgrind {
             self.sanitize_callgrind()?;
+        } else {
+            for entry in self.walk_dir()? {
+                if entry.metadata()?.size() == 0 {
+                    std::fs::remove_file(entry.path())?;
+                    continue;
+                }
+            }
         }
         // TODO: sanitize dhat
         // TODO: sanitize bbv (bb file has .x suffix for each thread, multiple processes?)

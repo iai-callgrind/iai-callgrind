@@ -180,7 +180,6 @@ pub enum CostsKind {
     DhatCosts(Costs<DhatMetricKind>),
     ErrorCosts(Costs<ErrorMetricKind>),
     // TODO: ADD CallgrindCosts
-    // TODO: ADD Generic costs using Costs<String> ?
 }
 
 /// The `CostsSummary` contains all differences for affected [`EventKind`]s
