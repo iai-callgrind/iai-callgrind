@@ -9,6 +9,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use super::model::{Costs, Positions};
+use crate::runner::summary::ToolRunInfo;
 use crate::runner::tool::ToolOutputPath;
 use crate::runner::DEFAULT_TOGGLE;
 
@@ -44,7 +45,7 @@ pub trait CallgrindParser {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CallgrindProperties {
     pub costs_prototype: Costs,
     pub positions_prototype: Positions,
@@ -54,6 +55,18 @@ pub struct CallgrindProperties {
     pub desc: Vec<String>,
     pub cmd: Option<String>,
     pub creator: Option<String>,
+}
+
+impl CallgrindProperties {
+    pub fn into_info(self, path: &Path) -> ToolRunInfo {
+        ToolRunInfo {
+            command: self.cmd.expect("A command should be present"),
+            pid: self.pid.expect("A pid should be present"),
+            parent_pid: None,
+            details: None,
+            path: path.to_owned(),
+        }
+    }
 }
 
 #[allow(clippy::unsafe_derive_deserialize)]

@@ -1,7 +1,6 @@
 // spell-checker: ignore extbase extbasename extold
 pub mod args;
 pub mod error_metric_parser;
-pub mod format;
 pub mod generic_parser;
 pub mod logfile_parser;
 
@@ -28,10 +27,10 @@ use super::bin_bench::Delay;
 use super::callgrind::parser::parse_header;
 use super::common::{Assistant, Config, ModulePath, Sandbox};
 use super::format::{
-    print_no_capture_footer, tool_headline, Formatter, NewVerticalFormat, OutputFormat,
+    print_no_capture_footer, tool_headline, Formatter, OutputFormat, VerticalFormat,
 };
 use super::meta::Metadata;
-use super::summary::{BaselineKind, ToolRunSummaries, ToolRunSummary, ToolSummary};
+use super::summary::{BaselineKind, ToolRunSummaries, ToolSummary};
 use crate::api::{self, ExitWith, Stream};
 use crate::error::Error;
 use crate::util::{self, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
@@ -373,7 +372,7 @@ impl ToolConfigs {
         _output_paths: &[PathBuf],
     ) -> Result<()> {
         // TODO: CONTINUE
-        NewVerticalFormat.print(meta, (None, None), tool_run_summaries)
+        VerticalFormat.print(meta, (None, None), tool_run_summaries)
         // ToolRunSummaryFormatter::print_multiple(
         //     tool_run_summaries,
         //     tool_config.args.verbose,

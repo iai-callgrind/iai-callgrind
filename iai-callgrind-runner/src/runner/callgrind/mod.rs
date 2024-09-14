@@ -6,6 +6,7 @@ pub mod model;
 pub mod parser;
 pub mod summary_parser;
 
+use std::convert::Into;
 use std::path::PathBuf;
 
 use colored::Colorize;
@@ -13,30 +14,62 @@ use itertools::Itertools;
 use parser::{CallgrindProperties, ParserOutput};
 
 use self::model::Costs;
-use super::summary::{CallgrindRegressionSummary, CostsSummary};
+use super::summary::{
+    CallgrindRegressionSummary, CostsSummary, CostsSummaryType, ToolRunSummaries, ToolRunSummary,
+};
 use crate::api::{self, EventKind};
 use crate::util::{to_string_signed_short, EitherOrBoth};
 
 /// TODO: DOCS
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Summary {
     pub details: EitherOrBoth<(PathBuf, CallgrindProperties)>,
     pub costs_summary: CostsSummary,
 }
 
-#[derive(Debug)]
+impl From<Summary> for ToolRunSummary {
+    fn from(value: Summary) -> Self {
+        match value.details {
+            EitherOrBoth::Left((new_path, new_props)) => ToolRunSummary {
+                costs_summary: CostsSummaryType::CallgrindSummary(value.costs_summary),
+                info: EitherOrBoth::Left(new_props.into_info(&new_path)),
+            },
+            EitherOrBoth::Right((old_path, old_props)) => ToolRunSummary {
+                costs_summary: CostsSummaryType::CallgrindSummary(value.costs_summary),
+                info: EitherOrBoth::Right(old_props.into_info(&old_path)),
+            },
+            EitherOrBoth::Both((new_path, new_props), (old_path, old_props)) => ToolRunSummary {
+                costs_summary: CostsSummaryType::CallgrindSummary(value.costs_summary),
+                info: EitherOrBoth::Both(
+                    new_props.into_info(&new_path),
+                    old_props.into_info(&old_path),
+                ),
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Summaries {
     pub data: Vec<Summary>,
     pub total: CostsSummary,
 }
 
-// TODO: CONTINUE
-// impl From<Summaries> for ToolRunSummaries {
-//     fn from(value: Summaries) -> Self {
-//         Self {
-//         }
-//     }
-// }
+impl From<Summaries> for ToolRunSummaries {
+    fn from(value: Summaries) -> Self {
+        let summaries = value.data.into_iter().map(Into::into).collect();
+        Self {
+            total: CostsSummaryType::CallgrindSummary(value.total),
+            data: summaries,
+        }
+    }
+}
+
+impl From<&Summaries> for ToolRunSummaries {
+    fn from(value: &Summaries) -> Self {
+        value.clone().into()
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct CacheSummary {

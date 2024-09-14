@@ -17,12 +17,12 @@ use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{RegressionConfig, Summaries};
 use super::common::{Assistant, AssistantKind, Config, ModulePath};
 use super::format::{
-    print_no_capture_footer, LibraryBenchmarkHeader, OutputFormat, VerticalFormat,
+    print_no_capture_footer, Formatter, LibraryBenchmarkHeader, OutputFormat, VerticalFormat,
 };
 use super::meta::Metadata;
 use super::summary::{
     BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, CallgrindRegressionSummary,
-    CallgrindSummary, CostsSummary, SummaryOutput,
+    CallgrindSummary, CostsSummary, SummaryOutput, ToolRunSummaries,
 };
 use super::tool::{
     RunOptions, ToolCommand, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind,
@@ -212,7 +212,11 @@ impl Benchmark for BaselineBenchmark {
 
         let summaries = Summaries::new(parsed_new, parsed_old);
 
-        VerticalFormat::default().print_multiple(&config.meta, self.baselines(), &summaries)?;
+        VerticalFormat.print(
+            &config.meta,
+            self.baselines(),
+            &ToolRunSummaries::from(&summaries),
+        )?;
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stderr())?;
@@ -529,7 +533,11 @@ impl Benchmark for LoadBaselineBenchmark {
         let parsed_old = Some(parser.parse(&old_path)?);
         let summaries = Summaries::new(parsed_new, parsed_old);
 
-        VerticalFormat::default().print_multiple(&config.meta, self.baselines(), &summaries)?;
+        VerticalFormat.print(
+            &config.meta,
+            self.baselines(),
+            &ToolRunSummaries::from(&summaries),
+        )?;
 
         let regressions = lib_bench.check_and_print_regressions(&summaries.total);
 
@@ -693,7 +701,6 @@ impl Benchmark for SaveBaselineBenchmark {
         let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, None);
 
         let bench_args = lib_bench.bench_args(group);
-        let baselines = self.baselines();
 
         let out_path = self.output_path(lib_bench, config, group);
         out_path.init()?;
@@ -736,7 +743,12 @@ impl Benchmark for SaveBaselineBenchmark {
 
         let parsed_new = parser.parse(&out_path)?;
         let summaries = Summaries::new(parsed_new, parsed_old);
-        VerticalFormat::default().print_multiple(&config.meta, baselines.clone(), &summaries)?;
+
+        VerticalFormat.print(
+            &config.meta,
+            self.baselines(),
+            &ToolRunSummaries::from(&summaries),
+        )?;
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stderr())?;

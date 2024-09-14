@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use super::callgrind::Summaries;
 use super::common::ModulePath;
 use super::costs::Costs;
-use super::format::{ComparisonHeader, OutputFormat, VerticalFormat};
+use super::format::{Formatter, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
 use super::tool::{ToolOutputPath, ValgrindTool};
 use crate::api::{DhatMetricKind, ErrorMetricKind, EventKind};
@@ -473,8 +473,13 @@ impl BenchmarkSummary {
                     .extract_costs(),
             ) {
                 let new_summary = CostsSummary::new(EitherOrBoth::Both(new, other_new));
-                ComparisonHeader::new(self.function_name.clone(), id, self.details.clone()).print();
-                VerticalFormat::default().print(meta, (None, None), &new_summary)?;
+                VerticalFormat.print_comparison(
+                    meta,
+                    &self.function_name,
+                    id,
+                    self.details.as_deref(),
+                    &CostsSummaryType::CallgrindSummary(new_summary),
+                )?;
             }
         }
 

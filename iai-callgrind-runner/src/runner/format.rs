@@ -4,16 +4,14 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use colored::{ColoredString, Colorize};
-use strum::IntoEnumIterator;
 
 use super::args::NoCapture;
 use super::bin_bench::BinBench;
 use super::callgrind::parser::CallgrindProperties;
-use super::callgrind::Summaries;
 use super::common::ModulePath;
 use super::lib_bench::LibBench;
 use super::meta::Metadata;
-use super::summary::{CostsDiff, CostsSummary, CostsSummaryType, ToolRunInfo, ToolRunSummaries};
+use super::summary::{CostsDiff, CostsSummaryType, ToolRunInfo, ToolRunSummaries};
 use super::tool::ValgrindTool;
 use crate::api::{self, DhatMetricKind, ErrorMetricKind, EventKind};
 use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8, EitherOrBoth};
@@ -21,6 +19,30 @@ use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8, Eith
 // TODO: Increase the possible length of the keys in the vertical output. Increase the space for
 // numbers a little bit? Increase the precision of the percentage and factor to 7 significant
 // numbers.
+
+// TODO: CLEANUP or make use of it
+// fn print_compare<T: Display>(
+//     description: &str,
+//     old: Option<T>,
+//     new: Option<T>,
+//     should_compare: bool,
+// ) {
+//     match (new, old) {
+//         (Some(new), _) if !should_compare => {
+//             println!("  {description:<18}{}", new.to_string().bold());
+//         }
+//         (None, Some(old)) => println!("  {description:<18}{:>15}|{old:<15}",
+// NOT_AVAILABLE.bold(),),         (Some(new), None) => println!(
+//             "  {description:<18}{:>15}|{NOT_AVAILABLE:<15}",
+//             new.to_string().bold(),
+//         ),
+//         (Some(new), Some(old)) => println!(
+//             "  {description:<18}{:>15}|{old:<15}",
+//             new.to_string().bold(),
+//         ),
+//         _ => {}
+//     }
+// }
 
 pub const NOT_AVAILABLE: &str = "N/A";
 
@@ -58,28 +80,20 @@ pub trait Formatter {
         }
     }
 
-    fn format(
-        &self,
-        baselines: (Option<String>, Option<String>),
-        costs_summary: &CostsSummary,
-    ) -> Result<String>;
-
-    fn refactor_format<'a>(
+    fn format_single(
         &self,
         baselines: (Option<String>, Option<String>),
         info: Option<&EitherOrBoth<ToolRunInfo>>,
         costs_summary: &CostsSummaryType,
     ) -> Result<String>;
 
-    fn format_single(&self, costs_summary: &CostsSummaryType) -> Result<String>;
-
-    fn format_multiple(
+    fn format(
         &self,
         baselines: (Option<String>, Option<String>),
         summaries: &ToolRunSummaries,
     ) -> Result<String>;
 
-    // TODO: Add verbose, force_show_body
+    // TODO: Add verbose
     fn print(
         &self,
         meta: &Metadata,
@@ -87,10 +101,19 @@ pub trait Formatter {
         summaries: &ToolRunSummaries,
     ) -> Result<()> {
         if meta.args.output_format == OutputFormat::Default {
-            print!("{}", self.format_multiple(baselines, summaries)?);
+            print!("{}", self.format(baselines, summaries)?);
         }
         Ok(())
     }
+
+    fn print_comparison(
+        &self,
+        meta: &Metadata,
+        function_name: &str,
+        id: &str,
+        details: Option<&str>,
+        summary: &CostsSummaryType,
+    ) -> Result<()>;
 }
 
 // TODO: Merge with BinaryBenchmarkHeader?
@@ -107,14 +130,8 @@ pub enum OutputFormat {
     PrettyJson,
 }
 
-// TODO: CLEANUP
 #[derive(Debug, Clone)]
-pub struct VerticalFormat {
-    event_kinds: Vec<EventKind>,
-}
-
-#[derive(Debug, Clone)]
-pub struct NewVerticalFormat;
+pub struct VerticalFormat;
 
 fn format_details(details: &str) -> Result<String> {
     let mut result = String::new();
@@ -128,16 +145,8 @@ fn format_details(details: &str) -> Result<String> {
     Ok(result)
 }
 
-impl Formatter for NewVerticalFormat {
-    fn format(
-        &self,
-        baselines: (Option<String>, Option<String>),
-        costs_summary: &CostsSummary,
-    ) -> Result<String> {
-        todo!("Delete this method")
-    }
-
-    fn refactor_format<'a>(
+impl Formatter for VerticalFormat {
+    fn format_single<'a>(
         &self,
         baselines: (Option<String>, Option<String>),
         info: Option<&EitherOrBoth<ToolRunInfo>>,
@@ -248,24 +257,7 @@ impl Formatter for NewVerticalFormat {
         }
     }
 
-    fn format_single(&self, costs_summary: &CostsSummaryType) -> Result<String> {
-        todo!("Delete this method");
-        // match costs_summary {
-        //     CostsSummaryType::None => {}
-        //     CostsSummaryType::ErrorSummary(summary) => {
-        //         format_vertical(
-        //             (None, None),
-        //             ErrorMetricKind::iter()
-        //                 .filter_map(|e| summary.diff_by_kind(&e).map(|d| (e, d))),
-        //         )?;
-        //     }
-        //     CostsSummaryType::DhatSummary(_) => todo!(),
-        //     CostsSummaryType::CallgrindSummary(_) => todo!(),
-        // };
-        // Ok(String::new())
-    }
-
-    fn format_multiple(
+    fn format(
         &self,
         baselines: (Option<String>, Option<String>),
         summaries: &ToolRunSummaries,
@@ -305,7 +297,7 @@ impl Formatter for NewVerticalFormat {
                     write!(
                         result,
                         "{}",
-                        self.refactor_format(
+                        self.format_single(
                             baselines.clone(),
                             Some(&summary.info),
                             &summary.costs_summary
@@ -316,18 +308,18 @@ impl Formatter for NewVerticalFormat {
                     write!(
                         result,
                         "{}",
-                        self.refactor_format(
+                        self.format_single(
                             (None, None),
                             Some(&summary.info),
                             &summary.costs_summary
                         )?
                     )?;
                 }
-
-                // TODO: Use force_show_body for bbv and verbose, Move into format_single?
             }
 
-            writeln!(result, "{}", tool_total_header())?;
+            if summaries.total.is_some() {
+                writeln!(result, "{}", tool_total_header())?;
+            }
         } else if summaries.total.is_none() && !summaries.data.is_empty() {
             // This is safe since we always have at least one summary present
             let summary = &summaries.data[0];
@@ -378,7 +370,7 @@ impl Formatter for NewVerticalFormat {
                 }
             }
         } else {
-            // Since a total is present here just pass through
+            // pass through
         }
 
         // TODO: what to do if summaries is empty (what actually can't be)?
@@ -386,11 +378,29 @@ impl Formatter for NewVerticalFormat {
             write!(
                 result,
                 "{}",
-                self.refactor_format((None, None), None, &summaries.total)?
+                self.format_single((None, None), None, &summaries.total)?
             )?;
         }
 
         Ok(result)
+    }
+
+    fn print_comparison(
+        &self,
+        meta: &Metadata,
+        function_name: &str,
+        id: &str,
+        details: Option<&str>,
+        summary: &CostsSummaryType,
+    ) -> Result<()> {
+        if meta.args.output_format == OutputFormat::Default {
+            ComparisonHeader::new(function_name, id, details).print();
+
+            let formatted = self.format_single((None, None), None, summary)?;
+            print!("{formatted}");
+        }
+
+        Ok(())
     }
 }
 
@@ -601,112 +611,6 @@ impl LibraryBenchmarkHeader {
     pub fn description(&self) -> Option<String> {
         self.inner.description.clone()
     }
-}
-
-impl VerticalFormat {
-    // TODO: CLEANUP?
-    pub fn print(
-        &self,
-        meta: &Metadata,
-        baselines: (Option<String>, Option<String>),
-        costs_summary: &CostsSummary,
-    ) -> Result<()> {
-        if meta.args.output_format == OutputFormat::Default {
-            print!("{}", self.format(baselines, costs_summary)?);
-        }
-        Ok(())
-    }
-
-    pub fn print_multiple(
-        &self,
-        meta: &Metadata,
-        baselines: (Option<String>, Option<String>),
-        summaries: &Summaries,
-    ) -> Result<()> {
-        if meta.args.output_format == OutputFormat::Default {
-            if summaries.has_multiple() {
-                for summary in &summaries.data {
-                    println!("{}", callgrind_multiple_files_header(&summary.details));
-                    print!(
-                        "{}",
-                        self.format(baselines.clone(), &summary.costs_summary)?
-                    );
-                }
-                println!("{}", tool_total_header());
-            }
-            print!("{}", self.format(baselines, &summaries.total)?);
-        }
-        Ok(())
-    }
-}
-
-impl Default for VerticalFormat {
-    fn default() -> Self {
-        use EventKind::*;
-        Self {
-            event_kinds: vec![
-                Ir,
-                L1hits,
-                LLhits,
-                RamHits,
-                TotalRW,
-                EstimatedCycles,
-                SysCount,
-                SysTime,
-                SysCpuTime,
-                Ge,
-                Bc,
-                Bcm,
-                Bi,
-                Bim,
-                ILdmr,
-                DLdmr,
-                DLdmw,
-                AcCost1,
-                AcCost2,
-                SpLoss1,
-                SpLoss2,
-            ],
-        }
-    }
-}
-
-impl Formatter for VerticalFormat {
-    // TODO: DELETE THIS METHOD
-    fn format(
-        &self,
-        baselines: (Option<String>, Option<String>),
-        costs_summary: &CostsSummary,
-    ) -> Result<String> {
-        format_vertical(
-            baselines,
-            self.event_kinds
-                .iter()
-                .filter_map(|e| costs_summary.diff_by_kind(e).map(|d| (e, d))),
-        )
-    }
-
-    fn refactor_format(
-        &self,
-        baselines: (Option<String>, Option<String>),
-        info: Option<&EitherOrBoth<ToolRunInfo>>,
-        costs_summary: &CostsSummaryType,
-    ) -> Result<String> {
-        todo!("Implement")
-    }
-
-    fn format_single(&self, costs_summary: &CostsSummaryType) -> Result<String> {
-        todo!()
-    }
-
-    fn format_multiple(
-        &self,
-        baselines: (Option<String>, Option<String>),
-        summaries: &ToolRunSummaries,
-    ) -> Result<String> {
-        todo!()
-    }
-    // TODO: Add print, print_multiple
 }
 
 pub fn format_vertical<'a, K: Display>(
@@ -1109,6 +1013,8 @@ mod tests {
         #[case] diff_pct: &str,
         #[case] diff_fact: Option<&str>,
     ) {
+        use crate::runner::summary::CostsSummary;
+
         colored::control::set_override(false);
 
         let costs = match old {
