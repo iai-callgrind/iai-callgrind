@@ -15,9 +15,8 @@ use super::tool::ValgrindTool;
 use crate::api::{self, DhatMetricKind, ErrorMetricKind, EventKind};
 use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8, EitherOrBoth};
 
-// TODO: Increase the possible length of the keys in the vertical output. Increase the space for
-// numbers a little bit? Increase the precision of the percentage and factor to 7 significant
-// numbers.
+// TODO: Increase the space for numbers a little bit? Increase the precision of the percentage and
+// factor to 7 significant numbers.
 
 /// The subset of callgrind metrics to format in the given order
 pub const CALLGRIND_DEFAULT: [EventKind; 21] = [
@@ -123,26 +122,10 @@ struct Header {
     description: Option<String>,
 }
 
-// TODO: Merge with BinaryBenchmarkHeader?
 pub struct LibraryBenchmarkHeader {
     inner: Header,
     has_tools_enabled: bool,
     output_format: OutputFormat,
-}
-
-pub struct NewFormatter {
-    buffer: String,
-}
-
-// impl NewFormatter {
-//     pub fn write_metrics(&mut self, )
-// }
-
-impl std::fmt::Write for NewFormatter {
-    fn write_str(&mut self, s: &str) -> std::fmt::Result {
-        self.buffer.push_str(s);
-        Ok(())
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
@@ -362,7 +345,6 @@ impl Formatter for VerticalFormat {
     ) -> Result<String> {
         match costs_summary {
             CostsSummaryType::None => {
-                // TODO: if force_show_body || verbose || summary.new_has_errors() {
                 let mut result = String::new();
                 if let Some(info) = info {
                     if let Some(new) = info.left() {
@@ -515,7 +497,7 @@ fn format_command(meta: &Metadata, command: &EitherOrBoth<&String>) -> String {
         EitherOrBoth::Left(new) => {
             writeln!(
                 result,
-                "  {:<18}{}",
+                "  {:<20}{}",
                 "Command:",
                 make_relative(&meta.project_root, PathBuf::from(&new))
                     .display()
@@ -528,7 +510,7 @@ fn format_command(meta: &Metadata, command: &EitherOrBoth<&String>) -> String {
         EitherOrBoth::Right(old) => {
             writeln!(
                 result,
-                "  {:<18}{}|{}",
+                "  {:<20}{}|{}",
                 "Command:",
                 " ".repeat(15),
                 make_relative(&meta.project_root, PathBuf::from(&old))
@@ -542,7 +524,7 @@ fn format_command(meta: &Metadata, command: &EitherOrBoth<&String>) -> String {
             if new == old {
                 writeln!(
                     result,
-                    "  {:<18}{}",
+                    "  {:<20}{}",
                     "Command:",
                     make_relative(&meta.project_root, PathBuf::from(&new))
                         .display()
@@ -570,9 +552,9 @@ fn format_details(details: &str) -> String {
     let mut result = String::new();
     let mut details = details.lines();
     if let Some(head_line) = details.next() {
-        writeln!(result, "  {:<18}{}", "Details:", head_line).unwrap();
+        writeln!(result, "  {:<20}{}", "Details:", head_line).unwrap();
         for body_line in details {
-            writeln!(result, "{}{body_line}", " ".repeat(20)).unwrap();
+            writeln!(result, "  {}{body_line}", " ".repeat(20)).unwrap();
         }
     }
     result
@@ -584,10 +566,11 @@ where
     U: Display,
 {
     let mut result = String::new();
-    writeln!(result, "  {name:<18}{left}").unwrap();
-    write!(result, "  {}|{right}", " ".repeat(33)).unwrap();
+    writeln!(result, "  {name:<20}{left}").unwrap();
+    write!(result, "  {}|{right}", " ".repeat(35)).unwrap();
     result
 }
+
 pub fn format_float(float: f64, unit: &str) -> ColoredString {
     let signed_short = to_string_signed_short(float);
     if float.is_infinite() {
@@ -612,17 +595,17 @@ pub fn format_vertical<'a, K: Display>(
     let unknown = "*********";
     let no_change = "No change";
 
-    // Move this into a function format_baselines_header
+    // TODO: Move this into a function format_baselines_header
     match baselines {
         (None, None) => {}
         (None, Some(base)) => {
-            writeln!(result, "  {:<33}|{base}", "Baselines:").unwrap();
+            writeln!(result, "  {:<35}|{base}", "Baselines:").unwrap();
         }
         (Some(base), None) => {
-            writeln!(result, "  {:<18}{:>15}", "Baselines:", base.bold()).unwrap();
+            writeln!(result, "  {:<20}{:>15}", "Baselines:", base.bold()).unwrap();
         }
         (Some(new), Some(old)) => {
-            writeln!(result, "  {:<18}{:>15}|{old}", "Baselines:", new.bold()).unwrap();
+            writeln!(result, "  {:<20}{:>15}|{old}", "Baselines:", new.bold()).unwrap();
         }
     }
 
@@ -631,19 +614,19 @@ pub fn format_vertical<'a, K: Display>(
         match diff.costs {
             EitherOrBoth::Left(new_cost) => writeln!(
                 result,
-                "  {description:<18}{:>15}|{NOT_AVAILABLE:<15} ({:^9})",
+                "  {description:<20}{:>15}|{NOT_AVAILABLE:<15} ({:^9})",
                 new_cost.to_string().bold(),
                 unknown.bright_black()
             )?,
             EitherOrBoth::Right(old_cost) => writeln!(
                 result,
-                "  {description:<18}{:>15}|{old_cost:<15} ({:^9})",
+                "  {description:<20}{:>15}|{old_cost:<15} ({:^9})",
                 NOT_AVAILABLE.bold(),
                 unknown.bright_black()
             )?,
             EitherOrBoth::Both(new_cost, old_cost) if new_cost == old_cost => writeln!(
                 result,
-                "  {description:<18}{:>15}|{old_cost:<15} ({:^9})",
+                "  {description:<20}{:>15}|{old_cost:<15} ({:^9})",
                 new_cost.to_string().bold(),
                 no_change.bright_black()
             )?,
@@ -655,7 +638,7 @@ pub fn format_vertical<'a, K: Display>(
                 let factor_string = format_float(diffs.factor, "x");
                 writeln!(
                     result,
-                    "  {description:<18}{:>15}|{old_cost:<15} ({pct_string:^9}) \
+                    "  {description:<20}{:>15}|{old_cost:<15} ({pct_string:^9}) \
                      [{factor_string:^9}]",
                     new_cost.to_string().bold(),
                 )?;
@@ -685,7 +668,7 @@ pub fn multiple_files_header(info: &EitherOrBoth<ToolRunInfo>) -> String {
     let mut result = String::new();
     write!(result, "  {} ", "##".yellow()).unwrap();
 
-    let max_left = 31;
+    let max_left = 33;
     match info {
         EitherOrBoth::Left(new) => {
             let left = fields(new);
@@ -792,8 +775,7 @@ pub fn tool_headline(tool: ValgrindTool) -> String {
         "  {} {} {}",
         "=======".bright_black(),
         id.to_ascii_uppercase(),
-        "=".repeat(64 - id.len()).bright_black(),
-        // "=".repeat(34 - tool.id().len()).bright_black()
+        "=".repeat(66 - id.len()).bright_black(),
     )
 }
 
@@ -1029,7 +1011,7 @@ mod tests {
         let formatted = format_vertical((None, None), costs_summary.all_diffs()).unwrap();
 
         let expected = format!(
-            "  {:<18}{new:>15}|{:<15} ({diff_pct}){}\n",
+            "  {:<20}{new:>15}|{:<15} ({diff_pct}){}\n",
             format!("{event_kind}:"),
             old.map_or(NOT_AVAILABLE.to_owned(), |o| o.to_string()),
             diff_fact.map_or_else(String::new, |f| format!(" [{f}]"))
