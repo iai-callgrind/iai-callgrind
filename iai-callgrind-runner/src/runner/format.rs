@@ -1,13 +1,11 @@
 use std::borrow::Cow;
 use std::fmt::{Display, Write};
-use std::path::PathBuf;
 
 use anyhow::Result;
 use colored::{ColoredString, Colorize};
 
 use super::args::NoCapture;
 use super::bin_bench::BinBench;
-use super::callgrind::parser::CallgrindProperties;
 use super::common::ModulePath;
 use super::lib_bench::LibBench;
 use super::meta::Metadata;
@@ -15,6 +13,9 @@ use super::summary::{CostsDiff, CostsSummaryType, ToolRunInfo, ToolRunSummaries}
 use super::tool::ValgrindTool;
 use crate::api::{self, DhatMetricKind, ErrorMetricKind, EventKind};
 use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8, EitherOrBoth};
+
+// TODO: Sort the structs, enums, functions ...
+// TODO: use unwrap on write!
 
 // TODO: Increase the possible length of the keys in the vertical output. Increase the space for
 // numbers a little bit? Increase the precision of the percentage and factor to 7 significant
@@ -44,6 +45,52 @@ use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8, Eith
 //     }
 // }
 
+/// The subset of callgrind metrics to format in the given order
+pub const CALLGRIND_DEFAULT: [EventKind; 21] = [
+    EventKind::Ir,
+    EventKind::L1hits,
+    EventKind::LLhits,
+    EventKind::RamHits,
+    EventKind::TotalRW,
+    EventKind::EstimatedCycles,
+    EventKind::SysCount,
+    EventKind::SysTime,
+    EventKind::SysCpuTime,
+    EventKind::Ge,
+    EventKind::Bc,
+    EventKind::Bcm,
+    EventKind::Bi,
+    EventKind::Bim,
+    EventKind::ILdmr,
+    EventKind::DLdmr,
+    EventKind::DLdmw,
+    EventKind::AcCost1,
+    EventKind::AcCost2,
+    EventKind::SpLoss1,
+    EventKind::SpLoss2,
+];
+
+/// The error metrics to format in the given order
+pub const ERROR_METRICS_DEFAULT: [ErrorMetricKind; 4] = [
+    ErrorMetricKind::Errors,
+    ErrorMetricKind::Contexts,
+    ErrorMetricKind::SuppressedErrors,
+    ErrorMetricKind::SuppressedContexts,
+];
+
+/// The subset of dhat metrics to format in the given order
+pub const DHAT_DEFAULT: [DhatMetricKind; 8] = [
+    DhatMetricKind::TotalBytes,
+    DhatMetricKind::TotalBlocks,
+    DhatMetricKind::AtTGmaxBytes,
+    DhatMetricKind::AtTGmaxBlocks,
+    DhatMetricKind::AtTEndBytes,
+    DhatMetricKind::AtTEndBlocks,
+    DhatMetricKind::ReadsBytes,
+    DhatMetricKind::WritesBytes,
+];
+
+/// The string used to signal that a value is not available
 pub const NOT_AVAILABLE: &str = "N/A";
 
 pub struct ComparisonHeader {
@@ -64,22 +111,22 @@ struct Header {
     description: Option<String>,
 }
 
-pub trait Formatter {
-    fn format_float(float: f64, unit: &str) -> ColoredString {
-        let signed_short = to_string_signed_short(float);
-        if float.is_infinite() {
-            if float.is_sign_positive() {
-                format!("{signed_short:+^9}").bright_red().bold()
-            } else {
-                format!("{signed_short:-^9}").bright_green().bold()
-            }
-        } else if float.is_sign_positive() {
-            format!("{signed_short:^+8}{unit}").bright_red().bold()
+pub fn format_float(float: f64, unit: &str) -> ColoredString {
+    let signed_short = to_string_signed_short(float);
+    if float.is_infinite() {
+        if float.is_sign_positive() {
+            format!("{signed_short:+^9}").bright_red().bold()
         } else {
-            format!("{signed_short:^+8}{unit}").bright_green().bold()
+            format!("{signed_short:-^9}").bright_green().bold()
         }
+    } else if float.is_sign_positive() {
+        format!("{signed_short:^+8}{unit}").bright_red().bold()
+    } else {
+        format!("{signed_short:^+8}{unit}").bright_green().bold()
     }
+}
 
+pub trait Formatter {
     fn format_single(
         &self,
         baselines: (Option<String>, Option<String>),
@@ -146,7 +193,7 @@ fn format_details(details: &str) -> Result<String> {
 }
 
 impl Formatter for VerticalFormat {
-    fn format_single<'a>(
+    fn format_single(
         &self,
         baselines: (Option<String>, Option<String>),
         info: Option<&EitherOrBoth<ToolRunInfo>>,
@@ -167,32 +214,23 @@ impl Formatter for VerticalFormat {
                 Ok(result)
             }
             CostsSummaryType::ErrorSummary(summary) => {
-                use ErrorMetricKind::*;
-
-                const TO_FORMAT: [ErrorMetricKind; 4] =
-                    [Errors, Contexts, SuppressedErrors, SuppressedContexts];
-
                 let mut formatted = format_vertical(
                     (None, None),
-                    TO_FORMAT
+                    ERROR_METRICS_DEFAULT
                         .iter()
                         .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
                 )?;
 
+                // TODO: Check for `old` errors too?
+                // We only check for `new` errors
                 if let Some(info) = info {
-                    // TODO: Check for `old` errors too?
-                    // We only check for `new` errors
                     if summary
-                        .diff_by_kind(&Errors)
+                        .diff_by_kind(&ErrorMetricKind::Errors)
                         .map_or(false, |e| e.costs.left().map_or(false, |l| *l > 0))
                     {
                         if let Some(new) = info.left() {
-                            let mut details = new.details.iter().flat_map(|x| x.lines());
-                            if let Some(head_line) = details.next() {
-                                writeln!(formatted, "  {:<18}{}", "Details:", head_line)?;
-                                for body_line in details {
-                                    writeln!(formatted, "{}{body_line}", " ".repeat(20))?;
-                                }
+                            if let Some(details) = new.details.as_ref() {
+                                write!(formatted, "{}", format_details(details)?)?;
                             }
                         }
                     }
@@ -200,60 +238,18 @@ impl Formatter for VerticalFormat {
 
                 Ok(formatted)
             }
-            CostsSummaryType::DhatSummary(summary) => {
-                use DhatMetricKind::*;
-
-                const TO_FORMAT: [DhatMetricKind; 8] = [
-                    TotalBytes,
-                    TotalBlocks,
-                    AtTGmaxBytes,
-                    AtTGmaxBlocks,
-                    AtTEndBytes,
-                    AtTEndBlocks,
-                    ReadsBytes,
-                    WritesBytes,
-                ];
-                format_vertical(
-                    (None, None),
-                    TO_FORMAT
-                        .iter()
-                        .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
-                )
-            }
-            CostsSummaryType::CallgrindSummary(summary) => {
-                use EventKind::*;
-
-                const TO_FORMAT: [EventKind; 21] = [
-                    Ir,
-                    L1hits,
-                    LLhits,
-                    RamHits,
-                    TotalRW,
-                    EstimatedCycles,
-                    SysCount,
-                    SysTime,
-                    SysCpuTime,
-                    Ge,
-                    Bc,
-                    Bcm,
-                    Bi,
-                    Bim,
-                    ILdmr,
-                    DLdmr,
-                    DLdmw,
-                    AcCost1,
-                    AcCost2,
-                    SpLoss1,
-                    SpLoss2,
-                ];
-
-                format_vertical(
-                    baselines,
-                    TO_FORMAT
-                        .iter()
-                        .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
-                )
-            }
+            CostsSummaryType::DhatSummary(summary) => format_vertical(
+                (None, None),
+                DHAT_DEFAULT
+                    .iter()
+                    .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+            ),
+            CostsSummaryType::CallgrindSummary(summary) => format_vertical(
+                baselines,
+                CALLGRIND_DEFAULT
+                    .iter()
+                    .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+            ),
         }
     }
 
@@ -269,7 +265,6 @@ impl Formatter for VerticalFormat {
             for summary in &summaries.data {
                 writeln!(result, "{}", multiple_files_header(&summary.info))?;
 
-                // TODO: Print command only if there are multiple pids present (new or old)
                 match &summary.info {
                     EitherOrBoth::Left(new) => {
                         writeln!(result, "  {:<18}{}", "Command:", new.command.blue().bold())?;
@@ -284,12 +279,16 @@ impl Formatter for VerticalFormat {
                         )?;
                     }
                     EitherOrBoth::Both(new, old) => {
-                        let split = format_split(
-                            "Command:",
-                            new.command.blue().bold(),
-                            old.command.blue(),
-                        )?;
-                        writeln!(result, "{split}")?;
+                        if new.command == old.command {
+                            writeln!(result, "  {:<18}{}", "Command:", new.command.blue().bold())?;
+                        } else {
+                            let split = format_split(
+                                "Command:",
+                                new.command.blue().bold(),
+                                old.command.blue(),
+                            )?;
+                            writeln!(result, "{split}")?;
+                        }
                     }
                 }
 
@@ -326,12 +325,6 @@ impl Formatter for VerticalFormat {
             match &summary.info {
                 EitherOrBoth::Left(new) => {
                     writeln!(result, "  {:<18}{}", "Command:", new.command.blue().bold())?;
-                    writeln!(
-                        result,
-                        "  {:<18}{}",
-                        "Path:",
-                        new.path.display().to_string().blue().bold()
-                    )?;
                 }
                 EitherOrBoth::Right(old) => {
                     writeln!(
@@ -341,25 +334,18 @@ impl Formatter for VerticalFormat {
                         " ".repeat(15),
                         old.command.blue()
                     )?;
-                    writeln!(
-                        result,
-                        "  {:<18}{}|{}",
-                        "Path:",
-                        " ".repeat(15),
-                        old.path.display().to_string().blue()
-                    )?;
                 }
                 EitherOrBoth::Both(new, old) => {
-                    let split =
-                        format_split("Command:", new.command.blue().bold(), old.command.blue())?;
-                    writeln!(result, "{split}")?;
-
-                    let split = format_split(
-                        "Path:",
-                        new.path.display().to_string().blue().bold(),
-                        old.path.display().to_string().blue(),
-                    )?;
-                    writeln!(result, "{split}")?;
+                    if new.command == old.command {
+                        writeln!(result, "  {:<18}{}", "Command:", new.command.blue().bold())?;
+                    } else {
+                        let split = format_split(
+                            "Command:",
+                            new.command.blue().bold(),
+                            old.command.blue(),
+                        )?;
+                        writeln!(result, "{split}")?;
+                    }
                 }
             }
 
@@ -661,8 +647,8 @@ pub fn format_vertical<'a, K: Display>(
                 let diffs = diff.diffs.expect(
                     "If there are new costs and old costs there should be a difference present",
                 );
-                let pct_string = VerticalFormat::format_float(diffs.diff_pct, "%");
-                let factor_string = VerticalFormat::format_float(diffs.factor, "x");
+                let pct_string = format_float(diffs.diff_pct, "%");
+                let factor_string = format_float(diffs.factor, "x");
                 writeln!(
                     result,
                     "  {description:<18}{:>15}|{old_cost:<15} ({pct_string:^9}) \
@@ -675,69 +661,80 @@ pub fn format_vertical<'a, K: Display>(
     Ok(result)
 }
 
-pub fn callgrind_multiple_files_header(
-    properties: &EitherOrBoth<(PathBuf, CallgrindProperties)>,
-) -> String {
-    fn fields(property: &CallgrindProperties) -> String {
-        let pid = property
-            .pid
-            .map_or(NOT_AVAILABLE.to_owned(), |v| v.to_string());
-        let part = property
-            .part
-            .map_or(NOT_AVAILABLE.to_owned(), |v| v.to_string());
-        let thread = property
-            .thread
-            .map_or(NOT_AVAILABLE.to_owned(), |v| v.to_string());
-        format!("pid: {pid} part: {part} thread: {thread}")
+pub fn multiple_files_header(info: &EitherOrBoth<ToolRunInfo>) -> String {
+    fn fields(info: &ToolRunInfo) -> String {
+        let mut result = String::new();
+        write!(result, "pid: {}", info.pid).unwrap();
+
+        if let Some(ppid) = info.parent_pid {
+            write!(result, " ppid: {ppid}").unwrap();
+        }
+        if let Some(part) = info.part {
+            write!(result, " part: {part}").unwrap();
+        }
+        if let Some(thread) = info.thread {
+            write!(result, " thread: {thread}").unwrap();
+        }
+        result
     }
 
+    let mut result = String::new();
+    write!(result, "  {} ", "##".yellow()).unwrap();
+
     let max_left = 31;
-    let hash = "##".yellow();
-    match properties {
+    match info {
         EitherOrBoth::Left(new) => {
-            let left = fields(&new.1);
+            let left = fields(new);
             let len = left.len();
             let left = left.bold();
+
             if len > max_left {
-                format!(
-                    "  {hash} {left}\n{}|{NOT_AVAILABLE}",
+                write!(
+                    result,
+                    "{left}\n{}|{NOT_AVAILABLE}",
                     " ".repeat(max_left + 4).yellow()
                 )
+                .unwrap();
             } else {
-                format!(
-                    "  {hash} {left}{}|{NOT_AVAILABLE}",
+                write!(
+                    result,
+                    "{left}{}|{NOT_AVAILABLE}",
                     " ".repeat(max_left - len - 1)
                 )
+                .unwrap();
             }
         }
         EitherOrBoth::Right(old) => {
-            let right = fields(&old.1);
-            format!(
-                "  {hash} {}{}|{right}",
+            let right = fields(old);
+
+            write!(
+                result,
+                "{}{}|{right}",
                 NOT_AVAILABLE.bold(),
                 " ".repeat(max_left - NOT_AVAILABLE.len() - 1)
             )
+            .unwrap();
         }
         EitherOrBoth::Both(new, old) => {
-            let left = fields(&new.1);
+            let left = fields(new);
             let len = left.len();
-            let right = fields(&old.1);
+            let right = fields(old);
             let left = left.bold();
+
             if len > max_left {
-                format!(
-                    "  {hash} {left}\n{}|{right}",
+                write!(
+                    result,
+                    "{left}\n{}|{right}",
                     " ".repeat(max_left + 4).yellow()
                 )
+                .unwrap();
             } else {
-                format!("  {hash} {left}{}|{right}", " ".repeat(max_left - len - 1))
+                write!(result, "{left}{}|{right}", " ".repeat(max_left - len - 1)).unwrap();
             }
         }
     }
-}
 
-pub fn multiple_files_header(properties: &EitherOrBoth<ToolRunInfo>) -> String {
-    // TODO: IMPLEMENT
-    String::from("TODO")
+    result
 }
 
 pub fn tool_total_header() -> String {

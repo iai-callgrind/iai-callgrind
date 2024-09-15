@@ -62,6 +62,8 @@ impl From<Logfile> for ToolRunInfo {
             parent_pid: value.header.parent_pid,
             details: (!value.details.is_empty()).then(|| value.details.join("\n")),
             path: value.path,
+            part: None,
+            thread: None,
         }
     }
 }

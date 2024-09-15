@@ -284,10 +284,12 @@ pub struct ToolRunInfo {
     pub pid: i32,
     /// The parent pid of this process
     pub parent_pid: Option<i32>,
-    /// More details from the logging output of the tool run
+    /// More details for example from the logging output of the tool run
     pub details: Option<String>,
     /// The path to the full logfile from the tool run
     pub path: PathBuf,
+    pub part: Option<u64>,
+    pub thread: Option<usize>,
 }
 
 /// TODO: Make use of it in `ToolSummary`, DOCS

@@ -65,6 +65,8 @@ impl CallgrindProperties {
             parent_pid: None,
             details: None,
             path: path.to_owned(),
+            part: self.part,
+            thread: self.thread,
         }
     }
 }
