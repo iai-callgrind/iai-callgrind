@@ -93,6 +93,10 @@ fn bench_library_compare(num: u64) {
         .tool(Tool::new(ValgrindTool::BBV).args(["trace-children=yes"]))
 )]
 fn bench_thread_in_subprocess() {
+    let low = 0;
+    let handle = std::thread::spawn(move || find_primes(low, low + 10000));
+    handle.join().unwrap();
+
     Command::new(env!("CARGO_BIN_EXE_thread"))
         .arg("2")
         .status()

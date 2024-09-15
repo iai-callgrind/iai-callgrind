@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{anyhow, Result};
-use derive_more::AsRef;
 use log::{debug, log_enabled, trace, Level};
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
@@ -16,16 +15,33 @@ use which::which;
 use crate::error::Error;
 
 /// TODO: How does either or both serialize?
-/// Either left, right or both can be present
+/// Either left or right or both can be present
+///
+/// Most of the time, this enum is used to store (new, old) output, costs, etc. Per convention left
+/// is always `new` and right is `old`.
+///
+/// This enum is inspired by `itertools::EitherOrBoth`. We use a simplification `EitherOrBoth<T>`
+/// instead of `EitherOrBoth<T,U = T>` because that is what we always need. Depending on `itertools`
+/// just because of this enum was no option. However, this simplified enum allows further
+/// optimizations, for example [`Self::map`] only needs a single closure instead of two.
+///
+/// # Developer notes
+///
+/// This enum is not considered complete in terms of possible functionality. Simply extend and add
+/// new methods by need.
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum EitherOrBoth<T> {
+    /// The left or `new` value
     Left(T),
+    /// The right or `old` value
     Right(T),
+    /// Both values (`new` and `old`) are present
     Both(T, T),
 }
 
 impl<T> EitherOrBoth<T> {
+    /// Try to return the left (`new`) value
     pub fn left(&self) -> Option<&T> {
         match self {
             EitherOrBoth::Right(_) => None,
@@ -33,6 +49,7 @@ impl<T> EitherOrBoth<T> {
         }
     }
 
+    /// Try to return the right (`old`) value
     pub fn right(&self) -> Option<&T> {
         match self {
             EitherOrBoth::Left(_) => None,
@@ -40,6 +57,7 @@ impl<T> EitherOrBoth<T> {
         }
     }
 
+    /// Apply the function `f` to the inner value of `EitherOrBoth` and return a new `EitherOrBoth`
     pub fn map<F, N>(self, f: F) -> EitherOrBoth<N>
     where
         F: Fn(T) -> N,
@@ -50,24 +68,25 @@ impl<T> EitherOrBoth<T> {
             Self::Both(l, r) => EitherOrBoth::Both(f(l), f(r)),
         }
     }
-}
 
-/// A vector with at least one element
-#[derive(Debug, PartialEq, Eq, Clone, AsRef)]
-pub struct Vec1<T>(Vec<T>);
-
-impl<T> Vec1<T> {
-    pub fn try_from_vec(inner: Vec<T>) -> Result<Self> {
-        if inner.is_empty() {
-            Err(anyhow!("The inner vector should have at least one element"))
-        } else {
-            Ok(Self(inner))
+    pub fn as_ref(&self) -> EitherOrBoth<&T> {
+        match self {
+            Self::Left(left) => EitherOrBoth::Left(left),
+            Self::Right(right) => EitherOrBoth::Right(right),
+            Self::Both(left, right) => EitherOrBoth::Both(left, right),
         }
     }
 
-    pub fn from_vec(inner: Vec<T>) -> Self {
-        Self(inner)
-    }
+    // pub fn as_deref(&self) -> EitherOrBoth<&T::Target>
+    // where
+    //     T: Deref,
+    // {
+    //     match *self {
+    //         Self::Left(ref left) => Self::Left(left),
+    //         Self::Right(ref right) => Self::Right(right),
+    //         Self::Both(ref left, ref right) => Self::Both(left, right),
+    //     }
+    // }
 }
 
 /// Convert a boolean value to a `yes` or `no` string

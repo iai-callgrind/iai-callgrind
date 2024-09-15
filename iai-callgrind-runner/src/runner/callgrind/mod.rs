@@ -27,48 +27,10 @@ pub struct Summary {
     pub costs_summary: CostsSummary,
 }
 
-impl From<Summary> for ToolRunSummary {
-    fn from(value: Summary) -> Self {
-        match value.details {
-            EitherOrBoth::Left((new_path, new_props)) => ToolRunSummary {
-                costs_summary: CostsSummaryType::CallgrindSummary(value.costs_summary),
-                info: EitherOrBoth::Left(new_props.into_info(&new_path)),
-            },
-            EitherOrBoth::Right((old_path, old_props)) => ToolRunSummary {
-                costs_summary: CostsSummaryType::CallgrindSummary(value.costs_summary),
-                info: EitherOrBoth::Right(old_props.into_info(&old_path)),
-            },
-            EitherOrBoth::Both((new_path, new_props), (old_path, old_props)) => ToolRunSummary {
-                costs_summary: CostsSummaryType::CallgrindSummary(value.costs_summary),
-                info: EitherOrBoth::Both(
-                    new_props.into_info(&new_path),
-                    old_props.into_info(&old_path),
-                ),
-            },
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct Summaries {
     pub data: Vec<Summary>,
     pub total: CostsSummary,
-}
-
-impl From<Summaries> for ToolRunSummaries {
-    fn from(value: Summaries) -> Self {
-        let summaries = value.data.into_iter().map(Into::into).collect();
-        Self {
-            total: CostsSummaryType::CallgrindSummary(value.total),
-            data: summaries,
-        }
-    }
-}
-
-impl From<&Summaries> for ToolRunSummaries {
-    fn from(value: &Summaries) -> Self {
-        value.clone().into()
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -247,45 +209,142 @@ impl Default for RegressionConfig {
 }
 
 impl Summaries {
+    /// Group the output by pid, then by parts and then by threads
+    ///
+    /// The grouping simplifies the zipping of the new and old parser output later.
+    ///
+    /// A simplified example. `(pid, part, thread)`
+    ///
+    /// ```rust,ignore
+    /// let parsed: Vec<(i32, u64, usize)> = [
+    ///     (10, 1, 1),
+    ///     (10, 1, 2),
+    ///     (20, 1, 1)
+    /// ];
+    ///
+    /// let grouped = group(parsed);
+    /// assert_eq!(grouped,
+    /// vec![
+    ///     vec![
+    ///         vec![
+    ///             (10, 1, 1),
+    ///             (10, 1, 2)
+    ///         ]
+    ///     ],
+    ///     vec![
+    ///         vec![
+    ///             (20, 1, 1)
+    ///         ]
+    ///     ]
+    /// ])
+    /// ```
+    fn group(
+        parsed: impl Iterator<Item = (PathBuf, CallgrindProperties, Costs)>,
+    ) -> Vec<Vec<Vec<(PathBuf, CallgrindProperties, Costs)>>> {
+        let mut grouped = vec![];
+        let mut cur_pid = 0_i32;
+        let mut cur_part = 0;
+
+        for element in parsed {
+            let pid = element.1.pid.unwrap_or(0_i32);
+            let part = element.1.part.unwrap_or(0);
+
+            if pid != cur_pid {
+                grouped.push(vec![vec![element]]);
+                cur_pid = pid;
+                cur_part = part;
+            } else if part != cur_part {
+                let parts = grouped.last_mut().unwrap();
+                parts.push(vec![element]);
+                cur_part = part;
+            } else {
+                let parts = grouped.last_mut().unwrap();
+                let threads = parts.last_mut().unwrap();
+                threads.push(element);
+            }
+        }
+        grouped
+    }
+
+    /// Create a new `Summaries` from the output(s) of the callgrind parser.
+    ///
+    /// The summaries created from the new parser outputs and the old parser outputs are grouped by
+    /// pid (subprocesses recorded with `--trace-children`), then by part (for example cause by a
+    /// `--dump-every-bb=xxx`) and then by thread (caused by `--separate-threads`). Since each of
+    /// these components can differ between the new and the old parser output, this complicates the
+    /// creation of each `Summary`. We can't just zip the new and old parser output directly to get
+    /// (as far as possible) correct comparisons between the new and old costs. To remedy the
+    /// possibly incorrect comparisons, there is always a total created.
+    ///
+    /// In a first step the parsed outputs are grouped in vectors by pid, then by parts and then by
+    /// threads. This solution is not very efficient but there are not too many parsed outputs to be
+    /// expected. 100 at most and maybe 2-10 on average, so the tradeoff between performance and
+    /// clearer structure of this method looks reasonable.
+    ///
+    /// Secondly and finally, the groups are processed and summarized in a total.
     pub fn new(parsed_new: ParserOutput, parsed_old: Option<ParserOutput>) -> Self {
+        let grouped_new = Self::group(parsed_new.into_iter());
+        let grouped_old = Self::group(parsed_old.into_iter().flatten());
+
         let mut total = CostsSummary::default();
+        let mut summaries = vec![];
 
-        // TODO: What if one process has more threads than the other?
-        let summaries: Vec<Summary> = parsed_new
-            .into_iter()
-            .zip_longest(parsed_old.into_iter().flatten())
-            .map(|e| match e {
-                itertools::EitherOrBoth::Both(
-                    (new_path, new_props, new_costs),
-                    (old_path, old_props, old_costs),
-                ) => {
-                    let summary = CostsSummary::new(EitherOrBoth::Both(new_costs, old_costs));
-                    total.add(&summary);
-
-                    Summary::new(
-                        EitherOrBoth::Both((new_path, new_props), (old_path, old_props)),
-                        summary,
-                    )
+        for e_pids in grouped_new.into_iter().zip_longest(grouped_old) {
+            match e_pids {
+                itertools::EitherOrBoth::Both(new_parts, old_parts) => {
+                    for e_parts in new_parts.into_iter().zip_longest(old_parts) {
+                        match e_parts {
+                            itertools::EitherOrBoth::Both(new_threads, old_threads) => {
+                                for e_threads in new_threads.into_iter().zip_longest(old_threads) {
+                                    let summary = match e_threads {
+                                        itertools::EitherOrBoth::Both(new, old) => {
+                                            Summary::from_new_and_old(new, old)
+                                        }
+                                        itertools::EitherOrBoth::Left(new) => {
+                                            Summary::from_new(new.0, new.1, new.2)
+                                        }
+                                        itertools::EitherOrBoth::Right(old) => {
+                                            Summary::from_old(old.0, old.1, old.2)
+                                        }
+                                    };
+                                    total.add(&summary.costs_summary);
+                                    summaries.push(summary);
+                                }
+                            }
+                            itertools::EitherOrBoth::Left(left) => {
+                                for new in left {
+                                    let summary = Summary::from_new(new.0, new.1, new.2);
+                                    total.add(&summary.costs_summary);
+                                    summaries.push(summary);
+                                }
+                            }
+                            itertools::EitherOrBoth::Right(right) => {
+                                for old in right {
+                                    let summary = Summary::from_old(old.0, old.1, old.2);
+                                    total.add(&summary.costs_summary);
+                                    summaries.push(summary);
+                                }
+                            }
+                        }
+                    }
                 }
-                itertools::EitherOrBoth::Left((path, new_props, new_costs)) => {
-                    let summary = CostsSummary::new(EitherOrBoth::Left(new_costs));
-                    total.add(&summary);
-
-                    Summary::new(EitherOrBoth::Left((path, new_props)), summary)
+                itertools::EitherOrBoth::Left(left) => {
+                    for new in left.into_iter().flatten() {
+                        let summary = Summary::from_new(new.0, new.1, new.2);
+                        total.add(&summary.costs_summary);
+                        summaries.push(summary);
+                    }
                 }
-                itertools::EitherOrBoth::Right((path, old_props, old_costs)) => {
-                    let summary = CostsSummary::new(EitherOrBoth::Right(old_costs));
-                    total.add(&summary);
-
-                    Summary::new(EitherOrBoth::Right((path, old_props)), summary)
+                itertools::EitherOrBoth::Right(right) => {
+                    for old in right.into_iter().flatten() {
+                        let summary = Summary::from_old(old.0, old.1, old.2);
+                        total.add(&summary.costs_summary);
+                        summaries.push(summary);
+                    }
                 }
-            })
-            .collect();
+            }
+        }
 
-        assert!(
-            !summaries.is_empty(),
-            "At least one summary must be present"
-        );
         Self {
             data: summaries,
             total,
@@ -297,6 +356,22 @@ impl Summaries {
     }
 }
 
+impl From<Summaries> for ToolRunSummaries {
+    fn from(value: Summaries) -> Self {
+        let summaries = value.data.into_iter().map(Into::into).collect();
+        Self {
+            total: CostsSummaryType::CallgrindSummary(value.total),
+            data: summaries,
+        }
+    }
+}
+
+impl From<&Summaries> for ToolRunSummaries {
+    fn from(value: &Summaries) -> Self {
+        value.clone().into()
+    }
+}
+
 impl Summary {
     pub fn new(
         details: EitherOrBoth<(PathBuf, CallgrindProperties)>,
@@ -305,6 +380,52 @@ impl Summary {
         Self {
             details,
             costs_summary,
+        }
+    }
+
+    pub fn from_new(path: PathBuf, properties: CallgrindProperties, costs: Costs) -> Self {
+        Self {
+            details: EitherOrBoth::Left((path, properties)),
+            costs_summary: CostsSummary::new(EitherOrBoth::Left(costs)),
+        }
+    }
+
+    pub fn from_old(path: PathBuf, properties: CallgrindProperties, costs: Costs) -> Self {
+        Self {
+            details: EitherOrBoth::Right((path, properties)),
+            costs_summary: CostsSummary::new(EitherOrBoth::Right(costs)),
+        }
+    }
+
+    pub fn from_new_and_old(
+        new: (PathBuf, CallgrindProperties, Costs),
+        old: (PathBuf, CallgrindProperties, Costs),
+    ) -> Self {
+        Self {
+            details: EitherOrBoth::Both((new.0, new.1), (old.0, old.1)),
+            costs_summary: CostsSummary::new(EitherOrBoth::Both(new.2, old.2)),
+        }
+    }
+}
+
+impl From<Summary> for ToolRunSummary {
+    fn from(value: Summary) -> Self {
+        match value.details {
+            EitherOrBoth::Left((new_path, new_props)) => ToolRunSummary {
+                costs_summary: CostsSummaryType::CallgrindSummary(value.costs_summary),
+                info: EitherOrBoth::Left(new_props.into_info(&new_path)),
+            },
+            EitherOrBoth::Right((old_path, old_props)) => ToolRunSummary {
+                costs_summary: CostsSummaryType::CallgrindSummary(value.costs_summary),
+                info: EitherOrBoth::Right(old_props.into_info(&old_path)),
+            },
+            EitherOrBoth::Both((new_path, new_props), (old_path, old_props)) => ToolRunSummary {
+                costs_summary: CostsSummaryType::CallgrindSummary(value.costs_summary),
+                info: EitherOrBoth::Both(
+                    new_props.into_info(&new_path),
+                    old_props.into_info(&old_path),
+                ),
+            },
         }
     }
 }

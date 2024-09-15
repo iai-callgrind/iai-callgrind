@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::fmt::{Display, Write};
+use std::path::PathBuf;
 
 use anyhow::Result;
 use colored::{ColoredString, Colorize};
@@ -15,35 +16,10 @@ use crate::api::{self, DhatMetricKind, ErrorMetricKind, EventKind};
 use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8, EitherOrBoth};
 
 // TODO: Sort the structs, enums, functions ...
-// TODO: use unwrap on write!
 
 // TODO: Increase the possible length of the keys in the vertical output. Increase the space for
 // numbers a little bit? Increase the precision of the percentage and factor to 7 significant
 // numbers.
-
-// TODO: CLEANUP or make use of it
-// fn print_compare<T: Display>(
-//     description: &str,
-//     old: Option<T>,
-//     new: Option<T>,
-//     should_compare: bool,
-// ) {
-//     match (new, old) {
-//         (Some(new), _) if !should_compare => {
-//             println!("  {description:<18}{}", new.to_string().bold());
-//         }
-//         (None, Some(old)) => println!("  {description:<18}{:>15}|{old:<15}",
-// NOT_AVAILABLE.bold(),),         (Some(new), None) => println!(
-//             "  {description:<18}{:>15}|{NOT_AVAILABLE:<15}",
-//             new.to_string().bold(),
-//         ),
-//         (Some(new), Some(old)) => println!(
-//             "  {description:<18}{:>15}|{old:<15}",
-//             new.to_string().bold(),
-//         ),
-//         _ => {}
-//     }
-// }
 
 /// The subset of callgrind metrics to format in the given order
 pub const CALLGRIND_DEFAULT: [EventKind; 21] = [
@@ -136,6 +112,7 @@ pub trait Formatter {
 
     fn format(
         &self,
+        meta: &Metadata,
         baselines: (Option<String>, Option<String>),
         summaries: &ToolRunSummaries,
     ) -> Result<String>;
@@ -148,7 +125,7 @@ pub trait Formatter {
         summaries: &ToolRunSummaries,
     ) -> Result<()> {
         if meta.args.output_format == OutputFormat::Default {
-            print!("{}", self.format(baselines, summaries)?);
+            print!("{}", self.format(meta, baselines, summaries)?);
         }
         Ok(())
     }
@@ -180,16 +157,73 @@ pub enum OutputFormat {
 #[derive(Debug, Clone)]
 pub struct VerticalFormat;
 
-fn format_details(details: &str) -> Result<String> {
+fn format_details(details: &str) -> String {
     let mut result = String::new();
     let mut details = details.lines();
     if let Some(head_line) = details.next() {
-        writeln!(result, "  {:<18}{}", "Details:", head_line)?;
+        writeln!(result, "  {:<18}{}", "Details:", head_line).unwrap();
         for body_line in details {
-            writeln!(result, "{}{body_line}", " ".repeat(20))?;
+            writeln!(result, "{}{body_line}", " ".repeat(20)).unwrap();
         }
     }
-    Ok(result)
+    result
+}
+
+fn format_command(meta: &Metadata, command: &EitherOrBoth<&String>) -> String {
+    let mut result = String::new();
+    match command {
+        EitherOrBoth::Left(new) => {
+            writeln!(
+                result,
+                "  {:<18}{}",
+                "Command:",
+                make_relative(&meta.project_root, PathBuf::from(&new))
+                    .display()
+                    .to_string()
+                    .blue()
+                    .bold()
+            )
+            .unwrap();
+        }
+        EitherOrBoth::Right(old) => {
+            writeln!(
+                result,
+                "  {:<18}{}|{}",
+                "Command:",
+                " ".repeat(15),
+                make_relative(&meta.project_root, PathBuf::from(&old))
+                    .display()
+                    .to_string()
+                    .blue()
+            )
+            .unwrap();
+        }
+        EitherOrBoth::Both(new, old) => {
+            if new == old {
+                writeln!(
+                    result,
+                    "  {:<18}{}",
+                    "Command:",
+                    make_relative(&meta.project_root, PathBuf::from(&new))
+                        .display()
+                        .to_string()
+                        .blue()
+                        .bold()
+                )
+                .unwrap();
+            } else {
+                let new_command = make_relative(&meta.project_root, PathBuf::from(&new))
+                    .display()
+                    .to_string();
+                let old_command = make_relative(&meta.project_root, PathBuf::from(&new))
+                    .display()
+                    .to_string();
+                let split = format_split("Command:", new_command.blue().bold(), old_command.blue());
+                writeln!(result, "{split}").unwrap();
+            }
+        }
+    }
+    result
 }
 
 impl Formatter for VerticalFormat {
@@ -208,7 +242,7 @@ impl Formatter for VerticalFormat {
                         result = new
                             .details
                             .as_ref()
-                            .map_or_else(|| Ok(String::new()), |d| format_details(d))?;
+                            .map_or_else(String::new, |d| format_details(d));
                     }
                 }
                 Ok(result)
@@ -230,7 +264,7 @@ impl Formatter for VerticalFormat {
                     {
                         if let Some(new) = info.left() {
                             if let Some(details) = new.details.as_ref() {
-                                write!(formatted, "{}", format_details(details)?)?;
+                                write!(formatted, "{}", format_details(details)).unwrap();
                             }
                         }
                     }
@@ -255,6 +289,7 @@ impl Formatter for VerticalFormat {
 
     fn format(
         &self,
+        meta: &Metadata,
         baselines: (Option<String>, Option<String>),
         summaries: &ToolRunSummaries,
     ) -> Result<String> {
@@ -265,32 +300,9 @@ impl Formatter for VerticalFormat {
             for summary in &summaries.data {
                 writeln!(result, "{}", multiple_files_header(&summary.info))?;
 
-                match &summary.info {
-                    EitherOrBoth::Left(new) => {
-                        writeln!(result, "  {:<18}{}", "Command:", new.command.blue().bold())?;
-                    }
-                    EitherOrBoth::Right(old) => {
-                        writeln!(
-                            result,
-                            "  {:<18}{}|{}",
-                            "Command:",
-                            " ".repeat(15),
-                            old.command.blue()
-                        )?;
-                    }
-                    EitherOrBoth::Both(new, old) => {
-                        if new.command == old.command {
-                            writeln!(result, "  {:<18}{}", "Command:", new.command.blue().bold())?;
-                        } else {
-                            let split = format_split(
-                                "Command:",
-                                new.command.blue().bold(),
-                                old.command.blue(),
-                            )?;
-                            writeln!(result, "{split}")?;
-                        }
-                    }
-                }
+                let formatted_command =
+                    format_command(meta, &summary.info.as_ref().map(|i| &i.command));
+                write!(result, "{formatted_command}").unwrap();
 
                 if first {
                     write!(
@@ -301,7 +313,8 @@ impl Formatter for VerticalFormat {
                             Some(&summary.info),
                             &summary.costs_summary
                         )?
-                    )?;
+                    )
+                    .unwrap();
                     first = false;
                 } else {
                     write!(
@@ -312,7 +325,8 @@ impl Formatter for VerticalFormat {
                             Some(&summary.info),
                             &summary.costs_summary
                         )?
-                    )?;
+                    )
+                    .unwrap();
                 }
             }
 
@@ -322,37 +336,14 @@ impl Formatter for VerticalFormat {
         } else if summaries.total.is_none() && !summaries.data.is_empty() {
             // This is safe since we always have at least one summary present
             let summary = &summaries.data[0];
-            match &summary.info {
-                EitherOrBoth::Left(new) => {
-                    writeln!(result, "  {:<18}{}", "Command:", new.command.blue().bold())?;
-                }
-                EitherOrBoth::Right(old) => {
-                    writeln!(
-                        result,
-                        "  {:<18}{}|{}",
-                        "Command:",
-                        " ".repeat(15),
-                        old.command.blue()
-                    )?;
-                }
-                EitherOrBoth::Both(new, old) => {
-                    if new.command == old.command {
-                        writeln!(result, "  {:<18}{}", "Command:", new.command.blue().bold())?;
-                    } else {
-                        let split = format_split(
-                            "Command:",
-                            new.command.blue().bold(),
-                            old.command.blue(),
-                        )?;
-                        writeln!(result, "{split}")?;
-                    }
-                }
-            }
+            let formatted_command =
+                format_command(meta, &summary.info.as_ref().map(|i| &i.command));
+            write!(result, "{formatted_command}").unwrap();
 
             if let Some(new) = summary.info.left() {
                 if let Some(details) = &new.details {
-                    let formatted = format_details(details)?;
-                    write!(result, "{formatted}")?;
+                    let formatted = format_details(details);
+                    write!(result, "{formatted}").unwrap();
                 }
             }
         } else {
@@ -365,7 +356,8 @@ impl Formatter for VerticalFormat {
                 result,
                 "{}",
                 self.format_single((None, None), None, &summaries.total)?
-            )?;
+            )
+            .unwrap();
         }
 
         Ok(result)
@@ -390,15 +382,15 @@ impl Formatter for VerticalFormat {
     }
 }
 
-fn format_split<T, U>(name: U, left: T, right: T) -> Result<String>
+fn format_split<T, U>(name: U, left: T, right: T) -> String
 where
     T: Display,
     U: Display,
 {
     let mut result = String::new();
-    writeln!(result, "  {name:<18}{left}")?;
-    write!(result, "  {}|{right}", " ".repeat(33))?;
-    Ok(result)
+    writeln!(result, "  {name:<18}{left}").unwrap();
+    write!(result, "  {}|{right}", " ".repeat(33)).unwrap();
+    result
 }
 
 impl BinaryBenchmarkHeader {

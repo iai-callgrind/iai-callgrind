@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use anyhow::{Context, Result};
+use derive_more::AsRef;
 use glob::glob;
 use indexmap::{indexmap, IndexMap, IndexSet};
 #[cfg(feature = "schema")]
@@ -275,7 +276,7 @@ pub struct SummaryOutput {
 }
 
 /// TODO: check DOCS
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, AsRef)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ToolRunInfo {
     /// The executed command extracted from Valgrind output
