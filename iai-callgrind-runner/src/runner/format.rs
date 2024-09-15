@@ -15,8 +15,6 @@ use super::tool::ValgrindTool;
 use crate::api::{self, DhatMetricKind, ErrorMetricKind, EventKind};
 use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8, EitherOrBoth};
 
-// TODO: Sort the structs, enums, functions ...
-
 // TODO: Increase the possible length of the keys in the vertical output. Increase the space for
 // numbers a little bit? Increase the precision of the percentage and factor to 7 significant
 // numbers.
@@ -69,39 +67,6 @@ pub const DHAT_DEFAULT: [DhatMetricKind; 8] = [
 /// The string used to signal that a value is not available
 pub const NOT_AVAILABLE: &str = "N/A";
 
-pub struct ComparisonHeader {
-    pub function_name: String,
-    pub id: String,
-    pub details: Option<String>,
-}
-
-pub struct BinaryBenchmarkHeader {
-    inner: Header,
-    has_tools_enabled: bool,
-    output_format: OutputFormat,
-}
-
-struct Header {
-    module_path: String,
-    id: Option<String>,
-    description: Option<String>,
-}
-
-pub fn format_float(float: f64, unit: &str) -> ColoredString {
-    let signed_short = to_string_signed_short(float);
-    if float.is_infinite() {
-        if float.is_sign_positive() {
-            format!("{signed_short:+^9}").bright_red().bold()
-        } else {
-            format!("{signed_short:-^9}").bright_green().bold()
-        }
-    } else if float.is_sign_positive() {
-        format!("{signed_short:^+8}{unit}").bright_red().bold()
-    } else {
-        format!("{signed_short:^+8}{unit}").bright_green().bold()
-    }
-}
-
 pub trait Formatter {
     fn format_single(
         &self,
@@ -140,11 +105,44 @@ pub trait Formatter {
     ) -> Result<()>;
 }
 
+pub struct BinaryBenchmarkHeader {
+    inner: Header,
+    has_tools_enabled: bool,
+    output_format: OutputFormat,
+}
+
+pub struct ComparisonHeader {
+    pub function_name: String,
+    pub id: String,
+    pub details: Option<String>,
+}
+
+struct Header {
+    module_path: String,
+    id: Option<String>,
+    description: Option<String>,
+}
+
 // TODO: Merge with BinaryBenchmarkHeader?
 pub struct LibraryBenchmarkHeader {
     inner: Header,
     has_tools_enabled: bool,
     output_format: OutputFormat,
+}
+
+pub struct NewFormatter {
+    buffer: String,
+}
+
+// impl NewFormatter {
+//     pub fn write_metrics(&mut self, )
+// }
+
+impl std::fmt::Write for NewFormatter {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        self.buffer.push_str(s);
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
@@ -156,242 +154,6 @@ pub enum OutputFormat {
 
 #[derive(Debug, Clone)]
 pub struct VerticalFormat;
-
-fn format_details(details: &str) -> String {
-    let mut result = String::new();
-    let mut details = details.lines();
-    if let Some(head_line) = details.next() {
-        writeln!(result, "  {:<18}{}", "Details:", head_line).unwrap();
-        for body_line in details {
-            writeln!(result, "{}{body_line}", " ".repeat(20)).unwrap();
-        }
-    }
-    result
-}
-
-fn format_command(meta: &Metadata, command: &EitherOrBoth<&String>) -> String {
-    let mut result = String::new();
-    match command {
-        EitherOrBoth::Left(new) => {
-            writeln!(
-                result,
-                "  {:<18}{}",
-                "Command:",
-                make_relative(&meta.project_root, PathBuf::from(&new))
-                    .display()
-                    .to_string()
-                    .blue()
-                    .bold()
-            )
-            .unwrap();
-        }
-        EitherOrBoth::Right(old) => {
-            writeln!(
-                result,
-                "  {:<18}{}|{}",
-                "Command:",
-                " ".repeat(15),
-                make_relative(&meta.project_root, PathBuf::from(&old))
-                    .display()
-                    .to_string()
-                    .blue()
-            )
-            .unwrap();
-        }
-        EitherOrBoth::Both(new, old) => {
-            if new == old {
-                writeln!(
-                    result,
-                    "  {:<18}{}",
-                    "Command:",
-                    make_relative(&meta.project_root, PathBuf::from(&new))
-                        .display()
-                        .to_string()
-                        .blue()
-                        .bold()
-                )
-                .unwrap();
-            } else {
-                let new_command = make_relative(&meta.project_root, PathBuf::from(&new))
-                    .display()
-                    .to_string();
-                let old_command = make_relative(&meta.project_root, PathBuf::from(&new))
-                    .display()
-                    .to_string();
-                let split = format_split("Command:", new_command.blue().bold(), old_command.blue());
-                writeln!(result, "{split}").unwrap();
-            }
-        }
-    }
-    result
-}
-
-impl Formatter for VerticalFormat {
-    fn format_single(
-        &self,
-        baselines: (Option<String>, Option<String>),
-        info: Option<&EitherOrBoth<ToolRunInfo>>,
-        costs_summary: &CostsSummaryType,
-    ) -> Result<String> {
-        match costs_summary {
-            CostsSummaryType::None => {
-                // TODO: if force_show_body || verbose || summary.new_has_errors() {
-                let mut result = String::new();
-                if let Some(info) = info {
-                    if let Some(new) = info.left() {
-                        result = new
-                            .details
-                            .as_ref()
-                            .map_or_else(String::new, |d| format_details(d));
-                    }
-                }
-                Ok(result)
-            }
-            CostsSummaryType::ErrorSummary(summary) => {
-                let mut formatted = format_vertical(
-                    (None, None),
-                    ERROR_METRICS_DEFAULT
-                        .iter()
-                        .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
-                )?;
-
-                // TODO: Check for `old` errors too?
-                // We only check for `new` errors
-                if let Some(info) = info {
-                    if summary
-                        .diff_by_kind(&ErrorMetricKind::Errors)
-                        .map_or(false, |e| e.costs.left().map_or(false, |l| *l > 0))
-                    {
-                        if let Some(new) = info.left() {
-                            if let Some(details) = new.details.as_ref() {
-                                write!(formatted, "{}", format_details(details)).unwrap();
-                            }
-                        }
-                    }
-                }
-
-                Ok(formatted)
-            }
-            CostsSummaryType::DhatSummary(summary) => format_vertical(
-                (None, None),
-                DHAT_DEFAULT
-                    .iter()
-                    .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
-            ),
-            CostsSummaryType::CallgrindSummary(summary) => format_vertical(
-                baselines,
-                CALLGRIND_DEFAULT
-                    .iter()
-                    .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
-            ),
-        }
-    }
-
-    fn format(
-        &self,
-        meta: &Metadata,
-        baselines: (Option<String>, Option<String>),
-        summaries: &ToolRunSummaries,
-    ) -> Result<String> {
-        let mut result = String::new();
-
-        if summaries.has_multiple() {
-            let mut first = true;
-            for summary in &summaries.data {
-                writeln!(result, "{}", multiple_files_header(&summary.info))?;
-
-                let formatted_command =
-                    format_command(meta, &summary.info.as_ref().map(|i| &i.command));
-                write!(result, "{formatted_command}").unwrap();
-
-                if first {
-                    write!(
-                        result,
-                        "{}",
-                        self.format_single(
-                            baselines.clone(),
-                            Some(&summary.info),
-                            &summary.costs_summary
-                        )?
-                    )
-                    .unwrap();
-                    first = false;
-                } else {
-                    write!(
-                        result,
-                        "{}",
-                        self.format_single(
-                            (None, None),
-                            Some(&summary.info),
-                            &summary.costs_summary
-                        )?
-                    )
-                    .unwrap();
-                }
-            }
-
-            if summaries.total.is_some() {
-                writeln!(result, "{}", tool_total_header())?;
-            }
-        } else if summaries.total.is_none() && !summaries.data.is_empty() {
-            // This is safe since we always have at least one summary present
-            let summary = &summaries.data[0];
-            let formatted_command =
-                format_command(meta, &summary.info.as_ref().map(|i| &i.command));
-            write!(result, "{formatted_command}").unwrap();
-
-            if let Some(new) = summary.info.left() {
-                if let Some(details) = &new.details {
-                    let formatted = format_details(details);
-                    write!(result, "{formatted}").unwrap();
-                }
-            }
-        } else {
-            // pass through
-        }
-
-        // TODO: what to do if summaries is empty (what actually can't be)?
-        if summaries.total.is_some() {
-            write!(
-                result,
-                "{}",
-                self.format_single((None, None), None, &summaries.total)?
-            )
-            .unwrap();
-        }
-
-        Ok(result)
-    }
-
-    fn print_comparison(
-        &self,
-        meta: &Metadata,
-        function_name: &str,
-        id: &str,
-        details: Option<&str>,
-        summary: &CostsSummaryType,
-    ) -> Result<()> {
-        if meta.args.output_format == OutputFormat::Default {
-            ComparisonHeader::new(function_name, id, details).print();
-
-            let formatted = self.format_single((None, None), None, summary)?;
-            print!("{formatted}");
-        }
-
-        Ok(())
-    }
-}
-
-fn format_split<T, U>(name: U, left: T, right: T) -> String
-where
-    T: Display,
-    U: Display,
-{
-    let mut result = String::new();
-    writeln!(result, "  {name:<18}{left}").unwrap();
-    write!(result, "  {}|{right}", " ".repeat(33)).unwrap();
-    result
-}
 
 impl BinaryBenchmarkHeader {
     pub fn new(meta: &Metadata, bin_bench: &BinBench) -> Self {
@@ -591,6 +353,256 @@ impl LibraryBenchmarkHeader {
     }
 }
 
+impl Formatter for VerticalFormat {
+    fn format_single(
+        &self,
+        baselines: (Option<String>, Option<String>),
+        info: Option<&EitherOrBoth<ToolRunInfo>>,
+        costs_summary: &CostsSummaryType,
+    ) -> Result<String> {
+        match costs_summary {
+            CostsSummaryType::None => {
+                // TODO: if force_show_body || verbose || summary.new_has_errors() {
+                let mut result = String::new();
+                if let Some(info) = info {
+                    if let Some(new) = info.left() {
+                        result = new
+                            .details
+                            .as_ref()
+                            .map_or_else(String::new, |d| format_details(d));
+                    }
+                }
+                Ok(result)
+            }
+            CostsSummaryType::ErrorSummary(summary) => {
+                let mut formatted = format_vertical(
+                    (None, None),
+                    ERROR_METRICS_DEFAULT
+                        .iter()
+                        .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+                )?;
+
+                // TODO: Check for `old` errors too?
+                // We only check for `new` errors
+                if let Some(info) = info {
+                    if summary
+                        .diff_by_kind(&ErrorMetricKind::Errors)
+                        .map_or(false, |e| e.costs.left().map_or(false, |l| *l > 0))
+                    {
+                        if let Some(new) = info.left() {
+                            if let Some(details) = new.details.as_ref() {
+                                write!(formatted, "{}", format_details(details)).unwrap();
+                            }
+                        }
+                    }
+                }
+
+                Ok(formatted)
+            }
+            CostsSummaryType::DhatSummary(summary) => format_vertical(
+                (None, None),
+                DHAT_DEFAULT
+                    .iter()
+                    .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+            ),
+            CostsSummaryType::CallgrindSummary(summary) => format_vertical(
+                baselines,
+                CALLGRIND_DEFAULT
+                    .iter()
+                    .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+            ),
+        }
+    }
+
+    fn format(
+        &self,
+        meta: &Metadata,
+        baselines: (Option<String>, Option<String>),
+        summaries: &ToolRunSummaries,
+    ) -> Result<String> {
+        let mut result = String::new();
+
+        if summaries.has_multiple() {
+            let mut first = true;
+            for summary in &summaries.data {
+                writeln!(result, "{}", multiple_files_header(&summary.info))?;
+
+                let formatted_command =
+                    format_command(meta, &summary.info.as_ref().map(|i| &i.command));
+                write!(result, "{formatted_command}").unwrap();
+
+                if first {
+                    write!(
+                        result,
+                        "{}",
+                        self.format_single(
+                            baselines.clone(),
+                            Some(&summary.info),
+                            &summary.costs_summary
+                        )?
+                    )
+                    .unwrap();
+                    first = false;
+                } else {
+                    write!(
+                        result,
+                        "{}",
+                        self.format_single(
+                            (None, None),
+                            Some(&summary.info),
+                            &summary.costs_summary
+                        )?
+                    )
+                    .unwrap();
+                }
+            }
+
+            if summaries.total.is_some() {
+                writeln!(result, "{}", tool_total_header())?;
+            }
+        } else if summaries.total.is_none() && !summaries.data.is_empty() {
+            // This is safe since we always have at least one summary present
+            let summary = &summaries.data[0];
+            let formatted_command =
+                format_command(meta, &summary.info.as_ref().map(|i| &i.command));
+            write!(result, "{formatted_command}").unwrap();
+
+            if let Some(new) = summary.info.left() {
+                if let Some(details) = &new.details {
+                    let formatted = format_details(details);
+                    write!(result, "{formatted}").unwrap();
+                }
+            }
+        } else {
+            // pass through
+        }
+
+        // TODO: what to do if summaries is empty (what actually can't be)?
+        if summaries.total.is_some() {
+            write!(
+                result,
+                "{}",
+                self.format_single((None, None), None, &summaries.total)?
+            )
+            .unwrap();
+        }
+
+        Ok(result)
+    }
+
+    fn print_comparison(
+        &self,
+        meta: &Metadata,
+        function_name: &str,
+        id: &str,
+        details: Option<&str>,
+        summary: &CostsSummaryType,
+    ) -> Result<()> {
+        if meta.args.output_format == OutputFormat::Default {
+            ComparisonHeader::new(function_name, id, details).print();
+
+            let formatted = self.format_single((None, None), None, summary)?;
+            print!("{formatted}");
+        }
+
+        Ok(())
+    }
+}
+
+fn format_command(meta: &Metadata, command: &EitherOrBoth<&String>) -> String {
+    let mut result = String::new();
+    match command {
+        EitherOrBoth::Left(new) => {
+            writeln!(
+                result,
+                "  {:<18}{}",
+                "Command:",
+                make_relative(&meta.project_root, PathBuf::from(&new))
+                    .display()
+                    .to_string()
+                    .blue()
+                    .bold()
+            )
+            .unwrap();
+        }
+        EitherOrBoth::Right(old) => {
+            writeln!(
+                result,
+                "  {:<18}{}|{}",
+                "Command:",
+                " ".repeat(15),
+                make_relative(&meta.project_root, PathBuf::from(&old))
+                    .display()
+                    .to_string()
+                    .blue()
+            )
+            .unwrap();
+        }
+        EitherOrBoth::Both(new, old) => {
+            if new == old {
+                writeln!(
+                    result,
+                    "  {:<18}{}",
+                    "Command:",
+                    make_relative(&meta.project_root, PathBuf::from(&new))
+                        .display()
+                        .to_string()
+                        .blue()
+                        .bold()
+                )
+                .unwrap();
+            } else {
+                let new_command = make_relative(&meta.project_root, PathBuf::from(&new))
+                    .display()
+                    .to_string();
+                let old_command = make_relative(&meta.project_root, PathBuf::from(&new))
+                    .display()
+                    .to_string();
+                let split = format_split("Command:", new_command.blue().bold(), old_command.blue());
+                writeln!(result, "{split}").unwrap();
+            }
+        }
+    }
+    result
+}
+
+fn format_details(details: &str) -> String {
+    let mut result = String::new();
+    let mut details = details.lines();
+    if let Some(head_line) = details.next() {
+        writeln!(result, "  {:<18}{}", "Details:", head_line).unwrap();
+        for body_line in details {
+            writeln!(result, "{}{body_line}", " ".repeat(20)).unwrap();
+        }
+    }
+    result
+}
+
+fn format_split<T, U>(name: U, left: T, right: T) -> String
+where
+    T: Display,
+    U: Display,
+{
+    let mut result = String::new();
+    writeln!(result, "  {name:<18}{left}").unwrap();
+    write!(result, "  {}|{right}", " ".repeat(33)).unwrap();
+    result
+}
+pub fn format_float(float: f64, unit: &str) -> ColoredString {
+    let signed_short = to_string_signed_short(float);
+    if float.is_infinite() {
+        if float.is_sign_positive() {
+            format!("{signed_short:+^9}").bright_red().bold()
+        } else {
+            format!("{signed_short:-^9}").bright_green().bold()
+        }
+    } else if float.is_sign_positive() {
+        format!("{signed_short:^+8}{unit}").bright_red().bold()
+    } else {
+        format!("{signed_short:^+8}{unit}").bright_green().bold()
+    }
+}
+
 pub fn format_vertical<'a, K: Display>(
     baselines: (Option<String>, Option<String>),
     costs_summary: impl Iterator<Item = (K, &'a CostsDiff)>,
@@ -729,21 +741,6 @@ pub fn multiple_files_header(info: &EitherOrBoth<ToolRunInfo>) -> String {
     result
 }
 
-pub fn tool_total_header() -> String {
-    format!("  {} Total", "##".yellow())
-}
-
-pub fn tool_headline(tool: ValgrindTool) -> String {
-    let id = tool.id();
-    format!(
-        "  {} {} {}",
-        "=======".bright_black(),
-        id.to_ascii_uppercase(),
-        "=".repeat(64 - id.len()).bright_black(),
-        // "=".repeat(34 - tool.id().len()).bright_black()
-    )
-}
-
 // Return the formatted `String` if `NoCapture` is not `False`
 pub fn no_capture_footer(nocapture: NoCapture) -> Option<String> {
     match nocapture {
@@ -787,6 +784,21 @@ pub fn print_no_capture_footer(
             println!("{}", no_capture_footer(NoCapture::True).unwrap());
         }
     }
+}
+
+pub fn tool_headline(tool: ValgrindTool) -> String {
+    let id = tool.id();
+    format!(
+        "  {} {} {}",
+        "=======".bright_black(),
+        id.to_ascii_uppercase(),
+        "=".repeat(64 - id.len()).bright_black(),
+        // "=".repeat(34 - tool.id().len()).bright_black()
+    )
+}
+
+pub fn tool_total_header() -> String {
+    format!("  {} Total", "##".yellow())
 }
 
 fn truncate_description(description: &str, truncate_description: Option<usize>) -> Cow<'_, str> {
