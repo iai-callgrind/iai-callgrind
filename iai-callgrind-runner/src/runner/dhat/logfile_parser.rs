@@ -8,11 +8,10 @@ use log::debug;
 use regex::Regex;
 
 use crate::api::DhatMetricKind;
-use crate::error::Error;
 use crate::runner::costs::Costs;
 use crate::runner::summary::CostsKind;
 use crate::runner::tool::logfile_parser::{
-    extract_pid, Header, Logfile, LogfileParser, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
+    parse_header, Logfile, LogfileParser, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
 };
 use crate::util::make_relative;
 
@@ -27,7 +26,6 @@ lazy_static! {
 
 #[derive(Debug, PartialEq, Eq)]
 enum State {
-    Header,
     HeaderSpace,
     Body,
     Fields,
@@ -39,40 +37,16 @@ pub struct DhatLogfileParser {
 }
 
 impl DhatLogfileParser {
+    /// Parse a single line of the logfile
+    ///
+    /// A return value of `false` indicates parsing is complete.
     fn parse_line(
-        &self,
         line: &str,
         state: &mut State,
-        command: &mut Option<PathBuf>,
         costs: &mut Costs<DhatMetricKind>,
         details: &mut Vec<String>,
-        parent_pid: &mut Option<i32>,
     ) -> Result<bool> {
         match &state {
-            State::Header if !EMPTY_LINE_RE.is_match(line) => {
-                if let Some(caps) =
-                    crate::runner::tool::logfile_parser::EXTRACT_FIELDS_RE.captures(line)
-                {
-                    let key = caps.name("key").unwrap().as_str();
-                    match key.to_ascii_lowercase().as_str() {
-                        "command" => {
-                            let value = caps.name("value").unwrap().as_str();
-                            *command = Some(make_relative(&self.root_dir, value));
-                        }
-                        "parent pid" => {
-                            let value = caps.name("value").unwrap().as_str().to_owned();
-                            *parent_pid = Some(
-                                value
-                                    .as_str()
-                                    .parse::<i32>()
-                                    .expect("Parent PID should be valid"),
-                            );
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            State::Header => *state = State::HeaderSpace,
             State::HeaderSpace if EMPTY_LINE_RE.is_match(line) => {}
             State::HeaderSpace | State::Body => {
                 if *state == State::HeaderSpace {
@@ -85,7 +59,7 @@ impl DhatLogfileParser {
                     // Total: ... is the first line of the fields we're interested in
                     if key.to_ascii_lowercase().as_str() == "total" {
                         *state = State::Fields;
-                        return self.parse_line(line, state, command, costs, details, parent_pid);
+                        return DhatLogfileParser::parse_line(line, state, costs, details);
                     }
                 }
 
@@ -180,26 +154,14 @@ impl LogfileParser for DhatLogfileParser {
             .map(std::result::Result::unwrap)
             .skip_while(|l| l.trim().is_empty());
 
-        let line = iter
-            .next()
-            .ok_or_else(|| Error::ParseError((path.clone(), "Empty file".to_owned())))?;
+        let header = parse_header(&self.root_dir, &path, &mut iter)?;
 
-        let pid = extract_pid(&line);
-
-        let mut state = State::Header;
-        let mut command = None;
         let mut costs = Costs::empty();
         let mut details = vec![];
-        let mut parent_pid = None;
+
+        let mut state = State::HeaderSpace;
         for line in iter {
-            if !self.parse_line(
-                &line,
-                &mut state,
-                &mut command,
-                &mut costs,
-                &mut details,
-                &mut parent_pid,
-            )? {
+            if !DhatLogfileParser::parse_line(&line, &mut state, &mut costs, &mut details)? {
                 break;
             }
         }
@@ -213,57 +175,13 @@ impl LogfileParser for DhatLogfileParser {
             }
         }
 
-        // TODO: Use header parser instead
-        let header = Header {
-            pid,
-            parent_pid,
-            command: command.context("Failed parsing logfile: A command should be present")?,
-        };
         Ok(Logfile {
             header,
             path: make_relative(&self.root_dir, path),
             details,
             costs: CostsKind::DhatCosts(costs),
         })
-        // TODO: CLEANUP
-        // Ok(LogfileSummary {
-        //     command: command.expect("A command should be present"),
-        //     pid,
-        //     parent_pid,
-        //     details,
-        //     log_path: make_relative(&self.root_dir, path),
-        //     costs: CostsKind::DhatCosts(costs),
-        // })
     }
-
-    // TODO: CLEANUP
-    // fn merge_logfile_summaries(
-    //     &self,
-    //     old: Vec<LogfileSummary>,
-    //     new: Vec<LogfileSummary>,
-    // ) -> Vec<ToolRunSummary> {
-    //     let old = old.into_iter().map(Some).chain(iter::repeat_with(|| None));
-    //     let new = new.into_iter().map(Some).chain(iter::repeat_with(|| None));
-    //     let zip = iter::zip(old, new).take_while(|(o, n)| o.is_some() || n.is_some());
-    //
-    //     let mut res = vec![];
-    //     for (old, new) in zip {
-    //         match (old, new) {
-    //             (None, None) => unreachable!(),
-    //             (Some(old), None) => res.push(old.old_into_tool_run()),
-    //             (None, Some(new)) => res.push(new.new_into_tool_run()),
-    //             (Some(old), Some(new)) => {
-    //                 if old.command == new.command {
-    //                     res.push(new.merge(&old));
-    //                 } else {
-    //                     res.push(old.old_into_tool_run());
-    //                     res.push(new.new_into_tool_run());
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     res
-    // }
 }
 
 #[cfg(test)]

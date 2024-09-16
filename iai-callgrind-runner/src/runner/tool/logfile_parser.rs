@@ -1,6 +1,6 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use log::debug;
@@ -9,12 +9,13 @@ use regex::Regex;
 use super::error_metric_parser::ErrorMetricLogfileParser;
 use super::generic_parser::GenericLogfileParser;
 use super::{ToolOutputPath, ValgrindTool};
+use crate::error::Error;
 use crate::runner::costs::Costs;
 use crate::runner::dhat::logfile_parser::DhatLogfileParser;
 use crate::runner::summary::{
     CostsKind, CostsSummary, CostsSummaryType, ToolRunInfo, ToolRunSummaries, ToolRunSummary,
 };
-use crate::util::EitherOrBoth;
+use crate::util::{make_relative, EitherOrBoth};
 
 // The different regex have to consider --time-stamp=yes
 lazy_static! {
@@ -39,6 +40,27 @@ lazy_static! {
     .expect("Regex should compile");
 }
 
+pub trait LogfileParser {
+    fn parse_single(&self, path: PathBuf) -> Result<Logfile>;
+    fn parse(&self, output_path: &ToolOutputPath) -> Result<Vec<Logfile>> {
+        let log_path = output_path.to_log_output();
+        debug!("{}: Parsing log file '{}'", output_path.tool.id(), log_path);
+
+        let mut logfiles = vec![];
+        let Ok(paths) = log_path.real_paths() else {
+            return Ok(vec![]);
+        };
+
+        for path in paths {
+            let logfile = self.parse_single(path)?;
+            logfiles.push(logfile);
+        }
+
+        logfiles.sort_by_key(|x| x.header.pid);
+        Ok(logfiles)
+    }
+}
+
 #[derive(Debug)]
 pub struct Header {
     pub command: PathBuf,
@@ -52,20 +74,6 @@ pub struct Logfile {
     pub header: Header,
     pub details: Vec<String>,
     pub costs: CostsKind,
-}
-
-impl From<Logfile> for ToolRunInfo {
-    fn from(value: Logfile) -> Self {
-        Self {
-            command: value.header.command.display().to_string(),
-            pid: value.header.pid,
-            parent_pid: value.header.parent_pid,
-            details: (!value.details.is_empty()).then(|| value.details.join("\n")),
-            path: value.path,
-            part: None,
-            thread: None,
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -382,138 +390,18 @@ impl LogfileSummaries {
     }
 }
 
-pub trait LogfileParser {
-    fn parse_single(&self, path: PathBuf) -> Result<Logfile>;
-    fn parse(&self, output_path: &ToolOutputPath) -> Result<Vec<Logfile>> {
-        let log_path = output_path.to_log_output();
-        debug!("{}: Parsing log file '{}'", output_path.tool.id(), log_path);
-
-        let mut logfiles = vec![];
-        let Ok(paths) = log_path.real_paths() else {
-            return Ok(vec![]);
-        };
-
-        for path in paths {
-            let logfile = self.parse_single(path)?;
-            logfiles.push(logfile);
+impl From<Logfile> for ToolRunInfo {
+    fn from(value: Logfile) -> Self {
+        Self {
+            command: value.header.command.display().to_string(),
+            pid: value.header.pid,
+            parent_pid: value.header.parent_pid,
+            details: (!value.details.is_empty()).then(|| value.details.join("\n")),
+            path: value.path,
+            part: None,
+            thread: None,
         }
-
-        logfiles.sort_by_key(|x| x.header.pid);
-        Ok(logfiles)
     }
-}
-
-// TODO: CLEANUP
-// impl LogfileSummary {
-//     fn raw_into_tool_run(self) -> ToolRunSummary {
-//         ToolRunSummary {
-//             command: self.command.to_string_lossy().to_string(),
-//             old_pid: None,
-//             old_parent_pid: None,
-//             pid: None,
-//             parent_pid: None,
-//             details: (!self.details.is_empty()).then(|| self.details.join("\n")),
-//             log_path: self.log_path,
-//             costs_summary: CostsSummaryType::default(),
-//         }
-//     }
-//
-//     pub fn old_into_tool_run(self) -> ToolRunSummary {
-//         let costs_summary = match self.costs {
-//             CostsKind::None => CostsSummaryType::None,
-//             CostsKind::DhatCosts(ref costs) => {
-//
-// CostsSummaryType::DhatSummary(CostsSummary::new(EitherOrBoth::Right(costs.clone())))
-// }             CostsKind::ErrorCosts(ref costs) =>
-// CostsSummaryType::ErrorSummary(CostsSummary::new(
-// EitherOrBoth::Right(costs.clone()),             )),
-//         };
-//         let old_pid = Some(self.pid);
-//         let old_parent_pid = self.parent_pid;
-//         ToolRunSummary {
-//             old_pid,
-//             old_parent_pid,
-//             costs_summary,
-//             ..self.raw_into_tool_run()
-//         }
-//     }
-//
-//     pub fn new_into_tool_run(self) -> ToolRunSummary {
-//         let costs_summary = match self.costs {
-//             CostsKind::DhatCosts(ref costs) => {
-//
-// CostsSummaryType::DhatSummary(CostsSummary::new(EitherOrBoth::Left(costs.clone())))             }
-//             CostsKind::ErrorCosts(ref costs) => {
-//
-// CostsSummaryType::ErrorSummary(CostsSummary::new(EitherOrBoth::Left(costs.clone())))
-// }             CostsKind::None => CostsSummaryType::None,
-//         };
-//         let pid = Some(self.pid);
-//         let parent_pid = self.parent_pid;
-//         ToolRunSummary {
-//             pid,
-//             parent_pid,
-//             costs_summary,
-//             ..self.raw_into_tool_run()
-//         }
-//     }
-//
-//     pub fn merge(self, old: &LogfileSummary) -> ToolRunSummary {
-//         assert_eq!(self.command, old.command);
-//         let costs_summary = match (&self.costs, &old.costs) {
-//             (CostsKind::None, CostsKind::None) => CostsSummaryType::None,
-//             (CostsKind::DhatCosts(new), CostsKind::DhatCosts(old)) => {
-//                 CostsSummaryType::DhatSummary(CostsSummary::new(EitherOrBoth::Both((
-//                     new.clone(),
-//                     old.clone(),
-//                 ))))
-//             }
-//             (CostsKind::ErrorCosts(new), CostsKind::ErrorCosts(old)) => {
-//                 CostsSummaryType::ErrorSummary(CostsSummary::new(EitherOrBoth::Both((
-//                     new.clone(),
-//                     old.clone(),
-//                 ))))
-//             }
-//             (CostsKind::None, CostsKind::DhatCosts(old)) => {
-//
-// CostsSummaryType::DhatSummary(CostsSummary::new(EitherOrBoth::Right(old.clone())))             }
-//             (CostsKind::None, CostsKind::ErrorCosts(old)) => {
-//
-// CostsSummaryType::ErrorSummary(CostsSummary::new(EitherOrBoth::Right(old.clone())))             }
-//             (CostsKind::DhatCosts(new), CostsKind::None) => {
-//                 CostsSummaryType::DhatSummary(CostsSummary::new(EitherOrBoth::Left(new.clone())))
-//             }
-//             (CostsKind::ErrorCosts(new), CostsKind::None) => {
-//
-// CostsSummaryType::ErrorSummary(CostsSummary::new(EitherOrBoth::Left(new.clone())))             }
-//             _ => panic!("The logfile summary types of new and old costs have to match"),
-//         };
-//
-//         let old_pid = Some(old.pid);
-//         let old_parent_pid = old.parent_pid;
-//         let pid = Some(self.pid);
-//         let parent_pid = self.parent_pid;
-//         ToolRunSummary {
-//             old_pid,
-//             old_parent_pid,
-//             pid,
-//             parent_pid,
-//             costs_summary,
-//             ..self.raw_into_tool_run()
-//         }
-//     }
-// }
-
-pub fn extract_pid(line: &str) -> i32 {
-    // TODO: Return error instead of unwraps
-    EXTRACT_PID_RE
-        .captures(line.trim())
-        .expect("Log output should not be malformed")
-        .name("pid")
-        .expect("Log output should contain pid")
-        .as_str()
-        .parse::<i32>()
-        .expect("Pid should be valid")
 }
 
 impl ValgrindTool {
@@ -529,14 +417,73 @@ impl ValgrindTool {
     }
 }
 
-// TODO: CLEANUP
-// impl LogfileSummary {
-//     pub fn has_errors(&self) -> bool {
-//         match &self.costs {
-//             CostsKind::None | CostsKind::DhatCosts(_) => false,
-//             CostsKind::ErrorCosts(costs) => costs
-//                 .cost_by_kind(&ErrorMetricKind::Errors)
-//                 .map_or(false, |e| e > 0),
-//         }
-//     }
-// }
+pub fn extract_pid(line: &str) -> i32 {
+    // TODO: Return error instead of unwraps
+    EXTRACT_PID_RE
+        .captures(line.trim())
+        .expect("Log output should not be malformed")
+        .name("pid")
+        .expect("Log output should contain pid")
+        .as_str()
+        .parse::<i32>()
+        .expect("Pid should be valid")
+}
+
+pub fn parse_header(
+    project_root: &Path,
+    path: &Path,
+    mut lines: impl Iterator<Item = String>,
+) -> Result<Header> {
+    let next = lines.next();
+
+    let (pid, next) = if let Some(next) = next {
+        (extract_pid(&next), next)
+    } else {
+        return Err(Error::ParseError((path.to_owned(), "Empty file".to_owned())).into());
+    };
+
+    let mut parent_pid = None;
+    let mut command = None;
+    for line in std::iter::once(next).chain(lines) {
+        if EMPTY_LINE_RE.is_match(&line) {
+            // The header is separated from the body by at least one empty line. The first
+            // empty line is stripped from the iterator.
+            break;
+        } else if let Some(caps) = EXTRACT_FIELDS_RE.captures(&line) {
+            let key = caps.name("key").unwrap().as_str();
+
+            // These unwraps are safe. If there is a key, there is also a value present
+            match key.to_ascii_lowercase().as_str() {
+                "command" => {
+                    let value = caps.name("value").unwrap().as_str();
+                    command = Some(make_relative(project_root, value));
+                }
+                "parent pid" => {
+                    let value = caps.name("value").unwrap().as_str().to_owned();
+                    parent_pid = Some(
+                        value
+                            .as_str()
+                            .parse::<i32>()
+                            .context("Failed parsing log file: Parent pid should be valid")?,
+                    );
+                }
+                _ => {
+                    // Ignore other header lines
+                }
+            }
+        } else {
+            // Some malformed header line which we ignore
+        }
+    }
+
+    Ok(Header {
+        command: command.with_context(|| {
+            format!(
+                "Error parsing header of logfile '{}': A command should be present",
+                path.display()
+            )
+        })?,
+        pid,
+        parent_pid,
+    })
+}
