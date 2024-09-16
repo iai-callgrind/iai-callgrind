@@ -308,28 +308,36 @@ impl ToolConfig {
         out_path: Option<&ToolOutputPath>,
     ) -> Result<ToolSummary> {
         let parser = self.tool.to_parser(meta.project_root.clone());
+        // TODO: Use load-baseline as the new dataset instead of the old dataset. Not only here but
+        // in other places, too
         let parsed_new = parser.parse(log_path)?;
         let parsed_old = parser.parse(&log_path.to_base_path())?;
 
-        // TODO: CONTINUE ADJUST
         match (parsed_new.is_empty(), parsed_old.is_empty()) {
             (true, true) => Err(anyhow!(
                 "The baselines '{}' and '{}' don't exist",
                 &meta.args.baseline.as_ref().unwrap(),
                 &meta.args.load_baseline.as_ref().unwrap()
             )),
-            (true, false) => todo!(),
-            (false, true) => todo!(),
-            (false, false) => todo!(),
+            (true, false) => Err(anyhow!(
+                "The baseline '{}' doesn't exist",
+                &meta.args.baseline.as_ref().unwrap(),
+            )),
+            (false, true) => Err(anyhow!(
+                "The loaded baseline '{}' doesn't exist",
+                &meta.args.load_baseline.as_ref().unwrap()
+            )),
+            (false, false) => {
+                let summaries = LogfileSummaries::new(EitherOrBoth::Both(parsed_new, parsed_old));
+                Ok(ToolSummary {
+                    tool: self.tool,
+                    log_paths: log_path.real_paths()?,
+                    out_paths: out_path
+                        .map_or_else(|| Ok(Vec::default()), ToolOutputPath::real_paths)?,
+                    summaries: summaries.into_tool_run_summaries(),
+                })
+            }
         }
-        // let tool_summary = ToolSummary {
-        //     tool: self.tool,
-        //     log_paths: log_path.real_paths()?,
-        //     out_paths: out_path.map_or_else(|| Ok(Vec::default()), ToolOutputPath::real_paths)?,
-        //     summaries: summaries.into_tool_run_summaries(),
-        // };
-
-        // Ok(summary)
     }
 }
 
@@ -364,42 +372,8 @@ impl ToolConfigs {
         }
     }
 
-    fn print(
-        meta: &Metadata,
-        _tool_config: &ToolConfig,
-        tool_run_summaries: &ToolRunSummaries,
-        // TODO: CLEANUP ?
-        _output_paths: &[PathBuf],
-    ) -> Result<()> {
-        // TODO: CONTINUE
+    fn print(meta: &Metadata, tool_run_summaries: &ToolRunSummaries) -> Result<()> {
         VerticalFormat.print(meta, (None, None), tool_run_summaries)
-        // ToolRunSummaryFormatter::print_multiple(
-        //     tool_run_summaries,
-        //     tool_config.args.verbose,
-        //     matches!(tool_config.tool, ValgrindTool::BBV),
-        // )
-
-        // TODO: CLEANUP
-        // for logfile_summary in tool_run_summaries {
-        //     ToolRunSummaryFormatter::print(
-        //         logfile_summary,
-        //         tool_config.args.verbose,
-        //         tool_run_summaries.len() > 1,
-        //         matches!(tool_config.tool, ValgrindTool::BBV),
-        //     )?;
-        // }
-
-        // TODO: CLEANUP
-        // for path in output_paths
-        //     .iter()
-        //     .map(|p| make_relative(&meta.project_root, p))
-        // {
-        //     println!(
-        //         "  {:<18}{}",
-        //         "Outfile:",
-        //         path.display().to_string().blue().bold()
-        //     );
-        // }
     }
 
     // TODO: ADJUST
@@ -445,12 +419,7 @@ impl ToolConfigs {
 
             let tool_summary = tool_config.parse_load(meta, &log_path, None)?;
 
-            Self::print(
-                meta,
-                tool_config,
-                &tool_summary.summaries,
-                &tool_summary.out_paths,
-            )?;
+            Self::print(meta, &tool_summary.summaries)?;
 
             log_path.dump_log(log::Level::Info, &mut stderr())?;
 
@@ -544,13 +513,7 @@ impl ToolConfigs {
                 old_summaries,
             )?;
 
-            // TODO: Print multiple files with a headline as in callgrind format and the total
-            Self::print(
-                &config.meta,
-                tool_config,
-                &tool_summary.summaries,
-                &tool_summary.out_paths,
-            )?;
+            Self::print(&config.meta, &tool_summary.summaries)?;
 
             output.dump_log(log::Level::Info);
             log_path.dump_log(log::Level::Info, &mut stderr())?;
@@ -735,24 +698,6 @@ impl ToolOutputPath {
             dir: self.dir.clone(),
             modifiers: self.modifiers.clone(),
         }
-    }
-
-    // TODO: REMOVE
-    pub fn open(&self) -> Result<File> {
-        let path = self.to_path();
-        File::open(&path).with_context(|| {
-            format!(
-                "Error opening {} output file '{}'",
-                self.tool.id(),
-                path.display()
-            )
-        })
-    }
-
-    // TODO: REMOVE
-    pub fn lines(&self) -> Result<impl Iterator<Item = String>> {
-        let file = self.open()?;
-        Ok(BufReader::new(file).lines().map(Result::unwrap))
     }
 
     pub fn dump_log(&self, log_level: log::Level, writer: &mut impl Write) -> Result<()> {

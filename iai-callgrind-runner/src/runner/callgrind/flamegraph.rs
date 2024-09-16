@@ -241,10 +241,6 @@ impl Flamegraph {
         let parser = FlamegraphParser::new(sentinel, project_root);
         // We need this map in all remaining cases of `FlamegraphKinds`
         let mut maps = parser.parse(tool_output_path)?;
-        // TODO: CLEANUP or APPLY to each FlamegraphMap
-        // if maps.is_empty() {
-        //     return Err(anyhow!("Unable to create a flamegraph: No stacks found"));
-        // }
 
         let base_path = tool_output_path.to_base_path();
         let mut base_maps = (!no_differential && self.is_differential() && base_path.exists())

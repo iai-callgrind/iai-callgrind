@@ -509,40 +509,6 @@ impl CallgrindSummary {
             .any(|r| !r.regressions.is_empty())
     }
 
-    /// TODO: REMOVE
-    /// Create and add a [`CallgrindRunSummary`] to this `CallgrindSummary`
-    pub fn add_summary(
-        &mut self,
-        bench_bin: &Path,
-        bench_args: &[OsString],
-        old_path: &ToolOutputPath,
-        events: CostsSummary,
-        regressions: Vec<CallgrindRegressionSummary>,
-    ) {
-        self.summaries.summaries.push(CallgrindRunSummary {
-            command: format!(
-                "{} {}",
-                bench_bin.display(),
-                shlex::try_join(
-                    bench_args
-                        .iter()
-                        .map(|s| s.to_string_lossy().to_string())
-                        .collect::<Vec<String>>()
-                        .as_slice()
-                        .iter()
-                        .map(String::as_str)
-                )
-                .unwrap()
-            ),
-            baseline: old_path.exists().then(|| Baseline {
-                kind: old_path.baseline_kind.clone(),
-                path: old_path.to_path(),
-            }),
-            events,
-            regressions,
-        });
-    }
-
     pub fn add_summaries(
         &mut self,
         bench_bin: &Path,
