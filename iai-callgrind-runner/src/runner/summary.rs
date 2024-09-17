@@ -7,7 +7,7 @@ use std::io::stdout;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use derive_more::AsRef;
 use glob::glob;
 use indexmap::{indexmap, IndexMap, IndexSet};
@@ -20,7 +20,7 @@ use super::common::ModulePath;
 use super::costs::Costs;
 use super::format::{Formatter, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
-use super::tool::{ToolOutputPath, ValgrindTool};
+use super::tool::ValgrindTool;
 use crate::api::{DhatMetricKind, ErrorMetricKind, EventKind};
 use crate::error::Error;
 use crate::runner::costs::Summarize;
@@ -192,7 +192,7 @@ pub struct CostsSummary<K: Hash + Eq = EventKind>(IndexMap<K, CostsDiff>);
 
 /// TODO: DOCS
 /// TODO: RENAME (`CostsSummaryByKind`?)
-#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum CostsSummaryType {
     #[default]
@@ -218,6 +218,61 @@ impl CostsSummaryType {
                 this.add(other);
             }
             _ => {}
+        }
+    }
+
+    pub fn from_new_costs(costs: &CostsKind) -> Self {
+        match costs {
+            CostsKind::None => CostsSummaryType::None,
+            CostsKind::DhatCosts(costs) => {
+                CostsSummaryType::DhatSummary(CostsSummary::new(EitherOrBoth::Left(costs.clone())))
+            }
+            CostsKind::ErrorCosts(costs) => {
+                CostsSummaryType::ErrorSummary(CostsSummary::new(EitherOrBoth::Left(costs.clone())))
+            }
+            CostsKind::CallgrindCosts(costs) => CostsSummaryType::CallgrindSummary(
+                CostsSummary::new(EitherOrBoth::Left(costs.clone())),
+            ),
+        }
+    }
+    pub fn from_old_costs(costs: &CostsKind) -> Self {
+        match costs {
+            CostsKind::None => CostsSummaryType::None,
+            CostsKind::DhatCosts(costs) => {
+                CostsSummaryType::DhatSummary(CostsSummary::new(EitherOrBoth::Right(costs.clone())))
+            }
+            CostsKind::ErrorCosts(costs) => CostsSummaryType::ErrorSummary(CostsSummary::new(
+                EitherOrBoth::Right(costs.clone()),
+            )),
+            CostsKind::CallgrindCosts(costs) => CostsSummaryType::CallgrindSummary(
+                CostsSummary::new(EitherOrBoth::Right(costs.clone())),
+            ),
+        }
+    }
+
+    /// Return the `CostsSummaryType` if the `CostsKind` have the same kind, else return with error
+    pub fn try_from_new_and_old_costs(
+        new_costs: &CostsKind,
+        old_costs: &CostsKind,
+    ) -> Result<Self> {
+        match (new_costs, old_costs) {
+            (CostsKind::None, CostsKind::None) => Ok(CostsSummaryType::None),
+            (CostsKind::DhatCosts(new_costs), CostsKind::DhatCosts(old_costs)) => {
+                Ok(CostsSummaryType::DhatSummary(CostsSummary::new(
+                    EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
+                )))
+            }
+            (CostsKind::ErrorCosts(new_costs), CostsKind::ErrorCosts(old_costs)) => {
+                Ok(CostsSummaryType::ErrorSummary(CostsSummary::new(
+                    EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
+                )))
+            }
+            (CostsKind::CallgrindCosts(new_costs), CostsKind::CallgrindCosts(old_costs)) => {
+                Ok(CostsSummaryType::CallgrindSummary(CostsSummary::new(
+                    EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
+                )))
+            }
+            _ => Err(anyhow!("Cannot create summary from incompatible costs")),
         }
     }
 }
@@ -322,7 +377,6 @@ pub struct ToolRunSummary {
     pub costs_summary: CostsSummaryType,
 }
 
-/// TODO: There should be a total at least for DHAT
 /// The `ToolSummary` containing all information about a valgrind tool run
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]

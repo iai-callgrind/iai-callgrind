@@ -76,17 +76,6 @@ impl<T> EitherOrBoth<T> {
             Self::Both(left, right) => EitherOrBoth::Both(left, right),
         }
     }
-
-    // pub fn as_deref(&self) -> EitherOrBoth<&T::Target>
-    // where
-    //     T: Deref,
-    // {
-    //     match *self {
-    //         Self::Left(ref left) => Self::Left(left),
-    //         Self::Right(ref right) => Self::Right(right),
-    //         Self::Both(ref left, ref right) => Self::Both(left, right),
-    //     }
-    // }
 }
 
 /// Convert a boolean value to a `yes` or `no` string
@@ -108,6 +97,19 @@ pub fn yesno_to_bool(value: &str) -> Option<bool> {
         "no" => Some(false),
         _ => None,
     }
+}
+
+/// Calculate the integer logarithm to base 10 of a `value`
+///
+/// This method does not panic if `value` is zero and instead returns `0`.
+///
+/// The ilog10 method on the primitive types is stable in rust 1.67. Currently we are at MSRV 1.66.
+/// This method can therefor be removed as soon as we bump the MSRV.
+#[allow(clippy::cast_precision_loss)]
+#[allow(clippy::cast_sign_loss)]
+#[allow(clippy::cast_possible_truncation)]
+pub fn ilog10(value: u64) -> u64 {
+    (value as f64).log10() as u64
 }
 
 /// Truncate a utf-8 [`std::str`] to a given `len`
@@ -375,5 +377,18 @@ mod tests {
     #[case::factor_two(2, 1, 2f64)]
     fn test_factor_diff_eq(#[case] a: u64, #[case] b: u64, #[case] expected: f64) {
         assert_eq!(factor_diff(a, b), expected);
+    }
+
+    #[rstest]
+    #[case::zero(0, 0)]
+    #[case::one(1, 0)]
+    #[case::two(2, 0)]
+    #[case::ten(10, 1)]
+    #[case::twenty(20, 1)]
+    #[case::ninety_nine(99, 1)]
+    #[case::hundred(100, 2)]
+    #[case::hundred_one(101, 2)]
+    fn test_ilog10(#[case] value: u64, #[case] expected: u64) {
+        assert_eq!(ilog10(value), expected);
     }
 }

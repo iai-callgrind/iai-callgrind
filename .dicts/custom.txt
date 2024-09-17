@@ -102,6 +102,7 @@ grcov
 hljs
 ildmr
 ilmr
+ilog
 iname
 indexmap
 indexset

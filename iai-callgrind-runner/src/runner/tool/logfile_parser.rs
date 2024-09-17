@@ -10,10 +10,9 @@ use super::error_metric_parser::ErrorMetricLogfileParser;
 use super::generic_parser::GenericLogfileParser;
 use super::{ToolOutputPath, ValgrindTool};
 use crate::error::Error;
-use crate::runner::costs::Costs;
 use crate::runner::dhat::logfile_parser::DhatLogfileParser;
 use crate::runner::summary::{
-    CostsKind, CostsSummary, CostsSummaryType, ToolRunInfo, ToolRunSummaries, ToolRunSummary,
+    CostsKind, CostsSummaryType, ToolRunInfo, ToolRunSummaries, ToolRunSummary,
 };
 use crate::util::{make_relative, EitherOrBoth};
 
@@ -82,314 +81,6 @@ pub struct LogfileSummary {
     pub costs_summary: CostsSummaryType,
 }
 
-#[derive(Debug)]
-pub struct LogfileSummaries {
-    data: Vec<LogfileSummary>,
-    total: CostsSummaryType,
-}
-
-// TODO: REFACTOR THIS
-// TODO: IMPLEMENT AND SORT INTO IMPL SECTION
-// Logfiles are separated per process but not per threads by any tool
-impl LogfileSummaries {
-    pub fn new(logfiles: EitherOrBoth<Vec<Logfile>>) -> Self {
-        let mut total = None;
-        let summaries: Vec<LogfileSummary> = match logfiles {
-            EitherOrBoth::Left(new) => new
-                .into_iter()
-                .map(|logfile| {
-                    let costs_summary = match &logfile.costs {
-                        CostsKind::None => {
-                            total.get_or_insert(CostsSummaryType::None);
-                            CostsSummaryType::None
-                        }
-                        CostsKind::DhatCosts(costs) => {
-                            let summary = CostsSummaryType::DhatSummary(CostsSummary::new(
-                                EitherOrBoth::Left(costs.clone()),
-                            ));
-                            let total_mut = total.get_or_insert(CostsSummaryType::DhatSummary(
-                                CostsSummary::new(EitherOrBoth::Left(Costs::empty())),
-                            ));
-                            total_mut.add_mut(&summary);
-                            summary
-                        }
-                        CostsKind::ErrorCosts(costs) => {
-                            let summary = CostsSummaryType::ErrorSummary(CostsSummary::new(
-                                EitherOrBoth::Left(costs.clone()),
-                            ));
-                            let total_mut = total.get_or_insert(CostsSummaryType::ErrorSummary(
-                                CostsSummary::new(EitherOrBoth::Left(Costs::empty())),
-                            ));
-                            total_mut.add_mut(&summary);
-                            summary
-                        }
-                        CostsKind::CallgrindCosts(costs) => {
-                            let summary = CostsSummaryType::CallgrindSummary(CostsSummary::new(
-                                EitherOrBoth::Left(costs.clone()),
-                            ));
-                            let total_mut =
-                                total.get_or_insert(CostsSummaryType::CallgrindSummary(
-                                    CostsSummary::new(EitherOrBoth::Left(Costs::empty())),
-                                ));
-                            total_mut.add_mut(&summary);
-                            summary
-                        }
-                    };
-
-                    LogfileSummary {
-                        logfile: EitherOrBoth::Left(logfile),
-                        costs_summary,
-                    }
-                })
-                .collect(),
-            EitherOrBoth::Right(old) => old
-                .into_iter()
-                .map(|logfile| {
-                    let costs_summary = match &logfile.costs {
-                        CostsKind::None => {
-                            total.get_or_insert(CostsSummaryType::None);
-                            CostsSummaryType::None
-                        }
-                        CostsKind::DhatCosts(costs) => {
-                            let summary = CostsSummaryType::DhatSummary(CostsSummary::new(
-                                EitherOrBoth::Right(costs.clone()),
-                            ));
-                            let total_mut = total.get_or_insert(CostsSummaryType::DhatSummary(
-                                CostsSummary::new(EitherOrBoth::Right(Costs::empty())),
-                            ));
-                            total_mut.add_mut(&summary);
-                            summary
-                        }
-                        CostsKind::ErrorCosts(costs) => {
-                            let summary = CostsSummaryType::ErrorSummary(CostsSummary::new(
-                                EitherOrBoth::Right(costs.clone()),
-                            ));
-                            let total_mut = total.get_or_insert(CostsSummaryType::ErrorSummary(
-                                CostsSummary::new(EitherOrBoth::Right(Costs::empty())),
-                            ));
-                            total_mut.add_mut(&summary);
-                            summary
-                        }
-                        CostsKind::CallgrindCosts(costs) => {
-                            let summary = CostsSummaryType::CallgrindSummary(CostsSummary::new(
-                                EitherOrBoth::Right(costs.clone()),
-                            ));
-                            let total_mut =
-                                total.get_or_insert(CostsSummaryType::CallgrindSummary(
-                                    CostsSummary::new(EitherOrBoth::Right(Costs::empty())),
-                                ));
-                            total_mut.add_mut(&summary);
-                            summary
-                        }
-                    };
-
-                    LogfileSummary {
-                        logfile: EitherOrBoth::Right(logfile),
-                        costs_summary,
-                    }
-                })
-                .collect(),
-            EitherOrBoth::Both(new, old) => new
-                .into_iter()
-                .zip_longest(old)
-                .map(|either_or_both| match either_or_both {
-                    itertools::EitherOrBoth::Both(new, old) => match (&new.costs, &old.costs) {
-                        (CostsKind::None, CostsKind::None) => {
-                            total.get_or_insert(CostsSummaryType::None);
-                            LogfileSummary {
-                                logfile: EitherOrBoth::Both(new, old),
-                                costs_summary: CostsSummaryType::None,
-                            }
-                        }
-                        (CostsKind::DhatCosts(new_costs), CostsKind::DhatCosts(old_costs)) => {
-                            let costs_summary = CostsSummaryType::DhatSummary(CostsSummary::new(
-                                EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
-                            ));
-                            let total_mut = total.get_or_insert(CostsSummaryType::DhatSummary(
-                                CostsSummary::new(EitherOrBoth::Both(
-                                    Costs::empty(),
-                                    Costs::empty(),
-                                )),
-                            ));
-                            total_mut.add_mut(&costs_summary);
-                            LogfileSummary {
-                                costs_summary,
-                                logfile: EitherOrBoth::Both(new, old),
-                            }
-                        }
-                        (CostsKind::ErrorCosts(new_costs), CostsKind::ErrorCosts(old_costs)) => {
-                            let costs_summary = CostsSummaryType::ErrorSummary(CostsSummary::new(
-                                EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
-                            ));
-                            let total_mut = total.get_or_insert(CostsSummaryType::ErrorSummary(
-                                CostsSummary::new(EitherOrBoth::Both(
-                                    Costs::empty(),
-                                    Costs::empty(),
-                                )),
-                            ));
-                            total_mut.add_mut(&costs_summary);
-                            LogfileSummary {
-                                costs_summary,
-                                logfile: EitherOrBoth::Both(new, old),
-                            }
-                        }
-                        (
-                            CostsKind::CallgrindCosts(new_costs),
-                            CostsKind::CallgrindCosts(old_costs),
-                        ) => {
-                            let costs_summary =
-                                CostsSummaryType::CallgrindSummary(CostsSummary::new(
-                                    EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
-                                ));
-                            let total_mut = total.get_or_insert(
-                                CostsSummaryType::CallgrindSummary(CostsSummary::new(
-                                    EitherOrBoth::Both(Costs::empty(), Costs::empty()),
-                                )),
-                            );
-                            total_mut.add_mut(&costs_summary);
-                            LogfileSummary {
-                                costs_summary,
-                                logfile: EitherOrBoth::Both(new, old),
-                            }
-                        }
-                        _ => panic!("Cannot summarize incompatible log files"),
-                    },
-                    itertools::EitherOrBoth::Left(new) => match &new.costs {
-                        CostsKind::None => {
-                            total.get_or_insert(CostsSummaryType::None);
-                            LogfileSummary {
-                                costs_summary: CostsSummaryType::None,
-                                logfile: EitherOrBoth::Left(new),
-                            }
-                        }
-                        CostsKind::DhatCosts(new_costs) => {
-                            let costs_summary = CostsSummaryType::DhatSummary(CostsSummary::new(
-                                EitherOrBoth::Left(new_costs.clone()),
-                            ));
-                            let total_mut = total.get_or_insert(CostsSummaryType::DhatSummary(
-                                CostsSummary::new(EitherOrBoth::Left(Costs::empty())),
-                            ));
-                            total_mut.add_mut(&costs_summary);
-                            LogfileSummary {
-                                costs_summary,
-                                logfile: EitherOrBoth::Left(new),
-                            }
-                        }
-                        CostsKind::ErrorCosts(new_costs) => {
-                            let costs_summary = CostsSummaryType::ErrorSummary(CostsSummary::new(
-                                EitherOrBoth::Left(new_costs.clone()),
-                            ));
-                            let total_mut = total.get_or_insert(CostsSummaryType::ErrorSummary(
-                                CostsSummary::new(EitherOrBoth::Left(Costs::empty())),
-                            ));
-                            total_mut.add_mut(&costs_summary);
-                            LogfileSummary {
-                                costs_summary,
-                                logfile: EitherOrBoth::Left(new),
-                            }
-                        }
-                        CostsKind::CallgrindCosts(new_costs) => {
-                            let costs_summary = CostsSummaryType::CallgrindSummary(
-                                CostsSummary::new(EitherOrBoth::Left(new_costs.clone())),
-                            );
-                            let total_mut =
-                                total.get_or_insert(CostsSummaryType::CallgrindSummary(
-                                    CostsSummary::new(EitherOrBoth::Left(Costs::empty())),
-                                ));
-                            total_mut.add_mut(&costs_summary);
-                            LogfileSummary {
-                                costs_summary,
-                                logfile: EitherOrBoth::Left(new),
-                            }
-                        }
-                    },
-                    itertools::EitherOrBoth::Right(old) => match &old.costs {
-                        CostsKind::None => {
-                            total.get_or_insert(CostsSummaryType::None);
-                            LogfileSummary {
-                                costs_summary: CostsSummaryType::None,
-                                logfile: EitherOrBoth::Right(old),
-                            }
-                        }
-                        CostsKind::DhatCosts(old_costs) => {
-                            let costs_summary = CostsSummaryType::DhatSummary(CostsSummary::new(
-                                EitherOrBoth::Right(old_costs.clone()),
-                            ));
-
-                            let total_mut = total.get_or_insert(CostsSummaryType::DhatSummary(
-                                CostsSummary::new(EitherOrBoth::Right(Costs::empty())),
-                            ));
-                            total_mut.add_mut(&costs_summary);
-                            LogfileSummary {
-                                costs_summary,
-                                logfile: EitherOrBoth::Right(old),
-                            }
-                        }
-                        CostsKind::ErrorCosts(old_costs) => {
-                            let costs_summary = CostsSummaryType::ErrorSummary(CostsSummary::new(
-                                EitherOrBoth::Right(old_costs.clone()),
-                            ));
-                            let total_mut = total.get_or_insert(CostsSummaryType::ErrorSummary(
-                                CostsSummary::new(EitherOrBoth::Right(Costs::empty())),
-                            ));
-                            total_mut.add_mut(&costs_summary);
-                            LogfileSummary {
-                                costs_summary,
-                                logfile: EitherOrBoth::Right(old),
-                            }
-                        }
-                        CostsKind::CallgrindCosts(old_costs) => {
-                            let costs_summary = CostsSummaryType::CallgrindSummary(
-                                CostsSummary::new(EitherOrBoth::Right(old_costs.clone())),
-                            );
-                            let total_mut =
-                                total.get_or_insert(CostsSummaryType::CallgrindSummary(
-                                    CostsSummary::new(EitherOrBoth::Right(Costs::empty())),
-                                ));
-                            total_mut.add_mut(&costs_summary);
-                            LogfileSummary {
-                                costs_summary,
-                                logfile: EitherOrBoth::Right(old),
-                            }
-                        }
-                    },
-                })
-                .collect(),
-        };
-
-        Self {
-            data: summaries,
-            total: total.expect("A total should be present"),
-        }
-    }
-
-    pub fn into_tool_run_summaries(self) -> ToolRunSummaries {
-        let summaries = self
-            .data
-            .into_iter()
-            .map(|logfile_summary| match logfile_summary.logfile {
-                EitherOrBoth::Left(new_logfile) => ToolRunSummary {
-                    info: EitherOrBoth::Left(new_logfile.into()),
-                    costs_summary: logfile_summary.costs_summary,
-                },
-                EitherOrBoth::Right(old_logfile) => ToolRunSummary {
-                    info: EitherOrBoth::Right(old_logfile.into()),
-                    costs_summary: logfile_summary.costs_summary,
-                },
-                EitherOrBoth::Both(new_logfile, old_logfile) => ToolRunSummary {
-                    info: EitherOrBoth::Both(new_logfile.into(), old_logfile.into()),
-                    costs_summary: logfile_summary.costs_summary,
-                },
-            })
-            .collect();
-
-        ToolRunSummaries {
-            data: summaries,
-            total: self.total,
-        }
-    }
-}
-
 impl From<Logfile> for ToolRunInfo {
     fn from(value: Logfile) -> Self {
         Self {
@@ -404,15 +95,97 @@ impl From<Logfile> for ToolRunInfo {
     }
 }
 
-impl ValgrindTool {
-    // TODO: RENAME TO PARSER FACTORY and don't put this into ValgrindTool
-    pub fn to_parser(self, root_dir: PathBuf) -> Box<dyn LogfileParser> {
-        match self {
-            ValgrindTool::DHAT => Box::new(DhatLogfileParser { root_dir }),
-            ValgrindTool::Memcheck | ValgrindTool::DRD | ValgrindTool::Helgrind => {
-                Box::new(ErrorMetricLogfileParser { root_dir })
-            }
-            _ => Box::new(GenericLogfileParser { root_dir }),
+// Logfiles are separated per process but not per threads by any tool
+impl From<EitherOrBoth<Vec<Logfile>>> for ToolRunSummaries {
+    fn from(logfiles: EitherOrBoth<Vec<Logfile>>) -> Self {
+        let mut total: Option<CostsSummaryType> = None;
+
+        let summaries: Vec<ToolRunSummary> = match logfiles {
+            EitherOrBoth::Left(new) => new
+                .into_iter()
+                .map(|logfile| {
+                    let costs_summary = CostsSummaryType::from_new_costs(&logfile.costs);
+                    if let Some(entry) = total.as_mut() {
+                        entry.add_mut(&costs_summary);
+                    } else {
+                        total = Some(costs_summary.clone());
+                    }
+
+                    ToolRunSummary {
+                        info: EitherOrBoth::Left(logfile.into()),
+                        costs_summary,
+                    }
+                })
+                .collect(),
+            EitherOrBoth::Right(old) => old
+                .into_iter()
+                .map(|logfile| {
+                    let costs_summary = CostsSummaryType::from_old_costs(&logfile.costs);
+                    if let Some(entry) = total.as_mut() {
+                        entry.add_mut(&costs_summary);
+                    } else {
+                        total = Some(costs_summary.clone());
+                    }
+
+                    ToolRunSummary {
+                        info: EitherOrBoth::Right(logfile.into()),
+                        costs_summary,
+                    }
+                })
+                .collect(),
+            EitherOrBoth::Both(new, old) => new
+                .into_iter()
+                .zip_longest(old)
+                .map(|either_or_both| match either_or_both {
+                    itertools::EitherOrBoth::Both(new, old) => {
+                        let costs_summary =
+                            CostsSummaryType::try_from_new_and_old_costs(&new.costs, &old.costs)
+                                .expect("The cost kinds should match");
+
+                        if let Some(entry) = total.as_mut() {
+                            entry.add_mut(&costs_summary);
+                        } else {
+                            total = Some(costs_summary.clone());
+                        }
+
+                        ToolRunSummary {
+                            info: EitherOrBoth::Both(new.into(), old.into()),
+                            costs_summary,
+                        }
+                    }
+                    itertools::EitherOrBoth::Left(new) => {
+                        let costs_summary = CostsSummaryType::from_new_costs(&new.costs);
+                        if let Some(entry) = total.as_mut() {
+                            entry.add_mut(&costs_summary);
+                        } else {
+                            total = Some(costs_summary.clone());
+                        }
+
+                        ToolRunSummary {
+                            info: EitherOrBoth::Left(new.into()),
+                            costs_summary,
+                        }
+                    }
+                    itertools::EitherOrBoth::Right(old) => {
+                        let costs_summary = CostsSummaryType::from_old_costs(&old.costs);
+                        if let Some(entry) = total.as_mut() {
+                            entry.add_mut(&costs_summary);
+                        } else {
+                            total = Some(costs_summary.clone());
+                        }
+
+                        ToolRunSummary {
+                            info: EitherOrBoth::Right(old.into()),
+                            costs_summary,
+                        }
+                    }
+                })
+                .collect(),
+        };
+
+        Self {
+            data: summaries,
+            total: total.expect("A total should be present"),
         }
     }
 }
@@ -486,4 +259,14 @@ pub fn parse_header(
         pid,
         parent_pid,
     })
+}
+
+pub fn parser_factory(tool: ValgrindTool, root_dir: PathBuf) -> Box<dyn LogfileParser> {
+    match tool {
+        ValgrindTool::DHAT => Box::new(DhatLogfileParser { root_dir }),
+        ValgrindTool::Memcheck | ValgrindTool::DRD | ValgrindTool::Helgrind => {
+            Box::new(ErrorMetricLogfileParser { root_dir })
+        }
+        _ => Box::new(GenericLogfileParser { root_dir }),
+    }
 }

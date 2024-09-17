@@ -81,7 +81,6 @@ pub trait Formatter {
         summaries: &ToolRunSummaries,
     ) -> Result<String>;
 
-    // TODO: Add verbose
     fn print(
         &self,
         meta: &Metadata,

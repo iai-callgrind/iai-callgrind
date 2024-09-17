@@ -4,6 +4,7 @@ pub mod error_metric_parser;
 pub mod generic_parser;
 pub mod logfile_parser;
 
+use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fmt::{Display, Write as FmtWrite};
 use std::fs::{DirEntry, File};
@@ -15,7 +16,7 @@ use std::process::{Child, Command, ExitStatus, Output};
 use anyhow::{anyhow, Context, Result};
 use lazy_static::lazy_static;
 use log::{debug, error, log_enabled};
-use logfile_parser::{Logfile, LogfileSummaries};
+use logfile_parser::Logfile;
 use regex::Regex;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
@@ -24,7 +25,7 @@ use serde::{Deserialize, Serialize};
 use self::args::ToolArgs;
 use super::args::NoCapture;
 use super::bin_bench::Delay;
-use super::callgrind::parser::parse_header;
+use super::callgrind::parser::{parse_header, CallgrindProperties};
 use super::common::{Assistant, Config, ModulePath, Sandbox};
 use super::format::{
     print_no_capture_footer, tool_headline, Formatter, OutputFormat, VerticalFormat,
@@ -33,7 +34,7 @@ use super::meta::Metadata;
 use super::summary::{BaselineKind, ToolRunSummaries, ToolSummary};
 use crate::api::{self, ExitWith, Stream};
 use crate::error::Error;
-use crate::util::{self, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
+use crate::util::{self, ilog10, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
 
 lazy_static! {
     // This regex matches the original file name as it is created by callgrind. The baseline <name>
@@ -307,7 +308,8 @@ impl ToolConfig {
         log_path: &ToolOutputPath,
         out_path: Option<&ToolOutputPath>,
     ) -> Result<ToolSummary> {
-        let parser = self.tool.to_parser(meta.project_root.clone());
+        let parser = logfile_parser::parser_factory(self.tool, meta.project_root.clone());
+
         // TODO: Use load-baseline as the new dataset instead of the old dataset. Not only here but
         // in other places, too
         let parsed_new = parser.parse(log_path)?;
@@ -328,13 +330,13 @@ impl ToolConfig {
                 &meta.args.load_baseline.as_ref().unwrap()
             )),
             (false, false) => {
-                let summaries = LogfileSummaries::new(EitherOrBoth::Both(parsed_new, parsed_old));
+                let summaries = ToolRunSummaries::from(EitherOrBoth::Both(parsed_new, parsed_old));
                 Ok(ToolSummary {
                     tool: self.tool,
                     log_paths: log_path.real_paths()?,
                     out_paths: out_path
                         .map_or_else(|| Ok(Vec::default()), ToolOutputPath::real_paths)?,
-                    summaries: summaries.into_tool_run_summaries(),
+                    summaries,
                 })
             }
         }
@@ -376,7 +378,6 @@ impl ToolConfigs {
         VerticalFormat.print(meta, (None, None), tool_run_summaries)
     }
 
-    // TODO: ADJUST
     pub fn parse(
         tool_config: &ToolConfig,
         meta: &Metadata,
@@ -384,22 +385,21 @@ impl ToolConfigs {
         out_path: Option<&ToolOutputPath>,
         old_summaries: Vec<Logfile>,
     ) -> Result<ToolSummary> {
-        let parser = tool_config.tool.to_parser(meta.project_root.clone());
+        let parser = logfile_parser::parser_factory(tool_config.tool, meta.project_root.clone());
 
         let parsed_new = parser.parse(log_path)?;
-        // TODO: Convert into ToolRunSummaries directly and remove LogfileSummaries
+
         let summaries = match (parsed_new.is_empty(), old_summaries.is_empty()) {
-            (true, true) => todo!("should not happen"),
-            (true, false) => todo!("new should never be empty"),
-            (false, true) => LogfileSummaries::new(EitherOrBoth::Left(parsed_new)),
-            (false, false) => LogfileSummaries::new(EitherOrBoth::Both(parsed_new, old_summaries)),
+            (true, false | true) => return Err(anyhow!("A new dataset should always be present")),
+            (false, true) => ToolRunSummaries::from(EitherOrBoth::Left(parsed_new)),
+            (false, false) => ToolRunSummaries::from(EitherOrBoth::Both(parsed_new, old_summaries)),
         };
 
         Ok(ToolSummary {
             tool: tool_config.tool,
             log_paths: log_path.real_paths()?,
             out_paths: out_path.map_or_else(|| Ok(Vec::default()), ToolOutputPath::real_paths)?,
-            summaries: summaries.into_tool_run_summaries(),
+            summaries,
         })
     }
 
@@ -410,12 +410,12 @@ impl ToolConfigs {
     ) -> Result<Vec<ToolSummary>> {
         let mut tool_summaries = vec![];
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
+            Self::print_headline(meta, tool_config);
+
             let tool = tool_config.tool;
 
             let output_path = output_path.to_tool_output(tool);
             let log_path = output_path.to_log_output();
-
-            Self::print_headline(meta, tool_config);
 
             let tool_summary = tool_config.parse_load(meta, &log_path, None)?;
 
@@ -445,6 +445,10 @@ impl ToolConfigs {
     ) -> Result<Vec<ToolSummary>> {
         let mut tool_summaries = vec![];
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
+            // Print the headline as soon as possible, so if there are any errors, the errors shown
+            // in the terminal output can be associated with the tool
+            Self::print_headline(&config.meta, tool_config);
+
             let tool = tool_config.tool;
 
             let command = ToolCommand::new(tool, &config.meta, NoCapture::False);
@@ -452,9 +456,7 @@ impl ToolConfigs {
             let output_path = output_path.to_tool_output(tool);
             let log_path = output_path.to_log_output();
 
-            Self::print_headline(&config.meta, tool_config);
-
-            let parser = tool_config.tool.to_parser(config.meta.project_root.clone());
+            let parser = logfile_parser::parser_factory(tool, config.meta.project_root.clone());
 
             let old_summaries = parser.parse(&log_path.to_base_path())?;
             if save_baseline {
@@ -463,7 +465,6 @@ impl ToolConfigs {
             }
 
             let sandbox = sandbox
-                .as_ref()
                 .map(|sandbox| Sandbox::setup(sandbox, &config.meta))
                 .transpose()?;
 
@@ -491,7 +492,7 @@ impl ToolConfigs {
                 child,
             )?;
 
-            if let Some(teardown) = &teardown {
+            if let Some(teardown) = teardown {
                 teardown.run(config, module_path)?;
             }
 
@@ -790,7 +791,7 @@ impl ToolOutputPath {
         file_name.strip_prefix(format!("{}.{}", self.tool.id(), self.name).as_str())
     }
 
-    /// Return the `real` paths of a tool
+    /// Return the `real` paths of a tool's output files
     ///
     /// A tool can have many output files so [`Self::to_path`] is not enough
     #[allow(clippy::case_sensitive_file_extension_comparisons)]
@@ -824,6 +825,7 @@ impl ToolOutputPath {
         Ok(paths)
     }
 
+    // TODO: CLEANUP?
     pub fn real_paths_with_modifier(&self) -> Result<Vec<(PathBuf, String)>> {
         let mut paths = vec![];
         for entry in self.walk_dir()? {
@@ -848,38 +850,57 @@ impl ToolOutputPath {
                 if let Some(modifiers) = modifiers {
                     paths.push((entry.path(), modifiers.to_owned()));
                 }
+                // TODO: Return empty string for modifier?
             }
         }
         Ok(paths)
     }
 
-    /// TODO: Use pid, part, threads only if multiple present
     /// Sanitize callgrind output file names
     ///
-    /// This method will remove empty files which are occasionally produced by callgrind. The files
-    /// are renamed from the callgrind file naming scheme to ours which is easier to handle and more
-    /// informative with regard to output files for multiple threads and processes.
+    /// This method will remove empty files which are occasionally produced by callgrind and only
+    /// cause problems in the parser. The files are renamed from the callgrind file naming scheme to
+    /// ours which is easier to handle.
+    ///
+    /// The information about pids, parts and threads is obtained by parsing the header from the
+    /// callgrind output files instead of relying on the sometimes flaky file names produced by
+    /// `callgrind`. The header is around 10-20 lines, so this method should be still sufficiently
+    /// fast. Additionally, `callgrind` might change the naming scheme of its' files, so using the
+    /// headers makes us more independent from a specific valgrind/callgrind version.
     pub fn sanitize_callgrind(&self) -> Result<()> {
-        for entry in self.walk_dir()? {
-            if entry.metadata()?.size() == 0 {
-                std::fs::remove_file(entry.path())?;
-                continue;
-            }
+        type Grouped<'a> = (PathBuf, Option<String>, String, CallgrindProperties);
 
+        // To figure out if there are multiple pids/parts/threads present, it's necessary to group
+        // the files in this map. The order doesn't matter since we only rename the original file
+        // names, which doesn't need to follow a specific order.
+        //
+        // At first we group by pid and then by part in different hashmaps. The threads are grouped
+        // in a vector.
+        let mut groups: HashMap<Option<i32>, HashMap<Option<u64>, Vec<Grouped>>> = HashMap::new();
+
+        for entry in self.walk_dir()? {
             let file_name = entry.file_name();
             let file_name = file_name.to_string_lossy();
 
             if let Some(caps) = CALLGRIND_ORIG_FILENAME_RE.captures(&file_name) {
-                if caps.name("type").unwrap().as_str() == ".out" {
-                    // Callgrind sometimes creates empty files for no reason. We clean them
-                    // up here
+                // Callgrind sometimes creates empty files for no reason. We clean them
+                // up here
+                if entry.metadata()?.size() == 0 {
+                    std::fs::remove_file(entry.path())?;
+                    continue;
+                }
 
+                if caps.name("type").unwrap().as_str() == ".out" {
                     // We don't sanitize old files. It's not needed if the new files are always
                     // sanitized. However, we do sanitize `base@<name>` file names.
-                    if let Some(base) = caps.name("base") {
+                    let base = if let Some(base) = caps.name("base") {
                         if base.as_str() == ".old" {
                             continue;
                         }
+
+                        Some(base.as_str().to_owned())
+                    } else {
+                        None
                     };
 
                     let properties = parse_header(
@@ -892,25 +913,77 @@ impl ToolOutputPath {
                         .name("name")
                         .expect("The name should always be present")
                         .as_str();
+
+                    if let Some(pids) = groups.get_mut(&properties.pid) {
+                        if let Some(parts) = pids.get_mut(&properties.part) {
+                            parts.push((entry.path(), base, name.to_owned(), properties));
+                        } else {
+                            pids.insert(
+                                properties.part,
+                                vec![(entry.path(), base, name.to_owned(), properties)],
+                            );
+                        }
+                    } else {
+                        groups.insert(
+                            properties.pid,
+                            HashMap::from([(
+                                properties.part,
+                                vec![(entry.path(), base, name.to_owned(), properties)],
+                            )]),
+                        );
+                    }
+                }
+            }
+        }
+
+        let multiple_pids = groups.len() > 1;
+        for parts in groups.values() {
+            let multiple_parts = parts.len() > 1;
+            for threads in parts.values() {
+                let multiple_threads = threads.len() > 1;
+                for (orig_path, base, name, properties) in threads {
                     let mut new_file_name = format!("callgrind{name}");
 
-                    if let Some(pid) = properties.pid {
-                        write!(new_file_name, ".{pid}")?;
+                    if multiple_pids {
+                        if let Some(pid) = properties.pid {
+                            write!(new_file_name, ".{pid}").unwrap();
+                        }
                     }
-                    if let Some(part) = properties.part {
-                        write!(new_file_name, ".p{part}")?;
-                    }
-                    if let Some(thread) = properties.thread {
-                        write!(new_file_name, ".t{thread}")?;
+                    if multiple_parts {
+                        if let Some(part) = properties.part {
+                            let width = usize::try_from(ilog10(parts.len() as u64)).expect(
+                                "The logarithm of the parts length should fit into a usize",
+                            ) + 1;
+                            write!(new_file_name, ".p{part:0width$}").unwrap();
+                        }
+
+                        // Integrate the thread number into the filename independently of the amount
+                        // of threads
+                        if let Some(thread) = properties.thread {
+                            let width = usize::try_from(ilog10(threads.len() as u64)).expect(
+                                "The logarithm of the threads length should fit into a usize",
+                            ) + 1;
+                            write!(new_file_name, ".t{thread:0width$}").unwrap();
+                        }
+                    } else if multiple_threads {
+                        if let Some(thread) = properties.thread {
+                            let width = usize::try_from(ilog10(threads.len() as u64)).expect(
+                                "The logarithm of the threads length should fit into a usize",
+                            ) + 1;
+                            write!(new_file_name, ".t{thread:0width$}").unwrap();
+                        }
+                    } else {
+                        // don't integrate parts or threads into the filename
                     }
 
                     new_file_name.push_str(".out");
-                    if let Some(base) = caps.name("base") {
-                        new_file_name.push_str(base.as_str());
+                    if let Some(base) = base {
+                        new_file_name.push_str(base);
                     }
 
-                    let from = entry.path();
+                    let from = orig_path;
                     let to = from.with_file_name(new_file_name);
+
                     std::fs::rename(from, to)?;
                 }
             }
@@ -919,7 +992,10 @@ impl ToolOutputPath {
         Ok(())
     }
 
-    /// TODO: DOCS
+    /// Sanitize files for this tool
+    ///
+    /// Empty files are cleaned up. For more details on a specific tool see the respective
+    /// sanitize_<tool> method.
     pub fn sanitize(&self) -> Result<()> {
         if self.tool == ValgrindTool::Callgrind {
             self.sanitize_callgrind()?;
@@ -927,7 +1003,6 @@ impl ToolOutputPath {
             for entry in self.walk_dir()? {
                 if entry.metadata()?.size() == 0 {
                     std::fs::remove_file(entry.path())?;
-                    continue;
                 }
             }
         }
