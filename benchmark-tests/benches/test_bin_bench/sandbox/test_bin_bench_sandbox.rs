@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use iai_callgrind::{
-    binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Sandbox,
+    binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, OutputFormat, Sandbox,
 };
 
 const FILE_EXISTS: &str = env!("CARGO_BIN_EXE_file-exists");
@@ -83,6 +83,8 @@ binary_benchmark_group!(
 main!(
     config = BinaryBenchmarkConfig::default()
         .sandbox(Sandbox::new(true))
-        .truncate_description(None);
+        .output_format(OutputFormat::default()
+            .truncate_description(None)
+        );
     binary_benchmark_groups = my_group
 );

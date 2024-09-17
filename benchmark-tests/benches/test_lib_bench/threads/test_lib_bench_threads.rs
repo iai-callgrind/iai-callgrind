@@ -4,7 +4,7 @@ use std::process::Command;
 use benchmark_tests::find_primes;
 use iai_callgrind::{
     library_benchmark, library_benchmark_group, main, EntryPoint, FlamegraphConfig,
-    LibraryBenchmarkConfig, Tool, ValgrindTool,
+    LibraryBenchmarkConfig, OutputFormat, Tool, ValgrindTool,
 };
 
 #[library_benchmark(
@@ -161,7 +161,9 @@ where
 library_benchmark_group!(
     name = my_group;
     config = LibraryBenchmarkConfig::default()
-        .truncate_description(None)
+        .output_format(OutputFormat::default()
+            .truncate_description(None)
+        )
         .flamegraph(FlamegraphConfig::default());
     compare_by_id = true;
     benchmarks = bench_library, bench_library_compare, normal, with_entry

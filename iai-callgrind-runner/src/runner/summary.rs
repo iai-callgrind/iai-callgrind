@@ -18,8 +18,7 @@ use serde::{Deserialize, Serialize};
 use super::callgrind::Summaries;
 use super::common::ModulePath;
 use super::costs::Costs;
-use super::format::{Formatter, OutputFormat, VerticalFormat};
-use super::meta::Metadata;
+use super::format::{Formatter, OutputFormat, OutputFormatKind, VerticalFormat};
 use super::tool::ValgrindTool;
 use crate::api::{DhatMetricKind, ErrorMetricKind, EventKind};
 use crate::error::Error;
@@ -447,24 +446,24 @@ impl BenchmarkSummary {
         }
     }
 
-    pub fn print_and_save(&self, output_format: &OutputFormat) -> Result<()> {
+    pub fn print_and_save(&self, output_format: &OutputFormatKind) -> Result<()> {
         let value = match (output_format, &self.summary_output) {
-            (OutputFormat::Default, None) => return Ok(()),
+            (OutputFormatKind::Default, None) => return Ok(()),
             _ => {
                 serde_json::to_value(self).with_context(|| "Failed to serialize summary to json")?
             }
         };
 
         let result = match output_format {
-            OutputFormat::Default => Ok(()),
-            OutputFormat::Json => {
+            OutputFormatKind::Default => Ok(()),
+            OutputFormatKind::Json => {
                 let output = stdout();
                 let writer = output.lock();
                 let result = serde_json::to_writer(writer, &value);
                 println!();
                 result
             }
-            OutputFormat::PrettyJson => {
+            OutputFormatKind::PrettyJson => {
                 let output = stdout();
                 let writer = output.lock();
                 let result = serde_json::to_writer_pretty(writer, &value);
@@ -514,7 +513,12 @@ impl BenchmarkSummary {
 
     // TODO: Compare not only the total??
     // TODO: Compare dhat
-    pub fn compare_and_print(&self, id: &str, meta: &Metadata, other: &Self) -> Result<()> {
+    pub fn compare_and_print(
+        &self,
+        id: &str,
+        other: &Self,
+        output_format: &OutputFormat,
+    ) -> Result<()> {
         if let (Some(callgrind_summary), Some(other_callgrind_summary)) =
             (&self.callgrind_summary, &other.callgrind_summary)
         {
@@ -531,11 +535,11 @@ impl BenchmarkSummary {
             ) {
                 let new_summary = CostsSummary::new(EitherOrBoth::Both(new, other_new));
                 VerticalFormat.print_comparison(
-                    meta,
                     &self.function_name,
                     id,
                     self.details.as_deref(),
                     &CostsSummaryType::CallgrindSummary(new_summary),
+                    output_format,
                 )?;
             }
         }

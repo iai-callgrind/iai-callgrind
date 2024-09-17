@@ -52,8 +52,8 @@ pub struct BinaryBenchmarkConfig {
     pub tools: Tools,
     pub tools_override: Option<Tools>,
     pub sandbox: Option<Sandbox>,
-    pub truncate_description: Option<Option<usize>>,
     pub setup_parallel: Option<bool>,
+    pub output_format: Option<OutputFormat>,
 }
 
 /// The model for the `binary_benchmark_group` macro
@@ -305,8 +305,8 @@ pub struct LibraryBenchmarkConfig {
     pub regression_config: Option<RegressionConfig>,
     pub tools: Tools,
     pub tools_override: Option<Tools>,
-    pub truncate_description: Option<Option<usize>>,
     pub entry_point: Option<EntryPoint>,
+    pub output_format: Option<OutputFormat>,
 }
 
 /// The model for the `library_benchmark_group` macro
@@ -329,6 +329,13 @@ pub struct LibraryBenchmarkGroups {
     pub command_line_args: Vec<String>,
     pub has_setup: bool,
     pub has_teardown: bool,
+}
+
+/// The configuration values for the output format
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct OutputFormat {
+    pub truncate_description: Option<Option<usize>>,
+    pub show_all: Option<bool>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -462,9 +469,8 @@ impl BinaryBenchmarkConfig {
             }
 
             self.sandbox = update_option(&self.sandbox, &other.sandbox);
-            self.truncate_description =
-                update_option(&self.truncate_description, &other.truncate_description);
             self.setup_parallel = update_option(&self.setup_parallel, &other.setup_parallel);
+            self.output_format = update_option(&self.output_format, &other.output_format);
         }
         self
     }
@@ -674,9 +680,8 @@ impl LibraryBenchmarkConfig {
                 // do nothing
             }
 
-            self.truncate_description =
-                update_option(&self.truncate_description, &other.truncate_description);
             self.entry_point = update_option(&self.entry_point, &other.entry_point);
+            self.output_format = update_option(&self.output_format, &other.output_format);
         }
         self
     }
@@ -956,8 +961,8 @@ mod tests {
                 show_log: None,
             }]),
             tools_override: None,
-            truncate_description: None,
             entry_point: None,
+            output_format: None,
         };
 
         assert_eq!(base.update_from_all([Some(&other.clone())]), other);
@@ -979,8 +984,8 @@ mod tests {
                 show_log: None,
             }]),
             tools_override: Some(Tools(vec![])),
-            truncate_description: Some(Some(10)),
             entry_point: Some(EntryPoint::default()),
+            output_format: Some(OutputFormat::default()),
         };
         let expected = LibraryBenchmarkConfig {
             tools: other.tools_override.as_ref().unwrap().clone(),
@@ -992,12 +997,6 @@ mod tests {
     }
 
     #[rstest]
-    #[case::truncate_description(
-        LibraryBenchmarkConfig {
-            truncate_description: Some(None),
-            ..Default::default()
-        }
-    )]
     #[case::env_clear(
         LibraryBenchmarkConfig {
             env_clear: Some(true),

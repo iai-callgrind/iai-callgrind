@@ -2,7 +2,8 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
 use iai_callgrind::{
-    binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Command, Sandbox, Stdio,
+    binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Command, OutputFormat,
+    Sandbox, Stdio,
 };
 
 fn create_script(path: &str) {
@@ -45,6 +46,9 @@ fn bench_paths(path: &str) -> Command {
 
 binary_benchmark_group!(name = my_group; benchmarks = bench_paths);
 main!(
-    config = BinaryBenchmarkConfig::default().truncate_description(None);
+    config = BinaryBenchmarkConfig::default()
+        .output_format(OutputFormat::default()
+            .truncate_description(None)
+        );
     binary_benchmark_groups = my_group
 );

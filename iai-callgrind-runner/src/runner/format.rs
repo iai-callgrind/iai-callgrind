@@ -84,10 +84,11 @@ pub trait Formatter {
     fn print(
         &self,
         meta: &Metadata,
+        output_format: &OutputFormat,
         baselines: (Option<String>, Option<String>),
         summaries: &ToolRunSummaries,
     ) -> Result<()> {
-        if meta.args.output_format == OutputFormat::Default {
+        if output_format.is_default() {
             print!("{}", self.format(meta, baselines, summaries)?);
         }
         Ok(())
@@ -95,11 +96,11 @@ pub trait Formatter {
 
     fn print_comparison(
         &self,
-        meta: &Metadata,
         function_name: &str,
         id: &str,
         details: Option<&str>,
         summary: &CostsSummaryType,
+        output_format: &OutputFormat,
     ) -> Result<()>;
 }
 
@@ -127,11 +128,20 @@ pub struct LibraryBenchmarkHeader {
     output_format: OutputFormat,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
-pub enum OutputFormat {
+// TODO: RENAME TO OUTPUT_FORMAT_KIND
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum OutputFormatKind {
+    #[default]
     Default,
     Json,
     PrettyJson,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OutputFormat {
+    pub kind: OutputFormatKind,
+    pub truncate_description: Option<usize>,
+    pub show_all: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -169,15 +179,15 @@ impl BinaryBenchmarkHeader {
                 &bin_bench.module_path,
                 bin_bench.id.clone(),
                 Some(description),
-                bin_bench.truncate_description,
+                &bin_bench.output_format,
             ),
             has_tools_enabled: bin_bench.tools.has_tools_enabled(),
-            output_format: meta.args.output_format,
+            output_format: bin_bench.output_format,
         }
     }
 
     pub fn print(&self) {
-        if self.output_format == OutputFormat::Default {
+        if self.output_format.kind == OutputFormatKind::Default {
             self.inner.print();
             if self.has_tools_enabled {
                 println!("{}", tool_headline(ValgrindTool::Callgrind));
@@ -236,13 +246,13 @@ impl Header {
         module_path: &ModulePath,
         id: T,
         description: Option<String>,
-        truncate_description: Option<usize>,
+        output_format: &OutputFormat,
     ) -> Self
     where
         T: Into<Option<String>>,
     {
-        let truncated =
-            description.map(|d| self::truncate_description(&d, truncate_description).to_string());
+        let truncated = description
+            .map(|d| truncate_description(&d, output_format.truncate_description).to_string());
 
         Self {
             module_path: module_path.to_string(),
@@ -257,14 +267,15 @@ impl Header {
 
     pub fn to_title(&self) -> String {
         let mut output = String::new();
-        write!(&mut output, "{}", self.module_path).unwrap();
+
+        write!(output, "{}", self.module_path).unwrap();
         if let Some(id) = &self.id {
             match &self.description {
                 Some(description) if !description.is_empty() => {
-                    write!(&mut output, " {id}:{description}").unwrap();
+                    write!(output, " {id}:{description}").unwrap();
                 }
                 _ => {
-                    write!(&mut output, " {id}").unwrap();
+                    write!(output, " {id}").unwrap();
                 }
             }
         }
@@ -275,6 +286,7 @@ impl Header {
 impl Display for Header {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.module_path.green()))?;
+
         if let Some(id) = &self.id {
             match &self.description {
                 Some(description) if !description.is_empty() => {
@@ -302,23 +314,23 @@ impl Display for Header {
 }
 
 impl LibraryBenchmarkHeader {
-    pub fn new(meta: &Metadata, lib_bench: &LibBench) -> Self {
+    pub fn new(lib_bench: &LibBench) -> Self {
         let header = Header::new(
             &lib_bench.module_path,
             lib_bench.id.clone(),
             lib_bench.args.clone(),
-            lib_bench.truncate_description,
+            &lib_bench.output_format,
         );
 
         Self {
             inner: header,
             has_tools_enabled: lib_bench.tools.has_tools_enabled(),
-            output_format: meta.args.output_format,
+            output_format: lib_bench.output_format,
         }
     }
 
     pub fn print(&self) {
-        if self.output_format == OutputFormat::Default {
+        if self.output_format.is_default() {
             self.inner.print();
             if self.has_tools_enabled {
                 println!("{}", tool_headline(ValgrindTool::Callgrind));
@@ -332,6 +344,36 @@ impl LibraryBenchmarkHeader {
 
     pub fn description(&self) -> Option<String> {
         self.inner.description.clone()
+    }
+}
+
+impl OutputFormat {
+    pub fn is_default(&self) -> bool {
+        self.kind == OutputFormatKind::Default
+    }
+
+    pub fn is_json(&self) -> bool {
+        self.kind == OutputFormatKind::Json || self.kind == OutputFormatKind::PrettyJson
+    }
+}
+
+impl From<api::OutputFormat> for OutputFormat {
+    fn from(value: api::OutputFormat) -> Self {
+        Self {
+            kind: OutputFormatKind::Default,
+            truncate_description: value.truncate_description.unwrap_or(Some(50)),
+            show_all: value.show_all.unwrap_or(false),
+        }
+    }
+}
+
+impl Default for OutputFormat {
+    fn default() -> Self {
+        Self {
+            kind: OutputFormatKind::default(),
+            truncate_description: Some(50),
+            show_all: false,
+        }
     }
 }
 
@@ -446,6 +488,7 @@ impl Formatter for VerticalFormat {
             let summary = &summaries.data[0];
             let formatted_command =
                 format_command(meta, &summary.info.as_ref().map(|i| &i.command));
+
             write!(result, "{formatted_command}").unwrap();
 
             if let Some(new) = summary.info.left() {
@@ -473,13 +516,13 @@ impl Formatter for VerticalFormat {
 
     fn print_comparison(
         &self,
-        meta: &Metadata,
         function_name: &str,
         id: &str,
         details: Option<&str>,
         summary: &CostsSummaryType,
+        output_format: &OutputFormat,
     ) -> Result<()> {
-        if meta.args.output_format == OutputFormat::Default {
+        if output_format.is_default() {
             ComparisonHeader::new(function_name, id, details).print();
 
             let formatted = self.format_single((None, None), None, summary)?;
@@ -825,11 +868,15 @@ mod tests {
     ) {
         colored::control::set_override(false);
 
+        let output_format = OutputFormat {
+            truncate_description: None,
+            ..Default::default()
+        };
         let header = Header::new(
             &ModulePath::new(module_path),
             id.map(ToOwned::to_owned),
             description.map(ToOwned::to_owned),
-            None,
+            &output_format,
         );
 
         assert_eq!(header.to_string(), expected);
@@ -964,11 +1011,16 @@ mod tests {
     ) {
         colored::control::set_override(false);
 
+        let output_format = OutputFormat {
+            truncate_description,
+            ..Default::default()
+        };
+
         let header = Header::new(
             &ModulePath::new(module_path),
             id.map(ToOwned::to_owned),
             description.map(ToOwned::to_owned),
-            truncate_description,
+            &output_format,
         );
 
         assert_eq!(header.to_string(), expected);

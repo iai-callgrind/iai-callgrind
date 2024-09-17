@@ -73,7 +73,7 @@ pub struct LibBench {
     pub tools: ToolConfigs,
     pub module_path: ModulePath,
     pub entry_point: EntryPoint,
-    pub truncate_description: Option<usize>,
+    pub output_format: OutputFormat,
 }
 
 /// Implements [`Benchmark`] to load a [`LibBench`] baseline run and compare against another
@@ -140,7 +140,7 @@ impl Benchmark for BaselineBenchmark {
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
-        let header = LibraryBenchmarkHeader::new(&config.meta, lib_bench);
+        let header = LibraryBenchmarkHeader::new(lib_bench);
         header.print();
 
         let callgrind_command = ToolCommand::new(
@@ -214,6 +214,7 @@ impl Benchmark for BaselineBenchmark {
 
         VerticalFormat.print(
             &config.meta,
+            &lib_bench.output_format,
             self.baselines(),
             &ToolRunSummaries::from(&summaries),
         )?;
@@ -264,6 +265,7 @@ impl Benchmark for BaselineBenchmark {
             None,
             None,
             None,
+            &lib_bench.output_format,
         )?;
 
         Ok(benchmark_summary)
@@ -339,6 +341,11 @@ impl Groups {
                     let module_path =
                         group_module_path.join(&library_benchmark_bench.function_name);
 
+                    let mut output_format = config
+                        .output_format
+                        .map_or_else(OutputFormat::default, Into::into);
+                    output_format.kind = meta.args.output_format;
+
                     let lib_bench = LibBench {
                         bench_index,
                         index,
@@ -360,7 +367,7 @@ impl Groups {
                         .map(Into::into),
                         tools: ToolConfigs(config.tools.0.into_iter().map(Into::into).collect()),
                         module_path,
-                        truncate_description: config.truncate_description.unwrap_or(Some(50)),
+                        output_format,
                     };
                     group.benches.push(lib_bench);
                 }
@@ -392,11 +399,11 @@ impl Groups {
                 summary.print_and_save(&config.meta.args.output_format)?;
                 summary.check_regression(&mut is_regressed, fail_fast)?;
 
-                if group.compare_by_id && config.meta.args.output_format == OutputFormat::Default {
+                if group.compare_by_id && bench.output_format.is_default() {
                     if let Some(id) = &summary.id {
                         if let Some(sums) = summaries.get_mut(id) {
                             for sum in sums.iter() {
-                                sum.compare_and_print(id, &config.meta, &summary)?;
+                                sum.compare_and_print(id, &summary, &bench.output_format)?;
                             }
                             sums.push(summary);
                         } else {
@@ -513,7 +520,7 @@ impl Benchmark for LoadBaselineBenchmark {
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
-        let header = LibraryBenchmarkHeader::new(&config.meta, lib_bench);
+        let header = LibraryBenchmarkHeader::new(lib_bench);
         header.print();
 
         let bench_args = lib_bench.bench_args(group);
@@ -535,6 +542,7 @@ impl Benchmark for LoadBaselineBenchmark {
 
         VerticalFormat.print(
             &config.meta,
+            &lib_bench.output_format,
             self.baselines(),
             &ToolRunSummaries::from(&summaries),
         )?;
@@ -571,9 +579,11 @@ impl Benchmark for LoadBaselineBenchmark {
             )?;
         }
 
-        benchmark_summary.tool_summaries = lib_bench
-            .tools
-            .run_loaded_vs_base(&config.meta, &out_path)?;
+        benchmark_summary.tool_summaries = lib_bench.tools.run_loaded_vs_base(
+            &config.meta,
+            &out_path,
+            &lib_bench.output_format,
+        )?;
 
         Ok(benchmark_summary)
     }
@@ -677,7 +687,7 @@ impl Benchmark for SaveBaselineBenchmark {
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
-        let header = LibraryBenchmarkHeader::new(&config.meta, lib_bench);
+        let header = LibraryBenchmarkHeader::new(lib_bench);
         header.print();
 
         let callgrind_command = ToolCommand::new(
@@ -746,6 +756,7 @@ impl Benchmark for SaveBaselineBenchmark {
 
         VerticalFormat.print(
             &config.meta,
+            &lib_bench.output_format,
             self.baselines(),
             &ToolRunSummaries::from(&summaries),
         )?;
@@ -798,6 +809,7 @@ impl Benchmark for SaveBaselineBenchmark {
             None,
             None,
             None,
+            &lib_bench.output_format,
         )?;
 
         Ok(benchmark_summary)

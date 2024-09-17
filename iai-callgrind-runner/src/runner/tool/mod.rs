@@ -368,14 +368,18 @@ impl ToolConfigs {
             .collect()
     }
 
-    fn print_headline(meta: &Metadata, tool_config: &ToolConfig) {
-        if meta.args.output_format == OutputFormat::Default {
+    fn print_headline(tool_config: &ToolConfig, output_format: &OutputFormat) {
+        if output_format.is_default() {
             println!("{}", tool_headline(tool_config.tool));
         }
     }
 
-    fn print(meta: &Metadata, tool_run_summaries: &ToolRunSummaries) -> Result<()> {
-        VerticalFormat.print(meta, (None, None), tool_run_summaries)
+    fn print(
+        meta: &Metadata,
+        output_format: &OutputFormat,
+        tool_run_summaries: &ToolRunSummaries,
+    ) -> Result<()> {
+        VerticalFormat.print(meta, output_format, (None, None), tool_run_summaries)
     }
 
     pub fn parse(
@@ -407,10 +411,11 @@ impl ToolConfigs {
         &self,
         meta: &Metadata,
         output_path: &ToolOutputPath,
+        output_format: &OutputFormat,
     ) -> Result<Vec<ToolSummary>> {
         let mut tool_summaries = vec![];
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
-            Self::print_headline(meta, tool_config);
+            Self::print_headline(tool_config, output_format);
 
             let tool = tool_config.tool;
 
@@ -419,7 +424,7 @@ impl ToolConfigs {
 
             let tool_summary = tool_config.parse_load(meta, &log_path, None)?;
 
-            Self::print(meta, &tool_summary.summaries)?;
+            Self::print(meta, output_format, &tool_summary.summaries)?;
 
             log_path.dump_log(log::Level::Info, &mut stderr())?;
 
@@ -442,12 +447,13 @@ impl ToolConfigs {
         setup: Option<&Assistant>,
         teardown: Option<&Assistant>,
         delay: Option<&Delay>,
+        output_format: &OutputFormat,
     ) -> Result<Vec<ToolSummary>> {
         let mut tool_summaries = vec![];
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
             // Print the headline as soon as possible, so if there are any errors, the errors shown
             // in the terminal output can be associated with the tool
-            Self::print_headline(&config.meta, tool_config);
+            Self::print_headline(tool_config, output_format);
 
             let tool = tool_config.tool;
 
@@ -514,7 +520,7 @@ impl ToolConfigs {
                 old_summaries,
             )?;
 
-            Self::print(&config.meta, &tool_summary.summaries)?;
+            Self::print(&config.meta, output_format, &tool_summary.summaries)?;
 
             output.dump_log(log::Level::Info);
             log_path.dump_log(log::Level::Info, &mut stderr())?;

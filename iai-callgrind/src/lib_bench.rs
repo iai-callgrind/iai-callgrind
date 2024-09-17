@@ -63,7 +63,7 @@ impl LibraryBenchmarkConfig {
             regression_config: Option::default(),
             tools: internal::InternalTools::default(),
             tools_override: Option::default(),
-            truncate_description: Option::default(),
+            output_format: Option::default(),
             entry_point: Option::default(),
         })
     }
@@ -520,50 +520,6 @@ impl LibraryBenchmarkConfig {
         self
     }
 
-    /// Adjust, enable or disable the truncation of the description in the iai-callgrind output
-    ///
-    /// The default is to truncate the description to the size of 50 ascii characters. A `None`
-    /// value disables the truncation entirely and a `Some` value will truncate the description to
-    /// the given amount of characters excluding the ellipsis.
-    ///
-    /// To clearify which part of the output is meant by `DESCRIPTION`:
-    ///
-    /// ```text
-    /// benchmark_file::group_name::function_name id:DESCRIPTION
-    ///   Instructions:              352135|352135          (No change)
-    ///   L1 Hits:                   470117|470117          (No change)
-    ///   L2 Hits:                      748|748             (No change)
-    ///   RAM Hits:                    4112|4112            (No change)
-    ///   Total read+write:          474977|474977          (No change)
-    ///   Estimated Cycles:          617777|617777          (No change)
-    /// ```
-    ///
-    /// # Examples
-    ///
-    /// For example, specifying this option with a `None` value in the `main!` macro disables the
-    /// truncation of the description for all benchmarks.
-    ///
-    /// ```rust
-    /// use iai_callgrind::{main, LibraryBenchmarkConfig};
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
-    /// # #[library_benchmark]
-    /// # fn some_func() {}
-    /// # library_benchmark_group!(
-    /// #    name = some_group;
-    /// #    benchmarks = some_func
-    /// # );
-    /// # fn main() {
-    /// main!(
-    ///     config = LibraryBenchmarkConfig::default().truncate_description(None);
-    ///     library_benchmark_groups = some_group
-    /// );
-    /// # }
-    /// ```
-    pub fn truncate_description(&mut self, value: Option<usize>) -> &mut Self {
-        self.0.truncate_description = Some(value);
-        self
-    }
-
     /// Set or unset the entry point for a benchmark
     ///
     /// Iai-Callgrind sets the [`--toggle-collect`] argument of callgrind to the benchmark function
@@ -656,6 +612,15 @@ impl LibraryBenchmarkConfig {
         T: Into<EntryPoint>,
     {
         self.0.entry_point = Some(entry_point.into());
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn output_format<T>(&mut self, output_format: T) -> &mut Self
+    where
+        T: Into<internal::InternalOutputFormat>,
+    {
+        self.0.output_format = Some(output_format.into());
         self
     }
 }

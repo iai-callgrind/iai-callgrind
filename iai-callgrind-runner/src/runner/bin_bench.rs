@@ -44,7 +44,6 @@ mod defaults {
     pub const ENV_CLEAR: bool = true;
     pub const REGRESSION_FAIL_FAST: bool = false;
     pub const STDIN: Stdin = Stdin::Pipe;
-    pub const TRUNCATE_LENGTH: Option<usize> = Some(50);
     pub const WORKSPACE_ROOT_ENV: &str = "_WORKSPACE_ROOT";
 }
 
@@ -68,7 +67,7 @@ pub struct BinBench {
     pub teardown: Option<Assistant>,
     pub sandbox: Option<api::Sandbox>,
     pub module_path: ModulePath,
-    pub truncate_description: Option<usize>,
+    pub output_format: OutputFormat,
 }
 
 /// The Command we derive from the `api::Command`
@@ -251,6 +250,7 @@ impl Benchmark for BaselineBenchmark {
         let summaries = Summaries::new(parsed_new, parsed_old);
         VerticalFormat.print(
             &config.meta,
+            &bin_bench.output_format,
             self.baselines(),
             &ToolRunSummaries::from(&summaries),
         )?;
@@ -299,6 +299,7 @@ impl Benchmark for BaselineBenchmark {
             bin_bench.setup.as_ref(),
             bin_bench.teardown.as_ref(),
             bin_bench.command.delay.as_ref(),
+            &bin_bench.output_format,
         )?;
 
         Ok(benchmark_summary)
@@ -341,6 +342,10 @@ impl BinBench {
 
         let command_envs = config.resolve_envs();
         let flamegraph_config = config.flamegraph_config.map(Into::into);
+        let mut output_format = config
+            .output_format
+            .map_or_else(OutputFormat::default, Into::into);
+        output_format.kind = meta.args.output_format;
 
         Ok(Self {
             id: binary_benchmark_bench.id,
@@ -392,9 +397,7 @@ impl BinBench {
             sandbox: config.sandbox,
             module_path,
             command,
-            truncate_description: config
-                .truncate_description
-                .unwrap_or(defaults::TRUNCATE_LENGTH),
+            output_format,
         })
     }
 
@@ -629,11 +632,11 @@ impl Group {
             summary.print_and_save(&config.meta.args.output_format)?;
             summary.check_regression(is_regressed, fail_fast)?;
 
-            if self.compare_by_id && config.meta.args.output_format == OutputFormat::Default {
+            if self.compare_by_id && bench.output_format.is_default() {
                 if let Some(id) = &summary.id {
                     if let Some(sums) = summaries.get_mut(id) {
                         for sum in sums.iter() {
-                            sum.compare_and_print(id, &config.meta, &summary)?;
+                            sum.compare_and_print(id, &summary, &bench.output_format)?;
                         }
                         sums.push(summary);
                     } else {
@@ -798,6 +801,7 @@ impl Benchmark for LoadBaselineBenchmark {
 
         VerticalFormat.print(
             &config.meta,
+            &bin_bench.output_format,
             self.baselines(),
             &ToolRunSummaries::from(&summaries),
         )?;
@@ -832,9 +836,11 @@ impl Benchmark for LoadBaselineBenchmark {
             )?;
         }
 
-        benchmark_summary.tool_summaries = bin_bench
-            .tools
-            .run_loaded_vs_base(&config.meta, &out_path)?;
+        benchmark_summary.tool_summaries = bin_bench.tools.run_loaded_vs_base(
+            &config.meta,
+            &out_path,
+            &bin_bench.output_format,
+        )?;
 
         Ok(benchmark_summary)
     }
@@ -1018,6 +1024,7 @@ impl Benchmark for SaveBaselineBenchmark {
         let summaries = Summaries::new(parsed_new, parsed_old);
         VerticalFormat.print(
             &config.meta,
+            &bin_bench.output_format,
             self.baselines(),
             &ToolRunSummaries::from(&summaries),
         )?;
@@ -1066,6 +1073,7 @@ impl Benchmark for SaveBaselineBenchmark {
             bin_bench.setup.as_ref(),
             bin_bench.teardown.as_ref(),
             bin_bench.command.delay.as_ref(),
+            &bin_bench.output_format,
         )?;
 
         Ok(benchmark_summary)
