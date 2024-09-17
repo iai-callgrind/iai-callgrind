@@ -12,7 +12,8 @@ use iai_callgrind::{
         .entry_point(EntryPoint::None)
         .raw_callgrind_args(["--fair-sched=yes"])
         .tool(Tool::new(ValgrindTool::DHAT)
-            .args(["--trace-children=yes"]))
+            .args(["--trace-children=yes"])
+        )
 )]
 #[bench::two(2)]
 #[bench::three(3)]
@@ -160,11 +161,7 @@ where
 
 library_benchmark_group!(
     name = my_group;
-    config = LibraryBenchmarkConfig::default()
-        .output_format(OutputFormat::default()
-            .truncate_description(None)
-        )
-        .flamegraph(FlamegraphConfig::default());
+    config = LibraryBenchmarkConfig::default().flamegraph(FlamegraphConfig::default());
     compare_by_id = true;
     benchmarks = bench_library, bench_library_compare, normal, with_entry
 );
@@ -174,4 +171,11 @@ library_benchmark_group!(
     benchmarks = bench_thread_in_subprocess
 );
 
-main!(library_benchmark_groups = my_group, subprocess);
+main!(
+    config = LibraryBenchmarkConfig::default()
+        .output_format(OutputFormat::default()
+            .truncate_description(None)
+            .show_all(false)
+        );
+    library_benchmark_groups = my_group, subprocess
+);

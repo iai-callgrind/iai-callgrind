@@ -77,6 +77,7 @@ pub trait Formatter {
     fn format(
         &self,
         meta: &Metadata,
+        output_format: &OutputFormat,
         baselines: (Option<String>, Option<String>),
         summaries: &ToolRunSummaries,
     ) -> Result<String>;
@@ -89,7 +90,10 @@ pub trait Formatter {
         summaries: &ToolRunSummaries,
     ) -> Result<()> {
         if output_format.is_default() {
-            print!("{}", self.format(meta, baselines, summaries)?);
+            print!(
+                "{}",
+                self.format(meta, output_format, baselines, summaries)?
+            );
         }
         Ok(())
     }
@@ -440,12 +444,13 @@ impl Formatter for VerticalFormat {
     fn format(
         &self,
         meta: &Metadata,
+        output_format: &OutputFormat,
         baselines: (Option<String>, Option<String>),
         summaries: &ToolRunSummaries,
     ) -> Result<String> {
         let mut result = String::new();
 
-        if summaries.has_multiple() {
+        if summaries.has_multiple() && output_format.show_all {
             let mut first = true;
             for summary in &summaries.data {
                 writeln!(result, "{}", multiple_files_header(&summary.info))?;
@@ -482,33 +487,39 @@ impl Formatter for VerticalFormat {
 
             if summaries.total.is_some() {
                 writeln!(result, "{}", tool_total_header())?;
+                write!(
+                    result,
+                    "{}",
+                    self.format_single((None, None), None, &summaries.total)?
+                )
+                .unwrap();
             }
-        } else if summaries.total.is_none() && !summaries.data.is_empty() {
-            // This is safe since we always have at least one summary present
-            let summary = &summaries.data[0];
-            let formatted_command =
-                format_command(meta, &summary.info.as_ref().map(|i| &i.command));
-
-            write!(result, "{formatted_command}").unwrap();
-
-            if let Some(new) = summary.info.left() {
-                if let Some(details) = &new.details {
-                    let formatted = format_details(details);
-                    write!(result, "{formatted}").unwrap();
-                }
-            }
-        } else {
-            // pass through
-        }
-
-        // TODO: what to do if summaries is empty (what actually can't be)?
-        if summaries.total.is_some() {
+        } else if summaries.total.is_some() {
             write!(
                 result,
                 "{}",
-                self.format_single((None, None), None, &summaries.total)?
+                self.format_single(baselines, None, &summaries.total)?
             )
             .unwrap();
+        } else if summaries.total.is_none() && !summaries.data.is_empty() {
+            // Since there is no total, show_all is partly ignored and we show all data in an little
+            // bit more aggregated form without the multiple files headlines. This affects currently
+            // the output of `Massif` and `BBV`.
+            for summary in &summaries.data {
+                let formatted_command =
+                    format_command(meta, &summary.info.as_ref().map(|i| &i.command));
+
+                write!(result, "{formatted_command}").unwrap();
+
+                if let Some(new) = summary.info.left() {
+                    if let Some(details) = &new.details {
+                        let formatted = format_details(details);
+                        write!(result, "{formatted}").unwrap();
+                    }
+                }
+            }
+        } else {
+            // no data to show
         }
 
         Ok(result)
