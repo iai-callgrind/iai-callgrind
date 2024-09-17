@@ -41,13 +41,12 @@ fn bench_bubble_sort_allocate() -> i32 {
         .tool_override(
             Tool::new(ValgrindTool::DHAT)
                 .args(["--trace-children=yes"])
-                .outfile_modifier("%p")
-        ))]
+))]
 #[bench::without_modifier(args = (), config = LibraryBenchmarkConfig::default()
         .tool_override(
             Tool::new(ValgrindTool::DHAT)
                 .args(["--trace-children=yes"])
-        ))]
+))]
 fn bench_subprocess() -> io::Result<Output> {
     println!("Do something before calling subprocess");
     black_box(subprocess(

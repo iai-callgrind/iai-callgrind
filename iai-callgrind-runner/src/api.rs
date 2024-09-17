@@ -411,9 +411,6 @@ pub struct Tool {
     pub kind: ValgrindTool,
     pub enable: Option<bool>,
     pub raw_args: RawArgs,
-    // TODO: Remove support for modifier ?? Or, Set pid modifier automatically and only support
-    // environment variable modifier
-    pub outfile_modifier: Option<String>,
     pub show_log: Option<bool>,
 }
 
@@ -956,7 +953,6 @@ mod tests {
                 kind: ValgrindTool::DHAT,
                 enable: None,
                 raw_args: RawArgs(vec![]),
-                outfile_modifier: None,
                 show_log: None,
             }]),
             tools_override: None,
@@ -980,7 +976,6 @@ mod tests {
                 kind: ValgrindTool::DHAT,
                 enable: None,
                 raw_args: RawArgs(vec![]),
-                outfile_modifier: None,
                 show_log: None,
             }]),
             tools_override: Some(Tools(vec![])),

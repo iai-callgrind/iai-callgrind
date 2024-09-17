@@ -12,8 +12,7 @@ use iai_callgrind::{
         .entry_point(EntryPoint::None)
         .raw_callgrind_args(["--fair-sched=yes"])
         .tool(Tool::new(ValgrindTool::DHAT)
-            .args(["--trace-children=yes"])
-            .outfile_modifier("%p"))
+            .args(["--trace-children=yes"]))
 )]
 #[bench::two(2)]
 #[bench::three(3)]
@@ -44,8 +43,7 @@ fn bench_library(num: u64) {
         .entry_point(EntryPoint::None)
         .raw_callgrind_args(["--fair-sched=yes"])
         .tool(Tool::new(ValgrindTool::DHAT)
-            .args(["--trace-children=yes"])
-            .outfile_modifier("%p"))
+            .args(["--trace-children=yes"]))
         .tool(Tool::new(ValgrindTool::Memcheck))
         // TODO: FOR some reason helgrind exits with error
         // .tool(Tool::new(ValgrindTool::Helgrind))
@@ -83,8 +81,7 @@ fn bench_library_compare(num: u64) {
         .raw_callgrind_args(["--separate-threads=yes", "--trace-children=yes"])
         .raw_callgrind_args(["--fair-sched=yes"])
         .tool(Tool::new(ValgrindTool::DHAT)
-            .args(["--trace-children=yes"])
-            .outfile_modifier("%p"))
+            .args(["--trace-children=yes"]))
         .tool(Tool::new(ValgrindTool::Memcheck).args(["trace-children=yes"]))
         // TODO: FOR some reason helgrind exits with error
         // .tool(Tool::new(ValgrindTool::Helgrind))

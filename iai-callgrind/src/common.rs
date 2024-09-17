@@ -347,7 +347,6 @@ impl Tool {
         Self(internal::InternalTool {
             kind: tool,
             enable: Option::default(),
-            outfile_modifier: Option::default(),
             show_log: Option::default(),
             raw_args: internal::InternalRawArgs::default(),
         })
@@ -386,50 +385,6 @@ impl Tool {
         T: IntoIterator<Item = I>,
     {
         self.0.raw_args.extend_ignore_flag(args);
-        self
-    }
-
-    /// Add an output and log file modifier like `%p` or `%n`
-    ///
-    /// The `modifier` is appended to the file name's default extensions `*.out` and `*.log`
-    ///
-    /// All output file modifiers specified in the [Valgrind
-    /// Documentation](https://valgrind.org/docs/manual/manual-core.html#manual-core.options) of
-    /// `--log-file` can be used. If using `%q{ENV}` don't forget, that by default all environment
-    /// variables are cleared. Either specify to not clear the environment or to
-    /// pass-through/define environment variables.
-    ///
-    /// # Examples
-    ///
-    /// The following example will result in file names ending with the PID of processes including
-    /// their child processes as extension. See also the [Valgrind
-    /// Documentation](https://valgrind.org/docs/manual/manual-core.html#manual-core.options) of
-    /// `--trace-children` and `--log-file` for more details.
-    ///
-    /// ```rust
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
-    /// use iai_callgrind::{LibraryBenchmarkConfig, main, Tool, ValgrindTool};
-    /// # #[library_benchmark]
-    /// # fn some_func() {}
-    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
-    /// # fn main() {
-    ///
-    /// main!(
-    ///     config = LibraryBenchmarkConfig::default()
-    ///         .tool(
-    ///             Tool::new(ValgrindTool::DHAT)
-    ///                 .args(["--trace-children=yes"])
-    ///                 .outfile_modifier("%p")
-    ///         );
-    ///     library_benchmark_groups = some_group
-    /// );
-    /// # }
-    /// ```
-    pub fn outfile_modifier<T>(&mut self, modifier: T) -> &mut Self
-    where
-        T: Into<String>,
-    {
-        self.0.outfile_modifier = Some(modifier.into());
         self
     }
 }

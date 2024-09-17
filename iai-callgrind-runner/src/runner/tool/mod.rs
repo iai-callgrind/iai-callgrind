@@ -350,7 +350,7 @@ impl From<api::Tool> for ToolConfig {
             tool,
             is_enabled: value.enable.unwrap_or(true),
             args: ToolArgs::from_raw_args(tool, value.raw_args),
-            outfile_modifier: value.outfile_modifier,
+            outfile_modifier: None,
         }
     }
 }
