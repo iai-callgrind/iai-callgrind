@@ -774,7 +774,11 @@ impl ToolOutputPath {
         }
     }
 
-    // TODO: RENAME to something less confusing and return String
+    // Return the unexpanded path usable as input for `--callgrind-out-file`, ...
+    //
+    // The path returned by this method does not necessarily have to exist and can include modifiers
+    // like `%p`. Use [`Self::real_paths`] to get the real and existing (possibly multiple) paths to
+    // the output files of the respective tool.
     pub fn to_path(&self) -> PathBuf {
         self.dir.join(format!(
             "{}.{}.{}",
@@ -801,6 +805,7 @@ impl ToolOutputPath {
         file_name.strip_prefix(format!("{}.{}", self.tool.id(), self.name).as_str())
     }
 
+    /// Return the file name prefix as in `<tool>.<name>`
     pub fn get_prefix(&self) -> String {
         format!("{}.{}", self.tool.id(), self.name)
     }
@@ -815,7 +820,7 @@ impl ToolOutputPath {
             let file_name = entry.file_name();
             let file_name = file_name.to_string_lossy();
 
-            // We can silently ignore all paths which don't follow this scheme, for example
+            // Silently ignore all paths which don't follow this scheme, for example
             // (`summary.json`)
             if let Some(suffix) = self.strip_prefix(&file_name) {
                 let is_match = match &self.kind {
@@ -839,13 +844,12 @@ impl ToolOutputPath {
         Ok(paths)
     }
 
-    // TODO: CLEANUP?
-    pub fn real_paths_with_modifier(&self) -> Result<Vec<(PathBuf, String)>> {
+    pub fn real_paths_with_modifier(&self) -> Result<Vec<(PathBuf, Option<String>)>> {
         let mut paths = vec![];
         for entry in self.walk_dir()? {
             let file_name = entry.file_name().to_string_lossy().to_string();
 
-            // We can silently ignore all paths which don't follow this scheme, for example
+            // Silently ignore all paths which don't follow this scheme, for example
             // (`summary.json`)
             if let Some(suffix) = self.strip_prefix(&file_name) {
                 let modifiers = match &self.kind {
@@ -861,10 +865,10 @@ impl ToolOutputPath {
                     }
                 };
 
-                if let Some(modifiers) = modifiers {
-                    paths.push((entry.path(), modifiers.to_owned()));
-                }
-                // TODO: Return empty string for modifier?
+                paths.push((
+                    entry.path(),
+                    modifiers.and_then(|s| (!s.is_empty()).then(|| s.to_owned())),
+                ));
             }
         }
         Ok(paths)
@@ -1006,7 +1010,7 @@ impl ToolOutputPath {
         Ok(())
     }
 
-    // Sanitize bbv files
+    // Sanitize bbv file names
     //
     // The original output files of bb have a `.<number>` suffix if there are multiple threads. We
     // need the threads as `t<number>` in the modifier part of the final file names.
