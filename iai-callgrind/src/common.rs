@@ -59,9 +59,8 @@ impl OutputFormat {
     /// For example, specifying this option with a `None` value in the `main!` macro disables the
     /// truncation of the description for all benchmarks.
     ///
-    /// // TODO: ADJUST THIS EXAMPLE
     /// ```rust
-    /// use iai_callgrind::{main, LibraryBenchmarkConfig};
+    /// use iai_callgrind::{main, LibraryBenchmarkConfig, OutputFormat};
     /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
     /// # #[library_benchmark]
     /// # fn some_func() {}
@@ -71,7 +70,10 @@ impl OutputFormat {
     /// # );
     /// # fn main() {
     /// main!(
-    ///     config = LibraryBenchmarkConfig::default().truncate_description(None);
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .output_format(OutputFormat::default()
+    ///             .truncate_description(None)
+    ///         );
     ///     library_benchmark_groups = some_group
     /// );
     /// # }
