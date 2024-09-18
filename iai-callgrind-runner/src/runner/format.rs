@@ -132,7 +132,6 @@ pub struct LibraryBenchmarkHeader {
     output_format: OutputFormat,
 }
 
-// TODO: RENAME TO OUTPUT_FORMAT_KIND
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum OutputFormatKind {
     #[default]

@@ -168,6 +168,7 @@ library_benchmark_group!(
 
 library_benchmark_group!(
     name = subprocess;
+    config = LibraryBenchmarkConfig::default().flamegraph(FlamegraphConfig::default());
     benchmarks = bench_thread_in_subprocess
 );
 
@@ -177,5 +178,6 @@ main!(
             .truncate_description(None)
             .show_all(false)
         );
-    library_benchmark_groups = my_group, subprocess
+    // library_benchmark_groups = my_group, subprocess
+    library_benchmark_groups = subprocess
 );

@@ -77,6 +77,16 @@ impl CallgrindMap {
     pub fn get_key_value(&self, k: &Id) -> Option<(&Id, &Value)> {
         self.map.get_key_value(k)
     }
+
+    pub fn add_mut(&mut self, other: &Self) {
+        for (other_key, other_value) in &other.map {
+            if let Some(value) = self.map.get_mut(other_key) {
+                value.costs.add(&other_value.costs);
+            } else {
+                self.map.insert(other_key.clone(), other_value.clone());
+            }
+        }
+    }
 }
 
 impl<'a> IntoIterator for &'a CallgrindMap {

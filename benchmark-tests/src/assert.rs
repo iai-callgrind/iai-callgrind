@@ -87,6 +87,9 @@ impl Assert {
     /// [`iai_callgrind_runner::runner::callgrind::hashmap_parser::CallgrindMap`]. The assert
     /// function is supposed to return a boolean.
     ///
+    /// In the presence of multiple output files, threads, subprocesses only the total can be
+    /// asserted.
+    ///
     /// # Errors
     ///
     /// If the summary.json file did not exist
@@ -97,7 +100,7 @@ impl Assert {
             sentinel: None,
         };
 
-        let map = parser
+        let maps = parser
             .parse(&ToolOutputPath::new(
                 tool::ToolOutputPathKind::Out,
                 tool::ValgrindTool::Callgrind,
@@ -108,8 +111,12 @@ impl Assert {
             ))
             .unwrap();
 
-        // TODO: FIX THIS to new situation. Assert only total?
-        assert!(assert(map[0].2.clone()));
+        let mut total = CallgrindMap::default();
+        for (_, _, map) in &maps {
+            total.add_mut(map);
+        }
+
+        assert!(assert(total));
 
         Ok(())
     }

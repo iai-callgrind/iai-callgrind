@@ -137,11 +137,6 @@ impl Args {
     pub fn insert_toggle_collect(&mut self, arg: &str) {
         self.toggle_collect.push_front(arg.to_owned());
     }
-
-    // TODO: STILL NEEDED IF WE SET THE MODIFIER anyways in tool::args ??
-    pub fn get_outfile_modifier(&self) -> Option<String> {
-        self.trace_children.then(|| "%p".to_owned())
-    }
 }
 
 impl Default for Args {

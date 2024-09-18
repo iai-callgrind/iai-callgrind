@@ -117,7 +117,6 @@ impl FlamegraphGenerator for BaselineFlamegraphGenerator {
         // the EventKind of the OutputPath
         let mut output_path = OutputPath::new(tool_output_path, EventKind::Ir);
         output_path.init()?;
-        // TODO: Why clearing the benchmarks before returning
         output_path.to_diff_path().clear(true)?;
         output_path.shift(true)?;
         output_path.set_modifiers(["total"]);
@@ -131,7 +130,6 @@ impl FlamegraphGenerator for BaselineFlamegraphGenerator {
         let (maps, base_maps) =
             flamegraph.parse(tool_output_path, sentinel, project_root, false)?;
 
-        // TODO: THERE SHOULD be always at least one element in the vector
         let total = total_flamegraph_map_from_parsed(&maps).unwrap();
 
         let mut flamegraph_summaries = FlamegraphSummaries::default();
@@ -150,7 +148,6 @@ impl FlamegraphGenerator for BaselineFlamegraphGenerator {
             }
 
             if let Some(base_maps) = &base_maps {
-                // TODO: There should be always at least one element in the vector
                 let total_base = total_flamegraph_map_from_parsed(base_maps).unwrap();
                 // Is Some if FlamegraphKind::Differential or FlamegraphKind::All
                 Flamegraph::create_differential(
@@ -357,7 +354,6 @@ impl FlamegraphGenerator for LoadBaselineFlamegraphGenerator {
             }
         }
 
-        // TODO: CHANGE THIS to flamegraph_summaries
         Ok(flamegraph_summaries.totals)
     }
 }
@@ -611,7 +607,6 @@ impl FlamegraphGenerator for SaveBaselineFlamegraphGenerator {
         }
 
         let (maps, _) = flamegraph.parse(tool_output_path, sentinel, project_root, true)?;
-        // TODO: THERe should be at least one map present
         let total_map = total_flamegraph_map_from_parsed(&maps).unwrap();
 
         let mut flamegraph_summaries = FlamegraphSummaries::default();
@@ -632,7 +627,6 @@ impl FlamegraphGenerator for SaveBaselineFlamegraphGenerator {
             flamegraph_summaries.summaries.push(flamegraph_summary);
         }
 
-        // TODO: Change this to flamegraph_summaries
         Ok(flamegraph_summaries.totals)
     }
 }
@@ -642,8 +636,8 @@ fn total_flamegraph_map_from_parsed(maps: &ParserOutput) -> Option<Cow<Flamegrap
         Ordering::Less => None,
         Ordering::Equal => Some(Cow::Borrowed(&maps[0].2)),
         Ordering::Greater => {
-            let mut total = FlamegraphMap::default();
-            for (_, _, map) in maps {
+            let mut total = maps[0].2.clone();
+            for (_, _, map) in maps.iter().skip(1) {
                 total.add(map);
             }
             Some(Cow::Owned(total))

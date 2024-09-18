@@ -499,7 +499,6 @@ impl Default for Direction {
     }
 }
 
-/// TODO: USE a Formattable trait instead
 impl Display for DhatMetricKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

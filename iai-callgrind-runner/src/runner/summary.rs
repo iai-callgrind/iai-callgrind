@@ -347,7 +347,7 @@ pub struct ToolRunInfo {
     pub thread: Option<usize>,
 }
 
-/// TODO: Make use of it in `ToolSummary`, DOCS
+/// TODO: DOCS
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ToolRunSummaries {
@@ -571,7 +571,6 @@ impl CallgrindSummary {
         &mut self,
         bench_bin: &Path,
         bench_args: &[OsString],
-        // TODO: USE a type Baselines = (Option<Baseline, ...)
         baselines: &(Option<String>, Option<String>),
         summaries: Summaries,
         regressions: Vec<CallgrindRegressionSummary>,
