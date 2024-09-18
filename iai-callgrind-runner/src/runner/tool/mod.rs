@@ -45,7 +45,7 @@ lazy_static! {
     )
     .expect("Regex should compile");
     static ref BBV_ORIG_FILENAME_RE: Regex = Regex::new(
-        r"^(?<tool>exp-bbv)(?<name>[.][^.]+?([.][^0-9][^.]*?)?)(?<pid>[.][0-9]+)?(?<kind>[.](bb|pc))?(?<type>[.](out|log))(?<base>[.](old|base@[^.]+))?(?<thread>[.][0-9]+)?$"
+        r"^(?<pid>[.][0-9]+)?(?<type>[.](?:bb|pc)[.](?:out|log))(?<base>[.](old|base@[^.]+))?(?<thread>[.][0-9]+)?$"
     )
     .expect("Regex should compile");
 }
@@ -886,15 +886,16 @@ impl ToolOutputPath {
     /// fast. Additionally, `callgrind` might change the naming scheme of its' files, so using the
     /// headers makes us more independent from a specific valgrind/callgrind version.
     pub fn sanitize_callgrind(&self) -> Result<()> {
-        type Grouped<'a> = (PathBuf, Option<String>, String, CallgrindProperties);
+        type Grouped = (PathBuf, Option<String>, String, CallgrindProperties);
+        type Group = HashMap<Option<i32>, HashMap<Option<u64>, Vec<Grouped>>>;
 
         // To figure out if there are multiple pids/parts/threads present, it's necessary to group
         // the files in this map. The order doesn't matter since we only rename the original file
         // names, which doesn't need to follow a specific order.
         //
-        // At first we group by pid and then by part in different hashmaps. The threads are grouped
-        // in a vector.
-        let mut groups: HashMap<Option<i32>, HashMap<Option<u64>, Vec<Grouped>>> = HashMap::new();
+        // At first we group by base, then pid and then by part in different hashmaps. The threads
+        // are grouped in a vector.
+        let mut groups: HashMap<Option<String>, Group> = HashMap::new();
 
         for entry in self.walk_dir()? {
             let file_name = entry.file_name();
@@ -932,21 +933,34 @@ impl ToolOutputPath {
                         .expect("The name should always be present")
                         .as_str();
 
-                    if let Some(pids) = groups.get_mut(&properties.pid) {
-                        if let Some(parts) = pids.get_mut(&properties.part) {
-                            parts.push((entry.path(), base, name.to_owned(), properties));
+                    if let Some(bases) = groups.get_mut(&base) {
+                        if let Some(pids) = bases.get_mut(&properties.pid) {
+                            if let Some(parts) = pids.get_mut(&properties.part) {
+                                parts.push((entry.path(), base, name.to_owned(), properties));
+                            } else {
+                                pids.insert(
+                                    properties.part,
+                                    vec![(entry.path(), base, name.to_owned(), properties)],
+                                );
+                            }
                         } else {
-                            pids.insert(
-                                properties.part,
-                                vec![(entry.path(), base, name.to_owned(), properties)],
+                            bases.insert(
+                                properties.pid,
+                                HashMap::from([(
+                                    properties.part,
+                                    vec![(entry.path(), base, name.to_owned(), properties)],
+                                )]),
                             );
                         }
                     } else {
                         groups.insert(
-                            properties.pid,
+                            base.clone(),
                             HashMap::from([(
-                                properties.part,
-                                vec![(entry.path(), base, name.to_owned(), properties)],
+                                properties.pid,
+                                HashMap::from([(
+                                    properties.part,
+                                    vec![(entry.path(), base, name.to_owned(), properties)],
+                                )]),
                             )]),
                         );
                     }
@@ -954,55 +968,61 @@ impl ToolOutputPath {
             }
         }
 
-        let multiple_pids = groups.len() > 1;
-        for parts in groups.values() {
-            let multiple_parts = parts.len() > 1;
-            for threads in parts.values() {
-                let multiple_threads = threads.len() > 1;
-                for (orig_path, base, name, properties) in threads {
-                    let mut new_file_name = format!("callgrind{name}");
+        for bases in groups.values() {
+            let pids = bases.values();
+            let multiple_pids = pids.len() > 1;
 
-                    if multiple_pids {
-                        if let Some(pid) = properties.pid {
-                            write!(new_file_name, ".{pid}").unwrap();
+            for parts in pids {
+                let multiple_parts = parts.len() > 1;
+
+                for threads in parts.values() {
+                    let multiple_threads = threads.len() > 1;
+
+                    for (orig_path, base, name, properties) in threads {
+                        let mut new_file_name = format!("callgrind{name}");
+
+                        if multiple_pids {
+                            if let Some(pid) = properties.pid {
+                                write!(new_file_name, ".{pid}").unwrap();
+                            }
                         }
+                        if multiple_parts {
+                            if let Some(part) = properties.part {
+                                let width = usize::try_from(ilog10(parts.len() as u64)).expect(
+                                    "The logarithm of the parts length should fit into a usize",
+                                ) + 1;
+                                write!(new_file_name, ".p{part:0width$}").unwrap();
+                            }
+
+                            // Integrate the thread number into the filename independently of the
+                            // amount of threads
+                            if let Some(thread) = properties.thread {
+                                let width = usize::try_from(ilog10(threads.len() as u64)).expect(
+                                    "The logarithm of the threads length should fit into a usize",
+                                ) + 1;
+                                write!(new_file_name, ".t{thread:0width$}").unwrap();
+                            }
+                        } else if multiple_threads {
+                            if let Some(thread) = properties.thread {
+                                let width = usize::try_from(ilog10(threads.len() as u64)).expect(
+                                    "The logarithm of the threads length should fit into a usize",
+                                ) + 1;
+                                write!(new_file_name, ".t{thread:0width$}").unwrap();
+                            }
+                        } else {
+                            // don't integrate parts or threads into the filename
+                        }
+
+                        new_file_name.push_str(".out");
+                        if let Some(base) = base {
+                            new_file_name.push_str(base);
+                        }
+
+                        let from = orig_path;
+                        let to = from.with_file_name(new_file_name);
+
+                        std::fs::rename(from, to)?;
                     }
-                    if multiple_parts {
-                        if let Some(part) = properties.part {
-                            let width = usize::try_from(ilog10(parts.len() as u64)).expect(
-                                "The logarithm of the parts length should fit into a usize",
-                            ) + 1;
-                            write!(new_file_name, ".p{part:0width$}").unwrap();
-                        }
-
-                        // Integrate the thread number into the filename independently of the amount
-                        // of threads
-                        if let Some(thread) = properties.thread {
-                            let width = usize::try_from(ilog10(threads.len() as u64)).expect(
-                                "The logarithm of the threads length should fit into a usize",
-                            ) + 1;
-                            write!(new_file_name, ".t{thread:0width$}").unwrap();
-                        }
-                    } else if multiple_threads {
-                        if let Some(thread) = properties.thread {
-                            let width = usize::try_from(ilog10(threads.len() as u64)).expect(
-                                "The logarithm of the threads length should fit into a usize",
-                            ) + 1;
-                            write!(new_file_name, ".t{thread:0width$}").unwrap();
-                        }
-                    } else {
-                        // don't integrate parts or threads into the filename
-                    }
-
-                    new_file_name.push_str(".out");
-                    if let Some(base) = base {
-                        new_file_name.push_str(base);
-                    }
-
-                    let from = orig_path;
-                    let to = from.with_file_name(new_file_name);
-
-                    std::fs::rename(from, to)?;
                 }
             }
         }
@@ -1024,18 +1044,22 @@ impl ToolOutputPath {
     //
     // `exp-bbv.bench_thread_in_subprocess.548365.bb.out.2` ->
     // `exp-bbv.bench_thread_in_subprocess.548365.t2.bb.out`
+    #[allow(clippy::case_sensitive_file_extension_comparisons)]
     pub fn sanitize_bbv(&self) -> Result<()> {
-        // path, name, kind, base, thread,
-        type Grouped<'a> = (PathBuf, String, String, Option<String>, String);
+        // path, bbv_type == (pc|bb).out, base, thread,
+        type Grouped = (PathBuf, String, Option<String>, String);
+        type Group = HashMap<String, HashMap<Option<String>, Vec<Grouped>>>;
 
-        let mut groups: HashMap<Option<String>, Vec<Grouped>> = HashMap::new();
+        let mut groups: HashMap<Option<String>, Group> = HashMap::new();
         for entry in self.walk_dir()? {
             let file_name = entry.file_name();
             let file_name = file_name.to_string_lossy();
 
-            if let Some(caps) = BBV_ORIG_FILENAME_RE.captures(&file_name) {
-                // Callgrind sometimes creates empty files for no reason. We clean them
-                // up here
+            let Some(haystack) = self.strip_prefix(&file_name) else {
+                continue;
+            };
+
+            if let Some(caps) = BBV_ORIG_FILENAME_RE.captures(haystack) {
                 if entry.metadata()?.size() == 0 {
                     std::fs::remove_file(entry.path())?;
                     continue;
@@ -1043,7 +1067,8 @@ impl ToolOutputPath {
 
                 // Log file names can stay the same. They don't include any information about
                 // threads in their file name.
-                if caps.name("type").unwrap().as_str() == ".out" {
+                let bbv_type = caps.name("type").unwrap().as_str();
+                if bbv_type.ends_with(".out") {
                     // Don't sanitize old files.
                     let base = if let Some(base) = caps.name("base") {
                         if base.as_str() == ".old" {
@@ -1055,74 +1080,85 @@ impl ToolOutputPath {
                         None
                     };
 
-                    let name = caps
-                        .name("name")
-                        .expect("The name should always be present")
-                        .as_str();
-
-                    let kind = caps
-                        .name("kind")
-                        .expect("The kind (pc|bb) should be present")
-                        .as_str();
-
                     let pid = caps.name("pid").map(|p| p.as_str().to_owned());
 
                     let thread = caps
                         .name("thread")
                         .map_or_else(|| ".1".to_owned(), |t| t.as_str().to_owned());
 
-                    if let Some(threads) = groups.get_mut(&pid) {
-                        threads.push((
-                            entry.path(),
-                            name.to_owned(),
-                            kind.to_owned(),
-                            base,
-                            thread,
-                        ));
+                    if let Some(bases) = groups.get_mut(&base) {
+                        if let Some(types) = bases.get_mut(bbv_type) {
+                            if let Some(threads) = types.get_mut(&pid) {
+                                threads.push((entry.path(), bbv_type.to_owned(), base, thread));
+                            } else {
+                                types.insert(
+                                    pid,
+                                    vec![(entry.path(), bbv_type.to_owned(), base, thread)],
+                                );
+                            };
+                        } else {
+                            bases.insert(
+                                bbv_type.to_owned(),
+                                HashMap::from([(
+                                    pid,
+                                    vec![(entry.path(), bbv_type.to_owned(), base, thread)],
+                                )]),
+                            );
+                        }
                     } else {
                         groups.insert(
-                            pid,
-                            vec![(entry.path(), name.to_owned(), kind.to_owned(), base, thread)],
+                            base.clone(),
+                            HashMap::from([(
+                                bbv_type.to_owned(),
+                                HashMap::from([(
+                                    pid,
+                                    vec![(entry.path(), bbv_type.to_owned(), base, thread)],
+                                )]),
+                            )]),
                         );
-                    };
+                    }
                 }
             }
         }
 
-        let multiple_pids = groups.len() > 1;
-        for (pid, threads) in groups {
-            let multiple_threads = threads.len() > 1;
+        for bases in groups.values() {
+            for types in bases.values() {
+                let multiple_pids = types.len() > 1;
 
-            for (orig_path, name, kind, base, thread) in &threads {
-                let mut new_file_name = format!("exp-bbv{name}");
+                for (pid, threads) in types {
+                    let multiple_threads = threads.len() > 1;
 
-                if multiple_pids {
-                    if let Some(pid) = pid.as_ref() {
-                        write!(new_file_name, "{pid}").unwrap();
+                    for (orig_path, bbv_type, base, thread) in threads {
+                        let mut new_file_name = self.get_prefix();
+
+                        if multiple_pids {
+                            if let Some(pid) = pid.as_ref() {
+                                write!(new_file_name, "{pid}").unwrap();
+                            }
+                        }
+
+                        if multiple_threads && bbv_type.starts_with(".bb") {
+                            let width = usize::try_from(ilog10(threads.len() as u64)).expect(
+                                "The logarithm of the threads length should fit into a usize",
+                            ) + 1;
+                            let thread = thread
+                                .strip_prefix('.')
+                                .expect("The thread point prefix should be present");
+                            write!(new_file_name, ".t{thread:0width$}").unwrap();
+                        }
+
+                        new_file_name.push_str(bbv_type);
+
+                        if let Some(base) = base {
+                            new_file_name.push_str(base);
+                        }
+
+                        let from = orig_path;
+                        let to = from.with_file_name(new_file_name);
+
+                        std::fs::rename(from, to)?;
                     }
                 }
-
-                if (multiple_pids || multiple_threads) && kind == ".bb" {
-                    let width = usize::try_from(ilog10(threads.len() as u64))
-                        .expect("The logarithm of the threads length should fit into a usize")
-                        + 1;
-                    let thread = thread
-                        .strip_prefix('.')
-                        .expect("The thread point prefix should be present");
-                    write!(new_file_name, ".t{thread:0width$}").unwrap();
-                }
-
-                new_file_name.push_str(kind);
-                new_file_name.push_str(".out");
-
-                if let Some(base) = base {
-                    new_file_name.push_str(base);
-                }
-
-                let from = orig_path;
-                let to = from.with_file_name(new_file_name);
-
-                std::fs::rename(from, to)?;
             }
         }
 
