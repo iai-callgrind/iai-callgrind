@@ -16,10 +16,10 @@ data:
         - drd.bench_bubble_sort_allocate.log.base@foo
         - exp-bbv.bench_bubble_sort_allocate.log.base@bar
         - exp-bbv.bench_bubble_sort_allocate.log.base@foo
-        - exp-bbv.bench_bubble_sort_allocate.out.bb.base@bar
-        - exp-bbv.bench_bubble_sort_allocate.out.bb.base@foo
-        - exp-bbv.bench_bubble_sort_allocate.out.pc.base@bar
-        - exp-bbv.bench_bubble_sort_allocate.out.pc.base@foo
+        - exp-bbv.bench_bubble_sort_allocate.bb.out.base@bar
+        - exp-bbv.bench_bubble_sort_allocate.bb.out.base@foo
+        - exp-bbv.bench_bubble_sort_allocate.pc.out.base@bar
+        - exp-bbv.bench_bubble_sort_allocate.pc.out.base@foo
         - helgrind.bench_bubble_sort_allocate.log.base@bar
         - helgrind.bench_bubble_sort_allocate.log.base@foo
         - massif.bench_bubble_sort_allocate.log.base@bar
@@ -46,10 +46,10 @@ data:
         - drd.bench_bubble_sort.empty.log.base@foo
         - exp-bbv.bench_bubble_sort.empty.log.base@bar
         - exp-bbv.bench_bubble_sort.empty.log.base@foo
-        - exp-bbv.bench_bubble_sort.empty.out.bb.base@bar
-        - exp-bbv.bench_bubble_sort.empty.out.bb.base@foo
-        - exp-bbv.bench_bubble_sort.empty.out.pc.base@bar
-        - exp-bbv.bench_bubble_sort.empty.out.pc.base@foo
+        - exp-bbv.bench_bubble_sort.empty.bb.out.base@bar
+        - exp-bbv.bench_bubble_sort.empty.bb.out.base@foo
+        - exp-bbv.bench_bubble_sort.empty.pc.out.base@bar
+        - exp-bbv.bench_bubble_sort.empty.pc.out.base@foo
         - helgrind.bench_bubble_sort.empty.log.base@bar
         - helgrind.bench_bubble_sort.empty.log.base@foo
         - massif.bench_bubble_sort.empty.log.base@bar
@@ -76,10 +76,10 @@ data:
         - drd.bench_bubble_sort.worst_case_4000.log.base@foo
         - exp-bbv.bench_bubble_sort.worst_case_4000.log.base@bar
         - exp-bbv.bench_bubble_sort.worst_case_4000.log.base@foo
-        - exp-bbv.bench_bubble_sort.worst_case_4000.out.bb.base@bar
-        - exp-bbv.bench_bubble_sort.worst_case_4000.out.bb.base@foo
-        - exp-bbv.bench_bubble_sort.worst_case_4000.out.pc.base@bar
-        - exp-bbv.bench_bubble_sort.worst_case_4000.out.pc.base@foo
+        - exp-bbv.bench_bubble_sort.worst_case_4000.bb.out.base@bar
+        - exp-bbv.bench_bubble_sort.worst_case_4000.bb.out.base@foo
+        - exp-bbv.bench_bubble_sort.worst_case_4000.pc.out.base@bar
+        - exp-bbv.bench_bubble_sort.worst_case_4000.pc.out.base@foo
         - helgrind.bench_bubble_sort.worst_case_4000.log.base@bar
         - helgrind.bench_bubble_sort.worst_case_4000.log.base@foo
         - massif.bench_bubble_sort.worst_case_4000.log.base@bar
@@ -91,36 +91,88 @@ data:
         - summary.json
   - group: bench_group
     function: bench_subprocess
-    id: with_modifier
+    id: trace_children
     expected:
       files:
-        - callgrind.bench_subprocess.with_modifier.log.base@bar
-        - callgrind.bench_subprocess.with_modifier.log.base@foo
-        - callgrind.bench_subprocess.with_modifier.out.base@bar
-        - callgrind.bench_subprocess.with_modifier.out.base@foo
         - summary.json
       globs:
-        - pattern: dhat.bench_subprocess.with_modifier.log.*.base@foo
+        - pattern: callgrind.bench_subprocess.trace_children.*.log.base@foo
           count: 2
-        - pattern: dhat.bench_subprocess.with_modifier.out.*.base@foo
+        - pattern: callgrind.bench_subprocess.trace_children.*.log.base@bar
           count: 2
-        - pattern: dhat.bench_subprocess.with_modifier.log.*.base@bar
+        - pattern: callgrind.bench_subprocess.trace_children.*.out.base@foo
           count: 2
-        - pattern: dhat.bench_subprocess.with_modifier.out.*.base@bar
+        - pattern: callgrind.bench_subprocess.trace_children.*.out.base@bar
+          count: 2
+        - pattern: dhat.bench_subprocess.trace_children.*.log.base@foo
+          count: 2
+        - pattern: dhat.bench_subprocess.trace_children.*.log.base@bar
+          count: 2
+        - pattern: dhat.bench_subprocess.trace_children.*.out.base@foo
+          count: 2
+        - pattern: dhat.bench_subprocess.trace_children.*.out.base@bar
+          count: 2
+        - pattern: drd.bench_subprocess.trace_children.*.log.base@foo
+          count: 2
+        - pattern: drd.bench_subprocess.trace_children.*.log.base@bar
+          count: 2
+        - pattern: exp-bbv.bench_subprocess.trace_children.*.log.base@foo
+          count: 2
+        - pattern: exp-bbv.bench_subprocess.trace_children.*.log.base@bar
+          count: 2
+        - pattern: exp-bbv.bench_subprocess.trace_children.*.pc.out.base@foo
+          count: 2
+        - pattern: exp-bbv.bench_subprocess.trace_children.*.pc.out.base@bar
+          count: 2
+        - pattern: exp-bbv.bench_subprocess.trace_children.*.bb.out.base@foo
+          count: 2
+        - pattern: exp-bbv.bench_subprocess.trace_children.*.bb.out.base@bar
+          count: 2
+        - pattern: helgrind.bench_subprocess.trace_children.*.log.base@foo
+          count: 2
+        - pattern: helgrind.bench_subprocess.trace_children.*.log.base@bar
+          count: 2
+        - pattern: massif.bench_subprocess.trace_children.*.log.base@foo
+          count: 2
+        - pattern: massif.bench_subprocess.trace_children.*.log.base@bar
+          count: 2
+        - pattern: massif.bench_subprocess.trace_children.*.out.base@foo
+          count: 2
+        - pattern: massif.bench_subprocess.trace_children.*.out.base@bar
+          count: 2
+        - pattern: memcheck.bench_subprocess.trace_children.*.log.base@foo
+          count: 2
+        - pattern: memcheck.bench_subprocess.trace_children.*.log.base@bar
           count: 2
   - group: bench_group
     function: bench_subprocess
-    id: without_modifier
+    id: no_trace_children
     expected:
       files:
-        - callgrind.bench_subprocess.without_modifier.log.base@bar
-        - callgrind.bench_subprocess.without_modifier.log.base@foo
-        - callgrind.bench_subprocess.without_modifier.out.base@bar
-        - callgrind.bench_subprocess.without_modifier.out.base@foo
-        - dhat.bench_subprocess.without_modifier.log.base@bar
-        - dhat.bench_subprocess.without_modifier.log.base@foo
-        - dhat.bench_subprocess.without_modifier.out.base@bar
-        - dhat.bench_subprocess.without_modifier.out.base@foo
+        - callgrind.bench_subprocess.no_trace_children.log.base@foo
+        - callgrind.bench_subprocess.no_trace_children.log.base@bar
+        - callgrind.bench_subprocess.no_trace_children.out.base@foo
+        - callgrind.bench_subprocess.no_trace_children.out.base@bar
+        - dhat.bench_subprocess.no_trace_children.log.base@foo
+        - dhat.bench_subprocess.no_trace_children.log.base@bar
+        - dhat.bench_subprocess.no_trace_children.out.base@foo
+        - dhat.bench_subprocess.no_trace_children.out.base@bar
+        - drd.bench_subprocess.no_trace_children.log.base@foo
+        - drd.bench_subprocess.no_trace_children.log.base@bar
+        - exp-bbv.bench_subprocess.no_trace_children.log.base@foo
+        - exp-bbv.bench_subprocess.no_trace_children.log.base@bar
+        - exp-bbv.bench_subprocess.no_trace_children.pc.out.base@foo
+        - exp-bbv.bench_subprocess.no_trace_children.pc.out.base@bar
+        - exp-bbv.bench_subprocess.no_trace_children.bb.out.base@foo
+        - exp-bbv.bench_subprocess.no_trace_children.bb.out.base@bar
+        - helgrind.bench_subprocess.no_trace_children.log.base@foo
+        - helgrind.bench_subprocess.no_trace_children.log.base@bar
+        - massif.bench_subprocess.no_trace_children.log.base@foo
+        - massif.bench_subprocess.no_trace_children.log.base@bar
+        - massif.bench_subprocess.no_trace_children.out.base@foo
+        - massif.bench_subprocess.no_trace_children.out.base@bar
+        - memcheck.bench_subprocess.no_trace_children.log.base@foo
+        - memcheck.bench_subprocess.no_trace_children.log.base@bar
         - summary.json
   - group: bench_group
     function: bad_memory

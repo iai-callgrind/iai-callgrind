@@ -37,16 +37,21 @@ fn bench_bubble_sort_allocate() -> i32 {
 }
 
 #[library_benchmark]
-#[bench::with_modifier(args = (), config = LibraryBenchmarkConfig::default()
-        .tool_override(
-            Tool::new(ValgrindTool::DHAT)
-                .args(["--trace-children=yes"])
-))]
-#[bench::without_modifier(args = (), config = LibraryBenchmarkConfig::default()
-        .tool_override(
-            Tool::new(ValgrindTool::DHAT)
-                .args(["--trace-children=yes"])
-))]
+#[bench::trace_children(args = (), config = LibraryBenchmarkConfig::default()
+        .raw_callgrind_args([
+            "--trace-children=yes",
+            "--toggle-collect=sort::main"
+        ])
+        .tools_override([
+            Tool::new(ValgrindTool::DHAT).args(["--trace-children=yes"]),
+            Tool::new(ValgrindTool::Massif).args(["--trace-children=yes"]),
+            Tool::new(ValgrindTool::BBV).args(["--trace-children=yes"]),
+            Tool::new(ValgrindTool::Memcheck).args(["--trace-children=yes", "--time-stamp=yes"]),
+            Tool::new(ValgrindTool::DRD).args(["--trace-children=yes"]),
+            Tool::new(ValgrindTool::Helgrind).args(["--trace-children=yes"])
+        ])
+)]
+#[bench::no_trace_children()]
 fn bench_subprocess() -> io::Result<Output> {
     println!("Do something before calling subprocess");
     black_box(subprocess(

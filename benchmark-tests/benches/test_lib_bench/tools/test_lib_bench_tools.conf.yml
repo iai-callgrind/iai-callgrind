@@ -12,23 +12,23 @@ groups:
           files: expected_files.2a.yml
       - args: ["--save-baseline=foo"]
         expected:
-          files: expected_files.2b.yml
+          files: expected_files.2a.yml
       - args: ["--save-baseline=bar"]
         expected:
           files: expected_files.2c.yml
       - args: ["--load-baseline=bar", "--baseline=foo"]
         expected:
-          files: expected_files.2d.yml
+          files: expected_files.2c.yml
   - runs:
       - args: []
         expected:
-          files: expected_files.3a.yml
+          files: expected_files.1a.yml
       - args: ["--save-baseline=foo"]
         expected:
           files: expected_files.3b.yml
       - args: ["--baseline=foo"]
         expected:
-          files: expected_files.3c.yml
+          files: expected_files.3b.yml
       - args: []
         expected:
           files: expected_files.3d.yml
