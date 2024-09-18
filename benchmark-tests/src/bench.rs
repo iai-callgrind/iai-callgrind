@@ -377,8 +377,8 @@ impl BenchmarkOutput {
                 write!(string, "{desc}{comp1}|{comp2}").unwrap();
 
                 // RAM Hits (and EstimatedCycles, L2 Hits) events are very unreliable across
-                // different systems, so to keep the output comparison more reliable
-                // we change this line from (for example)
+                // different systems and deviate by a few counts up or down, so to keep the output
+                // comparison more reliable we change this line from (for example)
                 //
                 //   RAM Hits:             179|209             (-14.3541%) [-1.16760x]
                 //   RAM Hits:             179|179             (No Change)
@@ -498,7 +498,7 @@ impl BenchmarkRunner {
             File::open(
                 self.metadata
                     .workspace_root
-                    .join("iai-callgrind-runner/schemas/summary.v2.schema.json"),
+                    .join("iai-callgrind-runner/schemas/summary.v3.schema.json"),
             )
             .unwrap(),
         )

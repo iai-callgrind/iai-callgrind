@@ -430,7 +430,7 @@ impl BenchmarkSummary {
         output: Option<SummaryOutput>,
     ) -> Self {
         Self {
-            version: "2".to_owned(),
+            version: "3".to_owned(),
             kind,
             benchmark_file: make_absolute(&project_root, benchmark_file),
             benchmark_exe: make_absolute(&project_root, benchmark_exe),

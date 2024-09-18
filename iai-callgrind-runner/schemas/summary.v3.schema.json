@@ -1,0 +1,821 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BenchmarkSummary",
+  "description": "The `BenchmarkSummary` containing all the information of a single benchmark run\n\nThis includes produced files, recorded callgrind events, performance regressions ...",
+  "type": "object",
+  "required": [
+    "benchmark_exe",
+    "benchmark_file",
+    "function_name",
+    "kind",
+    "module_path",
+    "package_dir",
+    "project_root",
+    "tool_summaries",
+    "version"
+  ],
+  "properties": {
+    "benchmark_exe": {
+      "description": "The path to the binary which is executed by valgrind. In case of a library benchmark this is the compiled benchmark file. In case of a binary benchmark this is the path to the command.",
+      "type": "string"
+    },
+    "benchmark_file": {
+      "description": "The path to the benchmark file",
+      "type": "string"
+    },
+    "callgrind_summary": {
+      "description": "The summary of the callgrind run",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/CallgrindSummary"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "details": {
+      "description": "More details describing this benchmark run",
+      "type": ["string", "null"]
+    },
+    "function_name": {
+      "description": "The name of the function under test",
+      "type": "string"
+    },
+    "id": {
+      "description": "The user provided id of this benchmark",
+      "type": ["string", "null"]
+    },
+    "kind": {
+      "description": "Whether this summary describes a library or binary benchmark",
+      "allOf": [
+        {
+          "$ref": "#/definitions/BenchmarkKind"
+        }
+      ]
+    },
+    "module_path": {
+      "description": "The rust path in the form `bench_file::group::bench`",
+      "type": "string"
+    },
+    "package_dir": {
+      "description": "The directory of the package",
+      "type": "string"
+    },
+    "project_root": {
+      "description": "The project's root directory",
+      "type": "string"
+    },
+    "summary_output": {
+      "description": "The destination and kind of the summary file",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/SummaryOutput"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "tool_summaries": {
+      "description": "The summary of other valgrind tool runs",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ToolSummary"
+      }
+    },
+    "version": {
+      "description": "The version of this format. Only backwards incompatible changes cause an increase of the version",
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "Baseline": {
+      "description": "A `Baseline` depending on the [`BaselineKind`] which points to the corresponding path\n\nThis baseline is used for comparisons with the new output of valgrind tools.",
+      "type": "object",
+      "required": ["kind", "path"],
+      "properties": {
+        "kind": {
+          "description": "The kind of the `Baseline`",
+          "allOf": [
+            {
+              "$ref": "#/definitions/BaselineKind"
+            }
+          ]
+        },
+        "path": {
+          "description": "The path to the file which is used to compare against the new output",
+          "type": "string"
+        }
+      }
+    },
+    "BaselineKind": {
+      "description": "TODO: Add a None or Default variant ?? The `BaselineKind` describing the baseline",
+      "oneOf": [
+        {
+          "description": "Compare new against `*.old` output files",
+          "type": "string",
+          "enum": ["Old"]
+        },
+        {
+          "description": "Compare new against a named baseline",
+          "type": "object",
+          "required": ["Name"],
+          "properties": {
+            "Name": {
+              "$ref": "#/definitions/BaselineName"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "BaselineName": {
+      "type": "string"
+    },
+    "BenchmarkKind": {
+      "description": "The `BenchmarkKind`, differentiating between library and binary benchmarks",
+      "oneOf": [
+        {
+          "description": "A library benchmark",
+          "type": "string",
+          "enum": ["LibraryBenchmark"]
+        },
+        {
+          "description": "A binary benchmark",
+          "type": "string",
+          "enum": ["BinaryBenchmark"]
+        }
+      ]
+    },
+    "CallgrindRegressionSummary": {
+      "description": "The `CallgrindRegressionSummary` describing a single event based performance regression",
+      "type": "object",
+      "required": ["diff_pct", "event_kind", "limit", "new", "old"],
+      "properties": {
+        "diff_pct": {
+          "description": "The difference between new and old in percent",
+          "type": "number",
+          "format": "double"
+        },
+        "event_kind": {
+          "description": "The [`EventKind`] which is affected by a performance regression",
+          "allOf": [
+            {
+              "$ref": "#/definitions/EventKind"
+            }
+          ]
+        },
+        "limit": {
+          "description": "The value of the limit which was exceeded to cause a performance regression",
+          "type": "number",
+          "format": "double"
+        },
+        "new": {
+          "description": "The value of the new benchmark run",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "old": {
+          "description": "The value of the old benchmark run",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    },
+    "CallgrindRunSummaries": {
+      "description": "TODO: DOCS",
+      "type": "object",
+      "required": ["summaries", "total"],
+      "properties": {
+        "summaries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CallgrindRunSummary"
+          }
+        },
+        "total": {
+          "$ref": "#/definitions/CallgrindTotal"
+        }
+      }
+    },
+    "CallgrindRunSummary": {
+      "description": "The `CallgrindRunSummary` containing the recorded events, performance regressions of a single callgrind run",
+      "type": "object",
+      "required": ["command", "events", "regressions"],
+      "properties": {
+        "baseline": {
+          "description": "If present, the `Baseline` used to compare the new with the old output",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Baseline"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "command": {
+          "description": "The executed command extracted from Valgrind output",
+          "type": "string"
+        },
+        "events": {
+          "description": "All recorded costs for `EventKinds`",
+          "allOf": [
+            {
+              "$ref": "#/definitions/CostsSummary_for_EventKind"
+            }
+          ]
+        },
+        "regressions": {
+          "description": "All detected performance regressions per callgrind run",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CallgrindRegressionSummary"
+          }
+        }
+      }
+    },
+    "CallgrindSummary": {
+      "description": "The `CallgrindSummary` summarizes all callgrind runs",
+      "type": "object",
+      "required": ["flamegraphs", "log_paths", "out_paths", "summaries"],
+      "properties": {
+        "flamegraphs": {
+          "description": "The summaries of possibly created flamegraphs",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FlamegraphSummary"
+          }
+        },
+        "log_paths": {
+          "description": "The paths to the `*.log` files",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "out_paths": {
+          "description": "The paths to the `*.out` files",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "summaries": {
+          "description": "The summaries of all callgrind runs",
+          "allOf": [
+            {
+              "$ref": "#/definitions/CallgrindRunSummaries"
+            }
+          ]
+        }
+      }
+    },
+    "CallgrindTotal": {
+      "description": "TODO: DOCS",
+      "type": "object",
+      "required": ["regressions", "summary"],
+      "properties": {
+        "regressions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CallgrindRegressionSummary"
+          }
+        },
+        "summary": {
+          "$ref": "#/definitions/CostsSummary_for_EventKind"
+        }
+      }
+    },
+    "CostsDiff": {
+      "description": "The `CostsDiff` describes the difference between an single optional `new` and `old` cost as percentage and factor.\n\nThere is either a `new`, `old` value present or both. If both values are present, then there is also the `Diffs` present.",
+      "type": "object",
+      "required": ["costs"],
+      "properties": {
+        "costs": {
+          "$ref": "#/definitions/EitherOrBoth_for_uint64"
+        },
+        "diffs": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Diffs"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "CostsSummaryType": {
+      "description": "TODO: DOCS TODO: RENAME (`CostsSummaryByKind`?)",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": ["None"]
+        },
+        {
+          "type": "object",
+          "required": ["ErrorSummary"],
+          "properties": {
+            "ErrorSummary": {
+              "$ref": "#/definitions/CostsSummary_for_ErrorMetricKind"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["DhatSummary"],
+          "properties": {
+            "DhatSummary": {
+              "$ref": "#/definitions/CostsSummary_for_DhatMetricKind"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["CallgrindSummary"],
+          "properties": {
+            "CallgrindSummary": {
+              "$ref": "#/definitions/CostsSummary_for_EventKind"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "CostsSummary_for_DhatMetricKind": {
+      "description": "FIX: docs The `CostsSummary` contains all differences for affected [`EventKind`]s",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/CostsDiff"
+      }
+    },
+    "CostsSummary_for_ErrorMetricKind": {
+      "description": "FIX: docs The `CostsSummary` contains all differences for affected [`EventKind`]s",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/CostsDiff"
+      }
+    },
+    "CostsSummary_for_EventKind": {
+      "description": "FIX: docs The `CostsSummary` contains all differences for affected [`EventKind`]s",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/CostsDiff"
+      }
+    },
+    "Diffs": {
+      "description": "TODO: DOCS",
+      "type": "object",
+      "required": ["diff_pct", "factor"],
+      "properties": {
+        "diff_pct": {
+          "type": "number",
+          "format": "double"
+        },
+        "factor": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "EitherOrBoth_for_ToolRunInfo": {
+      "description": "TODO: How does either or both serialize? Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, costs, etc. Per convention left is always `new` and right is `old`.\n\nThis enum is inspired by `itertools::EitherOrBoth`. We use a simplification `EitherOrBoth<T>` instead of `EitherOrBoth<T,U = T>` because that is what we always need. Depending on `itertools` just because of this enum was no option. However, this simplified enum allows further optimizations, for example [`Self::map`] only needs a single closure instead of two.\n\n# Developer notes\n\nThis enum is not considered complete in terms of possible functionality. Simply extend and add new methods by need.",
+      "oneOf": [
+        {
+          "description": "The left or `new` value",
+          "type": "object",
+          "required": ["Left"],
+          "properties": {
+            "Left": {
+              "$ref": "#/definitions/ToolRunInfo"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "The right or `old` value",
+          "type": "object",
+          "required": ["Right"],
+          "properties": {
+            "Right": {
+              "$ref": "#/definitions/ToolRunInfo"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Both values (`new` and `old`) are present",
+          "type": "object",
+          "required": ["Both"],
+          "properties": {
+            "Both": {
+              "type": "array",
+              "items": [
+                {
+                  "$ref": "#/definitions/ToolRunInfo"
+                },
+                {
+                  "$ref": "#/definitions/ToolRunInfo"
+                }
+              ],
+              "maxItems": 2,
+              "minItems": 2
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "EitherOrBoth_for_uint64": {
+      "description": "TODO: How does either or both serialize? Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, costs, etc. Per convention left is always `new` and right is `old`.\n\nThis enum is inspired by `itertools::EitherOrBoth`. We use a simplification `EitherOrBoth<T>` instead of `EitherOrBoth<T,U = T>` because that is what we always need. Depending on `itertools` just because of this enum was no option. However, this simplified enum allows further optimizations, for example [`Self::map`] only needs a single closure instead of two.\n\n# Developer notes\n\nThis enum is not considered complete in terms of possible functionality. Simply extend and add new methods by need.",
+      "oneOf": [
+        {
+          "description": "The left or `new` value",
+          "type": "object",
+          "required": ["Left"],
+          "properties": {
+            "Left": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "The right or `old` value",
+          "type": "object",
+          "required": ["Right"],
+          "properties": {
+            "Right": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Both values (`new` and `old`) are present",
+          "type": "object",
+          "required": ["Both"],
+          "properties": {
+            "Both": {
+              "type": "array",
+              "items": [
+                {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              ],
+              "maxItems": 2,
+              "minItems": 2
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "EventKind": {
+      "description": "All `EventKind`s callgrind produces and additionally some derived events\n\nDepending on the options passed to Callgrind, these are the events that Callgrind can produce. See the [Callgrind documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.",
+      "oneOf": [
+        {
+          "description": "The default event. I cache reads (which equals the number of instructions executed)",
+          "type": "string",
+          "enum": ["Ir"]
+        },
+        {
+          "description": "The number of system calls done (--collect-systime=yes)",
+          "type": "string",
+          "enum": ["SysCount"]
+        },
+        {
+          "description": "The elapsed time spent in system calls (--collect-systime=yes)",
+          "type": "string",
+          "enum": ["SysTime"]
+        },
+        {
+          "description": "The cpu time spent during system calls (--collect-systime=nsec)",
+          "type": "string",
+          "enum": ["SysCpuTime"]
+        },
+        {
+          "description": "The number of global bus events (--collect-bus=yes)",
+          "type": "string",
+          "enum": ["Ge"]
+        },
+        {
+          "description": "D Cache reads (which equals the number of memory reads) (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["Dr"]
+        },
+        {
+          "description": "D Cache writes (which equals the number of memory writes) (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["Dw"]
+        },
+        {
+          "description": "I1 cache read misses (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["I1mr"]
+        },
+        {
+          "description": "LL cache instruction read misses (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["ILmr"]
+        },
+        {
+          "description": "D1 cache read misses (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["D1mr"]
+        },
+        {
+          "description": "LL cache data read misses (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["DLmr"]
+        },
+        {
+          "description": "D1 cache write misses (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["D1mw"]
+        },
+        {
+          "description": "LL cache data write misses (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["DLmw"]
+        },
+        {
+          "description": "Derived event showing the L1 hits (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["L1hits"]
+        },
+        {
+          "description": "Derived event showing the LL hits (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["LLhits"]
+        },
+        {
+          "description": "Derived event showing the RAM hits (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["RamHits"]
+        },
+        {
+          "description": "Derived event showing the total amount of cache reads and writes (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["TotalRW"]
+        },
+        {
+          "description": "Derived event showing estimated CPU cycles (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["EstimatedCycles"]
+        },
+        {
+          "description": "Conditional branches executed (--branch-sim=yes)",
+          "type": "string",
+          "enum": ["Bc"]
+        },
+        {
+          "description": "Conditional branches mispredicted (--branch-sim=yes)",
+          "type": "string",
+          "enum": ["Bcm"]
+        },
+        {
+          "description": "Indirect branches executed (--branch-sim=yes)",
+          "type": "string",
+          "enum": ["Bi"]
+        },
+        {
+          "description": "Indirect branches mispredicted (--branch-sim=yes)",
+          "type": "string",
+          "enum": ["Bim"]
+        },
+        {
+          "description": "Dirty miss because of instruction read (--simulate-wb=yes)",
+          "type": "string",
+          "enum": ["ILdmr"]
+        },
+        {
+          "description": "Dirty miss because of data read (--simulate-wb=yes)",
+          "type": "string",
+          "enum": ["DLdmr"]
+        },
+        {
+          "description": "Dirty miss because of data write (--simulate-wb=yes)",
+          "type": "string",
+          "enum": ["DLdmw"]
+        },
+        {
+          "description": "Counter showing bad temporal locality for L1 caches (--cachuse=yes)",
+          "type": "string",
+          "enum": ["AcCost1"]
+        },
+        {
+          "description": "Counter showing bad temporal locality for LL caches (--cachuse=yes)",
+          "type": "string",
+          "enum": ["AcCost2"]
+        },
+        {
+          "description": "Counter showing bad spatial locality for L1 caches (--cachuse=yes)",
+          "type": "string",
+          "enum": ["SpLoss1"]
+        },
+        {
+          "description": "Counter showing bad spatial locality for LL caches (--cachuse=yes)",
+          "type": "string",
+          "enum": ["SpLoss2"]
+        }
+      ]
+    },
+    "FlamegraphSummary": {
+      "description": "The `FlamegraphSummary` records all created paths for an [`EventKind`] specific flamegraph\n\nEither the `regular_path`, `old_path` or the `diff_path` are present. Never can all of them be absent.",
+      "type": "object",
+      "required": ["event_kind"],
+      "properties": {
+        "base_path": {
+          "description": "If present, the path to the file of the old regular (non-differential) flamegraph",
+          "type": ["string", "null"]
+        },
+        "diff_path": {
+          "description": "If present, the path to the file of the differential flamegraph",
+          "type": ["string", "null"]
+        },
+        "event_kind": {
+          "description": "The `EventKind` of the flamegraph",
+          "allOf": [
+            {
+              "$ref": "#/definitions/EventKind"
+            }
+          ]
+        },
+        "regular_path": {
+          "description": "If present, the path to the file of the regular (non-differential) flamegraph",
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "SummaryFormat": {
+      "description": "The format (json, ...) in which the summary file should be saved or printed",
+      "oneOf": [
+        {
+          "description": "The format in a space optimal json representation without newlines",
+          "type": "string",
+          "enum": ["Json"]
+        },
+        {
+          "description": "The format in pretty printed json",
+          "type": "string",
+          "enum": ["PrettyJson"]
+        }
+      ]
+    },
+    "SummaryOutput": {
+      "description": "Manage the summary output file with this `SummaryOutput`",
+      "type": "object",
+      "required": ["format", "path"],
+      "properties": {
+        "format": {
+          "description": "The [`SummaryFormat`]",
+          "allOf": [
+            {
+              "$ref": "#/definitions/SummaryFormat"
+            }
+          ]
+        },
+        "path": {
+          "description": "The path to the destination file of this summary",
+          "type": "string"
+        }
+      }
+    },
+    "ToolRunInfo": {
+      "description": "TODO: check DOCS",
+      "type": "object",
+      "required": ["command", "path", "pid"],
+      "properties": {
+        "command": {
+          "description": "The executed command extracted from Valgrind output",
+          "type": "string"
+        },
+        "details": {
+          "description": "More details for example from the logging output of the tool run",
+          "type": ["string", "null"]
+        },
+        "parent_pid": {
+          "description": "The parent pid of this process",
+          "type": ["integer", "null"],
+          "format": "int32"
+        },
+        "part": {
+          "type": ["integer", "null"],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "path": {
+          "description": "The path to the full logfile from the tool run",
+          "type": "string"
+        },
+        "pid": {
+          "description": "The pid of this process",
+          "type": "integer",
+          "format": "int32"
+        },
+        "thread": {
+          "type": ["integer", "null"],
+          "format": "uint",
+          "minimum": 0.0
+        }
+      }
+    },
+    "ToolRunSummaries": {
+      "description": "TODO: DOCS",
+      "type": "object",
+      "required": ["data", "total"],
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ToolRunSummary"
+          }
+        },
+        "total": {
+          "$ref": "#/definitions/CostsSummaryType"
+        }
+      }
+    },
+    "ToolRunSummary": {
+      "description": "The `ToolRunSummary` which contains all information about a single tool run process\n\nThere's a separate process and therefore `ToolRunSummary` for the parent process and each child process if `--trace-children=yes` was passed as argument to the `Tool`.",
+      "type": "object",
+      "required": ["costs_summary", "info"],
+      "properties": {
+        "costs_summary": {
+          "$ref": "#/definitions/CostsSummaryType"
+        },
+        "info": {
+          "$ref": "#/definitions/EitherOrBoth_for_ToolRunInfo"
+        }
+      }
+    },
+    "ToolSummary": {
+      "description": "The `ToolSummary` containing all information about a valgrind tool run",
+      "type": "object",
+      "required": ["log_paths", "out_paths", "summaries", "tool"],
+      "properties": {
+        "log_paths": {
+          "description": "The paths to the `*.log` files. All tools produce at least one log file",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "out_paths": {
+          "description": "The paths to the `*.out` files. Not all tools produce an output in addition to the log files",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "summaries": {
+          "description": "All [`ToolRunSummary`]s",
+          "allOf": [
+            {
+              "$ref": "#/definitions/ToolRunSummaries"
+            }
+          ]
+        },
+        "tool": {
+          "description": "The Valgrind tool like `DHAT`, `Memcheck` etc.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/ValgrindTool"
+            }
+          ]
+        }
+      }
+    },
+    "ValgrindTool": {
+      "type": "string",
+      "enum": [
+        "Callgrind",
+        "Memcheck",
+        "Helgrind",
+        "DRD",
+        "Massif",
+        "DHAT",
+        "BBV"
+      ]
+    }
+  }
+}
