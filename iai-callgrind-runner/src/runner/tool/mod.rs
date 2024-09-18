@@ -44,6 +44,10 @@ lazy_static! {
         r"^(?<tool>callgrind)(?<name>[.][^.]+?([.][^0-9][^.]*?)?)(?<pid>[.][0-9]+)?(?<type>[.](out|log))(?<base>[.](old|base@[^.]+))?(?<part>[.][0-9]+)?(?<thread>-[0-9]+)?$"
     )
     .expect("Regex should compile");
+    static ref BBV_ORIG_FILENAME_RE: Regex = Regex::new(
+        r"^(?<tool>exp-bbv)(?<name>[.][^.]+?([.][^0-9][^.]*?)?)(?<pid>[.][0-9]+)?(?<kind>[.](bb|pc))?(?<type>[.](out|log))(?<base>[.](old|base@[^.]+))?(?<thread>[.][0-9]+)?$"
+    )
+    .expect("Regex should compile");
 }
 
 #[derive(Debug, Default, Clone)]
@@ -797,6 +801,10 @@ impl ToolOutputPath {
         file_name.strip_prefix(format!("{}.{}", self.tool.id(), self.name).as_str())
     }
 
+    pub fn get_prefix(&self) -> String {
+        format!("{}.{}", self.tool.id(), self.name)
+    }
+
     /// Return the `real` paths of a tool's output files
     ///
     /// A tool can have many output files so [`Self::to_path`] is not enough
@@ -998,22 +1006,142 @@ impl ToolOutputPath {
         Ok(())
     }
 
-    /// Sanitize files for this tool
+    // Sanitize bbv files
+    //
+    // The original output files of bb have a `.<number>` suffix if there are multiple threads. We
+    // need the threads as `t<number>` in the modifier part of the final file names.
+    //
+    // For example: (orig -> sanitized)
+    //
+    // If there are multiple threads, the bb output file name doesn't include the first thread:
+    //
+    // `exp-bbv.bench_thread_in_subprocess.548365.bb.out` ->
+    // `exp-bbv.bench_thread_in_subprocess.548365.t1.bb.out`
+    //
+    // `exp-bbv.bench_thread_in_subprocess.548365.bb.out.2` ->
+    // `exp-bbv.bench_thread_in_subprocess.548365.t2.bb.out`
+    pub fn sanitize_bbv(&self) -> Result<()> {
+        // path, name, kind, base, thread,
+        type Grouped<'a> = (PathBuf, String, String, Option<String>, String);
+
+        let mut groups: HashMap<Option<String>, Vec<Grouped>> = HashMap::new();
+        for entry in self.walk_dir()? {
+            let file_name = entry.file_name();
+            let file_name = file_name.to_string_lossy();
+
+            if let Some(caps) = BBV_ORIG_FILENAME_RE.captures(&file_name) {
+                // Callgrind sometimes creates empty files for no reason. We clean them
+                // up here
+                if entry.metadata()?.size() == 0 {
+                    std::fs::remove_file(entry.path())?;
+                    continue;
+                }
+
+                // Log file names can stay the same. They don't include any information about
+                // threads in their file name.
+                if caps.name("type").unwrap().as_str() == ".out" {
+                    // Don't sanitize old files.
+                    let base = if let Some(base) = caps.name("base") {
+                        if base.as_str() == ".old" {
+                            continue;
+                        }
+
+                        Some(base.as_str().to_owned())
+                    } else {
+                        None
+                    };
+
+                    let name = caps
+                        .name("name")
+                        .expect("The name should always be present")
+                        .as_str();
+
+                    let kind = caps
+                        .name("kind")
+                        .expect("The kind (pc|bb) should be present")
+                        .as_str();
+
+                    let pid = caps.name("pid").map(|p| p.as_str().to_owned());
+
+                    let thread = caps
+                        .name("thread")
+                        .map_or_else(|| ".1".to_owned(), |t| t.as_str().to_owned());
+
+                    if let Some(threads) = groups.get_mut(&pid) {
+                        threads.push((
+                            entry.path(),
+                            name.to_owned(),
+                            kind.to_owned(),
+                            base,
+                            thread,
+                        ));
+                    } else {
+                        groups.insert(
+                            pid,
+                            vec![(entry.path(), name.to_owned(), kind.to_owned(), base, thread)],
+                        );
+                    };
+                }
+            }
+        }
+
+        let multiple_pids = groups.len() > 1;
+        for (pid, threads) in groups {
+            let multiple_threads = threads.len() > 1;
+
+            for (orig_path, name, kind, base, thread) in &threads {
+                let mut new_file_name = format!("exp-bbv{name}");
+
+                if multiple_pids {
+                    if let Some(pid) = pid.as_ref() {
+                        write!(new_file_name, "{pid}").unwrap();
+                    }
+                }
+
+                if (multiple_pids || multiple_threads) && kind == ".bb" {
+                    let width = usize::try_from(ilog10(threads.len() as u64))
+                        .expect("The logarithm of the threads length should fit into a usize")
+                        + 1;
+                    let thread = thread
+                        .strip_prefix('.')
+                        .expect("The thread point prefix should be present");
+                    write!(new_file_name, ".t{thread:0width$}").unwrap();
+                }
+
+                new_file_name.push_str(kind);
+                new_file_name.push_str(".out");
+
+                if let Some(base) = base {
+                    new_file_name.push_str(base);
+                }
+
+                let from = orig_path;
+                let to = from.with_file_name(new_file_name);
+
+                std::fs::rename(from, to)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Sanitize file names for a specific tool
     ///
     /// Empty files are cleaned up. For more details on a specific tool see the respective
     /// sanitize_<tool> method.
     pub fn sanitize(&self) -> Result<()> {
-        if self.tool == ValgrindTool::Callgrind {
-            self.sanitize_callgrind()?;
-        } else {
-            for entry in self.walk_dir()? {
-                if entry.metadata()?.size() == 0 {
-                    std::fs::remove_file(entry.path())?;
+        match self.tool {
+            ValgrindTool::Callgrind => self.sanitize_callgrind()?,
+            ValgrindTool::BBV => self.sanitize_bbv()?,
+            _ => {
+                for entry in self.walk_dir()? {
+                    if entry.metadata()?.size() == 0 {
+                        std::fs::remove_file(entry.path())?;
+                    }
                 }
             }
-        }
-        // TODO: sanitize dhat
-        // TODO: sanitize bbv (bb file has .x suffix for each thread, multiple processes?)
+        };
+
         Ok(())
     }
 }
@@ -1177,5 +1305,17 @@ mod tests {
     #[case::without_id_but_part("callgrind.bench_bubble_sort_allocate.out.1")]
     fn test_callgrind_filename_regex(#[case] haystack: &str) {
         assert!(CALLGRIND_ORIG_FILENAME_RE.is_match(haystack));
+    }
+
+    #[rstest]
+    #[case::bb_out("exp-bbv.some.name.bb.out")]
+    #[case::bb_out_with_pid("exp-bbv.some.name.1234.bb.out")]
+    #[case::bb_out_with_pid_and_thread("exp-bbv.some.name.1234.bb.out.1")]
+    #[case::bb_out_with_thread("exp-bbv.some.name.bb.out.1")]
+    #[case::pc_out("exp-bbv.some.name.pc.out")]
+    #[case::log("exp-bbv.some.name.log")]
+    #[case::log_with_pid("exp-bbv.some.name.1234.log")]
+    fn test_bbv_filename_regex(#[case] haystack: &str) {
+        assert!(BBV_ORIG_FILENAME_RE.is_match(haystack));
     }
 }
