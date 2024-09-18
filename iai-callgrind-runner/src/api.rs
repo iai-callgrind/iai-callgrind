@@ -13,6 +13,7 @@ use std::time::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "runner")]
 use crate::runner::costs::Summarize;
 
 // TODO: Move all defaults here into a mod so they are available in iai-callgrind, too ?
@@ -516,6 +517,7 @@ impl Display for DhatMetricKind {
     }
 }
 
+#[cfg(feature = "runner")]
 impl Summarize for DhatMetricKind {}
 
 impl<T> From<T> for EntryPoint
@@ -527,6 +529,7 @@ where
     }
 }
 
+#[cfg(feature = "runner")]
 impl Summarize for ErrorMetricKind {}
 
 impl Display for ErrorMetricKind {
