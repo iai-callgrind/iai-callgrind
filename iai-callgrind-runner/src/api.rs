@@ -12,7 +12,6 @@ use std::time::Duration;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use strum::EnumIter;
 
 use crate::runner::costs::Summarize;
 
@@ -128,7 +127,7 @@ pub enum Direction {
 }
 
 /// TODO: DOCS
-#[derive(EnumIter, Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum DhatMetricKind {
     TotalBytes,
@@ -163,7 +162,7 @@ pub enum EntryPoint {
 // The tools which report only errors are `helgrind`, `drd` and `memcheck`. The order in which the
 // variants are defined in this enum determines the order of the metrics in the benchmark terminal
 // output.
-#[derive(EnumIter, Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ErrorMetricKind {
     Errors,
@@ -177,7 +176,7 @@ pub enum ErrorMetricKind {
 /// Depending on the options passed to Callgrind, these are the events that Callgrind can produce.
 /// See the [Callgrind
 /// documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.
-#[derive(EnumIter, Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum EventKind {
     /// The default event. I cache reads (which equals the number of instructions executed)
