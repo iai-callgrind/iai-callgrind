@@ -110,7 +110,7 @@
       }
     },
     "BaselineKind": {
-      "description": "TODO: Add a None or Default variant ?? The `BaselineKind` describing the baseline",
+      "description": "The `BaselineKind` describing the baseline",
       "oneOf": [
         {
           "description": "Compare new against `*.old` output files",
@@ -186,18 +186,24 @@
       }
     },
     "CallgrindRunSummaries": {
-      "description": "TODO: DOCS",
+      "description": "The `CallgrindRunSummaries` grouping all `CallgrindRunSummary` and their total costs in a `CallgrindTotal`",
       "type": "object",
       "required": ["summaries", "total"],
       "properties": {
         "summaries": {
+          "description": "All `CallgrindRunSummary`s",
           "type": "array",
           "items": {
             "$ref": "#/definitions/CallgrindRunSummary"
           }
         },
         "total": {
-          "$ref": "#/definitions/CallgrindTotal"
+          "description": "The total costs of all `CallgrindRunSummary`s in this `CallgrindRunSummaries`",
+          "allOf": [
+            {
+              "$ref": "#/definitions/CallgrindTotal"
+            }
+          ]
         }
       }
     },
@@ -275,18 +281,24 @@
       }
     },
     "CallgrindTotal": {
-      "description": "TODO: DOCS",
+      "description": "The total callgrind costs over the `CallgrindRunSummaries` and all detected regressions for the total",
       "type": "object",
       "required": ["regressions", "summary"],
       "properties": {
         "regressions": {
+          "description": "All detected regressions for the total costs",
           "type": "array",
           "items": {
             "$ref": "#/definitions/CallgrindRegressionSummary"
           }
         },
         "summary": {
-          "$ref": "#/definitions/CostsSummary_for_EventKind"
+          "description": "The total costs",
+          "allOf": [
+            {
+              "$ref": "#/definitions/CostsSummary_for_EventKind"
+            }
+          ]
         }
       }
     },
@@ -311,13 +323,15 @@
       }
     },
     "CostsSummaryType": {
-      "description": "TODO: DOCS TODO: RENAME (`CostsSummaryByKind`?)",
+      "description": "The `CostsSummaryType` contains the `CostsSummary` differentiated by metric kinds",
       "oneOf": [
         {
+          "description": "If there are no costs extracted (currently massif, bbv)",
           "type": "string",
           "enum": ["None"]
         },
         {
+          "description": "The error summary of tools which reports errors (memcheck, helgrind, drd)",
           "type": "object",
           "required": ["ErrorSummary"],
           "properties": {
@@ -328,6 +342,7 @@
           "additionalProperties": false
         },
         {
+          "description": "The dhat summary",
           "type": "object",
           "required": ["DhatSummary"],
           "properties": {
@@ -338,6 +353,7 @@
           "additionalProperties": false
         },
         {
+          "description": "The callgrind summary",
           "type": "object",
           "required": ["CallgrindSummary"],
           "properties": {
@@ -350,43 +366,45 @@
       ]
     },
     "CostsSummary_for_DhatMetricKind": {
-      "description": "FIX: docs The `CostsSummary` contains all differences for affected [`EventKind`]s",
+      "description": "The `CostsSummary` contains all differences between two benchmark runs",
       "type": "object",
       "additionalProperties": {
         "$ref": "#/definitions/CostsDiff"
       }
     },
     "CostsSummary_for_ErrorMetricKind": {
-      "description": "FIX: docs The `CostsSummary` contains all differences for affected [`EventKind`]s",
+      "description": "The `CostsSummary` contains all differences between two benchmark runs",
       "type": "object",
       "additionalProperties": {
         "$ref": "#/definitions/CostsDiff"
       }
     },
     "CostsSummary_for_EventKind": {
-      "description": "FIX: docs The `CostsSummary` contains all differences for affected [`EventKind`]s",
+      "description": "The `CostsSummary` contains all differences between two benchmark runs",
       "type": "object",
       "additionalProperties": {
         "$ref": "#/definitions/CostsDiff"
       }
     },
     "Diffs": {
-      "description": "TODO: DOCS",
+      "description": "The differences between two `Costs` as percentage and factor",
       "type": "object",
       "required": ["diff_pct", "factor"],
       "properties": {
         "diff_pct": {
+          "description": "The percentage of the difference between two `Costs`",
           "type": "number",
           "format": "double"
         },
         "factor": {
+          "description": "The factor of the difference between two `Costs`",
           "type": "number",
           "format": "double"
         }
       }
     },
     "EitherOrBoth_for_ToolRunInfo": {
-      "description": "TODO: How does either or both serialize? Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, costs, etc. Per convention left is always `new` and right is `old`.\n\nThis enum is inspired by `itertools::EitherOrBoth`. We use a simplification `EitherOrBoth<T>` instead of `EitherOrBoth<T,U = T>` because that is what we always need. Depending on `itertools` just because of this enum was no option. However, this simplified enum allows further optimizations, for example [`Self::map`] only needs a single closure instead of two.\n\n# Developer notes\n\nThis enum is not considered complete in terms of possible functionality. Simply extend and add new methods by need.",
+      "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, costs, etc. Per convention left is always `new` and right is `old`.\n\nThis enum is inspired by `itertools::EitherOrBoth`. We use a simplification `EitherOrBoth<T>` instead of `EitherOrBoth<T,U = T>` because that is what we always need. Depending on `itertools` just because of this enum was no option. However, this simplified enum allows further optimizations, for example [`Self::map`] only needs a single closure instead of two.\n\n# Developer notes\n\nThis enum is not considered complete in terms of possible functionality. Simply extend and add new methods by need.",
       "oneOf": [
         {
           "description": "The left or `new` value",
@@ -434,7 +452,7 @@
       ]
     },
     "EitherOrBoth_for_uint64": {
-      "description": "TODO: How does either or both serialize? Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, costs, etc. Per convention left is always `new` and right is `old`.\n\nThis enum is inspired by `itertools::EitherOrBoth`. We use a simplification `EitherOrBoth<T>` instead of `EitherOrBoth<T,U = T>` because that is what we always need. Depending on `itertools` just because of this enum was no option. However, this simplified enum allows further optimizations, for example [`Self::map`] only needs a single closure instead of two.\n\n# Developer notes\n\nThis enum is not considered complete in terms of possible functionality. Simply extend and add new methods by need.",
+      "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, costs, etc. Per convention left is always `new` and right is `old`.\n\nThis enum is inspired by `itertools::EitherOrBoth`. We use a simplification `EitherOrBoth<T>` instead of `EitherOrBoth<T,U = T>` because that is what we always need. Depending on `itertools` just because of this enum was no option. However, this simplified enum allows further optimizations, for example [`Self::map`] only needs a single closure instead of two.\n\n# Developer notes\n\nThis enum is not considered complete in terms of possible functionality. Simply extend and add new methods by need.",
       "oneOf": [
         {
           "description": "The left or `new` value",
@@ -640,7 +658,7 @@
       ]
     },
     "FlamegraphSummary": {
-      "description": "The `FlamegraphSummary` records all created paths for an [`EventKind`] specific flamegraph\n\nEither the `regular_path`, `old_path` or the `diff_path` are present. Never can all of them be absent.",
+      "description": "The callgrind `FlamegraphSummary` records all created paths for an [`EventKind`] specific flamegraph\n\nEither the `regular_path`, `old_path` or the `diff_path` are present. Never can all of them be absent.",
       "type": "object",
       "required": ["event_kind"],
       "properties": {
@@ -701,7 +719,7 @@
       }
     },
     "ToolRunInfo": {
-      "description": "TODO: check DOCS",
+      "description": "Some additional and necessary information about the tool run",
       "type": "object",
       "required": ["command", "path", "pid"],
       "properties": {
@@ -719,12 +737,13 @@
           "format": "int32"
         },
         "part": {
+          "description": "The part of this tool run (only callgrind)",
           "type": ["integer", "null"],
           "format": "uint64",
           "minimum": 0.0
         },
         "path": {
-          "description": "The path to the full logfile from the tool run",
+          "description": "The path to the file from the tool run",
           "type": "string"
         },
         "pid": {
@@ -733,6 +752,7 @@
           "format": "int32"
         },
         "thread": {
+          "description": "The thread of this tool run (only callgrind)",
           "type": ["integer", "null"],
           "format": "uint",
           "minimum": 0.0
@@ -740,18 +760,24 @@
       }
     },
     "ToolRunSummaries": {
-      "description": "TODO: DOCS",
+      "description": "All tool run summaries and the total over them",
       "type": "object",
       "required": ["data", "total"],
       "properties": {
         "data": {
+          "description": "The `ToolRunSummary`s",
           "type": "array",
           "items": {
             "$ref": "#/definitions/ToolRunSummary"
           }
         },
         "total": {
-          "$ref": "#/definitions/CostsSummaryType"
+          "description": "The total over the `ToolRunSummary`s",
+          "allOf": [
+            {
+              "$ref": "#/definitions/CostsSummaryType"
+            }
+          ]
         }
       }
     },

@@ -41,7 +41,6 @@ pub struct Baseline {
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct BaselineName(String);
 
-/// TODO: Add a None or Default variant ??
 /// The `BaselineKind` describing the baseline
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
@@ -115,11 +114,14 @@ pub struct CallgrindRegressionSummary {
     pub limit: f64,
 }
 
-/// TODO: DOCS
+/// The `CallgrindRunSummaries` grouping all `CallgrindRunSummary` and their total costs in a
+/// `CallgrindTotal`
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindRunSummaries {
+    /// All `CallgrindRunSummary`s
     pub summaries: Vec<CallgrindRunSummary>,
+    /// The total costs of all `CallgrindRunSummary`s in this `CallgrindRunSummaries`
     pub total: CallgrindTotal,
 }
 
@@ -138,11 +140,14 @@ pub struct CallgrindRunSummary {
     pub regressions: Vec<CallgrindRegressionSummary>,
 }
 
-/// TODO: DOCS
+/// The total callgrind costs over the `CallgrindRunSummaries` and all detected regressions for the
+/// total
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindTotal {
+    /// The total costs
     pub summary: CostsSummary,
+    /// All detected regressions for the total costs
     pub regressions: Vec<CallgrindRegressionSummary>,
 }
 
@@ -172,127 +177,63 @@ pub struct CostsDiff {
     pub diffs: Option<Diffs>,
 }
 
-/// TODO: DOCS
+/// The costs differentiated per kind (dhat, error metrics and callgrind)
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum CostsKind {
+    /// If there were no costs extracted from a tool run (currently massif, bbv)
     #[default]
     None,
+    /// The costs of a dhat benchmark
     DhatCosts(Costs<DhatMetricKind>),
+    /// The costs of a tool run which reports errors (memcheck, helgrind, drd)
     ErrorCosts(Costs<ErrorMetricKind>),
+    /// The costs of a callgrind benchmark
     CallgrindCosts(Costs<EventKind>),
 }
 
-/// FIX: docs
-/// The `CostsSummary` contains all differences for affected [`EventKind`]s
+/// The `CostsSummary` contains all differences between two benchmark runs
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CostsSummary<K: Hash + Eq = EventKind>(IndexMap<K, CostsDiff>);
 
-/// TODO: DOCS
-/// TODO: RENAME (`CostsSummaryByKind`?)
+/// The `CostsSummaryType` contains the `CostsSummary` differentiated by metric kinds
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum CostsSummaryType {
+    /// If there are no costs extracted (currently massif, bbv)
     #[default]
     None,
+    /// The error summary of tools which reports errors (memcheck, helgrind, drd)
     ErrorSummary(CostsSummary<ErrorMetricKind>),
+    /// The dhat summary
     DhatSummary(CostsSummary<DhatMetricKind>),
+    /// The callgrind summary
     CallgrindSummary(CostsSummary<EventKind>),
 }
 
-impl CostsSummaryType {
-    pub fn add_mut(&mut self, other: &Self) {
-        match (self, other) {
-            (CostsSummaryType::ErrorSummary(this), CostsSummaryType::ErrorSummary(other)) => {
-                this.add(other);
-            }
-            (CostsSummaryType::DhatSummary(this), CostsSummaryType::DhatSummary(other)) => {
-                this.add(other);
-            }
-            (
-                CostsSummaryType::CallgrindSummary(this),
-                CostsSummaryType::CallgrindSummary(other),
-            ) => {
-                this.add(other);
-            }
-            _ => {}
-        }
-    }
-
-    pub fn from_new_costs(costs: &CostsKind) -> Self {
-        match costs {
-            CostsKind::None => CostsSummaryType::None,
-            CostsKind::DhatCosts(costs) => {
-                CostsSummaryType::DhatSummary(CostsSummary::new(EitherOrBoth::Left(costs.clone())))
-            }
-            CostsKind::ErrorCosts(costs) => {
-                CostsSummaryType::ErrorSummary(CostsSummary::new(EitherOrBoth::Left(costs.clone())))
-            }
-            CostsKind::CallgrindCosts(costs) => CostsSummaryType::CallgrindSummary(
-                CostsSummary::new(EitherOrBoth::Left(costs.clone())),
-            ),
-        }
-    }
-    pub fn from_old_costs(costs: &CostsKind) -> Self {
-        match costs {
-            CostsKind::None => CostsSummaryType::None,
-            CostsKind::DhatCosts(costs) => {
-                CostsSummaryType::DhatSummary(CostsSummary::new(EitherOrBoth::Right(costs.clone())))
-            }
-            CostsKind::ErrorCosts(costs) => CostsSummaryType::ErrorSummary(CostsSummary::new(
-                EitherOrBoth::Right(costs.clone()),
-            )),
-            CostsKind::CallgrindCosts(costs) => CostsSummaryType::CallgrindSummary(
-                CostsSummary::new(EitherOrBoth::Right(costs.clone())),
-            ),
-        }
-    }
-
-    /// Return the `CostsSummaryType` if the `CostsKind` have the same kind, else return with error
-    pub fn try_from_new_and_old_costs(
-        new_costs: &CostsKind,
-        old_costs: &CostsKind,
-    ) -> Result<Self> {
-        match (new_costs, old_costs) {
-            (CostsKind::None, CostsKind::None) => Ok(CostsSummaryType::None),
-            (CostsKind::DhatCosts(new_costs), CostsKind::DhatCosts(old_costs)) => {
-                Ok(CostsSummaryType::DhatSummary(CostsSummary::new(
-                    EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
-                )))
-            }
-            (CostsKind::ErrorCosts(new_costs), CostsKind::ErrorCosts(old_costs)) => {
-                Ok(CostsSummaryType::ErrorSummary(CostsSummary::new(
-                    EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
-                )))
-            }
-            (CostsKind::CallgrindCosts(new_costs), CostsKind::CallgrindCosts(old_costs)) => {
-                Ok(CostsSummaryType::CallgrindSummary(CostsSummary::new(
-                    EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
-                )))
-            }
-            _ => Err(anyhow!("Cannot create summary from incompatible costs")),
-        }
-    }
-}
-
-/// TODO: DOCS
+/// The differences between two `Costs` as percentage and factor
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Diffs {
+    /// The percentage of the difference between two `Costs`
     pub diff_pct: f64,
+    /// The factor of the difference between two `Costs`
     pub factor: f64,
 }
 
-/// TODO: DOCS
+/// All callgrind flamegraph summaries and their totals
 #[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct FlamegraphSummaries {
+    /// The `FlamegraphSummary`s
     pub summaries: Vec<FlamegraphSummary>,
+    /// The totals over the `FlamegraphSummary`s
     pub totals: Vec<FlamegraphSummary>,
 }
 
-/// The `FlamegraphSummary` records all created paths for an [`EventKind`] specific flamegraph
+/// The callgrind `FlamegraphSummary` records all created paths for an [`EventKind`] specific
+/// flamegraph
 ///
 /// Either the `regular_path`, `old_path` or the `diff_path` are present. Never can all of them be
 /// absent.
@@ -329,7 +270,7 @@ pub struct SummaryOutput {
     path: PathBuf,
 }
 
-/// TODO: check DOCS
+/// Some additional and necessary information about the tool run
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, AsRef)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ToolRunInfo {
@@ -341,28 +282,22 @@ pub struct ToolRunInfo {
     pub parent_pid: Option<i32>,
     /// More details for example from the logging output of the tool run
     pub details: Option<String>,
-    /// The path to the full logfile from the tool run
+    /// The path to the file from the tool run
     pub path: PathBuf,
+    /// The part of this tool run (only callgrind)
     pub part: Option<u64>,
+    /// The thread of this tool run (only callgrind)
     pub thread: Option<usize>,
 }
 
-/// TODO: DOCS
+/// All tool run summaries and the total over them
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ToolRunSummaries {
+    /// The `ToolRunSummary`s
     pub data: Vec<ToolRunSummary>,
+    /// The total over the `ToolRunSummary`s
     pub total: CostsSummaryType,
-}
-
-impl ToolRunSummaries {
-    pub fn is_empty(&self) -> bool {
-        self.data.is_empty()
-    }
-
-    pub fn has_multiple(&self) -> bool {
-        self.data.len() > 1
-    }
 }
 
 /// The `ToolRunSummary` which contains all information about a single tool run process
@@ -655,6 +590,81 @@ impl CostsDiff {
     }
 }
 
+impl CostsSummaryType {
+    pub fn add_mut(&mut self, other: &Self) {
+        match (self, other) {
+            (CostsSummaryType::ErrorSummary(this), CostsSummaryType::ErrorSummary(other)) => {
+                this.add(other);
+            }
+            (CostsSummaryType::DhatSummary(this), CostsSummaryType::DhatSummary(other)) => {
+                this.add(other);
+            }
+            (
+                CostsSummaryType::CallgrindSummary(this),
+                CostsSummaryType::CallgrindSummary(other),
+            ) => {
+                this.add(other);
+            }
+            _ => {}
+        }
+    }
+
+    pub fn from_new_costs(costs: &CostsKind) -> Self {
+        match costs {
+            CostsKind::None => CostsSummaryType::None,
+            CostsKind::DhatCosts(costs) => {
+                CostsSummaryType::DhatSummary(CostsSummary::new(EitherOrBoth::Left(costs.clone())))
+            }
+            CostsKind::ErrorCosts(costs) => {
+                CostsSummaryType::ErrorSummary(CostsSummary::new(EitherOrBoth::Left(costs.clone())))
+            }
+            CostsKind::CallgrindCosts(costs) => CostsSummaryType::CallgrindSummary(
+                CostsSummary::new(EitherOrBoth::Left(costs.clone())),
+            ),
+        }
+    }
+    pub fn from_old_costs(costs: &CostsKind) -> Self {
+        match costs {
+            CostsKind::None => CostsSummaryType::None,
+            CostsKind::DhatCosts(costs) => {
+                CostsSummaryType::DhatSummary(CostsSummary::new(EitherOrBoth::Right(costs.clone())))
+            }
+            CostsKind::ErrorCosts(costs) => CostsSummaryType::ErrorSummary(CostsSummary::new(
+                EitherOrBoth::Right(costs.clone()),
+            )),
+            CostsKind::CallgrindCosts(costs) => CostsSummaryType::CallgrindSummary(
+                CostsSummary::new(EitherOrBoth::Right(costs.clone())),
+            ),
+        }
+    }
+
+    /// Return the `CostsSummaryType` if the `CostsKind` have the same kind, else return with error
+    pub fn try_from_new_and_old_costs(
+        new_costs: &CostsKind,
+        old_costs: &CostsKind,
+    ) -> Result<Self> {
+        match (new_costs, old_costs) {
+            (CostsKind::None, CostsKind::None) => Ok(CostsSummaryType::None),
+            (CostsKind::DhatCosts(new_costs), CostsKind::DhatCosts(old_costs)) => {
+                Ok(CostsSummaryType::DhatSummary(CostsSummary::new(
+                    EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
+                )))
+            }
+            (CostsKind::ErrorCosts(new_costs), CostsKind::ErrorCosts(old_costs)) => {
+                Ok(CostsSummaryType::ErrorSummary(CostsSummary::new(
+                    EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
+                )))
+            }
+            (CostsKind::CallgrindCosts(new_costs), CostsKind::CallgrindCosts(old_costs)) => {
+                Ok(CostsSummaryType::CallgrindSummary(CostsSummary::new(
+                    EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
+                )))
+            }
+            _ => Err(anyhow!("Cannot create summary from incompatible costs")),
+        }
+    }
+}
+
 impl Diffs {
     pub fn new(new: u64, old: u64) -> Self {
         Self {
@@ -852,6 +862,16 @@ impl SummaryOutput {
     /// Try to create an empty summary file returning the [`File`] object
     pub fn create(&self) -> Result<File> {
         File::create(&self.path).with_context(|| "Failed to create json summary file")
+    }
+}
+
+impl ToolRunSummaries {
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
+    pub fn has_multiple(&self) -> bool {
+        self.data.len() > 1
     }
 }
 

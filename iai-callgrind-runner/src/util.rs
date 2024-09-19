@@ -14,7 +14,6 @@ use which::which;
 
 use crate::error::Error;
 
-/// TODO: How does either or both serialize?
 /// Either left or right or both can be present
 ///
 /// Most of the time, this enum is used to store (new, old) output, costs, etc. Per convention left
