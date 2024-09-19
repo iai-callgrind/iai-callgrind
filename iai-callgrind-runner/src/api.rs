@@ -16,8 +16,6 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "runner")]
 use crate::runner::costs::Summarize;
 
-// TODO: Move all defaults here into a mod so they are available in iai-callgrind, too ?
-
 /// The model for the `#[binary_benchmark]` attribute or the equivalent from the low level api
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BinaryBenchmark {
@@ -127,20 +125,35 @@ pub enum Direction {
     BottomToTop,
 }
 
-/// TODO: DOCS
+/// The metric kinds collected by DHAT
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum DhatMetricKind {
+    /// Total bytes allocated over the entire execution
     TotalBytes,
+    /// Total heap blocks allocated over the entire execution
     TotalBlocks,
+    /// The bytes alive at t-gmax, the time when the heap size reached its global maximum
     AtTGmaxBytes,
+    /// The blocks alive at t-gmax
     AtTGmaxBlocks,
+    /// The amount of bytes at the end of the execution.
+    ///
+    /// This is the amount of bytes which were not explicitly freed.
     AtTEndBytes,
+    /// The amount of blocks at the end of the execution.
+    ///
+    /// This is the amount of heap blocks which were not explicitly freed.
     AtTEndBlocks,
+    /// The amount of bytes read during the entire execution
     ReadsBytes,
+    /// The amount of bytes written during the entire execution
     WritesBytes,
+    /// The total lifetimes of all heap blocks allocated
     TotalLifetimes,
+    /// The maximum amount of bytes
     MaximumBytes,
+    /// The maximum amount of heap blocks
     MaximumBlocks,
 }
 
@@ -166,9 +179,13 @@ pub enum EntryPoint {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ErrorMetricKind {
+    /// The amount of detected unsuppressed errors
     Errors,
+    /// The amount of detected unsuppressed error contexts
     Contexts,
+    /// The amount of suppressed errors
     SuppressedErrors,
+    /// The amount of suppressed error contexts
     SuppressedContexts,
 }
 

@@ -15,9 +15,6 @@ use super::tool::ValgrindTool;
 use crate::api::{self, DhatMetricKind, ErrorMetricKind, EventKind};
 use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8, EitherOrBoth};
 
-// TODO: Increase the space for numbers a little bit? Increase the precision of the percentage and
-// factor to 7 significant numbers.
-
 /// The subset of callgrind metrics to format in the given order
 pub const CALLGRIND_DEFAULT: [EventKind; 21] = [
     EventKind::Ir,
@@ -647,7 +644,6 @@ pub fn format_vertical<'a, K: Display>(
     let unknown = "*********";
     let no_change = "No change";
 
-    // TODO: Move this into a function format_baselines_header
     match baselines {
         (None, None) => {}
         (None, Some(base)) => {
@@ -1036,8 +1032,6 @@ mod tests {
         assert_eq!(header.to_string(), expected);
     }
 
-    // TODO: Add more tests for the format. This tests only very basically only a single line and if
-    // new costs are present.
     #[rstest]
     #[case::new_costs_0(EventKind::Ir, 0, None, "*********", None)]
     #[case::old_costs_0(EventKind::Ir, 1, Some(0), "+++inf+++", Some("+++inf+++"))]

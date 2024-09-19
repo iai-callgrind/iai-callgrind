@@ -334,8 +334,10 @@ impl Groups {
                     ]);
                     let envs = config.resolve_envs();
 
-                    let callgrind_args =
-                        Args::from_raw_args(&[&config.raw_callgrind_args, &meta_callgrind_args])?;
+                    let callgrind_args = Args::try_from_raw_args(&[
+                        &config.raw_callgrind_args,
+                        &meta_callgrind_args,
+                    ])?;
 
                     let flamegraph_config = config.flamegraph_config.map(Into::into);
                     let module_path =
@@ -365,7 +367,14 @@ impl Groups {
                             &meta.regression_config,
                         )
                         .map(Into::into),
-                        tools: ToolConfigs(config.tools.0.into_iter().map(Into::into).collect()),
+                        tools: ToolConfigs(
+                            config
+                                .tools
+                                .0
+                                .into_iter()
+                                .map(TryInto::try_into)
+                                .collect::<Result<Vec<_>, _>>()?,
+                        ),
                         module_path,
                         output_format,
                     };

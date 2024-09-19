@@ -37,21 +37,26 @@ fn bench_bubble_sort_allocate() -> i32 {
 }
 
 #[library_benchmark]
-#[bench::trace_children(args = (), config = LibraryBenchmarkConfig::default()
+#[bench::trace_children(
+    args = (),
+    config = LibraryBenchmarkConfig::default()
         .raw_callgrind_args([
-            "--trace-children=yes",
             "--toggle-collect=sort::main"
         ])
+)]
+#[bench::no_trace_children(
+    args = (),
+    config = LibraryBenchmarkConfig::default()
+        .raw_callgrind_args(["trace-children=no"])
         .tools_override([
-            Tool::new(ValgrindTool::DHAT).args(["--trace-children=yes"]),
-            Tool::new(ValgrindTool::Massif).args(["--trace-children=yes"]),
-            Tool::new(ValgrindTool::BBV).args(["--trace-children=yes"]),
-            Tool::new(ValgrindTool::Memcheck).args(["--trace-children=yes", "--time-stamp=yes"]),
-            Tool::new(ValgrindTool::DRD).args(["--trace-children=yes"]),
-            Tool::new(ValgrindTool::Helgrind).args(["--trace-children=yes"])
+            Tool::new(ValgrindTool::DHAT).args(["--trace-children=no"]),
+            Tool::new(ValgrindTool::Massif).args(["--trace-children=no"]),
+            Tool::new(ValgrindTool::BBV).args(["--trace-children=no"]),
+            Tool::new(ValgrindTool::Memcheck).args(["--trace-children=no"]),
+            Tool::new(ValgrindTool::DRD).args(["--trace-children=no"]),
+            Tool::new(ValgrindTool::Helgrind).args(["--trace-children=no"])
         ])
 )]
-#[bench::no_trace_children()]
 fn bench_subprocess() -> io::Result<Output> {
     println!("Do something before calling subprocess");
     black_box(subprocess(

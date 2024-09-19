@@ -1,10 +1,21 @@
 use std::ffi::OsString;
+use std::fmt::Display;
+use std::str::FromStr;
 
+use anyhow::{anyhow, Result};
 use log::warn;
 
 use super::{ToolOutputPath, ValgrindTool};
 use crate::api::{self};
+use crate::error::Error;
 use crate::util::{bool_to_yesno, yesno_to_bool};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FairSched {
+    Yes,
+    No,
+    Try,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolArgs {
@@ -14,11 +25,38 @@ pub struct ToolArgs {
     pub error_exitcode: String,
     pub verbose: bool,
     pub trace_children: bool,
+    pub fair_sched: FairSched,
     pub other: Vec<String>,
 }
 
+impl Display for FairSched {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let string = match self {
+            FairSched::Yes => "yes",
+            FairSched::No => "no",
+            FairSched::Try => "try",
+        };
+        write!(f, "{string}")
+    }
+}
+
+impl FromStr for FairSched {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "no" => Ok(FairSched::No),
+            "yes" => Ok(FairSched::Yes),
+            "try" => Ok(FairSched::Try),
+            _ => Err(anyhow!(
+                "Invalid argument for --fair-sched. Valid arguments are: 'yes', 'no', 'try'"
+            )),
+        }
+    }
+}
+
 impl ToolArgs {
-    pub fn from_raw_args(tool: ValgrindTool, raw_args: api::RawArgs) -> Self {
+    pub fn try_from_raw_args(tool: ValgrindTool, raw_args: api::RawArgs) -> Result<Self> {
         let mut tool_args = Self {
             tool,
             output_paths: Vec::default(),
@@ -34,7 +72,8 @@ impl ToolArgs {
             },
             verbose: false,
             other: Vec::default(),
-            trace_children: false,
+            trace_children: true,
+            fair_sched: FairSched::Try,
         };
 
         for arg in raw_args.0 {
@@ -57,15 +96,13 @@ impl ToolArgs {
                 Some(("--error-exitcode", value)) => {
                     value.clone_into(&mut tool_args.error_exitcode);
                 }
-                Some(("--trace-children", value)) => {
-                    if let Some(arg) = yesno_to_bool(value) {
-                        tool_args.trace_children = arg;
-                    } else {
-                        warn!(
-                            "Ignoring malformed value '{value}' for --trace-children. Expecting \
-                             'yes' or 'no'"
-                        );
-                    }
+                Some((key @ "--trace-children", value)) => {
+                    tool_args.trace_children = yesno_to_bool(value).ok_or_else(|| {
+                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
+                    })?;
+                }
+                Some(("--fair-sched", value)) => {
+                    tool_args.fair_sched = FairSched::from_str(value)?;
                 }
                 None if matches!(
                     arg.as_str(),
@@ -84,7 +121,7 @@ impl ToolArgs {
             }
         }
 
-        tool_args
+        Ok(tool_args)
     }
 
     // TODO: memcheck: --xtree-leak-file=<filename> [default: xtleak.kcg.%p]
@@ -186,7 +223,11 @@ impl ToolArgs {
         vec.push(format!("--tool={}", self.tool.id()).into());
         vec.push(format!("--error-exitcode={}", &self.error_exitcode).into());
         vec.push(format!("--trace-children={}", &bool_to_yesno(self.trace_children)).into());
-        // FIXME: ADD verbose
+        vec.push(format!("--fair-sched={}", self.fair_sched).into());
+        if self.verbose {
+            vec.push("--verbose".into());
+        }
+
         vec.extend(self.other.iter().map(OsString::from));
         vec.extend_from_slice(&self.output_paths);
         if let Some(log_arg) = self.log_path.as_ref() {

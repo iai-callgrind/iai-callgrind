@@ -1,23 +1,16 @@
 use std::collections::VecDeque;
 use std::ffi::OsString;
-use std::fmt::Display;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use log::{log_enabled, warn};
 
 use crate::api::RawArgs;
 use crate::error::Error;
 use crate::runner::tool;
+use crate::runner::tool::args::FairSched;
 use crate::util::{bool_to_yesno, yesno_to_bool};
-
-#[derive(Debug, Clone)]
-enum FairSched {
-    Yes,
-    No,
-    Try,
-}
 
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone)]
@@ -43,13 +36,13 @@ pub struct Args {
 }
 
 impl Args {
-    pub fn from_raw_args(args: &[&RawArgs]) -> Result<Self> {
+    pub fn try_from_raw_args(args: &[&RawArgs]) -> Result<Self> {
         let mut default = Self::default();
-        default.update(args.iter().flat_map(|s| &s.0))?;
+        default.try_update(args.iter().flat_map(|s| &s.0))?;
         Ok(default)
     }
 
-    pub fn update<'a, T: Iterator<Item = &'a String>>(&mut self, args: T) -> Result<()> {
+    pub fn try_update<'a, T: Iterator<Item = &'a String>>(&mut self, args: T) -> Result<()> {
         for arg in args {
             match arg
                 .trim()
@@ -61,7 +54,7 @@ impl Args {
                 Some(("--LL", value)) => value.clone_into(&mut self.ll),
                 Some((key @ "--cache-sim", value)) => {
                     self.cache_sim = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
+                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
                 Some(("--toggle-collect", value)) => {
@@ -69,22 +62,22 @@ impl Args {
                 }
                 Some((key @ "--dump-instr", value)) => {
                     self.dump_instr = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
+                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
                 Some((key @ "--dump-line", value)) => {
                     self.dump_line = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
+                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
                 Some((key @ "--trace-children", value)) => {
                     self.trace_children = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
+                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
                 Some((key @ "--separate-threads", value)) => {
                     self.separate_threads = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
+                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
                 Some(("--fair-sched", value)) => {
@@ -159,10 +152,9 @@ impl Default for Args {
             callgrind_out_file: Option::default(),
             log_arg: Option::default(),
             other: Vec::default(),
-            // TODO: Adjust the defaults
-            trace_children: false,
-            separate_threads: false,
-            fair_sched: FairSched::No,
+            trace_children: true,
+            separate_threads: true,
+            fair_sched: FairSched::Try,
         }
     }
 }
@@ -186,7 +178,6 @@ impl From<Args> for tool::args::ToolArgs {
                 "--separate-threads={}",
                 bool_to_yesno(value.separate_threads)
             ),
-            format!("--fair-sched={}", value.fair_sched.to_string(),),
         ];
         other.append(
             &mut value
@@ -206,33 +197,8 @@ impl From<Args> for tool::args::ToolArgs {
             error_exitcode: "0".to_owned(),
             verbose: value.verbose,
             trace_children: value.trace_children,
+            fair_sched: value.fair_sched,
             other,
-        }
-    }
-}
-
-impl Display for FairSched {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let string = match self {
-            FairSched::Yes => "yes",
-            FairSched::No => "no",
-            FairSched::Try => "try",
-        };
-        write!(f, "{string}")
-    }
-}
-
-impl FromStr for FairSched {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        match s {
-            "no" => Ok(FairSched::No),
-            "yes" => Ok(FairSched::Yes),
-            "try" => Ok(FairSched::Try),
-            _ => Err(anyhow!(
-                "Invalid argument for --fair-sched. Valid arguments are: 'yes', 'no', 'try'"
-            )),
         }
     }
 }

@@ -29,7 +29,7 @@ fn create_file() {
 #[bench::relative(
     args = ("./cat"),
     setup = create_script,
-    config = BinaryBenchmarkConfig::default().raw_callgrind_args(["--trace-children=yes"])
+    config = BinaryBenchmarkConfig::default().raw_callgrind_args(["trace-children=yes"])
 )]
 #[bench::absolute(
     args = ("/bin/cat"),
@@ -47,6 +47,7 @@ fn bench_paths(path: &str) -> Command {
 binary_benchmark_group!(name = my_group; benchmarks = bench_paths);
 main!(
     config = BinaryBenchmarkConfig::default()
+        .raw_callgrind_args(["trace-children=no"])
         .output_format(OutputFormat::default()
             .truncate_description(None)
         );

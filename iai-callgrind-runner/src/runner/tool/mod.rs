@@ -347,15 +347,17 @@ impl ToolConfig {
     }
 }
 
-impl From<api::Tool> for ToolConfig {
-    fn from(value: api::Tool) -> Self {
+impl TryFrom<api::Tool> for ToolConfig {
+    type Error = anyhow::Error;
+
+    fn try_from(value: api::Tool) -> std::result::Result<Self, Self::Error> {
         let tool = value.kind.into();
-        Self {
+        ToolArgs::try_from_raw_args(tool, value.raw_args).map(|args| Self {
             tool,
             is_enabled: value.enable.unwrap_or(true),
-            args: ToolArgs::from_raw_args(tool, value.raw_args),
+            args,
             outfile_modifier: None,
-        }
+        })
     }
 }
 
@@ -1048,8 +1050,10 @@ impl ToolOutputPath {
     pub fn sanitize_bbv(&self) -> Result<()> {
         // path, bbv_type == (pc|bb).out, base, thread,
         type Grouped = (PathBuf, String, Option<String>, String);
+        // key: bbv_type => key: pid
         type Group = HashMap<String, HashMap<Option<String>, Vec<Grouped>>>;
 
+        // key: base
         let mut groups: HashMap<Option<String>, Group> = HashMap::new();
         for entry in self.walk_dir()? {
             let file_name = entry.file_name();
