@@ -9,9 +9,9 @@ use serde::{Deserialize, Serialize};
 
 use super::CacheSummary;
 use crate::api::EventKind;
-use crate::runner::costs::Summarize;
+use crate::runner::metrics::Summarize;
 
-pub type Costs = crate::runner::costs::Costs<EventKind>;
+pub type Metrics = crate::runner::metrics::Metrics<EventKind>;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Calls {
@@ -39,7 +39,7 @@ impl Calls {
     }
 }
 
-impl Costs {
+impl Metrics {
     /// Calculate and add derived summary events (i.e. estimated cycles) in-place
     ///
     /// Additional calls to this function will overwrite the costs for derived summary events.
@@ -70,7 +70,7 @@ impl Costs {
     ///
     /// This method just probes for [`EventKind::EstimatedCycles`] to detect the summarized state.
     pub fn is_summarized(&self) -> bool {
-        self.cost_by_kind(&EventKind::EstimatedCycles).is_some()
+        self.metric_by_kind(&EventKind::EstimatedCycles).is_some()
     }
 
     /// Return true if costs can be summarized
@@ -78,18 +78,18 @@ impl Costs {
     /// This method probes for [`EventKind::I1mr`] which is present if callgrind was run with the
     /// cache simulation (`--cache-sim=yes`) enabled.
     pub fn can_summarize(&self) -> bool {
-        self.cost_by_kind(&EventKind::I1mr).is_some()
+        self.metric_by_kind(&EventKind::I1mr).is_some()
     }
 }
 
-impl Default for Costs {
+impl Default for Metrics {
     fn default() -> Self {
         Self(indexmap! {EventKind::Ir => 0})
     }
 }
 
 impl Summarize for EventKind {
-    fn summarize(costs: &mut Cow<Costs>) {
+    fn summarize(costs: &mut Cow<Metrics>) {
         if !costs.is_summarized() {
             let _ = costs.to_mut().make_summary();
         }

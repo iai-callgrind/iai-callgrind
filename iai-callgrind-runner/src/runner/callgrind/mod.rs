@@ -13,24 +13,23 @@ use colored::Colorize;
 use itertools::Itertools;
 use parser::{CallgrindProperties, ParserOutput};
 
-use self::model::Costs;
+use self::model::Metrics;
 use super::summary::{
-    CallgrindRegressionSummary, CostsSummary, CostsSummaryType, ToolRunSummaries, ToolRunSummary,
+    CallgrindRegression, MetricsSummary, ToolMetricSummary, ToolRun, ToolRunSegment,
 };
 use crate::api::{self, EventKind};
 use crate::util::{to_string_signed_short, EitherOrBoth};
 
-/// TODO: DOCS
 #[derive(Debug, Clone)]
 pub struct Summary {
     pub details: EitherOrBoth<(PathBuf, CallgrindProperties)>,
-    pub costs_summary: CostsSummary,
+    pub metrics_summary: MetricsSummary,
 }
 
 #[derive(Debug, Clone)]
 pub struct Summaries {
-    pub data: Vec<Summary>,
-    pub total: CostsSummary,
+    pub summaries: Vec<Summary>,
+    pub total: MetricsSummary,
 }
 
 #[derive(Clone, Debug)]
@@ -48,22 +47,22 @@ pub struct RegressionConfig {
     pub fail_fast: bool,
 }
 
-impl TryFrom<&Costs> for CacheSummary {
+impl TryFrom<&Metrics> for CacheSummary {
     type Error = anyhow::Error;
 
-    fn try_from(value: &Costs) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: &Metrics) -> std::result::Result<Self, Self::Error> {
         use EventKind::*;
         //         0   1  2    3    4    5    6    7    8
         // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
-        let instructions = value.try_cost_by_kind(&Ir)?;
-        let total_data_cache_reads = value.try_cost_by_kind(&Dr)?;
-        let total_data_cache_writes = value.try_cost_by_kind(&Dw)?;
-        let l1_instructions_cache_read_misses = value.try_cost_by_kind(&I1mr)?;
-        let l1_data_cache_read_misses = value.try_cost_by_kind(&D1mr)?;
-        let l1_data_cache_write_misses = value.try_cost_by_kind(&D1mw)?;
-        let l3_instructions_cache_read_misses = value.try_cost_by_kind(&ILmr)?;
-        let l3_data_cache_read_misses = value.try_cost_by_kind(&DLmr)?;
-        let l3_data_cache_write_misses = value.try_cost_by_kind(&DLmw)?;
+        let instructions = value.try_metric_by_kind(&Ir)?;
+        let total_data_cache_reads = value.try_metric_by_kind(&Dr)?;
+        let total_data_cache_writes = value.try_metric_by_kind(&Dw)?;
+        let l1_instructions_cache_read_misses = value.try_metric_by_kind(&I1mr)?;
+        let l1_data_cache_read_misses = value.try_metric_by_kind(&D1mr)?;
+        let l1_data_cache_write_misses = value.try_metric_by_kind(&D1mw)?;
+        let l3_instructions_cache_read_misses = value.try_metric_by_kind(&ILmr)?;
+        let l3_data_cache_read_misses = value.try_metric_by_kind(&DLmr)?;
+        let l3_data_cache_write_misses = value.try_metric_by_kind(&DLmw)?;
 
         let ram_hits = l3_instructions_cache_read_misses
             + l3_data_cache_read_misses
@@ -99,16 +98,16 @@ impl RegressionConfig {
     ///
     /// Returns an [`anyhow::Error`] with the only source [`crate::error::Error::RegressionError`]
     /// if a regression error occurred
-    pub fn check_and_print(&self, costs_summary: &CostsSummary) -> Vec<CallgrindRegressionSummary> {
-        let regression_summaries = self.check(costs_summary);
+    pub fn check_and_print(&self, metrics_summary: &MetricsSummary) -> Vec<CallgrindRegression> {
+        let regression = self.check(metrics_summary);
 
-        for CallgrindRegressionSummary {
+        for CallgrindRegression {
             event_kind,
             new,
             old,
             diff_pct,
             limit,
-        } in &regression_summaries
+        } in &regression
         {
             if limit.is_sign_positive() {
                 eprintln!(
@@ -133,19 +132,19 @@ impl RegressionConfig {
             }
         }
 
-        regression_summaries
+        regression
     }
 
     // Check the `CostsSummary` for regressions.
     //
     // The limits for event kinds which are not present in the `CostsSummary` are ignored. A
     // `CostsDiff` which does not have both `new` and `old` is also ignored.
-    pub fn check(&self, costs_summary: &CostsSummary) -> Vec<CallgrindRegressionSummary> {
+    pub fn check(&self, metrics_summary: &MetricsSummary) -> Vec<CallgrindRegression> {
         let mut regressions = vec![];
         for (event_kind, new_cost, old_cost, pct, limit) in
             self.limits.iter().filter_map(|(event_kind, limit)| {
-                costs_summary.diff_by_kind(event_kind).and_then(|d| {
-                    if let EitherOrBoth::Both(new, old) = d.costs {
+                metrics_summary.diff_by_kind(event_kind).and_then(|d| {
+                    if let EitherOrBoth::Both(new, old) = d.metrics {
                         // This unwrap is safe since the diffs are calculated if both costs are
                         // present
                         Some((event_kind, new, old, d.diffs.unwrap().diff_pct, limit))
@@ -157,24 +156,24 @@ impl RegressionConfig {
         {
             if limit.is_sign_positive() {
                 if pct > *limit {
-                    let summary = CallgrindRegressionSummary {
+                    let regression = CallgrindRegression {
                         event_kind: *event_kind,
                         new: new_cost,
                         old: old_cost,
                         diff_pct: pct,
                         limit: *limit,
                     };
-                    regressions.push(summary);
+                    regressions.push(regression);
                 }
             } else if pct < *limit {
-                let summary = CallgrindRegressionSummary {
+                let regression = CallgrindRegression {
                     event_kind: *event_kind,
                     new: new_cost,
                     old: old_cost,
                     diff_pct: pct,
                     limit: *limit,
                 };
-                regressions.push(summary);
+                regressions.push(regression);
             } else {
                 // no regression
             }
@@ -239,8 +238,8 @@ impl Summaries {
     /// ])
     /// ```
     fn group(
-        parsed: impl Iterator<Item = (PathBuf, CallgrindProperties, Costs)>,
-    ) -> Vec<Vec<Vec<(PathBuf, CallgrindProperties, Costs)>>> {
+        parsed: impl Iterator<Item = (PathBuf, CallgrindProperties, Metrics)>,
+    ) -> Vec<Vec<Vec<(PathBuf, CallgrindProperties, Metrics)>>> {
         let mut grouped = vec![];
         let mut cur_pid = 0_i32;
         let mut cur_part = 0;
@@ -286,7 +285,7 @@ impl Summaries {
         let grouped_new = Self::group(parsed_new.into_iter());
         let grouped_old = Self::group(parsed_old.into_iter().flatten());
 
-        let mut total = CostsSummary::default();
+        let mut total = MetricsSummary::default();
         let mut summaries = vec![];
 
         for e_pids in grouped_new.into_iter().zip_longest(grouped_old) {
@@ -307,21 +306,21 @@ impl Summaries {
                                             Summary::from_old(old.0, old.1, old.2)
                                         }
                                     };
-                                    total.add(&summary.costs_summary);
+                                    total.add(&summary.metrics_summary);
                                     summaries.push(summary);
                                 }
                             }
                             itertools::EitherOrBoth::Left(left) => {
                                 for new in left {
                                     let summary = Summary::from_new(new.0, new.1, new.2);
-                                    total.add(&summary.costs_summary);
+                                    total.add(&summary.metrics_summary);
                                     summaries.push(summary);
                                 }
                             }
                             itertools::EitherOrBoth::Right(right) => {
                                 for old in right {
                                     let summary = Summary::from_old(old.0, old.1, old.2);
-                                    total.add(&summary.costs_summary);
+                                    total.add(&summary.metrics_summary);
                                     summaries.push(summary);
                                 }
                             }
@@ -331,42 +330,39 @@ impl Summaries {
                 itertools::EitherOrBoth::Left(left) => {
                     for new in left.into_iter().flatten() {
                         let summary = Summary::from_new(new.0, new.1, new.2);
-                        total.add(&summary.costs_summary);
+                        total.add(&summary.metrics_summary);
                         summaries.push(summary);
                     }
                 }
                 itertools::EitherOrBoth::Right(right) => {
                     for old in right.into_iter().flatten() {
                         let summary = Summary::from_old(old.0, old.1, old.2);
-                        total.add(&summary.costs_summary);
+                        total.add(&summary.metrics_summary);
                         summaries.push(summary);
                     }
                 }
             }
         }
 
-        Self {
-            data: summaries,
-            total,
-        }
+        Self { summaries, total }
     }
 
     pub fn has_multiple(&self) -> bool {
-        self.data.len() > 1
+        self.summaries.len() > 1
     }
 }
 
-impl From<Summaries> for ToolRunSummaries {
+impl From<Summaries> for ToolRun {
     fn from(value: Summaries) -> Self {
-        let summaries = value.data.into_iter().map(Into::into).collect();
+        let segments = value.summaries.into_iter().map(Into::into).collect();
         Self {
-            total: CostsSummaryType::CallgrindSummary(value.total),
-            data: summaries,
+            total: ToolMetricSummary::CallgrindSummary(value.total),
+            segments,
         }
     }
 }
 
-impl From<&Summaries> for ToolRunSummaries {
+impl From<&Summaries> for ToolRun {
     fn from(value: &Summaries) -> Self {
         value.clone().into()
     }
@@ -375,53 +371,53 @@ impl From<&Summaries> for ToolRunSummaries {
 impl Summary {
     pub fn new(
         details: EitherOrBoth<(PathBuf, CallgrindProperties)>,
-        costs_summary: CostsSummary,
+        metrics_summary: MetricsSummary,
     ) -> Self {
         Self {
             details,
-            costs_summary,
+            metrics_summary,
         }
     }
 
-    pub fn from_new(path: PathBuf, properties: CallgrindProperties, costs: Costs) -> Self {
+    pub fn from_new(path: PathBuf, properties: CallgrindProperties, costs: Metrics) -> Self {
         Self {
             details: EitherOrBoth::Left((path, properties)),
-            costs_summary: CostsSummary::new(EitherOrBoth::Left(costs)),
+            metrics_summary: MetricsSummary::new(EitherOrBoth::Left(costs)),
         }
     }
 
-    pub fn from_old(path: PathBuf, properties: CallgrindProperties, costs: Costs) -> Self {
+    pub fn from_old(path: PathBuf, properties: CallgrindProperties, costs: Metrics) -> Self {
         Self {
             details: EitherOrBoth::Right((path, properties)),
-            costs_summary: CostsSummary::new(EitherOrBoth::Right(costs)),
+            metrics_summary: MetricsSummary::new(EitherOrBoth::Right(costs)),
         }
     }
 
     pub fn from_new_and_old(
-        new: (PathBuf, CallgrindProperties, Costs),
-        old: (PathBuf, CallgrindProperties, Costs),
+        new: (PathBuf, CallgrindProperties, Metrics),
+        old: (PathBuf, CallgrindProperties, Metrics),
     ) -> Self {
         Self {
             details: EitherOrBoth::Both((new.0, new.1), (old.0, old.1)),
-            costs_summary: CostsSummary::new(EitherOrBoth::Both(new.2, old.2)),
+            metrics_summary: MetricsSummary::new(EitherOrBoth::Both(new.2, old.2)),
         }
     }
 }
 
-impl From<Summary> for ToolRunSummary {
+impl From<Summary> for ToolRunSegment {
     fn from(value: Summary) -> Self {
         match value.details {
-            EitherOrBoth::Left((new_path, new_props)) => ToolRunSummary {
-                costs_summary: CostsSummaryType::CallgrindSummary(value.costs_summary),
-                info: EitherOrBoth::Left(new_props.into_info(&new_path)),
+            EitherOrBoth::Left((new_path, new_props)) => ToolRunSegment {
+                metrics_summary: ToolMetricSummary::CallgrindSummary(value.metrics_summary),
+                details: EitherOrBoth::Left(new_props.into_info(&new_path)),
             },
-            EitherOrBoth::Right((old_path, old_props)) => ToolRunSummary {
-                costs_summary: CostsSummaryType::CallgrindSummary(value.costs_summary),
-                info: EitherOrBoth::Right(old_props.into_info(&old_path)),
+            EitherOrBoth::Right((old_path, old_props)) => ToolRunSegment {
+                metrics_summary: ToolMetricSummary::CallgrindSummary(value.metrics_summary),
+                details: EitherOrBoth::Right(old_props.into_info(&old_path)),
             },
-            EitherOrBoth::Both((new_path, new_props), (old_path, old_props)) => ToolRunSummary {
-                costs_summary: CostsSummaryType::CallgrindSummary(value.costs_summary),
-                info: EitherOrBoth::Both(
+            EitherOrBoth::Both((new_path, new_props), (old_path, old_props)) => ToolRunSegment {
+                metrics_summary: ToolMetricSummary::CallgrindSummary(value.metrics_summary),
+                details: EitherOrBoth::Both(
                     new_props.into_info(&new_path),
                     old_props.into_info(&old_path),
                 ),
@@ -437,8 +433,8 @@ mod tests {
 
     use super::*;
 
-    fn cachesim_costs(costs: [u64; 9]) -> Costs {
-        Costs::with_event_kinds([
+    fn cachesim_costs(costs: [u64; 9]) -> Metrics {
+        Metrics::with_metric_kinds([
             (Ir, costs[0]),
             (Dr, costs[1]),
             (Dw, costs[2]),
@@ -455,7 +451,7 @@ mod tests {
     fn test_regression_check_when_old_is_none() {
         let regression = RegressionConfig::default();
         let new = cachesim_costs([0, 0, 0, 0, 0, 0, 0, 0, 0]);
-        let summary = CostsSummary::new(EitherOrBoth::Left(new));
+        let summary = MetricsSummary::new(EitherOrBoth::Left(new));
 
         assert!(regression.check(&summary).is_empty());
     }
@@ -528,17 +524,17 @@ mod tests {
 
         let new = cachesim_costs(new);
         let old = cachesim_costs(old);
-        let summary = CostsSummary::new(EitherOrBoth::Both(new, old));
+        let summary = MetricsSummary::new(EitherOrBoth::Both(new, old));
         let expected = expected
             .iter()
-            .map(|(e, n, o, d, l)| CallgrindRegressionSummary {
+            .map(|(e, n, o, d, l)| CallgrindRegression {
                 event_kind: *e,
                 new: *n,
                 old: *o,
                 diff_pct: *d,
                 limit: *l,
             })
-            .collect::<Vec<CallgrindRegressionSummary>>();
+            .collect::<Vec<CallgrindRegression>>();
 
         assert_eq!(regression.check(&summary), expected);
     }

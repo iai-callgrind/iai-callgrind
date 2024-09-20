@@ -148,8 +148,8 @@
         }
       ]
     },
-    "CallgrindRegressionSummary": {
-      "description": "The `CallgrindRegressionSummary` describing a single event based performance regression",
+    "CallgrindRegression": {
+      "description": "The `CallgrindRegression` describing a single event based performance regression",
       "type": "object",
       "required": ["diff_pct", "event_kind", "limit", "new", "old"],
       "properties": {
@@ -185,16 +185,16 @@
         }
       }
     },
-    "CallgrindRunSummaries": {
-      "description": "The `CallgrindRunSummaries` grouping all `CallgrindRunSummary` and their total costs in a `CallgrindTotal`",
+    "CallgrindRun": {
+      "description": "The `CallgrindRun` contains all `CallgrindRunSegments` and their total costs in a `CallgrindTotal`.",
       "type": "object",
-      "required": ["summaries", "total"],
+      "required": ["segments", "total"],
       "properties": {
-        "summaries": {
+        "segments": {
           "description": "All `CallgrindRunSummary`s",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/CallgrindRunSummary"
+            "$ref": "#/definitions/CallgrindRunSegment"
           }
         },
         "total": {
@@ -207,8 +207,8 @@
         }
       }
     },
-    "CallgrindRunSummary": {
-      "description": "The `CallgrindRunSummary` containing the recorded events, performance regressions of a single callgrind run",
+    "CallgrindRunSegment": {
+      "description": "The `CallgrindRunSegment` containing the metric differences, performance regressions of a callgrind run segment.\n\nA segment can be a part (caused by options like `--dump-every-bb=xxx`), a thread (caused by `--separate-threads`) or a pid (possibly caused by `--trace-children`). A segment is a summary over a single file which contains the costs of that part, thread and/or pid.",
       "type": "object",
       "required": ["command", "events", "regressions"],
       "properties": {
@@ -228,10 +228,10 @@
           "type": "string"
         },
         "events": {
-          "description": "All recorded costs for `EventKinds`",
+          "description": "All recorded metrics for the `EventKinds`",
           "allOf": [
             {
-              "$ref": "#/definitions/CostsSummary_for_EventKind"
+              "$ref": "#/definitions/MetricsSummary_for_EventKind"
             }
           ]
         },
@@ -239,16 +239,24 @@
           "description": "All detected performance regressions per callgrind run",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/CallgrindRegressionSummary"
+            "$ref": "#/definitions/CallgrindRegression"
           }
         }
       }
     },
     "CallgrindSummary": {
-      "description": "The `CallgrindSummary` summarizes all callgrind runs",
+      "description": "The `CallgrindSummary` contains the callgrind run, flamegraph paths and other paths to the segments of the callgrind run.",
       "type": "object",
-      "required": ["flamegraphs", "log_paths", "out_paths", "summaries"],
+      "required": ["callgrind_run", "flamegraphs", "log_paths", "out_paths"],
       "properties": {
+        "callgrind_run": {
+          "description": "The summary of all callgrind segments is a `CallgrindRun`",
+          "allOf": [
+            {
+              "$ref": "#/definitions/CallgrindRun"
+            }
+          ]
+        },
         "flamegraphs": {
           "description": "The summaries of possibly created flamegraphs",
           "type": "array",
@@ -269,121 +277,29 @@
           "items": {
             "type": "string"
           }
-        },
-        "summaries": {
-          "description": "The summaries of all callgrind runs",
-          "allOf": [
-            {
-              "$ref": "#/definitions/CallgrindRunSummaries"
-            }
-          ]
         }
       }
     },
     "CallgrindTotal": {
-      "description": "The total callgrind costs over the `CallgrindRunSummaries` and all detected regressions for the total",
+      "description": "The total callgrind costs over the `CallgrindRunSegments` and all detected regressions for the total",
       "type": "object",
       "required": ["regressions", "summary"],
       "properties": {
         "regressions": {
-          "description": "All detected regressions for the total costs",
+          "description": "All detected regressions for the total metrics",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/CallgrindRegressionSummary"
+            "$ref": "#/definitions/CallgrindRegression"
           }
         },
         "summary": {
-          "description": "The total costs",
+          "description": "The total over the segment metrics",
           "allOf": [
             {
-              "$ref": "#/definitions/CostsSummary_for_EventKind"
+              "$ref": "#/definitions/MetricsSummary_for_EventKind"
             }
           ]
         }
-      }
-    },
-    "CostsDiff": {
-      "description": "The `CostsDiff` describes the difference between an single optional `new` and `old` cost as percentage and factor.\n\nThere is either a `new`, `old` value present or both. If both values are present, then there is also the `Diffs` present.",
-      "type": "object",
-      "required": ["costs"],
-      "properties": {
-        "costs": {
-          "$ref": "#/definitions/EitherOrBoth_for_uint64"
-        },
-        "diffs": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Diffs"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      }
-    },
-    "CostsSummaryType": {
-      "description": "The `CostsSummaryType` contains the `CostsSummary` differentiated by metric kinds",
-      "oneOf": [
-        {
-          "description": "If there are no costs extracted (currently massif, bbv)",
-          "type": "string",
-          "enum": ["None"]
-        },
-        {
-          "description": "The error summary of tools which reports errors (memcheck, helgrind, drd)",
-          "type": "object",
-          "required": ["ErrorSummary"],
-          "properties": {
-            "ErrorSummary": {
-              "$ref": "#/definitions/CostsSummary_for_ErrorMetricKind"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "The dhat summary",
-          "type": "object",
-          "required": ["DhatSummary"],
-          "properties": {
-            "DhatSummary": {
-              "$ref": "#/definitions/CostsSummary_for_DhatMetricKind"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "The callgrind summary",
-          "type": "object",
-          "required": ["CallgrindSummary"],
-          "properties": {
-            "CallgrindSummary": {
-              "$ref": "#/definitions/CostsSummary_for_EventKind"
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
-    "CostsSummary_for_DhatMetricKind": {
-      "description": "The `CostsSummary` contains all differences between two benchmark runs",
-      "type": "object",
-      "additionalProperties": {
-        "$ref": "#/definitions/CostsDiff"
-      }
-    },
-    "CostsSummary_for_ErrorMetricKind": {
-      "description": "The `CostsSummary` contains all differences between two benchmark runs",
-      "type": "object",
-      "additionalProperties": {
-        "$ref": "#/definitions/CostsDiff"
-      }
-    },
-    "CostsSummary_for_EventKind": {
-      "description": "The `CostsSummary` contains all differences between two benchmark runs",
-      "type": "object",
-      "additionalProperties": {
-        "$ref": "#/definitions/CostsDiff"
       }
     },
     "Diffs": {
@@ -392,18 +308,18 @@
       "required": ["diff_pct", "factor"],
       "properties": {
         "diff_pct": {
-          "description": "The percentage of the difference between two `Costs`",
+          "description": "The percentage of the difference between two `Metrics`",
           "type": "number",
           "format": "double"
         },
         "factor": {
-          "description": "The factor of the difference between two `Costs`",
+          "description": "The factor of the difference between two `Metrics`",
           "type": "number",
           "format": "double"
         }
       }
     },
-    "EitherOrBoth_for_ToolRunInfo": {
+    "EitherOrBoth_for_SegmentDetails": {
       "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, costs, etc. Per convention left is always `new` and right is `old`.\n\nThis enum is inspired by `itertools::EitherOrBoth`. We use a simplification `EitherOrBoth<T>` instead of `EitherOrBoth<T,U = T>` because that is what we always need. Depending on `itertools` just because of this enum was no option. However, this simplified enum allows further optimizations, for example [`Self::map`] only needs a single closure instead of two.\n\n# Developer notes\n\nThis enum is not considered complete in terms of possible functionality. Simply extend and add new methods by need.",
       "oneOf": [
         {
@@ -412,7 +328,7 @@
           "required": ["Left"],
           "properties": {
             "Left": {
-              "$ref": "#/definitions/ToolRunInfo"
+              "$ref": "#/definitions/SegmentDetails"
             }
           },
           "additionalProperties": false
@@ -423,7 +339,7 @@
           "required": ["Right"],
           "properties": {
             "Right": {
-              "$ref": "#/definitions/ToolRunInfo"
+              "$ref": "#/definitions/SegmentDetails"
             }
           },
           "additionalProperties": false
@@ -437,10 +353,10 @@
               "type": "array",
               "items": [
                 {
-                  "$ref": "#/definitions/ToolRunInfo"
+                  "$ref": "#/definitions/SegmentDetails"
                 },
                 {
-                  "$ref": "#/definitions/ToolRunInfo"
+                  "$ref": "#/definitions/SegmentDetails"
                 }
               ],
               "maxItems": 2,
@@ -684,42 +600,55 @@
         }
       }
     },
-    "SummaryFormat": {
-      "description": "The format (json, ...) in which the summary file should be saved or printed",
-      "oneOf": [
-        {
-          "description": "The format in a space optimal json representation without newlines",
-          "type": "string",
-          "enum": ["Json"]
-        },
-        {
-          "description": "The format in pretty printed json",
-          "type": "string",
-          "enum": ["PrettyJson"]
-        }
-      ]
-    },
-    "SummaryOutput": {
-      "description": "Manage the summary output file with this `SummaryOutput`",
+    "MetricsDiff": {
+      "description": "The `MetricsDiff` describes the difference between a `new` and `old` metric as percentage and factor.\n\nOnly if both metrics are present there is also a `Diffs` present. Otherwise, it just stores the `new` or `old` metric.",
       "type": "object",
-      "required": ["format", "path"],
+      "required": ["metrics"],
       "properties": {
-        "format": {
-          "description": "The [`SummaryFormat`]",
-          "allOf": [
+        "diffs": {
+          "description": "If both metrics are present there is also a `Diffs` present",
+          "anyOf": [
             {
-              "$ref": "#/definitions/SummaryFormat"
+              "$ref": "#/definitions/Diffs"
+            },
+            {
+              "type": "null"
             }
           ]
         },
-        "path": {
-          "description": "The path to the destination file of this summary",
-          "type": "string"
+        "metrics": {
+          "description": "Either the `new`, `old` or both metrics",
+          "allOf": [
+            {
+              "$ref": "#/definitions/EitherOrBoth_for_uint64"
+            }
+          ]
         }
       }
     },
-    "ToolRunInfo": {
-      "description": "Some additional and necessary information about the tool run",
+    "MetricsSummary_for_DhatMetricKind": {
+      "description": "The `MetricsSummary` contains all differences between two tool run segments",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/MetricsDiff"
+      }
+    },
+    "MetricsSummary_for_ErrorMetricKind": {
+      "description": "The `MetricsSummary` contains all differences between two tool run segments",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/MetricsDiff"
+      }
+    },
+    "MetricsSummary_for_EventKind": {
+      "description": "The `MetricsSummary` contains all differences between two tool run segments",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/MetricsDiff"
+      }
+    },
+    "SegmentDetails": {
+      "description": "Some additional and necessary information about the tool run segment",
       "type": "object",
       "required": ["command", "path", "pid"],
       "properties": {
@@ -759,38 +688,125 @@
         }
       }
     },
-    "ToolRunSummaries": {
-      "description": "All tool run summaries and the total over them",
+    "SummaryFormat": {
+      "description": "The format (json, ...) in which the summary file should be saved or printed",
+      "oneOf": [
+        {
+          "description": "The format in a space optimal json representation without newlines",
+          "type": "string",
+          "enum": ["Json"]
+        },
+        {
+          "description": "The format in pretty printed json",
+          "type": "string",
+          "enum": ["PrettyJson"]
+        }
+      ]
+    },
+    "SummaryOutput": {
+      "description": "Manage the summary output file with this `SummaryOutput`",
       "type": "object",
-      "required": ["data", "total"],
+      "required": ["format", "path"],
       "properties": {
-        "data": {
-          "description": "The `ToolRunSummary`s",
+        "format": {
+          "description": "The [`SummaryFormat`]",
+          "allOf": [
+            {
+              "$ref": "#/definitions/SummaryFormat"
+            }
+          ]
+        },
+        "path": {
+          "description": "The path to the destination file of this summary",
+          "type": "string"
+        }
+      }
+    },
+    "ToolMetricSummary": {
+      "description": "The `ToolMetricSummary` contains the `MetricsSummary` distinguished by tool and metric kinds",
+      "oneOf": [
+        {
+          "description": "If there are no costs extracted (currently massif, bbv)",
+          "type": "string",
+          "enum": ["None"]
+        },
+        {
+          "description": "The error summary of tools which reports errors (memcheck, helgrind, drd)",
+          "type": "object",
+          "required": ["ErrorSummary"],
+          "properties": {
+            "ErrorSummary": {
+              "$ref": "#/definitions/MetricsSummary_for_ErrorMetricKind"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "The dhat summary",
+          "type": "object",
+          "required": ["DhatSummary"],
+          "properties": {
+            "DhatSummary": {
+              "$ref": "#/definitions/MetricsSummary_for_DhatMetricKind"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "The callgrind summary",
+          "type": "object",
+          "required": ["CallgrindSummary"],
+          "properties": {
+            "CallgrindSummary": {
+              "$ref": "#/definitions/MetricsSummary_for_EventKind"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ToolRun": {
+      "description": "The `ToolRun` contains all information about a single tool run with possibly multiple segments\n\nThe total is always present and summarizes all tool run segments. In the special case of a single tool run segment, the total equals the metrics of this segment.",
+      "type": "object",
+      "required": ["segments", "total"],
+      "properties": {
+        "segments": {
+          "description": "All `ToolRunSegment`s",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/ToolRunSummary"
+            "$ref": "#/definitions/ToolRunSegment"
           }
         },
         "total": {
-          "description": "The total over the `ToolRunSummary`s",
+          "description": "The total over the `ToolRunSegment`s",
           "allOf": [
             {
-              "$ref": "#/definitions/CostsSummaryType"
+              "$ref": "#/definitions/ToolMetricSummary"
             }
           ]
         }
       }
     },
-    "ToolRunSummary": {
-      "description": "The `ToolRunSummary` which contains all information about a single tool run process\n\nThere's a separate process and therefore `ToolRunSummary` for the parent process and each child process if `--trace-children=yes` was passed as argument to the `Tool`.",
+    "ToolRunSegment": {
+      "description": "A single segment of a tool run and if present the comparison with the \"old\" segment\n\nA tool run can produce multiple segments, for example for each process and subprocess with (--trace-children).",
       "type": "object",
-      "required": ["costs_summary", "info"],
+      "required": ["details", "metrics_summary"],
       "properties": {
-        "costs_summary": {
-          "$ref": "#/definitions/CostsSummaryType"
+        "details": {
+          "description": "The details (like command, thread number etc.) about the segment(s)",
+          "allOf": [
+            {
+              "$ref": "#/definitions/EitherOrBoth_for_SegmentDetails"
+            }
+          ]
         },
-        "info": {
-          "$ref": "#/definitions/EitherOrBoth_for_ToolRunInfo"
+        "metrics_summary": {
+          "description": "The `ToolMetricSummary`",
+          "allOf": [
+            {
+              "$ref": "#/definitions/ToolMetricSummary"
+            }
+          ]
         }
       }
     },
@@ -814,10 +830,10 @@
           }
         },
         "summaries": {
-          "description": "All [`ToolRunSummary`]s",
+          "description": "The metrics and details about the tool run",
           "allOf": [
             {
-              "$ref": "#/definitions/ToolRunSummaries"
+              "$ref": "#/definitions/ToolRun"
             }
           ]
         },

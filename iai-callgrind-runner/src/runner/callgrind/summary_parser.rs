@@ -5,7 +5,7 @@ use std::path::Path;
 use anyhow::Result;
 use log::{debug, trace};
 
-use super::model::Costs;
+use super::model::Metrics;
 use super::parser::{parse_header, CallgrindParser, CallgrindProperties};
 use crate::error::Error;
 
@@ -26,7 +26,7 @@ use crate::error::Error;
 pub struct SummaryParser;
 
 impl CallgrindParser for SummaryParser {
-    type Output = Costs;
+    type Output = Metrics;
 
     fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {
         debug!(
@@ -41,7 +41,7 @@ impl CallgrindParser for SummaryParser {
             .map_err(|error| Error::ParseError((path.to_owned(), error.to_string())))?;
 
         let mut found = false;
-        let mut costs = properties.costs_prototype.clone();
+        let mut costs = properties.metrics_prototype.clone();
         for line in iter {
             if let Some(stripped) = line.strip_prefix("summary:") {
                 trace!("Found line with summary: '{}'", line);

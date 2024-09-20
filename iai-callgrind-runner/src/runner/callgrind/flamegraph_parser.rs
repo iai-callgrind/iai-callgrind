@@ -33,10 +33,10 @@ impl FlamegraphMap {
         let mut iter = self.0.map.values_mut().peekable();
         if let Some(value) = iter.peek() {
             // If one cost can be summarized then all costs can be summarized.
-            if value.costs.can_summarize() {
+            if value.metrics.can_summarize() {
                 for value in iter {
                     value
-                        .costs
+                        .metrics
                         .make_summary()
                         .map_err(|error| anyhow!("Failed calculating summary events: {error}"))?;
                 }
@@ -51,7 +51,7 @@ impl FlamegraphMap {
             // The performance of HashMap::entry is worse than the following method because we have
             // a heavy id which needs to be cloned although it is already present in the map.
             if let Some(value) = self.0.map.get_mut(other_id) {
-                value.costs.add(&other_value.costs);
+                value.metrics.add(&other_value.metrics);
             } else {
                 self.0.map.insert(other_id.clone(), other_value.clone());
             }
@@ -78,8 +78,8 @@ impl FlamegraphMap {
                     .map
                     .get(key)
                     .expect("Resolved sentinel must be present in map")
-                    .costs
-                    .cost_by_kind(event_kind)
+                    .metrics
+                    .metric_by_kind(event_kind)
                     .ok_or_else(|| {
                         anyhow!(
                             "Failed creating flamegraph stack: Missing event type '{event_kind}'"
@@ -89,7 +89,7 @@ impl FlamegraphMap {
             .transpose()?;
 
         for (id, value) in &self.0.map {
-            let cost = value.costs.cost_by_kind(event_kind).ok_or_else(|| {
+            let cost = value.metrics.metric_by_kind(event_kind).ok_or_else(|| {
                 anyhow!("Failed creating flamegraph stack: Missing event type '{event_kind}'")
             })?;
 

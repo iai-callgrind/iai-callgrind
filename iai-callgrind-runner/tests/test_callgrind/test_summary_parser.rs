@@ -1,5 +1,5 @@
 use iai_callgrind_runner::api::EventKind;
-use iai_callgrind_runner::runner::callgrind::model::Costs;
+use iai_callgrind_runner::runner::callgrind::model::Metrics;
 use iai_callgrind_runner::runner::callgrind::parser::CallgrindParser;
 use iai_callgrind_runner::runner::callgrind::summary_parser::SummaryParser;
 use iai_callgrind_runner::runner::tool::{ToolOutputPathKind, ValgrindTool};
@@ -14,7 +14,7 @@ use crate::common::{assert_parse_error, Fixtures};
 #[case::no_records("no_records.with_summary_and_totals", [0, 0, 0, 0, 0, 0, 0, 0, 0])]
 #[case::with_records("no_entry_point", [325261, 78145, 35789, 1595, 2119, 850, 1558, 1485, 799])]
 fn test_sentinel_parser(#[case] fixture: &str, #[case] costs: [u64; 9]) {
-    let expected_costs = Costs::with_event_kinds([
+    let expected_costs = Metrics::with_metric_kinds([
         (EventKind::Ir, costs[0]),
         (EventKind::Dr, costs[1]),
         (EventKind::Dw, costs[2]),

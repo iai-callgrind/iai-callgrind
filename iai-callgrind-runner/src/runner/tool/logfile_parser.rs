@@ -12,7 +12,7 @@ use super::{ToolOutputPath, ValgrindTool};
 use crate::error::Error;
 use crate::runner::dhat::logfile_parser::DhatLogfileParser;
 use crate::runner::summary::{
-    CostsKind, CostsSummaryType, ToolRunInfo, ToolRunSummaries, ToolRunSummary,
+    SegmentDetails, ToolMetricSummary, ToolMetrics, ToolRun, ToolRunSegment,
 };
 use crate::util::{make_relative, EitherOrBoth};
 
@@ -72,16 +72,16 @@ pub struct Logfile {
     pub path: PathBuf,
     pub header: Header,
     pub details: Vec<String>,
-    pub costs: CostsKind,
+    pub metrics: ToolMetrics,
 }
 
 #[derive(Debug)]
 pub struct LogfileSummary {
     pub logfile: EitherOrBoth<Logfile>,
-    pub costs_summary: CostsSummaryType,
+    pub metrics_summary: ToolMetricSummary,
 }
 
-impl From<Logfile> for ToolRunInfo {
+impl From<Logfile> for SegmentDetails {
     fn from(value: Logfile) -> Self {
         Self {
             command: value.header.command.display().to_string(),
@@ -96,40 +96,40 @@ impl From<Logfile> for ToolRunInfo {
 }
 
 // Logfiles are separated per process but not per threads by any tool
-impl From<EitherOrBoth<Vec<Logfile>>> for ToolRunSummaries {
+impl From<EitherOrBoth<Vec<Logfile>>> for ToolRun {
     fn from(logfiles: EitherOrBoth<Vec<Logfile>>) -> Self {
-        let mut total: Option<CostsSummaryType> = None;
+        let mut total: Option<ToolMetricSummary> = None;
 
-        let summaries: Vec<ToolRunSummary> = match logfiles {
+        let segments: Vec<ToolRunSegment> = match logfiles {
             EitherOrBoth::Left(new) => new
                 .into_iter()
                 .map(|logfile| {
-                    let costs_summary = CostsSummaryType::from_new_costs(&logfile.costs);
+                    let metrics_summary = ToolMetricSummary::from_new_costs(&logfile.metrics);
                     if let Some(entry) = total.as_mut() {
-                        entry.add_mut(&costs_summary);
+                        entry.add_mut(&metrics_summary);
                     } else {
-                        total = Some(costs_summary.clone());
+                        total = Some(metrics_summary.clone());
                     }
 
-                    ToolRunSummary {
-                        info: EitherOrBoth::Left(logfile.into()),
-                        costs_summary,
+                    ToolRunSegment {
+                        details: EitherOrBoth::Left(logfile.into()),
+                        metrics_summary,
                     }
                 })
                 .collect(),
             EitherOrBoth::Right(old) => old
                 .into_iter()
                 .map(|logfile| {
-                    let costs_summary = CostsSummaryType::from_old_costs(&logfile.costs);
+                    let metrics_summary = ToolMetricSummary::from_old_costs(&logfile.metrics);
                     if let Some(entry) = total.as_mut() {
-                        entry.add_mut(&costs_summary);
+                        entry.add_mut(&metrics_summary);
                     } else {
-                        total = Some(costs_summary.clone());
+                        total = Some(metrics_summary.clone());
                     }
 
-                    ToolRunSummary {
-                        info: EitherOrBoth::Right(logfile.into()),
-                        costs_summary,
+                    ToolRunSegment {
+                        details: EitherOrBoth::Right(logfile.into()),
+                        metrics_summary,
                     }
                 })
                 .collect(),
@@ -138,45 +138,47 @@ impl From<EitherOrBoth<Vec<Logfile>>> for ToolRunSummaries {
                 .zip_longest(old)
                 .map(|either_or_both| match either_or_both {
                     itertools::EitherOrBoth::Both(new, old) => {
-                        let costs_summary =
-                            CostsSummaryType::try_from_new_and_old_costs(&new.costs, &old.costs)
-                                .expect("The cost kinds should match");
+                        let metrics_summary = ToolMetricSummary::try_from_new_and_old_costs(
+                            &new.metrics,
+                            &old.metrics,
+                        )
+                        .expect("The cost kinds should match");
 
                         if let Some(entry) = total.as_mut() {
-                            entry.add_mut(&costs_summary);
+                            entry.add_mut(&metrics_summary);
                         } else {
-                            total = Some(costs_summary.clone());
+                            total = Some(metrics_summary.clone());
                         }
 
-                        ToolRunSummary {
-                            info: EitherOrBoth::Both(new.into(), old.into()),
-                            costs_summary,
+                        ToolRunSegment {
+                            details: EitherOrBoth::Both(new.into(), old.into()),
+                            metrics_summary,
                         }
                     }
                     itertools::EitherOrBoth::Left(new) => {
-                        let costs_summary = CostsSummaryType::from_new_costs(&new.costs);
+                        let metrics_summary = ToolMetricSummary::from_new_costs(&new.metrics);
                         if let Some(entry) = total.as_mut() {
-                            entry.add_mut(&costs_summary);
+                            entry.add_mut(&metrics_summary);
                         } else {
-                            total = Some(costs_summary.clone());
+                            total = Some(metrics_summary.clone());
                         }
 
-                        ToolRunSummary {
-                            info: EitherOrBoth::Left(new.into()),
-                            costs_summary,
+                        ToolRunSegment {
+                            details: EitherOrBoth::Left(new.into()),
+                            metrics_summary,
                         }
                     }
                     itertools::EitherOrBoth::Right(old) => {
-                        let costs_summary = CostsSummaryType::from_old_costs(&old.costs);
+                        let metrics_summary = ToolMetricSummary::from_old_costs(&old.metrics);
                         if let Some(entry) = total.as_mut() {
-                            entry.add_mut(&costs_summary);
+                            entry.add_mut(&metrics_summary);
                         } else {
-                            total = Some(costs_summary.clone());
+                            total = Some(metrics_summary.clone());
                         }
 
-                        ToolRunSummary {
-                            info: EitherOrBoth::Right(old.into()),
-                            costs_summary,
+                        ToolRunSegment {
+                            details: EitherOrBoth::Right(old.into()),
+                            metrics_summary,
                         }
                     }
                 })
@@ -184,7 +186,7 @@ impl From<EitherOrBoth<Vec<Logfile>>> for ToolRunSummaries {
         };
 
         Self {
-            data: summaries,
+            segments,
             total: total.expect("A total should be present"),
         }
     }

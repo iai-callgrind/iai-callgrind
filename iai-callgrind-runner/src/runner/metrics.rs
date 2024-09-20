@@ -10,25 +10,27 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 pub trait Summarize: Hash + Eq + Clone {
-    fn summarize(_: &mut Cow<Costs<Self>>) {}
+    fn summarize(_: &mut Cow<Metrics<Self>>) {}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct Costs<K: Hash + Eq>(pub IndexMap<K, u64>);
+pub struct Metrics<K: Hash + Eq>(pub IndexMap<K, u64>);
 
-/// TODO: Rename all occurrences of `event_kinds` to metric kind
-impl<K: Hash + Eq + Display + Clone> Costs<K> {
+impl<K: Hash + Eq + Display + Clone> Metrics<K> {
+    /// Return empty `Metrics`
+    pub fn empty() -> Self {
+        Metrics(IndexMap::new())
+    }
+
     // The order matters. The index is derived from the insertion order
-    pub fn with_event_kinds<T>(kinds: T) -> Self
+    pub fn with_metric_kinds<T>(kinds: T) -> Self
     where
         T: IntoIterator<Item = (K, u64)>,
     {
         Self(kinds.into_iter().collect())
     }
 
-    /// TODO: zip is applicable for callgrind metrics but this method needs to be documented
-    /// properly that we expect the new values in the same order
     pub fn add_iter_str<I, T>(&mut self, iter: T)
     where
         I: AsRef<str>,
@@ -42,7 +44,6 @@ impl<K: Hash + Eq + Display + Clone> Costs<K> {
         }
     }
 
-    /// TODO: Check if zip is still applicable
     /// Sum this `Cost's` events with other `Costs`
     pub fn add(&mut self, other: &Self) {
         for ((_, old), cost) in self.0.iter_mut().zip(other.0.iter().map(|(_, c)| c)) {
@@ -50,30 +51,30 @@ impl<K: Hash + Eq + Display + Clone> Costs<K> {
         }
     }
 
-    /// Return the cost of the event at index (of insertion order) if present
+    /// Return the metric of the kind at index (of insertion order) if present
     ///
     /// This operation is O(1)
-    pub fn cost_by_index(&self, index: usize) -> Option<u64> {
+    pub fn metric_by_index(&self, index: usize) -> Option<u64> {
         self.0.get_index(index).map(|(_, c)| *c)
     }
 
-    /// Return the cost of the [`crate::api::EventKind`] if present
+    /// Return the metric of the `kind` if present
     ///
     /// This operation is O(1)
-    pub fn cost_by_kind(&self, kind: &K) -> Option<u64> {
+    pub fn metric_by_kind(&self, kind: &K) -> Option<u64> {
         self.0.get_key_value(kind).map(|(_, c)| *c)
     }
 
-    pub fn try_cost_by_kind(&self, kind: &K) -> Result<u64> {
-        self.cost_by_kind(kind)
+    pub fn try_metric_by_kind(&self, kind: &K) -> Result<u64> {
+        self.metric_by_kind(kind)
             .ok_or_else(|| anyhow!("Missing event type '{kind}"))
     }
 
-    pub fn event_kinds(&self) -> Vec<K> {
+    pub fn metric_kinds(&self) -> Vec<K> {
         self.0.iter().map(|(k, _)| k.clone()).collect()
     }
 
-    pub fn event_kinds_union(&self, other: &Self) -> IndexSet<K> {
+    pub fn metric_kinds_union(&self, other: &Self) -> IndexSet<K> {
         let set = self.0.keys().collect::<IndexSet<_>>();
         let other_set = other.0.keys().collect::<IndexSet<_>>();
         set.union(&other_set).map(|s| (*s).clone()).collect()
@@ -81,10 +82,6 @@ impl<K: Hash + Eq + Display + Clone> Costs<K> {
 
     pub fn iter(&self) -> Iter<'_, K, u64> {
         self.0.iter()
-    }
-
-    pub fn empty() -> Self {
-        Costs(IndexMap::new())
     }
 
     pub fn is_empty(&self) -> bool {
@@ -102,9 +99,7 @@ impl<K: Hash + Eq + Display + Clone> Costs<K> {
     }
 }
 
-impl Summarize for String {}
-
-impl<'a, K: Hash + Eq + Display + Clone> IntoIterator for &'a Costs<K> {
+impl<'a, K: Hash + Eq + Display + Clone> IntoIterator for &'a Metrics<K> {
     type Item = (&'a K, &'a u64);
 
     type IntoIter = Iter<'a, K, u64>;
@@ -114,7 +109,7 @@ impl<'a, K: Hash + Eq + Display + Clone> IntoIterator for &'a Costs<K> {
     }
 }
 
-impl<I, K: Hash + Eq + From<I>> FromIterator<I> for Costs<K> {
+impl<I, K: Hash + Eq + From<I>> FromIterator<I> for Metrics<K> {
     fn from_iter<T>(iter: T) -> Self
     where
         T: IntoIterator<Item = I>,

@@ -1,7 +1,7 @@
 map:
   ? file: null
     func: main
-  : costs:
+  : metrics:
       Ir: 1
       Dr: 2
       Dw: 3

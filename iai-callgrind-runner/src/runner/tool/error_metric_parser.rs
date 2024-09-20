@@ -10,8 +10,8 @@ use super::logfile_parser::{
     parse_header, Logfile, LogfileParser, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
 };
 use crate::api::ErrorMetricKind;
-use crate::runner::costs::Costs;
-use crate::runner::summary::CostsKind;
+use crate::runner::metrics::Metrics;
+use crate::runner::summary::ToolMetrics;
 use crate::util::make_relative;
 
 lazy_static! {
@@ -43,7 +43,7 @@ impl LogfileParser for ErrorMetricLogfileParser {
 
         let header = parse_header(&self.root_dir, &path, &mut iter)?;
 
-        let costs_prototype = Costs::from_iter([
+        let metrics_prototype = Metrics::from_iter([
             ErrorMetricKind::Errors,
             ErrorMetricKind::Contexts,
             ErrorMetricKind::SuppressedErrors,
@@ -51,7 +51,7 @@ impl LogfileParser for ErrorMetricLogfileParser {
         ]);
 
         let mut details = vec![];
-        let mut costs = None;
+        let mut metrics = None;
 
         let mut state = State::HeaderSpace;
         for line in iter {
@@ -77,15 +77,16 @@ impl LogfileParser for ErrorMetricLogfileParser {
                                 ))?;
 
                             // There might be multiple `ERROR SUMMARY` lines. We only use the last
-                            let mut new_costs: Costs<ErrorMetricKind> = costs_prototype.clone();
-                            new_costs.add_iter_str([
+                            let mut new_metrics: Metrics<ErrorMetricKind> =
+                                metrics_prototype.clone();
+                            new_metrics.add_iter_str([
                                 caps.name("errs").unwrap().as_str(),
                                 caps.name("ctxs").unwrap().as_str(),
                                 caps.name("s_errs").unwrap().as_str(),
                                 caps.name("s_ctxs").unwrap().as_str(),
                             ]);
 
-                            costs = Some(new_costs);
+                            metrics = Some(new_metrics);
                             continue;
                         }
                     }
@@ -113,7 +114,7 @@ impl LogfileParser for ErrorMetricLogfileParser {
         Ok(Logfile {
             header,
             path: make_relative(&self.root_dir, path),
-            costs: CostsKind::ErrorCosts(costs.context(
+            metrics: ToolMetrics::ErrorMetrics(metrics.context(
                 "Failed collecting error metrics: An error summary line should be present",
             )?),
             details,

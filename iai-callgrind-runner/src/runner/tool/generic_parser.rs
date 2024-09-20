@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 
 use super::logfile_parser::{parse_header, Logfile, LogfileParser, EMPTY_LINE_RE, STRIP_PREFIX_RE};
-use crate::runner::summary::CostsKind;
+use crate::runner::summary::ToolMetrics;
 use crate::util::make_relative;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -63,7 +63,7 @@ impl LogfileParser for GenericLogfileParser {
             header,
             details,
             path: make_relative(&self.root_dir, path),
-            costs: CostsKind::None,
+            metrics: ToolMetrics::None,
         })
     }
 }

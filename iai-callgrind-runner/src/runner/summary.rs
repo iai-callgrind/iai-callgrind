@@ -17,12 +17,12 @@ use serde::{Deserialize, Serialize};
 
 use super::callgrind::Summaries;
 use super::common::ModulePath;
-use super::costs::Costs;
 use super::format::{Formatter, OutputFormat, OutputFormatKind, VerticalFormat};
+use super::metrics::Metrics;
 use super::tool::ValgrindTool;
 use crate::api::{DhatMetricKind, ErrorMetricKind, EventKind};
 use crate::error::Error;
-use crate::runner::costs::Summarize;
+use crate::runner::metrics::Summarize;
 use crate::util::{factor_diff, make_absolute, percentage_diff, EitherOrBoth};
 
 /// A `Baseline` depending on the [`BaselineKind`] which points to the corresponding path
@@ -98,10 +98,10 @@ pub struct BenchmarkSummary {
     pub tool_summaries: Vec<ToolSummary>,
 }
 
-/// The `CallgrindRegressionSummary` describing a single event based performance regression
+/// The `CallgrindRegression` describing a single event based performance regression
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct CallgrindRegressionSummary {
+pub struct CallgrindRegression {
     /// The [`EventKind`] which is affected by a performance regression
     pub event_kind: EventKind,
     /// The value of the new benchmark run
@@ -114,44 +114,49 @@ pub struct CallgrindRegressionSummary {
     pub limit: f64,
 }
 
-/// The `CallgrindRunSummaries` grouping all `CallgrindRunSummary` and their total costs in a
-/// `CallgrindTotal`
+/// The `CallgrindRun` contains all `CallgrindRunSegments` and their total costs in a
+/// `CallgrindTotal`.
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct CallgrindRunSummaries {
+pub struct CallgrindRun {
     /// All `CallgrindRunSummary`s
-    pub summaries: Vec<CallgrindRunSummary>,
+    pub segments: Vec<CallgrindRunSegment>,
     /// The total costs of all `CallgrindRunSummary`s in this `CallgrindRunSummaries`
     pub total: CallgrindTotal,
 }
 
-/// The `CallgrindRunSummary` containing the recorded events, performance regressions of a single
-/// callgrind run
+/// The `CallgrindRunSegment` containing the metric differences, performance regressions of a
+/// callgrind run segment.
+///
+/// A segment can be a part (caused by options like `--dump-every-bb=xxx`), a thread (caused by
+/// `--separate-threads`) or a pid (possibly caused by `--trace-children`). A segment is a summary
+/// over a single file which contains the costs of that part, thread and/or pid.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct CallgrindRunSummary {
+pub struct CallgrindRunSegment {
     /// The executed command extracted from Valgrind output
     pub command: String,
     /// If present, the `Baseline` used to compare the new with the old output
     pub baseline: Option<Baseline>,
-    /// All recorded costs for `EventKinds`
-    pub events: CostsSummary<EventKind>,
+    /// All recorded metrics for the `EventKinds`
+    pub events: MetricsSummary<EventKind>,
     /// All detected performance regressions per callgrind run
-    pub regressions: Vec<CallgrindRegressionSummary>,
+    pub regressions: Vec<CallgrindRegression>,
 }
 
-/// The total callgrind costs over the `CallgrindRunSummaries` and all detected regressions for the
+/// The total callgrind costs over the `CallgrindRunSegments` and all detected regressions for the
 /// total
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindTotal {
-    /// The total costs
-    pub summary: CostsSummary,
-    /// All detected regressions for the total costs
-    pub regressions: Vec<CallgrindRegressionSummary>,
+    /// The total over the segment metrics
+    pub summary: MetricsSummary,
+    /// All detected regressions for the total metrics
+    pub regressions: Vec<CallgrindRegression>,
 }
 
-/// The `CallgrindSummary` summarizes all callgrind runs
+/// The `CallgrindSummary` contains the callgrind run, flamegraph paths and other paths to the
+/// segments of the callgrind run.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindSummary {
@@ -161,64 +166,68 @@ pub struct CallgrindSummary {
     pub out_paths: Vec<PathBuf>,
     /// The summaries of possibly created flamegraphs
     pub flamegraphs: Vec<FlamegraphSummary>,
-    /// The summaries of all callgrind runs
-    pub summaries: CallgrindRunSummaries,
+    /// The summary of all callgrind segments is a `CallgrindRun`
+    pub callgrind_run: CallgrindRun,
 }
 
-/// The `CostsDiff` describes the difference between an single optional `new` and `old` cost as
-/// percentage and factor.
+/// The `MetricsDiff` describes the difference between a `new` and `old` metric as percentage and
+/// factor.
 ///
-/// There is either a `new`, `old` value present or both. If both values are present, then there is
-/// also the `Diffs` present.
+/// Only if both metrics are present there is also a `Diffs` present. Otherwise, it just stores the
+/// `new` or `old` metric.
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct CostsDiff {
-    pub costs: EitherOrBoth<u64>,
+pub struct MetricsDiff {
+    /// Either the `new`, `old` or both metrics
+    pub metrics: EitherOrBoth<u64>,
+    /// If both metrics are present there is also a `Diffs` present
     pub diffs: Option<Diffs>,
 }
 
-/// The costs differentiated per kind (dhat, error metrics and callgrind)
+/// The metrics distinguished per tool class
+///
+/// The tool classes are: dhat, error metrics from memcheck, drd, helgrind and callgrind
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub enum CostsKind {
-    /// If there were no costs extracted from a tool run (currently massif, bbv)
+pub enum ToolMetrics {
+    /// If there were no metrics extracted from a tool (currently massif, bbv)
     #[default]
     None,
-    /// The costs of a dhat benchmark
-    DhatCosts(Costs<DhatMetricKind>),
-    /// The costs of a tool run which reports errors (memcheck, helgrind, drd)
-    ErrorCosts(Costs<ErrorMetricKind>),
-    /// The costs of a callgrind benchmark
-    CallgrindCosts(Costs<EventKind>),
+    /// The metrics of a dhat benchmark
+    DhatMetrics(Metrics<DhatMetricKind>),
+    /// The metrics of a tool run which reports errors (memcheck, helgrind, drd)
+    ErrorMetrics(Metrics<ErrorMetricKind>),
+    /// The metrics of a callgrind benchmark
+    CallgrindMetrics(Metrics<EventKind>),
 }
 
-/// The `CostsSummary` contains all differences between two benchmark runs
+/// The `MetricsSummary` contains all differences between two tool run segments
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct CostsSummary<K: Hash + Eq = EventKind>(IndexMap<K, CostsDiff>);
+pub struct MetricsSummary<K: Hash + Eq = EventKind>(IndexMap<K, MetricsDiff>);
 
-/// The `CostsSummaryType` contains the `CostsSummary` differentiated by metric kinds
+/// The `ToolMetricSummary` contains the `MetricsSummary` distinguished by tool and metric kinds
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub enum CostsSummaryType {
+pub enum ToolMetricSummary {
     /// If there are no costs extracted (currently massif, bbv)
     #[default]
     None,
     /// The error summary of tools which reports errors (memcheck, helgrind, drd)
-    ErrorSummary(CostsSummary<ErrorMetricKind>),
+    ErrorSummary(MetricsSummary<ErrorMetricKind>),
     /// The dhat summary
-    DhatSummary(CostsSummary<DhatMetricKind>),
+    DhatSummary(MetricsSummary<DhatMetricKind>),
     /// The callgrind summary
-    CallgrindSummary(CostsSummary<EventKind>),
+    CallgrindSummary(MetricsSummary<EventKind>),
 }
 
 /// The differences between two `Costs` as percentage and factor
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Diffs {
-    /// The percentage of the difference between two `Costs`
+    /// The percentage of the difference between two `Metrics`
     pub diff_pct: f64,
-    /// The factor of the difference between two `Costs`
+    /// The factor of the difference between two `Metrics`
     pub factor: f64,
 }
 
@@ -270,10 +279,10 @@ pub struct SummaryOutput {
     path: PathBuf,
 }
 
-/// Some additional and necessary information about the tool run
+/// Some additional and necessary information about the tool run segment
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, AsRef)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct ToolRunInfo {
+pub struct SegmentDetails {
     /// The executed command extracted from Valgrind output
     pub command: String,
     /// The pid of this process
@@ -290,25 +299,30 @@ pub struct ToolRunInfo {
     pub thread: Option<usize>,
 }
 
-/// All tool run summaries and the total over them
+/// The `ToolRun` contains all information about a single tool run with possibly multiple segments
+///
+/// The total is always present and summarizes all tool run segments. In the special case of a
+/// single tool run segment, the total equals the metrics of this segment.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct ToolRunSummaries {
-    /// The `ToolRunSummary`s
-    pub data: Vec<ToolRunSummary>,
-    /// The total over the `ToolRunSummary`s
-    pub total: CostsSummaryType,
+pub struct ToolRun {
+    /// All `ToolRunSegment`s
+    pub segments: Vec<ToolRunSegment>,
+    /// The total over the `ToolRunSegment`s
+    pub total: ToolMetricSummary,
 }
 
-/// The `ToolRunSummary` which contains all information about a single tool run process
+/// A single segment of a tool run and if present the comparison with the "old" segment
 ///
-/// There's a separate process and therefore `ToolRunSummary` for the parent process and each child
-/// process if `--trace-children=yes` was passed as argument to the `Tool`.
+/// A tool run can produce multiple segments, for example for each process and subprocess with
+/// (--trace-children).
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct ToolRunSummary {
-    pub info: EitherOrBoth<ToolRunInfo>,
-    pub costs_summary: CostsSummaryType,
+pub struct ToolRunSegment {
+    /// The details (like command, thread number etc.) about the segment(s)
+    pub details: EitherOrBoth<SegmentDetails>,
+    /// The `ToolMetricSummary`
+    pub metrics_summary: ToolMetricSummary,
 }
 
 /// The `ToolSummary` containing all information about a valgrind tool run
@@ -322,8 +336,8 @@ pub struct ToolSummary {
     /// The paths to the `*.out` files. Not all tools produce an output in addition to the log
     /// files
     pub out_paths: Vec<PathBuf>,
-    /// All [`ToolRunSummary`]s
-    pub summaries: ToolRunSummaries,
+    /// The metrics and details about the tool run
+    pub summaries: ToolRun,
 }
 
 impl FromStr for BaselineName {
@@ -461,19 +475,23 @@ impl BenchmarkSummary {
                 EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _),
                 EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
             ) = (
-                callgrind_summary.summaries.total.summary.extract_costs(),
+                callgrind_summary
+                    .callgrind_run
+                    .total
+                    .summary
+                    .extract_costs(),
                 other_callgrind_summary
-                    .summaries
+                    .callgrind_run
                     .total
                     .summary
                     .extract_costs(),
             ) {
-                let new_summary = CostsSummary::new(EitherOrBoth::Both(new, other_new));
+                let new_summary = MetricsSummary::new(EitherOrBoth::Both(new, other_new));
                 VerticalFormat.print_comparison(
                     &self.function_name,
                     id,
                     self.details.as_deref(),
-                    &CostsSummaryType::CallgrindSummary(new_summary),
+                    &ToolMetricSummary::CallgrindSummary(new_summary),
                     output_format,
                 )?;
             }
@@ -490,14 +508,14 @@ impl CallgrindSummary {
             log_paths,
             out_paths,
             flamegraphs: Vec::default(),
-            summaries: CallgrindRunSummaries::default(),
+            callgrind_run: CallgrindRun::default(),
         }
     }
 
     /// Return true if there are any recorded regressions in this `CallgrindSummary`
     pub fn is_regressed(&self) -> bool {
-        self.summaries
-            .summaries
+        self.callgrind_run
+            .segments
             .iter()
             .any(|r| !r.regressions.is_empty())
     }
@@ -508,7 +526,7 @@ impl CallgrindSummary {
         bench_args: &[OsString],
         baselines: &(Option<String>, Option<String>),
         summaries: Summaries,
-        regressions: Vec<CallgrindRegressionSummary>,
+        regressions: Vec<CallgrindRegression>,
     ) {
         let command = format!(
             "{} {}",
@@ -524,7 +542,7 @@ impl CallgrindSummary {
             )
             .unwrap()
         );
-        for summary in summaries.data {
+        for summary in summaries.summaries {
             let old_baseline = match summary.details {
                 EitherOrBoth::Left(_) => None,
                 EitherOrBoth::Both(_, old) | EitherOrBoth::Right(old) => Some(Baseline {
@@ -535,33 +553,36 @@ impl CallgrindSummary {
                 }),
             };
 
-            self.summaries.summaries.push(CallgrindRunSummary {
+            self.callgrind_run.segments.push(CallgrindRunSegment {
                 command: command.clone(),
                 baseline: old_baseline,
-                events: summary.costs_summary,
+                events: summary.metrics_summary,
                 regressions: vec![],
             });
         }
 
-        self.summaries.total.summary = summaries.total.clone();
-        self.summaries.total.regressions = regressions;
+        self.callgrind_run.total.summary = summaries.total.clone();
+        self.callgrind_run.total.regressions = regressions;
     }
 }
 
-impl CostsDiff {
+impl MetricsDiff {
     pub fn new(costs: EitherOrBoth<u64>) -> Self {
         if let EitherOrBoth::Both(new, old) = costs {
             Self {
-                costs,
+                metrics: costs,
                 diffs: Some(Diffs::new(new, old)),
             }
         } else {
-            Self { costs, diffs: None }
+            Self {
+                metrics: costs,
+                diffs: None,
+            }
         }
     }
 
     pub fn add(&self, other: &Self) -> Self {
-        match (&self.costs, &other.costs) {
+        match (&self.metrics, &other.metrics) {
             (EitherOrBoth::Left(new), EitherOrBoth::Left(other_new)) => {
                 Self::new(EitherOrBoth::Left(new.saturating_add(*other_new)))
             }
@@ -590,18 +611,18 @@ impl CostsDiff {
     }
 }
 
-impl CostsSummaryType {
+impl ToolMetricSummary {
     pub fn add_mut(&mut self, other: &Self) {
         match (self, other) {
-            (CostsSummaryType::ErrorSummary(this), CostsSummaryType::ErrorSummary(other)) => {
+            (ToolMetricSummary::ErrorSummary(this), ToolMetricSummary::ErrorSummary(other)) => {
                 this.add(other);
             }
-            (CostsSummaryType::DhatSummary(this), CostsSummaryType::DhatSummary(other)) => {
+            (ToolMetricSummary::DhatSummary(this), ToolMetricSummary::DhatSummary(other)) => {
                 this.add(other);
             }
             (
-                CostsSummaryType::CallgrindSummary(this),
-                CostsSummaryType::CallgrindSummary(other),
+                ToolMetricSummary::CallgrindSummary(this),
+                ToolMetricSummary::CallgrindSummary(other),
             ) => {
                 this.add(other);
             }
@@ -609,57 +630,58 @@ impl CostsSummaryType {
         }
     }
 
-    pub fn from_new_costs(costs: &CostsKind) -> Self {
+    pub fn from_new_costs(costs: &ToolMetrics) -> Self {
         match costs {
-            CostsKind::None => CostsSummaryType::None,
-            CostsKind::DhatCosts(costs) => {
-                CostsSummaryType::DhatSummary(CostsSummary::new(EitherOrBoth::Left(costs.clone())))
-            }
-            CostsKind::ErrorCosts(costs) => {
-                CostsSummaryType::ErrorSummary(CostsSummary::new(EitherOrBoth::Left(costs.clone())))
-            }
-            CostsKind::CallgrindCosts(costs) => CostsSummaryType::CallgrindSummary(
-                CostsSummary::new(EitherOrBoth::Left(costs.clone())),
+            ToolMetrics::None => ToolMetricSummary::None,
+            ToolMetrics::DhatMetrics(costs) => ToolMetricSummary::DhatSummary(MetricsSummary::new(
+                EitherOrBoth::Left(costs.clone()),
+            )),
+            ToolMetrics::ErrorMetrics(costs) => ToolMetricSummary::ErrorSummary(
+                MetricsSummary::new(EitherOrBoth::Left(costs.clone())),
+            ),
+            ToolMetrics::CallgrindMetrics(costs) => ToolMetricSummary::CallgrindSummary(
+                MetricsSummary::new(EitherOrBoth::Left(costs.clone())),
             ),
         }
     }
-    pub fn from_old_costs(costs: &CostsKind) -> Self {
+    pub fn from_old_costs(costs: &ToolMetrics) -> Self {
         match costs {
-            CostsKind::None => CostsSummaryType::None,
-            CostsKind::DhatCosts(costs) => {
-                CostsSummaryType::DhatSummary(CostsSummary::new(EitherOrBoth::Right(costs.clone())))
-            }
-            CostsKind::ErrorCosts(costs) => CostsSummaryType::ErrorSummary(CostsSummary::new(
+            ToolMetrics::None => ToolMetricSummary::None,
+            ToolMetrics::DhatMetrics(costs) => ToolMetricSummary::DhatSummary(MetricsSummary::new(
                 EitherOrBoth::Right(costs.clone()),
             )),
-            CostsKind::CallgrindCosts(costs) => CostsSummaryType::CallgrindSummary(
-                CostsSummary::new(EitherOrBoth::Right(costs.clone())),
+            ToolMetrics::ErrorMetrics(costs) => ToolMetricSummary::ErrorSummary(
+                MetricsSummary::new(EitherOrBoth::Right(costs.clone())),
+            ),
+            ToolMetrics::CallgrindMetrics(costs) => ToolMetricSummary::CallgrindSummary(
+                MetricsSummary::new(EitherOrBoth::Right(costs.clone())),
             ),
         }
     }
 
     /// Return the `CostsSummaryType` if the `CostsKind` have the same kind, else return with error
     pub fn try_from_new_and_old_costs(
-        new_costs: &CostsKind,
-        old_costs: &CostsKind,
+        new_costs: &ToolMetrics,
+        old_costs: &ToolMetrics,
     ) -> Result<Self> {
         match (new_costs, old_costs) {
-            (CostsKind::None, CostsKind::None) => Ok(CostsSummaryType::None),
-            (CostsKind::DhatCosts(new_costs), CostsKind::DhatCosts(old_costs)) => {
-                Ok(CostsSummaryType::DhatSummary(CostsSummary::new(
+            (ToolMetrics::None, ToolMetrics::None) => Ok(ToolMetricSummary::None),
+            (ToolMetrics::DhatMetrics(new_costs), ToolMetrics::DhatMetrics(old_costs)) => {
+                Ok(ToolMetricSummary::DhatSummary(MetricsSummary::new(
                     EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
                 )))
             }
-            (CostsKind::ErrorCosts(new_costs), CostsKind::ErrorCosts(old_costs)) => {
-                Ok(CostsSummaryType::ErrorSummary(CostsSummary::new(
+            (ToolMetrics::ErrorMetrics(new_costs), ToolMetrics::ErrorMetrics(old_costs)) => {
+                Ok(ToolMetricSummary::ErrorSummary(MetricsSummary::new(
                     EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
                 )))
             }
-            (CostsKind::CallgrindCosts(new_costs), CostsKind::CallgrindCosts(old_costs)) => {
-                Ok(CostsSummaryType::CallgrindSummary(CostsSummary::new(
-                    EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
-                )))
-            }
+            (
+                ToolMetrics::CallgrindMetrics(new_costs),
+                ToolMetrics::CallgrindMetrics(old_costs),
+            ) => Ok(ToolMetricSummary::CallgrindSummary(MetricsSummary::new(
+                EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
+            ))),
             _ => Err(anyhow!("Cannot create summary from incompatible costs")),
         }
     }
@@ -674,14 +696,14 @@ impl Diffs {
     }
 }
 
-impl<K> CostsSummary<K>
+impl<K> MetricsSummary<K>
 where
     K: Hash + Eq + Summarize + Display + Clone,
 {
     /// TODO: TEST
     /// Create a new `CostsSummary` calculating the differences between new and old (if any)
     /// [`Costs`]
-    pub fn new(costs: EitherOrBoth<Costs<K>>) -> Self {
+    pub fn new(costs: EitherOrBoth<Metrics<K>>) -> Self {
         match costs {
             EitherOrBoth::Left(new) => {
                 let mut new = Cow::Owned(new);
@@ -692,7 +714,7 @@ where
                         .map(|(event_kind, cost)| {
                             (
                                 event_kind.clone(),
-                                CostsDiff::new(EitherOrBoth::Left(*cost)),
+                                MetricsDiff::new(EitherOrBoth::Left(*cost)),
                             )
                         })
                         .collect::<IndexMap<_, _>>(),
@@ -707,7 +729,7 @@ where
                         .map(|(event_kind, cost)| {
                             (
                                 event_kind.clone(),
-                                CostsDiff::new(EitherOrBoth::Right(*cost)),
+                                MetricsDiff::new(EitherOrBoth::Right(*cost)),
                             )
                         })
                         .collect::<IndexMap<_, _>>(),
@@ -720,12 +742,14 @@ where
                 K::summarize(&mut old);
 
                 let mut map = indexmap! {};
-                for event_kind in new.event_kinds_union(&old) {
-                    let diff = match (new.cost_by_kind(&event_kind), old.cost_by_kind(&event_kind))
-                    {
-                        (Some(cost), None) => CostsDiff::new(EitherOrBoth::Left(cost)),
-                        (None, Some(cost)) => CostsDiff::new(EitherOrBoth::Right(cost)),
-                        (Some(new), Some(old)) => CostsDiff::new(EitherOrBoth::Both(new, old)),
+                for event_kind in new.metric_kinds_union(&old) {
+                    let diff = match (
+                        new.metric_by_kind(&event_kind),
+                        old.metric_by_kind(&event_kind),
+                    ) {
+                        (Some(cost), None) => MetricsDiff::new(EitherOrBoth::Left(cost)),
+                        (None, Some(cost)) => MetricsDiff::new(EitherOrBoth::Right(cost)),
+                        (Some(new), Some(old)) => MetricsDiff::new(EitherOrBoth::Both(new, old)),
                         (None, None) => {
                             unreachable!(
                                 "The union contains the event kinds either from new or old or \
@@ -741,20 +765,20 @@ where
     }
 
     /// Try to return a [`CostsDiff`] for the specified `EventKind`
-    pub fn diff_by_kind(&self, event_kind: &K) -> Option<&CostsDiff> {
+    pub fn diff_by_kind(&self, event_kind: &K) -> Option<&MetricsDiff> {
         self.0.get(event_kind)
     }
 
-    pub fn all_diffs(&self) -> impl Iterator<Item = (&K, &CostsDiff)> {
+    pub fn all_diffs(&self) -> impl Iterator<Item = (&K, &MetricsDiff)> {
         self.0.iter()
     }
 
-    pub fn extract_costs(&self) -> EitherOrBoth<Costs<K>> {
-        let mut new_costs: Costs<K> = Costs::empty();
-        let mut old_costs: Costs<K> = Costs::empty();
+    pub fn extract_costs(&self) -> EitherOrBoth<Metrics<K>> {
+        let mut new_costs: Metrics<K> = Metrics::empty();
+        let mut old_costs: Metrics<K> = Metrics::empty();
         // The diffs should not be empty
         for (event_kind, diff) in self.all_diffs() {
-            match diff.costs {
+            match diff.metrics {
                 EitherOrBoth::Left(new) => {
                     new_costs.insert(event_kind.clone(), new);
                 }
@@ -801,7 +825,7 @@ where
     }
 }
 
-impl<K> Default for CostsSummary<K>
+impl<K> Default for MetricsSummary<K>
 where
     K: Hash + Eq,
 {
@@ -810,7 +834,7 @@ where
     }
 }
 
-impl CostsSummaryType {
+impl ToolMetricSummary {
     pub fn is_some(&self) -> bool {
         !self.is_none()
     }
@@ -865,25 +889,25 @@ impl SummaryOutput {
     }
 }
 
-impl ToolRunSummaries {
+impl ToolRun {
     pub fn is_empty(&self) -> bool {
-        self.data.is_empty()
+        self.segments.is_empty()
     }
 
     pub fn has_multiple(&self) -> bool {
-        self.data.len() > 1
+        self.segments.len() > 1
     }
 }
 
-impl ToolRunSummary {
+impl ToolRunSegment {
     pub fn new_has_errors(&self) -> bool {
-        match &self.costs_summary {
-            CostsSummaryType::None
-            | CostsSummaryType::DhatSummary(_)
-            | CostsSummaryType::CallgrindSummary(_) => false,
-            CostsSummaryType::ErrorSummary(costs) => costs
+        match &self.metrics_summary {
+            ToolMetricSummary::None
+            | ToolMetricSummary::DhatSummary(_)
+            | ToolMetricSummary::CallgrindSummary(_) => false,
+            ToolMetricSummary::ErrorSummary(costs) => costs
                 .diff_by_kind(&ErrorMetricKind::Errors)
-                .map_or(false, |e| match e.costs {
+                .map_or(false, |e| match e.metrics {
                     EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _) => new > 0,
                     EitherOrBoth::Right(_) => false,
                 }),
@@ -940,9 +964,9 @@ mod tests {
         #[case] other_cost: EitherOrBoth<u64>,
         #[case] expected: EitherOrBoth<u64>,
     ) {
-        let new_diff = CostsDiff::new(cost);
-        let old_diff = CostsDiff::new(other_cost);
-        let expected = CostsDiff::new(expected);
+        let new_diff = MetricsDiff::new(cost);
+        let old_diff = MetricsDiff::new(other_cost);
+        let expected = MetricsDiff::new(expected);
 
         assert_eq!(new_diff.add(&old_diff), expected);
         assert_eq!(old_diff.add(&new_diff), expected);

@@ -2,11 +2,11 @@ mod args;
 pub mod bin_bench;
 pub mod callgrind;
 pub mod common;
-pub mod costs;
 pub mod dhat;
 mod format;
 mod lib_bench;
 pub mod meta;
+pub mod metrics;
 pub mod summary;
 pub mod tool;
 

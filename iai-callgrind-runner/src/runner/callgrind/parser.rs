@@ -8,8 +8,8 @@ use log::{trace, warn};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use super::model::{Costs, Positions};
-use crate::runner::summary::ToolRunInfo;
+use super::model::{Metrics, Positions};
+use crate::runner::summary::SegmentDetails;
 use crate::runner::tool::ToolOutputPath;
 use crate::runner::DEFAULT_TOGGLE;
 
@@ -18,7 +18,7 @@ lazy_static! {
         Regex::new(r"(\\)([*]|[?])").expect("Regex should compile");
 }
 
-pub type ParserOutput = Vec<(PathBuf, CallgrindProperties, Costs)>;
+pub type ParserOutput = Vec<(PathBuf, CallgrindProperties, Metrics)>;
 
 pub trait CallgrindParser {
     type Output;
@@ -47,7 +47,7 @@ pub trait CallgrindParser {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CallgrindProperties {
-    pub costs_prototype: Costs,
+    pub metrics_prototype: Metrics,
     pub positions_prototype: Positions,
     pub pid: Option<i32>,
     pub thread: Option<usize>,
@@ -58,8 +58,8 @@ pub struct CallgrindProperties {
 }
 
 impl CallgrindProperties {
-    pub fn into_info(self, path: &Path) -> ToolRunInfo {
-        ToolRunInfo {
+    pub fn into_info(self, path: &Path) -> SegmentDetails {
+        SegmentDetails {
             command: self.cmd.expect("A command should be present"),
             pid: self.pid.expect("A pid should be present"),
             parent_pid: None,
@@ -210,7 +210,7 @@ pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<Callgrind
     };
 
     let mut positions_prototype: Option<Positions> = None;
-    let mut costs_prototype: Option<Costs> = None;
+    let mut metrics_prototype: Option<Metrics> = None;
     let mut pid: Option<i32> = None;
     let mut thread: Option<usize> = None;
     let mut part: Option<u64> = None;
@@ -261,7 +261,7 @@ pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<Callgrind
             // but it is only optional. So, we break out of the loop here and stop the parsing.
             Some(("events", events)) => {
                 trace!("Using events '{events}' from line: '{line}'");
-                costs_prototype = Some(events.split_ascii_whitespace().collect());
+                metrics_prototype = Some(events.split_ascii_whitespace().collect());
                 break;
             }
             // None is actually a malformed header line we just ignore here
@@ -273,7 +273,7 @@ pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<Callgrind
     }
 
     Ok(CallgrindProperties {
-        costs_prototype: costs_prototype
+        metrics_prototype: metrics_prototype
             .ok_or_else(|| anyhow!("Header field 'events' must be present"))?,
         positions_prototype: positions_prototype.unwrap_or_default(),
         pid,

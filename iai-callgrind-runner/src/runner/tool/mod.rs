@@ -31,7 +31,7 @@ use super::format::{
     print_no_capture_footer, tool_headline, Formatter, OutputFormat, VerticalFormat,
 };
 use super::meta::Metadata;
-use super::summary::{BaselineKind, ToolRunSummaries, ToolSummary};
+use super::summary::{BaselineKind, ToolRun, ToolSummary};
 use crate::api::{self, ExitWith, Stream};
 use crate::error::Error;
 use crate::util::{self, ilog10, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
@@ -343,7 +343,7 @@ impl ToolConfig {
                 &meta.args.load_baseline.as_ref().unwrap()
             )),
             (false, false) => {
-                let summaries = ToolRunSummaries::from(EitherOrBoth::Both(parsed_new, parsed_old));
+                let summaries = ToolRun::from(EitherOrBoth::Both(parsed_new, parsed_old));
                 Ok(ToolSummary {
                     tool: self.tool,
                     log_paths: log_path.real_paths()?,
@@ -389,12 +389,8 @@ impl ToolConfigs {
         }
     }
 
-    fn print(
-        meta: &Metadata,
-        output_format: &OutputFormat,
-        tool_run_summaries: &ToolRunSummaries,
-    ) -> Result<()> {
-        VerticalFormat.print(meta, output_format, (None, None), tool_run_summaries)
+    fn print(meta: &Metadata, output_format: &OutputFormat, tool_run: &ToolRun) -> Result<()> {
+        VerticalFormat.print(meta, output_format, (None, None), tool_run)
     }
 
     pub fn parse(
@@ -410,8 +406,8 @@ impl ToolConfigs {
 
         let summaries = match (parsed_new.is_empty(), old_summaries.is_empty()) {
             (true, false | true) => return Err(anyhow!("A new dataset should always be present")),
-            (false, true) => ToolRunSummaries::from(EitherOrBoth::Left(parsed_new)),
-            (false, false) => ToolRunSummaries::from(EitherOrBoth::Both(parsed_new, old_summaries)),
+            (false, true) => ToolRun::from(EitherOrBoth::Left(parsed_new)),
+            (false, false) => ToolRun::from(EitherOrBoth::Both(parsed_new, old_summaries)),
         };
 
         Ok(ToolSummary {
@@ -1493,41 +1489,41 @@ mod tests {
     use super::*;
 
     #[rstest]
-    #[case::out("callgrind.some.name.out")]
-    #[case::out_with_pid("callgrind.some.name.1234.out")]
-    #[case::out_with_part("callgrind.some.name.out.1")]
-    #[case::out_with_thread("callgrind.some.name.out-01")]
-    #[case::out_with_part_and_thread("callgrind.some.name.out.1-01")]
-    #[case::out_old("callgrind.some.name.out.old")]
-    #[case::out_old_with_pid("callgrind.some.name.1234.out.old")]
-    #[case::out_old_with_part("callgrind.some.name.out.old.1")]
-    #[case::out_old_with_thread("callgrind.some.name.out.old-01")]
-    #[case::out_old_with_part_and_thread("callgrind.some.name.out.old.1-01")]
-    #[case::out_base("callgrind.some.name.out.base@default")]
-    #[case::out_base_with_pid("callgrind.some.name.1234.out.base@default")]
-    #[case::out_base_with_part("callgrind.some.name.out.base@default.1")]
-    #[case::out_base_with_thread("callgrind.some.name.out.base@default-01")]
-    #[case::out_base_with_part_and_thread("callgrind.some.name.out.base@default.1-01")]
-    #[case::log("callgrind.some.name.log")]
-    #[case::log_with_pid("callgrind.some.name.1234.log.1")]
-    #[case::log_base("callgrind.some.name.log.base@default")]
-    #[case::log_base_with_pid("callgrind.some.name.1234.log.base@default.1")]
-    #[case::without_id("callgrind.bench_bubble_sort_allocate.out")]
-    #[case::without_id_but_pid("callgrind.bench_bubble_sort_allocate.1234.out")]
-    #[case::without_id_but_thread("callgrind.bench_bubble_sort_allocate.out-01")]
-    #[case::without_id_but_part("callgrind.bench_bubble_sort_allocate.out.1")]
+    #[case::out(".out")]
+    #[case::out_with_pid(".1234.out")]
+    #[case::out_with_part(".out.1")]
+    #[case::out_with_thread(".out-01")]
+    #[case::out_with_part_and_thread(".out.1-01")]
+    #[case::out_old(".out.old")]
+    #[case::out_old_with_pid(".1234.out.old")]
+    #[case::out_old_with_part(".out.old.1")]
+    #[case::out_old_with_thread(".out.old-01")]
+    #[case::out_old_with_part_and_thread(".out.old.1-01")]
+    #[case::out_base(".out.base@default")]
+    #[case::out_base_with_pid(".1234.out.base@default")]
+    #[case::out_base_with_part(".out.base@default.1")]
+    #[case::out_base_with_thread(".out.base@default-01")]
+    #[case::out_base_with_part_and_thread(".out.base@default.1-01")]
+    #[case::log(".log")]
+    #[case::log_with_pid(".1234.log.1")]
+    #[case::log_base(".log.base@default")]
+    #[case::log_base_with_pid(".1234.log.base@default.1")]
+    #[case::without_id(".out")]
+    #[case::without_id_but_pid(".1234.out")]
+    #[case::without_id_but_thread(".out-01")]
+    #[case::without_id_but_part(".out.1")]
     fn test_callgrind_filename_regex(#[case] haystack: &str) {
         assert!(CALLGRIND_ORIG_FILENAME_RE.is_match(haystack));
     }
 
     #[rstest]
-    #[case::bb_out("exp-bbv.some.name.bb.out")]
-    #[case::bb_out_with_pid("exp-bbv.some.name.1234.bb.out")]
-    #[case::bb_out_with_pid_and_thread("exp-bbv.some.name.1234.bb.out.1")]
-    #[case::bb_out_with_thread("exp-bbv.some.name.bb.out.1")]
-    #[case::pc_out("exp-bbv.some.name.pc.out")]
-    #[case::log("exp-bbv.some.name.log")]
-    #[case::log_with_pid("exp-bbv.some.name.1234.log")]
+    #[case::bb_out(".bb.out")]
+    #[case::bb_out_with_pid(".1234.bb.out")]
+    #[case::bb_out_with_pid_and_thread(".1234.bb.out.1")]
+    #[case::bb_out_with_thread(".bb.out.1")]
+    #[case::pc_out(".pc.out")]
+    #[case::log(".log")]
+    #[case::log_with_pid(".1234.log")]
     fn test_bbv_filename_regex(#[case] haystack: &str) {
         assert!(BBV_ORIG_FILENAME_RE.is_match(haystack));
     }

@@ -8,8 +8,8 @@ use log::debug;
 use regex::Regex;
 
 use crate::api::DhatMetricKind;
-use crate::runner::costs::Costs;
-use crate::runner::summary::CostsKind;
+use crate::runner::metrics::Metrics;
+use crate::runner::summary::ToolMetrics;
 use crate::runner::tool::logfile_parser::{
     parse_header, Logfile, LogfileParser, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
 };
@@ -43,7 +43,7 @@ impl DhatLogfileParser {
     fn parse_line(
         line: &str,
         state: &mut State,
-        costs: &mut Costs<DhatMetricKind>,
+        metrics: &mut Metrics<DhatMetricKind>,
         details: &mut Vec<String>,
     ) -> Result<bool> {
         match &state {
@@ -59,7 +59,7 @@ impl DhatLogfileParser {
                     // Total: ... is the first line of the fields we're interested in
                     if key.to_ascii_lowercase().as_str() == "total" {
                         *state = State::Fields;
-                        return DhatLogfileParser::parse_line(line, state, costs, details);
+                        return DhatLogfileParser::parse_line(line, state, metrics, details);
                     }
                 }
 
@@ -98,33 +98,33 @@ impl DhatLogfileParser {
 
                         match key {
                             "Total" => {
-                                costs.insert(DhatMetricKind::TotalBytes, num_bytes);
-                                costs.insert(
+                                metrics.insert(DhatMetricKind::TotalBytes, num_bytes);
+                                metrics.insert(
                                     DhatMetricKind::TotalBlocks,
                                     num_blocks.ok_or_else(|| anyhow!("Error parsing blocks"))?,
                                 );
                             }
                             "At t-gmax" => {
-                                costs.insert(DhatMetricKind::AtTGmaxBytes, num_bytes);
-                                costs.insert(
+                                metrics.insert(DhatMetricKind::AtTGmaxBytes, num_bytes);
+                                metrics.insert(
                                     DhatMetricKind::AtTGmaxBlocks,
                                     num_blocks.ok_or_else(|| anyhow!("Error parsing blocks"))?,
                                 );
                             }
                             "At t-end" => {
-                                costs.insert(DhatMetricKind::AtTEndBytes, num_bytes);
-                                costs.insert(
+                                metrics.insert(DhatMetricKind::AtTEndBytes, num_bytes);
+                                metrics.insert(
                                     DhatMetricKind::AtTEndBlocks,
                                     num_blocks.ok_or_else(|| anyhow!("Error parsing blocks"))?,
                                 );
                             }
                             "Reads" => {
                                 let metric_kind = DhatMetricKind::ReadsBytes;
-                                costs.insert(metric_kind, num_bytes);
+                                metrics.insert(metric_kind, num_bytes);
                             }
                             "Writes" => {
                                 let metric_kind = DhatMetricKind::WritesBytes;
-                                costs.insert(metric_kind, num_bytes);
+                                metrics.insert(metric_kind, num_bytes);
                             }
                             _ => {
                                 debug!("Ignoring invalid dhat metric kind: {key}");
@@ -156,12 +156,12 @@ impl LogfileParser for DhatLogfileParser {
 
         let header = parse_header(&self.root_dir, &path, &mut iter)?;
 
-        let mut costs = Costs::empty();
+        let mut metrics = Metrics::empty();
         let mut details = vec![];
 
         let mut state = State::HeaderSpace;
         for line in iter {
-            if !DhatLogfileParser::parse_line(&line, &mut state, &mut costs, &mut details)? {
+            if !DhatLogfileParser::parse_line(&line, &mut state, &mut metrics, &mut details)? {
                 break;
             }
         }
@@ -179,7 +179,7 @@ impl LogfileParser for DhatLogfileParser {
             header,
             path: make_relative(&self.root_dir, path),
             details,
-            costs: CostsKind::DhatCosts(costs),
+            metrics: ToolMetrics::DhatMetrics(metrics),
         })
     }
 }

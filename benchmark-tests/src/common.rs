@@ -28,11 +28,13 @@ impl Summary {
     pub fn assert_costs_not_all_zero(&self) {
         if let Some(callgrind_summary) = &self.0.callgrind_summary {
             for summary in callgrind_summary
-                .summaries
-                .summaries
+                .callgrind_run
+                .segments
                 .iter()
                 .map(|s| &s.events)
-                .chain(std::iter::once(&callgrind_summary.summaries.total.summary))
+                .chain(std::iter::once(
+                    &callgrind_summary.callgrind_run.total.summary,
+                ))
             {
                 match summary.extract_costs() {
                     EitherOrBoth::Left(new_costs) => {

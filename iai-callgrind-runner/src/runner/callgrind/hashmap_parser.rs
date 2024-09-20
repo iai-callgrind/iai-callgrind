@@ -10,7 +10,7 @@ use anyhow::Result;
 use log::trace;
 use serde::{Deserialize, Serialize};
 
-use super::model::Costs;
+use super::model::Metrics;
 use super::parser::{parse_header, CallgrindParser, CallgrindProperties, Sentinel};
 use crate::error::Error;
 
@@ -62,7 +62,7 @@ pub enum SourcePath {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Value {
-    pub costs: Costs,
+    pub metrics: Metrics,
 }
 
 impl CallgrindMap {
@@ -81,7 +81,7 @@ impl CallgrindMap {
     pub fn add_mut(&mut self, other: &Self) {
         for (other_key, other_value) in &other.map {
             if let Some(value) = self.map.get_mut(other_key) {
-                value.costs.add(&other_value.costs);
+                value.metrics.add(&other_value.metrics);
             } else {
                 self.map.insert(other_key.clone(), other_value.clone());
             }
@@ -213,8 +213,8 @@ impl CallgrindParser for HashMapParser {
                         .sum();
                 }
                 None if line.starts_with(|c: char| c.is_ascii_digit()) => {
-                    let mut costs = config.costs_prototype.clone();
-                    costs.add_iter_str(
+                    let mut metrics = config.metrics_prototype.clone();
+                    metrics.add_iter_str(
                         line.split_whitespace()
                             .skip(config.positions_prototype.len()),
                     );
@@ -222,17 +222,17 @@ impl CallgrindParser for HashMapParser {
                     if let Some(cfn_record) = cfn_record.take() {
                         cfn_totals
                             .entry(cfn_record.id.expect("cfn record id must be present"))
-                            .and_modify(|value| value.costs.add(&costs))
+                            .and_modify(|value| value.metrics.add(&metrics))
                             .or_insert(Value {
-                                costs: costs.clone(),
+                                metrics: metrics.clone(),
                             });
                     }
 
                     let id = current_id.try_into().expect("A valid id");
                     match fn_totals.get_mut(&id) {
-                        Some(value) => value.costs.add(&costs),
+                        Some(value) => value.metrics.add(&metrics),
                         None => {
-                            fn_totals.insert(id.clone(), Value { costs });
+                            fn_totals.insert(id.clone(), Value { metrics });
                         }
                     }
                     current_id = id.into();

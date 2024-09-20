@@ -10,7 +10,7 @@ use super::bin_bench::BinBench;
 use super::common::ModulePath;
 use super::lib_bench::LibBench;
 use super::meta::Metadata;
-use super::summary::{CostsDiff, CostsSummaryType, ToolRunInfo, ToolRunSummaries};
+use super::summary::{MetricsDiff, SegmentDetails, ToolMetricSummary, ToolRun};
 use super::tool::ValgrindTool;
 use crate::api::{self, DhatMetricKind, ErrorMetricKind, EventKind};
 use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8, EitherOrBoth};
@@ -67,8 +67,8 @@ pub trait Formatter {
     fn format_single(
         &self,
         baselines: (Option<String>, Option<String>),
-        info: Option<&EitherOrBoth<ToolRunInfo>>,
-        costs_summary: &CostsSummaryType,
+        details: Option<&EitherOrBoth<SegmentDetails>>,
+        metrics_summary: &ToolMetricSummary,
     ) -> Result<String>;
 
     fn format(
@@ -76,7 +76,7 @@ pub trait Formatter {
         meta: &Metadata,
         output_format: &OutputFormat,
         baselines: (Option<String>, Option<String>),
-        summaries: &ToolRunSummaries,
+        tool_run: &ToolRun,
     ) -> Result<String>;
 
     fn print(
@@ -84,13 +84,10 @@ pub trait Formatter {
         meta: &Metadata,
         output_format: &OutputFormat,
         baselines: (Option<String>, Option<String>),
-        summaries: &ToolRunSummaries,
+        tool_run: &ToolRun,
     ) -> Result<()> {
         if output_format.is_default() {
-            print!(
-                "{}",
-                self.format(meta, output_format, baselines, summaries)?
-            );
+            print!("{}", self.format(meta, output_format, baselines, tool_run)?);
         }
         Ok(())
     }
@@ -100,7 +97,7 @@ pub trait Formatter {
         function_name: &str,
         id: &str,
         details: Option<&str>,
-        summary: &CostsSummaryType,
+        metrics_summary: &ToolMetricSummary,
         output_format: &OutputFormat,
     ) -> Result<()>;
 }
@@ -381,13 +378,13 @@ impl Formatter for VerticalFormat {
     fn format_single(
         &self,
         baselines: (Option<String>, Option<String>),
-        info: Option<&EitherOrBoth<ToolRunInfo>>,
-        costs_summary: &CostsSummaryType,
+        details: Option<&EitherOrBoth<SegmentDetails>>,
+        metrics_summary: &ToolMetricSummary,
     ) -> Result<String> {
-        match costs_summary {
-            CostsSummaryType::None => {
+        match metrics_summary {
+            ToolMetricSummary::None => {
                 let mut result = String::new();
-                if let Some(info) = info {
+                if let Some(info) = details {
                     if let Some(new) = info.left() {
                         result = new
                             .details
@@ -397,7 +394,7 @@ impl Formatter for VerticalFormat {
                 }
                 Ok(result)
             }
-            CostsSummaryType::ErrorSummary(summary) => {
+            ToolMetricSummary::ErrorSummary(summary) => {
                 let mut formatted = format_vertical(
                     (None, None),
                     ERROR_METRICS_DEFAULT
@@ -407,10 +404,10 @@ impl Formatter for VerticalFormat {
 
                 // TODO: Check for `old` errors too?
                 // We only check for `new` errors
-                if let Some(info) = info {
+                if let Some(info) = details {
                     if summary
                         .diff_by_kind(&ErrorMetricKind::Errors)
-                        .map_or(false, |e| e.costs.left().map_or(false, |l| *l > 0))
+                        .map_or(false, |e| e.metrics.left().map_or(false, |l| *l > 0))
                     {
                         if let Some(new) = info.left() {
                             if let Some(details) = new.details.as_ref() {
@@ -422,13 +419,13 @@ impl Formatter for VerticalFormat {
 
                 Ok(formatted)
             }
-            CostsSummaryType::DhatSummary(summary) => format_vertical(
+            ToolMetricSummary::DhatSummary(summary) => format_vertical(
                 (None, None),
                 DHAT_DEFAULT
                     .iter()
                     .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
             ),
-            CostsSummaryType::CallgrindSummary(summary) => format_vertical(
+            ToolMetricSummary::CallgrindSummary(summary) => format_vertical(
                 baselines,
                 CALLGRIND_DEFAULT
                     .iter()
@@ -442,17 +439,17 @@ impl Formatter for VerticalFormat {
         meta: &Metadata,
         output_format: &OutputFormat,
         baselines: (Option<String>, Option<String>),
-        summaries: &ToolRunSummaries,
+        tool_run: &ToolRun,
     ) -> Result<String> {
         let mut result = String::new();
 
-        if summaries.has_multiple() && output_format.show_all {
+        if tool_run.has_multiple() && output_format.show_all {
             let mut first = true;
-            for summary in &summaries.data {
-                writeln!(result, "{}", multiple_files_header(&summary.info))?;
+            for segment in &tool_run.segments {
+                writeln!(result, "{}", multiple_files_header(&segment.details))?;
 
                 let formatted_command =
-                    format_command(meta, &summary.info.as_ref().map(|i| &i.command));
+                    format_command(meta, &segment.details.as_ref().map(|i| &i.command));
                 write!(result, "{formatted_command}").unwrap();
 
                 if first {
@@ -461,8 +458,8 @@ impl Formatter for VerticalFormat {
                         "{}",
                         self.format_single(
                             baselines.clone(),
-                            Some(&summary.info),
-                            &summary.costs_summary
+                            Some(&segment.details),
+                            &segment.metrics_summary
                         )?
                     )
                     .unwrap();
@@ -473,41 +470,41 @@ impl Formatter for VerticalFormat {
                         "{}",
                         self.format_single(
                             (None, None),
-                            Some(&summary.info),
-                            &summary.costs_summary
+                            Some(&segment.details),
+                            &segment.metrics_summary
                         )?
                     )
                     .unwrap();
                 }
             }
 
-            if summaries.total.is_some() {
+            if tool_run.total.is_some() {
                 writeln!(result, "{}", tool_total_header())?;
                 write!(
                     result,
                     "{}",
-                    self.format_single((None, None), None, &summaries.total)?
+                    self.format_single((None, None), None, &tool_run.total)?
                 )
                 .unwrap();
             }
-        } else if summaries.total.is_some() {
+        } else if tool_run.total.is_some() {
             write!(
                 result,
                 "{}",
-                self.format_single(baselines, None, &summaries.total)?
+                self.format_single(baselines, None, &tool_run.total)?
             )
             .unwrap();
-        } else if summaries.total.is_none() && !summaries.data.is_empty() {
+        } else if tool_run.total.is_none() && !tool_run.segments.is_empty() {
             // Since there is no total, show_all is partly ignored and we show all data in an little
             // bit more aggregated form without the multiple files headlines. This affects currently
             // the output of `Massif` and `BBV`.
-            for summary in &summaries.data {
+            for segment in &tool_run.segments {
                 let formatted_command =
-                    format_command(meta, &summary.info.as_ref().map(|i| &i.command));
+                    format_command(meta, &segment.details.as_ref().map(|i| &i.command));
 
                 write!(result, "{formatted_command}").unwrap();
 
-                if let Some(new) = summary.info.left() {
+                if let Some(new) = segment.details.left() {
                     if let Some(details) = &new.details {
                         let formatted = format_details(details);
                         write!(result, "{formatted}").unwrap();
@@ -526,13 +523,13 @@ impl Formatter for VerticalFormat {
         function_name: &str,
         id: &str,
         details: Option<&str>,
-        summary: &CostsSummaryType,
+        metrics_summary: &ToolMetricSummary,
         output_format: &OutputFormat,
     ) -> Result<()> {
         if output_format.is_default() {
             ComparisonHeader::new(function_name, id, details).print();
 
-            let formatted = self.format_single((None, None), None, summary)?;
+            let formatted = self.format_single((None, None), None, metrics_summary)?;
             print!("{formatted}");
         }
 
@@ -637,7 +634,7 @@ pub fn format_float(float: f64, unit: &str) -> ColoredString {
 
 pub fn format_vertical<'a, K: Display>(
     baselines: (Option<String>, Option<String>),
-    costs_summary: impl Iterator<Item = (K, &'a CostsDiff)>,
+    metrics: impl Iterator<Item = (K, &'a MetricsDiff)>,
 ) -> Result<String> {
     let mut result = String::new();
 
@@ -657,9 +654,9 @@ pub fn format_vertical<'a, K: Display>(
         }
     }
 
-    for (event_kind, diff) in costs_summary {
-        let description = format!("{event_kind}:");
-        match diff.costs {
+    for (metric_kind, diff) in metrics {
+        let description = format!("{metric_kind}:");
+        match diff.metrics {
             EitherOrBoth::Left(new_cost) => writeln!(
                 result,
                 "  {description:<20}{:>15}|{NOT_AVAILABLE:<15} ({:^9})",
@@ -696,18 +693,18 @@ pub fn format_vertical<'a, K: Display>(
     Ok(result)
 }
 
-pub fn multiple_files_header(info: &EitherOrBoth<ToolRunInfo>) -> String {
-    fn fields(info: &ToolRunInfo) -> String {
+pub fn multiple_files_header(details: &EitherOrBoth<SegmentDetails>) -> String {
+    fn fields(detail: &SegmentDetails) -> String {
         let mut result = String::new();
-        write!(result, "pid: {}", info.pid).unwrap();
+        write!(result, "pid: {}", detail.pid).unwrap();
 
-        if let Some(ppid) = info.parent_pid {
+        if let Some(ppid) = detail.parent_pid {
             write!(result, " ppid: {ppid}").unwrap();
         }
-        if let Some(part) = info.part {
+        if let Some(part) = detail.part {
             write!(result, " part: {part}").unwrap();
         }
-        if let Some(thread) = info.thread {
+        if let Some(thread) = detail.thread {
             write!(result, " thread: {thread}").unwrap();
         }
         result
@@ -717,7 +714,7 @@ pub fn multiple_files_header(info: &EitherOrBoth<ToolRunInfo>) -> String {
     write!(result, "  {} ", "##".yellow()).unwrap();
 
     let max_left = 33;
-    match info {
+    match details {
         EitherOrBoth::Left(new) => {
             let left = fields(new);
             let len = left.len();
@@ -851,7 +848,7 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
-    use crate::runner::costs::Costs;
+    use crate::runner::metrics::Metrics;
 
     #[rstest]
     #[case::simple("some::module", Some("id"), Some("1, 2"), "some::module id:1, 2")]
@@ -1051,19 +1048,19 @@ mod tests {
         #[case] diff_pct: &str,
         #[case] diff_fact: Option<&str>,
     ) {
-        use crate::runner::summary::CostsSummary;
+        use crate::runner::summary::MetricsSummary;
 
         colored::control::set_override(false);
 
         let costs = match old {
             Some(old) => EitherOrBoth::Both(
-                Costs(indexmap! {event_kind => new}),
-                Costs(indexmap! {event_kind => old}),
+                Metrics(indexmap! {event_kind => new}),
+                Metrics(indexmap! {event_kind => old}),
             ),
-            None => EitherOrBoth::Left(Costs(indexmap! {event_kind => new})),
+            None => EitherOrBoth::Left(Metrics(indexmap! {event_kind => new})),
         };
-        let costs_summary = CostsSummary::new(costs);
-        let formatted = format_vertical((None, None), costs_summary.all_diffs()).unwrap();
+        let metrics_summary = MetricsSummary::new(costs);
+        let formatted = format_vertical((None, None), metrics_summary.all_diffs()).unwrap();
 
         let expected = format!(
             "  {:<20}{new:>15}|{:<15} ({diff_pct}){}\n",

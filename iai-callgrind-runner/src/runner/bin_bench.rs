@@ -24,8 +24,8 @@ use super::common::{Assistant, AssistantKind, Config, ModulePath, Sandbox};
 use super::format::{BinaryBenchmarkHeader, Formatter, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
 use super::summary::{
-    BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, CallgrindSummary, CostsSummary,
-    SummaryOutput, ToolRunSummaries,
+    BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, CallgrindSummary, MetricsSummary,
+    SummaryOutput, ToolRun,
 };
 use super::tool::{
     RunOptions, ToolCommand, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind,
@@ -252,7 +252,7 @@ impl Benchmark for BaselineBenchmark {
             &config.meta,
             &bin_bench.output_format,
             self.baselines(),
-            &ToolRunSummaries::from(&summaries),
+            &ToolRun::from(&summaries),
         )?;
 
         output.dump_log(log::Level::Info);
@@ -455,10 +455,10 @@ impl BinBench {
 
     fn check_and_print_regressions(
         &self,
-        costs_summary: &CostsSummary,
-    ) -> Vec<super::summary::CallgrindRegressionSummary> {
+        metrics_summary: &MetricsSummary,
+    ) -> Vec<super::summary::CallgrindRegression> {
         if let Some(regression_config) = &self.regression_config {
-            regression_config.check_and_print(costs_summary)
+            regression_config.check_and_print(metrics_summary)
         } else {
             vec![]
         }
@@ -810,7 +810,7 @@ impl Benchmark for LoadBaselineBenchmark {
             &config.meta,
             &bin_bench.output_format,
             self.baselines(),
-            &ToolRunSummaries::from(&summaries),
+            &ToolRun::from(&summaries),
         )?;
 
         let regressions = bin_bench.check_and_print_regressions(&summaries.total);
@@ -1033,7 +1033,7 @@ impl Benchmark for SaveBaselineBenchmark {
             &config.meta,
             &bin_bench.output_format,
             self.baselines(),
-            &ToolRunSummaries::from(&summaries),
+            &ToolRun::from(&summaries),
         )?;
 
         output.dump_log(log::Level::Info);
