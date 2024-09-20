@@ -317,11 +317,11 @@ impl ToolConfig {
 
     fn parse_load(
         &self,
-        meta: &Metadata,
+        config: &Config,
         log_path: &ToolOutputPath,
         out_path: Option<&ToolOutputPath>,
     ) -> Result<ToolSummary> {
-        let parser = logfile_parser::parser_factory(self.tool, meta.project_root.clone());
+        let parser = logfile_parser::parser_factory(self.tool, config.meta.project_root.clone());
 
         // TODO: Use load-baseline as the new dataset instead of the old dataset. Not only here but
         // in other places, too
@@ -331,16 +331,16 @@ impl ToolConfig {
         match (parsed_new.is_empty(), parsed_old.is_empty()) {
             (true, true) => Err(anyhow!(
                 "The baselines '{}' and '{}' don't exist",
-                &meta.args.baseline.as_ref().unwrap(),
-                &meta.args.load_baseline.as_ref().unwrap()
+                &config.meta.args.baseline.as_ref().unwrap(),
+                &config.meta.args.load_baseline.as_ref().unwrap()
             )),
             (true, false) => Err(anyhow!(
                 "The baseline '{}' doesn't exist",
-                &meta.args.baseline.as_ref().unwrap(),
+                &config.meta.args.baseline.as_ref().unwrap(),
             )),
             (false, true) => Err(anyhow!(
                 "The loaded baseline '{}' doesn't exist",
-                &meta.args.load_baseline.as_ref().unwrap()
+                &config.meta.args.load_baseline.as_ref().unwrap()
             )),
             (false, false) => {
                 let summaries = ToolRun::from(EitherOrBoth::Both(parsed_new, parsed_old));
@@ -389,8 +389,8 @@ impl ToolConfigs {
         }
     }
 
-    fn print(meta: &Metadata, output_format: &OutputFormat, tool_run: &ToolRun) -> Result<()> {
-        VerticalFormat.print(meta, output_format, (None, None), tool_run)
+    fn print(config: &Config, output_format: &OutputFormat, tool_run: &ToolRun) -> Result<()> {
+        VerticalFormat.print(config, output_format, (None, None), tool_run)
     }
 
     pub fn parse(
@@ -420,7 +420,7 @@ impl ToolConfigs {
 
     pub fn run_loaded_vs_base(
         &self,
-        meta: &Metadata,
+        config: &Config,
         output_path: &ToolOutputPath,
         output_format: &OutputFormat,
     ) -> Result<Vec<ToolSummary>> {
@@ -433,9 +433,9 @@ impl ToolConfigs {
             let output_path = output_path.to_tool_output(tool);
             let log_path = output_path.to_log_output();
 
-            let tool_summary = tool_config.parse_load(meta, &log_path, None)?;
+            let tool_summary = tool_config.parse_load(config, &log_path, None)?;
 
-            Self::print(meta, output_format, &tool_summary.summaries)?;
+            Self::print(config, output_format, &tool_summary.summaries)?;
 
             log_path.dump_log(log::Level::Info, &mut stderr())?;
 
@@ -531,7 +531,7 @@ impl ToolConfigs {
                 old_summaries,
             )?;
 
-            Self::print(&config.meta, output_format, &tool_summary.summaries)?;
+            Self::print(config, output_format, &tool_summary.summaries)?;
 
             output.dump_log(log::Level::Info);
             log_path.dump_log(log::Level::Info, &mut stderr())?;

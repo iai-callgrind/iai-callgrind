@@ -7,7 +7,7 @@ use colored::{ColoredString, Colorize};
 
 use super::args::NoCapture;
 use super::bin_bench::BinBench;
-use super::common::ModulePath;
+use super::common::{Config, ModulePath};
 use super::lib_bench::LibBench;
 use super::meta::Metadata;
 use super::summary::{MetricsDiff, SegmentDetails, ToolMetricSummary, ToolRun};
@@ -73,7 +73,7 @@ pub trait Formatter {
 
     fn format(
         &self,
-        meta: &Metadata,
+        config: &Config,
         output_format: &OutputFormat,
         baselines: (Option<String>, Option<String>),
         tool_run: &ToolRun,
@@ -81,13 +81,16 @@ pub trait Formatter {
 
     fn print(
         &self,
-        meta: &Metadata,
+        config: &Config,
         output_format: &OutputFormat,
         baselines: (Option<String>, Option<String>),
         tool_run: &ToolRun,
     ) -> Result<()> {
         if output_format.is_default() {
-            print!("{}", self.format(meta, output_format, baselines, tool_run)?);
+            print!(
+                "{}",
+                self.format(config, output_format, baselines, tool_run)?
+            );
         }
         Ok(())
     }
@@ -436,7 +439,7 @@ impl Formatter for VerticalFormat {
 
     fn format(
         &self,
-        meta: &Metadata,
+        config: &Config,
         output_format: &OutputFormat,
         baselines: (Option<String>, Option<String>),
         tool_run: &ToolRun,
@@ -449,7 +452,7 @@ impl Formatter for VerticalFormat {
                 writeln!(result, "{}", multiple_files_header(&segment.details))?;
 
                 let formatted_command =
-                    format_command(meta, &segment.details.as_ref().map(|i| &i.command));
+                    format_command(config, &segment.details.as_ref().map(|i| &i.command));
                 write!(result, "{formatted_command}").unwrap();
 
                 if first {
@@ -500,7 +503,7 @@ impl Formatter for VerticalFormat {
             // the output of `Massif` and `BBV`.
             for segment in &tool_run.segments {
                 let formatted_command =
-                    format_command(meta, &segment.details.as_ref().map(|i| &i.command));
+                    format_command(config, &segment.details.as_ref().map(|i| &i.command));
 
                 write!(result, "{formatted_command}").unwrap();
 
@@ -537,55 +540,105 @@ impl Formatter for VerticalFormat {
     }
 }
 
-fn format_command(meta: &Metadata, command: &EitherOrBoth<&String>) -> String {
+fn format_command(config: &Config, command: &EitherOrBoth<&String>) -> String {
     let mut result = String::new();
     match command {
         EitherOrBoth::Left(new) => {
-            writeln!(
-                result,
-                "  {:<20}{}",
-                "Command:",
-                make_relative(&meta.project_root, PathBuf::from(&new))
-                    .display()
-                    .to_string()
-                    .blue()
-                    .bold()
-            )
-            .unwrap();
-        }
-        EitherOrBoth::Right(old) => {
-            writeln!(
-                result,
-                "  {:<20}{}|{}",
-                "Command:",
-                " ".repeat(15),
-                make_relative(&meta.project_root, PathBuf::from(&old))
-                    .display()
-                    .to_string()
-                    .blue()
-            )
-            .unwrap();
-        }
-        EitherOrBoth::Both(new, old) => {
-            if new == old {
+            if new.starts_with(&config.bench_bin.display().to_string()) {
                 writeln!(
                     result,
                     "  {:<20}{}",
                     "Command:",
-                    make_relative(&meta.project_root, PathBuf::from(&new))
-                        .display()
-                        .to_string()
+                    make_relative(&config.meta.project_root, &config.bench_bin)
+                        .to_string_lossy()
                         .blue()
                         .bold()
                 )
                 .unwrap();
             } else {
-                let new_command = make_relative(&meta.project_root, PathBuf::from(&new))
-                    .display()
-                    .to_string();
-                let old_command = make_relative(&meta.project_root, PathBuf::from(&new))
-                    .display()
-                    .to_string();
+                writeln!(
+                    result,
+                    "  {:<20}{}",
+                    "Command:",
+                    make_relative(&config.meta.project_root, PathBuf::from(new))
+                        .to_string_lossy()
+                        .blue()
+                        .bold()
+                )
+                .unwrap();
+            }
+        }
+        EitherOrBoth::Right(old) => {
+            if old.starts_with(&config.bench_bin.display().to_string()) {
+                writeln!(
+                    result,
+                    "  {:<20}{}|{}",
+                    "Command:",
+                    " ".repeat(15),
+                    make_relative(&config.meta.project_root, &config.bench_bin)
+                        .to_string_lossy()
+                        .to_string()
+                        .blue()
+                )
+                .unwrap();
+            } else {
+                writeln!(
+                    result,
+                    "  {:<20}{}|{}",
+                    "Command:",
+                    " ".repeat(15),
+                    make_relative(&config.meta.project_root, PathBuf::from(old))
+                        .to_string_lossy()
+                        .blue()
+                )
+                .unwrap();
+            }
+        }
+        EitherOrBoth::Both(new, old) => {
+            if new == old {
+                if new.starts_with(&config.bench_bin.display().to_string()) {
+                    writeln!(
+                        result,
+                        "  {:<20}{}",
+                        "Command:",
+                        make_relative(&config.meta.project_root, &config.bench_bin)
+                            .to_string_lossy()
+                            .blue()
+                            .bold()
+                    )
+                    .unwrap();
+                } else {
+                    writeln!(
+                        result,
+                        "  {:<20}{}",
+                        "Command:",
+                        make_relative(&config.meta.project_root, PathBuf::from(new))
+                            .to_string_lossy()
+                            .blue()
+                            .bold()
+                    )
+                    .unwrap();
+                }
+            } else {
+                let new_command = if new.starts_with(&config.bench_bin.display().to_string()) {
+                    make_relative(&config.meta.project_root, &config.bench_bin)
+                        .to_string_lossy()
+                        .to_string()
+                } else {
+                    make_relative(&config.meta.project_root, PathBuf::from(new))
+                        .to_string_lossy()
+                        .to_string()
+                };
+                let old_command = if old.starts_with(&config.bench_bin.display().to_string()) {
+                    make_relative(&config.meta.project_root, &config.bench_bin)
+                        .to_string_lossy()
+                        .to_string()
+                } else {
+                    make_relative(&config.meta.project_root, PathBuf::from(old))
+                        .display()
+                        .to_string()
+                };
+
                 let split = format_split("Command:", new_command.blue().bold(), old_command.blue());
                 writeln!(result, "{split}").unwrap();
             }
@@ -677,7 +730,7 @@ pub fn format_vertical<'a, K: Display>(
             )?,
             EitherOrBoth::Both(new_cost, old_cost) => {
                 let diffs = diff.diffs.expect(
-                    "If there are new costs and old costs there should be a difference present",
+                    "If there are new metrics and old metrics there should be a difference present",
                 );
                 let pct_string = format_float(diffs.diff_pct, "%");
                 let factor_string = format_float(diffs.factor, "x");

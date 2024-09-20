@@ -44,7 +44,7 @@ impl<K: Hash + Eq + Display + Clone> Metrics<K> {
         }
     }
 
-    /// Sum this `Cost's` events with other `Costs`
+    /// Sum this `Metric` with another `Metric`
     pub fn add(&mut self, other: &Self) {
         for ((_, old), cost) in self.0.iter_mut().zip(other.0.iter().map(|(_, c)| c)) {
             *old += cost;

@@ -12,7 +12,6 @@ use super::logfile_parser::{
 use crate::api::ErrorMetricKind;
 use crate::runner::metrics::Metrics;
 use crate::runner::summary::ToolMetrics;
-use crate::util::make_relative;
 
 lazy_static! {
     static ref EXTRACT_ERROR_SUMMARY_RE: Regex = regex::Regex::new(
@@ -41,7 +40,7 @@ impl LogfileParser for ErrorMetricLogfileParser {
             .map(std::result::Result::unwrap)
             .skip_while(|l| l.trim().is_empty());
 
-        let header = parse_header(&self.root_dir, &path, &mut iter)?;
+        let header = parse_header(&path, &mut iter)?;
 
         let metrics_prototype = Metrics::from_iter([
             ErrorMetricKind::Errors,
@@ -113,7 +112,7 @@ impl LogfileParser for ErrorMetricLogfileParser {
 
         Ok(Logfile {
             header,
-            path: make_relative(&self.root_dir, path),
+            path,
             metrics: ToolMetrics::ErrorMetrics(metrics.context(
                 "Failed collecting error metrics: An error summary line should be present",
             )?),

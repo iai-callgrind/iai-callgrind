@@ -16,8 +16,8 @@ use crate::error::Error;
 
 /// Either left or right or both can be present
 ///
-/// Most of the time, this enum is used to store (new, old) output, costs, etc. Per convention left
-/// is always `new` and right is `old`.
+/// Most of the time, this enum is used to store (new, old) output, metrics, etc. Per convention
+/// left is always `new` and right is `old`.
 ///
 /// This enum is inspired by `itertools::EitherOrBoth`. We use a simplification `EitherOrBoth<T>`
 /// instead of `EitherOrBoth<T,U = T>` because that is what we always need. Depending on `itertools`

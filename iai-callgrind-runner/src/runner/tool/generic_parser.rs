@@ -6,7 +6,6 @@ use anyhow::{Context, Result};
 
 use super::logfile_parser::{parse_header, Logfile, LogfileParser, EMPTY_LINE_RE, STRIP_PREFIX_RE};
 use crate::runner::summary::ToolMetrics;
-use crate::util::make_relative;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum State {
@@ -28,7 +27,7 @@ impl LogfileParser for GenericLogfileParser {
             .map(std::result::Result::unwrap)
             .skip_while(|l| l.trim().is_empty());
 
-        let header = parse_header(&self.root_dir, &path, &mut iter)?;
+        let header = parse_header(&path, &mut iter)?;
         let mut details = vec![];
 
         let mut state = State::HeaderSpace;
@@ -62,7 +61,7 @@ impl LogfileParser for GenericLogfileParser {
         Ok(Logfile {
             header,
             details,
-            path: make_relative(&self.root_dir, path),
+            path,
             metrics: ToolMetrics::None,
         })
     }

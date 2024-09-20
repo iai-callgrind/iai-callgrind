@@ -42,7 +42,7 @@ impl Calls {
 impl Metrics {
     /// Calculate and add derived summary events (i.e. estimated cycles) in-place
     ///
-    /// Additional calls to this function will overwrite the costs for derived summary events.
+    /// Additional calls to this function will overwrite the metrics for derived summary events.
     ///
     /// # Errors
     ///

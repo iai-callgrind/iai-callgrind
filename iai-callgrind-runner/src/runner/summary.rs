@@ -210,7 +210,7 @@ pub struct MetricsSummary<K: Hash + Eq = EventKind>(IndexMap<K, MetricsDiff>);
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ToolMetricSummary {
-    /// If there are no costs extracted (currently massif, bbv)
+    /// If there are no metrics extracted (currently massif, bbv)
     #[default]
     None,
     /// The error summary of tools which reports errors (memcheck, helgrind, drd)
@@ -221,7 +221,7 @@ pub enum ToolMetricSummary {
     CallgrindSummary(MetricsSummary<EventKind>),
 }
 
-/// The differences between two `Costs` as percentage and factor
+/// The differences between two `Metrics` as percentage and factor
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Diffs {
@@ -567,15 +567,15 @@ impl CallgrindSummary {
 }
 
 impl MetricsDiff {
-    pub fn new(costs: EitherOrBoth<u64>) -> Self {
-        if let EitherOrBoth::Both(new, old) = costs {
+    pub fn new(metrics: EitherOrBoth<u64>) -> Self {
+        if let EitherOrBoth::Both(new, old) = metrics {
             Self {
-                metrics: costs,
+                metrics,
                 diffs: Some(Diffs::new(new, old)),
             }
         } else {
             Self {
-                metrics: costs,
+                metrics,
                 diffs: None,
             }
         }
@@ -630,57 +630,58 @@ impl ToolMetricSummary {
         }
     }
 
-    pub fn from_new_costs(costs: &ToolMetrics) -> Self {
-        match costs {
+    pub fn from_new_metrics(metrics: &ToolMetrics) -> Self {
+        match metrics {
             ToolMetrics::None => ToolMetricSummary::None,
-            ToolMetrics::DhatMetrics(costs) => ToolMetricSummary::DhatSummary(MetricsSummary::new(
-                EitherOrBoth::Left(costs.clone()),
-            )),
-            ToolMetrics::ErrorMetrics(costs) => ToolMetricSummary::ErrorSummary(
-                MetricsSummary::new(EitherOrBoth::Left(costs.clone())),
+            ToolMetrics::DhatMetrics(metrics) => ToolMetricSummary::DhatSummary(
+                MetricsSummary::new(EitherOrBoth::Left(metrics.clone())),
             ),
-            ToolMetrics::CallgrindMetrics(costs) => ToolMetricSummary::CallgrindSummary(
-                MetricsSummary::new(EitherOrBoth::Left(costs.clone())),
+            ToolMetrics::ErrorMetrics(metrics) => ToolMetricSummary::ErrorSummary(
+                MetricsSummary::new(EitherOrBoth::Left(metrics.clone())),
+            ),
+            ToolMetrics::CallgrindMetrics(metrics) => ToolMetricSummary::CallgrindSummary(
+                MetricsSummary::new(EitherOrBoth::Left(metrics.clone())),
             ),
         }
     }
-    pub fn from_old_costs(costs: &ToolMetrics) -> Self {
-        match costs {
+    pub fn from_old_metrics(metrics: &ToolMetrics) -> Self {
+        match metrics {
             ToolMetrics::None => ToolMetricSummary::None,
-            ToolMetrics::DhatMetrics(costs) => ToolMetricSummary::DhatSummary(MetricsSummary::new(
-                EitherOrBoth::Right(costs.clone()),
-            )),
-            ToolMetrics::ErrorMetrics(costs) => ToolMetricSummary::ErrorSummary(
-                MetricsSummary::new(EitherOrBoth::Right(costs.clone())),
+            ToolMetrics::DhatMetrics(metrics) => ToolMetricSummary::DhatSummary(
+                MetricsSummary::new(EitherOrBoth::Right(metrics.clone())),
             ),
-            ToolMetrics::CallgrindMetrics(costs) => ToolMetricSummary::CallgrindSummary(
-                MetricsSummary::new(EitherOrBoth::Right(costs.clone())),
+            ToolMetrics::ErrorMetrics(metrics) => ToolMetricSummary::ErrorSummary(
+                MetricsSummary::new(EitherOrBoth::Right(metrics.clone())),
+            ),
+            ToolMetrics::CallgrindMetrics(metrics) => ToolMetricSummary::CallgrindSummary(
+                MetricsSummary::new(EitherOrBoth::Right(metrics.clone())),
             ),
         }
     }
 
-    /// Return the `CostsSummaryType` if the `CostsKind` have the same kind, else return with error
-    pub fn try_from_new_and_old_costs(
-        new_costs: &ToolMetrics,
-        old_costs: &ToolMetrics,
+    /// Return the `ToolMetricSummary` if the `MetricsKind` are the same kind, else return with
+    /// error
+    pub fn try_from_new_and_old_metrics(
+        new_metrics: &ToolMetrics,
+        old_metrics: &ToolMetrics,
     ) -> Result<Self> {
-        match (new_costs, old_costs) {
+        match (new_metrics, old_metrics) {
             (ToolMetrics::None, ToolMetrics::None) => Ok(ToolMetricSummary::None),
-            (ToolMetrics::DhatMetrics(new_costs), ToolMetrics::DhatMetrics(old_costs)) => {
+            (ToolMetrics::DhatMetrics(new_metrics), ToolMetrics::DhatMetrics(old_metrics)) => {
                 Ok(ToolMetricSummary::DhatSummary(MetricsSummary::new(
-                    EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
+                    EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone()),
                 )))
             }
-            (ToolMetrics::ErrorMetrics(new_costs), ToolMetrics::ErrorMetrics(old_costs)) => {
+            (ToolMetrics::ErrorMetrics(new_metrics), ToolMetrics::ErrorMetrics(old_metrics)) => {
                 Ok(ToolMetricSummary::ErrorSummary(MetricsSummary::new(
-                    EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
+                    EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone()),
                 )))
             }
             (
-                ToolMetrics::CallgrindMetrics(new_costs),
-                ToolMetrics::CallgrindMetrics(old_costs),
+                ToolMetrics::CallgrindMetrics(new_metrics),
+                ToolMetrics::CallgrindMetrics(old_metrics),
             ) => Ok(ToolMetricSummary::CallgrindSummary(MetricsSummary::new(
-                EitherOrBoth::Both(new_costs.clone(), old_costs.clone()),
+                EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone()),
             ))),
             _ => Err(anyhow!("Cannot create summary from incompatible costs")),
         }
@@ -700,21 +701,20 @@ impl<K> MetricsSummary<K>
 where
     K: Hash + Eq + Summarize + Display + Clone,
 {
-    /// TODO: TEST
-    /// Create a new `CostsSummary` calculating the differences between new and old (if any)
-    /// [`Costs`]
-    pub fn new(costs: EitherOrBoth<Metrics<K>>) -> Self {
-        match costs {
+    /// Create a new `MetricsSummary` calculating the differences between new and old (if any)
+    /// [`Metrics`]
+    pub fn new(metrics: EitherOrBoth<Metrics<K>>) -> Self {
+        match metrics {
             EitherOrBoth::Left(new) => {
                 let mut new = Cow::Owned(new);
                 K::summarize(&mut new);
 
                 Self(
                     new.iter()
-                        .map(|(event_kind, cost)| {
+                        .map(|(metric_kind, metric)| {
                             (
-                                event_kind.clone(),
-                                MetricsDiff::new(EitherOrBoth::Left(*cost)),
+                                metric_kind.clone(),
+                                MetricsDiff::new(EitherOrBoth::Left(*metric)),
                             )
                         })
                         .collect::<IndexMap<_, _>>(),
@@ -726,10 +726,10 @@ where
 
                 Self(
                     old.iter()
-                        .map(|(event_kind, cost)| {
+                        .map(|(metric_kind, metric)| {
                             (
-                                event_kind.clone(),
-                                MetricsDiff::new(EitherOrBoth::Right(*cost)),
+                                metric_kind.clone(),
+                                MetricsDiff::new(EitherOrBoth::Right(*metric)),
                             )
                         })
                         .collect::<IndexMap<_, _>>(),
@@ -742,13 +742,13 @@ where
                 K::summarize(&mut old);
 
                 let mut map = indexmap! {};
-                for event_kind in new.metric_kinds_union(&old) {
+                for metric_kind in new.metric_kinds_union(&old) {
                     let diff = match (
-                        new.metric_by_kind(&event_kind),
-                        old.metric_by_kind(&event_kind),
+                        new.metric_by_kind(&metric_kind),
+                        old.metric_by_kind(&metric_kind),
                     ) {
-                        (Some(cost), None) => MetricsDiff::new(EitherOrBoth::Left(cost)),
-                        (None, Some(cost)) => MetricsDiff::new(EitherOrBoth::Right(cost)),
+                        (Some(metric), None) => MetricsDiff::new(EitherOrBoth::Left(metric)),
+                        (None, Some(metric)) => MetricsDiff::new(EitherOrBoth::Right(metric)),
                         (Some(new), Some(old)) => MetricsDiff::new(EitherOrBoth::Both(new, old)),
                         (None, None) => {
                             unreachable!(
@@ -757,16 +757,16 @@ where
                             )
                         }
                     };
-                    map.insert(event_kind, diff);
+                    map.insert(metric_kind, diff);
                 }
                 Self(map)
             }
         }
     }
 
-    /// Try to return a [`CostsDiff`] for the specified `EventKind`
-    pub fn diff_by_kind(&self, event_kind: &K) -> Option<&MetricsDiff> {
-        self.0.get(event_kind)
+    /// Try to return a [`MetricsDiff`] for the specified `MetricKind`
+    pub fn diff_by_kind(&self, metric_kind: &K) -> Option<&MetricsDiff> {
+        self.0.get(metric_kind)
     }
 
     pub fn all_diffs(&self) -> impl Iterator<Item = (&K, &MetricsDiff)> {
@@ -774,28 +774,28 @@ where
     }
 
     pub fn extract_costs(&self) -> EitherOrBoth<Metrics<K>> {
-        let mut new_costs: Metrics<K> = Metrics::empty();
-        let mut old_costs: Metrics<K> = Metrics::empty();
+        let mut new_metrics: Metrics<K> = Metrics::empty();
+        let mut old_metrics: Metrics<K> = Metrics::empty();
         // The diffs should not be empty
-        for (event_kind, diff) in self.all_diffs() {
+        for (metric_kind, diff) in self.all_diffs() {
             match diff.metrics {
                 EitherOrBoth::Left(new) => {
-                    new_costs.insert(event_kind.clone(), new);
+                    new_metrics.insert(metric_kind.clone(), new);
                 }
                 EitherOrBoth::Right(old) => {
-                    old_costs.insert(event_kind.clone(), old);
+                    old_metrics.insert(metric_kind.clone(), old);
                 }
                 EitherOrBoth::Both(new, old) => {
-                    new_costs.insert(event_kind.clone(), new);
-                    old_costs.insert(event_kind.clone(), old);
+                    new_metrics.insert(metric_kind.clone(), new);
+                    old_metrics.insert(metric_kind.clone(), old);
                 }
             }
         }
 
-        match (new_costs.is_empty(), old_costs.is_empty()) {
-            (false, false) => EitherOrBoth::Both(new_costs, old_costs),
-            (false, true) => EitherOrBoth::Left(new_costs),
-            (true, false) => EitherOrBoth::Right(old_costs),
+        match (new_metrics.is_empty(), old_metrics.is_empty()) {
+            (false, false) => EitherOrBoth::Both(new_metrics, old_metrics),
+            (false, true) => EitherOrBoth::Left(new_metrics),
+            (true, false) => EitherOrBoth::Right(old_metrics),
             (true, true) => unreachable!("A costs diff contains new or old values or both."),
         }
     }
@@ -905,7 +905,7 @@ impl ToolRunSegment {
             ToolMetricSummary::None
             | ToolMetricSummary::DhatSummary(_)
             | ToolMetricSummary::CallgrindSummary(_) => false,
-            ToolMetricSummary::ErrorSummary(costs) => costs
+            ToolMetricSummary::ErrorSummary(metrics) => metrics
                 .diff_by_kind(&ErrorMetricKind::Errors)
                 .map_or(false, |e| match e.metrics {
                     EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _) => new > 0,
@@ -959,13 +959,13 @@ mod tests {
         EitherOrBoth::Both(1, 3),
         EitherOrBoth::Both(3, 8)
     )]
-    fn test_costs_diff_add(
-        #[case] cost: EitherOrBoth<u64>,
-        #[case] other_cost: EitherOrBoth<u64>,
+    fn test_metrics_diff_add(
+        #[case] metric: EitherOrBoth<u64>,
+        #[case] other_metric: EitherOrBoth<u64>,
         #[case] expected: EitherOrBoth<u64>,
     ) {
-        let new_diff = MetricsDiff::new(cost);
-        let old_diff = MetricsDiff::new(other_cost);
+        let new_diff = MetricsDiff::new(metric);
+        let old_diff = MetricsDiff::new(other_metric);
         let expected = MetricsDiff::new(expected);
 
         assert_eq!(new_diff.add(&old_diff), expected);

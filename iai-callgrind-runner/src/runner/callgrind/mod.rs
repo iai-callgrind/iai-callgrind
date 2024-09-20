@@ -89,9 +89,10 @@ impl TryFrom<&Metrics> for CacheSummary {
 }
 
 impl RegressionConfig {
-    /// Check regression of the [`Costs`] for the configured [`EventKind`]s and print it
+    /// Check regression of the [`super::metrics::Metrics`] for the configured [`EventKind`]s and
+    /// print it
     ///
-    /// If the old `Costs` is None then no regression checks are performed and this method returns
+    /// If the old `Metrics` is None then no regression checks are performed and this method returns
     /// [`Ok`].
     ///
     /// # Errors
@@ -135,10 +136,9 @@ impl RegressionConfig {
         regression
     }
 
-    // Check the `CostsSummary` for regressions.
+    // Check the `MetricsSummary` for regressions.
     //
-    // The limits for event kinds which are not present in the `CostsSummary` are ignored. A
-    // `CostsDiff` which does not have both `new` and `old` is also ignored.
+    // The limits for event kinds which are not present in the `MetricsSummary` are ignored.
     pub fn check(&self, metrics_summary: &MetricsSummary) -> Vec<CallgrindRegression> {
         let mut regressions = vec![];
         for (event_kind, new_cost, old_cost, pct, limit) in
@@ -379,17 +379,17 @@ impl Summary {
         }
     }
 
-    pub fn from_new(path: PathBuf, properties: CallgrindProperties, costs: Metrics) -> Self {
+    pub fn from_new(path: PathBuf, properties: CallgrindProperties, metrics: Metrics) -> Self {
         Self {
             details: EitherOrBoth::Left((path, properties)),
-            metrics_summary: MetricsSummary::new(EitherOrBoth::Left(costs)),
+            metrics_summary: MetricsSummary::new(EitherOrBoth::Left(metrics)),
         }
     }
 
-    pub fn from_old(path: PathBuf, properties: CallgrindProperties, costs: Metrics) -> Self {
+    pub fn from_old(path: PathBuf, properties: CallgrindProperties, metrics: Metrics) -> Self {
         Self {
             details: EitherOrBoth::Right((path, properties)),
-            metrics_summary: MetricsSummary::new(EitherOrBoth::Right(costs)),
+            metrics_summary: MetricsSummary::new(EitherOrBoth::Right(metrics)),
         }
     }
 

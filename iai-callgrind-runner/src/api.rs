@@ -564,7 +564,8 @@ impl EventKind {
     /// Return true if this `EventKind` is a derived event
     ///
     /// Derived events are calculated from Callgrind's native event types. See also
-    /// [`crate::runner::callgrind::model::Costs::make_summary`]. Currently all derived events are:
+    /// [`crate::runner::callgrind::model::Metrics::make_summary`]. Currently all derived events
+    /// are:
     ///
     /// * [`EventKind::L1hits`]
     /// * [`EventKind::LLhits`]

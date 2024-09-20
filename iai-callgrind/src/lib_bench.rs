@@ -524,7 +524,7 @@ impl LibraryBenchmarkConfig {
     ///
     /// Iai-Callgrind sets the [`--toggle-collect`] argument of callgrind to the benchmark function
     /// which we call [`EntryPoint::Default`]. Specifying a `--toggle-collect` argument, sets
-    /// automatically `--collect-at-start=no`. This ensures that only the costs from the benchmark
+    /// automatically `--collect-at-start=no`. This ensures that only the metrics from the benchmark
     /// itself are collected and not the `setup` or `teardown` or anything before/after the
     /// benchmark function.
     ///

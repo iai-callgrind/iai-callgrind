@@ -14,7 +14,7 @@ use crate::runner::dhat::logfile_parser::DhatLogfileParser;
 use crate::runner::summary::{
     SegmentDetails, ToolMetricSummary, ToolMetrics, ToolRun, ToolRunSegment,
 };
-use crate::util::{make_relative, EitherOrBoth};
+use crate::util::EitherOrBoth;
 
 // The different regex have to consider --time-stamp=yes
 lazy_static! {
@@ -62,7 +62,7 @@ pub trait LogfileParser {
 
 #[derive(Debug)]
 pub struct Header {
-    pub command: PathBuf,
+    pub command: String,
     pub pid: i32,
     pub parent_pid: Option<i32>,
 }
@@ -84,7 +84,7 @@ pub struct LogfileSummary {
 impl From<Logfile> for SegmentDetails {
     fn from(value: Logfile) -> Self {
         Self {
-            command: value.header.command.display().to_string(),
+            command: value.header.command,
             pid: value.header.pid,
             parent_pid: value.header.parent_pid,
             details: (!value.details.is_empty()).then(|| value.details.join("\n")),
@@ -104,7 +104,7 @@ impl From<EitherOrBoth<Vec<Logfile>>> for ToolRun {
             EitherOrBoth::Left(new) => new
                 .into_iter()
                 .map(|logfile| {
-                    let metrics_summary = ToolMetricSummary::from_new_costs(&logfile.metrics);
+                    let metrics_summary = ToolMetricSummary::from_new_metrics(&logfile.metrics);
                     if let Some(entry) = total.as_mut() {
                         entry.add_mut(&metrics_summary);
                     } else {
@@ -120,7 +120,7 @@ impl From<EitherOrBoth<Vec<Logfile>>> for ToolRun {
             EitherOrBoth::Right(old) => old
                 .into_iter()
                 .map(|logfile| {
-                    let metrics_summary = ToolMetricSummary::from_old_costs(&logfile.metrics);
+                    let metrics_summary = ToolMetricSummary::from_old_metrics(&logfile.metrics);
                     if let Some(entry) = total.as_mut() {
                         entry.add_mut(&metrics_summary);
                     } else {
@@ -138,7 +138,7 @@ impl From<EitherOrBoth<Vec<Logfile>>> for ToolRun {
                 .zip_longest(old)
                 .map(|either_or_both| match either_or_both {
                     itertools::EitherOrBoth::Both(new, old) => {
-                        let metrics_summary = ToolMetricSummary::try_from_new_and_old_costs(
+                        let metrics_summary = ToolMetricSummary::try_from_new_and_old_metrics(
                             &new.metrics,
                             &old.metrics,
                         )
@@ -156,7 +156,7 @@ impl From<EitherOrBoth<Vec<Logfile>>> for ToolRun {
                         }
                     }
                     itertools::EitherOrBoth::Left(new) => {
-                        let metrics_summary = ToolMetricSummary::from_new_costs(&new.metrics);
+                        let metrics_summary = ToolMetricSummary::from_new_metrics(&new.metrics);
                         if let Some(entry) = total.as_mut() {
                             entry.add_mut(&metrics_summary);
                         } else {
@@ -169,7 +169,7 @@ impl From<EitherOrBoth<Vec<Logfile>>> for ToolRun {
                         }
                     }
                     itertools::EitherOrBoth::Right(old) => {
-                        let metrics_summary = ToolMetricSummary::from_old_costs(&old.metrics);
+                        let metrics_summary = ToolMetricSummary::from_old_metrics(&old.metrics);
                         if let Some(entry) = total.as_mut() {
                             entry.add_mut(&metrics_summary);
                         } else {
@@ -204,11 +204,7 @@ pub fn extract_pid(line: &str) -> i32 {
         .expect("Pid should be valid")
 }
 
-pub fn parse_header(
-    project_root: &Path,
-    path: &Path,
-    mut lines: impl Iterator<Item = String>,
-) -> Result<Header> {
+pub fn parse_header(path: &Path, mut lines: impl Iterator<Item = String>) -> Result<Header> {
     let next = lines.next();
 
     let (pid, next) = if let Some(next) = next {
@@ -231,7 +227,7 @@ pub fn parse_header(
             match key.to_ascii_lowercase().as_str() {
                 "command" => {
                     let value = caps.name("value").unwrap().as_str();
-                    command = Some(make_relative(project_root, value));
+                    command = Some(value.to_owned());
                 }
                 "parent pid" => {
                     let value = caps.name("value").unwrap().as_str().to_owned();

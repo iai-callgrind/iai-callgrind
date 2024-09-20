@@ -13,13 +13,12 @@ use crate::runner::summary::ToolMetrics;
 use crate::runner::tool::logfile_parser::{
     parse_header, Logfile, LogfileParser, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
 };
-use crate::util::make_relative;
 
 // The different regex have to consider --time-stamp=yes
 lazy_static! {
     static ref FIXUP_NUMBERS_RE: Regex =
         regex::Regex::new(r"([0-9]),([0-9])").expect("Regex should compile");
-    static ref COSTS_RE: Regex =
+    static ref METRICS_RE: Regex =
         regex::Regex::new(r"^\s*(?<bytes>[0-9]+)\s*bytes(?:\s*in\s*(?<blocks>[0-9]+))?.*$")
             .expect("Regex should compile");
 }
@@ -90,9 +89,9 @@ impl DhatLogfileParser {
                     let value = fields_caps.name("value").unwrap().as_str();
                     let value = FIXUP_NUMBERS_RE.replace_all(value, "$1$2");
 
-                    if let Some(costs_caps) = COSTS_RE.captures(&value) {
-                        let num_bytes = costs_caps.name("bytes").unwrap().as_str().parse()?;
-                        let num_blocks = costs_caps
+                    if let Some(metrics_caps) = METRICS_RE.captures(&value) {
+                        let num_bytes = metrics_caps.name("bytes").unwrap().as_str().parse()?;
+                        let num_blocks = metrics_caps
                             .name("blocks")
                             .and_then(|s| s.as_str().parse().ok());
 
@@ -154,7 +153,7 @@ impl LogfileParser for DhatLogfileParser {
             .map(std::result::Result::unwrap)
             .skip_while(|l| l.trim().is_empty());
 
-        let header = parse_header(&self.root_dir, &path, &mut iter)?;
+        let header = parse_header(&path, &mut iter)?;
 
         let mut metrics = Metrics::empty();
         let mut details = vec![];
@@ -177,7 +176,7 @@ impl LogfileParser for DhatLogfileParser {
 
         Ok(Logfile {
             header,
-            path: make_relative(&self.root_dir, path),
+            path,
             details,
             metrics: ToolMetrics::DhatMetrics(metrics),
         })
@@ -195,7 +194,7 @@ mod tests {
     #[case::zero_bytes_in_blocks("0 bytes in 0 blocks")]
     #[case::some_bytes("156362 bytes")]
     #[case::zero_bytes("0 bytes")]
-    fn test_costs_re_when_match(#[case] haystack: &str) {
-        assert!(COSTS_RE.is_match(haystack));
+    fn test_metrics_re_when_match(#[case] haystack: &str) {
+        assert!(METRICS_RE.is_match(haystack));
     }
 }
