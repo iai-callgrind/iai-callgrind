@@ -35,6 +35,9 @@ serde_yaml = { workspace = true }
 valico = { workspace = true }
 version-compare = { workspace = true }
 
+[dev-dependencies]
+rstest = { workspace = true }
+
 [[bin]]
 name = "bench"
 path = "src/bench.rs"

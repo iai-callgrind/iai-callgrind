@@ -161,6 +161,7 @@ dependencies = [
  "once_cell",
  "pretty_assertions",
  "regex",
+ "rstest",
  "serde",
  "serde_json",
  "serde_yaml",

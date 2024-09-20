@@ -653,7 +653,11 @@ fn format_details(details: &str) -> String {
     if let Some(head_line) = details.next() {
         writeln!(result, "  {:<20}{}", "Details:", head_line).unwrap();
         for body_line in details {
-            writeln!(result, "  {}{body_line}", " ".repeat(20)).unwrap();
+            if body_line.is_empty() {
+                writeln!(result).unwrap();
+            } else {
+                writeln!(result, "  {}{body_line}", " ".repeat(20)).unwrap();
+            }
         }
     }
     result

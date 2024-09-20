@@ -7,7 +7,7 @@ test_bin_bench_compare_by_id::compare_without_id::benchmark_without_id () -> tar
   Estimated Cycles:                  |N/A             (*********)
 test_bin_bench_compare_by_id::compare_without_id::benchmark_without_id () -> target/release/echo
   Instructions:                      |                (No change)
-  L1 Hits:                           |                (No change)
+  L1 Hits:                           |                (         )
   L2 Hits:                           |                (         )
   RAM Hits:                          |                (         )
   Total read+write:                  |                (No change)
@@ -21,14 +21,14 @@ test_bin_bench_compare_by_id::same_benchmarks::benchmark_with_id foo:() -> targe
   Estimated Cycles:                  |N/A             (*********)
 test_bin_bench_compare_by_id::same_benchmarks::benchmark_with_id foo:() -> target/release/echo
   Instructions:                      |                (No change)
-  L1 Hits:                           |                (No change)
+  L1 Hits:                           |                (         )
   L2 Hits:                           |                (         )
   RAM Hits:                          |                (         )
   Total read+write:                  |                (No change)
   Estimated Cycles:                  |                (         )
   Comparison with benchmark_with_id foo:() -> target/release/echo
   Instructions:                      |                (No change)
-  L1 Hits:                           |                (No change)
+  L1 Hits:                           |                (         )
   L2 Hits:                           |                (         )
   RAM Hits:                          |                (         )
   Total read+write:                  |                (No change)
@@ -49,7 +49,7 @@ test_bin_bench_compare_by_id::different_benchmarks::benchmark_with_id_other foo:
   Estimated Cycles:                  |N/A             (*********)
   Comparison with benchmark_with_id foo:() -> target/release/echo
   Instructions:                      |                (No change)
-  L1 Hits:                           |                (No change)
+  L1 Hits:                           |                (         )
   L2 Hits:                           |                (         )
   RAM Hits:                          |                (         )
   Total read+write:                  |                (No change)
@@ -77,7 +77,7 @@ test_bin_bench_compare_by_id::not_all_ids_present_in_first::benchmark_with_id fo
   Estimated Cycles:                  |N/A             (*********)
   Comparison with benchmark_two_benches foo:("foo") -> target/release/echo foo
   Instructions:                      |                (+       %) [+       x]
-  L1 Hits:                           |                (+       %) [+       x]
+  L1 Hits:                           |                (         )
   L2 Hits:                           |                (         )
   RAM Hits:                          |                (         )
   Total read+write:                  |                (+       %) [+       x]
@@ -98,7 +98,7 @@ test_bin_bench_compare_by_id::not_all_ids_present_in_second::benchmark_two_bench
   Estimated Cycles:                  |N/A             (*********)
   Comparison with benchmark_with_id foo:() -> target/release/echo
   Instructions:                      |                (-       %) [-       x]
-  L1 Hits:                           |                (-       %) [-       x]
+  L1 Hits:                           |                (         )
   L2 Hits:                           |                (         )
   RAM Hits:                          |                (         )
   Total read+write:                  |                (-       %) [-       x]
@@ -140,7 +140,7 @@ test_bin_bench_compare_by_id::compare_low_level::low_level_other foo:() -> targe
   Estimated Cycles:                  |N/A             (*********)
   Comparison with low_level_benchmark foo:() -> target/release/echo
   Instructions:                      |                (-       %) [-       x]
-  L1 Hits:                           |                (-       %) [-       x]
+  L1 Hits:                           |                (         )
   L2 Hits:                           |                (         )
   RAM Hits:                          |                (         )
   Total read+write:                  |                (-       %) [-       x]
@@ -161,7 +161,7 @@ test_bin_bench_compare_by_id::compare_low_level_with_attribute::benchmark_with_i
   Estimated Cycles:                  |N/A             (*********)
   Comparison with low_level_benchmark foo:() -> target/release/echo
   Instructions:                      |                (No change)
-  L1 Hits:                           |                (No change)
+  L1 Hits:                           |                (         )
   L2 Hits:                           |                (         )
   RAM Hits:                          |                (         )
   Total read+write:                  |                (No change)
@@ -189,7 +189,7 @@ test_bin_bench_compare_by_id::compare_low_level_multiple::low_level_other foo:()
   Estimated Cycles:                  |N/A             (*********)
   Comparison with low_level_benchmark foo:() -> target/release/echo foo
   Instructions:                      |                (+       %) [+       x]
-  L1 Hits:                           |                (+       %) [+       x]
+  L1 Hits:                           |                (         )
   L2 Hits:                           |                (         )
   RAM Hits:                          |                (         )
   Total read+write:                  |                (+       %) [+       x]
@@ -203,7 +203,7 @@ test_bin_bench_compare_by_id::compare_low_level_multiple::low_level_other bar:()
   Estimated Cycles:                  |N/A             (*********)
   Comparison with low_level_benchmark bar:() -> target/release/echo bar
   Instructions:                      |                (+       %) [+       x]
-  L1 Hits:                           |                (+       %) [+       x]
+  L1 Hits:                           |                (         )
   L2 Hits:                           |                (         )
   RAM Hits:                          |                (         )
   Total read+write:                  |                (+       %) [+       x]

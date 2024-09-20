@@ -1,183 +1,88 @@
-use std::collections::HashMap;
+use std::hint::black_box;
 use std::process::Command;
 
-use benchmark_tests::find_primes;
+use benchmark_tests::{find_primes_multi_thread, thread_in_thread_with_instrumentation};
 use iai_callgrind::{
-    library_benchmark, library_benchmark_group, main, EntryPoint, FlamegraphConfig,
-    LibraryBenchmarkConfig, OutputFormat, Tool, ValgrindTool,
+    library_benchmark, library_benchmark_group, main, EntryPoint, LibraryBenchmarkConfig,
+    OutputFormat, Tool, ValgrindTool,
 };
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .entry_point(EntryPoint::None)
-        .raw_callgrind_args(["--fair-sched=yes"])
-        .tool(Tool::new(ValgrindTool::DHAT)
-            .args(["--trace-children=yes"])
-        )
+        .raw_callgrind_args([
+            "toggle-collect=*::find_primes"
+        ])
 )]
 #[bench::two(2)]
 #[bench::three(3)]
-fn bench_library(num: u64) {
-    let mut handles = vec![];
-    let mut low = 0;
-    for _ in 0..num {
-        let handle = std::thread::spawn(move || find_primes(low, low + 10000));
-        handles.push(handle);
-
-        low += 10000;
-    }
-
-    let mut primes = vec![];
-    for handle in handles {
-        let result = handle.join();
-        primes.extend(result.unwrap())
-    }
-
-    println!(
-        "Number of primes found in the range 0 to {low}: {}",
-        primes.len()
-    );
+fn bench_find_primes_multi_thread(num_threads: usize) -> Vec<u64> {
+    black_box(find_primes_multi_thread(num_threads))
 }
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .entry_point(EntryPoint::None)
-        .raw_callgrind_args(["--fair-sched=yes"])
-        .tool(Tool::new(ValgrindTool::DHAT)
-            .args(["--trace-children=yes"]))
-        .tool(Tool::new(ValgrindTool::Memcheck))
-        // TODO: FOR some reason helgrind exits with error
-        // .tool(Tool::new(ValgrindTool::Helgrind))
-        .tool(Tool::new(ValgrindTool::DRD).args(["-s"]))
-        .tool(Tool::new(ValgrindTool::Massif))
-        .tool(Tool::new(ValgrindTool::BBV))
+        .raw_callgrind_args([
+            "toggle-collect=thread::main",
+            "toggle-collect=*::find_primes",
+        ])
 )]
-#[bench::two(3)]
+#[bench::two(2)]
 #[bench::three(3)]
-fn bench_library_compare(num: u64) {
-    let mut handles = vec![];
-    let mut low = 0;
-    for _ in 0..num {
-        let handle = std::thread::spawn(move || find_primes(low, low + 10000));
-        handles.push(handle);
-
-        low += 10000;
-    }
-
-    let mut primes = vec![];
-    for handle in handles {
-        let result = handle.join();
-        primes.extend(result.unwrap())
-    }
-
-    println!(
-        "Number of primes found in the range 0 to {low}: {}",
-        primes.len()
-    );
-}
-
-#[library_benchmark(
-    config = LibraryBenchmarkConfig::default()
-        .entry_point(EntryPoint::None)
-        .raw_callgrind_args(["--separate-threads=yes", "--trace-children=yes"])
-        .raw_callgrind_args(["--fair-sched=yes"])
-        .tool(Tool::new(ValgrindTool::DHAT)
-            .args(["--trace-children=yes"]))
-        .tool(Tool::new(ValgrindTool::Memcheck).args(["trace-children=yes"]))
-        // TODO: FOR some reason helgrind exits with error
-        // .tool(Tool::new(ValgrindTool::Helgrind))
-        .tool(Tool::new(ValgrindTool::DRD).args(["-s", "trace-children=yes"]))
-        .tool(Tool::new(ValgrindTool::Massif).args(["trace-children=yes"]))
-        .tool(Tool::new(ValgrindTool::BBV).args(["trace-children=yes"]))
-)]
-fn bench_thread_in_subprocess() {
-    let low = 0;
-    let handle = std::thread::spawn(move || find_primes(low, low + 10000));
-    handle.join().unwrap();
-
+fn bench_thread_in_subprocess(num_threads: usize) {
     Command::new(env!("CARGO_BIN_EXE_thread"))
-        .arg("2")
+        .arg(num_threads.to_string())
         .status()
         .unwrap();
 }
 
-fn get_complex_map() -> HashMap<(String, String, String), u64> {
-    let mut map = HashMap::new();
-    map.insert(
-        ("hello".to_owned(), "world".to_owned(), "and".to_owned()),
-        10,
-    );
-    map
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .raw_callgrind_args(["--instr-atstart=no"])
+        .entry_point(EntryPoint::None)
+)]
+fn bench_thread_in_thread() -> Vec<u64> {
+    iai_callgrind::client_requests::callgrind::start_instrumentation();
+    let result = black_box(thread_in_thread_with_instrumentation());
+    iai_callgrind::client_requests::callgrind::stop_instrumentation();
+    result
 }
 
-fn get_simple_map() -> HashMap<u64, u64> {
-    let mut map = HashMap::new();
-    map.insert(0, 10);
-    map
-}
-
-fn insert_with_entry<T>(mut map: HashMap<T, u64>, key: &T) -> u64
-where
-    T: Clone + Eq + std::hash::Hash,
-{
-    *map.entry(key.clone()).and_modify(|v| *v += 10).or_insert(0)
-}
-
-fn insert_normal<T>(mut map: HashMap<T, u64>, key: &T) -> u64
-where
-    T: Clone + Eq + std::hash::Hash,
-{
-    if let Some(value) = map.get_mut(key) {
-        *value += 10;
-    } else {
-        map.insert(key.clone(), 0);
-    }
-    0
-}
-
-#[library_benchmark]
-#[bench::not_present_complex(("HELLO".to_owned(), "world".to_owned(), "and".to_owned()), get_complex_map())]
-#[bench::present_complex(("hello".to_owned(), "world".to_owned(), "and".to_owned()), get_complex_map())]
-#[bench::not_present_simple(1, get_simple_map())]
-#[bench::present_simple(0, get_simple_map())]
-fn with_entry<T>(key: T, map: HashMap<T, u64>) -> u64
-where
-    T: Clone + Eq + std::hash::Hash,
-{
-    std::hint::black_box(insert_with_entry(map, &key))
-}
-
-#[library_benchmark]
-#[bench::not_present_complex(("HELLO".to_owned(), "world".to_owned(), "nope".to_owned()), get_complex_map())]
-#[bench::present_complex(("hello".to_owned(), "world".to_owned(), "and".to_owned()), get_complex_map())]
-#[bench::not_present_simple(1, get_simple_map())]
-#[bench::present_simple(0, get_simple_map())]
-fn normal<T>(key: T, map: HashMap<T, u64>) -> u64
-where
-    T: Clone + Eq + std::hash::Hash,
-{
-    std::hint::black_box(insert_normal(map, &key))
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .raw_callgrind_args(["instr-atstart=no"])
+        .entry_point(EntryPoint::None)
+)]
+fn bench_thread_in_thread_in_subprocess() {
+    iai_callgrind::client_requests::callgrind::start_instrumentation();
+    Command::new(env!("CARGO_BIN_EXE_thread"))
+        .arg("--thread-in-thread")
+        .status()
+        .unwrap();
+    iai_callgrind::client_requests::callgrind::stop_instrumentation();
 }
 
 library_benchmark_group!(
-    name = my_group;
-    config = LibraryBenchmarkConfig::default().flamegraph(FlamegraphConfig::default());
+    name = bench_group;
     compare_by_id = true;
-    benchmarks = bench_library, bench_library_compare, normal, with_entry
-);
-
-library_benchmark_group!(
-    name = subprocess;
-    config = LibraryBenchmarkConfig::default().flamegraph(FlamegraphConfig::default());
-    benchmarks = bench_thread_in_subprocess
+    benchmarks =
+        bench_find_primes_multi_thread,
+        bench_thread_in_subprocess,
+        bench_thread_in_thread,
+        bench_thread_in_thread_in_subprocess
 );
 
 main!(
     config = LibraryBenchmarkConfig::default()
         .output_format(OutputFormat::default()
             .truncate_description(None)
-            .show_all(false)
-        );
-    // library_benchmark_groups = my_group, subprocess
-    library_benchmark_groups = subprocess
+            .show_all(true)
+        )
+        // Helgrind is excluded since an assertion in helgrind itself fails and causes an error.
+        // Looks like a bug in valgrind.
+        .tool(Tool::new(ValgrindTool::DHAT))
+        .tool(Tool::new(ValgrindTool::Memcheck))
+        .tool(Tool::new(ValgrindTool::DRD))
+        .tool(Tool::new(ValgrindTool::Massif))
+        .tool(Tool::new(ValgrindTool::BBV));
+    library_benchmark_groups = bench_group
 );

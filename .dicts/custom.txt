@@ -91,6 +91,7 @@ exidx
 exitcode
 flamegraph
 flamegraphs
+fldcw
 formattable
 freelike
 funcs

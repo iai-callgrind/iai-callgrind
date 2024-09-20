@@ -1,0 +1,16 @@
+groups:
+  - runs:
+      - args: ["--nocapture"]
+        expected:
+          files: expected_files.1a.yml
+          stdout: expected_stdout.1a
+      - args: ["--nocapture"]
+        expected:
+          files: expected_files.1b.yml
+          stdout: expected_stdout.1b
+      # The third run should produce the exact same files, stdout as the second
+      # run
+      - args: ["--nocapture"]
+        expected:
+          files: expected_files.1b.yml
+          stdout: expected_stdout.1b
