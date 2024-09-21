@@ -303,7 +303,7 @@
       }
     },
     "Diffs": {
-      "description": "The differences between two `Costs` as percentage and factor",
+      "description": "The differences between two `Metrics` as percentage and factor",
       "type": "object",
       "required": ["diff_pct", "factor"],
       "properties": {
@@ -320,7 +320,7 @@
       }
     },
     "EitherOrBoth_for_SegmentDetails": {
-      "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, costs, etc. Per convention left is always `new` and right is `old`.\n\nThis enum is inspired by `itertools::EitherOrBoth`. We use a simplification `EitherOrBoth<T>` instead of `EitherOrBoth<T,U = T>` because that is what we always need. Depending on `itertools` just because of this enum was no option. However, this simplified enum allows further optimizations, for example [`Self::map`] only needs a single closure instead of two.\n\n# Developer notes\n\nThis enum is not considered complete in terms of possible functionality. Simply extend and add new methods by need.",
+      "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, metrics, etc. Per convention left is always `new` and right is `old`.\n\nThis enum is inspired by `itertools::EitherOrBoth`. We use a simplification `EitherOrBoth<T>` instead of `EitherOrBoth<T,U = T>` because that is what we always need. Depending on `itertools` just because of this enum was no option. However, this simplified enum allows further optimizations, for example [`Self::map`] only needs a single closure instead of two.\n\n# Developer notes\n\nThis enum is not considered complete in terms of possible functionality. Simply extend and add new methods by need.",
       "oneOf": [
         {
           "description": "The left or `new` value",
@@ -368,7 +368,7 @@
       ]
     },
     "EitherOrBoth_for_uint64": {
-      "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, costs, etc. Per convention left is always `new` and right is `old`.\n\nThis enum is inspired by `itertools::EitherOrBoth`. We use a simplification `EitherOrBoth<T>` instead of `EitherOrBoth<T,U = T>` because that is what we always need. Depending on `itertools` just because of this enum was no option. However, this simplified enum allows further optimizations, for example [`Self::map`] only needs a single closure instead of two.\n\n# Developer notes\n\nThis enum is not considered complete in terms of possible functionality. Simply extend and add new methods by need.",
+      "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, metrics, etc. Per convention left is always `new` and right is `old`.\n\nThis enum is inspired by `itertools::EitherOrBoth`. We use a simplification `EitherOrBoth<T>` instead of `EitherOrBoth<T,U = T>` because that is what we always need. Depending on `itertools` just because of this enum was no option. However, this simplified enum allows further optimizations, for example [`Self::map`] only needs a single closure instead of two.\n\n# Developer notes\n\nThis enum is not considered complete in terms of possible functionality. Simply extend and add new methods by need.",
       "oneOf": [
         {
           "description": "The left or `new` value",
@@ -726,7 +726,7 @@
       "description": "The `ToolMetricSummary` contains the `MetricsSummary` distinguished by tool and metric kinds",
       "oneOf": [
         {
-          "description": "If there are no costs extracted (currently massif, bbv)",
+          "description": "If there are no metrics extracted (currently massif, bbv)",
           "type": "string",
           "enum": ["None"]
         },
