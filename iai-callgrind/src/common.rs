@@ -31,7 +31,34 @@ use super::{internal, Direction, EventKind, FlamegraphKind, ValgrindTool};
 #[derive(Debug, Clone, Default, IntoInner, AsRef)]
 pub struct FlamegraphConfig(internal::InternalFlamegraphConfig);
 
-/// TODO: DOCS
+/// Configure the default output format of the terminal output of Iai-Callgrind
+///
+/// This configuration is only applied to the default output format (`--output-format=default`) and
+/// not to any of the json output formats like (`--output-format=json`).
+///
+/// # Examples
+///
+/// For example configure the truncation length of the description to `200` for all library
+/// benchmarks in the same file with [`OutputFormat::truncate_description`]:
+///
+/// ```rust
+/// use iai_callgrind::{main, LibraryBenchmarkConfig, OutputFormat};
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(
+/// #    name = some_group;
+/// #    benchmarks = some_func
+/// # );
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///         .output_format(OutputFormat::default()
+///             .truncate_description(Some(200))
+///         );
+///     library_benchmark_groups = some_group
+/// );
+/// # }
 #[derive(Debug, Clone, Default, IntoInner, AsRef)]
 pub struct OutputFormat(internal::InternalOutputFormat);
 
@@ -83,9 +110,93 @@ impl OutputFormat {
         self
     }
 
-    /// TODO: DOCS
-    pub fn show_all(&mut self, value: bool) -> &mut Self {
-        self.0.show_all = Some(value);
+    /// Show intermediate metrics from parts, subprocesses, threads, ... (Default: false)
+    ///
+    /// In callgrind, threads are treated as separate units (similar to subprocesses) and the
+    /// metrics for them are dumped into an own file. Other valgrind tools usually separate the
+    /// output files only by subprocesses. To also show the metrics of any intermediate fragments
+    /// and not just the total over all of them, set the value of this method to `true`.
+    ///
+    /// Temporarily setting `show_intermediate` to `true` can help to find misconfigurations in
+    /// multi-thread/multi-process benchmarks.
+    ///
+    /// # Examples
+    ///
+    /// As opposed to valgrind/callgrind, `--trace-children=yes`, `--separate-threads=yes` and
+    /// `--fair-sched=try` are the defaults in Iai-Callgrind, so in the following example it's not
+    /// necessary to specify `--separate-threads` to track the metrics of the spawned thread.
+    /// However, it is necessary to specify an additional toggle or else the metrics of the thread
+    /// are all zero. We also set the [`super::EntryPoint`] to `None` to disable the default entry
+    /// point (toggle) which is the benchmark function. So, with this setup we collect only the
+    /// metrics of the method `my_lib::heavy_calculation` in the spawned thread and nothing else.
+    ///
+    /// ```rust
+    /// use iai_callgrind::{
+    ///     main, LibraryBenchmarkConfig, OutputFormat, EntryPoint, library_benchmark,
+    ///     library_benchmark_group
+    /// };
+    /// # mod my_lib { pub fn heavy_calculation() -> u64 { 42 }}
+    ///
+    /// #[library_benchmark(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .entry_point(EntryPoint::None)
+    ///         .raw_callgrind_args(["--toggle-collect=my_lib::heavy_calculation"])
+    ///         .output_format(OutputFormat::default().show_intermediate(true))
+    /// )]
+    /// fn bench_thread() -> u64 {
+    ///     let handle = std::thread::spawn(|| my_lib::heavy_calculation());
+    ///     handle.join().unwrap()
+    /// }
+    ///
+    /// library_benchmark_group!(name = some_group; benchmarks = bench_thread);
+    /// # fn main() {
+    /// main!(library_benchmark_groups = some_group);
+    /// # }
+    /// ```
+    ///
+    /// Running the above benchmark the first time will print something like the below (The exact
+    /// metric counts are made up for demonstration purposes):
+    ///
+    /// ```text
+    /// my_benchmark::some_group::bench_thread
+    ///   ## pid: 633247 part: 1 thread: 1   |N/A
+    ///   Command:            target/release/deps/my_benchmark-08fe8356975cd1af
+    ///   Instructions:                     0|N/A             (*********)
+    ///   L1 Hits:                          0|N/A             (*********)
+    ///   L2 Hits:                          0|N/A             (*********)
+    ///   RAM Hits:                         0|N/A             (*********)
+    ///   Total read+write:                 0|N/A             (*********)
+    ///   Estimated Cycles:                 0|N/A             (*********)
+    ///   ## pid: 633247 part: 1 thread: 2   |N/A
+    ///   Command:            target/release/deps/my_benchmark-08fe8356975cd1af
+    ///   Instructions:                  3905|N/A             (*********)
+    ///   L1 Hits:                       4992|N/A             (*********)
+    ///   L2 Hits:                          0|N/A             (*********)
+    ///   RAM Hits:                       464|N/A             (*********)
+    ///   Total read+write:              5456|N/A             (*********)
+    ///   Estimated Cycles:             21232|N/A             (*********)
+    ///   ## Total
+    ///   Instructions:                  3905|N/A             (*********)
+    ///   L1 Hits:                       4992|N/A             (*********)
+    ///   L2 Hits:                          0|N/A             (*********)
+    ///   RAM Hits:                       464|N/A             (*********)
+    ///   Total read+write:              5456|N/A             (*********)
+    ///   Estimated Cycles:             21232|N/A             (*********)
+    /// ```
+    ///
+    /// With `show_intermediate` set to `false` (the default), only the total is shown:
+    ///
+    /// ```text
+    /// my_benchmark::some_group::bench_thread
+    ///   Instructions:                  3905|N/A             (*********)
+    ///   L1 Hits:                       4992|N/A             (*********)
+    ///   L2 Hits:                          0|N/A             (*********)
+    ///   RAM Hits:                       464|N/A             (*********)
+    ///   Total read+write:              5456|N/A             (*********)
+    ///   Estimated Cycles:             21232|N/A             (*********)
+    /// ```
+    pub fn show_intermediate(&mut self, value: bool) -> &mut Self {
+        self.0.show_intermediate = Some(value);
         self
     }
 }
@@ -426,10 +537,6 @@ impl Tool {
     }
 
     /// Pass one or more arguments directly to the valgrind `Tool`
-    ///
-    /// Some command line arguments for tools like DHAT (for example `--trace-children=yes`) don't
-    /// work without splitting the output into multiple files. Use [`Tool::outfile_modifier`] to
-    /// configure splitting the output.
     ///
     /// # Examples
     ///

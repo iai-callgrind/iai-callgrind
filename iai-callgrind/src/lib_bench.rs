@@ -615,7 +615,28 @@ impl LibraryBenchmarkConfig {
         self
     }
 
-    /// TODO: DOCS
+    /// Configure the [`crate::OutputFormat`] of the terminal output of Iai-Callgrind
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::{main, LibraryBenchmarkConfig, OutputFormat};
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(
+    /// #    name = some_group;
+    /// #    benchmarks = some_func
+    /// # );
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .output_format(OutputFormat::default()
+    ///             .truncate_description(Some(200))
+    ///         );
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
     pub fn output_format<T>(&mut self, output_format: T) -> &mut Self
     where
         T: Into<internal::InternalOutputFormat>,

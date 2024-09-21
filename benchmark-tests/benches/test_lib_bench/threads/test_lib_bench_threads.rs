@@ -75,7 +75,7 @@ main!(
     config = LibraryBenchmarkConfig::default()
         .output_format(OutputFormat::default()
             .truncate_description(None)
-            .show_all(true)
+            .show_intermediate(true)
         )
         // Helgrind is excluded since an assertion in helgrind itself fails and causes an error.
         // Looks like a bug in valgrind.

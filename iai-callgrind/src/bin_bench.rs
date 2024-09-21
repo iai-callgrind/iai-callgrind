@@ -1570,7 +1570,28 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    /// TODO: DOCS
+    /// Configure the [`crate::OutputFormat`] of the terminal output of Iai-Callgrind
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig, OutputFormat};
+    /// # use iai_callgrind::{binary_benchmark, binary_benchmark_group};
+    /// # #[binary_benchmark]
+    /// # fn some_func() -> iai_callgrind::Command { iai_callgrind::Command::new("some/path") }
+    /// # binary_benchmark_group!(
+    /// #    name = some_group;
+    /// #    benchmarks = some_func
+    /// # );
+    /// # fn main() {
+    /// main!(
+    ///     config = BinaryBenchmarkConfig::default()
+    ///         .output_format(OutputFormat::default()
+    ///             .truncate_description(Some(200))
+    ///         );
+    ///     binary_benchmark_groups = some_group
+    /// );
+    /// # }
     pub fn output_format<T>(&mut self, output_format: T) -> &mut Self
     where
         T: Into<internal::InternalOutputFormat>,

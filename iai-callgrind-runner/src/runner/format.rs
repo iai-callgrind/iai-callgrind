@@ -141,7 +141,7 @@ pub enum OutputFormatKind {
 pub struct OutputFormat {
     pub kind: OutputFormatKind,
     pub truncate_description: Option<usize>,
-    pub show_all: bool,
+    pub show_intermediate: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -362,7 +362,7 @@ impl From<api::OutputFormat> for OutputFormat {
         Self {
             kind: OutputFormatKind::Default,
             truncate_description: value.truncate_description.unwrap_or(Some(50)),
-            show_all: value.show_all.unwrap_or(false),
+            show_intermediate: value.show_intermediate.unwrap_or(false),
         }
     }
 }
@@ -372,7 +372,7 @@ impl Default for OutputFormat {
         Self {
             kind: OutputFormatKind::default(),
             truncate_description: Some(50),
-            show_all: false,
+            show_intermediate: false,
         }
     }
 }
@@ -446,7 +446,7 @@ impl Formatter for VerticalFormat {
     ) -> Result<String> {
         let mut result = String::new();
 
-        if tool_run.has_multiple() && output_format.show_all {
+        if tool_run.has_multiple() && output_format.show_intermediate {
             let mut first = true;
             for segment in &tool_run.segments {
                 writeln!(result, "{}", multiple_files_header(&segment.details))?;
