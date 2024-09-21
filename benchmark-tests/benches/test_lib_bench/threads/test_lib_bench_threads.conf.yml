@@ -14,3 +14,21 @@ groups:
         expected:
           files: expected_files.1b.yml
           stdout: expected_stdout.1b
+      # Test all baseline options and verify the multiple files due to the
+      # subprocesses and threads
+      - args: ["--nocapture", "--save-baseline"]
+        expected:
+          files: expected_files.1d.yml
+          stdout: expected_stdout.1d
+      - args: ["--nocapture", "--save-baseline=foo"]
+        expected:
+          files: expected_files.1e.yml
+          stdout: expected_stdout.1e
+      - args: ["--nocapture", "--load-baseline=foo", "--baseline"]
+        expected:
+          files: expected_files.1e.yml
+          stdout: expected_stdout.1f
+      - args: ["--nocapture", "--save-baseline=foo"]
+        expected:
+          files: expected_files.1e.yml
+          stdout: expected_stdout.1g

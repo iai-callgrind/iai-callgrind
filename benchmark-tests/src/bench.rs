@@ -51,6 +51,9 @@ lazy_static! {
         Regex::new(r"^  Details:").expect("Regex should compile");
     static ref NOT_DETAILS_RE: Regex =
         Regex::new(r"^(?:(?:  \S)|(?:[a-zA-Z]))").expect("Regex should compile");
+    // `  ## pid: <__PID__> part: 1 thread: 3   |pid: <__PID__> part: 1 thread: 3`
+    static ref FRAGMENT_HEADER_RE: Regex =
+        Regex::new(r"^(  ##[^|]*[0-9])(\s*)?(|.*)$").expect("Regex should compile");
 }
 
 #[derive(Debug, Clone)]
@@ -502,6 +505,7 @@ impl BenchmarkOutput {
                 let line = PID_RE.replace_all(&line, |caps: &Captures| {
                     format!("{}<__PID__>{}", &caps[1], caps.get(3).map_or("", |_| " "))
                 });
+                let line = FRAGMENT_HEADER_RE.replace_all(&line, "$1 $3");
                 writeln!(result, "{line}").unwrap();
             }
         }
