@@ -41,20 +41,20 @@ lazy_static! {
     // The baseline <name> (base@<name>) can only consist of ascii and underscore characters.
     // Flamegraph files are ignored by this regex
     static ref CALLGRIND_ORIG_FILENAME_RE: Regex = Regex::new(
-        r"^(?<pid>[.][0-9]+)?(?<type>[.](out|log))(?<base>[.](old|base@[^.-]+))?(?<part>[.][0-9]+)?(?<thread>-[0-9]+)?$"
+        r"^(?<type>[.](out|log))(?<base>[.](old|base@[^.-]+))?(?<pid>[.][#][0-9]+)?(?<part>[.][0-9]+)?(?<thread>-[0-9]+)?$"
     )
     .expect("Regex should compile");
 
     /// This regex matches the original file name without the prefix as it is created by bbv
     static ref BBV_ORIG_FILENAME_RE: Regex = Regex::new(
-        r"^(?<pid>[.][0-9]+)?(?<bbv_type>[.](?:bb|pc))?(?<type>[.](?:out|log))(?<base>[.](old|base@[^.]+))?(?<thread>[.][0-9]+)?$"
+        r"^(?<type>[.](?:out|log))(?<base>[.](old|base@[^.]+))?(?<bbv_type>[.](?:bb|pc))?(?<pid>[.][#][0-9]+)?(?<thread>[.][0-9]+)?$"
     )
     .expect("Regex should compile");
 
     /// This regex matches the original file name without the prefix as it is created by all tools
     /// other than callgrind and bbv.
     static ref GENERIC_ORIG_FILENAME_RE: Regex = Regex::new(
-        r"^(?<pid>[.][0-9]+)?(?<type>[.](?:out|log))(?<base>[.](old|base@[^.]+))?$"
+        r"^(?<type>[.](?:out|log))(?<base>[.](old|base@[^.]+))?(?<pid>[.][#][0-9]+)?$"
     )
     .expect("Regex should compile");
 }
@@ -303,6 +303,7 @@ impl ToolCommand {
 }
 
 impl ToolConfig {
+    // TODO: REMOVE the modifier and Self::outfile_modifier
     pub fn new<T>(tool: ValgrindTool, is_enabled: bool, args: T, modifier: Option<String>) -> Self
     where
         T: Into<ToolArgs>,
@@ -743,25 +744,28 @@ impl ToolOutputPath {
         Ok(())
     }
 
+    /// This method can only be used to create the path passed to the tools
+    ///
+    /// The modifiers are extrapolated by the tools and won't match any real path name.
     pub fn extension(&self) -> String {
         match (&self.kind, self.modifiers.is_empty()) {
             (ToolOutputPathKind::Out, true) => "out".to_owned(),
-            (ToolOutputPathKind::Out, false) => format!("{}.out", self.modifiers.join(".")),
+            (ToolOutputPathKind::Out, false) => format!("out.{}", self.modifiers.join(".")),
             (ToolOutputPathKind::Log, true) => "log".to_owned(),
-            (ToolOutputPathKind::Log, false) => format!("{}.log", self.modifiers.join(".")),
+            (ToolOutputPathKind::Log, false) => format!("log.{}", self.modifiers.join(".")),
             (ToolOutputPathKind::OldOut, true) => "out.old".to_owned(),
-            (ToolOutputPathKind::OldOut, false) => format!("{}.out.old", self.modifiers.join(".")),
+            (ToolOutputPathKind::OldOut, false) => format!("out.old.{}", self.modifiers.join(".")),
             (ToolOutputPathKind::OldLog, true) => "log.old".to_owned(),
-            (ToolOutputPathKind::OldLog, false) => format!("{}.log.old", self.modifiers.join(".")),
+            (ToolOutputPathKind::OldLog, false) => format!("log.old.{}", self.modifiers.join(".")),
             (ToolOutputPathKind::BaseLog(name), true) => {
                 format!("log.base@{name}")
             }
             (ToolOutputPathKind::BaseLog(name), false) => {
-                format!("{}.log.base@{name}", self.modifiers.join("."))
+                format!("log.base@{name}.{}", self.modifiers.join("."))
             }
             (ToolOutputPathKind::Base(name), true) => format!("out.base@{name}"),
             (ToolOutputPathKind::Base(name), false) => {
-                format!("{}.out.base@{name}", self.modifiers.join("."))
+                format!("out.base@{name}.{}", self.modifiers.join("."))
             }
         }
     }
@@ -995,7 +999,7 @@ impl ToolOutputPath {
                     }
                 } else {
                     let pid = caps.name("pid").map(|m| {
-                        m.as_str()[1..]
+                        m.as_str()[2..]
                             .parse::<i32>()
                             .expect("The pid from the match should be number")
                     });
@@ -1160,7 +1164,7 @@ impl ToolOutputPath {
 
                 let out_type = caps.name("type").unwrap().as_str();
                 let bbv_type = caps.name("bbv_type").map(|m| m.as_str().to_owned());
-                let pid = caps.name("pid").map(|p| p.as_str().to_owned());
+                let pid = caps.name("pid").map(|p| format!(".{}", &p.as_str()[2..]));
 
                 let thread = caps
                     .name("thread")
@@ -1294,7 +1298,7 @@ impl ToolOutputPath {
                 };
 
                 let out_type = caps.name("type").unwrap().as_str();
-                let pid = caps.name("pid").map(|p| p.as_str().to_owned());
+                let pid = caps.name("pid").map(|p| format!(".{}", &p.as_str()[2..]));
 
                 if let Some(bases) = groups.get_mut(out_type) {
                     if let Some(pids) = bases.get_mut(&base) {
