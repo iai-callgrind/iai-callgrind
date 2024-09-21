@@ -324,36 +324,16 @@ impl ToolConfig {
     ) -> Result<ToolSummary> {
         let parser = logfile_parser::parser_factory(self.tool, config.meta.project_root.clone());
 
-        // TODO: Use load-baseline as the new dataset instead of the old dataset. Not only here but
-        // in other places, too
         let parsed_new = parser.parse(log_path)?;
         let parsed_old = parser.parse(&log_path.to_base_path())?;
 
-        match (parsed_new.is_empty(), parsed_old.is_empty()) {
-            (true, true) => Err(anyhow!(
-                "The baselines '{}' and '{}' don't exist",
-                &config.meta.args.baseline.as_ref().unwrap(),
-                &config.meta.args.load_baseline.as_ref().unwrap()
-            )),
-            (true, false) => Err(anyhow!(
-                "The baseline '{}' doesn't exist",
-                &config.meta.args.baseline.as_ref().unwrap(),
-            )),
-            (false, true) => Err(anyhow!(
-                "The loaded baseline '{}' doesn't exist",
-                &config.meta.args.load_baseline.as_ref().unwrap()
-            )),
-            (false, false) => {
-                let summaries = ToolRun::from(EitherOrBoth::Both(parsed_new, parsed_old));
-                Ok(ToolSummary {
-                    tool: self.tool,
-                    log_paths: log_path.real_paths()?,
-                    out_paths: out_path
-                        .map_or_else(|| Ok(Vec::default()), ToolOutputPath::real_paths)?,
-                    summaries,
-                })
-            }
-        }
+        let summaries = ToolRun::from(EitherOrBoth::Both(parsed_new, parsed_old));
+        Ok(ToolSummary {
+            tool: self.tool,
+            log_paths: log_path.real_paths()?,
+            out_paths: out_path.map_or_else(|| Ok(Vec::default()), ToolOutputPath::real_paths)?,
+            summaries,
+        })
     }
 }
 
