@@ -3,11 +3,10 @@ use iai_callgrind_runner::runner::callgrind::model::Metrics;
 use iai_callgrind_runner::runner::callgrind::parser::CallgrindParser;
 use iai_callgrind_runner::runner::callgrind::summary_parser::SummaryParser;
 use iai_callgrind_runner::runner::tool::{ToolOutputPathKind, ValgrindTool};
+use pretty_assertions::assert_eq;
 use rstest::rstest;
 
 use crate::common::{assert_parse_error, Fixtures};
-
-// TODO: ADJUST AND ADD TESTS for multiple file parsing
 
 // Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
 #[rstest]
@@ -36,6 +35,7 @@ fn test_sentinel_parser(#[case] fixture: &str, #[case] costs: [u64; 9]) {
     let parser = SummaryParser;
     let actual_costs = parser.parse(&callgrind_output).unwrap();
 
+    assert_eq!(actual_costs.len(), 1);
     assert_eq!(actual_costs[0].2, expected_costs);
 }
 

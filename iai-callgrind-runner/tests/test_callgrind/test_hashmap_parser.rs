@@ -5,7 +5,6 @@ use pretty_assertions::assert_eq;
 use rstest::rstest;
 
 use crate::common::{assert_parse_error, Fixtures};
-// TODO: ADJUST TESTS TO new multiple file parsing
 
 #[test]
 fn test_when_version_mismatch_then_should_return_error() {
@@ -49,6 +48,7 @@ fn test_valid_just_main() {
 
     let actual_map = parser.parse(&output).unwrap();
 
+    assert_eq!(actual_map.len(), 1);
     assert_eq!(actual_map[0].2, expected_map);
 }
 
@@ -67,5 +67,6 @@ fn test_when_no_records(#[case] name: &str) {
 
     let actual_map = parser.parse(&output).unwrap();
 
+    assert_eq!(actual_map.len(), 1);
     assert_eq!(actual_map[0].2, expected_map);
 }

@@ -303,7 +303,6 @@ impl ToolCommand {
 }
 
 impl ToolConfig {
-    // TODO: REMOVE the modifier and Self::outfile_modifier
     pub fn new<T>(tool: ValgrindTool, is_enabled: bool, args: T, modifier: Option<String>) -> Self
     where
         T: Into<ToolArgs>,
@@ -1474,40 +1473,31 @@ mod tests {
 
     #[rstest]
     #[case::out(".out")]
-    #[case::out_with_pid(".1234.out")]
+    #[case::out_with_pid(".out.#1234")]
     #[case::out_with_part(".out.1")]
     #[case::out_with_thread(".out-01")]
     #[case::out_with_part_and_thread(".out.1-01")]
-    #[case::out_old(".out.old")]
-    #[case::out_old_with_pid(".1234.out.old")]
-    #[case::out_old_with_part(".out.old.1")]
-    #[case::out_old_with_thread(".out.old-01")]
-    #[case::out_old_with_part_and_thread(".out.old.1-01")]
     #[case::out_base(".out.base@default")]
-    #[case::out_base_with_pid(".1234.out.base@default")]
+    #[case::out_base_with_pid(".out.base@default.#1234")]
     #[case::out_base_with_part(".out.base@default.1")]
     #[case::out_base_with_thread(".out.base@default-01")]
     #[case::out_base_with_part_and_thread(".out.base@default.1-01")]
     #[case::log(".log")]
-    #[case::log_with_pid(".1234.log.1")]
+    #[case::log_with_pid(".log.#1234")]
     #[case::log_base(".log.base@default")]
-    #[case::log_base_with_pid(".1234.log.base@default.1")]
-    #[case::without_id(".out")]
-    #[case::without_id_but_pid(".1234.out")]
-    #[case::without_id_but_thread(".out-01")]
-    #[case::without_id_but_part(".out.1")]
+    #[case::log_base_with_pid(".log.base@default.#1234")]
     fn test_callgrind_filename_regex(#[case] haystack: &str) {
         assert!(CALLGRIND_ORIG_FILENAME_RE.is_match(haystack));
     }
 
     #[rstest]
-    #[case::bb_out(".bb.out")]
-    #[case::bb_out_with_pid(".1234.bb.out")]
-    #[case::bb_out_with_pid_and_thread(".1234.bb.out.1")]
-    #[case::bb_out_with_thread(".bb.out.1")]
-    #[case::pc_out(".pc.out")]
+    #[case::bb_out(".out.bb")]
+    #[case::bb_out_with_pid(".out.bb.#1234")]
+    #[case::bb_out_with_pid_and_thread(".out.bb.#1234.1")]
+    #[case::bb_out_with_thread(".out.bb.1")]
+    #[case::pc_out(".out.pc")]
     #[case::log(".log")]
-    #[case::log_with_pid(".1234.log")]
+    #[case::log_with_pid(".log.#1234")]
     fn test_bbv_filename_regex(#[case] haystack: &str) {
         assert!(BBV_ORIG_FILENAME_RE.is_match(haystack));
     }

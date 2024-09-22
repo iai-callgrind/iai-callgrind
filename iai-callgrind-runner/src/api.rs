@@ -35,14 +35,12 @@ pub struct BinaryBenchmarkBench {
     pub has_teardown: bool,
 }
 
-// TODO: ADD valgrind args which are applied to all tools, Same for LibraryBenchmarkConfig
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct BinaryBenchmarkConfig {
     pub env_clear: Option<bool>,
     pub current_dir: Option<PathBuf>,
     pub entry_point: Option<String>,
     pub exit_with: Option<ExitWith>,
-    // TODO: RENAME TO callgrind_args
     pub raw_callgrind_args: RawArgs,
     pub envs: Vec<(OsString, Option<OsString>)>,
     pub flamegraph_config: Option<FlamegraphConfig>,
@@ -270,7 +268,6 @@ pub struct Fixtures {
     pub follow_symlinks: bool,
 }
 
-/// TODO: ADD OPTION to create flamegraphs for all files not just the total
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct FlamegraphConfig {
     pub kind: Option<FlamegraphKind>,

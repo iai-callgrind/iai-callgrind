@@ -460,8 +460,6 @@ impl BenchmarkSummary {
         Ok(())
     }
 
-    // TODO: Compare not only the total??
-    // TODO: Compare dhat
     pub fn compare_and_print(
         &self,
         id: &str,
@@ -800,8 +798,6 @@ where
         }
     }
 
-    // TODO: TEST
-    // TODO: RENAME TO add_mut
     pub fn add(&mut self, other: &Self) {
         let other_keys = other.0.keys().cloned().collect::<IndexSet<_>>();
         let keys = self.0.keys().cloned().collect::<IndexSet<_>>();

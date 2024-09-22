@@ -133,7 +133,6 @@ impl Benchmark for BaselineBenchmark {
         }
     }
 
-    /// TODO: USE `self` instead of `&self` and `lib_bench` instead of `&lib_bench` ? Avoid cloning
     fn run(
         &self,
         lib_bench: &LibBench,
@@ -177,8 +176,6 @@ impl Benchmark for BaselineBenchmark {
             path.shift()?;
             path.to_log_output().shift()?;
         }
-
-        // TODO: SHIFT flamegraph files, too. Also in SaveBaselineBenchmark, ...
 
         let mut benchmark_summary = lib_bench.create_benchmark_summary(
             config,
@@ -715,7 +712,6 @@ impl Benchmark for SaveBaselineBenchmark {
             }
         };
 
-        // TODO: REFACTOR move this and ToolCommand::new from above into LibBench::new
         let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, None);
 
         let bench_args = lib_bench.bench_args(group);
@@ -812,7 +808,6 @@ impl Benchmark for SaveBaselineBenchmark {
             true,
             &lib_bench.module_path,
             // We don't have a sandbox feature in library benchmarks
-            // TODO: Move this into ToolConfig?
             None,
             None,
             None,

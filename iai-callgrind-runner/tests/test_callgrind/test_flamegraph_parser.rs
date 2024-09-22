@@ -22,8 +22,8 @@ fn test_flamegraph_parser(#[case] name: &str, #[case] sentinel: Option<Result<Se
         Fixtures::load_stacks(format!("callgrind.out/callgrind.{name}.exp_stacks"));
     let parser = FlamegraphParser::new(sentinel.as_ref(), get_project_root());
 
-    // TODO: ADJUST TESTS TO new multiple files parsing
     let result = parser.parse(&output).unwrap();
+    assert_eq!(result.len(), 1);
     let stacks = result[0].2.to_stack_format(&EventKind::Ir).unwrap();
 
     assert_eq!(stacks.len(), expected_stacks.len());

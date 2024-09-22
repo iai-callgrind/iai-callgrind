@@ -839,10 +839,8 @@ mod tests {
     use super::*;
 
     #[rstest]
-    #[case::relative("Command: target/release/deps/test_lib_bench_threads-c2a88f916ff580f9")]
-    #[case::absolute(
-        "Command: /home/some/workspace/target/release/deps/test_lib_bench_threads-c2a88f916ff580f9"
-    )]
+    #[case::lib_bench("Command: target/release/deps/test_lib_bench_threads-c2a88f916ff580f9")]
+    #[case::bin_bench("Command: target/release/deps/test_bin_bench_threads-c2a88f916ff580f9")]
     fn test_command_re(#[case] haystack: &str) {
         assert!(COMMAND_RE.is_match(haystack));
     }

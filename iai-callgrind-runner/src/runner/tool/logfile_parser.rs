@@ -192,23 +192,22 @@ impl From<EitherOrBoth<Vec<Logfile>>> for ToolRun {
     }
 }
 
-pub fn extract_pid(line: &str) -> i32 {
-    // TODO: Return error instead of unwraps
+pub fn extract_pid(line: &str) -> Result<i32> {
     EXTRACT_PID_RE
         .captures(line.trim())
-        .expect("Log output should not be malformed")
+        .context("Log output should not be malformed")?
         .name("pid")
-        .expect("Log output should contain pid")
+        .context("Log output should contain pid")?
         .as_str()
         .parse::<i32>()
-        .expect("Pid should be valid")
+        .context("Pid should be valid")
 }
 
 pub fn parse_header(path: &Path, mut lines: impl Iterator<Item = String>) -> Result<Header> {
     let next = lines.next();
 
     let (pid, next) = if let Some(next) = next {
-        (extract_pid(&next), next)
+        (extract_pid(&next)?, next)
     } else {
         return Err(Error::ParseError((path.to_owned(), "Empty file".to_owned())).into());
     };

@@ -182,7 +182,6 @@ impl RegressionConfig {
     }
 }
 
-/// TODO: MOVE DEFAULT values into defaults mod
 impl From<api::RegressionConfig> for RegressionConfig {
     fn from(value: api::RegressionConfig) -> Self {
         let api::RegressionConfig { limits, fail_fast } = value;
@@ -197,7 +196,6 @@ impl From<api::RegressionConfig> for RegressionConfig {
     }
 }
 
-/// TODO: MOVE DEFAULT values into defaults mod
 impl Default for RegressionConfig {
     fn default() -> Self {
         Self {

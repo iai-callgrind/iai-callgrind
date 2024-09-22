@@ -61,8 +61,6 @@ impl LogfileParser for ErrorMetricLogfileParser {
                         state = State::Body;
                     }
 
-                    // TODO: THIS could be improved and match the EXTRACT_ERROR_SUMMARY_RE directly
-                    // stripping the prefix first if possible
                     if let Some(caps) = EXTRACT_FIELDS_RE.captures(&line) {
                         let key = caps.name("key").unwrap().as_str();
 
