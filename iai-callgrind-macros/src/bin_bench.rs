@@ -476,8 +476,9 @@ impl BinaryBenchmarkConfig {
         } else {
             quote!(
                 #[inline(never)]
-                pub fn __get_config()
-                -> Option<iai_callgrind::internal::InternalBinaryBenchmarkConfig> {
+                pub fn __get_config(
+                ) -> Option<iai_callgrind::internal::InternalBinaryBenchmarkConfig>
+                {
                     None
                 }
             )

@@ -580,9 +580,11 @@ impl FromStr for ErrorSummary {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let caps = EXTRACT_ERROR_SUMMARY_RE.captures(s).ok_or(anyhow!(
-            "Failed to extract error summary from string".to_owned()
-        ))?;
+        let caps = EXTRACT_ERROR_SUMMARY_RE
+            .captures(s)
+            .ok_or(anyhow!(
+                "Failed to extract error summary from string".to_owned()
+            ))?;
         Ok(ErrorSummary {
             errors: caps.name("errs").unwrap().as_str().parse::<u64>().unwrap(),
             contexts: caps.name("ctxs").unwrap().as_str().parse::<u64>().unwrap(),

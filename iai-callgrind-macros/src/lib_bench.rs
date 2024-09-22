@@ -615,8 +615,9 @@ mod tests {
         } else {
             quote!(
                 #[inline(never)]
-                pub fn __get_config()
-                -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig> {
+                pub fn __get_config(
+                ) -> Option<iai_callgrind::internal::InternalLibraryBenchmarkConfig>
+                {
                     None
                 }
             )
