@@ -139,7 +139,9 @@
 /// We're only using constant values known at compile time, which the compiler will finally optimize
 /// away, so this macro costs us nothing.
 macro_rules! is_def {
-    ($user_req:path) => {{ $user_req as cty::c_uint > 0x1000 }};
+    ($user_req:path) => {{
+        $user_req as cty::c_uint > 0x1000
+    }};
 }
 
 /// The macro which uses [`valgrind_do_client_request_stmt`] or [`valgrind_do_client_request_expr`]
@@ -205,7 +207,9 @@ macro_rules! do_client_request {
 /// input string literal does not contain any `\0` bytes.
 #[macro_export]
 macro_rules! cstring {
-    ($string:literal) => {{ std::ffi::CString::from_vec_with_nul_unchecked(concat!($string, "\0").as_bytes().to_vec()) }};
+    ($string:literal) => {{
+        std::ffi::CString::from_vec_with_nul_unchecked(concat!($string, "\0").as_bytes().to_vec())
+    }};
 }
 
 /// Convenience macro to create a `\0`-byte terminated [`std::ffi::CString`] from a format string

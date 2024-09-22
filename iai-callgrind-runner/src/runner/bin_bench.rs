@@ -115,7 +115,7 @@ trait Benchmark: std::fmt::Debug {
     fn output_path(&self, bin_bench: &BinBench, config: &Config, group: &Group) -> ToolOutputPath;
     fn baselines(&self) -> (Option<String>, Option<String>);
     fn run(&self, bin_bench: &BinBench, config: &Config, group: &Group)
-    -> Result<BenchmarkSummary>;
+        -> Result<BenchmarkSummary>;
 }
 
 impl Benchmark for BaselineBenchmark {
