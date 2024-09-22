@@ -154,9 +154,8 @@
       "required": ["diff_pct", "event_kind", "limit", "new", "old"],
       "properties": {
         "diff_pct": {
-          "description": "The difference between new and old in percent",
-          "type": "number",
-          "format": "double"
+          "description": "The difference between new and old in percent. Serialized as string to preserve infinity values and avoid null in json.",
+          "type": "string"
         },
         "event_kind": {
           "description": "The [`EventKind`] which is affected by a performance regression",
@@ -167,9 +166,8 @@
           ]
         },
         "limit": {
-          "description": "The value of the limit which was exceeded to cause a performance regression",
-          "type": "number",
-          "format": "double"
+          "description": "The value of the limit which was exceeded to cause a performance regression. Serialized as string to preserve infinity values and avoid null in json.",
+          "type": "string"
         },
         "new": {
           "description": "The value of the new benchmark run",
@@ -308,14 +306,12 @@
       "required": ["diff_pct", "factor"],
       "properties": {
         "diff_pct": {
-          "description": "The percentage of the difference between two `Metrics`",
-          "type": "number",
-          "format": "double"
+          "description": "The percentage of the difference between two `Metrics` serialized as string to preserve infinity values and avoid `null` in json",
+          "type": "string"
         },
         "factor": {
-          "description": "The factor of the difference between two `Metrics`",
-          "type": "number",
-          "format": "double"
+          "description": "The factor of the difference between two `Metrics` serialized as string to preserve infinity values and void `null` in json",
+          "type": "string"
         }
       }
     },
