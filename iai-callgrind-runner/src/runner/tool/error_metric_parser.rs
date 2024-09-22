@@ -83,7 +83,7 @@ impl LogfileParser for ErrorMetricLogfileParser {
                                 caps.name("ctxs").unwrap().as_str(),
                                 caps.name("s_errs").unwrap().as_str(),
                                 caps.name("s_ctxs").unwrap().as_str(),
-                            ]);
+                            ])?;
 
                             metrics = Some(new_metrics);
                             continue;

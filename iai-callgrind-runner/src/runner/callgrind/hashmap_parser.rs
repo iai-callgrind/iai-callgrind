@@ -217,7 +217,7 @@ impl CallgrindParser for HashMapParser {
                     metrics.add_iter_str(
                         line.split_whitespace()
                             .skip(config.positions_prototype.len()),
-                    );
+                    )?;
 
                     if let Some(cfn_record) = cfn_record.take() {
                         cfn_totals
@@ -291,7 +291,7 @@ fn make_path(root: &Path, source: &str) -> SourcePath {
     } else {
         let path = PathBuf::from(source);
         match path.strip_prefix(root).ok() {
-            Some(stripped) => SourcePath::Relative(stripped.to_owned()),
+            Some(suffix) => SourcePath::Relative(suffix.to_owned()),
             None if path.is_absolute() => {
                 let mut components = path.components().skip(1);
                 if components.next() == Some(Component::Normal(OsStr::new("rustc"))) {

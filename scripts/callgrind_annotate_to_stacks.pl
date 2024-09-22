@@ -102,7 +102,7 @@ while (<STDIN>) {
     # Sometimes callgrind_annotate shows a '.' for a count instead of a 0
     $count =~ s/\./0/;
 
-    # The thousands separator needs be stripped, since we don't show these
+    # The thousands separator needs be removed, since we don't show these
     $count =~ s/,//;
 
     # We do not show stack lines with costs higher than the sentinel's cost

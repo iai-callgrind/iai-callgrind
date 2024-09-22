@@ -744,8 +744,8 @@ where
                 let mut map = indexmap! {};
                 for metric_kind in new.metric_kinds_union(&old) {
                     let diff = match (
-                        new.metric_by_kind(&metric_kind),
-                        old.metric_by_kind(&metric_kind),
+                        new.metric_by_kind(metric_kind),
+                        old.metric_by_kind(metric_kind),
                     ) {
                         (Some(metric), None) => MetricsDiff::new(EitherOrBoth::Left(metric)),
                         (None, Some(metric)) => MetricsDiff::new(EitherOrBoth::Right(metric)),
@@ -757,7 +757,7 @@ where
                             )
                         }
                     };
-                    map.insert(metric_kind, diff);
+                    map.insert(metric_kind.clone(), diff);
                 }
                 Self(map)
             }

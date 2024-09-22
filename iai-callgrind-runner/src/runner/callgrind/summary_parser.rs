@@ -43,9 +43,9 @@ impl CallgrindParser for SummaryParser {
         let mut found = false;
         let mut metrics = properties.metrics_prototype.clone();
         for line in iter {
-            if let Some(stripped) = line.strip_prefix("summary:") {
+            if let Some(suffix) = line.strip_prefix("summary:") {
                 trace!("Found line with summary: '{}'", line);
-                metrics.add_iter_str(stripped.split_ascii_whitespace());
+                metrics.add_iter_str(suffix.split_ascii_whitespace())?;
                 if metrics.iter().all(|(_c, u)| *u == 0) {
                     trace!(
                         "Continuing file processing as summary indicates \"client_request\" are \
@@ -58,9 +58,9 @@ impl CallgrindParser for SummaryParser {
                 break;
             }
 
-            if let Some(stripped) = line.strip_prefix("totals:") {
+            if let Some(suffix) = line.strip_prefix("totals:") {
                 trace!("Found line with totals: '{}'", line);
-                metrics.add_iter_str(stripped.split_ascii_whitespace());
+                metrics.add_iter_str(suffix.split_ascii_whitespace())?;
                 trace!("Updated counters to '{:?}'", &metrics);
                 found = true;
                 break;

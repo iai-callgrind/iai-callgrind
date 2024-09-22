@@ -218,7 +218,7 @@ pub fn parse_header(path: &Path, mut lines: impl Iterator<Item = String>) -> Res
     for line in std::iter::once(next).chain(lines) {
         if EMPTY_LINE_RE.is_match(&line) {
             // The header is separated from the body by at least one empty line. The first
-            // empty line is stripped from the iterator.
+            // empty line is removed from the iterator.
             break;
         } else if let Some(caps) = EXTRACT_FIELDS_RE.captures(&line) {
             let key = caps.name("key").unwrap().as_str();
