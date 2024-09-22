@@ -36,4 +36,6 @@ pub mod error;
 #[cfg(feature = "runner")]
 pub mod runner;
 #[cfg(feature = "runner")]
+pub mod serde;
+#[cfg(feature = "runner")]
 pub mod util;

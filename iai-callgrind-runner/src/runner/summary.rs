@@ -108,9 +108,15 @@ pub struct CallgrindRegression {
     pub new: u64,
     /// The value of the old benchmark run
     pub old: u64,
-    /// The difference between new and old in percent
+    /// The difference between new and old in percent. Serialized as string to preserve infinity
+    /// values and avoid null in json.
+    #[serde(with = "crate::serde::float_64")]
+    #[cfg_attr(feature = "schema", schemars(with = "String"))]
     pub diff_pct: f64,
-    /// The value of the limit which was exceeded to cause a performance regression
+    /// The value of the limit which was exceeded to cause a performance regression. Serialized as
+    /// string to preserve infinity values and avoid null in json.
+    #[serde(with = "crate::serde::float_64")]
+    #[cfg_attr(feature = "schema", schemars(with = "String"))]
     pub limit: f64,
 }
 
@@ -225,9 +231,15 @@ pub enum ToolMetricSummary {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Diffs {
-    /// The percentage of the difference between two `Metrics`
+    /// The percentage of the difference between two `Metrics` serialized as string to preserve
+    /// infinity values and avoid `null` in json
+    #[serde(with = "crate::serde::float_64")]
+    #[cfg_attr(feature = "schema", schemars(with = "String"))]
     pub diff_pct: f64,
-    /// The factor of the difference between two `Metrics`
+    /// The factor of the difference between two `Metrics` serialized as string to preserve
+    /// infinity values and void `null` in json
+    #[serde(with = "crate::serde::float_64")]
+    #[cfg_attr(feature = "schema", schemars(with = "String"))]
     pub factor: f64,
 }
 
