@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 
 use benchmark_tests::common::Summary;
+use benchmark_tests::serde::runs_on::RunsOn;
 use colored::Colorize;
 use glob::glob;
 use lazy_static::lazy_static;
@@ -76,6 +77,8 @@ pub struct BenchmarkRunner {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GroupConfig {
+    #[serde(default, with = "benchmark_tests::serde::runs_on")]
+    runs_on: Option<RunsOn>,
     runs: Vec<RunConfig>,
 }
 
@@ -143,12 +146,12 @@ struct RunConfig {
     template_data: HashMap<String, minijinja::Value>,
     #[serde(default)]
     expected: Option<ExpectedConfig>,
-    #[serde(default)]
-    runs_on: Option<String>,
+    #[serde(default, with = "benchmark_tests::serde::runs_on")]
+    runs_on: Option<RunsOn>,
     #[serde(default)]
     rmdirs: Vec<PathBuf>,
-    #[serde(default, with = "benchmark_tests::serde_rust_version")]
-    rust_version: Option<benchmark_tests::serde_rust_version::VersionComparator>,
+    #[serde(default, with = "benchmark_tests::serde::rust_version")]
+    rust_version: Option<benchmark_tests::serde::rust_version::VersionComparator>,
 }
 
 impl Benchmark {
@@ -242,6 +245,16 @@ impl Benchmark {
     }
 
     pub fn run(&self, group: &GroupConfig, meta: &Metadata, schema: &ScopedSchema<'_>) {
+        if !group.runs_on.as_ref().map_or(true, |(is_target, target)| {
+            if *is_target {
+                target == env!("IC_BUILD_TRIPLE")
+            } else {
+                target != env!("IC_BUILD_TRIPLE")
+            }
+        }) {
+            return;
+        }
+
         self.clean_benchmark();
 
         let num_runs = group.runs.len();
@@ -249,12 +262,15 @@ impl Benchmark {
             .runs
             .iter()
             .filter(|r| {
-                r.runs_on
-                    .as_ref()
-                    .map_or(true, |r| r == env!("IC_BUILD_TRIPLE"))
-                    && r.rust_version.as_ref().map_or(true, |(cmp, version)| {
-                        version_compare::compare_to(&meta.rust_version, version, *cmp).unwrap()
-                    })
+                r.runs_on.as_ref().map_or(true, |(is_target, target)| {
+                    if *is_target {
+                        target == env!("IC_BUILD_TRIPLE")
+                    } else {
+                        target != env!("IC_BUILD_TRIPLE")
+                    }
+                }) && r.rust_version.as_ref().map_or(true, |(cmp, version)| {
+                    version_compare::compare_to(&meta.rust_version, version, *cmp).unwrap()
+                })
             })
             .enumerate()
         {

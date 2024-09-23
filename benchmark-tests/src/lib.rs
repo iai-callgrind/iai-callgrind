@@ -1,6 +1,6 @@
 pub mod assert;
 pub mod common;
-pub mod serde_rust_version;
+pub mod serde;
 
 use std::ffi::OsStr;
 use std::io;
