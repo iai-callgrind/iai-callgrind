@@ -1,5 +1,6 @@
 groups:
-  - runs:
+  - runs_on: "!x86_64-unknown-freebsd"
+    runs:
       - args: ["--nocapture"]
         expected:
           files: expected_files.1a.yml
@@ -32,3 +33,36 @@ groups:
         expected:
           files: expected_files.1e.yml
           stdout: expected_stdout.1g
+  # The tests on freebsd don't verify the stdout since freebsd does not support
+  # `--fair-sched=yes` and the differences between two benchmark runs are random
+  - runs_on: "x86_64-unknown-freebsd"
+    runs:
+      # The first run does not show any differences because there is no
+      # benchmark run to compare to, so the stdout can be verified at least this
+      # first time
+      - args: ["--nocapture"]
+        expected:
+          files: expected_files.1a.yml
+          stdout: expected_stdout.freebsd.1a
+      - args: ["--nocapture"]
+        expected:
+          files: expected_files.1b.yml
+      # The third run should produce the exact same files, stdout as the second
+      # run
+      - args: ["--nocapture"]
+        expected:
+          files: expected_files.1b.yml
+      # Test all baseline options and verify the creation of multiple files due
+      # to the subprocesses and threads
+      - args: ["--nocapture", "--save-baseline"]
+        expected:
+          files: expected_files.1d.yml
+      - args: ["--nocapture", "--save-baseline=foo"]
+        expected:
+          files: expected_files.1e.yml
+      - args: ["--nocapture", "--load-baseline=foo", "--baseline"]
+        expected:
+          files: expected_files.1e.yml
+      - args: ["--nocapture", "--save-baseline=foo"]
+        expected:
+          files: expected_files.1e.yml
