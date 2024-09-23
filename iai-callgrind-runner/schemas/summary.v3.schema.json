@@ -844,6 +844,7 @@
       }
     },
     "ValgrindTool": {
+      "description": "All currently available valgrind tools",
       "type": "string",
       "enum": [
         "Callgrind",
