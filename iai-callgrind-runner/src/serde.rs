@@ -1,3 +1,5 @@
+//! Custom `serde` serializer and deserializer implementations
+
 use std::str::FromStr;
 
 use serde::de::Visitor;
