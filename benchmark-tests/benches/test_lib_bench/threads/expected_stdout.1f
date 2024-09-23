@@ -44,13 +44,13 @@ test_lib_bench_threads::bench_group::bench_find_primes_multi_thread two:2
   ======= MEMCHECK ==========================================================
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= DRD ===============================================================
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= MASSIF ============================================================
   Command: <__COMMAND__>
   ======= EXP-BBV ===========================================================
@@ -110,13 +110,13 @@ test_lib_bench_threads::bench_group::bench_find_primes_multi_thread three:3
   ======= MEMCHECK ==========================================================
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= DRD ===============================================================
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= MASSIF ============================================================
   Command: <__COMMAND__>
   ======= EXP-BBV ===========================================================
@@ -199,37 +199,37 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess two:2
   Command: <__COMMAND__>
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command:            target/release/thread 2
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## Total
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= DRD ===============================================================
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command:            target/release/thread 2
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## Total
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= MASSIF ============================================================
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
@@ -334,37 +334,37 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess three:3
   Command: <__COMMAND__>
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command:            target/release/thread 3
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## Total
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= DRD ===============================================================
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command:            target/release/thread 3
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## Total
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= MASSIF ============================================================
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
@@ -430,13 +430,13 @@ test_lib_bench_threads::bench_group::bench_thread_in_thread
   ======= MEMCHECK ==========================================================
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= DRD ===============================================================
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= MASSIF ============================================================
   Command: <__COMMAND__>
   ======= EXP-BBV ===========================================================
@@ -519,37 +519,37 @@ test_lib_bench_threads::bench_group::bench_thread_in_thread_in_subprocess
   Command: <__COMMAND__>
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command:            target/release/thread --thread-in-thread
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## Total
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= DRD ===============================================================
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command:            target/release/thread --thread-in-thread
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## Total
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= MASSIF ============================================================
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>

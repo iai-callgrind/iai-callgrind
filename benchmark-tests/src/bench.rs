@@ -469,6 +469,8 @@ impl BenchmarkOutput {
                     || desc.starts_with("  Estimated Cycles")
                     || desc.starts_with("  L2 Hits")
                     || desc.starts_with("  L1 Hits")
+                    || desc.starts_with("  Suppressed Errors")
+                    || desc.starts_with("  Suppressed Contexts")
                 {
                     if caps.name("diff_percent").is_some() {
                         let white1 = caps.name("white1").unwrap().as_str();

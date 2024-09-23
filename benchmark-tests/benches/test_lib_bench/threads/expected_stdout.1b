@@ -45,13 +45,13 @@ Number of primes found in the range 0 to 20000: 2262
   ======= MEMCHECK ==========================================================
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= DRD ===============================================================
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= MASSIF ============================================================
   Command: <__COMMAND__>
   ======= EXP-BBV ===========================================================
@@ -112,13 +112,13 @@ Number of primes found in the range 0 to 30000: 3245
   ======= MEMCHECK ==========================================================
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= DRD ===============================================================
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= MASSIF ============================================================
   Command: <__COMMAND__>
   ======= EXP-BBV ===========================================================
@@ -202,37 +202,37 @@ Number of primes found in the range 0 to 20000: 2262
   Command: <__COMMAND__>
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command:            target/release/thread 2
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## Total
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= DRD ===============================================================
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command:            target/release/thread 2
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## Total
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= MASSIF ============================================================
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
@@ -338,37 +338,37 @@ Number of primes found in the range 0 to 30000: 3245
   Command: <__COMMAND__>
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command:            target/release/thread 3
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## Total
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= DRD ===============================================================
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command:            target/release/thread 3
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## Total
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= MASSIF ============================================================
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
@@ -435,13 +435,13 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   ======= MEMCHECK ==========================================================
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= DRD ===============================================================
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= MASSIF ============================================================
   Command: <__COMMAND__>
   ======= EXP-BBV ===========================================================
@@ -525,37 +525,37 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   Command: <__COMMAND__>
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command:            target/release/thread --thread-in-thread
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## Total
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= DRD ===============================================================
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command:            target/release/thread --thread-in-thread
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ## Total
   Errors:                            |                (No change)
   Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (No change)
-  Suppressed Contexts:               |                (No change)
+  Suppressed Errors:                 |                (         )
+  Suppressed Contexts:               |                (         )
   ======= MASSIF ============================================================
   ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
