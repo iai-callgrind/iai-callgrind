@@ -113,6 +113,7 @@ pub enum ToolOutputPathKind {
     Base(String),
 }
 
+/// All currently available valgrind tools
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ValgrindTool {

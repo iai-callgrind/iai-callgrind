@@ -438,7 +438,7 @@ pub struct Tool {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tools(pub Vec<Tool>);
 
-/// An enum with all possible valgrind tools
+/// The valgrind tools which can be run in addition to callgrind
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ValgrindTool {
     /// [Memcheck: a memory error detector](https://valgrind.org/docs/manual/mc-manual.html)

@@ -60,14 +60,14 @@ pub trait LogfileParser {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Header {
     pub command: String,
     pub pid: i32,
     pub parent_pid: Option<i32>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Logfile {
     pub path: PathBuf,
     pub header: Header,
@@ -75,7 +75,7 @@ pub struct Logfile {
     pub metrics: ToolMetrics,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LogfileSummary {
     pub logfile: EitherOrBoth<Logfile>,
     pub metrics_summary: ToolMetricSummary,
@@ -203,6 +203,9 @@ pub fn extract_pid(line: &str) -> Result<i32> {
         .context("Pid should be valid")
 }
 
+/// Parse the logfile header
+///
+/// The logfile header is the same for all tools
 pub fn parse_header(path: &Path, mut lines: impl Iterator<Item = String>) -> Result<Header> {
     let next = lines.next();
 

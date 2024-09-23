@@ -13,6 +13,9 @@ pub trait Summarize: Hash + Eq + Clone {
     fn summarize(_: &mut Cow<Metrics<Self>>) {}
 }
 
+/// The `Metrics` backed by an [`indexmap::IndexMap`]
+///
+/// The insertion order is preserved.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Metrics<K: Hash + Eq>(pub IndexMap<K, u64>);
@@ -81,6 +84,11 @@ impl<K: Hash + Eq + Display + Clone> Metrics<K> {
         self.0.get_key_value(kind).map(|(_, c)| *c)
     }
 
+    /// Return the metric kind or an error
+    ///
+    /// # Errors
+    ///
+    /// If the metric kind is not present
     pub fn try_metric_by_kind(&self, kind: &K) -> Result<u64> {
         self.metric_by_kind(kind)
             .with_context(|| format!("Missing event type '{kind}"))
@@ -100,18 +108,31 @@ impl<K: Hash + Eq + Display + Clone> Metrics<K> {
         set.union(&other_set).copied().collect()
     }
 
+    /// Return an iterator over the metrics in insertion order
     pub fn iter(&self) -> Iter<'_, K, u64> {
         self.0.iter()
     }
 
+    /// Return true if there are no metrics present
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
+    /// Insert a single metric
+    ///
+    /// If an equivalent key already exists in the map: the key remains and retains in its place in
+    /// the order, its corresponding value is updated with `value`, and the older value is returned
+    /// inside `Some(_)`.
+    ///
+    /// If no equivalent key existed in the map: the new key-value pair is inserted, last in order,
+    /// and `None` is returned.
     pub fn insert(&mut self, key: K, value: u64) -> Option<u64> {
         self.0.insert(key, value)
     }
 
+    /// Insert all metrics
+    ///
+    /// See also [`Metrics::insert`]
     pub fn insert_all(&mut self, entries: &[(K, u64)]) {
         for (key, value) in entries {
             self.insert(key.clone(), *value);

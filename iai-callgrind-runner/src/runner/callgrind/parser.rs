@@ -199,6 +199,7 @@ impl PartialEq for Sentinel {
     }
 }
 
+/// Parse the callgrind output files header
 pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<CallgrindProperties> {
     if !iter
         .by_ref()
