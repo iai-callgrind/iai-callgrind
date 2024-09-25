@@ -11,8 +11,11 @@ use crate::common::{assert_parse_error, Fixtures};
 // Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
 #[rstest]
 #[case::no_records("no_records.with_summary_and_totals", [0, 0, 0, 0, 0, 0, 0, 0, 0])]
-#[case::with_records("no_entry_point", [325261, 78145, 35789, 1595, 2119, 850, 1558, 1485, 799])]
-fn test_sentinel_parser(#[case] fixture: &str, #[case] costs: [u64; 9]) {
+#[case::with_records("no_entry_point", [325259, 78145, 35789, 1595, 2119, 850, 1558, 1485, 799])]
+#[case::summary_and_totals("summary_and_totals", [11, 12, 13, 14, 15, 16, 17, 18, 19])]
+#[case::no_summary_but_totals("no_summary_but_totals", [11, 12, 13, 14, 15, 16, 17, 18, 19])]
+#[case::summary_no_totals("summary_no_totals", [1, 2, 3, 4, 5, 6, 7, 8, 9])]
+fn test_summary_parser(#[case] fixture: &str, #[case] costs: [u64; 9]) {
     let expected_costs = Metrics::with_metric_kinds([
         (EventKind::Ir, costs[0]),
         (EventKind::Dr, costs[1]),
@@ -45,7 +48,7 @@ fn test_summary_parser_when_not_found_then_error() {
         "callgrind.out",
         ValgrindTool::Callgrind,
         ToolOutputPathKind::Out,
-        "no_records.no_summary_and_totals",
+        "no_summary_no_totals",
     );
 
     let result = SummaryParser.parse(&callgrind_output);
