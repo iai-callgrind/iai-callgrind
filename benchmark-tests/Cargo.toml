@@ -224,4 +224,9 @@ path = "benches/test_lib_bench/threads/test_lib_bench_threads.rs"
 
 [[bench]]
 harness = false
+name = "test_lib_bench_parts"
+path = "benches/test_lib_bench/parts/test_lib_bench_parts.rs"
+
+[[bench]]
+harness = false
 name = "test_bench_template"

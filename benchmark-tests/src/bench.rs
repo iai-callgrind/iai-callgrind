@@ -106,6 +106,8 @@ struct ExpectedConfig {
     stderr: Option<PathBuf>,
     #[serde(default)]
     exit_code: Option<i32>,
+    #[serde(default)]
+    zero_callgrind_metrics: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -767,16 +769,22 @@ impl RunConfig {
             }
         }
 
-        let base_dir = home_dir.join(PACKAGE).join(bench_name);
-        // These checks heavily depends on the creation of the `summary.json` files, but we create
-        // them per default.
-        for path in glob(&format!("{}/**/summary.json", base_dir.display()))
-            .unwrap()
-            .map(Result::unwrap)
+        if self
+            .expected
+            .as_ref()
+            .map_or(false, |expected| expected.zero_callgrind_metrics)
         {
-            let summary = Summary::new(&path).unwrap();
-            summary.assert_costs_not_all_zero();
-            print_info("Verifying costs not all zero successful");
+            let base_dir = home_dir.join(PACKAGE).join(bench_name);
+            // These checks heavily depends on the creation of the `summary.json` files, but we
+            // create them per default.
+            for path in glob(&format!("{}/**/summary.json", base_dir.display()))
+                .unwrap()
+                .map(Result::unwrap)
+            {
+                let summary = Summary::new(&path).unwrap();
+                summary.assert_costs_not_all_zero();
+                print_info("Verifying costs not all zero successful");
+            }
         }
     }
 }

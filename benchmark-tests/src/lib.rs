@@ -49,6 +49,35 @@ pub fn find_primes_multi_thread(num_threads: usize) -> Vec<u64> {
     primes
 }
 
+pub fn find_primes_multi_thread_with_instrumentation(num_threads: usize) -> Vec<u64> {
+    let mut handles = vec![];
+    let mut low = 0;
+    for _ in 0..num_threads {
+        let handle = std::thread::spawn(move || {
+            iai_callgrind::client_requests::callgrind::start_instrumentation();
+            let result = find_primes(low, low + 10000);
+            iai_callgrind::client_requests::callgrind::stop_instrumentation();
+            result
+        });
+        handles.push(handle);
+
+        low += 10000;
+    }
+
+    let mut primes = vec![];
+    for handle in handles {
+        let result = handle.join();
+        primes.extend(result.unwrap())
+    }
+
+    println!(
+        "Number of primes found in the range 0 to {low}: {}",
+        primes.len()
+    );
+
+    primes
+}
+
 pub fn thread_in_thread_with_instrumentation() -> Vec<u64> {
     let low = 0;
     let high = 10000;

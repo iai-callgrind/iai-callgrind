@@ -1,0 +1,7 @@
+groups:
+  - runs:
+      - args: ["--nocapture"]
+        expected:
+          zero_callgrind_metrics: false
+          files: expected_files.1a.yml
+          stdout: expected_stdout.1a
