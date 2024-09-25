@@ -89,6 +89,12 @@ If not state otherwise the changes below were introduced in
 
 ### Fixed
 
+* When extracting the metrics from callgrind output files, the totals line is
+  now prioritized over the summary line. The summary line has bugs and reports
+  wrong costs if callgrind client requests are used. The totals are unaffected
+  by client requests and report the correct costs. This change is mostly
+  internal but might introduce some (small) changes in the metrics reported by
+  Iai-Callgrind.
 * The error metrics of drd, helgrind and memcheck were only shown correctly if
   they consisted of a single digit.
 
