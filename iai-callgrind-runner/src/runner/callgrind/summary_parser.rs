@@ -9,9 +9,13 @@ use super::model::Metrics;
 use super::parser::{parse_header, CallgrindParser, CallgrindProperties};
 use crate::error::Error;
 
-/// Parse the `summary:` line in the callgrind output or `total:` if summary is not present
+/// Parse the `total:` line in the callgrind output or `summary:` if total is not present
 ///
 /// The format is described [here](https://valgrind.org/docs/manual/cl-format.html)
+///
+/// The summary would usually be the first choice, but there are bugs in the summary line if
+/// callgrind client requests are used, which is why the total is used as primary metric and then
+/// the summary.
 ///
 /// Regarding the summary:
 ///
@@ -37,37 +41,35 @@ impl CallgrindParser for SummaryParser {
         let mut iter = BufReader::new(File::open(path)?)
             .lines()
             .map(Result::unwrap);
+
         let properties = parse_header(&mut iter)
             .map_err(|error| Error::ParseError((path.to_owned(), error.to_string())))?;
 
-        let mut found = false;
-        let mut metrics = properties.metrics_prototype.clone();
+        let mut metrics = None;
         for line in iter {
             if let Some(suffix) = line.strip_prefix("summary:") {
                 trace!("Found line with summary: '{}'", line);
-                metrics.add_iter_str(suffix.split_ascii_whitespace())?;
-                if metrics.iter().all(|(_c, u)| *u == 0) {
-                    trace!(
-                        "Continuing file processing as summary indicates \"client_request\" are \
-                         used."
-                    );
-                    continue;
-                };
+
+                let mut inner = properties.metrics_prototype.clone();
+                inner.add_iter_str(suffix.split_ascii_whitespace())?;
+                metrics = Some(inner);
+
                 trace!("Updated counters to '{:?}'", &metrics);
-                found = true;
-                break;
             }
 
             if let Some(suffix) = line.strip_prefix("totals:") {
                 trace!("Found line with totals: '{}'", line);
-                metrics.add_iter_str(suffix.split_ascii_whitespace())?;
+
+                let mut inner = properties.metrics_prototype.clone();
+                inner.add_iter_str(suffix.split_ascii_whitespace())?;
+                metrics = Some(inner);
+
                 trace!("Updated counters to '{:?}'", &metrics);
-                found = true;
                 break;
             }
         }
 
-        if found {
+        if let Some(metrics) = metrics {
             Ok((properties, metrics))
         } else {
             Err(Error::ParseError((
