@@ -40,14 +40,6 @@ test_lib_bench_parts::my_group::bench_no_thread dump_every_bb
   RAM Hits:                          |N/A             (*********)
   Total read+write:                  |N/A             (*********)
   Estimated Cycles:                  |N/A             (*********)
-  ## pid: <__PID__> part: 6 thread: 1 |N/A
-  Command: <__COMMAND__>
-  Instructions:                      |N/A             (*********)
-  L1 Hits:                           |N/A             (*********)
-  L2 Hits:                           |N/A             (*********)
-  RAM Hits:                          |N/A             (*********)
-  Total read+write:                  |N/A             (*********)
-  Estimated Cycles:                  |N/A             (*********)
   ## Total
   Instructions:                      |N/A             (*********)
   L1 Hits:                           |N/A             (*********)
@@ -165,30 +157,6 @@ Number of primes found in the range 0 to 20000: 2262
   Total read+write:                  |N/A             (*********)
   Estimated Cycles:                  |N/A             (*********)
   ## pid: <__PID__> part: 3 thread: 3 |N/A
-  Command: <__COMMAND__>
-  Instructions:                      |N/A             (*********)
-  L1 Hits:                           |N/A             (*********)
-  L2 Hits:                           |N/A             (*********)
-  RAM Hits:                          |N/A             (*********)
-  Total read+write:                  |N/A             (*********)
-  Estimated Cycles:                  |N/A             (*********)
-  ## pid: <__PID__> part: 4 thread: 1 |N/A
-  Command: <__COMMAND__>
-  Instructions:                      |N/A             (*********)
-  L1 Hits:                           |N/A             (*********)
-  L2 Hits:                           |N/A             (*********)
-  RAM Hits:                          |N/A             (*********)
-  Total read+write:                  |N/A             (*********)
-  Estimated Cycles:                  |N/A             (*********)
-  ## pid: <__PID__> part: 4 thread: 2 |N/A
-  Command: <__COMMAND__>
-  Instructions:                      |N/A             (*********)
-  L1 Hits:                           |N/A             (*********)
-  L2 Hits:                           |N/A             (*********)
-  RAM Hits:                          |N/A             (*********)
-  Total read+write:                  |N/A             (*********)
-  Estimated Cycles:                  |N/A             (*********)
-  ## pid: <__PID__> part: 4 thread: 3 |N/A
   Command: <__COMMAND__>
   Instructions:                      |N/A             (*********)
   L1 Hits:                           |N/A             (*********)
@@ -355,30 +323,6 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   Total read+write:                  |N/A             (*********)
   Estimated Cycles:                  |N/A             (*********)
   ## pid: <__PID__> part: 2 thread: 3 |N/A
-  Command:            target/release/thread --thread-in-thread
-  Instructions:                      |N/A             (*********)
-  L1 Hits:                           |N/A             (*********)
-  L2 Hits:                           |N/A             (*********)
-  RAM Hits:                          |N/A             (*********)
-  Total read+write:                  |N/A             (*********)
-  Estimated Cycles:                  |N/A             (*********)
-  ## pid: <__PID__> part: 3 thread: 1 |N/A
-  Command:            target/release/thread --thread-in-thread
-  Instructions:                      |N/A             (*********)
-  L1 Hits:                           |N/A             (*********)
-  L2 Hits:                           |N/A             (*********)
-  RAM Hits:                          |N/A             (*********)
-  Total read+write:                  |N/A             (*********)
-  Estimated Cycles:                  |N/A             (*********)
-  ## pid: <__PID__> part: 3 thread: 2 |N/A
-  Command:            target/release/thread --thread-in-thread
-  Instructions:                      |N/A             (*********)
-  L1 Hits:                           |N/A             (*********)
-  L2 Hits:                           |N/A             (*********)
-  RAM Hits:                          |N/A             (*********)
-  Total read+write:                  |N/A             (*********)
-  Estimated Cycles:                  |N/A             (*********)
-  ## pid: <__PID__> part: 3 thread: 3 |N/A
   Command:            target/release/thread --thread-in-thread
   Instructions:                      |N/A             (*********)
   L1 Hits:                           |N/A             (*********)

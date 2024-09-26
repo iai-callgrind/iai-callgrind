@@ -10,7 +10,7 @@ use iai_callgrind::{
 #[library_benchmark]
 #[bench::dump_every_bb(
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args(["--dump-every-bb=50000"])
+        .raw_callgrind_args(["--dump-every-bb=100000"])
 )]
 #[bench::dump_before(
     config = LibraryBenchmarkConfig::default()
@@ -31,7 +31,7 @@ fn bench_no_thread() -> Vec<u64> {
 )]
 #[bench::dump_every_bb(
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args(["--dump-every-bb=50000"])
+        .raw_callgrind_args(["--dump-every-bb=100000"])
 )]
 #[bench::dump_before(
     config = LibraryBenchmarkConfig::default()
@@ -55,7 +55,7 @@ fn bench_multiple_threads() -> Vec<u64> {
 )]
 #[bench::dump_every_bb(
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args(["--dump-every-bb=50000"])
+        .raw_callgrind_args(["--dump-every-bb=100000"])
 )]
 #[bench::dump_before(
     config = LibraryBenchmarkConfig::default()
