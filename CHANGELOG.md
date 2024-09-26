@@ -78,6 +78,8 @@ If not state otherwise the changes below were introduced in
 * In the presence of multiple processes the DHAT metrics are now summarized and
   shown in a total in the same way as the metrics of callgrind and the other
   tools.
+* Bump the summary json schema to v3 in
+  `iai-callgrind-runner/schemas/summary.v3.schema.json`
 
 ### Removed
 
