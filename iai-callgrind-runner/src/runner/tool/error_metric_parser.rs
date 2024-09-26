@@ -1,8 +1,9 @@
+// spell-checker:ignore suppr ctxts
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -69,11 +70,14 @@ impl LogfileParser for ErrorMetricLogfileParser {
 
                             let caps = EXTRACT_ERROR_SUMMARY_RE
                                 .captures(error_summary_value)
-                                .ok_or(anyhow!(
-                                    "Failed to extract error summary from string".to_owned()
-                                ))?;
+                                .context(
+                                    "Failed to extract error summary from string".to_owned(),
+                                )?;
 
-                            // There might be multiple `ERROR SUMMARY` lines. We only use the last
+                            // There might be multiple `ERROR SUMMARY` lines. We only use the last.
+                            // The comments in the valgrind source code (`coregrind/m_errormgr.c`)
+                            // state that the error summary line is only reprinted to avoid having
+                            // to scroll up.
                             let mut new_metrics: Metrics<ErrorMetricKind> =
                                 metrics_prototype.clone();
                             new_metrics.add_iter_str([
@@ -116,5 +120,96 @@ impl LogfileParser for ErrorMetricLogfileParser {
             )?),
             details,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+    use regex::Captures;
+    use rstest::rstest;
+
+    use super::*;
+
+    #[derive(Debug, PartialEq, Eq, Clone)]
+    struct ErrorsFixture {
+        errors: u64,
+        ctxs: u64,
+        suppr_errors: u64,
+        suppr_ctxs: u64,
+    }
+
+    impl ErrorsFixture {
+        fn new(errors: u64, ctxs: u64, suppr_errors: u64, suppr_ctxs: u64) -> Self {
+            Self {
+                errors,
+                ctxs,
+                suppr_errors,
+                suppr_ctxs,
+            }
+        }
+
+        fn from_caps(captures: &Captures) -> Self {
+            let errors = captures
+                .name("errs")
+                .unwrap()
+                .as_str()
+                .parse::<u64>()
+                .unwrap();
+            let ctxs = captures
+                .name("ctxs")
+                .unwrap()
+                .as_str()
+                .parse::<u64>()
+                .unwrap();
+            let suppr_errors = captures
+                .name("s_errs")
+                .unwrap()
+                .as_str()
+                .parse::<u64>()
+                .unwrap();
+            let suppr_ctxs = captures
+                .name("s_ctxs")
+                .unwrap()
+                .as_str()
+                .parse::<u64>()
+                .unwrap();
+
+            Self {
+                errors,
+                ctxs,
+                suppr_errors,
+                suppr_ctxs,
+            }
+        }
+    }
+
+    #[rstest]
+    #[case::all_zero(
+        "0 errors from 0 contexts (suppressed: 0 from 0)",
+        ErrorsFixture::new(0, 0, 0, 0)
+    )]
+    #[case::all_one(
+        "1 errors from 1 contexts (suppressed: 1 from 1)",
+        ErrorsFixture::new(1, 1, 1, 1)
+    )]
+    #[case::all_u64_max(
+        "18446744073709551615 errors from 18446744073709551615 contexts (suppressed: \
+         18446744073709551615 from 18446744073709551615)",
+        ErrorsFixture::new(u64::MAX, u64::MAX, u64::MAX, u64::MAX,)
+    )]
+    #[case::different_numbers(
+        "1 errors from 2 contexts (suppressed: 3 from 4)",
+        ErrorsFixture::new(1, 2, 3, 4)
+    )]
+    #[case::different_numbers_num_digits_gt_1(
+        "11 errors from 123 contexts (suppressed: 1345 from 14567)",
+        ErrorsFixture::new(11, 123, 1345, 14567)
+    )]
+    fn test_extract_errors_re(#[case] haystack: &str, #[case] expected_errors: ErrorsFixture) {
+        let caps = EXTRACT_ERROR_SUMMARY_RE.captures(haystack).unwrap();
+        let actual_errors = ErrorsFixture::from_caps(&caps);
+
+        assert_eq!(actual_errors, expected_errors);
     }
 }

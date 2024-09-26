@@ -14,20 +14,15 @@ use which::which;
 
 use crate::error::Error;
 
+// # Developer notes
+//
+// EitherOrBoth is not considered complete in terms of possible functionality. Simply extend and add
+// new methods by need.
+
 /// Either left or right or both can be present
 ///
 /// Most of the time, this enum is used to store (new, old) output, metrics, etc. Per convention
-/// left is always `new` and right is `old`.
-///
-/// This enum is inspired by `itertools::EitherOrBoth`. We use a simplification `EitherOrBoth<T>`
-/// instead of `EitherOrBoth<T,U = T>` because that is what we always need. Depending on `itertools`
-/// just because of this enum was no option. However, this simplified enum allows further
-/// optimizations, for example [`Self::map`] only needs a single closure instead of two.
-///
-/// # Developer notes
-///
-/// This enum is not considered complete in terms of possible functionality. Simply extend and add
-/// new methods by need.
+/// left is `new` and right is `old`.
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum EitherOrBoth<T> {

@@ -621,6 +621,206 @@ impl MetricsDiff {
     }
 }
 
+impl Diffs {
+    pub fn new(new: u64, old: u64) -> Self {
+        Self {
+            diff_pct: percentage_diff(new, old),
+            factor: factor_diff(new, old),
+        }
+    }
+}
+
+impl<K> MetricsSummary<K>
+where
+    K: Hash + Eq + Summarize + Display + Clone,
+{
+    /// Create a new `MetricsSummary` calculating the differences between new and old (if any)
+    /// [`Metrics`]
+    ///
+    /// # Panics
+    ///
+    /// If one of the [`Metrics`] is empty
+    pub fn new(metrics: EitherOrBoth<Metrics<K>>) -> Self {
+        match metrics {
+            EitherOrBoth::Left(new) => {
+                assert!(!new.is_empty());
+
+                let mut new = Cow::Owned(new);
+                K::summarize(&mut new);
+
+                Self(
+                    new.iter()
+                        .map(|(metric_kind, metric)| {
+                            (
+                                metric_kind.clone(),
+                                MetricsDiff::new(EitherOrBoth::Left(*metric)),
+                            )
+                        })
+                        .collect::<IndexMap<_, _>>(),
+                )
+            }
+            EitherOrBoth::Right(old) => {
+                assert!(!old.is_empty());
+
+                let mut old = Cow::Owned(old);
+                K::summarize(&mut old);
+
+                Self(
+                    old.iter()
+                        .map(|(metric_kind, metric)| {
+                            (
+                                metric_kind.clone(),
+                                MetricsDiff::new(EitherOrBoth::Right(*metric)),
+                            )
+                        })
+                        .collect::<IndexMap<_, _>>(),
+                )
+            }
+            EitherOrBoth::Both(new, old) => {
+                assert!(!new.is_empty());
+                assert!(!old.is_empty());
+
+                let mut new = Cow::Owned(new);
+                K::summarize(&mut new);
+                let mut old = Cow::Owned(old);
+                K::summarize(&mut old);
+
+                let mut map = indexmap! {};
+                for metric_kind in new.metric_kinds_union(&old) {
+                    let diff = match (
+                        new.metric_by_kind(metric_kind),
+                        old.metric_by_kind(metric_kind),
+                    ) {
+                        (Some(metric), None) => MetricsDiff::new(EitherOrBoth::Left(metric)),
+                        (None, Some(metric)) => MetricsDiff::new(EitherOrBoth::Right(metric)),
+                        (Some(new), Some(old)) => MetricsDiff::new(EitherOrBoth::Both(new, old)),
+                        (None, None) => {
+                            unreachable!(
+                                "The union contains the event kinds either from new or old or \
+                                 from both"
+                            )
+                        }
+                    };
+                    map.insert(metric_kind.clone(), diff);
+                }
+                Self(map)
+            }
+        }
+    }
+
+    /// Try to return a [`MetricsDiff`] for the specified `MetricKind`
+    pub fn diff_by_kind(&self, metric_kind: &K) -> Option<&MetricsDiff> {
+        self.0.get(metric_kind)
+    }
+
+    pub fn all_diffs(&self) -> impl Iterator<Item = (&K, &MetricsDiff)> {
+        self.0.iter()
+    }
+
+    pub fn extract_costs(&self) -> EitherOrBoth<Metrics<K>> {
+        let mut new_metrics: Metrics<K> = Metrics::empty();
+        let mut old_metrics: Metrics<K> = Metrics::empty();
+
+        // The diffs should not be empty
+        for (metric_kind, diff) in self.all_diffs() {
+            match diff.metrics {
+                EitherOrBoth::Left(new) => {
+                    new_metrics.insert(metric_kind.clone(), new);
+                }
+                EitherOrBoth::Right(old) => {
+                    old_metrics.insert(metric_kind.clone(), old);
+                }
+                EitherOrBoth::Both(new, old) => {
+                    new_metrics.insert(metric_kind.clone(), new);
+                    old_metrics.insert(metric_kind.clone(), old);
+                }
+            }
+        }
+
+        match (new_metrics.is_empty(), old_metrics.is_empty()) {
+            (false, false) => EitherOrBoth::Both(new_metrics, old_metrics),
+            (false, true) => EitherOrBoth::Left(new_metrics),
+            (true, false) => EitherOrBoth::Right(old_metrics),
+            (true, true) => unreachable!("A costs diff contains new or old values or both."),
+        }
+    }
+
+    pub fn add(&mut self, other: &Self) {
+        let other_keys = other.0.keys().cloned().collect::<IndexSet<_>>();
+        let keys = self.0.keys().cloned().collect::<IndexSet<_>>();
+        let union = keys.union(&other_keys);
+
+        for key in union {
+            match (self.diff_by_kind(key), other.diff_by_kind(key)) {
+                (None, None) => unreachable!("One key of the union set must be present"),
+                (None, Some(other_diff)) => {
+                    self.0.insert(key.clone(), other_diff.clone());
+                }
+                (Some(_), None) => {
+                    // Nothing to be done
+                }
+                (Some(this_diff), Some(other_diff)) => {
+                    let new_diff = this_diff.add(other_diff);
+                    self.0.insert(key.clone(), new_diff);
+                }
+            }
+        }
+    }
+}
+
+impl<K> Default for MetricsSummary<K>
+where
+    K: Hash + Eq,
+{
+    fn default() -> Self {
+        Self(IndexMap::default())
+    }
+}
+impl FlamegraphSummary {
+    /// Create a new `FlamegraphSummary`
+    pub fn new(event_kind: EventKind) -> Self {
+        Self {
+            event_kind,
+            regular_path: Option::default(),
+            base_path: Option::default(),
+            diff_path: Option::default(),
+        }
+    }
+}
+
+impl SummaryOutput {
+    /// Create a new `SummaryOutput` with `dir` as base dir and an extension fitting the
+    /// [`SummaryFormat`]
+    pub fn new(format: SummaryFormat, dir: &Path) -> Self {
+        Self {
+            format,
+            path: dir.join("summary.json"),
+        }
+    }
+
+    /// Initialize this `SummaryOutput` removing old summary files
+    pub fn init(&self) -> Result<()> {
+        for entry in glob(self.path.with_extension("*").to_string_lossy().as_ref())
+            .expect("Glob pattern should be valid")
+        {
+            let entry = entry?;
+            std::fs::remove_file(entry.as_path()).with_context(|| {
+                format!(
+                    "Failed removing summary file '{}'",
+                    entry.as_path().display()
+                )
+            })?;
+        }
+
+        Ok(())
+    }
+
+    /// Try to create an empty summary file returning the [`File`] object
+    pub fn create(&self) -> Result<File> {
+        File::create(&self.path).with_context(|| "Failed to create json summary file")
+    }
+}
+
 impl ToolMetricSummary {
     pub fn add_mut(&mut self, other: &Self) {
         match (self, other) {
@@ -696,204 +896,13 @@ impl ToolMetricSummary {
             _ => Err(anyhow!("Cannot create summary from incompatible costs")),
         }
     }
-}
 
-impl Diffs {
-    pub fn new(new: u64, old: u64) -> Self {
-        Self {
-            diff_pct: percentage_diff(new, old),
-            factor: factor_diff(new, old),
-        }
-    }
-}
-
-impl<K> MetricsSummary<K>
-where
-    K: Hash + Eq + Summarize + Display + Clone,
-{
-    /// Create a new `MetricsSummary` calculating the differences between new and old (if any)
-    /// [`Metrics`]
-    pub fn new(metrics: EitherOrBoth<Metrics<K>>) -> Self {
-        match metrics {
-            EitherOrBoth::Left(new) => {
-                let mut new = Cow::Owned(new);
-                K::summarize(&mut new);
-
-                Self(
-                    new.iter()
-                        .map(|(metric_kind, metric)| {
-                            (
-                                metric_kind.clone(),
-                                MetricsDiff::new(EitherOrBoth::Left(*metric)),
-                            )
-                        })
-                        .collect::<IndexMap<_, _>>(),
-                )
-            }
-            EitherOrBoth::Right(old) => {
-                let mut old = Cow::Owned(old);
-                K::summarize(&mut old);
-
-                Self(
-                    old.iter()
-                        .map(|(metric_kind, metric)| {
-                            (
-                                metric_kind.clone(),
-                                MetricsDiff::new(EitherOrBoth::Right(*metric)),
-                            )
-                        })
-                        .collect::<IndexMap<_, _>>(),
-                )
-            }
-            EitherOrBoth::Both(new, old) => {
-                let mut new = Cow::Owned(new);
-                K::summarize(&mut new);
-                let mut old = Cow::Owned(old);
-                K::summarize(&mut old);
-
-                let mut map = indexmap! {};
-                for metric_kind in new.metric_kinds_union(&old) {
-                    let diff = match (
-                        new.metric_by_kind(metric_kind),
-                        old.metric_by_kind(metric_kind),
-                    ) {
-                        (Some(metric), None) => MetricsDiff::new(EitherOrBoth::Left(metric)),
-                        (None, Some(metric)) => MetricsDiff::new(EitherOrBoth::Right(metric)),
-                        (Some(new), Some(old)) => MetricsDiff::new(EitherOrBoth::Both(new, old)),
-                        (None, None) => {
-                            unreachable!(
-                                "The union contains the event kinds either from new or old or \
-                                 from both"
-                            )
-                        }
-                    };
-                    map.insert(metric_kind.clone(), diff);
-                }
-                Self(map)
-            }
-        }
-    }
-
-    /// Try to return a [`MetricsDiff`] for the specified `MetricKind`
-    pub fn diff_by_kind(&self, metric_kind: &K) -> Option<&MetricsDiff> {
-        self.0.get(metric_kind)
-    }
-
-    pub fn all_diffs(&self) -> impl Iterator<Item = (&K, &MetricsDiff)> {
-        self.0.iter()
-    }
-
-    pub fn extract_costs(&self) -> EitherOrBoth<Metrics<K>> {
-        let mut new_metrics: Metrics<K> = Metrics::empty();
-        let mut old_metrics: Metrics<K> = Metrics::empty();
-        // The diffs should not be empty
-        for (metric_kind, diff) in self.all_diffs() {
-            match diff.metrics {
-                EitherOrBoth::Left(new) => {
-                    new_metrics.insert(metric_kind.clone(), new);
-                }
-                EitherOrBoth::Right(old) => {
-                    old_metrics.insert(metric_kind.clone(), old);
-                }
-                EitherOrBoth::Both(new, old) => {
-                    new_metrics.insert(metric_kind.clone(), new);
-                    old_metrics.insert(metric_kind.clone(), old);
-                }
-            }
-        }
-
-        match (new_metrics.is_empty(), old_metrics.is_empty()) {
-            (false, false) => EitherOrBoth::Both(new_metrics, old_metrics),
-            (false, true) => EitherOrBoth::Left(new_metrics),
-            (true, false) => EitherOrBoth::Right(old_metrics),
-            (true, true) => unreachable!("A costs diff contains new or old values or both."),
-        }
-    }
-
-    pub fn add(&mut self, other: &Self) {
-        let other_keys = other.0.keys().cloned().collect::<IndexSet<_>>();
-        let keys = self.0.keys().cloned().collect::<IndexSet<_>>();
-        let union = keys.union(&other_keys);
-
-        for key in union {
-            match (self.diff_by_kind(key), other.diff_by_kind(key)) {
-                (None, None) => unreachable!("One key of the union set must be present"),
-                (None, Some(other_diff)) => {
-                    self.0.insert(key.clone(), other_diff.clone());
-                }
-                (Some(_), None) => {
-                    // Nothing to be done
-                }
-                (Some(this_diff), Some(other_diff)) => {
-                    let new_diff = this_diff.add(other_diff);
-                    self.0.insert(key.clone(), new_diff);
-                }
-            }
-        }
-    }
-}
-
-impl<K> Default for MetricsSummary<K>
-where
-    K: Hash + Eq,
-{
-    fn default() -> Self {
-        Self(IndexMap::default())
-    }
-}
-
-impl ToolMetricSummary {
     pub fn is_some(&self) -> bool {
         !self.is_none()
     }
 
     pub fn is_none(&self) -> bool {
         matches!(self, Self::None)
-    }
-}
-
-impl FlamegraphSummary {
-    /// Create a new `FlamegraphSummary`
-    pub fn new(event_kind: EventKind) -> Self {
-        Self {
-            event_kind,
-            regular_path: Option::default(),
-            base_path: Option::default(),
-            diff_path: Option::default(),
-        }
-    }
-}
-
-impl SummaryOutput {
-    /// Create a new `SummaryOutput` with `dir` as base dir and an extension fitting the
-    /// [`SummaryFormat`]
-    pub fn new(format: SummaryFormat, dir: &Path) -> Self {
-        Self {
-            format,
-            path: dir.join("summary.json"),
-        }
-    }
-
-    /// Initialize this `SummaryOutput` removing old summary files
-    pub fn init(&self) -> Result<()> {
-        for entry in glob(self.path.with_extension("*").to_string_lossy().as_ref())
-            .expect("Glob pattern should be valid")
-        {
-            let entry = entry?;
-            std::fs::remove_file(entry.as_path()).with_context(|| {
-                format!(
-                    "Failed removing summary file '{}'",
-                    entry.as_path().display()
-                )
-            })?;
-        }
-
-        Ok(())
-    }
-
-    /// Try to create an empty summary file returning the [`File`] object
-    pub fn create(&self) -> Result<File> {
-        File::create(&self.path).with_context(|| "Failed to create json summary file")
     }
 }
 
@@ -925,9 +934,126 @@ impl ToolRunSegment {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
     use rstest::rstest;
+    use EventKind::*;
 
     use super::*;
+
+    fn expected_metrics_diff<D>(metrics: EitherOrBoth<u64>, diffs: D) -> MetricsDiff
+    where
+        D: Into<Option<(f64, f64)>>,
+    {
+        MetricsDiff {
+            metrics,
+            diffs: diffs
+                .into()
+                .map(|(diff_pct, factor)| Diffs { diff_pct, factor }),
+        }
+    }
+
+    fn metrics_fixture(metrics: &[u64]) -> Metrics<EventKind> {
+        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
+        let event_kinds = [
+            Ir,
+            Dr,
+            Dw,
+            I1mr,
+            D1mr,
+            D1mw,
+            ILmr,
+            DLmr,
+            DLmw,
+            L1hits,
+            LLhits,
+            RamHits,
+            TotalRW,
+            EstimatedCycles,
+        ];
+
+        Metrics::with_metric_kinds(
+            event_kinds
+                .iter()
+                .zip(metrics.iter())
+                .map(|(e, v)| (*e, *v)),
+        )
+    }
+
+    fn metrics_summary_fixture<T>(kinds: &[(EitherOrBoth<u64>, T)]) -> MetricsSummary<EventKind>
+    where
+        T: Into<Option<(f64, f64)>> + Clone,
+    {
+        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
+        let event_kinds = [
+            Ir,
+            Dr,
+            Dw,
+            I1mr,
+            D1mr,
+            D1mw,
+            ILmr,
+            DLmr,
+            DLmw,
+            L1hits,
+            LLhits,
+            RamHits,
+            TotalRW,
+            EstimatedCycles,
+        ];
+
+        let map: IndexMap<EventKind, MetricsDiff> = event_kinds
+            .iter()
+            .zip(kinds.iter())
+            .map(|(e, (m, d))| (*e, expected_metrics_diff(m.clone(), d.clone())))
+            .collect();
+
+        MetricsSummary(map)
+    }
+
+    #[rstest]
+    #[case::new_zero(EitherOrBoth::Left(0), None)]
+    #[case::new_one(EitherOrBoth::Left(1), None)]
+    #[case::new_u64_max(EitherOrBoth::Left(u64::MAX), None)]
+    #[case::old_zero(EitherOrBoth::Right(0), None)]
+    #[case::old_one(EitherOrBoth::Right(1), None)]
+    #[case::old_u64_max(EitherOrBoth::Right(u64::MAX), None)]
+    #[case::both_zero(
+        EitherOrBoth::Both(0, 0),
+        (0f64, 1f64)
+    )]
+    #[case::both_one(
+        EitherOrBoth::Both(1, 1),
+        (0f64, 1f64)
+    )]
+    #[case::both_u64_max(
+        EitherOrBoth::Both(u64::MAX, u64::MAX),
+        (0f64, 1f64)
+    )]
+    #[case::new_one_old_zero(
+        EitherOrBoth::Both(1, 0),
+        (f64::INFINITY, f64::INFINITY)
+    )]
+    #[case::new_one_old_two(
+        EitherOrBoth::Both(1, 2),
+        (-50f64, -2f64)
+    )]
+    #[case::new_zero_old_one(
+        EitherOrBoth::Both(0, 1),
+        (-100f64, f64::NEG_INFINITY)
+    )]
+    #[case::new_two_old_one(
+        EitherOrBoth::Both(2, 1),
+        (100f64, 2f64)
+    )]
+    fn test_metrics_diff_new<T>(#[case] metrics: EitherOrBoth<u64>, #[case] expected_diffs: T)
+    where
+        T: Into<Option<(f64, f64)>>,
+    {
+        let expected = expected_metrics_diff(metrics.clone(), expected_diffs);
+        let actual = MetricsDiff::new(metrics);
+
+        assert_eq!(actual, expected);
+    }
 
     #[rstest]
     #[case::new_new(EitherOrBoth::Left(1), EitherOrBoth::Left(2), EitherOrBoth::Left(3))]
@@ -967,6 +1093,36 @@ mod tests {
         EitherOrBoth::Both(1, 3),
         EitherOrBoth::Both(3, 8)
     )]
+    #[case::saturating_new(
+        EitherOrBoth::Left(u64::MAX),
+        EitherOrBoth::Left(1),
+        EitherOrBoth::Left(u64::MAX)
+    )]
+    #[case::saturating_new_other(
+        EitherOrBoth::Left(1),
+        EitherOrBoth::Left(u64::MAX),
+        EitherOrBoth::Left(u64::MAX)
+    )]
+    #[case::saturating_old(
+        EitherOrBoth::Right(u64::MAX),
+        EitherOrBoth::Right(1),
+        EitherOrBoth::Right(u64::MAX)
+    )]
+    #[case::saturating_old_other(
+        EitherOrBoth::Right(1),
+        EitherOrBoth::Right(u64::MAX),
+        EitherOrBoth::Right(u64::MAX)
+    )]
+    #[case::saturating_both(
+        EitherOrBoth::Both(u64::MAX, u64::MAX),
+        EitherOrBoth::Both(1, 1),
+        EitherOrBoth::Both(u64::MAX, u64::MAX)
+    )]
+    #[case::saturating_both_other(
+        EitherOrBoth::Both(1, 1),
+        EitherOrBoth::Both(u64::MAX, u64::MAX),
+        EitherOrBoth::Both(u64::MAX, u64::MAX)
+    )]
     fn test_metrics_diff_add(
         #[case] metric: EitherOrBoth<u64>,
         #[case] other_metric: EitherOrBoth<u64>,
@@ -978,5 +1134,111 @@ mod tests {
 
         assert_eq!(new_diff.add(&old_diff), expected);
         assert_eq!(old_diff.add(&new_diff), expected);
+    }
+
+    #[rstest]
+    #[case::new_ir(&[0], &[], &[(EitherOrBoth::Left(0), None)])]
+    #[case::new_is_summarized(&[10, 20, 30, 1, 2, 3, 4, 2, 0], &[],
+        &[
+            (EitherOrBoth::Left(10), None),
+            (EitherOrBoth::Left(20), None),
+            (EitherOrBoth::Left(30), None),
+            (EitherOrBoth::Left(1), None),
+            (EitherOrBoth::Left(2), None),
+            (EitherOrBoth::Left(3), None),
+            (EitherOrBoth::Left(4), None),
+            (EitherOrBoth::Left(2), None),
+            (EitherOrBoth::Left(0), None),
+            (EitherOrBoth::Left(54), None),
+            (EitherOrBoth::Left(0), None),
+            (EitherOrBoth::Left(6), None),
+            (EitherOrBoth::Left(60), None),
+            (EitherOrBoth::Left(264), None),
+        ]
+    )]
+    #[case::old_ir(&[], &[0], &[(EitherOrBoth::Right(0), None)])]
+    #[case::old_is_summarized(&[], &[5, 10, 15, 1, 2, 3, 4, 1, 0],
+        &[
+            (EitherOrBoth::Right(5), None),
+            (EitherOrBoth::Right(10), None),
+            (EitherOrBoth::Right(15), None),
+            (EitherOrBoth::Right(1), None),
+            (EitherOrBoth::Right(2), None),
+            (EitherOrBoth::Right(3), None),
+            (EitherOrBoth::Right(4), None),
+            (EitherOrBoth::Right(1), None),
+            (EitherOrBoth::Right(0), None),
+            (EitherOrBoth::Right(24), None),
+            (EitherOrBoth::Right(1), None),
+            (EitherOrBoth::Right(5), None),
+            (EitherOrBoth::Right(30), None),
+            (EitherOrBoth::Right(204), None),
+        ]
+    )]
+    #[case::new_and_old_ir_zero(&[0], &[0], &[(EitherOrBoth::Both(0, 0), (0f64, 1f64))])]
+    #[case::new_and_old_summarized_when_equal(
+        &[10, 20, 30, 1, 2, 3, 4, 2, 0],
+        &[10, 20, 30, 1, 2, 3, 4, 2, 0],
+        &[
+            (EitherOrBoth::Both(10, 10), (0f64, 1f64)),
+            (EitherOrBoth::Both(20, 20), (0f64, 1f64)),
+            (EitherOrBoth::Both(30, 30), (0f64, 1f64)),
+            (EitherOrBoth::Both(1, 1), (0f64, 1f64)),
+            (EitherOrBoth::Both(2, 2), (0f64, 1f64)),
+            (EitherOrBoth::Both(3, 3), (0f64, 1f64)),
+            (EitherOrBoth::Both(4, 4), (0f64, 1f64)),
+            (EitherOrBoth::Both(2, 2), (0f64, 1f64)),
+            (EitherOrBoth::Both(0, 0), (0f64, 1f64)),
+            (EitherOrBoth::Both(54, 54), (0f64, 1f64)),
+            (EitherOrBoth::Both(0, 0), (0f64, 1f64)),
+            (EitherOrBoth::Both(6, 6), (0f64, 1f64)),
+            (EitherOrBoth::Both(60, 60), (0f64, 1f64)),
+            (EitherOrBoth::Both(264, 264), (0f64, 1f64)),
+        ]
+    )]
+    #[case::new_and_old_summarized_when_not_equal(
+        &[10, 20, 30, 1, 2, 3, 4, 2, 0],
+        &[5, 10, 15, 1, 2, 3, 4, 1, 0],
+        &[
+            (EitherOrBoth::Both(10, 5), (100f64, 2f64)),
+            (EitherOrBoth::Both(20, 10), (100f64, 2f64)),
+            (EitherOrBoth::Both(30, 15), (100f64, 2f64)),
+            (EitherOrBoth::Both(1, 1), (0f64, 1f64)),
+            (EitherOrBoth::Both(2, 2), (0f64, 1f64)),
+            (EitherOrBoth::Both(3, 3), (0f64, 1f64)),
+            (EitherOrBoth::Both(4, 4), (0f64, 1f64)),
+            (EitherOrBoth::Both(2, 1), (100f64, 2f64)),
+            (EitherOrBoth::Both(0, 0), (0f64, 1f64)),
+            (EitherOrBoth::Both(54, 24), (125f64, 2.25f64)),
+            (EitherOrBoth::Both(0, 1), (-100f64, f64::NEG_INFINITY)),
+            (EitherOrBoth::Both(6, 5), (20f64, 1.2f64)),
+            (EitherOrBoth::Both(60, 30), (100f64, 2f64)),
+            (EitherOrBoth::Both(264, 204),
+                (29.411_764_705_882_355_f64, 1.294_117_647_058_823_6_f64)
+            ),
+        ]
+    )]
+    fn test_metrics_summary_new<V>(
+        #[case] new_metrics: &[u64],
+        #[case] old_metrics: &[u64],
+        #[case] expected: &[(EitherOrBoth<u64>, V)],
+    ) where
+        V: Into<Option<(f64, f64)>> + Clone,
+    {
+        let expected_metrics_summary = metrics_summary_fixture(expected);
+        let actual = match (
+            (!new_metrics.is_empty()).then_some(new_metrics),
+            (!old_metrics.is_empty()).then_some(old_metrics),
+        ) {
+            (None, None) => unreachable!(),
+            (Some(new), None) => MetricsSummary::new(EitherOrBoth::Left(metrics_fixture(new))),
+            (None, Some(old)) => MetricsSummary::new(EitherOrBoth::Right(metrics_fixture(old))),
+            (Some(new), Some(old)) => MetricsSummary::new(EitherOrBoth::Both(
+                metrics_fixture(new),
+                metrics_fixture(old),
+            )),
+        };
+
+        assert_eq!(actual, expected_metrics_summary);
     }
 }
