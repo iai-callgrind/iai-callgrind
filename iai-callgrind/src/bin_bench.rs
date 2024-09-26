@@ -1767,6 +1767,57 @@ impl BinaryBenchmarkConfig {
         self.0.truncate_description = Some(value);
         self
     }
+
+    /// Execute the `setup()` in parallel to the [`Command`].
+    ///
+    /// This option can change the execution flow in a way that the [`Command`] is executed
+    /// right after the `setup()` instead of waiting for the `setup()` to complete in advance.
+    ///
+    /// This can be combined with the usage of [`Delay`] to further control the timing when
+    /// the [`Command`] is executed.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    /// use std::time::Duration;
+    /// use std::net::{SocketAddr, TcpListener};
+    /// use std::thread;
+    /// use iai_callgrind::{binary_benchmark_group, binary_benchmark, main, Command, Delay, DelayKind};
+    ///
+    /// fn setup_tcp_server() {
+    ///     thread::sleep(Duration::from_millis(300));
+    ///     let _listener = TcpListener::bind("127.0.0.1:31000".parse::<SocketAddr>().unwrap()).unwrap();
+    ///     thread::sleep(Duration::from_secs(1));
+    /// }
+    ///
+    /// #[binary_benchmark]
+    /// #[bench::delay(
+    ///     setup = setup_tcp_server(),
+    ///     config = BinaryBenchmarkConfig::default()
+    ///         .setup_parallel(true)
+    /// ]
+    /// fn bench_binary() -> iai_callgrind::Command {
+    ///     Command::new(env!("CARGO_BIN_EXE_my-echo"))
+    ///         .delay(
+    ///             Delay::new(
+    ///                 DelayKind::TcpConnect("127.0.0.1:31000".parse::<SocketAddr>().unwrap()))
+    ///                 .timeout(Duration::from_millis(500))
+    ///         ).build()
+    /// }
+    ///
+    /// binary_benchmark_group!(
+    ///     name = delay;
+    ///     benchmarks = bench_binary
+    /// );
+    /// # fn main() {
+    /// # main!(binary_benchmark_groups = delay);
+    /// # }
+    /// ```
+    pub fn setup_parallel(&mut self, setup_parallel: bool) -> &mut Self {
+        self.0.setup_parallel = Some(setup_parallel);
+        self
+    }
 }
 
 impl BinaryBenchmarkGroup {
@@ -1985,8 +2036,8 @@ impl Command {
     /// # main!(binary_benchmark_groups = delay);
     /// # }
     /// ```
-    pub fn setup_parallel<T: Into<bool>>(&mut self, setup_parallel: T) -> &mut Self {
-        self.0.setup_parallel = setup_parallel.into();
+    pub fn setup_parallel(&mut self, setup_parallel: bool) -> &mut Self {
+        self.0.config.setup_parallel = Some(setup_parallel);
         self
     }
 

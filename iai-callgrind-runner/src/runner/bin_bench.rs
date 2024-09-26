@@ -308,7 +308,6 @@ impl BinBench {
             stdin,
             stdout,
             stderr,
-            setup_parallel,
             delay,
             ..
         } = binary_benchmark_bench.command;
@@ -352,7 +351,7 @@ impl BinBench {
                         }
                     }),
                     assistant_envs.clone(),
-                    setup_parallel,
+                    config.setup_parallel.unwrap_or(false),
                 )),
             teardown: binary_benchmark_bench.has_teardown.then_some(
                 Assistant::new_bench_assistant(

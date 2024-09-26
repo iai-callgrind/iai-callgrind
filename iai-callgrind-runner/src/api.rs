@@ -48,7 +48,7 @@ pub struct BinaryBenchmarkConfig {
     pub tools_override: Option<Tools>,
     pub sandbox: Option<Sandbox>,
     pub truncate_description: Option<Option<usize>>,
-    pub setup_parallel: bool,
+    pub setup_parallel: Option<bool>,
 }
 
 /// The model for the `binary_benchmark_group` macro
@@ -103,7 +103,6 @@ pub struct Command {
     pub stdout: Option<Stdio>,
     pub stderr: Option<Stdio>,
     pub config: BinaryBenchmarkConfig,
-    pub setup_parallel: bool,
     pub delay: Option<Delay>,
 }
 
@@ -420,9 +419,11 @@ impl BinaryBenchmarkConfig {
             } else {
                 // do nothing
             }
+
             self.sandbox = update_option(&self.sandbox, &other.sandbox);
             self.truncate_description =
                 update_option(&self.truncate_description, &other.truncate_description);
+            self.setup_parallel = update_option(&self.setup_parallel, &other.setup_parallel);
         }
         self
     }
