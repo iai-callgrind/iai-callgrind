@@ -194,6 +194,7 @@ pub enum ErrorMetricKind {
 /// documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
+
 pub enum EventKind {
     /// The default event. I cache reads (which equals the number of instructions executed)
     Ir,
@@ -211,14 +212,14 @@ pub enum EventKind {
     Dw,
     /// I1 cache read misses (--cache-sim=yes)
     I1mr,
-    /// LL cache instruction read misses (--cache-sim=yes)
-    ILmr,
     /// D1 cache read misses (--cache-sim=yes)
     D1mr,
-    /// LL cache data read misses (--cache-sim=yes)
-    DLmr,
     /// D1 cache write misses (--cache-sim=yes)
     D1mw,
+    /// LL cache instruction read misses (--cache-sim=yes)
+    ILmr,
+    /// LL cache data read misses (--cache-sim=yes)
+    DLmr,
     /// LL cache data write misses (--cache-sim=yes)
     DLmw,
     /// Derived event showing the L1 hits (--cache-sim=yes)
