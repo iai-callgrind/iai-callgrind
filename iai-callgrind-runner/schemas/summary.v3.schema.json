@@ -316,7 +316,7 @@
       }
     },
     "EitherOrBoth_for_SegmentDetails": {
-      "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, metrics, etc. Per convention left is always `new` and right is `old`.\n\nThis enum is inspired by `itertools::EitherOrBoth`. We use a simplification `EitherOrBoth<T>` instead of `EitherOrBoth<T,U = T>` because that is what we always need. Depending on `itertools` just because of this enum was no option. However, this simplified enum allows further optimizations, for example [`Self::map`] only needs a single closure instead of two.\n\n# Developer notes\n\nThis enum is not considered complete in terms of possible functionality. Simply extend and add new methods by need.",
+      "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, metrics, etc. Per convention left is `new` and right is `old`.",
       "oneOf": [
         {
           "description": "The left or `new` value",
@@ -364,7 +364,7 @@
       ]
     },
     "EitherOrBoth_for_uint64": {
-      "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, metrics, etc. Per convention left is always `new` and right is `old`.\n\nThis enum is inspired by `itertools::EitherOrBoth`. We use a simplification `EitherOrBoth<T>` instead of `EitherOrBoth<T,U = T>` because that is what we always need. Depending on `itertools` just because of this enum was no option. However, this simplified enum allows further optimizations, for example [`Self::map`] only needs a single closure instead of two.\n\n# Developer notes\n\nThis enum is not considered complete in terms of possible functionality. Simply extend and add new methods by need.",
+      "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, metrics, etc. Per convention left is `new` and right is `old`.",
       "oneOf": [
         {
           "description": "The left or `new` value",
@@ -463,24 +463,24 @@
           "enum": ["I1mr"]
         },
         {
-          "description": "LL cache instruction read misses (--cache-sim=yes)",
-          "type": "string",
-          "enum": ["ILmr"]
-        },
-        {
           "description": "D1 cache read misses (--cache-sim=yes)",
           "type": "string",
           "enum": ["D1mr"]
         },
         {
-          "description": "LL cache data read misses (--cache-sim=yes)",
-          "type": "string",
-          "enum": ["DLmr"]
-        },
-        {
           "description": "D1 cache write misses (--cache-sim=yes)",
           "type": "string",
           "enum": ["D1mw"]
+        },
+        {
+          "description": "LL cache instruction read misses (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["ILmr"]
+        },
+        {
+          "description": "LL cache data read misses (--cache-sim=yes)",
+          "type": "string",
+          "enum": ["DLmr"]
         },
         {
           "description": "LL cache data write misses (--cache-sim=yes)",
