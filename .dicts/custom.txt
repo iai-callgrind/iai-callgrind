@@ -65,6 +65,7 @@ cicd
 clippy
 condi
 consts
+coregrind
 coreutils
 crabgrind
 cstring
@@ -86,6 +87,7 @@ dpkg
 dtolnay
 elems
 eprintln
+errormgr
 estimatedcycles
 exidx
 exitcode

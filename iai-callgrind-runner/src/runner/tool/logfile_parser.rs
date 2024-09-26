@@ -31,12 +31,6 @@ lazy_static! {
     static ref EXTRACT_PID_RE: Regex =
         regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?(?<pid>[0-9]+)(==|--).*")
             .expect("Regex should compile");
-    static ref EXTRACT_ERRORS_RE: Regex =
-        regex::Regex::new(r"^.*?(?<errors>[0-9]+).*$").expect("Regex should compile");
-    static ref EXTRACT_ERROR_SUMMARY_RE: Regex = regex::Regex::new(
-        r"^.*?(?<err>[0-9]+).*(<?<ctxs>[0-9]+).*(<?<s_err>[0-9]+).*(<?<s_ctxs>[0-9]+)$"
-    )
-    .expect("Regex should compile");
 }
 
 pub trait LogfileParser {
