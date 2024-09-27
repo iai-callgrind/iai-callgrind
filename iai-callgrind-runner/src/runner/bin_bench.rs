@@ -1075,6 +1075,7 @@ mod tests {
 
     use pretty_assertions::assert_eq;
     use rstest::rstest;
+    use tempfile::tempdir;
 
     use super::*;
 
@@ -1088,13 +1089,6 @@ mod tests {
             timeout: timeout.into().map(Duration::from_millis),
             kind,
         }
-    }
-
-    fn delay_path_dir() -> String {
-        let base_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
-        assert!(base_dir.ends_with("iai-callgrind/iai-callgrind-runner"));
-
-        format!("{base_dir}/../target/tests/delay_path")
     }
 
     #[rstest]
@@ -1169,31 +1163,23 @@ mod tests {
 
     #[test]
     fn test_delay_path() {
-        let file = "file.pid";
-        let dir = delay_path_dir();
-        let file_path = format!("{}/{file}", delay_path_dir());
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("file.pid");
 
-        if !Path::new(&dir).exists() {
-            std::fs::create_dir_all(dir.clone()).unwrap();
+        let delay = Delay {
+            poll: Duration::from_millis(50),
+            timeout: Duration::from_millis(200),
+            kind: DelayKind::PathExists(file_path.clone()),
         };
-        if Path::new(&file_path).exists() {
-            std::fs::remove_file(file_path.clone()).unwrap();
-        };
-
-        let check_file_path = file_path.clone();
         let handle = thread::spawn(move || {
-            let delay = Delay {
-                poll: Duration::from_millis(50),
-                timeout: Duration::from_millis(200),
-                kind: DelayKind::PathExists(check_file_path.into()),
-            };
             delay.run().unwrap();
         });
 
         thread::sleep(Duration::from_millis(100));
-        let _file = File::create(file_path).unwrap();
+        File::create(file_path).unwrap();
 
         handle.join().unwrap();
+        drop(dir);
     }
 
     #[test]
@@ -1239,11 +1225,8 @@ mod tests {
         };
 
         let result = delay.run();
-        assert!(result.as_ref().err().is_some());
-        assert_eq!(
-            result.as_ref().err().unwrap().to_string(),
-            "Timeout of '1s' reached"
-        );
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().to_string(), "Timeout of '1s' reached");
     }
 
     #[test]
@@ -1325,9 +1308,9 @@ mod tests {
             kind: DelayKind::UdpResponse(addr, vec![1]),
         };
         let result = delay.run();
-        assert!(result.as_ref().err().is_some());
+        assert!(result.is_err());
         assert_eq!(
-            result.as_ref().err().unwrap().to_string(),
+            result.unwrap_err().to_string(),
             "Timeout of '100ms' reached"
         );
     }

@@ -1,12 +1,12 @@
-use std::fs::{remove_file, File};
+use std::fs::File;
 use std::net::{SocketAddr, TcpListener, UdpSocket};
-use std::path::Path;
+use std::path::PathBuf;
 use std::time::Duration;
 use std::{env, thread};
 
 use iai_callgrind::{
     binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Command, Delay,
-    DelayKind,
+    DelayKind, Sandbox,
 };
 
 #[binary_benchmark]
@@ -15,21 +15,16 @@ fn delay_duration() -> Command {
     let path = env!("CARGO_BIN_EXE_echo");
     Command::new(path)
         .setup_parallel(true)
-        .delay(Duration::from_secs(2))
+        .delay(Duration::from_millis(500))
         .build()
 }
 
 fn setup_path() {
-    let base_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-    assert!(base_dir.ends_with("iai-callgrind/benchmark-tests"));
-    let path = format!("{base_dir}/../target/tests/test_bin_bench_command_delay.pid");
-    let file_path = Path::new(&path);
-    if file_path.exists() {
-        remove_file(file_path).unwrap();
-    }
+    let file_path = PathBuf::from("some.pid");
 
     println!("Waiting to create file...");
     thread::sleep(Duration::from_millis(300));
+
     println!("Creating file...");
     File::create(file_path).unwrap();
     println!("File created...");
@@ -40,18 +35,11 @@ fn setup_path() {
 fn delay_path() -> Command {
     let cmd_path = env!("CARGO_BIN_EXE_echo");
 
-    let base_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-    assert!(base_dir.ends_with("iai-callgrind/benchmark-tests"));
-    let path = format!("{base_dir}/../target/tests/test_bin_bench_command_delay.pid");
-    let file_path = Path::new(&path);
-    if file_path.exists() {
-        remove_file(file_path).unwrap();
-    }
-
     Command::new(cmd_path)
         .setup_parallel(true)
         .delay(
-            Delay::new(DelayKind::PathExists(file_path.into())).timeout(Duration::from_millis(500)),
+            Delay::new(DelayKind::PathExists("some.pid".into()))
+                .timeout(Duration::from_millis(500)),
         )
         .build()
 }
@@ -59,9 +47,13 @@ fn delay_path() -> Command {
 fn setup_tcp_server() {
     println!("Waiting to start server...");
     thread::sleep(Duration::from_millis(300));
+
     println!("Starting server...");
-    let _listener = TcpListener::bind("127.0.0.1:31000".parse::<SocketAddr>().unwrap()).unwrap();
+    let listener = TcpListener::bind("127.0.0.1:31000".parse::<SocketAddr>().unwrap()).unwrap();
+
     thread::sleep(Duration::from_secs(1));
+
+    drop(listener);
     println!("Stopped server...");
 }
 
@@ -84,6 +76,7 @@ fn delay_tcp() -> Command {
 fn setup_udp_server() {
     println!("Waiting to start server...");
     thread::sleep(Duration::from_millis(300));
+
     println!("Starting server...");
     let remote_addr = "127.0.0.1:34000".parse::<SocketAddr>().unwrap();
     let server = UdpSocket::bind(remote_addr).unwrap();
@@ -105,6 +98,7 @@ fn setup_udp_server() {
             Err(_e) => {}
         }
     }
+
     println!("Stopped server...");
 }
 
@@ -127,7 +121,7 @@ fn delay_udp() -> Command {
 
 binary_benchmark_group!(
     name = delay;
-    config = BinaryBenchmarkConfig::default();
+    config = BinaryBenchmarkConfig::default().sandbox(Sandbox::new(true));
     benchmarks = delay_duration, delay_path, delay_tcp, delay_udp
 );
 
