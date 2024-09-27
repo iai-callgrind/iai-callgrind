@@ -259,6 +259,7 @@ impl Benchmark for BaselineBenchmark {
             None,
             None,
             None,
+            None,
         )?;
 
         Ok(benchmark_summary)
@@ -784,6 +785,7 @@ impl Benchmark for SaveBaselineBenchmark {
             true,
             &lib_bench.module_path,
             // We don't have a sandbox feature in library benchmarks
+            None,
             None,
             None,
             None,

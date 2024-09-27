@@ -204,13 +204,19 @@ impl Benchmark for BaselineBenchmark {
             .map(|sandbox| Sandbox::setup(sandbox, &config.meta))
             .transpose()?;
 
-        let child = bin_bench
+        let mut child = bin_bench
             .setup
             .as_ref()
             .map_or(Ok(None), |setup| setup.run(config, &bin_bench.module_path))?;
 
         if let Some(delay) = &bin_bench.command.delay {
-            delay.clone().run()?;
+            if let Err(error) = delay.run() {
+                if let Some(mut child) = child.take() {
+                    // To avoid zombies
+                    child.kill()?;
+                    return Err(error);
+                }
+            }
         }
 
         let output = callgrind_command.run(
@@ -288,6 +294,7 @@ impl Benchmark for BaselineBenchmark {
             bin_bench.sandbox.as_ref(),
             bin_bench.setup.as_ref(),
             bin_bench.teardown.as_ref(),
+            bin_bench.command.delay.as_ref(),
         )?;
 
         Ok(benchmark_summary)
@@ -968,10 +975,20 @@ impl Benchmark for SaveBaselineBenchmark {
             .map(|sandbox| Sandbox::setup(sandbox, &config.meta))
             .transpose()?;
 
-        let child = bin_bench
+        let mut child = bin_bench
             .setup
             .as_ref()
             .map_or(Ok(None), |setup| setup.run(config, &bin_bench.module_path))?;
+
+        if let Some(delay) = &bin_bench.command.delay {
+            if let Err(error) = delay.run() {
+                if let Some(mut child) = child.take() {
+                    // To avoid zombies
+                    child.kill()?;
+                    return Err(error);
+                }
+            }
+        }
 
         let output = callgrind_command.run(
             tool_config,
@@ -1040,6 +1057,7 @@ impl Benchmark for SaveBaselineBenchmark {
             bin_bench.sandbox.as_ref(),
             bin_bench.setup.as_ref(),
             bin_bench.teardown.as_ref(),
+            bin_bench.command.delay.as_ref(),
         )?;
 
         Ok(benchmark_summary)
