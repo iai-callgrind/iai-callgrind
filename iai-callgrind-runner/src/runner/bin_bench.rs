@@ -5,8 +5,8 @@ use std::io::ErrorKind::WouldBlock;
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, TcpStream, UdpSocket};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, RecvTimeoutError};
-use std::thread;
 use std::time::Duration;
+use std::{panic, thread};
 
 use anyhow::{anyhow, Context, Result};
 use log::{debug, warn};
@@ -544,15 +544,11 @@ impl Delay {
                 Err(RecvTimeoutError::Timeout) => {
                     Err(anyhow!("Timeout of '{:?}' reached", self.timeout))
                 }
-                Err(RecvTimeoutError::Disconnected) => handle
-                    .join()
-                    .map_err(|_| anyhow!("Panic while waiting for delay to finish or timeout"))?
-                    .map_err(|error| {
-                        anyhow!(
-                            "Unexpected disconnect while waiting for delay to finish or timeout: \
-                             {error}"
-                        )
-                    }),
+                Err(RecvTimeoutError::Disconnected) => {
+                    // The disconnect is caused by a panic in the thread, so the `unwrap_err` is
+                    // safe. We propagate the panic as is.
+                    panic::resume_unwind(handle.join().unwrap_err())
+                }
             }
         }
     }
