@@ -1,7 +1,7 @@
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::path::PathBuf;
-use std::process::{Child, Command, Stdio as StdStdio, Stdio};
+use std::process::{Child, Command, Stdio as StdStdio};
 
 use anyhow::Result;
 use log::{debug, info, log_enabled, trace, Level};
@@ -136,22 +136,17 @@ impl Assistant {
 
         nocapture.apply(&mut command);
 
-        if let Some(pipe) = &self.pipe {
-            match pipe {
-                Pipe::Stdout => command.stdout(StdStdio::piped()),
-                Pipe::Stderr => command.stderr(StdStdio::piped()),
-            };
-            let child = command
-                .spawn()
-                .map_err(|error| Error::LaunchError(config.bench_bin.clone(), error.to_string()))?;
-
-            return Ok(Some(child));
+        match &self.pipe {
+            Some(Pipe::Stdout) => {
+                command.stdout(StdStdio::piped());
+            }
+            Some(Pipe::Stderr) => {
+                command.stderr(StdStdio::piped());
+            }
+            _ => {}
         }
 
-        if self.run_parallel {
-            if nocapture == NoCapture::False {
-                command.stdin(Stdio::null());
-            };
+        if self.pipe.is_some() || self.run_parallel {
             let child = command
                 .spawn()
                 .map_err(|error| Error::LaunchError(config.bench_bin.clone(), error.to_string()))?;
