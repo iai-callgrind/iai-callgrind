@@ -1783,7 +1783,10 @@ impl BinaryBenchmarkConfig {
     /// use std::time::Duration;
     /// use std::net::{SocketAddr, TcpListener};
     /// use std::thread;
-    /// use iai_callgrind::{binary_benchmark_group, binary_benchmark, main, Command, Delay, DelayKind};
+    /// use iai_callgrind::{
+    ///     binary_benchmark_group, binary_benchmark, main, BinaryBenchmarkConfig, Command,
+    ///     Delay, DelayKind
+    /// };
     ///
     /// fn setup_tcp_server() {
     ///     thread::sleep(Duration::from_millis(300));
@@ -1796,7 +1799,7 @@ impl BinaryBenchmarkConfig {
     ///     setup = setup_tcp_server(),
     ///     config = BinaryBenchmarkConfig::default()
     ///         .setup_parallel(true)
-    /// ]
+    /// )]
     /// fn bench_binary() -> iai_callgrind::Command {
     ///     Command::new(env!("CARGO_BIN_EXE_my-echo"))
     ///         .delay(
@@ -1811,7 +1814,7 @@ impl BinaryBenchmarkConfig {
     ///     benchmarks = bench_binary
     /// );
     /// # fn main() {
-    /// # main!(binary_benchmark_groups = delay);
+    /// main!(binary_benchmark_groups = delay);
     /// # }
     /// ```
     pub fn setup_parallel(&mut self, setup_parallel: bool) -> &mut Self {
