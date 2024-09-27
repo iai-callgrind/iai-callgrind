@@ -4,11 +4,11 @@ use std::io::stderr;
 use std::io::ErrorKind::WouldBlock;
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, TcpStream, UdpSocket};
 use std::path::{Path, PathBuf};
-use std::sync::mpsc;
+use std::sync::mpsc::{self, RecvTimeoutError};
 use std::thread;
 use std::time::Duration;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use log::{debug, warn};
 
 use super::args::NoCapture;
@@ -31,8 +31,7 @@ use super::tool::{
     ValgrindTool,
 };
 use crate::api::{
-    self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, Delay, DelayKind,
-    Stdin,
+    self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind, Stdin,
 };
 use crate::error::Error;
 use crate::runner::format;
@@ -81,6 +80,13 @@ pub struct Command {
     pub path: PathBuf,
     pub args: Vec<OsString>,
     pub delay: Option<Delay>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Delay {
+    pub poll: Duration,
+    pub timeout: Duration,
+    pub kind: DelayKind,
 }
 
 #[derive(Debug)]
@@ -312,7 +318,7 @@ impl BinBench {
             ..
         } = binary_benchmark_bench.command;
 
-        let command = Command::new(&module_path, path, args, delay)?;
+        let command = Command::new(&module_path, path, args, delay.map(Into::into))?;
 
         let callgrind_args = Args::from_raw_args(&[&config.raw_callgrind_args, raw_args])?;
 
@@ -450,6 +456,150 @@ impl Command {
         }
 
         Ok(Self { path, args, delay })
+    }
+}
+
+impl From<api::Delay> for Delay {
+    fn from(value: api::Delay) -> Self {
+        let (poll, timeout) = if let DelayKind::DurationElapse(_) = value.kind {
+            if value.poll.is_some() {
+                warn!("Ignoring poll setting. Not supported for {:?}", value.kind);
+            }
+            if value.timeout.is_some() {
+                warn!(
+                    "Ignoring timeout setting. Not supported for {:?}",
+                    value.kind
+                );
+            }
+            (Duration::ZERO, Duration::ZERO)
+        } else {
+            let mut poll = value.poll.unwrap_or_else(|| Duration::from_millis(10));
+            let timeout = value.timeout.map_or_else(
+                || Duration::from_secs(600),
+                |t| {
+                    if t < Duration::from_millis(10) {
+                        warn!("The minimum timeout setting is 10ms");
+                        Duration::from_millis(10)
+                    } else {
+                        t
+                    }
+                },
+            );
+
+            if poll >= timeout {
+                warn!(
+                    "Poll duration is equal to or greater than the timeout duration ({:?} >= \
+                     {:?}).",
+                    poll, timeout
+                );
+                poll = timeout - Duration::from_millis(5);
+                warn!("Using poll duration {:?} instead", poll);
+            }
+            (poll, timeout)
+        };
+
+        Self {
+            poll,
+            timeout,
+            kind: value.kind,
+        }
+    }
+}
+
+impl Delay {
+    pub fn new(poll: Duration, timeout: Duration, kind: DelayKind) -> Self {
+        Self {
+            poll,
+            timeout,
+            kind,
+        }
+    }
+
+    pub fn run(&self) -> Result<()> {
+        if let DelayKind::DurationElapse(_) = self.kind {
+            self.exec_delay_fn()
+        } else {
+            let (tx, rx) = mpsc::channel::<std::result::Result<(), anyhow::Error>>();
+
+            let delay = self.clone();
+            let handle = thread::spawn(move || {
+                tx.send(delay.exec_delay_fn()).map_err(|error| {
+                    anyhow!("Command::Delay MPSC channel send error. Error: {error:?}")
+                })
+            });
+
+            match rx.recv_timeout(self.timeout) {
+                Ok(result) => {
+                    // These unwraps are safe
+                    handle.join().unwrap().unwrap();
+                    result.map(|()| debug!("Command::Delay successfully executed."))
+                }
+                Err(RecvTimeoutError::Timeout) => {
+                    Err(anyhow!("Timeout of '{:?}' reached", self.timeout))
+                }
+                Err(RecvTimeoutError::Disconnected) => handle
+                    .join()
+                    .map_err(|_| anyhow!("Panic while waiting for delay to finish or timeout"))?
+                    .map_err(|error| {
+                        anyhow!(
+                            "Unexpected disconnect while waiting for delay to finish or timeout: \
+                             {error}"
+                        )
+                    }),
+            }
+        }
+    }
+
+    fn exec_delay_fn(&self) -> Result<()> {
+        match &self.kind {
+            DelayKind::DurationElapse(duration) => {
+                thread::sleep(*duration);
+            }
+            DelayKind::TcpConnect(addr) => {
+                while let Err(_err) = TcpStream::connect(addr) {
+                    thread::sleep(self.poll);
+                }
+            }
+            DelayKind::UdpResponse(remote, req) => {
+                let socket = match remote {
+                    SocketAddr::V4(_) => {
+                        UdpSocket::bind(SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0))
+                            .context("Could not bind local IPv4 UDP socket.")?
+                    }
+                    SocketAddr::V6(_) => {
+                        UdpSocket::bind(SocketAddr::new(Ipv6Addr::UNSPECIFIED.into(), 0))
+                            .context("Could not bind local IPv6 UDP socket.")?
+                    }
+                };
+
+                socket.set_read_timeout(Some(self.poll))?;
+                socket.set_write_timeout(Some(self.poll))?;
+
+                loop {
+                    while let Err(_err) = socket.send_to(req.as_slice(), remote) {
+                        thread::sleep(self.poll);
+                    }
+
+                    let mut buf = [0; 1];
+                    match socket.recv(&mut buf) {
+                        Ok(_size) => break,
+                        Err(e) => {
+                            if e.kind() != WouldBlock {
+                                thread::sleep(self.poll);
+                            }
+                        }
+                    }
+                }
+            }
+            DelayKind::PathExists(path) => {
+                let wait_for_path = std::path::PathBuf::from(Path::new(path));
+                while !wait_for_path.exists() {
+                    thread::sleep(self.poll);
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -900,250 +1050,106 @@ pub fn run(benchmark_groups: BinaryBenchmarkGroups, config: Config) -> Result<()
     Runner::new(benchmark_groups, config)?.run()
 }
 
-impl Delay {
-    fn defaults(mut self) -> Self {
-        match self.kind {
-            DelayKind::DurationElapse(_) => {
-                if self.poll.is_some() {
-                    warn!("Ignoring poll setting. Not supported for {:?}", self.kind);
-                    self.poll = None;
-                }
-                if self.timeout.is_some() {
-                    warn!(
-                        "Ignoring timeout setting. Not supported for {:?}",
-                        self.kind
-                    );
-                    self.timeout = None;
-                }
-            }
-            DelayKind::PathExists(_) | DelayKind::TcpConnect(_) | DelayKind::UdpResponse(_, _) => {
-                if self.timeout.is_none() {
-                    self.timeout = Some(Duration::from_secs(600));
-                };
-                if self.poll.is_none() {
-                    self.poll = Some(Duration::from_millis(10));
-                };
-            }
-        }
-        if let (Some(poll), Some(timeout)) = (self.poll, self.timeout) {
-            if poll >= timeout {
-                warn!(
-                    "Poll duration is equal or greater than the timeout duration ({:?} >= {:?}).",
-                    poll, timeout
-                );
-
-                // try to subtract -5ms to have a reasonable opportunity for success (e.g. network
-                // latency)
-                let diff = Duration::from_millis(5);
-                if diff >= timeout {
-                    self.poll = Some(timeout);
-                    warn!("Updated poll duration to timeout duration {:?}", timeout);
-                } else {
-                    let update_poll = timeout - diff;
-                    self.poll = Some(update_poll);
-                    warn!(
-                        "Updated poll duration to timeout duration {:?} - {:?}.",
-                        timeout, diff
-                    );
-                }
-            }
-        }
-        self
-    }
-
-    pub fn run(self) -> Result<()> {
-        let validated = self.defaults();
-        let timeout = validated.timeout;
-
-        let (tx, rx) = mpsc::channel::<std::result::Result<(), anyhow::Error>>();
-        let handle = thread::spawn(move || {
-            match tx.send(validated.exec_delay_fn().map_err(|err| anyhow!(err))) {
-                Ok(()) => {
-                    debug!("Command::Delay successfully executed.");
-                    Ok(())
-                }
-                Err(err) => Err(anyhow!(
-                    "Command::Delay MPSC channel send error. Error: {err:?}"
-                )),
-            }
-        });
-
-        if let Some(timeout) = timeout {
-            match rx.recv_timeout(timeout) {
-                Ok(_) => Ok(()),
-                Err(err) => Err(anyhow!(
-                    "Command::Delay timed out or MPSC channel failed. Error: {err:?}"
-                )),
-            }
-        } else {
-            match rx.recv() {
-                Ok(_) => Ok(handle.join().map_err(|err| anyhow!("{err:?}"))??),
-                Err(err) => Err(anyhow!(
-                    "Command::Delay MPSC channel failed. Error: {err:?}"
-                )),
-            }
-        }
-    }
-
-    fn exec_delay_fn(&self) -> Result<()> {
-        match &self.kind {
-            DelayKind::DurationElapse(duration) => {
-                thread::sleep(*duration);
-            }
-            DelayKind::TcpConnect(addr) => {
-                let poll = self
-                    .poll
-                    .ok_or_else(|| anyhow!("DelayKind::TcpConnect requires a poll interval."))?;
-
-                while let Err(_err) = TcpStream::connect(addr) {
-                    thread::sleep(poll);
-                }
-            }
-            DelayKind::UdpResponse(remote, req) => {
-                let poll = self
-                    .poll
-                    .ok_or_else(|| anyhow!("DelayKind::UdpResponse requires a poll interval."))?;
-
-                let socket = match remote {
-                    SocketAddr::V4(_) => {
-                        UdpSocket::bind(SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0))
-                            .expect("Could not bind local IPv4 UDP socket.")
-                    }
-                    SocketAddr::V6(_) => {
-                        UdpSocket::bind(SocketAddr::new(Ipv6Addr::UNSPECIFIED.into(), 0))
-                            .expect("Could not bind local IPv6 UDP socket.")
-                    }
-                };
-
-                socket.set_read_timeout(self.poll)?;
-                socket.set_write_timeout(self.poll)?;
-
-                loop {
-                    while let Err(_err) = socket.send_to(req.as_slice(), remote) {
-                        thread::sleep(poll);
-                    }
-
-                    let mut buf = [0; 1];
-                    match socket.recv(&mut buf) {
-                        Ok(_size) => break,
-                        Err(e) => {
-                            if e.kind() != WouldBlock {
-                                thread::sleep(poll);
-                            }
-                        }
-                    }
-                }
-            }
-            DelayKind::PathExists(path) => {
-                let poll = self
-                    .poll
-                    .ok_or_else(|| anyhow!("DelayKind::PathExists requires a poll interval."))?;
-
-                let wait_for_path = std::path::PathBuf::from(Path::new(path));
-                while !wait_for_path.exists() {
-                    thread::sleep(poll);
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use std::env;
-    use std::fs::{remove_file, File};
-    use std::net::{SocketAddr, TcpListener};
-    use std::time::Duration;
+    use std::fs::File;
+    use std::net::TcpListener;
 
-    use rstest::{fixture, rstest};
+    use pretty_assertions::assert_eq;
+    use rstest::rstest;
 
     use super::*;
 
-    #[test]
-    fn test_defaults() {
-        // duration timeouts do not support poll & timeout
-        let delay = Delay {
-            poll: Some(Duration::from_secs(1)),
-            timeout: Some(Duration::from_secs(1)),
-            kind: DelayKind::DurationElapse(Duration::from_secs(10)),
-        };
-
-        let defaults = delay.defaults();
-        assert!(defaults.poll.is_none());
-        assert!(defaults.timeout.is_none());
-
-        // default values for poll and timeout - TCP connect
-        let addr = "127.0.0.1:32000".parse::<SocketAddr>().unwrap();
-        let delay = Delay {
-            poll: None,
-            timeout: None,
-            kind: DelayKind::TcpConnect(addr),
-        };
-        let defaults = delay.defaults();
-        assert_eq!(defaults.poll.unwrap(), Duration::from_millis(10));
-        assert_eq!(defaults.timeout.unwrap(), Duration::from_secs(600));
-
-        // supplied values for poll and timeout - TCP connect
-        let delay = Delay {
-            poll: Some(Duration::from_millis(50)),
-            timeout: Some(Duration::from_millis(200)),
-            kind: DelayKind::TcpConnect(addr),
-        };
-        let defaults = delay.defaults();
-        assert_eq!(defaults.poll.unwrap(), Duration::from_millis(50));
-        assert_eq!(defaults.timeout.unwrap(), Duration::from_millis(200));
-
-        // default values for poll and timeout - UDP request
-        let delay = Delay {
-            poll: None,
-            timeout: None,
-            kind: DelayKind::UdpResponse(addr, vec![1]),
-        };
-        let defaults = delay.defaults();
-        assert_eq!(defaults.poll.unwrap(), Duration::from_millis(10));
-        assert_eq!(defaults.timeout.unwrap(), Duration::from_secs(600));
-
-        // supplied values for poll and timeout for UDP request
-        let delay = Delay {
-            poll: Some(Duration::from_millis(50)),
-            timeout: Some(Duration::from_millis(200)),
-            kind: DelayKind::UdpResponse(addr, vec![1]),
-        };
-        let defaults = delay.defaults();
-        assert_eq!(defaults.poll.unwrap(), Duration::from_millis(50));
-        assert_eq!(defaults.timeout.unwrap(), Duration::from_millis(200));
-
-        // poll >= timeout, set poll duration to reasonable value
-        let delay = Delay {
-            poll: Some(Duration::from_millis(250)),
-            timeout: Some(Duration::from_millis(200)),
-            kind: DelayKind::UdpResponse(addr, vec![1]),
-        };
-        let defaults = delay.defaults();
-        assert_eq!(defaults.poll.unwrap(), Duration::from_millis(195));
-        assert_eq!(defaults.timeout.unwrap(), Duration::from_millis(200));
-
-        // poll >= timeout, set poll duration to timeout value
-        let delay = Delay {
-            poll: Some(Duration::from_millis(5)),
-            timeout: Some(Duration::from_millis(4)),
-            kind: DelayKind::UdpResponse(addr, vec![1]),
-        };
-        let defaults = delay.defaults();
-        assert_eq!(defaults.poll.unwrap(), Duration::from_millis(4));
-        assert_eq!(defaults.timeout.unwrap(), Duration::from_millis(4));
+    fn api_delay_fixture<T, U>(poll: T, timeout: U, kind: DelayKind) -> api::Delay
+    where
+        T: Into<Option<u64>>,
+        U: Into<Option<u64>>,
+    {
+        api::Delay {
+            poll: poll.into().map(Duration::from_millis),
+            timeout: timeout.into().map(Duration::from_millis),
+            kind,
+        }
     }
 
-    #[fixture]
     fn delay_path_dir() -> String {
-        let base_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+        let base_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
         assert!(base_dir.ends_with("iai-callgrind/iai-callgrind-runner"));
 
         format!("{base_dir}/../target/tests/delay_path")
     }
 
     #[rstest]
+    #[case::duration_elapse_when_no_poll_no_timeout(
+        api_delay_fixture(None, None, DelayKind::DurationElapse(Duration::from_millis(100))),
+        Duration::ZERO,
+        Duration::ZERO
+    )]
+    #[case::duration_elapse_when_poll_no_timeout(
+        api_delay_fixture(10, None, DelayKind::DurationElapse(Duration::from_millis(100))),
+        Duration::ZERO,
+        Duration::ZERO
+    )]
+    #[case::duration_elapse_when_no_poll_but_timeout(
+        api_delay_fixture(None, 10, DelayKind::DurationElapse(Duration::from_millis(100))),
+        Duration::ZERO,
+        Duration::ZERO
+    )]
+    #[case::duration_elapse_when_poll_and_timeout(
+        api_delay_fixture(10, 100, DelayKind::DurationElapse(Duration::from_millis(100))),
+        Duration::ZERO,
+        Duration::ZERO
+    )]
+    #[case::path_when_no_poll_no_timeout(
+        api_delay_fixture(None, None, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        Duration::from_millis(10),
+        Duration::from_secs(600)
+    )]
+    #[case::path_when_poll_no_timeout(
+        api_delay_fixture(20, None, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        Duration::from_millis(20),
+        Duration::from_secs(600)
+    )]
+    #[case::path_when_no_poll_but_timeout(
+        api_delay_fixture(None, 200, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        Duration::from_millis(10),
+        Duration::from_millis(200)
+    )]
+    #[case::path_when_poll_and_timeout(
+        api_delay_fixture(20, 200, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        Duration::from_millis(20),
+        Duration::from_millis(200)
+    )]
+    #[case::path_when_poll_equal_to_timeout(
+        api_delay_fixture(200, 200, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        Duration::from_millis(195),
+        Duration::from_millis(200)
+    )]
+    #[case::path_when_poll_higher_than_timeout(
+        api_delay_fixture(201, 200, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        Duration::from_millis(195),
+        Duration::from_millis(200)
+    )]
+    #[case::path_when_poll_equal_to_timeout_smaller_than_10(
+        api_delay_fixture(10, 9, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        Duration::from_millis(5),
+        Duration::from_millis(10)
+    )]
+    #[case::path_when_poll_lower_than_timeout_smaller_than_10(
+        api_delay_fixture(7, 9, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        Duration::from_millis(7),
+        Duration::from_millis(10)
+    )]
+    fn test_from_api_delay_for_delay(
+        #[case] delay: api::Delay,
+        #[case] poll: Duration,
+        #[case] timeout: Duration,
+    ) {
+        let expected = Delay::new(poll, timeout, delay.kind.clone());
+        assert_eq!(Delay::from(delay), expected);
+    }
+
+    #[test]
     fn test_delay_path() {
         let file = "file.pid";
         let dir = delay_path_dir();
@@ -1153,14 +1159,14 @@ mod tests {
             std::fs::create_dir_all(dir.clone()).unwrap();
         };
         if Path::new(&file_path).exists() {
-            remove_file(file_path.clone()).unwrap();
+            std::fs::remove_file(file_path.clone()).unwrap();
         };
 
         let check_file_path = file_path.clone();
         let handle = thread::spawn(move || {
             let delay = Delay {
-                poll: Some(Duration::from_millis(50)),
-                timeout: Some(Duration::from_millis(200)),
+                poll: Duration::from_millis(50),
+                timeout: Duration::from_millis(200),
                 kind: DelayKind::PathExists(check_file_path.into()),
             };
             delay.run().unwrap();
@@ -1172,14 +1178,14 @@ mod tests {
         handle.join().unwrap();
     }
 
-    #[rstest]
+    #[test]
     fn test_delay_tcp_connect() {
         let addr = "127.0.0.1:32000".parse::<SocketAddr>().unwrap();
         let _listener = TcpListener::bind(addr).unwrap();
 
         let delay = Delay {
-            poll: Some(Duration::from_millis(20)),
-            timeout: Some(Duration::from_secs(1)),
+            poll: Duration::from_millis(20),
+            timeout: Duration::from_secs(1),
             kind: DelayKind::TcpConnect(addr),
         };
         delay.run().unwrap();
@@ -1192,8 +1198,8 @@ mod tests {
         let check_addr = addr;
         let handle = thread::spawn(move || {
             let delay = Delay {
-                poll: Some(Duration::from_millis(20)),
-                timeout: Some(Duration::from_secs(1)),
+                poll: Duration::from_millis(20),
+                timeout: Duration::from_secs(1),
                 kind: DelayKind::TcpConnect(check_addr),
             };
             delay.run().unwrap();
@@ -1209,8 +1215,8 @@ mod tests {
     fn test_delay_tcp_connect_timeout() {
         let addr = "127.0.0.1:32002".parse::<SocketAddr>().unwrap();
         let delay = Delay {
-            poll: Some(Duration::from_millis(20)),
-            timeout: Some(Duration::from_secs(1)),
+            poll: Duration::from_millis(20),
+            timeout: Duration::from_secs(1),
             kind: DelayKind::TcpConnect(addr),
         };
 
@@ -1218,11 +1224,11 @@ mod tests {
         assert!(result.as_ref().err().is_some());
         assert_eq!(
             result.as_ref().err().unwrap().to_string(),
-            "Command::Delay timed out or MPSC channel failed. Error: Timeout"
+            "Timeout of '1s' reached"
         );
     }
 
-    #[rstest]
+    #[test]
     fn test_delay_udp_response() {
         let addr = "127.0.0.1:34000".parse::<SocketAddr>().unwrap();
 
@@ -1248,10 +1254,11 @@ mod tests {
         });
 
         let delay = Delay {
-            poll: Some(Duration::from_millis(20)),
-            timeout: Some(Duration::from_millis(100)),
+            poll: Duration::from_millis(20),
+            timeout: Duration::from_millis(100),
             kind: DelayKind::UdpResponse(addr, vec![1]),
         };
+
         delay.run().unwrap();
     }
 
@@ -1261,8 +1268,8 @@ mod tests {
 
         thread::spawn(move || {
             let delay = Delay {
-                poll: Some(Duration::from_millis(20)),
-                timeout: Some(Duration::from_millis(100)),
+                poll: Duration::from_millis(20),
+                timeout: Duration::from_millis(100),
                 kind: DelayKind::UdpResponse(addr, vec![1]),
             };
             delay.run().unwrap();
@@ -1295,15 +1302,15 @@ mod tests {
     fn test_delay_udp_response_timeout() {
         let addr = "127.0.0.1:34002".parse::<SocketAddr>().unwrap();
         let delay = Delay {
-            poll: Some(Duration::from_millis(20)),
-            timeout: Some(Duration::from_millis(100)),
+            poll: Duration::from_millis(20),
+            timeout: Duration::from_millis(100),
             kind: DelayKind::UdpResponse(addr, vec![1]),
         };
         let result = delay.run();
         assert!(result.as_ref().err().is_some());
         assert_eq!(
             result.as_ref().err().unwrap().to_string(),
-            "Command::Delay timed out or MPSC channel failed. Error: Timeout"
+            "Timeout of '100ms' reached"
         );
     }
 }

@@ -81,7 +81,7 @@ pub struct Delay {
 }
 
 #[non_exhaustive]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DelayKind {
     DurationElapse(Duration),
     TcpConnect(SocketAddr),

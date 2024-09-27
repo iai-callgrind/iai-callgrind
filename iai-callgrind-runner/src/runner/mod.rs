@@ -1,5 +1,5 @@
 mod args;
-mod bin_bench;
+pub mod bin_bench;
 pub mod callgrind;
 pub mod common;
 pub mod costs;
