@@ -290,6 +290,7 @@ impl Groups {
                         AssistantKind::Setup,
                         &library_benchmark_group.id,
                         group_config.collect_envs(),
+                        false,
                     ));
             let teardown =
                 library_benchmark_group
@@ -298,6 +299,7 @@ impl Groups {
                         AssistantKind::Teardown,
                         &library_benchmark_group.id,
                         group_config.collect_envs(),
+                        false,
                     ));
 
             let mut group = Group {
@@ -580,12 +582,14 @@ impl Runner {
             .then_some(Assistant::new_main_assistant(
                 AssistantKind::Setup,
                 benchmark_groups.config.collect_envs(),
+                false,
             ));
         let teardown = benchmark_groups
             .has_teardown
             .then_some(Assistant::new_main_assistant(
                 AssistantKind::Teardown,
                 benchmark_groups.config.collect_envs(),
+                false,
             ));
 
         let groups =

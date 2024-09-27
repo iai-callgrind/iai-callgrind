@@ -1,7 +1,7 @@
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::path::PathBuf;
-use std::process::{Child, Command, Stdio as StdStdio};
+use std::process::{Child, Command, Stdio as StdStdio, Stdio};
 
 use anyhow::Result;
 use log::{debug, info, log_enabled, trace, Level};
@@ -25,6 +25,7 @@ pub struct Assistant {
     indices: Option<(usize, usize)>,
     pipe: Option<Pipe>,
     envs: Vec<(OsString, OsString)>,
+    run_parallel: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -53,13 +54,18 @@ pub struct Sandbox {
 
 impl Assistant {
     /// The setup or teardown of the `main` macro
-    pub fn new_main_assistant(kind: AssistantKind, envs: Vec<(OsString, OsString)>) -> Self {
+    pub fn new_main_assistant(
+        kind: AssistantKind,
+        envs: Vec<(OsString, OsString)>,
+        run_parallel: bool,
+    ) -> Self {
         Self {
             kind,
             group_name: None,
             indices: None,
             pipe: None,
             envs,
+            run_parallel,
         }
     }
 
@@ -68,6 +74,7 @@ impl Assistant {
         kind: AssistantKind,
         group_name: &str,
         envs: Vec<(OsString, OsString)>,
+        run_parallel: bool,
     ) -> Self {
         Self {
             kind,
@@ -75,6 +82,7 @@ impl Assistant {
             indices: None,
             pipe: None,
             envs,
+            run_parallel,
         }
     }
 
@@ -89,6 +97,7 @@ impl Assistant {
         indices: (usize, usize),
         pipe: Option<Pipe>,
         envs: Vec<(OsString, OsString)>,
+        run_parallel: bool,
     ) -> Self {
         Self {
             kind,
@@ -96,6 +105,7 @@ impl Assistant {
             indices: Some(indices),
             pipe,
             envs,
+            run_parallel,
         }
     }
 
@@ -135,6 +145,16 @@ impl Assistant {
                 .spawn()
                 .map_err(|error| Error::LaunchError(config.bench_bin.clone(), error.to_string()))?;
 
+            return Ok(Some(child));
+        }
+
+        if self.run_parallel {
+            if nocapture == NoCapture::False {
+                command.stdin(Stdio::null());
+            };
+            let child = command
+                .spawn()
+                .map_err(|error| Error::LaunchError(config.bench_bin.clone(), error.to_string()))?;
             return Ok(Some(child));
         }
 
