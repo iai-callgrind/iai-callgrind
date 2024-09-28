@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+* ([#256](https://github.com/iai-callgrind/iai-callgrind/pull/256)) and
+  ([#279](https://github.com/iai-callgrind/iai-callgrind/pull/279)): Support
+  running setup in parallel and add possibility to delay the `Command`. Thanks
+  to @hargut for #256
+
 ## [0.13.4] - 2024-09-12
 
 ### Changed
