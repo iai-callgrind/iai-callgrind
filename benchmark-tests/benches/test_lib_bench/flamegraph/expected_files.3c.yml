@@ -4,9 +4,9 @@ data:
     id: all_kinds
     expected:
       files:
-        - callgrind.bench_level_flamegraphs.all_kinds.flamegraph.Ir.base@bar.svg
-        - callgrind.bench_level_flamegraphs.all_kinds.flamegraph.Ir.base@foo.svg
-        - callgrind.bench_level_flamegraphs.all_kinds.flamegraph.Ir.base@foo.diff.base@bar.svg
+        - callgrind.bench_level_flamegraphs.all_kinds.total.Ir.flamegraph.base@bar.svg
+        - callgrind.bench_level_flamegraphs.all_kinds.total.Ir.flamegraph.base@foo.svg
+        - callgrind.bench_level_flamegraphs.all_kinds.total.Ir.flamegraph.base@foo.diff.base@bar.svg
         - callgrind.bench_level_flamegraphs.all_kinds.log.base@bar
         - callgrind.bench_level_flamegraphs.all_kinds.log.base@foo
         - callgrind.bench_level_flamegraphs.all_kinds.out.base@bar
@@ -17,7 +17,7 @@ data:
     id: differential_kind
     expected:
       files:
-        - callgrind.bench_level_flamegraphs.differential_kind.flamegraph.Ir.base@foo.diff.base@bar.svg
+        - callgrind.bench_level_flamegraphs.differential_kind.total.Ir.flamegraph.base@foo.diff.base@bar.svg
         - callgrind.bench_level_flamegraphs.differential_kind.log.base@bar
         - callgrind.bench_level_flamegraphs.differential_kind.log.base@foo
         - callgrind.bench_level_flamegraphs.differential_kind.out.base@bar
@@ -38,8 +38,8 @@ data:
     id: regular_kind
     expected:
       files:
-        - callgrind.bench_level_flamegraphs.regular_kind.flamegraph.Ir.base@bar.svg
-        - callgrind.bench_level_flamegraphs.regular_kind.flamegraph.Ir.base@foo.svg
+        - callgrind.bench_level_flamegraphs.regular_kind.total.Ir.flamegraph.base@bar.svg
+        - callgrind.bench_level_flamegraphs.regular_kind.total.Ir.flamegraph.base@foo.svg
         - callgrind.bench_level_flamegraphs.regular_kind.log.base@bar
         - callgrind.bench_level_flamegraphs.regular_kind.log.base@foo
         - callgrind.bench_level_flamegraphs.regular_kind.out.base@bar
@@ -50,9 +50,9 @@ data:
     id: null
     expected:
       files:
-        - callgrind.function_with_many_stacks.flamegraph.Ir.base@bar.svg
-        - callgrind.function_with_many_stacks.flamegraph.Ir.base@foo.svg
-        - callgrind.function_with_many_stacks.flamegraph.Ir.base@foo.diff.base@bar.svg
+        - callgrind.function_with_many_stacks.total.Ir.flamegraph.base@bar.svg
+        - callgrind.function_with_many_stacks.total.Ir.flamegraph.base@foo.svg
+        - callgrind.function_with_many_stacks.total.Ir.flamegraph.base@foo.diff.base@bar.svg
         - callgrind.function_with_many_stacks.log.base@bar
         - callgrind.function_with_many_stacks.log.base@foo
         - callgrind.function_with_many_stacks.out.base@bar
@@ -63,9 +63,9 @@ data:
     id: worst_case
     expected:
       files:
-        - callgrind.main_level_flamegraph_config.worst_case.flamegraph.Ir.base@bar.svg
-        - callgrind.main_level_flamegraph_config.worst_case.flamegraph.Ir.base@foo.svg
-        - callgrind.main_level_flamegraph_config.worst_case.flamegraph.Ir.base@foo.diff.base@bar.svg
+        - callgrind.main_level_flamegraph_config.worst_case.total.Ir.flamegraph.base@bar.svg
+        - callgrind.main_level_flamegraph_config.worst_case.total.Ir.flamegraph.base@foo.svg
+        - callgrind.main_level_flamegraph_config.worst_case.total.Ir.flamegraph.base@foo.diff.base@bar.svg
         - callgrind.main_level_flamegraph_config.worst_case.log.base@bar
         - callgrind.main_level_flamegraph_config.worst_case.log.base@foo
         - callgrind.main_level_flamegraph_config.worst_case.out.base@bar
@@ -76,9 +76,9 @@ data:
     id: null
     expected:
       files:
-        - callgrind.without_bench_attribute.flamegraph.Ir.base@bar.svg
-        - callgrind.without_bench_attribute.flamegraph.Ir.base@foo.svg
-        - callgrind.without_bench_attribute.flamegraph.Ir.base@foo.diff.base@bar.svg
+        - callgrind.without_bench_attribute.total.Ir.flamegraph.base@bar.svg
+        - callgrind.without_bench_attribute.total.Ir.flamegraph.base@foo.svg
+        - callgrind.without_bench_attribute.total.Ir.flamegraph.base@foo.diff.base@bar.svg
         - callgrind.without_bench_attribute.log.base@bar
         - callgrind.without_bench_attribute.log.base@foo
         - callgrind.without_bench_attribute.out.base@bar
@@ -89,9 +89,9 @@ data:
     id: fibonacci
     expected:
       files:
-        - callgrind.recursive_function.fibonacci.flamegraph.Ir.base@bar.svg
-        - callgrind.recursive_function.fibonacci.flamegraph.Ir.base@foo.svg
-        - callgrind.recursive_function.fibonacci.flamegraph.Ir.base@foo.diff.base@bar.svg
+        - callgrind.recursive_function.fibonacci.total.Ir.flamegraph.base@bar.svg
+        - callgrind.recursive_function.fibonacci.total.Ir.flamegraph.base@foo.svg
+        - callgrind.recursive_function.fibonacci.total.Ir.flamegraph.base@foo.diff.base@bar.svg
         - callgrind.recursive_function.fibonacci.log.base@bar
         - callgrind.recursive_function.fibonacci.log.base@foo
         - callgrind.recursive_function.fibonacci.out.base@bar

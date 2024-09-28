@@ -25,10 +25,12 @@ runner = [
   "dep:cargo_metadata",
   "dep:clap",
   "dep:colored",
+  "dep:derive_more",
   "dep:env_logger",
   "dep:glob",
   "dep:indexmap",
   "dep:inferno",
+  "dep:itertools",
   "dep:lazy_static",
   "dep:log",
   "dep:regex",
@@ -53,12 +55,14 @@ bincode = { workspace = true, optional = true }
 cargo_metadata = { workspace = true, optional = true }
 clap = { workspace = true, optional = true, features = ["derive", "env"] }
 colored = { workspace = true, optional = true }
+derive_more = { workspace = true, optional = true, features = ["as_ref"] }
 env_logger = { workspace = true, optional = true }
 glob = { workspace = true, optional = true }
 indexmap = { workspace = true, optional = true, features = ["serde"] }
 inferno = { workspace = true, optional = true, default-features = false, features = [
   'multithreaded',
 ] }
+itertools = { workspace = true, optional = true }
 lazy_static = { workspace = true, optional = true }
 log = { workspace = true, optional = true }
 regex = { workspace = true, optional = true }

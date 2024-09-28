@@ -10,8 +10,8 @@ data:
         - dhat.bench_bubble_sort_allocate.out
         - drd.bench_bubble_sort_allocate.log
         - exp-bbv.bench_bubble_sort_allocate.log
-        - exp-bbv.bench_bubble_sort_allocate.out.bb
-        - exp-bbv.bench_bubble_sort_allocate.out.pc
+        - exp-bbv.bench_bubble_sort_allocate.bb.out
+        - exp-bbv.bench_bubble_sort_allocate.pc.out
         - helgrind.bench_bubble_sort_allocate.log
         - massif.bench_bubble_sort_allocate.log
         - massif.bench_bubble_sort_allocate.out
@@ -28,8 +28,8 @@ data:
         - dhat.bench_bubble_sort.empty.out
         - drd.bench_bubble_sort.empty.log
         - exp-bbv.bench_bubble_sort.empty.log
-        - exp-bbv.bench_bubble_sort.empty.out.bb
-        - exp-bbv.bench_bubble_sort.empty.out.pc
+        - exp-bbv.bench_bubble_sort.empty.bb.out
+        - exp-bbv.bench_bubble_sort.empty.pc.out
         - helgrind.bench_bubble_sort.empty.log
         - massif.bench_bubble_sort.empty.log
         - massif.bench_bubble_sort.empty.out
@@ -46,8 +46,8 @@ data:
         - dhat.bench_bubble_sort.worst_case_4000.out
         - drd.bench_bubble_sort.worst_case_4000.log
         - exp-bbv.bench_bubble_sort.worst_case_4000.log
-        - exp-bbv.bench_bubble_sort.worst_case_4000.out.bb
-        - exp-bbv.bench_bubble_sort.worst_case_4000.out.pc
+        - exp-bbv.bench_bubble_sort.worst_case_4000.bb.out
+        - exp-bbv.bench_bubble_sort.worst_case_4000.pc.out
         - helgrind.bench_bubble_sort.worst_case_4000.log
         - massif.bench_bubble_sort.worst_case_4000.log
         - massif.bench_bubble_sort.worst_case_4000.out
@@ -55,26 +55,52 @@ data:
         - summary.json
   - group: bench_group
     function: bench_subprocess
-    id: with_modifier
+    id: trace_children
     expected:
       files:
-        - callgrind.bench_subprocess.with_modifier.log
-        - callgrind.bench_subprocess.with_modifier.out
         - summary.json
       globs:
-        - pattern: dhat.bench_subprocess.with_modifier.log.*
+        - pattern: callgrind.bench_subprocess.trace_children.*.log
           count: 2
-        - pattern: dhat.bench_subprocess.with_modifier.out.*
+        - pattern: callgrind.bench_subprocess.trace_children.*.out
+          count: 2
+        - pattern: dhat.bench_subprocess.trace_children.*.log
+          count: 2
+        - pattern: dhat.bench_subprocess.trace_children.*.out
+          count: 2
+        - pattern: drd.bench_subprocess.trace_children.*.log
+          count: 2
+        - pattern: exp-bbv.bench_subprocess.trace_children.*.log
+          count: 2
+        - pattern: exp-bbv.bench_subprocess.trace_children.*.pc.out
+          count: 2
+        - pattern: exp-bbv.bench_subprocess.trace_children.*.bb.out
+          count: 2
+        - pattern: helgrind.bench_subprocess.trace_children.*.log
+          count: 2
+        - pattern: massif.bench_subprocess.trace_children.*.log
+          count: 2
+        - pattern: massif.bench_subprocess.trace_children.*.out
+          count: 2
+        - pattern: memcheck.bench_subprocess.trace_children.*.log
           count: 2
   - group: bench_group
     function: bench_subprocess
-    id: without_modifier
+    id: no_trace_children
     expected:
       files:
-        - callgrind.bench_subprocess.without_modifier.log
-        - callgrind.bench_subprocess.without_modifier.out
-        - dhat.bench_subprocess.without_modifier.log
-        - dhat.bench_subprocess.without_modifier.out
+        - callgrind.bench_subprocess.no_trace_children.log
+        - callgrind.bench_subprocess.no_trace_children.out
+        - dhat.bench_subprocess.no_trace_children.log
+        - dhat.bench_subprocess.no_trace_children.out
+        - drd.bench_subprocess.no_trace_children.log
+        - exp-bbv.bench_subprocess.no_trace_children.log
+        - exp-bbv.bench_subprocess.no_trace_children.pc.out
+        - exp-bbv.bench_subprocess.no_trace_children.bb.out
+        - helgrind.bench_subprocess.no_trace_children.log
+        - massif.bench_subprocess.no_trace_children.log
+        - massif.bench_subprocess.no_trace_children.out
+        - memcheck.bench_subprocess.no_trace_children.log
         - summary.json
   - group: bench_group
     function: bad_memory

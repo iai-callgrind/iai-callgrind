@@ -17,7 +17,7 @@ pub enum Error {
     LaunchError(PathBuf, String),
     /// (`process_name`, [`Output`], [`ExitStatus`], [`ToolOutputPath`])
     ProcessError((String, Option<Output>, ExitStatus, Option<ToolOutputPath>)),
-    InvalidCallgrindBoolArgument((String, String)),
+    InvalidBoolArgument((String, String)),
     ParseError((PathBuf, String)),
     RegressionError(bool),
     EnvironmentVariableError((String, String)),
@@ -87,11 +87,10 @@ impl Display for Error {
                     write!(f, "Error running '{process}': Terminated abnormally")
                 }
             }
-            Self::InvalidCallgrindBoolArgument((option, value)) => {
+            Self::InvalidBoolArgument((option, value)) => {
                 write!(
                     f,
-                    "Invalid callgrind argument for {option}: '{value}'. Valid values are 'yes' \
-                     or 'no'"
+                    "Invalid argument for {option}: '{value}'. Valid values are 'yes' or 'no'"
                 )
             }
             Self::ParseError((path, message)) => {

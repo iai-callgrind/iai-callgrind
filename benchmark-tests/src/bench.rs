@@ -9,12 +9,13 @@ use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 
 use benchmark_tests::common::Summary;
+use benchmark_tests::serde::runs_on::RunsOn;
 use colored::Colorize;
 use glob::glob;
 use lazy_static::lazy_static;
 use minijinja::Environment;
 use once_cell::sync::OnceCell;
-use regex::Regex;
+use regex::{Captures, Regex};
 use serde::{Deserialize, Serialize};
 use valico::json_schema;
 use valico::json_schema::schema::ScopedSchema;
@@ -41,6 +42,19 @@ lazy_static! {
     static ref PROCESS_DID_NOT_EXIT_SUCCESSFULLY_RE: Regex =
         Regex::new(r"^([ ]+process didn't exit successfully: `)(.*)(` \(exit status: .*\).*)$")
             .expect("Regex should compile");
+    // Command: target/release/deps/test_lib_bench_threads-c2a88f916ff580f9
+    static ref COMMAND_RE: Regex =
+        Regex::new(r"^(\s*Command:)(\s*target/release/deps/test_(lib|bin)_bench_.+-[a-z0-9]+\s*.*)$")
+            .expect("Regex should compile");
+    static ref PID_RE: Regex =
+        Regex::new(r"(p?pid:\s*)([0-9]+)(\s+)?").expect("Regex should compile");
+    static ref DETAILS_RE: Regex =
+        Regex::new(r"^  Details:").expect("Regex should compile");
+    static ref NOT_DETAILS_RE: Regex =
+        Regex::new(r"^(?:(?:  \S)|(?:[a-zA-Z]))").expect("Regex should compile");
+    // `  ## pid: <__PID__> part: 1 thread: 3   |pid: <__PID__> part: 1 thread: 3`
+    static ref FRAGMENT_HEADER_RE: Regex =
+        Regex::new(r"^(  ##[^|]*[0-9])(\s*)?(|.*)$").expect("Regex should compile");
 }
 
 #[derive(Debug, Clone)]
@@ -63,6 +77,8 @@ pub struct BenchmarkRunner {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GroupConfig {
+    #[serde(default, with = "benchmark_tests::serde::runs_on")]
+    runs_on: Option<RunsOn>,
     runs: Vec<RunConfig>,
 }
 
@@ -90,6 +106,8 @@ struct ExpectedConfig {
     stderr: Option<PathBuf>,
     #[serde(default)]
     exit_code: Option<i32>,
+    #[serde(default)]
+    zero_callgrind_metrics: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -130,12 +148,12 @@ struct RunConfig {
     template_data: HashMap<String, minijinja::Value>,
     #[serde(default)]
     expected: Option<ExpectedConfig>,
-    #[serde(default)]
-    runs_on: Option<String>,
+    #[serde(default, with = "benchmark_tests::serde::runs_on")]
+    runs_on: Option<RunsOn>,
     #[serde(default)]
     rmdirs: Vec<PathBuf>,
-    #[serde(default, with = "benchmark_tests::serde_rust_version")]
-    rust_version: Option<benchmark_tests::serde_rust_version::VersionComparator>,
+    #[serde(default, with = "benchmark_tests::serde::rust_version")]
+    rust_version: Option<benchmark_tests::serde::rust_version::VersionComparator>,
 }
 
 impl Benchmark {
@@ -229,6 +247,16 @@ impl Benchmark {
     }
 
     pub fn run(&self, group: &GroupConfig, meta: &Metadata, schema: &ScopedSchema<'_>) {
+        if !group.runs_on.as_ref().map_or(true, |(is_target, target)| {
+            if *is_target {
+                target == env!("IC_BUILD_TRIPLE")
+            } else {
+                target != env!("IC_BUILD_TRIPLE")
+            }
+        }) {
+            return;
+        }
+
         self.clean_benchmark();
 
         let num_runs = group.runs.len();
@@ -236,12 +264,15 @@ impl Benchmark {
             .runs
             .iter()
             .filter(|r| {
-                r.runs_on
-                    .as_ref()
-                    .map_or(true, |r| r == env!("IC_BUILD_TRIPLE"))
-                    && r.rust_version.as_ref().map_or(true, |(cmp, version)| {
-                        version_compare::compare_to(&meta.rust_version, version, *cmp).unwrap()
-                    })
+                r.runs_on.as_ref().map_or(true, |(is_target, target)| {
+                    if *is_target {
+                        target == env!("IC_BUILD_TRIPLE")
+                    } else {
+                        target != env!("IC_BUILD_TRIPLE")
+                    }
+                }) && r.rust_version.as_ref().map_or(true, |(cmp, version)| {
+                    version_compare::compare_to(&meta.rust_version, version, *cmp).unwrap()
+                })
             })
             .enumerate()
         {
@@ -354,7 +385,49 @@ impl BenchmarkOutput {
 
     fn filter_stdout(&self, stdout: &[u8]) -> String {
         let mut result = String::new();
+        let mut details = false;
         for line in stdout.lines().map(Result::unwrap) {
+            // The `  Details: ...` can contain platform, toolchain specific information about a
+            // tool run and make the benchmark tests flaky. So, we filter the details. The
+            // (multiline) details usually look like this in the original output:
+            //
+            // ```
+            //   Command:            target/release/deps/test_lib_bench_tools-85f9071c66a70881
+            //   Details:            # Thread 1
+            //                       #   Total intervals: 0 (Interval Size 100000000)
+            //                       #   Total instructions: 459813
+            //                       #   Total reps: 499
+            //                       #   Unique reps: 5
+            //                       #   Total fldcw instructions: 0
+            //   Command:            target/release/sort
+            //   Details:            # Thread 1
+            //                       #   Total intervals: 1 (Interval Size 100000000)
+            //                       #   Total instructions: 104432528
+            //                       #   Total reps: 457
+            //                       #   Unique reps: 4
+            //                       #   Total fldcw instructions: 0
+            // ```
+            //
+            // and are transformed into: (The benchmark `Command` is also filtered. See below.)
+            //
+            // ```
+            //   Command: <__COMMAND__>
+            //   Details: <__DETAILS__>
+            //   Command:            target/release/sort
+            //   Details: <__DETAILS__>
+            // ```
+            if details {
+                if NOT_DETAILS_RE.is_match(&line) {
+                    details = false;
+                } else {
+                    continue;
+                }
+            } else if DETAILS_RE.is_match(&line) {
+                writeln!(result, "  Details: <__DETAILS__>").unwrap();
+                details = true;
+                continue;
+            }
+
             if let Some(caps) = NUMBERS_RE.captures(&line) {
                 let mut string = String::new();
                 let desc = caps.name("desc").unwrap().as_str();
@@ -376,9 +449,9 @@ impl BenchmarkOutput {
                 };
                 write!(string, "{desc}{comp1}|{comp2}").unwrap();
 
-                // RAM Hits (and EstimatedCycles, L2 Hits) events are very unreliable across
-                // different systems, so to keep the output comparison more reliable
-                // we change this line from (for example)
+                // RAM Hits (and EstimatedCycles, L1, L2 Hits) events are very unreliable across
+                // different systems and deviate by a few counts up or down. So to keep the output
+                // comparison more reliable we change this line from (for example)
                 //
                 //   RAM Hits:             179|209             (-14.3541%) [-1.16760x]
                 //   RAM Hits:             179|179             (No Change)
@@ -397,6 +470,9 @@ impl BenchmarkOutput {
                 if desc.starts_with("  RAM Hits")
                     || desc.starts_with("  Estimated Cycles")
                     || desc.starts_with("  L2 Hits")
+                    || desc.starts_with("  L1 Hits")
+                    || desc.starts_with("  Suppressed Errors")
+                    || desc.starts_with("  Suppressed Contexts")
                 {
                     if caps.name("diff_percent").is_some() {
                         let white1 = caps.name("white1").unwrap().as_str();
@@ -443,6 +519,13 @@ impl BenchmarkOutput {
                 }
                 writeln!(result, "{string}").unwrap();
             } else {
+                // Filter the benchmark command because it has a random hash in it's name
+                let line = COMMAND_RE.replace(&line, "$1 <__COMMAND__>");
+                // Filter the pids and parent pids
+                let line = PID_RE.replace_all(&line, |caps: &Captures| {
+                    format!("{}<__PID__>{}", &caps[1], caps.get(3).map_or("", |_| " "))
+                });
+                let line = FRAGMENT_HEADER_RE.replace_all(&line, "$1 $3");
                 writeln!(result, "{line}").unwrap();
             }
         }
@@ -498,7 +581,7 @@ impl BenchmarkRunner {
             File::open(
                 self.metadata
                     .workspace_root
-                    .join("iai-callgrind-runner/schemas/summary.v2.schema.json"),
+                    .join("iai-callgrind-runner/schemas/summary.v3.schema.json"),
             )
             .unwrap(),
         )
@@ -555,13 +638,13 @@ impl ExpectedRun {
             }
             // Iai-Callgrind does not produce empty files and if so we treat it as an error
             assert!(
-                std::fs::metadata(&file).unwrap().len() != 0,
-                "Expected file '{}' was empty",
+                real_files.remove(&file),
+                "Expected file '{}' does not exist",
                 file.display()
             );
             assert!(
-                real_files.remove(&file),
-                "Expected file '{}' does not exist",
+                std::fs::metadata(&file).unwrap().len() != 0,
+                "Expected file '{}' was empty",
                 file.display()
             );
         }
@@ -686,16 +769,22 @@ impl RunConfig {
             }
         }
 
-        let base_dir = home_dir.join(PACKAGE).join(bench_name);
-        // These checks heavily depends on the creation of the `summary.json` files, but we create
-        // them per default.
-        for path in glob(&format!("{}/**/summary.json", base_dir.display()))
-            .unwrap()
-            .map(Result::unwrap)
+        if self
+            .expected
+            .as_ref()
+            .map_or(false, |expected| !expected.zero_callgrind_metrics)
         {
-            let summary = Summary::new(&path).unwrap();
-            summary.assert_costs_not_all_zero();
-            print_info("Verifying costs not all zero successful");
+            let base_dir = home_dir.join(PACKAGE).join(bench_name);
+            // These checks heavily depends on the creation of the `summary.json` files, but we
+            // create them per default.
+            for path in glob(&format!("{}/**/summary.json", base_dir.display()))
+                .unwrap()
+                .map(Result::unwrap)
+            {
+                let summary = Summary::new(&path).unwrap();
+                summary.assert_costs_not_all_zero();
+                print_info("Verifying costs not all zero successful");
+            }
         }
     }
 }
@@ -766,5 +855,19 @@ fn main() {
 
     if let Err(error) = runner.run() {
         print_error(error);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use super::*;
+
+    #[rstest]
+    #[case::lib_bench("Command: target/release/deps/test_lib_bench_threads-c2a88f916ff580f9")]
+    #[case::bin_bench("Command: target/release/deps/test_bin_bench_threads-c2a88f916ff580f9")]
+    fn test_command_re(#[case] haystack: &str) {
+        assert!(COMMAND_RE.is_match(haystack));
     }
 }

@@ -1,4 +1,6 @@
+use std::cmp::Ordering;
 use std::fmt::Display;
+use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
 use lazy_static::lazy_static;
@@ -6,23 +8,86 @@ use log::{trace, warn};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use super::model::{Costs, Positions};
+use super::model::{Metrics, Positions};
+use crate::runner::summary::SegmentDetails;
+use crate::runner::tool::ToolOutputPath;
 use crate::runner::DEFAULT_TOGGLE;
-
-#[derive(Debug, Default)]
-pub struct CallgrindProperties {
-    pub costs_prototype: Costs,
-    pub positions_prototype: Positions,
-}
 
 lazy_static! {
     static ref GLOB_TO_REGEX_RE: Regex =
         Regex::new(r"(\\)([*]|[?])").expect("Regex should compile");
 }
 
+pub type ParserOutput = Vec<(PathBuf, CallgrindProperties, Metrics)>;
+
+pub trait CallgrindParser {
+    type Output;
+
+    fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)>;
+    fn parse(
+        &self,
+        output: &ToolOutputPath,
+    ) -> Result<Vec<(PathBuf, CallgrindProperties, Self::Output)>> {
+        let paths = output.real_paths()?;
+        let mut results: Vec<(PathBuf, CallgrindProperties, Self::Output)> =
+            Vec::with_capacity(paths.len());
+        for path in paths {
+            let parsed = self.parse_single(&path).map(|(p, c)| (path, p, c))?;
+
+            let position = results
+                .binary_search_by(|probe| probe.1.compare_target_ids(&parsed.1))
+                .unwrap_or_else(|e| e);
+
+            results.insert(position, parsed);
+        }
+
+        Ok(results)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct CallgrindProperties {
+    pub metrics_prototype: Metrics,
+    pub positions_prototype: Positions,
+    pub pid: Option<i32>,
+    pub thread: Option<usize>,
+    pub part: Option<u64>,
+    pub desc: Vec<String>,
+    pub cmd: Option<String>,
+    pub creator: Option<String>,
+}
+
+impl CallgrindProperties {
+    pub fn into_info(self, path: &Path) -> SegmentDetails {
+        SegmentDetails {
+            command: self.cmd.expect("A command should be present"),
+            pid: self.pid.expect("A pid should be present"),
+            parent_pid: None,
+            details: None,
+            path: path.to_owned(),
+            part: self.part,
+            thread: self.thread,
+        }
+    }
+}
+
 #[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Sentinel(#[serde(with = "serde_regex")] Regex);
+
+impl CallgrindProperties {
+    /// Compare by target ids `pid`, `part` and `thread`
+    ///
+    /// Highest precedence takes `pid`. Second is `part` and third is `thread` all sorted ascending.
+    /// See also [Callgrind Format](https://valgrind.org/docs/manual/cl-format.html#cl-format.reference.grammar)
+    pub fn compare_target_ids(&self, other: &Self) -> Ordering {
+        self.pid.cmp(&other.pid).then_with(|| {
+            self.part
+                .cmp(&other.part)
+                .then_with(|| self.thread.cmp(&other.thread))
+        })
+    }
+}
 
 impl Sentinel {
     /// Create a new Sentinel
@@ -134,6 +199,7 @@ impl PartialEq for Sentinel {
     }
 }
 
+/// Parse the callgrind output files header
 pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<CallgrindProperties> {
     if !iter
         .by_ref()
@@ -145,32 +211,62 @@ pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<Callgrind
     };
 
     let mut positions_prototype: Option<Positions> = None;
-    let mut costs_prototype: Option<Costs> = None;
+    let mut metrics_prototype: Option<Metrics> = None;
+    let mut pid: Option<i32> = None;
+    let mut thread: Option<usize> = None;
+    let mut part: Option<u64> = None;
+    let mut desc: Vec<String> = vec![];
+    let mut cmd: Option<String> = None;
+    let mut creator: Option<String> = None;
 
-    for line in iter {
-        if line.is_empty() || line.starts_with('#') {
-            // skip empty lines or comments
-            continue;
-        }
+    for line in iter.filter(|line| {
+        let line = line.trim();
+        !line.is_empty() && !line.starts_with('#')
+    }) {
         match line.split_once(':').map(|(k, v)| (k.trim(), v.trim())) {
             Some(("version", version)) if version != "1" => {
                 return Err(anyhow!(
                     "Version mismatch: Requires callgrind format version '1' but was '{version}'"
                 ));
             }
+            Some(("pid", value)) => {
+                trace!("Using pid '{value}' from line: '{line}'");
+                pid = Some(value.parse::<i32>().unwrap());
+            }
+            Some(("thread", value)) => {
+                trace!("Using thread '{value}' from line: '{line}'");
+                thread = Some(value.parse::<usize>().unwrap());
+            }
+            Some(("part", value)) => {
+                trace!("Using part '{value}' from line: '{line}'");
+                part = Some(value.parse::<u64>().unwrap());
+            }
+            Some(("desc", value)) if !value.starts_with("Option:") => {
+                trace!("Using description '{value}' from line: '{line}'");
+                desc.push(value.to_owned());
+            }
+            Some(("cmd", value)) => {
+                trace!("Using cmd '{value}' from line: '{line}'");
+                cmd = Some(value.to_owned());
+            }
+            Some(("creator", value)) => {
+                trace!("Using creator '{value}' from line: '{line}'");
+                creator = Some(value.to_owned());
+            }
             Some(("positions", positions)) => {
+                trace!("Using positions '{positions}' from line: '{line}'");
                 positions_prototype = Some(positions.split_ascii_whitespace().collect());
-                trace!("Using positions: '{:?}'", positions_prototype);
             }
             // The events line is the last line in the header which is mandatory (according to
             // the source code of callgrind_annotate). The summary line is usually the last line
             // but it is only optional. So, we break out of the loop here and stop the parsing.
             Some(("events", events)) => {
-                trace!("Using events from line: '{line}'");
-                costs_prototype = Some(events.split_ascii_whitespace().collect());
+                trace!("Using events '{events}' from line: '{line}'");
+                metrics_prototype = Some(events.split_ascii_whitespace().collect());
                 break;
             }
             // None is actually a malformed header line we just ignore here
+            // Some(_) includes `^event:` lines
             None | Some(_) => {
                 continue;
             }
@@ -178,9 +274,15 @@ pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<Callgrind
     }
 
     Ok(CallgrindProperties {
-        costs_prototype: costs_prototype
+        metrics_prototype: metrics_prototype
             .ok_or_else(|| anyhow!("Header field 'events' must be present"))?,
         positions_prototype: positions_prototype.unwrap_or_default(),
+        pid,
+        thread,
+        part,
+        desc,
+        cmd,
+        creator,
     })
 }
 

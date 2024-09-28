@@ -1,0 +1,9 @@
+==1916240== drd, a thread error detector
+==1916240== Copyright (C) 2006-2024, and GNU GPL'd, by Bart Van Assche et al.
+==1916240== Using Valgrind-3.23.0 and LibVEX; rerun with -h for copyright info
+==1916240== Command: /home/some/workspace/target/release/deps/thread-4c5214398e2f5bd1
+==1916240== Parent PID: 1915177
+==1916240==
+==1916240==
+==1916240== For lists of detected and suppressed errors, rerun with: -s
+==1916240== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)

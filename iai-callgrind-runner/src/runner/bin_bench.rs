@@ -17,17 +17,18 @@ use super::callgrind::flamegraph::{
     BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
     LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
 };
+use super::callgrind::parser::CallgrindParser;
 use super::callgrind::summary_parser::SummaryParser;
-use super::callgrind::RegressionConfig;
+use super::callgrind::{RegressionConfig, Summaries};
 use super::common::{Assistant, AssistantKind, Config, ModulePath, Sandbox};
-use super::format::{BinaryBenchmarkHeader, OutputFormat, VerticalFormat};
+use super::format::{BinaryBenchmarkHeader, Formatter, OutputFormat, VerticalFormat};
 use super::meta::Metadata;
 use super::summary::{
-    BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, CallgrindSummary, CostsSummary,
-    SummaryOutput,
+    BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, CallgrindSummary, MetricsSummary,
+    SummaryOutput, ToolRun,
 };
 use super::tool::{
-    Parser, RunOptions, ToolCommand, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind,
+    RunOptions, ToolCommand, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind,
     ValgrindTool,
 };
 use crate::api::{
@@ -43,7 +44,6 @@ mod defaults {
     pub const ENV_CLEAR: bool = true;
     pub const REGRESSION_FAIL_FAST: bool = false;
     pub const STDIN: Stdin = Stdin::Pipe;
-    pub const TRUNCATE_LENGTH: Option<usize> = Some(50);
     pub const WORKSPACE_ROOT_ENV: &str = "_WORKSPACE_ROOT";
 }
 
@@ -67,7 +67,7 @@ pub struct BinBench {
     pub teardown: Option<Assistant>,
     pub sandbox: Option<api::Sandbox>,
     pub module_path: ModulePath,
-    pub truncate_description: Option<usize>,
+    pub output_format: OutputFormat,
 }
 
 /// The Command we derive from the `api::Command`
@@ -241,20 +241,24 @@ impl Benchmark for BaselineBenchmark {
             sandbox.reset()?;
         }
 
-        let new_costs = SummaryParser.parse(&out_path)?;
-
-        let old_costs = old_path
+        let parsed_new = SummaryParser.parse(&out_path)?;
+        let parsed_old = old_path
             .exists()
             .then(|| SummaryParser.parse(&old_path))
             .transpose()?;
 
-        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
-        VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
+        let summaries = Summaries::new(parsed_new, parsed_old);
+        VerticalFormat.print(
+            config,
+            &bin_bench.output_format,
+            self.baselines(),
+            &ToolRun::from(&summaries),
+        )?;
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stderr())?;
 
-        let regressions = bin_bench.check_and_print_regressions(&costs_summary);
+        let regressions = bin_bench.check_and_print_regressions(&summaries.total);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
@@ -263,11 +267,11 @@ impl Benchmark for BaselineBenchmark {
                 out_path.real_paths()?,
             ));
 
-        callgrind_summary.add_summary(
+        callgrind_summary.add_summaries(
             &bin_bench.command.path,
             &bin_bench.command.args,
-            &old_path,
-            costs_summary,
+            &self.baselines(),
+            summaries,
             regressions,
         );
 
@@ -295,6 +299,7 @@ impl Benchmark for BaselineBenchmark {
             bin_bench.setup.as_ref(),
             bin_bench.teardown.as_ref(),
             bin_bench.command.delay.as_ref(),
+            &bin_bench.output_format,
         )?;
 
         Ok(benchmark_summary)
@@ -327,7 +332,7 @@ impl BinBench {
 
         let command = Command::new(&module_path, path, args, delay.map(Into::into))?;
 
-        let callgrind_args = Args::from_raw_args(&[&config.raw_callgrind_args, raw_args])?;
+        let callgrind_args = Args::try_from_raw_args(&[&config.raw_callgrind_args, raw_args])?;
 
         let mut assistant_envs = config.collect_envs();
         assistant_envs.push((
@@ -337,6 +342,10 @@ impl BinBench {
 
         let command_envs = config.resolve_envs();
         let flamegraph_config = config.flamegraph_config.map(Into::into);
+        let mut output_format = config
+            .output_format
+            .map_or_else(OutputFormat::default, Into::into);
+        output_format.kind = meta.args.output_format;
 
         Ok(Self {
             id: binary_benchmark_bench.id,
@@ -349,7 +358,14 @@ impl BinBench {
                 &meta.regression_config,
             )
             .map(Into::into),
-            tools: ToolConfigs(config.tools.0.into_iter().map(Into::into).collect()),
+            tools: ToolConfigs(
+                config
+                    .tools
+                    .0
+                    .into_iter()
+                    .map(TryFrom::try_from)
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
             setup: binary_benchmark_bench
                 .has_setup
                 .then_some(Assistant::new_bench_assistant(
@@ -388,9 +404,7 @@ impl BinBench {
             sandbox: config.sandbox,
             module_path,
             command,
-            truncate_description: config
-                .truncate_description
-                .unwrap_or(defaults::TRUNCATE_LENGTH),
+            output_format,
         })
     }
 
@@ -441,10 +455,10 @@ impl BinBench {
 
     fn check_and_print_regressions(
         &self,
-        costs_summary: &CostsSummary,
-    ) -> Vec<super::summary::CallgrindRegressionSummary> {
+        metrics_summary: &MetricsSummary,
+    ) -> Vec<super::summary::CallgrindRegression> {
         if let Some(regression_config) = &self.regression_config {
-            regression_config.check_and_print(costs_summary)
+            regression_config.check_and_print(metrics_summary)
         } else {
             vec![]
         }
@@ -625,11 +639,11 @@ impl Group {
             summary.print_and_save(&config.meta.args.output_format)?;
             summary.check_regression(is_regressed, fail_fast)?;
 
-            if self.compare_by_id && config.meta.args.output_format == OutputFormat::Default {
+            if self.compare_by_id && bench.output_format.is_default() {
                 if let Some(id) = &summary.id {
                     if let Some(sums) = summaries.get_mut(id) {
                         for sum in sums.iter() {
-                            sum.compare_and_print(id, &config.meta, &summary)?;
+                            sum.compare_and_print(id, &summary, &bench.output_format)?;
                         }
                         sums.push(summary);
                     } else {
@@ -788,13 +802,18 @@ impl Benchmark for LoadBaselineBenchmark {
             header.description(),
         )?;
 
-        let new_costs = SummaryParser.parse(&out_path)?;
-        let old_costs = Some(SummaryParser.parse(&old_path)?);
-        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
+        let parsed_new = SummaryParser.parse(&out_path)?;
+        let parsed_old = Some(SummaryParser.parse(&old_path)?);
+        let summaries = Summaries::new(parsed_new, parsed_old);
 
-        VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
+        VerticalFormat.print(
+            config,
+            &bin_bench.output_format,
+            self.baselines(),
+            &ToolRun::from(&summaries),
+        )?;
 
-        let regressions = bin_bench.check_and_print_regressions(&costs_summary);
+        let regressions = bin_bench.check_and_print_regressions(&summaries.total);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
@@ -803,11 +822,11 @@ impl Benchmark for LoadBaselineBenchmark {
                 out_path.real_paths()?,
             ));
 
-        callgrind_summary.add_summary(
+        callgrind_summary.add_summaries(
             &bin_bench.command.path,
             &bin_bench.command.args,
-            &old_path,
-            costs_summary,
+            &self.baselines(),
+            summaries,
             regressions,
         );
 
@@ -824,9 +843,10 @@ impl Benchmark for LoadBaselineBenchmark {
             )?;
         }
 
-        benchmark_summary.tool_summaries = bin_bench
-            .tools
-            .run_loaded_vs_base(&config.meta, &out_path)?;
+        benchmark_summary.tool_summaries =
+            bin_bench
+                .tools
+                .run_loaded_vs_base(config, &out_path, &bin_bench.output_format)?;
 
         Ok(benchmark_summary)
     }
@@ -946,12 +966,12 @@ impl Benchmark for SaveBaselineBenchmark {
         let out_path = self.output_path(bin_bench, config, group);
         out_path.init()?;
 
-        let old_costs = out_path
+        let parsed_old = out_path
             .exists()
             .then(|| {
                 SummaryParser
                     .parse(&out_path)
-                    .and_then(|costs| out_path.clear().map(|()| costs))
+                    .and_then(|parsed| out_path.clear().map(|()| parsed))
             })
             .transpose()?;
 
@@ -1006,14 +1026,19 @@ impl Benchmark for SaveBaselineBenchmark {
             sandbox.reset()?;
         }
 
-        let new_costs = SummaryParser.parse(&out_path)?;
-        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
-        VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
+        let parsed_new = SummaryParser.parse(&out_path)?;
+        let summaries = Summaries::new(parsed_new, parsed_old);
+        VerticalFormat.print(
+            config,
+            &bin_bench.output_format,
+            self.baselines(),
+            &ToolRun::from(&summaries),
+        )?;
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stderr())?;
 
-        let regressions = bin_bench.check_and_print_regressions(&costs_summary);
+        let regressions = bin_bench.check_and_print_regressions(&summaries.total);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
@@ -1022,11 +1047,11 @@ impl Benchmark for SaveBaselineBenchmark {
                 out_path.real_paths()?,
             ));
 
-        callgrind_summary.add_summary(
+        callgrind_summary.add_summaries(
             &bin_bench.command.path,
             &bin_bench.command.args,
-            &out_path,
-            costs_summary,
+            &self.baselines(),
+            summaries,
             regressions,
         );
 
@@ -1054,6 +1079,7 @@ impl Benchmark for SaveBaselineBenchmark {
             bin_bench.setup.as_ref(),
             bin_bench.teardown.as_ref(),
             bin_bench.command.delay.as_ref(),
+            &bin_bench.output_format,
         )?;
 
         Ok(benchmark_summary)

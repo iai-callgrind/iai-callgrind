@@ -12,22 +12,20 @@ use super::callgrind::flamegraph::{
     BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
     LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
 };
-use super::callgrind::model::Costs;
-use super::callgrind::parser::Sentinel;
-use super::callgrind::sentinel_parser::SentinelParser;
+use super::callgrind::parser::{CallgrindParser, Sentinel};
 use super::callgrind::summary_parser::SummaryParser;
-use super::callgrind::RegressionConfig;
+use super::callgrind::{RegressionConfig, Summaries};
 use super::common::{Assistant, AssistantKind, Config, ModulePath};
 use super::format::{
-    print_no_capture_footer, LibraryBenchmarkHeader, OutputFormat, VerticalFormat,
+    print_no_capture_footer, Formatter, LibraryBenchmarkHeader, OutputFormat, VerticalFormat,
 };
 use super::meta::Metadata;
 use super::summary::{
-    BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, CallgrindRegressionSummary,
-    CallgrindSummary, CostsSummary, SummaryOutput,
+    BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, CallgrindRegression,
+    CallgrindSummary, MetricsSummary, SummaryOutput, ToolRun,
 };
 use super::tool::{
-    Parser, RunOptions, ToolCommand, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind,
+    RunOptions, ToolCommand, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind,
     ValgrindTool,
 };
 use super::{Error, DEFAULT_TOGGLE};
@@ -75,7 +73,7 @@ pub struct LibBench {
     pub tools: ToolConfigs,
     pub module_path: ModulePath,
     pub entry_point: EntryPoint,
-    pub truncate_description: Option<usize>,
+    pub output_format: OutputFormat,
 }
 
 /// Implements [`Benchmark`] to load a [`LibBench`] baseline run and compare against another
@@ -141,7 +139,7 @@ impl Benchmark for BaselineBenchmark {
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
-        let header = LibraryBenchmarkHeader::new(&config.meta, lib_bench);
+        let header = LibraryBenchmarkHeader::new(lib_bench);
         header.print();
 
         let callgrind_command = ToolCommand::new(
@@ -152,15 +150,13 @@ impl Benchmark for BaselineBenchmark {
 
         let mut callgrind_args = lib_bench.callgrind_args.clone();
 
-        let parser: Box<dyn Parser<Output = Costs>> = match &lib_bench.entry_point {
-            EntryPoint::None => Box::new(SummaryParser),
+        match &lib_bench.entry_point {
+            EntryPoint::None => {}
             EntryPoint::Default => {
                 callgrind_args.insert_toggle_collect(DEFAULT_TOGGLE);
-                Box::new(SentinelParser::new(&Sentinel::default()))
             }
             EntryPoint::Custom(custom) => {
                 callgrind_args.insert_toggle_collect(custom);
-                Box::new(SummaryParser)
             }
         };
 
@@ -204,20 +200,26 @@ impl Benchmark for BaselineBenchmark {
             lib_bench.run_options.stderr.as_ref(),
         );
 
-        let new_costs = parser.parse(&out_path)?;
-
-        let old_costs = old_path
+        let parser = SummaryParser;
+        let parsed_new = parser.parse(&out_path)?;
+        let parsed_old = old_path
             .exists()
             .then(|| parser.parse(&old_path))
             .transpose()?;
 
-        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
-        VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
+        let summaries = Summaries::new(parsed_new, parsed_old);
+
+        VerticalFormat.print(
+            config,
+            &lib_bench.output_format,
+            self.baselines(),
+            &ToolRun::from(&summaries),
+        )?;
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stderr())?;
 
-        let regressions = lib_bench.check_and_print_regressions(&costs_summary);
+        let regressions = lib_bench.check_and_print_regressions(&summaries.total);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
@@ -226,11 +228,11 @@ impl Benchmark for BaselineBenchmark {
                 out_path.real_paths()?,
             ));
 
-        callgrind_summary.add_summary(
+        callgrind_summary.add_summaries(
             &config.bench_bin,
             &bench_args,
-            &old_path,
-            costs_summary,
+            &self.baselines(),
+            summaries,
             regressions,
         );
 
@@ -260,6 +262,7 @@ impl Benchmark for BaselineBenchmark {
             None,
             None,
             None,
+            &lib_bench.output_format,
         )?;
 
         Ok(benchmark_summary)
@@ -328,12 +331,19 @@ impl Groups {
                     ]);
                     let envs = config.resolve_envs();
 
-                    let callgrind_args =
-                        Args::from_raw_args(&[&config.raw_callgrind_args, &meta_callgrind_args])?;
+                    let callgrind_args = Args::try_from_raw_args(&[
+                        &config.raw_callgrind_args,
+                        &meta_callgrind_args,
+                    ])?;
 
                     let flamegraph_config = config.flamegraph_config.map(Into::into);
                     let module_path =
                         group_module_path.join(&library_benchmark_bench.function_name);
+
+                    let mut output_format = config
+                        .output_format
+                        .map_or_else(OutputFormat::default, Into::into);
+                    output_format.kind = meta.args.output_format;
 
                     let lib_bench = LibBench {
                         bench_index,
@@ -354,9 +364,16 @@ impl Groups {
                             &meta.regression_config,
                         )
                         .map(Into::into),
-                        tools: ToolConfigs(config.tools.0.into_iter().map(Into::into).collect()),
+                        tools: ToolConfigs(
+                            config
+                                .tools
+                                .0
+                                .into_iter()
+                                .map(TryInto::try_into)
+                                .collect::<Result<Vec<_>, _>>()?,
+                        ),
                         module_path,
-                        truncate_description: config.truncate_description.unwrap_or(Some(50)),
+                        output_format,
                     };
                     group.benches.push(lib_bench);
                 }
@@ -388,11 +405,11 @@ impl Groups {
                 summary.print_and_save(&config.meta.args.output_format)?;
                 summary.check_regression(&mut is_regressed, fail_fast)?;
 
-                if group.compare_by_id && config.meta.args.output_format == OutputFormat::Default {
+                if group.compare_by_id && bench.output_format.is_default() {
                     if let Some(id) = &summary.id {
                         if let Some(sums) = summaries.get_mut(id) {
                             for sum in sums.iter() {
-                                sum.compare_and_print(id, &config.meta, &summary)?;
+                                sum.compare_and_print(id, &summary, &bench.output_format)?;
                             }
                             sums.push(summary);
                         } else {
@@ -474,10 +491,10 @@ impl LibBench {
     /// occurred
     fn check_and_print_regressions(
         &self,
-        costs_summary: &CostsSummary,
-    ) -> Vec<CallgrindRegressionSummary> {
+        metrics_summary: &MetricsSummary,
+    ) -> Vec<CallgrindRegression> {
         if let Some(regression_config) = &self.regression_config {
-            regression_config.check_and_print(costs_summary)
+            regression_config.check_and_print(metrics_summary)
         } else {
             vec![]
         }
@@ -509,7 +526,7 @@ impl Benchmark for LoadBaselineBenchmark {
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
-        let header = LibraryBenchmarkHeader::new(&config.meta, lib_bench);
+        let header = LibraryBenchmarkHeader::new(lib_bench);
         header.print();
 
         let bench_args = lib_bench.bench_args(group);
@@ -524,18 +541,19 @@ impl Benchmark for LoadBaselineBenchmark {
             header.description(),
         )?;
 
-        let parser: Box<dyn Parser<Output = Costs>> = match &lib_bench.entry_point {
-            EntryPoint::Default => Box::new(SentinelParser::new(&Sentinel::default())),
-            EntryPoint::Custom(_) | EntryPoint::None => Box::new(SummaryParser),
-        };
+        let parser = SummaryParser;
+        let parsed_new = parser.parse(&out_path)?;
+        let parsed_old = Some(parser.parse(&old_path)?);
+        let summaries = Summaries::new(parsed_new, parsed_old);
 
-        let new_costs = parser.parse(&out_path)?;
-        let old_costs = Some(parser.parse(&old_path)?);
-        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
+        VerticalFormat.print(
+            config,
+            &lib_bench.output_format,
+            self.baselines(),
+            &ToolRun::from(&summaries),
+        )?;
 
-        VerticalFormat::default().print(&config.meta, self.baselines(), &costs_summary)?;
-
-        let regressions = lib_bench.check_and_print_regressions(&costs_summary);
+        let regressions = lib_bench.check_and_print_regressions(&summaries.total);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
@@ -544,11 +562,11 @@ impl Benchmark for LoadBaselineBenchmark {
                 out_path.real_paths()?,
             ));
 
-        callgrind_summary.add_summary(
+        callgrind_summary.add_summaries(
             &config.bench_bin,
             &bench_args,
-            &old_path,
-            costs_summary,
+            &self.baselines(),
+            summaries,
             regressions,
         );
 
@@ -567,9 +585,10 @@ impl Benchmark for LoadBaselineBenchmark {
             )?;
         }
 
-        benchmark_summary.tool_summaries = lib_bench
-            .tools
-            .run_loaded_vs_base(&config.meta, &out_path)?;
+        benchmark_summary.tool_summaries =
+            lib_bench
+                .tools
+                .run_loaded_vs_base(config, &out_path, &lib_bench.output_format)?;
 
         Ok(benchmark_summary)
     }
@@ -673,7 +692,7 @@ impl Benchmark for SaveBaselineBenchmark {
         config: &Config,
         group: &Group,
     ) -> Result<BenchmarkSummary> {
-        let header = LibraryBenchmarkHeader::new(&config.meta, lib_bench);
+        let header = LibraryBenchmarkHeader::new(lib_bench);
         header.print();
 
         let callgrind_command = ToolCommand::new(
@@ -683,32 +702,30 @@ impl Benchmark for SaveBaselineBenchmark {
         );
 
         let mut callgrind_args = lib_bench.callgrind_args.clone();
-        let parser: Box<dyn Parser<Output = Costs>> = match &lib_bench.entry_point {
-            EntryPoint::None => Box::new(SummaryParser),
+        match &lib_bench.entry_point {
+            EntryPoint::None => {}
             EntryPoint::Default => {
                 callgrind_args.insert_toggle_collect(DEFAULT_TOGGLE);
-                Box::new(SentinelParser::new(&Sentinel::default()))
             }
             EntryPoint::Custom(custom) => {
                 callgrind_args.insert_toggle_collect(custom);
-                Box::new(SummaryParser)
             }
         };
 
         let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, None);
 
         let bench_args = lib_bench.bench_args(group);
-        let baselines = self.baselines();
 
         let out_path = self.output_path(lib_bench, config, group);
         out_path.init()?;
 
-        let old_costs = out_path
+        let parser = SummaryParser;
+        let parsed_old = out_path
             .exists()
             .then(|| {
                 parser
                     .parse(&out_path)
-                    .and_then(|costs| out_path.clear().map(|()| costs))
+                    .and_then(|parsed| out_path.clear().map(|()| parsed))
             })
             .transpose()?;
 
@@ -738,14 +755,20 @@ impl Benchmark for SaveBaselineBenchmark {
             lib_bench.run_options.stderr.as_ref(),
         );
 
-        let new_costs = parser.parse(&out_path)?;
-        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
-        VerticalFormat::default().print(&config.meta, baselines.clone(), &costs_summary)?;
+        let parsed_new = parser.parse(&out_path)?;
+        let summaries = Summaries::new(parsed_new, parsed_old);
+
+        VerticalFormat.print(
+            config,
+            &lib_bench.output_format,
+            self.baselines(),
+            &ToolRun::from(&summaries),
+        )?;
 
         output.dump_log(log::Level::Info);
         log_path.dump_log(log::Level::Info, &mut stderr())?;
 
-        let regressions = lib_bench.check_and_print_regressions(&costs_summary);
+        let regressions = lib_bench.check_and_print_regressions(&summaries.total);
 
         let callgrind_summary = benchmark_summary
             .callgrind_summary
@@ -754,11 +777,11 @@ impl Benchmark for SaveBaselineBenchmark {
                 out_path.real_paths()?,
             ));
 
-        callgrind_summary.add_summary(
+        callgrind_summary.add_summaries(
             &config.bench_bin,
             &bench_args,
-            &out_path,
-            costs_summary,
+            &self.baselines(),
+            summaries,
             regressions,
         );
 
@@ -789,6 +812,7 @@ impl Benchmark for SaveBaselineBenchmark {
             None,
             None,
             None,
+            &lib_bench.output_format,
         )?;
 
         Ok(benchmark_summary)

@@ -5,7 +5,7 @@ use std::str::FromStr;
 use clap::builder::BoolishValueParser;
 use clap::{ArgAction, Parser};
 
-use super::format::OutputFormat;
+use super::format::OutputFormatKind;
 use super::summary::{BaselineName, SummaryFormat};
 use crate::api::{EventKind, RawArgs, RegressionConfig};
 
@@ -223,7 +223,7 @@ pub struct CommandLineArgs {
         num_args = 1,
         env = "IAI_CALLGRIND_OUTPUT_FORMAT"
     )]
-    pub output_format: OutputFormat,
+    pub output_format: OutputFormatKind,
 
     /// Separate iai-callgrind benchmark output files by target
     ///
@@ -562,5 +562,23 @@ mod tests {
         std::env::set_var("IAI_CALLGRIND_NOCAPTURE", "true");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(result.nocapture, NoCapture::True);
+    }
+
+    #[rstest]
+    #[case::y("y", true)]
+    #[case::yes("yes", true)]
+    #[case::t("t", true)]
+    #[case::true_value("true", true)]
+    #[case::on("on", true)]
+    #[case::one("1", true)]
+    #[case::n("n", false)]
+    #[case::no("no", false)]
+    #[case::f("f", false)]
+    #[case::false_value("false", false)]
+    #[case::off("off", false)]
+    #[case::zero("0", false)]
+    fn test_boolish(#[case] value: &str, #[case] expected: bool) {
+        let result = CommandLineArgs::parse_from(&[format!("--allow-aslr={value}")]);
+        assert_eq!(result.allow_aslr, Some(expected));
     }
 }

@@ -1,8 +1,8 @@
 use anyhow::Result;
 use iai_callgrind_runner::api::EventKind;
 use iai_callgrind_runner::runner::callgrind::flamegraph_parser::FlamegraphParser;
-use iai_callgrind_runner::runner::callgrind::parser::Sentinel;
-use iai_callgrind_runner::runner::tool::{Parser, ToolOutputPathKind, ValgrindTool};
+use iai_callgrind_runner::runner::callgrind::parser::{CallgrindParser, Sentinel};
+use iai_callgrind_runner::runner::tool::{ToolOutputPathKind, ValgrindTool};
 use rstest::rstest;
 
 use crate::common::{get_project_root, Fixtures};
@@ -23,7 +23,8 @@ fn test_flamegraph_parser(#[case] name: &str, #[case] sentinel: Option<Result<Se
     let parser = FlamegraphParser::new(sentinel.as_ref(), get_project_root());
 
     let result = parser.parse(&output).unwrap();
-    let stacks = result.to_stack_format(&EventKind::Ir).unwrap();
+    assert_eq!(result.len(), 1);
+    let stacks = result[0].2.to_stack_format(&EventKind::Ir).unwrap();
 
     assert_eq!(stacks.len(), expected_stacks.len());
     // Assert line by line or else the output on error is unreadable. Also, provide an additional

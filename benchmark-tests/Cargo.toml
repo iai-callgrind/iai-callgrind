@@ -35,6 +35,9 @@ serde_yaml = { workspace = true }
 valico = { workspace = true }
 version-compare = { workspace = true }
 
+[dev-dependencies]
+rstest = { workspace = true }
+
 [[bin]]
 name = "bench"
 path = "src/bench.rs"
@@ -74,6 +77,10 @@ path = "src/helper/exit-with.rs"
 [[bin]]
 name = "client-requests"
 path = "src/helper/client-requests.rs"
+
+[[bin]]
+name = "thread"
+path = "src/helper/thread.rs"
 
 [[bench]]
 harness = false
@@ -134,6 +141,11 @@ path = "benches/test_bin_bench/paths/test_bin_bench_paths.rs"
 harness = false
 name = "test_bin_bench_command_delay"
 path = "benches/test_bin_bench/command_delay/test_bin_bench_command_delay.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_client_requests"
+path = "benches/test_bin_bench/client_requests/test_bin_bench_client_requests.rs"
 
 [[bench]]
 harness = false
@@ -207,9 +219,14 @@ path = "benches/test_lib_bench/entry_point/test_lib_bench_entry_point.rs"
 
 [[bench]]
 harness = false
-name = "test_bench_template"
+name = "test_lib_bench_threads"
+path = "benches/test_lib_bench/threads/test_lib_bench_threads.rs"
 
 [[bench]]
 harness = false
-name = "test_bin_bench_client_requests"
-path = "benches/test_bin_bench/client_requests/test_bin_bench_client_requests.rs"
+name = "test_lib_bench_parts"
+path = "benches/test_lib_bench/parts/test_lib_bench_parts.rs"
+
+[[bench]]
+harness = false
+name = "test_bench_template"

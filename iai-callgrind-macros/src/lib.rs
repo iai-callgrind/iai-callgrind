@@ -18,6 +18,7 @@
 #![warn(clippy::try_err)]
 #![warn(clippy::undocumented_unsafe_blocks)]
 #![warn(clippy::unneeded_field_pattern)]
+#![warn(clippy::unwrap_used)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
 #![allow(clippy::enum_glob_use)]
@@ -358,7 +359,7 @@ impl CargoMetadata {
 /// }
 ///
 /// // This benchmark is setting up multiple benchmark cases with the advantage that the setup
-/// // costs  for creating a vector (even if it is empty) aren't attributed to the benchmark and
+/// // costs for creating a vector (even if it is empty) aren't attributed to the benchmark and
 /// // that the `array` is already wrapped in a black_box.
 /// #[library_benchmark]
 /// #[bench::empty(vec![])]

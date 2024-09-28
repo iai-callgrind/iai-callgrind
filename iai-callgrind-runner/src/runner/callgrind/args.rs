@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use std::ffi::OsString;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use anyhow::Result;
 use log::{log_enabled, warn};
@@ -8,6 +9,7 @@ use log::{log_enabled, warn};
 use crate::api::RawArgs;
 use crate::error::Error;
 use crate::runner::tool;
+use crate::runner::tool::args::FairSched;
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
 #[allow(clippy::struct_excessive_bools)]
@@ -24,19 +26,23 @@ pub struct Args {
     verbose: bool,
     dump_instr: bool,
     dump_line: bool,
+    /// --combine-dumps is currently not supported by the callgrind parsers, so we print a warning
     combine_dumps: bool,
     callgrind_out_file: Option<PathBuf>,
     log_arg: Option<OsString>,
+    trace_children: bool,
+    separate_threads: bool,
+    fair_sched: FairSched,
 }
 
 impl Args {
-    pub fn from_raw_args(args: &[&RawArgs]) -> Result<Self> {
+    pub fn try_from_raw_args(args: &[&RawArgs]) -> Result<Self> {
         let mut default = Self::default();
-        default.update(args.iter().flat_map(|s| &s.0))?;
+        default.try_update(args.iter().flat_map(|s| &s.0))?;
         Ok(default)
     }
 
-    pub fn update<'a, T: Iterator<Item = &'a String>>(&mut self, args: T) -> Result<()> {
+    pub fn try_update<'a, T: Iterator<Item = &'a String>>(&mut self, args: T) -> Result<()> {
         for arg in args {
             match arg
                 .trim()
@@ -46,25 +52,42 @@ impl Args {
                 Some(("--I1", value)) => value.clone_into(&mut self.i1),
                 Some(("--D1", value)) => value.clone_into(&mut self.d1),
                 Some(("--LL", value)) => value.clone_into(&mut self.ll),
-                Some((key @ "--dump-instr", value)) => {
-                    self.dump_instr = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
-                    })?;
-                }
-                Some((key @ "--dump-line", value)) => {
-                    self.dump_line = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidCallgrindBoolArgument((key.to_owned(), value.to_owned()))
+                Some((key @ "--cache-sim", value)) => {
+                    self.cache_sim = yesno_to_bool(value).ok_or_else(|| {
+                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
                 Some(("--toggle-collect", value)) => {
                     self.toggle_collect.push_back(value.to_owned());
                 }
+                Some((key @ "--dump-instr", value)) => {
+                    self.dump_instr = yesno_to_bool(value).ok_or_else(|| {
+                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
+                    })?;
+                }
+                Some((key @ "--dump-line", value)) => {
+                    self.dump_line = yesno_to_bool(value).ok_or_else(|| {
+                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
+                    })?;
+                }
+                Some((key @ "--trace-children", value)) => {
+                    self.trace_children = yesno_to_bool(value).ok_or_else(|| {
+                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
+                    })?;
+                }
+                Some((key @ "--separate-threads", value)) => {
+                    self.separate_threads = yesno_to_bool(value).ok_or_else(|| {
+                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
+                    })?;
+                }
+                Some(("--fair-sched", value)) => {
+                    self.fair_sched = FairSched::from_str(value)?;
+                }
                 Some((
-                    key @ ("--separate-threads"
+                    key @ ("--combine-dumps"
                     | "--callgrind-out-file"
                     | "--compress-strings"
                     | "--compress-pos"
-                    | "--combine-dumps"
                     | "--log-file"
                     | "--log-fd"
                     | "--log-socket"
@@ -121,7 +144,7 @@ impl Default for Args {
             cache_sim: true,
             compress_pos: false,
             compress_strings: false,
-            combine_dumps: true,
+            combine_dumps: false,
             verbose: log_enabled!(log::Level::Debug),
             dump_line: true,
             dump_instr: false,
@@ -129,6 +152,9 @@ impl Default for Args {
             callgrind_out_file: Option::default(),
             log_arg: Option::default(),
             other: Vec::default(),
+            trace_children: true,
+            separate_threads: true,
+            fair_sched: FairSched::Try,
         }
     }
 }
@@ -148,6 +174,10 @@ impl From<Args> for tool::args::ToolArgs {
             format!("--dump-line={}", bool_to_yesno(value.dump_line)),
             format!("--dump-instr={}", bool_to_yesno(value.dump_instr)),
             format!("--combine-dumps={}", bool_to_yesno(value.combine_dumps)),
+            format!(
+                "--separate-threads={}",
+                bool_to_yesno(value.separate_threads)
+            ),
         ];
         other.append(
             &mut value
@@ -166,6 +196,8 @@ impl From<Args> for tool::args::ToolArgs {
             log_path: value.log_arg,
             error_exitcode: "0".to_owned(),
             verbose: value.verbose,
+            trace_children: value.trace_children,
+            fair_sched: value.fair_sched,
             other,
         }
     }

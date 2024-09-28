@@ -13,7 +13,8 @@ use std::time::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::api::DelayKind::DurationElapse;
+#[cfg(feature = "runner")]
+use crate::runner::metrics::Summarize;
 
 /// The model for the `#[binary_benchmark]` attribute or the equivalent from the low level api
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -47,8 +48,8 @@ pub struct BinaryBenchmarkConfig {
     pub tools: Tools,
     pub tools_override: Option<Tools>,
     pub sandbox: Option<Sandbox>,
-    pub truncate_description: Option<Option<usize>>,
     pub setup_parallel: Option<bool>,
+    pub output_format: Option<OutputFormat>,
 }
 
 /// The model for the `binary_benchmark_group` macro
@@ -96,7 +97,7 @@ pub enum DelayKind {
 
 impl Default for DelayKind {
     fn default() -> Self {
-        DurationElapse(Duration::from_secs(60))
+        Self::DurationElapse(Duration::from_secs(60))
     }
 }
 
@@ -122,6 +123,38 @@ pub enum Direction {
     BottomToTop,
 }
 
+/// The metric kinds collected by DHAT
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum DhatMetricKind {
+    /// Total bytes allocated over the entire execution
+    TotalBytes,
+    /// Total heap blocks allocated over the entire execution
+    TotalBlocks,
+    /// The bytes alive at t-gmax, the time when the heap size reached its global maximum
+    AtTGmaxBytes,
+    /// The blocks alive at t-gmax
+    AtTGmaxBlocks,
+    /// The amount of bytes at the end of the execution.
+    ///
+    /// This is the amount of bytes which were not explicitly freed.
+    AtTEndBytes,
+    /// The amount of blocks at the end of the execution.
+    ///
+    /// This is the amount of heap blocks which were not explicitly freed.
+    AtTEndBlocks,
+    /// The amount of bytes read during the entire execution
+    ReadsBytes,
+    /// The amount of bytes written during the entire execution
+    WritesBytes,
+    /// The total lifetimes of all heap blocks allocated
+    TotalLifetimes,
+    /// The maximum amount of bytes
+    MaximumBytes,
+    /// The maximum amount of heap blocks
+    MaximumBlocks,
+}
+
 /// The `EntryPoint` of a library benchmark
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub enum EntryPoint {
@@ -136,6 +169,24 @@ pub enum EntryPoint {
     Custom(String),
 }
 
+// The error metrics from a tool which reports errors
+//
+// The tools which report only errors are `helgrind`, `drd` and `memcheck`. The order in which the
+// variants are defined in this enum determines the order of the metrics in the benchmark terminal
+// output.
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum ErrorMetricKind {
+    /// The amount of detected unsuppressed errors
+    Errors,
+    /// The amount of detected unsuppressed error contexts
+    Contexts,
+    /// The amount of suppressed errors
+    SuppressedErrors,
+    /// The amount of suppressed error contexts
+    SuppressedContexts,
+}
+
 /// All `EventKind`s callgrind produces and additionally some derived events
 ///
 /// Depending on the options passed to Callgrind, these are the events that Callgrind can produce.
@@ -143,6 +194,7 @@ pub enum EntryPoint {
 /// documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
+
 pub enum EventKind {
     /// The default event. I cache reads (which equals the number of instructions executed)
     Ir,
@@ -160,14 +212,14 @@ pub enum EventKind {
     Dw,
     /// I1 cache read misses (--cache-sim=yes)
     I1mr,
-    /// LL cache instruction read misses (--cache-sim=yes)
-    ILmr,
     /// D1 cache read misses (--cache-sim=yes)
     D1mr,
-    /// LL cache data read misses (--cache-sim=yes)
-    DLmr,
     /// D1 cache write misses (--cache-sim=yes)
     D1mw,
+    /// LL cache instruction read misses (--cache-sim=yes)
+    ILmr,
+    /// LL cache data read misses (--cache-sim=yes)
+    DLmr,
     /// LL cache data write misses (--cache-sim=yes)
     DLmw,
     /// Derived event showing the L1 hits (--cache-sim=yes)
@@ -268,8 +320,8 @@ pub struct LibraryBenchmarkConfig {
     pub regression_config: Option<RegressionConfig>,
     pub tools: Tools,
     pub tools_override: Option<Tools>,
-    pub truncate_description: Option<Option<usize>>,
     pub entry_point: Option<EntryPoint>,
+    pub output_format: Option<OutputFormat>,
 }
 
 /// The model for the `library_benchmark_group` macro
@@ -292,6 +344,13 @@ pub struct LibraryBenchmarkGroups {
     pub command_line_args: Vec<String>,
     pub has_setup: bool,
     pub has_teardown: bool,
+}
+
+/// The configuration values for the output format
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct OutputFormat {
+    pub truncate_description: Option<Option<usize>>,
+    pub show_intermediate: Option<bool>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -374,14 +433,13 @@ pub struct Tool {
     pub kind: ValgrindTool,
     pub enable: Option<bool>,
     pub raw_args: RawArgs,
-    pub outfile_modifier: Option<String>,
     pub show_log: Option<bool>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tools(pub Vec<Tool>);
 
-/// An enum with all possible valgrind tools
+/// The valgrind tools which can be run in addition to callgrind
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ValgrindTool {
     /// [Memcheck: a memory error detector](https://valgrind.org/docs/manual/mc-manual.html)
@@ -426,9 +484,8 @@ impl BinaryBenchmarkConfig {
             }
 
             self.sandbox = update_option(&self.sandbox, &other.sandbox);
-            self.truncate_description =
-                update_option(&self.truncate_description, &other.truncate_description);
             self.setup_parallel = update_option(&self.setup_parallel, &other.setup_parallel);
+            self.output_format = update_option(&self.output_format, &other.output_format);
         }
         self
     }
@@ -457,6 +514,27 @@ impl Default for Direction {
     }
 }
 
+impl Display for DhatMetricKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DhatMetricKind::TotalBytes => f.write_str("Total bytes"),
+            DhatMetricKind::TotalBlocks => f.write_str("Total blocks"),
+            DhatMetricKind::AtTGmaxBytes => f.write_str("At t-gmax bytes"),
+            DhatMetricKind::AtTGmaxBlocks => f.write_str("At t-gmax blocks"),
+            DhatMetricKind::AtTEndBytes => f.write_str("At t-end bytes"),
+            DhatMetricKind::AtTEndBlocks => f.write_str("At t-end blocks"),
+            DhatMetricKind::ReadsBytes => f.write_str("Reads bytes"),
+            DhatMetricKind::WritesBytes => f.write_str("Writes bytes"),
+            DhatMetricKind::TotalLifetimes => f.write_str("Total lifetimes"),
+            DhatMetricKind::MaximumBytes => f.write_str("Maximum bytes"),
+            DhatMetricKind::MaximumBlocks => f.write_str("Maximum blocks"),
+        }
+    }
+}
+
+#[cfg(feature = "runner")]
+impl Summarize for DhatMetricKind {}
+
 impl<T> From<T> for EntryPoint
 where
     T: Into<String>,
@@ -466,11 +544,26 @@ where
     }
 }
 
+#[cfg(feature = "runner")]
+impl Summarize for ErrorMetricKind {}
+
+impl Display for ErrorMetricKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ErrorMetricKind::Errors => f.write_str("Errors"),
+            ErrorMetricKind::Contexts => f.write_str("Contexts"),
+            ErrorMetricKind::SuppressedErrors => f.write_str("Suppressed Errors"),
+            ErrorMetricKind::SuppressedContexts => f.write_str("Suppressed Contexts"),
+        }
+    }
+}
+
 impl EventKind {
     /// Return true if this `EventKind` is a derived event
     ///
     /// Derived events are calculated from Callgrind's native event types. See also
-    /// [`crate::runner::callgrind::model::Costs::make_summary`]. Currently all derived events are:
+    /// [`crate::runner::callgrind::model::Metrics::make_summary`]. Currently all derived events
+    /// are:
     ///
     /// * [`EventKind::L1hits`]
     /// * [`EventKind::LLhits`]
@@ -604,9 +697,8 @@ impl LibraryBenchmarkConfig {
                 // do nothing
             }
 
-            self.truncate_description =
-                update_option(&self.truncate_description, &other.truncate_description);
             self.entry_point = update_option(&self.entry_point, &other.entry_point);
+            self.output_format = update_option(&self.output_format, &other.output_format);
         }
         self
     }
@@ -883,12 +975,11 @@ mod tests {
                 kind: ValgrindTool::DHAT,
                 enable: None,
                 raw_args: RawArgs(vec![]),
-                outfile_modifier: None,
                 show_log: None,
             }]),
             tools_override: None,
-            truncate_description: None,
             entry_point: None,
+            output_format: None,
         };
 
         assert_eq!(base.update_from_all([Some(&other.clone())]), other);
@@ -907,12 +998,11 @@ mod tests {
                 kind: ValgrindTool::DHAT,
                 enable: None,
                 raw_args: RawArgs(vec![]),
-                outfile_modifier: None,
                 show_log: None,
             }]),
             tools_override: Some(Tools(vec![])),
-            truncate_description: Some(Some(10)),
             entry_point: Some(EntryPoint::default()),
+            output_format: Some(OutputFormat::default()),
         };
         let expected = LibraryBenchmarkConfig {
             tools: other.tools_override.as_ref().unwrap().clone(),
@@ -924,12 +1014,6 @@ mod tests {
     }
 
     #[rstest]
-    #[case::truncate_description(
-        LibraryBenchmarkConfig {
-            truncate_description: Some(None),
-            ..Default::default()
-        }
-    )]
     #[case::env_clear(
         LibraryBenchmarkConfig {
             env_clear: Some(true),

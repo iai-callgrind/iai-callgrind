@@ -1,16 +1,15 @@
 use std::collections::BinaryHeap;
 use std::fmt::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
 use log::debug;
 
 use super::hashmap_parser::{CallgrindMap, HashMapParser, SourcePath};
-use super::parser::Sentinel;
+use super::parser::{CallgrindParser, CallgrindProperties, Sentinel};
 use crate::api::EventKind;
-use crate::runner::tool::{Parser, ToolOutputPath};
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FlamegraphMap(CallgrindMap);
 
 #[derive(Debug)]
@@ -31,17 +30,32 @@ impl FlamegraphMap {
     }
 
     pub fn make_summary(&mut self) -> Result<()> {
-        for value in self.0.map.values_mut() {
-            if value.costs.can_summarize() {
-                value
-                    .costs
-                    .make_summary()
-                    .map_err(|error| anyhow!("Failed calculating summary events: {error}"))?;
-            } else {
-                return Ok(());
+        let mut iter = self.0.map.values_mut().peekable();
+        if let Some(value) = iter.peek() {
+            // If one cost can be summarized then all costs can be summarized.
+            if value.metrics.can_summarize() {
+                for value in iter {
+                    value
+                        .metrics
+                        .make_summary()
+                        .map_err(|error| anyhow!("Failed calculating summary events: {error}"))?;
+                }
             }
         }
+
         Ok(())
+    }
+
+    pub fn add(&mut self, other: &Self) {
+        for (other_id, other_value) in &other.0 {
+            // The performance of HashMap::entry is worse than the following method because we have
+            // a heavy id which needs to be cloned although it is already present in the map.
+            if let Some(value) = self.0.map.get_mut(other_id) {
+                value.metrics.add(&other_value.metrics);
+            } else {
+                self.0.map.insert(other_id.clone(), other_value.clone());
+            }
+        }
     }
 
     // Convert to stacks string format for this `EventType`
@@ -64,8 +78,8 @@ impl FlamegraphMap {
                     .map
                     .get(key)
                     .expect("Resolved sentinel must be present in map")
-                    .costs
-                    .cost_by_kind(event_kind)
+                    .metrics
+                    .metric_by_kind(event_kind)
                     .ok_or_else(|| {
                         anyhow!(
                             "Failed creating flamegraph stack: Missing event type '{event_kind}'"
@@ -75,7 +89,7 @@ impl FlamegraphMap {
             .transpose()?;
 
         for (id, value) in &self.0.map {
-            let cost = value.costs.cost_by_kind(event_kind).ok_or_else(|| {
+            let cost = value.metrics.metric_by_kind(event_kind).ok_or_else(|| {
                 anyhow!("Failed creating flamegraph stack: Missing event type '{event_kind}'")
             })?;
 
@@ -162,18 +176,20 @@ impl FlamegraphParser {
     }
 }
 
-impl Parser for FlamegraphParser {
+impl CallgrindParser for FlamegraphParser {
     type Output = FlamegraphMap;
 
-    fn parse(&self, output_path: &ToolOutputPath) -> Result<Self::Output> {
-        debug!("Parsing flamegraph from file '{}'", output_path);
+    fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {
+        debug!("Parsing flamegraph from file '{}'", path.display());
 
         let parser = HashMapParser {
             project_root: self.project_root.clone(),
             sentinel: self.sentinel.clone(),
         };
 
-        parser.parse(output_path).map(FlamegraphMap)
+        parser
+            .parse_single(path)
+            .map(|(props, map)| (props, FlamegraphMap(map)))
     }
 }
 

@@ -2,9 +2,10 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 use iai_callgrind_runner::runner::callgrind::hashmap_parser::{CallgrindMap, HashMapParser};
+use iai_callgrind_runner::runner::callgrind::parser::CallgrindParser;
 use iai_callgrind_runner::runner::common::ModulePath;
 use iai_callgrind_runner::runner::summary::{BaselineKind, BenchmarkSummary};
-use iai_callgrind_runner::runner::tool::{self, Parser, ToolOutputPath};
+use iai_callgrind_runner::runner::tool::{self, ToolOutputPath};
 
 use crate::common::Summary;
 
@@ -86,6 +87,9 @@ impl Assert {
     /// [`iai_callgrind_runner::runner::callgrind::hashmap_parser::CallgrindMap`]. The assert
     /// function is supposed to return a boolean.
     ///
+    /// In the presence of multiple output files, threads, subprocesses only the total can be
+    /// asserted.
+    ///
     /// # Errors
     ///
     /// If the summary.json file did not exist
@@ -96,7 +100,7 @@ impl Assert {
             sentinel: None,
         };
 
-        let map = parser
+        let maps = parser
             .parse(&ToolOutputPath::new(
                 tool::ToolOutputPathKind::Out,
                 tool::ValgrindTool::Callgrind,
@@ -107,7 +111,12 @@ impl Assert {
             ))
             .unwrap();
 
-        assert!(assert(map));
+        let mut total = CallgrindMap::default();
+        for (_, _, map) in &maps {
+            total.add_mut(map);
+        }
+
+        assert!(assert(total));
 
         Ok(())
     }

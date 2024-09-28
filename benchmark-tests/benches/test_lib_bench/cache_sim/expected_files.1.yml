@@ -4,7 +4,7 @@ data:
     id: with_10
     expected:
       files:
-        - callgrind.bench_with_cache_sim.with_10.flamegraph.Ir.svg
+        - callgrind.bench_with_cache_sim.with_10.total.Ir.flamegraph.svg
         - callgrind.bench_with_cache_sim.with_10.log
         - callgrind.bench_with_cache_sim.with_10.out
         - summary.json
@@ -13,7 +13,7 @@ data:
     id: with_10
     expected:
       files:
-        - callgrind.bench_without_cache_sim.with_10.flamegraph.Ir.svg
+        - callgrind.bench_without_cache_sim.with_10.total.Ir.flamegraph.svg
         - callgrind.bench_without_cache_sim.with_10.log
         - callgrind.bench_without_cache_sim.with_10.out
         - summary.json

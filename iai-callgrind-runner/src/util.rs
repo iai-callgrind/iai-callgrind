@@ -7,9 +7,70 @@ use std::process::Command;
 
 use anyhow::{anyhow, Result};
 use log::{debug, log_enabled, trace, Level};
+#[cfg(feature = "schema")]
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use which::which;
 
 use crate::error::Error;
+
+// # Developer notes
+//
+// EitherOrBoth is not considered complete in terms of possible functionality. Simply extend and add
+// new methods by need.
+
+/// Either left or right or both can be present
+///
+/// Most of the time, this enum is used to store (new, old) output, metrics, etc. Per convention
+/// left is `new` and right is `old`.
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum EitherOrBoth<T> {
+    /// The left or `new` value
+    Left(T),
+    /// The right or `old` value
+    Right(T),
+    /// Both values (`new` and `old`) are present
+    Both(T, T),
+}
+
+impl<T> EitherOrBoth<T> {
+    /// Try to return the left (`new`) value
+    pub fn left(&self) -> Option<&T> {
+        match self {
+            EitherOrBoth::Right(_) => None,
+            EitherOrBoth::Both(left, _) | EitherOrBoth::Left(left) => Some(left),
+        }
+    }
+
+    /// Try to return the right (`old`) value
+    pub fn right(&self) -> Option<&T> {
+        match self {
+            EitherOrBoth::Left(_) => None,
+            EitherOrBoth::Right(right) | EitherOrBoth::Both(_, right) => Some(right),
+        }
+    }
+
+    /// Apply the function `f` to the inner value of `EitherOrBoth` and return a new `EitherOrBoth`
+    pub fn map<F, N>(self, f: F) -> EitherOrBoth<N>
+    where
+        F: Fn(T) -> N,
+    {
+        match self {
+            Self::Left(left) => EitherOrBoth::Left(f(left)),
+            Self::Right(right) => EitherOrBoth::Right(f(right)),
+            Self::Both(l, r) => EitherOrBoth::Both(f(l), f(r)),
+        }
+    }
+
+    pub fn as_ref(&self) -> EitherOrBoth<&T> {
+        match self {
+            Self::Left(left) => EitherOrBoth::Left(left),
+            Self::Right(right) => EitherOrBoth::Right(right),
+            Self::Both(left, right) => EitherOrBoth::Both(left, right),
+        }
+    }
+}
 
 /// Convert a boolean value to a `yes` or `no` string
 pub fn bool_to_yesno(value: bool) -> String {
@@ -30,6 +91,19 @@ pub fn yesno_to_bool(value: &str) -> Option<bool> {
         "no" => Some(false),
         _ => None,
     }
+}
+
+/// Calculate the integer logarithm to base 10 of a `value`
+///
+/// This method does not panic if `value` is zero and instead returns `0`.
+///
+/// The ilog10 method on the primitive types is stable in rust 1.67. Currently we are at MSRV 1.66.
+/// This method can therefor be removed as soon as we bump the MSRV.
+#[allow(clippy::cast_precision_loss)]
+#[allow(clippy::cast_sign_loss)]
+#[allow(clippy::cast_possible_truncation)]
+pub fn ilog10(value: u64) -> u64 {
+    (value as f64).log10() as u64
 }
 
 /// Truncate a utf-8 [`std::str`] to a given `len`
@@ -297,5 +371,18 @@ mod tests {
     #[case::factor_two(2, 1, 2f64)]
     fn test_factor_diff_eq(#[case] a: u64, #[case] b: u64, #[case] expected: f64) {
         assert_eq!(factor_diff(a, b), expected);
+    }
+
+    #[rstest]
+    #[case::zero(0, 0)]
+    #[case::one(1, 0)]
+    #[case::two(2, 0)]
+    #[case::ten(10, 1)]
+    #[case::twenty(20, 1)]
+    #[case::ninety_nine(99, 1)]
+    #[case::hundred(100, 2)]
+    #[case::hundred_one(101, 2)]
+    fn test_ilog10(#[case] value: u64, #[case] expected: u64) {
+        assert_eq!(ilog10(value), expected);
     }
 }

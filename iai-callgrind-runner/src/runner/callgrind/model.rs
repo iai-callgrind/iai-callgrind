@@ -9,15 +9,15 @@ use serde::{Deserialize, Serialize};
 
 use super::CacheSummary;
 use crate::api::EventKind;
-use crate::runner::costs::Summarize;
+use crate::runner::metrics::Summarize;
+
+pub type Metrics = crate::runner::metrics::Metrics<EventKind>;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Calls {
     amount: u64,
     positions: Positions,
 }
-
-pub type Costs = crate::runner::costs::Costs<EventKind>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PositionType {
@@ -39,10 +39,10 @@ impl Calls {
     }
 }
 
-impl Costs {
+impl Metrics {
     /// Calculate and add derived summary events (i.e. estimated cycles) in-place
     ///
-    /// Additional calls to this function will overwrite the costs for derived summary events.
+    /// Additional calls to this function will overwrite the metrics for derived summary events.
     ///
     /// # Errors
     ///
@@ -57,11 +57,11 @@ impl Costs {
             cycles,
         } = (&*self).try_into()?;
 
-        self.0.insert(EventKind::L1hits, l1_hits);
-        self.0.insert(EventKind::LLhits, l3_hits);
-        self.0.insert(EventKind::RamHits, ram_hits);
-        self.0.insert(EventKind::TotalRW, total_memory_rw);
-        self.0.insert(EventKind::EstimatedCycles, cycles);
+        self.insert(EventKind::L1hits, l1_hits);
+        self.insert(EventKind::LLhits, l3_hits);
+        self.insert(EventKind::RamHits, ram_hits);
+        self.insert(EventKind::TotalRW, total_memory_rw);
+        self.insert(EventKind::EstimatedCycles, cycles);
 
         Ok(())
     }
@@ -70,7 +70,7 @@ impl Costs {
     ///
     /// This method just probes for [`EventKind::EstimatedCycles`] to detect the summarized state.
     pub fn is_summarized(&self) -> bool {
-        self.cost_by_kind(&EventKind::EstimatedCycles).is_some()
+        self.metric_by_kind(&EventKind::EstimatedCycles).is_some()
     }
 
     /// Return true if costs can be summarized
@@ -78,34 +78,20 @@ impl Costs {
     /// This method probes for [`EventKind::I1mr`] which is present if callgrind was run with the
     /// cache simulation (`--cache-sim=yes`) enabled.
     pub fn can_summarize(&self) -> bool {
-        self.cost_by_kind(&EventKind::I1mr).is_some()
+        self.metric_by_kind(&EventKind::I1mr).is_some()
     }
 }
 
-impl Summarize for EventKind {
-    fn summarize(costs: &mut Cow<Costs>) {
-        if !costs.is_summarized() {
-            let _ = costs.to_mut().make_summary();
-        }
-    }
-}
-impl Default for Costs {
+impl Default for Metrics {
     fn default() -> Self {
         Self(indexmap! {EventKind::Ir => 0})
     }
 }
 
-impl<T> From<T> for PositionType
-where
-    T: AsRef<str>,
-{
-    fn from(value: T) -> Self {
-        let value = value.as_ref();
-        // "addr" is taken from the callgrind_annotate script although not officially documented
-        match value.to_lowercase().as_str() {
-            "instr" | "addr" => Self::Instr,
-            "line" => Self::Line,
-            _ => panic!("Unknown positions type: '{value}"),
+impl Summarize for EventKind {
+    fn summarize(costs: &mut Cow<Metrics>) {
+        if !costs.is_summarized() {
+            let _ = costs.to_mut().make_summary();
         }
     }
 }
@@ -154,5 +140,20 @@ where
                 .map(|p| (PositionType::from(p), 0))
                 .collect::<IndexMap<_, _>>(),
         )
+    }
+}
+
+impl<T> From<T> for PositionType
+where
+    T: AsRef<str>,
+{
+    fn from(value: T) -> Self {
+        let value = value.as_ref();
+        // "addr" is taken from the callgrind_annotate script although not officially documented
+        match value.to_lowercase().as_str() {
+            "instr" | "addr" => Self::Instr,
+            "line" => Self::Line,
+            _ => panic!("Unknown positions type: '{value}"),
+        }
     }
 }

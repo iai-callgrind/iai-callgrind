@@ -22,10 +22,83 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+If not state otherwise the changes below were introduced in
+[#263](https://github.com/iai-callgrind/iai-callgrind/pull/263).
+
+### Added
+
+* Support for benchmarks of multi-threading and multi-process applications by
+  implementing the correct handling of the valgrind `--trace-children` and
+  callgrind `--separate-threads` command line options. Per default only the
+  total over all subprocesses and threads is calculated shown. But, each thread
+  and subprocess can be shown with the new `OutputFormat::show_intermediate`
+  option.
+* Support for the callgrind command line arguments `--dump-every-bb`,
+  `--dump-before`, `--dump-after` which create parts. These parts are now
+  correctly summarized in the total and the metrics of each part can be shown
+  with `OutputFormat::show_intermediate`.
+* Added `OutputFormat` which can be used in
+  `LibraryBenchmarkConfig::output_format` and
+  `BinaryBenchmarkConfig::output_format` to change some of the behaviour of the
+  default terminal output (but not json output)
+* Sometimes callgrind creates empty files, so we're cleaning them up now after
+  each benchmark run.
 * ([#256](https://github.com/iai-callgrind/iai-callgrind/pull/256)) and
   ([#279](https://github.com/iai-callgrind/iai-callgrind/pull/279)): Support
   running setup in parallel and add possibility to delay the `Command`. Thanks
   to @hargut for #256
+
+### Changed
+
+* All tools are now per default run with `--trace-children=yes` and
+  `--fair-sched=try`. In addition, callgrind is run with
+  `--separate-threads=yes`. These default arguments can be changed in
+  `Tool::args` or `LibraryBenchmarkConfig::raw_callgrind_args`,
+  `BinaryBenchmarkConfig::raw_callgrind_args`.
+* The file naming scheme was adjusted to include the pids in case of
+  multi-process benchmarks, the parts in case of callgrind command-line
+  arguments which create multiple parts and threads in case of multiple threads.
+  This change is backwards compatible to the file naming scheme of previous
+  releases.
+* Error metrics from tools like drd, helgrind and memcheck are now listed and
+  compared like the other metrics in a vertical format. For example
+
+  ```text
+  ======= DRD ===============================================================
+  Errors:                           0|0               (No change)
+  Contexts:                         0|0               (No change)
+  Suppressed Errors:                0|0               (No change)
+  Suppressed Contexts:              0|0               (No change)
+  ```
+
+* Increase the fields width by 2 spaces in the terminal output.
+* The `LibraryBenchmarkConfig::truncate_description`,
+  `BinaryBenchmarkConfig::truncate_description` methods have been moved to
+  `OutputFormat::truncate_description`
+* In the presence of multiple processes the DHAT metrics are now summarized and
+  shown in a total in the same way as the metrics of callgrind and the other
+  tools.
+* Bump the summary json schema to v3 in
+  `iai-callgrind-runner/schemas/summary.v3.schema.json`
+
+### Removed
+
+* Iai-Callgrind doesn't support combined dumps via `--combine-dumps` anymore.
+* The `Tool::outfile_modifier` method was removed. The `%p` modifier for
+  valgrind output and log files is now applied automatically when using the
+  `--trace-children=yes` command line argument.
+* The output and log file paths in the terminal output were removed.
+
+### Fixed
+
+* When extracting the metrics from callgrind output files, the totals line is
+  now prioritized over the summary line. The summary line has bugs and reports
+  wrong costs if callgrind client requests are used. The totals are unaffected
+  by client requests and report the correct costs. This change is mostly
+  internal but might introduce some (small) changes in the metrics reported by
+  Iai-Callgrind.
+* The error metrics of drd, helgrind and memcheck were only shown correctly if
+  they consisted of a single digit.
 
 ## [0.13.4] - 2024-09-12
 

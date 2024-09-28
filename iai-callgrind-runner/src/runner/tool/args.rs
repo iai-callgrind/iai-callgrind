@@ -1,9 +1,21 @@
 use std::ffi::OsString;
+use std::fmt::Display;
+use std::str::FromStr;
 
+use anyhow::{anyhow, Result};
 use log::warn;
 
 use super::{ToolOutputPath, ValgrindTool};
 use crate::api::{self};
+use crate::error::Error;
+use crate::util::{bool_to_yesno, yesno_to_bool};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FairSched {
+    Yes,
+    No,
+    Try,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolArgs {
@@ -12,11 +24,39 @@ pub struct ToolArgs {
     pub log_path: Option<OsString>,
     pub error_exitcode: String,
     pub verbose: bool,
+    pub trace_children: bool,
+    pub fair_sched: FairSched,
     pub other: Vec<String>,
 }
 
+impl Display for FairSched {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let string = match self {
+            FairSched::Yes => "yes",
+            FairSched::No => "no",
+            FairSched::Try => "try",
+        };
+        write!(f, "{string}")
+    }
+}
+
+impl FromStr for FairSched {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s {
+            "no" => Ok(FairSched::No),
+            "yes" => Ok(FairSched::Yes),
+            "try" => Ok(FairSched::Try),
+            _ => Err(anyhow!(
+                "Invalid argument for --fair-sched. Valid arguments are: 'yes', 'no', 'try'"
+            )),
+        }
+    }
+}
+
 impl ToolArgs {
-    pub fn from_raw_args(tool: ValgrindTool, raw_args: api::RawArgs) -> Self {
+    pub fn try_from_raw_args(tool: ValgrindTool, raw_args: api::RawArgs) -> Result<Self> {
         let mut tool_args = Self {
             tool,
             output_paths: Vec::default(),
@@ -32,6 +72,8 @@ impl ToolArgs {
             },
             verbose: false,
             other: Vec::default(),
+            trace_children: true,
+            fair_sched: FairSched::Try,
         };
 
         for arg in raw_args.0 {
@@ -48,11 +90,19 @@ impl ToolArgs {
                     _,
                 )) => warn!(
                     "Ignoring {} argument '{arg}': Output/Log files of tools are managed by \
-                     iai-callgrind",
+                     Iai-Callgrind",
                     tool.id()
                 ),
                 Some(("--error-exitcode", value)) => {
                     value.clone_into(&mut tool_args.error_exitcode);
+                }
+                Some((key @ "--trace-children", value)) => {
+                    tool_args.trace_children = yesno_to_bool(value).ok_or_else(|| {
+                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
+                    })?;
+                }
+                Some(("--fair-sched", value)) => {
+                    tool_args.fair_sched = FairSched::from_str(value)?;
                 }
                 None if matches!(
                     arg.as_str(),
@@ -71,7 +121,7 @@ impl ToolArgs {
             }
         }
 
-        tool_args
+        Ok(tool_args)
     }
 
     // TODO: memcheck: --xtree-leak-file=<filename> [default: xtleak.kcg.%p]
@@ -88,6 +138,8 @@ impl ToolArgs {
                 let mut arg = OsString::from("--callgrind-out-file=");
                 let callgrind_out_path = if let Some(modifier) = modifier {
                     output_path.with_modifiers([modifier.as_ref()])
+                } else if self.trace_children {
+                    output_path.with_modifiers(["#%p"])
                 } else {
                     output_path.clone()
                 };
@@ -98,6 +150,8 @@ impl ToolArgs {
                 let mut arg = OsString::from("--massif-out-file=");
                 let massif_out_path = if let Some(modifier) = modifier {
                     output_path.with_modifiers([modifier.as_ref()])
+                } else if self.trace_children {
+                    output_path.with_modifiers(["#%p"])
                 } else {
                     output_path.clone()
                 };
@@ -108,6 +162,8 @@ impl ToolArgs {
                 let mut arg = OsString::from("--dhat-out-file=");
                 let dhat_out_path = if let Some(modifier) = modifier {
                     output_path.with_modifiers([modifier.as_ref()])
+                } else if self.trace_children {
+                    output_path.with_modifiers(["#%p"])
                 } else {
                     output_path.clone()
                 };
@@ -121,6 +177,11 @@ impl ToolArgs {
                     (
                         output_path.with_modifiers(["bb", modifier.as_ref()]),
                         output_path.with_modifiers(["pc", modifier.as_ref()]),
+                    )
+                } else if self.trace_children {
+                    (
+                        output_path.with_modifiers(["bb", "#%p"]),
+                        output_path.with_modifiers(["pc", "#%p"]),
                     )
                 } else {
                     (
@@ -146,6 +207,8 @@ impl ToolArgs {
             output_path
                 .to_log_output()
                 .with_modifiers([modifier.as_ref()])
+        } else if self.trace_children {
+            output_path.to_log_output().with_modifiers(["#%p"])
         } else {
             output_path.to_log_output()
         };
@@ -159,6 +222,12 @@ impl ToolArgs {
 
         vec.push(format!("--tool={}", self.tool.id()).into());
         vec.push(format!("--error-exitcode={}", &self.error_exitcode).into());
+        vec.push(format!("--trace-children={}", &bool_to_yesno(self.trace_children)).into());
+        vec.push(format!("--fair-sched={}", self.fair_sched).into());
+        if self.verbose {
+            vec.push("--verbose".into());
+        }
+
         vec.extend(self.other.iter().map(OsString::from));
         vec.extend_from_slice(&self.output_paths);
         if let Some(log_arg) = self.log_path.as_ref() {

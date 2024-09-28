@@ -1,10 +1,102 @@
 pub mod assert;
 pub mod common;
-pub mod serde_rust_version;
+pub mod serde;
 
 use std::ffi::OsStr;
 use std::io;
 use std::process::Output;
+
+pub fn is_prime(num: u64) -> bool {
+    if num <= 1 {
+        return false;
+    }
+
+    for i in 2..=(num as f64).sqrt() as u64 {
+        if num % i == 0 {
+            return false;
+        }
+    }
+
+    true
+}
+
+#[inline(never)]
+pub fn find_primes(low: u64, high: u64) -> Vec<u64> {
+    (low..=high).filter(|n| is_prime(*n)).collect()
+}
+
+pub fn find_primes_multi_thread(num_threads: usize) -> Vec<u64> {
+    let mut handles = vec![];
+    let mut low = 0;
+    for _ in 0..num_threads {
+        let handle = std::thread::spawn(move || find_primes(low, low + 10000));
+        handles.push(handle);
+
+        low += 10000;
+    }
+
+    let mut primes = vec![];
+    for handle in handles {
+        let result = handle.join();
+        primes.extend(result.unwrap())
+    }
+
+    println!(
+        "Number of primes found in the range 0 to {low}: {}",
+        primes.len()
+    );
+
+    primes
+}
+
+pub fn find_primes_multi_thread_with_instrumentation(num_threads: usize) -> Vec<u64> {
+    let mut handles = vec![];
+    let mut low = 0;
+    for _ in 0..num_threads {
+        let handle = std::thread::spawn(move || {
+            iai_callgrind::client_requests::callgrind::start_instrumentation();
+            let result = find_primes(low, low + 10000);
+            iai_callgrind::client_requests::callgrind::stop_instrumentation();
+            result
+        });
+        handles.push(handle);
+
+        low += 10000;
+    }
+
+    let mut primes = vec![];
+    for handle in handles {
+        let result = handle.join();
+        primes.extend(result.unwrap())
+    }
+
+    println!(
+        "Number of primes found in the range 0 to {low}: {}",
+        primes.len()
+    );
+
+    primes
+}
+
+pub fn thread_in_thread_with_instrumentation() -> Vec<u64> {
+    let low = 0;
+    let high = 10000;
+    let handle = std::thread::spawn(move || {
+        iai_callgrind::client_requests::callgrind::start_instrumentation();
+        let handle = std::thread::spawn(move || find_primes(low, high));
+        let joined = handle.join().unwrap();
+        iai_callgrind::client_requests::callgrind::stop_instrumentation();
+        joined
+    });
+    let primes = handle.join().unwrap();
+
+    println!(
+        "thread in thread: Number of primes found in the range {low} to {high}: {}",
+        primes.len()
+    );
+
+    primes
+}
 
 // This function is used to create a worst case array we want to sort with our implementation of
 // bubble sort

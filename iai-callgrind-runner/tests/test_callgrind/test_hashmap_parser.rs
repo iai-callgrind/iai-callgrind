@@ -1,5 +1,6 @@
 use iai_callgrind_runner::runner::callgrind::hashmap_parser::{CallgrindMap, HashMapParser};
-use iai_callgrind_runner::runner::tool::{Parser, ToolOutputPathKind, ValgrindTool};
+use iai_callgrind_runner::runner::callgrind::parser::CallgrindParser;
+use iai_callgrind_runner::runner::tool::{ToolOutputPathKind, ValgrindTool};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 
@@ -47,7 +48,8 @@ fn test_valid_just_main() {
 
     let actual_map = parser.parse(&output).unwrap();
 
-    assert_eq!(actual_map, expected_map);
+    assert_eq!(actual_map.len(), 1);
+    assert_eq!(actual_map[0].2, expected_map);
 }
 
 #[rstest]
@@ -65,5 +67,6 @@ fn test_when_no_records(#[case] name: &str) {
 
     let actual_map = parser.parse(&output).unwrap();
 
-    assert_eq!(actual_map, expected_map);
+    assert_eq!(actual_map.len(), 1);
+    assert_eq!(actual_map[0].2, expected_map);
 }

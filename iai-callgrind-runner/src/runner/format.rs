@@ -1,25 +1,108 @@
 use std::borrow::Cow;
 use std::fmt::{Display, Write};
+use std::path::PathBuf;
 
 use anyhow::Result;
 use colored::{ColoredString, Colorize};
 
 use super::args::NoCapture;
 use super::bin_bench::BinBench;
-use super::common::ModulePath;
+use super::common::{Config, ModulePath};
 use super::lib_bench::LibBench;
 use super::meta::Metadata;
-use super::summary::{CostsDiff, CostsSummary};
+use super::summary::{MetricsDiff, SegmentDetails, ToolMetricSummary, ToolRun};
 use super::tool::ValgrindTool;
-use crate::api::{self, EventKind};
-use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8};
+use crate::api::{self, DhatMetricKind, ErrorMetricKind, EventKind};
+use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8, EitherOrBoth};
 
+/// The subset of callgrind metrics to format in the given order
+pub const CALLGRIND_DEFAULT: [EventKind; 21] = [
+    EventKind::Ir,
+    EventKind::L1hits,
+    EventKind::LLhits,
+    EventKind::RamHits,
+    EventKind::TotalRW,
+    EventKind::EstimatedCycles,
+    EventKind::SysCount,
+    EventKind::SysTime,
+    EventKind::SysCpuTime,
+    EventKind::Ge,
+    EventKind::Bc,
+    EventKind::Bcm,
+    EventKind::Bi,
+    EventKind::Bim,
+    EventKind::ILdmr,
+    EventKind::DLdmr,
+    EventKind::DLdmw,
+    EventKind::AcCost1,
+    EventKind::AcCost2,
+    EventKind::SpLoss1,
+    EventKind::SpLoss2,
+];
+
+/// The error metrics to format in the given order
+pub const ERROR_METRICS_DEFAULT: [ErrorMetricKind; 4] = [
+    ErrorMetricKind::Errors,
+    ErrorMetricKind::Contexts,
+    ErrorMetricKind::SuppressedErrors,
+    ErrorMetricKind::SuppressedContexts,
+];
+
+/// The subset of dhat metrics to format in the given order
+pub const DHAT_DEFAULT: [DhatMetricKind; 8] = [
+    DhatMetricKind::TotalBytes,
+    DhatMetricKind::TotalBlocks,
+    DhatMetricKind::AtTGmaxBytes,
+    DhatMetricKind::AtTGmaxBlocks,
+    DhatMetricKind::AtTEndBytes,
+    DhatMetricKind::AtTEndBlocks,
+    DhatMetricKind::ReadsBytes,
+    DhatMetricKind::WritesBytes,
+];
+
+/// The string used to signal that a value is not available
 pub const NOT_AVAILABLE: &str = "N/A";
 
-pub struct ComparisonHeader {
-    pub function_name: String,
-    pub id: String,
-    pub details: Option<String>,
+pub trait Formatter {
+    fn format_single(
+        &self,
+        baselines: (Option<String>, Option<String>),
+        details: Option<&EitherOrBoth<SegmentDetails>>,
+        metrics_summary: &ToolMetricSummary,
+    ) -> Result<String>;
+
+    fn format(
+        &self,
+        config: &Config,
+        output_format: &OutputFormat,
+        baselines: (Option<String>, Option<String>),
+        tool_run: &ToolRun,
+    ) -> Result<String>;
+
+    fn print(
+        &self,
+        config: &Config,
+        output_format: &OutputFormat,
+        baselines: (Option<String>, Option<String>),
+        tool_run: &ToolRun,
+    ) -> Result<()> {
+        if output_format.is_default() {
+            print!(
+                "{}",
+                self.format(config, output_format, baselines, tool_run)?
+            );
+        }
+        Ok(())
+    }
+
+    fn print_comparison(
+        &self,
+        function_name: &str,
+        id: &str,
+        details: Option<&str>,
+        metrics_summary: &ToolMetricSummary,
+        output_format: &OutputFormat,
+    ) -> Result<()>;
 }
 
 pub struct BinaryBenchmarkHeader {
@@ -28,33 +111,16 @@ pub struct BinaryBenchmarkHeader {
     output_format: OutputFormat,
 }
 
+pub struct ComparisonHeader {
+    pub function_name: String,
+    pub id: String,
+    pub details: Option<String>,
+}
+
 struct Header {
     module_path: String,
     id: Option<String>,
     description: Option<String>,
-}
-
-pub trait Formatter {
-    fn format_float(float: f64, unit: &str) -> ColoredString {
-        let signed_short = to_string_signed_short(float);
-        if float.is_infinite() {
-            if float.is_sign_positive() {
-                format!("{signed_short:+^9}").bright_red().bold()
-            } else {
-                format!("{signed_short:-^9}").bright_green().bold()
-            }
-        } else if float.is_sign_positive() {
-            format!("{signed_short:^+8}{unit}").bright_red().bold()
-        } else {
-            format!("{signed_short:^+8}{unit}").bright_green().bold()
-        }
-    }
-
-    fn format(
-        &self,
-        baselines: (Option<String>, Option<String>),
-        costs_summary: &CostsSummary,
-    ) -> Result<String>;
 }
 
 pub struct LibraryBenchmarkHeader {
@@ -63,17 +129,23 @@ pub struct LibraryBenchmarkHeader {
     output_format: OutputFormat,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
-pub enum OutputFormat {
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum OutputFormatKind {
+    #[default]
     Default,
     Json,
     PrettyJson,
 }
 
-#[derive(Clone)]
-pub struct VerticalFormat {
-    event_kinds: Vec<EventKind>,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OutputFormat {
+    pub kind: OutputFormatKind,
+    pub truncate_description: Option<usize>,
+    pub show_intermediate: bool,
 }
+
+#[derive(Debug, Clone)]
+pub struct VerticalFormat;
 
 impl BinaryBenchmarkHeader {
     pub fn new(meta: &Metadata, bin_bench: &BinBench) -> Self {
@@ -107,15 +179,15 @@ impl BinaryBenchmarkHeader {
                 &bin_bench.module_path,
                 bin_bench.id.clone(),
                 Some(description),
-                bin_bench.truncate_description,
+                &bin_bench.output_format,
             ),
             has_tools_enabled: bin_bench.tools.has_tools_enabled(),
-            output_format: meta.args.output_format,
+            output_format: bin_bench.output_format,
         }
     }
 
     pub fn print(&self) {
-        if self.output_format == OutputFormat::Default {
+        if self.output_format.kind == OutputFormatKind::Default {
             self.inner.print();
             if self.has_tools_enabled {
                 println!("{}", tool_headline(ValgrindTool::Callgrind));
@@ -174,13 +246,13 @@ impl Header {
         module_path: &ModulePath,
         id: T,
         description: Option<String>,
-        truncate_description: Option<usize>,
+        output_format: &OutputFormat,
     ) -> Self
     where
         T: Into<Option<String>>,
     {
-        let truncated =
-            description.map(|d| self::truncate_description(&d, truncate_description).to_string());
+        let truncated = description
+            .map(|d| truncate_description(&d, output_format.truncate_description).to_string());
 
         Self {
             module_path: module_path.to_string(),
@@ -195,14 +267,15 @@ impl Header {
 
     pub fn to_title(&self) -> String {
         let mut output = String::new();
-        write!(&mut output, "{}", self.module_path).unwrap();
+
+        write!(output, "{}", self.module_path).unwrap();
         if let Some(id) = &self.id {
             match &self.description {
                 Some(description) if !description.is_empty() => {
-                    write!(&mut output, " {id}:{description}").unwrap();
+                    write!(output, " {id}:{description}").unwrap();
                 }
                 _ => {
-                    write!(&mut output, " {id}").unwrap();
+                    write!(output, " {id}").unwrap();
                 }
             }
         }
@@ -213,6 +286,7 @@ impl Header {
 impl Display for Header {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.module_path.green()))?;
+
         if let Some(id) = &self.id {
             match &self.description {
                 Some(description) if !description.is_empty() => {
@@ -240,23 +314,23 @@ impl Display for Header {
 }
 
 impl LibraryBenchmarkHeader {
-    pub fn new(meta: &Metadata, lib_bench: &LibBench) -> Self {
+    pub fn new(lib_bench: &LibBench) -> Self {
         let header = Header::new(
             &lib_bench.module_path,
             lib_bench.id.clone(),
             lib_bench.args.clone(),
-            lib_bench.truncate_description,
+            &lib_bench.output_format,
         );
 
         Self {
             inner: header,
             has_tools_enabled: lib_bench.tools.has_tools_enabled(),
-            output_format: meta.args.output_format,
+            output_format: lib_bench.output_format,
         }
     }
 
     pub fn print(&self) {
-        if self.output_format == OutputFormat::Default {
+        if self.output_format.is_default() {
             self.inner.print();
             if self.has_tools_enabled {
                 println!("{}", tool_headline(ValgrindTool::Callgrind));
@@ -273,69 +347,351 @@ impl LibraryBenchmarkHeader {
     }
 }
 
-impl VerticalFormat {
-    pub fn print(
-        &self,
-        meta: &Metadata,
-        baselines: (Option<String>, Option<String>),
-        costs_summary: &CostsSummary,
-    ) -> Result<()> {
-        if meta.args.output_format == OutputFormat::Default {
-            print!("{}", self.format(baselines, costs_summary)?);
-        }
-        Ok(())
+impl OutputFormat {
+    pub fn is_default(&self) -> bool {
+        self.kind == OutputFormatKind::Default
+    }
+
+    pub fn is_json(&self) -> bool {
+        self.kind == OutputFormatKind::Json || self.kind == OutputFormatKind::PrettyJson
     }
 }
 
-impl Default for VerticalFormat {
-    fn default() -> Self {
-        use EventKind::*;
+impl From<api::OutputFormat> for OutputFormat {
+    fn from(value: api::OutputFormat) -> Self {
         Self {
-            event_kinds: vec![
-                Ir,
-                L1hits,
-                LLhits,
-                RamHits,
-                TotalRW,
-                EstimatedCycles,
-                SysCount,
-                SysTime,
-                SysCpuTime,
-                Ge,
-                Bc,
-                Bcm,
-                Bi,
-                Bim,
-                ILdmr,
-                DLdmr,
-                DLdmw,
-                AcCost1,
-                AcCost2,
-                SpLoss1,
-                SpLoss2,
-            ],
+            kind: OutputFormatKind::Default,
+            truncate_description: value.truncate_description.unwrap_or(Some(50)),
+            show_intermediate: value.show_intermediate.unwrap_or(false),
+        }
+    }
+}
+
+impl Default for OutputFormat {
+    fn default() -> Self {
+        Self {
+            kind: OutputFormatKind::default(),
+            truncate_description: Some(50),
+            show_intermediate: false,
         }
     }
 }
 
 impl Formatter for VerticalFormat {
-    fn format(
+    fn format_single(
         &self,
         baselines: (Option<String>, Option<String>),
-        costs_summary: &CostsSummary,
+        details: Option<&EitherOrBoth<SegmentDetails>>,
+        metrics_summary: &ToolMetricSummary,
     ) -> Result<String> {
-        format_vertical(
-            baselines,
-            self.event_kinds
-                .iter()
-                .filter_map(|e| costs_summary.diff_by_kind(e).map(|d| (e, d))),
-        )
+        match metrics_summary {
+            ToolMetricSummary::None => {
+                let mut result = String::new();
+                if let Some(info) = details {
+                    if let Some(new) = info.left() {
+                        result = new
+                            .details
+                            .as_ref()
+                            .map_or_else(String::new, |d| format_details(d));
+                    }
+                }
+                Ok(result)
+            }
+            ToolMetricSummary::ErrorSummary(summary) => {
+                let mut formatted = format_vertical(
+                    (None, None),
+                    ERROR_METRICS_DEFAULT
+                        .iter()
+                        .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+                )?;
+
+                // TODO: Check for `old` errors too?
+                // We only check for `new` errors
+                if let Some(info) = details {
+                    if summary
+                        .diff_by_kind(&ErrorMetricKind::Errors)
+                        .map_or(false, |e| e.metrics.left().map_or(false, |l| *l > 0))
+                    {
+                        if let Some(new) = info.left() {
+                            if let Some(details) = new.details.as_ref() {
+                                write!(formatted, "{}", format_details(details)).unwrap();
+                            }
+                        }
+                    }
+                }
+
+                Ok(formatted)
+            }
+            ToolMetricSummary::DhatSummary(summary) => format_vertical(
+                (None, None),
+                DHAT_DEFAULT
+                    .iter()
+                    .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+            ),
+            ToolMetricSummary::CallgrindSummary(summary) => format_vertical(
+                baselines,
+                CALLGRIND_DEFAULT
+                    .iter()
+                    .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+            ),
+        }
+    }
+
+    fn format(
+        &self,
+        config: &Config,
+        output_format: &OutputFormat,
+        baselines: (Option<String>, Option<String>),
+        tool_run: &ToolRun,
+    ) -> Result<String> {
+        let mut result = String::new();
+
+        if tool_run.has_multiple() && output_format.show_intermediate {
+            let mut first = true;
+            for segment in &tool_run.segments {
+                writeln!(result, "{}", multiple_files_header(&segment.details))?;
+
+                let formatted_command =
+                    format_command(config, &segment.details.as_ref().map(|i| &i.command));
+                write!(result, "{formatted_command}").unwrap();
+
+                if first {
+                    write!(
+                        result,
+                        "{}",
+                        self.format_single(
+                            baselines.clone(),
+                            Some(&segment.details),
+                            &segment.metrics_summary
+                        )?
+                    )
+                    .unwrap();
+                    first = false;
+                } else {
+                    write!(
+                        result,
+                        "{}",
+                        self.format_single(
+                            (None, None),
+                            Some(&segment.details),
+                            &segment.metrics_summary
+                        )?
+                    )
+                    .unwrap();
+                }
+            }
+
+            if tool_run.total.is_some() {
+                writeln!(result, "{}", tool_total_header())?;
+                write!(
+                    result,
+                    "{}",
+                    self.format_single((None, None), None, &tool_run.total)?
+                )
+                .unwrap();
+            }
+        } else if tool_run.total.is_some() {
+            write!(
+                result,
+                "{}",
+                self.format_single(baselines, None, &tool_run.total)?
+            )
+            .unwrap();
+        } else if tool_run.total.is_none() && !tool_run.segments.is_empty() {
+            // Since there is no total, show_all is partly ignored and we show all data in an little
+            // bit more aggregated form without the multiple files headlines. This affects currently
+            // the output of `Massif` and `BBV`.
+            for segment in &tool_run.segments {
+                let formatted_command =
+                    format_command(config, &segment.details.as_ref().map(|i| &i.command));
+
+                write!(result, "{formatted_command}").unwrap();
+
+                if let Some(new) = segment.details.left() {
+                    if let Some(details) = &new.details {
+                        let formatted = format_details(details);
+                        write!(result, "{formatted}").unwrap();
+                    }
+                }
+            }
+        } else {
+            // no data to show
+        }
+
+        Ok(result)
+    }
+
+    fn print_comparison(
+        &self,
+        function_name: &str,
+        id: &str,
+        details: Option<&str>,
+        metrics_summary: &ToolMetricSummary,
+        output_format: &OutputFormat,
+    ) -> Result<()> {
+        if output_format.is_default() {
+            ComparisonHeader::new(function_name, id, details).print();
+
+            let formatted = self.format_single((None, None), None, metrics_summary)?;
+            print!("{formatted}");
+        }
+
+        Ok(())
     }
 }
 
-pub fn format_vertical<'a, K: Display + 'a>(
+fn format_command(config: &Config, command: &EitherOrBoth<&String>) -> String {
+    let mut result = String::new();
+    match command {
+        EitherOrBoth::Left(new) => {
+            if new.starts_with(&config.bench_bin.display().to_string()) {
+                writeln!(
+                    result,
+                    "  {:<20}{}",
+                    "Command:",
+                    make_relative(&config.meta.project_root, &config.bench_bin)
+                        .to_string_lossy()
+                        .blue()
+                        .bold()
+                )
+                .unwrap();
+            } else {
+                writeln!(
+                    result,
+                    "  {:<20}{}",
+                    "Command:",
+                    make_relative(&config.meta.project_root, PathBuf::from(new))
+                        .to_string_lossy()
+                        .blue()
+                        .bold()
+                )
+                .unwrap();
+            }
+        }
+        EitherOrBoth::Right(old) => {
+            if old.starts_with(&config.bench_bin.display().to_string()) {
+                writeln!(
+                    result,
+                    "  {:<20}{}|{}",
+                    "Command:",
+                    " ".repeat(15),
+                    make_relative(&config.meta.project_root, &config.bench_bin)
+                        .to_string_lossy()
+                        .to_string()
+                        .blue()
+                )
+                .unwrap();
+            } else {
+                writeln!(
+                    result,
+                    "  {:<20}{}|{}",
+                    "Command:",
+                    " ".repeat(15),
+                    make_relative(&config.meta.project_root, PathBuf::from(old))
+                        .to_string_lossy()
+                        .blue()
+                )
+                .unwrap();
+            }
+        }
+        EitherOrBoth::Both(new, old) => {
+            if new == old {
+                if new.starts_with(&config.bench_bin.display().to_string()) {
+                    writeln!(
+                        result,
+                        "  {:<20}{}",
+                        "Command:",
+                        make_relative(&config.meta.project_root, &config.bench_bin)
+                            .to_string_lossy()
+                            .blue()
+                            .bold()
+                    )
+                    .unwrap();
+                } else {
+                    writeln!(
+                        result,
+                        "  {:<20}{}",
+                        "Command:",
+                        make_relative(&config.meta.project_root, PathBuf::from(new))
+                            .to_string_lossy()
+                            .blue()
+                            .bold()
+                    )
+                    .unwrap();
+                }
+            } else {
+                let new_command = if new.starts_with(&config.bench_bin.display().to_string()) {
+                    make_relative(&config.meta.project_root, &config.bench_bin)
+                        .to_string_lossy()
+                        .to_string()
+                } else {
+                    make_relative(&config.meta.project_root, PathBuf::from(new))
+                        .to_string_lossy()
+                        .to_string()
+                };
+                let old_command = if old.starts_with(&config.bench_bin.display().to_string()) {
+                    make_relative(&config.meta.project_root, &config.bench_bin)
+                        .to_string_lossy()
+                        .to_string()
+                } else {
+                    make_relative(&config.meta.project_root, PathBuf::from(old))
+                        .display()
+                        .to_string()
+                };
+
+                let split = format_split("Command:", new_command.blue().bold(), old_command.blue());
+                writeln!(result, "{split}").unwrap();
+            }
+        }
+    }
+    result
+}
+
+fn format_details(details: &str) -> String {
+    let mut result = String::new();
+    let mut details = details.lines();
+    if let Some(head_line) = details.next() {
+        writeln!(result, "  {:<20}{}", "Details:", head_line).unwrap();
+        for body_line in details {
+            if body_line.is_empty() {
+                writeln!(result).unwrap();
+            } else {
+                writeln!(result, "  {}{body_line}", " ".repeat(20)).unwrap();
+            }
+        }
+    }
+    result
+}
+
+fn format_split<T, U>(name: U, left: T, right: T) -> String
+where
+    T: Display,
+    U: Display,
+{
+    let mut result = String::new();
+    writeln!(result, "  {name:<20}{left}").unwrap();
+    write!(result, "  {}|{right}", " ".repeat(35)).unwrap();
+    result
+}
+
+pub fn format_float(float: f64, unit: &str) -> ColoredString {
+    let signed_short = to_string_signed_short(float);
+    if float.is_infinite() {
+        if float.is_sign_positive() {
+            format!("{signed_short:+^9}").bright_red().bold()
+        } else {
+            format!("{signed_short:-^9}").bright_green().bold()
+        }
+    } else if float.is_sign_positive() {
+        format!("{signed_short:^+8}{unit}").bright_red().bold()
+    } else {
+        format!("{signed_short:^+8}{unit}").bright_green().bold()
+    }
+}
+
+pub fn format_vertical<'a, K: Display>(
     baselines: (Option<String>, Option<String>),
-    costs_summary: impl Iterator<Item = (&'a K, &'a CostsDiff)>,
+    metrics: impl Iterator<Item = (K, &'a MetricsDiff)>,
 ) -> Result<String> {
     let mut result = String::new();
 
@@ -345,73 +701,129 @@ pub fn format_vertical<'a, K: Display + 'a>(
     match baselines {
         (None, None) => {}
         (None, Some(base)) => {
-            writeln!(result, "  {:<33}|{base}", "Baselines:").unwrap();
+            writeln!(result, "  {:<35}|{base}", "Baselines:").unwrap();
         }
         (Some(base), None) => {
-            writeln!(result, "  {:<18}{:>15}", "Baselines:", base.bold()).unwrap();
+            writeln!(result, "  {:<20}{:>15}", "Baselines:", base.bold()).unwrap();
         }
         (Some(new), Some(old)) => {
-            writeln!(result, "  {:<18}{:>15}|{old}", "Baselines:", new.bold()).unwrap();
+            writeln!(result, "  {:<20}{:>15}|{old}", "Baselines:", new.bold()).unwrap();
         }
     }
 
-    for (event_kind, diff) in costs_summary {
-        let description = format!("{event_kind}:");
-        match (diff.new, diff.old) {
-            (None, Some(old_cost)) => writeln!(
+    for (metric_kind, diff) in metrics {
+        let description = format!("{metric_kind}:");
+        match diff.metrics {
+            EitherOrBoth::Left(new_cost) => writeln!(
                 result,
-                "  {description:<18}{:>15}|{old_cost:<15} ({:^9})",
+                "  {description:<20}{:>15}|{NOT_AVAILABLE:<15} ({:^9})",
+                new_cost.to_string().bold(),
+                unknown.bright_black()
+            )?,
+            EitherOrBoth::Right(old_cost) => writeln!(
+                result,
+                "  {description:<20}{:>15}|{old_cost:<15} ({:^9})",
                 NOT_AVAILABLE.bold(),
                 unknown.bright_black()
             )?,
-            (Some(new_cost), None) => writeln!(
+            EitherOrBoth::Both(new_cost, old_cost) if new_cost == old_cost => writeln!(
                 result,
-                "  {description:<18}{:>15}|{NOT_AVAILABLE:<15} ({:^9})",
-                new_cost.to_string().bold(),
-                unknown.bright_black()
-            )?,
-            (Some(new_cost), Some(old_cost)) if new_cost == old_cost => writeln!(
-                result,
-                "  {description:<18}{:>15}|{old_cost:<15} ({:^9})",
+                "  {description:<20}{:>15}|{old_cost:<15} ({:^9})",
                 new_cost.to_string().bold(),
                 no_change.bright_black()
             )?,
-            (Some(new_cost), Some(old_cost)) => {
-                let pct_string = {
-                    let pct = diff.diff_pct.expect(
-                        "If there are new costs and old costs there should be a difference in \
-                         percent",
-                    );
-                    VerticalFormat::format_float(pct, "%")
-                };
-                let factor_string = {
-                    let factor = diff.factor.expect(
-                        "If there are new costs and old costs there should be a difference factor",
-                    );
-                    VerticalFormat::format_float(factor, "x")
-                };
+            EitherOrBoth::Both(new_cost, old_cost) => {
+                let diffs = diff.diffs.expect(
+                    "If there are new metrics and old metrics there should be a difference present",
+                );
+                let pct_string = format_float(diffs.diff_pct, "%");
+                let factor_string = format_float(diffs.factor, "x");
                 writeln!(
                     result,
-                    "  {description:<18}{:>15}|{old_cost:<15} ({pct_string:^9}) \
+                    "  {description:<20}{:>15}|{old_cost:<15} ({pct_string:^9}) \
                      [{factor_string:^9}]",
                     new_cost.to_string().bold(),
                 )?;
             }
-            _ => {}
         }
     }
     Ok(result)
 }
 
-pub fn tool_headline(tool: ValgrindTool) -> String {
-    let id = tool.id();
-    format!(
-        "  {} {} {}",
-        "=======".bright_black(),
-        id.to_ascii_uppercase(),
-        "=".repeat(64 - id.len()).bright_black(),
-        // "=".repeat(34 - tool.id().len()).bright_black()
-    )
+pub fn multiple_files_header(details: &EitherOrBoth<SegmentDetails>) -> String {
+    fn fields(detail: &SegmentDetails) -> String {
+        let mut result = String::new();
+        write!(result, "pid: {}", detail.pid).unwrap();
+
+        if let Some(ppid) = detail.parent_pid {
+            write!(result, " ppid: {ppid}").unwrap();
+        }
+        if let Some(part) = detail.part {
+            write!(result, " part: {part}").unwrap();
+        }
+        if let Some(thread) = detail.thread {
+            write!(result, " thread: {thread}").unwrap();
+        }
+        result
+    }
+
+    let mut result = String::new();
+    write!(result, "  {} ", "##".yellow()).unwrap();
+
+    let max_left = 33;
+    match details {
+        EitherOrBoth::Left(new) => {
+            let left = fields(new);
+            let len = left.len();
+            let left = left.bold();
+
+            if len > max_left {
+                write!(
+                    result,
+                    "{left}\n{}|{NOT_AVAILABLE}",
+                    " ".repeat(max_left + 4).yellow()
+                )
+                .unwrap();
+            } else {
+                write!(
+                    result,
+                    "{left}{}|{NOT_AVAILABLE}",
+                    " ".repeat(max_left - len - 1)
+                )
+                .unwrap();
+            }
+        }
+        EitherOrBoth::Right(old) => {
+            let right = fields(old);
+
+            write!(
+                result,
+                "{}{}|{right}",
+                NOT_AVAILABLE.bold(),
+                " ".repeat(max_left - NOT_AVAILABLE.len() - 1)
+            )
+            .unwrap();
+        }
+        EitherOrBoth::Both(new, old) => {
+            let left = fields(new);
+            let len = left.len();
+            let right = fields(old);
+            let left = left.bold();
+
+            if len > max_left {
+                write!(
+                    result,
+                    "{left}\n{}|{right}",
+                    " ".repeat(max_left + 4).yellow()
+                )
+                .unwrap();
+            } else {
+                write!(result, "{left}{}|{right}", " ".repeat(max_left - len - 1)).unwrap();
+            }
+        }
+    }
+
+    result
 }
 
 // Return the formatted `String` if `NoCapture` is not `False`
@@ -459,6 +871,20 @@ pub fn print_no_capture_footer(
     }
 }
 
+pub fn tool_headline(tool: ValgrindTool) -> String {
+    let id = tool.id();
+    format!(
+        "  {} {} {}",
+        "=======".bright_black(),
+        id.to_ascii_uppercase(),
+        "=".repeat(66 - id.len()).bright_black(),
+    )
+}
+
+pub fn tool_total_header() -> String {
+    format!("  {} Total", "##".yellow())
+}
+
 fn truncate_description(description: &str, truncate_description: Option<usize>) -> Cow<'_, str> {
     if let Some(num) = truncate_description {
         let new_description = truncate_str_utf8(description, num);
@@ -479,7 +905,7 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
-    use crate::runner::costs::Costs;
+    use crate::runner::metrics::Metrics;
 
     #[rstest]
     #[case::simple("some::module", Some("id"), Some("1, 2"), "some::module id:1, 2")]
@@ -502,11 +928,15 @@ mod tests {
     ) {
         colored::control::set_override(false);
 
+        let output_format = OutputFormat {
+            truncate_description: None,
+            ..Default::default()
+        };
         let header = Header::new(
             &ModulePath::new(module_path),
             id.map(ToOwned::to_owned),
             description.map(ToOwned::to_owned),
-            None,
+            &output_format,
         );
 
         assert_eq!(header.to_string(), expected);
@@ -641,18 +1071,21 @@ mod tests {
     ) {
         colored::control::set_override(false);
 
+        let output_format = OutputFormat {
+            truncate_description,
+            ..Default::default()
+        };
+
         let header = Header::new(
             &ModulePath::new(module_path),
             id.map(ToOwned::to_owned),
             description.map(ToOwned::to_owned),
-            truncate_description,
+            &output_format,
         );
 
         assert_eq!(header.to_string(), expected);
     }
 
-    // TODO: Add more tests for the format. This tests only very basically only a single line and if
-    // new costs are present.
     #[rstest]
     #[case::new_costs_0(EventKind::Ir, 0, None, "*********", None)]
     #[case::old_costs_0(EventKind::Ir, 1, Some(0), "+++inf+++", Some("+++inf+++"))]
@@ -672,15 +1105,22 @@ mod tests {
         #[case] diff_pct: &str,
         #[case] diff_fact: Option<&str>,
     ) {
+        use crate::runner::summary::MetricsSummary;
+
         colored::control::set_override(false);
 
-        let new_costs = Costs(indexmap! {event_kind => new});
-        let old_costs = old.map(|old| Costs(indexmap! {event_kind => old}));
-        let costs_summary = CostsSummary::new(&new_costs, old_costs.as_ref());
-        let formatted = format_vertical((None, None), costs_summary.all_diffs()).unwrap();
+        let costs = match old {
+            Some(old) => EitherOrBoth::Both(
+                Metrics(indexmap! {event_kind => new}),
+                Metrics(indexmap! {event_kind => old}),
+            ),
+            None => EitherOrBoth::Left(Metrics(indexmap! {event_kind => new})),
+        };
+        let metrics_summary = MetricsSummary::new(costs);
+        let formatted = format_vertical((None, None), metrics_summary.all_diffs()).unwrap();
 
         let expected = format!(
-            "  {:<18}{new:>15}|{:<15} ({diff_pct}){}\n",
+            "  {:<20}{new:>15}|{:<15} ({diff_pct}){}\n",
             format!("{event_kind}:"),
             old.map_or(NOT_AVAILABLE.to_owned(), |o| o.to_string()),
             diff_fact.map_or_else(String::new, |f| format!(" [{f}]"))

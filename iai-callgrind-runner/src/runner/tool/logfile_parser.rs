@@ -1,19 +1,20 @@
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
+use itertools::Itertools;
 use lazy_static::lazy_static;
 use log::debug;
 use regex::Regex;
 
+use super::error_metric_parser::ErrorMetricLogfileParser;
+use super::generic_parser::GenericLogfileParser;
 use super::{ToolOutputPath, ValgrindTool};
 use crate::error::Error;
-use crate::runner::costs::Costs;
 use crate::runner::dhat::logfile_parser::DhatLogfileParser;
-use crate::runner::summary::{CostsSummary, ErrorSummary, ToolRunSummary};
-use crate::util::make_relative;
+use crate::runner::summary::{
+    SegmentDetails, ToolMetricSummary, ToolMetrics, ToolRun, ToolRunSegment,
+};
+use crate::util::EitherOrBoth;
 
 // The different regex have to consider --time-stamp=yes
 lazy_static! {
@@ -30,257 +31,236 @@ lazy_static! {
     static ref EXTRACT_PID_RE: Regex =
         regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?(?<pid>[0-9]+)(==|--).*")
             .expect("Regex should compile");
-    static ref EXTRACT_ERRORS_RE: Regex =
-        regex::Regex::new(r"^.*?(?<errors>[0-9]+).*$").expect("Regex should compile");
-    static ref EXTRACT_ERROR_SUMMARY_RE: Regex = regex::Regex::new(
-        r"^.*?(?<err>[0-9]+).*(<?<ctxs>[0-9]+).*(<?<s_err>[0-9]+).*(<?<s_ctxs>[0-9]+)$"
-    )
-    .expect("Regex should compile");
-}
-
-pub struct ToolLogfileParser {
-    pub root_dir: PathBuf,
-}
-
-#[derive(Debug, Clone)]
-pub struct LogfileSummary {
-    pub command: PathBuf,
-    pub pid: i32,
-    pub parent_pid: Option<i32>,
-    pub fields: Vec<(String, String)>,
-    pub details: Vec<String>,
-    pub error_summary: Option<ErrorSummary>,
-    pub costs: Option<Costs<String>>,
-    pub log_path: PathBuf,
-}
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum State {
-    Header,
-    HeaderSpace,
-    Body,
 }
 
 pub trait LogfileParser {
-    fn parse_single(&self, path: PathBuf) -> Result<LogfileSummary>;
-
-    fn parse(&self, output_path: &ToolOutputPath) -> Result<Vec<LogfileSummary>> {
+    fn parse_single(&self, path: PathBuf) -> Result<Logfile>;
+    fn parse(&self, output_path: &ToolOutputPath) -> Result<Vec<Logfile>> {
         let log_path = output_path.to_log_output();
         debug!("{}: Parsing log file '{}'", output_path.tool.id(), log_path);
 
-        let mut summaries = vec![];
+        let mut logfiles = vec![];
         let Ok(paths) = log_path.real_paths() else {
             return Ok(vec![]);
         };
+
         for path in paths {
-            let summary = self.parse_single(path)?;
-            summaries.push(summary);
+            let logfile = self.parse_single(path)?;
+            logfiles.push(logfile);
         }
-        summaries.sort_by_key(|x| x.pid);
-        Ok(summaries)
-    }
 
-    fn merge_logfile_summaries(
-        &self,
-        old: Vec<LogfileSummary>,
-        new: Vec<LogfileSummary>,
-    ) -> Vec<ToolRunSummary>;
-
-    fn parse_merge(
-        &self,
-        output_path: &ToolOutputPath,
-        old: Vec<LogfileSummary>,
-    ) -> Result<Vec<ToolRunSummary>> {
-        let new = self.parse(output_path)?;
-        Ok(self.merge_logfile_summaries(old, new))
+        logfiles.sort_by_key(|x| x.header.pid);
+        Ok(logfiles)
     }
 }
 
-impl LogfileSummary {
-    fn raw_into_tool_run(self) -> ToolRunSummary {
-        ToolRunSummary {
-            command: self.command.to_string_lossy().to_string(),
-            old_pid: None,
-            old_parent_pid: None,
-            pid: None,
-            parent_pid: None,
-            summary: self.fields.into_iter().collect(),
-            details: (!self.details.is_empty()).then(|| self.details.join("\n")),
-            error_summary: self.error_summary,
-            costs_summary: None,
-            log_path: self.log_path,
-        }
-    }
-    pub fn old_into_tool_run(self) -> ToolRunSummary {
-        let costs_summary = self
-            .costs
-            .as_ref()
-            .map(|x| CostsSummary::new(&Costs::empty(), Some(x)));
-        let old_pid = Some(self.pid);
-        let old_parent_pid = self.parent_pid;
-        ToolRunSummary {
-            old_pid,
-            old_parent_pid,
-            costs_summary,
-            ..self.raw_into_tool_run()
-        }
-    }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Header {
+    pub command: String,
+    pub pid: i32,
+    pub parent_pid: Option<i32>,
+}
 
-    pub fn new_into_tool_run(self) -> ToolRunSummary {
-        let costs_summary = self.costs.as_ref().map(|x| CostsSummary::new(x, None));
-        let pid = Some(self.pid);
-        let parent_pid = self.parent_pid;
-        ToolRunSummary {
-            pid,
-            parent_pid,
-            costs_summary,
-            ..self.raw_into_tool_run()
-        }
-    }
+#[derive(Debug, Clone, PartialEq)]
+pub struct Logfile {
+    pub path: PathBuf,
+    pub header: Header,
+    pub details: Vec<String>,
+    pub metrics: ToolMetrics,
+}
 
-    pub fn merge(self, old: &LogfileSummary) -> ToolRunSummary {
-        assert_eq!(self.command, old.command);
-        let costs_summary = (self.costs.is_some() || old.costs.is_some()).then(|| {
-            let emp = Costs::empty();
-            CostsSummary::new(self.costs.as_ref().unwrap_or(&emp), old.costs.as_ref())
-        });
-        let old_pid = Some(old.pid);
-        let old_parent_pid = old.parent_pid;
-        let pid = Some(self.pid);
-        let parent_pid = self.parent_pid;
-        ToolRunSummary {
-            old_pid,
-            old_parent_pid,
-            pid,
-            parent_pid,
-            costs_summary,
-            ..self.raw_into_tool_run()
+#[derive(Debug, Clone, PartialEq)]
+pub struct LogfileSummary {
+    pub logfile: EitherOrBoth<Logfile>,
+    pub metrics_summary: ToolMetricSummary,
+}
+
+impl From<Logfile> for SegmentDetails {
+    fn from(value: Logfile) -> Self {
+        Self {
+            command: value.header.command,
+            pid: value.header.pid,
+            parent_pid: value.header.parent_pid,
+            details: (!value.details.is_empty()).then(|| value.details.join("\n")),
+            path: value.path,
+            part: None,
+            thread: None,
         }
     }
 }
-impl LogfileParser for ToolLogfileParser {
-    fn parse_single(&self, path: PathBuf) -> Result<LogfileSummary> {
-        let file = File::open(&path)
-            .with_context(|| format!("Error opening log file '{}'", path.display()))?;
 
-        let mut iter = BufReader::new(file)
-            .lines()
-            .map(std::result::Result::unwrap)
-            .skip_while(|l| l.trim().is_empty());
+// Logfiles are separated per process but not per threads by any tool
+impl From<EitherOrBoth<Vec<Logfile>>> for ToolRun {
+    fn from(logfiles: EitherOrBoth<Vec<Logfile>>) -> Self {
+        let mut total: Option<ToolMetricSummary> = None;
 
-        let line = iter
-            .next()
-            .ok_or_else(|| Error::ParseError((path.clone(), "Empty file".to_owned())))?;
-        let pid = extract_pid(&line);
-
-        let mut state = State::Header;
-        let mut command = None;
-        let mut details = vec![];
-        let mut error_summary = None;
-        let mut parent_pid = None;
-        for line in iter {
-            match &state {
-                State::Header if !EMPTY_LINE_RE.is_match(&line) => {
-                    if let Some(caps) = EXTRACT_FIELDS_RE.captures(&line) {
-                        let key = caps.name("key").unwrap().as_str();
-                        match key.to_ascii_lowercase().as_str() {
-                            "command" => {
-                                let value = caps.name("value").unwrap().as_str();
-                                command = Some(make_relative(&self.root_dir, value));
-                            }
-                            "parent pid" => {
-                                let value = caps.name("value").unwrap().as_str().to_owned();
-                                parent_pid = Some(
-                                    value
-                                        .as_str()
-                                        .parse::<i32>()
-                                        .expect("Parent PID should be valid"),
-                                );
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-                State::Header => state = State::HeaderSpace,
-                State::HeaderSpace if EMPTY_LINE_RE.is_match(&line) => {}
-                State::HeaderSpace | State::Body => {
-                    if state == State::HeaderSpace {
-                        state = State::Body;
-                    }
-                    if let Some(caps) = EXTRACT_FIELDS_RE.captures(&line) {
-                        let key = caps.name("key").unwrap().as_str();
-                        if key.eq_ignore_ascii_case("error summary") {
-                            let error_summary_value = caps.name("value").unwrap().as_str();
-                            error_summary =
-                                ErrorSummary::from_str(error_summary_value).map(Some)?;
-
-                            continue;
-                        }
-                    }
-                    if let Some(caps) = STRIP_PREFIX_RE.captures(&line) {
-                        let rest_of_line = caps.name("rest").unwrap().as_str();
-                        details.push(rest_of_line.to_owned());
+        let segments: Vec<ToolRunSegment> = match logfiles {
+            EitherOrBoth::Left(new) => new
+                .into_iter()
+                .map(|logfile| {
+                    let metrics_summary = ToolMetricSummary::from_new_metrics(&logfile.metrics);
+                    if let Some(entry) = total.as_mut() {
+                        entry.add_mut(&metrics_summary);
                     } else {
-                        details.push(line);
+                        total = Some(metrics_summary.clone());
                     }
-                }
-            }
+
+                    ToolRunSegment {
+                        details: EitherOrBoth::Left(logfile.into()),
+                        metrics_summary,
+                    }
+                })
+                .collect(),
+            EitherOrBoth::Right(old) => old
+                .into_iter()
+                .map(|logfile| {
+                    let metrics_summary = ToolMetricSummary::from_old_metrics(&logfile.metrics);
+                    if let Some(entry) = total.as_mut() {
+                        entry.add_mut(&metrics_summary);
+                    } else {
+                        total = Some(metrics_summary.clone());
+                    }
+
+                    ToolRunSegment {
+                        details: EitherOrBoth::Right(logfile.into()),
+                        metrics_summary,
+                    }
+                })
+                .collect(),
+            EitherOrBoth::Both(new, old) => new
+                .into_iter()
+                .zip_longest(old)
+                .map(|either_or_both| match either_or_both {
+                    itertools::EitherOrBoth::Both(new, old) => {
+                        let metrics_summary = ToolMetricSummary::try_from_new_and_old_metrics(
+                            &new.metrics,
+                            &old.metrics,
+                        )
+                        .expect("The cost kinds should match");
+
+                        if let Some(entry) = total.as_mut() {
+                            entry.add_mut(&metrics_summary);
+                        } else {
+                            total = Some(metrics_summary.clone());
+                        }
+
+                        ToolRunSegment {
+                            details: EitherOrBoth::Both(new.into(), old.into()),
+                            metrics_summary,
+                        }
+                    }
+                    itertools::EitherOrBoth::Left(new) => {
+                        let metrics_summary = ToolMetricSummary::from_new_metrics(&new.metrics);
+                        if let Some(entry) = total.as_mut() {
+                            entry.add_mut(&metrics_summary);
+                        } else {
+                            total = Some(metrics_summary.clone());
+                        }
+
+                        ToolRunSegment {
+                            details: EitherOrBoth::Left(new.into()),
+                            metrics_summary,
+                        }
+                    }
+                    itertools::EitherOrBoth::Right(old) => {
+                        let metrics_summary = ToolMetricSummary::from_old_metrics(&old.metrics);
+                        if let Some(entry) = total.as_mut() {
+                            entry.add_mut(&metrics_summary);
+                        } else {
+                            total = Some(metrics_summary.clone());
+                        }
+
+                        ToolRunSegment {
+                            details: EitherOrBoth::Right(old.into()),
+                            metrics_summary,
+                        }
+                    }
+                })
+                .collect(),
+        };
+
+        Self {
+            segments,
+            total: total.expect("A total should be present"),
         }
-
-        while let Some(last) = details.last() {
-            if last.trim().is_empty() {
-                details.pop();
-            } else {
-                break;
-            }
-        }
-
-        Ok(LogfileSummary {
-            command: command.expect("A command should be present"),
-            pid,
-            parent_pid,
-            fields: Vec::default(),
-            details,
-            error_summary,
-            log_path: make_relative(&self.root_dir, path),
-            costs: None,
-        })
-    }
-
-    fn merge_logfile_summaries(
-        &self,
-        _: Vec<LogfileSummary>,
-        new: Vec<LogfileSummary>,
-    ) -> Vec<ToolRunSummary> {
-        new.into_iter()
-            .map(LogfileSummary::new_into_tool_run)
-            .collect()
     }
 }
 
-pub fn extract_pid(line: &str) -> i32 {
+pub fn extract_pid(line: &str) -> Result<i32> {
     EXTRACT_PID_RE
         .captures(line.trim())
-        .expect("Log output should not be malformed")
+        .context("Log output should not be malformed")?
         .name("pid")
-        .expect("Log output should contain pid")
+        .context("Log output should contain pid")?
         .as_str()
         .parse::<i32>()
-        .expect("Pid should be valid")
+        .context("Pid should be valid")
 }
 
-impl ValgrindTool {
-    pub fn to_parser(self, root_dir: PathBuf) -> Box<dyn LogfileParser> {
-        match self {
-            ValgrindTool::DHAT => Box::new(DhatLogfileParser { root_dir }),
-            _ => Box::new(ToolLogfileParser { root_dir }),
+/// Parse the logfile header
+///
+/// The logfile header is the same for all tools
+pub fn parse_header(path: &Path, mut lines: impl Iterator<Item = String>) -> Result<Header> {
+    let next = lines.next();
+
+    let (pid, next) = if let Some(next) = next {
+        (extract_pid(&next)?, next)
+    } else {
+        return Err(Error::ParseError((path.to_owned(), "Empty file".to_owned())).into());
+    };
+
+    let mut parent_pid = None;
+    let mut command = None;
+    for line in std::iter::once(next).chain(lines) {
+        if EMPTY_LINE_RE.is_match(&line) {
+            // The header is separated from the body by at least one empty line. The first
+            // empty line is removed from the iterator.
+            break;
+        } else if let Some(caps) = EXTRACT_FIELDS_RE.captures(&line) {
+            let key = caps.name("key").unwrap().as_str();
+
+            // These unwraps are safe. If there is a key, there is also a value present
+            match key.to_ascii_lowercase().as_str() {
+                "command" => {
+                    let value = caps.name("value").unwrap().as_str();
+                    command = Some(value.to_owned());
+                }
+                "parent pid" => {
+                    let value = caps.name("value").unwrap().as_str().to_owned();
+                    parent_pid = Some(
+                        value
+                            .as_str()
+                            .parse::<i32>()
+                            .context("Failed parsing log file: Parent pid should be valid")?,
+                    );
+                }
+                _ => {
+                    // Ignore other header lines
+                }
+            }
+        } else {
+            // Some malformed header line which we ignore
         }
     }
+
+    Ok(Header {
+        command: command.with_context(|| {
+            format!(
+                "Error parsing header of logfile '{}': A command should be present",
+                path.display()
+            )
+        })?,
+        pid,
+        parent_pid,
+    })
 }
 
-impl LogfileSummary {
-    pub fn has_errors(&self) -> bool {
-        self.error_summary
-            .as_ref()
-            .map_or(false, ErrorSummary::has_errors)
+pub fn parser_factory(tool: ValgrindTool, root_dir: PathBuf) -> Box<dyn LogfileParser> {
+    match tool {
+        ValgrindTool::DHAT => Box::new(DhatLogfileParser { root_dir }),
+        ValgrindTool::Memcheck | ValgrindTool::DRD | ValgrindTool::Helgrind => {
+            Box::new(ErrorMetricLogfileParser { root_dir })
+        }
+        _ => Box::new(GenericLogfileParser { root_dir }),
     }
 }

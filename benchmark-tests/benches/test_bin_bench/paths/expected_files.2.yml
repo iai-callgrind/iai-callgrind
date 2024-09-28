@@ -14,11 +14,16 @@ data:
     id: relative
     expected:
       files:
-        - callgrind.bench_paths.relative.log
-        - callgrind.bench_paths.relative.out
-        - callgrind.bench_paths.relative.log.old
-        - callgrind.bench_paths.relative.out.old
         - summary.json
+      globs:
+        - pattern: callgrind.bench_paths.relative.*.log
+          count: 2
+        - pattern: callgrind.bench_paths.relative.*.out
+          count: 2
+        - pattern: callgrind.bench_paths.relative.*.log.old
+          count: 2
+        - pattern: callgrind.bench_paths.relative.*.out.old
+          count: 2
   - group: my_group
     function: bench_paths
     id: use_path

@@ -41,26 +41,30 @@ fn assert_none() {
     let assert = Assert::new(module_path!(), "my_group", "bench_lib", "none").unwrap();
     assert
         .summary(|b| {
-            let new_ir = b.callgrind_summary.unwrap().summaries[0]
+            let callgrind_summary = b.callgrind_summary.unwrap();
+            let new_ir = callgrind_summary.callgrind_run.segments[0]
                 .events
                 .diff_by_kind(&EventKind::Ir)
                 .unwrap()
-                .new
+                .metrics
+                .left()
                 .unwrap();
-            new_ir > 400000
+            *new_ir > 400000
         })
         .unwrap();
 }
 
 fn assert_default() {
     let check_summary = |b: BenchmarkSummary| {
-        let new_ir = b.callgrind_summary.unwrap().summaries[0]
+        let callgrind_summary = b.callgrind_summary.unwrap();
+        let new_ir = callgrind_summary.callgrind_run.segments[0]
             .events
             .diff_by_kind(&EventKind::Ir)
             .unwrap()
-            .new
+            .metrics
+            .left()
             .unwrap();
-        new_ir < 3000
+        *new_ir < 3000
     };
 
     let assert = Assert::new(module_path!(), "my_group", "bench_lib", "default").unwrap();
@@ -69,7 +73,7 @@ fn assert_default() {
         .callgrind_map(|m| {
             let main_costs = m.map
                 .iter()
-                .find_map(|(k, v)| (k.func == "main").then(|| v.costs.clone()))
+                .find_map(|(k, v)| (k.func == "main").then(|| v.metrics.clone()))
                 .unwrap();
 
             let benchmark_function_costs = m.map
@@ -79,7 +83,7 @@ fn assert_default() {
                             k.func == "test_lib_bench_entry_point::bench_lib::__iai_callgrind_wrapper_mod::bench_lib" &&
                             k.file == Some(SourcePath::Relative(file!().into()))
                         )
-                        .then(|| v.costs.clone())
+                        .then(|| v.metrics.clone())
                     })
                     .unwrap();
             main_costs == benchmark_function_costs
@@ -89,13 +93,15 @@ fn assert_default() {
 
 fn assert_nested() {
     let check_summary = |b: BenchmarkSummary| {
-        let new_ir = b.callgrind_summary.unwrap().summaries[0]
+        let callgrind_summary = b.callgrind_summary.unwrap();
+        let new_ir = callgrind_summary.callgrind_run.segments[0]
             .events
             .diff_by_kind(&EventKind::Ir)
             .unwrap()
-            .new
+            .metrics
+            .left()
             .unwrap();
-        new_ir < 3000
+        *new_ir < 3000
     };
 
     let assert = Assert::new(module_path!(), "my_group", "bench_lib", "nested").unwrap();
@@ -105,7 +111,7 @@ fn assert_nested() {
             let main_costs = m
                 .map
                 .iter()
-                .find_map(|(k, v)| (k.func == "main").then(|| v.costs.clone()))
+                .find_map(|(k, v)| (k.func == "main").then(|| v.metrics.clone()))
                 .unwrap();
             let nested_function_costs = m
                 .map
@@ -113,7 +119,7 @@ fn assert_nested() {
                 .find_map(|(k, v)| {
                     (k.func == "test_lib_bench_entry_point::nested"
                         && k.file == Some(SourcePath::Relative(file!().into())))
-                    .then(|| v.costs.clone())
+                    .then(|| v.metrics.clone())
                 })
                 .unwrap();
             main_costs == nested_function_costs

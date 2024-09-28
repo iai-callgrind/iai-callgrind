@@ -1,34 +1,63 @@
 // spell-checker: ignore extbase extbasename extold
 pub mod args;
-pub mod format;
+pub mod error_metric_parser;
+pub mod generic_parser;
 pub mod logfile_parser;
 
+use std::collections::HashMap;
 use std::ffi::OsString;
-use std::fmt::Display;
-use std::fs::File;
+use std::fmt::{Display, Write as FmtWrite};
+use std::fs::{DirEntry, File};
 use std::io::{stderr, BufRead, BufReader, Write};
+use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output};
 
 use anyhow::{anyhow, Context, Result};
-use colored::Colorize;
-use log::{debug, error, log_enabled, Level};
+use lazy_static::lazy_static;
+use log::{debug, error, log_enabled};
+use logfile_parser::Logfile;
+use regex::Regex;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use self::args::ToolArgs;
-use self::format::ToolRunSummaryFormatter;
-use self::logfile_parser::LogfileSummary;
 use super::args::NoCapture;
 use super::bin_bench::Delay;
+use super::callgrind::parser::parse_header;
 use super::common::{Assistant, Config, ModulePath, Sandbox};
-use super::format::{print_no_capture_footer, tool_headline, OutputFormat};
+use super::format::{
+    print_no_capture_footer, tool_headline, Formatter, OutputFormat, VerticalFormat,
+};
 use super::meta::Metadata;
-use super::summary::{BaselineKind, ToolRunSummary, ToolSummary};
+use super::summary::{BaselineKind, ToolRun, ToolSummary};
 use crate::api::{self, ExitWith, Stream};
 use crate::error::Error;
-use crate::util::{self, make_relative, resolve_binary_path, truncate_str_utf8};
+use crate::util::{self, ilog10, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
+
+lazy_static! {
+    // This regex matches the original file name without the prefix as it is created by callgrind.
+    // The baseline <name> (base@<name>) can only consist of ascii and underscore characters.
+    // Flamegraph files are ignored by this regex
+    static ref CALLGRIND_ORIG_FILENAME_RE: Regex = Regex::new(
+        r"^(?<type>[.](out|log))(?<base>[.](old|base@[^.-]+))?(?<pid>[.][#][0-9]+)?(?<part>[.][0-9]+)?(?<thread>-[0-9]+)?$"
+    )
+    .expect("Regex should compile");
+
+    /// This regex matches the original file name without the prefix as it is created by bbv
+    static ref BBV_ORIG_FILENAME_RE: Regex = Regex::new(
+        r"^(?<type>[.](?:out|log))(?<base>[.](old|base@[^.]+))?(?<bbv_type>[.](?:bb|pc))?(?<pid>[.][#][0-9]+)?(?<thread>[.][0-9]+)?$"
+    )
+    .expect("Regex should compile");
+
+    /// This regex matches the original file name without the prefix as it is created by all tools
+    /// other than callgrind and bbv.
+    static ref GENERIC_ORIG_FILENAME_RE: Regex = Regex::new(
+        r"^(?<type>[.](?:out|log))(?<base>[.](old|base@[^.]+))?(?<pid>[.][#][0-9]+)?$"
+    )
+    .expect("Regex should compile");
+}
 
 #[derive(Debug, Default, Clone)]
 pub struct RunOptions {
@@ -84,6 +113,7 @@ pub enum ToolOutputPathKind {
     Base(String),
 }
 
+/// All currently available valgrind tools
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ValgrindTool {
@@ -94,12 +124,6 @@ pub enum ValgrindTool {
     Massif,
     DHAT,
     BBV,
-}
-
-pub trait Parser {
-    type Output;
-
-    fn parse(&self, output: &ToolOutputPath) -> Result<Self::Output>;
 }
 
 impl ToolCommand {
@@ -203,11 +227,13 @@ impl ToolCommand {
                     Error::BenchmarkError(ValgrindTool::Callgrind, module_path.clone(), error)
                 })?;
         }
+
         if let Some(stdout) = stdout {
             stdout
                 .apply(&mut self.command, Stream::Stdout)
                 .map_err(|error| Error::BenchmarkError(self.tool, module_path.clone(), error))?;
         }
+
         if let Some(stderr) = stderr {
             stderr
                 .apply(&mut self.command, Stream::Stderr)
@@ -268,6 +294,8 @@ impl ToolCommand {
             }
         }
 
+        output_path.sanitize()?;
+
         Ok(ToolOutput {
             tool: self.tool,
             output,
@@ -290,33 +318,36 @@ impl ToolConfig {
 
     fn parse_load(
         &self,
-        meta: &Metadata,
+        config: &Config,
         log_path: &ToolOutputPath,
         out_path: Option<&ToolOutputPath>,
     ) -> Result<ToolSummary> {
-        let parser = self.tool.to_parser(meta.project_root.clone());
-        let old_summaries = parser.as_ref().parse(&log_path.to_base_path())?;
-        let summaries = parser.as_ref().parse_merge(log_path, old_summaries)?;
-        let tool_summary = ToolSummary {
+        let parser = logfile_parser::parser_factory(self.tool, config.meta.project_root.clone());
+
+        let parsed_new = parser.parse(log_path)?;
+        let parsed_old = parser.parse(&log_path.to_base_path())?;
+
+        let summaries = ToolRun::from(EitherOrBoth::Both(parsed_new, parsed_old));
+        Ok(ToolSummary {
             tool: self.tool,
             log_paths: log_path.real_paths()?,
             out_paths: out_path.map_or_else(|| Ok(Vec::default()), ToolOutputPath::real_paths)?,
             summaries,
-        };
-
-        Ok(tool_summary)
+        })
     }
 }
 
-impl From<api::Tool> for ToolConfig {
-    fn from(value: api::Tool) -> Self {
+impl TryFrom<api::Tool> for ToolConfig {
+    type Error = anyhow::Error;
+
+    fn try_from(value: api::Tool) -> std::result::Result<Self, Self::Error> {
         let tool = value.kind.into();
-        Self {
+        ToolArgs::try_from_raw_args(tool, value.raw_args).map(|args| Self {
             tool,
             is_enabled: value.enable.unwrap_or(true),
-            args: ToolArgs::from_raw_args(tool, value.raw_args),
-            outfile_modifier: value.outfile_modifier,
-        }
+            args,
+            outfile_modifier: None,
+        })
     }
 }
 
@@ -333,40 +364,14 @@ impl ToolConfigs {
             .collect()
     }
 
-    fn print_headline(meta: &Metadata, tool_config: &ToolConfig) {
-        if meta.args.output_format == OutputFormat::Default {
+    fn print_headline(tool_config: &ToolConfig, output_format: &OutputFormat) {
+        if output_format.is_default() {
             println!("{}", tool_headline(tool_config.tool));
         }
     }
 
-    fn print(
-        meta: &Metadata,
-        tool_config: &ToolConfig,
-        logfile_summaries: &[ToolRunSummary],
-        output_paths: &[PathBuf],
-    ) -> Result<()> {
-        if meta.args.output_format == OutputFormat::Default {
-            for logfile_summary in logfile_summaries {
-                ToolRunSummaryFormatter::print(
-                    logfile_summary,
-                    tool_config.args.verbose,
-                    logfile_summaries.len() > 1,
-                    matches!(tool_config.tool, ValgrindTool::BBV),
-                )?;
-            }
-
-            for path in output_paths
-                .iter()
-                .map(|p| make_relative(&meta.project_root, p))
-            {
-                println!(
-                    "  {:<18}{}",
-                    "Outfile:",
-                    path.display().to_string().blue().bold()
-                );
-            }
-        }
-        Ok(())
+    fn print(config: &Config, output_format: &OutputFormat, tool_run: &ToolRun) -> Result<()> {
+        VerticalFormat.print(config, output_format, (None, None), tool_run)
     }
 
     pub fn parse(
@@ -374,11 +379,17 @@ impl ToolConfigs {
         meta: &Metadata,
         log_path: &ToolOutputPath,
         out_path: Option<&ToolOutputPath>,
-        old_summaries: Vec<LogfileSummary>,
+        old_summaries: Vec<Logfile>,
     ) -> Result<ToolSummary> {
-        let parser = tool_config.tool.to_parser(meta.project_root.clone());
+        let parser = logfile_parser::parser_factory(tool_config.tool, meta.project_root.clone());
 
-        let summaries = parser.as_ref().parse_merge(log_path, old_summaries)?;
+        let parsed_new = parser.parse(log_path)?;
+
+        let summaries = match (parsed_new.is_empty(), old_summaries.is_empty()) {
+            (true, false | true) => return Err(anyhow!("A new dataset should always be present")),
+            (false, true) => ToolRun::from(EitherOrBoth::Left(parsed_new)),
+            (false, false) => ToolRun::from(EitherOrBoth::Both(parsed_new, old_summaries)),
+        };
 
         Ok(ToolSummary {
             tool: tool_config.tool,
@@ -390,26 +401,22 @@ impl ToolConfigs {
 
     pub fn run_loaded_vs_base(
         &self,
-        meta: &Metadata,
+        config: &Config,
         output_path: &ToolOutputPath,
+        output_format: &OutputFormat,
     ) -> Result<Vec<ToolSummary>> {
         let mut tool_summaries = vec![];
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
+            Self::print_headline(tool_config, output_format);
+
             let tool = tool_config.tool;
 
             let output_path = output_path.to_tool_output(tool);
             let log_path = output_path.to_log_output();
 
-            Self::print_headline(meta, tool_config);
+            let tool_summary = tool_config.parse_load(config, &log_path, None)?;
 
-            let tool_summary = tool_config.parse_load(meta, &log_path, None)?;
-
-            Self::print(
-                meta,
-                tool_config,
-                &tool_summary.summaries,
-                &tool_summary.out_paths,
-            )?;
+            Self::print(config, output_format, &tool_summary.summaries)?;
 
             log_path.dump_log(log::Level::Info, &mut stderr())?;
 
@@ -432,9 +439,14 @@ impl ToolConfigs {
         setup: Option<&Assistant>,
         teardown: Option<&Assistant>,
         delay: Option<&Delay>,
+        output_format: &OutputFormat,
     ) -> Result<Vec<ToolSummary>> {
         let mut tool_summaries = vec![];
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
+            // Print the headline as soon as possible, so if there are any errors, the errors shown
+            // in the terminal output can be associated with the tool
+            Self::print_headline(tool_config, output_format);
+
             let tool = tool_config.tool;
 
             let command = ToolCommand::new(tool, &config.meta, NoCapture::False);
@@ -442,19 +454,15 @@ impl ToolConfigs {
             let output_path = output_path.to_tool_output(tool);
             let log_path = output_path.to_log_output();
 
-            Self::print_headline(&config.meta, tool_config);
+            let parser = logfile_parser::parser_factory(tool, config.meta.project_root.clone());
 
-            let parser = tool_config.tool.to_parser(config.meta.project_root.clone());
-
-            let old_summaries = parser.as_ref().parse(&log_path.to_base_path())?;
-
+            let old_summaries = parser.parse(&log_path.to_base_path())?;
             if save_baseline {
                 output_path.clear()?;
                 log_path.clear()?;
             }
 
             let sandbox = sandbox
-                .as_ref()
                 .map(|sandbox| Sandbox::setup(sandbox, &config.meta))
                 .transpose()?;
 
@@ -482,7 +490,7 @@ impl ToolConfigs {
                 child,
             )?;
 
-            if let Some(teardown) = &teardown {
+            if let Some(teardown) = teardown {
                 teardown.run(config, module_path)?;
             }
 
@@ -504,12 +512,7 @@ impl ToolConfigs {
                 old_summaries,
             )?;
 
-            Self::print(
-                &config.meta,
-                tool_config,
-                &tool_summary.summaries,
-                &tool_summary.out_paths,
-            )?;
+            Self::print(config, output_format, &tool_summary.summaries)?;
 
             output.dump_log(log::Level::Info);
             log_path.dump_log(log::Level::Info, &mut stderr())?;
@@ -522,9 +525,9 @@ impl ToolConfigs {
 }
 
 impl ToolOutput {
-    pub fn dump_log(&self, log_level: Level) {
+    pub fn dump_log(&self, log_level: log::Level) {
         if let Some(output) = &self.output {
-            if log::log_enabled!(log_level) {
+            if log_enabled!(log_level) {
                 let (stdout, stderr) = (&output.stdout, &output.stderr);
                 if !stdout.is_empty() {
                     log::log!(log_level, "{} output on stdout:", self.tool.id());
@@ -696,24 +699,6 @@ impl ToolOutputPath {
         }
     }
 
-    pub fn open(&self) -> Result<File> {
-        let path = self.to_path();
-        File::open(&path).with_context(|| {
-            format!(
-                "Error opening {} output file '{}'",
-                self.tool.id(),
-                path.display()
-            )
-        })
-    }
-
-    pub fn lines(&self) -> Result<impl Iterator<Item = String>> {
-        let file = self.open()?;
-        Ok(BufReader::new(file)
-            .lines()
-            .map(std::result::Result::unwrap))
-    }
-
     pub fn dump_log(&self, log_level: log::Level, writer: &mut impl Write) -> Result<()> {
         if log_enabled!(log_level) {
             for path in self.real_paths()? {
@@ -739,6 +724,9 @@ impl ToolOutputPath {
         Ok(())
     }
 
+    /// This method can only be used to create the path passed to the tools
+    ///
+    /// The modifiers are extrapolated by the tools and won't match any real path name.
     pub fn extension(&self) -> String {
         match (&self.kind, self.modifiers.is_empty()) {
             (ToolOutputPathKind::Out, true) => "out".to_owned(),
@@ -746,18 +734,18 @@ impl ToolOutputPath {
             (ToolOutputPathKind::Log, true) => "log".to_owned(),
             (ToolOutputPathKind::Log, false) => format!("log.{}", self.modifiers.join(".")),
             (ToolOutputPathKind::OldOut, true) => "out.old".to_owned(),
-            (ToolOutputPathKind::OldOut, false) => format!("out.{}.old", self.modifiers.join(".")),
+            (ToolOutputPathKind::OldOut, false) => format!("out.old.{}", self.modifiers.join(".")),
             (ToolOutputPathKind::OldLog, true) => "log.old".to_owned(),
-            (ToolOutputPathKind::OldLog, false) => format!("log.{}.old", self.modifiers.join(".")),
+            (ToolOutputPathKind::OldLog, false) => format!("log.old.{}", self.modifiers.join(".")),
             (ToolOutputPathKind::BaseLog(name), true) => {
                 format!("log.base@{name}")
             }
             (ToolOutputPathKind::BaseLog(name), false) => {
-                format!("log.{}.base@{name}", self.modifiers.join("."))
+                format!("log.base@{name}.{}", self.modifiers.join("."))
             }
             (ToolOutputPathKind::Base(name), true) => format!("out.base@{name}"),
             (ToolOutputPathKind::Base(name), false) => {
-                format!("out.{}.base@{name}", self.modifiers.join("."))
+                format!("out.base@{name}.{}", self.modifiers.join("."))
             }
         }
     }
@@ -777,6 +765,11 @@ impl ToolOutputPath {
         }
     }
 
+    // Return the unexpanded path usable as input for `--callgrind-out-file`, ...
+    //
+    // The path returned by this method does not necessarily have to exist and can include modifiers
+    // like `%p`. Use [`Self::real_paths`] to get the real and existing (possibly multiple) paths to
+    // the output files of the respective tool.
     pub fn to_path(&self) -> PathBuf {
         self.dir.join(format!(
             "{}.{}.{}",
@@ -786,57 +779,563 @@ impl ToolOutputPath {
         ))
     }
 
+    /// Walk the benchmark directory (non-recursive)
+    pub fn walk_dir(&self) -> Result<impl Iterator<Item = DirEntry>> {
+        std::fs::read_dir(&self.dir)
+            .with_context(|| {
+                format!(
+                    "Failed opening benchmark directory: '{}'",
+                    self.dir.display()
+                )
+            })
+            .map(|i| i.into_iter().filter_map(Result::ok))
+    }
+
+    /// Strip the `<tool>.<name>` prefix from a `file_name`
+    pub fn strip_prefix<'a>(&self, file_name: &'a str) -> Option<&'a str> {
+        file_name.strip_prefix(format!("{}.{}", self.tool.id(), self.name).as_str())
+    }
+
+    /// Return the file name prefix as in `<tool>.<name>`
+    pub fn prefix(&self) -> String {
+        format!("{}.{}", self.tool.id(), self.name)
+    }
+
+    /// Return the `real` paths of a tool's output files
+    ///
+    /// A tool can have many output files so [`Self::to_path`] is not enough
+    #[allow(clippy::case_sensitive_file_extension_comparisons)]
     pub fn real_paths(&self) -> Result<Vec<PathBuf>> {
         let mut paths = vec![];
-        for entry in std::fs::read_dir(&self.dir).with_context(|| {
-            format!(
-                "Failed opening benchmark directory: '{}'",
-                self.dir.display()
-            )
-        })? {
-            let path = entry?;
-            let file_name = path.file_name().to_string_lossy().to_string();
-            if let Some(suffix) =
-                file_name.strip_prefix(format!("{}.{}.", self.tool.id(), self.name).as_str())
-            {
-                #[allow(clippy::case_sensitive_file_extension_comparisons)]
+        for entry in self.walk_dir()? {
+            let file_name = entry.file_name();
+            let file_name = file_name.to_string_lossy();
+
+            // Silently ignore all paths which don't follow this scheme, for example
+            // (`summary.json`)
+            if let Some(suffix) = self.strip_prefix(&file_name) {
                 let is_match = match &self.kind {
-                    ToolOutputPathKind::Out => {
-                        suffix.starts_with("out")
-                            && !(suffix.ends_with(".old")
-                                || suffix
-                                    .rsplit_once('.')
-                                    .map_or(false, |(_, b)| b.starts_with("base@")))
-                    }
-                    ToolOutputPathKind::Log => {
-                        suffix.starts_with("log")
-                            && !(suffix.ends_with(".old")
-                                || suffix
-                                    .rsplit_once('.')
-                                    .map_or(false, |(_, b)| b.starts_with("base@")))
-                    }
-                    ToolOutputPathKind::OldOut => {
-                        suffix.starts_with("out") && suffix.ends_with(".old")
-                    }
-                    ToolOutputPathKind::OldLog => {
-                        suffix.starts_with("log") && suffix.ends_with(".old")
-                    }
+                    ToolOutputPathKind::Out => suffix.ends_with(".out"),
+                    ToolOutputPathKind::Log => suffix.ends_with(".log"),
+                    ToolOutputPathKind::OldOut => suffix.ends_with(".out.old"),
+                    ToolOutputPathKind::OldLog => suffix.ends_with(".log.old"),
                     ToolOutputPathKind::BaseLog(name) => {
-                        suffix.starts_with("log")
-                            && suffix.ends_with(format!(".base@{name}").as_str())
+                        suffix.ends_with(format!(".log.base@{name}").as_str())
                     }
                     ToolOutputPathKind::Base(name) => {
-                        suffix.starts_with("out")
-                            && suffix.ends_with(format!(".base@{name}").as_str())
+                        suffix.ends_with(format!(".out.base@{name}").as_str())
                     }
                 };
 
                 if is_match {
-                    paths.push(path.path());
+                    paths.push(entry.path());
                 }
             }
         }
         Ok(paths)
+    }
+
+    pub fn real_paths_with_modifier(&self) -> Result<Vec<(PathBuf, Option<String>)>> {
+        let mut paths = vec![];
+        for entry in self.walk_dir()? {
+            let file_name = entry.file_name().to_string_lossy().to_string();
+
+            // Silently ignore all paths which don't follow this scheme, for example
+            // (`summary.json`)
+            if let Some(suffix) = self.strip_prefix(&file_name) {
+                let modifiers = match &self.kind {
+                    ToolOutputPathKind::Out => suffix.strip_suffix(".out"),
+                    ToolOutputPathKind::Log => suffix.strip_suffix(".log"),
+                    ToolOutputPathKind::OldOut => suffix.strip_suffix(".out.old"),
+                    ToolOutputPathKind::OldLog => suffix.strip_suffix(".log.old"),
+                    ToolOutputPathKind::BaseLog(name) => {
+                        suffix.strip_suffix(format!(".log.base@{name}").as_str())
+                    }
+                    ToolOutputPathKind::Base(name) => {
+                        suffix.strip_suffix(format!(".out.base@{name}").as_str())
+                    }
+                };
+
+                paths.push((
+                    entry.path(),
+                    modifiers.and_then(|s| (!s.is_empty()).then(|| s.to_owned())),
+                ));
+            }
+        }
+        Ok(paths)
+    }
+
+    /// Sanitize callgrind output file names
+    ///
+    /// This method will remove empty files which are occasionally produced by callgrind and only
+    /// cause problems in the parser. The files are renamed from the callgrind file naming scheme to
+    /// ours which is easier to handle.
+    ///
+    /// The information about pids, parts and threads is obtained by parsing the header from the
+    /// callgrind output files instead of relying on the sometimes flaky file names produced by
+    /// `callgrind`. The header is around 10-20 lines, so this method should be still sufficiently
+    /// fast. Additionally, `callgrind` might change the naming scheme of its' files, so using the
+    /// headers makes us more independent from a specific valgrind/callgrind version.
+    pub fn sanitize_callgrind(&self) -> Result<()> {
+        // path, thread
+        type Grouped = (PathBuf, Option<usize>);
+        // base (i.e. base@default) => pid => part => vec: path, thread
+        type Group =
+            HashMap<Option<String>, HashMap<Option<i32>, HashMap<Option<u64>, Vec<Grouped>>>>;
+
+        // To figure out if there are multiple pids/parts/threads present, it's necessary to group
+        // the files in this map. The order doesn't matter since we only rename the original file
+        // names, which doesn't need to follow a specific order.
+        //
+        // At first we group by (out|log), then base, then pid and then by part in different
+        // hashmaps. The threads are grouped in a vector.
+        let mut groups: HashMap<String, Group> = HashMap::new();
+
+        for entry in self.walk_dir()? {
+            let file_name = entry.file_name();
+            let file_name = file_name.to_string_lossy();
+
+            let Some(haystack) = self.strip_prefix(&file_name) else {
+                continue;
+            };
+
+            if let Some(caps) = CALLGRIND_ORIG_FILENAME_RE.captures(haystack) {
+                // Callgrind sometimes creates empty files for no reason. We clean them
+                // up here
+                if entry.metadata()?.size() == 0 {
+                    std::fs::remove_file(entry.path())?;
+                    continue;
+                }
+
+                // We don't sanitize old files. It's not needed if the new files are always
+                // sanitized. However, we do sanitize `base@<name>` file names.
+                let base = if let Some(base) = caps.name("base") {
+                    if base.as_str() == ".old" {
+                        continue;
+                    }
+
+                    Some(base.as_str().to_owned())
+                } else {
+                    None
+                };
+
+                let out_type = caps
+                    .name("type")
+                    .expect("A out|log type should be present")
+                    .as_str();
+
+                if out_type == ".out" {
+                    let properties = parse_header(
+                        &mut BufReader::new(File::open(entry.path())?)
+                            .lines()
+                            .map(Result::unwrap),
+                    )?;
+                    if let Some(bases) = groups.get_mut(out_type) {
+                        if let Some(pids) = bases.get_mut(&base) {
+                            if let Some(parts) = pids.get_mut(&properties.pid) {
+                                if let Some(threads) = parts.get_mut(&properties.part) {
+                                    threads.push((entry.path(), properties.thread));
+                                } else {
+                                    parts.insert(
+                                        properties.part,
+                                        vec![(entry.path(), properties.thread)],
+                                    );
+                                }
+                            } else {
+                                pids.insert(
+                                    properties.pid,
+                                    HashMap::from([(
+                                        properties.part,
+                                        vec![(entry.path(), properties.thread)],
+                                    )]),
+                                );
+                            }
+                        } else {
+                            bases.insert(
+                                base.clone(),
+                                HashMap::from([(
+                                    properties.pid,
+                                    HashMap::from([(
+                                        properties.part,
+                                        vec![(entry.path(), properties.thread)],
+                                    )]),
+                                )]),
+                            );
+                        }
+                    } else {
+                        groups.insert(
+                            out_type.to_owned(),
+                            HashMap::from([(
+                                base.clone(),
+                                HashMap::from([(
+                                    properties.pid,
+                                    HashMap::from([(
+                                        properties.part,
+                                        vec![(entry.path(), properties.thread)],
+                                    )]),
+                                )]),
+                            )]),
+                        );
+                    }
+                } else {
+                    let pid = caps.name("pid").map(|m| {
+                        m.as_str()[2..]
+                            .parse::<i32>()
+                            .expect("The pid from the match should be number")
+                    });
+
+                    // The log files don't expose any information about parts or threads, so
+                    // these are grouped under the `None` key
+                    if let Some(bases) = groups.get_mut(out_type) {
+                        if let Some(pids) = bases.get_mut(&base) {
+                            if let Some(parts) = pids.get_mut(&pid) {
+                                if let Some(threads) = parts.get_mut(&None) {
+                                    threads.push((entry.path(), None));
+                                } else {
+                                    parts.insert(None, vec![(entry.path(), None)]);
+                                }
+                            } else {
+                                pids.insert(
+                                    pid,
+                                    HashMap::from([(None, vec![(entry.path(), None)])]),
+                                );
+                            }
+                        } else {
+                            bases.insert(
+                                base.clone(),
+                                HashMap::from([(
+                                    pid,
+                                    HashMap::from([(None, vec![(entry.path(), None)])]),
+                                )]),
+                            );
+                        }
+                    } else {
+                        groups.insert(
+                            out_type.to_owned(),
+                            HashMap::from([(
+                                base.clone(),
+                                HashMap::from([(
+                                    pid,
+                                    HashMap::from([(None, vec![(entry.path(), None)])]),
+                                )]),
+                            )]),
+                        );
+                    }
+                }
+            }
+        }
+
+        for (out_type, types) in groups {
+            for (base, bases) in types {
+                let multiple_pids = bases.len() > 1;
+
+                for (pid, parts) in bases {
+                    let multiple_parts = parts.len() > 1;
+
+                    for (part, threads) in &parts {
+                        let multiple_threads = threads.len() > 1;
+
+                        for (orig_path, thread) in threads {
+                            let mut new_file_name = self.prefix();
+
+                            if multiple_pids {
+                                if let Some(pid) = pid {
+                                    write!(new_file_name, ".{pid}").unwrap();
+                                }
+                            }
+
+                            if multiple_parts {
+                                if let Some(part) = part {
+                                    let width = usize::try_from(ilog10(parts.len() as u64)).expect(
+                                        "The logarithm of the parts length should fit into a usize",
+                                    ) + 1;
+                                    write!(new_file_name, ".p{part:0width$}").unwrap();
+                                }
+
+                                // Integrate the thread number into the filename independently of
+                                // the amount of threads
+                                if let Some(thread) = thread {
+                                    let width =
+                                        usize::try_from(ilog10(threads.len() as u64)).expect(
+                                            "The logarithm of the threads length should fit into \
+                                             a usize",
+                                        ) + 1;
+                                    write!(new_file_name, ".t{thread:0width$}").unwrap();
+                                }
+                            } else if multiple_threads {
+                                if let Some(thread) = thread {
+                                    let width =
+                                        usize::try_from(ilog10(threads.len() as u64)).expect(
+                                            "The logarithm of the threads length should fit into \
+                                             a usize",
+                                        ) + 1;
+                                    write!(new_file_name, ".t{thread:0width$}").unwrap();
+                                }
+                            } else {
+                                // don't integrate parts or threads into the filename
+                            }
+
+                            new_file_name.push_str(&out_type);
+                            if let Some(base) = &base {
+                                new_file_name.push_str(base);
+                            }
+
+                            let from = orig_path;
+                            let to = from.with_file_name(new_file_name);
+
+                            std::fs::rename(from, to)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    // Sanitize bbv file names
+    //
+    // The original output files of bb have a `.<number>` suffix if there are multiple threads. We
+    // need the threads as `t<number>` in the modifier part of the final file names.
+    //
+    // For example: (orig -> sanitized)
+    //
+    // If there are multiple threads, the bb output file name doesn't include the first thread:
+    //
+    // `exp-bbv.bench_thread_in_subprocess.548365.bb.out` ->
+    // `exp-bbv.bench_thread_in_subprocess.548365.t1.bb.out`
+    //
+    // `exp-bbv.bench_thread_in_subprocess.548365.bb.out.2` ->
+    // `exp-bbv.bench_thread_in_subprocess.548365.t2.bb.out`
+    #[allow(clippy::case_sensitive_file_extension_comparisons)]
+    pub fn sanitize_bbv(&self) -> Result<()> {
+        // path, thread,
+        type Grouped = (PathBuf, String);
+        // key: bbv_type => key: pid
+        type Group =
+            HashMap<Option<String>, HashMap<Option<String>, HashMap<Option<String>, Vec<Grouped>>>>;
+
+        // key: .(out|log)
+        let mut groups: HashMap<String, Group> = HashMap::new();
+        for entry in self.walk_dir()? {
+            let file_name = entry.file_name();
+            let file_name = file_name.to_string_lossy();
+
+            let Some(haystack) = self.strip_prefix(&file_name) else {
+                continue;
+            };
+
+            if let Some(caps) = BBV_ORIG_FILENAME_RE.captures(haystack) {
+                if entry.metadata()?.size() == 0 {
+                    std::fs::remove_file(entry.path())?;
+                    continue;
+                }
+
+                // Don't sanitize old files.
+                let base = if let Some(base) = caps.name("base") {
+                    if base.as_str() == ".old" {
+                        continue;
+                    }
+
+                    Some(base.as_str().to_owned())
+                } else {
+                    None
+                };
+
+                let out_type = caps.name("type").unwrap().as_str();
+                let bbv_type = caps.name("bbv_type").map(|m| m.as_str().to_owned());
+                let pid = caps.name("pid").map(|p| format!(".{}", &p.as_str()[2..]));
+
+                let thread = caps
+                    .name("thread")
+                    .map_or_else(|| ".1".to_owned(), |t| t.as_str().to_owned());
+
+                if let Some(bases) = groups.get_mut(out_type) {
+                    if let Some(bbv_types) = bases.get_mut(&base) {
+                        if let Some(pids) = bbv_types.get_mut(&bbv_type) {
+                            if let Some(threads) = pids.get_mut(&pid) {
+                                threads.push((entry.path(), thread));
+                            } else {
+                                pids.insert(pid, vec![(entry.path(), thread)]);
+                            };
+                        } else {
+                            bbv_types.insert(
+                                bbv_type.clone(),
+                                HashMap::from([(pid, vec![(entry.path(), thread)])]),
+                            );
+                        }
+                    } else {
+                        bases.insert(
+                            base.clone(),
+                            HashMap::from([(
+                                bbv_type.clone(),
+                                HashMap::from([(pid, vec![(entry.path(), thread)])]),
+                            )]),
+                        );
+                    }
+                } else {
+                    groups.insert(
+                        out_type.to_owned(),
+                        HashMap::from([(
+                            base.clone(),
+                            HashMap::from([(
+                                bbv_type.clone(),
+                                HashMap::from([(pid, vec![(entry.path(), thread)])]),
+                            )]),
+                        )]),
+                    );
+                }
+            }
+        }
+
+        for (out_type, bases) in groups {
+            for (base, bbv_types) in bases {
+                for (bbv_type, pids) in &bbv_types {
+                    let multiple_pids = pids.len() > 1;
+
+                    for (pid, threads) in pids {
+                        let multiple_threads = threads.len() > 1;
+
+                        for (orig_path, thread) in threads {
+                            let mut new_file_name = self.prefix();
+
+                            if multiple_pids {
+                                if let Some(pid) = pid.as_ref() {
+                                    write!(new_file_name, "{pid}").unwrap();
+                                }
+                            }
+
+                            if multiple_threads
+                                && bbv_type.as_ref().map_or(false, |b| b.starts_with(".bb"))
+                            {
+                                let width = usize::try_from(ilog10(threads.len() as u64)).expect(
+                                    "The logarithm of the threads length should fit into a usize",
+                                ) + 1;
+
+                                let thread = thread[1..]
+                                    .parse::<usize>()
+                                    .expect("The thread from the regex should be a number");
+
+                                write!(new_file_name, ".t{thread:0width$}").unwrap();
+                            }
+
+                            if let Some(bbv_type) = &bbv_type {
+                                new_file_name.push_str(bbv_type);
+                            }
+
+                            new_file_name.push_str(&out_type);
+
+                            if let Some(base) = &base {
+                                new_file_name.push_str(base);
+                            }
+
+                            let from = orig_path;
+                            let to = from.with_file_name(new_file_name);
+
+                            std::fs::rename(from, to)?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Sanitize file names of all tools if not sanitized by a more specific method
+    ///
+    /// The pids are removed from the file name if there was only a single process (pid).
+    /// Additionally, we check for empty files and remove them.
+    pub fn sanitize_generic(&self) -> Result<()> {
+        // key: base => vec: path, pid
+        type Group = HashMap<Option<String>, Vec<(PathBuf, Option<String>)>>;
+
+        // key: .(out|log)
+        let mut groups: HashMap<String, Group> = HashMap::new();
+        for entry in self.walk_dir()? {
+            let file_name = entry.file_name();
+            let file_name = file_name.to_string_lossy();
+
+            let Some(haystack) = self.strip_prefix(&file_name) else {
+                continue;
+            };
+
+            if let Some(caps) = GENERIC_ORIG_FILENAME_RE.captures(haystack) {
+                if entry.metadata()?.size() == 0 {
+                    std::fs::remove_file(entry.path())?;
+                    continue;
+                }
+
+                // Don't sanitize old files.
+                let base = if let Some(base) = caps.name("base") {
+                    if base.as_str() == ".old" {
+                        continue;
+                    }
+
+                    Some(base.as_str().to_owned())
+                } else {
+                    None
+                };
+
+                let out_type = caps.name("type").unwrap().as_str();
+                let pid = caps.name("pid").map(|p| format!(".{}", &p.as_str()[2..]));
+
+                if let Some(bases) = groups.get_mut(out_type) {
+                    if let Some(pids) = bases.get_mut(&base) {
+                        pids.push((entry.path(), pid));
+                    } else {
+                        bases.insert(base, vec![(entry.path(), pid)]);
+                    }
+                } else {
+                    groups.insert(
+                        out_type.to_owned(),
+                        HashMap::from([(base, vec![(entry.path(), pid)])]),
+                    );
+                }
+            }
+        }
+
+        for (out_type, bases) in groups {
+            for (base, pids) in bases {
+                let multiple_pids = pids.len() > 1;
+                for (orig_path, pid) in pids {
+                    let mut new_file_name = self.prefix();
+
+                    if multiple_pids {
+                        if let Some(pid) = pid.as_ref() {
+                            write!(new_file_name, "{pid}").unwrap();
+                        }
+                    }
+
+                    new_file_name.push_str(&out_type);
+
+                    if let Some(base) = &base {
+                        new_file_name.push_str(base);
+                    }
+
+                    let from = orig_path;
+                    let to = from.with_file_name(new_file_name);
+
+                    std::fs::rename(from, to)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Sanitize file names for a specific tool
+    ///
+    /// Empty files are cleaned up. For more details on a specific tool see the respective
+    /// sanitize_<tool> method.
+    pub fn sanitize(&self) -> Result<()> {
+        match self.tool {
+            ValgrindTool::Callgrind => self.sanitize_callgrind()?,
+            ValgrindTool::BBV => self.sanitize_bbv()?,
+            _ => self.sanitize_generic()?,
+        };
+
+        Ok(())
     }
 }
 
@@ -963,5 +1462,44 @@ pub fn check_exit(
         _ => {
             Err(Error::ProcessError((tool.id(), output, status, Some(output_path.clone()))).into())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use rstest::rstest;
+
+    use super::*;
+
+    #[rstest]
+    #[case::out(".out")]
+    #[case::out_with_pid(".out.#1234")]
+    #[case::out_with_part(".out.1")]
+    #[case::out_with_thread(".out-01")]
+    #[case::out_with_part_and_thread(".out.1-01")]
+    #[case::out_base(".out.base@default")]
+    #[case::out_base_with_pid(".out.base@default.#1234")]
+    #[case::out_base_with_part(".out.base@default.1")]
+    #[case::out_base_with_thread(".out.base@default-01")]
+    #[case::out_base_with_part_and_thread(".out.base@default.1-01")]
+    #[case::log(".log")]
+    #[case::log_with_pid(".log.#1234")]
+    #[case::log_base(".log.base@default")]
+    #[case::log_base_with_pid(".log.base@default.#1234")]
+    fn test_callgrind_filename_regex(#[case] haystack: &str) {
+        assert!(CALLGRIND_ORIG_FILENAME_RE.is_match(haystack));
+    }
+
+    #[rstest]
+    #[case::bb_out(".out.bb")]
+    #[case::bb_out_with_pid(".out.bb.#1234")]
+    #[case::bb_out_with_pid_and_thread(".out.bb.#1234.1")]
+    #[case::bb_out_with_thread(".out.bb.1")]
+    #[case::pc_out(".out.pc")]
+    #[case::log(".log")]
+    #[case::log_with_pid(".log.#1234")]
+    fn test_bbv_filename_regex(#[case] haystack: &str) {
+        assert!(BBV_ORIG_FILENAME_RE.is_match(haystack));
     }
 }

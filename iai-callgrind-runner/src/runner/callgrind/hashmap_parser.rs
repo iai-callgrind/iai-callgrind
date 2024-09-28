@@ -2,18 +2,19 @@ use std::cmp::Ordering;
 use std::collections::hash_map::Iter;
 use std::collections::HashMap;
 use std::ffi::OsStr;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::path::{Component, Path, PathBuf};
 
 use anyhow::Result;
 use log::trace;
 use serde::{Deserialize, Serialize};
 
-use super::model::Costs;
-use super::parser::{parse_header, Sentinel};
+use super::model::Metrics;
+use super::parser::{parse_header, CallgrindParser, CallgrindProperties, Sentinel};
 use crate::error::Error;
-use crate::runner::tool::{Parser, ToolOutputPath};
 
-#[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CallgrindMap {
     pub map: HashMap<Id, Value>,
     pub sentinel: Option<Sentinel>,
@@ -61,7 +62,7 @@ pub enum SourcePath {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Value {
-    pub costs: Costs,
+    pub metrics: Metrics,
 }
 
 impl CallgrindMap {
@@ -75,6 +76,16 @@ impl CallgrindMap {
 
     pub fn get_key_value(&self, k: &Id) -> Option<(&Id, &Value)> {
         self.map.get_key_value(k)
+    }
+
+    pub fn add_mut(&mut self, other: &Self) {
+        for (other_key, other_value) in &other.map {
+            if let Some(value) = self.map.get_mut(other_key) {
+                value.metrics.add(&other_value.metrics);
+            } else {
+                self.map.insert(other_key.clone(), other_value.clone());
+            }
+        }
     }
 }
 
@@ -113,14 +124,15 @@ impl TryFrom<CurrentId> for Id {
     }
 }
 
-impl Parser for HashMapParser {
+impl CallgrindParser for HashMapParser {
     type Output = CallgrindMap;
 
-    #[allow(clippy::similar_names)]
-    fn parse(&self, output_path: &ToolOutputPath) -> Result<Self::Output> {
-        let mut iter = output_path.lines()?;
+    fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {
+        let mut iter = BufReader::new(File::open(path)?)
+            .lines()
+            .map(Result::unwrap);
         let config = parse_header(&mut iter)
-            .map_err(|error| Error::ParseError((output_path.to_path(), error.to_string())))?;
+            .map_err(|error| Error::ParseError((path.to_owned(), error.to_string())))?;
 
         let mut current_id = CurrentId::default();
         let mut cfn_record = None;
@@ -201,26 +213,26 @@ impl Parser for HashMapParser {
                         .sum();
                 }
                 None if line.starts_with(|c: char| c.is_ascii_digit()) => {
-                    let mut costs = config.costs_prototype.clone();
-                    costs.add_iter_str(
+                    let mut metrics = config.metrics_prototype.clone();
+                    metrics.add_iter_str(
                         line.split_whitespace()
                             .skip(config.positions_prototype.len()),
-                    );
+                    )?;
 
                     if let Some(cfn_record) = cfn_record.take() {
                         cfn_totals
                             .entry(cfn_record.id.expect("cfn record id must be present"))
-                            .and_modify(|value| value.costs.add(&costs))
+                            .and_modify(|value| value.metrics.add(&metrics))
                             .or_insert(Value {
-                                costs: costs.clone(),
+                                metrics: metrics.clone(),
                             });
                     }
 
                     let id = current_id.try_into().expect("A valid id");
                     match fn_totals.get_mut(&id) {
-                        Some(value) => value.costs.add(&costs),
+                        Some(value) => value.metrics.add(&metrics),
                         None => {
-                            fn_totals.insert(id.clone(), Value { costs });
+                            fn_totals.insert(id.clone(), Value { metrics });
                         }
                     }
                     current_id = id.into();
@@ -240,11 +252,14 @@ impl Parser for HashMapParser {
             fn_totals.insert(key, value);
         }
 
-        Ok(CallgrindMap {
-            map: fn_totals,
-            sentinel: self.sentinel.clone(),
-            sentinel_key,
-        })
+        Ok((
+            config,
+            CallgrindMap {
+                map: fn_totals,
+                sentinel: self.sentinel.clone(),
+                sentinel_key,
+            },
+        ))
     }
 }
 
@@ -276,7 +291,7 @@ fn make_path(root: &Path, source: &str) -> SourcePath {
     } else {
         let path = PathBuf::from(source);
         match path.strip_prefix(root).ok() {
-            Some(stripped) => SourcePath::Relative(stripped.to_owned()),
+            Some(suffix) => SourcePath::Relative(suffix.to_owned()),
             None if path.is_absolute() => {
                 let mut components = path.components().skip(1);
                 if components.next() == Some(Component::Normal(OsStr::new("rustc"))) {

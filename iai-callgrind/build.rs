@@ -142,6 +142,9 @@ mod imp {
     pub fn main() {
         println!("cargo:rerun-if-changed=valgrind/wrapper.h");
         println!("cargo:rerun-if-changed=valgrind/native.c");
+        println!("cargo:rerun-if-env-changed=IAI_CALLGRIND_VALGRIND_INCLUDE");
+        println!("cargo:rerun-if-env-changed=IAI_CALLGRIND_CROSS_TARGET");
+        println!("cargo:rerun-if-env-changed=TARGET");
 
         // rustc-check-cfg is introduced in rust with version 1.80 and avoids the compiler warnings
         // in version >= 1.80.0. Printing it when compiling with versions < 1.80 triggers a warning,

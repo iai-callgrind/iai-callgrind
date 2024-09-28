@@ -1,12 +1,9 @@
-//! This is an example for setting up library benchmarks with the new api. It's best to read all the
-//! comments from top to bottom to get a better understanding of the api.
-//!
-//! The new api has a lot of advantages especially handling of benchmark setup costs is greatly
-//! simplified.
+//! This is an example for setting up library benchmarks. It's best to read all the comments from
+//! top to bottom to get a better understanding of the api.
 
-// These two functions from the benchmark-tests library serve as functions we want to benchmark
 use std::hint::black_box;
 
+// These two functions from the benchmark-tests library serve as functions we want to benchmark
 use benchmark_tests::{bubble_sort, fibonacci};
 use iai_callgrind::{
     library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,

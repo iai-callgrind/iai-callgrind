@@ -1,61 +1,79 @@
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::path::Path;
+
 use anyhow::Result;
 use log::{debug, trace};
 
-use super::model::Costs;
-use super::parser::parse_header;
+use super::model::Metrics;
+use super::parser::{parse_header, CallgrindParser, CallgrindProperties};
 use crate::error::Error;
-use crate::runner::tool::{Parser, ToolOutputPath};
 
+/// Parse the `total:` line in the callgrind output or `summary:` if total is not present
+///
+/// The format is described [here](https://valgrind.org/docs/manual/cl-format.html)
+///
+/// The summary would usually be the first choice, but there are bugs in the summary line if
+/// callgrind client requests are used, which is why the total is used as primary metric and then
+/// the summary.
+///
+/// Regarding the summary:
+///
+/// For the visualization to be able to show cost percentage, a sum of the cost of the full run has
+/// to be known. Usually, it is assumed that this is the sum of all cost lines in a file. But
+/// sometimes, this is not correct. The "summary:" line in the header gives the full cost for the
+/// profile run.
+///
+/// This header line specifies a summary cost, which should be equal or larger than a total over all
+/// self costs. It may be larger as the cost lines may not represent all cost of the program run.
+#[derive(Debug)]
 pub struct SummaryParser;
 
-impl Parser for SummaryParser {
-    type Output = Costs;
+impl CallgrindParser for SummaryParser {
+    type Output = Metrics;
 
-    fn parse(&self, output_path: &ToolOutputPath) -> Result<Self::Output>
-    where
-        Self: std::marker::Sized,
-    {
+    fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {
         debug!(
             "Parsing callgrind output file '{}' for a summary or totals",
-            output_path
+            path.display()
         );
 
-        let mut iter = output_path.lines()?;
-        let config = parse_header(&mut iter)
-            .map_err(|error| Error::ParseError((output_path.to_path(), error.to_string())))?;
+        let mut iter = BufReader::new(File::open(path)?)
+            .lines()
+            .map(Result::unwrap);
 
-        let mut found = false;
-        let mut costs = config.costs_prototype;
+        let properties = parse_header(&mut iter)
+            .map_err(|error| Error::ParseError((path.to_owned(), error.to_string())))?;
+
+        let mut metrics = None;
         for line in iter {
-            if let Some(stripped) = line.strip_prefix("summary:") {
+            if let Some(suffix) = line.strip_prefix("summary:") {
                 trace!("Found line with summary: '{}'", line);
-                costs.add_iter_str(stripped.split_ascii_whitespace());
-                if costs.iter().all(|(_c, u)| *u == 0) {
-                    trace!(
-                        "Continuing file processing as summary indicates \"client_request\" are \
-                         used."
-                    );
-                    continue;
-                };
-                trace!("Updated counters to '{:?}'", &costs);
-                found = true;
-                break;
+
+                let mut inner = properties.metrics_prototype.clone();
+                inner.add_iter_str(suffix.split_ascii_whitespace())?;
+                metrics = Some(inner);
+
+                trace!("Updated counters to '{:?}'", &metrics);
             }
 
-            if let Some(stripped) = line.strip_prefix("totals:") {
+            if let Some(suffix) = line.strip_prefix("totals:") {
                 trace!("Found line with totals: '{}'", line);
-                costs.add_iter_str(stripped.split_ascii_whitespace());
-                trace!("Updated counters to '{:?}'", &costs);
-                found = true;
+
+                let mut inner = properties.metrics_prototype.clone();
+                inner.add_iter_str(suffix.split_ascii_whitespace())?;
+                metrics = Some(inner);
+
+                trace!("Updated counters to '{:?}'", &metrics);
                 break;
             }
         }
 
-        if found {
-            Ok(costs)
+        if let Some(metrics) = metrics {
+            Ok((properties, metrics))
         } else {
             Err(Error::ParseError((
-                output_path.to_path(),
+                path.to_owned(),
                 "No summary or totals line found".to_owned(),
             ))
             .into())

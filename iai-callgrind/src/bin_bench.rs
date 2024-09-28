@@ -1570,45 +1570,33 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    /// Adjust, enable or disable the truncation of the description in the iai-callgrind output
-    ///
-    /// The default is to truncate the description to the size of 50 ascii characters. A `None`
-    /// value disables the truncation entirely and a `Some` value will truncate the description to
-    /// the given amount of characters excluding the ellipsis.
-    ///
-    /// To clearify which part of the output is meant by `DESCRIPTION`:
-    ///
-    /// ```text
-    /// benchmark_file::group_name id:DESCRIPTION
-    ///   Instructions:              352135|352135          (No change)
-    ///   L1 Hits:                   470117|470117          (No change)
-    ///   L2 Hits:                      748|748             (No change)
-    ///   RAM Hits:                    4112|4112            (No change)
-    ///   Total read+write:          474977|474977          (No change)
-    ///   Estimated Cycles:          617777|617777          (No change)
-    /// ```
+    /// Configure the [`crate::OutputFormat`] of the terminal output of Iai-Callgrind
     ///
     /// # Examples
     ///
-    /// For example, specifying this option with a `None` value in the `main!` macro disables the
-    /// truncation of the description for all benchmarks.
-    ///
     /// ```rust
-    /// use iai_callgrind::{main, BinaryBenchmarkConfig};
-    /// # use iai_callgrind::binary_benchmark_group;
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig, OutputFormat};
+    /// # use iai_callgrind::{binary_benchmark, binary_benchmark_group};
+    /// # #[binary_benchmark]
+    /// # fn some_func() -> iai_callgrind::Command { iai_callgrind::Command::new("some/path") }
     /// # binary_benchmark_group!(
     /// #    name = some_group;
-    /// #    benchmarks = |_group: &mut BinaryBenchmarkGroup| {}
+    /// #    benchmarks = some_func
     /// # );
     /// # fn main() {
     /// main!(
-    ///     config = BinaryBenchmarkConfig::default().truncate_description(None);
+    ///     config = BinaryBenchmarkConfig::default()
+    ///         .output_format(OutputFormat::default()
+    ///             .truncate_description(Some(200))
+    ///         );
     ///     binary_benchmark_groups = some_group
     /// );
     /// # }
-    /// ```
-    pub fn truncate_description(&mut self, value: Option<usize>) -> &mut Self {
-        self.0.truncate_description = Some(value);
+    pub fn output_format<T>(&mut self, output_format: T) -> &mut Self
+    where
+        T: Into<internal::InternalOutputFormat>,
+    {
+        self.0.output_format = Some(output_format.into());
         self
     }
 

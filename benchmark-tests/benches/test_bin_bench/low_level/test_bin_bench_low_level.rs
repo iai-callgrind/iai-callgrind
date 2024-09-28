@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use iai_callgrind::{
     binary_benchmark, binary_benchmark_attribute, binary_benchmark_group, main, Bench,
-    BinaryBenchmark, BinaryBenchmarkConfig, Command, Sandbox, Stdio,
+    BinaryBenchmark, BinaryBenchmarkConfig, Command, OutputFormat, Sandbox, Stdio,
 };
 
 const ECHO: &str = env!("CARGO_BIN_EXE_echo");
@@ -50,7 +50,11 @@ fn bench_attribute(id: &str) -> iai_callgrind::Command {
 
 binary_benchmark_group!(
     name = check_config;
-    config = BinaryBenchmarkConfig::default().env("GROUP_ENV", "2").truncate_description(None);
+    config = BinaryBenchmarkConfig::default()
+        .env("GROUP_ENV", "2")
+        .output_format(OutputFormat::default()
+            .truncate_description(None)
+        );
     benchmarks = |group| {
         group
             .binary_benchmark(BinaryBenchmark::new("bench_env")
