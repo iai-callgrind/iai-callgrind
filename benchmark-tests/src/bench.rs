@@ -772,7 +772,7 @@ impl RunConfig {
         if self
             .expected
             .as_ref()
-            .map_or(false, |expected| expected.zero_callgrind_metrics)
+            .map_or(false, |expected| !expected.zero_callgrind_metrics)
         {
             let base_dir = home_dir.join(PACKAGE).join(bench_name);
             // These checks heavily depends on the creation of the `summary.json` files, but we
