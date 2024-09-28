@@ -365,8 +365,7 @@ impl Delay {
     /// should have a value of `n * timeout duration`.
     ///
     /// In case the poll interval is set to a value `>=` timeout duration it is attempted to set
-    /// the poll interval to a value of `timeout duration - 5ms`. Should the timeout duration be set
-    /// to a value `<= 5ms` then the timeout duration will be used as poll interval.
+    /// the poll interval to a value of `timeout duration - 5ms`.
     ///
     /// ```rust
     /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
@@ -389,7 +388,7 @@ impl Delay {
     /// Update the [`Delay`] timeout interval.
     ///
     /// The timeout duration should be considered together with the poll interval. For further
-    /// details please refer to [`Delay::poll`].
+    /// details please refer to [`Delay::poll`]. The minimum timeout duration is `10ms`.
     ///
     /// ```rust
     /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
@@ -1768,13 +1767,9 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    /// Execute the `setup()` in parallel to the [`Command`].
+    /// Execute the `setup` in parallel to the [`Command`].
     ///
-    /// This option can change the execution flow in a way that the [`Command`] is executed
-    /// right after the `setup()` instead of waiting for the `setup()` to complete in advance.
-    ///
-    /// This can be combined with the usage of [`Delay`] to further control the timing when
-    /// the [`Command`] is executed.
+    /// See also [`Command::setup_parallel`]
     ///
     /// # Examples
     ///
@@ -1809,10 +1804,7 @@ impl BinaryBenchmarkConfig {
     ///         ).build()
     /// }
     ///
-    /// binary_benchmark_group!(
-    ///     name = delay;
-    ///     benchmarks = bench_binary
-    /// );
+    /// binary_benchmark_group!(name = delay; benchmarks = bench_binary);
     /// # fn main() {
     /// main!(binary_benchmark_groups = delay);
     /// # }
@@ -1959,8 +1951,8 @@ impl Command {
     ///  - File path exists
     ///  - TCP/UDP connect succeeded
     ///
-    /// [`Delay`] can be used in combination with `setup_parallel()` to wait for an event that
-    /// is triggered within the `setup()` function. E.g. the setup starts a server that is
+    /// [`Delay`] can be used in combination with [`Command::setup_parallel`] to wait for an event
+    /// that is triggered within the `setup()` function. E.g. the setup starts a server that is
     /// needed by the [`Command`].
     ///
     /// # Examples
@@ -1983,12 +1975,9 @@ impl Command {
     ///         .build()
     /// }
     ///
-    /// binary_benchmark_group!(
-    ///     name = my_group;
-    ///     benchmarks = bench_binary
-    /// );
+    /// binary_benchmark_group!(name = my_group; benchmarks = bench_binary);
     /// # fn main() {
-    /// # main!(binary_benchmark_groups = my_group);
+    /// main!(binary_benchmark_groups = my_group);
     /// # }
     /// ```
     pub fn delay<T: Into<Delay>>(&mut self, delay: T) -> &mut Self {
@@ -1998,11 +1987,11 @@ impl Command {
 
     /// Execute the `setup()` in parallel to the [`Command`].
     ///
-    /// This option can change the execution flow in a way that the [`Command`] is executed
-    /// right after the `setup()` instead of waiting for the `setup()` to complete in advance.
+    /// This option changes the execution flow in a way that the [`Command`] is executed parallel
+    /// to the `setup` instead of waiting for the `setup` to complete.
     ///
-    /// This can be combined with the usage of [`Delay`] to further control the timing when
-    /// the [`Command`] is executed.
+    /// This can be combined with the usage of [`Delay`] to further control the timing when the
+    /// [`Command`] is executed.
     ///
     /// # Examples
     ///
@@ -2031,12 +2020,9 @@ impl Command {
     ///         ).build()
     /// }
     ///
-    /// binary_benchmark_group!(
-    ///     name = delay;
-    ///     benchmarks = bench_binary
-    /// );
+    /// binary_benchmark_group!(name = delay; benchmarks = bench_binary);
     /// # fn main() {
-    /// # main!(binary_benchmark_groups = delay);
+    /// main!(binary_benchmark_groups = delay);
     /// # }
     /// ```
     pub fn setup_parallel(&mut self, setup_parallel: bool) -> &mut Self {
@@ -2128,7 +2114,8 @@ impl Command {
     /// The options you might be interested in the most are [`Stdin::File`], which mirrors the
     /// behaviour of [`std::process::Stdio`] if `Stdio` is a [`std::fs::File`], and
     /// [`Stdin::Setup`], which is special to `iai-callgrind` and let's you pipe the output of
-    /// the `setup` function into the Stdin of this [`Command`].
+    /// the `setup` function into the Stdin of this [`Command`]. If you need to delay the `Command`
+    /// when using [`Stdin::Setup`], you can do so with [`Command::delay`].
     ///
     /// # Implementation details
     ///

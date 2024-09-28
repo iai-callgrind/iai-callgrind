@@ -80,12 +80,17 @@ pub struct Delay {
     pub kind: DelayKind,
 }
 
+/// The kind of `Delay`
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DelayKind {
+    /// Delay the `Command` for a fixed [`Duration`]
     DurationElapse(Duration),
+    /// Delay the `Command` until a successful tcp connection can be established
     TcpConnect(SocketAddr),
+    /// Delay the `Command` until a successful udp response was received
     UdpResponse(SocketAddr, Vec<u8>),
+    /// Delay the `Command` until the specified path exists
     PathExists(PathBuf),
 }
 
