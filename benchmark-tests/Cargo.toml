@@ -82,6 +82,10 @@ path = "src/helper/client-requests.rs"
 name = "thread"
 path = "src/helper/thread.rs"
 
+[[bin]]
+name = "subprocess"
+path = "src/helper/subprocess.rs"
+
 [[bench]]
 harness = false
 name = "test_bin_bench_setup_and_teardown"
@@ -146,6 +150,11 @@ path = "benches/test_bin_bench/command_delay/test_bin_bench_command_delay.rs"
 harness = false
 name = "test_bin_bench_client_requests"
 path = "benches/test_bin_bench/client_requests/test_bin_bench_client_requests.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_tools"
+path = "benches/test_bin_bench/tools/test_bin_bench_tools.rs"
 
 [[bench]]
 harness = false

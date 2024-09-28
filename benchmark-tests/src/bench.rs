@@ -55,6 +55,8 @@ lazy_static! {
     // `  ## pid: <__PID__> part: 1 thread: 3   |pid: <__PID__> part: 1 thread: 3`
     static ref FRAGMENT_HEADER_RE: Regex =
         Regex::new(r"^(  ##[^|]*[0-9])(\s*)?(|.*)$").expect("Regex should compile");
+    static ref ABSOLUTE_PATH_RE: Regex =
+        Regex::new(r"(\s+)([/][^/]*)+").expect("Regex should compile");
 }
 
 #[derive(Debug, Clone)]
@@ -519,12 +521,20 @@ impl BenchmarkOutput {
                 }
                 writeln!(result, "{string}").unwrap();
             } else {
-                // Filter the benchmark command because it has a random hash in its name
-                let line = COMMAND_RE.replace(&line, "$1 <__COMMAND__>");
+                let line = if COMMAND_RE.is_match(&line) {
+                    // Filter the benchmark command of library benchmarks because it has a random
+                    // hash in it's name
+                    COMMAND_RE.replace(&line, "$1 <__COMMAND__>")
+                } else {
+                    // Replace absolute paths
+                    ABSOLUTE_PATH_RE.replace_all(&line, "$1<__ABS_PATH__>$2")
+                };
+
                 // Filter the pids and parent pids
                 let line = PID_RE.replace_all(&line, |caps: &Captures| {
                     format!("{}<__PID__>{}", &caps[1], caps.get(3).map_or("", |_| " "))
                 });
+
                 let line = FRAGMENT_HEADER_RE.replace_all(&line, "$1 $3");
                 writeln!(result, "{line}").unwrap();
             }
@@ -871,5 +881,25 @@ mod tests {
     #[case::bin_bench("Command: target/release/deps/test_bin_bench_threads-c2a88f916ff580f9")]
     fn test_command_re(#[case] haystack: &str) {
         assert!(COMMAND_RE.is_match(haystack));
+    }
+
+    #[rstest]
+    #[case::just_root(" /", " <__ABS_PATH__>/")]
+    #[case::with_single_component(" /some", " <__ABS_PATH__>/some")]
+    #[case::with_two_components(" /some/final", " <__ABS_PATH__>/final")]
+    #[case::with_mixed_characters(" /wi-th_/123/final", " <__ABS_PATH__>/final")]
+    #[case::with_text_before(
+        "some text before /wi-th_/123/final",
+        "some text before <__ABS_PATH__>/final"
+    )]
+    #[case::with_text_after(
+        " /wi-th_/123/final some text after",
+        " <__ABS_PATH__>/final some text after"
+    )]
+    fn test_absolute_path_re(#[case] haystack: &str, #[case] replaced: &str) {
+        assert_eq!(
+            ABSOLUTE_PATH_RE.replace_all(haystack, "$1<__ABS_PATH__>$2"),
+            replaced
+        );
     }
 }
