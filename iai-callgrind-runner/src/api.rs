@@ -3,13 +3,17 @@ use std::ffi::OsString;
 use std::fmt::Display;
 #[cfg(feature = "runner")]
 use std::fs::File;
+use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 #[cfg(feature = "runner")]
 use std::process::{Child, Command as StdCommand, Stdio as StdStdio};
+use std::time::Duration;
 
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+use crate::api::DelayKind::DurationElapse;
 
 /// The model for the `#[binary_benchmark]` attribute or the equivalent from the low level api
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -44,6 +48,7 @@ pub struct BinaryBenchmarkConfig {
     pub tools_override: Option<Tools>,
     pub sandbox: Option<Sandbox>,
     pub truncate_description: Option<Option<usize>>,
+    pub setup_parallel: Option<bool>,
 }
 
 /// The model for the `binary_benchmark_group` macro
@@ -68,6 +73,33 @@ pub struct BinaryBenchmarkGroups {
     pub has_teardown: bool,
 }
 
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Delay {
+    pub poll: Option<Duration>,
+    pub timeout: Option<Duration>,
+    pub kind: DelayKind,
+}
+
+/// The kind of `Delay`
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DelayKind {
+    /// Delay the `Command` for a fixed [`Duration`]
+    DurationElapse(Duration),
+    /// Delay the `Command` until a successful tcp connection can be established
+    TcpConnect(SocketAddr),
+    /// Delay the `Command` until a successful udp response was received
+    UdpResponse(SocketAddr, Vec<u8>),
+    /// Delay the `Command` until the specified path exists
+    PathExists(PathBuf),
+}
+
+impl Default for DelayKind {
+    fn default() -> Self {
+        DurationElapse(Duration::from_secs(60))
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Command {
     pub path: PathBuf,
@@ -76,6 +108,7 @@ pub struct Command {
     pub stdout: Option<Stdio>,
     pub stderr: Option<Stdio>,
     pub config: BinaryBenchmarkConfig,
+    pub delay: Option<Delay>,
 }
 
 /// The `Direction` in which the flamegraph should grow.
@@ -391,9 +424,11 @@ impl BinaryBenchmarkConfig {
             } else {
                 // do nothing
             }
+
             self.sandbox = update_option(&self.sandbox, &other.sandbox);
             self.truncate_description =
                 update_option(&self.truncate_description, &other.truncate_description);
+            self.setup_parallel = update_option(&self.setup_parallel, &other.setup_parallel);
         }
         self
     }

@@ -21,6 +21,7 @@ use self::args::ToolArgs;
 use self::format::ToolRunSummaryFormatter;
 use self::logfile_parser::LogfileSummary;
 use super::args::NoCapture;
+use super::bin_bench::Delay;
 use super::common::{Assistant, Config, ModulePath, Sandbox};
 use super::format::{print_no_capture_footer, tool_headline, OutputFormat};
 use super::meta::Metadata;
@@ -430,6 +431,7 @@ impl ToolConfigs {
         sandbox: Option<&api::Sandbox>,
         setup: Option<&Assistant>,
         teardown: Option<&Assistant>,
+        delay: Option<&Delay>,
     ) -> Result<Vec<ToolSummary>> {
         let mut tool_summaries = vec![];
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
@@ -456,9 +458,19 @@ impl ToolConfigs {
                 .map(|sandbox| Sandbox::setup(sandbox, &config.meta))
                 .transpose()?;
 
-            let child = setup
+            let mut child = setup
                 .as_ref()
                 .map_or(Ok(None), |setup| setup.run(config, module_path))?;
+
+            if let Some(delay) = delay {
+                if let Err(error) = delay.run() {
+                    if let Some(mut child) = child.take() {
+                        // To avoid zombies
+                        child.kill()?;
+                        return Err(error);
+                    }
+                }
+            }
 
             let output = command.run(
                 tool_config.clone(),

@@ -2,12 +2,14 @@ use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use derive_more::AsRef;
 use iai_callgrind_macros::IntoInner;
 
-use crate::{internal, Stdin, Stdio};
+use crate::{internal, DelayKind, Stdin, Stdio};
 
 /// [low level api](`crate::binary_benchmark_group`) only: Create a new benchmark id
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -171,7 +173,7 @@ pub struct BinaryBenchmark {
 /// ```
 ///
 /// However, an iai-callgrind benchmark is not limited to a crate's binaries, it can be any
-/// executable in the `$PATH`, orn a absolute path to a binary installed on your system. The
+/// executable in the `$PATH`, or an absolute path to a binary installed on your system. The
 /// following will create a `Command` for the system's `echo` from the `$PATH`:
 ///
 /// ```rust
@@ -180,6 +182,96 @@ pub struct BinaryBenchmark {
 /// ```
 #[derive(Debug, Default, Clone, PartialEq, IntoInner, AsRef)]
 pub struct Command(internal::InternalCommand);
+
+/// Provide the [`crate::Delay`] to specify the event for [`crate::Command`] execution start.
+///
+/// The default configuration is created with [`Delay::new`] providing a [`crate::DelayKind`] to
+/// specify the event type and parameters for the `Delay`.
+///
+/// Additionally, the `Delay` can be created using `from*()` methods.
+/// - [`Delay::from(duration)`](Delay::from)
+/// - [`Delay::from_tcp_socket(addr)`](Delay::from_tcp_socket)
+/// - [`Delay::from_udp_request(addr, request)`](Delay::from_udp_request)
+/// - [`Delay::from_path(path)`](Delay::from_path)
+///
+/// # Examples
+///
+/// Suppose your command needs to start 60 seconds after the benchmark started:
+///
+/// ```rust
+/// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+/// use std::time::Duration;
+///
+/// use iai_callgrind::{Command, Delay, DelayKind};
+///
+/// let command = Command::new(env!("CARGO_BIN_EXE_my-echo")).delay(Delay::new(
+///     DelayKind::DurationElapse(Duration::from_secs(60)),
+/// ));
+///
+/// let command_from =
+///     Command::new(env!("CARGO_BIN_EXE_my-echo")).delay(Delay::from(Duration::from_secs(60)));
+///
+/// let command_duration =
+///     Command::new(env!("CARGO_BIN_EXE_my-echo")).delay(Duration::from_secs(60));
+/// ```
+///
+/// However, an iai-callgrind [`Delay`] is not limited to a duration, it can be any
+/// path creation event, a successful TCP connect or as well a received UDP response.
+///
+/// ```rust
+/// use iai_callgrind::{Command, Delay, DelayKind};
+///
+/// let command = Command::new("echo").delay(Delay::new(DelayKind::PathExists(
+///     "/your/path/to/wait/for".into(),
+/// )));
+///
+/// let command_from = Command::new("echo").delay(Delay::from_path("/your/path/to/wait/for"));
+/// ```
+///
+/// ```rust
+/// use std::net::SocketAddr;
+/// use std::time::Duration;
+///
+/// use iai_callgrind::{Command, Delay, DelayKind};
+///
+/// let command = Command::new("echo").delay(
+///     Delay::new(DelayKind::TcpConnect(
+///         "127.0.0.1:31000".parse::<SocketAddr>().unwrap(),
+///     ))
+///     .timeout(Duration::from_secs(3))
+///     .poll(Duration::from_millis(50)),
+/// );
+///
+/// let command_from = Command::new("echo").delay(
+///     Delay::from_tcp_socket("127.0.0.1:31000".parse::<SocketAddr>().unwrap())
+///         .timeout(Duration::from_secs(3))
+///         .poll(Duration::from_millis(50)),
+/// );
+/// ```
+///
+/// ```rust
+/// use std::net::SocketAddr;
+/// use std::time::Duration;
+///
+/// use iai_callgrind::{Command, Delay, DelayKind};
+///
+/// let command = Command::new("echo").delay(
+///     Delay::new(DelayKind::UdpResponse(
+///         "127.0.0.1:34000".parse::<SocketAddr>().unwrap(),
+///         vec![1],
+///     ))
+///     .timeout(Duration::from_secs(3))
+///     .poll(Duration::from_millis(50)),
+/// );
+///
+/// let command_from = Command::new("echo").delay(
+///     Delay::from_udp_request("127.0.0.1:34000".parse::<SocketAddr>().unwrap(), vec![1])
+///         .timeout(Duration::from_secs(3))
+///         .poll(Duration::from_millis(50)),
+/// );
+/// ```
+#[derive(Debug, Default, Clone, PartialEq, IntoInner, AsRef)]
+pub struct Delay(internal::InternalDelay);
 
 /// Set the expected exit status of a binary benchmark
 ///
@@ -1519,6 +1611,53 @@ impl BinaryBenchmarkConfig {
         self.0.truncate_description = Some(value);
         self
     }
+
+    /// Execute the `setup` in parallel to the [`Command`].
+    ///
+    /// See also [`Command::setup_parallel`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    /// use std::time::Duration;
+    /// use std::net::{SocketAddr, TcpListener};
+    /// use std::thread;
+    /// use iai_callgrind::{
+    ///     binary_benchmark_group, binary_benchmark, main, BinaryBenchmarkConfig, Command,
+    ///     Delay, DelayKind
+    /// };
+    ///
+    /// fn setup_tcp_server() {
+    ///     thread::sleep(Duration::from_millis(300));
+    ///     let _listener = TcpListener::bind("127.0.0.1:31000".parse::<SocketAddr>().unwrap()).unwrap();
+    ///     thread::sleep(Duration::from_secs(1));
+    /// }
+    ///
+    /// #[binary_benchmark]
+    /// #[bench::delay(
+    ///     setup = setup_tcp_server(),
+    ///     config = BinaryBenchmarkConfig::default()
+    ///         .setup_parallel(true)
+    /// )]
+    /// fn bench_binary() -> iai_callgrind::Command {
+    ///     Command::new(env!("CARGO_BIN_EXE_my-echo"))
+    ///         .delay(
+    ///             Delay::new(
+    ///                 DelayKind::TcpConnect("127.0.0.1:31000".parse::<SocketAddr>().unwrap()))
+    ///                 .timeout(Duration::from_millis(500))
+    ///         ).build()
+    /// }
+    ///
+    /// binary_benchmark_group!(name = delay; benchmarks = bench_binary);
+    /// # fn main() {
+    /// main!(binary_benchmark_groups = delay);
+    /// # }
+    /// ```
+    pub fn setup_parallel(&mut self, setup_parallel: bool) -> &mut Self {
+        self.0.setup_parallel = Some(setup_parallel);
+        self
+    }
 }
 
 impl BinaryBenchmarkGroup {
@@ -1649,6 +1788,93 @@ impl Command {
         })
     }
 
+    /// Delay the execution of the [`Command`]
+    ///
+    /// This option allows to delay the [`Command`] execution till a certain event has happened.
+    /// Supported events are:
+    ///  - Timer expired
+    ///  - File path exists
+    ///  - TCP/UDP connect succeeded
+    ///
+    /// [`Delay`] can be used in combination with [`Command::setup_parallel`] to wait for an event
+    /// that is triggered within the `setup()` function. E.g. the setup starts a server that is
+    /// needed by the [`Command`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    /// use iai_callgrind::{binary_benchmark_group, binary_benchmark, main, Command, Delay, DelayKind};
+    ///
+    /// fn start_server() {
+    ///     // action to start the server, creates pid file
+    ///     std::fs::File::create("/tmp/my-server.pid").unwrap();
+    /// }
+    ///
+    /// #[binary_benchmark]
+    /// #[bench::server(setup = start_server)]
+    /// fn bench_binary() -> Command {
+    ///     Command::new(env!("CARGO_BIN_EXE_my-echo"))
+    ///         .setup_parallel(true)
+    ///         .delay(Delay::new(DelayKind::PathExists("/tmp/my-server.pid".into())))
+    ///         .build()
+    /// }
+    ///
+    /// binary_benchmark_group!(name = my_group; benchmarks = bench_binary);
+    /// # fn main() {
+    /// main!(binary_benchmark_groups = my_group);
+    /// # }
+    /// ```
+    pub fn delay<T: Into<Delay>>(&mut self, delay: T) -> &mut Self {
+        self.0.delay = Some(delay.into().into());
+        self
+    }
+
+    /// Execute the `setup()` in parallel to the [`Command`].
+    ///
+    /// This option changes the execution flow in a way that the [`Command`] is executed parallel
+    /// to the `setup` instead of waiting for the `setup` to complete.
+    ///
+    /// This can be combined with the usage of [`Delay`] to further control the timing when the
+    /// [`Command`] is executed.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    /// use std::time::Duration;
+    /// use std::net::{SocketAddr, TcpListener};
+    /// use std::thread;
+    /// use iai_callgrind::{binary_benchmark_group, binary_benchmark, main, Command, Delay, DelayKind};
+    ///
+    /// fn setup_tcp_server() {
+    ///     thread::sleep(Duration::from_millis(300));
+    ///     let _listener = TcpListener::bind("127.0.0.1:31000".parse::<SocketAddr>().unwrap()).unwrap();
+    ///     thread::sleep(Duration::from_secs(1));
+    /// }
+    ///
+    /// #[binary_benchmark]
+    /// #[bench::delay(setup = setup_tcp_server())]
+    /// fn bench_binary() -> iai_callgrind::Command {
+    ///     Command::new(env!("CARGO_BIN_EXE_my-echo"))
+    ///         .setup_parallel(true)
+    ///         .delay(
+    ///             Delay::new(
+    ///                 DelayKind::TcpConnect("127.0.0.1:31000".parse::<SocketAddr>().unwrap()))
+    ///                 .timeout(Duration::from_millis(500))
+    ///         ).build()
+    /// }
+    ///
+    /// binary_benchmark_group!(name = delay; benchmarks = bench_binary);
+    /// # fn main() {
+    /// main!(binary_benchmark_groups = delay);
+    /// # }
+    /// ```
+    pub fn setup_parallel(&mut self, setup_parallel: bool) -> &mut Self {
+        self.0.config.setup_parallel = Some(setup_parallel);
+        self
+    }
+
     /// Adds an argument to pass to the [`Command`]
     ///
     /// This option works exactly the same way as [`std::process::Command::arg`]. To pass multiple
@@ -1733,7 +1959,8 @@ impl Command {
     /// The options you might be interested in the most are [`Stdin::File`], which mirrors the
     /// behaviour of [`std::process::Stdio`] if `Stdio` is a [`std::fs::File`], and
     /// [`Stdin::Setup`], which is special to `iai-callgrind` and let's you pipe the output of
-    /// the `setup` function into the Stdin of this [`Command`].
+    /// the `setup` function into the Stdin of this [`Command`]. If you need to delay the `Command`
+    /// when using [`Stdin::Setup`], you can do so with [`Command::delay`].
     ///
     /// # Implementation details
     ///
@@ -2159,6 +2386,172 @@ impl From<&mut Command> for Command {
 impl From<&Command> for Command {
     fn from(value: &Command) -> Self {
         value.clone()
+    }
+}
+
+impl Delay {
+    /// Instantiate a [`Delay`] which will wait until a path exists ([`Path::exists`]).
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    ///
+    /// use iai_callgrind::{Command, Delay};
+    ///
+    /// let command = Command::new("echo").delay(Delay::from_path("/your/path/to/wait/for"));
+    /// ```
+    pub fn from_path<T>(path: T) -> Self
+    where
+        T: Into<PathBuf>,
+    {
+        Self(internal::InternalDelay {
+            kind: DelayKind::PathExists(path.into()),
+            ..Default::default()
+        })
+    }
+
+    /// Instantiate a [`Delay`] which will wait until successful TCP connect
+    /// ([`std::net::TcpStream::connect`]).
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    ///
+    /// use std::net::SocketAddr;
+    ///
+    /// use iai_callgrind::{Command, Delay};
+    ///
+    /// let command = Command::new("echo").delay(Delay::from_tcp_socket(
+    ///     "127.0.0.1:31000".parse::<SocketAddr>().unwrap(),
+    /// ));
+    /// ```
+    pub fn from_tcp_socket<T>(addr: T) -> Self
+    where
+        T: Into<SocketAddr>,
+    {
+        Self(internal::InternalDelay {
+            kind: DelayKind::TcpConnect(addr.into()),
+            ..Default::default()
+        })
+    }
+
+    /// Instantiate a [`Delay`] which will wait until a UDP response is received after
+    /// sending the UDP request. The poll duration is also used as the reconnect and request resend
+    /// interval. ([`std::net::UdpSocket::bind`], [`std::net::UdpSocket::connect`],
+    /// [`std::net::UdpSocket::recv`]).
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    ///
+    /// use std::net::SocketAddr;
+    ///
+    /// use iai_callgrind::{Command, Delay};
+    ///
+    /// let command = Command::new("echo").delay(Delay::from_udp_request(
+    ///     "127.0.0.1:34000".parse::<SocketAddr>().unwrap(),
+    ///     vec![1],
+    /// ));
+    /// ```
+    pub fn from_udp_request<T, U>(addr: T, req: U) -> Self
+    where
+        T: Into<SocketAddr>,
+        U: Into<Vec<u8>>,
+    {
+        Self(internal::InternalDelay {
+            kind: DelayKind::UdpResponse(addr.into(), req.into()),
+            ..Default::default()
+        })
+    }
+
+    /// Instantiate a [`Delay`] waiting until an event has happened.
+    ///
+    /// The possible events are defined in [`DelayKind`].
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    ///
+    /// use std::time::Duration;
+    ///
+    /// use iai_callgrind::{Command, Delay, DelayKind};
+    ///
+    /// let command = Command::new("echo").delay(Delay::new(DelayKind::DurationElapse(
+    ///     Duration::from_secs(15),
+    /// )));
+    /// ```
+    pub fn new(kind: DelayKind) -> Self {
+        Self(internal::InternalDelay {
+            kind,
+            ..Default::default()
+        })
+    }
+
+    /// Update the [`Delay`] poll interval.
+    ///
+    /// The poll interval should be considered together with the [`Delay::timeout`], and ideally
+    /// should have a value of `n * timeout duration`.
+    ///
+    /// In case the poll interval is set to a value `>=` timeout duration it is attempted to set
+    /// the poll interval to a value of `timeout duration - 5ms`.
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    ///
+    /// use std::net::SocketAddr;
+    /// use std::time::Duration;
+    ///
+    /// use iai_callgrind::{Command, Delay};
+    ///
+    /// let command = Command::new("echo").delay(
+    ///     Delay::from_udp_request("127.0.0.1:34000".parse::<SocketAddr>().unwrap(), vec![1])
+    ///         .poll(Duration::from_millis(150)),
+    /// );
+    /// ```
+    pub fn poll<T: Into<Duration>>(mut self, duration: T) -> Self {
+        self.0.poll = Some(duration.into());
+        self
+    }
+
+    /// Update the [`Delay`] timeout interval.
+    ///
+    /// The timeout duration should be considered together with the poll interval. For further
+    /// details please refer to [`Delay::poll`]. The minimum timeout duration is `10ms`.
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    ///
+    /// use std::net::SocketAddr;
+    /// use std::time::Duration;
+    ///
+    /// use iai_callgrind::{Command, Delay};
+    /// let command = Command::new("echo").delay(
+    ///     Delay::from_tcp_socket("127.0.0.1:31000".parse::<SocketAddr>().unwrap())
+    ///         .timeout(Duration::from_secs(5)),
+    /// );
+    /// ```
+    pub fn timeout<T: Into<Duration>>(mut self, duration: T) -> Self {
+        self.0.timeout = Some(duration.into());
+        self
+    }
+}
+
+impl<T> From<T> for Delay
+where
+    T: Into<Duration>,
+{
+    /// Instantiate a [`Delay`] which will wait until the duration has elapsed.
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    ///
+    /// use std::time::Duration;
+    ///
+    /// use iai_callgrind::{Command, Delay};
+    ///
+    /// let command = Command::new("echo").delay(Delay::from(Duration::from_secs(10)));
+    /// ```
+    fn from(duration: T) -> Self {
+        Self(internal::InternalDelay {
+            kind: DelayKind::DurationElapse(duration.into()),
+            ..Default::default()
+        })
     }
 }
 

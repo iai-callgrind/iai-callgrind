@@ -1,9 +1,15 @@
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::io::stderr;
-use std::path::PathBuf;
+use std::io::ErrorKind::WouldBlock;
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, TcpStream, UdpSocket};
+use std::path::{Path, PathBuf};
+use std::sync::mpsc::{self, RecvTimeoutError};
+use std::time::Duration;
+use std::{panic, thread};
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
+use log::{debug, warn};
 
 use super::args::NoCapture;
 use super::callgrind::args::Args;
@@ -24,7 +30,9 @@ use super::tool::{
     Parser, RunOptions, ToolCommand, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind,
     ValgrindTool,
 };
-use crate::api::{self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, Stdin};
+use crate::api::{
+    self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind, Stdin,
+};
 use crate::error::Error;
 use crate::runner::format;
 
@@ -71,6 +79,14 @@ pub struct BinBench {
 pub struct Command {
     pub path: PathBuf,
     pub args: Vec<OsString>,
+    pub delay: Option<Delay>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Delay {
+    pub poll: Duration,
+    pub timeout: Duration,
+    pub kind: DelayKind,
 }
 
 #[derive(Debug)]
@@ -188,10 +204,20 @@ impl Benchmark for BaselineBenchmark {
             .map(|sandbox| Sandbox::setup(sandbox, &config.meta))
             .transpose()?;
 
-        let child = bin_bench
+        let mut child = bin_bench
             .setup
             .as_ref()
             .map_or(Ok(None), |setup| setup.run(config, &bin_bench.module_path))?;
+
+        if let Some(delay) = &bin_bench.command.delay {
+            if let Err(error) = delay.run() {
+                if let Some(mut child) = child.take() {
+                    // To avoid zombies
+                    child.kill()?;
+                    return Err(error);
+                }
+            }
+        }
 
         let output = callgrind_command.run(
             tool_config,
@@ -268,6 +294,7 @@ impl Benchmark for BaselineBenchmark {
             bin_bench.sandbox.as_ref(),
             bin_bench.setup.as_ref(),
             bin_bench.teardown.as_ref(),
+            bin_bench.command.delay.as_ref(),
         )?;
 
         Ok(benchmark_summary)
@@ -294,10 +321,11 @@ impl BinBench {
             stdin,
             stdout,
             stderr,
+            delay,
             ..
         } = binary_benchmark_bench.command;
 
-        let command = Command::new(&module_path, path, args)?;
+        let command = Command::new(&module_path, path, args, delay.map(Into::into))?;
 
         let callgrind_args = Args::from_raw_args(&[&config.raw_callgrind_args, raw_args])?;
 
@@ -336,6 +364,7 @@ impl BinBench {
                         }
                     }),
                     assistant_envs.clone(),
+                    config.setup_parallel.unwrap_or(false),
                 )),
             teardown: binary_benchmark_bench.has_teardown.then_some(
                 Assistant::new_bench_assistant(
@@ -344,6 +373,7 @@ impl BinBench {
                     (group_index, bench_index),
                     None,
                     assistant_envs,
+                    false,
                 ),
             ),
             run_options: RunOptions {
@@ -422,12 +452,157 @@ impl BinBench {
 }
 
 impl Command {
-    fn new(module_path: &ModulePath, path: PathBuf, args: Vec<OsString>) -> Result<Self> {
+    fn new(
+        module_path: &ModulePath,
+        path: PathBuf,
+        args: Vec<OsString>,
+        delay: Option<Delay>,
+    ) -> Result<Self> {
         if path.as_os_str().is_empty() {
             return Err(anyhow!("{module_path}: Empty path in command",));
         }
 
-        Ok(Self { path, args })
+        Ok(Self { path, args, delay })
+    }
+}
+
+impl From<api::Delay> for Delay {
+    fn from(value: api::Delay) -> Self {
+        let (poll, timeout) = if let DelayKind::DurationElapse(_) = value.kind {
+            if value.poll.is_some() {
+                warn!("Ignoring poll setting. Not supported for {:?}", value.kind);
+            }
+            if value.timeout.is_some() {
+                warn!(
+                    "Ignoring timeout setting. Not supported for {:?}",
+                    value.kind
+                );
+            }
+            (Duration::ZERO, Duration::ZERO)
+        } else {
+            let mut poll = value.poll.unwrap_or_else(|| Duration::from_millis(10));
+            let timeout = value.timeout.map_or_else(
+                || Duration::from_secs(600),
+                |t| {
+                    if t < Duration::from_millis(10) {
+                        warn!("The minimum timeout setting is 10ms");
+                        Duration::from_millis(10)
+                    } else {
+                        t
+                    }
+                },
+            );
+
+            if poll >= timeout {
+                warn!(
+                    "Poll duration is equal to or greater than the timeout duration ({:?} >= \
+                     {:?}).",
+                    poll, timeout
+                );
+                poll = timeout - Duration::from_millis(5);
+                warn!("Using poll duration {:?} instead", poll);
+            }
+            (poll, timeout)
+        };
+
+        Self {
+            poll,
+            timeout,
+            kind: value.kind,
+        }
+    }
+}
+
+impl Delay {
+    pub fn new(poll: Duration, timeout: Duration, kind: DelayKind) -> Self {
+        Self {
+            poll,
+            timeout,
+            kind,
+        }
+    }
+
+    pub fn run(&self) -> Result<()> {
+        if let DelayKind::DurationElapse(_) = self.kind {
+            self.exec_delay_fn()
+        } else {
+            let (tx, rx) = mpsc::channel::<std::result::Result<(), anyhow::Error>>();
+
+            let delay = self.clone();
+            let handle = thread::spawn(move || {
+                tx.send(delay.exec_delay_fn()).map_err(|error| {
+                    anyhow!("Command::Delay MPSC channel send error. Error: {error:?}")
+                })
+            });
+
+            match rx.recv_timeout(self.timeout) {
+                Ok(result) => {
+                    // These unwraps are safe
+                    handle.join().unwrap().unwrap();
+                    result.map(|()| debug!("Command::Delay successfully executed."))
+                }
+                Err(RecvTimeoutError::Timeout) => {
+                    Err(anyhow!("Timeout of '{:?}' reached", self.timeout))
+                }
+                Err(RecvTimeoutError::Disconnected) => {
+                    // The disconnect is caused by a panic in the thread, so the `unwrap_err` is
+                    // safe. We propagate the panic as is.
+                    panic::resume_unwind(handle.join().unwrap_err())
+                }
+            }
+        }
+    }
+
+    fn exec_delay_fn(&self) -> Result<()> {
+        match &self.kind {
+            DelayKind::DurationElapse(duration) => {
+                thread::sleep(*duration);
+            }
+            DelayKind::TcpConnect(addr) => {
+                while let Err(_err) = TcpStream::connect(addr) {
+                    thread::sleep(self.poll);
+                }
+            }
+            DelayKind::UdpResponse(remote, req) => {
+                let socket = match remote {
+                    SocketAddr::V4(_) => {
+                        UdpSocket::bind(SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0))
+                            .context("Could not bind local IPv4 UDP socket.")?
+                    }
+                    SocketAddr::V6(_) => {
+                        UdpSocket::bind(SocketAddr::new(Ipv6Addr::UNSPECIFIED.into(), 0))
+                            .context("Could not bind local IPv6 UDP socket.")?
+                    }
+                };
+
+                socket.set_read_timeout(Some(self.poll))?;
+                socket.set_write_timeout(Some(self.poll))?;
+
+                loop {
+                    while let Err(_err) = socket.send_to(req.as_slice(), remote) {
+                        thread::sleep(self.poll);
+                    }
+
+                    let mut buf = [0; 1];
+                    match socket.recv(&mut buf) {
+                        Ok(_size) => break,
+                        Err(e) => {
+                            if e.kind() != WouldBlock {
+                                thread::sleep(self.poll);
+                            }
+                        }
+                    }
+                }
+            }
+            DelayKind::PathExists(path) => {
+                let wait_for_path = std::path::PathBuf::from(Path::new(path));
+                while !wait_for_path.exists() {
+                    thread::sleep(self.poll);
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -490,6 +665,7 @@ impl Groups {
                     AssistantKind::Setup,
                     &binary_benchmark_group.id,
                     group_config.collect_envs(),
+                    false,
                 ));
             let teardown =
                 binary_benchmark_group
@@ -498,6 +674,7 @@ impl Groups {
                         AssistantKind::Teardown,
                         &binary_benchmark_group.id,
                         group_config.collect_envs(),
+                        false,
                     ));
 
             let mut group = Group {
@@ -662,12 +839,14 @@ impl Runner {
             .then_some(Assistant::new_main_assistant(
                 AssistantKind::Setup,
                 benchmark_groups.config.collect_envs(),
+                false,
             ));
         let teardown = benchmark_groups
             .has_teardown
             .then_some(Assistant::new_main_assistant(
                 AssistantKind::Teardown,
                 benchmark_groups.config.collect_envs(),
+                false,
             ));
 
         let groups =
@@ -792,10 +971,20 @@ impl Benchmark for SaveBaselineBenchmark {
             .map(|sandbox| Sandbox::setup(sandbox, &config.meta))
             .transpose()?;
 
-        let child = bin_bench
+        let mut child = bin_bench
             .setup
             .as_ref()
             .map_or(Ok(None), |setup| setup.run(config, &bin_bench.module_path))?;
+
+        if let Some(delay) = &bin_bench.command.delay {
+            if let Err(error) = delay.run() {
+                if let Some(mut child) = child.take() {
+                    // To avoid zombies
+                    child.kill()?;
+                    return Err(error);
+                }
+            }
+        }
 
         let output = callgrind_command.run(
             tool_config,
@@ -864,6 +1053,7 @@ impl Benchmark for SaveBaselineBenchmark {
             bin_bench.sandbox.as_ref(),
             bin_bench.setup.as_ref(),
             bin_bench.teardown.as_ref(),
+            bin_bench.command.delay.as_ref(),
         )?;
 
         Ok(benchmark_summary)
@@ -872,4 +1062,252 @@ impl Benchmark for SaveBaselineBenchmark {
 
 pub fn run(benchmark_groups: BinaryBenchmarkGroups, config: Config) -> Result<()> {
     Runner::new(benchmark_groups, config)?.run()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs::File;
+    use std::net::TcpListener;
+
+    use pretty_assertions::assert_eq;
+    use rstest::rstest;
+    use tempfile::tempdir;
+
+    use super::*;
+
+    fn api_delay_fixture<T, U>(poll: T, timeout: U, kind: DelayKind) -> api::Delay
+    where
+        T: Into<Option<u64>>,
+        U: Into<Option<u64>>,
+    {
+        api::Delay {
+            poll: poll.into().map(Duration::from_millis),
+            timeout: timeout.into().map(Duration::from_millis),
+            kind,
+        }
+    }
+
+    #[rstest]
+    #[case::duration_elapse_when_no_poll_no_timeout(
+        api_delay_fixture(None, None, DelayKind::DurationElapse(Duration::from_millis(100))),
+        Duration::ZERO,
+        Duration::ZERO
+    )]
+    #[case::duration_elapse_when_poll_no_timeout(
+        api_delay_fixture(10, None, DelayKind::DurationElapse(Duration::from_millis(100))),
+        Duration::ZERO,
+        Duration::ZERO
+    )]
+    #[case::duration_elapse_when_no_poll_but_timeout(
+        api_delay_fixture(None, 10, DelayKind::DurationElapse(Duration::from_millis(100))),
+        Duration::ZERO,
+        Duration::ZERO
+    )]
+    #[case::duration_elapse_when_poll_and_timeout(
+        api_delay_fixture(10, 100, DelayKind::DurationElapse(Duration::from_millis(100))),
+        Duration::ZERO,
+        Duration::ZERO
+    )]
+    #[case::path_when_no_poll_no_timeout(
+        api_delay_fixture(None, None, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        Duration::from_millis(10),
+        Duration::from_secs(600)
+    )]
+    #[case::path_when_poll_no_timeout(
+        api_delay_fixture(20, None, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        Duration::from_millis(20),
+        Duration::from_secs(600)
+    )]
+    #[case::path_when_no_poll_but_timeout(
+        api_delay_fixture(None, 200, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        Duration::from_millis(10),
+        Duration::from_millis(200)
+    )]
+    #[case::path_when_poll_and_timeout(
+        api_delay_fixture(20, 200, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        Duration::from_millis(20),
+        Duration::from_millis(200)
+    )]
+    #[case::path_when_poll_equal_to_timeout(
+        api_delay_fixture(200, 200, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        Duration::from_millis(195),
+        Duration::from_millis(200)
+    )]
+    #[case::path_when_poll_higher_than_timeout(
+        api_delay_fixture(201, 200, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        Duration::from_millis(195),
+        Duration::from_millis(200)
+    )]
+    #[case::path_when_poll_equal_to_timeout_smaller_than_10(
+        api_delay_fixture(10, 9, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        Duration::from_millis(5),
+        Duration::from_millis(10)
+    )]
+    #[case::path_when_poll_lower_than_timeout_smaller_than_10(
+        api_delay_fixture(7, 9, DelayKind::PathExists(PathBuf::from("/some/path"))),
+        Duration::from_millis(7),
+        Duration::from_millis(10)
+    )]
+    fn test_from_api_delay_for_delay(
+        #[case] delay: api::Delay,
+        #[case] poll: Duration,
+        #[case] timeout: Duration,
+    ) {
+        let expected = Delay::new(poll, timeout, delay.kind.clone());
+        assert_eq!(Delay::from(delay), expected);
+    }
+
+    #[test]
+    fn test_delay_path() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("file.pid");
+
+        let delay = Delay {
+            poll: Duration::from_millis(50),
+            timeout: Duration::from_millis(200),
+            kind: DelayKind::PathExists(file_path.clone()),
+        };
+        let handle = thread::spawn(move || {
+            delay.run().unwrap();
+        });
+
+        thread::sleep(Duration::from_millis(100));
+        File::create(file_path).unwrap();
+
+        handle.join().unwrap();
+        drop(dir);
+    }
+
+    #[test]
+    fn test_delay_tcp_connect() {
+        let addr = "127.0.0.1:32000".parse::<SocketAddr>().unwrap();
+        let _listener = TcpListener::bind(addr).unwrap();
+
+        let delay = Delay {
+            poll: Duration::from_millis(20),
+            timeout: Duration::from_secs(1),
+            kind: DelayKind::TcpConnect(addr),
+        };
+        delay.run().unwrap();
+    }
+
+    #[test]
+    fn test_delay_tcp_connect_poll() {
+        let addr = "127.0.0.1:32001".parse::<SocketAddr>().unwrap();
+
+        let check_addr = addr;
+        let handle = thread::spawn(move || {
+            let delay = Delay {
+                poll: Duration::from_millis(20),
+                timeout: Duration::from_secs(1),
+                kind: DelayKind::TcpConnect(check_addr),
+            };
+            delay.run().unwrap();
+        });
+
+        thread::sleep(Duration::from_millis(100));
+        let _listener = TcpListener::bind(addr).unwrap();
+
+        handle.join().unwrap();
+    }
+
+    #[test]
+    fn test_delay_tcp_connect_timeout() {
+        let addr = "127.0.0.1:32002".parse::<SocketAddr>().unwrap();
+        let delay = Delay {
+            poll: Duration::from_millis(20),
+            timeout: Duration::from_secs(1),
+            kind: DelayKind::TcpConnect(addr),
+        };
+
+        let result = delay.run();
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().to_string(), "Timeout of '1s' reached");
+    }
+
+    #[test]
+    fn test_delay_udp_response() {
+        let addr = "127.0.0.1:34000".parse::<SocketAddr>().unwrap();
+
+        thread::spawn(move || {
+            let server = UdpSocket::bind(addr).unwrap();
+            server
+                .set_read_timeout(Some(Duration::from_millis(100)))
+                .unwrap();
+            server
+                .set_write_timeout(Some(Duration::from_millis(100)))
+                .unwrap();
+
+            loop {
+                let mut buf = [0; 1];
+
+                match server.recv_from(&mut buf) {
+                    Ok((_size, from)) => {
+                        server.send_to(&[2], from).unwrap();
+                    }
+                    Err(_e) => {}
+                }
+            }
+        });
+
+        let delay = Delay {
+            poll: Duration::from_millis(20),
+            timeout: Duration::from_millis(100),
+            kind: DelayKind::UdpResponse(addr, vec![1]),
+        };
+
+        delay.run().unwrap();
+    }
+
+    #[test]
+    fn test_delay_udp_response_poll() {
+        let addr = "127.0.0.1:34001".parse::<SocketAddr>().unwrap();
+
+        thread::spawn(move || {
+            let delay = Delay {
+                poll: Duration::from_millis(20),
+                timeout: Duration::from_millis(100),
+                kind: DelayKind::UdpResponse(addr, vec![1]),
+            };
+            delay.run().unwrap();
+        });
+
+        let server = UdpSocket::bind(addr).unwrap();
+        server
+            .set_read_timeout(Some(Duration::from_millis(100)))
+            .unwrap();
+        server
+            .set_write_timeout(Some(Duration::from_millis(100)))
+            .unwrap();
+
+        loop {
+            let mut buf = [0; 1];
+
+            thread::sleep(Duration::from_millis(70));
+
+            match server.recv_from(&mut buf) {
+                Ok((_size, from)) => {
+                    server.send_to(&[2], from).unwrap();
+                    break;
+                }
+                Err(_e) => {}
+            }
+        }
+    }
+
+    #[test]
+    fn test_delay_udp_response_timeout() {
+        let addr = "127.0.0.1:34002".parse::<SocketAddr>().unwrap();
+        let delay = Delay {
+            poll: Duration::from_millis(20),
+            timeout: Duration::from_millis(100),
+            kind: DelayKind::UdpResponse(addr, vec![1]),
+        };
+        let result = delay.run();
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Timeout of '100ms' reached"
+        );
+    }
 }
