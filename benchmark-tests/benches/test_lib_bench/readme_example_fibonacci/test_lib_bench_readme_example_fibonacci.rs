@@ -23,6 +23,6 @@ library_benchmark_group!(
 );
 
 main!(
-    config = LibraryBenchmarkConfig::default().raw_callgrind_args(["collect-jumps=yes"]);
+    config = LibraryBenchmarkConfig::default().callgrind_args(["collect-jumps=yes"]);
     library_benchmark_groups = bench_fibonacci_group
 );

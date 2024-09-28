@@ -7,7 +7,7 @@ use crate::{internal, EntryPoint};
 
 /// The main configuration of a library benchmark.
 ///
-/// See [`LibraryBenchmarkConfig::raw_callgrind_args`] for more details.
+/// See [`LibraryBenchmarkConfig::callgrind_args`] for more details.
 ///
 /// # Examples
 ///
@@ -20,7 +20,7 @@ use crate::{internal, EntryPoint};
 /// # fn main() {
 /// main!(
 ///     config = LibraryBenchmarkConfig::default()
-///                 .raw_callgrind_args(["toggle-collect=something"]);
+///                 .callgrind_args(["toggle-collect=something"]);
 ///     library_benchmark_groups = some_group
 /// );
 /// # }
@@ -28,11 +28,10 @@ use crate::{internal, EntryPoint};
 #[derive(Debug, Default, IntoInner, AsRef)]
 pub struct LibraryBenchmarkConfig(internal::InternalLibraryBenchmarkConfig);
 
-// TODO: Rename raw_callgrind_args to callgrind_args
 impl LibraryBenchmarkConfig {
-    /// Create a new `LibraryBenchmarkConfig` with raw callgrind arguments
+    /// Create a new `LibraryBenchmarkConfig` with initial callgrind arguments
     ///
-    /// See also [`LibraryBenchmarkConfig::raw_callgrind_args`].
+    /// See also [`LibraryBenchmarkConfig::callgrind_args`].
     ///
     /// # Examples
     ///
@@ -46,11 +45,12 @@ impl LibraryBenchmarkConfig {
     ///
     /// main!(
     ///     config =
-    ///         LibraryBenchmarkConfig::with_raw_callgrind_args(["toggle-collect=something"]);
+    ///         LibraryBenchmarkConfig::with_callgrind_args(["toggle-collect=something"]);
     ///     library_benchmark_groups = some_group
     /// );
     /// # }
     /// ```
+    #[deprecated = "Please use with_callgrind_args"]
     pub fn with_raw_callgrind_args<I, T>(args: T) -> Self
     where
         I: AsRef<str>,
@@ -58,7 +58,7 @@ impl LibraryBenchmarkConfig {
     {
         Self(internal::InternalLibraryBenchmarkConfig {
             env_clear: Option::default(),
-            raw_callgrind_args: internal::InternalRawArgs::from_iter(args),
+            callgrind_args: internal::InternalRawArgs::from_iter(args),
             valgrind_args: internal::InternalRawArgs::default(),
             envs: Vec::default(),
             flamegraph_config: Option::default(),
@@ -106,24 +106,25 @@ impl LibraryBenchmarkConfig {
     ///
     /// main!(
     ///     config = LibraryBenchmarkConfig::default()
-    ///                 .raw_callgrind_args(["toggle-collect=something"]);
+    ///                 .callgrind_args(["toggle-collect=something"]);
     ///     library_benchmark_groups = some_group
     /// );
     /// # }
     /// ```
+    #[deprecated = "Please use callgrind_args"]
     pub fn raw_callgrind_args<I, T>(&mut self, args: T) -> &mut Self
     where
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
+        #[allow(deprecated)]
         self.raw_callgrind_args_iter(args);
         self
     }
 
-    /// TODO: DELETE this method
     /// Add elements of an iterator over callgrind arguments to this `LibraryBenchmarkConfig`
     ///
-    /// See also [`LibraryBenchmarkConfig::raw_callgrind_args`]
+    /// See also [`LibraryBenchmarkConfig::callgrind_args`]
     ///
     /// # Examples
     ///
@@ -142,12 +143,95 @@ impl LibraryBenchmarkConfig {
     /// );
     /// # }
     /// ```
+    #[deprecated = "Please use callgrind_args"]
     pub fn raw_callgrind_args_iter<I, T>(&mut self, args: T) -> &mut Self
     where
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        self.0.raw_callgrind_args.extend_ignore_flag(args);
+        self.0.callgrind_args.extend_ignore_flag(args);
+        self
+    }
+
+    /// Create a new `LibraryBenchmarkConfig` with callgrind arguments
+    ///
+    /// See also [`LibraryBenchmarkConfig::callgrind_args`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// use iai_callgrind::{LibraryBenchmarkConfig, main};
+    ///
+    /// main!(
+    ///     config =
+    ///         LibraryBenchmarkConfig::with_callgrind_args(["toggle-collect=something"]);
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn with_callgrind_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(internal::InternalLibraryBenchmarkConfig {
+            callgrind_args: internal::InternalRawArgs::from_iter(args),
+            ..Default::default()
+        })
+    }
+
+    /// Add callgrind arguments to this `LibraryBenchmarkConfig`
+    ///
+    /// The arguments don't need to start with a flag: `--toggle-collect=some` or
+    /// `toggle-collect=some` are both understood.
+    ///
+    /// Not all callgrind arguments are understood by `iai-callgrind` or cause problems in
+    /// `iai-callgrind` if they would be applied. `iai-callgrind` will issue a warning in such
+    /// cases. Most of the defaults can be overwritten. The default settings are:
+    ///
+    /// * `--I1=32768,8,64`
+    /// * `--D1=32768,8,64`
+    /// * `--LL=8388608,16,64`
+    /// * `--cache-sim=yes`
+    /// * `--toggle-collect=...` (see also [`LibraryBenchmarkConfig::entry_point`])
+    /// * `--collect-atstart=no`
+    /// * `--compress-pos=no`
+    /// * `--compress-strings=no`
+    ///
+    /// Note that `toggle-collect` is an array and the default [`EntryPoint`] for library benchmarks
+    /// is the benchmark function.
+    ///
+    /// See also [Callgrind Command-line
+    /// Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// use iai_callgrind::{LibraryBenchmarkConfig, main};
+    ///
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///                 .callgrind_args(["toggle-collect=something"]);
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn callgrind_args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.callgrind_args.extend_ignore_flag(args);
         self
     }
 
@@ -158,7 +242,7 @@ impl LibraryBenchmarkConfig {
     /// allowed.
     ///
     /// These arguments can be overwritten by tool specific arguments for example with
-    /// [`LibraryBenchmarkConfig::raw_callgrind_args`] or [`crate::Tool::args`].
+    /// [`LibraryBenchmarkConfig::callgrind_args`] or [`crate::Tool::args`].
     ///
     /// # Examples
     ///
@@ -600,7 +684,7 @@ impl LibraryBenchmarkConfig {
     ///
     /// Setting [`EntryPoint::Custom`] is convenience for disabling the entry point with
     /// [`EntryPoint::None`] and setting `--toggle-collect=CUSTOM_ENTRY_POINT` in
-    /// [`LibraryBenchmarkConfig::raw_callgrind_args`]. [`EntryPoint::Custom`] can be useful if you
+    /// [`LibraryBenchmarkConfig::callgrind_args`]. [`EntryPoint::Custom`] can be useful if you
     /// want to benchmark a private function and only need the function in the benchmark function as
     /// access point. [`EntryPoint::Custom`] accepts glob patterns the same way as
     /// [`--toggle-collect`] does.
@@ -645,7 +729,7 @@ impl LibraryBenchmarkConfig {
     /// event counting as requested. This is most likely not what you intended. The event counting
     /// should start with `start_instrumentation`. To achieve this, you can set [`EntryPoint::None`]
     /// which removes the default toggle, but also `--collect-at-start=no`. So, you need to specify
-    /// `--collect-at-start=no` in [`LibraryBenchmarkConfig::raw_callgrind_args`]. The example would
+    /// `--collect-at-start=no` in [`LibraryBenchmarkConfig::callgrind_args`]. The example would
     /// then look like this:
     /// ```rust
     /// use std::hint::black_box;
@@ -658,7 +742,7 @@ impl LibraryBenchmarkConfig {
     ///
     /// #[library_benchmark(
     ///     config = LibraryBenchmarkConfig::default()
-    ///         .raw_callgrind_args(["--collect-at-start=no"])
+    ///         .callgrind_args(["--collect-at-start=no"])
     ///         .entry_point(EntryPoint::None)
     /// )]
     /// fn some_bench() -> u64 {

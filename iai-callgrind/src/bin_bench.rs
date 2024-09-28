@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use derive_more::AsRef;
 use iai_callgrind_macros::IntoInner;
+use iai_callgrind_runner::api::RawArgs;
 
 use crate::{internal, DelayKind, Stdin, Stdio};
 
@@ -34,7 +35,7 @@ pub struct BenchmarkId(String);
 /// use iai_callgrind::{BinaryBenchmarkConfig, main};
 ///
 /// main!(
-///     config = BinaryBenchmarkConfig::default().raw_callgrind_args(["toggle-collect=something"]);
+///     config = BinaryBenchmarkConfig::default().callgrind_args(["toggle-collect=something"]);
 ///     binary_benchmark_groups = some_group
 /// );
 /// ```
@@ -1029,8 +1030,6 @@ impl From<&BinaryBenchmark> for BinaryBenchmark {
     }
 }
 
-// TODO: Add with_callgrind_args
-// TODO: Rename raw_callgrind_args to callgrind_args
 impl BinaryBenchmarkConfig {
     /// Pass arguments to valgrind's callgrind
     ///
@@ -1047,14 +1046,73 @@ impl BinaryBenchmarkConfig {
     /// use iai_callgrind::BinaryBenchmarkConfig;
     ///
     /// BinaryBenchmarkConfig::default()
-    ///     .raw_callgrind_args(["collect-atstart=no", "toggle-collect=some::path"]);
+    ///     .callgrind_args(["collect-atstart=no", "toggle-collect=some::path"]);
     /// ```
+    #[deprecated = "Please use callgrind_args instead"]
     pub fn raw_callgrind_args<I, T>(&mut self, args: T) -> &mut Self
     where
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        self.0.raw_callgrind_args.extend_ignore_flag(args);
+        self.0.callgrind_args.extend_ignore_flag(args);
+        self
+    }
+
+    /// Create a new `BinaryBenchmarkConfig` with initial callgrind arguments
+    ///
+    /// See also [`BinaryBenchmarkConfig::callgrind_args`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{binary_benchmark, binary_benchmark_group};
+    /// # #[binary_benchmark]
+    /// # fn some_func() {}
+    /// # binary_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// use iai_callgrind::{BinaryBenchmarkConfig, main};
+    ///
+    /// main!(
+    ///     config =
+    ///         BinaryBenchmarkConfig::with_callgrind_args(["toggle-collect=something"]);
+    ///     binary_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn with_callgrind_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(internal::InternalBinaryBenchmarkConfig {
+            callgrind_args: RawArgs::from_iter(args),
+            ..Default::default()
+        })
+    }
+
+    /// Pass arguments to valgrind's callgrind
+    ///
+    /// It's not needed to pass the arguments with flags. Instead of `--collect-atstart=no` simply
+    /// write `collect-atstart=no`.
+    ///
+    /// See also [Callgrind Command-line
+    /// Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for a full
+    /// overview of possible arguments.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::BinaryBenchmarkConfig;
+    ///
+    /// BinaryBenchmarkConfig::default()
+    ///     .callgrind_args(["collect-atstart=no", "toggle-collect=some::path"]);
+    /// ```
+    pub fn callgrind_args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.callgrind_args.extend_ignore_flag(args);
         self
     }
 
@@ -1065,7 +1123,7 @@ impl BinaryBenchmarkConfig {
     /// allowed.
     ///
     /// These arguments can be overwritten by tool specific arguments for example with
-    /// [`BinaryBenchmarkConfig::raw_callgrind_args`] or [`crate::Tool::args`].
+    /// [`BinaryBenchmarkConfig::callgrind_args`] or [`crate::Tool::args`].
     ///
     /// # Examples
     ///

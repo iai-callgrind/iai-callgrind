@@ -9,7 +9,7 @@ use iai_callgrind::{
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args([
+        .callgrind_args([
             "toggle-collect=*::find_primes"
         ])
 )]
@@ -21,7 +21,7 @@ fn bench_find_primes_multi_thread(num_threads: usize) -> Vec<u64> {
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args([
+        .callgrind_args([
             "toggle-collect=thread::main",
             "toggle-collect=*::find_primes",
         ])
@@ -37,7 +37,7 @@ fn bench_thread_in_subprocess(num_threads: usize) {
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args(["--instr-atstart=no"])
+        .callgrind_args(["--instr-atstart=no"])
         .entry_point(EntryPoint::None)
 )]
 fn bench_thread_in_thread() -> Vec<u64> {
@@ -49,7 +49,7 @@ fn bench_thread_in_thread() -> Vec<u64> {
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args(["instr-atstart=no"])
+        .callgrind_args(["instr-atstart=no"])
         .entry_point(EntryPoint::None)
 )]
 fn bench_thread_in_thread_in_subprocess() {

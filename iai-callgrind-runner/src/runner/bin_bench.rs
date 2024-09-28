@@ -334,7 +334,7 @@ impl BinBench {
 
         let callgrind_args = Args::try_from_raw_args(&[
             &config.valgrind_args,
-            &config.raw_callgrind_args,
+            &config.callgrind_args,
             meta_callgrind_args,
         ])?;
 

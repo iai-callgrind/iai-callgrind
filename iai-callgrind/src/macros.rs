@@ -135,8 +135,8 @@ macro_rules! binary_benchmark_attribute {
 /// # }
 /// ```
 ///
-/// If you need to pass arguments to valgrind's callgrind, you can specify raw callgrind
-/// arguments via the [`crate::LibraryBenchmarkConfig`]:
+/// If you need to pass arguments to valgrind's callgrind, you can specify callgrind arguments via
+/// [`crate::LibraryBenchmarkConfig::callgrind_args`]:
 ///
 /// ```rust
 /// # use iai_callgrind::{main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig};
@@ -149,7 +149,7 @@ macro_rules! binary_benchmark_attribute {
 /// # fn main() {
 /// main!(
 ///     config = LibraryBenchmarkConfig::default()
-///                 .raw_callgrind_args(
+///                 .callgrind_args(
 ///                     ["--arg-with-flags=yes", "arg-without-flags=is_ok_too"]
 ///                 );
 ///     library_benchmark_groups = some_group

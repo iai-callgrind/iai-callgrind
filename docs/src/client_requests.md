@@ -147,7 +147,7 @@ pub mod my_lib {
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args(["--collect-at-start=no"])
+        .callgrind_args(["--collect-at-start=no"])
         .entry_point(EntryPoint::None)
 )]
 #[bench::small(vec![3, 2, 1])]
