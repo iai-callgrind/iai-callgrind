@@ -10,7 +10,7 @@ use iai_callgrind::{
     RegressionConfig, Tool, ValgrindTool,
 };
 
-// This function is used to create a worst case array we want to sort with our implementation of
+// This function is used to create the worst case array we want to sort with our implementation of
 // bubble sort
 fn setup_worst_case_array(start: i32) -> Vec<i32> {
     if start.is_negative() {
@@ -20,7 +20,7 @@ fn setup_worst_case_array(start: i32) -> Vec<i32> {
     }
 }
 
-// This function is used to create a best case array we want to sort with our implementation of
+// This function is used to create the best case array we want to sort with our implementation of
 // bubble sort
 fn setup_best_case_array(start: i32) -> Vec<i32> {
     if start.is_negative() {
@@ -30,12 +30,12 @@ fn setup_best_case_array(start: i32) -> Vec<i32> {
     }
 }
 
-// The #[library_benchmark] attribute let's you define a benchmark function which you can later use
+// The #[library_benchmark] attribute lets you define a benchmark function which you can later use
 // in the `library_benchmark_groups!` macro. Just using the #[library_benchmark] attribute as a
 // standalone is fine for simple function calls without parameters. However, we actually want to
-// benchmark cases which would need to setup a vector with more elements, but everything we setup
+// benchmark cases which would need to set up a vector with more elements, but everything we set up
 // within the benchmark function itself is attributed to the event counts. See the next benchmark
-// `bench_bubble_sort` function for a better example which uses the `bench` attribute to setup
+// `bench_bubble_sort` function for a better example which uses the `bench` attribute to set up the
 // benchmark with different vectors.
 #[library_benchmark]
 // If possible, it's best to return something from a benchmark function
@@ -45,11 +45,11 @@ fn bench_bubble_sort_empty() -> Vec<i32> {
     black_box(bubble_sort(black_box(vec![])))
 }
 
-// This benchmark uses the `bench` attribute to setup benchmarks with different setups. The big
+// This benchmark uses the `bench` attribute to set up benchmarks with different setups. The big
 // advantage is, that the setup costs and event counts aren't attributed to the benchmark (and
 // opposed to the old api we don't have to deal with callgrind arguments, toggles, ...)
 //
-// The `bench` attribute consist of the attribute name itself, an unique id after `::` and
+// The `bench` attribute consist of the attribute name itself, a unique id after `::` and
 // optionally arguments with expressions which are passed to the benchmark function as parameter.
 // Here we pass a single argument with `Vec<i32>` type to the benchmark. All arguments are already
 // wrapped in a black box and don't need to be put in a `black_box` again.

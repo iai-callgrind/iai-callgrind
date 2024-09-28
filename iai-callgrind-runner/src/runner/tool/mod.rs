@@ -874,8 +874,8 @@ impl ToolOutputPath {
     /// The information about pids, parts and threads is obtained by parsing the header from the
     /// callgrind output files instead of relying on the sometimes flaky file names produced by
     /// `callgrind`. The header is around 10-20 lines, so this method should be still sufficiently
-    /// fast. Additionally, `callgrind` might change the naming scheme of its' files, so using the
-    /// headers makes us more independent from a specific valgrind/callgrind version.
+    /// fast. Additionally, `callgrind` might change the naming scheme of its files, so using the
+    /// headers makes us more independent of a specific valgrind/callgrind version.
     pub fn sanitize_callgrind(&self) -> Result<()> {
         // path, thread
         type Grouped = (PathBuf, Option<usize>);
@@ -887,7 +887,7 @@ impl ToolOutputPath {
         // the files in this map. The order doesn't matter since we only rename the original file
         // names, which doesn't need to follow a specific order.
         //
-        // At first we group by (out|log), then base, then pid and then by part in different
+        // At first, we group by (out|log), then base, then pid and then by part in different
         // hashmaps. The threads are grouped in a vector.
         let mut groups: HashMap<String, Group> = HashMap::new();
 

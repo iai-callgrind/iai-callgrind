@@ -11,7 +11,7 @@ execution but the `setup` or `teardown` don't need to be present.
 
 A `Sandbox` can help mitigating differences in benchmark results on different
 machines. As long as `$TMP_DIR` is unset or set to `/tmp`, the temporary
-directory has a constant length on unix machines (with the exception of android
+directory has a constant length on unix machines (except android
 which uses `/data/local/tmp`). The directory itself is created with a constant
 length but random name like `/tmp/.a23sr8fk`.
 
@@ -69,7 +69,7 @@ executed. The `Command` is executed in the same `Sandbox` and therefore the file
 `foo.txt` with the content `some content` exists thanks to the `setup`. After
 the execution of the `Command`, the `Sandbox` is completely removed, deleting
 all files created during `setup`, the `Command` execution (and `teardown` if it
-would have been present in this example).
+had been present in this example).
 
 Since `setup` is run in the sandbox, you can't copy fixtures from your project's
 workspace into the sandbox that easily anymore. The `Sandbox` can be configured

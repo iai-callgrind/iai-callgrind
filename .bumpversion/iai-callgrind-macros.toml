@@ -10,5 +10,5 @@ replace = "version = \"{new_version}\""
 
 [[tool.bumpversion.files]]
 filename = "iai-callgrind/Cargo.toml"
-search = "iai-callgrind-macros = {{ path = \"../iai-callgrind-macros/\", version = \"={current_version}\""
-replace = "iai-callgrind-macros = {{ path = \"../iai-callgrind-macros/\", version = \"={new_version}\""
+search = "iai-callgrind-macros = {{ path = \"../iai-callgrind-macros\", version = \"={current_version}\""
+replace = "iai-callgrind-macros = {{ path = \"../iai-callgrind-macros\", version = \"={new_version}\""

@@ -172,4 +172,5 @@ Please see the
 more details!
 
 [Callgrind Arguments]: https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options
+
 [EntryPoint]: https://docs.rs/iai-callgrind/0.13.4/iai_callgrind/enum.EntryPoint.html

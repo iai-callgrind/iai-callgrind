@@ -519,7 +519,7 @@ impl BenchmarkOutput {
                 }
                 writeln!(result, "{string}").unwrap();
             } else {
-                // Filter the benchmark command because it has a random hash in it's name
+                // Filter the benchmark command because it has a random hash in its name
                 let line = COMMAND_RE.replace(&line, "$1 <__COMMAND__>");
                 // Filter the pids and parent pids
                 let line = PID_RE.replace_all(&line, |caps: &Captures| {
@@ -642,8 +642,9 @@ impl ExpectedRun {
                 "Expected file '{}' does not exist",
                 file.display()
             );
-            assert!(
-                std::fs::metadata(&file).unwrap().len() != 0,
+            assert_ne!(
+                std::fs::metadata(&file).unwrap().len(),
+                0,
                 "Expected file '{}' was empty",
                 file.display()
             );
@@ -656,8 +657,9 @@ impl ExpectedRun {
                 .map(Result::unwrap)
                 .collect::<Vec<PathBuf>>();
 
-            assert!(
-                files.len() == *count,
+            assert_eq!(
+                files.len(),
+                *count,
                 "Expected file count for glob '{pattern}' was {} but found {} files",
                 *count,
                 files.len()

@@ -247,7 +247,7 @@ impl LibraryBenchmarkConfig {
     ///
     /// # Examples
     ///
-    /// Here, we chose to pass-through the original value of the `HOME` variable:
+    /// Here, we chose to pass through the original value of the `HOME` variable:
     ///
     /// ```rust
     /// # use iai_callgrind::{library_benchmark, library_benchmark_group};

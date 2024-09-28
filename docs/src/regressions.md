@@ -1,9 +1,10 @@
 <!-- markdownlint-disable MD041 MD033 -->
+
 # Performance Regressions
 
 With Iai-Callgrind you can define limits for each event kinds over which a
 performance regression can be assumed. Per default, Iai-Callgrind does not
-perform default regression checks and you have to opt-in with a
+perform default regression checks, and you have to opt-in with a
 `RegressionConfig` at benchmark level with a `LibraryBenchmarkConfig` or
 `BinaryBenchmarkConfig` or at a global level with [Command-line arguments or
 Environment variables](./cli_and_env/basics.md).

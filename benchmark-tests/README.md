@@ -8,7 +8,7 @@ this package can be run as usual with `cargo bench` or `just bench-test
 $BENCH_NAME`. But, to be able to intercept and validate the output (and others)
 of the `cargo bench` run of a benchmark test there is a wrapper around `cargo
 bench` in `benchmark-test/src/bench.rs` with which the benchmarks tests should
-be run. For example you can use `just full-bench-test $BENCH_NAME`. 
+be run. For example, you can use `just full-bench-test $BENCH_NAME`.
 
 ## Developer Notes
 
@@ -34,7 +34,7 @@ name = "test_bin_bench_foo"
 path = "benches/test_bin_bench/foo/test_bin_bench_foo.rs"
 ```
 
-You can now start to setup your test case in the benchmark file. Run the
+You can now start to set up your test case in the benchmark file. Run the
 benchmark for example with `just bench-test test_lib_bench_foo`.
 
 ### Configuration
@@ -162,7 +162,7 @@ wrong.
 
 The expected stdout is currently also sanitized from factors (the `[1.000000x]`
 part after the percentages `(10.000000%)` and the `L2`, `RAM`, `Estimated
-Cycles` change reports as seen below. Here the second run of the above benchmark
+Cycles` change reports as seen below). Here the second run of the above benchmark
 
 ```text
 test_bin_bench_foo::group::function id:() -> target/release/echo

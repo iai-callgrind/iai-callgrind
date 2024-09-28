@@ -35,7 +35,7 @@ main!(library_benchmark_groups = bench_fibonacci_group);
 First of all, you need a public function in your library which you want to
 benchmark. In this example this is the `fibonacci` function which, for the sake
 of simplicity, lives in the benchmark file itself but doesn't have to. If it
-would have been located in `my_lib::fibonacci`, you simply import that function
+had been located in `my_lib::fibonacci`, you simply import that function
 with `use my_lib::fibonacci` and go on as shown above. Next, you need a
 `library_benchmark_group!` in which you specify the names of the benchmark
 functions. Finally, the benchmark harness is created by the `main!` macro.
@@ -100,7 +100,7 @@ main!(library_benchmark_groups = bench_fibonacci_group);
 
 The perhaps most crucial part in setting up library benchmarks is to keep the
 body of benchmark functions clean from any setup or teardown code. There are
-also other ways to avoid setup and teardown code in the benchmark function,
+other ways to avoid setup and teardown code in the benchmark function,
 which are discussed in full detail in the [setup and
 teardown](./setup_and_teardown.md) section.
 
@@ -109,7 +109,7 @@ teardown](./setup_and_teardown.md) section.
 The name of the benchmark functions, here the only benchmark function
 `bench_fibonacci`, which should be benchmarked need to be specified in a
 `library_benchmark_group!` in the `benchmarks` parameter. You can create as many
-groups as you like and you can use it to organize related benchmarks. Each group
+groups as you like, and you can use it to organize related benchmarks. Each group
 needs a unique `name`.
 
 ## The main macro

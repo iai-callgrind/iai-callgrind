@@ -142,7 +142,7 @@ pub struct CommandLineArgs {
     /// This is a `,` separate list of EventKind=limit (key=value) pairs with the limit being a
     /// positive or negative percentage. If positive, a performance regression check for this
     /// `EventKind` fails if the limit is exceeded. If negative, the regression check fails if the
-    /// value comes below the limit. The `EventKind` is matched case insensitive. For a list of
+    /// value comes below the limit. The `EventKind` is matched case-insensitive. For a list of
     /// valid `EventKinds` see the docs: <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.EventKind.html>
     ///
     /// Examples: --regression='ir=0.0' or --regression='ir=0, EstimatedCycles=10'
@@ -256,8 +256,8 @@ pub struct CommandLineArgs {
     /// Specify the home directory of iai-callgrind benchmark output files
     ///
     /// All output files are per default stored under the `$PROJECT_ROOT/target/iai` directory.
-    /// This option let's you customize this home directory and it will be created if it
-    /// does't exist.
+    /// This option lets you customize this home directory, and it will be created if it
+    /// doesn't exist.
     #[arg(long = "home", num_args = 1, env = "IAI_CALLGRIND_HOME")]
     pub home: Option<PathBuf>,
 

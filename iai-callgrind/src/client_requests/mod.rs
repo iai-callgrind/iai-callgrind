@@ -14,8 +14,8 @@
 //!
 //! The client requests need to be built with the valgrind header files. Usually, these header files
 //! are installed by your distribution's package manager with the valgrind package into a global
-//! include path and you don't need to do anything but activating the `client_requests` feature (see
-//! below) of the `iai-callgrind` dependency.
+//! include path, and you don't need to do anything but activating the `client_requests` feature
+//! (see below) of the `iai-callgrind` dependency.
 //!
 //! If you encounter problems because the valgrind header files cannot be found, first ensure you
 //! have installed valgrind and your package manager's package includes the header files. If not or
@@ -70,7 +70,7 @@
 //!
 //! # Performance and implementation details
 //!
-//! Depending on the target, the client requests are optimized to run with the same overhead like
+//! Depending on the target, the client requests are optimized to run with the same overhead as
 //! the original valgrind client requests in C code. The optimizations are based on inline assembly
 //! with the `asm!` macro and depend on the availability of it on a specific target. Since inline
 //! assembly is not stable on all targets which are supported by valgrind, we cannot provide
@@ -112,7 +112,7 @@
 //!
 //! All other targets you don't find in the table above are also not supported by valgrind, yet.
 //!
-//! Note this table might quickly become outdated with higher versions of valgrind and you should
+//! Note this table might quickly become outdated with higher versions of valgrind, and you should
 //! not rely on it to be up-to-date. As indicated above, the bindings are created dynamically in
 //! such a way, that always all targets which are covered by valgrind are also covered by
 //! `iai-callgrind`. They just might not have been optimized, yet. If you need to know if your

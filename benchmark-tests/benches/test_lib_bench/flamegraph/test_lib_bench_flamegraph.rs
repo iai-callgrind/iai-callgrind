@@ -5,7 +5,7 @@ use iai_callgrind::{
     LibraryBenchmarkConfig,
 };
 
-// This function is used to create a worst case array we want to sort with our implementation of
+// This function is used to create the worst case array we want to sort with our implementation of
 // bubble sort
 fn setup_worst_case_array(start: i32) -> Vec<i32> {
     if start.is_negative() {

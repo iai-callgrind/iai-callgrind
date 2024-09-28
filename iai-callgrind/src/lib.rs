@@ -203,8 +203,8 @@
 //!
 //! #### Quickstart (#binary-benchmarks)
 //!
-//! There are two apis to setup binary benchmarks, but we only describe the high-level api using the
-//! [`#[binary_benchmark]`](`crate::binary_benchmark`) attribute here. See the docs of
+//! There are two apis to set up binary benchmarks, but we only describe the high-level api using
+//! the [`#[binary_benchmark]`](`crate::binary_benchmark`) attribute here. See the docs of
 //! [`binary_benchmark_group`] for more details about the low level api. The `#[binary_benchmark]`
 //! attribute works almost the same as the `#[library_benchmark]` attribute. You will find the same
 //! parameters `setup`, `teardown`, `config`, etc. in `#[binary_benchmark]` as in
@@ -287,7 +287,7 @@
 //! return value of the [`#[binary_benchmark]`](crate::binary_benchmark) function.
 //!
 //! This change has far-reaching consequences but also simplifies things. Since the function itself
-//! is not benchmarked you can put any code into this function and it does not influence the
+//! is not benchmarked you can put any code into this function, and it does not influence the
 //! benchmark of the [`Command`] itself. However, this function is run only once to __build__ the
 //! [`Command`] and when we collect all commands and its configuration to be able to actually
 //! __execute__ the [`Command`]s later in the benchmark runner. Whichever code you want to run

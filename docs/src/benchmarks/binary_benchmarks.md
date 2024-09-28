@@ -4,7 +4,7 @@ You want to start benchmarking your crate's binary? You've come to the right
 place. Best start with the [Quickstart](./binary_benchmarks/quickstart.md)
 section.
 
-Setting up binary benchmarks is very similar to library benchmarks and it's a
+Setting up binary benchmarks is very similar to library benchmarks, and it's a
 good idea to have a look at the [library benchmark](./library_benchmarks.md)
 section of this guide, too.
 

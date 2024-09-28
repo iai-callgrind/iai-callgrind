@@ -113,7 +113,7 @@ impl FlamegraphGenerator for BaselineFlamegraphGenerator {
         sentinel: Option<&Sentinel>,
         project_root: &Path,
     ) -> Result<Vec<FlamegraphSummary>> {
-        // We need the dummy path just to cleanup and organize the output files independently from
+        // We need the dummy path just to clean up and organize the output files independently of
         // the EventKind of the OutputPath
         let mut output_path = OutputPath::new(tool_output_path, EventKind::Ir);
         output_path.init()?;
@@ -307,7 +307,7 @@ impl FlamegraphGenerator for LoadBaselineFlamegraphGenerator {
         sentinel: Option<&Sentinel>,
         project_root: &Path,
     ) -> Result<Vec<FlamegraphSummary>> {
-        // We need the dummy path just to cleanup and organize the output files independently from
+        // We need the dummy path just to clean up and organize the output files independently of
         // the EventKind of the OutputPath
         let mut output_path = OutputPath::new(tool_output_path, EventKind::Ir);
 
@@ -591,7 +591,7 @@ impl FlamegraphGenerator for SaveBaselineFlamegraphGenerator {
         sentinel: Option<&Sentinel>,
         project_root: &Path,
     ) -> Result<Vec<FlamegraphSummary>> {
-        // We need the dummy path just to cleanup and organize the output files independently from
+        // We need the dummy path just to clean up and organize the output files independently of
         // the EventKind of the OutputPath
         let mut output_path = OutputPath::new(tool_output_path, EventKind::Ir);
         output_path.init()?;

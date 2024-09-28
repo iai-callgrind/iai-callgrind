@@ -159,8 +159,9 @@ where
     stdin
         .read_to_end(&mut encoded)
         .with_context(|| "Failed to read encoded configuration")?;
-    assert!(
-        encoded.len() == num_bytes,
+    assert_eq!(
+        encoded.len(),
+        num_bytes,
         "Bytes mismatch when decoding configuration: Expected {num_bytes} bytes but received: {} \
          bytes",
         encoded.len()

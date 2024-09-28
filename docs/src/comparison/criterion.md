@@ -37,11 +37,11 @@ Iai-Callgrind Pros:
 Iai-Callgrind/Criterion-rs Mixed:
 
 * Although it is usually not significant, due to the high precision of the
-  Iai-Callgrind measurements changes in the benchmarks themselves like adding an
-  additional benchmark case can have an effect on the other benchmarks.
-  Iai-Callgrind can only try to reduce these effects to a minimum but never
-  completely eliminate them. Criterion-rs does not have this problem because it
-  cannot detect such small changes.
+  Iai-Callgrind measurements changes in the benchmarks themselves like adding a   
+  benchmark case can have an effect on the other benchmarks. Iai-Callgrind can
+  only try to reduce these effects to a minimum but never completely eliminate
+  them. Criterion-rs does not have this problem because it cannot detect such
+  small changes.
 
 Iai-Callgrind Cons:
 

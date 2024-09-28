@@ -49,7 +49,7 @@ impl FlamegraphMap {
     pub fn add(&mut self, other: &Self) {
         for (other_id, other_value) in &other.0 {
             // The performance of HashMap::entry is worse than the following method because we have
-            // a heavy id which needs to be cloned although it is already present in the map.
+            // a heavy id which needs to be cloned, although it is already present in the map.
             if let Some(value) = self.0.map.get_mut(other_id) {
                 value.metrics.add(&other_value.metrics);
             } else {

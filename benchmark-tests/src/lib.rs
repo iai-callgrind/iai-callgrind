@@ -98,7 +98,7 @@ pub fn thread_in_thread_with_instrumentation() -> Vec<u64> {
     primes
 }
 
-// This function is used to create a worst case array we want to sort with our implementation of
+// This function is used to create the worst case array we want to sort with our implementation of
 // bubble sort
 pub fn setup_worst_case_array(start: i32) -> Vec<i32> {
     if start.is_negative() {
@@ -108,7 +108,7 @@ pub fn setup_worst_case_array(start: i32) -> Vec<i32> {
     }
 }
 
-// This function is used to create a best case array we want to sort with our implementation of
+// This function is used to create the best case array we want to sort with our implementation of
 // bubble sort
 pub fn setup_best_case_array(start: i32) -> Vec<i32> {
     if start.is_negative() {

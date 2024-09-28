@@ -30,10 +30,10 @@ directory which is made available for us in the `qemu` system image.
 
 Secondly, we adjust the `qemu` initrd image a little bit to be able to run
 valgrind `--tool=memcheck`. For a full run-down consult the content of the
-[docker](../docker/) folder.
+[docker](../docker) folder.
 
 We also wrap the actual valgrind invocation in a `valgrind-wrapper` binary to be
-able to filter the output of valgrind so it is architecture agnostic. All other
+able to filter the output of valgrind, so it is architecture agnostic. All other
 binaries in the `bin` directory are test binaries.
 
 The exact numbers, backtraces and the other filtered output is not of interest,

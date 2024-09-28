@@ -140,7 +140,7 @@ pub fn make_mem_defined_if_addressable(addr: *const (), len: usize) -> usize {
 /// within the specified memory range. This client request has no other effect on the properties of
 /// the memory range.
 ///
-/// The specified address range is associated with the `desc` string. When Memcheck reports an
+/// The specified address range is associated with the `desc` string. When Memcheck reports
 /// invalid access to an address in the range, it will describe it in terms of this block rather
 /// than in terms of any other block it knows about. Note that the use of this macro does not
 /// actually change the state of memory in any way -- it merely gives a name for the range. At some
@@ -188,7 +188,7 @@ pub fn discard<T>(handle: BlockHandle) -> usize {
 /// Check that memory at `addr` is addressable for `len` bytes
 ///
 /// If suitable addressibility is not established, Valgrind prints an error message and returns the
-/// address of the first offending byte. Otherwise it returns zero.
+/// address of the first offending byte. Otherwise, it returns zero.
 #[inline(always)]
 pub fn check_mem_is_addressable(addr: *const (), len: usize) -> usize {
     do_client_request!(
@@ -206,7 +206,7 @@ pub fn check_mem_is_addressable(addr: *const (), len: usize) -> usize {
 /// Check that memory at `addr` is addressable and defined for `len` bytes.
 ///
 /// If suitable addressibility and definedness are not established, Valgrind prints an error message
-/// and returns the address of the first offending byte. Otherwise it returns zero.
+/// and returns the address of the first offending byte. Otherwise, it returns zero.
 #[inline(always)]
 pub fn check_mem_is_defined(addr: *const (), len: usize) -> usize {
     do_client_request!(
@@ -224,7 +224,7 @@ pub fn check_mem_is_defined(addr: *const (), len: usize) -> usize {
 /// Use this macro to force the definedness and addressibility of a `value` to be checked.
 ///
 /// If suitable addressibility and definedness are not established, Valgrind prints an error message
-/// and returns the address of the first offending byte. Otherwise it returns zero.
+/// and returns the address of the first offending byte. Otherwise, it returns zero.
 #[inline(always)]
 pub fn check_value_is_defined<T>(value: &T) -> usize {
     do_client_request!(
@@ -354,7 +354,7 @@ pub fn count_leak_blocks() -> LeakCounts {
     leaks
 }
 
-/// Allow you to get the V (validity) bits for an address range `[addr..addr+len-1]`
+/// Allow you to get the V (validity) bits for an address range `[addr...addr+len-1]`
 ///
 /// The validity data is copied into the provided `bits` slice.
 ///
@@ -364,8 +364,8 @@ pub fn count_leak_blocks() -> LeakCounts {
 /// * 2   [previously indicated unaligned arrays; these are now allowed]
 /// * 3   if any parts of `addr`/`bits` are not addressable.
 ///
-/// The metadata is not copied in cases 0, 2 or 3 so it should be impossible to segfault your system
-/// by using this call.
+/// The metadata is not copied in cases 0, 2 or 3, so it should be impossible to segfault your
+/// system by using this call.
 ///
 /// You should probably only set V bits with [`set_vbits`] that you have got with this client
 /// request.
@@ -385,7 +385,7 @@ pub fn get_vbits(addr: *const (), bits: &mut [u8], len: usize) -> usize {
     )
 }
 
-/// Allow you to set the V (validity) bits for an address range `[addr..addr+len-1]`
+/// Allow you to set the V (validity) bits for an address range `[addr...addr+len-1]`
 ///
 /// The validity data is copied from the provided `bits` slice.
 ///
@@ -395,8 +395,8 @@ pub fn get_vbits(addr: *const (), bits: &mut [u8], len: usize) -> usize {
 /// * 2   [previously indicated unaligned arrays;  these are now allowed]
 /// * 3   if any parts of `addr`/`bits` are not addressable.
 ///
-/// The metadata is not copied in cases 0, 2 or 3 so it should be impossible to segfault your system
-/// by using this call.
+/// The metadata is not copied in cases 0, 2 or 3, so it should be impossible to segfault your
+/// system by using this call.
 ///
 /// You should probably only set V bits with `set_vbits` that you have got with [`get_vbits`].
 ///

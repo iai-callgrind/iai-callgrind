@@ -46,7 +46,7 @@ More details on the usage and requirements of Valgrind Client Requests in
 
 ## Installation of Valgrind
 
-Iai-Callgrind is intentionally independent from a specific version of valgrind.
+Iai-Callgrind is intentionally independent of a specific version of valgrind.
 However, Iai-Callgrind was only tested with versions of valgrind >= `3.20.0`. It
 is therefore highly recommended to use a recent version of valgrind. Bugs get
 fixed, the supported platforms are expanded ... Also, if you want or need to,

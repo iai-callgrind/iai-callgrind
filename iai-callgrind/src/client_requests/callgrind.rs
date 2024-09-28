@@ -47,7 +47,7 @@ use std::ffi::CStr;
 
 use super::{bindings, fatal_error, valgrind_do_client_request_stmt};
 
-/// Dump current state of cost centers, and zero them afterwards
+/// Dump current state of cost centers, and zero them afterward
 ///
 /// Force generation of a profile dump at specified position in code, for the current thread only.
 /// Written counters will be reset to zero.
@@ -64,7 +64,7 @@ pub fn dump_stats() {
     );
 }
 
-/// Dump current state of cost centers, and zero them afterwards stating a reason
+/// Dump current state of cost centers, and zero them afterward stating a reason
 ///
 /// Same as [`dump_stats`], but allows to specify a string to be able to distinguish profile dumps.
 ///
@@ -125,7 +125,7 @@ pub fn toggle_collect() {
 /// Start full callgrind instrumentation if not already switched on
 ///
 /// When cache simulation is done, it will flush the simulated cache; this will lead to an
-/// artificial cache warmup phase afterwards with cache misses which would not have happened in
+/// artificial cache warmup phase afterward with cache misses which would not have happened in
 /// reality.
 #[inline(always)]
 pub fn start_instrumentation() {
@@ -142,8 +142,8 @@ pub fn start_instrumentation() {
 
 /// Stop full callgrind instrumentation if not already switched off
 ///
-/// This flushes Valgrinds translation cache, and does no additional instrumentation afterwards,
-/// which effectively will run at the same speed as the "none" tool (ie. at minimal slowdown). Use
+/// This flushes Valgrind's translation cache, and does no additional instrumentation afterward,
+/// which effectively will run at the same speed as the "none" tool (i.e. at minimal slowdown). Use
 /// this to bypass Callgrind aggregation for uninteresting code parts. To start Callgrind in this
 /// mode to ignore the setup phase, use the valgrind command line option `--instr-atstart=no`.
 #[inline(always)]

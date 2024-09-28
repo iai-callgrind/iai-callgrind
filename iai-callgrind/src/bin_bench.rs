@@ -22,7 +22,7 @@ pub struct BenchmarkId(String);
 /// configures all benchmarks. A configuration at [`group`](crate::binary_benchmark_group) level
 /// configures all benchmarks in this group inheriting the configuration of the `main` level and if
 /// not specified otherwise overwrites the values of the `main` configuration if the option is
-/// specified in both [`BinaryBenchmarkConfig`]s. The more deeper levels are the
+/// specified in both [`BinaryBenchmarkConfig`]s. The deeper levels are the
 /// (`#[binary_benchmark] attribute`)[`crate::binary_benchmark`], then `#[bench]` and the
 /// `#[benches]` attribute.
 ///
@@ -298,14 +298,14 @@ pub struct Delay(internal::InternalDelay);
 pub enum ExitWith {
     /// Exit with success is similar to `ExitCode(0)`
     Success,
-    /// Exit with failure is similar to setting the `ExitCode` to something different than `0`
+    /// Exit with failure is similar to setting the `ExitCode` to something different from `0`
     /// without having to rely on a specific exit code
     Failure,
     /// The exact `ExitCode` of the benchmark run
     Code(i32),
 }
 
-/// The `Sandbox` in which the the `setup`, `teardown` and the [`Command`] are run
+/// The `Sandbox` in which the `setup`, `teardown` and the [`Command`] are run
 ///
 /// The `Sandbox` is a temporary directory which is created before the execution of the
 /// [`setup`](`crate::binary_benchmark`) and deleted after the
@@ -316,13 +316,13 @@ pub enum ExitWith {
 ///
 /// A [`Sandbox`] can help mitigating differences in benchmark results on different machines. As
 /// long as `$TMP_DIR` is unset or set to `/tmp`, the temporary directory has a constant length on
-/// unix machines (with the exception of android which uses `/data/local/tmp`). The directory itself
+/// unix machines (except android which uses `/data/local/tmp`). The directory itself
 /// is created with a constant length but random name like `/tmp/.a23sr8fk`. It is not implausible
 /// that an executable has different event counts just because the directory it is executed in has a
 /// different length. For example, if a member of your project has set up the project in
 /// `/home/bob/workspace/our-project` running the benchmarks in this directory, and the ci runs the
 /// benchmarks in `/runner/our-project`, the event counts might differ. If possible, the benchmarks
-/// should be run in a as constant as possible environment. Clearing the environment variables is
+/// should be run in an as constant as possible environment. Clearing the environment variables is
 /// also such a counter-measure.
 ///
 /// Other reasons for using a `Sandbox` are convenience, such as if you're creating files during
@@ -346,7 +346,7 @@ pub enum ExitWith {
 pub struct Sandbox(internal::InternalSandbox);
 
 impl Bench {
-    /// Create a new `Bench` with an unique [`BenchmarkId`]
+    /// Create a new `Bench` with a unique [`BenchmarkId`]
     ///
     /// If the provided [`BenchmarkId`] is invalid, `iai-callgrind` exits with an error.
     ///
@@ -1129,7 +1129,7 @@ impl BinaryBenchmarkConfig {
     ///
     /// # Examples
     ///
-    /// Here, we chose to pass-through the original value of the `HOME` variable:
+    /// Here, we chose to pass through the original value of the `HOME` variable:
     ///
     /// ```rust
     /// # use iai_callgrind::{binary_benchmark_group};
@@ -1750,7 +1750,7 @@ impl Command {
     ///
     /// # Examples
     ///
-    /// Assume the, or one of your project's binaries name is `my-echo`:
+    /// Assume the project's binary or one of your project's binaries name is `my-echo`:
     ///
     /// ```
     /// # macro_rules! env { ($m:tt) => {{ "/home/my_project/target/release/my-echo" }} }
@@ -1946,7 +1946,7 @@ impl Command {
     ///
     /// The options you might be interested in the most are [`Stdin::File`], which mirrors the
     /// behaviour of [`std::process::Stdio`] if `Stdio` is a [`std::fs::File`], and
-    /// [`Stdin::Setup`], which is special to `iai-callgrind` and let's you pipe the output of
+    /// [`Stdin::Setup`], which is special to `iai-callgrind` and lets you pipe the output of
     /// the `setup` function into the Stdin of this [`Command`]. If you need to delay the `Command`
     /// when using [`Stdin::Setup`], you can do so with [`Command::delay`].
     ///

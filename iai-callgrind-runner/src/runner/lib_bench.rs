@@ -35,7 +35,7 @@ mod defaults {
     pub const COMPARE_BY_ID: bool = false;
 }
 
-/// Implements [`Benchmark`] to run a [`LibBench`] and compare against a earlier [`BenchmarkKind`]
+/// Implements [`Benchmark`] to run a [`LibBench`] and compare against an earlier [`BenchmarkKind`]
 #[derive(Debug)]
 struct BaselineBenchmark {
     baseline_kind: BaselineKind,

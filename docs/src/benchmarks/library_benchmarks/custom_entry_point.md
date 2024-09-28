@@ -42,7 +42,7 @@ when compiling benchmarks) inlines functions if it sees an advantage in doing
 so. Iai-Callgrind takes care, that this doesn't happen with the benchmark
 function, so `Callgrind` can find and hook into the benchmark function. But, in
 your production code you actually don't want to stop the compiler from doing
-it's job just to be able to benchmark that function. So, be cautious with
+its job just to be able to benchmark that function. So, be cautious with
 benchmarking private functions and only choose functions of which it is known
 that they are not being inlined.
 
@@ -109,5 +109,7 @@ grep '^fn=.*::bubble_sort$' target/iai/the_package/benchmark_file_name/my_group/
 Having found the pattern, you can eventually use `EntryPoint::Custom`.
 
 [Callgrind]: https://valgrind.org/docs/manual/cl-manual.html
+
 [Callgrind Arguments]: https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options
+
 [`EntryPoint`]: https://docs.rs/iai-callgrind/0.13.4/iai_callgrind/enum.EntryPoint.html
