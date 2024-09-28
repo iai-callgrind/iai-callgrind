@@ -1058,7 +1058,56 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    /// TODO: DOCS
+    /// Pass valgrind arguments to all tools
+    ///
+    /// Only core [valgrind
+    /// arguments](https://valgrind.org/docs/manual/manual-core.html#manual-core.options) are
+    /// allowed.
+    ///
+    /// These arguments can be overwritten by tool specific arguments for example with
+    /// [`BinaryBenchmarkConfig::raw_callgrind_args`] or [`crate::Tool::args`].
+    ///
+    /// # Examples
+    ///
+    /// Specify `--trace-children=no` for all configured tools (including callgrind):
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{binary_benchmark_group};
+    /// # binary_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmarks = |_group: &mut BinaryBenchmarkGroup| {});
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig, Tool, ValgrindTool};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = BinaryBenchmarkConfig::default()
+    ///         .valgrind_args(["--trace-children=no"])
+    ///         .tool(Tool::new(ValgrindTool::DHAT));
+    ///     binary_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
+    ///
+    /// Overwrite the valgrind argument `--num-callers=25` for `DHAT` with `--num-callers=30`:
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{binary_benchmark_group};
+    /// # binary_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmarks = |_group: &mut BinaryBenchmarkGroup| {});
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig, Tool, ValgrindTool};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = BinaryBenchmarkConfig::default()
+    ///         .valgrind_args(["--num-callers=25"])
+    ///         .tool(Tool::new(ValgrindTool::DHAT)
+    ///             .args(["--num-callers=30"])
+    ///         );
+    ///     binary_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
     pub fn valgrind_args<I, T>(&mut self, args: T) -> &mut Self
     where
         I: AsRef<str>,

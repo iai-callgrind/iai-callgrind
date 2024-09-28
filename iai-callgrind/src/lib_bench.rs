@@ -151,7 +151,60 @@ impl LibraryBenchmarkConfig {
         self
     }
 
-    /// TODO: DOCS
+    /// Pass valgrind arguments to all tools
+    ///
+    /// Only core [valgrind
+    /// arguments](https://valgrind.org/docs/manual/manual-core.html#manual-core.options) are
+    /// allowed.
+    ///
+    /// These arguments can be overwritten by tool specific arguments for example with
+    /// [`LibraryBenchmarkConfig::raw_callgrind_args`] or [`crate::Tool::args`].
+    ///
+    /// # Examples
+    ///
+    /// Specify `--trace-children=no` for all configured tools (including callgrind):
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark_group, library_benchmark};
+    /// # #[library_benchmark] fn bench_me() {}
+    /// # library_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmarks = bench_me
+    /// # );
+    /// use iai_callgrind::{main, LibraryBenchmarkConfig, Tool, ValgrindTool};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .valgrind_args(["--trace-children=no"])
+    ///         .tool(Tool::new(ValgrindTool::DHAT));
+    ///     library_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
+    ///
+    /// Overwrite the valgrind argument `--num-callers=25` for `DHAT` with `--num-callers=30`:
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark_group, library_benchmark};
+    /// # #[library_benchmark] fn bench_me() {}
+    /// # library_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmarks = bench_me
+    /// # );
+    /// use iai_callgrind::{main, LibraryBenchmarkConfig, Tool, ValgrindTool};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .valgrind_args(["--num-callers=25"])
+    ///         .tool(Tool::new(ValgrindTool::DHAT)
+    ///             .args(["--num-callers=30"])
+    ///         );
+    ///     library_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
     pub fn valgrind_args<I, T>(&mut self, args: T) -> &mut Self
     where
         I: AsRef<str>,
