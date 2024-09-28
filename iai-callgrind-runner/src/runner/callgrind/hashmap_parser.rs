@@ -145,7 +145,7 @@ impl CallgrindParser for HashMapParser {
         // function is very special in that it is called exactly once, is not recursive etc.
         let mut sentinel_key = None;
 
-        // We start within he header
+        // We start within the header
         let mut is_header = true;
         for line in iter {
             let line = line.trim();

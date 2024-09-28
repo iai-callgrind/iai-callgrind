@@ -16,7 +16,7 @@ labels.
 
 ## Patches / Pull Requests
 
-All patches have to be sent on Github as [pull
+All patches have to be sent on GitHub as [pull
 requests](https://github.com/iai-callgrind/iai-callgrind/pulls). Before starting
 a pull request, it is best to open an issue first so no efforts are wasted.
 
@@ -65,7 +65,7 @@ If your IDE can handle it, it's usually best to work with the MSRV locally
 rustup override set 1.66.0
 ```
 
-What is left is to setup your favorite editor to use nightly rustfmt and clippy
+What is left is to set up your favorite editor to use nightly rustfmt and clippy
 from the rust `stable` toolchain in order to pass the formatting and linting
 checks in the `ci`.
 

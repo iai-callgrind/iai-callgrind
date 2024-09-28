@@ -50,7 +50,7 @@ impl CargoMetadata {
     }
 }
 
-/// The `#[library_benchmark]` attribute let's you define a benchmark function which you can later
+/// The `#[library_benchmark]` attribute lets you define a benchmark function which you can later
 /// use in the `library_benchmark_groups!` macro.
 ///
 /// This attribute accepts the following parameters:
@@ -99,9 +99,9 @@ impl CargoMetadata {
 /// 1. Using the `#[library_benchmark]` attribute as a standalone without [`#[bench]`][bench] or
 ///    [`#[benches]`][benches] is fine for simple function calls without parameters.
 /// 2. We mostly need to benchmark cases which would need to be setup for example with a vector, but
-///    everything we setup within the benchmark function itself would be attributed to the event
+///    everything we set up within the benchmark function itself would be attributed to the event
 ///    counts. The second form of this attribute macro uses the [`#[bench]`][bench] and
-///    [`#[benches]`][benches] attributes to setup benchmarks with different cases. The main
+///    [`#[benches]`][benches] attributes to set up benchmarks with different cases. The main
 ///    advantage is, that the setup costs and event counts aren't attributed to the benchmark (and
 ///    opposed to the old api we don't have to deal with callgrind arguments, toggles,
 ///    inline(never), ...)
@@ -422,7 +422,7 @@ pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
 /// library benchmarks. In this case the `args` from `#[bench]` or `#[benches]` are passed to the
 /// function AND `setup` or `teardown` respectively.
 ///
-/// By example (Suppose your crate's binary is named `my-foo`)
+/// For example (Suppose your crate's binary is named `my-foo`)
 ///
 /// ```rust
 /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }

@@ -69,11 +69,12 @@ pub fn clean_memory(start: *const (), len: usize) {
 
 /// Create completely arbitrary happens-before edges between threads
 ///
-/// If threads T1 .. Tn all do `annotate_happens_before` and later (w.r.t. some notional global
+/// If threads T1 ... Tn all do `annotate_happens_before` and later (w.r.t. some notional global
 /// clock for the computation) thread Tm does [`annotate_happens_after`], then Helgrind will regard
-/// all memory accesses done by T1 .. Tn before the ..BEFORE.. call as happening-before all memory
-/// accesses done by Tm after the ..AFTER.. call.  Hence Helgrind won't complain about races if Tm's
-/// accesses afterwards are to the same locations as accesses before by any of T1 .. Tn.
+/// all memory accesses done by T1 ... Tn before the ...BEFORE... call as happening-before all
+/// memory accesses done by Tm after the ...AFTER... call. Hence, Helgrind won't complain about
+/// races if Tm's accesses afterward are to the same locations as accesses before by any of T1 ...
+/// Tn.
 ///
 /// `obj` is a machine word and completely arbitrary, and denotes the identity of some
 /// synchronisation object you're modelling.
@@ -120,7 +121,7 @@ pub fn annotate_happens_after(obj: *const ()) {
 /// An implementation may optionally release resources it has associated with 'obj' when
 /// `annotate_happens_before_forget_all` happens. Users are recommended to use
 /// `annotate_happens_before_forget_all` to indicate when a synchronisation object is no longer
-/// needed, so as to avoid potential indefinite resource leaks.
+/// needed, to avoid potential indefinite resource leaks.
 #[inline(always)]
 pub fn annotate_happens_before_forget_all(obj: *const ()) {
     do_client_request!(
@@ -137,7 +138,7 @@ pub fn annotate_happens_before_forget_all(obj: *const ()) {
 /// Report that a new memory at `addr` of size `size` has been allocated.
 ///
 /// This might be used when the memory has been retrieved from a free list and is about to be
-/// reused, or when a the locking discipline for a variable changes.
+/// reused, or when a locking discipline for a variable changes.
 ///
 /// This is the same as [`clean_memory`].
 #[inline(always)]
@@ -161,7 +162,7 @@ pub fn annotate_new_memory(addr: *const (), size: usize) {
 ///
 /// We just pretend they're ordinary posix rwlocks. That'll probably give some rather confusing
 /// wording in error messages, claiming that the arbitrary `lock` values are `pthread_rwlock_t*`'s,
-/// when in fact they are not. Ah well.
+/// when in fact they are not. Ah, well.
 #[inline(always)]
 pub fn annotate_rwlock_create(lock: *const ()) {
     do_client_request!(

@@ -2,7 +2,7 @@
 
 In this section we're going through the differences to [library
 benchmarks](../library_benchmarks.md). This assumes that you already know how to
-set up library benchmarks and it is recommended to learn the very basics about
+set up library benchmarks, and it is recommended to learn the very basics about
 library benchmarks, starting with
 [Quickstart](../binary_benchmarks/quickstart.md), [Anatomy of a library
 benchmark](../library_benchmarks/anatomy.md) and [The macros in more
@@ -33,7 +33,7 @@ To see all macros in action have a look at the example below.
 
 The maybe most important difference is, that the `#[binary_benchmark]` annotated
 function always needs to return an `iai_callgrind::Command`. Note this function
-builds the command which is going to be benchmarked but doesn't executed it,
+builds the command which is going to be benchmarked but doesn't execute it,
 yet. So, the code in this function does not attribute to the event counts of the
 actual benchmark.
 

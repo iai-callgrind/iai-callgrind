@@ -114,7 +114,7 @@ exceptions = [
   #{ allow = ["Zlib"], crate = "adler32" },
 ]
 
-# Some crates don't have (easily) machine readable licensing information,
+# Some crates don't have (easily) machine-readable licensing information,
 # adding a clarification entry for it allows you to manually specify the
 # licensing information
 #[[licenses.clarify]]

@@ -258,7 +258,7 @@ pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<Callgrind
                 positions_prototype = Some(positions.split_ascii_whitespace().collect());
             }
             // The events line is the last line in the header which is mandatory (according to
-            // the source code of callgrind_annotate). The summary line is usually the last line
+            // the source code of callgrind_annotate). The summary line is usually the last line,
             // but it is only optional. So, we break out of the loop here and stop the parsing.
             Some(("events", events)) => {
                 trace!("Using events '{events}' from line: '{line}'");

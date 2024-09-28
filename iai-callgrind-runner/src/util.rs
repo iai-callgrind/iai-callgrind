@@ -84,7 +84,7 @@ pub fn bool_to_yesno(value: bool) -> String {
 /// Convert a `yes` or `no` string to a boolean value
 ///
 /// This method is the counterpart to [`bool_to_yesno`] and can fail if the string doesn't match
-/// exactly (case sensitive).
+/// exactly (case-sensitive).
 pub fn yesno_to_bool(value: &str) -> Option<bool> {
     match value.trim() {
         "yes" => Some(true),
@@ -97,7 +97,7 @@ pub fn yesno_to_bool(value: &str) -> Option<bool> {
 ///
 /// This method does not panic if `value` is zero and instead returns `0`.
 ///
-/// The ilog10 method on the primitive types is stable in rust 1.67. Currently we are at MSRV 1.66.
+/// The ilog10 method on the primitive types is stable in rust 1.67. Currently, we are at MSRV 1.66.
 /// This method can therefor be removed as soon as we bump the MSRV.
 #[allow(clippy::cast_precision_loss)]
 #[allow(clippy::cast_sign_loss)]

@@ -196,18 +196,26 @@ license at your option.
 According to [Valgrind's documentation][Valgrind Client Request Mechanism]:
 
 > The Valgrind headers, unlike most of the rest of
-the code, are under a BSD-style license so you may include them without worrying
-about license incompatibility.
+> the code, are under a BSD-style license, so you may include them without worrying
+> about license incompatibility.
 
 We have included the original license where we made use of the original header
 files.
 
 [Api Docs]: https://docs.rs/iai-callgrind/latest/iai_callgrind/
+
 [Bencher]: https://bencher.dev/learn/benchmarking/rust/iai/
+
 [Guide]: https://iai-callgrind.github.io/iai-callgrind/
+
 [Guide Prerequisites]: https://iai-callgrind.github.io/iai-callgrind/latest/html/installation/prerequisites.html
+
 [kcachegrind]: https://kcachegrind.github.io/html/Home.html
+
 [Valgrind]: https://valgrind.org/
+
 [Valgrind Client Request Mechanism]: https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq
+
 [Callgrind Manual]: https://valgrind.org/docs/manual/cl-manual.html
+
 [Callgrind Annotate]: https://valgrind.org/docs/manual/cl-manual.html#cl-manual.callgrind_annotate-options

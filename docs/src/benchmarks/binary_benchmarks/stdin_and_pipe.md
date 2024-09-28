@@ -44,7 +44,7 @@ main!(binary_benchmark_groups = my_group);
 
 Usually, `setup` then the `Command` and then `teardown` are executed
 sequentially, each waiting for the previous process to exit successfully (See
-also [Configure the exit code of the Command](./configuration/exit_code.md). If
+also [Configure the exit code of the Command](./configuration/exit_code.md)). If
 the `Command::stdin` changes to `Stdin::Setup`, `setup` and the `Command` are
 executed in parallel and Iai-Callgrind waits first for the `Command` to exit,
 then `setup`. After the successful exit of `setup`, `teardown` is executed.

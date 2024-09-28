@@ -498,7 +498,7 @@ impl Formatter for VerticalFormat {
             )
             .unwrap();
         } else if tool_run.total.is_none() && !tool_run.segments.is_empty() {
-            // Since there is no total, show_all is partly ignored and we show all data in an little
+            // Since there is no total, show_all is partly ignored, and we show all data in a little
             // bit more aggregated form without the multiple files headlines. This affects currently
             // the output of `Massif` and `BBV`.
             for segment in &tool_run.segments {

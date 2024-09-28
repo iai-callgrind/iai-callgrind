@@ -99,7 +99,7 @@ pub fn running_on_valgrind() -> usize {
     )
 }
 
-/// Discard translation of code in the range [addr .. addr + len - 1].
+/// Discard translation of code in the range [addr ... addr + len - 1].
 ///
 /// Useful if you are debugging a `JITter` or some such, since it provides a way to make sure
 /// valgrind will retranslate the invalidated area.
@@ -130,7 +130,7 @@ pub fn discard_translations(addr: *const (), len: usize) {
 /// Note that these client requests are not entirely reliable. For example, if you call a function
 /// with them that subsequently calls `printf()`, there's a high chance Valgrind will crash.
 /// Generally, your prospects of these working are made higher if the called function does not refer
-/// to any global variables, and does not refer to other functions (print! et al).
+/// to any global variables, and does not refer to other functions (print! et al.).
 #[allow(clippy::fn_to_numeric_cast_any)]
 #[inline(always)]
 pub fn non_simd_call0(func: fn(ThreadId) -> usize) -> usize {
@@ -222,7 +222,7 @@ pub fn non_simd_call3(
 
 /// Counts the number of errors that have been recorded by a tool.
 ///
-/// Can be useful to eg. can send output to /dev/null and still count errors.
+/// Can be useful to e.g. can send output to /dev/null and still count errors.
 ///
 /// The tool must record the errors with `VG_(maybe_record_error)()` or `VG_(unique_error)()` for
 /// them to be counted. These are to my best knowledge (as of Valgrind 3.22) `Memcheck`, `DRD` and
@@ -254,7 +254,7 @@ pub fn count_errors() -> usize {
 ///
 /// But if your program uses a custom allocator, this doesn't automatically happen, and Valgrind
 /// will not do as well. For example, if you allocate superblocks with `mmap()` and then allocates
-/// chunks of the superblocks, all Valgrind's observations will be at the `mmap()` level and it
+/// chunks of the superblocks, all Valgrind's observations will be at the `mmap()` level, and it
 /// won't know that the chunks should be considered separate entities.  In Memcheck's case, that
 /// means you probably won't get heap block overrun detection (because there won't be redzones
 /// marked as unaddressable) and you definitely won't get any leak detection.

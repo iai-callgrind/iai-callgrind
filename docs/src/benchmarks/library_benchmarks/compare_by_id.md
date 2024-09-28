@@ -1,4 +1,5 @@
 <!-- markdownlint-disable MD025 MD042 MD033 -->
+
 # Comparing benchmark functions
 
 Comparing benchmark functions is supported via the optional
@@ -43,7 +44,7 @@ Note if `compare_by_id` is `true`, all benchmark functions are compared with
 each other, so you are not limited to two benchmark functions per comparison
 group.
 
-Here's a the benchmark output of the above example to see what is happening:
+Here's the benchmark output of the above example to see what is happening:
 
 <pre><code class="hljs"><span style="color:#0A0">my_benchmark::bubble_sort_group::bubble_sort_best_case</span> <span style="color:#0AA">case_2</span><span style="color:#0AA">:</span><b><span style="color:#00A">vec! [1, 2]</span></b>
   Instructions:     <b>             63</b>|N/A             (<span style="color:#555">*********</span>)

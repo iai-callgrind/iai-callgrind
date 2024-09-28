@@ -6,7 +6,7 @@ fn bench() -> Vec<u64> {
 }
 
 // Since this benchmark function is equal to the `bench` function above, the compiler will optimize
-// this one away (it has the longer name). This means for us we can't match for
+// this one away (it has the longer name). This means for us, we can't match for
 // `bench_with_longer_name` in the callgrind output files and need a little bit of trickery.
 #[library_benchmark]
 fn bench_with_longer_name() -> Vec<u64> {

@@ -21,7 +21,7 @@ const ECHO_EXE: &str = env!("CARGO_BIN_EXE_echo");
 // as its first argument. Then it compares the content of the file with its second argument exiting
 // with an error if they don't match.
 const READ_FILE_EXE: &str = env!("CARGO_BIN_EXE_read-file");
-/// The last of our crate's binaries which reads its input from `Stdin`. Then it echo's back to
+/// The last of our crate's binaries which reads its input from `Stdin`. Then it echoes back to
 /// `Stdout` what it has read.
 const PIPE_EXE: &str = env!("CARGO_BIN_EXE_pipe");
 
@@ -52,7 +52,7 @@ fn bench_with_bench(arg: &str) -> iai_callgrind::Command {
 // The first group. As in library benchmarks, specify all benchmark functions you want to put into
 // the same group in the `benchmark` parameter
 binary_benchmark_group!(
-    // A group needs an unique name which can be later used in the `main!` macro
+    // A group needs a unique name which can be later used in the `main!` macro
     name = echo_group;
     benchmarks = simple_bench, bench_with_bench
 );
@@ -68,7 +68,7 @@ fn create_file_with_content(path: &str, content: &str) {
 // Let's benchmark a binary which needs a little bit of setup. Since we need to create files during
 // the `setup` we chose to run the `setup` and `Command` of all benchmarks in this
 // `#[binary_benchmark]` in a `Sandbox` to avoid polluting our project's workspace with files
-// needed only by the benchmarks. Also very convenient, we don't need to delete the files
+// needed only by the benchmarks. Also, very convenient, we don't need to delete the files
 // individually after the benchmark run, because the sandbox is cleaned up automatically after each
 // benchmark run.
 #[binary_benchmark(config = BinaryBenchmarkConfig::default().sandbox(Sandbox::new(true)))]
@@ -78,7 +78,7 @@ fn create_file_with_content(path: &str, content: &str) {
 // not evaluated right away! The expression passed to the `setup` parameter is just executed before
 // the `Command` is executed.
 #[bench::foo(args = ("foo.txt", "some content"), setup = setup_foo())]
-// The above bench uses `setup_foo()` but what if we need to setup multiple benches the same way
+// The above bench uses `setup_foo()` but what if we need to set up multiple benches the same way
 // based on the `args`? Simply use the function pointer or function path (the function without the
 // parentheses), like below. `create_file_with_content` without parentheses causes the `args` to be
 // passed to the function `bench_with_setup` itself AND `create_file_with_content`
