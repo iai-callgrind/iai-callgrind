@@ -1067,7 +1067,7 @@ impl BinaryBenchmarkConfig {
     /// ```rust
     /// # use iai_callgrind::{binary_benchmark, binary_benchmark_group};
     /// # #[binary_benchmark]
-    /// # fn some_func() {}
+    /// # fn some_func() -> iai_callgrind::Command { iai_callgrind::Command::new("/some/path") }
     /// # binary_benchmark_group!(name = some_group; benchmarks = some_func);
     /// # fn main() {
     /// use iai_callgrind::{BinaryBenchmarkConfig, main};
