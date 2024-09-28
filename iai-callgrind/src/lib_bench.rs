@@ -28,6 +28,7 @@ use crate::{internal, EntryPoint};
 #[derive(Debug, Default, IntoInner, AsRef)]
 pub struct LibraryBenchmarkConfig(internal::InternalLibraryBenchmarkConfig);
 
+// TODO: Rename raw_callgrind_args to callgrind_args
 impl LibraryBenchmarkConfig {
     /// Create a new `LibraryBenchmarkConfig` with raw callgrind arguments
     ///
@@ -58,6 +59,7 @@ impl LibraryBenchmarkConfig {
         Self(internal::InternalLibraryBenchmarkConfig {
             env_clear: Option::default(),
             raw_callgrind_args: internal::InternalRawArgs::from_iter(args),
+            valgrind_args: internal::InternalRawArgs::default(),
             envs: Vec::default(),
             flamegraph_config: Option::default(),
             regression_config: Option::default(),
@@ -118,6 +120,7 @@ impl LibraryBenchmarkConfig {
         self
     }
 
+    /// TODO: DELETE this method
     /// Add elements of an iterator over callgrind arguments to this `LibraryBenchmarkConfig`
     ///
     /// See also [`LibraryBenchmarkConfig::raw_callgrind_args`]
@@ -145,6 +148,16 @@ impl LibraryBenchmarkConfig {
         T: IntoIterator<Item = I>,
     {
         self.0.raw_callgrind_args.extend_ignore_flag(args);
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn valgrind_args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.valgrind_args.extend_ignore_flag(args);
         self
     }
 

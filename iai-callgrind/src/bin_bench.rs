@@ -1029,6 +1029,8 @@ impl From<&BinaryBenchmark> for BinaryBenchmark {
     }
 }
 
+// TODO: Add with_callgrind_args
+// TODO: Rename raw_callgrind_args to callgrind_args
 impl BinaryBenchmarkConfig {
     /// Pass arguments to valgrind's callgrind
     ///
@@ -1053,6 +1055,16 @@ impl BinaryBenchmarkConfig {
         T: IntoIterator<Item = I>,
     {
         self.0.raw_callgrind_args.extend_ignore_flag(args);
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn valgrind_args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.valgrind_args.extend_ignore_flag(args);
         self
     }
 
