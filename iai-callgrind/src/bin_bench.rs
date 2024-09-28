@@ -9,7 +9,7 @@ use std::time::Duration;
 use derive_more::AsRef;
 use iai_callgrind_macros::IntoInner;
 
-use crate::{internal, Stdin, Stdio};
+use crate::{internal, DelayKind, Stdin, Stdio};
 
 /// [low level api](`crate::binary_benchmark_group`) only: Create a new benchmark id
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -272,161 +272,6 @@ pub struct Command(internal::InternalCommand);
 /// ```
 #[derive(Debug, Default, Clone, PartialEq, IntoInner, AsRef)]
 pub struct Delay(internal::InternalDelay);
-
-pub use internal::InternalDelayKind as DelayKind;
-
-impl Delay {
-    /// Instantiate a [`Delay`] which will wait until a path exists ([`Path::exists`]).
-    ///
-    /// ```rust
-    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-    ///
-    /// use iai_callgrind::{Command, Delay};
-    ///
-    /// let command = Command::new("echo").delay(Delay::from_path("/your/path/to/wait/for"));
-    /// ```
-    pub fn from_path<T: Into<PathBuf>>(path: T) -> Self {
-        Self(internal::InternalDelay {
-            kind: internal::InternalDelayKind::PathExists(path.into()),
-            ..Default::default()
-        })
-    }
-
-    /// Instantiate a [`Delay`] which will wait until successful TCP connect
-    /// ([`std::net::TcpStream::connect`]).
-    ///
-    /// ```rust
-    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-    ///
-    /// use std::net::SocketAddr;
-    ///
-    /// use iai_callgrind::{Command, Delay};
-    ///
-    /// let command = Command::new("echo").delay(Delay::from_tcp_socket(
-    ///     "127.0.0.1:31000".parse::<SocketAddr>().unwrap(),
-    /// ));
-    /// ```
-    pub fn from_tcp_socket<T: Into<SocketAddr>>(addr: T) -> Self {
-        Self(internal::InternalDelay {
-            kind: internal::InternalDelayKind::TcpConnect(addr.into()),
-            ..Default::default()
-        })
-    }
-
-    /// Instantiate a [`Delay`] which will wait until a UDP response is received after
-    /// sending the UDP request. The poll duration is also used as the reconnect and request resend
-    /// interval. ([`std::net::UdpSocket::bind`], [`std::net::UdpSocket::connect`],
-    /// [`std::net::UdpSocket::recv`]).
-    ///
-    /// ```rust
-    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-    ///
-    /// use std::net::SocketAddr;
-    ///
-    /// use iai_callgrind::{Command, Delay};
-    ///
-    /// let command = Command::new("echo").delay(Delay::from_udp_request(
-    ///     "127.0.0.1:34000".parse::<SocketAddr>().unwrap(),
-    ///     vec![1],
-    /// ));
-    /// ```
-    pub fn from_udp_request<T: Into<SocketAddr>>(addr: T, req: Vec<u8>) -> Self {
-        Self(internal::InternalDelay {
-            kind: internal::InternalDelayKind::UdpResponse(addr.into(), req),
-            ..Default::default()
-        })
-    }
-
-    /// Instantiate a [`Delay`] waiting until an event has happened.
-    ///
-    /// The possible events are defined in [`DelayKind`].
-    ///
-    /// ```rust
-    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-    ///
-    /// use std::time::Duration;
-    ///
-    /// use iai_callgrind::{Command, Delay, DelayKind};
-    ///
-    /// let command = Command::new("echo").delay(Delay::new(DelayKind::DurationElapse(
-    ///     Duration::from_secs(15),
-    /// )));
-    /// ```
-    pub fn new(kind: DelayKind) -> Self {
-        Self(internal::InternalDelay {
-            kind,
-            ..Default::default()
-        })
-    }
-
-    /// Update the [`Delay`] poll interval.
-    ///
-    /// The poll interval should be considered together with the [`Delay::timeout`], and ideally
-    /// should have a value of `n * timeout duration`.
-    ///
-    /// In case the poll interval is set to a value `>=` timeout duration it is attempted to set
-    /// the poll interval to a value of `timeout duration - 5ms`.
-    ///
-    /// ```rust
-    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-    ///
-    /// use std::net::SocketAddr;
-    /// use std::time::Duration;
-    ///
-    /// use iai_callgrind::{Command, Delay};
-    ///
-    /// let command = Command::new("echo").delay(
-    ///     Delay::from_udp_request("127.0.0.1:34000".parse::<SocketAddr>().unwrap(), vec![1])
-    ///         .poll(Duration::from_millis(150)),
-    /// );
-    /// ```
-    pub fn poll<T: Into<Duration>>(mut self, duration: T) -> Self {
-        self.0.poll = Some(duration.into());
-        self
-    }
-
-    /// Update the [`Delay`] timeout interval.
-    ///
-    /// The timeout duration should be considered together with the poll interval. For further
-    /// details please refer to [`Delay::poll`]. The minimum timeout duration is `10ms`.
-    ///
-    /// ```rust
-    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-    ///
-    /// use std::net::SocketAddr;
-    /// use std::time::Duration;
-    ///
-    /// use iai_callgrind::{Command, Delay};
-    /// let command = Command::new("echo").delay(
-    ///     Delay::from_tcp_socket("127.0.0.1:31000".parse::<SocketAddr>().unwrap())
-    ///         .timeout(Duration::from_secs(5)),
-    /// );
-    /// ```
-    pub fn timeout<T: Into<Duration>>(mut self, duration: T) -> Self {
-        self.0.timeout = Some(duration.into());
-        self
-    }
-}
-
-impl<T: Into<Duration>> From<T> for Delay {
-    /// Instantiate a [`Delay`] which will wait until the duration has elapsed.
-    ///
-    /// ```rust
-    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-    ///
-    /// use std::time::Duration;
-    ///
-    /// use iai_callgrind::{Command, Delay};
-    ///
-    /// let command = Command::new("echo").delay(Delay::from(Duration::from_secs(10)));
-    /// ```
-    fn from(duration: T) -> Self {
-        Self(internal::InternalDelay {
-            kind: internal::InternalDelayKind::DurationElapse(duration.into()),
-            ..Default::default()
-        })
-    }
-}
 
 /// Set the expected exit status of a binary benchmark
 ///
@@ -2541,6 +2386,172 @@ impl From<&mut Command> for Command {
 impl From<&Command> for Command {
     fn from(value: &Command) -> Self {
         value.clone()
+    }
+}
+
+impl Delay {
+    /// Instantiate a [`Delay`] which will wait until a path exists ([`Path::exists`]).
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    ///
+    /// use iai_callgrind::{Command, Delay};
+    ///
+    /// let command = Command::new("echo").delay(Delay::from_path("/your/path/to/wait/for"));
+    /// ```
+    pub fn from_path<T>(path: T) -> Self
+    where
+        T: Into<PathBuf>,
+    {
+        Self(internal::InternalDelay {
+            kind: DelayKind::PathExists(path.into()),
+            ..Default::default()
+        })
+    }
+
+    /// Instantiate a [`Delay`] which will wait until successful TCP connect
+    /// ([`std::net::TcpStream::connect`]).
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    ///
+    /// use std::net::SocketAddr;
+    ///
+    /// use iai_callgrind::{Command, Delay};
+    ///
+    /// let command = Command::new("echo").delay(Delay::from_tcp_socket(
+    ///     "127.0.0.1:31000".parse::<SocketAddr>().unwrap(),
+    /// ));
+    /// ```
+    pub fn from_tcp_socket<T>(addr: T) -> Self
+    where
+        T: Into<SocketAddr>,
+    {
+        Self(internal::InternalDelay {
+            kind: DelayKind::TcpConnect(addr.into()),
+            ..Default::default()
+        })
+    }
+
+    /// Instantiate a [`Delay`] which will wait until a UDP response is received after
+    /// sending the UDP request. The poll duration is also used as the reconnect and request resend
+    /// interval. ([`std::net::UdpSocket::bind`], [`std::net::UdpSocket::connect`],
+    /// [`std::net::UdpSocket::recv`]).
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    ///
+    /// use std::net::SocketAddr;
+    ///
+    /// use iai_callgrind::{Command, Delay};
+    ///
+    /// let command = Command::new("echo").delay(Delay::from_udp_request(
+    ///     "127.0.0.1:34000".parse::<SocketAddr>().unwrap(),
+    ///     vec![1],
+    /// ));
+    /// ```
+    pub fn from_udp_request<T, U>(addr: T, req: U) -> Self
+    where
+        T: Into<SocketAddr>,
+        U: Into<Vec<u8>>,
+    {
+        Self(internal::InternalDelay {
+            kind: DelayKind::UdpResponse(addr.into(), req.into()),
+            ..Default::default()
+        })
+    }
+
+    /// Instantiate a [`Delay`] waiting until an event has happened.
+    ///
+    /// The possible events are defined in [`DelayKind`].
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    ///
+    /// use std::time::Duration;
+    ///
+    /// use iai_callgrind::{Command, Delay, DelayKind};
+    ///
+    /// let command = Command::new("echo").delay(Delay::new(DelayKind::DurationElapse(
+    ///     Duration::from_secs(15),
+    /// )));
+    /// ```
+    pub fn new(kind: DelayKind) -> Self {
+        Self(internal::InternalDelay {
+            kind,
+            ..Default::default()
+        })
+    }
+
+    /// Update the [`Delay`] poll interval.
+    ///
+    /// The poll interval should be considered together with the [`Delay::timeout`], and ideally
+    /// should have a value of `n * timeout duration`.
+    ///
+    /// In case the poll interval is set to a value `>=` timeout duration it is attempted to set
+    /// the poll interval to a value of `timeout duration - 5ms`.
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    ///
+    /// use std::net::SocketAddr;
+    /// use std::time::Duration;
+    ///
+    /// use iai_callgrind::{Command, Delay};
+    ///
+    /// let command = Command::new("echo").delay(
+    ///     Delay::from_udp_request("127.0.0.1:34000".parse::<SocketAddr>().unwrap(), vec![1])
+    ///         .poll(Duration::from_millis(150)),
+    /// );
+    /// ```
+    pub fn poll<T: Into<Duration>>(mut self, duration: T) -> Self {
+        self.0.poll = Some(duration.into());
+        self
+    }
+
+    /// Update the [`Delay`] timeout interval.
+    ///
+    /// The timeout duration should be considered together with the poll interval. For further
+    /// details please refer to [`Delay::poll`]. The minimum timeout duration is `10ms`.
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    ///
+    /// use std::net::SocketAddr;
+    /// use std::time::Duration;
+    ///
+    /// use iai_callgrind::{Command, Delay};
+    /// let command = Command::new("echo").delay(
+    ///     Delay::from_tcp_socket("127.0.0.1:31000".parse::<SocketAddr>().unwrap())
+    ///         .timeout(Duration::from_secs(5)),
+    /// );
+    /// ```
+    pub fn timeout<T: Into<Duration>>(mut self, duration: T) -> Self {
+        self.0.timeout = Some(duration.into());
+        self
+    }
+}
+
+impl<T> From<T> for Delay
+where
+    T: Into<Duration>,
+{
+    /// Instantiate a [`Delay`] which will wait until the duration has elapsed.
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    ///
+    /// use std::time::Duration;
+    ///
+    /// use iai_callgrind::{Command, Delay};
+    ///
+    /// let command = Command::new("echo").delay(Delay::from(Duration::from_secs(10)));
+    /// ```
+    fn from(duration: T) -> Self {
+        Self(internal::InternalDelay {
+            kind: DelayKind::DurationElapse(duration.into()),
+            ..Default::default()
+        })
     }
 }
 
