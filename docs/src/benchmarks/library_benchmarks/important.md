@@ -12,7 +12,7 @@ cycles, yan can easily switch cache simulation off with
 # extern crate iai_callgrind;
 use iai_callgrind::LibraryBenchmarkConfig;
 
-LibraryBenchmarkConfig::default().raw_callgrind_args(["--cache-sim=no"]);
+LibraryBenchmarkConfig::default().callgrind_args(["--cache-sim=no"]);
 ```
 
 For example to switch off cache simulation for all benchmarks in the same file:
@@ -34,7 +34,7 @@ library_benchmark_group!(name = fibonacci_group; benchmarks = bench_fibonacci);
 
 # fn main() {
 main!(
-    config = LibraryBenchmarkConfig::default().raw_callgrind_args(["--cache-sim=no"]);
+    config = LibraryBenchmarkConfig::default().callgrind_args(["--cache-sim=no"]);
     library_benchmark_groups = fibonacci_group
 );
 # }

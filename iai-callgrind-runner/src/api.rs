@@ -41,7 +41,7 @@ pub struct BinaryBenchmarkConfig {
     pub current_dir: Option<PathBuf>,
     pub entry_point: Option<String>,
     pub exit_with: Option<ExitWith>,
-    pub raw_callgrind_args: RawArgs,
+    pub callgrind_args: RawArgs,
     pub valgrind_args: RawArgs,
     pub envs: Vec<(OsString, Option<OsString>)>,
     pub flamegraph_config: Option<FlamegraphConfig>,
@@ -315,7 +315,7 @@ pub struct LibraryBenchmarkBench {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmarkConfig {
     pub env_clear: Option<bool>,
-    pub raw_callgrind_args: RawArgs,
+    pub callgrind_args: RawArgs,
     pub valgrind_args: RawArgs,
     pub envs: Vec<(OsString, Option<OsString>)>,
     pub flamegraph_config: Option<FlamegraphConfig>,
@@ -469,8 +469,8 @@ impl BinaryBenchmarkConfig {
             self.entry_point = update_option(&self.entry_point, &other.entry_point);
             self.exit_with = update_option(&self.exit_with, &other.exit_with);
 
-            self.raw_callgrind_args
-                .extend_ignore_flag(other.raw_callgrind_args.0.iter());
+            self.callgrind_args
+                .extend_ignore_flag(other.callgrind_args.0.iter());
 
             self.valgrind_args
                 .extend_ignore_flag(other.valgrind_args.0.iter());
@@ -688,8 +688,8 @@ impl LibraryBenchmarkConfig {
         for other in others.into_iter().flatten() {
             self.env_clear = update_option(&self.env_clear, &other.env_clear);
 
-            self.raw_callgrind_args
-                .extend_ignore_flag(other.raw_callgrind_args.0.iter());
+            self.callgrind_args
+                .extend_ignore_flag(other.callgrind_args.0.iter());
             self.valgrind_args
                 .extend_ignore_flag(other.valgrind_args.0.iter());
 
@@ -980,7 +980,7 @@ mod tests {
         let base = LibraryBenchmarkConfig::default();
         let other = LibraryBenchmarkConfig {
             env_clear: Some(true),
-            raw_callgrind_args: RawArgs(vec!["--just-testing=yes".to_owned()]),
+            callgrind_args: RawArgs(vec!["--just-testing=yes".to_owned()]),
             valgrind_args: RawArgs(vec!["--valgrind-arg=yes".to_owned()]),
             envs: vec![(OsString::from("MY_ENV"), Some(OsString::from("value")))],
             flamegraph_config: Some(FlamegraphConfig::default()),
@@ -1004,7 +1004,7 @@ mod tests {
         let base = LibraryBenchmarkConfig::default();
         let other = LibraryBenchmarkConfig {
             env_clear: Some(true),
-            raw_callgrind_args: RawArgs(vec!["--just-testing=yes".to_owned()]),
+            callgrind_args: RawArgs(vec!["--just-testing=yes".to_owned()]),
             valgrind_args: RawArgs(vec!["--valgrind-arg=yes".to_owned()]),
             envs: vec![(OsString::from("MY_ENV"), Some(OsString::from("value")))],
             flamegraph_config: Some(FlamegraphConfig::default()),

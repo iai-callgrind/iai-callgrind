@@ -40,7 +40,7 @@ fn bench_bubble_sort_allocate() -> i32 {
 #[bench::trace_children(
     args = (),
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args([
+        .callgrind_args([
             "--toggle-collect=sort::main"
         ])
         .output_format(OutputFormat::default()

@@ -140,7 +140,7 @@ impl OutputFormat {
     /// #[library_benchmark(
     ///     config = LibraryBenchmarkConfig::default()
     ///         .entry_point(EntryPoint::None)
-    ///         .raw_callgrind_args(["--toggle-collect=my_lib::heavy_calculation"])
+    ///         .callgrind_args(["--toggle-collect=my_lib::heavy_calculation"])
     ///         .output_format(OutputFormat::default().show_intermediate(true))
     /// )]
     /// fn bench_thread() -> u64 {

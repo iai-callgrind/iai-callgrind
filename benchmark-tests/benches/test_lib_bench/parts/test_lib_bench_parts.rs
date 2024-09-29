@@ -10,15 +10,15 @@ use iai_callgrind::{
 #[library_benchmark]
 #[bench::dump_every_bb(
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args(["--dump-every-bb=100000"])
+        .callgrind_args(["--dump-every-bb=100000"])
 )]
 #[bench::dump_before(
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args(["--dump-before=*::find_primes"])
+        .callgrind_args(["--dump-before=*::find_primes"])
 )]
 #[bench::dump_after(
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args(["--dump-after=*::find_primes"])
+        .callgrind_args(["--dump-after=*::find_primes"])
 )]
 fn bench_no_thread() -> Vec<u64> {
     black_box(find_primes(0, 20000))
@@ -27,19 +27,19 @@ fn bench_no_thread() -> Vec<u64> {
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
         .entry_point(EntryPoint::None)
-        .raw_callgrind_args(["--instr-atstart=no"])
+        .callgrind_args(["--instr-atstart=no"])
 )]
 #[bench::dump_every_bb(
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args(["--dump-every-bb=100000"])
+        .callgrind_args(["--dump-every-bb=100000"])
 )]
 #[bench::dump_before(
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args(["--dump-before=*::find_primes"])
+        .callgrind_args(["--dump-before=*::find_primes"])
 )]
 #[bench::dump_after(
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args(["--dump-after=*::find_primes"])
+        .callgrind_args(["--dump-after=*::find_primes"])
 )]
 fn bench_multiple_threads() -> Vec<u64> {
     iai_callgrind::client_requests::callgrind::start_instrumentation();
@@ -51,19 +51,19 @@ fn bench_multiple_threads() -> Vec<u64> {
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
         .entry_point(EntryPoint::None)
-        .raw_callgrind_args(["--instr-atstart=no"])
+        .callgrind_args(["--instr-atstart=no"])
 )]
 #[bench::dump_every_bb(
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args(["--dump-every-bb=100000"])
+        .callgrind_args(["--dump-every-bb=100000"])
 )]
 #[bench::dump_before(
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args(["--dump-before=*::find_primes"])
+        .callgrind_args(["--dump-before=*::find_primes"])
 )]
 #[bench::dump_after(
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args(["--dump-after=*::find_primes"])
+        .callgrind_args(["--dump-after=*::find_primes"])
 )]
 fn bench_multiple_threads_in_subprocess() -> ExitStatus {
     Command::new(env!("CARGO_BIN_EXE_thread"))

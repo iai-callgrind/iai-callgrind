@@ -122,9 +122,9 @@ fn bench_fibonacci_with_config() -> u64 {
 // variables and appends them to the variables of `configs` of higher levels (like
 // #[library_benchmark(config = ...)]). Only the last definition of a such configuration values is
 // taken into account. Other non-collection like configuration values (like `RegressionConfig`) are
-// overridden. In our example here: If `raw_callgrind_args(["--dump-instr=yes"])` would have been
+// overridden. In our example here: If `callgrind_args(["--dump-instr=yes"])` would have been
 // specified in a higher level configuration, then specifying
-// `raw_callgrind_args(["--dump-instr=no")` in our configurations at this level would effectively
+// `callgrind_args(["--dump-instr=no")` in our configurations at this level would effectively
 // overwrite the value for `--dump-instr` and only `--dump-instr=no` is applied for the benchmark
 // run `fib_with_config`.
 //

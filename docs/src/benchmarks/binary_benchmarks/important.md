@@ -12,7 +12,7 @@ cycles, yan can easily switch cache simulation off with
 # extern crate iai_callgrind;
 use iai_callgrind::BinaryBenchmarkConfig;
 
-BinaryBenchmarkConfig::default().raw_callgrind_args(["--cache-sim=no"]);
+BinaryBenchmarkConfig::default().callgrind_args(["--cache-sim=no"]);
 ```
 
 For example to switch off cache simulation for all benchmarks in the same file:
@@ -32,7 +32,7 @@ fn bench_binary() -> iai_callgrind::Command {
 binary_benchmark_group!(name = my_group; benchmarks = bench_binary);
 # fn main() {
 main!(
-    config = BinaryBenchmarkConfig::default().raw_callgrind_args(["--cache-sim=no"]);
+    config = BinaryBenchmarkConfig::default().callgrind_args(["--cache-sim=no"]);
     binary_benchmark_groups = my_group
 );
 # }

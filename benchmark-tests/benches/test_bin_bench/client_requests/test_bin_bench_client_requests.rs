@@ -12,9 +12,7 @@ fn run() -> Command {
 binary_benchmark_group!(
     name = client_requests;
     config = BinaryBenchmarkConfig::default()
-        .raw_callgrind_args([
-            "--instr-atstart=no"
-    ]);
+        .callgrind_args(["--instr-atstart=no"]);
     benchmarks = run,
 );
 

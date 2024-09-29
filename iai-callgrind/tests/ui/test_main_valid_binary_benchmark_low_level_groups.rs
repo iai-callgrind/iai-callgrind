@@ -41,7 +41,7 @@ mod test_main_when_config_is_mut_ref {
     );
 
     main!(
-        config = BinaryBenchmarkConfig::default().raw_callgrind_args(["--just=testing"]);
+        config = BinaryBenchmarkConfig::default().callgrind_args(["--just=testing"]);
         binary_benchmark_groups = some
     );
 }
