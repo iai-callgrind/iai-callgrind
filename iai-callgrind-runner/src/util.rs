@@ -72,6 +72,19 @@ impl<T> EitherOrBoth<T> {
     }
 }
 
+impl<T> TryFrom<(Option<T>, Option<T>)> for EitherOrBoth<T> {
+    type Error = String;
+
+    fn try_from(value: (Option<T>, Option<T>)) -> std::result::Result<Self, Self::Error> {
+        match value {
+            (None, None) => Err("Either the left, right or both values must be present".to_owned()),
+            (None, Some(right)) => Ok(Self::Right(right)),
+            (Some(left), None) => Ok(Self::Left(left)),
+            (Some(left), Some(right)) => Ok(Self::Both(left, right)),
+        }
+    }
+}
+
 /// Convert a boolean value to a `yes` or `no` string
 pub fn bool_to_yesno(value: bool) -> String {
     if value {

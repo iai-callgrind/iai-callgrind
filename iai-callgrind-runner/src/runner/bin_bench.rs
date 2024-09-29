@@ -21,7 +21,7 @@ use super::callgrind::parser::CallgrindParser;
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{RegressionConfig, Summaries};
 use super::common::{Assistant, AssistantKind, Config, ModulePath, Sandbox};
-use super::format::{BinaryBenchmarkHeader, Formatter, OutputFormat, VerticalFormat};
+use super::format::{BinaryBenchmarkHeader, Formatter, OutputFormat, VerticalFormatter};
 use super::meta::Metadata;
 use super::summary::{
     BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, CallgrindSummary, MetricsSummary,
@@ -248,9 +248,8 @@ impl Benchmark for BaselineBenchmark {
             .transpose()?;
 
         let summaries = Summaries::new(parsed_new, parsed_old);
-        VerticalFormat.print(
+        VerticalFormatter::new(bin_bench.output_format).print(
             config,
-            &bin_bench.output_format,
             self.baselines(),
             &ToolRun::from(&summaries),
         )?;
@@ -817,9 +816,8 @@ impl Benchmark for LoadBaselineBenchmark {
         let parsed_old = Some(SummaryParser.parse(&old_path)?);
         let summaries = Summaries::new(parsed_new, parsed_old);
 
-        VerticalFormat.print(
+        VerticalFormatter::new(bin_bench.output_format).print(
             config,
-            &bin_bench.output_format,
             self.baselines(),
             &ToolRun::from(&summaries),
         )?;
@@ -1039,9 +1037,8 @@ impl Benchmark for SaveBaselineBenchmark {
 
         let parsed_new = SummaryParser.parse(&out_path)?;
         let summaries = Summaries::new(parsed_new, parsed_old);
-        VerticalFormat.print(
+        VerticalFormatter::new(bin_bench.output_format).print(
             config,
-            &bin_bench.output_format,
             self.baselines(),
             &ToolRun::from(&summaries),
         )?;

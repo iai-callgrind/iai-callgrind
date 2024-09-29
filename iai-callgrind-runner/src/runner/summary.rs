@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use super::callgrind::Summaries;
 use super::common::ModulePath;
-use super::format::{Formatter, OutputFormat, OutputFormatKind, VerticalFormat};
+use super::format::{Formatter, OutputFormat, OutputFormatKind, VerticalFormatter};
 use super::metrics::Metrics;
 use super::tool::ValgrindTool;
 use crate::api::{DhatMetricKind, ErrorMetricKind, EventKind};
@@ -497,12 +497,11 @@ impl BenchmarkSummary {
                     .extract_costs(),
             ) {
                 let new_summary = MetricsSummary::new(EitherOrBoth::Both(new, other_new));
-                VerticalFormat.print_comparison(
+                VerticalFormatter::new(*output_format).print_comparison(
                     &self.function_name,
                     id,
                     self.details.as_deref(),
                     &ToolMetricSummary::CallgrindSummary(new_summary),
-                    output_format,
                 )?;
             }
         }
