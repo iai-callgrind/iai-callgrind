@@ -1,11 +1,24 @@
 groups:
-  - runs:
-      - args: []
+  - runs_on: "!x86_64-unknown-freebsd"
+    runs:
+      - args: ["--nocapture"]
         expected:
           files: expected_files.1a.yml
+          stdout: expected_stdout.1a
       - args: []
         expected:
           files: expected_files.1b.yml
+          stdout: expected_stdout.1b
+  - runs_on: "x86_64-unknown-freebsd"
+    runs:
+      - args: ["--nocapture"]
+        expected:
+          files: expected_files.1a.yml
+          stdout: expected_stdout.freebsd.1a
+      - args: []
+        expected:
+          files: expected_files.1b.yml
+          stdout: expected_stdout.freebsd.1b
   - runs:
       - args: ["--save-baseline=foo"]
         expected:

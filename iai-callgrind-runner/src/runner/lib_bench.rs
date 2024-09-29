@@ -332,6 +332,7 @@ impl Groups {
                     let envs = config.resolve_envs();
 
                     let callgrind_args = Args::try_from_raw_args(&[
+                        &config.valgrind_args,
                         &config.raw_callgrind_args,
                         &meta_callgrind_args,
                     ])?;
@@ -369,7 +370,14 @@ impl Groups {
                                 .tools
                                 .0
                                 .into_iter()
-                                .map(TryInto::try_into)
+                                .map(|mut t| {
+                                    if !config.valgrind_args.is_empty() {
+                                        let mut new_args = config.valgrind_args.clone();
+                                        new_args.extend_ignore_flag(t.raw_args.0.iter());
+                                        t.raw_args = new_args;
+                                    }
+                                    t.try_into()
+                                })
                                 .collect::<Result<Vec<_>, _>>()?,
                         ),
                         module_path,

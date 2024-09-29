@@ -243,7 +243,27 @@ groups:
         runs_on: "x86_64-unknown-linux-gnu"
 ```
 
-This benchmark run will only run on the `x86_64-unknown-linux-gnu` target.
+The above benchmark run will only run on the `x86_64-unknown-linux-gnu` target.
+Or, for all benchmarks in a run group:
+
+```yaml
+groups:
+  - runs_on: "x86_64-unknown-linux-gnu"
+    runs:
+      - args: []
+```
+
+The target can be prefixed with a `!` to indicate to not run on this target.
+
+```yaml
+groups:
+  - runs_on: "x86_64-unknown-linux-gnu"
+    runs:
+      - args: ["--nocapture"]
+  - runs_on: "!x86_64-unknown-linux-gnu"
+    runs:
+      - args: []
+```
 
 ##### rmdirs
 
@@ -254,4 +274,15 @@ groups:
         rmdirs: ["/tmp/iai_callgrind_test_dir"]
 ```
 
-This instruction is used to remove directories after a benchmark run.
+This instruction is used to remove directories before a benchmark run.
+
+##### flaky
+
+If tests are flaky, they can be tried multiple times:
+
+```yaml
+groups:
+  - runs:
+      - args: []
+        flaky: 3
+```

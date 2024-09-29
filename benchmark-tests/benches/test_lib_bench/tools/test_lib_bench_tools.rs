@@ -13,7 +13,7 @@ use std::hint::black_box;
 use benchmark_tests::{bubble_sort, bubble_sort_allocate, subprocess};
 use iai_callgrind::{
     library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,
-    RegressionConfig, Tool, ValgrindTool,
+    OutputFormat, RegressionConfig, Tool, ValgrindTool,
 };
 
 fn setup_worst_case_array(start: i32) -> Vec<i32> {
@@ -43,19 +43,17 @@ fn bench_bubble_sort_allocate() -> i32 {
         .raw_callgrind_args([
             "--toggle-collect=sort::main"
         ])
+        .output_format(OutputFormat::default()
+            .show_intermediate(true)
+        )
 )]
 #[bench::no_trace_children(
     args = (),
     config = LibraryBenchmarkConfig::default()
-        .raw_callgrind_args(["trace-children=no"])
-        .tools_override([
-            Tool::new(ValgrindTool::DHAT).args(["--trace-children=no"]),
-            Tool::new(ValgrindTool::Massif).args(["--trace-children=no"]),
-            Tool::new(ValgrindTool::BBV).args(["--trace-children=no"]),
-            Tool::new(ValgrindTool::Memcheck).args(["--trace-children=no"]),
-            Tool::new(ValgrindTool::DRD).args(["--trace-children=no"]),
-            Tool::new(ValgrindTool::Helgrind).args(["--trace-children=no"])
-        ])
+        .valgrind_args(["trace-children=no"])
+        .output_format(OutputFormat::default()
+            .show_intermediate(true)
+        )
 )]
 fn bench_subprocess() -> io::Result<Output> {
     println!("Do something before calling subprocess");
@@ -99,4 +97,5 @@ main!(
         .tool(Tool::new(ValgrindTool::Memcheck).args(["--time-stamp=yes"]))
         .tool(Tool::new(ValgrindTool::DRD))
         .tool(Tool::new(ValgrindTool::Helgrind));
-    library_benchmark_groups = bench_group);
+    library_benchmark_groups = bench_group
+);

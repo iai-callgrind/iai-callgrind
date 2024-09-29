@@ -313,7 +313,7 @@ impl BinBench {
         config: BinaryBenchmarkConfig,
         group_index: usize,
         bench_index: usize,
-        raw_args: &api::RawArgs,
+        meta_callgrind_args: &api::RawArgs,
         binary_benchmark_bench: BinaryBenchmarkBench,
     ) -> Result<Self> {
         let module_path = group
@@ -332,7 +332,11 @@ impl BinBench {
 
         let command = Command::new(&module_path, path, args, delay.map(Into::into))?;
 
-        let callgrind_args = Args::try_from_raw_args(&[&config.raw_callgrind_args, raw_args])?;
+        let callgrind_args = Args::try_from_raw_args(&[
+            &config.valgrind_args,
+            &config.raw_callgrind_args,
+            meta_callgrind_args,
+        ])?;
 
         let mut assistant_envs = config.collect_envs();
         assistant_envs.push((
@@ -363,7 +367,14 @@ impl BinBench {
                     .tools
                     .0
                     .into_iter()
-                    .map(TryFrom::try_from)
+                    .map(|mut t| {
+                        if !config.valgrind_args.is_empty() {
+                            let mut new_args = config.valgrind_args.clone();
+                            new_args.extend_ignore_flag(t.raw_args.0.iter());
+                            t.raw_args = new_args;
+                        }
+                        t.try_into()
+                    })
                     .collect::<Result<Vec<_>, _>>()?,
             ),
             setup: binary_benchmark_bench

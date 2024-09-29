@@ -17,12 +17,12 @@ rust-version.workspace = true
 version = "0.1.0"
 
 [dependencies]
+anyhow = { workspace = true }
 cargo_metadata = { workspace = true }
 colored = { workspace = true }
+fs_extra = { workspace = true }
 glob = { workspace = true }
 iai-callgrind = { path = "../iai-callgrind", features = ["client_requests"] }
-# Needed in the `cargo bench` wrapper
-anyhow = { workspace = true }
 iai-callgrind-runner = { path = "../iai-callgrind-runner" }
 lazy_static = { workspace = true }
 minijinja = { workspace = true }
@@ -32,6 +32,7 @@ regex = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
+tempfile = { workspace = true }
 valico = { workspace = true }
 version-compare = { workspace = true }
 
@@ -81,6 +82,10 @@ path = "src/helper/client-requests.rs"
 [[bin]]
 name = "thread"
 path = "src/helper/thread.rs"
+
+[[bin]]
+name = "subprocess"
+path = "src/helper/subprocess.rs"
 
 [[bench]]
 harness = false
@@ -146,6 +151,11 @@ path = "benches/test_bin_bench/command_delay/test_bin_bench_command_delay.rs"
 harness = false
 name = "test_bin_bench_client_requests"
 path = "benches/test_bin_bench/client_requests/test_bin_bench_client_requests.rs"
+
+[[bench]]
+harness = false
+name = "test_bin_bench_tools"
+path = "benches/test_bin_bench/tools/test_bin_bench_tools.rs"
 
 [[bench]]
 harness = false

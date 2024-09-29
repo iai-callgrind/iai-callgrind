@@ -28,6 +28,7 @@ use crate::{internal, EntryPoint};
 #[derive(Debug, Default, IntoInner, AsRef)]
 pub struct LibraryBenchmarkConfig(internal::InternalLibraryBenchmarkConfig);
 
+// TODO: Rename raw_callgrind_args to callgrind_args
 impl LibraryBenchmarkConfig {
     /// Create a new `LibraryBenchmarkConfig` with raw callgrind arguments
     ///
@@ -58,6 +59,7 @@ impl LibraryBenchmarkConfig {
         Self(internal::InternalLibraryBenchmarkConfig {
             env_clear: Option::default(),
             raw_callgrind_args: internal::InternalRawArgs::from_iter(args),
+            valgrind_args: internal::InternalRawArgs::default(),
             envs: Vec::default(),
             flamegraph_config: Option::default(),
             regression_config: Option::default(),
@@ -118,6 +120,7 @@ impl LibraryBenchmarkConfig {
         self
     }
 
+    /// TODO: DELETE this method
     /// Add elements of an iterator over callgrind arguments to this `LibraryBenchmarkConfig`
     ///
     /// See also [`LibraryBenchmarkConfig::raw_callgrind_args`]
@@ -145,6 +148,69 @@ impl LibraryBenchmarkConfig {
         T: IntoIterator<Item = I>,
     {
         self.0.raw_callgrind_args.extend_ignore_flag(args);
+        self
+    }
+
+    /// Pass valgrind arguments to all tools
+    ///
+    /// Only core [valgrind
+    /// arguments](https://valgrind.org/docs/manual/manual-core.html#manual-core.options) are
+    /// allowed.
+    ///
+    /// These arguments can be overwritten by tool specific arguments for example with
+    /// [`LibraryBenchmarkConfig::raw_callgrind_args`] or [`crate::Tool::args`].
+    ///
+    /// # Examples
+    ///
+    /// Specify `--trace-children=no` for all configured tools (including callgrind):
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark_group, library_benchmark};
+    /// # #[library_benchmark] fn bench_me() {}
+    /// # library_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmarks = bench_me
+    /// # );
+    /// use iai_callgrind::{main, LibraryBenchmarkConfig, Tool, ValgrindTool};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .valgrind_args(["--trace-children=no"])
+    ///         .tool(Tool::new(ValgrindTool::DHAT));
+    ///     library_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
+    ///
+    /// Overwrite the valgrind argument `--num-callers=25` for `DHAT` with `--num-callers=30`:
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark_group, library_benchmark};
+    /// # #[library_benchmark] fn bench_me() {}
+    /// # library_benchmark_group!(
+    /// #    name = my_group;
+    /// #    benchmarks = bench_me
+    /// # );
+    /// use iai_callgrind::{main, LibraryBenchmarkConfig, Tool, ValgrindTool};
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .valgrind_args(["--num-callers=25"])
+    ///         .tool(Tool::new(ValgrindTool::DHAT)
+    ///             .args(["--num-callers=30"])
+    ///         );
+    ///     library_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
+    pub fn valgrind_args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.valgrind_args.extend_ignore_flag(args);
         self
     }
 

@@ -5,18 +5,21 @@ use std::fmt::Write;
 use std::fs::File;
 use std::io::{stderr, stdout, BufRead, Read, Write as IOWrite};
 use std::os::unix::process::ExitStatusExt;
+use std::panic::{self, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 
 use benchmark_tests::common::Summary;
 use benchmark_tests::serde::runs_on::RunsOn;
 use colored::Colorize;
+use fs_extra::dir::CopyOptions;
 use glob::glob;
 use lazy_static::lazy_static;
 use minijinja::Environment;
 use once_cell::sync::OnceCell;
 use regex::{Captures, Regex};
 use serde::{Deserialize, Serialize};
+use tempfile::{tempdir, TempDir};
 use valico::json_schema;
 use valico::json_schema::schema::ScopedSchema;
 
@@ -55,6 +58,8 @@ lazy_static! {
     // `  ## pid: <__PID__> part: 1 thread: 3   |pid: <__PID__> part: 1 thread: 3`
     static ref FRAGMENT_HEADER_RE: Regex =
         Regex::new(r"^(  ##[^|]*[0-9])(\s*)?(|.*)$").expect("Regex should compile");
+    static ref ABSOLUTE_PATH_RE: Regex =
+        Regex::new(r"(\s+)([/][^/]*)+").expect("Regex should compile");
 }
 
 #[derive(Debug, Clone)]
@@ -154,6 +159,8 @@ struct RunConfig {
     rmdirs: Vec<PathBuf>,
     #[serde(default, with = "benchmark_tests::serde::rust_version")]
     rust_version: Option<benchmark_tests::serde::rust_version::VersionComparator>,
+    #[serde(default)]
+    flaky: Option<usize>,
 }
 
 impl Benchmark {
@@ -191,6 +198,32 @@ impl Benchmark {
             .join(&self.bench_name);
         if alt_dir.is_dir() {
             std::fs::remove_dir_all(&alt_dir).unwrap();
+        }
+    }
+
+    pub fn backup(&self) -> Option<TempDir> {
+        if self.dest_dir.is_dir() {
+            let dir = tempdir().expect("Creating temporary directory should succeed");
+            fs_extra::copy_items(&[&self.dest_dir], dir.path(), &CopyOptions::new()).unwrap();
+            Some(dir)
+        } else {
+            None
+        }
+    }
+
+    pub fn restore(&self, temp_dir: Option<&TempDir>) {
+        self.clean_benchmark();
+
+        if let Some(temp_dir) = temp_dir {
+            let from = temp_dir.path().join(self.dest_dir.file_name().unwrap());
+            fs_extra::copy_items(
+                &[from],
+                self.dest_dir
+                    .parent()
+                    .expect("Parent of benchmark directory should exist"),
+                &CopyOptions::new(),
+            )
+            .expect("Restoring backup should succeed");
         }
     }
 
@@ -276,44 +309,75 @@ impl Benchmark {
             })
             .enumerate()
         {
-            print_info(format!(
-                "Running {}: ({}/{})",
-                &self.name,
-                index + 1,
-                num_runs
-            ));
+            let max_tries = run.flaky.unwrap_or(0);
+            let backup_dir = if max_tries > 0 { self.backup() } else { None };
 
-            for r in run.rmdirs.iter().filter(|r| r.is_dir()) {
-                print_info(format!("Removing directory: {}", r.display()));
-                std::fs::remove_dir_all(r).unwrap();
+            for tries in 0..=max_tries {
+                print_info(format!(
+                    "Running {}: ({}/{})",
+                    &self.name,
+                    index + 1,
+                    num_runs
+                ));
+
+                for r in run.rmdirs.iter().filter(|r| r.is_dir()) {
+                    print_info(format!("Removing directory: {}", r.display()));
+                    std::fs::remove_dir_all(r).unwrap();
+                }
+
+                if !run.args.is_empty() {
+                    print_info(format!("Benchmark arguments: {}", run.args.join(" ")))
+                }
+
+                let capture = run
+                    .expected
+                    .as_ref()
+                    .map_or(false, |e| e.stdout.is_some() || e.stderr.is_some());
+
+                let output = if let Some(template) = &self.config.template {
+                    let output =
+                        self.run_template(template, &run.args, &run.template_data, meta, capture);
+                    self.reset_template(meta);
+                    output
+                } else {
+                    self.run_bench(&run.args, capture)
+                };
+
+                if tries < max_tries {
+                    if panic::catch_unwind(AssertUnwindSafe(|| {
+                        run.assert(
+                            &self.dir,
+                            meta,
+                            output,
+                            schema,
+                            &self.home_dir,
+                            &self.bench_name,
+                        )
+                    }))
+                    .is_ok()
+                    {
+                        break;
+                    } else {
+                        print_info(format!(
+                            "Flaky test: Re-running {}: ({}/{max_tries})",
+                            &self.name,
+                            tries + 1,
+                        ));
+                        self.restore(backup_dir.as_ref());
+                    }
+                } else {
+                    run.assert(
+                        &self.dir,
+                        meta,
+                        output,
+                        schema,
+                        &self.home_dir,
+                        &self.bench_name,
+                    )
+                }
             }
 
-            if !run.args.is_empty() {
-                print_info(format!("Benchmark arguments: {}", run.args.join(" ")))
-            }
-
-            let capture = run
-                .expected
-                .as_ref()
-                .map_or(false, |e| e.stdout.is_some() || e.stderr.is_some());
-
-            let output = if let Some(template) = &self.config.template {
-                let output =
-                    self.run_template(template, &run.args, &run.template_data, meta, capture);
-                self.reset_template(meta);
-                output
-            } else {
-                self.run_bench(&run.args, capture)
-            };
-
-            run.assert(
-                &self.dir,
-                meta,
-                output,
-                schema,
-                &self.home_dir,
-                &self.bench_name,
-            );
+            drop(backup_dir);
         }
     }
 
@@ -519,12 +583,20 @@ impl BenchmarkOutput {
                 }
                 writeln!(result, "{string}").unwrap();
             } else {
-                // Filter the benchmark command because it has a random hash in its name
-                let line = COMMAND_RE.replace(&line, "$1 <__COMMAND__>");
+                let line = if COMMAND_RE.is_match(&line) {
+                    // Filter the benchmark command of library benchmarks because it has a random
+                    // hash in it's name
+                    COMMAND_RE.replace(&line, "$1 <__COMMAND__>")
+                } else {
+                    // Replace absolute paths
+                    ABSOLUTE_PATH_RE.replace_all(&line, "$1<__ABS_PATH__>$2")
+                };
+
                 // Filter the pids and parent pids
                 let line = PID_RE.replace_all(&line, |caps: &Captures| {
                     format!("{}<__PID__>{}", &caps[1], caps.get(3).map_or("", |_| " "))
                 });
+
                 let line = FRAGMENT_HEADER_RE.replace_all(&line, "$1 $3");
                 writeln!(result, "{line}").unwrap();
             }
@@ -871,5 +943,25 @@ mod tests {
     #[case::bin_bench("Command: target/release/deps/test_bin_bench_threads-c2a88f916ff580f9")]
     fn test_command_re(#[case] haystack: &str) {
         assert!(COMMAND_RE.is_match(haystack));
+    }
+
+    #[rstest]
+    #[case::just_root(" /", " <__ABS_PATH__>/")]
+    #[case::with_single_component(" /some", " <__ABS_PATH__>/some")]
+    #[case::with_two_components(" /some/final", " <__ABS_PATH__>/final")]
+    #[case::with_mixed_characters(" /wi-th_/123/final", " <__ABS_PATH__>/final")]
+    #[case::with_text_before(
+        "some text before /wi-th_/123/final",
+        "some text before <__ABS_PATH__>/final"
+    )]
+    #[case::with_text_after(
+        " /wi-th_/123/final some text after",
+        " <__ABS_PATH__>/final some text after"
+    )]
+    fn test_absolute_path_re(#[case] haystack: &str, #[case] replaced: &str) {
+        assert_eq!(
+            ABSOLUTE_PATH_RE.replace_all(haystack, "$1<__ABS_PATH__>$2"),
+            replaced
+        );
     }
 }
