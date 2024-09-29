@@ -17,12 +17,12 @@ rust-version.workspace = true
 version = "0.1.0"
 
 [dependencies]
+anyhow = { workspace = true }
 cargo_metadata = { workspace = true }
 colored = { workspace = true }
+fs_extra = { workspace = true }
 glob = { workspace = true }
 iai-callgrind = { path = "../iai-callgrind", features = ["client_requests"] }
-# Needed in the `cargo bench` wrapper
-anyhow = { workspace = true }
 iai-callgrind-runner = { path = "../iai-callgrind-runner" }
 lazy_static = { workspace = true }
 minijinja = { workspace = true }
@@ -32,6 +32,7 @@ regex = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
+tempfile = { workspace = true }
 valico = { workspace = true }
 version-compare = { workspace = true }
 

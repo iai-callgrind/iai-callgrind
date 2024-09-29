@@ -153,6 +153,7 @@ dependencies = [
  "anyhow",
  "cargo_metadata",
  "colored",
+ "fs_extra",
  "glob",
  "iai-callgrind",
  "iai-callgrind-runner",
@@ -165,6 +166,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "tempfile",
  "valico",
  "version-compare",
 ]
