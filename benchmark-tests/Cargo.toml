@@ -239,4 +239,9 @@ path = "benches/test_lib_bench/parts/test_lib_bench_parts.rs"
 
 [[bench]]
 harness = false
+name = "test_lib_bench_output_format"
+path = "benches/test_lib_bench/output_format/test_lib_bench_output_format.rs"
+
+[[bench]]
+harness = false
 name = "test_bench_template"
