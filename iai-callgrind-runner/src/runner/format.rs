@@ -400,14 +400,13 @@ impl OutputFormat {
     }
 }
 
-/// TODO: ADD `show_grid` to `api::OutputFormat`
 impl From<api::OutputFormat> for OutputFormat {
     fn from(value: api::OutputFormat) -> Self {
         Self {
             kind: OutputFormatKind::Default,
             truncate_description: value.truncate_description.unwrap_or(Some(50)),
             show_intermediate: value.show_intermediate.unwrap_or(false),
-            show_grid: false,
+            show_grid: value.show_grid.unwrap_or(false),
         }
     }
 }
