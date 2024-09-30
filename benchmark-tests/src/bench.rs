@@ -31,10 +31,13 @@ const TEMPLATE_CONTENT: &str = r#"fn main() {
 "#;
 static TEMPLATE_DATA: OnceCell<HashMap<String, minijinja::Value>> = OnceCell::new();
 
+// The regex patterns working on the `stdout` must not include the indentation. The indentation can
+// be different depending on the `show_grid` option and starts either with 2 spaces (`  `) or if
+// `show_grid` is `true` with a pipe character (`|`)
 lazy_static! {
     static ref NUMBERS_RE: Regex = Regex::new(
         r"(?x)
-            (?<desc>\s+.+:\s*)(?<comp1>[0-9]+|N/A)\|(?<comp2>[0-9]+|N/A)
+            (?<desc>.+:\s*)(?<comp1>[0-9]+|N/A)\|(?<comp2>[0-9]+|N/A)
             (?<diff>
                 (?<diff_percent>(?<white1>\s*)(?<percent>\(.*\)))
                 (?<diff_factor>(?<white2>\s*)(?<factor>\[.*\]))?
@@ -47,17 +50,17 @@ lazy_static! {
             .expect("Regex should compile");
     // Command: target/release/deps/test_lib_bench_threads-c2a88f916ff580f9
     static ref COMMAND_RE: Regex =
-        Regex::new(r"^(\s*Command:)(\s*target/release/deps/test_(lib|bin)_bench_.+-[a-z0-9]+\s*.*)$")
+        Regex::new(r"^(Command:)(\s*target/release/deps/test_(lib|bin)_bench_.+-[a-z0-9]+\s*.*)$")
             .expect("Regex should compile");
     static ref PID_RE: Regex =
         Regex::new(r"(p?pid:\s*)([0-9]+)(\s+)?").expect("Regex should compile");
     static ref DETAILS_RE: Regex =
-        Regex::new(r"^  Details:").expect("Regex should compile");
+        Regex::new(r"^Details:").expect("Regex should compile");
     static ref NOT_DETAILS_RE: Regex =
-        Regex::new(r"^(?:(?:  \S)|(?:[a-zA-Z]))").expect("Regex should compile");
+        Regex::new(r"^(?:(?:\S)|(?:[a-zA-Z]))").expect("Regex should compile");
     // `  ## pid: <__PID__> part: 1 thread: 3   |pid: <__PID__> part: 1 thread: 3`
     static ref FRAGMENT_HEADER_RE: Regex =
-        Regex::new(r"^(  ##[^|]*[0-9])(\s*)?(|.*)$").expect("Regex should compile");
+        Regex::new(r"^(##[^|]*[0-9])(\s*)?(|.*)$").expect("Regex should compile");
     static ref ABSOLUTE_PATH_RE: Regex =
         Regex::new(r"(\s+)([/][^/]*)+").expect("Regex should compile");
 }
@@ -451,6 +454,12 @@ impl BenchmarkOutput {
         let mut result = String::new();
         let mut details = false;
         for line in stdout.lines().map(Result::unwrap) {
+            let (indent, line) = if line.starts_with("  ") || line.starts_with("|") {
+                (&line[0..2], &line[2..])
+            } else {
+                (&line[0..0], line.as_str())
+            };
+
             // The `  Details: ...` can contain platform, toolchain specific information about a
             // tool run and make the benchmark tests flaky. So, we filter the details. The
             // (multiline) details usually look like this in the original output:
@@ -481,18 +490,18 @@ impl BenchmarkOutput {
             //   Details: <__DETAILS__>
             // ```
             if details {
-                if NOT_DETAILS_RE.is_match(&line) {
+                if NOT_DETAILS_RE.is_match(line) {
                     details = false;
                 } else {
                     continue;
                 }
-            } else if DETAILS_RE.is_match(&line) {
-                writeln!(result, "  Details: <__DETAILS__>").unwrap();
+            } else if DETAILS_RE.is_match(line) {
+                writeln!(result, "{indent}Details: <__DETAILS__>").unwrap();
                 details = true;
                 continue;
             }
 
-            if let Some(caps) = NUMBERS_RE.captures(&line) {
+            if let Some(caps) = NUMBERS_RE.captures(line) {
                 let mut string = String::new();
                 let desc = caps.name("desc").unwrap().as_str();
                 let comp1 = {
@@ -531,12 +540,12 @@ impl BenchmarkOutput {
                 // to
                 //
                 //   RAM Hits:                |N/A             (*********)
-                if desc.starts_with("  RAM Hits")
-                    || desc.starts_with("  Estimated Cycles")
-                    || desc.starts_with("  L2 Hits")
-                    || desc.starts_with("  L1 Hits")
-                    || desc.starts_with("  Suppressed Errors")
-                    || desc.starts_with("  Suppressed Contexts")
+                if desc.starts_with("RAM Hits")
+                    || desc.starts_with("Estimated Cycles")
+                    || desc.starts_with("L2 Hits")
+                    || desc.starts_with("L1 Hits")
+                    || desc.starts_with("Suppressed Errors")
+                    || desc.starts_with("Suppressed Contexts")
                 {
                     if caps.name("diff_percent").is_some() {
                         let white1 = caps.name("white1").unwrap().as_str();
@@ -581,15 +590,15 @@ impl BenchmarkOutput {
                         }
                     }
                 }
-                writeln!(result, "{string}").unwrap();
+                writeln!(result, "{indent}{string}").unwrap();
             } else {
-                let line = if COMMAND_RE.is_match(&line) {
+                let line = if COMMAND_RE.is_match(line) {
                     // Filter the benchmark command of library benchmarks because it has a random
                     // hash in it's name
-                    COMMAND_RE.replace(&line, "$1 <__COMMAND__>")
+                    COMMAND_RE.replace(line, "$1 <__COMMAND__>")
                 } else {
                     // Replace absolute paths
-                    ABSOLUTE_PATH_RE.replace_all(&line, "$1<__ABS_PATH__>$2")
+                    ABSOLUTE_PATH_RE.replace_all(line, "$1<__ABS_PATH__>$2")
                 };
 
                 // Filter the pids and parent pids
@@ -598,7 +607,7 @@ impl BenchmarkOutput {
                 });
 
                 let line = FRAGMENT_HEADER_RE.replace_all(&line, "$1 $3");
-                writeln!(result, "{line}").unwrap();
+                writeln!(result, "{indent}{line}").unwrap();
             }
         }
 
