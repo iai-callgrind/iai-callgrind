@@ -66,7 +66,7 @@ pub const UNKNOWN: &str = "*********";
 pub const NO_CHANGE: &str = "No change";
 
 pub const METRIC_WIDTH: usize = 20;
-pub const FIELD_WIDTH: usize = 20;
+pub const FIELD_WIDTH: usize = 21;
 
 pub const LEFT_WIDTH: usize = METRIC_WIDTH + FIELD_WIDTH;
 pub const DIFF_WIDTH: usize = 9;
@@ -469,8 +469,13 @@ impl VerticalFormatter {
         }
     }
 
-    fn write_field<T>(&mut self, field: &str, values: &EitherOrBoth<T>, color: Option<Color>)
-    where
+    fn write_field<T>(
+        &mut self,
+        field: &str,
+        values: &EitherOrBoth<T>,
+        color: Option<Color>,
+        left_align: bool,
+    ) where
         T: AsRef<str>,
     {
         self.write_indent(&IndentKind::Normal);
@@ -479,20 +484,23 @@ impl VerticalFormatter {
             EitherOrBoth::Left(left) => {
                 let left = left.as_ref();
                 let colored = match color {
-                    Some(color) => left.color(color),
-                    None => ColoredString::from(left),
+                    Some(color) => left.color(color).bold(),
+                    None => left.bold(),
                 };
 
-                writeln!(
-                    self,
-                    "{field:<FIELD_WIDTH$}{}{}",
-                    " ".repeat(METRIC_WIDTH.saturating_sub(left.len())),
-                    colored.bold(),
-                )
-                .unwrap();
+                if left_align {
+                    writeln!(self, "{field:<FIELD_WIDTH$}{colored}").unwrap();
+                } else {
+                    writeln!(
+                        self,
+                        "{field:<FIELD_WIDTH$}{}{colored}",
+                        " ".repeat(METRIC_WIDTH.saturating_sub(left.len()))
+                    )
+                    .unwrap();
+                }
             }
             EitherOrBoth::Right(right) => {
-                let right = right.as_ref();
+                let right = right.as_ref().trim();
                 let colored = match color {
                     Some(color) => right.color(color),
                     None => ColoredString::from(right),
@@ -506,8 +514,8 @@ impl VerticalFormatter {
                 .unwrap();
             }
             EitherOrBoth::Both(left, right) => {
-                let left = left.as_ref();
-                let right = right.as_ref();
+                let left = left.as_ref().trim();
+                let right = right.as_ref().trim();
 
                 let colored_left = match color {
                     Some(color) => left.color(color).bold(),
@@ -522,12 +530,18 @@ impl VerticalFormatter {
                     writeln!(self, "{field:<FIELD_WIDTH$}{colored_left}").unwrap();
                     self.write_indent(&IndentKind::Normal);
                     writeln!(self, "{}|{colored_right}", " ".repeat(LEFT_WIDTH)).unwrap();
+                } else if left_align {
+                    writeln!(
+                        self,
+                        "{field:<FIELD_WIDTH$}{colored_left}{}|{colored_right}",
+                        " ".repeat(METRIC_WIDTH - left.len()),
+                    )
+                    .unwrap();
                 } else {
                     writeln!(
                         self,
-                        "{field:<FIELD_WIDTH$}{}{}|{colored_right}",
+                        "{field:<FIELD_WIDTH$}{}{colored_left}|{colored_right}",
                         " ".repeat(METRIC_WIDTH - left.len()),
-                        colored_left.bold(),
                     )
                     .unwrap();
                 }
@@ -542,21 +556,36 @@ impl VerticalFormatter {
                     "{NOT_AVAILABLE:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
                     UNKNOWN.bright_black()
                 );
-                self.write_field(field, &EitherOrBoth::Both(&new.to_string(), &right), None);
+                self.write_field(
+                    field,
+                    &EitherOrBoth::Both(&new.to_string(), &right),
+                    None,
+                    false,
+                );
             }
             EitherOrBoth::Right(old) => {
                 let right = format!(
                     "{old:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
                     UNKNOWN.bright_black()
                 );
-                self.write_field(field, &EitherOrBoth::Both(NOT_AVAILABLE, &right), None);
+                self.write_field(
+                    field,
+                    &EitherOrBoth::Both(NOT_AVAILABLE, &right),
+                    None,
+                    false,
+                );
             }
             EitherOrBoth::Both(new, old) if new == old => {
                 let right = format!(
                     "{old:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
                     NO_CHANGE.bright_black()
                 );
-                self.write_field(field, &EitherOrBoth::Both(&new.to_string(), &right), None);
+                self.write_field(
+                    field,
+                    &EitherOrBoth::Both(&new.to_string(), &right),
+                    None,
+                    false,
+                );
             }
             EitherOrBoth::Both(new, old) => {
                 let diffs = diffs.expect(
@@ -569,7 +598,12 @@ impl VerticalFormatter {
                     "{old:<METRIC_WIDTH$} ({pct_string:^DIFF_WIDTH$}) \
                      [{factor_string:^DIFF_WIDTH$}]"
                 );
-                self.write_field(field, &EitherOrBoth::Both(&new.to_string(), &right), None);
+                self.write_field(
+                    field,
+                    &EitherOrBoth::Both(&new.to_string(), &right),
+                    None,
+                    false,
+                );
             }
         }
     }
@@ -598,6 +632,7 @@ impl VerticalFormatter {
                         .as_ref()
                         .map(String::as_str),
                     None,
+                    false,
                 );
             }
         }
@@ -735,9 +770,10 @@ impl VerticalFormatter {
         };
 
         self.write_field(
-            "Command: ",
+            "Command:",
             &paths.map(|p| p.display().to_string()),
             Some(Color::Blue),
+            true,
         );
     }
 
@@ -1244,27 +1280,27 @@ mod tests {
     #[case::left(
         "Some:",
         EitherOrBoth::Left("left"),
-        "  Some:                               left\n"
+        "  Some:                                left\n"
     )]
     #[case::right(
         "Field:",
         EitherOrBoth::Right("right"),
-        "  Field:                                  |right\n"
+        "  Field:                                   |right\n"
     )]
     #[case::both(
         "Field:",
         EitherOrBoth::Both("left", "right"),
-        "  Field:                              left|right\n"
+        "  Field:                               left|right\n"
     )]
     #[case::both_u64_max(
         "Field:",
         EitherOrBoth::Both(format!("{}", u64::MAX), format!("{}", u64::MAX)),
-        "  Field:              18446744073709551615|18446744073709551615\n"
+        "  Field:               18446744073709551615|18446744073709551615\n"
     )]
     #[case::split(
         "Field:",
         EitherOrBoth::Both(format!("{}1", u64::MAX), "right".to_owned()),
-        "  Field:              184467440737095516151\n                                          |right\n"
+        "  Field:               184467440737095516151\n                                          |right\n"
     )]
     fn test_vertical_formatter_write_field<T>(
         #[case] field: &str,
@@ -1278,7 +1314,7 @@ mod tests {
         let output_format = OutputFormat::default();
 
         let mut formatter = VerticalFormatter::new(output_format);
-        formatter.write_field(field, &values, None);
+        formatter.write_field(field, &values, None, false);
         assert_eq!(formatter.buffer, expected);
     }
 }
