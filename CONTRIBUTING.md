@@ -27,7 +27,7 @@ wanted](https://github.com/iai-callgrind/iai-callgrind/labels/help%20wanted) or
 issue](https://github.com/iai-callgrind/iai-callgrind/labels/good%20first%20issue)
 issues.
 
-The minimum supported version (MSRV) of iai-callgrind is Rust `1.66.0` and all
+The minimum supported version (MSRV) of iai-callgrind is Rust `1.67.1` and all
 patches are expected to work with the minimum supported version.
 
 All notable changes need to be added to the
@@ -62,7 +62,7 @@ inspect the `Justfile` in the root of this project.
 If your IDE can handle it, it's usually best to work with the MSRV locally
 
 ```shell
-rustup override set 1.66.0
+rustup override set 1.67.1
 ```
 
 What is left is to set up your favorite editor to use nightly rustfmt and clippy
