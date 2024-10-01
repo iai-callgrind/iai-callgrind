@@ -1,7 +1,7 @@
 use std::fmt::Display;
 use std::ops::Deref;
 
-use derive_more::{Deref, DerefMut};
+use derive_more::{Deref as DerefDerive, DerefMut as DerefMutDerive};
 use proc_macro2::TokenStream;
 use proc_macro_error2::abort;
 use quote::{quote, ToTokens, TokenStreamExt};
@@ -13,7 +13,7 @@ use crate::common::{self, format_ident, truncate_str_utf8, BenchesArgs, File};
 use crate::{defaults, CargoMetadata};
 
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
-#[derive(Debug, Default, Clone, Deref, DerefMut)]
+#[derive(Debug, Default, Clone, DerefDerive, DerefMutDerive)]
 struct Args(common::Args);
 
 /// This is the counterpart for the `#[bench]` attribute
@@ -28,7 +28,7 @@ struct Bench {
     teardown: Teardown,
 }
 
-#[derive(Debug, Default, Clone, Deref, DerefMut)]
+#[derive(Debug, Default, Clone, DerefDerive, DerefMutDerive)]
 struct BenchConfig(common::BenchConfig);
 
 /// This is the counterpart to the `#[binary_benchmark]` attribute.
@@ -47,7 +47,7 @@ struct BinaryBenchmark {
 ///
 /// Note: This struct is completely independent of the `iai_callgrind::BinaryBenchmarkConfig`
 /// struct with the same name.
-#[derive(Debug, Default, Clone, Deref, DerefMut)]
+#[derive(Debug, Default, Clone, DerefDerive, DerefMutDerive)]
 struct BinaryBenchmarkConfig(common::BenchConfig);
 
 #[derive(Debug, Default, Clone)]
