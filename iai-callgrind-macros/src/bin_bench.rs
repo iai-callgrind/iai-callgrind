@@ -1,5 +1,4 @@
 use std::fmt::Display;
-use std::ops::Deref;
 
 use derive_more::{Deref, DerefMut};
 use proc_macro2::TokenStream;

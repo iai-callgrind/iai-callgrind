@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use derive_more::{Deref, DerefMut};
 use proc_macro2::TokenStream;
 use proc_macro_error2::abort;
