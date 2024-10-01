@@ -1,570 +1,570 @@
 test_lib_bench_threads::bench_group::bench_find_primes_multi_thread two:2
-  ======= CALLGRIND =========================================================
+  ======= CALLGRIND ====================================================================
 Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
-  ## pid: <__PID__> part: 1 thread: 1 |pid: <__PID__> part: 1 thread: 1
+  ## pid: <__PID__> part: 1 thread: 1      |pid: <__PID__> part: 1 thread: 1
   Command: <__COMMAND__>
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ## pid: <__PID__> part: 1 thread: 2 |pid: <__PID__> part: 1 thread: 2
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ## pid: <__PID__> part: 1 thread: 2      |pid: <__PID__> part: 1 thread: 2
   Command: <__COMMAND__>
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ## pid: <__PID__> part: 1 thread: 3 |pid: <__PID__> part: 1 thread: 3
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ## pid: <__PID__> part: 1 thread: 3      |pid: <__PID__> part: 1 thread: 3
   Command: <__COMMAND__>
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
   ## Total
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ======= DHAT ==============================================================
-  Total bytes:                       |                (No change)
-  Total blocks:                      |                (No change)
-  At t-gmax bytes:                   |                (No change)
-  At t-gmax blocks:                  |                (No change)
-  At t-end bytes:                    |                (No change)
-  At t-end blocks:                   |                (No change)
-  Reads bytes:                       |                (No change)
-  Writes bytes:                      |                (No change)
-  ======= MEMCHECK ==========================================================
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
-  ======= DRD ===============================================================
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
-  ======= MASSIF ============================================================
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ======= DHAT =========================================================================
+  Total bytes:                             |                     (No change)
+  Total blocks:                            |                     (No change)
+  At t-gmax bytes:                         |                     (No change)
+  At t-gmax blocks:                        |                     (No change)
+  At t-end bytes:                          |                     (No change)
+  At t-end blocks:                         |                     (No change)
+  Reads bytes:                             |                     (No change)
+  Writes bytes:                            |                     (No change)
+  ======= MEMCHECK =====================================================================
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ======= DRD ==========================================================================
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ======= MASSIF =======================================================================
   Command: <__COMMAND__>
-  ======= EXP-BBV ===========================================================
+  ======= EXP-BBV ======================================================================
   Command: <__COMMAND__>
   Details: <__DETAILS__>
 test_lib_bench_threads::bench_group::bench_find_primes_multi_thread three:3
-  ======= CALLGRIND =========================================================
+  ======= CALLGRIND ====================================================================
 Number of primes found in the range 0 to 30000: 3245
 - end of stdout/stderr
-  ## pid: <__PID__> part: 1 thread: 1 |pid: <__PID__> part: 1 thread: 1
+  ## pid: <__PID__> part: 1 thread: 1      |pid: <__PID__> part: 1 thread: 1
   Command: <__COMMAND__>
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ## pid: <__PID__> part: 1 thread: 2 |pid: <__PID__> part: 1 thread: 2
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ## pid: <__PID__> part: 1 thread: 2      |pid: <__PID__> part: 1 thread: 2
   Command: <__COMMAND__>
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ## pid: <__PID__> part: 1 thread: 3 |pid: <__PID__> part: 1 thread: 3
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ## pid: <__PID__> part: 1 thread: 3      |pid: <__PID__> part: 1 thread: 3
   Command: <__COMMAND__>
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ## pid: <__PID__> part: 1 thread: 4 |pid: <__PID__> part: 1 thread: 4
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ## pid: <__PID__> part: 1 thread: 4      |pid: <__PID__> part: 1 thread: 4
   Command: <__COMMAND__>
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
   ## Total
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ======= DHAT ==============================================================
-  Total bytes:                       |                (No change)
-  Total blocks:                      |                (No change)
-  At t-gmax bytes:                   |                (No change)
-  At t-gmax blocks:                  |                (No change)
-  At t-end bytes:                    |                (No change)
-  At t-end blocks:                   |                (No change)
-  Reads bytes:                       |                (No change)
-  Writes bytes:                      |                (No change)
-  ======= MEMCHECK ==========================================================
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
-  ======= DRD ===============================================================
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
-  ======= MASSIF ============================================================
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ======= DHAT =========================================================================
+  Total bytes:                             |                     (No change)
+  Total blocks:                            |                     (No change)
+  At t-gmax bytes:                         |                     (No change)
+  At t-gmax blocks:                        |                     (No change)
+  At t-end bytes:                          |                     (No change)
+  At t-end blocks:                         |                     (No change)
+  Reads bytes:                             |                     (No change)
+  Writes bytes:                            |                     (No change)
+  ======= MEMCHECK =====================================================================
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ======= DRD ==========================================================================
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ======= MASSIF =======================================================================
   Command: <__COMMAND__>
-  ======= EXP-BBV ===========================================================
+  ======= EXP-BBV ======================================================================
   Command: <__COMMAND__>
   Details: <__DETAILS__>
 test_lib_bench_threads::bench_group::bench_thread_in_subprocess two:2
-  ======= CALLGRIND =========================================================
+  ======= CALLGRIND ====================================================================
 Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
-  ## pid: <__PID__> part: 1 thread: 1 |pid: <__PID__> part: 1 thread: 1
+  ## pid: <__PID__> part: 1 thread: 1      |pid: <__PID__> part: 1 thread: 1
   Command: <__COMMAND__>
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ## pid: <__PID__> part: 1 thread: 1 |pid: <__PID__> part: 1 thread: 1
-  Command:            target/release/thread 2
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ## pid: <__PID__> part: 1 thread: 2 |pid: <__PID__> part: 1 thread: 2
-  Command:            target/release/thread 2
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ## pid: <__PID__> part: 1 thread: 3 |pid: <__PID__> part: 1 thread: 3
-  Command:            target/release/thread 2
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ## pid: <__PID__> part: 1 thread: 1      |pid: <__PID__> part: 1 thread: 1
+  Command:             target/release/thread 2
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ## pid: <__PID__> part: 1 thread: 2      |pid: <__PID__> part: 1 thread: 2
+  Command:             target/release/thread 2
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ## pid: <__PID__> part: 1 thread: 3      |pid: <__PID__> part: 1 thread: 3
+  Command:             target/release/thread 2
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
   ## Total
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ======= DHAT ==============================================================
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ======= DHAT =========================================================================
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  Total bytes:                       |                (No change)
-  Total blocks:                      |                (No change)
-  At t-gmax bytes:                   |                (No change)
-  At t-gmax blocks:                  |                (No change)
-  At t-end bytes:                    |                (No change)
-  At t-end blocks:                   |                (No change)
-  Reads bytes:                       |                (No change)
-  Writes bytes:                      |                (No change)
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
-  Command:            target/release/thread 2
-  Total bytes:                       |                (No change)
-  Total blocks:                      |                (No change)
-  At t-gmax bytes:                   |                (No change)
-  At t-gmax blocks:                  |                (No change)
-  At t-end bytes:                    |                (No change)
-  At t-end blocks:                   |                (No change)
-  Reads bytes:                       |                (No change)
-  Writes bytes:                      |                (No change)
+  Total bytes:                             |                     (No change)
+  Total blocks:                            |                     (No change)
+  At t-gmax bytes:                         |                     (No change)
+  At t-gmax blocks:                        |                     (No change)
+  At t-end bytes:                          |                     (No change)
+  At t-end blocks:                         |                     (No change)
+  Reads bytes:                             |                     (No change)
+  Writes bytes:                            |                     (No change)
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Command:             target/release/thread 2
+  Total bytes:                             |                     (No change)
+  Total blocks:                            |                     (No change)
+  At t-gmax bytes:                         |                     (No change)
+  At t-gmax blocks:                        |                     (No change)
+  At t-end bytes:                          |                     (No change)
+  At t-end blocks:                         |                     (No change)
+  Reads bytes:                             |                     (No change)
+  Writes bytes:                            |                     (No change)
   ## Total
-  Total bytes:                       |                (No change)
-  Total blocks:                      |                (No change)
-  At t-gmax bytes:                   |                (No change)
-  At t-gmax blocks:                  |                (No change)
-  At t-end bytes:                    |                (No change)
-  At t-end blocks:                   |                (No change)
-  Reads bytes:                       |                (No change)
-  Writes bytes:                      |                (No change)
-  ======= MEMCHECK ==========================================================
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
+  Total bytes:                             |                     (No change)
+  Total blocks:                            |                     (No change)
+  At t-gmax bytes:                         |                     (No change)
+  At t-gmax blocks:                        |                     (No change)
+  At t-end bytes:                          |                     (No change)
+  At t-end blocks:                         |                     (No change)
+  Reads bytes:                             |                     (No change)
+  Writes bytes:                            |                     (No change)
+  ======= MEMCHECK =====================================================================
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
-  Command:            target/release/thread 2
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Command:             target/release/thread 2
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
   ## Total
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
-  ======= DRD ===============================================================
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ======= DRD ==========================================================================
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
-  Command:            target/release/thread 2
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Command:             target/release/thread 2
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
   ## Total
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
-  ======= MASSIF ============================================================
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ======= MASSIF =======================================================================
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
-  Command:            target/release/thread 2
-  ======= EXP-BBV ===========================================================
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Command:             target/release/thread 2
+  ======= EXP-BBV ======================================================================
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
   Details: <__DETAILS__>
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
-  Command:            target/release/thread 2
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Command:             target/release/thread 2
   Details: <__DETAILS__>
   Comparison with bench_find_primes_multi_thread two:2
-  Instructions:                      |                (-       %) [-       x]
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (-       %) [-       x]
-  Estimated Cycles:                  |                (         )
+  Instructions:                            |                     (-       %) [-       x]
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (-       %) [-       x]
+  Estimated Cycles:                        |                     (         )
 test_lib_bench_threads::bench_group::bench_thread_in_subprocess three:3
-  ======= CALLGRIND =========================================================
+  ======= CALLGRIND ====================================================================
 Number of primes found in the range 0 to 30000: 3245
 - end of stdout/stderr
-  ## pid: <__PID__> part: 1 thread: 1 |pid: <__PID__> part: 1 thread: 1
+  ## pid: <__PID__> part: 1 thread: 1      |pid: <__PID__> part: 1 thread: 1
   Command: <__COMMAND__>
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ## pid: <__PID__> part: 1 thread: 1 |pid: <__PID__> part: 1 thread: 1
-  Command:            target/release/thread 3
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ## pid: <__PID__> part: 1 thread: 2 |pid: <__PID__> part: 1 thread: 2
-  Command:            target/release/thread 3
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ## pid: <__PID__> part: 1 thread: 3 |pid: <__PID__> part: 1 thread: 3
-  Command:            target/release/thread 3
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ## pid: <__PID__> part: 1 thread: 4 |pid: <__PID__> part: 1 thread: 4
-  Command:            target/release/thread 3
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ## pid: <__PID__> part: 1 thread: 1      |pid: <__PID__> part: 1 thread: 1
+  Command:             target/release/thread 3
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ## pid: <__PID__> part: 1 thread: 2      |pid: <__PID__> part: 1 thread: 2
+  Command:             target/release/thread 3
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ## pid: <__PID__> part: 1 thread: 3      |pid: <__PID__> part: 1 thread: 3
+  Command:             target/release/thread 3
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ## pid: <__PID__> part: 1 thread: 4      |pid: <__PID__> part: 1 thread: 4
+  Command:             target/release/thread 3
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
   ## Total
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ======= DHAT ==============================================================
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ======= DHAT =========================================================================
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  Total bytes:                       |                (No change)
-  Total blocks:                      |                (No change)
-  At t-gmax bytes:                   |                (No change)
-  At t-gmax blocks:                  |                (No change)
-  At t-end bytes:                    |                (No change)
-  At t-end blocks:                   |                (No change)
-  Reads bytes:                       |                (No change)
-  Writes bytes:                      |                (No change)
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
-  Command:            target/release/thread 3
-  Total bytes:                       |                (No change)
-  Total blocks:                      |                (No change)
-  At t-gmax bytes:                   |                (No change)
-  At t-gmax blocks:                  |                (No change)
-  At t-end bytes:                    |                (No change)
-  At t-end blocks:                   |                (No change)
-  Reads bytes:                       |                (No change)
-  Writes bytes:                      |                (No change)
+  Total bytes:                             |                     (No change)
+  Total blocks:                            |                     (No change)
+  At t-gmax bytes:                         |                     (No change)
+  At t-gmax blocks:                        |                     (No change)
+  At t-end bytes:                          |                     (No change)
+  At t-end blocks:                         |                     (No change)
+  Reads bytes:                             |                     (No change)
+  Writes bytes:                            |                     (No change)
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Command:             target/release/thread 3
+  Total bytes:                             |                     (No change)
+  Total blocks:                            |                     (No change)
+  At t-gmax bytes:                         |                     (No change)
+  At t-gmax blocks:                        |                     (No change)
+  At t-end bytes:                          |                     (No change)
+  At t-end blocks:                         |                     (No change)
+  Reads bytes:                             |                     (No change)
+  Writes bytes:                            |                     (No change)
   ## Total
-  Total bytes:                       |                (No change)
-  Total blocks:                      |                (No change)
-  At t-gmax bytes:                   |                (No change)
-  At t-gmax blocks:                  |                (No change)
-  At t-end bytes:                    |                (No change)
-  At t-end blocks:                   |                (No change)
-  Reads bytes:                       |                (No change)
-  Writes bytes:                      |                (No change)
-  ======= MEMCHECK ==========================================================
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
+  Total bytes:                             |                     (No change)
+  Total blocks:                            |                     (No change)
+  At t-gmax bytes:                         |                     (No change)
+  At t-gmax blocks:                        |                     (No change)
+  At t-end bytes:                          |                     (No change)
+  At t-end blocks:                         |                     (No change)
+  Reads bytes:                             |                     (No change)
+  Writes bytes:                            |                     (No change)
+  ======= MEMCHECK =====================================================================
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
-  Command:            target/release/thread 3
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Command:             target/release/thread 3
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
   ## Total
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
-  ======= DRD ===============================================================
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ======= DRD ==========================================================================
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
-  Command:            target/release/thread 3
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Command:             target/release/thread 3
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
   ## Total
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
-  ======= MASSIF ============================================================
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ======= MASSIF =======================================================================
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
-  Command:            target/release/thread 3
-  ======= EXP-BBV ===========================================================
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Command:             target/release/thread 3
+  ======= EXP-BBV ======================================================================
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
   Details: <__DETAILS__>
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
-  Command:            target/release/thread 3
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Command:             target/release/thread 3
   Details: <__DETAILS__>
   Comparison with bench_find_primes_multi_thread three:3
-  Instructions:                      |                (-       %) [-       x]
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (-       %) [-       x]
-  Estimated Cycles:                  |                (         )
+  Instructions:                            |                     (-       %) [-       x]
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (-       %) [-       x]
+  Estimated Cycles:                        |                     (         )
 test_lib_bench_threads::bench_group::bench_thread_in_thread
-  ======= CALLGRIND =========================================================
+  ======= CALLGRIND ====================================================================
 thread in thread: Number of primes found in the range 0 to 10000: 1229
 - end of stdout/stderr
-  ## pid: <__PID__> part: 1 thread: 1 |pid: <__PID__> part: 1 thread: 1
+  ## pid: <__PID__> part: 1 thread: 1      |pid: <__PID__> part: 1 thread: 1
   Command: <__COMMAND__>
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ## pid: <__PID__> part: 1 thread: 2 |pid: <__PID__> part: 1 thread: 2
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ## pid: <__PID__> part: 1 thread: 2      |pid: <__PID__> part: 1 thread: 2
   Command: <__COMMAND__>
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ## pid: <__PID__> part: 1 thread: 3 |pid: <__PID__> part: 1 thread: 3
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ## pid: <__PID__> part: 1 thread: 3      |pid: <__PID__> part: 1 thread: 3
   Command: <__COMMAND__>
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
   ## Total
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ======= DHAT ==============================================================
-  Total bytes:                       |                (No change)
-  Total blocks:                      |                (No change)
-  At t-gmax bytes:                   |                (No change)
-  At t-gmax blocks:                  |                (No change)
-  At t-end bytes:                    |                (No change)
-  At t-end blocks:                   |                (No change)
-  Reads bytes:                       |                (No change)
-  Writes bytes:                      |                (No change)
-  ======= MEMCHECK ==========================================================
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
-  ======= DRD ===============================================================
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
-  ======= MASSIF ============================================================
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ======= DHAT =========================================================================
+  Total bytes:                             |                     (No change)
+  Total blocks:                            |                     (No change)
+  At t-gmax bytes:                         |                     (No change)
+  At t-gmax blocks:                        |                     (No change)
+  At t-end bytes:                          |                     (No change)
+  At t-end blocks:                         |                     (No change)
+  Reads bytes:                             |                     (No change)
+  Writes bytes:                            |                     (No change)
+  ======= MEMCHECK =====================================================================
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ======= DRD ==========================================================================
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ======= MASSIF =======================================================================
   Command: <__COMMAND__>
-  ======= EXP-BBV ===========================================================
+  ======= EXP-BBV ======================================================================
   Command: <__COMMAND__>
   Details: <__DETAILS__>
 test_lib_bench_threads::bench_group::bench_thread_in_thread_in_subprocess
-  ======= CALLGRIND =========================================================
+  ======= CALLGRIND ====================================================================
 thread in thread: Number of primes found in the range 0 to 10000: 1229
 - end of stdout/stderr
-  ## pid: <__PID__> part: 1 thread: 1 |pid: <__PID__> part: 1 thread: 1
+  ## pid: <__PID__> part: 1 thread: 1      |pid: <__PID__> part: 1 thread: 1
   Command: <__COMMAND__>
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ## pid: <__PID__> part: 1 thread: 1 |pid: <__PID__> part: 1 thread: 1
-  Command:            target/release/thread --thread-in-thread
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ## pid: <__PID__> part: 1 thread: 2 |pid: <__PID__> part: 1 thread: 2
-  Command:            target/release/thread --thread-in-thread
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ## pid: <__PID__> part: 1 thread: 3 |pid: <__PID__> part: 1 thread: 3
-  Command:            target/release/thread --thread-in-thread
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ## pid: <__PID__> part: 1 thread: 1      |pid: <__PID__> part: 1 thread: 1
+  Command:             target/release/thread --thread-in-thread
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ## pid: <__PID__> part: 1 thread: 2      |pid: <__PID__> part: 1 thread: 2
+  Command:             target/release/thread --thread-in-thread
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ## pid: <__PID__> part: 1 thread: 3      |pid: <__PID__> part: 1 thread: 3
+  Command:             target/release/thread --thread-in-thread
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
   ## Total
-  Instructions:                      |                (No change)
-  L1 Hits:                           |                (         )
-  L2 Hits:                           |                (         )
-  RAM Hits:                          |                (         )
-  Total read+write:                  |                (No change)
-  Estimated Cycles:                  |                (         )
-  ======= DHAT ==============================================================
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ======= DHAT =========================================================================
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  Total bytes:                       |                (No change)
-  Total blocks:                      |                (No change)
-  At t-gmax bytes:                   |                (No change)
-  At t-gmax blocks:                  |                (No change)
-  At t-end bytes:                    |                (No change)
-  At t-end blocks:                   |                (No change)
-  Reads bytes:                       |                (No change)
-  Writes bytes:                      |                (No change)
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
-  Command:            target/release/thread --thread-in-thread
-  Total bytes:                       |                (No change)
-  Total blocks:                      |                (No change)
-  At t-gmax bytes:                   |                (No change)
-  At t-gmax blocks:                  |                (No change)
-  At t-end bytes:                    |                (No change)
-  At t-end blocks:                   |                (No change)
-  Reads bytes:                       |                (No change)
-  Writes bytes:                      |                (No change)
+  Total bytes:                             |                     (No change)
+  Total blocks:                            |                     (No change)
+  At t-gmax bytes:                         |                     (No change)
+  At t-gmax blocks:                        |                     (No change)
+  At t-end bytes:                          |                     (No change)
+  At t-end blocks:                         |                     (No change)
+  Reads bytes:                             |                     (No change)
+  Writes bytes:                            |                     (No change)
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Command:             target/release/thread --thread-in-thread
+  Total bytes:                             |                     (No change)
+  Total blocks:                            |                     (No change)
+  At t-gmax bytes:                         |                     (No change)
+  At t-gmax blocks:                        |                     (No change)
+  At t-end bytes:                          |                     (No change)
+  At t-end blocks:                         |                     (No change)
+  Reads bytes:                             |                     (No change)
+  Writes bytes:                            |                     (No change)
   ## Total
-  Total bytes:                       |                (No change)
-  Total blocks:                      |                (No change)
-  At t-gmax bytes:                   |                (No change)
-  At t-gmax blocks:                  |                (No change)
-  At t-end bytes:                    |                (No change)
-  At t-end blocks:                   |                (No change)
-  Reads bytes:                       |                (No change)
-  Writes bytes:                      |                (No change)
-  ======= MEMCHECK ==========================================================
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
+  Total bytes:                             |                     (No change)
+  Total blocks:                            |                     (No change)
+  At t-gmax bytes:                         |                     (No change)
+  At t-gmax blocks:                        |                     (No change)
+  At t-end bytes:                          |                     (No change)
+  At t-end blocks:                         |                     (No change)
+  Reads bytes:                             |                     (No change)
+  Writes bytes:                            |                     (No change)
+  ======= MEMCHECK =====================================================================
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
-  Command:            target/release/thread --thread-in-thread
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Command:             target/release/thread --thread-in-thread
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
   ## Total
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
-  ======= DRD ===============================================================
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ======= DRD ==========================================================================
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
-  Command:            target/release/thread --thread-in-thread
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Command:             target/release/thread --thread-in-thread
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
   ## Total
-  Errors:                            |                (No change)
-  Contexts:                          |                (No change)
-  Suppressed Errors:                 |                (         )
-  Suppressed Contexts:               |                (         )
-  ======= MASSIF ============================================================
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ======= MASSIF =======================================================================
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
-  Command:            target/release/thread --thread-in-thread
-  ======= EXP-BBV ===========================================================
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Command:             target/release/thread --thread-in-thread
+  ======= EXP-BBV ======================================================================
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
   Command: <__COMMAND__>
   Details: <__DETAILS__>
-  ## pid: <__PID__> ppid: <__PID__> |pid: <__PID__> ppid: <__PID__>
-  Command:            target/release/thread --thread-in-thread
+  ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
+  Command:             target/release/thread --thread-in-thread
   Details: <__DETAILS__>

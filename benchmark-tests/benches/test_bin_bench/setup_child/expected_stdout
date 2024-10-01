@@ -1,9 +1,9 @@
 test_bin_bench_setup_child::group::benchmark () -> target/release/pipe
 STDIN was:
 SETUP CHILD PROCESS- end of stdout/stderr
-  Instructions:                      |N/A             (*********)
-  L1 Hits:                           |N/A             (*********)
-  L2 Hits:                           |N/A             (*********)
-  RAM Hits:                          |N/A             (*********)
-  Total read+write:                  |N/A             (*********)
-  Estimated Cycles:                  |N/A             (*********)
+  Instructions:                            |N/A                  (*********)
+  L1 Hits:                                 |N/A                  (*********)
+  L2 Hits:                                 |N/A                  (*********)
+  RAM Hits:                                |N/A                  (*********)
+  Total read+write:                        |N/A                  (*********)
+  Estimated Cycles:                        |N/A                  (*********)
