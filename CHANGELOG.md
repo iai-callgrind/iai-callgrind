@@ -47,6 +47,10 @@ If not state otherwise the changes below were introduced in
   ([#279](https://github.com/iai-callgrind/iai-callgrind/pull/279)): Support
   running setup in parallel and add possibility to delay the `Command`. Thanks
   to @hargut for #256
+* ([#288](https://github.com/iai-callgrind/iai-callgrind/pull/288)): Added an
+  option `OutputFormat::show_grid` to show grid/guiding lines which can help
+  reading the terminal output if running benchmarks with multiple
+  threads/subprocesses/tools.
 
 ### Changed
 
@@ -71,7 +75,10 @@ If not state otherwise the changes below were introduced in
   Suppressed Contexts:              0|0               (No change)
   ```
 
-* Increase the fields width by 2 spaces in the terminal output.
+* ([#263](https://github.com/iai-callgrind/iai-callgrind/pull/264)) and
+  ([#288](https://github.com/iai-callgrind/iai-callgrind/pull/288)): Increase
+  the field width by 3 spaces and the space for metrics by 5 so that the value
+  of `u64::MAX` fits into the terminal output.
 * The `LibraryBenchmarkConfig::truncate_description`,
   `BinaryBenchmarkConfig::truncate_description` methods have been moved to
   `OutputFormat::truncate_description`
@@ -99,6 +106,9 @@ If not state otherwise the changes below were introduced in
   Iai-Callgrind.
 * The error metrics of drd, helgrind and memcheck were only shown correctly if
   they consisted of a single digit.
+* ([#288](https://github.com/iai-callgrind/iai-callgrind/pull/288)): The include
+  path for the valgrind headers is `/usr/local/include` on freebsd instead of
+  `/usr/local`.
 
 ## [0.13.4] - 2024-09-12
 
