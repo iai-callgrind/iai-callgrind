@@ -563,9 +563,9 @@ impl BenchmarkOutput {
                 };
                 write!(string, "{desc}{comp1}|{comp2}").unwrap();
 
-                // RAM Hits (and EstimatedCycles, L1, L2 Hits) events are very unreliable across
-                // different systems and deviate by a few counts up or down. So to keep the output
-                // comparison more reliable we change this line from (for example)
+                // RAM Hits (and EstimatedCycles, L1, L2 Hits) events are unreliable across
+                // different systems/toolchains and deviate by a few counts up or down. So to keep
+                // the output comparison more reliable we change this line from (for example)
                 //
                 //   RAM Hits:             179|209             (-14.3541%) [-1.16760x]
                 //   RAM Hits:             179|179             (No Change)
@@ -587,6 +587,8 @@ impl BenchmarkOutput {
                     || desc.starts_with("L1 Hits")
                     || desc.starts_with("Suppressed Errors")
                     || desc.starts_with("Suppressed Contexts")
+                    || desc.starts_with("At t-gmax bytes")
+                    || desc.starts_with("At t-gmax blocks")
                 {
                     if caps.name("diff_percent").is_some() {
                         let white1 = caps.name("white1").unwrap().as_str();
