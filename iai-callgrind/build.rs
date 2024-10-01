@@ -90,6 +90,10 @@ mod imp {
             builder.include(env);
         }
 
+        if target.os == "freebsd" {
+            builder.include("/usr/local/include");
+        }
+
         if let Ok(env) = std::env::var("IAI_CALLGRIND_CROSS_TARGET") {
             let path = PathBuf::from("/valgrind/target/valgrind")
                 .join(env)
@@ -117,6 +121,10 @@ mod imp {
                 .join(env)
                 .join("include");
             builder = builder.clang_arg(format!("-iquote{}", path.display()))
+        }
+
+        if target.os == "freebsd" {
+            builder = builder.clang_arg("-iquote/usr/local/include");
         }
 
         let bindings = builder
