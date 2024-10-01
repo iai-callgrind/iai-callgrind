@@ -60,7 +60,7 @@ lazy_static! {
         Regex::new(r"^(?:(?:\S)|(?:[a-zA-Z]))").expect("Regex should compile");
     // `  ## pid: <__PID__> part: 1 thread: 3   |pid: <__PID__> part: 1 thread: 3`
     static ref FRAGMENT_HEADER_RE: Regex =
-        Regex::new(r"^(##[^|]*[0-9])(\s*)?(|.*)$").expect("Regex should compile");
+        Regex::new(r"^(##(?: \S+: \S+)+)(\s*)([|].*)$").expect("Regex should compile");
     static ref ABSOLUTE_PATH_RE: Regex =
         Regex::new(r"(\s+)([/][^/]*)+").expect("Regex should compile");
 }
@@ -405,15 +405,36 @@ impl BenchmarkOutput {
                 .expect("File should exist")
                 .read_to_end(&mut expected_stderr)
                 .expect("Reading file should succeed");
-            let actual = self.filter_stderr(&output.stderr);
+
+            let filtered = self.filter_stderr(&output.stderr);
             let expected_string = String::from_utf8_lossy(&expected_stderr);
-            if actual != expected_string {
-                panic!(
-                    "Assertion of stderr failed: {}",
-                    pretty_assertions::StrComparison::new(&actual, &expected_string)
-                );
+
+            if option_env!("BENCH_OVERWRITE").map_or(false, |s| s.eq_ignore_ascii_case("yes")) {
+                if filtered != expected_string {
+                    print!(
+                        "{}",
+                        pretty_assertions::StrComparison::new(&filtered, &expected_string)
+                    );
+
+                    File::create(bench_dir.join(stderr))
+                        .expect("Opening expected stdout for writing should succeed")
+                        .write_all(filtered.as_bytes())
+                        .expect("Writing to expected stdout should succeed");
+
+                    print_info("Overwriting stdout successful");
+                } else {
+                    print_info("Skip overwrite since verifying stderr was successful");
+                }
+            } else {
+                if filtered != expected_string {
+                    panic!(
+                        "Assertion of stderr failed: {}",
+                        pretty_assertions::StrComparison::new(&filtered, &expected_string)
+                    );
+                }
+
+                print_info("Verifying stderr successful");
             }
-            print_info("Verifying stderr successful");
         }
 
         if let Some(stdout) = &expected.stdout {
@@ -422,15 +443,35 @@ impl BenchmarkOutput {
                 .expect("File should exist")
                 .read_to_end(&mut expected_stdout)
                 .expect("Reading file should succeed");
+
             let filtered = self.filter_stdout(&output.stdout);
             let expected_string = String::from_utf8_lossy(&expected_stdout);
-            if filtered != expected_string {
-                panic!(
-                    "Assertion of stdout failed: {}",
-                    pretty_assertions::StrComparison::new(&filtered, &expected_string)
-                );
+
+            if option_env!("BENCH_OVERWRITE").map_or(false, |s| s.eq_ignore_ascii_case("yes")) {
+                if filtered != expected_string {
+                    print!(
+                        "{}",
+                        pretty_assertions::StrComparison::new(&filtered, &expected_string)
+                    );
+
+                    File::create(bench_dir.join(stdout))
+                        .expect("Opening expected stdout for writing should succeed")
+                        .write_all(filtered.as_bytes())
+                        .expect("Writing to expected stdout should succeed");
+
+                    print_info("Overwriting stdout successful");
+                } else {
+                    print_info("Skip overwrite since verifying stdout was successful");
+                }
+            } else {
+                if filtered != expected_string {
+                    panic!(
+                        "Assertion of stdout failed: {}",
+                        pretty_assertions::StrComparison::new(&filtered, &expected_string)
+                    );
+                }
+                print_info("Verifying stdout successful");
             }
-            print_info("Verifying stdout successful");
         }
     }
 
@@ -606,7 +647,21 @@ impl BenchmarkOutput {
                     format!("{}<__PID__>{}", &caps[1], caps.get(3).map_or("", |_| " "))
                 });
 
-                let line = FRAGMENT_HEADER_RE.replace_all(&line, "$1 $3");
+                // Fix the spaces after replacement of pids
+                let line = FRAGMENT_HEADER_RE.replace_all(&line, |caps: &Captures| {
+                    let caps_1 = &caps[1];
+                    let caps_3 = &caps[3];
+                    if caps_1.len() < 40 {
+                        format!(
+                            "{caps_1}{}{caps_3}",
+                            " ".repeat(
+                                iai_callgrind_runner::runner::format::LEFT_WIDTH - caps_1.len()
+                            )
+                        )
+                    } else {
+                        format!("{caps_1} {caps_3}")
+                    }
+                });
                 writeln!(result, "{indent}{line}").unwrap();
             }
         }
