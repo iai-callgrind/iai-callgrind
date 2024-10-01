@@ -30,8 +30,8 @@ test_bin_bench_tools::bench_group::bench_subprocess trace_children:() -> target/
   Command:             target/release/subprocess <__ABS_PATH__>/sort
   Total bytes:                             |                     (No change)
   Total blocks:                            |                     (No change)
-  At t-gmax bytes:                         |                     (No change)
-  At t-gmax blocks:                        |                     (No change)
+  At t-gmax bytes:                         |                     (         )
+  At t-gmax blocks:                        |                     (         )
   At t-end bytes:                          |                     (No change)
   At t-end blocks:                         |                     (No change)
   Reads bytes:                             |                     (No change)
@@ -40,8 +40,8 @@ test_bin_bench_tools::bench_group::bench_subprocess trace_children:() -> target/
   Command:             target/release/sort
   Total bytes:                             |                     (No change)
   Total blocks:                            |                     (No change)
-  At t-gmax bytes:                         |                     (No change)
-  At t-gmax blocks:                        |                     (No change)
+  At t-gmax bytes:                         |                     (         )
+  At t-gmax blocks:                        |                     (         )
   At t-end bytes:                          |                     (No change)
   At t-end blocks:                         |                     (No change)
   Reads bytes:                             |                     (No change)
@@ -49,8 +49,8 @@ test_bin_bench_tools::bench_group::bench_subprocess trace_children:() -> target/
   ## Total
   Total bytes:                             |                     (No change)
   Total blocks:                            |                     (No change)
-  At t-gmax bytes:                         |                     (No change)
-  At t-gmax blocks:                        |                     (No change)
+  At t-gmax bytes:                         |                     (         )
+  At t-gmax blocks:                        |                     (         )
   At t-end bytes:                          |                     (No change)
   At t-end blocks:                         |                     (No change)
   Reads bytes:                             |                     (No change)
@@ -134,8 +134,8 @@ test_bin_bench_tools::bench_group::bench_subprocess no_trace_children:() -> targ
   ======= DHAT =========================================================================
   Total bytes:                             |                     (No change)
   Total blocks:                            |                     (No change)
-  At t-gmax bytes:                         |                     (No change)
-  At t-gmax blocks:                        |                     (No change)
+  At t-gmax bytes:                         |                     (         )
+  At t-gmax blocks:                        |                     (         )
   At t-end bytes:                          |                     (No change)
   At t-end blocks:                         |                     (No change)
   Reads bytes:                             |                     (No change)

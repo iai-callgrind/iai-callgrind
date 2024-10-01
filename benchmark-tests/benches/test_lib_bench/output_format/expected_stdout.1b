@@ -12,8 +12,8 @@ Number of primes found in the range 0 to 20000: 2262
   ======= DHAT =========================================================================
   Total bytes:                             |                     (No change)
   Total blocks:                            |                     (No change)
-  At t-gmax bytes:                         |                     (No change)
-  At t-gmax blocks:                        |                     (No change)
+  At t-gmax bytes:                         |                     (         )
+  At t-gmax blocks:                        |                     (         )
   At t-end bytes:                          |                     (No change)
   At t-end blocks:                         |                     (No change)
   Reads bytes:                             |                     (No change)
@@ -65,8 +65,8 @@ Number of primes found in the range 0 to 30000: 3245
 |======== DHAT =========================================================================
 | Total bytes:                             |                     (No change)
 | Total blocks:                            |                     (No change)
-| At t-gmax bytes:                         |                     (No change)
-| At t-gmax blocks:                        |                     (No change)
+| At t-gmax bytes:                         |                     (         )
+| At t-gmax blocks:                        |                     (         )
 | At t-end bytes:                          |                     (No change)
 | At t-end blocks:                         |                     (No change)
 | Reads bytes:                             |                     (No change)
