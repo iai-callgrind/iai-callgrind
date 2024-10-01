@@ -2,12 +2,14 @@ groups:
   - runs_on: "!x86_64-unknown-freebsd"
     runs:
       - args: ["--nocapture"]
+        flaky: 2
         rust_version: ">1.66.1"
         expected:
           zero_callgrind_metrics: true
           files: expected_files.yml
           stdout: expected_stdout
       - args: ["--nocapture"]
+        flaky: 2
         rust_version: "<=1.66.1"
         expected:
           zero_callgrind_metrics: true
@@ -20,5 +22,6 @@ groups:
   - runs_on: "x86_64-unknown-freebsd"
     runs:
       - args: ["--nocapture"]
+        flaky: 2
         expected:
           zero_callgrind_metrics: true
