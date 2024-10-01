@@ -179,8 +179,8 @@ install-workspace: install-hooks install-toolchains show-tips install-checks
 
 # Build a package with the optional toolchain (Uses: 'cargo')
 [group('build')]
-build package +toolchain=msrv:
-    cargo +{{ toolchain }} build -p {{ package }} {{ if args != '' { args } else { '' } }}
+build package:
+    cargo build -p {{ package }} {{ if args != '' { args } else { '' } }}
 
 # Build iai-callgrind-runner (uses 'cargo')
 [group('build')]
