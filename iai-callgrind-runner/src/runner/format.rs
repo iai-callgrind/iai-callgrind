@@ -1243,7 +1243,7 @@ mod tests {
         formatter.format_metrics(metrics_summary.all_diffs());
 
         let expected = format!(
-            "  {:<20}{new:>METRIC_WIDTH$}|{:<METRIC_WIDTH$} ({diff_pct}){}\n",
+            "  {:<21}{new:>METRIC_WIDTH$}|{:<METRIC_WIDTH$} ({diff_pct}){}\n",
             format!("{event_kind}:"),
             old.map_or(NOT_AVAILABLE.to_owned(), |o| o.to_string()),
             diff_fact.map_or_else(String::new, |f| format!(" [{f}]"))
@@ -1300,7 +1300,7 @@ mod tests {
     #[case::split(
         "Field:",
         EitherOrBoth::Both(format!("{}1", u64::MAX), "right".to_owned()),
-        "  Field:               184467440737095516151\n                                          |right\n"
+        "  Field:               184467440737095516151\n                                           |right\n"
     )]
     fn test_vertical_formatter_write_field<T>(
         #[case] field: &str,
