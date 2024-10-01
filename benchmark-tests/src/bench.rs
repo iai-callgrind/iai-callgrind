@@ -31,10 +31,13 @@ const TEMPLATE_CONTENT: &str = r#"fn main() {
 "#;
 static TEMPLATE_DATA: OnceCell<HashMap<String, minijinja::Value>> = OnceCell::new();
 
+// The regex patterns working on the `stdout` must not include the indentation. The indentation can
+// be different depending on the `show_grid` option and starts either with 2 spaces (`  `) or if
+// `show_grid` is `true` with a pipe character (`|`)
 lazy_static! {
     static ref NUMBERS_RE: Regex = Regex::new(
         r"(?x)
-            (?<desc>\s+.+:\s*)(?<comp1>[0-9]+|N/A)\|(?<comp2>[0-9]+|N/A)
+            (?<desc>.+:\s*)(?<comp1>[0-9]+|N/A)\|(?<comp2>[0-9]+|N/A)
             (?<diff>
                 (?<diff_percent>(?<white1>\s*)(?<percent>\(.*\)))
                 (?<diff_factor>(?<white2>\s*)(?<factor>\[.*\]))?
@@ -47,17 +50,17 @@ lazy_static! {
             .expect("Regex should compile");
     // Command: target/release/deps/test_lib_bench_threads-c2a88f916ff580f9
     static ref COMMAND_RE: Regex =
-        Regex::new(r"^(\s*Command:)(\s*target/release/deps/test_(lib|bin)_bench_.+-[a-z0-9]+\s*.*)$")
+        Regex::new(r"^(Command:)(\s*target/release/deps/test_(lib|bin)_bench_.+-[a-z0-9]+\s*.*)$")
             .expect("Regex should compile");
     static ref PID_RE: Regex =
         Regex::new(r"(p?pid:\s*)([0-9]+)(\s+)?").expect("Regex should compile");
     static ref DETAILS_RE: Regex =
-        Regex::new(r"^  Details:").expect("Regex should compile");
+        Regex::new(r"^Details:").expect("Regex should compile");
     static ref NOT_DETAILS_RE: Regex =
-        Regex::new(r"^(?:(?:  \S)|(?:[a-zA-Z]))").expect("Regex should compile");
+        Regex::new(r"^(?:(?:\S)|(?:[a-zA-Z]))").expect("Regex should compile");
     // `  ## pid: <__PID__> part: 1 thread: 3   |pid: <__PID__> part: 1 thread: 3`
     static ref FRAGMENT_HEADER_RE: Regex =
-        Regex::new(r"^(  ##[^|]*[0-9])(\s*)?(|.*)$").expect("Regex should compile");
+        Regex::new(r"^(##(?: \S+: \S+)+)(\s*)([|].*)$").expect("Regex should compile");
     static ref ABSOLUTE_PATH_RE: Regex =
         Regex::new(r"(\s+)([/][^/]*)+").expect("Regex should compile");
 }
@@ -402,15 +405,36 @@ impl BenchmarkOutput {
                 .expect("File should exist")
                 .read_to_end(&mut expected_stderr)
                 .expect("Reading file should succeed");
-            let actual = self.filter_stderr(&output.stderr);
+
+            let filtered = self.filter_stderr(&output.stderr);
             let expected_string = String::from_utf8_lossy(&expected_stderr);
-            if actual != expected_string {
-                panic!(
-                    "Assertion of stderr failed: {}",
-                    pretty_assertions::StrComparison::new(&actual, &expected_string)
-                );
+
+            if option_env!("BENCH_OVERWRITE").map_or(false, |s| s.eq_ignore_ascii_case("yes")) {
+                if filtered != expected_string {
+                    print!(
+                        "{}",
+                        pretty_assertions::StrComparison::new(&filtered, &expected_string)
+                    );
+
+                    File::create(bench_dir.join(stderr))
+                        .expect("Opening expected stdout for writing should succeed")
+                        .write_all(filtered.as_bytes())
+                        .expect("Writing to expected stdout should succeed");
+
+                    print_info("Overwriting stdout successful");
+                } else {
+                    print_info("Skip overwrite since verifying stderr was successful");
+                }
+            } else {
+                if filtered != expected_string {
+                    panic!(
+                        "Assertion of stderr failed: {}",
+                        pretty_assertions::StrComparison::new(&filtered, &expected_string)
+                    );
+                }
+
+                print_info("Verifying stderr successful");
             }
-            print_info("Verifying stderr successful");
         }
 
         if let Some(stdout) = &expected.stdout {
@@ -419,15 +443,35 @@ impl BenchmarkOutput {
                 .expect("File should exist")
                 .read_to_end(&mut expected_stdout)
                 .expect("Reading file should succeed");
+
             let filtered = self.filter_stdout(&output.stdout);
             let expected_string = String::from_utf8_lossy(&expected_stdout);
-            if filtered != expected_string {
-                panic!(
-                    "Assertion of stdout failed: {}",
-                    pretty_assertions::StrComparison::new(&filtered, &expected_string)
-                );
+
+            if option_env!("BENCH_OVERWRITE").map_or(false, |s| s.eq_ignore_ascii_case("yes")) {
+                if filtered != expected_string {
+                    print!(
+                        "{}",
+                        pretty_assertions::StrComparison::new(&filtered, &expected_string)
+                    );
+
+                    File::create(bench_dir.join(stdout))
+                        .expect("Opening expected stdout for writing should succeed")
+                        .write_all(filtered.as_bytes())
+                        .expect("Writing to expected stdout should succeed");
+
+                    print_info("Overwriting stdout successful");
+                } else {
+                    print_info("Skip overwrite since verifying stdout was successful");
+                }
+            } else {
+                if filtered != expected_string {
+                    panic!(
+                        "Assertion of stdout failed: {}",
+                        pretty_assertions::StrComparison::new(&filtered, &expected_string)
+                    );
+                }
+                print_info("Verifying stdout successful");
             }
-            print_info("Verifying stdout successful");
         }
     }
 
@@ -451,6 +495,12 @@ impl BenchmarkOutput {
         let mut result = String::new();
         let mut details = false;
         for line in stdout.lines().map(Result::unwrap) {
+            let (indent, line) = if line.starts_with("  ") || line.starts_with("|") {
+                (&line[0..2], &line[2..])
+            } else {
+                (&line[0..0], line.as_str())
+            };
+
             // The `  Details: ...` can contain platform, toolchain specific information about a
             // tool run and make the benchmark tests flaky. So, we filter the details. The
             // (multiline) details usually look like this in the original output:
@@ -481,18 +531,18 @@ impl BenchmarkOutput {
             //   Details: <__DETAILS__>
             // ```
             if details {
-                if NOT_DETAILS_RE.is_match(&line) {
+                if NOT_DETAILS_RE.is_match(line) {
                     details = false;
                 } else {
                     continue;
                 }
-            } else if DETAILS_RE.is_match(&line) {
-                writeln!(result, "  Details: <__DETAILS__>").unwrap();
+            } else if DETAILS_RE.is_match(line) {
+                writeln!(result, "{indent}Details: <__DETAILS__>").unwrap();
                 details = true;
                 continue;
             }
 
-            if let Some(caps) = NUMBERS_RE.captures(&line) {
+            if let Some(caps) = NUMBERS_RE.captures(line) {
                 let mut string = String::new();
                 let desc = caps.name("desc").unwrap().as_str();
                 let comp1 = {
@@ -513,9 +563,9 @@ impl BenchmarkOutput {
                 };
                 write!(string, "{desc}{comp1}|{comp2}").unwrap();
 
-                // RAM Hits (and EstimatedCycles, L1, L2 Hits) events are very unreliable across
-                // different systems and deviate by a few counts up or down. So to keep the output
-                // comparison more reliable we change this line from (for example)
+                // RAM Hits (and EstimatedCycles, L1, L2 Hits) events are unreliable across
+                // different systems/toolchains and deviate by a few counts up or down. So to keep
+                // the output comparison more reliable we change this line from (for example)
                 //
                 //   RAM Hits:             179|209             (-14.3541%) [-1.16760x]
                 //   RAM Hits:             179|179             (No Change)
@@ -531,12 +581,14 @@ impl BenchmarkOutput {
                 // to
                 //
                 //   RAM Hits:                |N/A             (*********)
-                if desc.starts_with("  RAM Hits")
-                    || desc.starts_with("  Estimated Cycles")
-                    || desc.starts_with("  L2 Hits")
-                    || desc.starts_with("  L1 Hits")
-                    || desc.starts_with("  Suppressed Errors")
-                    || desc.starts_with("  Suppressed Contexts")
+                if desc.starts_with("RAM Hits")
+                    || desc.starts_with("Estimated Cycles")
+                    || desc.starts_with("L2 Hits")
+                    || desc.starts_with("L1 Hits")
+                    || desc.starts_with("Suppressed Errors")
+                    || desc.starts_with("Suppressed Contexts")
+                    || desc.starts_with("At t-gmax bytes")
+                    || desc.starts_with("At t-gmax blocks")
                 {
                     if caps.name("diff_percent").is_some() {
                         let white1 = caps.name("white1").unwrap().as_str();
@@ -581,15 +633,15 @@ impl BenchmarkOutput {
                         }
                     }
                 }
-                writeln!(result, "{string}").unwrap();
+                writeln!(result, "{indent}{string}").unwrap();
             } else {
-                let line = if COMMAND_RE.is_match(&line) {
+                let line = if COMMAND_RE.is_match(line) {
                     // Filter the benchmark command of library benchmarks because it has a random
                     // hash in it's name
-                    COMMAND_RE.replace(&line, "$1 <__COMMAND__>")
+                    COMMAND_RE.replace(line, "$1 <__COMMAND__>")
                 } else {
                     // Replace absolute paths
-                    ABSOLUTE_PATH_RE.replace_all(&line, "$1<__ABS_PATH__>$2")
+                    ABSOLUTE_PATH_RE.replace_all(line, "$1<__ABS_PATH__>$2")
                 };
 
                 // Filter the pids and parent pids
@@ -597,8 +649,22 @@ impl BenchmarkOutput {
                     format!("{}<__PID__>{}", &caps[1], caps.get(3).map_or("", |_| " "))
                 });
 
-                let line = FRAGMENT_HEADER_RE.replace_all(&line, "$1 $3");
-                writeln!(result, "{line}").unwrap();
+                // Fix the spaces after replacement of pids
+                let line = FRAGMENT_HEADER_RE.replace_all(&line, |caps: &Captures| {
+                    let caps_1 = &caps[1];
+                    let caps_3 = &caps[3];
+                    if caps_1.len() < 40 {
+                        format!(
+                            "{caps_1}{}{caps_3}",
+                            " ".repeat(
+                                iai_callgrind_runner::runner::format::LEFT_WIDTH - caps_1.len()
+                            )
+                        )
+                    } else {
+                        format!("{caps_1} {caps_3}")
+                    }
+                });
+                writeln!(result, "{indent}{line}").unwrap();
             }
         }
 

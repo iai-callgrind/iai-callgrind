@@ -3,14 +3,14 @@ use std::fmt::{Display, Write};
 use std::path::PathBuf;
 
 use anyhow::Result;
-use colored::{ColoredString, Colorize};
+use colored::{Color, ColoredString, Colorize};
 
 use super::args::NoCapture;
 use super::bin_bench::BinBench;
 use super::common::{Config, ModulePath};
 use super::lib_bench::LibBench;
 use super::meta::Metadata;
-use super::summary::{MetricsDiff, SegmentDetails, ToolMetricSummary, ToolRun};
+use super::summary::{Diffs, MetricsDiff, SegmentDetails, ToolMetricSummary, ToolRun};
 use super::tool::ValgrindTool;
 use crate::api::{self, DhatMetricKind, ErrorMetricKind, EventKind};
 use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8, EitherOrBoth};
@@ -62,46 +62,66 @@ pub const DHAT_DEFAULT: [DhatMetricKind; 8] = [
 
 /// The string used to signal that a value is not available
 pub const NOT_AVAILABLE: &str = "N/A";
+pub const UNKNOWN: &str = "*********";
+pub const NO_CHANGE: &str = "No change";
+
+pub const METRIC_WIDTH: usize = 20;
+pub const FIELD_WIDTH: usize = 21;
+
+pub const LEFT_WIDTH: usize = METRIC_WIDTH + FIELD_WIDTH;
+pub const DIFF_WIDTH: usize = 9;
+
+/// The `DIFF_WIDTH` - the length of the unit
+pub const FLOAT_WIDTH: usize = DIFF_WIDTH - 1;
+
+#[allow(clippy::doc_link_with_quotes)]
+/// The maximum line width
+///
+/// indent + left + "|" + metric width + " " + "(" + percentage + ")" + " " + "[" + factor + "]"
+pub const MAX_WIDTH: usize = 2 + LEFT_WIDTH + 1 + METRIC_WIDTH + 2 * 11;
 
 pub trait Formatter {
     fn format_single(
-        &self,
+        &mut self,
         baselines: (Option<String>, Option<String>),
         details: Option<&EitherOrBoth<SegmentDetails>>,
         metrics_summary: &ToolMetricSummary,
-    ) -> Result<String>;
+    ) -> Result<()>;
 
     fn format(
-        &self,
+        &mut self,
         config: &Config,
-        output_format: &OutputFormat,
         baselines: (Option<String>, Option<String>),
         tool_run: &ToolRun,
-    ) -> Result<String>;
+    ) -> Result<()>;
 
     fn print(
-        &self,
+        &mut self,
         config: &Config,
-        output_format: &OutputFormat,
         baselines: (Option<String>, Option<String>),
         tool_run: &ToolRun,
-    ) -> Result<()> {
-        if output_format.is_default() {
-            print!(
-                "{}",
-                self.format(config, output_format, baselines, tool_run)?
-            );
+    ) -> Result<()>
+    where
+        Self: std::fmt::Display,
+    {
+        if self.get_output_format().is_default() {
+            self.format(config, baselines, tool_run)?;
+            print!("{self}");
+            self.clear();
         }
         Ok(())
     }
 
+    fn get_output_format(&self) -> &OutputFormat;
+
+    fn clear(&mut self);
+
     fn print_comparison(
-        &self,
+        &mut self,
         function_name: &str,
         id: &str,
         details: Option<&str>,
         metrics_summary: &ToolMetricSummary,
-        output_format: &OutputFormat,
     ) -> Result<()>;
 }
 
@@ -115,6 +135,7 @@ pub struct ComparisonHeader {
     pub function_name: String,
     pub id: String,
     pub details: Option<String>,
+    pub indent: String,
 }
 
 struct Header {
@@ -142,10 +163,17 @@ pub struct OutputFormat {
     pub kind: OutputFormatKind,
     pub truncate_description: Option<usize>,
     pub show_intermediate: bool,
+    pub show_grid: bool,
 }
 
 #[derive(Debug, Clone)]
-pub struct VerticalFormat;
+pub struct VerticalFormatter {
+    buffer: String,
+    indent: String,
+    indent_tool_header: String,
+    indent_sub_header: String,
+    output_format: OutputFormat,
+}
 
 impl BinaryBenchmarkHeader {
     pub fn new(meta: &Metadata, bin_bench: &BinBench) -> Self {
@@ -190,7 +218,9 @@ impl BinaryBenchmarkHeader {
         if self.output_format.kind == OutputFormatKind::Default {
             self.inner.print();
             if self.has_tools_enabled {
-                println!("{}", tool_headline(ValgrindTool::Callgrind));
+                let mut formatter = VerticalFormatter::new(self.output_format);
+                formatter.format_tool_headline(ValgrindTool::Callgrind);
+                formatter.print_buffer();
             }
         }
     }
@@ -205,7 +235,12 @@ impl BinaryBenchmarkHeader {
 }
 
 impl ComparisonHeader {
-    pub fn new<T, U, V>(function_name: T, id: U, details: Option<V>) -> Self
+    pub fn new<T, U, V>(
+        function_name: T,
+        id: U,
+        details: Option<V>,
+        output_format: &OutputFormat,
+    ) -> Self
     where
         T: Into<String>,
         U: Into<String>,
@@ -215,6 +250,11 @@ impl ComparisonHeader {
             function_name: function_name.into(),
             id: id.into(),
             details: details.map(Into::into),
+            indent: if output_format.show_grid {
+                "|-".bright_black().to_string()
+            } else {
+                "  ".to_owned()
+            },
         }
     }
 
@@ -227,7 +267,8 @@ impl Display for ComparisonHeader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "  {} {} {}",
+            "{}{} {} {}",
+            self.indent,
             "Comparison with".yellow().bold(),
             self.function_name.green(),
             self.id.cyan()
@@ -333,7 +374,9 @@ impl LibraryBenchmarkHeader {
         if self.output_format.is_default() {
             self.inner.print();
             if self.has_tools_enabled {
-                println!("{}", tool_headline(ValgrindTool::Callgrind));
+                let mut formatter = VerticalFormatter::new(self.output_format);
+                formatter.format_tool_headline(ValgrindTool::Callgrind);
+                formatter.print_buffer();
             }
         }
     }
@@ -363,6 +406,7 @@ impl From<api::OutputFormat> for OutputFormat {
             kind: OutputFormatKind::Default,
             truncate_description: value.truncate_description.unwrap_or(Some(50)),
             show_intermediate: value.show_intermediate.unwrap_or(false),
+            show_grid: value.show_grid.unwrap_or(false),
         }
     }
 }
@@ -373,39 +417,419 @@ impl Default for OutputFormat {
             kind: OutputFormatKind::default(),
             truncate_description: Some(50),
             show_intermediate: false,
+            show_grid: false,
         }
     }
 }
 
-impl Formatter for VerticalFormat {
+enum IndentKind {
+    Normal,
+    ToolHeadline,
+    ToolSubHeadline,
+}
+
+impl VerticalFormatter {
+    /// Create a new `VerticalFormatter` (the default format)
+    pub fn new(output_format: OutputFormat) -> Self {
+        if output_format.show_grid {
+            Self {
+                buffer: String::new(),
+                indent: "| ".bright_black().to_string(),
+                indent_sub_header: "|-".bright_black().to_string(),
+                indent_tool_header: "|=".bright_black().to_string(),
+                output_format,
+            }
+        } else {
+            Self {
+                buffer: String::new(),
+                indent: "  ".bright_black().to_string(),
+                indent_sub_header: "  ".bright_black().to_string(),
+                indent_tool_header: "  ".bright_black().to_string(),
+                output_format,
+            }
+        }
+    }
+
+    /// Print the internal buffer as is and clear it afterwards
+    pub fn print_buffer(&mut self) {
+        print!("{}", self.buffer);
+        self.clear();
+    }
+
+    /// Write the indentation depending on the chosen [`OutputFormat`] and [`IndentKind`]
+    fn write_indent(&mut self, kind: &IndentKind) {
+        match kind {
+            IndentKind::Normal => write!(self, "{}", self.indent.clone()).unwrap(),
+            IndentKind::ToolHeadline => {
+                write!(self, "{}", self.indent_tool_header.clone()).unwrap();
+            }
+            IndentKind::ToolSubHeadline => {
+                write!(self, "{}", self.indent_sub_header.clone()).unwrap();
+            }
+        }
+    }
+
+    fn write_field<T>(
+        &mut self,
+        field: &str,
+        values: &EitherOrBoth<T>,
+        color: Option<Color>,
+        left_align: bool,
+    ) where
+        T: AsRef<str>,
+    {
+        self.write_indent(&IndentKind::Normal);
+
+        match values {
+            EitherOrBoth::Left(left) => {
+                let left = left.as_ref();
+                let colored = match color {
+                    Some(color) => left.color(color).bold(),
+                    None => left.bold(),
+                };
+
+                if left_align {
+                    writeln!(self, "{field:<FIELD_WIDTH$}{colored}").unwrap();
+                } else {
+                    writeln!(
+                        self,
+                        "{field:<FIELD_WIDTH$}{}{colored}",
+                        " ".repeat(METRIC_WIDTH.saturating_sub(left.len()))
+                    )
+                    .unwrap();
+                }
+            }
+            EitherOrBoth::Right(right) => {
+                let right = right.as_ref().trim();
+                let colored = match color {
+                    Some(color) => right.color(color),
+                    None => ColoredString::from(right),
+                };
+
+                writeln!(
+                    self,
+                    "{field:<FIELD_WIDTH$}{}|{colored}",
+                    " ".repeat(METRIC_WIDTH),
+                )
+                .unwrap();
+            }
+            EitherOrBoth::Both(left, right) => {
+                let left = left.as_ref().trim();
+                let right = right.as_ref().trim();
+
+                let colored_left = match color {
+                    Some(color) => left.color(color).bold(),
+                    None => left.bold(),
+                };
+                let colored_right = match color {
+                    Some(color) => right.color(color),
+                    None => ColoredString::from(right),
+                };
+
+                if left.len() > METRIC_WIDTH {
+                    writeln!(self, "{field:<FIELD_WIDTH$}{colored_left}").unwrap();
+                    self.write_indent(&IndentKind::Normal);
+                    writeln!(self, "{}|{colored_right}", " ".repeat(LEFT_WIDTH)).unwrap();
+                } else if left_align {
+                    writeln!(
+                        self,
+                        "{field:<FIELD_WIDTH$}{colored_left}{}|{colored_right}",
+                        " ".repeat(METRIC_WIDTH - left.len()),
+                    )
+                    .unwrap();
+                } else {
+                    writeln!(
+                        self,
+                        "{field:<FIELD_WIDTH$}{}{colored_left}|{colored_right}",
+                        " ".repeat(METRIC_WIDTH - left.len()),
+                    )
+                    .unwrap();
+                }
+            }
+        }
+    }
+
+    fn write_metric(&mut self, field: &str, metrics: &EitherOrBoth<&u64>, diffs: Option<Diffs>) {
+        match metrics {
+            EitherOrBoth::Left(new) => {
+                let right = format!(
+                    "{NOT_AVAILABLE:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
+                    UNKNOWN.bright_black()
+                );
+                self.write_field(
+                    field,
+                    &EitherOrBoth::Both(&new.to_string(), &right),
+                    None,
+                    false,
+                );
+            }
+            EitherOrBoth::Right(old) => {
+                let right = format!(
+                    "{old:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
+                    UNKNOWN.bright_black()
+                );
+                self.write_field(
+                    field,
+                    &EitherOrBoth::Both(NOT_AVAILABLE, &right),
+                    None,
+                    false,
+                );
+            }
+            EitherOrBoth::Both(new, old) if new == old => {
+                let right = format!(
+                    "{old:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
+                    NO_CHANGE.bright_black()
+                );
+                self.write_field(
+                    field,
+                    &EitherOrBoth::Both(&new.to_string(), &right),
+                    None,
+                    false,
+                );
+            }
+            EitherOrBoth::Both(new, old) => {
+                let diffs = diffs.expect(
+                    "If there are new metrics and old metrics there should be a difference present",
+                );
+                let pct_string = format_float(diffs.diff_pct, '%');
+                let factor_string = format_float(diffs.factor, 'x');
+
+                let right = format!(
+                    "{old:<METRIC_WIDTH$} ({pct_string:^DIFF_WIDTH$}) \
+                     [{factor_string:^DIFF_WIDTH$}]"
+                );
+                self.write_field(
+                    field,
+                    &EitherOrBoth::Both(&new.to_string(), &right),
+                    None,
+                    false,
+                );
+            }
+        }
+    }
+
+    fn write_empty_line(&mut self) {
+        let indent = self.indent.trim_end().to_owned();
+        if !indent.is_empty() {
+            writeln!(self, "{indent}").unwrap();
+        }
+    }
+
+    fn write_left_indented(&mut self, value: &str) {
+        self.write_indent(&IndentKind::Normal);
+        writeln!(self, "{}{value}", " ".repeat(FIELD_WIDTH)).unwrap();
+    }
+
+    /// Format the baseline
+    fn format_baseline(&mut self, baselines: (Option<String>, Option<String>)) {
+        match baselines {
+            (None, None) => {}
+            _ => {
+                self.write_field(
+                    "Baselines:",
+                    &EitherOrBoth::try_from(baselines)
+                        .expect("At least on baseline should be present")
+                        .as_ref()
+                        .map(String::as_str),
+                    None,
+                    false,
+                );
+            }
+        }
+    }
+
+    fn format_details(&mut self, details: &str) {
+        let mut details = details.lines();
+        if let Some(head_line) = details.next() {
+            self.write_indent(&IndentKind::Normal);
+            writeln!(self, "{:<FIELD_WIDTH$}{}", "Details:", head_line).unwrap();
+            for body_line in details {
+                if body_line.is_empty() {
+                    self.write_empty_line();
+                } else {
+                    self.write_left_indented(body_line);
+                }
+            }
+        }
+    }
+
+    fn format_metrics<'a, K: Display>(
+        &mut self,
+        metrics: impl Iterator<Item = (K, &'a MetricsDiff)>,
+    ) {
+        for (metric_kind, diff) in metrics {
+            let description = format!("{metric_kind}:");
+            self.write_metric(&description, &diff.metrics.as_ref(), diff.diffs);
+        }
+    }
+
+    fn format_tool_total_header(&mut self) {
+        self.write_indent(&IndentKind::ToolSubHeadline);
+        writeln!(self, "{} {}", "##".yellow(), "Total".bold()).unwrap();
+    }
+
+    fn format_multiple_segment_header(&mut self, details: &EitherOrBoth<SegmentDetails>) {
+        fn fields(detail: &SegmentDetails) -> String {
+            let mut result = String::new();
+            write!(result, "pid: {}", detail.pid).unwrap();
+
+            if let Some(ppid) = detail.parent_pid {
+                write!(result, " ppid: {ppid}").unwrap();
+            }
+            if let Some(part) = detail.part {
+                write!(result, " part: {part}").unwrap();
+            }
+            if let Some(thread) = detail.thread {
+                write!(result, " thread: {thread}").unwrap();
+            }
+
+            result
+        }
+
+        self.write_indent(&IndentKind::ToolSubHeadline);
+        write!(self, "{} ", "##".yellow()).unwrap();
+
+        let max_left = LEFT_WIDTH - 3;
+        match details {
+            EitherOrBoth::Left(new) => {
+                let left = fields(new);
+                let len = left.len();
+                let left = left.bold();
+
+                if len > max_left {
+                    writeln!(self, "{left}\n{}|{NOT_AVAILABLE}", " ".repeat(max_left + 5)).unwrap();
+                } else {
+                    writeln!(self, "{left}{}|{NOT_AVAILABLE}", " ".repeat(max_left - len)).unwrap();
+                }
+            }
+            EitherOrBoth::Right(old) => {
+                let right = fields(old);
+
+                writeln!(
+                    self,
+                    "{}{}|{right}",
+                    NOT_AVAILABLE.bold(),
+                    " ".repeat(max_left - NOT_AVAILABLE.len())
+                )
+                .unwrap();
+            }
+            EitherOrBoth::Both(new, old) => {
+                let left = fields(new);
+                let len = left.len();
+                let right = fields(old);
+                let left = left.bold();
+
+                if len > max_left {
+                    writeln!(self, "{left}\n{}|{right}", " ".repeat(max_left + 5)).unwrap();
+                } else {
+                    writeln!(self, "{left}{}|{right}", " ".repeat(max_left - len)).unwrap();
+                }
+            }
+        }
+    }
+
+    fn format_command(&mut self, config: &Config, command: &EitherOrBoth<&String>) {
+        let paths = match command {
+            EitherOrBoth::Left(new) => {
+                if new.starts_with(&config.bench_bin.display().to_string()) {
+                    EitherOrBoth::Left(make_relative(&config.meta.project_root, &config.bench_bin))
+                } else {
+                    EitherOrBoth::Left(make_relative(&config.meta.project_root, PathBuf::from(new)))
+                }
+            }
+            EitherOrBoth::Right(old) => {
+                if old.starts_with(&config.bench_bin.display().to_string()) {
+                    EitherOrBoth::Right(make_relative(&config.meta.project_root, &config.bench_bin))
+                } else {
+                    EitherOrBoth::Right(make_relative(
+                        &config.meta.project_root,
+                        PathBuf::from(old),
+                    ))
+                }
+            }
+            EitherOrBoth::Both(new, old) if new == old => {
+                if new.starts_with(&config.bench_bin.display().to_string()) {
+                    EitherOrBoth::Left(make_relative(&config.meta.project_root, &config.bench_bin))
+                } else {
+                    EitherOrBoth::Left(make_relative(&config.meta.project_root, PathBuf::from(new)))
+                }
+            }
+            EitherOrBoth::Both(new, old) => {
+                let new_command = if new.starts_with(&config.bench_bin.display().to_string()) {
+                    make_relative(&config.meta.project_root, &config.bench_bin)
+                } else {
+                    make_relative(&config.meta.project_root, PathBuf::from(new))
+                };
+                let old_command = if old.starts_with(&config.bench_bin.display().to_string()) {
+                    make_relative(&config.meta.project_root, &config.bench_bin)
+                } else {
+                    make_relative(&config.meta.project_root, PathBuf::from(old))
+                };
+                EitherOrBoth::Both(new_command, old_command)
+            }
+        };
+
+        self.write_field(
+            "Command:",
+            &paths.map(|p| p.display().to_string()),
+            Some(Color::Blue),
+            true,
+        );
+    }
+
+    pub fn format_tool_headline(&mut self, tool: ValgrindTool) {
+        self.write_indent(&IndentKind::ToolHeadline);
+
+        let id = tool.id();
+        writeln!(
+            self,
+            "{} {} {}",
+            "=======".bright_black(),
+            id.to_ascii_uppercase(),
+            "=".repeat(MAX_WIDTH.saturating_sub(id.len() + 9))
+                .bright_black(),
+        )
+        .unwrap();
+    }
+}
+
+impl Display for VerticalFormatter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.buffer)
+    }
+}
+
+impl Write for VerticalFormatter {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        self.buffer.push_str(s);
+        Ok(())
+    }
+}
+
+impl Formatter for VerticalFormatter {
     fn format_single(
-        &self,
+        &mut self,
         baselines: (Option<String>, Option<String>),
         details: Option<&EitherOrBoth<SegmentDetails>>,
         metrics_summary: &ToolMetricSummary,
-    ) -> Result<String> {
+    ) -> Result<()> {
         match metrics_summary {
             ToolMetricSummary::None => {
-                let mut result = String::new();
                 if let Some(info) = details {
                     if let Some(new) = info.left() {
-                        result = new
-                            .details
-                            .as_ref()
-                            .map_or_else(String::new, |d| format_details(d));
+                        if let Some(details) = &new.details {
+                            self.format_details(details);
+                        }
                     }
                 }
-                Ok(result)
             }
             ToolMetricSummary::ErrorSummary(summary) => {
-                let mut formatted = format_vertical(
-                    (None, None),
+                self.format_metrics(
                     ERROR_METRICS_DEFAULT
                         .iter()
                         .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
-                )?;
+                );
 
-                // TODO: Check for `old` errors too?
                 // We only check for `new` errors
                 if let Some(info) = details {
                     if summary
@@ -414,103 +838,73 @@ impl Formatter for VerticalFormat {
                     {
                         if let Some(new) = info.left() {
                             if let Some(details) = new.details.as_ref() {
-                                write!(formatted, "{}", format_details(details)).unwrap();
+                                self.format_details(details);
                             }
                         }
                     }
                 }
-
-                Ok(formatted)
             }
-            ToolMetricSummary::DhatSummary(summary) => format_vertical(
-                (None, None),
+            ToolMetricSummary::DhatSummary(summary) => self.format_metrics(
                 DHAT_DEFAULT
                     .iter()
                     .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
             ),
-            ToolMetricSummary::CallgrindSummary(summary) => format_vertical(
-                baselines,
-                CALLGRIND_DEFAULT
-                    .iter()
-                    .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
-            ),
+            ToolMetricSummary::CallgrindSummary(summary) => {
+                self.format_baseline(baselines);
+                self.format_metrics(
+                    CALLGRIND_DEFAULT
+                        .iter()
+                        .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+                );
+            }
         }
+        Ok(())
     }
 
     fn format(
-        &self,
+        &mut self,
         config: &Config,
-        output_format: &OutputFormat,
         baselines: (Option<String>, Option<String>),
         tool_run: &ToolRun,
-    ) -> Result<String> {
-        let mut result = String::new();
-
-        if tool_run.has_multiple() && output_format.show_intermediate {
+    ) -> Result<()> {
+        if tool_run.has_multiple() && self.output_format.show_intermediate {
             let mut first = true;
             for segment in &tool_run.segments {
-                writeln!(result, "{}", multiple_files_header(&segment.details))?;
-
-                let formatted_command =
-                    format_command(config, &segment.details.as_ref().map(|i| &i.command));
-                write!(result, "{formatted_command}").unwrap();
+                self.format_multiple_segment_header(&segment.details);
+                self.format_command(config, &segment.details.as_ref().map(|i| &i.command));
 
                 if first {
-                    write!(
-                        result,
-                        "{}",
-                        self.format_single(
-                            baselines.clone(),
-                            Some(&segment.details),
-                            &segment.metrics_summary
-                        )?
-                    )
-                    .unwrap();
+                    self.format_single(
+                        baselines.clone(),
+                        Some(&segment.details),
+                        &segment.metrics_summary,
+                    )?;
                     first = false;
                 } else {
-                    write!(
-                        result,
-                        "{}",
-                        self.format_single(
-                            (None, None),
-                            Some(&segment.details),
-                            &segment.metrics_summary
-                        )?
-                    )
-                    .unwrap();
+                    self.format_single(
+                        (None, None),
+                        Some(&segment.details),
+                        &segment.metrics_summary,
+                    )?;
                 }
             }
 
             if tool_run.total.is_some() {
-                writeln!(result, "{}", tool_total_header())?;
-                write!(
-                    result,
-                    "{}",
-                    self.format_single((None, None), None, &tool_run.total)?
-                )
-                .unwrap();
+                self.format_tool_total_header();
+                self.format_single((None, None), None, &tool_run.total)?;
             }
         } else if tool_run.total.is_some() {
-            write!(
-                result,
-                "{}",
-                self.format_single(baselines, None, &tool_run.total)?
-            )
-            .unwrap();
+            self.format_single(baselines, None, &tool_run.total)?;
         } else if tool_run.total.is_none() && !tool_run.segments.is_empty() {
             // Since there is no total, show_all is partly ignored, and we show all data in a little
             // bit more aggregated form without the multiple files headlines. This affects currently
             // the output of `Massif` and `BBV`.
             for segment in &tool_run.segments {
-                let formatted_command =
-                    format_command(config, &segment.details.as_ref().map(|i| &i.command));
-
-                write!(result, "{formatted_command}").unwrap();
+                self.format_command(config, &segment.details.as_ref().map(|i| &i.command));
 
                 if let Some(new) = segment.details.left() {
                     if let Some(details) = &new.details {
-                        let formatted = format_details(details);
-                        write!(result, "{formatted}").unwrap();
+                        self.format_details(details);
                     }
                 }
             }
@@ -518,312 +912,54 @@ impl Formatter for VerticalFormat {
             // no data to show
         }
 
-        Ok(result)
+        Ok(())
     }
 
     fn print_comparison(
-        &self,
+        &mut self,
         function_name: &str,
         id: &str,
         details: Option<&str>,
         metrics_summary: &ToolMetricSummary,
-        output_format: &OutputFormat,
     ) -> Result<()> {
-        if output_format.is_default() {
-            ComparisonHeader::new(function_name, id, details).print();
+        if self.output_format.is_default() {
+            ComparisonHeader::new(function_name, id, details, &self.output_format).print();
 
-            let formatted = self.format_single((None, None), None, metrics_summary)?;
-            print!("{formatted}");
+            self.format_single((None, None), None, metrics_summary)?;
+            self.print_buffer();
         }
 
         Ok(())
     }
-}
 
-fn format_command(config: &Config, command: &EitherOrBoth<&String>) -> String {
-    let mut result = String::new();
-    match command {
-        EitherOrBoth::Left(new) => {
-            if new.starts_with(&config.bench_bin.display().to_string()) {
-                writeln!(
-                    result,
-                    "  {:<20}{}",
-                    "Command:",
-                    make_relative(&config.meta.project_root, &config.bench_bin)
-                        .to_string_lossy()
-                        .blue()
-                        .bold()
-                )
-                .unwrap();
-            } else {
-                writeln!(
-                    result,
-                    "  {:<20}{}",
-                    "Command:",
-                    make_relative(&config.meta.project_root, PathBuf::from(new))
-                        .to_string_lossy()
-                        .blue()
-                        .bold()
-                )
-                .unwrap();
-            }
-        }
-        EitherOrBoth::Right(old) => {
-            if old.starts_with(&config.bench_bin.display().to_string()) {
-                writeln!(
-                    result,
-                    "  {:<20}{}|{}",
-                    "Command:",
-                    " ".repeat(15),
-                    make_relative(&config.meta.project_root, &config.bench_bin)
-                        .to_string_lossy()
-                        .to_string()
-                        .blue()
-                )
-                .unwrap();
-            } else {
-                writeln!(
-                    result,
-                    "  {:<20}{}|{}",
-                    "Command:",
-                    " ".repeat(15),
-                    make_relative(&config.meta.project_root, PathBuf::from(old))
-                        .to_string_lossy()
-                        .blue()
-                )
-                .unwrap();
-            }
-        }
-        EitherOrBoth::Both(new, old) => {
-            if new == old {
-                if new.starts_with(&config.bench_bin.display().to_string()) {
-                    writeln!(
-                        result,
-                        "  {:<20}{}",
-                        "Command:",
-                        make_relative(&config.meta.project_root, &config.bench_bin)
-                            .to_string_lossy()
-                            .blue()
-                            .bold()
-                    )
-                    .unwrap();
-                } else {
-                    writeln!(
-                        result,
-                        "  {:<20}{}",
-                        "Command:",
-                        make_relative(&config.meta.project_root, PathBuf::from(new))
-                            .to_string_lossy()
-                            .blue()
-                            .bold()
-                    )
-                    .unwrap();
-                }
-            } else {
-                let new_command = if new.starts_with(&config.bench_bin.display().to_string()) {
-                    make_relative(&config.meta.project_root, &config.bench_bin)
-                        .to_string_lossy()
-                        .to_string()
-                } else {
-                    make_relative(&config.meta.project_root, PathBuf::from(new))
-                        .to_string_lossy()
-                        .to_string()
-                };
-                let old_command = if old.starts_with(&config.bench_bin.display().to_string()) {
-                    make_relative(&config.meta.project_root, &config.bench_bin)
-                        .to_string_lossy()
-                        .to_string()
-                } else {
-                    make_relative(&config.meta.project_root, PathBuf::from(old))
-                        .display()
-                        .to_string()
-                };
-
-                let split = format_split("Command:", new_command.blue().bold(), old_command.blue());
-                writeln!(result, "{split}").unwrap();
-            }
-        }
+    fn clear(&mut self) {
+        self.buffer.clear();
     }
-    result
-}
 
-fn format_details(details: &str) -> String {
-    let mut result = String::new();
-    let mut details = details.lines();
-    if let Some(head_line) = details.next() {
-        writeln!(result, "  {:<20}{}", "Details:", head_line).unwrap();
-        for body_line in details {
-            if body_line.is_empty() {
-                writeln!(result).unwrap();
-            } else {
-                writeln!(result, "  {}{body_line}", " ".repeat(20)).unwrap();
-            }
-        }
+    fn get_output_format(&self) -> &OutputFormat {
+        &self.output_format
     }
-    result
 }
 
-fn format_split<T, U>(name: U, left: T, right: T) -> String
-where
-    T: Display,
-    U: Display,
-{
-    let mut result = String::new();
-    writeln!(result, "  {name:<20}{left}").unwrap();
-    write!(result, "  {}|{right}", " ".repeat(35)).unwrap();
-    result
-}
-
-pub fn format_float(float: f64, unit: &str) -> ColoredString {
+pub fn format_float(float: f64, unit: char) -> ColoredString {
     let signed_short = to_string_signed_short(float);
     if float.is_infinite() {
         if float.is_sign_positive() {
-            format!("{signed_short:+^9}").bright_red().bold()
+            format!("{signed_short:+^DIFF_WIDTH$}").bright_red().bold()
         } else {
-            format!("{signed_short:-^9}").bright_green().bold()
+            format!("{signed_short:-^DIFF_WIDTH$}")
+                .bright_green()
+                .bold()
         }
     } else if float.is_sign_positive() {
-        format!("{signed_short:^+8}{unit}").bright_red().bold()
+        format!("{signed_short:^+FLOAT_WIDTH$}{unit}")
+            .bright_red()
+            .bold()
     } else {
-        format!("{signed_short:^+8}{unit}").bright_green().bold()
+        format!("{signed_short:^+FLOAT_WIDTH$}{unit}")
+            .bright_green()
+            .bold()
     }
-}
-
-pub fn format_vertical<'a, K: Display>(
-    baselines: (Option<String>, Option<String>),
-    metrics: impl Iterator<Item = (K, &'a MetricsDiff)>,
-) -> Result<String> {
-    let mut result = String::new();
-
-    let unknown = "*********";
-    let no_change = "No change";
-
-    match baselines {
-        (None, None) => {}
-        (None, Some(base)) => {
-            writeln!(result, "  {:<35}|{base}", "Baselines:").unwrap();
-        }
-        (Some(base), None) => {
-            writeln!(result, "  {:<20}{:>15}", "Baselines:", base.bold()).unwrap();
-        }
-        (Some(new), Some(old)) => {
-            writeln!(result, "  {:<20}{:>15}|{old}", "Baselines:", new.bold()).unwrap();
-        }
-    }
-
-    for (metric_kind, diff) in metrics {
-        let description = format!("{metric_kind}:");
-        match diff.metrics {
-            EitherOrBoth::Left(new_cost) => writeln!(
-                result,
-                "  {description:<20}{:>15}|{NOT_AVAILABLE:<15} ({:^9})",
-                new_cost.to_string().bold(),
-                unknown.bright_black()
-            )?,
-            EitherOrBoth::Right(old_cost) => writeln!(
-                result,
-                "  {description:<20}{:>15}|{old_cost:<15} ({:^9})",
-                NOT_AVAILABLE.bold(),
-                unknown.bright_black()
-            )?,
-            EitherOrBoth::Both(new_cost, old_cost) if new_cost == old_cost => writeln!(
-                result,
-                "  {description:<20}{:>15}|{old_cost:<15} ({:^9})",
-                new_cost.to_string().bold(),
-                no_change.bright_black()
-            )?,
-            EitherOrBoth::Both(new_cost, old_cost) => {
-                let diffs = diff.diffs.expect(
-                    "If there are new metrics and old metrics there should be a difference present",
-                );
-                let pct_string = format_float(diffs.diff_pct, "%");
-                let factor_string = format_float(diffs.factor, "x");
-                writeln!(
-                    result,
-                    "  {description:<20}{:>15}|{old_cost:<15} ({pct_string:^9}) \
-                     [{factor_string:^9}]",
-                    new_cost.to_string().bold(),
-                )?;
-            }
-        }
-    }
-    Ok(result)
-}
-
-pub fn multiple_files_header(details: &EitherOrBoth<SegmentDetails>) -> String {
-    fn fields(detail: &SegmentDetails) -> String {
-        let mut result = String::new();
-        write!(result, "pid: {}", detail.pid).unwrap();
-
-        if let Some(ppid) = detail.parent_pid {
-            write!(result, " ppid: {ppid}").unwrap();
-        }
-        if let Some(part) = detail.part {
-            write!(result, " part: {part}").unwrap();
-        }
-        if let Some(thread) = detail.thread {
-            write!(result, " thread: {thread}").unwrap();
-        }
-        result
-    }
-
-    let mut result = String::new();
-    write!(result, "  {} ", "##".yellow()).unwrap();
-
-    let max_left = 33;
-    match details {
-        EitherOrBoth::Left(new) => {
-            let left = fields(new);
-            let len = left.len();
-            let left = left.bold();
-
-            if len > max_left {
-                write!(
-                    result,
-                    "{left}\n{}|{NOT_AVAILABLE}",
-                    " ".repeat(max_left + 4).yellow()
-                )
-                .unwrap();
-            } else {
-                write!(
-                    result,
-                    "{left}{}|{NOT_AVAILABLE}",
-                    " ".repeat(max_left - len - 1)
-                )
-                .unwrap();
-            }
-        }
-        EitherOrBoth::Right(old) => {
-            let right = fields(old);
-
-            write!(
-                result,
-                "{}{}|{right}",
-                NOT_AVAILABLE.bold(),
-                " ".repeat(max_left - NOT_AVAILABLE.len() - 1)
-            )
-            .unwrap();
-        }
-        EitherOrBoth::Both(new, old) => {
-            let left = fields(new);
-            let len = left.len();
-            let right = fields(old);
-            let left = left.bold();
-
-            if len > max_left {
-                write!(
-                    result,
-                    "{left}\n{}|{right}",
-                    " ".repeat(max_left + 4).yellow()
-                )
-                .unwrap();
-            } else {
-                write!(result, "{left}{}|{right}", " ".repeat(max_left - len - 1)).unwrap();
-            }
-        }
-    }
-
-    result
 }
 
 // Return the formatted `String` if `NoCapture` is not `False`
@@ -869,20 +1005,6 @@ pub fn print_no_capture_footer(
             println!("{}", no_capture_footer(NoCapture::True).unwrap());
         }
     }
-}
-
-pub fn tool_headline(tool: ValgrindTool) -> String {
-    let id = tool.id();
-    format!(
-        "  {} {} {}",
-        "=======".bright_black(),
-        id.to_ascii_uppercase(),
-        "=".repeat(66 - id.len()).bright_black(),
-    )
-}
-
-pub fn tool_total_header() -> String {
-    format!("  {} Total", "##".yellow())
 }
 
 fn truncate_description(description: &str, truncate_description: Option<usize>) -> Cow<'_, str> {
@@ -1117,15 +1239,82 @@ mod tests {
             None => EitherOrBoth::Left(Metrics(indexmap! {event_kind => new})),
         };
         let metrics_summary = MetricsSummary::new(costs);
-        let formatted = format_vertical((None, None), metrics_summary.all_diffs()).unwrap();
+        let mut formatter = VerticalFormatter::new(OutputFormat::default());
+        formatter.format_metrics(metrics_summary.all_diffs());
 
         let expected = format!(
-            "  {:<20}{new:>15}|{:<15} ({diff_pct}){}\n",
+            "  {:<21}{new:>METRIC_WIDTH$}|{:<METRIC_WIDTH$} ({diff_pct}){}\n",
             format!("{event_kind}:"),
             old.map_or(NOT_AVAILABLE.to_owned(), |o| o.to_string()),
             diff_fact.map_or_else(String::new, |f| format!(" [{f}]"))
         );
 
-        assert_eq!(formatted, expected);
+        assert_eq!(formatter.buffer, expected);
+    }
+
+    #[rstest]
+    #[case::normal_no_grid(IndentKind::Normal, false, "  ")]
+    #[case::tool_header_no_grid(IndentKind::ToolHeadline, false, "  ")]
+    #[case::tool_sub_header_no_grid(IndentKind::ToolSubHeadline, false, "  ")]
+    #[case::normal_with_grid(IndentKind::Normal, true, "| ")]
+    #[case::tool_header_with_grid(IndentKind::ToolHeadline, true, "|=")]
+    #[case::tool_sub_header_with_grid(IndentKind::ToolSubHeadline, true, "|-")]
+    fn test_vertical_formatter_write_indent(
+        #[case] kind: IndentKind,
+        #[case] show_grid: bool,
+        #[case] expected: &str,
+    ) {
+        colored::control::set_override(false);
+
+        let output_format = OutputFormat {
+            show_grid,
+            ..Default::default()
+        };
+
+        let mut formatter = VerticalFormatter::new(output_format);
+        formatter.write_indent(&kind);
+        assert_eq!(formatter.buffer, expected);
+    }
+
+    #[rstest]
+    #[case::left(
+        "Some:",
+        EitherOrBoth::Left("left"),
+        "  Some:                                left\n"
+    )]
+    #[case::right(
+        "Field:",
+        EitherOrBoth::Right("right"),
+        "  Field:                                   |right\n"
+    )]
+    #[case::both(
+        "Field:",
+        EitherOrBoth::Both("left", "right"),
+        "  Field:                               left|right\n"
+    )]
+    #[case::both_u64_max(
+        "Field:",
+        EitherOrBoth::Both(format!("{}", u64::MAX), format!("{}", u64::MAX)),
+        "  Field:               18446744073709551615|18446744073709551615\n"
+    )]
+    #[case::split(
+        "Field:",
+        EitherOrBoth::Both(format!("{}1", u64::MAX), "right".to_owned()),
+        "  Field:               184467440737095516151\n                                           |right\n"
+    )]
+    fn test_vertical_formatter_write_field<T>(
+        #[case] field: &str,
+        #[case] values: EitherOrBoth<T>,
+        #[case] expected: &str,
+    ) where
+        T: AsRef<str>,
+    {
+        colored::control::set_override(false);
+
+        let output_format = OutputFormat::default();
+
+        let mut formatter = VerticalFormatter::new(output_format);
+        formatter.write_field(field, &values, None, false);
+        assert_eq!(formatter.buffer, expected);
     }
 }

@@ -1,0 +1,12 @@
+groups:
+  - runs_on: "!x86_64-unknown-freebsd"
+    runs:
+      - args: ["--nocapture"]
+        expected:
+          stdout: expected_stdout.1a
+      - args: ["--nocapture"]
+        expected:
+          stdout: expected_stdout.1b
+  - runs_on: "x86_64-unknown-freebsd"
+    runs:
+      - args: []

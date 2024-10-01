@@ -27,9 +27,7 @@ use super::args::NoCapture;
 use super::bin_bench::Delay;
 use super::callgrind::parser::parse_header;
 use super::common::{Assistant, Config, ModulePath, Sandbox};
-use super::format::{
-    print_no_capture_footer, tool_headline, Formatter, OutputFormat, VerticalFormat,
-};
+use super::format::{print_no_capture_footer, Formatter, OutputFormat, VerticalFormatter};
 use super::meta::Metadata;
 use super::summary::{BaselineKind, ToolRun, ToolSummary};
 use crate::api::{self, ExitWith, Stream};
@@ -366,12 +364,14 @@ impl ToolConfigs {
 
     fn print_headline(tool_config: &ToolConfig, output_format: &OutputFormat) {
         if output_format.is_default() {
-            println!("{}", tool_headline(tool_config.tool));
+            let mut formatter = VerticalFormatter::new(*output_format);
+            formatter.format_tool_headline(tool_config.tool);
+            formatter.print_buffer();
         }
     }
 
     fn print(config: &Config, output_format: &OutputFormat, tool_run: &ToolRun) -> Result<()> {
-        VerticalFormat.print(config, output_format, (None, None), tool_run)
+        VerticalFormatter::new(*output_format).print(config, (None, None), tool_run)
     }
 
     pub fn parse(

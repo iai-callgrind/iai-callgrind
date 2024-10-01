@@ -199,6 +199,116 @@ impl OutputFormat {
         self.0.show_intermediate = Some(value);
         self
     }
+
+    /// Show an ascii grid in the benchmark terminal output
+    ///
+    /// This option adds guiding lines which can help reading the benchmark output when running
+    /// multiple tools with multiple threads/subprocesses.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::OutputFormat;
+    ///
+    /// let output_format = OutputFormat::default().show_grid(true);
+    /// ```
+    ///
+    /// Below is the output of a Iai-Callgrind run with DHAT as additional tool benchmarking a
+    /// function that executes a subprocess which itself starts multiple threads. For the benchmark
+    /// run below [`OutputFormat::show_intermediate`] was also active to show the threads and
+    /// subprocesses.
+    ///
+    /// ```text
+    /// test_lib_bench_threads::bench_group::bench_thread_in_subprocess three:3
+    /// |======== CALLGRIND ===================================================================
+    /// |-## pid: 3186352 part: 1 thread: 1       |pid: 2721318 part: 1 thread: 1
+    /// | Command:            target/release/deps/test_lib_bench_threads-b0b85adec9a45de1
+    /// | Instructions:                       4697|4697                 (No change)
+    /// | L1 Hits:                            6420|6420                 (No change)
+    /// | L2 Hits:                              17|17                   (No change)
+    /// | RAM Hits:                            202|202                  (No change)
+    /// | Total read+write:                   6639|6639                 (No change)
+    /// | Estimated Cycles:                  13575|13575                (No change)
+    /// |-## pid: 3186468 part: 1 thread: 1       |pid: 2721319 part: 1 thread: 1
+    /// | Command:            target/release/thread 3
+    /// | Instructions:                      35452|35452                (No change)
+    /// | L1 Hits:                           77367|77367                (No change)
+    /// | L2 Hits:                             610|610                  (No change)
+    /// | RAM Hits:                            784|784                  (No change)
+    /// | Total read+write:                  78761|78761                (No change)
+    /// | Estimated Cycles:                 107857|107857               (No change)
+    /// |-## pid: 3186468 part: 1 thread: 2       |pid: 2721319 part: 1 thread: 2
+    /// | Command:            target/release/thread 3
+    /// | Instructions:                    2460507|2460507              (No change)
+    /// | L1 Hits:                         2534939|2534939              (No change)
+    /// | L2 Hits:                              17|17                   (No change)
+    /// | RAM Hits:                            186|186                  (No change)
+    /// | Total read+write:                2535142|2535142              (No change)
+    /// | Estimated Cycles:                2541534|2541534              (No change)
+    /// |-## pid: 3186468 part: 1 thread: 3       |pid: 2721319 part: 1 thread: 3
+    /// | Command:            target/release/thread 3
+    /// | Instructions:                    3650414|3650414              (No change)
+    /// | L1 Hits:                         3724275|3724275              (No change)
+    /// | L2 Hits:                              21|21                   (No change)
+    /// | RAM Hits:                            130|130                  (No change)
+    /// | Total read+write:                3724426|3724426              (No change)
+    /// | Estimated Cycles:                3728930|3728930              (No change)
+    /// |-## pid: 3186468 part: 1 thread: 4       |pid: 2721319 part: 1 thread: 4
+    /// | Command:            target/release/thread 3
+    /// | Instructions:                    4349846|4349846              (No change)
+    /// | L1 Hits:                         4423438|4423438              (No change)
+    /// | L2 Hits:                              24|24                   (No change)
+    /// | RAM Hits:                            125|125                  (No change)
+    /// | Total read+write:                4423587|4423587              (No change)
+    /// | Estimated Cycles:                4427933|4427933              (No change)
+    /// |-## Total
+    /// | Instructions:                   10500916|10500916             (No change)
+    /// | L1 Hits:                        10766439|10766439             (No change)
+    /// | L2 Hits:                             689|689                  (No change)
+    /// | RAM Hits:                           1427|1427                 (No change)
+    /// | Total read+write:               10768555|10768555             (No change)
+    /// | Estimated Cycles:               10819829|10819829             (No change)
+    /// |======== DHAT ========================================================================
+    /// |-## pid: 3186472 ppid: 3185288           |pid: 2721323 ppid: 2720196
+    /// | Command:            target/release/deps/test_lib_bench_threads-b0b85adec9a45de1
+    /// | Total bytes:                        2774|2774                 (No change)
+    /// | Total blocks:                         24|24                   (No change)
+    /// | At t-gmax bytes:                    1736|1736                 (No change)
+    /// | At t-gmax blocks:                      3|3                    (No change)
+    /// | At t-end bytes:                        0|0                    (No change)
+    /// | At t-end blocks:                       0|0                    (No change)
+    /// | Reads bytes:                       21054|21054                (No change)
+    /// | Writes bytes:                      13165|13165                (No change)
+    /// |-## pid: 3186473 ppid: 3186472           |pid: 2721324 ppid: 2721323
+    /// | Command:            target/release/thread 3
+    /// | Total bytes:                      156158|156158               (No change)
+    /// | Total blocks:                         73|73                   (No change)
+    /// | At t-gmax bytes:                   52225|52225                (No change)
+    /// | At t-gmax blocks:                     19|19                   (No change)
+    /// | At t-end bytes:                        0|0                    (No change)
+    /// | At t-end blocks:                       0|0                    (No change)
+    /// | Reads bytes:                      118403|118403               (No change)
+    /// | Writes bytes:                     135926|135926               (No change)
+    /// |-## Total
+    /// | Total bytes:                      158932|158932               (No change)
+    /// | Total blocks:                         97|97                   (No change)
+    /// | At t-gmax bytes:                   53961|53961                (No change)
+    /// | At t-gmax blocks:                     22|22                   (No change)
+    /// | At t-end bytes:                        0|0                    (No change)
+    /// | At t-end blocks:                       0|0                    (No change)
+    /// | Reads bytes:                      139457|139457               (No change)
+    /// | Writes bytes:                     149091|149091               (No change)
+    /// |-Comparison with bench_find_primes_multi_thread three:3
+    /// | Instructions:                   10494117|10500916             (-0.06475%) [-1.00065x]
+    /// | L1 Hits:                        10757259|10766439             (-0.08526%) [-1.00085x]
+    /// | L2 Hits:                             601|689                  (-12.7721%) [-1.14642x]
+    /// | RAM Hits:                           1189|1427                 (-16.6783%) [-1.20017x]
+    /// | Total read+write:               10759049|10768555             (-0.08828%) [-1.00088x]
+    /// | Estimated Cycles:               10801879|10819829             (-0.16590%) [-1.00166x]
+    pub fn show_grid(&mut self, value: bool) -> &mut Self {
+        self.0.show_grid = Some(value);
+        self
+    }
 }
 
 /// Configure performance regression checks and behavior

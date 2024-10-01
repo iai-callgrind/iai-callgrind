@@ -1,0 +1,80 @@
+test_lib_bench_output_format::my_group::bench_without_format for_comparison:"A very long string to see if the truncation of th...
+  ======= CALLGRIND ====================================================================
+Benchmark without formatting options
+Number of primes found in the range 0 to 20000: 2262
+- end of stdout/stderr
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  ======= DHAT =========================================================================
+  Total bytes:                             |                     (No change)
+  Total blocks:                            |                     (No change)
+  At t-gmax bytes:                         |                     (         )
+  At t-gmax blocks:                        |                     (         )
+  At t-end bytes:                          |                     (No change)
+  At t-end blocks:                         |                     (No change)
+  Reads bytes:                             |                     (No change)
+  Writes bytes:                            |                     (No change)
+test_lib_bench_output_format::my_group::bench_with_format for_comparison:"Another very long string to see if the truncation is disabled with the formatting option"
+|======== CALLGRIND ====================================================================
+Benchmark with formatting options
+Number of primes found in the range 0 to 30000: 3245
+- end of stdout/stderr
+|-## pid: <__PID__> part: 1 thread: 1      |pid: <__PID__> part: 1 thread: 1
+| Command: <__COMMAND__>
+| Instructions:                            |                     (No change)
+| L1 Hits:                                 |                     (         )
+| L2 Hits:                                 |                     (         )
+| RAM Hits:                                |                     (         )
+| Total read+write:                        |                     (No change)
+| Estimated Cycles:                        |                     (         )
+|-## pid: <__PID__> part: 1 thread: 2      |pid: <__PID__> part: 1 thread: 2
+| Command: <__COMMAND__>
+| Instructions:                            |                     (No change)
+| L1 Hits:                                 |                     (         )
+| L2 Hits:                                 |                     (         )
+| RAM Hits:                                |                     (         )
+| Total read+write:                        |                     (No change)
+| Estimated Cycles:                        |                     (         )
+|-## pid: <__PID__> part: 1 thread: 3      |pid: <__PID__> part: 1 thread: 3
+| Command: <__COMMAND__>
+| Instructions:                            |                     (No change)
+| L1 Hits:                                 |                     (         )
+| L2 Hits:                                 |                     (         )
+| RAM Hits:                                |                     (         )
+| Total read+write:                        |                     (No change)
+| Estimated Cycles:                        |                     (         )
+|-## pid: <__PID__> part: 1 thread: 4      |pid: <__PID__> part: 1 thread: 4
+| Command: <__COMMAND__>
+| Instructions:                            |                     (No change)
+| L1 Hits:                                 |                     (         )
+| L2 Hits:                                 |                     (         )
+| RAM Hits:                                |                     (         )
+| Total read+write:                        |                     (No change)
+| Estimated Cycles:                        |                     (         )
+|-## Total
+| Instructions:                            |                     (No change)
+| L1 Hits:                                 |                     (         )
+| L2 Hits:                                 |                     (         )
+| RAM Hits:                                |                     (         )
+| Total read+write:                        |                     (No change)
+| Estimated Cycles:                        |                     (         )
+|======== DHAT =========================================================================
+| Total bytes:                             |                     (No change)
+| Total blocks:                            |                     (No change)
+| At t-gmax bytes:                         |                     (         )
+| At t-gmax blocks:                        |                     (         )
+| At t-end bytes:                          |                     (No change)
+| At t-end blocks:                         |                     (No change)
+| Reads bytes:                             |                     (No change)
+| Writes bytes:                            |                     (No change)
+|-Comparison with bench_without_format for_comparison:"A very long string to see if the truncation of th...
+| Instructions:                            |                     (-       %) [-       x]
+| L1 Hits:                                 |                     (         )
+| L2 Hits:                                 |                     (         )
+| RAM Hits:                                |                     (         )
+| Total read+write:                        |                     (-       %) [-       x]
+| Estimated Cycles:                        |                     (         )

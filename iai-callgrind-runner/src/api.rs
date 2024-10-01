@@ -353,6 +353,7 @@ pub struct LibraryBenchmarkGroups {
 pub struct OutputFormat {
     pub truncate_description: Option<Option<usize>>,
     pub show_intermediate: Option<bool>,
+    pub show_grid: Option<bool>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
