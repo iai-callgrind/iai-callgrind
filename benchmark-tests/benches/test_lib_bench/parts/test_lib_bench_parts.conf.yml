@@ -3,18 +3,18 @@ groups:
     runs:
       - args: ["--nocapture"]
         flaky: 2
-        rust_version: ">1.66.1"
+        rust_version: ">1.75.0"
         expected:
           zero_callgrind_metrics: true
           files: expected_files.yml
           stdout: expected_stdout
       - args: ["--nocapture"]
         flaky: 2
-        rust_version: "<=1.66.1"
+        rust_version: "<=1.75.0"
         expected:
           zero_callgrind_metrics: true
-          files: expected_files.1.66.0.yml
-          stdout: expected_stdout.1.66.0
+          files: expected_files.1.75.0.yml
+          stdout: expected_stdout.1.75.0
   # The scheduler on freebsd is causing random results and neither the files
   # created by callgrind nor the stdout can be verified with a static
   # `expected_stdout` or `expected_files`. However, the benchmarks can be run to

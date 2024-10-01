@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.66.0
+      - uses: dtolnay/rust-toolchain@1.75.0
       - uses: taiki-e/install-action@cargo-deny
       - uses: taiki-e/install-action@just
       - name: Check advisories
@@ -86,11 +86,11 @@ jobs:
       fail-fast: false
       matrix:
         toolchain:
-          - "1.66.0" # MSRV
+          - "1.75.0" # MSRV
           - stable
           - nightly
         include:
-          - toolchain: "1.66.0" # MSRV
+          - toolchain: "1.75.0" # MSRV
             ui_tests: --features ui_tests
             components: rust-src
           - toolchain: stable

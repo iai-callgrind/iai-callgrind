@@ -32,7 +32,7 @@ use super::meta::Metadata;
 use super::summary::{BaselineKind, ToolRun, ToolSummary};
 use crate::api::{self, ExitWith, Stream};
 use crate::error::Error;
-use crate::util::{self, ilog10, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
+use crate::util::{self, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
 
 lazy_static! {
     // This regex matches the original file name without the prefix as it is created by callgrind.
@@ -1046,9 +1046,11 @@ impl ToolOutputPath {
 
                             if multiple_parts {
                                 if let Some(part) = part {
-                                    let width = usize::try_from(ilog10(parts.len() as u64)).expect(
-                                        "The logarithm of the parts length should fit into a usize",
-                                    ) + 1;
+                                    let width =
+                                        usize::try_from((parts.len() as u64).ilog10()).expect(
+                                            "The logarithm of the parts length should fit into a \
+                                             usize",
+                                        ) + 1;
                                     write!(new_file_name, ".p{part:0width$}").unwrap();
                                 }
 
@@ -1056,7 +1058,7 @@ impl ToolOutputPath {
                                 // the amount of threads
                                 if let Some(thread) = thread {
                                     let width =
-                                        usize::try_from(ilog10(threads.len() as u64)).expect(
+                                        usize::try_from((threads.len() as u64).ilog10()).expect(
                                             "The logarithm of the threads length should fit into \
                                              a usize",
                                         ) + 1;
@@ -1065,7 +1067,7 @@ impl ToolOutputPath {
                             } else if multiple_threads {
                                 if let Some(thread) = thread {
                                     let width =
-                                        usize::try_from(ilog10(threads.len() as u64)).expect(
+                                        usize::try_from((threads.len() as u64).ilog10()).expect(
                                             "The logarithm of the threads length should fit into \
                                              a usize",
                                         ) + 1;
@@ -1208,9 +1210,11 @@ impl ToolOutputPath {
                             if multiple_threads
                                 && bbv_type.as_ref().map_or(false, |b| b.starts_with(".bb"))
                             {
-                                let width = usize::try_from(ilog10(threads.len() as u64)).expect(
-                                    "The logarithm of the threads length should fit into a usize",
-                                ) + 1;
+                                let width =
+                                    usize::try_from((threads.len() as u64).ilog10()).expect(
+                                        "The logarithm of the threads length should fit into a \
+                                         usize",
+                                    ) + 1;
 
                                 let thread = thread[1..]
                                     .parse::<usize>()

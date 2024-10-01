@@ -1,6 +1,6 @@
 [tool.bumpversion]
 commit = true
-current_version = "1.66.0"
+current_version = "1.75.0"
 message = "Bump MSRV v{current_version} -> v{new_version}"
 
 [[tool.bumpversion.files]]
