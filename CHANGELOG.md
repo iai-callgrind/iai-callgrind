@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-If not state otherwise the changes below were introduced in
+If not stated otherwise the changes below were introduced in
 [#263](https://github.com/iai-callgrind/iai-callgrind/pull/263).
 
 ### Added
@@ -75,7 +75,7 @@ If not state otherwise the changes below were introduced in
   Suppressed Contexts:              0|0               (No change)
   ```
 
-* ([#263](https://github.com/iai-callgrind/iai-callgrind/pull/264)) and
+* ([#263](https://github.com/iai-callgrind/iai-callgrind/pull/263)) and
   ([#288](https://github.com/iai-callgrind/iai-callgrind/pull/288)): Increase
   the field width by 3 spaces and the space for metrics by 5 so that the value
   of `u64::MAX` fits into the terminal output.
@@ -87,6 +87,9 @@ If not state otherwise the changes below were introduced in
   tools.
 * Bump the summary json schema to v3 in
   `iai-callgrind-runner/schemas/summary.v3.schema.json`
+* ([#293](https://github.com/iai-callgrind/iai-callgrind/pull/293)): Bump MSRV
+  from `1.66.0` to `1.67.1` and make use of rust std `ilog10` instead of
+  `util::ilog10`.
 
 ### Removed
 
