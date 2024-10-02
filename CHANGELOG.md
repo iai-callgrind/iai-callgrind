@@ -51,19 +51,24 @@ If not stated otherwise the changes below were introduced in
   option `OutputFormat::show_grid` to show grid/guiding lines which can help
   reading the terminal output if running benchmarks with multiple
   threads/subprocesses/tools.
+* The method `BinaryBenchmarkConfig::with_callgrind_args` was added to match the
+  constructors of the `LibraryBenchmarkConfig`.
+* The methods `BinaryBenchmarkConfig::valgrind_args` and
+  `LibraryBenchmarkConfig::valgrind_args` are introduced to be able to pass
+  valgrind core arguments to all tools.
 
 ### Changed
 
 * All tools are now per default run with `--trace-children=yes` and
   `--fair-sched=try`. In addition, callgrind is run with
   `--separate-threads=yes`. These default arguments can be changed in
-  `Tool::args` or `LibraryBenchmarkConfig::raw_callgrind_args`,
-  `BinaryBenchmarkConfig::raw_callgrind_args`.
+  `Tool::args` or `LibraryBenchmarkConfig::callgrind_args`,
+  `BinaryBenchmarkConfig::callgrind_args`.
 * The file naming scheme was adjusted to include the pids in case of
   multi-process benchmarks, the parts in case of callgrind command-line
   arguments which create multiple parts and threads in case of multiple threads.
   This change is backwards compatible to the file naming scheme of previous
-  releases.
+  Iai-Callgrind releases for all tools but `exp-bbv`.
 * Error metrics from tools like drd, helgrind and memcheck are now listed and
   compared like the other metrics in a vertical format. For example
 
@@ -77,8 +82,9 @@ If not stated otherwise the changes below were introduced in
 
 * ([#263](https://github.com/iai-callgrind/iai-callgrind/pull/263)) and
   ([#288](https://github.com/iai-callgrind/iai-callgrind/pull/288)): Increase
-  the field width by 3 spaces and the space for metrics by 5 so that the value
-  of `u64::MAX` fits into the terminal output.
+  the field width by 3 bytes and the space for metrics by 5 on each side of the
+  comparison so that the value of `u64::MAX` fits into the terminal output
+  without messing up the side-by-side layout.
 * The `LibraryBenchmarkConfig::truncate_description`,
   `BinaryBenchmarkConfig::truncate_description` methods have been moved to
   `OutputFormat::truncate_description`
@@ -87,9 +93,24 @@ If not stated otherwise the changes below were introduced in
   tools.
 * Bump the summary json schema to v3 in
   `iai-callgrind-runner/schemas/summary.v3.schema.json`
+* ([#288](https://github.com/iai-callgrind/iai-callgrind/pull/288)): The default
+  include path for the valgrind headers has changed to `/usr/local/include` on
+  freebsd instead of `/usr/local`.
 * ([#293](https://github.com/iai-callgrind/iai-callgrind/pull/293)): Bump MSRV
   from `1.66.0` to `1.67.1` and make use of rust std `ilog10` instead of
   `util::ilog10`.
+
+### Deprecated
+
+* The following methods were renamed and deprecate the old method name:
+    * `LibraryBenchmarkConfig::raw_callgrind_args` ->
+      `LibraryBenchmarkConfig::callgrind_args`,
+    * `LibraryBenchmarkConfig::with_raw_callgrind_args` ->
+      `LibraryBenchmarkConfig::with_callgrind_args`
+    * `BinaryBenchmarkConfig::raw_callgrind_args` ->
+      `BinaryBenchmarkConfig::callgrind_args`
+* The method `LibraryBenchmarkConfig::raw_callgrind_args_iter` was deprecated
+  since it is the same as `LibraryBenchmarkConfig::callgrind_args`.
 
 ### Removed
 
@@ -109,9 +130,6 @@ If not stated otherwise the changes below were introduced in
   Iai-Callgrind.
 * The error metrics of drd, helgrind and memcheck were only shown correctly if
   they consisted of a single digit.
-* ([#288](https://github.com/iai-callgrind/iai-callgrind/pull/288)): The include
-  path for the valgrind headers is `/usr/local/include` on freebsd instead of
-  `/usr/local`.
 
 ## [0.13.4] - 2024-09-12
 
