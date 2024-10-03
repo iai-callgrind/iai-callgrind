@@ -90,6 +90,17 @@ If not stated otherwise the changes below were introduced in
 * ([#293](https://github.com/iai-callgrind/iai-callgrind/pull/293)): Bump MSRV
   from `1.66.0` to `1.67.1` and make use of rust std `ilog10` instead of
   `util::ilog10`.
+* Update locked transitive dependencies.
+* Update locked direct dependencies:
+    * `cc` -> 1.1.24
+    * `anyhow` -> 1.0.89
+    * `indexmap` -> 2.6.0
+    * `once_cell` -> 1.20.1
+    * `regex` -> 1.11.0
+    * `serde` -> 1.0.210
+    * `serde_json` -> 1.0.128
+    * `syn` -> 2.0.79
+    * `tempfile` -> 3.13.0
 
 ### Removed
 
