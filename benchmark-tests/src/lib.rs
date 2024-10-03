@@ -55,7 +55,9 @@ pub fn find_primes_multi_thread_with_instrumentation(num_threads: usize) -> Vec<
     for _ in 0..num_threads {
         let handle = std::thread::spawn(move || {
             iai_callgrind::client_requests::callgrind::start_instrumentation();
+            iai_callgrind::client_requests::callgrind::toggle_collect();
             let result = find_primes(low, low + 10000);
+            iai_callgrind::client_requests::callgrind::toggle_collect();
             iai_callgrind::client_requests::callgrind::stop_instrumentation();
             result
         });

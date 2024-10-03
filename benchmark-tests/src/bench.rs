@@ -585,6 +585,8 @@ impl BenchmarkOutput {
                     || desc.starts_with("Estimated Cycles")
                     || desc.starts_with("L2 Hits")
                     || desc.starts_with("L1 Hits")
+                    || desc.starts_with("SysTime")
+                    || desc.starts_with("SysCpuTime")
                     || desc.starts_with("Suppressed Errors")
                     || desc.starts_with("Suppressed Contexts")
                     || desc.starts_with("At t-gmax bytes")
