@@ -93,6 +93,16 @@ If not stated otherwise the changes below were introduced in
   tools.
 * Bump the summary json schema to v3 in
   `iai-callgrind-runner/schemas/summary.v3.schema.json`
+* Various prs: Update locked direct dependencies:
+    * `cc` -> 1.1.24
+    * `anyhow` -> 1.0.89
+    * `indexmap` -> 2.6.0
+    * `once_cell` -> 1.20.1
+    * `regex` -> 1.11.0
+    * `serde` -> 1.0.210
+    * `serde_json` -> 1.0.128
+    * `syn` -> 2.0.79
+    * `tempfile` -> 3.13.0
 * ([#288](https://github.com/iai-callgrind/iai-callgrind/pull/288)): The default
   include path for the valgrind headers has changed to `/usr/local/include` on
   freebsd instead of `/usr/local`.
@@ -100,6 +110,8 @@ If not stated otherwise the changes below were introduced in
   `derive_more` -> `1.0` in `Cargo.toml` but not in lock file.
 * ([#293](https://github.com/iai-callgrind/iai-callgrind/pull/293)): Update MSRV
   from `1.66.0` -> `1.67.1`
+* ([#296](https://github.com/iai-callgrind/iai-callgrind/pull/296)): Update 
+  locked transitive dependencies.
 
 ### Deprecated
 
