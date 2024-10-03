@@ -57,3 +57,16 @@ which cause a bottleneck or a performance regressions etc.
 
 We simulated a small change in `bubble_sort` and in the differential flamegraph
 you can spot fairly easily where the increase of `Instructions` is happening.
+
+## (Experimental) Create flamegraphs for multi-threaded/multi-process benchmarks
+
+Note the following only affects flamegraphs of multi-threaded/multi-process
+benchmarks and benchmarks which produce multiple parts with a total over all
+sub-metrics.
+
+Currently, Iai-Callgrind creates the flamegraphs only for the total over all
+threads/parts and subprocesses. This leads to complications since the call graph
+is not be fully recovered just by examining each thread/subprocess separately.
+So, the total metrics in the flamegraphs might not be the same as the total
+metrics shown in the terminal output. If in doubt, the terminal output shows the
+the correct metrics.

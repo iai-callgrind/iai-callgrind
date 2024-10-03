@@ -1,5 +1,10 @@
 # Custom entry points
 
+The [`EntryPoint`] can be set to `EntryPoint::None` which disables
+the entry point, `EntryPoint::Default` which uses the benchmark function as
+entry point or `EntryPoint::Custom` which will be discussed in more detail in
+this chapter.
+
 To understand custom entry points let's take a small detour into how
 [`Callgrind`][Callgrind] and Iai-Callgrind work under the hood.
 
@@ -11,7 +16,7 @@ any function not only public functions. `Callgrind` can be configured to switch
 instrumentation on and off based on a function name with
 [`--toggle-collect`][Callgrind Arguments]. Per default, Iai-Callgrind sets this
 toggle (which we call [`EntryPoint`]) to the benchmarking function. Setting the
-toggle implies `--collect-at-start=no`. So, all events before (in the `setup`)
+toggle implies `--collect-atstart=no`. So, all events before (in the `setup`)
 and after the benchmark function (in the `teardown`) are not collected. Somewhat
 simplified, but conveying the basic idea, here is a commented example:
 

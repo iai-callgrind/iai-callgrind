@@ -11,6 +11,16 @@ use super::{internal, Direction, EventKind, FlamegraphKind, ValgrindTool};
 /// `callgrind_annotate` text based output, the produced flamegraphs are svg files (located in the
 /// `target/iai` directory) which can be viewed in a browser.
 ///
+/// # Experimental
+///
+/// Note the following considerations only affect flamegraphs of multi-threaded/multi-process
+/// benchmarks and benchmarks which produce multiple parts with a total over all sub-metrics.
+///
+/// Currently, Iai-Callgrind creates the flamegraphs only for the total over all threads/parts and
+/// subprocesses. This leads to complications since the call graph is not be fully recovered just by
+/// examining each thread/subprocess separately. So, the total metrics in the flamegraphs might not
+/// be the same as the total metrics shown in the terminal output. If in doubt, the terminal output
+/// shows the the correct metrics.
 ///
 /// # Examples
 ///
