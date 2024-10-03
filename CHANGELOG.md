@@ -96,9 +96,10 @@ If not stated otherwise the changes below were introduced in
 * ([#288](https://github.com/iai-callgrind/iai-callgrind/pull/288)): The default
   include path for the valgrind headers has changed to `/usr/local/include` on
   freebsd instead of `/usr/local`.
-* ([#293](https://github.com/iai-callgrind/iai-callgrind/pull/293)): Bump MSRV
-  from `1.66.0` to `1.67.1` and make use of rust std `ilog10` instead of
-  `util::ilog10`.
+* ([#289](https://github.com/iai-callgrind/iai-callgrind/pull/289)): Update
+  `derive_more` -> `1.0` in `Cargo.toml` but not in lock file.
+* ([#293](https://github.com/iai-callgrind/iai-callgrind/pull/293)): Update MSRV
+  from `1.66.0` -> `1.67.1`
 
 ### Deprecated
 
