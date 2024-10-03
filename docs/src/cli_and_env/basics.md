@@ -11,3 +11,186 @@ command-line argument are:
 - `IAI_CALLGRIND_COLOR`: [Control the colored output of Iai-Callgrind](./output/color.md) (Default
   is `auto`)
 - `IAI_CALLGRIND_LOG`: [Define the log level](./output/logging.md) (Default is `WARN`)
+
+## The command-line arguments
+
+```text
+High-precision and consistent benchmarking framework/harness for Rust
+
+Boolish command line arguments take also one of `y`, `yes`, `t`, `true`, `on`,
+`1`
+instead of `true` and one of `n`, `no`, `f`, `false`, `off`, and `0` instead of
+`false`
+
+Usage: cargo bench ... [BENCHNAME] -- [OPTIONS]
+
+Arguments:
+  [BENCHNAME]
+          If specified, only run benches containing this string in their names
+
+          Note that a benchmark name might differ from the benchmark file name.
+
+          [env: IAI_CALLGRIND_FILTER=]
+
+          Options:
+      --callgrind-args <CALLGRIND_ARGS>
+          The raw arguments to pass through to Callgrind
+
+          This is a space separated list of command-line-arguments specified as
+          if they were
+          passed directly to valgrind.
+
+          Examples:
+            * --callgrind-args=--dump-instr=yes
+            * --callgrind-args='--dump-instr=yes --collect-systime=yes'
+
+          [env: IAI_CALLGRIND_CALLGRIND_ARGS=]
+
+      --save-summary[=<SAVE_SUMMARY>]
+          Save a machine-readable summary of each benchmark run in json format
+          next to the usual benchmark output
+
+          [env: IAI_CALLGRIND_SAVE_SUMMARY=]
+
+          Possible values:
+          - json:        The format in a space optimal json representation
+          without newlines
+          - pretty-json: The format in pretty printed json
+
+      --allow-aslr[=<ALLOW_ASLR>]
+          Allow ASLR (Address Space Layout Randomization)
+
+          If possible, ASLR is disabled on platforms that support it (linux,
+          freebsd) because ASLR could noise up the callgrind cache simulation results a
+          bit. Setting this option to true runs all benchmarks with ASLR enabled.
+
+          See also
+          <https://docs.kernel.org/admin-guide/sysctl/kernel.html?
+          highlight=randomize_va_space#randomize-va-space>
+
+          [env: IAI_CALLGRIND_ALLOW_ASLR=]
+          [possible values: true, false]
+
+      --regression <REGRESSION>
+          Set performance regression limits for specific `EventKinds`
+
+          This is a `,` separate list of EventKind=limit (key=value) pairs with
+          the limit being a positive or negative percentage. If positive, a performance
+          regression check for this `EventKind` fails if the limit is exceeded. If
+          negative, the regression check fails if the value comes below the limit. The
+          `EventKind` is matched case-insensitive. For a list of valid `EventKinds` see
+          the docs:
+          <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.EventKind.html>
+
+          Examples: --regression='ir=0.0' or --regression='ir=0,
+          EstimatedCycles=10'
+
+          [env: IAI_CALLGRIND_REGRESSION=]
+
+      --regression-fail-fast[=<REGRESSION_FAIL_FAST>]
+          If true, the first failed performance regression check fails the
+          whole benchmark run
+
+          This option requires `--regression=...` or
+          `IAI_CALLGRIND_REGRESSION=...` to be present.
+
+          [env: IAI_CALLGRIND_REGRESSION_FAIL_FAST=]
+          [possible values: true, false]
+
+      --save-baseline[=<SAVE_BASELINE>]
+          Compare against this baseline if present and then overwrite it
+
+          [env: IAI_CALLGRIND_SAVE_BASELINE=]
+
+      --baseline[=<BASELINE>]
+          Compare against this baseline if present but do not overwrite it
+
+          [env: IAI_CALLGRIND_BASELINE=]
+
+      --load-baseline[=<LOAD_BASELINE>]
+          Load this baseline as the new data set instead of creating a new one
+
+          [env: IAI_CALLGRIND_LOAD_BASELINE=]
+
+      --output-format <OUTPUT_FORMAT>
+          The terminal output format in default human-readable format or in
+          machine-readable json format
+
+          # The JSON Output Format
+
+          The json terminal output schema is the same as the schema with the
+          `--save-summary` argument when saving to a `summary.json` file. All other
+          output than the json output goes to stderr and only the summary output goes to
+          stdout. When not printing pretty json, each line is a dictionary summarizing a
+          single benchmark. You can combine all lines (benchmarks) into an array for
+          example with `jq`
+
+          `cargo bench -- --output-format=json | jq -s`
+
+          which transforms `{...}\n{...}` into `[{...},{...}]`
+
+          [env: IAI_CALLGRIND_OUTPUT_FORMAT=]
+          [default: default]
+          [possible values: default, json, pretty-json]
+
+      --separate-targets[=<SEPARATE_TARGETS>]
+          Separate iai-callgrind benchmark output files by target
+
+          The default output path for files created by iai-callgrind and
+          valgrind during the benchmark is
+
+
+          `target/iai/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`.
+
+          This can be problematic if you're running the benchmarks not only for
+          a single target because you end up comparing the benchmark runs with the wrong
+          targets. Setting this option changes the default output path to
+
+
+          `target/iai/$TARGET/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/
+              $BENCH_FUNCTION.$BENCH_ID`
+
+          Although not as comfortable and strict, you could achieve a
+          separation by target also with baselines and a combination of
+          `--save-baseline=$TARGET` and `--baseline=$TARGET` if you prefer having all
+          files of a single $BENCH in the same directory.
+
+          [env: IAI_CALLGRIND_SEPARATE_TARGETS=]
+          [default: false]
+          [possible values: true, false]
+
+      --home <HOME>
+          Specify the home directory of iai-callgrind benchmark output files
+
+          All output files are per default stored under the
+          `$PROJECT_ROOT/target/iai` directory. This option lets you customize this
+          home directory, and it will be created if it doesn't exist.
+
+          [env: IAI_CALLGRIND_HOME=]
+
+      --nocapture[=<NOCAPTURE>]
+          Don't capture terminal output of benchmarks
+
+          Possible values are one of [true, false, stdout, stderr].
+
+          This option is currently restricted to the `callgrind` run of
+          benchmarks. The output of additional tool runs like DHAT, Memcheck, ... is
+          still captured, to prevent showing the same output of benchmarks multiple
+          times. Use `IAI_CALLGRIND_LOG=info` to also show captured and logged output.
+
+          If no value is given, the default missing value is `true` and doesn't
+          capture stdout and stderr. Besides `true` or `false` you can specify the
+          special values `stdout` or `stderr`. If `--nocapture=stdout` is given, the
+          output to `stdout` won't be captured and the output to `stderr` will be
+          discarded. Likewise, if `--nocapture=stderr` is specified, the output to
+          `stderr` won't be captured and the output to `stdout` will be discarded.
+
+          [env: IAI_CALLGRIND_NOCAPTURE=]
+          [default: false]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+```

@@ -60,11 +60,17 @@ The following parameters are accepted:
 ```rust
 # extern crate iai_callgrind;
 # mod my_lib { pub fn bubble_sort(value: Vec<i32>) -> Vec<i32> { value } }
-use iai_callgrind::{library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig};
+use iai_callgrind::{
+    library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
+    OutputFormat
+};
 use std::hint::black_box;
 
 #[library_benchmark(
-    config = LibraryBenchmarkConfig::default().truncate_description(None)
+    config = LibraryBenchmarkConfig::default()
+        .output_format(OutputFormat::default()
+           .truncate_description(None)
+        )
 )]
 #[bench::one(vec![1])]
 fn bench_bubble_sort(values: Vec<i32>) -> Vec<i32> {

@@ -89,6 +89,10 @@ path = "src/helper/subprocess.rs"
 
 [[bench]]
 harness = false
+name = "test_bench_template"
+
+[[bench]]
+harness = false
 name = "test_bin_bench_setup_and_teardown"
 path = "benches/test_bin_bench/setup_and_teardown/test_bin_bench_setup_and_teardown.rs"
 
@@ -244,4 +248,10 @@ path = "benches/test_lib_bench/output_format/test_lib_bench_output_format.rs"
 
 [[bench]]
 harness = false
-name = "test_bench_template"
+name = "lib_bench_threads"
+path = "benches/guide/lib_bench_threads.rs"
+
+[[bench]]
+harness = false
+name = "lib_bench_subprocess"
+path = "benches/guide/lib_bench_subprocess.rs"

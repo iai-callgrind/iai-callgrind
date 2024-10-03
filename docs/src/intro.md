@@ -40,8 +40,8 @@ quickly and reliably detect performance regressions and optimizations even in
 noisy environments with a precision that is impossible to achieve with
 wall-clock time based benchmarks. At the same time, we want to abstract the
 complicated parts and repetitive tasks away and provide an easy to use and
-intuitive api. Concentrate more on profiling and your code than on the
-framework!
+intuitive api. Iai-Callgrind tries to stay out of your way so you can focus more
+on profiling and your code!
 
 ## When not to use Iai-Callgrind
 
@@ -65,7 +65,7 @@ feature, are missing a functionality or have found a bug? We would love to here
 about it. You want to contribute and hack on Iai-Callgrind?
 
 Please don't hesitate to [open an
-issue](https://github.com/iai-callgrind/iai-callgrind/issues).  
+issue](https://github.com/iai-callgrind/iai-callgrind/issues).
 
 You want to hack on this guide? The source code of this book lives in [the docs
 subdirectory](https://github.com/iai-callgrind/iai-callgrind/tree/main/docs).
