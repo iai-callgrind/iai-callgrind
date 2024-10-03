@@ -305,7 +305,7 @@ book-tests:
     cargo clean --profile mdbook
     # We need the stable build because mdbook is built with the stable toolchain
     # and to avoid the error `found invalid metadata files for ...`
-    just args="--all-features --lib --profile=mdbook" build iai-callgrind stable
+    RUSTUP_TOOLCHAIN=stable just args="--all-features --lib --profile=mdbook" build iai-callgrind
     # The exact values for the environment variables don't matter, we just need
     # them to be present.
     CARGO_MANIFEST_DIR=$(realpath .) CARGO_PKG_NAME="mdbook-tests" mdbook test -L target/mdbook/deps docs/
