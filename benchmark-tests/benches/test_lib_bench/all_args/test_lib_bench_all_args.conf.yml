@@ -1,0 +1,27 @@
+# In this test all callgrind arguments as of valgrind v3.23 are used.
+#
+# The actual functionality of these arguments is tested only basically since
+# callgrind is responsible for the functionality. However, the test verifies if
+# any of these arguments cause unexpected behaviour in Iai-Callgrind itself like
+# panics or errors. We also verify that all additional event kinds like Ge,
+# AcLoss etc. are recorded and printed.
+groups:
+  - runs_on: "!x86_64-unknown-freebsd"
+    runs:
+      - args: ["--nocapture"]
+        expected:
+          zero_callgrind_metrics: true
+          stdout: expected_stdout.1a
+          stderr: expected_stderr.1a
+      - args: ["--nocapture"]
+        expected:
+          zero_callgrind_metrics: true
+          stdout: expected_stdout.1b
+          stderr: expected_stderr.1b
+  - runs_on: "x86_64-unknown-freebsd"
+    runs:
+      - args: ["--nocapture"]
+        expected:
+          zero_callgrind_metrics: true
+          stdout: expected_stdout.freebsd.1a
+          stderr: expected_stderr.1a

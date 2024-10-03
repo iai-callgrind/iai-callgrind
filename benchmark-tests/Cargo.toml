@@ -248,6 +248,11 @@ path = "benches/test_lib_bench/output_format/test_lib_bench_output_format.rs"
 
 [[bench]]
 harness = false
+name = "test_lib_bench_all_args"
+path = "benches/test_lib_bench/all_args/test_lib_bench_all_args.rs"
+
+[[bench]]
+harness = false
 name = "lib_bench_threads"
 path = "benches/guide/lib_bench_threads.rs"
 
