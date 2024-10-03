@@ -26,3 +26,9 @@ error: no rules expected the token `something`
    |
 21 |     library_benchmark_group!(something);
    |                              ^^^^^^^^^ no rules expected this token in macro call
+   |
+note: while trying to match `benchmarks`
+  --> src/macros.rs
+   |
+   |         benchmarks = $( $function:ident ),+
+   |         ^^^^^^^^^^
