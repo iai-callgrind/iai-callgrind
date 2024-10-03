@@ -21,7 +21,7 @@ trim_trailing_whitespace = true
 
 [*.md]
 indent_size = 4
-trim_trailing_whitespace = false
+trim_trailing_whitespace = true
 
 # follow the clang-format mozilla style
 [*.c]
