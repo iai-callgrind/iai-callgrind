@@ -1,12 +1,24 @@
 # Important default behaviour
 
 The environment variables are cleared before running a library benchmark. Have a
-look into the [Configuration](./configuration.md) section if you need to change that
-behavior.
+look into the [Configuration](./configuration.md) section if you need to change
+that behavior. Iai-Callgrind sometimes deviates from the valgrind defaults which
+are:
 
-Per default, the benchmarks run with cache simulation switched on. This adds
-additional run time costs. If you don't need the cache metrics and estimation of
-cycles, yan can easily switch cache simulation off with
+| Iai-Callgrind | Valgrind (v3.23) |
+| ------------- | ---------------- |
+| `--trace-children=yes` | `--trace-children=no` |
+| `--fair-sched=try` | `--fair-sched=no` |
+| `--separate-threads=yes` | `--separate-threads=no` |
+| `--cache-sim=yes` | `--cache-sim=no` |
+
+The thread and subprocess specific valgrind options enable tracing threads and
+subprocesses basically but there's usually some additional configuration
+necessary to trace the metrics of threads and subprocesses.
+
+As show in the table above, the benchmarks run with cache simulation switched
+on. This adds run time. If you don't need the cache metrics and estimation of
+cycles, you can easily switch cache simulation off for example with:
 
 ```rust
 # extern crate iai_callgrind;
@@ -15,7 +27,7 @@ use iai_callgrind::LibraryBenchmarkConfig;
 LibraryBenchmarkConfig::default().callgrind_args(["--cache-sim=no"]);
 ```
 
-For example to switch off cache simulation for all benchmarks in the same file:
+To switch off cache simulation for all benchmarks in the same file:
 
 ```rust
 # extern crate iai_callgrind;
@@ -39,7 +51,3 @@ main!(
 );
 # }
 ```
-
-If you're new to Iai-Callgrind and don't know what the above means, don't panic.
-Jump to [Quickstart](./quickstart.md) and read through the first few chapters,
-and you're ready to benchmark with Iai-Callgrind like a pro.

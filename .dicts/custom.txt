@@ -130,6 +130,7 @@ memalign
 metapool
 microoptimization
 microoptimizations
+millis
 minijinja
 mips
 mipsel
@@ -215,6 +216,7 @@ trycmd
 unaddressable
 unmark
 unparse
+usize
 valgrind
 valgrind's
 valico

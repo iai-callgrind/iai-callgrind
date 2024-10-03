@@ -48,3 +48,7 @@ also [Configure the exit code of the Command](./configuration/exit_code.md)). If
 the `Command::stdin` changes to `Stdin::Setup`, `setup` and the `Command` are
 executed in parallel and Iai-Callgrind waits first for the `Command` to exit,
 then `setup`. After the successful exit of `setup`, `teardown` is executed.
+
+Since `setup` and `Command` are run in parallel if `Stdin::Setup` is used, it is
+sometimes necessary to delay the execution of the `Command`. Please see the
+[`delay`](./configuration/delay.md) chapter for more details.
