@@ -6,12 +6,12 @@ data:
       files:
         - callgrind.bench_find_primes_multi_thread.two.log
         - callgrind.bench_find_primes_multi_thread.two.log.old
-        - callgrind.bench_find_primes_multi_thread.two.t1.out
-        - callgrind.bench_find_primes_multi_thread.two.t1.out.old
-        - callgrind.bench_find_primes_multi_thread.two.t2.out
-        - callgrind.bench_find_primes_multi_thread.two.t2.out.old
-        - callgrind.bench_find_primes_multi_thread.two.t3.out
-        - callgrind.bench_find_primes_multi_thread.two.t3.out.old
+        - callgrind.bench_find_primes_multi_thread.two.t1.p1.out
+        - callgrind.bench_find_primes_multi_thread.two.t1.p1.out.old
+        - callgrind.bench_find_primes_multi_thread.two.t2.p1.out
+        - callgrind.bench_find_primes_multi_thread.two.t2.p1.out.old
+        - callgrind.bench_find_primes_multi_thread.two.t3.p1.out
+        - callgrind.bench_find_primes_multi_thread.two.t3.p1.out.old
         - dhat.bench_find_primes_multi_thread.two.log
         - dhat.bench_find_primes_multi_thread.two.log.old
         - dhat.bench_find_primes_multi_thread.two.out
@@ -42,14 +42,14 @@ data:
       files:
         - callgrind.bench_find_primes_multi_thread.three.log
         - callgrind.bench_find_primes_multi_thread.three.log.old
-        - callgrind.bench_find_primes_multi_thread.three.t1.out
-        - callgrind.bench_find_primes_multi_thread.three.t1.out.old
-        - callgrind.bench_find_primes_multi_thread.three.t2.out
-        - callgrind.bench_find_primes_multi_thread.three.t2.out.old
-        - callgrind.bench_find_primes_multi_thread.three.t3.out
-        - callgrind.bench_find_primes_multi_thread.three.t3.out.old
-        - callgrind.bench_find_primes_multi_thread.three.t4.out
-        - callgrind.bench_find_primes_multi_thread.three.t4.out.old
+        - callgrind.bench_find_primes_multi_thread.three.t1.p1.out
+        - callgrind.bench_find_primes_multi_thread.three.t1.p1.out.old
+        - callgrind.bench_find_primes_multi_thread.three.t2.p1.out
+        - callgrind.bench_find_primes_multi_thread.three.t2.p1.out.old
+        - callgrind.bench_find_primes_multi_thread.three.t3.p1.out
+        - callgrind.bench_find_primes_multi_thread.three.t3.p1.out.old
+        - callgrind.bench_find_primes_multi_thread.three.t4.p1.out
+        - callgrind.bench_find_primes_multi_thread.three.t4.p1.out.old
         - dhat.bench_find_primes_multi_thread.three.log
         - dhat.bench_find_primes_multi_thread.three.log.old
         - dhat.bench_find_primes_multi_thread.three.out
@@ -88,17 +88,17 @@ data:
           count: 4
         - pattern: callgrind.bench_thread_in_subprocess.two.*.out.old
           count: 4
-        - pattern: callgrind.bench_thread_in_subprocess.two.*.t1.out
+        - pattern: callgrind.bench_thread_in_subprocess.two.*.t1.p1.out
           count: 1
-        - pattern: callgrind.bench_thread_in_subprocess.two.*.t1.out.old
+        - pattern: callgrind.bench_thread_in_subprocess.two.*.t1.p1.out.old
           count: 1
-        - pattern: callgrind.bench_thread_in_subprocess.two.*.t2.out
+        - pattern: callgrind.bench_thread_in_subprocess.two.*.t2.p1.out
           count: 1
-        - pattern: callgrind.bench_thread_in_subprocess.two.*.t2.out.old
+        - pattern: callgrind.bench_thread_in_subprocess.two.*.t2.p1.out.old
           count: 1
-        - pattern: callgrind.bench_thread_in_subprocess.two.*.t3.out
+        - pattern: callgrind.bench_thread_in_subprocess.two.*.t3.p1.out
           count: 1
-        - pattern: callgrind.bench_thread_in_subprocess.two.*.t3.out.old
+        - pattern: callgrind.bench_thread_in_subprocess.two.*.t3.p1.out.old
           count: 1
         - pattern: dhat.bench_thread_in_subprocess.two.*.log
           count: 2
@@ -163,21 +163,21 @@ data:
           count: 5
         - pattern: callgrind.bench_thread_in_subprocess.three.*.out.old
           count: 5
-        - pattern: callgrind.bench_thread_in_subprocess.three.*.t1.out
+        - pattern: callgrind.bench_thread_in_subprocess.three.*.t1.p1.out
           count: 1
-        - pattern: callgrind.bench_thread_in_subprocess.three.*.t1.out.old
+        - pattern: callgrind.bench_thread_in_subprocess.three.*.t1.p1.out.old
           count: 1
-        - pattern: callgrind.bench_thread_in_subprocess.three.*.t2.out
+        - pattern: callgrind.bench_thread_in_subprocess.three.*.t2.p1.out
           count: 1
-        - pattern: callgrind.bench_thread_in_subprocess.three.*.t2.out.old
+        - pattern: callgrind.bench_thread_in_subprocess.three.*.t2.p1.out.old
           count: 1
-        - pattern: callgrind.bench_thread_in_subprocess.three.*.t3.out
+        - pattern: callgrind.bench_thread_in_subprocess.three.*.t3.p1.out
           count: 1
-        - pattern: callgrind.bench_thread_in_subprocess.three.*.t3.out.old
+        - pattern: callgrind.bench_thread_in_subprocess.three.*.t3.p1.out.old
           count: 1
-        - pattern: callgrind.bench_thread_in_subprocess.three.*.t4.out
+        - pattern: callgrind.bench_thread_in_subprocess.three.*.t4.p1.out
           count: 1
-        - pattern: callgrind.bench_thread_in_subprocess.three.*.t4.out.old
+        - pattern: callgrind.bench_thread_in_subprocess.three.*.t4.p1.out.old
           count: 1
         - pattern: dhat.bench_thread_in_subprocess.three.*.log
           count: 2
@@ -239,12 +239,12 @@ data:
       files:
         - callgrind.bench_thread_in_thread.log
         - callgrind.bench_thread_in_thread.log.old
-        - callgrind.bench_thread_in_thread.t1.out
-        - callgrind.bench_thread_in_thread.t1.out.old
-        - callgrind.bench_thread_in_thread.t2.out
-        - callgrind.bench_thread_in_thread.t2.out.old
-        - callgrind.bench_thread_in_thread.t3.out
-        - callgrind.bench_thread_in_thread.t3.out.old
+        - callgrind.bench_thread_in_thread.t1.p1.out
+        - callgrind.bench_thread_in_thread.t1.p1.out.old
+        - callgrind.bench_thread_in_thread.t2.p1.out
+        - callgrind.bench_thread_in_thread.t2.p1.out.old
+        - callgrind.bench_thread_in_thread.t3.p1.out
+        - callgrind.bench_thread_in_thread.t3.p1.out.old
         - dhat.bench_thread_in_thread.log
         - dhat.bench_thread_in_thread.log.old
         - dhat.bench_thread_in_thread.out
@@ -280,17 +280,17 @@ data:
           count: 4
         - pattern: callgrind.bench_thread_in_thread_in_subprocess.*.out.old
           count: 4
-        - pattern: callgrind.bench_thread_in_thread_in_subprocess.*.t1.out
+        - pattern: callgrind.bench_thread_in_thread_in_subprocess.*.t1.p1.out
           count: 1
-        - pattern: callgrind.bench_thread_in_thread_in_subprocess.*.t1.out.old
+        - pattern: callgrind.bench_thread_in_thread_in_subprocess.*.t1.p1.out.old
           count: 1
-        - pattern: callgrind.bench_thread_in_thread_in_subprocess.*.t2.out
+        - pattern: callgrind.bench_thread_in_thread_in_subprocess.*.t2.p1.out
           count: 1
-        - pattern: callgrind.bench_thread_in_thread_in_subprocess.*.t2.out.old
+        - pattern: callgrind.bench_thread_in_thread_in_subprocess.*.t2.p1.out.old
           count: 1
-        - pattern: callgrind.bench_thread_in_thread_in_subprocess.*.t3.out
+        - pattern: callgrind.bench_thread_in_thread_in_subprocess.*.t3.p1.out
           count: 1
-        - pattern: callgrind.bench_thread_in_thread_in_subprocess.*.t3.out.old
+        - pattern: callgrind.bench_thread_in_thread_in_subprocess.*.t3.p1.out.old
           count: 1
         - pattern: dhat.bench_thread_in_thread_in_subprocess.*.log
           count: 2
