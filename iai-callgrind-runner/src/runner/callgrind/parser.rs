@@ -82,9 +82,9 @@ impl CallgrindProperties {
     /// See also [Callgrind Format](https://valgrind.org/docs/manual/cl-format.html#cl-format.reference.grammar)
     pub fn compare_target_ids(&self, other: &Self) -> Ordering {
         self.pid.cmp(&other.pid).then_with(|| {
-            self.part
-                .cmp(&other.part)
-                .then_with(|| self.thread.cmp(&other.thread))
+            self.thread
+                .cmp(&other.thread)
+                .then_with(|| self.part.cmp(&other.part))
         })
     }
 }
