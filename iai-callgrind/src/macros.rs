@@ -1426,7 +1426,7 @@ macro_rules! library_benchmark_group {
         $( teardown = $teardown:expr ; $(;)* )?
         benchmarks = $( $function:ident ),+ $(,)*
     ) => {
-        mod $name {
+        pub mod $name {
             use super::*;
 
             pub const __BENCHES: &[&(
