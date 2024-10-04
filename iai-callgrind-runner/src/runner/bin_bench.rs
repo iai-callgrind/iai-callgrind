@@ -384,7 +384,7 @@ impl BinBench {
                     (group_index, bench_index),
                     stdin.as_ref().and_then(|s| {
                         if let Stdin::Setup(p) = s {
-                            Some(p.clone())
+                            Some(*p)
                         } else {
                             None
                         }
