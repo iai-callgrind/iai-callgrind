@@ -877,11 +877,11 @@ impl ToolOutputPath {
     /// fast. Additionally, `callgrind` might change the naming scheme of its files, so using the
     /// headers makes us more independent of a specific valgrind/callgrind version.
     pub fn sanitize_callgrind(&self) -> Result<()> {
-        // path, thread
-        type Grouped = (PathBuf, Option<usize>);
-        // base (i.e. base@default) => pid => part => vec: path, thread
+        // path, part
+        type Grouped = (PathBuf, Option<u64>);
+        // base (i.e. base@default) => pid => thread => vec: path, part
         type Group =
-            HashMap<Option<String>, HashMap<Option<i32>, HashMap<Option<u64>, Vec<Grouped>>>>;
+            HashMap<Option<String>, HashMap<Option<i32>, HashMap<Option<usize>, Vec<Grouped>>>>;
 
         // To figure out if there are multiple pids/parts/threads present, it's necessary to group
         // the files in this map. The order doesn't matter since we only rename the original file
@@ -932,21 +932,21 @@ impl ToolOutputPath {
                     )?;
                     if let Some(bases) = groups.get_mut(out_type) {
                         if let Some(pids) = bases.get_mut(&base) {
-                            if let Some(parts) = pids.get_mut(&properties.pid) {
-                                if let Some(threads) = parts.get_mut(&properties.part) {
-                                    threads.push((entry.path(), properties.thread));
+                            if let Some(threads) = pids.get_mut(&properties.pid) {
+                                if let Some(parts) = threads.get_mut(&properties.thread) {
+                                    parts.push((entry.path(), properties.part));
                                 } else {
-                                    parts.insert(
-                                        properties.part,
-                                        vec![(entry.path(), properties.thread)],
+                                    threads.insert(
+                                        properties.thread,
+                                        vec![(entry.path(), properties.part)],
                                     );
                                 }
                             } else {
                                 pids.insert(
                                     properties.pid,
                                     HashMap::from([(
-                                        properties.part,
-                                        vec![(entry.path(), properties.thread)],
+                                        properties.thread,
+                                        vec![(entry.path(), properties.part)],
                                     )]),
                                 );
                             }
@@ -956,8 +956,8 @@ impl ToolOutputPath {
                                 HashMap::from([(
                                     properties.pid,
                                     HashMap::from([(
-                                        properties.part,
-                                        vec![(entry.path(), properties.thread)],
+                                        properties.thread,
+                                        vec![(entry.path(), properties.part)],
                                     )]),
                                 )]),
                             );
@@ -970,8 +970,8 @@ impl ToolOutputPath {
                                 HashMap::from([(
                                     properties.pid,
                                     HashMap::from([(
-                                        properties.part,
-                                        vec![(entry.path(), properties.thread)],
+                                        properties.thread,
+                                        vec![(entry.path(), properties.part)],
                                     )]),
                                 )]),
                             )]),
@@ -988,11 +988,11 @@ impl ToolOutputPath {
                     // these are grouped under the `None` key
                     if let Some(bases) = groups.get_mut(out_type) {
                         if let Some(pids) = bases.get_mut(&base) {
-                            if let Some(parts) = pids.get_mut(&pid) {
-                                if let Some(threads) = parts.get_mut(&None) {
-                                    threads.push((entry.path(), None));
+                            if let Some(threads) = pids.get_mut(&pid) {
+                                if let Some(parts) = threads.get_mut(&None) {
+                                    parts.push((entry.path(), None));
                                 } else {
-                                    parts.insert(None, vec![(entry.path(), None)]);
+                                    threads.insert(None, vec![(entry.path(), None)]);
                                 }
                             } else {
                                 pids.insert(
@@ -1029,13 +1029,13 @@ impl ToolOutputPath {
             for (base, bases) in types {
                 let multiple_pids = bases.len() > 1;
 
-                for (pid, parts) in bases {
-                    let multiple_parts = parts.len() > 1;
+                for (pid, threads) in bases {
+                    let multiple_threads = threads.len() > 1;
 
-                    for (part, threads) in &parts {
-                        let multiple_threads = threads.len() > 1;
+                    for (thread, parts) in &threads {
+                        let multiple_parts = parts.len() > 1;
 
-                        for (orig_path, thread) in threads {
+                        for (orig_path, part) in parts {
                             let mut new_file_name = self.prefix();
 
                             if multiple_pids {
@@ -1044,25 +1044,32 @@ impl ToolOutputPath {
                                 }
                             }
 
+                            if multiple_threads {
+                                if let Some(thread) = thread {
+                                    let width = threads.len().ilog10() as usize + 1;
+                                    write!(new_file_name, ".t{thread:0width$}").unwrap();
+                                }
+
+                                if !multiple_parts {
+                                    if let Some(part) = part {
+                                        let width = parts.len().ilog10() as usize + 1;
+                                        write!(new_file_name, ".p{part:0width$}").unwrap();
+                                    }
+                                }
+                            }
+
                             if multiple_parts {
+                                if !multiple_threads {
+                                    if let Some(thread) = thread {
+                                        let width = threads.len().ilog10() as usize + 1;
+                                        write!(new_file_name, ".t{thread:0width$}").unwrap();
+                                    }
+                                }
+
                                 if let Some(part) = part {
                                     let width = parts.len().ilog10() as usize + 1;
                                     write!(new_file_name, ".p{part:0width$}").unwrap();
                                 }
-
-                                // Integrate the thread number into the filename independently of
-                                // the amount of threads
-                                if let Some(thread) = thread {
-                                    let width = threads.len().ilog10() as usize + 1;
-                                    write!(new_file_name, ".t{thread:0width$}").unwrap();
-                                }
-                            } else if multiple_threads {
-                                if let Some(thread) = thread {
-                                    let width = threads.len().ilog10() as usize + 1;
-                                    write!(new_file_name, ".t{thread:0width$}").unwrap();
-                                }
-                            } else {
-                                // don't integrate parts or threads into the filename
                             }
 
                             new_file_name.push_str(&out_type);

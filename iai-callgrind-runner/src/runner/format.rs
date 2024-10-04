@@ -676,11 +676,11 @@ impl VerticalFormatter {
             if let Some(ppid) = detail.parent_pid {
                 write!(result, " ppid: {ppid}").unwrap();
             }
-            if let Some(part) = detail.part {
-                write!(result, " part: {part}").unwrap();
-            }
             if let Some(thread) = detail.thread {
                 write!(result, " thread: {thread}").unwrap();
+            }
+            if let Some(part) = detail.part {
+                write!(result, " part: {part}").unwrap();
             }
 
             result

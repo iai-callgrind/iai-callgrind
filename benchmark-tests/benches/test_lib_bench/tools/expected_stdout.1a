@@ -40,7 +40,7 @@ test_lib_bench_tools::bench_group::bench_subprocess trace_children
   ======= CALLGRIND ====================================================================
 Do something before calling subprocess
 - end of stdout/stderr
-  ## pid: <__PID__> part: 1 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 1      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -48,7 +48,7 @@ Do something before calling subprocess
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 1 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 1      |N/A
   Command:             target/release/sort
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)

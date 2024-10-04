@@ -1,6 +1,6 @@
 test_lib_bench_parts::my_group::bench_no_thread dump_every_bb
 - end of stdout/stderr
-  ## pid: <__PID__> part: 1 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 1      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -8,7 +8,7 @@ test_lib_bench_parts::my_group::bench_no_thread dump_every_bb
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 2 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 2      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -16,7 +16,7 @@ test_lib_bench_parts::my_group::bench_no_thread dump_every_bb
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 3 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 3      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -24,7 +24,7 @@ test_lib_bench_parts::my_group::bench_no_thread dump_every_bb
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 4 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 4      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -32,7 +32,7 @@ test_lib_bench_parts::my_group::bench_no_thread dump_every_bb
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 5 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 5      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -49,7 +49,7 @@ test_lib_bench_parts::my_group::bench_no_thread dump_every_bb
   Estimated Cycles:                        |N/A                  (*********)
 test_lib_bench_parts::my_group::bench_no_thread dump_before
 - end of stdout/stderr
-  ## pid: <__PID__> part: 1 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 1      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -57,7 +57,7 @@ test_lib_bench_parts::my_group::bench_no_thread dump_before
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 2 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 2      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -74,7 +74,7 @@ test_lib_bench_parts::my_group::bench_no_thread dump_before
   Estimated Cycles:                        |N/A                  (*********)
 test_lib_bench_parts::my_group::bench_no_thread dump_after
 - end of stdout/stderr
-  ## pid: <__PID__> part: 1 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 1      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -82,7 +82,7 @@ test_lib_bench_parts::my_group::bench_no_thread dump_after
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 2 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 2      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -100,7 +100,7 @@ test_lib_bench_parts::my_group::bench_no_thread dump_after
 test_lib_bench_parts::my_group::bench_multiple_threads dump_every_bb
 Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
-  ## pid: <__PID__> part: 1 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 1      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -108,7 +108,7 @@ Number of primes found in the range 0 to 20000: 2262
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 1 thread: 2      |N/A
+  ## pid: <__PID__> thread: 1 part: 2      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -116,7 +116,7 @@ Number of primes found in the range 0 to 20000: 2262
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 2 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 3      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -124,7 +124,7 @@ Number of primes found in the range 0 to 20000: 2262
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 2 thread: 2      |N/A
+  ## pid: <__PID__> thread: 1 part: 4      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -132,7 +132,7 @@ Number of primes found in the range 0 to 20000: 2262
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 2 thread: 3      |N/A
+  ## pid: <__PID__> thread: 2 part: 1      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -140,7 +140,7 @@ Number of primes found in the range 0 to 20000: 2262
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 3 thread: 1      |N/A
+  ## pid: <__PID__> thread: 2 part: 2      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -148,7 +148,7 @@ Number of primes found in the range 0 to 20000: 2262
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 3 thread: 2      |N/A
+  ## pid: <__PID__> thread: 2 part: 3      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -156,7 +156,7 @@ Number of primes found in the range 0 to 20000: 2262
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 3 thread: 3      |N/A
+  ## pid: <__PID__> thread: 2 part: 4      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -164,7 +164,7 @@ Number of primes found in the range 0 to 20000: 2262
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 4 thread: 1      |N/A
+  ## pid: <__PID__> thread: 3 part: 2      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -172,7 +172,7 @@ Number of primes found in the range 0 to 20000: 2262
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 4 thread: 2      |N/A
+  ## pid: <__PID__> thread: 3 part: 3      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -180,7 +180,7 @@ Number of primes found in the range 0 to 20000: 2262
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 4 thread: 3      |N/A
+  ## pid: <__PID__> thread: 3 part: 4      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -198,7 +198,7 @@ Number of primes found in the range 0 to 20000: 2262
 test_lib_bench_parts::my_group::bench_multiple_threads dump_before
 Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
-  ## pid: <__PID__> part: 1 thread: 2      |N/A
+  ## pid: <__PID__> thread: 1 part: 3      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -206,7 +206,7 @@ Number of primes found in the range 0 to 20000: 2262
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 2 thread: 3      |N/A
+  ## pid: <__PID__> thread: 2 part: 1      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -214,7 +214,7 @@ Number of primes found in the range 0 to 20000: 2262
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 3 thread: 1      |N/A
+  ## pid: <__PID__> thread: 2 part: 3      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -222,7 +222,7 @@ Number of primes found in the range 0 to 20000: 2262
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 3 thread: 2      |N/A
+  ## pid: <__PID__> thread: 3 part: 2      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -230,7 +230,7 @@ Number of primes found in the range 0 to 20000: 2262
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 3 thread: 3      |N/A
+  ## pid: <__PID__> thread: 3 part: 3      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -248,7 +248,7 @@ Number of primes found in the range 0 to 20000: 2262
 test_lib_bench_parts::my_group::bench_multiple_threads dump_after
 Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
-  ## pid: <__PID__> part: 1 thread: 2      |N/A
+  ## pid: <__PID__> thread: 1 part: 3      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -256,7 +256,7 @@ Number of primes found in the range 0 to 20000: 2262
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 2 thread: 3      |N/A
+  ## pid: <__PID__> thread: 2 part: 1      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -264,7 +264,7 @@ Number of primes found in the range 0 to 20000: 2262
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 3 thread: 1      |N/A
+  ## pid: <__PID__> thread: 2 part: 3      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -272,7 +272,7 @@ Number of primes found in the range 0 to 20000: 2262
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 3 thread: 2      |N/A
+  ## pid: <__PID__> thread: 3 part: 2      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -280,7 +280,7 @@ Number of primes found in the range 0 to 20000: 2262
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 3 thread: 3      |N/A
+  ## pid: <__PID__> thread: 3 part: 3      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -298,7 +298,7 @@ Number of primes found in the range 0 to 20000: 2262
 test_lib_bench_parts::my_group::bench_multiple_threads_in_subprocess dump_every_bb
 thread in thread: Number of primes found in the range 0 to 10000: 1229
 - end of stdout/stderr
-  ## pid: <__PID__> part: 1 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 1      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -306,7 +306,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 1 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 1      |N/A
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -314,7 +314,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 1 thread: 2      |N/A
+  ## pid: <__PID__> thread: 1 part: 2      |N/A
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -322,7 +322,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 1 thread: 3      |N/A
+  ## pid: <__PID__> thread: 1 part: 3      |N/A
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -330,7 +330,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 2 thread: 1      |N/A
+  ## pid: <__PID__> thread: 2 part: 1      |N/A
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -338,7 +338,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 2 thread: 2      |N/A
+  ## pid: <__PID__> thread: 2 part: 2      |N/A
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -346,7 +346,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 2 thread: 3      |N/A
+  ## pid: <__PID__> thread: 2 part: 3      |N/A
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -354,7 +354,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 3 thread: 1      |N/A
+  ## pid: <__PID__> thread: 3 part: 1      |N/A
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -362,7 +362,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 3 thread: 2      |N/A
+  ## pid: <__PID__> thread: 3 part: 2      |N/A
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -370,7 +370,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 3 thread: 3      |N/A
+  ## pid: <__PID__> thread: 3 part: 3      |N/A
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -388,7 +388,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
 test_lib_bench_parts::my_group::bench_multiple_threads_in_subprocess dump_before
 thread in thread: Number of primes found in the range 0 to 10000: 1229
 - end of stdout/stderr
-  ## pid: <__PID__> part: 1 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 1      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -396,7 +396,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 1 thread: 3      |N/A
+  ## pid: <__PID__> thread: 1 part: 2      |N/A
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -404,7 +404,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 2 thread: 1      |N/A
+  ## pid: <__PID__> thread: 2 part: 2      |N/A
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -412,7 +412,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 2 thread: 2      |N/A
+  ## pid: <__PID__> thread: 3 part: 1      |N/A
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -420,7 +420,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 2 thread: 3      |N/A
+  ## pid: <__PID__> thread: 3 part: 2      |N/A
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -438,7 +438,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
 test_lib_bench_parts::my_group::bench_multiple_threads_in_subprocess dump_after
 thread in thread: Number of primes found in the range 0 to 10000: 1229
 - end of stdout/stderr
-  ## pid: <__PID__> part: 1 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 1      |N/A
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -446,7 +446,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 1 thread: 3      |N/A
+  ## pid: <__PID__> thread: 1 part: 2      |N/A
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -454,7 +454,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 2 thread: 1      |N/A
+  ## pid: <__PID__> thread: 2 part: 2      |N/A
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -462,7 +462,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 2 thread: 2      |N/A
+  ## pid: <__PID__> thread: 3 part: 1      |N/A
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -470,7 +470,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 2 thread: 3      |N/A
+  ## pid: <__PID__> thread: 3 part: 2      |N/A
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)

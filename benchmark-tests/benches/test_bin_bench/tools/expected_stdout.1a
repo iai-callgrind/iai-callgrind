@@ -2,7 +2,7 @@ test_bin_bench_tools::bench_group::bench_subprocess trace_children:() -> target/
   ======= CALLGRIND ====================================================================
 1999000
 - end of stdout/stderr
-  ## pid: <__PID__> part: 1 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 1      |N/A
   Command:             target/release/subprocess <__ABS_PATH__>/sort
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -10,7 +10,7 @@ test_bin_bench_tools::bench_group::bench_subprocess trace_children:() -> target/
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
-  ## pid: <__PID__> part: 1 thread: 1      |N/A
+  ## pid: <__PID__> thread: 1 part: 1      |N/A
   Command:             target/release/sort
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
