@@ -65,7 +65,7 @@ pub struct BinaryBenchmarkGroup {
 }
 
 /// The model for the main! macro
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BinaryBenchmarkGroups {
     pub config: BinaryBenchmarkConfig,
     pub groups: Vec<BinaryBenchmarkGroup>,
@@ -96,12 +96,6 @@ pub enum DelayKind {
     PathExists(PathBuf),
 }
 
-impl Default for DelayKind {
-    fn default() -> Self {
-        Self::DurationElapse(Duration::from_secs(60))
-    }
-}
-
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Command {
     pub path: PathBuf,
@@ -116,7 +110,7 @@ pub struct Command {
 /// The `Direction` in which the flamegraph should grow.
 ///
 /// The default is `TopToBottom`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Direction {
     /// Grow from top to bottom with the highest event costs at the top
     TopToBottom,
@@ -195,7 +189,6 @@ pub enum ErrorMetricKind {
 /// documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-
 pub enum EventKind {
     /// The default event. I cache reads (which equals the number of instructions executed)
     Ir,
@@ -283,7 +276,7 @@ pub struct FlamegraphConfig {
 }
 
 /// The kind of `Flamegraph` which is going to be constructed
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FlamegraphKind {
     /// The regular flamegraph for the new callgrind run
     Regular,
@@ -297,14 +290,14 @@ pub enum FlamegraphKind {
 }
 
 /// The model for the `#[library_benchmark]` attribute
-#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmark {
     pub config: Option<LibraryBenchmarkConfig>,
     pub benches: Vec<LibraryBenchmarkBench>,
 }
 
 /// The model for the `#[bench]` attribute in a `#[library_benchmark]`
-#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmarkBench {
     pub id: Option<String>,
     pub function_name: String,
@@ -327,7 +320,7 @@ pub struct LibraryBenchmarkConfig {
 }
 
 /// The model for the `library_benchmark_group` macro
-#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmarkGroup {
     pub id: String,
     pub config: Option<LibraryBenchmarkConfig>,
@@ -338,7 +331,7 @@ pub struct LibraryBenchmarkGroup {
 }
 
 /// The model for the `main` macro
-#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmarkGroups {
     pub config: LibraryBenchmarkConfig,
     pub groups: Vec<LibraryBenchmarkGroup>,
@@ -375,7 +368,7 @@ pub struct Sandbox {
 /// Configure the `Stream` which should be used as pipe in [`Stdin::Setup`]
 ///
 /// The default is [`Pipe::Stdout`]
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Pipe {
     /// The `Stdout` default `Stream`
     #[default]
@@ -443,7 +436,7 @@ pub struct Tool {
 pub struct Tools(pub Vec<Tool>);
 
 /// The valgrind tools which can be run in addition to callgrind
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ValgrindTool {
     /// [Memcheck: a memory error detector](https://valgrind.org/docs/manual/mc-manual.html)
     Memcheck,
@@ -511,6 +504,12 @@ impl BinaryBenchmarkConfig {
             .iter()
             .filter_map(|(key, option)| option.as_ref().map(|value| (key.clone(), value.clone())))
             .collect()
+    }
+}
+
+impl Default for DelayKind {
+    fn default() -> Self {
+        Self::DurationElapse(Duration::from_secs(60))
     }
 }
 

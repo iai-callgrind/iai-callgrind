@@ -25,7 +25,7 @@ use crate::{internal, EntryPoint};
 /// );
 /// # }
 /// ```
-#[derive(Debug, Default, IntoInner, AsRef)]
+#[derive(Debug, Default, IntoInner, AsRef, Clone)]
 pub struct LibraryBenchmarkConfig(internal::InternalLibraryBenchmarkConfig);
 
 impl LibraryBenchmarkConfig {
