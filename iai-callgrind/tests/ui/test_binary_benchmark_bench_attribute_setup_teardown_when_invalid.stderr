@@ -2,7 +2,7 @@ error[E0061]: this function takes 1 argument but 0 arguments were supplied
  --> tests/ui/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:7:27
   |
 6 |     #[binary_benchmark]
-  |     ------------------- an argument of type `&str` is missing
+  |     ------------------- argument #1 of type `&str` is missing
 7 |     #[bench::some(setup = setup)]
   |                           ^^^^^
   |
@@ -22,23 +22,19 @@ error[E0061]: this function takes 1 argument but 2 arguments were supplied
 19 |     #[bench::some(args = ("1", "2"), setup = setup)]
    |                          ----------          ^^^^^
    |                          |
-   |                          argument of type `&str` unexpected
+   |                          unexpected argument #2 of type `&str`
    |
 note: function defined here
   --> tests/ui/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:16:8
    |
 16 |     fn setup(_arg: &str) {}
    |        ^^^^^ ----------
-help: remove the extra argument
-   |
-18 |     setup(("1", "2"))
-   |
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> tests/ui/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:33:30
    |
 32 |     #[binary_benchmark]
-   |     ------------------- an argument of type `&str` is missing
+   |     ------------------- argument #1 of type `&str` is missing
 33 |     #[bench::some(teardown = teardown)]
    |                              ^^^^^^^^
    |
@@ -58,23 +54,19 @@ error[E0061]: this function takes 1 argument but 2 arguments were supplied
 45 |     #[bench::some(args = ("1", "2"), teardown = teardown)]
    |                          ----------             ^^^^^^^^
    |                          |
-   |                          argument of type `&str` unexpected
+   |                          unexpected argument #2 of type `&str`
    |
 note: function defined here
   --> tests/ui/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:42:8
    |
 42 |     fn teardown(_arg: &str) {}
    |        ^^^^^^^^ ----------
-help: remove the extra argument
-   |
-44 |     teardown(("1", "2"))
-   |
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> tests/ui/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:59:27
    |
 59 |     #[bench::some(setup = setup())]
-   |                           ^^^^^-- an argument of type `&str` is missing
+   |                           ^^^^^-- argument #1 of type `&str` is missing
    |
 note: function defined here
   --> tests/ui/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:56:8
@@ -90,7 +82,7 @@ error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> tests/ui/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:71:27
    |
 71 |     #[bench::some(setup = setup("1", "2"))]
-   |                           ^^^^^      --- argument of type `&'static str` unexpected
+   |                           ^^^^^      --- unexpected argument #2 of type `&'static str`
    |
 note: function defined here
   --> tests/ui/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:68:8
@@ -99,14 +91,15 @@ note: function defined here
    |        ^^^^^ ----------
 help: remove the extra argument
    |
-71 |     #[bench::some(setup = setup("1"))]
-   |                                ~~~~~
+71 -     #[bench::some(setup = setup("1", "2"))]
+71 +     #[bench::some(setup = setup("1"))]
+   |
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> tests/ui/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:83:30
    |
 83 |     #[bench::some(teardown = teardown())]
-   |                              ^^^^^^^^-- an argument of type `&str` is missing
+   |                              ^^^^^^^^-- argument #1 of type `&str` is missing
    |
 note: function defined here
   --> tests/ui/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:80:8
@@ -122,7 +115,7 @@ error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> tests/ui/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:95:30
    |
 95 |     #[bench::some(teardown = teardown("1", "2"))]
-   |                              ^^^^^^^^      --- argument of type `&'static str` unexpected
+   |                              ^^^^^^^^      --- unexpected argument #2 of type `&'static str`
    |
 note: function defined here
   --> tests/ui/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:92:8
@@ -131,14 +124,15 @@ note: function defined here
    |        ^^^^^^^^ ----------
 help: remove the extra argument
    |
-95 |     #[bench::some(teardown = teardown("1"))]
-   |                                      ~~~~~
+95 -     #[bench::some(teardown = teardown("1", "2"))]
+95 +     #[bench::some(teardown = teardown("1"))]
+   |
 
 error[E0061]: this function takes 1 argument but 2 arguments were supplied
    --> tests/ui/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:108:27
     |
 108 |     #[bench::some(setup = setup("1", "2"), teardown = teardown("1", "2"))]
-    |                           ^^^^^      --- argument of type `&'static str` unexpected
+    |                           ^^^^^      --- unexpected argument #2 of type `&'static str`
     |
 note: function defined here
    --> tests/ui/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:105:8
@@ -147,14 +141,15 @@ note: function defined here
     |        ^^^^^ ----------
 help: remove the extra argument
     |
-108 |     #[bench::some(setup = setup("1"), teardown = teardown("1", "2"))]
-    |                                ~~~~~
+108 -     #[bench::some(setup = setup("1", "2"), teardown = teardown("1", "2"))]
+108 +     #[bench::some(setup = setup("1"), teardown = teardown("1", "2"))]
+    |
 
 error[E0061]: this function takes 1 argument but 2 arguments were supplied
    --> tests/ui/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:108:55
     |
 108 |     #[bench::some(setup = setup("1", "2"), teardown = teardown("1", "2"))]
-    |                                                       ^^^^^^^^      --- argument of type `&'static str` unexpected
+    |                                                       ^^^^^^^^      --- unexpected argument #2 of type `&'static str`
     |
 note: function defined here
    --> tests/ui/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:104:8
@@ -163,14 +158,15 @@ note: function defined here
     |        ^^^^^^^^ ----------
 help: remove the extra argument
     |
-108 |     #[bench::some(setup = setup("1", "2"), teardown = teardown("1"))]
-    |                                                               ~~~~~
+108 -     #[bench::some(setup = setup("1", "2"), teardown = teardown("1", "2"))]
+108 +     #[bench::some(setup = setup("1", "2"), teardown = teardown("1"))]
+    |
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
    --> tests/ui/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:121:27
     |
 120 |     #[binary_benchmark]
-    |     ------------------- an argument of type `&str` is missing
+    |     ------------------- argument #1 of type `&str` is missing
 121 |     #[bench::some(setup = setup, teardown = teardown)]
     |                           ^^^^^
     |
@@ -188,7 +184,7 @@ error[E0061]: this function takes 1 argument but 0 arguments were supplied
    --> tests/ui/test_binary_benchmark_bench_attribute_setup_teardown_when_invalid.rs:121:45
     |
 120 |     #[binary_benchmark]
-    |     ------------------- an argument of type `&str` is missing
+    |     ------------------- argument #1 of type `&str` is missing
 121 |     #[bench::some(setup = setup, teardown = teardown)]
     |                                             ^^^^^^^^
     |

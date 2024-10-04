@@ -6,24 +6,43 @@ error: The binary_benchmark_groups argument needs at least one `name` of a `bina
    |
    = note: this error originates in the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0433]: failed to resolve: use of undeclared crate or module `some_func`
+error[E0433]: failed to resolve: function `some_func` is not a crate or module
  --> tests/ui/test_main_invalid_binary_benchmark_groups.rs:6:37
   |
 6 |     main!(binary_benchmark_groups = some_func);
-  |                                     ^^^^^^^^^ use of undeclared crate or module `some_func`
+  |                                     ^^^^^^^^^ function `some_func` is not a crate or module
 
 error[E0277]: the trait bound `InternalBinaryBenchmarkConfig: From<&str>` is not satisfied
-  --> tests/ui/test_main_invalid_binary_benchmark_groups.rs:20:18
+  --> tests/ui/test_main_invalid_binary_benchmark_groups.rs:19:5
    |
 19 | /     main!(
 20 | |         config = "some string";
-   | |                  ^^^^^^^^^^^^^ the trait `From<&str>` is not implemented for `InternalBinaryBenchmarkConfig`
 21 | |         binary_benchmark_groups = some
 22 | |     );
-   | |_____- required by a bound introduced by this call
+   | |_____^ the trait `From<&str>` is not implemented for `InternalBinaryBenchmarkConfig`, which is required by `&str: Into<_>`
    |
    = help: the following other types implement trait `From<T>`:
-             <InternalBinaryBenchmarkConfig as From<&BinaryBenchmarkConfig>>
-             <InternalBinaryBenchmarkConfig as From<&mut BinaryBenchmarkConfig>>
-             <InternalBinaryBenchmarkConfig as From<BinaryBenchmarkConfig>>
+             `InternalBinaryBenchmarkConfig` implements `From<&BinaryBenchmarkConfig>`
+             `InternalBinaryBenchmarkConfig` implements `From<&mut BinaryBenchmarkConfig>`
+             `InternalBinaryBenchmarkConfig` implements `From<BinaryBenchmarkConfig>`
    = note: required for `&str` to implement `Into<InternalBinaryBenchmarkConfig>`
+   = note: this error originates in the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unused variable: `group`
+  --> tests/ui/test_main_invalid_binary_benchmark_groups.rs:14:23
+   |
+14 |         benchmarks = |group: &mut BinaryBenchmarkGroup| {
+   |                       ^^^^^
+   |
+help: `group` is captured in macro and introduced a unused variable
+  --> tests/ui/test_main_invalid_binary_benchmark_groups.rs:12:5
+   |
+12 | /     binary_benchmark_group!(
+13 | |         name = some;
+14 | |         benchmarks = |group: &mut BinaryBenchmarkGroup| {
+15 | |             // do nothing
+16 | |         }
+17 | |     );
+   | |_____^
+   = note: `#[warn(unused_variables)]` on by default
+   = note: this warning originates in the macro `binary_benchmark_group` (in Nightly builds, run with -Z macro-backtrace for more info)
