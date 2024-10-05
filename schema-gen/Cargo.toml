@@ -17,5 +17,5 @@ version.workspace = true
 iai-callgrind-runner = { path = "../iai-callgrind-runner", version = "=0.13.4", default-features = false, features = [
   "schema",
 ] }
-schemars = { workspace = true, features = ["indexmap1"] }
+schemars = { workspace = true, features = ["indexmap2"] }
 serde_json = { workspace = true }
