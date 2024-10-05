@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> tests/ui/test_binary_benchmark_attribute_when_invalid.rs:32:8
    |
 32 |     fn bench_binary() -> String {
-   |        ^^^^^^^^^^^^ expected fn pointer, found fn item
+   |        ^^^^^^^^^^^^ expected struct `iai_callgrind::Command`, found struct `String`
    |
    = note: expected fn pointer `fn() -> iai_callgrind::Command`
                  found fn item `fn() -> String {test_when_wrong_return_type_in_signature::bench_binary::bench_binary}`
@@ -11,23 +11,25 @@ error[E0308]: mismatched types
   --> tests/ui/test_binary_benchmark_attribute_when_invalid.rs:41:8
    |
 41 |     fn bench_binary() -> std::process::Command {
-   |        ^^^^^^^^^^^^ expected fn pointer, found fn item
+   |        ^^^^^^^^^^^^ expected struct `iai_callgrind::Command`, found struct `std::process::Command`
    |
    = note: expected fn pointer `fn() -> iai_callgrind::Command`
                  found fn item `fn() -> std::process::Command {test_when_wrong_return_type_in_signature_with_equal_name::bench_binary::bench_binary}`
 
 error[E0277]: the trait bound `InternalBinaryBenchmarkConfig: From<&str>` is not satisfied
- --> tests/ui/test_binary_benchmark_attribute_when_invalid.rs:4:5
+ --> tests/ui/test_binary_benchmark_attribute_when_invalid.rs:4:33
   |
 4 |     #[binary_benchmark(config = "string")]
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `From<&str>` is not implemented for `InternalBinaryBenchmarkConfig`, which is required by `&str: Into<_>`
+  |     ----------------------------^^^^^^^^--
+  |     |                           |
+  |     |                           the trait `From<&str>` is not implemented for `InternalBinaryBenchmarkConfig`
+  |     required by a bound introduced by this call
   |
   = help: the following other types implement trait `From<T>`:
-            `InternalBinaryBenchmarkConfig` implements `From<&BinaryBenchmarkConfig>`
-            `InternalBinaryBenchmarkConfig` implements `From<&mut BinaryBenchmarkConfig>`
-            `InternalBinaryBenchmarkConfig` implements `From<BinaryBenchmarkConfig>`
+            <InternalBinaryBenchmarkConfig as From<&BinaryBenchmarkConfig>>
+            <InternalBinaryBenchmarkConfig as From<&mut BinaryBenchmarkConfig>>
+            <InternalBinaryBenchmarkConfig as From<BinaryBenchmarkConfig>>
   = note: required for `&str` to implement `Into<InternalBinaryBenchmarkConfig>`
-  = note: this error originates in the attribute macro `binary_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
   --> tests/ui/test_binary_benchmark_attribute_when_invalid.rs:15:9
@@ -35,7 +37,7 @@ error[E0308]: mismatched types
 14 |     fn bench_binary() -> iai_callgrind::Command {
    |                          ---------------------- expected `iai_callgrind::Command` because of return type
 15 |         iai_callgrind::Command::new("some").arg("some_arg")
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Command`, found `&mut Command`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `iai_callgrind::Command`, found `&mut iai_callgrind::Command`
    |
 help: call `Into::into` on this expression to convert `&mut iai_callgrind::Command` into `iai_callgrind::Command`
    |
@@ -48,15 +50,15 @@ error[E0308]: mismatched types
 23 |     fn bench_binary() -> iai_callgrind::Command {
    |                          ---------------------- expected `iai_callgrind::Command` because of return type
 24 |         std::process::Command::new("some")
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `iai_callgrind::Command`, found `std::process::Command`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `iai_callgrind::Command`, found struct `std::process::Command`
    |
-   = note: `std::process::Command` and `iai_callgrind::Command` have similar names, but are actually distinct types
-note: `std::process::Command` is defined in crate `std`
+   = note: struct `std::process::Command` and struct `iai_callgrind::Command` have similar names, but are actually distinct types
+note: struct `std::process::Command` is defined in crate `std`
   --> $RUST/std/src/process.rs
    |
    | pub struct Command {
    | ^^^^^^^^^^^^^^^^^^
-note: `iai_callgrind::Command` is defined in crate `iai_callgrind`
+note: struct `iai_callgrind::Command` is defined in crate `iai_callgrind`
   --> src/bin_bench.rs
    |
    | pub struct Command(internal::InternalCommand);
@@ -72,7 +74,7 @@ error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> tests/ui/test_binary_benchmark_attribute_when_invalid.rs:60:32
    |
 60 |     #[binary_benchmark(setup = setup)]
-   |                                ^^^^^-- argument #1 of type `usize` is missing
+   |                                ^^^^^-- an argument of type `usize` is missing
    |
 note: function defined here
   --> tests/ui/test_binary_benchmark_attribute_when_invalid.rs:58:8
@@ -81,8 +83,8 @@ note: function defined here
    |        ^^^^^ -----------
 help: provide the argument
    |
-60 |     setup(/* usize */)
-   |
+60 |     #[binary_benchmark(setup = setup)](/* usize */)
+   |                                       +++++++++++++
 
 error[E0425]: cannot find function `does_not_exist` in this scope
   --> tests/ui/test_binary_benchmark_attribute_when_invalid.rs:69:35
@@ -94,7 +96,7 @@ error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> tests/ui/test_binary_benchmark_attribute_when_invalid.rs:80:35
    |
 80 |     #[binary_benchmark(teardown = teardown)]
-   |                                   ^^^^^^^^-- argument #1 of type `usize` is missing
+   |                                   ^^^^^^^^-- an argument of type `usize` is missing
    |
 note: function defined here
   --> tests/ui/test_binary_benchmark_attribute_when_invalid.rs:78:8
@@ -103,5 +105,5 @@ note: function defined here
    |        ^^^^^^^^ -----------
 help: provide the argument
    |
-80 |     teardown(/* usize */)
-   |
+80 |     #[binary_benchmark(teardown = teardown)](/* usize */)
+   |                                             +++++++++++++

@@ -110,14 +110,9 @@ error[E0308]: mismatched types
 71 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/numbers.fix")]
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                             |
-   |                             expected `u64`, found `String`
+   |                             expected `u64`, found struct `String`
    |                             arguments to this function are incorrect
    |
-help: the return type of this call is `String` due to the type of the argument passed
-  --> tests/ui/test_file_parameter_when_invalid.rs:71:29
-   |
-71 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/numbers.fix")]
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |
@@ -130,14 +125,9 @@ error[E0308]: mismatched types
 77 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/numbers.fix")]
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                             |
-   |                             expected `u64`, found `String`
+   |                             expected `u64`, found struct `String`
    |                             arguments to this function are incorrect
    |
-help: the return type of this call is `String` due to the type of the argument passed
-  --> tests/ui/test_file_parameter_when_invalid.rs:77:29
-   |
-77 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/numbers.fix")]
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |
@@ -150,7 +140,7 @@ error[E0308]: mismatched types
 76 |     #[binary_benchmark]
    |     ^^^^^^^^^^^^^^^^^^^
    |     |
-   |     expected `Command`, found `String`
+   |     expected struct `iai_callgrind::Command`, found struct `String`
    |     expected `iai_callgrind::Command` because of return type
    |
    = note: this error originates in the attribute macro `binary_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -161,14 +151,9 @@ error[E0308]: mismatched types
 139 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/numbers.fix", setup = my_setup)]
     |                                                                                 ^^^^^^^^- help: try using a conversion method: `.to_string()`
     |                                                                                 |
-    |                                                                                 expected `String`, found `u64`
+    |                                                                                 expected struct `String`, found `u64`
     |                                                                                 arguments to this function are incorrect
     |
-help: the return type of this call is `u64` due to the type of the argument passed
-   --> tests/ui/test_file_parameter_when_invalid.rs:139:81
-    |
-139 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/numbers.fix", setup = my_setup)]
-    |                                                                                 ^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
    --> $RUST/core/src/hint.rs
     |
@@ -181,24 +166,11 @@ error[E0308]: mismatched types
 145 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/numbers.fix", setup = { my_setup("some string".to_owned()); })]
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |                             |
-    |                             expected `u64`, found `String`
+    |                             expected `u64`, found struct `String`
     |                             arguments to this function are incorrect
     |
-help: the return type of this call is `String` due to the type of the argument passed
-   --> tests/ui/test_file_parameter_when_invalid.rs:145:29
-    |
-145 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/numbers.fix", setup = { my_setup("some string".to_owned()); })]
-    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
    --> $RUST/core/src/hint.rs
     |
     | pub const fn black_box<T>(dummy: T) -> T {
     |              ^^^^^^^^^
-
-warning: unused variable: `value`
-   --> tests/ui/test_file_parameter_when_invalid.rs:146:21
-    |
-146 |     fn bench_binary(value: u64) -> iai_callgrind::Command {
-    |                     ^^^^^ help: if this is intentional, prefix it with an underscore: `_value`
-    |
-    = note: `#[warn(unused_variables)]` on by default
