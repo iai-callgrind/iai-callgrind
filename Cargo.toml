@@ -17,7 +17,7 @@ keywords = ["iai", "benchmark", "callgrind", "valgrind"]
 license = "Apache-2.0 OR MIT"
 repository = "https://github.com/iai-callgrind/iai-callgrind"
 rust-version = "1.67.1"
-version = "0.13.4"
+version = "0.14.0"
 
 [workspace.dependencies]
 anyhow = { version = "1.0.46" }
@@ -49,9 +49,9 @@ proc-macro-error2 = "2.0.1"
 proc-macro2 = "1.0.63"
 quote = "1.0.28"
 regex = { version = "1.9" }
-rstest = ">=0.17, <0.24"
+rstest = { version = ">=0.17, <0.24", default-features = false }
 sanitize-filename = { version = "0.5" }
-schemars = { version = "0.8.16", features = ["indexmap2"] }
+schemars = { version = "0.8.16" }
 serde = { version = "1.0.139", features = ["derive"] }
 serde_json = { version = "1.0.79" }
 serde_regex = { version = "1.1" }

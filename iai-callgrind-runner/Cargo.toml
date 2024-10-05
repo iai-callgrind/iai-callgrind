@@ -67,7 +67,7 @@ lazy_static = { workspace = true, optional = true }
 log = { workspace = true, optional = true }
 regex = { workspace = true, optional = true }
 sanitize-filename = { workspace = true, optional = true }
-schemars = { workspace = true, features = ["indexmap1"], optional = true }
+schemars = { workspace = true, optional = true, features = ["indexmap2"] }
 serde = { workspace = true, features = ["derive"], optional = true }
 serde_json = { workspace = true, optional = true }
 serde_regex = { workspace = true, optional = true }

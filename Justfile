@@ -217,29 +217,6 @@ build-tests-hack-runner:
 clean:
     rm -rf target/iai
 
-# Run a single benchmark test (Uses: 'coreutils', 'cargo')
-[group('tests')]
-bench-test bench: build-runner
-    IAI_CALLGRIND_RUNNER=$(realpath target/release/iai-callgrind-runner) cargo bench -p benchmark-tests --bench {{ bench }} {{ if args != '' { '-- ' + args } else { '' } }}
-
-# Run all benchmark tests (Uses: 'coreutils', 'cargo')
-[group('tests')]
-bench-test-all: build-runner
-    IAI_CALLGRIND_RUNNER=$(realpath target/release/iai-callgrind-runner) cargo bench -p benchmark-tests {{ if args != '' { '-- ' + args } else { '' } }}
-
-# Note: A single benchmark may run multiple times depending on the test
-#       configuration. See the `benchmark-tests/benches` folder.
-
-# Run a single benchmark test verifying the output (Uses: 'cargo')
-[group('tests')]
-full-bench-test bench:
-    cargo run --package benchmark-tests --profile=bench --bin bench -- {{ bench }}
-
-# Run all benchmark test verifying the output (Uses: 'cargo')
-[group('tests')]
-full-bench-test-all:
-    cargo run --package benchmark-tests --profile=bench --bin bench
-
 # Run the json summary schema generator and format the resulting file (Uses: 'cargo', 'prettier' or 'npx prettier')
 [group('summary schema')]
 schema-gen:
@@ -256,25 +233,30 @@ schema-gen-diff: schema-gen
 schema-gen-move: schema-gen
     mv {{ schema_path }} `ls -1 iai-callgrind-runner/schemas/summary.*.schema.json | sort -n | tail -n 1`
 
-# Run all tests in a package (Uses: 'cargo')
+# Run all tests in a package. (Uses: 'cargo')
 [group('test')]
 test package:
-    {{ if package == 'iai-callgrind' { "cargo test --package " + package + " --features ui_tests" } else { "cargo test --package " + package } }}
+    cargo test --package {{ package }} {{ if args != '' { args } else { '' } }}
 
 # Run all doc tests (Uses: 'cargo')
 [group('test')]
 test-doc:
     DOCS_RS=1 cargo test --all-features --doc
 
-# Run only UI tests (Uses: 'cargo')
+# Run the UI tests with the MSRV if RUSTUP_TOOLCHAIN is unset (Uses: 'cargo')
 [group('test')]
 test-ui:
-    cargo test --package iai-callgrind --test ui_tests --features ui_tests
+    RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-{{ msrv }}}" cargo test --package iai-callgrind --test ui_tests --features ui_tests
 
-# Test all packages. This excludes client request tests which can be run separately with "just reqs-test" (Uses: 'cargo')
+# Run the UI tests with the MSRV if RUSTUP_TOOLCHAIN is unset and overwrite the error message fixtures (Uses: 'cargo')
 [group('test')]
-test-all:
-    cargo test --features ui_tests --workspace --exclude client-request-tests
+test-ui-overwrite:
+    RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-{{ msrv }}}" TRYBUILD=overwrite cargo test --package iai-callgrind --test ui_tests --features ui_tests
+
+# Test all packages. This excludes client request and benchmark tests which need to be run separately (Uses: 'cargo')
+[group('test')]
+test-all: test-ui
+    cargo test --workspace --exclude client-request-tests
 
 # List supported targets of client request tests (Uses: 'sed')
 [group('test')]
@@ -287,6 +269,29 @@ reqs-test target:
     @just reqs-test-targets | grep -q '{{ target }}' \
         || { echo "Unsupported target: '{{ target }}'. Run 'just reqs-test-targets' to get a list of supported targets"; exit 1; }
     CROSS_CONTAINER_OPTS='--ulimit nofile=1024:4096' cross test -p client-request-tests --test tests --target {{ target }} --release -- --nocapture
+
+# Run a single benchmark test (Uses: 'coreutils', 'cargo')
+[group('test')]
+bench-test bench: build-runner
+    IAI_CALLGRIND_RUNNER=$(realpath target/release/iai-callgrind-runner) cargo bench -p benchmark-tests --bench {{ bench }} {{ if args != '' { '-- ' + args } else { '' } }}
+
+# Run all benchmark tests (Uses: 'coreutils', 'cargo')
+[group('test')]
+bench-test-all: build-runner
+    IAI_CALLGRIND_RUNNER=$(realpath target/release/iai-callgrind-runner) cargo bench -p benchmark-tests {{ if args != '' { '-- ' + args } else { '' } }}
+
+# Note: A single benchmark may run multiple times depending on the test
+#       configuration. See the `benchmark-tests/benches` folder.
+
+# Run a single benchmark test with the `cargo bench` wrapper verifying the output (Uses: 'cargo')
+[group('test')]
+full-bench-test bench:
+    cargo run --package benchmark-tests --profile=bench --bin bench -- {{ bench }}
+
+# Run all benchmark tests with the `cargo bench` wrapper verifying the output (Uses: 'cargo')
+[group('test')]
+full-bench-test-all:
+    cargo run --package benchmark-tests --profile=bench --bin bench
 
 # Check minimal version requirements of dependencies. (Uses: 'cargo-minimal-versions')
 [group('dependencies')]

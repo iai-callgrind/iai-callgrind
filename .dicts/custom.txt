@@ -1,3 +1,4 @@
+neovim
 ASLR
 Aparicio
 Assche
@@ -180,6 +181,7 @@ rolq
 rposition
 rsplit
 rstest
+rustaceanvim
 rustc
 rustdoc
 rustfmt

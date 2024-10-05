@@ -4,11 +4,11 @@
 
 The default is to run Iai-Callgrind benchmarks with `--separate-threads=yes`,
 `--trace-children=yes` switched on. This enables Iai-Callgrind to trace threads
-and subprocesses, respectively. Due to the way `callgrind` applies [data
-collection
-options]
-like `--toggle-collect`, `--collect-atstart`, ... further configuration is
-needed in library benchmarks.
+and subprocesses, respectively. Note that `--separate-threads=yes` is not
+strictly necessary to be able to trace threads. But, if they are separated,
+Iai-Callgrind can collect and display the metrics for each thread. Due to the
+way `callgrind` applies [data collection options] like `--toggle-collect`,
+`--collect-atstart`, ... further configuration is needed in library benchmarks.
 
 To actually see the collected metrics in the terminal output for all threads
 and/or subprocesses you can switch on `OutputFormat::show_intermediate`:
@@ -136,7 +136,7 @@ Running this benchmark with `cargo bench` will present you with the following
 terminal output:
 
 <pre><code class="hljs"><span style="color:#0A0">lib_bench_threads::my_group::bench_threads</span> <span style="color:#0AA">two_threads</span><span style="color:#0AA">:</span><b><span style="color:#00A">2</span></b>
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2097219 part: 1 thread: 1</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2097219 thread: 1 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                       <b>27305</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                            <b>66353</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -144,7 +144,7 @@ terminal output:
 <span style="color:#555">  </span>RAM Hits:                             <b>539</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                   <b>67233</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>86923</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2097219 part: 1 thread: 2</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2097219 thread: 2 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                           <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -152,7 +152,7 @@ terminal output:
 <span style="color:#555">  </span>RAM Hits:                               <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2097219 part: 1 thread: 3</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2097219 thread: 3 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                           <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -207,7 +207,7 @@ below, the compiler has chosen to inline `find_primes` and the metrics for the
 threads are still zero:
 
 <pre><code class="hljs"><span style="color:#0A0">lib_bench_threads::my_group::bench_threads</span> <span style="color:#0AA">two_threads</span><span style="color:#0AA">:</span><b><span style="color:#00A">2</span></b>
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2620776 part: 1 thread: 1</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2620776 thread: 1 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                       <b>27372</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                            <b>66431</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -215,7 +215,7 @@ threads are still zero:
 <span style="color:#555">  </span>RAM Hits:                             <b>538</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                   <b>67312</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>86976</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2620776 part: 1 thread: 2</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2620776 thread: 2 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                           <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -223,7 +223,7 @@ threads are still zero:
 <span style="color:#555">  </span>RAM Hits:                               <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2620776 part: 1 thread: 3</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2620776 thread: 3 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                           <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -254,7 +254,7 @@ pub fn find_primes(low: u64, high: u64) -> Vec<u64> {
 Now, running the benchmark does show the desired metrics:
 
 <pre><code class="hljs"><span style="color:#0A0">lib_bench_threads::my_group::bench_threads</span> <span style="color:#0AA">two_threads</span><span style="color:#0AA">:</span><b><span style="color:#00A">2</span></b>
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2661917 part: 1 thread: 1</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2661917 thread: 1 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                       <b>27372</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                            <b>66431</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -262,7 +262,7 @@ Now, running the benchmark does show the desired metrics:
 <span style="color:#555">  </span>RAM Hits:                             <b>538</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                   <b>67312</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>86976</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2661917 part: 1 thread: 2</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2661917 thread: 2 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                     <b>2460503</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>2534938</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -270,7 +270,7 @@ Now, running the benchmark does show the desired metrics:
 <span style="color:#555">  </span>RAM Hits:                             <b>186</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                 <b>2535136</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>2541508</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2661917 part: 1 thread: 3</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2661917 thread: 3 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                     <b>3650410</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>3724286</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -324,7 +324,7 @@ code from the benchmark executable (so the instructions of the main thread go up
 from `27372` to `404425`):
 
 <pre><code class="hljs"><span style="color:#0A0">lib_bench_threads::my_group::bench_threads</span> <span style="color:#0AA">two_threads</span><span style="color:#0AA">:</span><b><span style="color:#00A">2</span></b>
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2697019 part: 1 thread: 1</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2697019 thread: 1 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                      <b>404425</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                           <b>570186</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -332,7 +332,7 @@ from `27372` to `404425`):
 <span style="color:#555">  </span>RAM Hits:                            <b>4856</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                  <b>576349</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                  <b>746681</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2697019 part: 1 thread: 2</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2697019 thread: 2 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                     <b>2466864</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>2543314</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -340,7 +340,7 @@ from `27372` to `404425`):
 <span style="color:#555">  </span>RAM Hits:                             <b>409</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                 <b>2543804</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>2558034</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2697019 part: 1 thread: 3</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2697019 thread: 3 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                     <b>3656729</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>3732802</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -408,7 +408,7 @@ and running the same benchmark now will show the collected metrics of the
 threads:
 
 <pre><code class="hljs"><span style="color:#0A0">lib_bench_threads::my_group::bench_threads</span> <span style="color:#0AA">two_threads</span><span style="color:#0AA">:</span><b><span style="color:#00A">2</span></b>
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2149242 part: 1 thread: 1</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2149242 thread: 1 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                       <b>27305</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                            <b>66352</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -416,7 +416,7 @@ threads:
 <span style="color:#555">  </span>RAM Hits:                             <b>537</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                   <b>67233</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>86867</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2149242 part: 1 thread: 2</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2149242 thread: 2 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                     <b>2460501</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>2534935</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -424,7 +424,7 @@ threads:
 <span style="color:#555">  </span>RAM Hits:                             <b>185</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                 <b>2535133</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>2541475</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2149242 part: 1 thread: 3</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2149242 thread: 3 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                     <b>3650408</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>3724285</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -478,7 +478,7 @@ Setting the `EntryPoint::None` disables the default toggle but also
 Altogether, running the benchmark will show:
 
 <pre><code class="hljs"><span style="color:#0A0">lib_bench_threads::my_group::bench_threads</span> <span style="color:#0AA">two_threads</span><span style="color:#0AA">:</span><b><span style="color:#00A">2</span></b>
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2251257 part: 1 thread: 1</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2251257 thread: 1 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                           <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -486,7 +486,7 @@ Altogether, running the benchmark will show:
 <span style="color:#555">  </span>RAM Hits:                               <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2251257 part: 1 thread: 2</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2251257 thread: 2 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                     <b>2460501</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>2534935</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -494,7 +494,7 @@ Altogether, running the benchmark will show:
 <span style="color:#555">  </span>RAM Hits:                             <b>187</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                 <b>2535133</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>2541535</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2251257 part: 1 thread: 3</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 2251257 thread: 3 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                     <b>3650408</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>3724282</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -609,7 +609,7 @@ Running the above benchmark with `cargo bench` results in the following terminal
 output:
 
 <pre><code class="hljs"><span style="color:#0A0">lib_bench_subprocess::my_group::bench_subprocess</span> <span style="color:#0AA">some</span><span style="color:#0AA">:</span><b><span style="color:#00A">create_file()</span></b>
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 3141785 part: 1 thread: 1</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 3141785 thread: 1 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_subprocess-a1b2e1eac5125819</span></b>
 <span style="color:#555">  </span>Instructions:                        <b>4467</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                             <b>6102</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -617,7 +617,7 @@ output:
 <span style="color:#555">  </span>RAM Hits:                             <b>186</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                    <b>6305</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>12697</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 3141786 part: 1 thread: 1</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 3141786 thread: 1 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/cat /tmp/foo.txt</span></b>
 <span style="color:#555">  </span>Instructions:                           <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -676,7 +676,7 @@ fn bench_subprocess(path: PathBuf) -> io::Result<ExitStatus> {
 producing the desired output
 
 <pre><code class="hljs"><span style="color:#0A0">lib_bench_subprocess::my_group::bench_subprocess</span> <span style="color:#0AA">some</span><span style="color:#0AA">:</span><b><span style="color:#00A">create_file()</span></b>
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 3324117 part: 1 thread: 1</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 3324117 thread: 1 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_subprocess-a1b2e1eac5125819</span></b>
 <span style="color:#555">  </span>Instructions:                        <b>4475</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                             <b>6112</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -684,7 +684,7 @@ producing the desired output
 <span style="color:#555">  </span>RAM Hits:                             <b>187</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                    <b>6313</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>12727</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 3324119 part: 1 thread: 1</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 3324119 thread: 1 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/cat /tmp/foo.txt</span></b>
 <span style="color:#555">  </span>Instructions:                        <b>4019</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                             <b>5575</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -765,7 +765,7 @@ fn bench_subprocess(path: PathBuf) -> io::Result<ExitStatus> {
 Now, running the benchmark shows
 
 <pre><code class="hljs"><span style="color:#0A0">lib_bench_subprocess::my_group::bench_subprocess</span> <span style="color:#0AA">some</span><span style="color:#0AA">:</span><b><span style="color:#00A">create_file()</span></b>
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 3421822 part: 1 thread: 1</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 3421822 thread: 1 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_subprocess-a1b2e1eac5125819</span></b>
 <span style="color:#555">  </span>Instructions:                        <b>4467</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                             <b>6102</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -773,7 +773,7 @@ Now, running the benchmark shows
 <span style="color:#555">  </span>RAM Hits:                             <b>186</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                    <b>6305</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>12697</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 3421823 part: 1 thread: 1</b>        |N/A
+<span style="color:#555">  </span><span style="color:#A50">##</span> <b>pid: 3421823 thread: 1 part: 1</b>        |N/A
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/cat /tmp/foo.txt</span></b>
 <span style="color:#555">  </span>Instructions:                        <b>2429</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                             <b>3406</b>|N/A                  (<span style="color:#555">*********</span>)

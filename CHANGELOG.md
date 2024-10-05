@@ -1,4 +1,5 @@
 <!-- spell-checker:ignore serde dewert binstall jembishop kehl DaniPopes bytemuck hargut -->
+<!-- spell-checker:ignore ryanpeach -->
 <!--
 Added for new features.
 Changed for changes in existing functionality.
@@ -22,6 +23,30 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.14.0] - 2024-10-04
+
+This release adds full support for multi-threaded and multi-process
+applications.
+
+When upgrading from a previous release of Iai-Callgrind you might experience
+changes in the metrics without having changed the benchmarks themselves. The
+`summary` line in callgrind output files turned out to be buggy and unreliable
+if client requests are used, so Iai-Callgrind now parses the `totals` instead.
+The `totals` might differ slightly from the `summary` and cause the difference
+in the displayed metrics. You might also see changes in the metrics because of
+the changed default values for some of the valgrind arguments. Iai-Callgrind
+changed the following default valgrind/callgrind arguments for each benchmark
+run:
+
+* `--separate-threads=no` -> `--separate-threads=yes`
+* `--trace-children=no` -> `--trace-children=yes`
+* `--fair-sched=no` -> `--fair-sched=try`
+
+You can now run the `setup` in binary benchmarks in parallel to the `Command`
+for flexible benchmarking of client/server architectures.
+
+The MSRV has changed from `1.66.0` -> `1.67.1`.
+
 If not stated otherwise the changes below were introduced in
 [#263](https://github.com/iai-callgrind/iai-callgrind/pull/263).
 
@@ -30,9 +55,9 @@ If not stated otherwise the changes below were introduced in
 * Support for benchmarks of multi-threading and multi-process applications by
   implementing the correct handling of the valgrind `--trace-children` and
   callgrind `--separate-threads` command line options. Per default only the
-  total over all subprocesses and threads is calculated shown. But, each thread
-  and subprocess can be shown with the new `OutputFormat::show_intermediate`
-  option.
+  total over all subprocesses and threads is calculated and shown. But, each
+  thread and subprocess can be displayed with the new
+  `OutputFormat::show_intermediate` option.
 * Support for the callgrind command line arguments `--dump-every-bb`,
   `--dump-before`, `--dump-after` which create parts. These parts are now
   correctly summarized in the total and the metrics of each part can be shown
@@ -94,13 +119,14 @@ If not stated otherwise the changes below were introduced in
 * Bump the summary json schema to v3 in
   `iai-callgrind-runner/schemas/summary.v3.schema.json`
 * Various prs: Update locked direct dependencies:
-    * `cc` -> 1.1.24
     * `anyhow` -> 1.0.89
+    * `cc` -> 1.1.25
     * `indexmap` -> 2.6.0
+    * `itertools` -> 0.13.0
     * `once_cell` -> 1.20.1
     * `regex` -> 1.11.0
-    * `serde` -> 1.0.210
     * `serde_json` -> 1.0.128
+    * `serde` -> 1.0.210
     * `syn` -> 2.0.79
     * `tempfile` -> 3.13.0
 * ([#288](https://github.com/iai-callgrind/iai-callgrind/pull/288)): The default
@@ -110,7 +136,7 @@ If not stated otherwise the changes below were introduced in
   `derive_more` -> `1.0` in `Cargo.toml` but not in lock file.
 * ([#293](https://github.com/iai-callgrind/iai-callgrind/pull/293)): Update MSRV
   from `1.66.0` -> `1.67.1`
-* ([#296](https://github.com/iai-callgrind/iai-callgrind/pull/296)): Update 
+* ([#296](https://github.com/iai-callgrind/iai-callgrind/pull/296)): Update
   locked transitive dependencies.
 
 ### Deprecated
@@ -143,6 +169,11 @@ If not stated otherwise the changes below were introduced in
   Iai-Callgrind.
 * The error metrics of drd, helgrind and memcheck were only shown correctly if
   they consisted of a single digit.
+* ([#297](https://github.com/iai-callgrind/iai-callgrind/pull/297)): Added the
+  derive `Clone` impl for `iai_callgrind::LibraryBenchmarkConfig`
+* ([#300](https://github.com/iai-callgrind/iai-callgrind/pull/300)):
+  `library_benchmark_group!` was private but the expanded mod should be public
+  Thanks to @ryanpeach
 
 ## [0.13.4] - 2024-09-12
 
