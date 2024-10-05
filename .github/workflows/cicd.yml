@@ -112,9 +112,6 @@ jobs:
           cargo update
       - uses: taiki-e/install-action@cargo-hack
       - uses: taiki-e/install-action@just
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: ubuntu-latest_${{ matrix.toolchain }}
       - name: Install valgrind
         run: sudo apt-get -y update && sudo apt-get -y install valgrind
       - name: Info
@@ -128,6 +125,12 @@ jobs:
           valgrind --version
       - name: Build with the feature powerset
         run: just build-hack
+      # Fix github ci error: /usr/bin/ld: final link failed: No space left on device
+      - name: Cleanup build artifacts
+        run: cargo clean
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.toolchain }}
       - name: Build the tests with the feature powerset
         run: just build-tests-hack
       - name: Lint
