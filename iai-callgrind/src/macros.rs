@@ -235,7 +235,7 @@ macro_rules! main {
             let exe = option_env!("IAI_CALLGRIND_RUNNER")
                 .unwrap_or_else(|| option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner"));
 
-            let library_version = "0.13.4";
+            let library_version = "0.14.0";
 
             let mut cmd = std::process::Command::new(exe);
 
@@ -594,7 +594,7 @@ macro_rules! main {
             let exe = option_env!("IAI_CALLGRIND_RUNNER")
                 .unwrap_or_else(|| option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner"));
 
-            let library_version = "0.13.4";
+            let library_version = "0.14.0";
 
             let mut cmd = std::process::Command::new(exe);
 
