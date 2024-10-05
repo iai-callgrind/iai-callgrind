@@ -1,4 +1,5 @@
 <!-- spell-checker:ignore serde dewert binstall jembishop kehl DaniPopes bytemuck hargut -->
+<!-- spell-checker:ignore ryanpeach -->
 <!--
 Added for new features.
 Changed for changes in existing functionality.
@@ -172,6 +173,7 @@ If not stated otherwise the changes below were introduced in
   derive `Clone` impl for `iai_callgrind::LibraryBenchmarkConfig`
 * ([#300](https://github.com/iai-callgrind/iai-callgrind/pull/300)):
   `library_benchmark_group!` was private but the expanded mod should be public
+  Thanks to @ryanpeach
 
 ## [0.13.4] - 2024-09-12
 
