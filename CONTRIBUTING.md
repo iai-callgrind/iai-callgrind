@@ -43,10 +43,13 @@ cd iai-callgrind
 ```
 
 Working on this project is a piece of cake with
-[just](https://github.com/casey/just) and if you have the `just` shell
-completions installed. Before running any install commands with `just`, it is
-recommended to first inspect it with `--dry-run`. Install the basics needed to
-start working on this project with:
+[just](https://github.com/casey/just) and the `just` shell completions
+installed. Using `just` also ensures that you use the same commands, arguments,
+options as they are used in the ci.
+
+Before running any install commands with `just`, it is recommended to first
+inspect it with `--dry-run` and see if you're fine with the changes. Install the
+basics needed to start working on this project with:
 
 ```shell
 just install-workspace
@@ -59,15 +62,75 @@ which need to be installed, ...
 To get an overview over all possible `just` rules run `just -l` or directly
 inspect the `Justfile` in the root of this project.
 
-If your IDE can handle it, it's usually best to work with the MSRV locally
+You should also set up your editor to use nightly rustfmt and clippy from the
+rust `stable` toolchain for example with `rust-analyzer` server overrides. An
+alternative to server overrides is to use tasks which are executed on save and
+use `just fmt` to format the project with nightly `rustfmt` and `just lint` to
+lint with stable clippy.
 
-```shell
-rustup override set 1.67.1
+Some examples for `rust-analyzer` server overrides:
+
+### Configure VSCode server overrides
+
+Go to settings, choose workspace or folder settings and edit the `settings.json`
+file:
+
+```json
+{
+    "settings": {
+        "rust-analyzer.check.overrideCommand": [
+          "cargo",
+          "+stable",
+          "clippy",
+          "--message-format=json",
+          "--all-features",
+          "--all-targets",
+          "--workspace"
+        ],
+        "rust-analyzer.rustfmt.overrideCommand": [
+          "rustfmt",
+          "+nightly",
+          "--edition",
+          "2021",
+          "--emit",
+          "stdout"
+        ],
+    }
+}
 ```
 
-What is left is to set up your favorite editor to use nightly rustfmt and clippy
-from the rust `stable` toolchain in order to pass the formatting and linting
-checks in the `ci`.
+### Configure Neovim server overrides
+
+In neovim you need to set the override commands in the `rust-analyzer` server
+table. The specifics depend on the plugin which is used to install/configure
+`rust-analyzer`, i.e. `mason` or `rustaceanvim`, but the principle stays the
+same:
+
+```lua
+["rust-analyzer"] = {
+    check = {
+        overrideCommand = {
+            "cargo",
+            "+stable",
+            "clippy",
+            "--message-format=json",
+            "--all-features",
+            "--all-targets",
+            "--workspace",
+        },
+    },
+    rustfmt = {
+        overrideCommand = {
+            "rustfmt",
+            "+nightly",
+            "--edition",
+            "2021",
+            "--emit",
+            "stdout",
+        },
+    },
+}
+```
 
 ## Testing
 
@@ -75,19 +138,31 @@ Patches have to include tests to verify (at a minimum) that the whole pipeline
 runs through without errors.
 
 The benches in the `benchmark-tests` package are system tests and run the whole
-pipeline. We use a wrapper around `cargo --bench` (`benchmark-tests/src/bench`)
-to run the `benchmark-tests`. In order to run a single benchmark-tests use `just
-full-bench-test $BENCHMARK_NAME` or all with `just full-bench-test-all`.
+pipeline. We use a wrapper around `cargo bench` (`benchmark-tests/src/bench`) to
+run the `benchmark-tests`. In order to run a single benchmark-tests use `just
+full-bench-test $BENCHMARK_NAME` or all with `just full-bench-test-all` (This
+might take a while). See the [`README`](./benchmark-tests/README.md) of the
+benchmark-tests package for more details.
 
-The user interface is tested in `iai-callgrind/tests/ui`.
+The user interface is tested in `iai-callgrind/tests/ui`. The ui tests error
+fixtures are fixed to the MSRV compiler since the compiler error messages differ
+between the rust toolchains. For example to run the ui tests
 
-If you've made changes in the `iai-callgrind-runner` package then you can point
-the `IAI_CALLGRIND_RUNNER` environment variable to your modified version of the
-`iai-callgrind-runner` binary:
+```shell
+just test-ui
+```
+
+or overwrite the error message fixtures:
+
+`just test-ui-overwrite`
+
+If you made changes in the `iai-callgrind-runner` package, you can point the
+`IAI_CALLGRIND_RUNNER` environment variable to your modified version of the
+`iai-callgrind-runner` binary and run the benchmark-tests with:
 
 ```shell
 cargo build -p iai-callgrind-runner --release
-IAI_CALLGRIND_RUNNER=$(readlink -e target/release/iai-callgrind-runner) cargo bench -p benchmark-tests
+IAI_CALLGRIND_RUNNER=$(realpath target/release/iai-callgrind-runner) cargo bench -p benchmark-tests
 ```
 
 or with `just` in a single command:
@@ -109,9 +184,10 @@ benchmark tests that way. You can use
 just full-bench-test test_lib_bench_tools
 ```
 
-which also checks that any output files that are expected to be created by the
-benchmark run are actually there. Depending on the test configuration benchmarks
-are sometimes run multiple times.
+which actually verifies the stdout/stderr and/or output files of the benchmark
+run according to the configuration of the benchmark (the
+`$BENCHMARK_NAME.conf.yml` files in the respective benchmark folder). Depending
+on the test configuration, benchmarks are sometimes run multiple times.
 
 ## Contact
 
