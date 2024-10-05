@@ -731,7 +731,7 @@ dependencies = [
 
 [[package]]
 name = "iai-callgrind-macros"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
  "derive_more",
  "pretty_assertions",
