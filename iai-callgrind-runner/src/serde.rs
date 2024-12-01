@@ -19,7 +19,7 @@ pub mod float_64 {
 
     struct FieldVisitor;
 
-    impl<'de> Visitor<'de> for FieldVisitor {
+    impl Visitor<'_> for FieldVisitor {
         type Value = f64;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
