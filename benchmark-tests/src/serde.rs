@@ -31,7 +31,7 @@ pub mod rust_version {
 
     struct FieldVisitor;
 
-    impl<'de> Visitor<'de> for FieldVisitor {
+    impl Visitor<'_> for FieldVisitor {
         type Value = VersionComparator;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -98,7 +98,7 @@ pub mod runs_on {
 
     struct FieldVisitor;
 
-    impl<'de> Visitor<'de> for FieldVisitor {
+    impl Visitor<'_> for FieldVisitor {
         type Value = RunsOn;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {

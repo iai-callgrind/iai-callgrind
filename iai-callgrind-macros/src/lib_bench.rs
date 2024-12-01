@@ -590,7 +590,7 @@ mod tests {
     fn expected_model(
         func: &ItemFn,
         benches: &[ExprStruct],
-        get_config: &Option<Expr>,
+        get_config: Option<&Expr>,
         get_config_bench: &[(Ident, Expr)],
         bench: &[(Ident, Vec<Expr>)],
     ) -> Model {
@@ -692,7 +692,7 @@ mod tests {
                     config: None
                 }
             )],
-            &None,
+            None,
             &[],
             &[(parse_quote!(wrapper), vec![])],
         );
@@ -722,7 +722,7 @@ mod tests {
                     config: None
                 }
             )],
-            &Some(parse_quote!(LibraryBenchmarkConfig::default())),
+            Some(&parse_quote!(LibraryBenchmarkConfig::default())),
             &[],
             &[(parse_quote!(wrapper), vec![])],
         );
@@ -761,7 +761,7 @@ mod tests {
                         config: None
                     }
                 )],
-                &None,
+                None,
                 &[],
                 &[(parse_quote!(my_id), vec![])],
             );
@@ -800,7 +800,7 @@ mod tests {
                         config: None
                     }
                 )],
-                &None,
+                None,
                 &[],
                 &[(parse_quote!(my_id), vec![parse_quote!(1)])],
             );
@@ -838,7 +838,7 @@ mod tests {
                         config: None
                     }
                 )],
-                &None,
+                None,
                 &[],
                 &[(parse_quote!(my_id), vec![parse_quote!(1), parse_quote!(2)])],
             );
@@ -878,7 +878,7 @@ mod tests {
                         config: Some(__get_config_my_id)
                     }
                 )],
-                &None,
+                None,
                 &[(
                     parse_quote!(my_id),
                     parse_quote!(LibraryBenchmarkConfig::default()),
@@ -915,7 +915,7 @@ mod tests {
                     config: Some(__get_config_my_id)
                 }
             )],
-            &Some(parse_quote!(LibraryBenchmarkConfig::new())),
+            Some(&parse_quote!(LibraryBenchmarkConfig::new())),
             &[(
                 parse_quote!(my_id),
                 parse_quote!(LibraryBenchmarkConfig::default()),
@@ -957,7 +957,7 @@ mod tests {
                     config: None
                 }),
             ],
-            &None,
+            None,
             &[],
             &[
                 (parse_quote!(first), vec![]),
@@ -998,7 +998,7 @@ mod tests {
                     config: None
                 }),
             ],
-            &None,
+            None,
             &[],
             &[
                 (parse_quote!(first), vec![parse_quote!(1)]),
@@ -1039,7 +1039,7 @@ mod tests {
                     config: None
                 }),
             ],
-            &None,
+            None,
             &[(
                 parse_quote!(first),
                 parse_quote!(LibraryBenchmarkConfig::default()),
@@ -1083,7 +1083,7 @@ mod tests {
                     config: Some(__get_config_second)
                 }),
             ],
-            &None,
+            None,
             &[(
                 parse_quote!(second),
                 parse_quote!(LibraryBenchmarkConfig::default()),
@@ -1127,7 +1127,7 @@ mod tests {
                     config: Some(__get_config_second)
                 }),
             ],
-            &Some(parse_quote!(LibraryBenchmarkConfig::does_not_exist())),
+            Some(&parse_quote!(LibraryBenchmarkConfig::does_not_exist())),
             &[
                 (
                     parse_quote!(first),
