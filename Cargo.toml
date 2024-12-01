@@ -50,7 +50,7 @@ proc-macro2 = "1.0.63"
 quote = "1.0.28"
 regex = { version = "1.9" }
 rstest = { version = ">=0.17, <0.24", default-features = false }
-sanitize-filename = { version = "0.5" }
+sanitize-filename = { version = "0.6" }
 schemars = { version = "0.8.16" }
 serde = { version = "1.0.139", features = ["derive"] }
 serde_json = { version = "1.0.79" }
