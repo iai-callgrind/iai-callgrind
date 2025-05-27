@@ -471,8 +471,7 @@ macro_rules! main {
                 return Err(errors);
             }
 
-            let bincode_config = $crate::bincode::config::standard();
-            let encoded = $crate::bincode::serde::encode_to_vec(&internal_benchmark_groups, bincode_config).expect("Encoded benchmark");
+            let encoded = $crate::bincode::serialize(&internal_benchmark_groups).expect("Encoded benchmark");
             let mut child = cmd
                 .arg(encoded.len().to_string())
                 .stdin(std::process::Stdio::piped())
@@ -649,8 +648,7 @@ macro_rules! main {
                 internal_benchmark_groups.groups.push(internal_group);
             )+
 
-            let bincode_config = $crate::bincode::config::standard();
-            let encoded = $crate::bincode::serde::encode_to_vec(&internal_benchmark_groups, bincode_config).expect("Encoded benchmark");
+            let encoded = $crate::bincode::serialize(&internal_benchmark_groups).expect("Encoded benchmark");
             let mut child = cmd
                 .arg(encoded.len().to_string())
                 .stdin(std::process::Stdio::piped())

@@ -167,9 +167,8 @@ where
         encoded.len()
     );
 
-    let bincode_config = bincode::config::standard();
-    let (benchmark, _) = bincode::serde::decode_from_slice(&encoded, bincode_config)
-        .with_context(|| "Failed to decode configuration")?;
+    let benchmark: T =
+        bincode::deserialize(&encoded).with_context(|| "Failed to decode configuration")?;
 
     Ok(benchmark)
 }
