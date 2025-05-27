@@ -16,7 +16,7 @@ homepage = "https://github.com/iai-callgrind/iai-callgrind"
 keywords = ["iai", "benchmark", "callgrind", "valgrind"]
 license = "Apache-2.0 OR MIT"
 repository = "https://github.com/iai-callgrind/iai-callgrind"
-rust-version = "1.67.1"
+rust-version = "1.74.1"
 version = "0.14.0"
 
 [workspace.dependencies]

@@ -20,7 +20,7 @@ schema_path := 'summary.schema.json'
 this_dir := `realpath .`
 book_build_dir := this_dir + "/docs/book"
 args := ''
-msrv := '1.67.1'
+msrv := '1.74.1'
 required_tools := 'valgrind|the essential tool
 clang|to be able to build iai-callgrind with the client-requests feature'
 cargo_tools := 'cargo-hack
