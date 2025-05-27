@@ -8,8 +8,6 @@ indirectly lost: <__FILTER__> bytes in <__FILTER__> blocks
 possibly lost: <__FILTER__> bytes in <__FILTER__> blocks
 still reachable: <__FILTER__> bytes in <__FILTER__> blocks
 suppressed: <__FILTER__> bytes in <__FILTER__> blocks
-Reachable blocks (those to which a pointer was found) are not shown.
-To see them, rerun with: --leak-check=full --show-leak-kinds=all
 
 First value of leaked memory: <__NUMBER__>
 Searching for pointers to <__NUMBER__> not-freed blocks
@@ -24,8 +22,6 @@ indirectly lost: <__FILTER__> bytes in <__FILTER__> blocks
 possibly lost: <__FILTER__> bytes in <__FILTER__> blocks
 still reachable: <__FILTER__> bytes in <__FILTER__> blocks
 suppressed: <__FILTER__> bytes in <__FILTER__> blocks
-Reachable blocks (those to which a pointer was found) are not shown.
-To see them, rerun with: --leak-check=full --show-leak-kinds=all
 
 First value of leaked memory: <__NUMBER__>
 Searching for pointers to <__NUMBER__> not-freed blocks
@@ -40,8 +36,6 @@ indirectly lost: <__FILTER__> bytes in <__FILTER__> blocks
 possibly lost: <__FILTER__> bytes in <__FILTER__> blocks
 still reachable: <__FILTER__> bytes in <__FILTER__> blocks
 suppressed: <__FILTER__> bytes in <__FILTER__> blocks
-Reachable blocks (those to which a pointer was found) are not shown.
-To see them, rerun with: --leak-check=full --show-leak-kinds=all
 
 
 HEAP SUMMARY:

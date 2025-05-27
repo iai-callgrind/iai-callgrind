@@ -19,7 +19,6 @@ indirectly lost: <__FILTER__> bytes in <__FILTER__> blocks
 possibly lost: <__FILTER__> bytes in <__FILTER__> blocks
 still reachable: <__FILTER__> bytes in <__FILTER__> blocks
 suppressed: <__FILTER__> bytes in <__FILTER__> blocks
-Rerun with --leak-check=full to see details of leaked memory
 
 ERROR SUMMARY: <__NUMBER__> errors from <__NUMBER__> contexts (suppressed: <__NUMBER__> from <__NUMBER__>)
 
