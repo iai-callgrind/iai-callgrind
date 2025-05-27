@@ -32,9 +32,14 @@ error[E0308]: mismatched types
 28 | #[library_benchmark(setup = setup_string)]
    |                             ^^^^^^^^^^^^
    |                             |
-   |                             expected `u64`, found struct `String`
+   |                             expected `u64`, found `String`
    |                             arguments to this function are incorrect
    |
+help: the return type of this call is `String` due to the type of the argument passed
+  --> tests/ui/test_library_benchmark_invalid_setup_and_teardown.rs:28:29
+   |
+28 | #[library_benchmark(setup = setup_string)]
+   |                             ^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |
@@ -50,6 +55,11 @@ error[E0308]: mismatched types
    | expected `()`, found `u64`
    | arguments to this function are incorrect
    |
+help: the return type of this call is `u64` due to the type of the argument passed
+  --> tests/ui/test_library_benchmark_invalid_setup_and_teardown.rs:34:1
+   |
+34 | #[library_benchmark(teardown = teardown_unit)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |
