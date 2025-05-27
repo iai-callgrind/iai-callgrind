@@ -65,4 +65,4 @@ tokio = { version = "1" }
 trybuild = "1.0.18"
 valico = { version = "4" }
 version-compare = { version = "0.2" }
-which = { version = ">=5, <7" }
+which = { version = ">=5, <8" }
