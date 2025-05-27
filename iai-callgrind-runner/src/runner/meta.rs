@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::Result;
+use cargo_metadata::TargetKind;
 use clap::Parser;
 use log::debug;
 
@@ -47,7 +48,7 @@ impl Metadata {
         let args = CommandLineArgs::parse_from(raw_command_line_args);
 
         let arch = std::env::consts::ARCH.to_owned();
-        debug!("Detected architecture: {}", arch);
+        debug!("Detected architecture: {arch}");
         let meta = cargo_metadata::MetadataCommand::new()
             .no_deps()
             .exec()
@@ -62,7 +63,7 @@ impl Metadata {
             .targets
             .iter()
             .find_map(|t| {
-                (t.kind.iter().any(|k| k == "bench") && t.src_path.ends_with(bench_file))
+                (t.kind.contains(&TargetKind::Bench) && t.src_path.ends_with(bench_file))
                     .then_some(t.name.clone())
             })
             .expect("The benchmark name should exist");
