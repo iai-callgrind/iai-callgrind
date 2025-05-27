@@ -196,7 +196,7 @@ pub fn run() -> Result<()> {
                 .args
                 .filter
                 .as_ref()
-                .map_or(false, |filter| !filter.apply(&meta.bench_name))
+                .is_some_and(|filter| !filter.apply(&meta.bench_name))
             {
                 debug!("Benchmark '{}' is filtered out", bench_file.display());
                 return Ok(());
@@ -223,7 +223,7 @@ pub fn run() -> Result<()> {
                 .args
                 .filter
                 .as_ref()
-                .map_or(false, |filter| !filter.apply(&meta.bench_name))
+                .is_some_and(|filter| !filter.apply(&meta.bench_name))
             {
                 debug!("Benchmark '{}' is filtered out", bench_file.display());
                 return Ok(());

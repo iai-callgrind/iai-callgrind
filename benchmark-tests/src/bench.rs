@@ -335,7 +335,7 @@ impl Benchmark {
                 let capture = run
                     .expected
                     .as_ref()
-                    .map_or(false, |e| e.stdout.is_some() || e.stderr.is_some());
+                    .is_some_and(|e| e.stdout.is_some() || e.stderr.is_some());
 
                 let output = if let Some(template) = &self.config.template {
                     let output =
@@ -914,7 +914,7 @@ impl RunConfig {
         if self
             .expected
             .as_ref()
-            .map_or(false, |expected| !expected.zero_callgrind_metrics)
+            .is_some_and(|expected| !expected.zero_callgrind_metrics)
         {
             let base_dir = home_dir.join(PACKAGE).join(bench_name);
             // These checks heavily depends on the creation of the `summary.json` files, but we

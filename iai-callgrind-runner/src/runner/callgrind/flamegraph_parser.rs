@@ -97,7 +97,7 @@ impl FlamegraphMap {
                 if cost > reference_cost {
                     continue;
                 }
-            };
+            }
 
             let mut source = String::new();
             if let Some(file) = &id.file {
@@ -111,7 +111,7 @@ impl FlamegraphMap {
                 }
             } else {
                 write!(source, "{}", id.func).unwrap();
-            };
+            }
 
             if let Some(path) = &id.obj {
                 match path {

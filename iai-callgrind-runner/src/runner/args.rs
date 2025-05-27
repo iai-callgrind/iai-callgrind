@@ -55,7 +55,7 @@ impl NoCapture {
             NoCapture::Stdout => {
                 command.stdout(Stdio::inherit()).stderr(Stdio::null());
             }
-        };
+        }
     }
 }
 

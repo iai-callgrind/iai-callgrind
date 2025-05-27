@@ -99,7 +99,7 @@ impl Args {
                     | "--tool"),
                     value,
                 )) => {
-                    warn!("Ignoring callgrind argument: '{}={}'", key, value);
+                    warn!("Ignoring callgrind argument: '{key}={value}'");
                 }
                 Some(_) => self.other.push(arg.clone()),
                 None if arg == "-v" || arg == "--verbose" => self.verbose = true,

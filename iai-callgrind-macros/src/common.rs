@@ -145,7 +145,7 @@ impl Args {
                     help = "This argument is expected to have the same amount of parameters as the benchmark function";
                 );
             }
-        };
+        }
     }
 }
 

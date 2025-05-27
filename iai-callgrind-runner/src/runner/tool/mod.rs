@@ -643,11 +643,11 @@ impl ToolOutputPath {
     }
 
     pub fn exists(&self) -> bool {
-        self.real_paths().map_or(false, |p| !p.is_empty())
+        self.real_paths().is_ok_and(|p| !p.is_empty())
     }
 
     pub fn is_multiple(&self) -> bool {
-        self.real_paths().map_or(false, |p| p.len() > 1)
+        self.real_paths().is_ok_and(|p| p.len() > 1)
     }
 
     pub fn to_base_path(&self) -> Self {
@@ -1154,7 +1154,7 @@ impl ToolOutputPath {
                                 threads.push((entry.path(), thread));
                             } else {
                                 pids.insert(pid, vec![(entry.path(), thread)]);
-                            };
+                            }
                         } else {
                             bbv_types.insert(
                                 bbv_type.clone(),
@@ -1203,7 +1203,7 @@ impl ToolOutputPath {
                             }
 
                             if multiple_threads
-                                && bbv_type.as_ref().map_or(false, |b| b.starts_with(".bb"))
+                                && bbv_type.as_ref().is_some_and(|b| b.starts_with(".bb"))
                             {
                                 let width = threads.len().ilog10() as usize + 1;
 
@@ -1328,7 +1328,7 @@ impl ToolOutputPath {
             ValgrindTool::Callgrind => self.sanitize_callgrind()?,
             ValgrindTool::BBV => self.sanitize_bbv()?,
             _ => self.sanitize_generic()?,
-        };
+        }
 
         Ok(())
     }

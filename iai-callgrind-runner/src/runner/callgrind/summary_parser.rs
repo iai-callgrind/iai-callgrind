@@ -48,7 +48,7 @@ impl CallgrindParser for SummaryParser {
         let mut metrics = None;
         for line in iter {
             if let Some(suffix) = line.strip_prefix("summary:") {
-                trace!("Found line with summary: '{}'", line);
+                trace!("Found line with summary: '{line}'");
 
                 let mut inner = properties.metrics_prototype.clone();
                 inner.add_iter_str(suffix.split_ascii_whitespace())?;
@@ -58,7 +58,7 @@ impl CallgrindParser for SummaryParser {
             }
 
             if let Some(suffix) = line.strip_prefix("totals:") {
-                trace!("Found line with totals: '{}'", line);
+                trace!("Found line with totals: '{line}'");
 
                 let mut inner = properties.metrics_prototype.clone();
                 inner.add_iter_str(suffix.split_ascii_whitespace())?;

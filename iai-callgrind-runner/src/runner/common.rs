@@ -203,7 +203,7 @@ impl Assistant {
                         }
                     })?;
             }
-        };
+        }
 
         Ok(None)
     }
@@ -287,7 +287,7 @@ impl Sandbox {
                     copy_directory(&absolute_path, temp_dir.path(), follow_symlinks)?;
                 } else {
                     copy_directory(fixture, temp_dir.path(), follow_symlinks)?;
-                };
+                }
             }
 
             trace!(
