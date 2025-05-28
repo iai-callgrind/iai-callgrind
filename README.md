@@ -58,6 +58,14 @@ Iai-Callgrind is:
 See the [Guide] and api documentation at [docs.rs][Api Docs] for all the
 details.
 
+## Quickstart/Documentation
+
+To get started read the [Guide] and see some introductory examples in [Quickstart
+for library
+benchmarks](https://iai-callgrind.github.io/iai-callgrind/latest/html/benchmarks/library_benchmarks/quickstart.html)
+or [Quickstart for binary
+benchmarks](https://iai-callgrind.github.io/iai-callgrind/latest/html/benchmarks/binary_benchmarks/quickstart.html)
+
 ## Design philosophy and goals
 
 Iai-Callgrind benchmarks are designed to be runnable with `cargo bench`. The
@@ -94,63 +102,6 @@ Iai-Callgrind is not a good fit.
   to be a relative metric to be used for comparison.
 - Iai-Callgrind cannot be run on Windows and platforms not supported by
   Valgrind.
-
-## Quickstart
-
-You're missing the old README? To get started read the [Guide].
-
-The guide maintains only the versions `0.12.3` upwards. For older versions
-checkout the README of this repo using a specific tagged version for example
-<https://github.com/iai-callgrind/iai-callgrind/tree/v0.12.2> or using the
-github ui.
-
-Here's just a small introductory example, assuming you have everything
-[installed][Guide Prerequisites] and a benchmark with the following content in
-`benches/library_benchmark.rs` ready:
-
-```rust
-use iai_callgrind::{main, library_benchmark_group, library_benchmark};
-use std::hint::black_box;
-
-fn fibonacci(n: u64) -> u64 {
-    match n {
-        0 => 1,
-        1 => 1,
-        n => fibonacci(n - 1) + fibonacci(n - 2),
-    }
-}
-
-#[library_benchmark]
-#[bench::short(10)]
-#[bench::long(30)]
-fn bench_fibonacci(value: u64) -> u64 {
-    black_box(fibonacci(value))
-}
-
-library_benchmark_group!(name = bench_fibonacci_group; benchmarks = bench_fibonacci);
-main!(library_benchmark_groups = bench_fibonacci_group);
-```
-
-Now run
-
-```shell
-cargo bench
-```
-
-<pre><code class="hljs"><span style="color:#0A0">library_benchmark::bench_fibonacci_group::bench_fibonacci</span> <span style="color:#0AA">short</span><span style="color:#0AA">:</span><b><span style="color:#00A">10</span></b>
-  Instructions:     <b>           1734</b>|N/A             (<span style="color:#555">*********</span>)
-  L1 Hits:          <b>           2359</b>|N/A             (<span style="color:#555">*********</span>)
-  L2 Hits:          <b>              0</b>|N/A             (<span style="color:#555">*********</span>)
-  RAM Hits:         <b>              3</b>|N/A             (<span style="color:#555">*********</span>)
-  Total read+write: <b>           2362</b>|N/A             (<span style="color:#555">*********</span>)
-  Estimated Cycles: <b>           2464</b>|N/A             (<span style="color:#555">*********</span>)
-<span style="color:#0A0">library_benchmark::bench_fibonacci_group::bench_fibonacci</span> <span style="color:#0AA">long</span><span style="color:#0AA">:</span><b><span style="color:#00A">30</span></b>
-  Instructions:     <b>       26214734</b>|N/A             (<span style="color:#555">*********</span>)
-  L1 Hits:          <b>       35638616</b>|N/A             (<span style="color:#555">*********</span>)
-  L2 Hits:          <b>              2</b>|N/A             (<span style="color:#555">*********</span>)
-  RAM Hits:         <b>              4</b>|N/A             (<span style="color:#555">*********</span>)
-  Total read+write: <b>       35638622</b>|N/A             (<span style="color:#555">*********</span>)
-  Estimated Cycles: <b>       35638766</b>|N/A             (<span style="color:#555">*********</span>)</code></pre>
 
 ### Contributing
 
