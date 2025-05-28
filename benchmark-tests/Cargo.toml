@@ -29,6 +29,7 @@ minijinja = { workspace = true }
 once_cell = { workspace = true }
 pretty_assertions = { workspace = true }
 regex = { workspace = true }
+rustc_version = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }

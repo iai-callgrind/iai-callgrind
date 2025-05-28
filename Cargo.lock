@@ -156,6 +156,7 @@ dependencies = [
  "pretty_assertions",
  "regex",
  "rstest",
+ "rustc_version",
  "serde",
  "serde_json",
  "serde_yaml",
