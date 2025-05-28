@@ -7,6 +7,13 @@ error[E0308]: mismatched types
    |                    |expected `u64`, found `&str`
    |                    arguments to this function are incorrect
    |
+help: the return type of this call is `&'static str` due to the type of the argument passed
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:21:20
+   |
+21 | #[bench::id(args = ("wrong type"), setup = setup_u64_to_string)]
+   |                    ^------------^
+   |                     |
+   |                     this argument influences the return type of `std`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |
@@ -19,9 +26,14 @@ error[E0308]: mismatched types
 28 | #[bench::id(args = (10), setup = setup_u64_to_string)]
    |                                  ^^^^^^^^^^^^^^^^^^^
    |                                  |
-   |                                  expected `u64`, found struct `String`
+   |                                  expected `u64`, found `String`
    |                                  arguments to this function are incorrect
    |
+help: the return type of this call is `String` due to the type of the argument passed
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:28:34
+   |
+28 | #[bench::id(args = (10), setup = setup_u64_to_string)]
+   |                                  ^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |
@@ -37,6 +49,13 @@ error[E0308]: mismatched types
    |                    |expected `u64`, found `&str`
    |                    arguments to this function are incorrect
    |
+help: the return type of this call is `&'static str` due to the type of the argument passed
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:35:20
+   |
+35 | #[bench::id(args = ("wrong type"), setup = setup_u64_to_string)]
+   |                    ^------------^
+   |                     |
+   |                     this argument influences the return type of `std`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |
@@ -52,6 +71,11 @@ error[E0308]: mismatched types
    | expected `()`, found `u64`
    | arguments to this function are incorrect
    |
+help: the return type of this call is `u64` due to the type of the argument passed
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:41:1
+   |
+41 | #[library_benchmark]
+   | ^^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |
@@ -68,6 +92,11 @@ error[E0308]: mismatched types
    | expected `()`, found `u64`
    | arguments to this function are incorrect
    |
+help: the return type of this call is `u64` due to the type of the argument passed
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:48:1
+   |
+48 | #[library_benchmark(teardown = teardown_u64)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |
@@ -84,6 +113,11 @@ error[E0308]: mismatched types
    |                       expected `u64`, found `&str`
    |                       arguments to this function are incorrect
    |
+help: the return type of this call is `&'static str` due to the type of the argument passed
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:56:23
+   |
+56 | #[benches::id(args = ["wrong type"], setup = setup_u64_to_string)]
+   |                       ^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |
@@ -96,9 +130,14 @@ error[E0308]: mismatched types
 63 | #[benches::id(args = [10], setup = setup_u64_to_string)]
    |                                    ^^^^^^^^^^^^^^^^^^^
    |                                    |
-   |                                    expected `u64`, found struct `String`
+   |                                    expected `u64`, found `String`
    |                                    arguments to this function are incorrect
    |
+help: the return type of this call is `String` due to the type of the argument passed
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:63:36
+   |
+63 | #[benches::id(args = [10], setup = setup_u64_to_string)]
+   |                                    ^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |
@@ -114,6 +153,11 @@ error[E0308]: mismatched types
    |                       expected `u64`, found `&str`
    |                       arguments to this function are incorrect
    |
+help: the return type of this call is `&'static str` due to the type of the argument passed
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:70:23
+   |
+70 | #[benches::id(args = ["wrong type"], setup = setup_u64_to_string)]
+   |                       ^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |
@@ -129,6 +173,11 @@ error[E0308]: mismatched types
    | expected `()`, found `u64`
    | arguments to this function are incorrect
    |
+help: the return type of this call is `u64` due to the type of the argument passed
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:76:1
+   |
+76 | #[library_benchmark]
+   | ^^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
   --> $RUST/core/src/hint.rs
    |

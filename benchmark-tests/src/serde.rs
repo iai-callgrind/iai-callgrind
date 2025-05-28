@@ -35,7 +35,7 @@ pub mod rust_version {
         type Value = VersionComparator;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("a string starting with >,>=,<,<=,= followed by a version")
+            formatter.write_str("a string starting with >,>=,<,<=,=,!= followed by a version")
         }
 
         fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
@@ -53,6 +53,8 @@ pub mod rust_version {
                 Ok((version_compare::Cmp::Lt, suffix.trim_start().to_owned()))
             } else if let Some(suffix) = value.strip_prefix("=") {
                 Ok((version_compare::Cmp::Eq, suffix.trim_start().to_owned()))
+            } else if let Some(suffix) = value.strip_prefix("!=") {
+                Ok((version_compare::Cmp::Ne, suffix.trim_start().to_owned()))
             } else {
                 Err(serde::de::Error::custom("invalid input"))
             }

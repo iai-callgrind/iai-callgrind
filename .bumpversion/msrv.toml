@@ -1,6 +1,6 @@
 [tool.bumpversion]
 commit = true
-current_version = "1.67.1"
+current_version = "1.74.1"
 message = "Bump MSRV v{current_version} -> v{new_version}"
 
 [[tool.bumpversion.files]]
@@ -32,8 +32,3 @@ filename = ".clippy.toml"
 filename = "CONTRIBUTING.md"
 search = "Rust `{current_version}`"
 replace = "Rust `{new_version}`"
-
-[[tool.bumpversion.files]]
-filename = "CONTRIBUTING.md"
-search = "rustup override set {current_version}"
-replace = "rustup override set {new_version}"

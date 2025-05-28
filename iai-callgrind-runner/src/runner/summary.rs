@@ -923,7 +923,7 @@ impl ToolRunSegment {
             | ToolMetricSummary::CallgrindSummary(_) => false,
             ToolMetricSummary::ErrorSummary(metrics) => metrics
                 .diff_by_kind(&ErrorMetricKind::Errors)
-                .map_or(false, |e| match e.metrics {
+                .is_some_and(|e| match e.metrics {
                     EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _) => new > 0,
                     EitherOrBoth::Right(_) => false,
                 }),

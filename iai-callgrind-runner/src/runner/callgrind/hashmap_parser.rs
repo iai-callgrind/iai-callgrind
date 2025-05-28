@@ -179,9 +179,9 @@ impl CallgrindParser for HashMapParser {
                     if self
                         .sentinel
                         .as_ref()
-                        .map_or(false, |sentinel| sentinel.matches(func))
+                        .is_some_and(|sentinel| sentinel.matches(func))
                     {
-                        trace!("Found sentinel: {}", func);
+                        trace!("Found sentinel: {func}");
                         sentinel_key = Some(current_id.clone().try_into().expect("A valid id"));
                     }
                 }

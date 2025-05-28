@@ -1,6 +1,5 @@
 // spell-checker:ignore rmdirs
 use std::collections::{HashMap, HashSet};
-use std::ffi::OsString;
 use std::fmt::Write;
 use std::fs::File;
 use std::io::{stderr, stdout, BufRead, Read, Write as IOWrite};
@@ -18,6 +17,7 @@ use lazy_static::lazy_static;
 use minijinja::Environment;
 use once_cell::sync::OnceCell;
 use regex::{Captures, Regex};
+use rustc_version::{Channel, VersionMeta};
 use serde::{Deserialize, Serialize};
 use tempfile::{tempdir, TempDir};
 use valico::json_schema;
@@ -87,6 +87,8 @@ pub struct BenchmarkRunner {
 pub struct GroupConfig {
     #[serde(default, with = "benchmark_tests::serde::runs_on")]
     runs_on: Option<RunsOn>,
+    #[serde(default, with = "benchmark_tests::serde::rust_version")]
+    rust_version: Option<benchmark_tests::serde::rust_version::VersionComparator>,
     runs: Vec<RunConfig>,
 }
 
@@ -145,7 +147,7 @@ struct Metadata {
     target_directory: PathBuf,
     benchmarks: Vec<Benchmark>,
     benches_dir: PathBuf,
-    rust_version: String,
+    rust_version: VersionMeta,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -289,6 +291,8 @@ impl Benchmark {
             } else {
                 target != env!("IC_BUILD_TRIPLE")
             }
+        }) || !group.rust_version.as_ref().map_or(true, |(cmp, version)| {
+            meta.compare_rust_version(*cmp, version)
         }) {
             return;
         }
@@ -307,7 +311,7 @@ impl Benchmark {
                         target != env!("IC_BUILD_TRIPLE")
                     }
                 }) && r.rust_version.as_ref().map_or(true, |(cmp, version)| {
-                    version_compare::compare_to(&meta.rust_version, version, *cmp).unwrap()
+                    meta.compare_rust_version(*cmp, version)
                 })
             })
             .enumerate()
@@ -335,7 +339,7 @@ impl Benchmark {
                 let capture = run
                     .expected
                     .as_ref()
-                    .map_or(false, |e| e.stdout.is_some() || e.stderr.is_some());
+                    .is_some_and(|e| e.stdout.is_some() || e.stderr.is_some());
 
                 let output = if let Some(template) = &self.config.template {
                     let output =
@@ -867,12 +871,33 @@ impl Metadata {
             target_directory,
             benchmarks,
             benches_dir,
-            rust_version: rust_version.to_string(),
+            rust_version,
         }
     }
 
     pub fn get_template(&self) -> PathBuf {
         self.benches_dir.join(format!("{TEMPLATE_BENCH_NAME}.rs"))
+    }
+
+    pub fn compare_rust_version(&self, cmp: version_compare::Cmp, version: &str) -> bool {
+        if version.starts_with(|p: char| p.is_ascii_digit()) {
+            version_compare::compare_to(self.rust_version.semver.to_string(), version, cmp).unwrap()
+        } else {
+            let channel = match version {
+                "nightly" => Channel::Nightly,
+                "stable" => Channel::Stable,
+                "dev" => Channel::Dev,
+                "beta" => Channel::Beta,
+                _ => panic!("Invalid version string: {version}"),
+            };
+            match cmp {
+                version_compare::Cmp::Eq => self.rust_version.channel == channel,
+                version_compare::Cmp::Ne => self.rust_version.channel != channel,
+                _ => panic!(
+                    "Invalid comparator for channel: {version}. Only '=' and '!=' are allowed."
+                ),
+            }
+        }
     }
 }
 
@@ -914,7 +939,7 @@ impl RunConfig {
         if self
             .expected
             .as_ref()
-            .map_or(false, |expected| !expected.zero_callgrind_metrics)
+            .is_some_and(|expected| !expected.zero_callgrind_metrics)
         {
             let base_dir = home_dir.join(PACKAGE).join(bench_name);
             // These checks heavily depends on the creation of the `summary.json` files, but we
@@ -959,20 +984,8 @@ where
     eprintln!("{}: {}", "bench".purple().bold(), message.as_ref());
 }
 
-fn get_rust_version() -> Option<String> {
-    let output = std::process::Command::new(
-        std::env::var_os("RUSTC").unwrap_or_else(|| OsString::from("rustc")),
-    )
-    .arg("--version")
-    .output();
-
-    output.ok().map(|o| {
-        String::from_utf8_lossy(&o.stdout)
-            .split(' ')
-            .nth(1)
-            .expect("The rust version should be present")
-            .to_string()
-    })
+fn get_rust_version() -> Option<VersionMeta> {
+    rustc_version::version_meta().ok()
 }
 
 fn main() {

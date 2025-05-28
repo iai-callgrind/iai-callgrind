@@ -208,7 +208,7 @@ pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<Callgrind
         .contains("callgrind format")
     {
         warn!("Missing file format specifier. Assuming callgrind format.");
-    };
+    }
 
     let mut positions_prototype: Option<Positions> = None;
     let mut metrics_prototype: Option<Metrics> = None;
@@ -267,9 +267,7 @@ pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<Callgrind
             }
             // None is actually a malformed header line we just ignore here
             // Some(_) includes `^event:` lines
-            None | Some(_) => {
-                continue;
-            }
+            None | Some(_) => {}
         }
     }
 

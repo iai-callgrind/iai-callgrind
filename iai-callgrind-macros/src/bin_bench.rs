@@ -162,7 +162,7 @@ impl Bench {
             }
         } else {
             args = BenchesArgs::from_meta_list(meta)?;
-        };
+        }
 
         setup.update(other_setup);
         teardown.update(other_teardown);

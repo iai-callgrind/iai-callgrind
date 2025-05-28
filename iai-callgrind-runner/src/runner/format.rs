@@ -834,7 +834,7 @@ impl Formatter for VerticalFormatter {
                 if let Some(info) = details {
                     if summary
                         .diff_by_kind(&ErrorMetricKind::Errors)
-                        .map_or(false, |e| e.metrics.left().map_or(false, |l| *l > 0))
+                        .is_some_and(|e| e.metrics.left().is_some_and(|l| *l > 0))
                     {
                         if let Some(new) = info.left() {
                             if let Some(details) = new.details.as_ref() {

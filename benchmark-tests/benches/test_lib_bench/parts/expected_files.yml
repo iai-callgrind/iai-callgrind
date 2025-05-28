@@ -62,14 +62,11 @@ data:
         - callgrind.bench_multiple_threads.dump_every_bb.t1.p1.out
         - callgrind.bench_multiple_threads.dump_every_bb.t1.p2.out
         - callgrind.bench_multiple_threads.dump_every_bb.t1.p3.out
-        - callgrind.bench_multiple_threads.dump_every_bb.t1.p4.out
         - callgrind.bench_multiple_threads.dump_every_bb.t2.p1.out
         - callgrind.bench_multiple_threads.dump_every_bb.t2.p2.out
         - callgrind.bench_multiple_threads.dump_every_bb.t2.p3.out
-        - callgrind.bench_multiple_threads.dump_every_bb.t2.p4.out
         - callgrind.bench_multiple_threads.dump_every_bb.t3.p2.out
         - callgrind.bench_multiple_threads.dump_every_bb.t3.p3.out
-        - callgrind.bench_multiple_threads.dump_every_bb.t3.p4.out
         - summary.json
   - group: my_group
     function: bench_multiple_threads_in_subprocess
@@ -117,24 +114,18 @@ data:
         - pattern: callgrind.bench_multiple_threads_in_subprocess.dump_every_bb.*.log
           count: 2
         - pattern: callgrind.bench_multiple_threads_in_subprocess.dump_every_bb.*.out
-          count: 10
+          count: 7
         - pattern: callgrind.bench_multiple_threads_in_subprocess.dump_every_bb.*.t1.p1.out
           count: 1
         - pattern: callgrind.bench_multiple_threads_in_subprocess.dump_every_bb.*.t1.p2.out
-          count: 1
-        - pattern: callgrind.bench_multiple_threads_in_subprocess.dump_every_bb.*.t1.p3.out
           count: 1
         - pattern: callgrind.bench_multiple_threads_in_subprocess.dump_every_bb.*.t2.p1.out
           count: 1
         - pattern: callgrind.bench_multiple_threads_in_subprocess.dump_every_bb.*.t2.p2.out
           count: 1
-        - pattern: callgrind.bench_multiple_threads_in_subprocess.dump_every_bb.*.t2.p3.out
-          count: 1
         - pattern: callgrind.bench_multiple_threads_in_subprocess.dump_every_bb.*.t3.p1.out
           count: 1
         - pattern: callgrind.bench_multiple_threads_in_subprocess.dump_every_bb.*.t3.p2.out
-          count: 1
-        - pattern: callgrind.bench_multiple_threads_in_subprocess.dump_every_bb.*.t3.p3.out
           count: 1
       files:
         - summary.json

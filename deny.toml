@@ -1,4 +1,4 @@
-# spell-checker:ignore webpki reqwest rustls pemfile
+# spell-checker:ignore webpki reqwest rustls pemfile idna
 # This template contains all of the possible sections and their default values
 
 # Note that all fields that take a lint level have these possible values:
@@ -71,8 +71,9 @@ feature-depth = 1
 # A list of advisory IDs to ignore. Note that ignored advisories will still
 # output a note when they are encountered.
 ignore = [
+  # https://rustsec.org/advisories/RUSTSEC-2024-0421
+  { id = "RUSTSEC-2024-0421", reason = "iai-callgrind is not affected by this vulnerability. The idna dependency is not part of the public members of iai-callgrind. idna is a transient dependency of valico which is only used internally to run the benchmark tests." },
   #"RUSTSEC-0000-0000",
-  #{ id = "RUSTSEC-0000-0000", reason = "you can specify a reason the advisory is ignored" },
   #"a-crate-that-is-yanked@0.1.1", # you can also ignore yanked crate versions if you wish
   #{ crate = "a-crate-that-is-yanked@0.1.1", reason = "you can specify why you are ignoring the yanked crate" },
 ]
@@ -100,6 +101,7 @@ allow = [
   "MPL-2.0",
   "ISC",
   "CDDL-1.0",
+  "Unicode-3.0",
 ]
 # The confidence threshold for detecting a license from license text.
 # The higher the value, the more closely the license text must be to the
@@ -234,10 +236,10 @@ allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 # List of URLs for allowed Git repositories
 allow-git = []
 
-[sources.allow-org]
-# 1 or more github.com organizations to allow git sources for
-github = [""]
-# 1 or more gitlab.com organizations to allow git sources for
-gitlab = [""]
-# 1 or more bitbucket.org organizations to allow git sources for
-bitbucket = [""]
+# [sources.allow-org]
+# # 1 or more github.com organizations to allow git sources for
+# github = [""]
+# # 1 or more gitlab.com organizations to allow git sources for
+# gitlab = [""]
+# # 1 or more bitbucket.org organizations to allow git sources for
+# bitbucket = [""]

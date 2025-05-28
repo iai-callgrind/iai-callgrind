@@ -158,7 +158,7 @@ impl Benchmark for BaselineBenchmark {
             EntryPoint::Custom(custom) => {
                 callgrind_args.insert_toggle_collect(custom);
             }
-        };
+        }
 
         let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, None);
 
@@ -407,7 +407,7 @@ impl Groups {
                 let fail_fast = bench
                     .regression_config
                     .as_ref()
-                    .map_or(false, |r| r.fail_fast);
+                    .is_some_and(|r| r.fail_fast);
                 let summary = benchmark.run(bench, config, group)?;
                 summary.print_and_save(&config.meta.args.output_format)?;
                 summary.check_regression(&mut is_regressed, fail_fast)?;
@@ -716,7 +716,7 @@ impl Benchmark for SaveBaselineBenchmark {
             EntryPoint::Custom(custom) => {
                 callgrind_args.insert_toggle_collect(custom);
             }
-        };
+        }
 
         let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, None);
 

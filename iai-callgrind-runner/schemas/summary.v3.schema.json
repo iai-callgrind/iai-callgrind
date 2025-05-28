@@ -1,22 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "BenchmarkSummary",
-  "description": "The `BenchmarkSummary` containing all the information of a single benchmark run\n\nThis includes produced files, recorded callgrind events, performance regressions ...",
+  "description": "The `BenchmarkSummary` containing all the information of a single benchmark run\n\n This includes produced files, recorded callgrind events, performance regressions ...",
   "type": "object",
-  "required": [
-    "benchmark_exe",
-    "benchmark_file",
-    "function_name",
-    "kind",
-    "module_path",
-    "package_dir",
-    "project_root",
-    "tool_summaries",
-    "version"
-  ],
   "properties": {
     "benchmark_exe": {
-      "description": "The path to the binary which is executed by valgrind. In case of a library benchmark this is the compiled benchmark file. In case of a binary benchmark this is the path to the command.",
+      "description": "The path to the binary which is executed by valgrind. In case of a library benchmark this\n is the compiled benchmark file. In case of a binary benchmark this is the path to the\n command.",
       "type": "string"
     },
     "benchmark_file": {
@@ -85,15 +74,25 @@
       }
     },
     "version": {
-      "description": "The version of this format. Only backwards incompatible changes cause an increase of the version",
+      "description": "The version of this format. Only backwards incompatible changes cause an increase of the\n version",
       "type": "string"
     }
   },
+  "required": [
+    "version",
+    "kind",
+    "project_root",
+    "package_dir",
+    "benchmark_file",
+    "benchmark_exe",
+    "function_name",
+    "module_path",
+    "tool_summaries"
+  ],
   "definitions": {
     "Baseline": {
-      "description": "A `Baseline` depending on the [`BaselineKind`] which points to the corresponding path\n\nThis baseline is used for comparisons with the new output of valgrind tools.",
+      "description": "A `Baseline` depending on the [`BaselineKind`] which points to the corresponding path\n\n This baseline is used for comparisons with the new output of valgrind tools.",
       "type": "object",
-      "required": ["kind", "path"],
       "properties": {
         "kind": {
           "description": "The kind of the `Baseline`",
@@ -107,7 +106,8 @@
           "description": "The path to the file which is used to compare against the new output",
           "type": "string"
         }
-      }
+      },
+      "required": ["kind", "path"]
     },
     "BaselineKind": {
       "description": "The `BaselineKind` describing the baseline",
@@ -115,18 +115,18 @@
         {
           "description": "Compare new against `*.old` output files",
           "type": "string",
-          "enum": ["Old"]
+          "const": "Old"
         },
         {
           "description": "Compare new against a named baseline",
           "type": "object",
-          "required": ["Name"],
           "properties": {
             "Name": {
               "$ref": "#/definitions/BaselineName"
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "required": ["Name"]
         }
       ]
     },
@@ -139,22 +139,21 @@
         {
           "description": "A library benchmark",
           "type": "string",
-          "enum": ["LibraryBenchmark"]
+          "const": "LibraryBenchmark"
         },
         {
           "description": "A binary benchmark",
           "type": "string",
-          "enum": ["BinaryBenchmark"]
+          "const": "BinaryBenchmark"
         }
       ]
     },
     "CallgrindRegression": {
       "description": "The `CallgrindRegression` describing a single event based performance regression",
       "type": "object",
-      "required": ["diff_pct", "event_kind", "limit", "new", "old"],
       "properties": {
         "diff_pct": {
-          "description": "The difference between new and old in percent. Serialized as string to preserve infinity values and avoid null in json.",
+          "description": "The difference between new and old in percent. Serialized as string to preserve infinity\n values and avoid null in json.",
           "type": "string"
         },
         "event_kind": {
@@ -166,27 +165,27 @@
           ]
         },
         "limit": {
-          "description": "The value of the limit which was exceeded to cause a performance regression. Serialized as string to preserve infinity values and avoid null in json.",
+          "description": "The value of the limit which was exceeded to cause a performance regression. Serialized as\n string to preserve infinity values and avoid null in json.",
           "type": "string"
         },
         "new": {
           "description": "The value of the new benchmark run",
           "type": "integer",
           "format": "uint64",
-          "minimum": 0.0
+          "minimum": 0
         },
         "old": {
           "description": "The value of the old benchmark run",
           "type": "integer",
           "format": "uint64",
-          "minimum": 0.0
+          "minimum": 0
         }
-      }
+      },
+      "required": ["event_kind", "new", "old", "diff_pct", "limit"]
     },
     "CallgrindRun": {
-      "description": "The `CallgrindRun` contains all `CallgrindRunSegments` and their total costs in a `CallgrindTotal`.",
+      "description": "The `CallgrindRun` contains all `CallgrindRunSegments` and their total costs in a\n `CallgrindTotal`.",
       "type": "object",
-      "required": ["segments", "total"],
       "properties": {
         "segments": {
           "description": "All `CallgrindRunSummary`s",
@@ -203,12 +202,12 @@
             }
           ]
         }
-      }
+      },
+      "required": ["segments", "total"]
     },
     "CallgrindRunSegment": {
-      "description": "The `CallgrindRunSegment` containing the metric differences, performance regressions of a callgrind run segment.\n\nA segment can be a part (caused by options like `--dump-every-bb=xxx`), a thread (caused by `--separate-threads`) or a pid (possibly caused by `--trace-children`). A segment is a summary over a single file which contains the costs of that part, thread and/or pid.",
+      "description": "The `CallgrindRunSegment` containing the metric differences, performance regressions of a\n callgrind run segment.\n\n A segment can be a part (caused by options like `--dump-every-bb=xxx`), a thread (caused by\n `--separate-threads`) or a pid (possibly caused by `--trace-children`). A segment is a summary\n over a single file which contains the costs of that part, thread and/or pid.",
       "type": "object",
-      "required": ["command", "events", "regressions"],
       "properties": {
         "baseline": {
           "description": "If present, the `Baseline` used to compare the new with the old output",
@@ -240,12 +239,12 @@
             "$ref": "#/definitions/CallgrindRegression"
           }
         }
-      }
+      },
+      "required": ["command", "events", "regressions"]
     },
     "CallgrindSummary": {
-      "description": "The `CallgrindSummary` contains the callgrind run, flamegraph paths and other paths to the segments of the callgrind run.",
+      "description": "The `CallgrindSummary` contains the callgrind run, flamegraph paths and other paths to the\n segments of the callgrind run.",
       "type": "object",
-      "required": ["callgrind_run", "flamegraphs", "log_paths", "out_paths"],
       "properties": {
         "callgrind_run": {
           "description": "The summary of all callgrind segments is a `CallgrindRun`",
@@ -276,12 +275,12 @@
             "type": "string"
           }
         }
-      }
+      },
+      "required": ["log_paths", "out_paths", "flamegraphs", "callgrind_run"]
     },
     "CallgrindTotal": {
-      "description": "The total callgrind costs over the `CallgrindRunSegments` and all detected regressions for the total",
+      "description": "The total callgrind costs over the `CallgrindRunSegments` and all detected regressions for the\n total",
       "type": "object",
-      "required": ["regressions", "summary"],
       "properties": {
         "regressions": {
           "description": "All detected regressions for the total metrics",
@@ -298,52 +297,52 @@
             }
           ]
         }
-      }
+      },
+      "required": ["summary", "regressions"]
     },
     "Diffs": {
       "description": "The differences between two `Metrics` as percentage and factor",
       "type": "object",
-      "required": ["diff_pct", "factor"],
       "properties": {
         "diff_pct": {
-          "description": "The percentage of the difference between two `Metrics` serialized as string to preserve infinity values and avoid `null` in json",
+          "description": "The percentage of the difference between two `Metrics` serialized as string to preserve\n infinity values and avoid `null` in json",
           "type": "string"
         },
         "factor": {
-          "description": "The factor of the difference between two `Metrics` serialized as string to preserve infinity values and void `null` in json",
+          "description": "The factor of the difference between two `Metrics` serialized as string to preserve\n infinity values and void `null` in json",
           "type": "string"
         }
-      }
+      },
+      "required": ["diff_pct", "factor"]
     },
     "EitherOrBoth_for_SegmentDetails": {
-      "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, metrics, etc. Per convention left is `new` and right is `old`.",
+      "description": "Either left or right or both can be present\n\n Most of the time, this enum is used to store (new, old) output, metrics, etc. Per convention\n left is `new` and right is `old`.",
       "oneOf": [
         {
           "description": "The left or `new` value",
           "type": "object",
-          "required": ["Left"],
           "properties": {
             "Left": {
               "$ref": "#/definitions/SegmentDetails"
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "required": ["Left"]
         },
         {
           "description": "The right or `old` value",
           "type": "object",
-          "required": ["Right"],
           "properties": {
             "Right": {
               "$ref": "#/definitions/SegmentDetails"
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "required": ["Right"]
         },
         {
           "description": "Both values (`new` and `old`) are present",
           "type": "object",
-          "required": ["Both"],
           "properties": {
             "Both": {
               "type": "array",
@@ -359,43 +358,43 @@
               "minItems": 2
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "required": ["Both"]
         }
       ]
     },
     "EitherOrBoth_for_uint64": {
-      "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, metrics, etc. Per convention left is `new` and right is `old`.",
+      "description": "Either left or right or both can be present\n\n Most of the time, this enum is used to store (new, old) output, metrics, etc. Per convention\n left is `new` and right is `old`.",
       "oneOf": [
         {
           "description": "The left or `new` value",
           "type": "object",
-          "required": ["Left"],
           "properties": {
             "Left": {
               "type": "integer",
               "format": "uint64",
-              "minimum": 0.0
+              "minimum": 0
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "required": ["Left"]
         },
         {
           "description": "The right or `old` value",
           "type": "object",
-          "required": ["Right"],
           "properties": {
             "Right": {
               "type": "integer",
               "format": "uint64",
-              "minimum": 0.0
+              "minimum": 0
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "required": ["Right"]
         },
         {
           "description": "Both values (`new` and `old`) are present",
           "type": "object",
-          "required": ["Both"],
           "properties": {
             "Both": {
               "type": "array",
@@ -403,176 +402,176 @@
                 {
                   "type": "integer",
                   "format": "uint64",
-                  "minimum": 0.0
+                  "minimum": 0
                 },
                 {
                   "type": "integer",
                   "format": "uint64",
-                  "minimum": 0.0
+                  "minimum": 0
                 }
               ],
               "maxItems": 2,
               "minItems": 2
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "required": ["Both"]
         }
       ]
     },
     "EventKind": {
-      "description": "All `EventKind`s callgrind produces and additionally some derived events\n\nDepending on the options passed to Callgrind, these are the events that Callgrind can produce. See the [Callgrind documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.",
+      "description": "All `EventKind`s callgrind produces and additionally some derived events\n\n Depending on the options passed to Callgrind, these are the events that Callgrind can produce.\n See the [Callgrind\n documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.",
       "oneOf": [
         {
           "description": "The default event. I cache reads (which equals the number of instructions executed)",
           "type": "string",
-          "enum": ["Ir"]
+          "const": "Ir"
         },
         {
           "description": "The number of system calls done (--collect-systime=yes)",
           "type": "string",
-          "enum": ["SysCount"]
+          "const": "SysCount"
         },
         {
           "description": "The elapsed time spent in system calls (--collect-systime=yes)",
           "type": "string",
-          "enum": ["SysTime"]
+          "const": "SysTime"
         },
         {
           "description": "The cpu time spent during system calls (--collect-systime=nsec)",
           "type": "string",
-          "enum": ["SysCpuTime"]
+          "const": "SysCpuTime"
         },
         {
           "description": "The number of global bus events (--collect-bus=yes)",
           "type": "string",
-          "enum": ["Ge"]
+          "const": "Ge"
         },
         {
           "description": "D Cache reads (which equals the number of memory reads) (--cache-sim=yes)",
           "type": "string",
-          "enum": ["Dr"]
+          "const": "Dr"
         },
         {
           "description": "D Cache writes (which equals the number of memory writes) (--cache-sim=yes)",
           "type": "string",
-          "enum": ["Dw"]
+          "const": "Dw"
         },
         {
           "description": "I1 cache read misses (--cache-sim=yes)",
           "type": "string",
-          "enum": ["I1mr"]
+          "const": "I1mr"
         },
         {
           "description": "D1 cache read misses (--cache-sim=yes)",
           "type": "string",
-          "enum": ["D1mr"]
+          "const": "D1mr"
         },
         {
           "description": "D1 cache write misses (--cache-sim=yes)",
           "type": "string",
-          "enum": ["D1mw"]
+          "const": "D1mw"
         },
         {
           "description": "LL cache instruction read misses (--cache-sim=yes)",
           "type": "string",
-          "enum": ["ILmr"]
+          "const": "ILmr"
         },
         {
           "description": "LL cache data read misses (--cache-sim=yes)",
           "type": "string",
-          "enum": ["DLmr"]
+          "const": "DLmr"
         },
         {
           "description": "LL cache data write misses (--cache-sim=yes)",
           "type": "string",
-          "enum": ["DLmw"]
+          "const": "DLmw"
         },
         {
           "description": "Derived event showing the L1 hits (--cache-sim=yes)",
           "type": "string",
-          "enum": ["L1hits"]
+          "const": "L1hits"
         },
         {
           "description": "Derived event showing the LL hits (--cache-sim=yes)",
           "type": "string",
-          "enum": ["LLhits"]
+          "const": "LLhits"
         },
         {
           "description": "Derived event showing the RAM hits (--cache-sim=yes)",
           "type": "string",
-          "enum": ["RamHits"]
+          "const": "RamHits"
         },
         {
           "description": "Derived event showing the total amount of cache reads and writes (--cache-sim=yes)",
           "type": "string",
-          "enum": ["TotalRW"]
+          "const": "TotalRW"
         },
         {
           "description": "Derived event showing estimated CPU cycles (--cache-sim=yes)",
           "type": "string",
-          "enum": ["EstimatedCycles"]
+          "const": "EstimatedCycles"
         },
         {
           "description": "Conditional branches executed (--branch-sim=yes)",
           "type": "string",
-          "enum": ["Bc"]
+          "const": "Bc"
         },
         {
           "description": "Conditional branches mispredicted (--branch-sim=yes)",
           "type": "string",
-          "enum": ["Bcm"]
+          "const": "Bcm"
         },
         {
           "description": "Indirect branches executed (--branch-sim=yes)",
           "type": "string",
-          "enum": ["Bi"]
+          "const": "Bi"
         },
         {
           "description": "Indirect branches mispredicted (--branch-sim=yes)",
           "type": "string",
-          "enum": ["Bim"]
+          "const": "Bim"
         },
         {
           "description": "Dirty miss because of instruction read (--simulate-wb=yes)",
           "type": "string",
-          "enum": ["ILdmr"]
+          "const": "ILdmr"
         },
         {
           "description": "Dirty miss because of data read (--simulate-wb=yes)",
           "type": "string",
-          "enum": ["DLdmr"]
+          "const": "DLdmr"
         },
         {
           "description": "Dirty miss because of data write (--simulate-wb=yes)",
           "type": "string",
-          "enum": ["DLdmw"]
+          "const": "DLdmw"
         },
         {
           "description": "Counter showing bad temporal locality for L1 caches (--cachuse=yes)",
           "type": "string",
-          "enum": ["AcCost1"]
+          "const": "AcCost1"
         },
         {
           "description": "Counter showing bad temporal locality for LL caches (--cachuse=yes)",
           "type": "string",
-          "enum": ["AcCost2"]
+          "const": "AcCost2"
         },
         {
           "description": "Counter showing bad spatial locality for L1 caches (--cachuse=yes)",
           "type": "string",
-          "enum": ["SpLoss1"]
+          "const": "SpLoss1"
         },
         {
           "description": "Counter showing bad spatial locality for LL caches (--cachuse=yes)",
           "type": "string",
-          "enum": ["SpLoss2"]
+          "const": "SpLoss2"
         }
       ]
     },
     "FlamegraphSummary": {
-      "description": "The callgrind `FlamegraphSummary` records all created paths for an [`EventKind`] specific flamegraph\n\nEither the `regular_path`, `old_path` or the `diff_path` are present. Never can all of them be absent.",
+      "description": "The callgrind `FlamegraphSummary` records all created paths for an [`EventKind`] specific\n flamegraph\n\n Either the `regular_path`, `old_path` or the `diff_path` are present. Never can all of them be\n absent.",
       "type": "object",
-      "required": ["event_kind"],
       "properties": {
         "base_path": {
           "description": "If present, the path to the file of the old regular (non-differential) flamegraph",
@@ -594,12 +593,12 @@
           "description": "If present, the path to the file of the regular (non-differential) flamegraph",
           "type": ["string", "null"]
         }
-      }
+      },
+      "required": ["event_kind"]
     },
     "MetricsDiff": {
-      "description": "The `MetricsDiff` describes the difference between a `new` and `old` metric as percentage and factor.\n\nOnly if both metrics are present there is also a `Diffs` present. Otherwise, it just stores the `new` or `old` metric.",
+      "description": "The `MetricsDiff` describes the difference between a `new` and `old` metric as percentage and\n factor.\n\n Only if both metrics are present there is also a `Diffs` present. Otherwise, it just stores the\n `new` or `old` metric.",
       "type": "object",
-      "required": ["metrics"],
       "properties": {
         "diffs": {
           "description": "If both metrics are present there is also a `Diffs` present",
@@ -620,7 +619,8 @@
             }
           ]
         }
-      }
+      },
+      "required": ["metrics"]
     },
     "MetricsSummary_for_DhatMetricKind": {
       "description": "The `MetricsSummary` contains all differences between two tool run segments",
@@ -646,7 +646,6 @@
     "SegmentDetails": {
       "description": "Some additional and necessary information about the tool run segment",
       "type": "object",
-      "required": ["command", "path", "pid"],
       "properties": {
         "command": {
           "description": "The executed command extracted from Valgrind output",
@@ -665,7 +664,7 @@
           "description": "The part of this tool run (only callgrind)",
           "type": ["integer", "null"],
           "format": "uint64",
-          "minimum": 0.0
+          "minimum": 0
         },
         "path": {
           "description": "The path to the file from the tool run",
@@ -680,9 +679,10 @@
           "description": "The thread of this tool run (only callgrind)",
           "type": ["integer", "null"],
           "format": "uint",
-          "minimum": 0.0
+          "minimum": 0
         }
-      }
+      },
+      "required": ["command", "pid", "path"]
     },
     "SummaryFormat": {
       "description": "The format (json, ...) in which the summary file should be saved or printed",
@@ -690,19 +690,18 @@
         {
           "description": "The format in a space optimal json representation without newlines",
           "type": "string",
-          "enum": ["Json"]
+          "const": "Json"
         },
         {
           "description": "The format in pretty printed json",
           "type": "string",
-          "enum": ["PrettyJson"]
+          "const": "PrettyJson"
         }
       ]
     },
     "SummaryOutput": {
       "description": "Manage the summary output file with this `SummaryOutput`",
       "type": "object",
-      "required": ["format", "path"],
       "properties": {
         "format": {
           "description": "The [`SummaryFormat`]",
@@ -716,7 +715,8 @@
           "description": "The path to the destination file of this summary",
           "type": "string"
         }
-      }
+      },
+      "required": ["format", "path"]
     },
     "ToolMetricSummary": {
       "description": "The `ToolMetricSummary` contains the `MetricsSummary` distinguished by tool and metric kinds",
@@ -724,47 +724,46 @@
         {
           "description": "If there are no metrics extracted (currently massif, bbv)",
           "type": "string",
-          "enum": ["None"]
+          "const": "None"
         },
         {
           "description": "The error summary of tools which reports errors (memcheck, helgrind, drd)",
           "type": "object",
-          "required": ["ErrorSummary"],
           "properties": {
             "ErrorSummary": {
               "$ref": "#/definitions/MetricsSummary_for_ErrorMetricKind"
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "required": ["ErrorSummary"]
         },
         {
           "description": "The dhat summary",
           "type": "object",
-          "required": ["DhatSummary"],
           "properties": {
             "DhatSummary": {
               "$ref": "#/definitions/MetricsSummary_for_DhatMetricKind"
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "required": ["DhatSummary"]
         },
         {
           "description": "The callgrind summary",
           "type": "object",
-          "required": ["CallgrindSummary"],
           "properties": {
             "CallgrindSummary": {
               "$ref": "#/definitions/MetricsSummary_for_EventKind"
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "required": ["CallgrindSummary"]
         }
       ]
     },
     "ToolRun": {
-      "description": "The `ToolRun` contains all information about a single tool run with possibly multiple segments\n\nThe total is always present and summarizes all tool run segments. In the special case of a single tool run segment, the total equals the metrics of this segment.",
+      "description": "The `ToolRun` contains all information about a single tool run with possibly multiple segments\n\n The total is always present and summarizes all tool run segments. In the special case of a\n single tool run segment, the total equals the metrics of this segment.",
       "type": "object",
-      "required": ["segments", "total"],
       "properties": {
         "segments": {
           "description": "All `ToolRunSegment`s",
@@ -781,12 +780,12 @@
             }
           ]
         }
-      }
+      },
+      "required": ["segments", "total"]
     },
     "ToolRunSegment": {
-      "description": "A single segment of a tool run and if present the comparison with the \"old\" segment\n\nA tool run can produce multiple segments, for example for each process and subprocess with (--trace-children).",
+      "description": "A single segment of a tool run and if present the comparison with the \"old\" segment\n\n A tool run can produce multiple segments, for example for each process and subprocess with\n (--trace-children).",
       "type": "object",
-      "required": ["details", "metrics_summary"],
       "properties": {
         "details": {
           "description": "The details (like command, thread number etc.) about the segment(s)",
@@ -804,12 +803,12 @@
             }
           ]
         }
-      }
+      },
+      "required": ["details", "metrics_summary"]
     },
     "ToolSummary": {
       "description": "The `ToolSummary` containing all information about a valgrind tool run",
       "type": "object",
-      "required": ["log_paths", "out_paths", "summaries", "tool"],
       "properties": {
         "log_paths": {
           "description": "The paths to the `*.log` files. All tools produce at least one log file",
@@ -819,7 +818,7 @@
           }
         },
         "out_paths": {
-          "description": "The paths to the `*.out` files. Not all tools produce an output in addition to the log files",
+          "description": "The paths to the `*.out` files. Not all tools produce an output in addition to the log\n files",
           "type": "array",
           "items": {
             "type": "string"
@@ -841,7 +840,8 @@
             }
           ]
         }
-      }
+      },
+      "required": ["tool", "log_paths", "out_paths", "summaries"]
     },
     "ValgrindTool": {
       "description": "All currently available valgrind tools",

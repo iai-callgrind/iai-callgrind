@@ -377,14 +377,12 @@ impl OutputPath {
     }
 
     pub fn init(&self) -> Result<()> {
-        std::fs::create_dir_all(&self.dir)
-            .with_context(|| {
-                format!(
-                    "Failed creating flamegraph directory '{}'",
-                    self.dir.display()
-                )
-            })
-            .map_err(Into::into)
+        std::fs::create_dir_all(&self.dir).with_context(|| {
+            format!(
+                "Failed creating flamegraph directory '{}'",
+                self.dir.display()
+            )
+        })
     }
 
     pub fn create(&self) -> Result<File> {
@@ -479,7 +477,7 @@ impl OutputPath {
                     OutputPathKind::DiffBase(name.to_string())
                 }
                 (OutputPathKind::Base(name), BaselineKind::Name(other)) => {
-                    OutputPathKind::DiffBases(name.to_string(), other.to_string())
+                    OutputPathKind::DiffBases(name.clone(), other.to_string())
                 }
                 // TODO: NOT UNREACHABLE?
                 (OutputPathKind::Old | OutputPathKind::Base(_), _) => unreachable!(),

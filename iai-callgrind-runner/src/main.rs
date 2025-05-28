@@ -71,7 +71,7 @@ fn main() {
     match iai_callgrind_runner::runner::run() {
         Ok(()) => {}
         Err(error) => {
-            error!("{}", error.to_string());
+            error!("{}", error);
             std::process::exit(1)
         }
     }

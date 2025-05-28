@@ -20,7 +20,7 @@ schema_path := 'summary.schema.json'
 this_dir := `realpath .`
 book_build_dir := this_dir + "/docs/book"
 args := ''
-msrv := '1.67.1'
+msrv := '1.74.1'
 required_tools := 'valgrind|the essential tool
 clang|to be able to build iai-callgrind with the client-requests feature'
 cargo_tools := 'cargo-hack
@@ -126,7 +126,7 @@ install-hooks:
 install-toolchains:
     rustup toolchain install stable --component clippy
     rustup toolchain install nightly --component rustfmt
-    rustup toolchain install {{ msrv }} --profile default
+    rustup toolchain install {{ msrv }} --profile default --component rust-src
 
 # Show some introductory words and recommendations
 [group('init workspace')]
@@ -246,6 +246,8 @@ test-doc:
 # Run the UI tests with the MSRV if RUSTUP_TOOLCHAIN is unset (Uses: 'cargo')
 [group('test')]
 test-ui:
+    @echo "Ensure rust-src is installed for the rust toolchain ${RUSTUP_TOOLCHAIN:-{{ msrv }}}"
+    rustup component list --toolchain "${RUSTUP_TOOLCHAIN:-{{ msrv }}}" | grep -q '^\s*rust-src\s*.*installed'
     RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-{{ msrv }}}" cargo test --package iai-callgrind --test ui_tests --features ui_tests
 
 # Run the UI tests with the MSRV if RUSTUP_TOOLCHAIN is unset and overwrite the error message fixtures (Uses: 'cargo')

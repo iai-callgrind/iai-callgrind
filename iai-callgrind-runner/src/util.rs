@@ -141,7 +141,7 @@ pub fn write_all_to_stdout(bytes: &[u8]) {
             .write_all(bytes)
             .and_then(|()| writer.flush())
             .unwrap();
-        if !bytes.last().map_or(false, |l| *l == b'\n') {
+        if !bytes.last().is_some_and(|l| *l == b'\n') {
             println!();
         }
     }
@@ -157,7 +157,7 @@ pub fn write_all_to_stderr(bytes: &[u8]) {
             .write_all(bytes)
             .and_then(|()| writer.flush())
             .unwrap();
-        if !bytes.last().map_or(false, |l| *l == b'\n') {
+        if !bytes.last().is_some_and(|l| *l == b'\n') {
             eprintln!();
         }
     }

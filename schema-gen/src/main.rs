@@ -5,12 +5,13 @@
 use std::fs::File;
 
 use iai_callgrind_runner::runner::summary::BenchmarkSummary;
-use schemars::schema_for;
+use schemars::generate::SchemaSettings;
 
 fn main() {
+    let generator = SchemaSettings::draft07().into_generator();
     serde_json::to_writer_pretty(
         File::create("summary.schema.json").unwrap(),
-        &schema_for!(BenchmarkSummary),
+        &generator.into_root_schema_for::<BenchmarkSummary>(),
     )
     .expect("Schema creation should be successful");
 }
