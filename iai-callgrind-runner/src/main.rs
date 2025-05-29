@@ -3,6 +3,7 @@ use std::io::Write;
 
 use colored::{control, Colorize};
 use env_logger::Env;
+use iai_callgrind_runner::error::Error;
 use iai_callgrind_runner::runner::envs;
 use log::{error, warn};
 
@@ -70,9 +71,15 @@ fn main() {
     print_warnings();
     match iai_callgrind_runner::runner::run() {
         Ok(()) => {}
-        Err(error) => {
-            error!("{}", error);
-            std::process::exit(1)
-        }
+        Err(error) => match error.downcast_ref::<Error>() {
+            Some(Error::IgnoredArgument(_)) => {
+                warn!("{error}");
+                std::process::exit(0)
+            }
+            _ => {
+                error!("{error}");
+                std::process::exit(1)
+            }
+        },
     }
 }

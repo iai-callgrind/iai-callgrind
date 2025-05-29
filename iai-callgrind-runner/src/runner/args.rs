@@ -87,10 +87,14 @@ pub struct CommandLineArgs {
 
     /// The following arguments are accepted by the rust libtest harness and ignored by us
     ///
-    /// Further details in https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments or by
+    /// Since `--list` is an action which doesn't execute benchmarks it causes iai-callgrind to
+    /// just abort without executing any benchmarks. The other arguments just control the
+    /// behaviour and are ignored but the benchmarks are still executed.
+    ///
+    /// Further details in <https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments> or by
     /// running `cargo test -- --help`
     #[arg(long = "list", hide = true, action = ArgAction::SetTrue, required = false)]
-    _list: bool,
+    pub list: bool,
 
     #[arg(long = "test", hide = true, action = ArgAction::SetTrue, required = false)]
     _test: bool,
