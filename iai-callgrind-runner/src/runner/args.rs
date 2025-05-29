@@ -64,7 +64,7 @@ impl NoCapture {
 /// These arguments are not the command line arguments passed to `iai-callgrind-runner`. We collect
 /// the command line arguments in the `iai-callgrind::main!` macro without the binary as first
 /// argument, that's why `no_binary_name` is set to `true`.
-#[allow(clippy::partial_pub_fields)]
+#[allow(clippy::partial_pub_fields, clippy::struct_excessive_bools)]
 #[derive(Parser, Debug, Clone)]
 #[command(
     author,
@@ -84,6 +84,64 @@ pub struct CommandLineArgs {
     /// This argument is useless, so we sort it out and never make use of it.
     #[arg(long = "bench", hide = true, action = ArgAction::SetTrue, required = false)]
     _bench: bool,
+
+    /// The following arguments are accepted by the rust libtest harness and ignored by us
+    ///
+    /// Further details in https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments or by
+    /// running `cargo test -- --help`
+    #[arg(long = "list", hide = true, action = ArgAction::SetTrue, required = false)]
+    _list: bool,
+
+    #[arg(long = "test", hide = true, action = ArgAction::SetTrue, required = false)]
+    _test: bool,
+
+    #[arg(long = "exact", hide = true, action = ArgAction::SetTrue, required = false)]
+    _exact: bool,
+
+    #[arg(long = "skip", hide = true, required = false, num_args = 1)]
+    _skip: Option<String>,
+
+    #[arg(long = "ignored", hide = true, action = ArgAction::SetTrue, required = false)]
+    _ignored: bool,
+
+    #[arg(long = "include-ignored", hide = true, action = ArgAction::SetTrue, required = false)]
+    _include_ignored: bool,
+
+    #[arg(long = "exclude-should-panic", hide = true, action = ArgAction::SetTrue, required = false)]
+    _exclude_should_panic: bool,
+
+    #[arg(long = "test-threads", hide = true, required = false, num_args = 1)]
+    _test_threads: Option<String>,
+
+    #[arg(long = "force-run-in-process", hide = true, action = ArgAction::SetTrue, required = false)]
+    _force_run_in_process: bool,
+
+    #[arg(long = "ensure-time", hide = true, action = ArgAction::SetTrue, required = false)]
+    _ensure_time: bool,
+
+    #[arg(long = "shuffle", hide = true, action = ArgAction::SetTrue, required = false)]
+    _shuffle: bool,
+
+    #[arg(long = "shuffle-seed", hide = true, required = false, num_args = 1)]
+    _shuffle_seed: Option<String>,
+
+    #[arg(long = "quiet", short = 'q', hide = true, action = ArgAction::SetTrue, required = false)]
+    _quiet: bool,
+
+    #[arg(long = "show-output", hide = true, action = ArgAction::SetTrue, required = false)]
+    _show_output: bool,
+
+    #[arg(long = "color", hide = true, required = false, num_args = 1)]
+    _color: Option<String>,
+
+    #[arg(long = "logfile", hide = true, required = false, num_args = 1)]
+    _logfile: Option<String>,
+
+    #[arg(long = "report-time", hide = true, action = ArgAction::SetTrue, required = false)]
+    _report_time: bool,
+
+    #[arg(short = 'Z', hide = true, required = false, num_args = 0..)]
+    _unstable_options: Vec<String>,
 
     /// If specified, only run benches containing this string in their names
     ///
