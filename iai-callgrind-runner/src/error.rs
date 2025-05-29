@@ -10,6 +10,7 @@ use crate::runner::common::ModulePath;
 use crate::runner::tool::{ToolOutputPath, ValgrindTool};
 use crate::util::write_all_to_stderr;
 
+/// The iai-callgrind error
 #[derive(Debug, PartialEq, Clone)]
 pub enum Error {
     InitError(String),
@@ -23,6 +24,7 @@ pub enum Error {
     EnvironmentVariableError((String, String)),
     SandboxError(String),
     BenchmarkError(ValgrindTool, ModulePath, String),
+    IgnoredArgument(String),
 }
 
 impl std::error::Error for Error {}
@@ -111,6 +113,12 @@ impl Display for Error {
             }
             Self::BenchmarkError(tool, module_path, message) => {
                 write!(f, "Error in {tool} benchmark {module_path}: {message}")
+            }
+            Self::IgnoredArgument(arg) => {
+                write!(
+                    f,
+                    "{arg} is ignored and iai-callgrind benchmarks are not executed"
+                )
             }
         }
     }
