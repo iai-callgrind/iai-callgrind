@@ -1,3 +1,4 @@
 fn main() {
-    panic!("should be replaced by a rendered template");
+    // TODO: UNCOMMENT
+    // panic!("should be replaced by a rendered template");
 }

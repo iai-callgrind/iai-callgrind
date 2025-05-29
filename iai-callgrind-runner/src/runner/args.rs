@@ -93,9 +93,6 @@ pub struct CommandLineArgs {
     ///
     /// Further details in <https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments> or by
     /// running `cargo test -- --help`
-    #[arg(long = "list", hide = true, action = ArgAction::SetTrue, required = false)]
-    pub list: bool,
-
     #[arg(long = "test", hide = true, action = ArgAction::SetTrue, required = false)]
     _test: bool,
 
@@ -348,6 +345,24 @@ pub struct CommandLineArgs {
         env = "IAI_CALLGRIND_NOCAPTURE"
     )]
     pub nocapture: NoCapture,
+
+    /// Print a list of all benchmarks. With this argument no benchmarks are executed.
+    ///
+    /// The output format is intended to be the same as the output format of the libtest harness.
+    /// However, future changes of the output format by cargo might not be incorporated into
+    /// iai-callgrind. As a consequence, it is not considered safe to rely on the output in
+    /// scripts.
+    #[arg(
+        long = "list",
+        default_missing_value = "true",
+        default_value = "false",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = BoolishValueParser::new(),
+        action = ArgAction::Set,
+        env = "IAI_CALLGRIND_LIST"
+    )]
+    pub list: bool,
 }
 
 /// This function parses a space separated list of raw argument strings into [`crate::api::RawArgs`]

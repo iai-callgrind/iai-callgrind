@@ -1007,6 +1007,24 @@ pub fn print_no_capture_footer(
     }
 }
 
+pub fn print_list_benchmark(module_path: &ModulePath, id: Option<&String>) {
+    match id {
+        Some(id) => {
+            println!("{module_path}::{id}: bench");
+        }
+        None => {
+            println!("{module_path}: bench");
+        }
+    }
+}
+
+pub fn print_benchmark_list_summary(sum: u64) {
+    if sum != 0 {
+        println!();
+    }
+    println!("0 tests, {sum} benchmarks");
+}
+
 fn truncate_description(description: &str, truncate_description: Option<usize>) -> Cow<'_, str> {
     if let Some(num) = truncate_description {
         let new_description = truncate_str_utf8(description, num);
