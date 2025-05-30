@@ -164,6 +164,11 @@ path = "benches/test_bin_bench/tools/test_bin_bench_tools.rs"
 
 [[bench]]
 harness = false
+name = "test_bin_bench_list_arg"
+path = "benches/test_bin_bench/list_arg/test_bin_bench_list_arg.rs"
+
+[[bench]]
+harness = false
 name = "test_lib_bench_flamegraph"
 path = "benches/test_lib_bench/flamegraph/test_lib_bench_flamegraph.rs"
 
@@ -251,6 +256,11 @@ path = "benches/test_lib_bench/output_format/test_lib_bench_output_format.rs"
 harness = false
 name = "test_lib_bench_all_args"
 path = "benches/test_lib_bench/all_args/test_lib_bench_all_args.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_list_arg"
+path = "benches/test_lib_bench/list_arg/test_lib_bench_list_arg.rs"
 
 [[bench]]
 harness = false

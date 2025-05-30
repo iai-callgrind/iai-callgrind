@@ -210,7 +210,11 @@ pub fn run() -> Result<()> {
                 meta,
             };
 
-            lib_bench::run(benchmark_groups, config)
+            if config.meta.args.list {
+                lib_bench::list(benchmark_groups, &config)
+            } else {
+                lib_bench::run(benchmark_groups, config)
+            }
         }
         BenchmarkKind::BinaryBenchmark => {
             let benchmark_groups: BinaryBenchmarkGroups = receive_benchmark(num_bytes)?;
@@ -237,7 +241,11 @@ pub fn run() -> Result<()> {
                 meta,
             };
 
-            bin_bench::run(benchmark_groups, config)
+            if config.meta.args.list {
+                bin_bench::list(benchmark_groups, &config)
+            } else {
+                bin_bench::run(benchmark_groups, config)
+            }
         }
     }
 }

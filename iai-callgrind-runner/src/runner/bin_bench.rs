@@ -1097,6 +1097,24 @@ pub fn run(benchmark_groups: BinaryBenchmarkGroups, config: Config) -> Result<()
     Runner::new(benchmark_groups, config)?.run()
 }
 
+/// Print a list of all benchmarks with a short summary
+pub fn list(benchmark_groups: BinaryBenchmarkGroups, config: &Config) -> Result<()> {
+    let groups =
+        Groups::from_binary_benchmark(&config.module_path, benchmark_groups, &config.meta)?;
+
+    let mut sum = 0u64;
+    for group in groups.0 {
+        for bench in group.benches {
+            sum += 1;
+            format::print_list_benchmark(&bench.module_path, bench.id.as_ref());
+        }
+    }
+
+    format::print_benchmark_list_summary(sum);
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs::File;

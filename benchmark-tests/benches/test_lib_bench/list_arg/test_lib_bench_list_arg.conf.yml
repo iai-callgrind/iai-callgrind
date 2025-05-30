@@ -1,0 +1,6 @@
+groups:
+  - runs:
+      - args: ["--list"]
+        expected:
+          exit_code: 0
+          stdout: expected_stdout

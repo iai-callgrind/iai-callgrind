@@ -10,7 +10,6 @@ use log::debug;
 use super::args::CommandLineArgs;
 use super::envs;
 use crate::api::RegressionConfig;
-use crate::error::Error;
 use crate::util::resolve_binary_path;
 
 #[derive(Debug, Clone)]
@@ -49,9 +48,6 @@ impl Metadata {
         bench_file: &Path,
     ) -> Result<Self> {
         let args = CommandLineArgs::parse_from(raw_command_line_args);
-        if args.list {
-            return Err(Error::IgnoredArgument("--list".to_owned()).into());
-        }
 
         let arch = std::env::consts::ARCH.to_owned();
         debug!("Detected architecture: {arch}");
