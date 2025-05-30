@@ -79,43 +79,58 @@ instead of `true` and one of `n`, `no`, `f`, `false`, `off`, and `0` instead of
     override_usage= "cargo bench ... [BENCHNAME] -- [OPTIONS]"
 )]
 pub struct CommandLineArgs {
-    /// `--bench` usually shows up as last argument set by cargo and not by us.
-    ///
-    /// This argument is useless, so we sort it out and never make use of it.
-    #[arg(long = "bench", hide = true, action = ArgAction::SetTrue, required = false)]
-    _bench: bool,
-
     /// The following arguments are accepted by the rust libtest harness and ignored by us
-    ///
-    /// Since `--list` is an action which doesn't execute benchmarks it causes iai-callgrind to
-    /// just abort without executing any benchmarks. The other arguments just control the
-    /// behaviour and are ignored but the benchmarks are still executed.
     ///
     /// Further details in <https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments> or by
     /// running `cargo test -- --help`
-    #[arg(long = "test", hide = true, action = ArgAction::SetTrue, required = false)]
-    _test: bool,
-
-    #[arg(long = "exact", hide = true, action = ArgAction::SetTrue, required = false)]
-    _exact: bool,
-
-    #[arg(long = "skip", hide = true, required = false, num_args = 1)]
-    _skip: Option<String>,
+    #[arg(long = "include-ignored", hide = true, action = ArgAction::SetTrue, required = false)]
+    _include_ignored: bool,
 
     #[arg(long = "ignored", hide = true, action = ArgAction::SetTrue, required = false)]
     _ignored: bool,
 
-    #[arg(long = "include-ignored", hide = true, action = ArgAction::SetTrue, required = false)]
-    _include_ignored: bool,
+    #[arg(long = "force-run-in-process", hide = true, action = ArgAction::SetTrue, required = false)]
+    _force_run_in_process: bool,
 
     #[arg(long = "exclude-should-panic", hide = true, action = ArgAction::SetTrue, required = false)]
     _exclude_should_panic: bool,
 
-    #[arg(long = "test-threads", hide = true, required = false, num_args = 1)]
-    _test_threads: Option<String>,
+    #[arg(long = "test", hide = true, action = ArgAction::SetTrue, required = false)]
+    _test: bool,
 
-    #[arg(long = "force-run-in-process", hide = true, action = ArgAction::SetTrue, required = false)]
-    _force_run_in_process: bool,
+    /// `--bench` also shows up as last argument set by `cargo bench` even if not explicitly given
+    #[arg(long = "bench", hide = true, action = ArgAction::SetTrue, required = false)]
+    _bench: bool,
+
+    #[arg(long = "logfile", hide = true, required = false, num_args = 0..)]
+    _logfile: Vec<String>,
+
+    #[arg(long = "test-threads", hide = true, required = false, num_args = 0..)]
+    _test_threads: Vec<String>,
+
+    #[arg(long = "skip", hide = true, required = false, num_args = 0..)]
+    _skip: Vec<String>,
+
+    #[arg(long = "quiet", short = 'q', hide = true, action = ArgAction::SetTrue, required = false)]
+    _quiet: bool,
+
+    #[arg(long = "exact", hide = true, action = ArgAction::SetTrue, required = false)]
+    _exact: bool,
+
+    #[arg(long = "color", hide = true, required = false, num_args = 0..)]
+    _color: Vec<String>,
+
+    #[arg(long = "format", hide = true, required = false, num_args = 0..)]
+    _format: Vec<String>,
+
+    #[arg(long = "show-output", hide = true, action = ArgAction::SetTrue, required = false)]
+    _show_output: bool,
+
+    #[arg(short = 'Z', hide = true, required = false, num_args = 0..)]
+    _unstable_options: Vec<String>,
+
+    #[arg(long = "report-time", hide = true, action = ArgAction::SetTrue, required = false)]
+    _report_time: bool,
 
     #[arg(long = "ensure-time", hide = true, action = ArgAction::SetTrue, required = false)]
     _ensure_time: bool,
@@ -123,26 +138,9 @@ pub struct CommandLineArgs {
     #[arg(long = "shuffle", hide = true, action = ArgAction::SetTrue, required = false)]
     _shuffle: bool,
 
-    #[arg(long = "shuffle-seed", hide = true, required = false, num_args = 1)]
-    _shuffle_seed: Option<String>,
-
-    #[arg(long = "quiet", short = 'q', hide = true, action = ArgAction::SetTrue, required = false)]
-    _quiet: bool,
-
-    #[arg(long = "show-output", hide = true, action = ArgAction::SetTrue, required = false)]
-    _show_output: bool,
-
-    #[arg(long = "color", hide = true, required = false, num_args = 1)]
-    _color: Option<String>,
-
-    #[arg(long = "logfile", hide = true, required = false, num_args = 1)]
-    _logfile: Option<String>,
-
-    #[arg(long = "report-time", hide = true, action = ArgAction::SetTrue, required = false)]
-    _report_time: bool,
-
-    #[arg(short = 'Z', hide = true, required = false, num_args = 0..)]
-    _unstable_options: Vec<String>,
+    // This is the last of the ignored libtest args
+    #[arg(long = "shuffle-seed", hide = true, required = false, num_args = 0..)]
+    _shuffle_seed: Vec<String>,
 
     /// If specified, only run benches containing this string in their names
     ///
@@ -657,5 +655,42 @@ mod tests {
     fn test_boolish(#[case] value: &str, #[case] expected: bool) {
         let result = CommandLineArgs::parse_from(&[format!("--allow-aslr={value}")]);
         assert_eq!(result.allow_aslr, Some(expected));
+    }
+
+    #[rstest]
+    #[case::include_ignored("--include-ignored", "")]
+    #[case::ignored("--ignored", "")]
+    #[case::force_run_in_process("--force-run-in-process", "")]
+    #[case::exclude_should_panic("--exclude-should-panic", "")]
+    #[case::test("--test", "")]
+    #[case::bench("--bench", "")]
+    #[case::logfile_without_arg("--logfile", "")]
+    #[case::logfile_with_arg("--logfile", "/some/path")]
+    #[case::test_threads("--test-threads", "")]
+    #[case::skip_without_arg("--skip", "")]
+    #[case::skip_with_arg("--skip", "some::test")]
+    #[case::quiet_short("-q", "")]
+    #[case::quiet_long("--quiet", "")]
+    #[case::exact("--exact", "")]
+    #[case::color_without_arg("--color", "")]
+    #[case::color_with_arg("--color", "auto")]
+    #[case::format_without_arg("--format", "")]
+    #[case::format_with_arg("--format", "terse")]
+    #[case::show_output("--show-output", "")]
+    #[case::z_without_arg("-Z", "")]
+    #[case::z_with_arg("-Z", "unstable-options")]
+    #[case::report_time("--report-time", "")]
+    #[case::ensure_time("--ensure-time", "")]
+    #[case::shuffle("--shuffle", "")]
+    #[case::shuffle_seed_without_arg("--shuffle-seed", "")]
+    #[case::shuffle_seed_with_arg("--shuffle-seed", "123")]
+    fn test_when_libtest_arg_then_no_exit_with_error(#[case] arg: &str, #[case] value: &str) {
+        let result = if value.is_empty() {
+            CommandLineArgs::try_parse_from([arg])
+        } else {
+            CommandLineArgs::try_parse_from(&[format!("{arg}={value}")])
+        };
+
+        assert!(result.is_ok());
     }
 }
