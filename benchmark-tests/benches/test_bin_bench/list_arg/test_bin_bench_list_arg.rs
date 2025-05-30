@@ -1,0 +1,16 @@
+use iai_callgrind::{binary_benchmark, binary_benchmark_group, main};
+
+#[binary_benchmark]
+fn echo_bench() -> iai_callgrind::Command {
+    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_echo"))
+}
+
+#[binary_benchmark]
+fn read_file_bench() -> iai_callgrind::Command {
+    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_read-file"))
+}
+
+binary_benchmark_group!(name = group_1; benchmarks = echo_bench);
+binary_benchmark_group!(name = group_2; benchmarks = read_file_bench, echo_bench);
+
+main!(binary_benchmark_groups = group_1, group_2);

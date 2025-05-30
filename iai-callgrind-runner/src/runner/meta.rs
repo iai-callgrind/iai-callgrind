@@ -48,10 +48,6 @@ impl Metadata {
         bench_file: &Path,
     ) -> Result<Self> {
         let args = CommandLineArgs::parse_from(raw_command_line_args);
-        // TODO: DELETE
-        // if args.list {
-        //     return Err(Error::IgnoredArgument("--list".to_owned()).into());
-        // }
 
         let arch = std::env::consts::ARCH.to_owned();
         debug!("Detected architecture: {arch}");
