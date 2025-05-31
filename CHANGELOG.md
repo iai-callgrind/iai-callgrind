@@ -1,5 +1,5 @@
 <!-- spell-checker:ignore serde dewert binstall jembishop kehl DaniPopes bytemuck hargut -->
-<!-- spell-checker:ignore ryanpeach -->
+<!-- spell-checker:ignore ryanpeach hashbrown -->
 <!--
 Added for new features.
 Changed for changes in existing functionality.
@@ -22,6 +22,38 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.14.1] - 2025-05-31
+
+### Added
+
+* ([#339](https://github.com/iai-callgrind/iai-callgrind/pull/339)): Implement
+  the --list argument of the libtest harness to list all benchmarks instead of
+  running any benchmarks.
+
+### Changed
+
+* ([#347](https://github.com/iai-callgrind/iai-callgrind/pull/347)): Update MSRV
+  from `1.67.1` -> `1.74.1` and update (most) direct and indirect dependencies
+  to their latest versions.
+
+### Fixed
+
+* ([#337](https://github.com/iai-callgrind/iai-callgrind/issue/337)): Fix
+  `--regression` does not exit with error status when there are regressions.
+  Also, `--regression-fail-fast` did not exit the benchmarks early on first
+  encountered regression.
+* ([#339](https://github.com/iai-callgrind/iai-callgrind/issue/339)): Fix tests
+  fail when invoked with extra cargo (libtest harness) arguments like --list or
+  --format, ...
+* ([#341](https://github.com/iai-callgrind/iai-callgrind/issue/339)): Remove
+  Quickstart from README and link instead to the quickstart in the guide.
+* ([#347](https://github.com/iai-callgrind/iai-callgrind/pull/347)): deny:
+  RUSTSEC-2025-0024: error[vulnerability]: crossbeam-channel: double free on
+  Drop: Fixed by updating transient dependency `crossbeam-channel` to 0.5.15
+* ([#347](https://github.com/iai-callgrind/iai-callgrind/pull/347)):
+  RUSTSEC-2025-0024: deny: error[vulnerability]: Borsh serialization of HashMap
+  is non-canonical: Fixed by updating transient `hashbrown` dependency to 0.15.3
 
 ## [0.14.0] - 2024-10-04
 
