@@ -2,7 +2,7 @@
 
 I'm not going into full detail of the low-level api here since it is fully
 documented in the [api
-Documentation](https://docs.rs/iai-callgrind/0.14.0/iai_callgrind/index.html).
+Documentation](https://docs.rs/iai-callgrind/0.14.1/iai_callgrind/index.html).
 
 ## The basic structure
 
