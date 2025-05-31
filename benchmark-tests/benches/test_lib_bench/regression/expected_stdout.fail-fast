@@ -1,0 +1,7 @@
+test_bench_template::bench_group::bench_bubble_sort regress_ir:setup_worst_case_array(5)
+  Instructions:                            |                     (+       %) [+       x]
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (+       %) [+       x]
+  Estimated Cycles:                        |                     (         )

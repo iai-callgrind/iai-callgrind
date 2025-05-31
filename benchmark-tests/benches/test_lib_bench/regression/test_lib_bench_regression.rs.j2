@@ -1,0 +1,28 @@
+use std::hint::black_box;
+
+use benchmark_tests::{bubble_sort, setup_worst_case_array};
+use iai_callgrind::{
+    library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,
+    RegressionConfig,
+};
+
+#[library_benchmark]
+#[bench::regress_ir(
+    args = [{{ array_length }}],
+    setup = setup_worst_case_array,
+    config = LibraryBenchmarkConfig::default()
+        .regression(
+            RegressionConfig::default().limits([(EventKind::Ir, 0.0)]).fail_fast({{ fail_fast }})
+        )
+)]
+#[bench::should_not_run_after_regression(setup_worst_case_array(10))]
+fn bench_bubble_sort(array: Vec<i32>) -> Vec<i32> {
+    black_box(bubble_sort(array))
+}
+
+library_benchmark_group!(
+    name = bench_group;
+    benchmarks = bench_bubble_sort
+);
+
+main!(library_benchmark_groups = bench_group);

@@ -1,0 +1,36 @@
+template: test_bin_bench_regression.rs.j2
+groups:
+  - runs:
+      - args: []
+        expected:
+          stdout: expected_stdout.1
+          stderr: expected_stderr.empty
+          exit_code: 0
+        template_data:
+          array_length: 4
+          fail_fast: true
+      - args: []
+        expected:
+          stdout: expected_stdout.fail-fast
+          stderr: expected_stderr.fail-fast
+          exit_code: 1
+        template_data:
+          array_length: 5
+          fail_fast: true
+  - runs:
+      - args: []
+        expected:
+          stdout: expected_stdout.1
+          stderr: expected_stderr.empty
+          exit_code: 0
+        template_data:
+          array_length: 4
+          fail_fast: false
+      - args: []
+        expected:
+          stdout: expected_stdout.no-fail-fast
+          stderr: expected_stderr.no-fail-fast
+          exit_code: 1
+        template_data:
+          array_length: 5
+          fail_fast: false
