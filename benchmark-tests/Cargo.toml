@@ -88,6 +88,10 @@ path = "src/helper/thread.rs"
 name = "subprocess"
 path = "src/helper/subprocess.rs"
 
+[[bin]]
+name = "bubble-sort"
+path = "src/helper/bubble-sort.rs"
+
 [[bench]]
 harness = false
 name = "test_bench_template"

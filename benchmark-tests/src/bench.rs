@@ -48,6 +48,11 @@ lazy_static! {
     static ref PROCESS_DID_NOT_EXIT_SUCCESSFULLY_RE: Regex =
         Regex::new(r"^([ ]+process didn't exit successfully: `)(.*)(` \(exit status: .*\).*)$")
             .expect("Regex should compile");
+    // Performance has regressed: Instructions (196 > 133) regressed by +47.3684% (>+0.00000)
+    // $1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__NUM__>$9
+    static ref REGRESSION_RE: Regex =
+        Regex::new(r"^(Performance has regressed:\s*\w+\s*\()([0-9]+)(\s*[><]\s*)([0-9]+)(\)\s*regressed\s*by\s*[+-])([0-9.]+)(%\s*\([><][+-])([0-9.]+)(\)\s*)$")
+            .expect("Regex should compile");
     // Command: target/release/deps/test_lib_bench_threads-c2a88f916ff580f9
     static ref COMMAND_RE: Regex =
         Regex::new(r"^(Command:)(\s*target/release/deps/test_(lib|bin)_bench_.+-[a-z0-9]+\s*.*)$")
@@ -490,6 +495,8 @@ impl BenchmarkOutput {
                 continue;
             }
             let line = PROCESS_DID_NOT_EXIT_SUCCESSFULLY_RE.replace(&line, "$1<__PATH__>$3");
+            let line =
+                REGRESSION_RE.replace(&line, "$1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__NUM__>$9");
             writeln!(result, "{line}").unwrap();
         }
         result
@@ -1042,6 +1049,22 @@ mod tests {
     fn test_absolute_path_re(#[case] haystack: &str, #[case] replaced: &str) {
         assert_eq!(
             ABSOLUTE_PATH_RE.replace_all(haystack, "$1<__ABS_PATH__>$2"),
+            replaced
+        );
+    }
+
+    #[rstest]
+    #[case::instructions_positive_when_0_allowed(
+        "Performance has regressed: Instructions (196 > 133) regressed by +47.3684% (>+0.00000)",
+        "Performance has regressed: Instructions (<__NUM__> > <__NUM__>) regressed by \
+         +<__PERCENT__>% (>+<__NUM__>)"
+    )]
+    fn test_regression_re(#[case] haystack: &str, #[case] replaced: &str) {
+        assert_eq!(
+            REGRESSION_RE.replace(
+                haystack,
+                "$1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__NUM__>$9"
+            ),
             replaced
         );
     }

@@ -523,10 +523,7 @@ impl CallgrindSummary {
 
     /// Return true if there are any recorded regressions in this `CallgrindSummary`
     pub fn is_regressed(&self) -> bool {
-        self.callgrind_run
-            .segments
-            .iter()
-            .any(|r| !r.regressions.is_empty())
+        !self.callgrind_run.total.regressions.is_empty()
     }
 
     pub fn add_summaries(

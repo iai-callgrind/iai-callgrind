@@ -409,6 +409,7 @@ impl Groups {
                     .regression_config
                     .as_ref()
                     .is_some_and(|r| r.fail_fast);
+
                 let summary = benchmark.run(bench, config, group)?;
                 summary.print_and_save(&config.meta.args.output_format)?;
                 summary.check_regression(&mut is_regressed, fail_fast)?;
