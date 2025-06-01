@@ -42,7 +42,7 @@ impl Errors {
 
 impl Display for Errors {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("Error in at least one benchmark group: The following errors occurred:\n")?;
+        f.write_str("iai-callgrind: Error: The following errors occurred:\n")?;
 
         for error in &self.0 {
             f.write_fmt(format_args!("--> {error}\n"))?;

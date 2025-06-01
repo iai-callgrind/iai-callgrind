@@ -72,3 +72,89 @@ impl std::fmt::Display for ModulePath {
         f.write_str(&self.0)
     }
 }
+
+pub enum BenchmarkKind {
+    BinaryBenchmark,
+    LibraryBenchmark,
+}
+
+pub struct Runner {
+    cmd: std::process::Command,
+    module_path: String,
+}
+
+impl Runner {
+    pub fn new(kind: &BenchmarkKind, bench_bin: String, file: &str, module_path: &str) -> Self {
+        const LIBRARY_VERSION: &str = "0.14.1";
+
+        let exe = option_env!("IAI_CALLGRIND_RUNNER").unwrap_or_else(|| {
+            option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner")
+        });
+
+        let mut cmd = std::process::Command::new(exe);
+        cmd.arg(LIBRARY_VERSION);
+        match kind {
+            BenchmarkKind::BinaryBenchmark => {
+                cmd.arg("--bin-bench");
+            }
+            BenchmarkKind::LibraryBenchmark => {
+                cmd.arg("--lib-bench");
+            }
+        }
+
+        cmd.arg(env!("CARGO_MANIFEST_DIR"));
+        cmd.arg(env!("CARGO_PKG_NAME"));
+        cmd.arg(file);
+        cmd.arg(module_path);
+        cmd.arg(bench_bin); // The executable benchmark binary
+
+        Self {
+            cmd,
+            module_path: module_path.to_owned(),
+        }
+    }
+
+    pub fn exec(mut self, encoded: Vec<u8>) -> Result<(), error::Errors> {
+        let mut child = self
+            .cmd
+            .arg(encoded.len().to_string())
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+            .map_err(|e| {
+                let mut errors = error::Errors::default();
+                errors.add(error::Error::new(
+                    &ModulePath::new(&self.module_path),
+                    &format!(
+                        "Failed to run benchmarks: {e}.\n\nIs iai-callgrind-runner installed and \
+                         iai-callgrind-runner in your $PATH?.\nYou can set the environment \
+                         variable IAI_CALLGRIND_RUNNER to the absolute path of the \
+                         iai-callgrind-runner executable.\n\nMake sure you have followed the \
+                         installation instructions in the guide:\n\
+                         https://iai-callgrind.github.io/iai-callgrind/latest/html/installation/iai_callgrind.html",
+                    ),
+                ));
+                errors
+            })?;
+
+        let mut stdin = child
+            .stdin
+            .take()
+            .expect("Opening stdin to submit encoded benchmark");
+        std::thread::spawn(move || {
+            use std::io::Write;
+            stdin
+                .write_all(&encoded)
+                .expect("Writing encoded benchmark to stdin");
+        });
+
+        let status = child.wait().expect(
+            "Internal error: Waiting for child process to exit should succeed. If the problem \
+             persists please submit a bug report.",
+        );
+        if !status.success() {
+            std::process::exit(1);
+        }
+
+        Ok(())
+    }
+}

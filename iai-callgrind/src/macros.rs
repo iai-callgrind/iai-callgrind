@@ -232,20 +232,12 @@ macro_rules! main {
     ) => {
         fn __run() -> Result<(), $crate::__internal::error::Errors> {
             let mut this_args = std::env::args();
-            let exe = option_env!("IAI_CALLGRIND_RUNNER")
-                .unwrap_or_else(|| option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner"));
-
-            let library_version = "0.14.1";
-
-            let mut cmd = std::process::Command::new(exe);
-
-            cmd.arg(library_version);
-            cmd.arg("--bin-bench");
-            cmd.arg(env!("CARGO_MANIFEST_DIR"));
-            cmd.arg(env!("CARGO_PKG_NAME"));
-            cmd.arg(file!());
-            cmd.arg(module_path!());
-            cmd.arg(this_args.next().unwrap()); // The executable benchmark binary
+            let mut runner = $crate::__internal::Runner::new(
+                &$crate::__internal::BenchmarkKind::BinaryBenchmark,
+                this_args.next().unwrap(),
+                file!(),
+                module_path!()
+            );
 
             let mut config: Option<$crate::__internal::InternalBinaryBenchmarkConfig> = None;
             $(
@@ -275,27 +267,7 @@ macro_rules! main {
 
             let groups = groups_builder.build()?;
             let encoded = $crate::bincode::serialize(&groups).expect("Encoded benchmark");
-            let mut child = cmd
-                .arg(encoded.len().to_string())
-                .stdin(std::process::Stdio::piped())
-                .spawn()
-                .expect("Failed to run benchmarks. \
-                    Is iai-callgrind-runner installed and iai-callgrind-runner in your $PATH?. \
-                    You can also set the environment variable IAI_CALLGRIND_RUNNER to the \
-                    absolute path of the iai-callgrind-runner executable.");
-
-            let mut stdin = child.stdin.take().expect("Opening stdin to submit encoded benchmark");
-            std::thread::spawn(move || {
-                use std::io::Write;
-                stdin.write_all(&encoded).expect("Writing encoded benchmark to stdin");
-            });
-
-            let status = child.wait().expect("Wait for child process to exit");
-            if !status.success() {
-                std::process::exit(1);
-            }
-
-            Ok(())
+            runner.exec(encoded)
         }
 
         fn __run_setup(__run: bool) -> bool {
@@ -394,20 +366,12 @@ macro_rules! main {
         #[inline(never)]
         fn __run() {
             let mut this_args = std::env::args();
-            let exe = option_env!("IAI_CALLGRIND_RUNNER")
-                .unwrap_or_else(|| option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner"));
-
-            let library_version = "0.14.1";
-
-            let mut cmd = std::process::Command::new(exe);
-
-            cmd.arg(library_version);
-            cmd.arg("--lib-bench");
-            cmd.arg(env!("CARGO_MANIFEST_DIR"));
-            cmd.arg(env!("CARGO_PKG_NAME"));
-            cmd.arg(file!());
-            cmd.arg(module_path!());
-            cmd.arg(this_args.next().unwrap()); // The executable benchmark binary
+            let mut runner = $crate::__internal::Runner::new(
+                &$crate::__internal::BenchmarkKind::LibraryBenchmark,
+                this_args.next().unwrap(),
+                file!(),
+                module_path!()
+            );
 
             let mut config: Option<$crate::__internal::InternalLibraryBenchmarkConfig> = None;
             $(
@@ -451,24 +415,11 @@ macro_rules! main {
                 internal_benchmark_groups.groups.push(internal_group);
             )+
 
-            let encoded = $crate::bincode::serialize(&internal_benchmark_groups).expect("Encoded benchmark");
-            let mut child = cmd
-                .arg(encoded.len().to_string())
-                .stdin(std::process::Stdio::piped())
-                .spawn()
-                .expect("Failed to run benchmarks. \
-                    Is iai-callgrind-runner installed and iai-callgrind-runner in your $PATH?. \
-                    You can also set the environment variable IAI_CALLGRIND_RUNNER to the \
-                    absolute path of the iai-callgrind-runner executable.");
+            let encoded = $crate::bincode::serialize(&internal_benchmark_groups)
+                .expect("Encoded benchmark");
 
-            let mut stdin = child.stdin.take().expect("Opening stdin to submit encoded benchmark");
-            std::thread::spawn(move || {
-                use std::io::Write;
-                stdin.write_all(&encoded).expect("Writing encoded benchmark to stdin");
-            });
-
-            let status = child.wait().expect("Wait for child process to exit");
-            if !status.success() {
+            if let Err(errors) = runner.exec(encoded) {
+                eprintln!("{errors}");
                 std::process::exit(1);
             }
         }
