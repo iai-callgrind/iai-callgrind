@@ -2,6 +2,8 @@
 //! structs
 #![allow(missing_docs)]
 
+pub mod bin_bench;
+
 pub use iai_callgrind_runner::api::{
     BinaryBenchmark as InternalBinaryBenchmark,
     BinaryBenchmarkBench as InternalBinaryBenchmarkBench,
@@ -19,14 +21,16 @@ pub use iai_callgrind_runner::api::{
     Sandbox as InternalSandbox, Tool as InternalTool, Tools as InternalTools,
 };
 
+/// Used in iai-callgrind-macros to store the essential information about a library benchmark
 #[derive(Debug, Clone)]
 pub struct InternalMacroLibBench {
     pub id_display: Option<&'static str>,
     pub args_display: Option<&'static str>,
     pub func: fn(),
-    pub config: Option<fn() -> crate::internal::InternalLibraryBenchmarkConfig>,
+    pub config: Option<fn() -> InternalLibraryBenchmarkConfig>,
 }
 
+/// Used in iai-callgrind-macros to store the essential information about a binary benchmark
 #[derive(Debug, Clone)]
 pub struct InternalMacroBinBench {
     pub id_display: Option<&'static str>,
@@ -34,5 +38,24 @@ pub struct InternalMacroBinBench {
     pub func: fn() -> crate::Command,
     pub setup: Option<fn()>,
     pub teardown: Option<fn()>,
-    pub config: Option<fn() -> crate::internal::InternalBinaryBenchmarkConfig>,
+    pub config: Option<fn() -> InternalBinaryBenchmarkConfig>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct ModulePath(String);
+
+impl ModulePath {
+    pub fn new(path: &str) -> Self {
+        Self(path.to_owned())
+    }
+
+    pub fn join(&self, path: &str) -> Self {
+        Self(format!("{}::{path}", self.0))
+    }
+}
+
+impl std::fmt::Display for ModulePath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
 }

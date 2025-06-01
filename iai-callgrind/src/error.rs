@@ -1,33 +1,34 @@
 use std::fmt::Display;
 
+use crate::__internal::ModulePath;
+
 #[derive(Debug)]
-pub enum Error {
-    GroupError(String, String, String),
-    BinaryBenchmarkError(String, String, String, String),
-    BenchError(String, String, String, String, String),
+pub struct Error {
+    module_path: ModulePath,
+    message: String,
 }
 
-impl Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::GroupError(module_path, id, message) => {
-                f.write_fmt(format_args!("Error in {module_path}::{id}: {message}"))
-            }
-            Error::BinaryBenchmarkError(module_path, group_id, binary_benchmark_id, message) => f
-                .write_fmt(format_args!(
-                    "Error in {module_path}::{group_id}::{binary_benchmark_id}: {message}"
-                )),
-            Error::BenchError(module_path, group_id, binary_benchmark_id, bench_id, message) => f
-                .write_fmt(format_args!(
-                    "Error in {module_path}::{group_id}::{binary_benchmark_id}::{bench_id}: \
-                     {message}"
-                )),
+impl Error {
+    pub fn new(module_path: &ModulePath, message: &str) -> Self {
+        Self {
+            module_path: module_path.clone(),
+            message: message.to_owned(),
         }
     }
 }
 
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "Error in {}: {}",
+            self.module_path, self.message
+        ))
+    }
+}
+
+/// An error aggregator to collect all errors first and then print them to stderr
 #[derive(Debug, Default)]
-pub struct Errors(Vec<Error>);
+pub struct Errors(pub Vec<Error>);
 
 impl Errors {
     pub fn add(&mut self, error: Error) {

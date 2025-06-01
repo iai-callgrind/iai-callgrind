@@ -10,7 +10,7 @@ use derive_more::AsRef;
 use iai_callgrind_macros::IntoInner;
 use iai_callgrind_runner::api::RawArgs;
 
-use crate::{internal, DelayKind, Stdin, Stdio};
+use crate::{DelayKind, Stdin, Stdio, __internal};
 
 /// [low level api](`crate::binary_benchmark_group`) only: Create a new benchmark id
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -40,7 +40,7 @@ pub struct BenchmarkId(String);
 /// );
 /// ```
 #[derive(Debug, Default, Clone, IntoInner, AsRef)]
-pub struct BinaryBenchmarkConfig(internal::InternalBinaryBenchmarkConfig);
+pub struct BinaryBenchmarkConfig(__internal::InternalBinaryBenchmarkConfig);
 
 /// [low level api](`crate::binary_benchmark_group`) only: The top level struct to add binary
 /// benchmarks to
@@ -80,7 +80,7 @@ pub struct Bench {
     /// This field stores the internal representation of the [`BinaryBenchmarkConfig`]. Use
     /// `BinaryBenchmarkConfig::into` to generate the internal configuration from a
     /// [`BinaryBenchmarkConfig`]
-    pub config: Option<internal::InternalBinaryBenchmarkConfig>,
+    pub config: Option<__internal::InternalBinaryBenchmarkConfig>,
     /// The `setup` function to be executed before the [`Command`] is executed
     pub setup: Option<fn()>,
     /// The `teardown` function to be executed after the [`Command`] is executed
@@ -142,7 +142,7 @@ pub struct BinaryBenchmark {
     pub id: BenchmarkId,
     /// An optional [`BinaryBenchmarkConfig`] which is applied to all [`Command`]s within this
     /// [`BinaryBenchmark`]
-    pub config: Option<internal::InternalBinaryBenchmarkConfig>,
+    pub config: Option<__internal::InternalBinaryBenchmarkConfig>,
     /// All [`Bench`]es which were added to this [`BinaryBenchmark`]
     pub benches: Vec<Bench>,
     /// The default `setup` function for all [`Bench`]es within this [`BinaryBenchmark`]. It can be
@@ -182,7 +182,7 @@ pub struct BinaryBenchmark {
 /// let command = Command::new("echo");
 /// ```
 #[derive(Debug, Default, Clone, PartialEq, IntoInner, AsRef)]
-pub struct Command(internal::InternalCommand);
+pub struct Command(__internal::InternalCommand);
 
 /// Provide the [`crate::Delay`] to specify the event for [`crate::Command`] execution start.
 ///
@@ -272,7 +272,7 @@ pub struct Command(internal::InternalCommand);
 /// );
 /// ```
 #[derive(Debug, Default, Clone, PartialEq, IntoInner, AsRef)]
-pub struct Delay(internal::InternalDelay);
+pub struct Delay(__internal::InternalDelay);
 
 /// Set the expected exit status of a binary benchmark
 ///
@@ -344,7 +344,7 @@ pub enum ExitWith {
 ///
 /// To simply copy fixtures or whole directories into the `Sandbox` use [`Sandbox::fixtures`].
 #[derive(Debug, Clone, IntoInner, AsRef)]
-pub struct Sandbox(internal::InternalSandbox);
+pub struct Sandbox(__internal::InternalSandbox);
 
 impl Bench {
     /// Create a new `Bench` with a unique [`BenchmarkId`]
@@ -400,7 +400,7 @@ impl Bench {
     /// ```
     pub fn config<T>(&mut self, config: T) -> &mut Self
     where
-        T: Into<internal::InternalBinaryBenchmarkConfig>,
+        T: Into<__internal::InternalBinaryBenchmarkConfig>,
     {
         self.config = Some(config.into());
         self
@@ -899,7 +899,7 @@ impl BinaryBenchmark {
     /// ```
     pub fn config<T>(&mut self, config: T) -> &mut Self
     where
-        T: Into<internal::InternalBinaryBenchmarkConfig>,
+        T: Into<__internal::InternalBinaryBenchmarkConfig>,
     {
         self.config = Some(config.into());
         self
@@ -1084,7 +1084,7 @@ impl BinaryBenchmarkConfig {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(internal::InternalBinaryBenchmarkConfig {
+        Self(__internal::InternalBinaryBenchmarkConfig {
             callgrind_args: RawArgs::from_iter(args),
             ..Default::default()
         })
@@ -1420,7 +1420,7 @@ impl BinaryBenchmarkConfig {
     /// ```
     pub fn exit_with<T>(&mut self, value: T) -> &mut Self
     where
-        T: Into<internal::InternalExitWith>,
+        T: Into<__internal::InternalExitWith>,
     {
         self.0.exit_with = Some(value.into());
         self
@@ -1446,7 +1446,7 @@ impl BinaryBenchmarkConfig {
     /// ```
     pub fn flamegraph<T>(&mut self, config: T) -> &mut Self
     where
-        T: Into<internal::InternalFlamegraphConfig>,
+        T: Into<__internal::InternalFlamegraphConfig>,
     {
         self.0.flamegraph_config = Some(config.into());
         self
@@ -1472,7 +1472,7 @@ impl BinaryBenchmarkConfig {
     /// ```
     pub fn regression<T>(&mut self, config: T) -> &mut Self
     where
-        T: Into<internal::InternalRegressionConfig>,
+        T: Into<__internal::InternalRegressionConfig>,
     {
         self.0.regression_config = Some(config.into());
         self
@@ -1501,7 +1501,7 @@ impl BinaryBenchmarkConfig {
     /// ```
     pub fn tool<T>(&mut self, tool: T) -> &mut Self
     where
-        T: Into<internal::InternalTool>,
+        T: Into<__internal::InternalTool>,
     {
         self.0.tools.update(tool.into());
         self
@@ -1533,7 +1533,7 @@ impl BinaryBenchmarkConfig {
     /// ```
     pub fn tools<I, T>(&mut self, tools: T) -> &mut Self
     where
-        I: Into<internal::InternalTool>,
+        I: Into<__internal::InternalTool>,
         T: IntoIterator<Item = I>,
     {
         self.0.tools.update_all(tools.into_iter().map(Into::into));
@@ -1585,11 +1585,11 @@ impl BinaryBenchmarkConfig {
     /// ```
     pub fn tool_override<T>(&mut self, tool: T) -> &mut Self
     where
-        T: Into<internal::InternalTool>,
+        T: Into<__internal::InternalTool>,
     {
         self.0
             .tools_override
-            .get_or_insert(internal::InternalTools::default())
+            .get_or_insert(__internal::InternalTools::default())
             .update(tool.into());
         self
     }
@@ -1639,12 +1639,12 @@ impl BinaryBenchmarkConfig {
     /// ```
     pub fn tools_override<I, T>(&mut self, tools: T) -> &mut Self
     where
-        I: Into<internal::InternalTool>,
+        I: Into<__internal::InternalTool>,
         T: IntoIterator<Item = I>,
     {
         self.0
             .tools_override
-            .get_or_insert(internal::InternalTools::default())
+            .get_or_insert(__internal::InternalTools::default())
             .update_all(tools.into_iter().map(Into::into));
         self
     }
@@ -1683,7 +1683,7 @@ impl BinaryBenchmarkConfig {
     /// ```
     pub fn sandbox<T>(&mut self, sandbox: T) -> &mut Self
     where
-        T: Into<internal::InternalSandbox>,
+        T: Into<__internal::InternalSandbox>,
     {
         self.0.sandbox = Some(sandbox.into());
         self
@@ -1713,7 +1713,7 @@ impl BinaryBenchmarkConfig {
     /// # }
     pub fn output_format<T>(&mut self, output_format: T) -> &mut Self
     where
-        T: Into<internal::InternalOutputFormat>,
+        T: Into<__internal::InternalOutputFormat>,
     {
         self.0.output_format = Some(output_format.into());
         self
@@ -1889,7 +1889,7 @@ impl Command {
     where
         T: AsRef<OsStr>,
     {
-        Self(internal::InternalCommand {
+        Self(__internal::InternalCommand {
             path: PathBuf::from(path.as_ref()),
             ..Default::default()
         })
@@ -2510,7 +2510,7 @@ impl Delay {
     where
         T: Into<PathBuf>,
     {
-        Self(internal::InternalDelay {
+        Self(__internal::InternalDelay {
             kind: DelayKind::PathExists(path.into()),
             ..Default::default()
         })
@@ -2534,7 +2534,7 @@ impl Delay {
     where
         T: Into<SocketAddr>,
     {
-        Self(internal::InternalDelay {
+        Self(__internal::InternalDelay {
             kind: DelayKind::TcpConnect(addr.into()),
             ..Default::default()
         })
@@ -2562,7 +2562,7 @@ impl Delay {
         T: Into<SocketAddr>,
         U: Into<Vec<u8>>,
     {
-        Self(internal::InternalDelay {
+        Self(__internal::InternalDelay {
             kind: DelayKind::UdpResponse(addr.into(), req.into()),
             ..Default::default()
         })
@@ -2584,7 +2584,7 @@ impl Delay {
     /// )));
     /// ```
     pub fn new(kind: DelayKind) -> Self {
-        Self(internal::InternalDelay {
+        Self(__internal::InternalDelay {
             kind,
             ..Default::default()
         })
@@ -2655,14 +2655,14 @@ where
     /// let command = Command::new("echo").delay(Delay::from(Duration::from_secs(10)));
     /// ```
     fn from(duration: T) -> Self {
-        Self(internal::InternalDelay {
+        Self(__internal::InternalDelay {
             kind: DelayKind::DurationElapse(duration.into()),
             ..Default::default()
         })
     }
 }
 
-impl From<ExitWith> for internal::InternalExitWith {
+impl From<ExitWith> for __internal::InternalExitWith {
     fn from(value: ExitWith) -> Self {
         match value {
             ExitWith::Success => Self::Success,
@@ -2672,7 +2672,7 @@ impl From<ExitWith> for internal::InternalExitWith {
     }
 }
 
-impl From<&ExitWith> for internal::InternalExitWith {
+impl From<&ExitWith> for __internal::InternalExitWith {
     fn from(value: &ExitWith) -> Self {
         match value {
             ExitWith::Success => Self::Success,
@@ -2708,7 +2708,7 @@ impl Sandbox {
     /// # }
     /// ```
     pub fn new(enabled: bool) -> Self {
-        Self(internal::InternalSandbox {
+        Self(__internal::InternalSandbox {
             enabled: Some(enabled),
             ..Default::default()
         })

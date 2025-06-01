@@ -388,6 +388,9 @@
 #![allow(clippy::module_name_repetitions)]
 
 #[cfg(feature = "default")]
+#[doc(hidden)]
+pub mod __internal;
+#[cfg(feature = "default")]
 mod bin_bench;
 #[cfg(feature = "client_requests_defs")]
 pub mod client_requests;
@@ -396,9 +399,6 @@ mod common;
 #[cfg(feature = "default")]
 #[doc(hidden)]
 pub mod error;
-#[cfg(feature = "default")]
-#[doc(hidden)]
-pub mod internal;
 #[cfg(feature = "default")]
 mod lib_bench;
 #[cfg(feature = "default")]

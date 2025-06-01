@@ -247,231 +247,34 @@ macro_rules! main {
             cmd.arg(module_path!());
             cmd.arg(this_args.next().unwrap()); // The executable benchmark binary
 
-            let mut config: Option<$crate::internal::InternalBinaryBenchmarkConfig> = None;
+            let mut config: Option<$crate::__internal::InternalBinaryBenchmarkConfig> = None;
             $(
                 config = Some($config.into());
             )?
 
-            let mut internal_benchmark_groups = $crate::internal::InternalBinaryBenchmarkGroups {
-                config: config.unwrap_or_default(),
-                command_line_args: this_args.collect(),
-                has_setup: __run_setup(false),
-                has_teardown: __run_teardown(false),
-                ..Default::default()
-            };
-
-            let mut errors = $crate::error::Errors::default();
+            let mut groups_builder = $crate::__internal::bin_bench::GroupsBuilder::new(
+                config, this_args.collect(), __run_setup(false), __run_teardown(false),
+            );
 
             $(
-                if $group::__IS_ATTRIBUTE {
-                    let mut internal_group = $crate::internal::InternalBinaryBenchmarkGroup {
-                        id: stringify!($group).to_owned(),
-                        config: $group::__get_config(),
-                        binary_benchmarks: vec![],
-                        has_setup: $group::__run_setup(false),
-                        has_teardown: $group::__run_teardown(false),
-                        compare_by_id: $group::__compare_by_id()
-                    };
-                    for (function_name, get_config, macro_bin_benches) in $group::__BENCHES {
-                        let mut internal_binary_benchmark =
-                            $crate::internal::InternalBinaryBenchmark {
-                                benches: vec![],
-                                config: get_config()
-                        };
-                        for macro_bin_bench in macro_bin_benches.iter() {
-                            let bench = $crate::internal::InternalBinaryBenchmarkBench {
-                                id: macro_bin_bench.id_display.map(|i| i.to_string()),
-                                args: macro_bin_bench.args_display.map(|i| i.to_string()),
-                                function_name: function_name.to_string(),
-                                command: (macro_bin_bench.func)().into(),
-                                config: macro_bin_bench.config.map(|f| f()),
-                                has_setup: macro_bin_bench.setup.is_some(),
-                                has_teardown: macro_bin_bench.teardown.is_some()
-                            };
-                            internal_binary_benchmark.benches.push(bench);
-                        }
-                        internal_group.binary_benchmarks.push(internal_binary_benchmark);
-                    }
+                let mut group = $crate::BinaryBenchmarkGroup::default();
+                $group::$group(&mut group);
 
-                    internal_benchmark_groups.groups.push(internal_group);
-                } else {
-                    let mut group = $crate::BinaryBenchmarkGroup::default();
-                    $group::$group(&mut group);
-
-                    let module_path = module_path!();
-
-                    let mut internal_group = $crate::internal::InternalBinaryBenchmarkGroup {
-                        id: stringify!($group).to_owned(),
-                        config: $group::__get_config(),
-                        binary_benchmarks: vec![],
-                        has_setup: $group::__run_setup(false),
-                        has_teardown: $group::__run_teardown(false),
-                        compare_by_id: $group::__compare_by_id()
-                    };
-
-                    let mut binary_benchmark_ids =
-                        std::collections::HashSet::<$crate::BenchmarkId>::new();
-
-                    if group.binary_benchmarks.is_empty() {
-                        errors.add(
-                            $crate::error::Error::GroupError(
-                                module_path.to_owned(),
-                                internal_group.id.clone(),
-                                "This group needs at least one benchmark".to_owned()
-                            )
-                        );
-                    }
-
-                    for binary_benchmark in group.binary_benchmarks {
-                        if let Err(message) = binary_benchmark.id.validate() {
-                            errors.add(
-                                $crate::error::Error::BinaryBenchmarkError(
-                                    module_path.to_owned(),
-                                    internal_group.id.clone(),
-                                    binary_benchmark.id.to_string(),
-                                    message
-                                )
-                            );
-                            continue;
-                        }
-                        if !binary_benchmark_ids.insert(binary_benchmark.id.clone()) {
-                            errors.add(
-                                $crate::error::Error::BinaryBenchmarkError(
-                                    module_path.to_owned(),
-                                    internal_group.id.clone(),
-                                    binary_benchmark.id.to_string(),
-                                    "Duplicate binary benchmark id".to_owned()
-                                )
-                            );
-                            continue;
-                        }
-
-                        let mut internal_binary_benchmark =
-                            $crate::internal::InternalBinaryBenchmark {
-                                benches: vec![],
-                                config: binary_benchmark.config.map(Into::into)
-                        };
-
-                        let mut bench_ids =
-                            std::collections::HashSet::<$crate::BenchmarkId>::new();
-
-                        if binary_benchmark.benches.is_empty() {
-                            errors.add(
-                                $crate::error::Error::BinaryBenchmarkError(
-                                    module_path.to_owned(),
-                                    internal_group.id.clone(),
-                                    binary_benchmark.id.to_string(),
-                                    "This binary benchmark needs at least one bench".to_owned()
-                                )
-                            );
-                        }
-
-                        for bench in binary_benchmark.benches {
-                            match bench.commands.as_slice() {
-                                [] => {
-                                    errors.add(
-                                        $crate::error::Error::BenchError(
-                                            module_path.to_owned(),
-                                            internal_group.id.clone(),
-                                            binary_benchmark.id.to_string(),
-                                            bench.id.to_string(),
-                                            "Missing command".to_owned()
-                                        )
-                                    );
-                                },
-                                [command] => {
-                                    if let Err(message) = bench.id.validate() {
-                                        errors.add(
-                                            $crate::error::Error::BenchError(
-                                                module_path.to_owned(),
-                                                internal_group.id.clone(),
-                                                binary_benchmark.id.to_string(),
-                                                bench.id.to_string(),
-                                                message
-                                            )
-                                        );
-                                    }
-                                    if !bench_ids.insert(bench.id.clone()) {
-                                        errors.add(
-                                            $crate::error::Error::BenchError(
-                                                module_path.to_owned(),
-                                                internal_group.id.clone(),
-                                                binary_benchmark.id.to_string(),
-                                                bench.id.to_string(),
-                                                format!("Duplicate id: '{}'", bench.id)
-                                            )
-                                        );
-                                    }
-                                    let internal_bench =
-                                        $crate::internal::InternalBinaryBenchmarkBench {
-                                            id: Some(bench.id.into()),
-                                            args: None,
-                                            function_name: binary_benchmark.id.clone().into(),
-                                            command: command.into(),
-                                            config: bench.config.clone(),
-                                            has_setup: bench.setup.is_some()
-                                                    || binary_benchmark.setup.is_some(),
-                                            has_teardown: bench.teardown.is_some()
-                                                    || binary_benchmark.teardown.is_some(),
-                                    };
-                                    internal_binary_benchmark.benches.push(internal_bench);
-                                },
-                                commands => {
-                                    for (index, command) in commands.iter().enumerate() {
-                                        let bench_id: $crate::BenchmarkId = format!("{}_{}", bench.id, index).into();
-                                        if let Err(message) = bench_id.validate() {
-                                            errors.add(
-                                                $crate::error::Error::BenchError(
-                                                    module_path.to_owned(),
-                                                    internal_group.id.clone(),
-                                                    binary_benchmark.id.to_string(),
-                                                    bench_id.to_string(),
-                                                    message
-                                                )
-                                            );
-                                            continue;
-                                        }
-                                        if !bench_ids.insert(bench_id.clone()) {
-                                            errors.add(
-                                                $crate::error::Error::BenchError(
-                                                    module_path.to_owned(),
-                                                    internal_group.id.clone(),
-                                                    binary_benchmark.id.to_string(),
-                                                    bench.id.to_string(),
-                                                    format!("Duplicate id: '{}'", bench_id)
-                                                )
-                                            );
-                                            continue;
-                                        }
-                                        let internal_bench =
-                                            $crate::internal::InternalBinaryBenchmarkBench {
-                                                id: Some(bench_id.into()),
-                                                args: None,
-                                                function_name: binary_benchmark.id.to_string(),
-                                                command: command.into(),
-                                                config: bench.config.clone(),
-                                                has_setup: bench.setup.is_some()
-                                                        || binary_benchmark.setup.is_some(),
-                                                has_teardown: bench.teardown.is_some()
-                                                        || binary_benchmark.teardown.is_some(),
-                                        };
-                                        internal_binary_benchmark.benches.push(internal_bench);
-                                    }
-                                }
-                            }
-                        }
-                        internal_group.binary_benchmarks.push(internal_binary_benchmark);
-                    }
-
-                    internal_benchmark_groups.groups.push(internal_group);
-                }
+                groups_builder.add_group(
+                        group,
+                        stringify!($group).to_owned(),
+                        &module_path!(),
+                        $group::__IS_ATTRIBUTE,
+                        $group::__get_config(),
+                        $group::__run_setup(false),
+                        $group::__run_teardown(false),
+                        $group::__compare_by_id(),
+                        $group::__BENCHES
+                );
             )+
 
-            if !errors.is_empty() {
-                return Err(errors);
-            }
-
-            let encoded = $crate::bincode::serialize(&internal_benchmark_groups).expect("Encoded benchmark");
+            let groups = groups_builder.build()?;
+            let encoded = $crate::bincode::serialize(&groups).expect("Encoded benchmark");
             let mut child = cmd
                 .arg(encoded.len().to_string())
                 .stdin(std::process::Stdio::piped())
@@ -606,12 +409,12 @@ macro_rules! main {
             cmd.arg(module_path!());
             cmd.arg(this_args.next().unwrap()); // The executable benchmark binary
 
-            let mut config: Option<$crate::internal::InternalLibraryBenchmarkConfig> = None;
+            let mut config: Option<$crate::__internal::InternalLibraryBenchmarkConfig> = None;
             $(
                 config = Some($config.into());
             )?
 
-            let mut internal_benchmark_groups = $crate::internal::InternalLibraryBenchmarkGroups {
+            let mut internal_benchmark_groups = $crate::__internal::InternalLibraryBenchmarkGroups {
                 config: config.unwrap_or_default(),
                 command_line_args: this_args.collect(),
                 has_setup: __run_setup(false),
@@ -620,7 +423,7 @@ macro_rules! main {
             };
 
             $(
-                let mut internal_group = $crate::internal::InternalLibraryBenchmarkGroup {
+                let mut internal_group = $crate::__internal::InternalLibraryBenchmarkGroup {
                     id: stringify!($group).to_owned(),
                     config: $group::__get_config(),
                     compare_by_id: $group::__compare_by_id(),
@@ -629,12 +432,12 @@ macro_rules! main {
                     has_teardown: $group::__run_teardown(false),
                 };
                 for (function_name, get_config, macro_lib_benches) in $group::__BENCHES {
-                    let mut benches = $crate::internal::InternalLibraryBenchmarkBenches {
+                    let mut benches = $crate::__internal::InternalLibraryBenchmarkBenches {
                         benches: vec![],
                         config: get_config()
                     };
                     for macro_lib_bench in macro_lib_benches.iter() {
-                        let bench = $crate::internal::InternalLibraryBenchmarkBench {
+                        let bench = $crate::__internal::InternalLibraryBenchmarkBench {
                             id: macro_lib_bench.id_display.map(|i| i.to_string()),
                             args: macro_lib_bench.args_display.map(|i| i.to_string()),
                             function_name: function_name.to_string(),
@@ -1071,8 +874,8 @@ macro_rules! binary_benchmark_group {
 
             pub const __BENCHES: &[&(
                 &'static str,
-                fn() -> Option<$crate::internal::InternalBinaryBenchmarkConfig>,
-                &[$crate::internal::InternalMacroBinBench]
+                fn() -> Option<$crate::__internal::InternalBinaryBenchmarkConfig>,
+                &[$crate::__internal::InternalMacroBinBench]
             )]= &[
                 $(
                     &(
@@ -1113,7 +916,7 @@ macro_rules! binary_benchmark_group {
                 comp
             }
 
-            pub fn __get_config() -> Option<$crate::internal::InternalBinaryBenchmarkConfig> {
+            pub fn __get_config() -> Option<$crate::__internal::InternalBinaryBenchmarkConfig> {
                 let mut config = None;
                 $(
                     config = Some($config.into());
@@ -1209,8 +1012,8 @@ macro_rules! binary_benchmark_group {
 
             pub const __BENCHES: &[&(
                 &'static str,
-                fn() -> Option<$crate::internal::InternalBinaryBenchmarkConfig>,
-                &[$crate::internal::InternalMacroBinBench]
+                fn() -> Option<$crate::__internal::InternalBinaryBenchmarkConfig>,
+                &[$crate::__internal::InternalMacroBinBench]
             )]= &[];
 
             pub fn __run_setup(__run: bool) -> bool {
@@ -1235,7 +1038,7 @@ macro_rules! binary_benchmark_group {
                 __has_teardown
             }
 
-            pub fn __get_config() -> Option<$crate::internal::InternalBinaryBenchmarkConfig> {
+            pub fn __get_config() -> Option<$crate::__internal::InternalBinaryBenchmarkConfig> {
                 let mut config = None;
                 $(
                     config = Some($config.into());
@@ -1431,8 +1234,8 @@ macro_rules! library_benchmark_group {
 
             pub const __BENCHES: &[&(
                 &'static str,
-                fn() -> Option<$crate::internal::InternalLibraryBenchmarkConfig>,
-                &[$crate::internal::InternalMacroLibBench]
+                fn() -> Option<$crate::__internal::InternalLibraryBenchmarkConfig>,
+                &[$crate::__internal::InternalMacroLibBench]
             )]= &[
                 $(
                     &(
@@ -1444,8 +1247,8 @@ macro_rules! library_benchmark_group {
             ];
 
             #[inline(never)]
-            pub fn __get_config() -> Option<$crate::internal::InternalLibraryBenchmarkConfig> {
-                let mut config: Option<$crate::internal::InternalLibraryBenchmarkConfig> = None;
+            pub fn __get_config() -> Option<$crate::__internal::InternalLibraryBenchmarkConfig> {
+                let mut config: Option<$crate::__internal::InternalLibraryBenchmarkConfig> = None;
                 $(
                     config = Some($config.into());
                 )?
