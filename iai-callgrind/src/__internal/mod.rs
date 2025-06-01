@@ -5,6 +5,17 @@
 pub mod bin_bench;
 pub mod error;
 
+// The runner api is not used directly in order to decouple the user interface and
+// documentation from the internal usage.
+//
+// We re-export all structs with the `Internal` prefix to avoid accidental usage. The wrapper
+// structs provided by the iai-callgrind module (in `iai_callgrind::bin_bench`, ...) are the
+// structs to be used by the iai-callgrind end-user. Almost all of these structs use the
+// builder pattern to build the api internal structures. The documentation visible to the user
+// can be found in these builders.
+//
+// As an exception, enums from the runner api are usually used directly and re-exported in
+// `lib.rs`.
 pub use iai_callgrind_runner::api::{
     BinaryBenchmark as InternalBinaryBenchmark,
     BinaryBenchmarkBench as InternalBinaryBenchmarkBench,
@@ -42,6 +53,7 @@ pub struct InternalMacroBinBench {
     pub config: Option<fn() -> InternalBinaryBenchmarkConfig>,
 }
 
+/// A small internal helper to easily create module paths like `file::group::benchmark::id`
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModulePath(String);
 

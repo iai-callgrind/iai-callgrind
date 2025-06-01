@@ -413,6 +413,8 @@ pub use common::{black_box, FlamegraphConfig, OutputFormat, RegressionConfig, To
 pub use cty;
 #[cfg(feature = "default")]
 pub use iai_callgrind_macros::{binary_benchmark, library_benchmark};
+// Only add enums here. Do not re-export structs from the runner api directly. See the
+// documentation in `__internal::mod` for more details.
 #[cfg(feature = "default")]
 pub use iai_callgrind_runner::api::{
     DelayKind, Direction, EntryPoint, EventKind, FlamegraphKind, Pipe, Stdin, Stdio, ValgrindTool,
