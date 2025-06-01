@@ -84,15 +84,20 @@ pub struct Runner {
 }
 
 impl Runner {
-    pub fn new(kind: &BenchmarkKind, bench_bin: String, file: &str, module_path: &str) -> Self {
+    pub fn new(
+        exe: Option<&str>,
+        kind: &BenchmarkKind,
+        package_dir: &str,
+        package_name: &str,
+        file: &str,
+        module_path: &str,
+        bench_bin: String,
+    ) -> Self {
         const LIBRARY_VERSION: &str = "0.14.1";
 
-        let exe = option_env!("IAI_CALLGRIND_RUNNER").unwrap_or_else(|| {
-            option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner")
-        });
-
-        let mut cmd = std::process::Command::new(exe);
+        let mut cmd = std::process::Command::new(exe.unwrap_or("iai-callgrind-runner"));
         cmd.arg(LIBRARY_VERSION);
+
         match kind {
             BenchmarkKind::BinaryBenchmark => {
                 cmd.arg("--bin-bench");
@@ -102,8 +107,8 @@ impl Runner {
             }
         }
 
-        cmd.arg(env!("CARGO_MANIFEST_DIR"));
-        cmd.arg(env!("CARGO_PKG_NAME"));
+        cmd.arg(package_dir);
+        cmd.arg(package_name);
         cmd.arg(file);
         cmd.arg(module_path);
         cmd.arg(bench_bin); // The executable benchmark binary

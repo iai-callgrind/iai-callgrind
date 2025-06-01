@@ -233,10 +233,15 @@ macro_rules! main {
         fn __run() -> Result<(), $crate::__internal::error::Errors> {
             let mut this_args = std::env::args();
             let mut runner = $crate::__internal::Runner::new(
+                option_env!("IAI_CALLGRIND_RUNNER").or_else(||
+                            option_env!("CARGO_BIN_EXE_iai-callgrind-runner")
+                ),
                 &$crate::__internal::BenchmarkKind::BinaryBenchmark,
-                this_args.next().unwrap(),
+                env!("CARGO_MANIFEST_DIR"),
+                env!("CARGO_PKG_NAME"),
                 file!(),
-                module_path!()
+                module_path!(),
+                this_args.next().unwrap(),
             );
 
             let mut config: Option<$crate::__internal::InternalBinaryBenchmarkConfig> = None;
@@ -367,10 +372,15 @@ macro_rules! main {
         fn __run() {
             let mut this_args = std::env::args();
             let mut runner = $crate::__internal::Runner::new(
+                option_env!("IAI_CALLGRIND_RUNNER").or_else(||
+                            option_env!("CARGO_BIN_EXE_iai-callgrind-runner")
+                ),
                 &$crate::__internal::BenchmarkKind::LibraryBenchmark,
-                this_args.next().unwrap(),
+                env!("CARGO_MANIFEST_DIR"),
+                env!("CARGO_PKG_NAME"),
                 file!(),
-                module_path!()
+                module_path!(),
+                this_args.next().unwrap(),
             );
 
             let mut config: Option<$crate::__internal::InternalLibraryBenchmarkConfig> = None;
