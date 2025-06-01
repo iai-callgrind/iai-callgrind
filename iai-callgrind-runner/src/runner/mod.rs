@@ -168,10 +168,7 @@ where
         encoded.len()
     );
 
-    let benchmark: T =
-        bincode::deserialize(&encoded).with_context(|| "Failed to decode configuration")?;
-
-    Ok(benchmark)
+    bincode::deserialize(&encoded).with_context(|| "Failed to decode configuration")
 }
 
 pub fn run() -> Result<()> {
