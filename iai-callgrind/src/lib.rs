@@ -397,9 +397,6 @@ pub mod client_requests;
 #[cfg(feature = "default")]
 mod common;
 #[cfg(feature = "default")]
-#[doc(hidden)]
-pub mod error;
-#[cfg(feature = "default")]
 mod lib_bench;
 #[cfg(feature = "default")]
 mod macros;

@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 
 use crate::BenchmarkId;
+use crate::__internal::error::{Error, Errors};
 use crate::__internal::{
     InternalBinaryBenchmark, InternalBinaryBenchmarkBench, InternalBinaryBenchmarkConfig,
     InternalBinaryBenchmarkGroup, InternalBinaryBenchmarkGroups, InternalMacroBinBench, ModulePath,
 };
-use crate::error::{Error, Errors};
 
 pub type InternalMacroBinBenches = &'static [&'static (
     &'static str,

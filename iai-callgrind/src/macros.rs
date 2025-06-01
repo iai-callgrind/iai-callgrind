@@ -230,7 +230,7 @@ macro_rules! main {
         $( teardown = $teardown:expr ; $(;)* )?
         binary_benchmark_groups = $( $group:ident ),+ $(,)*
     ) => {
-        fn __run() -> Result<(), $crate::error::Errors> {
+        fn __run() -> Result<(), $crate::__internal::error::Errors> {
             let mut this_args = std::env::args();
             let exe = option_env!("IAI_CALLGRIND_RUNNER")
                 .unwrap_or_else(|| option_env!("CARGO_BIN_EXE_iai-callgrind-runner").unwrap_or("iai-callgrind-runner"));

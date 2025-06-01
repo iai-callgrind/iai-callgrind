@@ -3,6 +3,7 @@
 #![allow(missing_docs)]
 
 pub mod bin_bench;
+pub mod error;
 
 pub use iai_callgrind_runner::api::{
     BinaryBenchmark as InternalBinaryBenchmark,
