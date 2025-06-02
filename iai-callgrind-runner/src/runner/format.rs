@@ -7,13 +7,16 @@ use colored::{Color, ColoredString, Colorize};
 
 use super::args::NoCapture;
 use super::bin_bench::BinBench;
-use super::common::{Config, ModulePath};
+use super::common::{BenchmarkSummaries, Config, ModulePath};
 use super::lib_bench::LibBench;
 use super::meta::Metadata;
 use super::summary::{Diffs, MetricsDiff, SegmentDetails, ToolMetricSummary, ToolRun};
 use super::tool::ValgrindTool;
 use crate::api::{self, DhatMetricKind, ErrorMetricKind, EventKind};
-use crate::util::{make_relative, to_string_signed_short, truncate_str_utf8, EitherOrBoth};
+use crate::util::{
+    make_relative, to_string_signed_short, to_string_unsigned_short, truncate_str_utf8,
+    EitherOrBoth,
+};
 
 /// The subset of callgrind metrics to format in the given order
 pub const CALLGRIND_DEFAULT: [EventKind; 21] = [
@@ -144,6 +147,12 @@ struct Header {
     description: Option<String>,
 }
 
+enum IndentKind {
+    Normal,
+    ToolHeadline,
+    ToolSubHeadline,
+}
+
 pub struct LibraryBenchmarkHeader {
     inner: Header,
     has_tools_enabled: bool,
@@ -164,6 +173,11 @@ pub struct OutputFormat {
     pub truncate_description: Option<usize>,
     pub show_intermediate: bool,
     pub show_grid: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct SummaryFormatter {
+    pub output_format_kind: OutputFormatKind,
 }
 
 #[derive(Debug, Clone)]
@@ -422,10 +436,68 @@ impl Default for OutputFormat {
     }
 }
 
-enum IndentKind {
-    Normal,
-    ToolHeadline,
-    ToolSubHeadline,
+impl SummaryFormatter {
+    pub fn new(output_format_kind: OutputFormatKind) -> Self {
+        Self { output_format_kind }
+    }
+
+    pub fn print(&self, summaries: &BenchmarkSummaries) {
+        if self.output_format_kind == OutputFormatKind::Default {
+            let total_benchmarks = summaries.num_benchmarks();
+            let total_time = to_string_unsigned_short(
+                summaries
+                    .total_time
+                    .expect("The total execution time should be present")
+                    .as_secs_f64(),
+            );
+
+            if summaries.is_regressed() {
+                println!("\nRegressions:\n");
+                let mut num_regressed = 0;
+                for summary in summaries.summaries.iter().filter(|p| p.is_regressed()) {
+                    if let Some(id) = &summary.id {
+                        println!("  {} {}:", summary.module_path.green(), id.cyan());
+                    } else {
+                        println!("  {}:", summary.module_path.green());
+                    }
+                    for regression in summary
+                        .callgrind_summary
+                        .iter()
+                        .flat_map(|p| &p.callgrind_run.total.regressions)
+                    {
+                        println!(
+                            "    {} ({} -> {}): {:>6}{} exceeds limit of {:>6}{}",
+                            regression.event_kind.to_string().bold(),
+                            regression.old,
+                            regression.new.to_string().bold(),
+                            to_string_signed_short(regression.diff_pct)
+                                .bright_red()
+                                .bold(),
+                            "%".bright_red().bold(),
+                            to_string_signed_short(regression.limit).bright_black(),
+                            "%".bright_black()
+                        );
+                    }
+
+                    num_regressed += 1;
+                }
+
+                let num_not_regressed = total_benchmarks - num_regressed;
+                println!(
+                    "\nIai-Callgrind result: {}. {num_not_regressed} without regressions; \
+                     {num_regressed} regressed; {total_benchmarks} benchmarks finished in \
+                     {total_time:>6}s",
+                    "Regressed".red().bold(),
+                );
+            } else {
+                println!(
+                    "\nIai-Callgrind result: {}. {total_benchmarks} without regressions; 0 \
+                     regressed; {total_benchmarks} benchmarks finished in {total_time:>6}s",
+                    "Ok".green().bold(),
+                );
+            }
+        }
+    }
 }
 
 impl VerticalFormatter {

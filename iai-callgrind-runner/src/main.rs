@@ -76,6 +76,7 @@ fn main() {
                 warn!("{error}");
                 std::process::exit(0)
             }
+            Some(Error::RegressionError(false)) => std::process::exit(1),
             _ => {
                 error!("{error}");
                 std::process::exit(1)

@@ -68,6 +68,9 @@ lazy_static! {
         Regex::new(r"^(##(?: \S+: \S+)+)(\s*)([|].*)$").expect("Regex should compile");
     static ref ABSOLUTE_PATH_RE: Regex =
         Regex::new(r"(\s+)([/][^/]*)+").expect("Regex should compile");
+    // Iai-Callgrind result: Success. 2 completed without regressions; 0 regressed; 2 benchmarks finished in 0.296s
+    static ref SUMMARY_LINE_RE: Regex =
+        Regex::new(r"^(Iai-Callgrind result:.*finished in\s*)([0-9.]+)(s)$").expect("Regex should compile");
 }
 
 #[derive(Debug, Clone)]
@@ -677,6 +680,7 @@ impl BenchmarkOutput {
                         format!("{caps_1} {caps_3}")
                     }
                 });
+                let line = SUMMARY_LINE_RE.replace_all(&line, "$1<__SECONDS__>$3");
                 writeln!(result, "{indent}{line}").unwrap();
             }
         }

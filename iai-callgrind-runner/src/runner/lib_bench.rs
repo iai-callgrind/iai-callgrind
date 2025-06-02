@@ -4,6 +4,7 @@
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::io::stderr;
+use std::time::Instant;
 
 use anyhow::Result;
 
@@ -15,7 +16,7 @@ use super::callgrind::flamegraph::{
 use super::callgrind::parser::{CallgrindParser, Sentinel};
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{RegressionConfig, Summaries};
-use super::common::{Assistant, AssistantKind, Config, ModulePath};
+use super::common::{Assistant, AssistantKind, BenchmarkSummaries, Config, ModulePath};
 use super::format::{
     print_no_capture_footer, Formatter, LibraryBenchmarkHeader, OutputFormat, VerticalFormatter,
 };
@@ -28,7 +29,7 @@ use super::tool::{
     RunOptions, ToolCommand, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind,
     ValgrindTool,
 };
-use super::{Error, DEFAULT_TOGGLE};
+use super::DEFAULT_TOGGLE;
 use crate::api::{self, EntryPoint, LibraryBenchmarkGroups};
 use crate::runner::format;
 
@@ -394,15 +395,14 @@ impl Groups {
     }
 
     /// Run all [`LibBench`] benchmarks
-    fn run(&self, benchmark: &dyn Benchmark, config: &Config) -> Result<()> {
-        let mut is_regressed = false;
-
+    fn run(&self, benchmark: &dyn Benchmark, config: &Config) -> Result<BenchmarkSummaries> {
+        let mut benchmark_summaries = BenchmarkSummaries::default();
         for group in &self.0 {
             if let Some(setup) = &group.setup {
                 setup.run(config, &group.module_path)?;
             }
 
-            let mut summaries: HashMap<String, Vec<BenchmarkSummary>> =
+            let mut lib_bench_summaries: HashMap<String, Vec<BenchmarkSummary>> =
                 HashMap::with_capacity(group.benches.len());
             for bench in &group.benches {
                 let fail_fast = bench
@@ -410,19 +410,24 @@ impl Groups {
                     .as_ref()
                     .is_some_and(|r| r.fail_fast);
 
-                let summary = benchmark.run(bench, config, group)?;
-                summary.print_and_save(&config.meta.args.output_format)?;
-                summary.check_regression(&mut is_regressed, fail_fast)?;
+                let lib_bench_summary = benchmark.run(bench, config, group)?;
+                lib_bench_summary.print_and_save(&config.meta.args.output_format)?;
+                lib_bench_summary.check_regression(&mut false, fail_fast)?;
 
+                benchmark_summaries.add_summary(lib_bench_summary.clone());
                 if group.compare_by_id && bench.output_format.is_default() {
-                    if let Some(id) = &summary.id {
-                        if let Some(sums) = summaries.get_mut(id) {
+                    if let Some(id) = &lib_bench_summary.id {
+                        if let Some(sums) = lib_bench_summaries.get_mut(id) {
                             for sum in sums.iter() {
-                                sum.compare_and_print(id, &summary, &bench.output_format)?;
+                                sum.compare_and_print(
+                                    id,
+                                    &lib_bench_summary,
+                                    &bench.output_format,
+                                )?;
                             }
-                            sums.push(summary);
+                            sums.push(lib_bench_summary);
                         } else {
-                            summaries.insert(id.clone(), vec![summary]);
+                            lib_bench_summaries.insert(id.clone(), vec![lib_bench_summary]);
                         }
                     }
                 }
@@ -433,11 +438,7 @@ impl Groups {
             }
         }
 
-        if is_regressed {
-            Err(Error::RegressionError(false).into())
-        } else {
-            Ok(())
-        }
+        Ok(benchmark_summaries)
     }
 }
 
@@ -660,18 +661,18 @@ impl Runner {
     }
 
     /// Run all benchmarks in all groups
-    fn run(&self) -> Result<()> {
+    fn run(&self) -> Result<BenchmarkSummaries> {
         if let Some(setup) = &self.setup {
             setup.run(&self.config, &self.config.module_path)?;
         }
 
-        self.groups.run(self.benchmark.as_ref(), &self.config)?;
+        let summaries = self.groups.run(self.benchmark.as_ref(), &self.config)?;
 
         if let Some(teardown) = &self.teardown {
             teardown.run(&self.config, &self.config.module_path)?;
         }
 
-        Ok(())
+        Ok(summaries)
     }
 }
 
@@ -827,8 +828,14 @@ impl Benchmark for SaveBaselineBenchmark {
 }
 
 /// The top-level method which should be used to initiate running all benchmarks
-pub fn run(benchmark_groups: LibraryBenchmarkGroups, config: Config) -> Result<()> {
-    Runner::new(benchmark_groups, config)?.run()
+pub fn run(benchmark_groups: LibraryBenchmarkGroups, config: Config) -> Result<BenchmarkSummaries> {
+    let runner = Runner::new(benchmark_groups, config)?;
+
+    let start = Instant::now();
+    let mut summaries = runner.run()?;
+    summaries.elapsed(start);
+
+    Ok(summaries)
 }
 
 /// Print a list of all benchmarks with a short summary

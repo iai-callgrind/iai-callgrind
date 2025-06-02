@@ -182,7 +182,7 @@ pub fn run() -> Result<()> {
         num_bytes,
     } = RunnerArgs::new()?;
 
-    match bench_kind {
+    let (summaries, output_format_kind) = match bench_kind {
         BenchmarkKind::LibraryBenchmark => {
             let benchmark_groups: LibraryBenchmarkGroups = receive_benchmark(num_bytes)?;
             let meta = Metadata::new(
@@ -209,10 +209,11 @@ pub fn run() -> Result<()> {
             };
 
             if config.meta.args.list {
-                lib_bench::list(benchmark_groups, &config)
-            } else {
-                lib_bench::run(benchmark_groups, config)
+                return lib_bench::list(benchmark_groups, &config);
             }
+
+            let output_format_kind = config.meta.args.output_format;
+            lib_bench::run(benchmark_groups, config).map(|s| (s, output_format_kind))?
         }
         BenchmarkKind::BinaryBenchmark => {
             let benchmark_groups: BinaryBenchmarkGroups = receive_benchmark(num_bytes)?;
@@ -240,10 +241,18 @@ pub fn run() -> Result<()> {
             };
 
             if config.meta.args.list {
-                bin_bench::list(benchmark_groups, &config)
-            } else {
-                bin_bench::run(benchmark_groups, config)
+                return bin_bench::list(benchmark_groups, &config);
             }
+
+            let output_format_kind = config.meta.args.output_format;
+            bin_bench::run(benchmark_groups, config).map(|s| (s, output_format_kind))?
         }
+    };
+
+    summaries.print(output_format_kind);
+    if summaries.is_regressed() {
+        Err(Error::RegressionError(false).into())
+    } else {
+        Ok(())
     }
 }

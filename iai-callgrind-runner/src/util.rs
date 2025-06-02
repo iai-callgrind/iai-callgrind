@@ -260,6 +260,13 @@ pub fn to_string_signed_short(n: f64) -> String {
     }
 }
 
+/// Format a float as string depending on the number of digits of the integer-part without sign
+///
+/// Same as [`to_string_signed_short`] but without a sign.
+pub fn to_string_unsigned_short(n: f64) -> String {
+    to_string_signed_short(n)[1..].to_owned()
+}
+
 /// Calculate the difference between `new` and `old` as percentage
 pub fn percentage_diff(new: u64, old: u64) -> f64 {
     if new == old {

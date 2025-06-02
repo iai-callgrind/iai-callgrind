@@ -110,6 +110,7 @@ impl RegressionConfig {
             limit,
         } in &regression
         {
+            // TODO: THE REGRESSION SHOULD LOOK THE SAME AS THE ONE IN THE SUMMARY
             if limit.is_sign_positive() {
                 eprintln!(
                     "Performance has {0}: {1} ({new} > {old}) regressed by {2:>+6} (>{3:>+6})",

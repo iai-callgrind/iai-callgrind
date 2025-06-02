@@ -52,7 +52,7 @@ pub enum BaselineKind {
 }
 
 /// The `BenchmarkKind`, differentiating between library and binary benchmarks
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum BenchmarkKind {
     /// A library benchmark
@@ -64,7 +64,7 @@ pub enum BenchmarkKind {
 /// The `BenchmarkSummary` containing all the information of a single benchmark run
 ///
 /// This includes produced files, recorded callgrind events, performance regressions ...
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct BenchmarkSummary {
     /// The version of this format. Only backwards incompatible changes cause an increase of the
@@ -122,7 +122,7 @@ pub struct CallgrindRegression {
 
 /// The `CallgrindRun` contains all `CallgrindRunSegments` and their total costs in a
 /// `CallgrindTotal`.
-#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindRun {
     /// All `CallgrindRunSummary`s
@@ -137,7 +137,7 @@ pub struct CallgrindRun {
 /// A segment can be a part (caused by options like `--dump-every-bb=xxx`), a thread (caused by
 /// `--separate-threads`) or a pid (possibly caused by `--trace-children`). A segment is a summary
 /// over a single file which contains the costs of that part, thread and/or pid.
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindRunSegment {
     /// The executed command extracted from Valgrind output
@@ -152,7 +152,7 @@ pub struct CallgrindRunSegment {
 
 /// The total callgrind costs over the `CallgrindRunSegments` and all detected regressions for the
 /// total
-#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindTotal {
     /// The total over the segment metrics
@@ -163,7 +163,7 @@ pub struct CallgrindTotal {
 
 /// The `CallgrindSummary` contains the callgrind run, flamegraph paths and other paths to the
 /// segments of the callgrind run.
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct CallgrindSummary {
     /// The paths to the `*.log` files
@@ -258,7 +258,7 @@ pub struct FlamegraphSummaries {
 ///
 /// Either the `regular_path`, `old_path` or the `diff_path` are present. Never can all of them be
 /// absent.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct FlamegraphSummary {
     /// The `EventKind` of the flamegraph
@@ -282,7 +282,7 @@ pub enum SummaryFormat {
 }
 
 /// Manage the summary output file with this `SummaryOutput`
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct SummaryOutput {
     /// The [`SummaryFormat`]
@@ -315,7 +315,7 @@ pub struct SegmentDetails {
 ///
 /// The total is always present and summarizes all tool run segments. In the special case of a
 /// single tool run segment, the total equals the metrics of this segment.
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ToolRun {
     /// All `ToolRunSegment`s
@@ -328,7 +328,7 @@ pub struct ToolRun {
 ///
 /// A tool run can produce multiple segments, for example for each process and subprocess with
 /// (--trace-children).
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ToolRunSegment {
     /// The details (like command, thread number etc.) about the segment(s)
@@ -338,7 +338,7 @@ pub struct ToolRunSegment {
 }
 
 /// The `ToolSummary` containing all information about a valgrind tool run
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ToolSummary {
     /// The Valgrind tool like `DHAT`, `Memcheck` etc.
@@ -459,6 +459,7 @@ impl BenchmarkSummary {
     /// # Errors
     ///
     /// If the regressions are configured to be `fail_fast` an error is returned
+    /// TODO: REMOVE `is_regressed`
     pub fn check_regression(&self, is_regressed: &mut bool, fail_fast: bool) -> Result<()> {
         if let Some(callgrind_summary) = &self.callgrind_summary {
             let benchmark_is_regressed = callgrind_summary.is_regressed();
@@ -470,6 +471,13 @@ impl BenchmarkSummary {
         }
 
         Ok(())
+    }
+
+    /// TODO: DOCS
+    pub fn is_regressed(&self) -> bool {
+        self.callgrind_summary
+            .as_ref()
+            .is_some_and(CallgrindSummary::is_regressed)
     }
 
     pub fn compare_and_print(

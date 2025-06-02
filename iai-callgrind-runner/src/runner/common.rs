@@ -2,13 +2,16 @@ use std::ffi::OsString;
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio as StdStdio};
+use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
 use super::args::NoCapture;
+use super::format::{OutputFormatKind, SummaryFormatter};
 use super::meta::Metadata;
+use super::summary::BenchmarkSummary;
 use crate::api::{self, Pipe};
 use crate::error::Error;
 use crate::util::{copy_directory, make_absolute, write_all_to_stderr};
@@ -32,6 +35,42 @@ pub struct Assistant {
 pub enum AssistantKind {
     Setup,
     Teardown,
+}
+
+/// TODO: DOCS
+#[derive(Debug, Default)]
+pub struct BenchmarkSummaries {
+    pub summaries: Vec<BenchmarkSummary>,
+    pub total_time: Option<Duration>,
+}
+
+// TODO: SORT
+impl BenchmarkSummaries {
+    pub fn add_summary(&mut self, summary: BenchmarkSummary) {
+        self.summaries.push(summary);
+    }
+
+    pub fn add_other(&mut self, other: Self) {
+        other.summaries.into_iter().for_each(|s| {
+            self.add_summary(s);
+        });
+    }
+
+    pub fn is_regressed(&self) -> bool {
+        self.summaries.iter().any(BenchmarkSummary::is_regressed)
+    }
+
+    pub fn elapsed(&mut self, start: Instant) {
+        self.total_time = Some(start.elapsed());
+    }
+
+    pub fn num_benchmarks(&self) -> usize {
+        self.summaries.len()
+    }
+
+    pub fn print(&self, output_format_kind: OutputFormatKind) {
+        SummaryFormatter::new(output_format_kind).print(self);
+    }
 }
 
 #[derive(Debug)]
