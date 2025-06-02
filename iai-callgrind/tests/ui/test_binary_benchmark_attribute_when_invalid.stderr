@@ -59,7 +59,7 @@ note: `std::process::Command` is defined in crate `std`
 note: `iai_callgrind::Command` is defined in crate `iai_callgrind`
   --> src/bin_bench.rs
    |
-   | pub struct Command(internal::InternalCommand);
+   | pub struct Command(__internal::InternalCommand);
    | ^^^^^^^^^^^^^^^^^^
 
 error[E0425]: cannot find function `does_not_exist` in this scope
