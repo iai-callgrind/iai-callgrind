@@ -3,7 +3,7 @@ use std::ffi::OsString;
 use derive_more::AsRef;
 use iai_callgrind_macros::IntoInner;
 
-use crate::{internal, EntryPoint};
+use crate::{EntryPoint, __internal};
 
 /// The main configuration of a library benchmark.
 ///
@@ -26,7 +26,7 @@ use crate::{internal, EntryPoint};
 /// # }
 /// ```
 #[derive(Debug, Default, IntoInner, AsRef, Clone)]
-pub struct LibraryBenchmarkConfig(internal::InternalLibraryBenchmarkConfig);
+pub struct LibraryBenchmarkConfig(__internal::InternalLibraryBenchmarkConfig);
 
 impl LibraryBenchmarkConfig {
     /// Create a new `LibraryBenchmarkConfig` with initial callgrind arguments
@@ -56,14 +56,14 @@ impl LibraryBenchmarkConfig {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(internal::InternalLibraryBenchmarkConfig {
+        Self(__internal::InternalLibraryBenchmarkConfig {
             env_clear: Option::default(),
-            callgrind_args: internal::InternalRawArgs::from_iter(args),
-            valgrind_args: internal::InternalRawArgs::default(),
+            callgrind_args: __internal::InternalRawArgs::from_iter(args),
+            valgrind_args: __internal::InternalRawArgs::default(),
             envs: Vec::default(),
             flamegraph_config: Option::default(),
             regression_config: Option::default(),
-            tools: internal::InternalTools::default(),
+            tools: __internal::InternalTools::default(),
             tools_override: Option::default(),
             output_format: Option::default(),
             entry_point: Option::default(),
@@ -179,8 +179,8 @@ impl LibraryBenchmarkConfig {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        Self(internal::InternalLibraryBenchmarkConfig {
-            callgrind_args: internal::InternalRawArgs::from_iter(args),
+        Self(__internal::InternalLibraryBenchmarkConfig {
+            callgrind_args: __internal::InternalRawArgs::from_iter(args),
             ..Default::default()
         })
     }
@@ -472,7 +472,7 @@ impl LibraryBenchmarkConfig {
     /// ```
     pub fn flamegraph<T>(&mut self, config: T) -> &mut Self
     where
-        T: Into<internal::InternalFlamegraphConfig>,
+        T: Into<__internal::InternalFlamegraphConfig>,
     {
         self.0.flamegraph_config = Some(config.into());
         self
@@ -498,7 +498,7 @@ impl LibraryBenchmarkConfig {
     /// ```
     pub fn regression<T>(&mut self, config: T) -> &mut Self
     where
-        T: Into<internal::InternalRegressionConfig>,
+        T: Into<__internal::InternalRegressionConfig>,
     {
         self.0.regression_config = Some(config.into());
         self
@@ -525,7 +525,7 @@ impl LibraryBenchmarkConfig {
     /// ```
     pub fn tool<T>(&mut self, tool: T) -> &mut Self
     where
-        T: Into<internal::InternalTool>,
+        T: Into<__internal::InternalTool>,
     {
         self.0.tools.update(tool.into());
         self
@@ -557,7 +557,7 @@ impl LibraryBenchmarkConfig {
     /// ```
     pub fn tools<I, T>(&mut self, tools: T) -> &mut Self
     where
-        I: Into<internal::InternalTool>,
+        I: Into<__internal::InternalTool>,
         T: IntoIterator<Item = I>,
     {
         self.0.tools.update_all(tools.into_iter().map(Into::into));
@@ -612,11 +612,11 @@ impl LibraryBenchmarkConfig {
     /// ```
     pub fn tool_override<T>(&mut self, tool: T) -> &mut Self
     where
-        T: Into<internal::InternalTool>,
+        T: Into<__internal::InternalTool>,
     {
         self.0
             .tools_override
-            .get_or_insert(internal::InternalTools::default())
+            .get_or_insert(__internal::InternalTools::default())
             .update(tool.into());
         self
     }
@@ -660,12 +660,12 @@ impl LibraryBenchmarkConfig {
     /// ```
     pub fn tools_override<I, T>(&mut self, tools: T) -> &mut Self
     where
-        I: Into<internal::InternalTool>,
+        I: Into<__internal::InternalTool>,
         T: IntoIterator<Item = I>,
     {
         self.0
             .tools_override
-            .get_or_insert(internal::InternalTools::default())
+            .get_or_insert(__internal::InternalTools::default())
             .update_all(tools.into_iter().map(Into::into));
         self
     }
@@ -789,7 +789,7 @@ impl LibraryBenchmarkConfig {
     /// # }
     pub fn output_format<T>(&mut self, output_format: T) -> &mut Self
     where
-        T: Into<internal::InternalOutputFormat>,
+        T: Into<__internal::InternalOutputFormat>,
     {
         self.0.output_format = Some(output_format.into());
         self

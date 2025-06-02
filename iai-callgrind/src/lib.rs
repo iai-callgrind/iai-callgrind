@@ -388,17 +388,14 @@
 #![allow(clippy::module_name_repetitions)]
 
 #[cfg(feature = "default")]
+#[doc(hidden)]
+pub mod __internal;
+#[cfg(feature = "default")]
 mod bin_bench;
 #[cfg(feature = "client_requests_defs")]
 pub mod client_requests;
 #[cfg(feature = "default")]
 mod common;
-#[cfg(feature = "default")]
-#[doc(hidden)]
-pub mod error;
-#[cfg(feature = "default")]
-#[doc(hidden)]
-pub mod internal;
 #[cfg(feature = "default")]
 mod lib_bench;
 #[cfg(feature = "default")]
@@ -416,6 +413,8 @@ pub use common::{black_box, FlamegraphConfig, OutputFormat, RegressionConfig, To
 pub use cty;
 #[cfg(feature = "default")]
 pub use iai_callgrind_macros::{binary_benchmark, library_benchmark};
+// Only add enums here. Do not re-export structs from the runner api directly. See the
+// documentation in `__internal::mod` for more details.
 #[cfg(feature = "default")]
 pub use iai_callgrind_runner::api::{
     DelayKind, Direction, EntryPoint, EventKind, FlamegraphKind, Pipe, Stdin, Stdio, ValgrindTool,

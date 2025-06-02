@@ -66,7 +66,7 @@ impl CargoMetadata {
 /// # use iai_callgrind_macros::library_benchmark;
 /// # mod iai_callgrind {
 /// # pub struct LibraryBenchmarkConfig {}
-/// # pub mod internal {
+/// # pub mod __internal {
 /// # pub struct InternalMacroLibBench {
 /// #   pub id_display: Option<&'static str>,
 /// #   pub args_display: Option<&'static str>,
@@ -128,7 +128,7 @@ impl CargoMetadata {
 /// # use iai_callgrind_macros::library_benchmark;
 /// # mod iai_callgrind {
 /// # pub struct LibraryBenchmarkConfig {}
-/// # pub mod internal {
+/// # pub mod __internal {
 /// # pub struct InternalMacroLibBench {
 /// #   pub id_display: Option<&'static str>,
 /// #   pub args_display: Option<&'static str>,
@@ -164,7 +164,7 @@ impl CargoMetadata {
 /// # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
 /// # mod iai_callgrind {
 /// # pub struct LibraryBenchmarkConfig {}
-/// # pub mod internal {
+/// # pub mod __internal {
 /// # pub struct InternalMacroLibBench {
 /// #   pub id_display: Option<&'static str>,
 /// #   pub args_display: Option<&'static str>,
@@ -202,7 +202,7 @@ impl CargoMetadata {
 /// # use iai_callgrind_macros::library_benchmark;
 /// # mod iai_callgrind {
 /// # pub struct LibraryBenchmarkConfig {}
-/// # pub mod internal {
+/// # pub mod __internal {
 /// # pub struct InternalMacroLibBench {
 /// #   pub id_display: Option<&'static str>,
 /// #   pub args_display: Option<&'static str>,
@@ -247,7 +247,7 @@ impl CargoMetadata {
 /// # use iai_callgrind_macros::library_benchmark;
 /// # mod iai_callgrind {
 /// # pub struct LibraryBenchmarkConfig {}
-/// # pub mod internal {
+/// # pub mod __internal {
 /// # pub struct InternalMacroLibBench {
 /// #   pub id_display: Option<&'static str>,
 /// #   pub args_display: Option<&'static str>,
@@ -273,7 +273,7 @@ impl CargoMetadata {
 /// # use iai_callgrind_macros::library_benchmark;
 /// # mod iai_callgrind {
 /// # pub struct LibraryBenchmarkConfig {}
-/// # pub mod internal {
+/// # pub mod __internal {
 /// # pub struct InternalMacroLibBench {
 /// #   pub id_display: Option<&'static str>,
 /// #   pub args_display: Option<&'static str>,
@@ -301,7 +301,7 @@ impl CargoMetadata {
 /// # use iai_callgrind_macros::library_benchmark;
 /// # mod iai_callgrind {
 /// # pub struct LibraryBenchmarkConfig {}
-/// # pub mod internal {
+/// # pub mod __internal {
 /// # pub struct InternalMacroLibBench {
 /// #   pub id_display: Option<&'static str>,
 /// #   pub args_display: Option<&'static str>,
@@ -333,7 +333,7 @@ impl CargoMetadata {
 /// # use iai_callgrind_macros::library_benchmark;
 /// # mod iai_callgrind {
 /// # pub struct LibraryBenchmarkConfig {}
-/// # pub mod internal {
+/// # pub mod __internal {
 /// # pub struct InternalMacroLibBench {
 /// #   pub id_display: Option<&'static str>,
 /// #   pub args_display: Option<&'static str>,
@@ -450,7 +450,7 @@ pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
 /// # impl BinaryBenchmarkConfig { pub fn sandbox<T: Into<Sandbox>>(&mut self, _a: T) -> &mut Self {self}}
 /// # impl From<&mut BinaryBenchmarkConfig> for BinaryBenchmarkConfig
 /// #     { fn from(_value: &mut BinaryBenchmarkConfig) -> Self { BinaryBenchmarkConfig {}}}
-/// # pub mod internal {
+/// # pub mod __internal {
 /// # use super::*;
 /// # pub struct InternalMacroBinBench {
 /// #   pub id_display: Option<&'static str>,

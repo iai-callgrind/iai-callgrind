@@ -35,6 +35,7 @@ pub mod envs {
 
 pub const DEFAULT_TOGGLE: &str = "*::__iai_callgrind_wrapper_mod::*";
 
+#[derive(Debug)]
 struct RunnerArgs {
     bench_kind: BenchmarkKind,
     package_dir: PathBuf,
@@ -167,10 +168,7 @@ where
         encoded.len()
     );
 
-    let benchmark: T =
-        bincode::deserialize(&encoded).with_context(|| "Failed to decode configuration")?;
-
-    Ok(benchmark)
+    bincode::deserialize(&encoded).with_context(|| "Failed to decode configuration")
 }
 
 pub fn run() -> Result<()> {

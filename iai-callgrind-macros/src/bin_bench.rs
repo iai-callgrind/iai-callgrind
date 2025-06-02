@@ -220,7 +220,7 @@ impl Bench {
         let setup = self.setup.render_as_member(Some(id));
         let teardown = self.teardown.render_as_member(Some(id));
         quote! {
-            iai_callgrind::internal::InternalMacroBinBench {
+            iai_callgrind::__internal::InternalMacroBinBench {
                 id_display: Some(#id_display),
                 args_display: Some(#args_display),
                 func: #id,
@@ -242,7 +242,7 @@ impl BenchConfig {
             let ident = Self::ident(id);
             quote! {
                 #[inline(never)]
-                pub fn #ident() -> iai_callgrind::internal::InternalBinaryBenchmarkConfig {
+                pub fn #ident() -> iai_callgrind::__internal::InternalBinaryBenchmarkConfig {
                     #config.into()
                 }
             }
@@ -371,8 +371,8 @@ impl BinaryBenchmark {
                 #[inline(never)]
                 #new_item_fn
 
-                pub const __BENCHES: &[iai_callgrind::internal::InternalMacroBinBench]= &[
-                    iai_callgrind::internal::InternalMacroBinBench {
+                pub const __BENCHES: &[iai_callgrind::__internal::InternalMacroBinBench]= &[
+                    iai_callgrind::__internal::InternalMacroBinBench {
                         id_display: None,
                         args_display: None,
                         func: #ident,
@@ -414,7 +414,7 @@ impl BinaryBenchmark {
                 #[inline(never)]
                 #new_item_fn
 
-                pub const __BENCHES: &[iai_callgrind::internal::InternalMacroBinBench] = &[
+                pub const __BENCHES: &[iai_callgrind::__internal::InternalMacroBinBench] = &[
                     #(#bin_benches,)*
                 ];
 
@@ -468,7 +468,7 @@ impl BinaryBenchmarkConfig {
             quote!(
                 #[inline(never)]
                 pub fn __get_config()
-                    -> Option<iai_callgrind::internal::InternalBinaryBenchmarkConfig>
+                    -> Option<iai_callgrind::__internal::InternalBinaryBenchmarkConfig>
                 {
                     Some(#config.into())
                 }
@@ -477,7 +477,7 @@ impl BinaryBenchmarkConfig {
             quote!(
                 #[inline(never)]
                 pub fn __get_config(
-                ) -> Option<iai_callgrind::internal::InternalBinaryBenchmarkConfig>
+                ) -> Option<iai_callgrind::__internal::InternalBinaryBenchmarkConfig>
                 {
                     None
                 }

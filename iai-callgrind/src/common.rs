@@ -3,7 +3,7 @@
 use derive_more::AsRef;
 use iai_callgrind_macros::IntoInner;
 
-use super::{internal, Direction, EventKind, FlamegraphKind, ValgrindTool};
+use super::{Direction, EventKind, FlamegraphKind, ValgrindTool, __internal};
 
 /// The `FlamegraphConfig` which allows the customization of the created flamegraphs
 ///
@@ -39,7 +39,7 @@ use super::{internal, Direction, EventKind, FlamegraphKind, ValgrindTool};
 /// # }
 /// ```
 #[derive(Debug, Clone, Default, IntoInner, AsRef)]
-pub struct FlamegraphConfig(internal::InternalFlamegraphConfig);
+pub struct FlamegraphConfig(__internal::InternalFlamegraphConfig);
 
 /// Configure the default output format of the terminal output of Iai-Callgrind
 ///
@@ -70,7 +70,7 @@ pub struct FlamegraphConfig(internal::InternalFlamegraphConfig);
 /// );
 /// # }
 #[derive(Debug, Clone, Default, IntoInner, AsRef)]
-pub struct OutputFormat(internal::InternalOutputFormat);
+pub struct OutputFormat(__internal::InternalOutputFormat);
 
 impl OutputFormat {
     /// Adjust, enable or disable the truncation of the description in the iai-callgrind output
@@ -349,7 +349,7 @@ impl OutputFormat {
 /// # }
 /// ```
 #[derive(Debug, Default, Clone, IntoInner, AsRef)]
-pub struct RegressionConfig(internal::InternalRegressionConfig);
+pub struct RegressionConfig(__internal::InternalRegressionConfig);
 
 /// Configure to run other valgrind tools like `DHAT` or `Massif` in addition to callgrind
 ///
@@ -375,7 +375,7 @@ pub struct RegressionConfig(internal::InternalRegressionConfig);
 /// # }
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, IntoInner, AsRef)]
-pub struct Tool(internal::InternalTool);
+pub struct Tool(__internal::InternalTool);
 
 impl FlamegraphConfig {
     /// Option to change the [`FlamegraphKind`]
@@ -634,11 +634,11 @@ impl Tool {
     /// let tool = Tool::new(ValgrindTool::DHAT);
     /// ```
     pub fn new(tool: ValgrindTool) -> Self {
-        Self(internal::InternalTool {
+        Self(__internal::InternalTool {
             kind: tool,
             enable: Option::default(),
             show_log: Option::default(),
-            raw_args: internal::InternalRawArgs::default(),
+            raw_args: __internal::InternalRawArgs::default(),
         })
     }
 
