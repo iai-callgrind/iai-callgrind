@@ -1,4 +1,3 @@
-neovim
 ASLR
 Aparicio
 Assche
@@ -142,10 +141,12 @@ mmap
 msvc
 multibyte
 nanomips
+neovim
 noaccess
 nocapture
 nodemon
 noninteractive
+nosummary
 nsec
 outfile
 outfiles

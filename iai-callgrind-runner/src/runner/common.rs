@@ -234,30 +234,43 @@ impl AssistantKind {
 }
 
 impl BenchmarkSummaries {
+    /// Add a [`BenchmarkSummary`]
     pub fn add_summary(&mut self, summary: BenchmarkSummary) {
         self.summaries.push(summary);
     }
 
+    /// Add another `BenchmarkSummary`
+    ///
+    /// Ignores the execution time.
     pub fn add_other(&mut self, other: Self) {
         other.summaries.into_iter().for_each(|s| {
             self.add_summary(s);
         });
     }
 
+    /// Return true if any regressions were encountered
     pub fn is_regressed(&self) -> bool {
         self.summaries.iter().any(BenchmarkSummary::is_regressed)
     }
 
+    /// Set the total execution from `start` to `now`
     pub fn elapsed(&mut self, start: Instant) {
         self.total_time = Some(start.elapsed());
     }
 
+    /// Return the number of total benchmarks
     pub fn num_benchmarks(&self) -> usize {
         self.summaries.len()
     }
 
-    pub fn print(&self, output_format_kind: OutputFormatKind) {
-        SummaryFormatter::new(output_format_kind).print(self);
+    /// Print the summary if not prevented by command-line arguments
+    ///
+    /// If `nosummary` is true or [`OutputFormatKind`] is any kind of `JSON` format the summary is
+    /// not printed.
+    pub fn print(&self, nosummary: bool, output_format_kind: OutputFormatKind) {
+        if !nosummary {
+            SummaryFormatter::new(output_format_kind).print(self);
+        }
     }
 }
 
