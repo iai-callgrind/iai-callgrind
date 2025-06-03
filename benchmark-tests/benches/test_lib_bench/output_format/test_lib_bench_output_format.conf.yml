@@ -7,6 +7,11 @@ groups:
       - args: ["--nocapture"]
         expected:
           stdout: expected_stdout.1b
+  - runs_on: "!x86_64-unknown-freebsd"
+    runs:
+      - args: ["--nosummary"]
+        expected:
+          stdout: expected_stdout.no_summary
   - runs_on: "x86_64-unknown-freebsd"
     runs:
       - args: []
