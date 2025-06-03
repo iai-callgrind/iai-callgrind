@@ -100,7 +100,10 @@ impl Display for Error {
             }
             Self::RegressionError(is_fatal) => {
                 if *is_fatal {
-                    write!(f, "Performance has regressed. Aborting ...",)
+                    write!(
+                        f,
+                        "Performance has regressed. Fail-fast is set. Aborting ...",
+                    )
                 } else {
                     write!(f, "Performance has regressed.",)
                 }

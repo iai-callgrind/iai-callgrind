@@ -459,21 +459,16 @@ impl BenchmarkSummary {
     /// # Errors
     ///
     /// If the regressions are configured to be `fail_fast` an error is returned
-    /// TODO: REMOVE `is_regressed`
-    pub fn check_regression(&self, is_regressed: &mut bool, fail_fast: bool) -> Result<()> {
+    pub fn check_regression(&self, fail_fast: bool) -> Result<()> {
         if let Some(callgrind_summary) = &self.callgrind_summary {
-            let benchmark_is_regressed = callgrind_summary.is_regressed();
-            if benchmark_is_regressed && fail_fast {
+            if callgrind_summary.is_regressed() && fail_fast {
                 return Err(Error::RegressionError(true).into());
             }
-
-            *is_regressed |= benchmark_is_regressed;
         }
 
         Ok(())
     }
 
-    /// TODO: DOCS
     pub fn is_regressed(&self) -> bool {
         self.callgrind_summary
             .as_ref()

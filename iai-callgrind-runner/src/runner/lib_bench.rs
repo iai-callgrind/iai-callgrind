@@ -412,7 +412,7 @@ impl Groups {
 
                 let lib_bench_summary = benchmark.run(bench, config, group)?;
                 lib_bench_summary.print_and_save(&config.meta.args.output_format)?;
-                lib_bench_summary.check_regression(&mut false, fail_fast)?;
+                lib_bench_summary.check_regression(fail_fast)?;
 
                 benchmark_summaries.add_summary(lib_bench_summary.clone());
                 if group.compare_by_id && bench.output_format.is_default() {

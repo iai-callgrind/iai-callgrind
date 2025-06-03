@@ -629,12 +629,7 @@ impl Delay {
 }
 
 impl Group {
-    fn run(
-        &self,
-        benchmark: &dyn Benchmark,
-        is_regressed: &mut bool,
-        config: &Config,
-    ) -> Result<BenchmarkSummaries> {
+    fn run(&self, benchmark: &dyn Benchmark, config: &Config) -> Result<BenchmarkSummaries> {
         let mut benchmark_summaries = BenchmarkSummaries::default();
 
         let mut summaries: HashMap<String, Vec<BenchmarkSummary>> =
@@ -647,9 +642,8 @@ impl Group {
 
             let summary = benchmark.run(bench, config, self)?;
             summary.print_and_save(&config.meta.args.output_format)?;
-            summary.check_regression(is_regressed, fail_fast)?;
+            summary.check_regression(fail_fast)?;
 
-            // TODO: could be a Cow? also in lib_bench
             benchmark_summaries.add_summary(summary.clone());
             if self.compare_by_id && bench.output_format.is_default() {
                 if let Some(id) = &summary.id {
@@ -760,7 +754,7 @@ impl Groups {
                 setup.run(config, &group.module_path)?;
             }
 
-            let summaries = group.run(benchmark, &mut false, config)?;
+            let summaries = group.run(benchmark, config)?;
 
             if let Some(teardown) = &group.teardown {
                 teardown.run(config, &group.module_path)?;

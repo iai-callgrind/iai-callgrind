@@ -37,40 +37,15 @@ pub enum AssistantKind {
     Teardown,
 }
 
-/// TODO: DOCS
+/// Contains benchmark summaries of (binary, library) benchmark runs and their execution time
+///
+/// Used to print a final summary after all benchmarks.
 #[derive(Debug, Default)]
 pub struct BenchmarkSummaries {
+    /// The benchmark summaries
     pub summaries: Vec<BenchmarkSummary>,
+    /// The execution time of all benchmarks.
     pub total_time: Option<Duration>,
-}
-
-// TODO: SORT
-impl BenchmarkSummaries {
-    pub fn add_summary(&mut self, summary: BenchmarkSummary) {
-        self.summaries.push(summary);
-    }
-
-    pub fn add_other(&mut self, other: Self) {
-        other.summaries.into_iter().for_each(|s| {
-            self.add_summary(s);
-        });
-    }
-
-    pub fn is_regressed(&self) -> bool {
-        self.summaries.iter().any(BenchmarkSummary::is_regressed)
-    }
-
-    pub fn elapsed(&mut self, start: Instant) {
-        self.total_time = Some(start.elapsed());
-    }
-
-    pub fn num_benchmarks(&self) -> usize {
-        self.summaries.len()
-    }
-
-    pub fn print(&self, output_format_kind: OutputFormatKind) {
-        SummaryFormatter::new(output_format_kind).print(self);
-    }
 }
 
 #[derive(Debug)]
@@ -255,6 +230,34 @@ impl AssistantKind {
             AssistantKind::Teardown => "teardown",
         }
         .to_owned()
+    }
+}
+
+impl BenchmarkSummaries {
+    pub fn add_summary(&mut self, summary: BenchmarkSummary) {
+        self.summaries.push(summary);
+    }
+
+    pub fn add_other(&mut self, other: Self) {
+        other.summaries.into_iter().for_each(|s| {
+            self.add_summary(s);
+        });
+    }
+
+    pub fn is_regressed(&self) -> bool {
+        self.summaries.iter().any(BenchmarkSummary::is_regressed)
+    }
+
+    pub fn elapsed(&mut self, start: Instant) {
+        self.total_time = Some(start.elapsed());
+    }
+
+    pub fn num_benchmarks(&self) -> usize {
+        self.summaries.len()
+    }
+
+    pub fn print(&self, output_format_kind: OutputFormatKind) {
+        SummaryFormatter::new(output_format_kind).print(self);
     }
 }
 

@@ -487,7 +487,7 @@ impl SummaryFormatter {
                     "\nIai-Callgrind result: {}. {num_not_regressed} without regressions; \
                      {num_regressed} regressed; {total_benchmarks} benchmarks finished in \
                      {total_time:>6}s",
-                    "Regressed".red().bold(),
+                    "Regressed".bright_red().bold(),
                 );
             } else {
                 println!(
