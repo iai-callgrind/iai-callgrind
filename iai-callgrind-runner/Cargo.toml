@@ -53,7 +53,11 @@ rustdoc-args = ["--cfg", "docsrs"]
 anyhow = { workspace = true, optional = true }
 bincode = { workspace = true, optional = true }
 cargo_metadata = { workspace = true, optional = true }
-clap = { workspace = true, optional = true, features = ["derive", "env"] }
+clap = { workspace = true, optional = true, features = [
+  "derive",
+  "env",
+  "wrap_help",
+] }
 colored = { workspace = true, optional = true }
 derive_more = { workspace = true, optional = true, features = ["as_ref"] }
 env_logger = { workspace = true, optional = true }

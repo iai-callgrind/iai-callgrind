@@ -76,7 +76,8 @@ instead of `true` and one of `n`, `no`, `f`, `false`, `off`, and `0` instead of
 `false`",
     long_about = None,
     no_binary_name = true,
-    override_usage= "cargo bench ... [BENCHNAME] -- [OPTIONS]"
+    override_usage= "cargo bench ... [BENCHNAME] -- [OPTIONS]",
+    max_term_width = 100
 )]
 pub struct CommandLineArgs {
     /// The following arguments are accepted by the rust libtest harness and ignored by us
