@@ -48,10 +48,15 @@ lazy_static! {
     static ref PROCESS_DID_NOT_EXIT_SUCCESSFULLY_RE: Regex =
         Regex::new(r"^([ ]+process didn't exit successfully: `)(.*)(` \(exit status: .*\).*)$")
             .expect("Regex should compile");
-    // Performance has regressed: Instructions (196 > 133) regressed by +47.3684% (>+0.00000)
+    // Performance has regressed: Instructions (133 -> 196) regressed by +47.3684% (>+0.00000%)
     // $1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__NUM__>$9
     static ref REGRESSION_RE: Regex =
-        Regex::new(r"^(Performance has regressed:\s*\w+\s*\()([0-9]+)(\s*[><]\s*)([0-9]+)(\)\s*regressed\s*by\s*[+-])([0-9.]+)(%\s*\([><][+-])([0-9.]+)(\)\s*)$")
+        Regex::new(r"^(Performance has regressed:\s*\w+\s*\()([0-9]+)(\s*->\s*)([0-9]+)(\)\s*regressed\s*by\s*[+-])([0-9.]+)(%\s*\([><][+-])([0-9.]+)(%\)\s*)$")
+            .expect("Regex should compile");
+    // Instructions (357182 -> 357704): +0.14614% exceeds limit of +0.00000%
+    // $1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__PERCENT__>$9
+    static ref SUMMARY_REGRESSION_RE: Regex =
+        Regex::new(r"^(\s*\w+\s*\()([0-9]+)(\s*->\s*)([0-9]+)(\):\s*[+-])([0-9.]+)(%\s*exceeds limit of [+-])([0-9.]+)(%\s*)$")
             .expect("Regex should compile");
     // Command: target/release/deps/test_lib_bench_threads-c2a88f916ff580f9
     static ref COMMAND_RE: Regex =
@@ -680,6 +685,10 @@ impl BenchmarkOutput {
                         format!("{caps_1} {caps_3}")
                     }
                 });
+                let line = SUMMARY_REGRESSION_RE.replace_all(
+                    &line,
+                    "$1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__PERCENT__>$9",
+                );
                 let line = SUMMARY_LINE_RE.replace_all(&line, "$1<__SECONDS__>$3");
                 writeln!(result, "{indent}{line}").unwrap();
             }
@@ -1059,9 +1068,9 @@ mod tests {
 
     #[rstest]
     #[case::instructions_positive_when_0_allowed(
-        "Performance has regressed: Instructions (196 > 133) regressed by +47.3684% (>+0.00000)",
-        "Performance has regressed: Instructions (<__NUM__> > <__NUM__>) regressed by \
-         +<__PERCENT__>% (>+<__NUM__>)"
+        "Performance has regressed: Instructions (133 -> 196) regressed by +47.3684% (>+0.00000%)",
+        "Performance has regressed: Instructions (<__NUM__> -> <__NUM__>) regressed by \
+         +<__PERCENT__>% (>+<__NUM__>%)"
     )]
     fn test_regression_re(#[case] haystack: &str, #[case] replaced: &str) {
         assert_eq!(

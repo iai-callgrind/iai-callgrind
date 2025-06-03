@@ -121,3 +121,5 @@ test_bin_bench_intro::pipe_group::bench_pipe bar:("bar") -> target/release/pipe
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
+
+Iai-Callgrind result: Ok. 15 without regressions; 0 regressed; 15 benchmarks finished in <__SECONDS__>s

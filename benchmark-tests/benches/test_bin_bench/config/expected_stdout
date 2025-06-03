@@ -60,3 +60,5 @@ Found env: 'COMMAND_ENV' with value '5'
   At t-end blocks:                         |N/A                  (*********)
   Reads bytes:                             |N/A                  (*********)
   Writes bytes:                            |N/A                  (*********)
+
+Iai-Callgrind result: Ok. 2 without regressions; 0 regressed; 2 benchmarks finished in <__SECONDS__>s

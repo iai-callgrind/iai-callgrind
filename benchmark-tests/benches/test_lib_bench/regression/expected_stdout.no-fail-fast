@@ -13,4 +13,9 @@ test_bench_template::bench_group::bench_bubble_sort should_not_run_after_regress
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
 
-Iai-Callgrind result: Success. 1 completed without regressions; 1 regressed; 2 benchmarks finished in <__SECONDS__>s
+Regressions:
+
+  test_bench_template::bench_group::bench_bubble_sort regress_ir:
+    Instructions (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
+
+Iai-Callgrind result: Regressed. 1 without regressions; 1 regressed; 2 benchmarks finished in <__SECONDS__>s

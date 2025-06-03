@@ -1,5 +1,4 @@
-Performance has regressed: Instructions (<__NUM__> > <__NUM__>) regressed by +<__PERCENT__>% (>+<__NUM__>)
-iai_callgrind_runner: Error: Performance has regressed.
+Performance has regressed: Instructions (<__NUM__> -> <__NUM__>) regressed by +<__PERCENT__>% (>+<__NUM__>%)
 error: bench failed, to rerun pass `-p benchmark-tests --bench test_bench_template`
 
 Caused by:

@@ -291,3 +291,5 @@ test_lib_bench_tools::bench_group::bad_memory
   Suppressed Contexts:                     |                     (         )
   ======= MASSIF =======================================================================
   Command: <__COMMAND__>
+
+Iai-Callgrind result: Ok. 6 without regressions; 0 regressed; 6 benchmarks finished in <__SECONDS__>s

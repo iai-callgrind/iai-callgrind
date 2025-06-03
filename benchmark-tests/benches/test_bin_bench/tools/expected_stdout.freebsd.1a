@@ -162,3 +162,5 @@ test_bin_bench_tools::bench_group::bench_subprocess no_trace_children:() -> targ
   Contexts:                                |N/A                  (*********)
   Suppressed Errors:                       |N/A                  (*********)
   Suppressed Contexts:                     |N/A                  (*********)
+
+Iai-Callgrind result: Ok. 2 without regressions; 0 regressed; 2 benchmarks finished in <__SECONDS__>s

@@ -78,3 +78,5 @@ Number of primes found in the range 0 to 30000: 3245
 | RAM Hits:                                |                     (         )
 | Total read+write:                        |                     (-       %) [-       x]
 | Estimated Cycles:                        |                     (         )
+
+Iai-Callgrind result: Ok. 2 without regressions; 0 regressed; 2 benchmarks finished in <__SECONDS__>s
