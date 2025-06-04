@@ -1,5 +1,5 @@
 <!-- spell-checker:ignore serde dewert binstall jembishop kehl DaniPopes bytemuck hargut -->
-<!-- spell-checker:ignore ryanpeach hashbrown -->
+<!-- spell-checker:ignore ryanpeach hashbrown tgross35 gaetschwartz -->
 <!--
 Added for new features.
 Changed for changes in existing functionality.
@@ -23,6 +23,30 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.14.2] - 2025-06-04
+
+### Added
+
+* ([#356](https://github.com/iai-callgrind/iai-callgrind/issues/356)): Print a
+  summary after a benchmark run with total/regressed benchmarks and total
+  execution time. Thanks to @tgross35 for the feedback and format suggestion.
+
+### Changed
+
+* ([#361](https://github.com/iai-callgrind/iai-callgrind/pull/361)): Wrap long
+  lines of `--help` output to 100 max bytes for better readability.
+* ([#362](https://github.com/iai-callgrind/iai-callgrind/pull/362)): Return with
+  exit code `3` on regression errors and `2` on command-line argument parsing
+  errors.
+* Update dependencies to latest possible versions
+
+### Fixed
+
+* ([#360](https://github.com/iai-callgrind/iai-callgrind/pull/360)): Stay closer
+  to the rust format of `--list` and use `: benchmark` suffix instead of `:
+  bench` when using `--list` to print a list of all benchmarks. Thanks to
+  @gaetschwartz
+
 ## [0.14.1] - 2025-05-31
 
 ### Added
@@ -39,14 +63,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
-* ([#337](https://github.com/iai-callgrind/iai-callgrind/issue/337)): Fix
+* ([#337](https://github.com/iai-callgrind/iai-callgrind/issues/337)): Fix
   `--regression` does not exit with error status when there are regressions.
   Also, `--regression-fail-fast` did not exit the benchmarks early on first
   encountered regression.
-* ([#339](https://github.com/iai-callgrind/iai-callgrind/issue/339)): Fix tests
+* ([#339](https://github.com/iai-callgrind/iai-callgrind/issues/339)): Fix tests
   fail when invoked with extra cargo (libtest harness) arguments like --list or
   --format, ...
-* ([#341](https://github.com/iai-callgrind/iai-callgrind/issue/339)): Remove
+* ([#341](https://github.com/iai-callgrind/iai-callgrind/issues/339)): Remove
   Quickstart from README and link instead to the quickstart in the guide.
 * ([#347](https://github.com/iai-callgrind/iai-callgrind/pull/347)): deny:
   RUSTSEC-2025-0024: error[vulnerability]: crossbeam-channel: double free on
