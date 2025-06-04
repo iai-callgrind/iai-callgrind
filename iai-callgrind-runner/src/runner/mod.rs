@@ -16,7 +16,9 @@ use std::io::{stdin, Read};
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
-use common::{Config, ModulePath};
+use args::CommandLineArgs;
+use common::{BenchmarkSummaries, Config, ModulePath};
+use format::OutputFormatKind;
 use log::debug;
 
 use self::meta::Metadata;
@@ -35,6 +37,17 @@ pub mod envs {
 
 pub const DEFAULT_TOGGLE: &str = "*::__iai_callgrind_wrapper_mod::*";
 
+/// Execute post benchmark run actions like printing the summary line with regressions
+#[derive(Debug)]
+struct PostRun {
+    benchmark_summaries: Option<BenchmarkSummaries>,
+    nosummary: bool,
+    output_format_kind: OutputFormatKind,
+}
+
+/// The arguments sent by the iai-callgrind benchmarking harness
+///
+/// These are not the user arguments of the `cargo bench ... -- ARGS` command.
 #[derive(Debug)]
 struct RunnerArgs {
     bench_kind: BenchmarkKind,
@@ -47,6 +60,40 @@ struct RunnerArgs {
 }
 
 struct RunnerArgsIterator(ArgsOs);
+
+impl PostRun {
+    /// Create a new `PostRun`
+    fn new(nosummary: bool, output_format_kind: OutputFormatKind) -> Self {
+        Self {
+            benchmark_summaries: None,
+            nosummary,
+            output_format_kind,
+        }
+    }
+
+    /// Builder method to add the [`BenchmarkSummaries`] and return `Self`
+    fn summaries(mut self, benchmark_summaries: BenchmarkSummaries) -> Self {
+        self.benchmark_summaries = Some(benchmark_summaries);
+        self
+    }
+
+    /// Print the summary returning [`Error::RegressionError`] if regressions were present
+    ///
+    /// The summary is not printed if `nosummary` is true or the [`OutputFormatKind`] is not the
+    /// default format (i.e. JSON).
+    fn execute(self) -> Result<()> {
+        let summaries = self
+            .benchmark_summaries
+            .expect("The benchmark summaries should be available");
+
+        summaries.print(self.nosummary, self.output_format_kind);
+        if summaries.is_regressed() {
+            Err(Error::RegressionError(false).into())
+        } else {
+            Ok(())
+        }
+    }
+}
 
 impl RunnerArgs {
     fn new() -> Result<Self> {
@@ -182,7 +229,7 @@ pub fn run() -> Result<()> {
         num_bytes,
     } = RunnerArgs::new()?;
 
-    match bench_kind {
+    let post_run = match bench_kind {
         BenchmarkKind::LibraryBenchmark => {
             let benchmark_groups: LibraryBenchmarkGroups = receive_benchmark(num_bytes)?;
             let meta = Metadata::new(
@@ -208,11 +255,19 @@ pub fn run() -> Result<()> {
                 meta,
             };
 
-            if config.meta.args.list {
-                lib_bench::list(benchmark_groups, &config)
-            } else {
-                lib_bench::run(benchmark_groups, config)
+            let CommandLineArgs {
+                output_format,
+                list,
+                nosummary,
+                ..
+            } = config.meta.args;
+
+            if list {
+                return lib_bench::list(benchmark_groups, &config);
             }
+
+            lib_bench::run(benchmark_groups, config)
+                .map(|s| PostRun::new(nosummary, output_format).summaries(s))?
         }
         BenchmarkKind::BinaryBenchmark => {
             let benchmark_groups: BinaryBenchmarkGroups = receive_benchmark(num_bytes)?;
@@ -239,11 +294,21 @@ pub fn run() -> Result<()> {
                 meta,
             };
 
-            if config.meta.args.list {
-                bin_bench::list(benchmark_groups, &config)
-            } else {
-                bin_bench::run(benchmark_groups, config)
+            let CommandLineArgs {
+                output_format,
+                list,
+                nosummary,
+                ..
+            } = config.meta.args;
+
+            if list {
+                return bin_bench::list(benchmark_groups, &config);
             }
+
+            bin_bench::run(benchmark_groups, config)
+                .map(|s| PostRun::new(nosummary, output_format).summaries(s))?
         }
-    }
+    };
+
+    post_run.execute()
 }

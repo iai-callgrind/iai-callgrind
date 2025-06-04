@@ -112,23 +112,25 @@ impl RegressionConfig {
         {
             if limit.is_sign_positive() {
                 eprintln!(
-                    "Performance has {0}: {1} ({new} > {old}) regressed by {2:>+6} (>{3:>+6})",
+                    "Performance has {0}: {1} ({old} -> {2}) regressed by {3:>+6} (>{4:>+6})",
                     "regressed".bold().bright_red(),
                     event_kind.to_string().bold(),
+                    new.to_string().bold(),
                     format!("{}%", to_string_signed_short(*diff_pct))
                         .bold()
                         .bright_red(),
-                    to_string_signed_short(*limit).bright_black()
+                    format!("{}%", to_string_signed_short(*limit)).bright_black()
                 );
             } else {
                 eprintln!(
-                    "Performance has {0}: {1} ({new} < {old}) regressed by {2:>+6} (<{3:>+6})",
+                    "Performance has {0}: {1} ({old} -> {2}) regressed by {3:>+6} (<{4:>+6})",
                     "regressed".bold().bright_red(),
                     event_kind.to_string().bold(),
+                    new.to_string().bold(),
                     format!("{}%", to_string_signed_short(*diff_pct))
                         .bold()
                         .bright_red(),
-                    to_string_signed_short(*limit).bright_black()
+                    format!("{}%", to_string_signed_short(*limit)).bright_black()
                 );
             }
         }

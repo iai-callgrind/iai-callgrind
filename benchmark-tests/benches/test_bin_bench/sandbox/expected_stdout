@@ -38,3 +38,5 @@ Deleted directory 'foo' with file 'bar.txt'
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
+
+Iai-Callgrind result: Ok. 4 without regressions; 0 regressed; 4 benchmarks finished in <__SECONDS__>s

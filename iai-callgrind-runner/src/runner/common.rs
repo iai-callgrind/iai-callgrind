@@ -2,13 +2,16 @@ use std::ffi::OsString;
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio as StdStdio};
+use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use log::{debug, info, log_enabled, trace, Level};
 use tempfile::TempDir;
 
 use super::args::NoCapture;
+use super::format::{OutputFormatKind, SummaryFormatter};
 use super::meta::Metadata;
+use super::summary::BenchmarkSummary;
 use crate::api::{self, Pipe};
 use crate::error::Error;
 use crate::util::{copy_directory, make_absolute, write_all_to_stderr};
@@ -32,6 +35,17 @@ pub struct Assistant {
 pub enum AssistantKind {
     Setup,
     Teardown,
+}
+
+/// Contains benchmark summaries of (binary, library) benchmark runs and their execution time
+///
+/// Used to print a final summary after all benchmarks.
+#[derive(Debug, Default)]
+pub struct BenchmarkSummaries {
+    /// The benchmark summaries
+    pub summaries: Vec<BenchmarkSummary>,
+    /// The execution time of all benchmarks.
+    pub total_time: Option<Duration>,
 }
 
 #[derive(Debug)]
@@ -216,6 +230,47 @@ impl AssistantKind {
             AssistantKind::Teardown => "teardown",
         }
         .to_owned()
+    }
+}
+
+impl BenchmarkSummaries {
+    /// Add a [`BenchmarkSummary`]
+    pub fn add_summary(&mut self, summary: BenchmarkSummary) {
+        self.summaries.push(summary);
+    }
+
+    /// Add another `BenchmarkSummary`
+    ///
+    /// Ignores the execution time.
+    pub fn add_other(&mut self, other: Self) {
+        other.summaries.into_iter().for_each(|s| {
+            self.add_summary(s);
+        });
+    }
+
+    /// Return true if any regressions were encountered
+    pub fn is_regressed(&self) -> bool {
+        self.summaries.iter().any(BenchmarkSummary::is_regressed)
+    }
+
+    /// Set the total execution from `start` to `now`
+    pub fn elapsed(&mut self, start: Instant) {
+        self.total_time = Some(start.elapsed());
+    }
+
+    /// Return the number of total benchmarks
+    pub fn num_benchmarks(&self) -> usize {
+        self.summaries.len()
+    }
+
+    /// Print the summary if not prevented by command-line arguments
+    ///
+    /// If `nosummary` is true or [`OutputFormatKind`] is any kind of `JSON` format the summary is
+    /// not printed.
+    pub fn print(&self, nosummary: bool, output_format_kind: OutputFormatKind) {
+        if !nosummary {
+            SummaryFormatter::new(output_format_kind).print(self);
+        }
     }
 }
 

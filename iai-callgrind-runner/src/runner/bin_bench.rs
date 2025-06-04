@@ -5,7 +5,7 @@ use std::io::ErrorKind::WouldBlock;
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, TcpStream, UdpSocket};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, RecvTimeoutError};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::{panic, thread};
 
 use anyhow::{anyhow, Context, Result};
@@ -20,7 +20,7 @@ use super::callgrind::flamegraph::{
 use super::callgrind::parser::CallgrindParser;
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{RegressionConfig, Summaries};
-use super::common::{Assistant, AssistantKind, Config, ModulePath, Sandbox};
+use super::common::{Assistant, AssistantKind, BenchmarkSummaries, Config, ModulePath, Sandbox};
 use super::format::{BinaryBenchmarkHeader, Formatter, OutputFormat, VerticalFormatter};
 use super::meta::Metadata;
 use super::summary::{
@@ -34,7 +34,6 @@ use super::tool::{
 use crate::api::{
     self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind, Stdin,
 };
-use crate::error::Error;
 use crate::runner::format;
 
 mod defaults {
@@ -630,12 +629,9 @@ impl Delay {
 }
 
 impl Group {
-    fn run(
-        &self,
-        benchmark: &dyn Benchmark,
-        is_regressed: &mut bool,
-        config: &Config,
-    ) -> Result<()> {
+    fn run(&self, benchmark: &dyn Benchmark, config: &Config) -> Result<BenchmarkSummaries> {
+        let mut benchmark_summaries = BenchmarkSummaries::default();
+
         let mut summaries: HashMap<String, Vec<BenchmarkSummary>> =
             HashMap::with_capacity(self.benches.len());
         for bench in &self.benches {
@@ -646,8 +642,9 @@ impl Group {
 
             let summary = benchmark.run(bench, config, self)?;
             summary.print_and_save(&config.meta.args.output_format)?;
-            summary.check_regression(is_regressed, fail_fast)?;
+            summary.check_regression(fail_fast)?;
 
+            benchmark_summaries.add_summary(summary.clone());
             if self.compare_by_id && bench.output_format.is_default() {
                 if let Some(id) = &summary.id {
                     if let Some(sums) = summaries.get_mut(id) {
@@ -662,7 +659,7 @@ impl Group {
             }
         }
 
-        Ok(())
+        Ok(benchmark_summaries)
     }
 }
 
@@ -750,25 +747,23 @@ impl Groups {
     /// Return an [`anyhow::Error`] with sources:
     ///
     /// * [`Error::RegressionError`] if a regression occurred.
-    fn run(&self, benchmark: &dyn Benchmark, config: &Config) -> Result<()> {
-        let mut is_regressed = false;
+    fn run(&self, benchmark: &dyn Benchmark, config: &Config) -> Result<BenchmarkSummaries> {
+        let mut benchmark_summaries = BenchmarkSummaries::default();
         for group in &self.0 {
             if let Some(setup) = &group.setup {
                 setup.run(config, &group.module_path)?;
             }
 
-            group.run(benchmark, &mut is_regressed, config)?;
+            let summaries = group.run(benchmark, config)?;
 
             if let Some(teardown) = &group.teardown {
                 teardown.run(config, &group.module_path)?;
             }
+
+            benchmark_summaries.add_other(summaries);
         }
 
-        if is_regressed {
-            Err(Error::RegressionError(false).into())
-        } else {
-            Ok(())
-        }
+        Ok(benchmark_summaries)
     }
 }
 
@@ -916,17 +911,18 @@ impl Runner {
         })
     }
 
-    fn run(&self) -> Result<()> {
+    fn run(&self) -> Result<BenchmarkSummaries> {
         if let Some(setup) = &self.setup {
             setup.run(&self.config, &self.config.module_path)?;
         }
 
-        self.groups.run(self.benchmark.as_ref(), &self.config)?;
+        let summaries = self.groups.run(self.benchmark.as_ref(), &self.config)?;
 
         if let Some(teardown) = &self.teardown {
             teardown.run(&self.config, &self.config.module_path)?;
         }
-        Ok(())
+
+        Ok(summaries)
     }
 }
 
@@ -1093,8 +1089,14 @@ impl Benchmark for SaveBaselineBenchmark {
     }
 }
 
-pub fn run(benchmark_groups: BinaryBenchmarkGroups, config: Config) -> Result<()> {
-    Runner::new(benchmark_groups, config)?.run()
+pub fn run(benchmark_groups: BinaryBenchmarkGroups, config: Config) -> Result<BenchmarkSummaries> {
+    let runner = Runner::new(benchmark_groups, config)?;
+
+    let start = Instant::now();
+    let mut summaries = runner.run()?;
+    summaries.elapsed(start);
+
+    Ok(summaries)
 }
 
 /// Print a list of all benchmarks with a short summary

@@ -7,3 +7,5 @@ SETUP CHILD PROCESS- end of stdout/stderr
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
+
+Iai-Callgrind result: Ok. 1 without regressions; 0 regressed; 1 benchmarks finished in <__SECONDS__>s

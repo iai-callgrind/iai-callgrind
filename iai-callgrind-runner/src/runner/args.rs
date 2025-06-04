@@ -361,6 +361,24 @@ pub struct CommandLineArgs {
         env = "IAI_CALLGRIND_LIST"
     )]
     pub list: bool,
+
+    /// Suppress the summary showing regressions and execution time at the end of a benchmark run
+    ///
+    /// Note, that a summary is only printed if the `--output-format` is not JSON.
+    ///
+    /// The summary described by `--nosummary` is different from `--save-summary` and they do not
+    /// affect each other.
+    #[arg(
+        long = "nosummary",
+        default_missing_value = "true",
+        default_value = "false",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = BoolishValueParser::new(),
+        action = ArgAction::Set,
+        env = "IAI_CALLGRIND_NOSUMMARY"
+    )]
+    pub nosummary: bool,
 }
 
 /// This function parses a space separated list of raw argument strings into [`crate::api::RawArgs`]
