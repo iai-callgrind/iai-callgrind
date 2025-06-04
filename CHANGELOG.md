@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * ([#362](https://github.com/iai-callgrind/iai-callgrind/pull/362)): Return with
   exit code `3` on regression errors and `2` on command-line argument parsing
   errors.
+* Update dependencies to latest possible versions
 
 ### Fixed
 
