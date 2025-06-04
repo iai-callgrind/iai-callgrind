@@ -39,6 +39,7 @@ runner = [
   "dep:serde_json",
   "dep:serde_regex",
   "dep:shlex",
+  "dep:strum",
   "dep:tempfile",
   "dep:version-compare",
   "dep:which",
@@ -76,6 +77,7 @@ serde = { workspace = true, features = ["derive"], optional = true }
 serde_json = { workspace = true, optional = true }
 serde_regex = { workspace = true, optional = true }
 shlex = { workspace = true, optional = true }
+strum = { workspace = true, optional = true, features = ["derive"] }
 tempfile = { workspace = true, optional = true }
 version-compare = { workspace = true, optional = true }
 which = { workspace = true, optional = true }

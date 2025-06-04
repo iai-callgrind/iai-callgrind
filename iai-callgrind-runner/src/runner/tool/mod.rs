@@ -364,14 +364,14 @@ impl ToolConfigs {
 
     fn print_headline(tool_config: &ToolConfig, output_format: &OutputFormat) {
         if output_format.is_default() {
-            let mut formatter = VerticalFormatter::new(*output_format);
+            let mut formatter = VerticalFormatter::new(output_format.clone());
             formatter.format_tool_headline(tool_config.tool);
             formatter.print_buffer();
         }
     }
 
     fn print(config: &Config, output_format: &OutputFormat, tool_run: &ToolRun) -> Result<()> {
-        VerticalFormatter::new(*output_format).print(config, (None, None), tool_run)
+        VerticalFormatter::new(output_format.clone()).print(config, (None, None), tool_run)
     }
 
     pub fn parse(

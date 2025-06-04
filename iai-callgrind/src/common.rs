@@ -1,9 +1,11 @@
 //! Common structs for `bin_bench` and `lib_bench`
 
+use std::vec::Vec;
+
 use derive_more::AsRef;
 use iai_callgrind_macros::IntoInner;
 
-use super::{Direction, EventKind, FlamegraphKind, ValgrindTool, __internal};
+use super::{CallgrindMetrics, Direction, EventKind, FlamegraphKind, ValgrindTool, __internal};
 
 /// The `FlamegraphConfig` which allows the customization of the created flamegraphs
 ///
@@ -317,6 +319,19 @@ impl OutputFormat {
     /// | Estimated Cycles:               10801879|10819829             (-0.16590%) [-1.00166x]
     pub fn show_grid(&mut self, value: bool) -> &mut Self {
         self.0.show_grid = Some(value);
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn callgrind<I, T>(&mut self, callgrind_metrics: T) -> &mut Self
+    where
+        I: Into<CallgrindMetrics>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0
+            .callgrind_metrics
+            .get_or_insert_with(Vec::new)
+            .extend(callgrind_metrics.into_iter().map(Into::into));
         self
     }
 }

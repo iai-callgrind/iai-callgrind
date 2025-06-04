@@ -247,7 +247,7 @@ impl Benchmark for BaselineBenchmark {
             .transpose()?;
 
         let summaries = Summaries::new(parsed_new, parsed_old);
-        VerticalFormatter::new(bin_bench.output_format).print(
+        VerticalFormatter::new(bin_bench.output_format.clone()).print(
             config,
             self.baselines(),
             &ToolRun::from(&summaries),
@@ -810,7 +810,7 @@ impl Benchmark for LoadBaselineBenchmark {
         let parsed_old = Some(SummaryParser.parse(&old_path)?);
         let summaries = Summaries::new(parsed_new, parsed_old);
 
-        VerticalFormatter::new(bin_bench.output_format).print(
+        VerticalFormatter::new(bin_bench.output_format.clone()).print(
             config,
             self.baselines(),
             &ToolRun::from(&summaries),
@@ -1032,7 +1032,7 @@ impl Benchmark for SaveBaselineBenchmark {
 
         let parsed_new = SummaryParser.parse(&out_path)?;
         let summaries = Summaries::new(parsed_new, parsed_old);
-        VerticalFormatter::new(bin_bench.output_format).print(
+        VerticalFormatter::new(bin_bench.output_format.clone()).print(
             config,
             self.baselines(),
             &ToolRun::from(&summaries),

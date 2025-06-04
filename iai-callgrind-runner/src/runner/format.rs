@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use colored::{Color, ColoredString, Colorize};
+use indexmap::{indexset, IndexSet};
 
 use super::args::NoCapture;
 use super::bin_bench::BinBench;
@@ -12,37 +13,13 @@ use super::lib_bench::LibBench;
 use super::meta::Metadata;
 use super::summary::{Diffs, MetricsDiff, SegmentDetails, ToolMetricSummary, ToolRun};
 use super::tool::ValgrindTool;
-use crate::api::{self, DhatMetricKind, ErrorMetricKind, EventKind};
+use crate::api::{self, CallgrindMetrics, DhatMetricKind, ErrorMetricKind, EventKind};
 use crate::util::{
     make_relative, to_string_signed_short, to_string_unsigned_short, truncate_str_utf8,
     EitherOrBoth,
 };
 
-/// The subset of callgrind metrics to format in the given order
-pub const CALLGRIND_DEFAULT: [EventKind; 21] = [
-    EventKind::Ir,
-    EventKind::L1hits,
-    EventKind::LLhits,
-    EventKind::RamHits,
-    EventKind::TotalRW,
-    EventKind::EstimatedCycles,
-    EventKind::SysCount,
-    EventKind::SysTime,
-    EventKind::SysCpuTime,
-    EventKind::Ge,
-    EventKind::Bc,
-    EventKind::Bcm,
-    EventKind::Bi,
-    EventKind::Bim,
-    EventKind::ILdmr,
-    EventKind::DLdmr,
-    EventKind::DLdmw,
-    EventKind::AcCost1,
-    EventKind::AcCost2,
-    EventKind::SpLoss1,
-    EventKind::SpLoss2,
-];
-
+/// TODO: Remove and Replace with `output_format`
 /// The error metrics to format in the given order
 pub const ERROR_METRICS_DEFAULT: [ErrorMetricKind; 4] = [
     ErrorMetricKind::Errors,
@@ -51,6 +28,7 @@ pub const ERROR_METRICS_DEFAULT: [ErrorMetricKind; 4] = [
     ErrorMetricKind::SuppressedContexts,
 ];
 
+/// TODO: Remove and Replace with `output_format`
 /// The subset of dhat metrics to format in the given order
 pub const DHAT_DEFAULT: [DhatMetricKind; 8] = [
     DhatMetricKind::TotalBytes,
@@ -167,12 +145,13 @@ pub enum OutputFormatKind {
     PrettyJson,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OutputFormat {
     pub kind: OutputFormatKind,
     pub truncate_description: Option<usize>,
     pub show_intermediate: bool,
     pub show_grid: bool,
+    pub event_kinds: IndexSet<EventKind>,
 }
 
 #[derive(Debug, Clone)]
@@ -224,7 +203,8 @@ impl BinaryBenchmarkHeader {
                 &bin_bench.output_format,
             ),
             has_tools_enabled: bin_bench.tools.has_tools_enabled(),
-            output_format: bin_bench.output_format,
+            // TODO: TRY TO AVOID clone() of the output_format. See also other clones of it.
+            output_format: bin_bench.output_format.clone(),
         }
     }
 
@@ -232,7 +212,7 @@ impl BinaryBenchmarkHeader {
         if self.output_format.kind == OutputFormatKind::Default {
             self.inner.print();
             if self.has_tools_enabled {
-                let mut formatter = VerticalFormatter::new(self.output_format);
+                let mut formatter = VerticalFormatter::new(self.output_format.clone());
                 formatter.format_tool_headline(ValgrindTool::Callgrind);
                 formatter.print_buffer();
             }
@@ -380,7 +360,7 @@ impl LibraryBenchmarkHeader {
         Self {
             inner: header,
             has_tools_enabled: lib_bench.tools.has_tools_enabled(),
-            output_format: lib_bench.output_format,
+            output_format: lib_bench.output_format.clone(),
         }
     }
 
@@ -388,7 +368,7 @@ impl LibraryBenchmarkHeader {
         if self.output_format.is_default() {
             self.inner.print();
             if self.has_tools_enabled {
-                let mut formatter = VerticalFormatter::new(self.output_format);
+                let mut formatter = VerticalFormatter::new(self.output_format.clone());
                 formatter.format_tool_headline(ValgrindTool::Callgrind);
                 formatter.print_buffer();
             }
@@ -416,11 +396,22 @@ impl OutputFormat {
 
 impl From<api::OutputFormat> for OutputFormat {
     fn from(value: api::OutputFormat) -> Self {
+        let event_kinds = match value.callgrind_metrics {
+            None => IndexSet::from(CallgrindMetrics::Default),
+            Some(metrics) => {
+                let mut event_kinds = indexset! {};
+                for metric in metrics {
+                    event_kinds.extend(IndexSet::from(metric));
+                }
+                event_kinds
+            }
+        };
         Self {
             kind: OutputFormatKind::Default,
             truncate_description: value.truncate_description.unwrap_or(Some(50)),
             show_intermediate: value.show_intermediate.unwrap_or(false),
             show_grid: value.show_grid.unwrap_or(false),
+            event_kinds,
         }
     }
 }
@@ -432,6 +423,7 @@ impl Default for OutputFormat {
             truncate_description: Some(50),
             show_intermediate: false,
             show_grid: false,
+            event_kinds: IndexSet::from(CallgrindMetrics::Default),
         }
     }
 }
@@ -896,6 +888,7 @@ impl Formatter for VerticalFormatter {
                 }
             }
             ToolMetricSummary::ErrorSummary(summary) => {
+                // TODO: USE output_format
                 self.format_metrics(
                     ERROR_METRICS_DEFAULT
                         .iter()
@@ -917,6 +910,7 @@ impl Formatter for VerticalFormatter {
                 }
             }
             ToolMetricSummary::DhatSummary(summary) => self.format_metrics(
+                // TODO: USE output_format
                 DHAT_DEFAULT
                     .iter()
                     .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
@@ -924,7 +918,9 @@ impl Formatter for VerticalFormatter {
             ToolMetricSummary::CallgrindSummary(summary) => {
                 self.format_baseline(baselines);
                 self.format_metrics(
-                    CALLGRIND_DEFAULT
+                    self.output_format
+                        .event_kinds
+                        .clone()
                         .iter()
                         .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
                 );
