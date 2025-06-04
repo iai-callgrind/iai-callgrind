@@ -1,5 +1,5 @@
-test_bin_bench_list_arg::group_1::echo_bench: bench
-test_bin_bench_list_arg::group_2::read_file_bench: bench
-test_bin_bench_list_arg::group_2::echo_bench: bench
+test_bin_bench_list_arg::group_1::echo_bench: benchmark
+test_bin_bench_list_arg::group_2::read_file_bench: benchmark
+test_bin_bench_list_arg::group_2::echo_bench: benchmark
 
 0 tests, 3 benchmarks

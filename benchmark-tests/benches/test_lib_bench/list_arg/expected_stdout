@@ -1,5 +1,5 @@
-test_lib_bench_list_arg::group_1::minimal_bench: bench
-test_lib_bench_list_arg::group_2::other_bench: bench
-test_lib_bench_list_arg::group_2::minimal_bench: bench
+test_lib_bench_list_arg::group_1::minimal_bench: benchmark
+test_lib_bench_list_arg::group_2::other_bench: benchmark
+test_lib_bench_list_arg::group_2::minimal_bench: benchmark
 
 0 tests, 3 benchmarks

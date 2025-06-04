@@ -1010,10 +1010,10 @@ pub fn print_no_capture_footer(
 pub fn print_list_benchmark(module_path: &ModulePath, id: Option<&String>) {
     match id {
         Some(id) => {
-            println!("{module_path}::{id}: bench");
+            println!("{module_path}::{id}: benchmark");
         }
         None => {
-            println!("{module_path}: bench");
+            println!("{module_path}: benchmark");
         }
     }
 }
