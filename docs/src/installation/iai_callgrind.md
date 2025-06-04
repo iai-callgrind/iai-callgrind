@@ -9,13 +9,13 @@ To start with Iai-Callgrind, add the following to your `Cargo.toml` file:
 
 ```toml
 [dev-dependencies]
-iai-callgrind = "0.14.1"
+iai-callgrind = "0.14.2"
 ```
 
 or run
 
 ```bash
-cargo add --dev iai-callgrind@0.14.1
+cargo add --dev iai-callgrind@0.14.2
 ```
 
 ## Installation of the benchmark runner
@@ -27,7 +27,7 @@ interact with `iai-callgrind-runner` as it is just an implementation detail.
 ### From Source
 
 ```shell
-cargo install --version 0.14.1 iai-callgrind-runner
+cargo install --version 0.14.2 iai-callgrind-runner
 ```
 
 There's also the possibility to install the binary somewhere else and point the
@@ -35,19 +35,19 @@ There's also the possibility to install the binary somewhere else and point the
 `iai-callgrind-runner` binary like so:
 
 ```shell
-cargo install --version 0.14.1 --root /tmp iai-callgrind-runner
+cargo install --version 0.14.2 --root /tmp iai-callgrind-runner
 IAI_CALLGRIND_RUNNER=/tmp/bin/iai-callgrind-runner cargo bench --bench my-bench
 ```
 
 ### Binstall
 
 The `iai-callgrind-runner` binary is
-[pre-built](https://github.com/iai-callgrind/iai-callgrind/releases/tag/v0.14.1)
+[pre-built](https://github.com/iai-callgrind/iai-callgrind/releases/tag/v0.14.2)
 for most platforms supported by valgrind and easily installable with
 [binstall](https://github.com/cargo-bins/cargo-binstall)
 
 ```shell
-cargo binstall iai-callgrind-runner@0.14.1
+cargo binstall iai-callgrind-runner@0.14.2
 ```
 
 ## Updating

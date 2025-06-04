@@ -59,7 +59,7 @@ derive_more = { workspace = true, default-features = false, features = [
   "as_ref",
 ], optional = true }
 iai-callgrind-macros = { path = "../iai-callgrind-macros", version = "=0.5.0", optional = true }
-iai-callgrind-runner = { path = "../iai-callgrind-runner", version = "=0.14.1", default-features = false, features = [
+iai-callgrind-runner = { path = "../iai-callgrind-runner", version = "=0.14.2", default-features = false, features = [
   "api",
 ], optional = true }
 
