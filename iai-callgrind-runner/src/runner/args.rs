@@ -151,8 +151,7 @@ pub struct CommandLineArgs {
 
     /// The raw arguments to pass through to Callgrind
     ///
-    /// This is a space separated list of command-line-arguments specified as if they were
-    /// passed directly to valgrind.
+    /// List of command-line-arguments specified as if they were passed directly to valgrind.
     ///
     /// Examples:
     ///   * --callgrind-args=--dump-instr=yes
