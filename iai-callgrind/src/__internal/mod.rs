@@ -119,6 +119,7 @@ impl Runner {
         }
     }
 
+    /// Execute `iai-callgrind-runner` exiting with the exit code of the runner if not `0`
     pub fn exec(mut self, encoded: Vec<u8>) -> Result<(), error::Errors> {
         let mut child = self
             .cmd
@@ -157,7 +158,8 @@ impl Runner {
              persists please submit a bug report.",
         );
         if !status.success() {
-            std::process::exit(1);
+            let code = status.code().unwrap_or(1i32);
+            std::process::exit(code);
         }
 
         Ok(())

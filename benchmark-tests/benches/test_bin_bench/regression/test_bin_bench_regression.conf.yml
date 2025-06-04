@@ -13,7 +13,7 @@ groups:
         expected:
           stdout: expected_stdout.fail-fast
           stderr: expected_stderr.fail-fast
-          exit_code: 1
+          exit_code: 3
         template_data:
           array_length: 5
           fail_fast: true
@@ -30,7 +30,7 @@ groups:
         expected:
           stdout: expected_stdout.no-fail-fast
           stderr: expected_stderr.no-fail-fast
-          exit_code: 1
+          exit_code: 3
         template_data:
           array_length: 5
           fail_fast: false

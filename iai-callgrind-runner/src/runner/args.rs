@@ -74,6 +74,12 @@ impl NoCapture {
 Boolish command line arguments take also one of `y`, `yes`, `t`, `true`, `on`, `1`
 instead of `true` and one of `n`, `no`, `f`, `false`, `off`, and `0` instead of
 `false`",
+    after_help = "  Exit codes:
+      0: Success
+      1: All other errors
+      2: Parsing command-line arguments failed
+      3: One or more regressions occurred
+    ",
     long_about = None,
     no_binary_name = true,
     override_usage= "cargo bench ... [BENCHNAME] -- [OPTIONS]",
@@ -202,6 +208,9 @@ pub struct CommandLineArgs {
     /// value comes below the limit. The `EventKind` is matched case-insensitive. For a list of
     /// valid `EventKinds` see the docs: <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.EventKind.html>
     ///
+    /// If regressions are defined and one ore more regressions occurred during the benchmark run
+    /// the program exits with error and exit code `3`.
+    ///
     /// Examples: --regression='ir=0.0' or --regression='ir=0, EstimatedCycles=10'
     #[arg(
         long = "regression",
@@ -212,6 +221,8 @@ pub struct CommandLineArgs {
     pub regression: Option<RegressionConfig>,
 
     /// If true, the first failed performance regression check fails the whole benchmark run
+    ///
+    /// Note that if --regression-fail-fast is set to true, no summary is printed.
     ///
     /// This option requires `--regression=...` or `IAI_CALLGRIND_REGRESSION=...` to be present.
     #[arg(

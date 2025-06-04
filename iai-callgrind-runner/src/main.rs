@@ -76,7 +76,12 @@ fn main() {
                 warn!("{error}");
                 std::process::exit(0)
             }
-            Some(Error::RegressionError(false)) => std::process::exit(1),
+            Some(Error::RegressionError(is_fatal)) => {
+                if *is_fatal {
+                    error!("{error}");
+                }
+                std::process::exit(3)
+            }
             _ => {
                 error!("{error}");
                 std::process::exit(1)

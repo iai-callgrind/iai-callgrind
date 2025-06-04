@@ -2,4 +2,4 @@ Performance has regressed: Instructions (<__NUM__> -> <__NUM__>) regressed by +<
 error: bench failed, to rerun pass `-p benchmark-tests --bench test_bench_template`
 
 Caused by:
-  process didn't exit successfully: `<__PATH__>` (exit status: 1)
+  process didn't exit successfully: `<__PATH__>` (exit status: 3)

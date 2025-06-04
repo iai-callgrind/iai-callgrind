@@ -21,6 +21,7 @@ this_dir := `realpath .`
 book_build_dir := this_dir + "/docs/book"
 args := ''
 msrv := '1.74.1'
+mdbook_version := '0.4.40'
 required_tools := 'valgrind|the essential tool
 clang|to be able to build iai-callgrind with the client-requests feature'
 cargo_tools := 'cargo-hack
@@ -303,11 +304,15 @@ minimal-versions:
 # Install 'mdbook' and 'mdbook-linkcheck' (Uses: 'cargo install' or 'cargo-binstall')
 [group('guide')]
 book-install:
-    if command -V cargo-binstall; then cargo binstall {{ if args != '' { args } else { '' } }} mdbook@0.4.40 mdbook-linkcheck; else cargo install {{ if args != '' { args } else { '' } }} mdbook@0.4.40 mdbook-linkcheck; fi
+    if command -V cargo-binstall; then cargo binstall {{ if args != '' { args } else { '' } }} mdbook@{{ mdbook_version }} mdbook-linkcheck; else cargo install {{ if args != '' { args } else { '' } }} mdbook@0.4.40 mdbook-linkcheck; fi
+
+[group('guide')]
+book-check-version:
+    @if ! mdbook --version | grep v{{ mdbook_version }}; then echo "mdbook version v{{ mdbook_version }} is required. Install for example with \`just book-install\`"; exit 1; fi
 
 # Run tests for the book. (Uses: 'cargo +stable', 'mdbook')
 [group('guide')]
-book-tests:
+book-tests: book-check-version
     # Avoid the error `multiple candidates for `rlib` dependency `iai_callgrind` found`
     cargo clean --profile mdbook
     # We need the stable build because mdbook is built with the stable toolchain
@@ -319,27 +324,27 @@ book-tests:
 
 # Build the book. (Uses: 'mdbook')
 [group('guide')]
-book-build:
+book-build: book-check-version
     mdbook build docs
 
 # Clean the current book. (Uses: 'mdbook')
 [group('guide')]
-book-clean:
+book-clean: book-check-version
     mdbook clean docs
 
 # Serve the book at localhost:3000 and reload on changes. Some links may be broken. Run `just book-serve-github` for a real world environment. (Uses: 'mdbook')
 [group('guide')]
-book-serve:
+book-serve: book-check-version
     mdbook serve docs
 
 # Watch for changes and rebuild the book on a change. (Uses: 'mdbook')
 [group('guide')]
-book-watch:
+book-watch: book-check-version
     mdbook watch docs
 
 # Serve the book under the same conditions as on github pages at localhost:4000. Reload on changes. Use `just book-watch` in a different terminal to populate the changes and make this job restart the server. (Uses: 'npx nodemon', 'npx http-server', 'coreutils')
 [group('guide')]
-book-serve-github:
+book-serve-github: book-check-version
     #!/usr/bin/env -S sh -e
     serve_dir="/tmp/iai_callgrind_serve_dir"
     if [[ -e "$serve_dir" ]]; then rm -I "${serve_dir}"/* && rmdir "$serve_dir"; fi
