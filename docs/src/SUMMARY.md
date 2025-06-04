@@ -44,7 +44,7 @@
 
 # Command-line and environment variables
 
-- [Basic usage](./cli_and_env/basics.md)
+- [Basic usage and exit codes](./cli_and_env/basics.md)
 - [Comparing with baselines](./cli_and_env/baselines.md)
 - [Controlling the output of Iai-Callgrind](./cli_and_env/output.md)
     - [Customize the output directory](./cli_and_env/output/out_directory.md)
