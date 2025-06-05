@@ -203,7 +203,6 @@ impl BinaryBenchmarkHeader {
                 &bin_bench.output_format,
             ),
             has_tools_enabled: bin_bench.tools.has_tools_enabled(),
-            // TODO: TRY TO AVOID clone() of the output_format. See also other clones of it.
             output_format: bin_bench.output_format.clone(),
         }
     }
@@ -910,7 +909,6 @@ impl Formatter for VerticalFormatter {
                 }
             }
             ToolMetricSummary::DhatSummary(summary) => self.format_metrics(
-                // TODO: USE output_format
                 DHAT_DEFAULT
                     .iter()
                     .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),

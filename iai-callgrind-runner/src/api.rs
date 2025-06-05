@@ -79,6 +79,207 @@ pub struct BinaryBenchmarkGroups {
     pub has_teardown: bool,
 }
 
+/// A collection of groups of [`EventKind`]s
+///
+/// `Callgrind` supports a large amount of metrics and their collection can be enabled with various
+/// command-line flags. [`CallgrindMetrics`] groups these metrics to make it less cumbersome to
+/// specify multiple [`EventKind`]s at once if necessary.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum CallgrindMetrics {
+    /// The default group contains all event kinds except the [`CallgrindMetrics::CacheMisses`] and
+    /// [`EventKind::Dr`], [`EventKind::Dw`]. More specifically, the following event kinds and
+    /// groups in this order:
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # }
+    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    ///
+    /// let metrics: Vec<CallgrindMetrics> = vec![
+    ///     EventKind::Ir.into(),
+    ///     CallgrindMetrics::CacheHits,
+    ///     EventKind::TotalRW.into(),
+    ///     EventKind::EstimatedCycles.into(),
+    ///     CallgrindMetrics::SystemCalls,
+    ///     EventKind::Ge.into(),
+    ///     CallgrindMetrics::BranchSim,
+    ///     CallgrindMetrics::WriteBackBehaviour,
+    ///     CallgrindMetrics::CacheUse,
+    /// ];
+    /// ```
+    #[default]
+    Default,
+
+    /// The `CacheMisses` produced by `--cache-sim=yes` contain the following [`EventKind`]s in
+    /// this order:
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # }
+    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    ///
+    /// let metrics: Vec<CallgrindMetrics> = vec![
+    ///     EventKind::I1mr.into(),
+    ///     EventKind::D1mr.into(),
+    ///     EventKind::D1mw.into(),
+    ///     EventKind::ILmr.into(),
+    ///     EventKind::DLmr.into(),
+    ///     EventKind::DLmw.into(),
+    /// ];
+    /// ```
+    CacheMisses,
+
+    /// `CacheHits` are iai-callgrind specific and calculated from the metrics produced by
+    /// `--cache-sim=yes` in this order:
+    ///
+    /// ```
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # }
+    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    ///
+    /// let metrics: Vec<CallgrindMetrics> = vec![
+    ///     EventKind::L1hits.into(),
+    ///     EventKind::LLhits.into(),
+    ///     EventKind::RamHits.into(),
+    /// ];
+    /// ```
+    CacheHits,
+
+    /// All metrics produced by `--cache-sim=yes` including the iai-callgrind specific metrics
+    /// [`EventKind::L1hits`], [`EventKind::LLhits`], [`EventKind::RamHits`],
+    /// [`EventKind::TotalRW`] and [`EventKind::EstimatedCycles`] in this order:
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # }
+    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    ///
+    /// let metrics: Vec<CallgrindMetrics> = vec![
+    ///     EventKind::Dr.into(),
+    ///     EventKind::Dw.into(),
+    ///     CallgrindMetrics::CacheMisses,
+    ///     CallgrindMetrics::CacheHits,
+    ///     EventKind::TotalRW.into(),
+    ///     EventKind::EstimatedCycles.into(),
+    /// ];
+    /// ```
+    CacheSim,
+
+    /// The metrics produced by `--cacheuse=yes` in this order:
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # }
+    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    ///
+    /// let metrics: Vec<CallgrindMetrics> = vec![
+    ///     EventKind::AcCost1.into(),
+    ///     EventKind::AcCost2.into(),
+    ///     EventKind::SpLoss1.into(),
+    ///     EventKind::SpLoss2.into(),
+    /// ];
+    /// ```
+    CacheUse,
+
+    /// `SystemCalls` are events of the `--collect-systime=yes` option in this order:
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # }
+    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    ///
+    /// let metrics: Vec<CallgrindMetrics> = vec![
+    ///     EventKind::SysCount.into(),
+    ///     EventKind::SysTime.into(),
+    ///     EventKind::SysCpuTime.into(),
+    /// ];
+    /// ```
+    SystemCalls,
+
+    /// The metrics produced by `--branch-sim=yes` in this order:
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # }
+    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    ///
+    /// let metrics: Vec<CallgrindMetrics> = vec![
+    ///     EventKind::Bc.into(),
+    ///     EventKind::Bcm.into(),
+    ///     EventKind::Bi.into(),
+    ///     EventKind::Bim.into(),
+    /// ];
+    /// ```
+    BranchSim,
+
+    /// All metrics of `--simulate-wb=yes` in this order:
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # }
+    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    ///
+    /// let metrics: Vec<CallgrindMetrics> = vec![
+    ///     EventKind::ILdmr.into(),
+    ///     EventKind::DLdmr.into(),
+    ///     EventKind::DLdmw.into(),
+    /// ];
+    /// ```
+    WriteBackBehaviour,
+
+    /// All possible [`EventKind`]s in this order:
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # }
+    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    ///
+    /// let metrics: Vec<CallgrindMetrics> = vec![
+    ///     EventKind::Ir.into(),
+    ///     CallgrindMetrics::CacheSim,
+    ///     CallgrindMetrics::SystemCalls,
+    ///     EventKind::Ge.into(),
+    ///     CallgrindMetrics::BranchSim,
+    ///     CallgrindMetrics::WriteBackBehaviour,
+    ///     CallgrindMetrics::CacheUse,
+    /// ];
+    /// ```
+    All,
+
+    /// Selection of no [`EventKind`] at all
+    None,
+
+    /// Specify a single [`EventKind`].
+    ///
+    /// Note that [`EventKind`] implements the necessary traits to convert to the
+    /// `CallgrindMetrics::SingleEvent` variant which is shorter to write.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # }
+    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    ///
+    /// assert_eq!(
+    ///     CallgrindMetrics::SingleEvent(EventKind::Ir),
+    ///     EventKind::Ir.into()
+    /// );
+    /// ```
+    SingleEvent(EventKind),
+}
+
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Delay {
     pub poll: Option<Duration>,
@@ -186,7 +387,6 @@ pub enum ErrorMetricKind {
     SuppressedContexts,
 }
 
-/// TODO: RESORT. Maybe use sorting in `format::CALLGRIND_DEFAULTS`. Both sorts have to match
 /// All `EventKind`s callgrind produces and additionally some derived events
 ///
 /// Depending on the options passed to Callgrind, these are the events that Callgrind can produce.
@@ -345,182 +545,6 @@ pub struct LibraryBenchmarkGroups {
     pub command_line_args: Vec<String>,
     pub has_setup: bool,
     pub has_teardown: bool,
-}
-
-/// TODO: DOCS AND SORT, (maybe rename to have `CallgrindMetric` free for future use?)
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[non_exhaustive]
-pub enum CallgrindMetrics {
-    /// The default group contains all event kinds except the [`CallgrindMetrics::CacheMisses`] and
-    /// [`EventKind::Dr`], [`EventKind::Dw`]. More specifically, the following event kinds and
-    /// groups in this order:
-    ///
-    /// 1. [`EventKind::Ir`]
-    /// 2. [`CallgrindMetrics::CacheHits`]
-    /// 3. [`EventKind::TotalRW`]
-    /// 4. [`EventKind::EstimatedCycles`]
-    /// 5. [`CallgrindMetrics::SystemCalls`]
-    /// 6. [`EventKind::Ge`]
-    /// 7. [`CallgrindMetrics::BranchSim`]
-    /// 8. [`CallgrindMetrics::WriteBackBehaviour`]
-    /// 9. [`CallgrindMetrics::CacheUse`]
-    #[default]
-    Default,
-
-    /// The `CacheMisses` produced by `--cache-sim=yes` contain the following [`EventKind`]s in
-    /// this order:
-    ///
-    /// 1. [`EventKind::I1mr`]
-    /// 2. [`EventKind::D1mr`]
-    /// 3. [`EventKind::D1mw`]
-    /// 4. [`EventKind::ILmr`]
-    /// 5. [`EventKind::DLmr`]
-    /// 6. [`EventKind::DLmw`]
-    CacheMisses,
-
-    /// `CacheHits` are iai-callgrind specific and calculated from the metrics produced by
-    /// `--cache-sim=yes` in this order:
-    ///
-    /// 1. [`EventKind::L1hits`]
-    /// 2. [`EventKind::LLhits`]
-    /// 3. [`EventKind::RamHits`]
-    CacheHits,
-
-    /// All metrics produced by `--cache-sim=yes` including the iai-callgrind specific metrics
-    /// [`EventKind::L1hits`], [`EventKind::LLhits`], [`EventKind::RamHits`],
-    /// [`EventKind::TotalRW`] and [`EventKind::EstimatedCycles`] in this order:
-    ///
-    /// 1. [`EventKind::Dr`]
-    /// 2. [`EventKind::Dw`]
-    /// 3. [`EventKind::I1mr`]
-    /// 4. [`EventKind::D1mr`]
-    /// 5. [`EventKind::D1mw`]
-    /// 6. [`EventKind::ILmr`]
-    /// 7. [`EventKind::DLmr`]
-    /// 8. [`EventKind::DLmw`]
-    /// 9. [`EventKind::L1hits`]
-    /// 10. [`EventKind::LLhits`]
-    /// 11. [`EventKind::RamHits`]
-    /// 12. [`EventKind::TotalRW`]
-    /// 13. [`EventKind::EstimatedCycles`]
-    CacheSim,
-
-    /// The metrics produced by `--cacheuse=yes` in this order:
-    ///
-    /// 1. [`EventKind::AcCost1`]
-    /// 2. [`EventKind::AcCost2`]
-    /// 3. [`EventKind::SpLoss1`]
-    /// 4. [`EventKind::SpLoss2`]
-    CacheUse,
-
-    /// `SystemCalls` are events of the `--collect-systime=yes` option in this order:
-    ///
-    /// 1. [`EventKind::SysCount`]
-    /// 2. [`EventKind::SysTime`]
-    /// 3. [`EventKind::SysCpuTime`]
-    SystemCalls,
-
-    /// The metrics produced by `--branch-sim=yes` in this order:
-    ///
-    /// 1. [`EventKind::Bc`]
-    /// 2. [`EventKind::Bcm`]
-    /// 3. [`EventKind::Bi`]
-    /// 4. [`EventKind::Bim`]
-    BranchSim,
-
-    /// All metrics of `--simulate-wb=yes` in this order:
-    ///
-    /// 1. [`EventKind::ILdmr`]
-    /// 2. [`EventKind::DLdmr`]
-    /// 3. [`EventKind::DLdmw`]
-    WriteBackBehaviour,
-
-    /// All possible [`EventKind`]s in this order:
-    ///
-    /// 1. [`EventKind::Ir`]
-    /// 2. [`CallgrindMetrics::CacheSim`]
-    /// 5. [`CallgrindMetrics::SystemCalls`]
-    /// 6. [`EventKind::Ge`]
-    /// 7. [`CallgrindMetrics::BranchSim`]
-    /// 8. [`CallgrindMetrics::WriteBackBehaviour`]
-    /// 9. [`CallgrindMetrics::CacheUse`]
-    All,
-
-    /// Selection of no [`EventKind`]
-    None,
-
-    /// Specify an [`EventKind`]
-    SingleEvent(EventKind),
-}
-
-/// TODO: SORT
-impl From<EventKind> for CallgrindMetrics {
-    fn from(value: EventKind) -> Self {
-        Self::SingleEvent(value)
-    }
-}
-
-/// TODO: SORT
-#[cfg(feature = "runner")]
-impl From<CallgrindMetrics> for IndexSet<EventKind> {
-    fn from(value: CallgrindMetrics) -> Self {
-        let mut event_kinds = Self::new();
-        match value {
-            CallgrindMetrics::None => {}
-            CallgrindMetrics::All => event_kinds.extend(EventKind::iter()),
-            CallgrindMetrics::Default => {
-                event_kinds.insert(EventKind::Ir);
-                event_kinds.extend(Self::from(CallgrindMetrics::CacheHits));
-                event_kinds.extend([EventKind::TotalRW, EventKind::EstimatedCycles]);
-                event_kinds.extend(Self::from(CallgrindMetrics::SystemCalls));
-                event_kinds.insert(EventKind::Ge);
-                event_kinds.extend(Self::from(CallgrindMetrics::BranchSim));
-                event_kinds.extend(Self::from(CallgrindMetrics::WriteBackBehaviour));
-                event_kinds.extend(Self::from(CallgrindMetrics::CacheUse));
-            }
-            CallgrindMetrics::CacheMisses => event_kinds.extend([
-                EventKind::I1mr,
-                EventKind::D1mr,
-                EventKind::D1mw,
-                EventKind::ILmr,
-                EventKind::DLmr,
-                EventKind::DLmw,
-            ]),
-            CallgrindMetrics::CacheHits => {
-                event_kinds.extend([EventKind::L1hits, EventKind::LLhits, EventKind::RamHits]);
-            }
-            CallgrindMetrics::CacheSim => {
-                event_kinds.extend([EventKind::Dr, EventKind::Dw]);
-                event_kinds.extend(Self::from(CallgrindMetrics::CacheMisses));
-                event_kinds.extend(Self::from(CallgrindMetrics::CacheHits));
-                event_kinds.extend([EventKind::TotalRW, EventKind::EstimatedCycles]);
-            }
-            CallgrindMetrics::CacheUse => event_kinds.extend([
-                EventKind::AcCost1,
-                EventKind::AcCost2,
-                EventKind::SpLoss1,
-                EventKind::SpLoss2,
-            ]),
-            CallgrindMetrics::SystemCalls => {
-                event_kinds.extend([
-                    EventKind::SysCount,
-                    EventKind::SysTime,
-                    EventKind::SysCpuTime,
-                ]);
-            }
-            CallgrindMetrics::BranchSim => {
-                event_kinds.extend([EventKind::Bc, EventKind::Bcm, EventKind::Bi, EventKind::Bim]);
-            }
-            CallgrindMetrics::WriteBackBehaviour => {
-                event_kinds.extend([EventKind::ILdmr, EventKind::DLdmr, EventKind::DLdmw]);
-            }
-            CallgrindMetrics::SingleEvent(event_kind) => {
-                event_kinds.insert(event_kind);
-            }
-        }
-
-        event_kinds
-    }
 }
 
 /// The configuration values for the output format
@@ -914,6 +938,74 @@ impl LibraryBenchmarkConfig {
     }
 }
 
+impl From<EventKind> for CallgrindMetrics {
+    fn from(value: EventKind) -> Self {
+        Self::SingleEvent(value)
+    }
+}
+
+#[cfg(feature = "runner")]
+impl From<CallgrindMetrics> for IndexSet<EventKind> {
+    fn from(value: CallgrindMetrics) -> Self {
+        let mut event_kinds = Self::new();
+        match value {
+            CallgrindMetrics::None => {}
+            CallgrindMetrics::All => event_kinds.extend(EventKind::iter()),
+            CallgrindMetrics::Default => {
+                event_kinds.insert(EventKind::Ir);
+                event_kinds.extend(Self::from(CallgrindMetrics::CacheHits));
+                event_kinds.extend([EventKind::TotalRW, EventKind::EstimatedCycles]);
+                event_kinds.extend(Self::from(CallgrindMetrics::SystemCalls));
+                event_kinds.insert(EventKind::Ge);
+                event_kinds.extend(Self::from(CallgrindMetrics::BranchSim));
+                event_kinds.extend(Self::from(CallgrindMetrics::WriteBackBehaviour));
+                event_kinds.extend(Self::from(CallgrindMetrics::CacheUse));
+            }
+            CallgrindMetrics::CacheMisses => event_kinds.extend([
+                EventKind::I1mr,
+                EventKind::D1mr,
+                EventKind::D1mw,
+                EventKind::ILmr,
+                EventKind::DLmr,
+                EventKind::DLmw,
+            ]),
+            CallgrindMetrics::CacheHits => {
+                event_kinds.extend([EventKind::L1hits, EventKind::LLhits, EventKind::RamHits]);
+            }
+            CallgrindMetrics::CacheSim => {
+                event_kinds.extend([EventKind::Dr, EventKind::Dw]);
+                event_kinds.extend(Self::from(CallgrindMetrics::CacheMisses));
+                event_kinds.extend(Self::from(CallgrindMetrics::CacheHits));
+                event_kinds.extend([EventKind::TotalRW, EventKind::EstimatedCycles]);
+            }
+            CallgrindMetrics::CacheUse => event_kinds.extend([
+                EventKind::AcCost1,
+                EventKind::AcCost2,
+                EventKind::SpLoss1,
+                EventKind::SpLoss2,
+            ]),
+            CallgrindMetrics::SystemCalls => {
+                event_kinds.extend([
+                    EventKind::SysCount,
+                    EventKind::SysTime,
+                    EventKind::SysCpuTime,
+                ]);
+            }
+            CallgrindMetrics::BranchSim => {
+                event_kinds.extend([EventKind::Bc, EventKind::Bcm, EventKind::Bi, EventKind::Bim]);
+            }
+            CallgrindMetrics::WriteBackBehaviour => {
+                event_kinds.extend([EventKind::ILdmr, EventKind::DLdmr, EventKind::DLdmw]);
+            }
+            CallgrindMetrics::SingleEvent(event_kind) => {
+                event_kinds.insert(event_kind);
+            }
+        }
+
+        event_kinds
+    }
+}
+
 impl RawArgs {
     pub fn new(args: Vec<String>) -> Self {
         Self(args)
@@ -1145,9 +1237,11 @@ pub fn update_option<T: Clone>(first: &Option<T>, other: &Option<T>) -> Option<T
 
 #[cfg(test)]
 mod tests {
+    use indexmap::indexset;
     use pretty_assertions::assert_eq;
     use rstest::rstest;
 
+    use super::EventKind::*;
     use super::*;
 
     #[test]
@@ -1255,5 +1349,34 @@ mod tests {
         base.extend_ignore_flag(data.iter().map(std::string::ToString::to_string));
 
         assert_eq!(base.0.into_iter().collect::<Vec<String>>(), expected);
+    }
+
+    #[rstest]
+    #[case::none(CallgrindMetrics::None, indexset![])]
+    #[case::all(CallgrindMetrics::All, indexset![Ir, Dr, Dw, I1mr, D1mr, D1mw, ILmr, DLmr, DLmw,
+        L1hits, LLhits, RamHits, TotalRW, EstimatedCycles, SysCount, SysTime, SysCpuTime, Ge, Bc,
+        Bcm, Bi, Bim, ILdmr, DLdmr, DLdmw, AcCost1, AcCost2, SpLoss1, SpLoss2]
+    )]
+    #[case::default(CallgrindMetrics::Default, indexset![Ir, L1hits, LLhits, RamHits, TotalRW,
+        EstimatedCycles, SysCount, SysTime, SysCpuTime, Ge, Bc,
+        Bcm, Bi, Bim, ILdmr, DLdmr, DLdmw, AcCost1, AcCost2, SpLoss1, SpLoss2]
+    )]
+    #[case::cache_misses(CallgrindMetrics::CacheMisses, indexset![I1mr, D1mr, D1mw, ILmr,
+        DLmr, DLmw]
+    )]
+    #[case::cache_hits(CallgrindMetrics::CacheHits, indexset![L1hits, LLhits, RamHits])]
+    #[case::cache_sim(CallgrindMetrics::CacheSim, indexset![Dr, Dw, I1mr, D1mr, D1mw, ILmr,
+        DLmr, DLmw, L1hits, LLhits, RamHits, TotalRW, EstimatedCycles]
+    )]
+    #[case::cache_use(CallgrindMetrics::CacheUse, indexset![AcCost1, AcCost2, SpLoss1, SpLoss2])]
+    #[case::system_calls(CallgrindMetrics::SystemCalls, indexset![SysCount, SysTime, SysCpuTime])]
+    #[case::branch_sim(CallgrindMetrics::BranchSim, indexset![Bc, Bcm, Bi, Bim])]
+    #[case::write_back(CallgrindMetrics::WriteBackBehaviour, indexset![ILdmr, DLdmr, DLdmw])]
+    #[case::single_event(CallgrindMetrics::SingleEvent(Ir), indexset![Ir])]
+    fn test_callgrind_metrics_into_index_set(
+        #[case] callgrind_metrics: CallgrindMetrics,
+        #[case] expected_metrics: IndexSet<EventKind>,
+    ) {
+        assert_eq!(IndexSet::from(callgrind_metrics), expected_metrics);
     }
 }

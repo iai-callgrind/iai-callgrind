@@ -322,7 +322,70 @@ impl OutputFormat {
         self
     }
 
-    /// TODO: DOCS
+    /// Customize the format of the callgrind output
+    ///
+    /// This option allows customizing the output format of callgrind metrics. It does not set any
+    /// flags for the callgrind execution (i.e. `--branch-sim=yes`) which actually enable the
+    /// collection of these metrics. Consult the docs of [`EventKind`] and [`CallgrindMetrics`] to
+    /// see which flag is necessary to enable the collection of a specific metric. The rules:
+    ///
+    /// 1. A metric is only printed if specified here
+    /// 2. A metric is not printed if not collected by callgrind
+    /// 3. The order matters
+    /// 4. In case of duplicate specifications of the same metric the first one wins.
+    ///
+    /// Callgrind offers a lot of metrics, so the [`CallgrindMetrics`] enum contains groups of
+    /// [`EventKind`]s, to avoid having to specify all [`EventKind`]s one-by-one (although still
+    /// possible with [`CallgrindMetrics::SingleEvent`]).
+    ///
+    /// Note that all command-line arguments of callgrind and which metric they collect are
+    /// described in full detail in the [callgrind
+    /// documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options).
+    ///
+    /// # Examples
+    ///
+    /// To enable printing all callgrind metrics specify [`CallgrindMetrics::All`]. `All` callgrind
+    /// metrics include the cache misses ([`EventKind::I1mr`], ...). For example in a library
+    /// benchmark:
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+    /// use iai_callgrind::{main, LibraryBenchmarkConfig, OutputFormat, CallgrindMetrics};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///                 .output_format(OutputFormat::default()
+    ///                     .callgrind([CallgrindMetrics::All])
+    ///                 );
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    ///
+    /// The benchmark is executed with the callgrind arguments set by iai-callgrind which don't
+    /// collect any other metrics than cache misses (`--cache-sim=yes`), so the output will look
+    /// like this:
+    ///
+    /// ```text
+    /// file::some_group::printing cache_misses:
+    ///   Instructions:                        1353|1353                 (No change)
+    ///   Dr:                                   255|255                  (No change)
+    ///   Dw:                                   233|233                  (No change)
+    ///   I1mr:                                  54|54                   (No change)
+    ///   D1mr:                                  12|12                   (No change)
+    ///   D1mw:                                   0|0                    (No change)
+    ///   ILmr:                                  53|53                   (No change)
+    ///   DLmr:                                   3|3                    (No change)
+    ///   DLmw:                                   0|0                    (No change)
+    ///   L1 Hits:                             1775|1775                 (No change)
+    ///   L2 Hits:                               10|10                   (No change)
+    ///   RAM Hits:                              56|56                   (No change)
+    ///   Total read+write:                    1841|1841                 (No change)
+    ///   Estimated Cycles:                    3785|3785                 (No change)
+    /// ```
     pub fn callgrind<I, T>(&mut self, callgrind_metrics: T) -> &mut Self
     where
         I: Into<CallgrindMetrics>,
