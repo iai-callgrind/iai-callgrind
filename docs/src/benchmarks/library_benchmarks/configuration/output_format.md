@@ -43,7 +43,7 @@ use iai_callgrind::{main, LibraryBenchmarkConfig, OutputFormat, CallgrindMetrics
 main!(
     config = LibraryBenchmarkConfig::default()
         .output_format(OutputFormat::default()
-            callgrind([CallgrindMetrics::All])
+            .callgrind([CallgrindMetrics::All])
         );
     library_benchmark_groups = my_group
 );

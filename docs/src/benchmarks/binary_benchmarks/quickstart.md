@@ -35,7 +35,7 @@ crate.
 
 Note the `env!` macro is a [rust](https://doc.rust-lang.org/std/macro.env.html)
 builtin macro and `CARGO_BIN_EXE_<name>` is documented
-[here](https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-crates).
+[rust stdlib](https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-crates).
 
 You should always use `env!("CARGO_BIN_EXE_<name>")` to determine the path to
 the binary of your crate. Do not use relative paths like `target/release/my-foo`
@@ -65,7 +65,9 @@ presents you with something like the following:
   L2 Hits:          <b>            734</b>|N/A             (<span style="color:#555">*********</span>)
   RAM Hits:         <b>           4096</b>|N/A             (<span style="color:#555">*********</span>)
   Total read+write: <b>         462200</b>|N/A             (<span style="color:#555">*********</span>)
-  Estimated Cycles: <b>         604400</b>|N/A             (<span style="color:#555">*********</span>)</code></pre>
+  Estimated Cycles: <b>         604400</b>|N/A             (<span style="color:#555">*********</span>)
+
+Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 As opposed to library benchmarks, binary benchmarks have access to a [low-level
 api](./low_level.md). Here, pretty much the same as the above high-level usage

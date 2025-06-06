@@ -108,7 +108,9 @@ Here's the benchmark output of the above example to see what is happening:
   L2 Hits:          <b>              1</b>|1               (<span style="color:#555">No change</span>)
   RAM Hits:         <b>              4</b>|4               (<span style="color:#555">No change</span>)
   Total read+write: <b>            179</b>|209             (<b><span style="color:#42c142">-14.3541%</span></b>) [<b><span style="color:#42c142">-1.16760x</span></b>]
-  Estimated Cycles: <b>            319</b>|349             (<b><span style="color:#42c142">-8.59599%</span></b>) [<b><span style="color:#42c142">-1.09404x</span></b>]</code></pre>
+  Estimated Cycles: <b>            319</b>|349             (<b><span style="color:#42c142">-8.59599%</span></b>) [<b><span style="color:#42c142">-1.09404x</span></b>]
+
+Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 6 without regressions; 0 regressed; 6 benchmarks finished in 1.58123s</code></pre>
 
 The procedure of the comparison algorithm:
 

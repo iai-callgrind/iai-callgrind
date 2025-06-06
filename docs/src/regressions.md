@@ -31,8 +31,9 @@ use iai_callgrind::{
 use std::hint::black_box;
 
 #[library_benchmark]
-fn bench_library() -> Vec<i32> {
-    black_box(my_lib::bubble_sort(vec![3, 2, 1]))
+#[bench::worst_case(vec![3, 2, 1])]
+fn bench_library(data: Vec<i32>) -> Vec<i32> {
+    black_box(my_lib::bubble_sort(data))
 }
 
 library_benchmark_group!(name = my_group; benchmarks = bench_library);
@@ -57,32 +58,39 @@ for further configuration options.
 
 Running the benchmark from above the first time results in the following output:
 
-<pre><code class="hljs"><span style="color:#0A0">my_benchmark::my_group::bench_library</span>
-  Instructions:     <b>            215</b>|N/A             (<span style="color:#555">*********</span>)
-  L1 Hits:          <b>            288</b>|N/A             (<span style="color:#555">*********</span>)
-  L2 Hits:          <b>              0</b>|N/A             (<span style="color:#555">*********</span>)
-  RAM Hits:         <b>              7</b>|N/A             (<span style="color:#555">*********</span>)
-  Total read+write: <b>            295</b>|N/A             (<span style="color:#555">*********</span>)
-  Estimated Cycles: <b>            533</b>|N/A             (<span style="color:#555">*********</span>)</code></pre>
+<pre><code class="hljs"><span style="color:#0A0">lib_bench_regression::my_group::bench_library</span> <span style="color:#0AA">worst_case</span><span style="color:#0AA">:</span><b><span style="color:#00A">vec! [3, 2, 1]</span></b>
+<span style="color:#555">  </span>Instructions:                         <b>152</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L1 Hits:                              <b>201</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>L2 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hits:                               <b>5</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Total read+write:                     <b>206</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>Estimated Cycles:                     <b>376</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Let's assume there's a change in `my_lib::bubble_sort` which has increased the
-instruction counts, then running the benchmark again results in an output
-something similar to this:
+Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.14477s</code></pre>
 
-<pre><code class="hljs"><span style="color:#0A0">my_benchmark::my_group::bench_library</span>
-  Instructions:     <b>            281</b>|215             (<b><span style="color:#F55">+30.6977%</span></b>) [<b><span style="color:#F55">+1.30698x</span></b>]
-  L1 Hits:          <b>            374</b>|288             (<b><span style="color:#F55">+29.8611%</span></b>) [<b><span style="color:#F55">+1.29861x</span></b>]
-  L2 Hits:          <b>              0</b>|0               (<span style="color:#555">No change</span>)
-  RAM Hits:         <b>              8</b>|7               (<b><span style="color:#F55">+14.2857%</span></b>) [<b><span style="color:#F55">+1.14286x</span></b>]
-  Total read+write: <b>            382</b>|295             (<b><span style="color:#F55">+29.4915%</span></b>) [<b><span style="color:#F55">+1.29492x</span></b>]
-  Estimated Cycles: <b>            654</b>|533             (<b><span style="color:#F55">+22.7017%</span></b>) [<b><span style="color:#F55">+1.22702x</span></b>]
-Performance has <b><span style="color:#F55">regressed</span></b>: <b>Instructions</b> (281 > 215) regressed by <b><span style="color:#F55">+30.6977%</span></b> (><span style="color:#555">+5.00000</span>)
-iai_callgrind_runner: <b><span style="color:#A00">Error</span></b>: Performance has regressed.
-error: bench failed, to rerun pass `-p the-crate --bench my_benchmark`
+Let's assume there's a change in `my_lib::bubble_sort` with a negative impact on
+the performance, then running the benchmark again results in an output something
+similar to this:
+
+<pre><code class="hljs"><span style="color:#0A0">lib_bench_regression::my_group::bench_library</span> <span style="color:#0AA">worst_case</span><span style="color:#0AA">:</span><b><span style="color:#00A">vec! [3, 2, 1]</span></b>
+<span style="color:#555">  </span>Instructions:                         <b>264</b>|152                  (<b><span style="color:#F55">+73.6842%</span></b>) [<b><span style="color:#F55">+1.73684x</span></b>]
+<span style="color:#555">  </span>L1 Hits:                              <b>341</b>|201                  (<b><span style="color:#F55">+69.6517%</span></b>) [<b><span style="color:#F55">+1.69652x</span></b>]
+<span style="color:#555">  </span>L2 Hits:                                <b>0</b>|0                    (<span style="color:#555">No change</span>)
+<span style="color:#555">  </span>RAM Hits:                               <b>6</b>|5                    (<b><span style="color:#F55">+20.0000%</span></b>) [<b><span style="color:#F55">+1.20000x</span></b>]
+<span style="color:#555">  </span>Total read+write:                     <b>347</b>|206                  (<b><span style="color:#F55">+68.4466%</span></b>) [<b><span style="color:#F55">+1.68447x</span></b>]
+<span style="color:#555">  </span>Estimated Cycles:                     <b>551</b>|376                  (<b><span style="color:#F55">+46.5426%</span></b>) [<b><span style="color:#F55">+1.46543x</span></b>]
+Performance has <b><span style="color:#F55">regressed</span></b>: <b>Instructions</b> (152 -> <b>264</b>) regressed by <b><span style="color:#F55">+73.6842%</span></b> (><span style="color:#555">+5.00000%</span>)
+
+Regressions:
+
+  <span style="color:#0A0">lib_bench_regression::my_group::bench_library</span>:
+    <b>Instructions</b> (152 -> <b>264</b>): <b><span style="color:#F55">+73.6842</span></b><b><span style="color:#F55">%</span></b> exceeds limit of <span style="color:#555">+5.00000</span><span style="color:#555">%</span>
+
+Iai-Callgrind result: <b><span style="color:#F55">Regressed</span></b>. 0 without regressions; 1 regressed; 1 benchmarks finished in 0.14849s
+error: bench failed, to rerun pass `-p benchmark-tests --bench lib_bench_regression`
 
 Caused by:
-  process didn't exit successfully: `/path/to/your/project/target/release/deps/my_benchmark-a9b36fec444944bd --bench` (exit status: 1)
-error: Recipe `bench-test` failed on line 175 with exit code 1</code></pre>
+  process didn't exit successfully: `/home/lenny/workspace/programming/iai-callgrind/target/release/deps/lib_bench_regression-98382b533bca8f56 --bench` (exit status: 3)</code></pre>
 
 ## Which event to choose to measure performance regressions?
 

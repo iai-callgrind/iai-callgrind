@@ -55,9 +55,6 @@ main!(
 # }
 ```
 
-<!-- TODO: ALSO IN library_benchmarks -->
-<!-- TODO: Update all example outputs with the summary -->
-<!-- TODO: Talk about --nosummary in cli_and_env -->
 Iai-Callgrind reports the cache hits and an estimation of cpu cycles:
 
 <pre><code class="hljs"><span style="color:#0A0">test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci</span> <span style="color:#0AA">short</span><span style="color:#0AA">:</span><b><span style="color:#00A">10</span></b>
