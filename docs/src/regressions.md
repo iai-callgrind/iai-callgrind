@@ -9,6 +9,11 @@ perform default regression checks, and you have to opt-in with a
 `BinaryBenchmarkConfig` or at a global level with [Command-line arguments or
 Environment variables](./cli_and_env/basics.md).
 
+Note that [comparing baselines](./cli_and_env/baselines.md) also detects
+performance regressions. This can be useful, for example, when setting up
+Iai-Callgrind in the [CI](./installation/iai_callgrind.md#in-the-github-ci) to
+cause a PR to fail when comparing to the main branch.
+
 ## Define a performance regression
 
 A performance regression check consists of an `EventKind` and a percentage. If
