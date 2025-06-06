@@ -63,7 +63,9 @@ result in the benchmark output like below.
   L2 Hits:          <b>              2</b>|N/A             (<span style="color:#555">*********</span>)
   RAM Hits:         <b>             11</b>|N/A             (<span style="color:#555">*********</span>)
   Total read+write: <b>        2507946</b>|N/A             (<span style="color:#555">*********</span>)
-  Estimated Cycles: <b>        2508328</b>|N/A             (<span style="color:#555">*********</span>)</code></pre>
+  Estimated Cycles: <b>        2508328</b>|N/A             (<span style="color:#555">*********</span>)
+
+Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 The description in the headline contains `open_file("path/to/file")`, your setup
 function `open_file` with the value of the parameter it is called with.
@@ -171,7 +173,9 @@ bytes read: 25078
   L2 Hits:          <b>              2</b>|N/A             (<span style="color:#555">*********</span>)
   RAM Hits:         <b>             13</b>|N/A             (<span style="color:#555">*********</span>)
   Total read+write: <b>        2507946</b>|N/A             (<span style="color:#555">*********</span>)
-  Estimated Cycles: <b>        2508396</b>|N/A             (<span style="color:#555">*********</span>)</code></pre>
+  Estimated Cycles: <b>        2508396</b>|N/A             (<span style="color:#555">*********</span>)
+
+Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 The output of the `teardown` function is now visible in the benchmark output
 above the `- end of stdout/stderr` line.

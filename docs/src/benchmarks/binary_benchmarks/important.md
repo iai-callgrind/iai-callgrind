@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD041 MD033 -->
+
 # Important default behaviour
 
 As in library benchmarks, the environment variables are cleared before running a

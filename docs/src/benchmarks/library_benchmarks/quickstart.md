@@ -67,7 +67,9 @@ and should see something like the below
   L2 Hits:          <b>              2</b>|N/A             (<span style="color:#555">*********</span>)
   RAM Hits:         <b>              4</b>|N/A             (<span style="color:#555">*********</span>)
   Total read+write: <b>       35638622</b>|N/A             (<span style="color:#555">*********</span>)
-  Estimated Cycles: <b>       35638766</b>|N/A             (<span style="color:#555">*********</span>)</code></pre>
+  Estimated Cycles: <b>       35638766</b>|N/A             (<span style="color:#555">*********</span>)
+
+Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 2 without regressions; 0 regressed; 2 benchmarks finished in 0.49333s</code></pre>
 
 In addition, you'll find the callgrind output and the output of other valgrind
 tools in `target/iai`, if you want to investigate further with a tool like
@@ -90,4 +92,6 @@ between the current and the previous run. Say you've made change to the
   L2 Hits:          <b>              2</b>|2               (<span style="color:#555">No change</span>)
   RAM Hits:         <b>              4</b>|4               (<span style="color:#555">No change</span>)
   Total read+write: <b>       22025882</b>|35638622        (<b><span style="color:#42c142">-38.1966%</span></b>) [<b><span style="color:#42c142">-1.61803x</span></b>]
-  Estimated Cycles: <b>       22026026</b>|35638766        (<b><span style="color:#42c142">-38.1964%</span></b>) [<b><span style="color:#42c142">-1.61803x</span></b>]</code></pre>
+  Estimated Cycles: <b>       22026026</b>|35638766        (<b><span style="color:#42c142">-38.1964%</span></b>) [<b><span style="color:#42c142">-1.61803x</span></b>]
+
+Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 2 without regressions; 0 regressed; 2 benchmarks finished in 0.49333s</code></pre>

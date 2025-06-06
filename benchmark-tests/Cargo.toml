@@ -275,3 +275,8 @@ path = "benches/guide/lib_bench_threads.rs"
 harness = false
 name = "lib_bench_subprocess"
 path = "benches/guide/lib_bench_subprocess.rs"
+
+[[bench]]
+harness = false
+name = "lib_bench_regression"
+path = "benches/guide/lib_bench_regression.rs"
