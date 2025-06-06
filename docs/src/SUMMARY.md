@@ -22,6 +22,7 @@
     - [Generic benchmark functions](./benchmarks/library_benchmarks/generic.md)
     - [Comparing benchmark functions](./benchmarks/library_benchmarks/compare_by_id.md)
     - [Configuration](./benchmarks/library_benchmarks/configuration.md)
+        - [Output Format/Cache Misses](./benchmarks/library_benchmarks/configuration/output_format.md)
     - [Custom entry points](./benchmarks/library_benchmarks/custom_entry_point.md)
     - [Multi-threaded and multi-process applications](./benchmarks/library_benchmarks/threads_and_subprocesses.md)
     - [More Examples, please!](./benchmarks/library_benchmarks/examples.md)

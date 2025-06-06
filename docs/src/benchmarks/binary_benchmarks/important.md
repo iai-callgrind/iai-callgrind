@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD041 MD033 -->
+
 # Important default behaviour
 
 As in library benchmarks, the environment variables are cleared before running a
@@ -46,3 +48,23 @@ main!(
 );
 # }
 ```
+
+<!-- TODO: ALSO IN library_benchmarks -->
+<!-- TODO: Update all example outputs with the summary -->
+<!-- TODO: Talk about --nosummary in cli_and_env -->
+Per default, Iai-Callgrind reports the cache hits and an estimation of cpu
+cycles:
+
+<pre><code class="hljs"><span style="color:#0A0">test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci</span> <span style="color:#0AA">short</span><span style="color:#0AA">:</span><b><span style="color:#00A">10</span></b>
+<span style="color:#555">  </span>Instructions:                        <b>1734</b>|1734                 (<span style="color:#555">No change</span>)
+<span style="color:#555">  </span>L1 Hits:                             <b>2359</b>|2359                 (<span style="color:#555">No change</span>)
+<span style="color:#555">  </span>L2 Hits:                                <b>0</b>|0                    (<span style="color:#555">No change</span>)
+<span style="color:#555">  </span>RAM Hits:                               <b>3</b>|3                    (<span style="color:#555">No change</span>)
+<span style="color:#555">  </span>Total read+write:                    <b>2362</b>|2362                 (<span style="color:#555">No change</span>)
+<span style="color:#555">  </span>Estimated Cycles:                    <b>2464</b>|2464                 (<span style="color:#555">No change</span>)
+
+Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+
+If you prefer cache misses over cache hits or just want both metrics displayed
+you can fully customize the [callgrind output
+format](../library_benchmarks/configuration/output_format.md).
