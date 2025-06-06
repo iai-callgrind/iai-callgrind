@@ -417,7 +417,8 @@ pub use iai_callgrind_macros::{binary_benchmark, library_benchmark};
 // documentation in `__internal::mod` for more details.
 #[cfg(feature = "default")]
 pub use iai_callgrind_runner::api::{
-    DelayKind, Direction, EntryPoint, EventKind, FlamegraphKind, Pipe, Stdin, Stdio, ValgrindTool,
+    CallgrindMetrics, DelayKind, Direction, EntryPoint, EventKind, FlamegraphKind, Pipe, Stdin,
+    Stdio, ValgrindTool,
 };
 #[cfg(feature = "default")]
 pub use lib_bench::LibraryBenchmarkConfig;

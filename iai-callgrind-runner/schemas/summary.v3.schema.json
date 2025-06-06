@@ -428,26 +428,6 @@
           "const": "Ir"
         },
         {
-          "description": "The number of system calls done (--collect-systime=yes)",
-          "type": "string",
-          "const": "SysCount"
-        },
-        {
-          "description": "The elapsed time spent in system calls (--collect-systime=yes)",
-          "type": "string",
-          "const": "SysTime"
-        },
-        {
-          "description": "The cpu time spent during system calls (--collect-systime=nsec)",
-          "type": "string",
-          "const": "SysCpuTime"
-        },
-        {
-          "description": "The number of global bus events (--collect-bus=yes)",
-          "type": "string",
-          "const": "Ge"
-        },
-        {
           "description": "D Cache reads (which equals the number of memory reads) (--cache-sim=yes)",
           "type": "string",
           "const": "Dr"
@@ -511,6 +491,26 @@
           "description": "Derived event showing estimated CPU cycles (--cache-sim=yes)",
           "type": "string",
           "const": "EstimatedCycles"
+        },
+        {
+          "description": "The number of system calls done (--collect-systime=yes)",
+          "type": "string",
+          "const": "SysCount"
+        },
+        {
+          "description": "The elapsed time spent in system calls (--collect-systime=yes)",
+          "type": "string",
+          "const": "SysTime"
+        },
+        {
+          "description": "The cpu time spent during system calls (--collect-systime=nsec)",
+          "type": "string",
+          "const": "SysCpuTime"
+        },
+        {
+          "description": "The number of global bus events (--collect-bus=yes)",
+          "type": "string",
+          "const": "Ge"
         },
         {
           "description": "Conditional branches executed (--branch-sim=yes)",

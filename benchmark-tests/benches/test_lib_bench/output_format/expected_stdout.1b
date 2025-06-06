@@ -78,5 +78,218 @@ Number of primes found in the range 0 to 30000: 3245
 | RAM Hits:                                |                     (         )
 | Total read+write:                        |                     (-       %) [-       x]
 | Estimated Cycles:                        |                     (         )
+test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format implicit_default_with_wb
+Hello world!
+- end of stdout/stderr
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  SysCount:                                |                     (No change)
+  SysTime:                                 |                     (         )
+  SysCpuTime:                              |                     (         )
+  Ge:                                      |                     (No change)
+  Bc:                                      |                     (No change)
+  Bcm:                                     |                     (No change)
+  Bi:                                      |                     (No change)
+  Bim:                                     |                     (No change)
+  ILdmr:                                   |                     (No change)
+  DLdmr:                                   |                     (No change)
+  DLdmw:                                   |                     (No change)
+test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format implicit_default_with_cacheuse
+Hello world!
+- end of stdout/stderr
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  SysCount:                                |                     (No change)
+  SysTime:                                 |                     (         )
+  SysCpuTime:                              |                     (         )
+  Ge:                                      |                     (No change)
+  Bc:                                      |                     (No change)
+  Bcm:                                     |                     (No change)
+  Bi:                                      |                     (No change)
+  Bim:                                     |                     (No change)
+  AcCost1:                                 |                     (No change)
+  AcCost2:                                 |                     (No change)
+  SpLoss1:                                 |                     (No change)
+  SpLoss2:                                 |                     (No change)
+test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format explicit_default_with_wb
+Hello world!
+- end of stdout/stderr
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  SysCount:                                |                     (No change)
+  SysTime:                                 |                     (         )
+  SysCpuTime:                              |                     (         )
+  Ge:                                      |                     (No change)
+  Bc:                                      |                     (No change)
+  Bcm:                                     |                     (No change)
+  Bi:                                      |                     (No change)
+  Bim:                                     |                     (No change)
+  ILdmr:                                   |                     (No change)
+  DLdmr:                                   |                     (No change)
+  DLdmw:                                   |                     (No change)
+test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format explicit_default_with_cacheuse
+Hello world!
+- end of stdout/stderr
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  SysCount:                                |                     (No change)
+  SysTime:                                 |                     (         )
+  SysCpuTime:                              |                     (         )
+  Ge:                                      |                     (No change)
+  Bc:                                      |                     (No change)
+  Bcm:                                     |                     (No change)
+  Bi:                                      |                     (No change)
+  Bim:                                     |                     (No change)
+  AcCost1:                                 |                     (No change)
+  AcCost2:                                 |                     (No change)
+  SpLoss1:                                 |                     (No change)
+  SpLoss2:                                 |                     (No change)
+test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format all_with_wb
+Hello world!
+- end of stdout/stderr
+  Instructions:                            |                     (No change)
+  Dr:                                      |                     (No change)
+  Dw:                                      |                     (No change)
+  I1mr:                                    |                     (No change)
+  D1mr:                                    |                     (No change)
+  D1mw:                                    |                     (No change)
+  ILmr:                                    |                     (No change)
+  DLmr:                                    |                     (No change)
+  DLmw:                                    |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  SysCount:                                |                     (No change)
+  SysTime:                                 |                     (         )
+  SysCpuTime:                              |                     (         )
+  Ge:                                      |                     (No change)
+  Bc:                                      |                     (No change)
+  Bcm:                                     |                     (No change)
+  Bi:                                      |                     (No change)
+  Bim:                                     |                     (No change)
+  ILdmr:                                   |                     (No change)
+  DLdmr:                                   |                     (No change)
+  DLdmw:                                   |                     (No change)
+test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format all_with_cachuse
+Hello world!
+- end of stdout/stderr
+  Instructions:                            |                     (No change)
+  Dr:                                      |                     (No change)
+  Dw:                                      |                     (No change)
+  I1mr:                                    |                     (No change)
+  D1mr:                                    |                     (No change)
+  D1mw:                                    |                     (No change)
+  ILmr:                                    |                     (No change)
+  DLmr:                                    |                     (No change)
+  DLmw:                                    |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+  SysCount:                                |                     (No change)
+  SysTime:                                 |                     (         )
+  SysCpuTime:                              |                     (         )
+  Ge:                                      |                     (No change)
+  Bc:                                      |                     (No change)
+  Bcm:                                     |                     (No change)
+  Bi:                                      |                     (No change)
+  Bim:                                     |                     (No change)
+  AcCost1:                                 |                     (No change)
+  AcCost2:                                 |                     (No change)
+  SpLoss1:                                 |                     (No change)
+  SpLoss2:                                 |                     (No change)
+test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format cache_misses
+Hello world!
+- end of stdout/stderr
+  I1mr:                                    |                     (No change)
+  D1mr:                                    |                     (No change)
+  D1mw:                                    |                     (No change)
+  ILmr:                                    |                     (No change)
+  DLmr:                                    |                     (No change)
+  DLmw:                                    |                     (No change)
+test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format cache_hits
+Hello world!
+- end of stdout/stderr
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format cache_sim
+Hello world!
+- end of stdout/stderr
+  Dr:                                      |                     (No change)
+  Dw:                                      |                     (No change)
+  I1mr:                                    |                     (No change)
+  D1mr:                                    |                     (No change)
+  D1mw:                                    |                     (No change)
+  ILmr:                                    |                     (No change)
+  DLmr:                                    |                     (No change)
+  DLmw:                                    |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format cache_use
+Hello world!
+- end of stdout/stderr
+  AcCost1:                                 |                     (No change)
+  AcCost2:                                 |                     (No change)
+  SpLoss1:                                 |                     (No change)
+  SpLoss2:                                 |                     (No change)
+test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format system_calls
+Hello world!
+- end of stdout/stderr
+  SysCount:                                |                     (No change)
+  SysTime:                                 |                     (         )
+  SysCpuTime:                              |                     (         )
+test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format branch_sim
+Hello world!
+- end of stdout/stderr
+  Bc:                                      |                     (No change)
+  Bcm:                                     |                     (No change)
+  Bi:                                      |                     (No change)
+  Bim:                                     |                     (No change)
+test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format write_back
+Hello world!
+- end of stdout/stderr
+  Instructions:                            |                     (No change)
+  ILdmr:                                   |                     (No change)
+  DLdmr:                                   |                     (No change)
+  DLdmw:                                   |                     (No change)
+test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format single_event_ir
+Hello world!
+- end of stdout/stderr
+  Instructions:                            |                     (No change)
+test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format single_event_ge
+Hello world!
+- end of stdout/stderr
+  Ge:                                      |                     (No change)
+test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format single_event_total_rw
+Hello world!
+- end of stdout/stderr
+  Total read+write:                        |                     (No change)
+test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format single_event_estimated_cycles
+Hello world!
+- end of stdout/stderr
+  Estimated Cycles:                        |                     (         )
 
-Iai-Callgrind result: Ok. 2 without regressions; 0 regressed; 2 benchmarks finished in <__SECONDS__>s
+Iai-Callgrind result: Ok. 19 without regressions; 0 regressed; 19 benchmarks finished in <__SECONDS__>s

@@ -500,7 +500,7 @@ impl BenchmarkSummary {
                     .extract_costs(),
             ) {
                 let new_summary = MetricsSummary::new(EitherOrBoth::Both(new, other_new));
-                VerticalFormatter::new(*output_format).print_comparison(
+                VerticalFormatter::new(output_format.clone()).print_comparison(
                     &self.function_name,
                     id,
                     self.details.as_deref(),
