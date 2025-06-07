@@ -4,7 +4,8 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 
-use super::logfile_parser::{parse_header, Logfile, LogfileParser, EMPTY_LINE_RE, STRIP_PREFIX_RE};
+use super::logfile_parser::{parse_header, Parser, ParserResult, EMPTY_LINE_RE, STRIP_PREFIX_RE};
+use super::ToolOutputPath;
 use crate::runner::summary::ToolMetrics;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -14,11 +15,12 @@ enum State {
 }
 
 pub struct GenericLogfileParser {
+    pub output_path: ToolOutputPath,
     pub root_dir: PathBuf,
 }
 
-impl LogfileParser for GenericLogfileParser {
-    fn parse_single(&self, path: PathBuf) -> Result<Logfile> {
+impl Parser for GenericLogfileParser {
+    fn parse_single(&self, path: PathBuf) -> Result<ParserResult> {
         let file = File::open(&path)
             .with_context(|| format!("Error opening log file '{}'", path.display()))?;
 
@@ -58,11 +60,15 @@ impl LogfileParser for GenericLogfileParser {
             }
         }
 
-        Ok(Logfile {
+        Ok(ParserResult {
             header,
             details,
             path,
             metrics: ToolMetrics::None,
         })
+    }
+
+    fn get_output_path(&self) -> &ToolOutputPath {
+        &self.output_path
     }
 }

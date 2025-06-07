@@ -4,7 +4,7 @@ use iai_callgrind_runner::api::ErrorMetricKind;
 use iai_callgrind_runner::runner::metrics::Metrics;
 use iai_callgrind_runner::runner::summary::ToolMetrics;
 use iai_callgrind_runner::runner::tool::error_metric_parser::ErrorMetricLogfileParser;
-use iai_callgrind_runner::runner::tool::logfile_parser::LogfileParser;
+use iai_callgrind_runner::runner::tool::logfile_parser::Parser;
 use iai_callgrind_runner::runner::tool::{ToolOutputPathKind, ValgrindTool};
 use pretty_assertions::assert_eq;
 use rstest::rstest;
@@ -30,10 +30,11 @@ fn test_drd_error_metric_parser(#[case] fixture: &str, #[case] expected: [u64; 4
         Fixtures::get_tool_output_path("drd", ValgrindTool::DRD, ToolOutputPathKind::Log, fixture);
 
     let parser = ErrorMetricLogfileParser {
+        output_path: drd_output_path.clone(),
         root_dir: PathBuf::from("/does/not/matter"),
     };
 
-    let logfiles = parser.parse(&drd_output_path).unwrap();
+    let logfiles = parser.parse().unwrap();
     assert_eq!(logfiles.len(), 1);
     assert_eq!(logfiles[0].metrics, expected_metrics);
 }
@@ -63,10 +64,11 @@ fn test_drd_error_metric_parser_when_multiple_pids() {
     );
 
     let parser = ErrorMetricLogfileParser {
+        output_path: drd_output_path.to_log_output(),
         root_dir: PathBuf::from("/does/not/matter"),
     };
 
-    let logfiles = parser.parse(&drd_output_path).unwrap();
+    let logfiles = parser.parse().unwrap();
     assert_eq!(logfiles.len(), 2);
     assert_eq!(logfiles[0].metrics, expected_first_metrics);
     assert_eq!(logfiles[1].metrics, expected_second_metrics);
@@ -96,10 +98,11 @@ fn test_memcheck_error_metric_parser(#[case] fixture: &str, #[case] expected: [u
     );
 
     let parser = ErrorMetricLogfileParser {
+        output_path: memcheck_output_path.clone(),
         root_dir: PathBuf::from("/does/not/matter"),
     };
 
-    let logfiles = parser.parse(&memcheck_output_path).unwrap();
+    let logfiles = parser.parse().unwrap();
     assert_eq!(logfiles.len(), 1);
     assert_eq!(logfiles[0].metrics, expected_metrics);
 }
@@ -129,10 +132,11 @@ fn test_memcheck_error_metric_parser_when_multiple_pids() {
     );
 
     let parser = ErrorMetricLogfileParser {
+        output_path: memcheck_output_path.clone(),
         root_dir: PathBuf::from("/does/not/matter"),
     };
 
-    let logfiles = parser.parse(&memcheck_output_path).unwrap();
+    let logfiles = parser.parse().unwrap();
     assert_eq!(logfiles.len(), 2);
     assert_eq!(logfiles[0].metrics, expected_first_metrics);
     assert_eq!(logfiles[1].metrics, expected_second_metrics);

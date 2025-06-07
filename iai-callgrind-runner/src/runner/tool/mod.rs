@@ -16,7 +16,7 @@ use std::process::{Child, Command, ExitStatus, Output};
 use anyhow::{anyhow, Context, Result};
 use lazy_static::lazy_static;
 use log::{debug, error, log_enabled};
-use logfile_parser::Logfile;
+use logfile_parser::ParserResult;
 use regex::Regex;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
@@ -25,6 +25,7 @@ use serde::{Deserialize, Serialize};
 use self::args::ToolArgs;
 use super::args::NoCapture;
 use super::bin_bench::Delay;
+use super::cachegrind;
 use super::callgrind::parser::parse_header;
 use super::common::{Assistant, Config, ModulePath, Sandbox};
 use super::format::{print_no_capture_footer, Formatter, OutputFormat, VerticalFormatter};
@@ -316,22 +317,18 @@ impl ToolConfig {
         }
     }
 
-    fn parse_load(
-        &self,
-        config: &Config,
-        log_path: &ToolOutputPath,
-        out_path: Option<&ToolOutputPath>,
-    ) -> Result<ToolSummary> {
-        let parser = logfile_parser::parser_factory(self.tool, config.meta.project_root.clone());
+    fn parse_load(&self, config: &Config, out_path: &ToolOutputPath) -> Result<ToolSummary> {
+        let parser =
+            logfile_parser::parser_factory(self.tool, config.meta.project_root.clone(), out_path);
 
-        let parsed_new = parser.parse(log_path)?;
-        let parsed_old = parser.parse(&log_path.to_base_path())?;
+        let parsed_new = parser.parse()?;
+        let parsed_old = parser.parse_base()?;
 
         let summaries = ToolRun::from(EitherOrBoth::Both(parsed_new, parsed_old));
         Ok(ToolSummary {
             tool: self.tool,
-            log_paths: log_path.real_paths()?,
-            out_paths: out_path.map_or_else(|| Ok(Vec::default()), ToolOutputPath::real_paths)?,
+            log_paths: out_path.to_log_output().real_paths()?,
+            out_paths: out_path.real_paths()?,
             summaries,
         })
     }
@@ -342,7 +339,14 @@ impl TryFrom<api::Tool> for ToolConfig {
 
     fn try_from(value: api::Tool) -> std::result::Result<Self, Self::Error> {
         let tool = value.kind.into();
-        ToolArgs::try_from_raw_args(tool, value.raw_args).map(|args| Self {
+        let args = match tool {
+            ValgrindTool::Cachegrind => {
+                cachegrind::args::Args::try_from_raw_args(&[&value.raw_args]).map(Into::into)?
+            }
+            _ => ToolArgs::try_from_raw_args(tool, value.raw_args)?,
+        };
+
+        Ok(Self {
             tool,
             is_enabled: value.enable.unwrap_or(true),
             args,
@@ -379,13 +383,13 @@ impl ToolConfigs {
     pub fn parse(
         tool_config: &ToolConfig,
         meta: &Metadata,
-        log_path: &ToolOutputPath,
-        out_path: Option<&ToolOutputPath>,
-        old_summaries: Vec<Logfile>,
+        out_path: &ToolOutputPath,
+        old_summaries: Vec<ParserResult>,
     ) -> Result<ToolSummary> {
-        let parser = logfile_parser::parser_factory(tool_config.tool, meta.project_root.clone());
+        let parser =
+            logfile_parser::parser_factory(tool_config.tool, meta.project_root.clone(), out_path);
 
-        let parsed_new = parser.parse(log_path)?;
+        let parsed_new = parser.parse()?;
 
         let summaries = match (parsed_new.is_empty(), old_summaries.is_empty()) {
             (true, false | true) => return Err(anyhow!("A new dataset should always be present")),
@@ -395,8 +399,8 @@ impl ToolConfigs {
 
         Ok(ToolSummary {
             tool: tool_config.tool,
-            log_paths: log_path.real_paths()?,
-            out_paths: out_path.map_or_else(|| Ok(Vec::default()), ToolOutputPath::real_paths)?,
+            log_paths: out_path.to_log_output().real_paths()?,
+            out_paths: out_path.real_paths()?,
             summaries,
         })
     }
@@ -412,14 +416,13 @@ impl ToolConfigs {
             Self::print_headline(tool_config, output_format);
 
             let tool = tool_config.tool;
-
             let output_path = output_path.to_tool_output(tool);
-            let log_path = output_path.to_log_output();
 
-            let tool_summary = tool_config.parse_load(config, &log_path, None)?;
+            let tool_summary = tool_config.parse_load(config, &output_path)?;
 
             Self::print(config, output_format, &tool_summary.summaries)?;
 
+            let log_path = output_path.to_log_output();
             log_path.dump_log(log::Level::Info, &mut stderr())?;
 
             tool_summaries.push(tool_summary);
@@ -454,11 +457,15 @@ impl ToolConfigs {
             let command = ToolCommand::new(tool, &config.meta, NoCapture::False);
 
             let output_path = output_path.to_tool_output(tool);
+
+            let parser = logfile_parser::parser_factory(
+                tool,
+                config.meta.project_root.clone(),
+                &output_path,
+            );
+            let old_summaries = parser.parse_base()?;
+
             let log_path = output_path.to_log_output();
-
-            let parser = logfile_parser::parser_factory(tool, config.meta.project_root.clone());
-
-            let old_summaries = parser.parse(&log_path.to_base_path())?;
             if save_baseline {
                 output_path.clear()?;
                 log_path.clear()?;
@@ -506,13 +513,7 @@ impl ToolConfigs {
                 sandbox.reset()?;
             }
 
-            let tool_summary = Self::parse(
-                tool_config,
-                &config.meta,
-                &log_path,
-                tool.has_output_file().then_some(&output_path),
-                old_summaries,
-            )?;
+            let tool_summary = Self::parse(tool_config, &config.meta, &output_path, old_summaries)?;
 
             Self::print(config, output_format, &tool_summary.summaries)?;
 
@@ -691,6 +692,23 @@ impl ToolOutputPath {
             kind: match &self.kind {
                 ToolOutputPathKind::Out | ToolOutputPathKind::OldOut => ToolOutputPathKind::Log,
                 ToolOutputPathKind::Base(name) => ToolOutputPathKind::BaseLog(name.clone()),
+                kind => kind.clone(),
+            },
+            tool: self.tool,
+            baseline_kind: self.baseline_kind.clone(),
+            name: self.name.clone(),
+            dir: self.dir.clone(),
+            modifiers: self.modifiers.clone(),
+        }
+    }
+
+    pub fn to_new_output(&self) -> Self {
+        Self {
+            kind: match &self.kind {
+                ToolOutputPathKind::OldLog | ToolOutputPathKind::BaseLog(_) => {
+                    ToolOutputPathKind::Log
+                }
+                ToolOutputPathKind::OldOut | ToolOutputPathKind::Base(_) => ToolOutputPathKind::Out,
                 kind => kind.clone(),
             },
             tool: self.tool,

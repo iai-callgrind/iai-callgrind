@@ -34,11 +34,11 @@ pub struct Summaries {
 
 #[derive(Clone, Debug)]
 pub struct CacheSummary {
-    l1_hits: u64,
-    l3_hits: u64,
-    ram_hits: u64,
-    total_memory_rw: u64,
-    cycles: u64,
+    pub l1_hits: u64,
+    pub l3_hits: u64,
+    pub ram_hits: u64,
+    pub total_memory_rw: u64,
+    pub cycles: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -47,44 +47,90 @@ pub struct RegressionConfig {
     pub fail_fast: bool,
 }
 
-impl TryFrom<&Metrics> for CacheSummary {
-    type Error = anyhow::Error;
+/// TODO: SORT, other module??
+#[derive(Debug, Clone)]
+pub struct CyclesEstimator {
+    instructions: u64,
+    total_data_cache_reads: u64,
+    total_data_cache_writes: u64,
+    l1_instructions_cache_read_misses: u64,
+    l1_data_cache_read_misses: u64,
+    l1_data_cache_write_misses: u64,
+    l3_instructions_cache_read_misses: u64,
+    l3_data_cache_read_misses: u64,
+    l3_data_cache_write_misses: u64,
+}
 
-    fn try_from(value: &Metrics) -> std::result::Result<Self, Self::Error> {
-        use EventKind::*;
-        //         0   1  2    3    4    5    6    7    8
-        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
-        let instructions = value.try_metric_by_kind(&Ir)?;
-        let total_data_cache_reads = value.try_metric_by_kind(&Dr)?;
-        let total_data_cache_writes = value.try_metric_by_kind(&Dw)?;
-        let l1_instructions_cache_read_misses = value.try_metric_by_kind(&I1mr)?;
-        let l1_data_cache_read_misses = value.try_metric_by_kind(&D1mr)?;
-        let l1_data_cache_write_misses = value.try_metric_by_kind(&D1mw)?;
-        let l3_instructions_cache_read_misses = value.try_metric_by_kind(&ILmr)?;
-        let l3_data_cache_read_misses = value.try_metric_by_kind(&DLmr)?;
-        let l3_data_cache_write_misses = value.try_metric_by_kind(&DLmw)?;
+/// TODO: MOVE THIS INTO `CacheSummary`?
+impl CyclesEstimator {
+    pub fn new(
+        instructions: u64,
+        total_data_cache_reads: u64,
+        total_data_cache_writes: u64,
+        l1_instructions_cache_read_misses: u64,
+        l1_data_cache_read_misses: u64,
+        l1_data_cache_write_misses: u64,
+        l3_instructions_cache_read_misses: u64,
+        l3_data_cache_read_misses: u64,
+        l3_data_cache_write_misses: u64,
+    ) -> Self {
+        Self {
+            instructions,
+            total_data_cache_reads,
+            total_data_cache_writes,
+            l1_instructions_cache_read_misses,
+            l1_data_cache_read_misses,
+            l1_data_cache_write_misses,
+            l3_instructions_cache_read_misses,
+            l3_data_cache_read_misses,
+            l3_data_cache_write_misses,
+        }
+    }
 
-        let ram_hits = l3_instructions_cache_read_misses
-            + l3_data_cache_read_misses
-            + l3_data_cache_write_misses;
-        let l1_data_accesses = l1_data_cache_read_misses + l1_data_cache_write_misses;
-        let l1_miss = l1_instructions_cache_read_misses + l1_data_accesses;
+    pub fn calculate(&self) -> CacheSummary {
+        let ram_hits = self.l3_instructions_cache_read_misses
+            + self.l3_data_cache_read_misses
+            + self.l3_data_cache_write_misses;
+        let l1_data_accesses = self.l1_data_cache_read_misses + self.l1_data_cache_write_misses;
+        let l1_miss = self.l1_instructions_cache_read_misses + l1_data_accesses;
         let l3_accesses = l1_miss;
         let l3_hits = l3_accesses - ram_hits;
 
-        let total_memory_rw = instructions + total_data_cache_reads + total_data_cache_writes;
+        let total_memory_rw =
+            self.instructions + self.total_data_cache_reads + self.total_data_cache_writes;
         let l1_hits = total_memory_rw - ram_hits - l3_hits;
 
         // Uses Itamar Turner-Trauring's formula from https://pythonspeed.com/articles/consistent-benchmarking-in-ci/
         let cycles = l1_hits + (5 * l3_hits) + (35 * ram_hits);
 
-        Ok(Self {
+        CacheSummary {
             l1_hits,
             l3_hits,
             ram_hits,
             total_memory_rw,
             cycles,
-        })
+        }
+    }
+}
+
+impl TryFrom<&Metrics> for CacheSummary {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &Metrics) -> std::result::Result<Self, Self::Error> {
+        use EventKind::*;
+        let estimator = CyclesEstimator::new(
+            value.try_metric_by_kind(&Ir)?,
+            value.try_metric_by_kind(&Dr)?,
+            value.try_metric_by_kind(&Dw)?,
+            value.try_metric_by_kind(&I1mr)?,
+            value.try_metric_by_kind(&D1mr)?,
+            value.try_metric_by_kind(&D1mw)?,
+            value.try_metric_by_kind(&ILmr)?,
+            value.try_metric_by_kind(&DLmr)?,
+            value.try_metric_by_kind(&DLmw)?,
+        );
+
+        Ok(estimator.calculate())
     }
 }
 

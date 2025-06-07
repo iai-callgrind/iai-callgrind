@@ -91,6 +91,7 @@ main!(
             RegressionConfig::default()
                 .limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
         )
+        .tool(Tool::new(ValgrindTool::Cachegrind))
         .tool(Tool::new(ValgrindTool::DHAT).args(["--time-stamp=yes"]))
         .tool(Tool::new(ValgrindTool::Massif))
         .tool(Tool::new(ValgrindTool::BBV))

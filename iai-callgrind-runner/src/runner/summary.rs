@@ -20,7 +20,7 @@ use super::common::ModulePath;
 use super::format::{Formatter, OutputFormat, OutputFormatKind, VerticalFormatter};
 use super::metrics::Metrics;
 use super::tool::ValgrindTool;
-use crate::api::{DhatMetricKind, ErrorMetricKind, EventKind};
+use crate::api::{CachegrindMetric, DhatMetricKind, ErrorMetricKind, EventKind};
 use crate::error::Error;
 use crate::runner::metrics::Summarize;
 use crate::util::{factor_diff, make_absolute, percentage_diff, EitherOrBoth};
@@ -205,6 +205,8 @@ pub enum ToolMetrics {
     ErrorMetrics(Metrics<ErrorMetricKind>),
     /// The metrics of a callgrind benchmark
     CallgrindMetrics(Metrics<EventKind>),
+    /// The metrics of a cachegrind benchmark
+    CachegrindMetrics(Metrics<CachegrindMetric>),
 }
 
 /// The `MetricsSummary` contains all differences between two tool run segments
@@ -225,6 +227,8 @@ pub enum ToolMetricSummary {
     DhatSummary(MetricsSummary<DhatMetricKind>),
     /// The callgrind summary
     CallgrindSummary(MetricsSummary<EventKind>),
+    /// The cachegrind summary
+    CachegrindSummary(MetricsSummary<CachegrindMetric>),
 }
 
 /// The differences between two `Metrics` as percentage and factor
@@ -835,6 +839,12 @@ impl ToolMetricSummary {
             ) => {
                 this.add(other);
             }
+            (
+                ToolMetricSummary::CachegrindSummary(this),
+                ToolMetricSummary::CachegrindSummary(other),
+            ) => {
+                this.add(other);
+            }
             _ => {}
         }
     }
@@ -851,6 +861,9 @@ impl ToolMetricSummary {
             ToolMetrics::CallgrindMetrics(metrics) => ToolMetricSummary::CallgrindSummary(
                 MetricsSummary::new(EitherOrBoth::Left(metrics.clone())),
             ),
+            ToolMetrics::CachegrindMetrics(metrics) => ToolMetricSummary::CachegrindSummary(
+                MetricsSummary::new(EitherOrBoth::Left(metrics.clone())),
+            ),
         }
     }
     pub fn from_old_metrics(metrics: &ToolMetrics) -> Self {
@@ -863,6 +876,9 @@ impl ToolMetricSummary {
                 MetricsSummary::new(EitherOrBoth::Right(metrics.clone())),
             ),
             ToolMetrics::CallgrindMetrics(metrics) => ToolMetricSummary::CallgrindSummary(
+                MetricsSummary::new(EitherOrBoth::Right(metrics.clone())),
+            ),
+            ToolMetrics::CachegrindMetrics(metrics) => ToolMetricSummary::CachegrindSummary(
                 MetricsSummary::new(EitherOrBoth::Right(metrics.clone())),
             ),
         }
@@ -890,6 +906,12 @@ impl ToolMetricSummary {
                 ToolMetrics::CallgrindMetrics(new_metrics),
                 ToolMetrics::CallgrindMetrics(old_metrics),
             ) => Ok(ToolMetricSummary::CallgrindSummary(MetricsSummary::new(
+                EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone()),
+            ))),
+            (
+                ToolMetrics::CachegrindMetrics(new_metrics),
+                ToolMetrics::CachegrindMetrics(old_metrics),
+            ) => Ok(ToolMetricSummary::CachegrindSummary(MetricsSummary::new(
                 EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone()),
             ))),
             _ => Err(anyhow!("Cannot create summary from incompatible costs")),
@@ -920,6 +942,7 @@ impl ToolRunSegment {
         match &self.metrics_summary {
             ToolMetricSummary::None
             | ToolMetricSummary::DhatSummary(_)
+            | ToolMetricSummary::CachegrindSummary(_)
             | ToolMetricSummary::CallgrindSummary(_) => false,
             ToolMetricSummary::ErrorSummary(metrics) => metrics
                 .diff_by_kind(&ErrorMetricKind::Errors)
