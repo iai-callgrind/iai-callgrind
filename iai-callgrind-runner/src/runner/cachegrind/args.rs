@@ -23,7 +23,6 @@ pub struct Args {
     cachegrind_out_file: Option<PathBuf>,
     log_arg: Option<OsString>,
     trace_children: bool,
-    separate_threads: bool,
     fair_sched: FairSched,
 }
 
@@ -51,11 +50,6 @@ impl Args {
                 }
                 Some((key @ "--trace-children", value)) => {
                     self.trace_children = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
-                    })?;
-                }
-                Some((key @ "--separate-threads", value)) => {
-                    self.separate_threads = yesno_to_bool(value).ok_or_else(|| {
                         Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
                     })?;
                 }
@@ -113,7 +107,6 @@ impl Default for Args {
             log_arg: Option::default(),
             other: Vec::default(),
             trace_children: defaults::TRACE_CHILDREN,
-            separate_threads: defaults::SEPARATE_THREADS,
             fair_sched: defaults::FAIR_SCHED,
         }
     }
@@ -127,10 +120,6 @@ impl From<Args> for tool::args::ToolArgs {
             format!("--D1={}", &value.d1),
             format!("--LL={}", &value.ll),
             format!("--cache-sim={}", bool_to_yesno(value.cache_sim)),
-            format!(
-                "--separate-threads={}",
-                bool_to_yesno(value.separate_threads)
-            ),
         ];
         other.append(&mut value.other);
 

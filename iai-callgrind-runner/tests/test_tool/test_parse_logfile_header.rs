@@ -6,11 +6,12 @@ use rstest::rstest;
 
 use crate::common::Fixtures;
 
-fn expected_header(command: &str, pid: i32, parent_pid: Option<i32>) -> Header {
+fn expected_header(command: &str, pid: i32, parent_pid: Option<i32>, desc: Vec<String>) -> Header {
     Header {
         command: command.to_owned(),
         pid,
         parent_pid,
+        desc,
     }
 }
 
@@ -22,7 +23,8 @@ fn expected_header(command: &str, pid: i32, parent_pid: Option<i32>) -> Header {
     expected_header(
         "/home/some/workspace/target/release/deps/test_lib_bench_some-4c5214398e2f5bd1",
         1915454,
-        Some(1915177)
+        Some(1915177),
+        vec![],
     )
 )]
 // What comes after the header and if there are errors or not should not influence the resulting
@@ -32,7 +34,8 @@ fn expected_header(command: &str, pid: i32, parent_pid: Option<i32>) -> Header {
     expected_header(
         "/home/some/workspace/target/release/deps/test_lib_bench_some-4c5214398e2f5bd1",
         1915455,
-        Some(1915178)
+        Some(1915178),
+        vec![],
     )
 )]
 fn test_parse_logfile_header(#[case] name: &str, #[case] expected_header: Header) {

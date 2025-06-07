@@ -1,0 +1,73 @@
+use anyhow::{anyhow, Result};
+use lazy_static::lazy_static;
+use log::trace;
+use regex::Regex;
+
+use super::model::Metrics;
+
+lazy_static! {
+    static ref GLOB_TO_REGEX_RE: Regex =
+        Regex::new(r"(\\)([*]|[?])").expect("Regex should compile");
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct CachegrindProperties {
+    pub metrics_prototype: Metrics,
+    pub desc: Vec<String>,
+    pub cmd: String,
+}
+
+/// TODO: Convert (docs) from callgrind to cachegrind
+/// TODO: Double check this
+/// ```
+/// file         ::= desc_line* cmd_line events_line data_line+ summary_line
+/// desc_line    ::= "desc:" ws? non_nl_string
+/// cmd_line     ::= "cmd:" ws? cmd
+/// events_line  ::= "events:" ws? (event ws)+
+/// data_line    ::= file_line | fn_line | count_line
+/// file_line    ::= "fl=" filename
+/// fn_line      ::= "fn=" fn_name
+/// count_line   ::= line_num (ws+ count)* ws*
+/// summary_line ::= "summary:" ws? count (ws+ count)+ ws*
+/// count        ::= num
+/// ```
+/// Parse the callgrind output files header
+pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<CachegrindProperties> {
+    let mut metrics_prototype: Option<Metrics> = None;
+    let mut desc: Vec<String> = vec![];
+    let mut cmd: Option<String> = None;
+
+    for line in iter.filter(|line| {
+        let line = line.trim();
+        !line.is_empty() && !line.starts_with('#')
+    }) {
+        match line.split_once(':').map(|(k, v)| (k.trim(), v.trim())) {
+            Some(("desc", value)) if !value.starts_with("Option:") => {
+                trace!("Using description '{value}' from line: '{line}'");
+                desc.push(value.to_owned());
+            }
+            Some(("cmd", value)) => {
+                trace!("Using cmd '{value}' from line: '{line}'");
+                cmd = Some(value.to_owned());
+            }
+            // The events line is the last line in the header which is mandatory. The summary line
+            // is usually the last line, but it is only optional. So, we break out of
+            // the loop here and stop the parsing.
+            Some(("events", events)) => {
+                trace!("Using events '{events}' from line: '{line}'");
+                metrics_prototype = Some(events.split_ascii_whitespace().collect());
+                break;
+            }
+            // None is actually a malformed header line we just ignore here
+            // Some(_) includes `^event:` lines
+            None | Some(_) => {}
+        }
+    }
+
+    Ok(CachegrindProperties {
+        metrics_prototype: metrics_prototype
+            .ok_or_else(|| anyhow!("Header field 'events' must be present"))?,
+        desc,
+        cmd: cmd.ok_or_else(|| anyhow!("Header field 'cmd' must be present"))?,
+    })
+}

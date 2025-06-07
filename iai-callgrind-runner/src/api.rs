@@ -79,6 +79,173 @@ pub struct BinaryBenchmarkGroups {
     pub has_teardown: bool,
 }
 
+/// TODO: DOCS
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[cfg_attr(feature = "runner", derive(EnumIter))]
+pub enum CachegrindMetric {
+    /// The default event. I cache reads (which equals the number of instructions executed)
+    Ir,
+    /// D Cache reads (which equals the number of memory reads) (--cache-sim=yes)
+    Dr,
+    /// D Cache writes (which equals the number of memory writes) (--cache-sim=yes)
+    Dw,
+    /// I1 cache read misses (--cache-sim=yes)
+    I1mr,
+    /// D1 cache read misses (--cache-sim=yes)
+    D1mr,
+    /// D1 cache write misses (--cache-sim=yes)
+    D1mw,
+    /// LL cache instruction read misses (--cache-sim=yes)
+    ILmr,
+    /// LL cache data read misses (--cache-sim=yes)
+    DLmr,
+    /// LL cache data write misses (--cache-sim=yes)
+    DLmw,
+    /// Derived event showing the L1 hits (--cache-sim=yes)
+    L1hits,
+    /// Derived event showing the LL hits (--cache-sim=yes)
+    LLhits,
+    /// Derived event showing the RAM hits (--cache-sim=yes)
+    RamHits,
+    /// Derived event showing the total amount of cache reads and writes (--cache-sim=yes)
+    TotalRW,
+    /// Derived event showing estimated CPU cycles (--cache-sim=yes)
+    EstimatedCycles,
+    /// Conditional branches executed (--branch-sim=yes)
+    Bc,
+    /// Conditional branches mispredicted (--branch-sim=yes)
+    Bcm,
+    /// Indirect branches executed (--branch-sim=yes)
+    Bi,
+    /// Indirect branches mispredicted (--branch-sim=yes)
+    Bim,
+}
+
+/// TODO: SORT into impl section
+/// TODO: DOCS from callgrind to cachegrind
+impl CachegrindMetric {
+    /// Return true if this `EventKind` is a derived event
+    ///
+    /// Derived events are calculated from Callgrind's native event types. See also
+    /// [`crate::runner::callgrind::model::Metrics::make_summary`]. Currently all derived events
+    /// are:
+    ///
+    /// * [`CachegrindMetric::L1hits`]
+    /// * [`CachegrindMetric::LLhits`]
+    /// * [`CachegrindMetric::RamHits`]
+    /// * [`CachegrindMetric::TotalRW`]
+    /// * [`CachegrindMetric::EstimatedCycles`]
+    pub fn is_derived(&self) -> bool {
+        matches!(
+            self,
+            CachegrindMetric::L1hits
+                | CachegrindMetric::LLhits
+                | CachegrindMetric::RamHits
+                | CachegrindMetric::TotalRW
+                | CachegrindMetric::EstimatedCycles
+        )
+    }
+
+    pub fn from_str_ignore_case(value: &str) -> Option<Self> {
+        match value.to_lowercase().as_str() {
+            "ir" => Some(Self::Ir),
+            "dr" => Some(Self::Dr),
+            "dw" => Some(Self::Dw),
+            "i1mr" => Some(Self::I1mr),
+            "ilmr" => Some(Self::ILmr),
+            "d1mr" => Some(Self::D1mr),
+            "dlmr" => Some(Self::DLmr),
+            "d1mw" => Some(Self::D1mw),
+            "dlmw" => Some(Self::DLmw),
+            "bc" => Some(Self::Bc),
+            "bcm" => Some(Self::Bcm),
+            "bi" => Some(Self::Bi),
+            "bim" => Some(Self::Bim),
+            "l1hits" => Some(Self::L1hits),
+            "llhits" => Some(Self::LLhits),
+            "ramhits" => Some(Self::RamHits),
+            "totalrw" => Some(Self::TotalRW),
+            "estimatedcycles" => Some(Self::EstimatedCycles),
+            _ => None,
+        }
+    }
+
+    pub fn to_name(&self) -> String {
+        format!("{:?}", *self)
+    }
+}
+
+impl Display for CachegrindMetric {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ir => f.write_str("Instructions"),
+            Self::L1hits => f.write_str("L1 Hits"),
+            Self::LLhits => f.write_str("L2 Hits"),
+            Self::RamHits => f.write_str("RAM Hits"),
+            Self::TotalRW => f.write_str("Total read+write"),
+            Self::EstimatedCycles => f.write_str("Estimated Cycles"),
+            _ => f.write_fmt(format_args!("{self:?}")),
+        }
+    }
+}
+
+/// TODO: Use `TryFrom` instead of panic??
+impl<T> From<T> for CachegrindMetric
+where
+    T: AsRef<str>,
+{
+    fn from(value: T) -> Self {
+        match value.as_ref() {
+            "Ir" => Self::Ir,
+            "Dr" => Self::Dr,
+            "Dw" => Self::Dw,
+            "I1mr" => Self::I1mr,
+            "ILmr" => Self::ILmr,
+            "D1mr" => Self::D1mr,
+            "DLmr" => Self::DLmr,
+            "D1mw" => Self::D1mw,
+            "DLmw" => Self::DLmw,
+            "Bc" => Self::Bc,
+            "Bcm" => Self::Bcm,
+            "Bi" => Self::Bi,
+            "Bim" => Self::Bim,
+            "L1hits" => Self::L1hits,
+            "LLhits" => Self::LLhits,
+            "RamHits" => Self::RamHits,
+            "TotalRW" => Self::TotalRW,
+            "EstimatedCycles" => Self::EstimatedCycles,
+            unknown => panic!("Unknown event type: {unknown}"),
+        }
+    }
+}
+
+/// TODO: NEEDED ?
+impl From<CachegrindMetric> for EventKind {
+    fn from(value: CachegrindMetric) -> Self {
+        match value {
+            CachegrindMetric::Ir => Self::Ir,
+            CachegrindMetric::Dr => Self::Dr,
+            CachegrindMetric::Dw => Self::Dw,
+            CachegrindMetric::I1mr => Self::I1mr,
+            CachegrindMetric::D1mr => Self::D1mr,
+            CachegrindMetric::D1mw => Self::D1mw,
+            CachegrindMetric::ILmr => Self::ILmr,
+            CachegrindMetric::DLmr => Self::DLmr,
+            CachegrindMetric::DLmw => Self::DLmw,
+            CachegrindMetric::L1hits => Self::L1hits,
+            CachegrindMetric::LLhits => Self::LLhits,
+            CachegrindMetric::RamHits => Self::RamHits,
+            CachegrindMetric::TotalRW => Self::TotalRW,
+            CachegrindMetric::EstimatedCycles => Self::EstimatedCycles,
+            CachegrindMetric::Bc => Self::Bc,
+            CachegrindMetric::Bcm => Self::Bcm,
+            CachegrindMetric::Bi => Self::Bi,
+            CachegrindMetric::Bim => Self::Bim,
+        }
+    }
+}
+
 /// A collection of groups of [`EventKind`]s
 ///
 /// `Callgrind` supports a large amount of metrics and their collection can be enabled with various

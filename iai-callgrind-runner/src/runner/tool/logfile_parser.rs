@@ -10,6 +10,7 @@ use super::error_metric_parser::ErrorMetricLogfileParser;
 use super::generic_parser::GenericLogfileParser;
 use super::{ToolOutputPath, ValgrindTool};
 use crate::error::Error;
+use crate::runner::cachegrind::summary_parser::SummaryParser;
 use crate::runner::dhat::logfile_parser::DhatLogfileParser;
 use crate::runner::summary::{
     SegmentDetails, ToolMetricSummary, ToolMetrics, ToolRun, ToolRunSegment,
@@ -33,36 +34,49 @@ lazy_static! {
             .expect("Regex should compile");
 }
 
-pub trait LogfileParser {
-    fn parse_single(&self, path: PathBuf) -> Result<Logfile>;
-    fn parse(&self, output_path: &ToolOutputPath) -> Result<Vec<Logfile>> {
-        let log_path = output_path.to_log_output();
-        debug!("{}: Parsing log file '{}'", output_path.tool.id(), log_path);
+// TODO: Adjust variables, messages to rename and move into parser module?
+// TODO: Adjust usages names like logfile_parser etc.
+pub trait Parser {
+    fn parse_single(&self, path: PathBuf) -> Result<ParserResult>;
+    fn parse_with(&self, output_path: &ToolOutputPath) -> Result<Vec<ParserResult>> {
+        debug!("{}: Parsing file '{}'", output_path.tool.id(), output_path);
 
-        let mut logfiles = vec![];
-        let Ok(paths) = log_path.real_paths() else {
+        let mut parser_results = vec![];
+        let Ok(paths) = output_path.real_paths() else {
             return Ok(vec![]);
         };
 
         for path in paths {
             let logfile = self.parse_single(path)?;
-            logfiles.push(logfile);
+            parser_results.push(logfile);
         }
 
-        logfiles.sort_by_key(|x| x.header.pid);
-        Ok(logfiles)
+        parser_results.sort_by_key(|x| x.header.pid);
+        Ok(parser_results)
     }
+
+    fn parse(&self) -> Result<Vec<ParserResult>> {
+        self.parse_with(self.get_output_path())
+    }
+
+    fn parse_base(&self) -> Result<Vec<ParserResult>> {
+        self.parse_with(&self.get_output_path().to_base_path())
+    }
+
+    fn get_output_path(&self) -> &ToolOutputPath;
 }
 
+// TODO: Header should include the callgrind stuff too
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Header {
     pub command: String,
     pub pid: i32,
     pub parent_pid: Option<i32>,
+    pub desc: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Logfile {
+pub struct ParserResult {
     pub path: PathBuf,
     pub header: Header,
     pub details: Vec<String>,
@@ -71,12 +85,12 @@ pub struct Logfile {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct LogfileSummary {
-    pub logfile: EitherOrBoth<Logfile>,
+    pub logfile: EitherOrBoth<ParserResult>,
     pub metrics_summary: ToolMetricSummary,
 }
 
-impl From<Logfile> for SegmentDetails {
-    fn from(value: Logfile) -> Self {
+impl From<ParserResult> for SegmentDetails {
+    fn from(value: ParserResult) -> Self {
         Self {
             command: value.header.command,
             pid: value.header.pid,
@@ -90,8 +104,8 @@ impl From<Logfile> for SegmentDetails {
 }
 
 // Logfiles are separated per process but not per threads by any tool
-impl From<EitherOrBoth<Vec<Logfile>>> for ToolRun {
-    fn from(logfiles: EitherOrBoth<Vec<Logfile>>) -> Self {
+impl From<EitherOrBoth<Vec<ParserResult>>> for ToolRun {
+    fn from(logfiles: EitherOrBoth<Vec<ParserResult>>) -> Self {
         let mut total: Option<ToolMetricSummary> = None;
 
         let segments: Vec<ToolRunSegment> = match logfiles {
@@ -252,16 +266,32 @@ pub fn parse_header(path: &Path, mut lines: impl Iterator<Item = String>) -> Res
         })?,
         pid,
         parent_pid,
+        desc: vec![],
     })
 }
 
-pub fn parser_factory(tool: ValgrindTool, root_dir: PathBuf) -> Box<dyn LogfileParser> {
+pub fn parser_factory(
+    tool: ValgrindTool,
+    root_dir: PathBuf,
+    output_path: &ToolOutputPath,
+) -> Box<dyn Parser> {
     match tool {
-        // TODO: Add Cachegrind parser
-        ValgrindTool::DHAT => Box::new(DhatLogfileParser { root_dir }),
+        ValgrindTool::Cachegrind => Box::new(SummaryParser {
+            output_path: output_path.clone(),
+        }),
+        ValgrindTool::DHAT => Box::new(DhatLogfileParser {
+            output_path: output_path.to_log_output(),
+            root_dir,
+        }),
         ValgrindTool::Memcheck | ValgrindTool::DRD | ValgrindTool::Helgrind => {
-            Box::new(ErrorMetricLogfileParser { root_dir })
+            Box::new(ErrorMetricLogfileParser {
+                output_path: output_path.to_log_output(),
+                root_dir,
+            })
         }
-        _ => Box::new(GenericLogfileParser { root_dir }),
+        _ => Box::new(GenericLogfileParser {
+            output_path: output_path.to_log_output(),
+            root_dir,
+        }),
     }
 }

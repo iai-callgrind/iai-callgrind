@@ -13,7 +13,9 @@ use super::lib_bench::LibBench;
 use super::meta::Metadata;
 use super::summary::{Diffs, MetricsDiff, SegmentDetails, ToolMetricSummary, ToolRun};
 use super::tool::ValgrindTool;
-use crate::api::{self, CallgrindMetrics, DhatMetricKind, ErrorMetricKind, EventKind};
+use crate::api::{
+    self, CachegrindMetric, CallgrindMetrics, DhatMetricKind, ErrorMetricKind, EventKind,
+};
 use crate::util::{
     make_relative, to_string_signed_short, to_string_unsigned_short, truncate_str_utf8,
     EitherOrBoth,
@@ -39,6 +41,20 @@ pub const DHAT_DEFAULT: [DhatMetricKind; 8] = [
     DhatMetricKind::AtTEndBlocks,
     DhatMetricKind::ReadsBytes,
     DhatMetricKind::WritesBytes,
+];
+
+/// TODO: DOCS
+pub const CACHEGRIND_DEFAULT: [CachegrindMetric; 10] = [
+    CachegrindMetric::Ir,
+    CachegrindMetric::L1hits,
+    CachegrindMetric::LLhits,
+    CachegrindMetric::RamHits,
+    CachegrindMetric::TotalRW,
+    CachegrindMetric::EstimatedCycles,
+    CachegrindMetric::Bc,
+    CachegrindMetric::Bcm,
+    CachegrindMetric::Bi,
+    CachegrindMetric::Bim,
 ];
 
 /// The string used to signal that a value is not available
@@ -920,6 +936,13 @@ impl Formatter for VerticalFormatter {
                     self.output_format
                         .event_kinds
                         .clone()
+                        .iter()
+                        .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+                );
+            }
+            ToolMetricSummary::CachegrindSummary(summary) => {
+                self.format_metrics(
+                    CACHEGRIND_DEFAULT
                         .iter()
                         .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
                 );

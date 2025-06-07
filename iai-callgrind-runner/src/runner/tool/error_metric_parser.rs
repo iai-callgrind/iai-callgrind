@@ -8,8 +8,9 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 use super::logfile_parser::{
-    parse_header, Logfile, LogfileParser, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
+    parse_header, Parser, ParserResult, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
 };
+use super::ToolOutputPath;
 use crate::api::ErrorMetricKind;
 use crate::runner::metrics::Metrics;
 use crate::runner::summary::ToolMetrics;
@@ -28,11 +29,12 @@ enum State {
 }
 
 pub struct ErrorMetricLogfileParser {
+    pub output_path: ToolOutputPath,
     pub root_dir: PathBuf,
 }
 
-impl LogfileParser for ErrorMetricLogfileParser {
-    fn parse_single(&self, path: PathBuf) -> Result<Logfile> {
+impl Parser for ErrorMetricLogfileParser {
+    fn parse_single(&self, path: PathBuf) -> Result<ParserResult> {
         let file = File::open(&path)
             .with_context(|| format!("Error opening log file '{}'", path.display()))?;
 
@@ -112,7 +114,7 @@ impl LogfileParser for ErrorMetricLogfileParser {
             }
         }
 
-        Ok(Logfile {
+        Ok(ParserResult {
             header,
             path,
             metrics: ToolMetrics::ErrorMetrics(metrics.context(
@@ -120,6 +122,10 @@ impl LogfileParser for ErrorMetricLogfileParser {
             )?),
             details,
         })
+    }
+
+    fn get_output_path(&self) -> &ToolOutputPath {
+        &self.output_path
     }
 }
 

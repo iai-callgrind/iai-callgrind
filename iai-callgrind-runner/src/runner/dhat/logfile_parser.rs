@@ -11,8 +11,9 @@ use crate::api::DhatMetricKind;
 use crate::runner::metrics::Metrics;
 use crate::runner::summary::ToolMetrics;
 use crate::runner::tool::logfile_parser::{
-    parse_header, Logfile, LogfileParser, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
+    parse_header, Parser, ParserResult, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
 };
+use crate::runner::tool::ToolOutputPath;
 
 // The different regex have to consider --time-stamp=yes
 lazy_static! {
@@ -32,6 +33,7 @@ enum State {
 }
 
 pub struct DhatLogfileParser {
+    pub output_path: ToolOutputPath,
     pub root_dir: PathBuf,
 }
 
@@ -143,8 +145,8 @@ impl DhatLogfileParser {
     }
 }
 
-impl LogfileParser for DhatLogfileParser {
-    fn parse_single(&self, path: PathBuf) -> Result<Logfile> {
+impl Parser for DhatLogfileParser {
+    fn parse_single(&self, path: PathBuf) -> Result<ParserResult> {
         let file = File::open(&path)
             .with_context(|| format!("Error opening log file '{}'", path.display()))?;
 
@@ -174,12 +176,16 @@ impl LogfileParser for DhatLogfileParser {
             }
         }
 
-        Ok(Logfile {
+        Ok(ParserResult {
             header,
             path,
             details,
             metrics: ToolMetrics::DhatMetrics(metrics),
         })
+    }
+
+    fn get_output_path(&self) -> &ToolOutputPath {
+        &self.output_path
     }
 }
 

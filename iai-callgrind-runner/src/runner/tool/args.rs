@@ -28,6 +28,7 @@ pub mod defaults {
     pub const COMBINE_DUMPS: bool = false;
     pub const DUMP_LINE: bool = true;
     pub const DUMP_INSTR: bool = false;
+    pub const SEPARATE_THREADS: bool = true;
 
     // Shared defaults between error emitting tools like Memcheck
     // TODO: Change this to `4` and document it with the other error codes ?
@@ -36,7 +37,6 @@ pub mod defaults {
 
     // Shared defaults between all tools
     pub const TRACE_CHILDREN: bool = true;
-    pub const SEPARATE_THREADS: bool = true;
     pub const FAIR_SCHED: FairSched = FairSched::Try;
     pub const VERBOSE: bool = false;
 }
