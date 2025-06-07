@@ -122,6 +122,7 @@ pub enum ValgrindTool {
     Massif,
     DHAT,
     BBV,
+    Cachegrind,
 }
 
 impl ToolCommand {
@@ -222,6 +223,7 @@ impl ToolCommand {
             stdin
                 .apply(&mut self.command, Stream::Stdin, child.as_mut())
                 .map_err(|error| {
+                    // TODO: Why only callgrind and not self.tool??
                     Error::BenchmarkError(ValgrindTool::Callgrind, module_path.clone(), error)
                 })?;
         }
@@ -1325,6 +1327,7 @@ impl ToolOutputPath {
     /// sanitize_<tool> method.
     pub fn sanitize(&self) -> Result<()> {
         match self.tool {
+            // TODO: sanitize cachegrind
             ValgrindTool::Callgrind => self.sanitize_callgrind()?,
             ValgrindTool::BBV => self.sanitize_bbv()?,
             _ => self.sanitize_generic()?,
@@ -1351,13 +1354,18 @@ impl ValgrindTool {
             ValgrindTool::DRD => "drd".to_owned(),
             ValgrindTool::Massif => "massif".to_owned(),
             ValgrindTool::BBV => "exp-bbv".to_owned(),
+            ValgrindTool::Cachegrind => "cachegrind".to_owned(),
         }
     }
 
     pub fn has_output_file(&self) -> bool {
         matches!(
             self,
-            ValgrindTool::Callgrind | ValgrindTool::DHAT | ValgrindTool::BBV | ValgrindTool::Massif
+            ValgrindTool::Callgrind
+                | ValgrindTool::DHAT
+                | ValgrindTool::BBV
+                | ValgrindTool::Massif
+                | ValgrindTool::Cachegrind
         )
     }
 }
@@ -1371,12 +1379,13 @@ impl Display for ValgrindTool {
 impl From<api::ValgrindTool> for ValgrindTool {
     fn from(value: api::ValgrindTool) -> Self {
         match value {
-            api::ValgrindTool::Memcheck => ValgrindTool::Memcheck,
-            api::ValgrindTool::Helgrind => ValgrindTool::Helgrind,
-            api::ValgrindTool::DRD => ValgrindTool::DRD,
-            api::ValgrindTool::Massif => ValgrindTool::Massif,
-            api::ValgrindTool::DHAT => ValgrindTool::DHAT,
-            api::ValgrindTool::BBV => ValgrindTool::BBV,
+            api::ValgrindTool::Memcheck => Self::Memcheck,
+            api::ValgrindTool::Helgrind => Self::Helgrind,
+            api::ValgrindTool::DRD => Self::DRD,
+            api::ValgrindTool::Massif => Self::Massif,
+            api::ValgrindTool::DHAT => Self::DHAT,
+            api::ValgrindTool::BBV => Self::BBV,
+            api::ValgrindTool::Cachegrind => Self::Cachegrind,
         }
     }
 }
@@ -1393,6 +1402,7 @@ impl TryFrom<&str> for ValgrindTool {
             "drd" => Ok(ValgrindTool::DRD),
             "massif" => Ok(ValgrindTool::Massif),
             "exp-bbv" => Ok(ValgrindTool::BBV),
+            "cachegrind" => Ok(ValgrindTool::Cachegrind),
             v => Err(anyhow!("Unknown tool '{}'", v)),
         }
     }

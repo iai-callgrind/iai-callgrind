@@ -657,6 +657,8 @@ pub enum ValgrindTool {
     DHAT,
     /// [BBV: an experimental basic block vector generation tool](https://valgrind.org/docs/manual/bbv-manual.html)
     BBV,
+    /// [Cachegrind: a high-precision tracing profiler](https://valgrind.org/docs/manual/cg-manual.html)
+    Cachegrind,
 }
 
 impl BinaryBenchmarkConfig {

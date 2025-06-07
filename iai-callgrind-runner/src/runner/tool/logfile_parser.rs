@@ -257,6 +257,7 @@ pub fn parse_header(path: &Path, mut lines: impl Iterator<Item = String>) -> Res
 
 pub fn parser_factory(tool: ValgrindTool, root_dir: PathBuf) -> Box<dyn LogfileParser> {
     match tool {
+        // TODO: Add Cachegrind parser
         ValgrindTool::DHAT => Box::new(DhatLogfileParser { root_dir }),
         ValgrindTool::Memcheck | ValgrindTool::DRD | ValgrindTool::Helgrind => {
             Box::new(ErrorMetricLogfileParser { root_dir })
