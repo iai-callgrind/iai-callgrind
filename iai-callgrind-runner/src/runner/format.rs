@@ -210,6 +210,7 @@ impl BinaryBenchmarkHeader {
     pub fn print(&self) {
         if self.output_format.kind == OutputFormatKind::Default {
             self.inner.print();
+            // TODO: Move this out of here
             if self.has_tools_enabled {
                 let mut formatter = VerticalFormatter::new(self.output_format.clone());
                 formatter.format_tool_headline(ValgrindTool::Callgrind);

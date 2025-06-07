@@ -10,6 +10,37 @@ use crate::api::{self};
 use crate::error::Error;
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
+pub mod defaults {
+    use super::FairSched;
+
+    // Shared defaults between cachegrind and callgrind
+    // Set some reasonable cache sizes. The exact sizes matter less than having fixed sizes, since
+    // otherwise callgrind would take them from the CPU and make benchmark runs even more
+    // incomparable between machines.
+    pub const I1: &str = "32768,8,64";
+    pub const D1: &str = "32768,8,64";
+    pub const LL: &str = "8388608,16,64";
+    pub const CACHE_SIM: bool = true;
+
+    // Defaults specific to callgrind
+    pub const COMPRESS_POS: bool = false;
+    pub const COMPRESS_STRINGS: bool = false;
+    pub const COMBINE_DUMPS: bool = false;
+    pub const DUMP_LINE: bool = true;
+    pub const DUMP_INSTR: bool = false;
+
+    // Shared defaults between error emitting tools like Memcheck
+    // TODO: Change this to `4` and document it with the other error codes ?
+    pub const ERROR_EXIT_CODE_ERROR_TOOL: &str = "201";
+    pub const ERROR_EXIT_CODE_OTHER_TOOL: &str = "0";
+
+    // Shared defaults between all tools
+    pub const TRACE_CHILDREN: bool = true;
+    pub const SEPARATE_THREADS: bool = true;
+    pub const FAIR_SCHED: FairSched = FairSched::Try;
+    pub const VERBOSE: bool = false;
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FairSched {
     Yes,
@@ -63,17 +94,18 @@ impl ToolArgs {
             log_path: Option::default(),
             error_exitcode: match tool {
                 ValgrindTool::Memcheck | ValgrindTool::Helgrind | ValgrindTool::DRD => {
-                    "201".to_owned()
+                    defaults::ERROR_EXIT_CODE_ERROR_TOOL.to_owned()
                 }
                 ValgrindTool::Callgrind
                 | ValgrindTool::Massif
                 | ValgrindTool::DHAT
-                | ValgrindTool::BBV => "0".to_owned(),
+                | ValgrindTool::BBV
+                | ValgrindTool::Cachegrind => defaults::ERROR_EXIT_CODE_OTHER_TOOL.to_owned(),
             },
-            verbose: false,
+            verbose: defaults::VERBOSE,
             other: Vec::default(),
-            trace_children: true,
-            fair_sched: FairSched::Try,
+            trace_children: defaults::TRACE_CHILDREN,
+            fair_sched: defaults::FAIR_SCHED,
         };
 
         for arg in raw_args.0 {
@@ -193,6 +225,18 @@ impl ToolArgs {
                 pc_arg.push(pc_out.to_path());
                 self.output_paths.push(bb_arg);
                 self.output_paths.push(pc_arg);
+            }
+            ValgrindTool::Cachegrind => {
+                let mut arg = OsString::from("--cachegrind-out-file=");
+                let cachegrind_out_path = if let Some(modifier) = modifier {
+                    output_path.with_modifiers([modifier.as_ref()])
+                } else if self.trace_children {
+                    output_path.with_modifiers(["#%p"])
+                } else {
+                    output_path.clone()
+                };
+                arg.push(cachegrind_out_path.to_path());
+                self.output_paths.push(arg);
             }
             // The other tools don't have an outfile
             _ => {}
