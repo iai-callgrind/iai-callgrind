@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use log::{debug, trace};
 
 use super::parser::parse_header;
@@ -11,37 +11,16 @@ use crate::runner::summary::ToolMetrics;
 use crate::runner::tool::logfile_parser::{self, Header, Parser};
 use crate::runner::tool::ToolOutputPath;
 
-/// TODO: UPDATE DOCS
-/// Parse the `total:` line in the callgrind output or `summary:` if total is not present
+/// Parse the `summary:` line in the cachegrind output file
 ///
-/// The format is described [here](https://valgrind.org/docs/manual/cl-format.html)
+/// The format of the `.out` file is fully described
+/// [here](https://valgrind.org/docs/manual/cg-manual.html#cg-manual.impl-details.file-format)
 ///
-/// The summary would usually be the first choice, but there are bugs in the summary line if
-/// callgrind client requests are used, which is why the total is used as primary metric and then
-/// the summary.
-///
-/// Regarding the summary:
-///
-/// For the visualization to be able to show cost percentage, a sum of the cost of the full run has
-/// to be known. Usually, it is assumed that this is the sum of all cost lines in a file. But
-/// sometimes, this is not correct. The "summary:" line in the header gives the full cost for the
-/// profile run.
-///
-/// This header line specifies a summary cost, which should be equal or larger than a total over all
-/// self costs. It may be larger as the cost lines may not represent all cost of the program run.
-/// ```text
-/// Spec from https://valgrind.org/docs/manual/cg-manual.html
-/// file         ::= desc_line* cmd_line events_line data_line+ summary_line
-/// desc_line    ::= "desc:" ws? non_nl_string
-/// cmd_line     ::= "cmd:" ws? cmd
-/// events_line  ::= "events:" ws? (event ws)+
-/// data_line    ::= file_line | fn_line | count_line
-/// file_line    ::= "fl=" filename
-/// fn_line      ::= "fn=" fn_name
-/// count_line   ::= line_num (ws+ count)* ws*
-/// summary_line ::= "summary:" ws? count (ws+ count)+ ws*
-/// count        ::= num
-/// ```
+/// Note that unlike the callgrind output file the cachegrind file does not contain the pid or ppid.
+/// Since we need them, it's necessary to additionally parse the matching log output file. Although
+/// very unlikely, it is still possible that the pid and ppid can't be parsed from the log file, so
+/// a `0` for pid and `None` for ppid can be interpreted as failure and shown as such in the
+/// terminal output.
 #[derive(Debug)]
 pub struct SummaryParser {
     pub output_path: ToolOutputPath,
@@ -74,18 +53,31 @@ impl Parser for SummaryParser {
             }
         }
 
+        let (pid, parent_pid) = if let Some(logfile) = self.output_path.log_path_of(&path) {
+            let file = File::open(&logfile)
+                .with_context(|| format!("Error opening log file '{}'", logfile.display()))?;
+
+            let iter = BufReader::new(file)
+                .lines()
+                .map(std::result::Result::unwrap);
+            let header = logfile_parser::parse_header(&logfile, iter)?;
+            (header.pid, header.parent_pid)
+        } else {
+            // TODO: SHOW A PID OF 0 as N/A ?? in the terminal output
+            (0i32, None)
+        };
+
         if let Some(metrics) = metrics {
             let header = Header {
                 command: properties.cmd,
-                // TODO: PARSE THE path FOR THE PID
-                pid: 0,
-                // TODO: PARSE THE LOGFILE FOR THE PPID
-                parent_pid: None,
+                pid,
+                parent_pid,
                 desc: properties.desc,
             };
             Ok(logfile_parser::ParserResult {
                 path,
                 header,
+                // TODO: The details could be actually parsed from the logfile
                 details: vec![],
                 metrics: ToolMetrics::CachegrindMetrics(metrics),
             })
