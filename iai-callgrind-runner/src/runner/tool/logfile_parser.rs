@@ -295,3 +295,28 @@ pub fn parser_factory(
         }),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use super::*;
+
+    #[rstest]
+    #[case::equals_sign(
+        "==1746070== Cachegrind, a high-precision tracing profiler",
+        1_746_070_i32
+    )]
+    #[case::hyphen(
+        "--1746070-- warning: L3 cache found, using its data for the LL simulation.",
+        1_746_070_i32
+    )]
+    #[case::timestamp(
+        "==00:00:00:00.000 1811497== Callgrind, a call-graph generating cache profiler",
+        1_811_497_i32
+    )]
+    fn test_extract_pid(#[case] haystack: &str, #[case] expected: i32) {
+        let actual = extract_pid(haystack).unwrap();
+        assert_eq!(actual, expected);
+    }
+}
