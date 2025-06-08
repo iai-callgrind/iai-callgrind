@@ -56,6 +56,11 @@ lazy_static! {
         r"^(?<type>[.](?:out|log))(?<base>[.](old|base@[^.]+))?(?<pid>[.][#][0-9]+)?$"
     )
     .expect("Regex should compile");
+
+    static ref REAL_FILENAME_RE: Regex = Regex::new(
+        r"^(?:[.](?<pid>[0-9]+))?(?:[.]t(?<tid>[0-9]+))?(?:[.]p(?<part>[0-9]+))?(?:[.](?<bbv>bb|pc))?(?:[.](?<type>out|log))(?:[.](?<base>old|base@[^.]+))?$"
+    )
+    .expect("Regex should compile");
 }
 
 #[derive(Debug, Default, Clone)]
@@ -549,6 +554,8 @@ impl ToolOutputPath {
     /// Create a new `ToolOutputPath`.
     ///
     /// The `base_dir` is supposed to be the same as [`crate::runner::meta::Metadata::target_dir`].
+    /// The `name` is supposed to be the name of the benchmark function. If a benchmark id is
+    /// present join both with a dot as separator to get the final `name`.
     pub fn new(
         kind: ToolOutputPathKind,
         tool: ValgrindTool,
@@ -702,21 +709,36 @@ impl ToolOutputPath {
         }
     }
 
-    pub fn to_new_output(&self) -> Self {
-        Self {
-            kind: match &self.kind {
-                ToolOutputPathKind::OldLog | ToolOutputPathKind::BaseLog(_) => {
-                    ToolOutputPathKind::Log
+    /// Return the path to the log file for the given `path`
+    ///
+    /// `path` is supposed to be a path to a valid file in the directory of this [`ToolOutputPath`].
+    pub fn log_path_of(&self, path: &Path) -> Option<PathBuf> {
+        let file_name = path.strip_prefix(&self.dir).ok()?;
+        if let Some(suffix) = self.strip_prefix(&file_name.to_string_lossy()) {
+            let caps = REAL_FILENAME_RE.captures(suffix)?;
+            if let Some(kind) = caps.name("type") {
+                match kind.as_str() {
+                    "out" => {
+                        let mut string = self.prefix();
+                        for s in [
+                            caps.name("pid").map(|c| format!(".{}", c.as_str())),
+                            Some(".log".to_owned()),
+                            caps.name("base").map(|c| format!(".{}", c.as_str())),
+                        ]
+                        .iter()
+                        .filter_map(|s| s.as_ref())
+                        {
+                            string.push_str(s);
+                        }
+
+                        return Some(self.dir.join(string));
+                    }
+                    _ => return Some(path.to_owned()),
                 }
-                ToolOutputPathKind::OldOut | ToolOutputPathKind::Base(_) => ToolOutputPathKind::Out,
-                kind => kind.clone(),
-            },
-            tool: self.tool,
-            baseline_kind: self.baseline_kind.clone(),
-            name: self.name.clone(),
-            dir: self.dir.clone(),
-            modifiers: self.modifiers.clone(),
+            }
         }
+
+        None
     }
 
     pub fn dump_log(&self, log_level: log::Level, writer: &mut impl Write) -> Result<()> {
@@ -744,6 +766,7 @@ impl ToolOutputPath {
         Ok(())
     }
 
+    /// TODO: modifiers are .mod.out instead of .out.mod or??
     /// This method can only be used to create the path passed to the tools
     ///
     /// The modifiers are extrapolated by the tools and won't match any real path name.
@@ -1524,5 +1547,141 @@ mod tests {
     #[case::log_with_pid(".log.#1234")]
     fn test_bbv_filename_regex(#[case] haystack: &str) {
         assert!(BBV_ORIG_FILENAME_RE.is_match(haystack));
+    }
+
+    #[rstest]
+    #[case::out(".out", vec![("type", "out")])]
+    #[case::pid_out(".2049595.out", vec![("pid", "2049595"), ("type", "out")])]
+    #[case::pid_thread_out(".2049595.t1.out", vec![("pid", "2049595"), ("tid", "1"), ("type", "out")])]
+    #[case::pid_thread_part_out(".2049595.t1.p1.out", vec![("pid", "2049595"), ("tid", "1"), ("part", "1"), ("type", "out")])]
+    #[case::out_old(".out.old", vec![("type", "out"), ("base", "old")])]
+    #[case::pid_out_old(".2049595.out.old", vec![("pid", "2049595"), ("type", "out"), ("base", "old")])]
+    #[case::pid_thread_out_old(".2049595.t1.out.old", vec![("pid", "2049595"), ("tid", "1"), ("type", "out"), ("base", "old")])]
+    #[case::pid_thread_part_out_old(".2049595.t1.p1.out.old", vec![("pid", "2049595"), ("tid", "1"), ("part", "1"), ("type", "out"), ("base", "old")])]
+    #[case::out_base(".out.base@name", vec![("type", "out"), ("base", "base@name")])]
+    #[case::pid_out_base(".2049595.out.base@name", vec![("pid", "2049595"), ("type", "out"), ("base", "base@name")])]
+    #[case::pid_thread_out_base(".2049595.t1.out.base@name", vec![("pid", "2049595"), ("tid", "1"), ("type", "out"), ("base", "base@name")])]
+    #[case::pid_thread_part_out_base(".2049595.t1.p1.out.base@name", vec![("pid", "2049595"), ("tid", "1"), ("part", "1"), ("type", "out"), ("base", "base@name")])]
+    #[case::bb_out(".bb.out", vec![("bbv", "bb"), ("type", "out")])]
+    #[case::pc_out(".pc.out", vec![("bbv", "pc"), ("type", "out")])]
+    #[case::pid_bb_out(".123.bb.out", vec![("pid", "123"), ("bbv", "bb"), ("type", "out")])]
+    #[case::pid_thread_bb_out(".123.t1.bb.out", vec![("pid", "123"), ("tid", "1"), ("bbv", "bb"), ("type", "out")])]
+    #[case::log(".log", vec![("type", "log")])]
+    fn test_real_file_name_regex(#[case] haystack: &str, #[case] expected: Vec<(&str, &str)>) {
+        assert!(REAL_FILENAME_RE.is_match(haystack));
+
+        let caps = REAL_FILENAME_RE.captures(haystack).unwrap();
+        for (name, value) in expected {
+            assert_eq!(caps.name(name).unwrap().as_str(), value);
+        }
+    }
+
+    #[rstest]
+    #[case::out(
+        ValgrindTool::Callgrind,
+        "callgrind.bench_thread_in_subprocess.two.out",
+        "callgrind.bench_thread_in_subprocess.two.log"
+    )]
+    #[case::out_old(
+        ValgrindTool::Callgrind,
+        "callgrind.bench_thread_in_subprocess.two.out.old",
+        "callgrind.bench_thread_in_subprocess.two.log.old"
+    )]
+    #[case::pid_out(
+        ValgrindTool::Callgrind,
+        "callgrind.bench_thread_in_subprocess.two.123.out",
+        "callgrind.bench_thread_in_subprocess.two.123.log"
+    )]
+    #[case::pid_tid_out(
+        ValgrindTool::Callgrind,
+        "callgrind.bench_thread_in_subprocess.two.123.t1.out",
+        "callgrind.bench_thread_in_subprocess.two.123.log"
+    )]
+    #[case::pid_tid_part_out(
+        ValgrindTool::Callgrind,
+        "callgrind.bench_thread_in_subprocess.two.123.t1.p2.out",
+        "callgrind.bench_thread_in_subprocess.two.123.log"
+    )]
+    #[case::pid_out_old(
+        ValgrindTool::Callgrind,
+        "callgrind.bench_thread_in_subprocess.two.123.out.old",
+        "callgrind.bench_thread_in_subprocess.two.123.log.old"
+    )]
+    #[case::pid_tid_part_out_old(
+        ValgrindTool::Callgrind,
+        "callgrind.bench_thread_in_subprocess.two.123.t1.p2.out.old",
+        "callgrind.bench_thread_in_subprocess.two.123.log.old"
+    )]
+    #[case::bb_out(
+        ValgrindTool::BBV,
+        "exp-bbv.bench_thread_in_subprocess.two.bb.out",
+        "exp-bbv.bench_thread_in_subprocess.two.log"
+    )]
+    #[case::bb_pid_out(
+        ValgrindTool::BBV,
+        "exp-bbv.bench_thread_in_subprocess.two.123.bb.out",
+        "exp-bbv.bench_thread_in_subprocess.two.123.log"
+    )]
+    #[case::bb_pid_tid_out(
+        ValgrindTool::BBV,
+        "exp-bbv.bench_thread_in_subprocess.two.123.t1.bb.out",
+        "exp-bbv.bench_thread_in_subprocess.two.123.log"
+    )]
+    fn test_tool_output_path_log_path_of(
+        #[case] tool: ValgrindTool,
+        #[case] input: PathBuf,
+        #[case] expected: PathBuf,
+    ) {
+        let output_path = ToolOutputPath::new(
+            ToolOutputPathKind::Out,
+            tool,
+            &BaselineKind::Old,
+            &PathBuf::from("/root"),
+            &ModulePath::new("hello::world"),
+            "bench_thread_in_subprocess.two",
+        );
+        let expected = output_path.dir.join(expected);
+        let actual = output_path
+            .log_path_of(&output_path.dir.join(input))
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_tool_output_path_log_path_of_when_not_in_dir_then_none() {
+        let output_path = ToolOutputPath::new(
+            ToolOutputPathKind::Out,
+            ValgrindTool::Callgrind,
+            &BaselineKind::Old,
+            &PathBuf::from("/root"),
+            &ModulePath::new("hello::world"),
+            "bench_thread_in_subprocess.two",
+        );
+
+        assert!(output_path
+            .log_path_of(&PathBuf::from(
+                "/root/not/here/bench_thread_in_subprocess.two/callgrind.\
+                 bench_thread_in_subprocess.two.out"
+            ))
+            .is_none());
+    }
+
+    #[test]
+    fn test_tool_output_path_log_path_of_when_log_then_same() {
+        let output_path = ToolOutputPath::new(
+            ToolOutputPathKind::Log,
+            ValgrindTool::Callgrind,
+            &BaselineKind::Old,
+            &PathBuf::from("/root"),
+            &ModulePath::new("hello::world"),
+            "bench_thread_in_subprocess.two",
+        );
+        let path = PathBuf::from(
+            "/root/hello/world/bench_thread_in_subprocess.two/callgrind.\
+             bench_thread_in_subprocess.two.log",
+        );
+
+        assert_eq!(output_path.log_path_of(&path), Some(path));
     }
 }
