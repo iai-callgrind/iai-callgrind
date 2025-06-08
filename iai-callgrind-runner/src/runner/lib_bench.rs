@@ -3,34 +3,24 @@
 //! This module runs all the library benchmarks
 use std::collections::HashMap;
 use std::ffi::OsString;
-use std::io::stderr;
 use std::time::Instant;
 
 use anyhow::Result;
 
 use super::callgrind::args::Args;
-use super::callgrind::flamegraph::{
-    BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
-    LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
-};
-use super::callgrind::parser::{CallgrindParser, Sentinel};
-use super::callgrind::summary_parser::SummaryParser;
-use super::callgrind::{RegressionConfig, Summaries};
+use super::callgrind::flamegraph::Config as FlamegraphConfig;
+use super::callgrind::RegressionConfig;
 use super::common::{Assistant, AssistantKind, BenchmarkSummaries, Config, ModulePath};
-use super::format::{
-    print_no_capture_footer, Formatter, LibraryBenchmarkHeader, OutputFormat, VerticalFormatter,
-};
+use super::format::{LibraryBenchmarkHeader, OutputFormat};
 use super::meta::Metadata;
-use super::summary::{
-    BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, CallgrindRegression,
-    CallgrindSummary, MetricsSummary, SummaryOutput, ToolRun,
-};
+use super::summary::{BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput};
 use super::tool::{
-    RunOptions, ToolCommand, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind,
-    ValgrindTool,
+    RunOptions, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind, ValgrindTool,
 };
 use super::DEFAULT_TOGGLE;
-use crate::api::{self, EntryPoint, LibraryBenchmarkGroups};
+use crate::api::{
+    self, EntryPoint, LibraryBenchmarkBench, LibraryBenchmarkConfig, LibraryBenchmarkGroups,
+};
 use crate::runner::format;
 
 mod defaults {
@@ -46,6 +36,7 @@ struct BaselineBenchmark {
 // A `Group` is the organizational unit and counterpart of the `library_benchmark_group!` macro
 #[derive(Debug)]
 struct Group {
+    // TODO: Either rename to name as in bin_bench::Group or rename bin_bench::Group::name to id
     id: String,
     benches: Vec<LibBench>,
     compare_by_id: bool,
@@ -63,17 +54,23 @@ struct Groups(Vec<Group>);
 /// It needs an implementation of `Benchmark` to be run.
 #[derive(Debug)]
 pub struct LibBench {
+    // TODO: rename to group_index
     pub bench_index: usize,
+    // TODO: rename to bench_index
     pub index: usize,
     pub id: Option<String>,
     pub function_name: String,
     pub args: Option<String>,
     pub run_options: RunOptions,
+    // TODO: REMOVE: is already in ToolConfig for Callgrind
     pub callgrind_args: Args,
+    // TODO: These both should be part of a ToolConfig
     pub flamegraph_config: Option<FlamegraphConfig>,
     pub regression_config: Option<RegressionConfig>,
     pub tools: ToolConfigs,
     pub module_path: ModulePath,
+    // TODO: Evaluate at LibBench creation level and remove if possible
+    // might be needed by the different FlamegraphGenerator impl
     pub entry_point: EntryPoint,
     pub output_format: OutputFormat,
 }
@@ -144,33 +141,12 @@ impl Benchmark for BaselineBenchmark {
         let header = LibraryBenchmarkHeader::new(lib_bench);
         header.print();
 
-        let callgrind_command = ToolCommand::new(
-            ValgrindTool::Callgrind,
-            &config.meta,
-            config.meta.args.nocapture,
-        );
-
-        let mut callgrind_args = lib_bench.callgrind_args.clone();
-
-        match &lib_bench.entry_point {
-            EntryPoint::None => {}
-            EntryPoint::Default => {
-                callgrind_args.insert_toggle_collect(DEFAULT_TOGGLE);
-            }
-            EntryPoint::Custom(custom) => {
-                callgrind_args.insert_toggle_collect(custom);
-            }
-        }
-
-        let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, None);
-
         let bench_args = lib_bench.bench_args(group);
 
         let out_path = self.output_path(lib_bench, config, group);
         out_path.init()?;
         out_path.shift()?;
 
-        let old_path = out_path.to_base_path();
         let log_path = out_path.to_log_output();
         log_path.shift()?;
 
@@ -179,79 +155,37 @@ impl Benchmark for BaselineBenchmark {
             path.to_log_output().shift()?;
         }
 
-        let mut benchmark_summary = lib_bench.create_benchmark_summary(
+        // TODO: ALSO SHIFT AND MOVE AND INIT FLAMEGRAPHS
+
+        let benchmark_summary = lib_bench.create_benchmark_summary(
             config,
             &out_path,
             &lib_bench.function_name,
             header.description(),
         )?;
 
-        let output = callgrind_command.run(
-            tool_config,
-            &config.bench_bin,
-            &bench_args,
-            lib_bench.run_options.clone(),
-            &out_path,
-            &lib_bench.module_path,
-            None,
-        )?;
+        // TODO: TRANSFER INTO ToolConfigs::run ?? How ?
+        // if let Some(flamegraph_config) = lib_bench.flamegraph_config.clone() {
+        //     callgrind_summary.flamegraphs = BaselineFlamegraphGenerator {
+        //         baseline_kind: self.baseline_kind.clone(),
+        //     }
+        //     .create(
+        //         &Flamegraph::new(header.to_title(), flamegraph_config),
+        //         &out_path,
+        //         (lib_bench.entry_point == EntryPoint::Default)
+        //             .then(Sentinel::default)
+        //             .as_ref(),
+        //         &config.meta.project_root,
+        //     )?;
+        // }
 
-        print_no_capture_footer(
-            config.meta.args.nocapture,
-            lib_bench.run_options.stdout.as_ref(),
-            lib_bench.run_options.stderr.as_ref(),
-        );
-
-        let parser = SummaryParser;
-        let parsed_new = parser.parse(&out_path)?;
-        let parsed_old = old_path
-            .exists()
-            .then(|| parser.parse(&old_path))
-            .transpose()?;
-
-        let summaries = Summaries::new(parsed_new, parsed_old);
-
-        VerticalFormatter::new(lib_bench.output_format.clone()).print(
-            config,
+        lib_bench.tools.run(
+            header.to_title(),
+            benchmark_summary,
             self.baselines(),
-            &ToolRun::from(&summaries),
-        )?;
-
-        output.dump_log(log::Level::Info);
-        log_path.dump_log(log::Level::Info, &mut stderr())?;
-
-        let regressions = lib_bench.check_and_print_regressions(&summaries.total);
-
-        let callgrind_summary = benchmark_summary
-            .callgrind_summary
-            .insert(CallgrindSummary::new(
-                log_path.real_paths()?,
-                out_path.real_paths()?,
-            ));
-
-        callgrind_summary.add_summaries(
-            &config.bench_bin,
-            &bench_args,
-            &self.baselines(),
-            summaries,
-            regressions,
-        );
-
-        if let Some(flamegraph_config) = lib_bench.flamegraph_config.clone() {
-            callgrind_summary.flamegraphs = BaselineFlamegraphGenerator {
-                baseline_kind: self.baseline_kind.clone(),
-            }
-            .create(
-                &Flamegraph::new(header.to_title(), flamegraph_config),
-                &out_path,
-                (lib_bench.entry_point == EntryPoint::Default)
-                    .then(Sentinel::default)
-                    .as_ref(),
-                &config.meta.project_root,
-            )?;
-        }
-
-        benchmark_summary.tool_summaries = lib_bench.tools.run(
+            self.baseline_kind.clone(),
+            lib_bench.regression_config.clone(),
+            lib_bench.flamegraph_config.clone(),
             config,
             &config.bench_bin,
             &bench_args,
@@ -264,9 +198,7 @@ impl Benchmark for BaselineBenchmark {
             None,
             None,
             &lib_bench.output_format,
-        )?;
-
-        Ok(benchmark_summary)
+        )
     }
 }
 
@@ -279,9 +211,9 @@ impl Groups {
         meta: &Metadata,
     ) -> Result<Self> {
         let global_config = benchmark_groups.config;
-        let mut groups = vec![];
         let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
 
+        let mut groups = vec![];
         for library_benchmark_group in benchmark_groups.groups {
             let group_module_path = module_path.join(&library_benchmark_group.id);
             let group_config = global_config
@@ -309,81 +241,37 @@ impl Groups {
 
             let mut group = Group {
                 id: library_benchmark_group.id,
-                module_path: group_module_path.clone(),
-                compare_by_id: library_benchmark_group
-                    .compare_by_id
-                    .unwrap_or(defaults::COMPARE_BY_ID),
+                module_path: group_module_path,
                 benches: vec![],
                 setup,
                 teardown,
+                compare_by_id: library_benchmark_group
+                    .compare_by_id
+                    .unwrap_or(defaults::COMPARE_BY_ID),
             };
 
-            for (bench_index, library_benchmark_benches) in library_benchmark_group
+            for (group_index, library_benchmark_benches) in library_benchmark_group
                 .library_benchmarks
                 .into_iter()
                 .enumerate()
             {
-                for (index, library_benchmark_bench) in
+                for (bench_index, library_benchmark_bench) in
                     library_benchmark_benches.benches.into_iter().enumerate()
                 {
                     let config = group_config.clone().update_from_all([
                         library_benchmark_benches.config.as_ref(),
                         library_benchmark_bench.config.as_ref(),
                     ]);
-                    let envs = config.resolve_envs();
 
-                    let callgrind_args = Args::try_from_raw_args(&[
-                        &config.valgrind_args,
-                        &config.callgrind_args,
-                        &meta_callgrind_args,
-                    ])?;
-
-                    let flamegraph_config = config.flamegraph_config.map(Into::into);
-                    let module_path =
-                        group_module_path.join(&library_benchmark_bench.function_name);
-
-                    let mut output_format = config
-                        .output_format
-                        .map_or_else(OutputFormat::default, Into::into);
-                    output_format.kind = meta.args.output_format;
-
-                    let lib_bench = LibBench {
+                    let lib_bench = LibBench::new(
+                        meta,
+                        &group,
+                        config,
+                        group_index,
                         bench_index,
-                        index,
-                        id: library_benchmark_bench.id,
-                        function_name: library_benchmark_bench.function_name,
-                        args: library_benchmark_bench.args,
-                        entry_point: config.entry_point.unwrap_or(EntryPoint::Default),
-                        run_options: RunOptions {
-                            env_clear: config.env_clear.unwrap_or(true),
-                            envs,
-                            ..Default::default()
-                        },
-                        callgrind_args,
-                        flamegraph_config,
-                        regression_config: api::update_option(
-                            &config.regression_config,
-                            &meta.regression_config,
-                        )
-                        .map(Into::into),
-                        tools: ToolConfigs(
-                            config
-                                .tools
-                                .0
-                                .into_iter()
-                                .map(|mut t| {
-                                    if !config.valgrind_args.is_empty() {
-                                        let mut new_args = config.valgrind_args.clone();
-                                        new_args.extend_ignore_flag(t.raw_args.0.iter());
-                                        t.raw_args = new_args;
-                                    }
-                                    t.try_into()
-                                })
-                                .collect::<Result<Vec<_>, _>>()?,
-                        ),
-                        module_path,
-                        output_format,
-                    };
+                        &meta_callgrind_args,
+                        library_benchmark_bench,
+                    )?;
                     group.benches.push(lib_bench);
                 }
             }
@@ -443,6 +331,84 @@ impl Groups {
 }
 
 impl LibBench {
+    fn new(
+        meta: &Metadata,
+        group: &Group,
+        config: LibraryBenchmarkConfig,
+        group_index: usize,
+        bench_index: usize,
+        meta_callgrind_args: &api::RawArgs,
+        library_benchmark_bench: LibraryBenchmarkBench,
+    ) -> Result<Self> {
+        let envs = config.resolve_envs();
+
+        let mut callgrind_args = Args::try_from_raw_args(&[
+            &config.valgrind_args,
+            &config.callgrind_args,
+            meta_callgrind_args,
+        ])?;
+
+        let flamegraph_config = config.flamegraph_config.map(Into::into);
+        let module_path = group
+            .module_path
+            .join(&library_benchmark_bench.function_name);
+
+        let mut output_format = config
+            .output_format
+            .map_or_else(OutputFormat::default, Into::into);
+        output_format.kind = meta.args.output_format;
+
+        // TODO: REMOVE UNNECESSARY CLONE as soon as LibBEnch::entry_point is removed
+        match config.entry_point.clone().unwrap_or(EntryPoint::Default) {
+            EntryPoint::None => {}
+            EntryPoint::Default => {
+                callgrind_args.insert_toggle_collect(DEFAULT_TOGGLE);
+            }
+            EntryPoint::Custom(custom) => {
+                callgrind_args.insert_toggle_collect(&custom);
+            }
+        }
+
+        let mut tool_configs = ToolConfigs(vec![ToolConfig::new(
+            ValgrindTool::Callgrind,
+            true,
+            callgrind_args.clone(),
+            None,
+        )]);
+        tool_configs.extend(config.tools.0.into_iter().map(|mut t| {
+            if !config.valgrind_args.is_empty() {
+                let mut new_args = config.valgrind_args.clone();
+                new_args.extend_ignore_flag(t.raw_args.0.iter());
+                t.raw_args = new_args;
+            }
+            t.try_into()
+        }))?;
+
+        Ok(Self {
+            bench_index: group_index,
+            index: bench_index,
+            id: library_benchmark_bench.id,
+            function_name: library_benchmark_bench.function_name,
+            args: library_benchmark_bench.args,
+            entry_point: config.entry_point.unwrap_or(EntryPoint::Default),
+            run_options: RunOptions {
+                env_clear: config.env_clear.unwrap_or(true),
+                envs,
+                ..Default::default()
+            },
+            callgrind_args,
+            flamegraph_config,
+            regression_config: api::update_option(
+                &config.regression_config,
+                &meta.regression_config,
+            )
+            .map(Into::into),
+            tools: tool_configs,
+            module_path,
+            output_format,
+        })
+    }
+
     /// The name of this `LibBench` consisting of the name of the benchmark function and if present,
     /// the id of the bench attribute (`#[bench::ID(...)]`)
     ///
@@ -496,19 +462,6 @@ impl LibBench {
             summary_output,
         ))
     }
-
-    /// Check for regressions as defined in [`RegressionConfig`] and print an error if a regression
-    /// occurred
-    fn check_and_print_regressions(
-        &self,
-        metrics_summary: &MetricsSummary,
-    ) -> Vec<CallgrindRegression> {
-        if let Some(regression_config) = &self.regression_config {
-            regression_config.check_and_print(metrics_summary)
-        } else {
-            vec![]
-        }
-    }
 }
 
 impl Benchmark for LoadBaselineBenchmark {
@@ -541,65 +494,44 @@ impl Benchmark for LoadBaselineBenchmark {
 
         let bench_args = lib_bench.bench_args(group);
         let out_path = self.output_path(lib_bench, config, group);
-        let old_path = out_path.to_base_path();
-        let log_path = out_path.to_log_output();
 
-        let mut benchmark_summary = lib_bench.create_benchmark_summary(
+        let benchmark_summary = lib_bench.create_benchmark_summary(
             config,
             &out_path,
             &lib_bench.function_name,
             header.description(),
         )?;
 
-        let parser = SummaryParser;
-        let parsed_new = parser.parse(&out_path)?;
-        let parsed_old = Some(parser.parse(&old_path)?);
-        let summaries = Summaries::new(parsed_new, parsed_old);
+        // TODO: CHECK
+        // if let Some(flamegraph_config) = lib_bench.flamegraph_config.clone() {
+        //     callgrind_summary.flamegraphs = LoadBaselineFlamegraphGenerator {
+        //         loaded_baseline: self.loaded_baseline.clone(),
+        //         baseline: self.baseline.clone(),
+        //     }
+        //     .create(
+        //         &Flamegraph::new(header.to_title(), flamegraph_config),
+        //         &out_path,
+        //         (lib_bench.entry_point == EntryPoint::Default)
+        //             .then(Sentinel::default)
+        //             .as_ref(),
+        //         &config.meta.project_root,
+        //     )?;
+        // }
 
-        VerticalFormatter::new(lib_bench.output_format.clone()).print(
-            config,
-            self.baselines(),
-            &ToolRun::from(&summaries),
-        )?;
-
-        let regressions = lib_bench.check_and_print_regressions(&summaries.total);
-
-        let callgrind_summary = benchmark_summary
-            .callgrind_summary
-            .insert(CallgrindSummary::new(
-                log_path.real_paths()?,
-                out_path.real_paths()?,
-            ));
-
-        callgrind_summary.add_summaries(
+        lib_bench.tools.run_loaded_vs_base(
+            header.to_title(),
+            self.baseline.clone(),
+            self.loaded_baseline.clone(),
             &config.bench_bin,
             &bench_args,
-            &self.baselines(),
-            summaries,
-            regressions,
-        );
-
-        if let Some(flamegraph_config) = lib_bench.flamegraph_config.clone() {
-            callgrind_summary.flamegraphs = LoadBaselineFlamegraphGenerator {
-                loaded_baseline: self.loaded_baseline.clone(),
-                baseline: self.baseline.clone(),
-            }
-            .create(
-                &Flamegraph::new(header.to_title(), flamegraph_config),
-                &out_path,
-                (lib_bench.entry_point == EntryPoint::Default)
-                    .then(Sentinel::default)
-                    .as_ref(),
-                &config.meta.project_root,
-            )?;
-        }
-
-        benchmark_summary.tool_summaries =
-            lib_bench
-                .tools
-                .run_loaded_vs_base(config, &out_path, &lib_bench.output_format)?;
-
-        Ok(benchmark_summary)
+            benchmark_summary,
+            lib_bench.regression_config.clone(),
+            lib_bench.flamegraph_config.clone(),
+            self.baselines(),
+            config,
+            &out_path,
+            &lib_bench.output_format,
+        )
     }
 }
 
@@ -704,113 +636,45 @@ impl Benchmark for SaveBaselineBenchmark {
         let header = LibraryBenchmarkHeader::new(lib_bench);
         header.print();
 
-        let callgrind_command = ToolCommand::new(
-            ValgrindTool::Callgrind,
-            &config.meta,
-            config.meta.args.nocapture,
-        );
-
-        let mut callgrind_args = lib_bench.callgrind_args.clone();
-        match &lib_bench.entry_point {
-            EntryPoint::None => {}
-            EntryPoint::Default => {
-                callgrind_args.insert_toggle_collect(DEFAULT_TOGGLE);
-            }
-            EntryPoint::Custom(custom) => {
-                callgrind_args.insert_toggle_collect(custom);
-            }
-        }
-
-        let tool_config = ToolConfig::new(ValgrindTool::Callgrind, true, callgrind_args, None);
-
-        let bench_args = lib_bench.bench_args(group);
-
         let out_path = self.output_path(lib_bench, config, group);
         out_path.init()?;
 
-        let parser = SummaryParser;
-        let parsed_old = out_path
-            .exists()
-            .then(|| {
-                parser
-                    .parse(&out_path)
-                    .and_then(|parsed| out_path.clear().map(|()| parsed))
-            })
-            .transpose()?;
-
+        // TODO: Double check this CLEAR
         let log_path = out_path.to_log_output();
         log_path.clear()?;
 
-        let mut benchmark_summary = lib_bench.create_benchmark_summary(
+        let benchmark_summary = lib_bench.create_benchmark_summary(
             config,
             &out_path,
             &lib_bench.function_name,
             header.description(),
         )?;
 
-        let output = callgrind_command.run(
-            tool_config,
-            &config.bench_bin,
-            &bench_args,
-            lib_bench.run_options.clone(),
-            &out_path,
-            &lib_bench.module_path,
-            None,
-        )?;
+        // TODO: SAME PROBLEM AS IN OTHER impl
+        // if let Some(flamegraph_config) = lib_bench.flamegraph_config.clone() {
+        //     callgrind_summary.flamegraphs = SaveBaselineFlamegraphGenerator {
+        //         baseline: self.baseline.clone(),
+        //     }
+        //     .create(
+        //         &Flamegraph::new(header.to_title(), flamegraph_config),
+        //         &out_path,
+        //         (lib_bench.entry_point == EntryPoint::Default)
+        //             .then(Sentinel::default)
+        //             .as_ref(),
+        //         &config.meta.project_root,
+        //     )?;
+        // }
 
-        print_no_capture_footer(
-            config.meta.args.nocapture,
-            lib_bench.run_options.stdout.as_ref(),
-            lib_bench.run_options.stderr.as_ref(),
-        );
-
-        let parsed_new = parser.parse(&out_path)?;
-        let summaries = Summaries::new(parsed_new, parsed_old);
-
-        VerticalFormatter::new(lib_bench.output_format.clone()).print(
-            config,
+        lib_bench.tools.run(
+            header.to_title(),
+            benchmark_summary,
             self.baselines(),
-            &ToolRun::from(&summaries),
-        )?;
-
-        output.dump_log(log::Level::Info);
-        log_path.dump_log(log::Level::Info, &mut stderr())?;
-
-        let regressions = lib_bench.check_and_print_regressions(&summaries.total);
-
-        let callgrind_summary = benchmark_summary
-            .callgrind_summary
-            .insert(CallgrindSummary::new(
-                log_path.real_paths()?,
-                out_path.real_paths()?,
-            ));
-
-        callgrind_summary.add_summaries(
-            &config.bench_bin,
-            &bench_args,
-            &self.baselines(),
-            summaries,
-            regressions,
-        );
-
-        if let Some(flamegraph_config) = lib_bench.flamegraph_config.clone() {
-            callgrind_summary.flamegraphs = SaveBaselineFlamegraphGenerator {
-                baseline: self.baseline.clone(),
-            }
-            .create(
-                &Flamegraph::new(header.to_title(), flamegraph_config),
-                &out_path,
-                (lib_bench.entry_point == EntryPoint::Default)
-                    .then(Sentinel::default)
-                    .as_ref(),
-                &config.meta.project_root,
-            )?;
-        }
-
-        benchmark_summary.tool_summaries = lib_bench.tools.run(
+            BaselineKind::Name(self.baseline.clone()),
+            lib_bench.regression_config.clone(),
+            lib_bench.flamegraph_config.clone(),
             config,
             &config.bench_bin,
-            &bench_args,
+            &lib_bench.bench_args(group),
             &lib_bench.run_options,
             &out_path,
             true,
@@ -821,9 +685,7 @@ impl Benchmark for SaveBaselineBenchmark {
             None,
             None,
             &lib_bench.output_format,
-        )?;
-
-        Ok(benchmark_summary)
+        )
     }
 }
 

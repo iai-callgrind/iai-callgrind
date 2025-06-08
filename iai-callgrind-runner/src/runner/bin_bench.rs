@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::ffi::OsString;
-use std::io::stderr;
 use std::io::ErrorKind::WouldBlock;
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, TcpStream, UdpSocket};
 use std::path::{Path, PathBuf};
@@ -11,26 +10,14 @@ use std::{panic, thread};
 use anyhow::{anyhow, Context, Result};
 use log::{debug, warn};
 
-use super::args::NoCapture;
 use super::callgrind::args::Args;
-use super::callgrind::flamegraph::{
-    BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
-    LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
-};
-use super::callgrind::parser::CallgrindParser;
-use super::callgrind::summary_parser::SummaryParser;
-use super::callgrind::{RegressionConfig, Summaries};
-use super::common::{Assistant, AssistantKind, BenchmarkSummaries, Config, ModulePath, Sandbox};
-use super::format::{BinaryBenchmarkHeader, Formatter, OutputFormat, VerticalFormatter};
+use super::callgrind::flamegraph::Config as FlamegraphConfig;
+use super::callgrind::RegressionConfig;
+use super::common::{Assistant, AssistantKind, BenchmarkSummaries, Config, ModulePath};
+use super::format::{BinaryBenchmarkHeader, OutputFormat};
 use super::meta::Metadata;
-use super::summary::{
-    BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, CallgrindSummary, MetricsSummary,
-    SummaryOutput, ToolRun,
-};
-use super::tool::{
-    RunOptions, ToolCommand, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind,
-    ValgrindTool,
-};
+use super::summary::{BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput};
+use super::tool::{RunOptions, ToolConfigs, ToolOutputPath, ToolOutputPathKind, ValgrindTool};
 use crate::api::{
     self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind, Stdin,
 };
@@ -161,24 +148,11 @@ impl Benchmark for BaselineBenchmark {
         let header = BinaryBenchmarkHeader::new(&config.meta, bin_bench);
         header.print();
 
-        let callgrind_command = ToolCommand::new(
-            ValgrindTool::Callgrind,
-            &config.meta,
-            config.meta.args.nocapture,
-        );
-
-        let tool_config = ToolConfig::new(
-            ValgrindTool::Callgrind,
-            true,
-            bin_bench.callgrind_args.clone(),
-            None,
-        );
-
+        // TODO: THIS CAN STAY?
         let out_path = self.output_path(bin_bench, config, group);
         out_path.init()?;
         out_path.shift()?;
 
-        let old_path = out_path.to_base_path();
         let log_path = out_path.to_log_output();
         log_path.shift()?;
 
@@ -186,106 +160,23 @@ impl Benchmark for BaselineBenchmark {
             path.shift()?;
             path.to_log_output().shift()?;
         }
+        // TODO: move and shift ALSO FLAMEGRAPHS
 
-        let mut benchmark_summary = bin_bench.create_benchmark_summary(
+        // TODO: MOVE CREATION OF BENCHMARK SUMMARY INTO ToolConfigs::run
+        let benchmark_summary = bin_bench.create_benchmark_summary(
             config,
             &out_path,
             &bin_bench.function_name,
             header.description(),
         )?;
 
-        // We're implicitly applying the default here: In the absence of a user provided sandbox we
-        // don't run the benchmarks in a sandbox. Everything from here on runs with the current
-        // directory set to the sandbox directory until the sandbox is reset.
-        let sandbox = bin_bench
-            .sandbox
-            .as_ref()
-            .map(|sandbox| Sandbox::setup(sandbox, &config.meta))
-            .transpose()?;
-
-        let mut child = bin_bench
-            .setup
-            .as_ref()
-            .map_or(Ok(None), |setup| setup.run(config, &bin_bench.module_path))?;
-
-        if let Some(delay) = &bin_bench.command.delay {
-            if let Err(error) = delay.run() {
-                if let Some(mut child) = child.take() {
-                    // To avoid zombies
-                    child.kill()?;
-                    return Err(error);
-                }
-            }
-        }
-
-        let output = callgrind_command.run(
-            tool_config,
-            &bin_bench.command.path,
-            &bin_bench.command.args,
-            bin_bench.run_options.clone(),
-            &out_path,
-            &bin_bench.module_path,
-            child,
-        )?;
-
-        if let Some(teardown) = &bin_bench.teardown {
-            teardown.run(config, &bin_bench.module_path)?;
-        }
-
-        // We print the no capture footer after the teardown to keep the output consistent with
-        // library benchmarks.
-        bin_bench.print_nocapture_footer(config.meta.args.nocapture);
-
-        if let Some(sandbox) = sandbox {
-            sandbox.reset()?;
-        }
-
-        let parsed_new = SummaryParser.parse(&out_path)?;
-        let parsed_old = old_path
-            .exists()
-            .then(|| SummaryParser.parse(&old_path))
-            .transpose()?;
-
-        let summaries = Summaries::new(parsed_new, parsed_old);
-        VerticalFormatter::new(bin_bench.output_format.clone()).print(
-            config,
+        bin_bench.tools.run(
+            header.to_title(),
+            benchmark_summary,
             self.baselines(),
-            &ToolRun::from(&summaries),
-        )?;
-
-        output.dump_log(log::Level::Info);
-        log_path.dump_log(log::Level::Info, &mut stderr())?;
-
-        let regressions = bin_bench.check_and_print_regressions(&summaries.total);
-
-        let callgrind_summary = benchmark_summary
-            .callgrind_summary
-            .insert(CallgrindSummary::new(
-                log_path.real_paths()?,
-                out_path.real_paths()?,
-            ));
-
-        callgrind_summary.add_summaries(
-            &bin_bench.command.path,
-            &bin_bench.command.args,
-            &self.baselines(),
-            summaries,
-            regressions,
-        );
-
-        if let Some(flamegraph_config) = bin_bench.flamegraph_config.clone() {
-            callgrind_summary.flamegraphs = BaselineFlamegraphGenerator {
-                baseline_kind: self.baseline_kind.clone(),
-            }
-            .create(
-                &Flamegraph::new(header.to_title(), flamegraph_config),
-                &out_path,
-                None,
-                &config.meta.project_root,
-            )?;
-        }
-
-        benchmark_summary.tool_summaries = bin_bench.tools.run(
+            self.baseline_kind.clone(),
+            bin_bench.regression_config.clone(),
+            bin_bench.flamegraph_config.clone(),
             config,
             &bin_bench.command.path,
             &bin_bench.command.args,
@@ -298,9 +189,7 @@ impl Benchmark for BaselineBenchmark {
             bin_bench.teardown.as_ref(),
             bin_bench.command.delay.as_ref(),
             &bin_bench.output_format,
-        )?;
-
-        Ok(benchmark_summary)
+        )
     }
 }
 
@@ -425,14 +314,6 @@ impl BinBench {
         }
     }
 
-    fn print_nocapture_footer(&self, nocapture: NoCapture) {
-        format::print_no_capture_footer(
-            nocapture,
-            self.run_options.stdout.as_ref(),
-            self.run_options.stderr.as_ref(),
-        );
-    }
-
     fn create_benchmark_summary(
         &self,
         config: &Config,
@@ -460,17 +341,6 @@ impl BinBench {
             description,
             summary_output,
         ))
-    }
-
-    fn check_and_print_regressions(
-        &self,
-        metrics_summary: &MetricsSummary,
-    ) -> Vec<super::summary::CallgrindRegression> {
-        if let Some(regression_config) = &self.regression_config {
-            regression_config.check_and_print(metrics_summary)
-        } else {
-            vec![]
-        }
     }
 }
 
@@ -795,63 +665,45 @@ impl Benchmark for LoadBaselineBenchmark {
         let header = BinaryBenchmarkHeader::new(&config.meta, bin_bench);
         header.print();
 
+        // TODO: MOVE INTO ToolConfigs::load_baseline run
         let out_path = self.output_path(bin_bench, config, group);
-        let old_path = out_path.to_base_path();
-        let log_path = out_path.to_log_output();
 
-        let mut benchmark_summary = bin_bench.create_benchmark_summary(
+        // TODO: MOVE INTO ToolConfigs::load_baseline run
+        let benchmark_summary = bin_bench.create_benchmark_summary(
             config,
             &out_path,
             &bin_bench.function_name,
             header.description(),
         )?;
 
-        let parsed_new = SummaryParser.parse(&out_path)?;
-        let parsed_old = Some(SummaryParser.parse(&old_path)?);
-        let summaries = Summaries::new(parsed_new, parsed_old);
+        // TODO: FLAMEGRAPHS
+        // if let Some(flamegraph_config) = bin_bench.flamegraph_config.clone() {
+        //     callgrind_summary.flamegraphs = LoadBaselineFlamegraphGenerator {
+        //         loaded_baseline: self.loaded_baseline.clone(),
+        //         baseline: self.baseline.clone(),
+        //     }
+        //     .create(
+        //         &Flamegraph::new(header.to_title(), flamegraph_config),
+        //         &out_path,
+        //         None,
+        //         &config.meta.project_root,
+        //     )?;
+        // }
 
-        VerticalFormatter::new(bin_bench.output_format.clone()).print(
-            config,
-            self.baselines(),
-            &ToolRun::from(&summaries),
-        )?;
-
-        let regressions = bin_bench.check_and_print_regressions(&summaries.total);
-
-        let callgrind_summary = benchmark_summary
-            .callgrind_summary
-            .insert(CallgrindSummary::new(
-                log_path.real_paths()?,
-                out_path.real_paths()?,
-            ));
-
-        callgrind_summary.add_summaries(
+        bin_bench.tools.run_loaded_vs_base(
+            header.to_title(),
+            self.baseline.clone(),
+            self.loaded_baseline.clone(),
             &bin_bench.command.path,
             &bin_bench.command.args,
-            &self.baselines(),
-            summaries,
-            regressions,
-        );
-
-        if let Some(flamegraph_config) = bin_bench.flamegraph_config.clone() {
-            callgrind_summary.flamegraphs = LoadBaselineFlamegraphGenerator {
-                loaded_baseline: self.loaded_baseline.clone(),
-                baseline: self.baseline.clone(),
-            }
-            .create(
-                &Flamegraph::new(header.to_title(), flamegraph_config),
-                &out_path,
-                None,
-                &config.meta.project_root,
-            )?;
-        }
-
-        benchmark_summary.tool_summaries =
-            bin_bench
-                .tools
-                .run_loaded_vs_base(config, &out_path, &bin_bench.output_format)?;
-
-        Ok(benchmark_summary)
+            benchmark_summary,
+            bin_bench.regression_config.clone(),
+            bin_bench.flamegraph_config.clone(),
+            self.baselines(),
+            config,
+            &out_path,
+            &bin_bench.output_format,
+        )
     }
 }
 
@@ -954,123 +806,30 @@ impl Benchmark for SaveBaselineBenchmark {
         let header = BinaryBenchmarkHeader::new(&config.meta, bin_bench);
         header.print();
 
-        let callgrind_command = ToolCommand::new(
-            ValgrindTool::Callgrind,
-            &config.meta,
-            config.meta.args.nocapture,
-        );
-
-        let tool_config = ToolConfig::new(
-            ValgrindTool::Callgrind,
-            true,
-            bin_bench.callgrind_args.clone(),
-            None,
-        );
-
         let out_path = self.output_path(bin_bench, config, group);
         out_path.init()?;
 
-        let parsed_old = out_path
-            .exists()
-            .then(|| {
-                SummaryParser
-                    .parse(&out_path)
-                    .and_then(|parsed| out_path.clear().map(|()| parsed))
-            })
-            .transpose()?;
-
+        // TODO: DOUBLE CHECK THE CLEAR SINCE CAchegrind needs the log output in addition to the
+        // normal output
         let log_path = out_path.to_log_output();
         log_path.clear()?;
 
-        let mut benchmark_summary = bin_bench.create_benchmark_summary(
+        let benchmark_summary = bin_bench.create_benchmark_summary(
             config,
             &out_path,
             &bin_bench.function_name,
             header.description(),
         )?;
 
-        let sandbox = bin_bench
-            .sandbox
-            .as_ref()
-            .map(|sandbox| Sandbox::setup(sandbox, &config.meta))
-            .transpose()?;
-
-        let mut child = bin_bench
-            .setup
-            .as_ref()
-            .map_or(Ok(None), |setup| setup.run(config, &bin_bench.module_path))?;
-
-        if let Some(delay) = &bin_bench.command.delay {
-            if let Err(error) = delay.run() {
-                if let Some(mut child) = child.take() {
-                    // To avoid zombies
-                    child.kill()?;
-                    return Err(error);
-                }
-            }
-        }
-
-        let output = callgrind_command.run(
-            tool_config,
-            &bin_bench.command.path,
-            &bin_bench.command.args,
-            bin_bench.run_options.clone(),
-            &out_path,
-            &bin_bench.module_path,
-            child,
-        )?;
-
-        if let Some(teardown) = &bin_bench.teardown {
-            teardown.run(config, &bin_bench.module_path)?;
-        }
-
-        bin_bench.print_nocapture_footer(config.meta.args.nocapture);
-
-        if let Some(sandbox) = sandbox {
-            sandbox.reset()?;
-        }
-
-        let parsed_new = SummaryParser.parse(&out_path)?;
-        let summaries = Summaries::new(parsed_new, parsed_old);
-        VerticalFormatter::new(bin_bench.output_format.clone()).print(
-            config,
+        bin_bench.tools.run(
+            header.to_title(),
+            benchmark_summary,
             self.baselines(),
-            &ToolRun::from(&summaries),
-        )?;
-
-        output.dump_log(log::Level::Info);
-        log_path.dump_log(log::Level::Info, &mut stderr())?;
-
-        let regressions = bin_bench.check_and_print_regressions(&summaries.total);
-
-        let callgrind_summary = benchmark_summary
-            .callgrind_summary
-            .insert(CallgrindSummary::new(
-                log_path.real_paths()?,
-                out_path.real_paths()?,
-            ));
-
-        callgrind_summary.add_summaries(
-            &bin_bench.command.path,
-            &bin_bench.command.args,
-            &self.baselines(),
-            summaries,
-            regressions,
-        );
-
-        if let Some(flamegraph_config) = bin_bench.flamegraph_config.clone() {
-            callgrind_summary.flamegraphs = SaveBaselineFlamegraphGenerator {
-                baseline: self.baseline.clone(),
-            }
-            .create(
-                &Flamegraph::new(header.to_title(), flamegraph_config),
-                &out_path,
-                None,
-                &config.meta.project_root,
-            )?;
-        }
-
-        benchmark_summary.tool_summaries = bin_bench.tools.run(
+            // TODO: Check if correct that we wrap th baseline into a BaselineKind that way. Was
+            // different before
+            BaselineKind::Name(self.baseline.clone()),
+            bin_bench.regression_config.clone(),
+            bin_bench.flamegraph_config.clone(),
             config,
             &bin_bench.command.path,
             &bin_bench.command.args,
@@ -1083,9 +842,7 @@ impl Benchmark for SaveBaselineBenchmark {
             bin_bench.teardown.as_ref(),
             bin_bench.command.delay.as_ref(),
             &bin_bench.output_format,
-        )?;
-
-        Ok(benchmark_summary)
+        )
     }
 }
 
