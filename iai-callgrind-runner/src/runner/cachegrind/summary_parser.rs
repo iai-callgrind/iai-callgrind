@@ -29,7 +29,7 @@ use crate::runner::tool::ToolOutputPath;
 ///
 /// This header line specifies a summary cost, which should be equal or larger than a total over all
 /// self costs. It may be larger as the cost lines may not represent all cost of the program run.
-/// ```
+/// ```text
 /// Spec from https://valgrind.org/docs/manual/cg-manual.html
 /// file         ::= desc_line* cmd_line events_line data_line+ summary_line
 /// desc_line    ::= "desc:" ws? non_nl_string

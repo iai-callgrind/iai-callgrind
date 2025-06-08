@@ -19,7 +19,7 @@ pub struct CachegrindProperties {
 
 /// TODO: Convert (docs) from callgrind to cachegrind
 /// TODO: Double check this
-/// ```
+/// ```text
 /// file         ::= desc_line* cmd_line events_line data_line+ summary_line
 /// desc_line    ::= "desc:" ws? non_nl_string
 /// cmd_line     ::= "cmd:" ws? cmd
