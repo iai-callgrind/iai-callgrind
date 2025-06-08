@@ -26,11 +26,20 @@ use self::args::ToolArgs;
 use super::args::NoCapture;
 use super::bin_bench::Delay;
 use super::cachegrind;
-use super::callgrind::parser::parse_header;
+use super::callgrind::flamegraph::{
+    BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
+    LoadBaselineFlamegraphGenerator,
+};
+use super::callgrind::parser::{parse_header, CallgrindParser};
+use super::callgrind::summary_parser::SummaryParser;
+use super::callgrind::{RegressionConfig, Summaries};
 use super::common::{Assistant, Config, ModulePath, Sandbox};
 use super::format::{print_no_capture_footer, Formatter, OutputFormat, VerticalFormatter};
 use super::meta::Metadata;
-use super::summary::{BaselineKind, ToolRun, ToolSummary};
+use super::summary::{
+    BaselineKind, BaselineName, BenchmarkSummary, CallgrindRegression, CallgrindSummary,
+    MetricsSummary, ToolRun, ToolSummary,
+};
 use crate::api::{self, ExitWith, Stream};
 use crate::error::Error;
 use crate::util::{self, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
@@ -412,32 +421,113 @@ impl ToolConfigs {
 
     pub fn run_loaded_vs_base(
         &self,
+        title: String,
+        baseline: BaselineName,
+        loaded_baseline: BaselineName,
+        executable: &Path,
+        executable_args: &[OsString],
+        mut benchmark_summary: BenchmarkSummary,
+        regression_config: Option<RegressionConfig>,
+        flamegraph_config: Option<FlamegraphConfig>,
+        baselines: (Option<String>, Option<String>),
         config: &Config,
         output_path: &ToolOutputPath,
         output_format: &OutputFormat,
-    ) -> Result<Vec<ToolSummary>> {
+    ) -> Result<BenchmarkSummary> {
         let mut tool_summaries = vec![];
+
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
             Self::print_headline(tool_config, output_format);
 
             let tool = tool_config.tool;
             let output_path = output_path.to_tool_output(tool);
 
-            let tool_summary = tool_config.parse_load(config, &output_path)?;
+            if ValgrindTool::Callgrind == tool {
+                let parsed_new = SummaryParser.parse(&output_path)?;
+                let parsed_old = Some(SummaryParser.parse(&output_path.to_base_path())?);
+                let summaries = Summaries::new(parsed_new, parsed_old);
 
-            Self::print(config, output_format, &tool_summary.summaries)?;
+                VerticalFormatter::new(output_format.clone()).print(
+                    config,
+                    baselines.clone(),
+                    &ToolRun::from(&summaries),
+                )?;
 
-            let log_path = output_path.to_log_output();
-            log_path.dump_log(log::Level::Info, &mut stderr())?;
+                let regressions =
+                    Self::check_and_print_regressions(regression_config.as_ref(), &summaries.total);
 
-            tool_summaries.push(tool_summary);
+                let callgrind_summary =
+                    benchmark_summary
+                        .callgrind_summary
+                        .insert(CallgrindSummary::new(
+                            output_path.to_log_output().real_paths()?,
+                            output_path.real_paths()?,
+                        ));
+
+                callgrind_summary.add_summaries(
+                    &executable,
+                    &executable_args,
+                    &baselines,
+                    summaries,
+                    regressions,
+                );
+
+                if let Some(flamegraph_config) = flamegraph_config.clone() {
+                    callgrind_summary.flamegraphs = LoadBaselineFlamegraphGenerator {
+                        loaded_baseline: loaded_baseline.clone(),
+                        baseline: baseline.clone(),
+                    }
+                    .create(
+                        &Flamegraph::new(title.clone(), flamegraph_config),
+                        &output_path,
+                        // TODO: sentinel is ENTRY_POINT in case of library benchmark
+                        //         (lib_bench.entry_point == EntryPoint::Default)
+                        //             .then(Sentinel::default)
+                        //             .as_ref(),
+                        None,
+                        &config.meta.project_root,
+                    )?;
+                }
+
+                let log_path = output_path.to_log_output();
+                log_path.dump_log(log::Level::Info, &mut stderr())?;
+            } else {
+                let tool_summary = tool_config.parse_load(config, &output_path)?;
+
+                Self::print(config, output_format, &tool_summary.summaries)?;
+
+                let log_path = output_path.to_log_output();
+                log_path.dump_log(log::Level::Info, &mut stderr())?;
+
+                tool_summaries.push(tool_summary);
+            }
         }
 
-        Ok(tool_summaries)
+        Ok(benchmark_summary)
     }
 
+    /// Check for regressions as defined in [`RegressionConfig`] and print an error if a regression
+    /// occurred
+    fn check_and_print_regressions(
+        regression_config: Option<&RegressionConfig>,
+        metrics_summary: &MetricsSummary,
+    ) -> Vec<CallgrindRegression> {
+        if let Some(regression_config) = regression_config {
+            regression_config.check_and_print(metrics_summary)
+        } else {
+            vec![]
+        }
+    }
+
+    // TODO: RETURN Result<BenchmarkSummary>
     pub fn run(
         &self,
+        title: String,
+        mut benchmark_summary: BenchmarkSummary,
+        baselines: (Option<String>, Option<String>),
+        baseline_kind: BaselineKind,
+        regression_config: Option<RegressionConfig>,
+        flamegraph_config: Option<FlamegraphConfig>,
         config: &Config,
         executable: &Path,
         executable_args: &[OsString],
@@ -450,19 +540,26 @@ impl ToolConfigs {
         teardown: Option<&Assistant>,
         delay: Option<&Delay>,
         output_format: &OutputFormat,
-    ) -> Result<Vec<ToolSummary>> {
+    ) -> Result<BenchmarkSummary> {
         let mut tool_summaries = vec![];
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
             // Print the headline as soon as possible, so if there are any errors, the errors shown
             // in the terminal output can be associated with the tool
+            // TODO: Print Callgrind/Cachegrind headline but only if multiple tools are configured
             Self::print_headline(tool_config, output_format);
 
             let tool = tool_config.tool;
 
-            let command = ToolCommand::new(tool, &config.meta, NoCapture::False);
+            let nocapture = if ValgrindTool::Callgrind == tool {
+                config.meta.args.nocapture
+            } else {
+                NoCapture::False
+            };
+            let command = ToolCommand::new(tool, &config.meta, nocapture);
 
             let output_path = output_path.to_tool_output(tool);
 
+            // TODO: Make this work for callgrind. (cachegrind, too? should actually already work)
             let parser = logfile_parser::parser_factory(
                 tool,
                 config.meta.project_root.clone(),
@@ -471,11 +568,17 @@ impl ToolConfigs {
             let old_summaries = parser.parse_base()?;
 
             let log_path = output_path.to_log_output();
+
             if save_baseline {
+                // TODO: Is this still right?
                 output_path.clear()?;
                 log_path.clear()?;
             }
 
+            // We're implicitly applying the default here: In the absence of a user provided sandbox
+            // we don't run the benchmarks in a sandbox. Everything from here on runs
+            // with the current directory set to the sandbox directory until the sandbox
+            // is reset.
             let sandbox = sandbox
                 .map(|sandbox| Sandbox::setup(sandbox, &config.meta))
                 .transpose()?;
@@ -508,8 +611,10 @@ impl ToolConfigs {
                 teardown.run(config, module_path)?;
             }
 
+            // We print the no capture footer after the teardown to keep the output consistent with
+            // library benchmarks.
             print_no_capture_footer(
-                NoCapture::False,
+                nocapture,
                 run_options.stdout.as_ref(),
                 run_options.stderr.as_ref(),
             );
@@ -518,17 +623,81 @@ impl ToolConfigs {
                 sandbox.reset()?;
             }
 
-            let tool_summary = Self::parse(tool_config, &config.meta, &output_path, old_summaries)?;
+            if tool_config.tool == ValgrindTool::Callgrind {
+                let old_path = output_path.to_base_path();
+                let parsed_new = SummaryParser.parse(&output_path)?;
+                let parsed_old = old_path
+                    .exists()
+                    .then(|| SummaryParser.parse(&old_path))
+                    .transpose()?;
 
-            Self::print(config, output_format, &tool_summary.summaries)?;
+                let summaries = Summaries::new(parsed_new, parsed_old);
+                VerticalFormatter::new(output_format.clone()).print(
+                    config,
+                    baselines.clone(),
+                    &ToolRun::from(&summaries),
+                )?;
+
+                let regressions =
+                    Self::check_and_print_regressions(regression_config.as_ref(), &summaries.total);
+
+                let callgrind_summary =
+                    benchmark_summary
+                        .callgrind_summary
+                        .insert(CallgrindSummary::new(
+                            log_path.real_paths()?,
+                            output_path.real_paths()?,
+                        ));
+
+                callgrind_summary.add_summaries(
+                    executable,
+                    executable_args,
+                    &baselines,
+                    summaries,
+                    regressions,
+                );
+
+                if let Some(flamegraph_config) = flamegraph_config.clone() {
+                    // TODO: This can be difficult since the flamegraphs generators differ, maybe
+                    // move back into Baseline, SaveBaseline (, ...) impl and generate flamegraphs
+                    // last?
+                    callgrind_summary.flamegraphs = BaselineFlamegraphGenerator {
+                        baseline_kind: baseline_kind.clone(),
+                    }
+                    .create(
+                        &Flamegraph::new(title.clone(), flamegraph_config),
+                        &output_path,
+                        // TODO: sentinel is ENTRY_POINT in case of library benchmark
+                        //         (lib_bench.entry_point == EntryPoint::Default)
+                        //             .then(Sentinel::default)
+                        //             .as_ref(),
+                        None,
+                        &config.meta.project_root,
+                    )?;
+                }
+            } else {
+                let tool_summary =
+                    Self::parse(tool_config, &config.meta, &output_path, old_summaries)?;
+
+                Self::print(config, output_format, &tool_summary.summaries)?;
+
+                tool_summaries.push(tool_summary);
+            }
 
             output.dump_log(log::Level::Info);
             log_path.dump_log(log::Level::Info, &mut stderr())?;
-
-            tool_summaries.push(tool_summary);
         }
 
-        Ok(tool_summaries)
+        benchmark_summary.tool_summaries = tool_summaries;
+        Ok(benchmark_summary)
+    }
+
+    pub fn extend(&mut self, iter: impl Iterator<Item = Result<ToolConfig>>) -> Result<()> {
+        for a in iter {
+            self.0.push(a?);
+        }
+
+        Ok(())
     }
 }
 
