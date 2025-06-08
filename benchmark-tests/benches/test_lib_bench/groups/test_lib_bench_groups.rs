@@ -112,7 +112,7 @@ fn bench_bubble_sort_with_multiple_parameters(a: i32, b: i32) -> Vec<i32> {
 // nothing changes. The default configuration is always applied.
 #[library_benchmark(config = LibraryBenchmarkConfig::default())]
 fn bench_fibonacci_with_config() -> u64 {
-    black_box(black_box(fibonacci(black_box(8))))
+    black_box(fibonacci(black_box(8)))
 }
 
 // A `config` per `bench` or `benches` attribute is also possible using the alternative `bench`
@@ -140,7 +140,7 @@ fn bench_fibonacci_with_config() -> u64 {
         )
 )]
 fn bench_fibonacci_with_config_at_bench_level(first: u64, second: u64) -> u64 {
-    black_box(black_box(fibonacci(black_box(first + second))))
+    black_box(fibonacci(black_box(first + second)))
 }
 
 // Use the `benchmarks` argument of the `library_benchmark_group!` macro to collect all benchmarks

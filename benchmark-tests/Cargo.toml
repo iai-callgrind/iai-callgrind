@@ -22,7 +22,10 @@ cargo_metadata = { workspace = true }
 colored = { workspace = true }
 fs_extra = { workspace = true }
 glob = { workspace = true }
-iai-callgrind = { path = "../iai-callgrind", features = ["client_requests"] }
+iai-callgrind = { path = "../iai-callgrind", features = [
+  "client_requests",
+  "cachegrind",
+] }
 iai-callgrind-runner = { path = "../iai-callgrind-runner" }
 lazy_static = { workspace = true }
 minijinja = { workspace = true }

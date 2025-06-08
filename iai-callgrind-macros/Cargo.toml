@@ -12,6 +12,9 @@ repository.workspace = true
 rust-version.workspace = true
 version = "0.5.1"
 
+[features]
+cachegrind = []
+
 [lib]
 proc-macro = true
 
