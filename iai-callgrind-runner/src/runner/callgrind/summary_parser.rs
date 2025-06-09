@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use log::{debug, trace};
@@ -8,6 +8,9 @@ use log::{debug, trace};
 use super::model::Metrics;
 use super::parser::{parse_header, CallgrindParser, CallgrindProperties};
 use crate::error::Error;
+use crate::runner::summary::ToolMetrics::CallgrindMetrics;
+use crate::runner::tool::logfile_parser::{Header, Parser, ParserResult};
+use crate::runner::tool::ToolOutputPath;
 
 /// Parse the `total:` line in the callgrind output or `summary:` if total is not present
 ///
@@ -27,7 +30,17 @@ use crate::error::Error;
 /// This header line specifies a summary cost, which should be equal or larger than a total over all
 /// self costs. It may be larger as the cost lines may not represent all cost of the program run.
 #[derive(Debug)]
-pub struct SummaryParser;
+pub struct SummaryParser {
+    pub output_path: ToolOutputPath,
+}
+
+impl SummaryParser {
+    pub fn new(output_path: &ToolOutputPath) -> Self {
+        Self {
+            output_path: output_path.clone(),
+        }
+    }
+}
 
 impl CallgrindParser for SummaryParser {
     type Output = Metrics;
@@ -78,5 +91,27 @@ impl CallgrindParser for SummaryParser {
             ))
             .into())
         }
+    }
+}
+
+impl Parser for SummaryParser {
+    fn parse_single(&self, path: PathBuf) -> Result<ParserResult> {
+        CallgrindParser::parse_single(self, &path).map(|(props, metrics)| ParserResult {
+            path: path.clone(),
+            header: Header {
+                command: props.cmd.expect("A command should be present"),
+                pid: props.pid.expect("A pid should be present"),
+                parent_pid: None,
+                thread: props.thread,
+                part: props.part,
+                desc: props.desc,
+            },
+            details: vec![],
+            metrics: CallgrindMetrics(metrics),
+        })
+    }
+
+    fn get_output_path(&self) -> &ToolOutputPath {
+        &self.output_path
     }
 }

@@ -72,6 +72,8 @@ impl Parser for SummaryParser {
                 command: properties.cmd,
                 pid,
                 parent_pid,
+                thread: None,
+                part: None,
                 desc: properties.desc,
             };
             Ok(logfile_parser::ParserResult {

@@ -124,7 +124,6 @@ pub trait Formatter {
 
 pub struct BinaryBenchmarkHeader {
     inner: Header,
-    has_tools_enabled: bool,
     output_format: OutputFormat,
 }
 
@@ -149,7 +148,6 @@ enum IndentKind {
 
 pub struct LibraryBenchmarkHeader {
     inner: Header,
-    has_tools_enabled: bool,
     output_format: OutputFormat,
 }
 
@@ -218,7 +216,6 @@ impl BinaryBenchmarkHeader {
                 Some(description),
                 &bin_bench.output_format,
             ),
-            has_tools_enabled: bin_bench.tools.has_tools_enabled(),
             output_format: bin_bench.output_format.clone(),
         }
     }
@@ -226,12 +223,6 @@ impl BinaryBenchmarkHeader {
     pub fn print(&self) {
         if self.output_format.kind == OutputFormatKind::Default {
             self.inner.print();
-            // TODO: Move this out of here
-            if self.has_tools_enabled {
-                let mut formatter = VerticalFormatter::new(self.output_format.clone());
-                formatter.format_tool_headline(ValgrindTool::Callgrind);
-                formatter.print_buffer();
-            }
         }
     }
 
@@ -375,7 +366,6 @@ impl LibraryBenchmarkHeader {
 
         Self {
             inner: header,
-            has_tools_enabled: lib_bench.tools.has_tools_enabled(),
             output_format: lib_bench.output_format.clone(),
         }
     }
@@ -383,11 +373,6 @@ impl LibraryBenchmarkHeader {
     pub fn print(&self) {
         if self.output_format.is_default() {
             self.inner.print();
-            if self.has_tools_enabled {
-                let mut formatter = VerticalFormatter::new(self.output_format.clone());
-                formatter.format_tool_headline(ValgrindTool::Callgrind);
-                formatter.print_buffer();
-            }
         }
     }
 

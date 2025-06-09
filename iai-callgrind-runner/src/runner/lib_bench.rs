@@ -117,6 +117,8 @@ impl Benchmark for BaselineBenchmark {
     fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath {
         ToolOutputPath::new(
             ToolOutputPathKind::Out,
+            // TODO: Change this depending on the default tool, cachegrind feature. also in other
+            // Benchmark impl (SaveBaselineBenchmark, ..)
             ValgrindTool::Callgrind,
             &self.baseline_kind,
             &config.meta.target_dir,
@@ -145,10 +147,6 @@ impl Benchmark for BaselineBenchmark {
 
         let out_path = self.output_path(lib_bench, config, group);
         out_path.init()?;
-        out_path.shift()?;
-
-        let log_path = out_path.to_log_output();
-        log_path.shift()?;
 
         for path in lib_bench.tools.output_paths(&out_path) {
             path.shift()?;
@@ -164,22 +162,8 @@ impl Benchmark for BaselineBenchmark {
             header.description(),
         )?;
 
-        // TODO: TRANSFER INTO ToolConfigs::run ?? How ?
-        // if let Some(flamegraph_config) = lib_bench.flamegraph_config.clone() {
-        //     callgrind_summary.flamegraphs = BaselineFlamegraphGenerator {
-        //         baseline_kind: self.baseline_kind.clone(),
-        //     }
-        //     .create(
-        //         &Flamegraph::new(header.to_title(), flamegraph_config),
-        //         &out_path,
-        //         (lib_bench.entry_point == EntryPoint::Default)
-        //             .then(Sentinel::default)
-        //             .as_ref(),
-        //         &config.meta.project_root,
-        //     )?;
-        // }
-
         lib_bench.tools.run(
+            lib_bench.entry_point.clone(),
             header.to_title(),
             benchmark_summary,
             self.baselines(),
@@ -468,6 +452,7 @@ impl Benchmark for LoadBaselineBenchmark {
     fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath {
         ToolOutputPath::new(
             ToolOutputPathKind::Base(self.loaded_baseline.to_string()),
+            // TODO: Cachegrind
             ValgrindTool::Callgrind,
             &BaselineKind::Name(self.baseline.clone()),
             &config.meta.target_dir,
@@ -502,23 +487,8 @@ impl Benchmark for LoadBaselineBenchmark {
             header.description(),
         )?;
 
-        // TODO: CHECK
-        // if let Some(flamegraph_config) = lib_bench.flamegraph_config.clone() {
-        //     callgrind_summary.flamegraphs = LoadBaselineFlamegraphGenerator {
-        //         loaded_baseline: self.loaded_baseline.clone(),
-        //         baseline: self.baseline.clone(),
-        //     }
-        //     .create(
-        //         &Flamegraph::new(header.to_title(), flamegraph_config),
-        //         &out_path,
-        //         (lib_bench.entry_point == EntryPoint::Default)
-        //             .then(Sentinel::default)
-        //             .as_ref(),
-        //         &config.meta.project_root,
-        //     )?;
-        // }
-
         lib_bench.tools.run_loaded_vs_base(
+            lib_bench.entry_point.clone(),
             header.to_title(),
             self.baseline.clone(),
             self.loaded_baseline.clone(),
@@ -612,6 +582,7 @@ impl Benchmark for SaveBaselineBenchmark {
     fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath {
         ToolOutputPath::new(
             ToolOutputPathKind::Base(self.baseline.to_string()),
+            // TODO: CACHEGRIND
             ValgrindTool::Callgrind,
             &BaselineKind::Name(self.baseline.clone()),
             &config.meta.target_dir,
@@ -639,9 +610,7 @@ impl Benchmark for SaveBaselineBenchmark {
         let out_path = self.output_path(lib_bench, config, group);
         out_path.init()?;
 
-        // TODO: Double check this CLEAR
-        let log_path = out_path.to_log_output();
-        log_path.clear()?;
+        // TODO: Removed log path clear since there's already a log path clear in ToolConfigs::run
 
         let benchmark_summary = lib_bench.create_benchmark_summary(
             config,
@@ -650,22 +619,8 @@ impl Benchmark for SaveBaselineBenchmark {
             header.description(),
         )?;
 
-        // TODO: SAME PROBLEM AS IN OTHER impl
-        // if let Some(flamegraph_config) = lib_bench.flamegraph_config.clone() {
-        //     callgrind_summary.flamegraphs = SaveBaselineFlamegraphGenerator {
-        //         baseline: self.baseline.clone(),
-        //     }
-        //     .create(
-        //         &Flamegraph::new(header.to_title(), flamegraph_config),
-        //         &out_path,
-        //         (lib_bench.entry_point == EntryPoint::Default)
-        //             .then(Sentinel::default)
-        //             .as_ref(),
-        //         &config.meta.project_root,
-        //     )?;
-        // }
-
         lib_bench.tools.run(
+            lib_bench.entry_point.clone(),
             header.to_title(),
             benchmark_summary,
             self.baselines(),
