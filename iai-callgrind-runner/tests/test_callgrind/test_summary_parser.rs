@@ -35,7 +35,7 @@ fn test_summary_parser(#[case] fixture: &str, #[case] costs: [u64; 9]) {
         fixture,
     );
 
-    let parser = SummaryParser;
+    let parser = SummaryParser::new(&callgrind_output);
     let actual_costs = parser.parse(&callgrind_output).unwrap();
 
     assert_eq!(actual_costs.len(), 1);
@@ -51,7 +51,7 @@ fn test_summary_parser_when_not_found_then_error() {
         "no_summary_no_totals",
     );
 
-    let result = SummaryParser.parse(&callgrind_output);
+    let result = SummaryParser::new(&callgrind_output).parse(&callgrind_output);
     assert_parse_error(
         &callgrind_output.to_path(),
         result,

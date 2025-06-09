@@ -11,6 +11,8 @@ fn expected_header(command: &str, pid: i32, parent_pid: Option<i32>, desc: Vec<S
         command: command.to_owned(),
         pid,
         parent_pid,
+        thread: None,
+        part: None,
         desc,
     }
 }

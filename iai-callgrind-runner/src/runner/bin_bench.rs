@@ -17,7 +17,9 @@ use super::common::{Assistant, AssistantKind, BenchmarkSummaries, Config, Module
 use super::format::{BinaryBenchmarkHeader, OutputFormat};
 use super::meta::Metadata;
 use super::summary::{BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput};
-use super::tool::{RunOptions, ToolConfigs, ToolOutputPath, ToolOutputPathKind, ValgrindTool};
+use super::tool::{
+    RunOptions, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind, ValgrindTool,
+};
 use crate::api::{
     self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind, Stdin,
 };
@@ -124,6 +126,7 @@ impl Benchmark for BaselineBenchmark {
     fn output_path(&self, bin_bench: &BinBench, config: &Config, group: &Group) -> ToolOutputPath {
         ToolOutputPath::new(
             ToolOutputPathKind::Out,
+            // TODO: CACHEGRIND
             ValgrindTool::Callgrind,
             &self.baseline_kind,
             &config.meta.target_dir,
@@ -151,10 +154,6 @@ impl Benchmark for BaselineBenchmark {
         // TODO: THIS CAN STAY?
         let out_path = self.output_path(bin_bench, config, group);
         out_path.init()?;
-        out_path.shift()?;
-
-        let log_path = out_path.to_log_output();
-        log_path.shift()?;
 
         for path in bin_bench.tools.output_paths(&out_path) {
             path.shift()?;
@@ -171,6 +170,7 @@ impl Benchmark for BaselineBenchmark {
         )?;
 
         bin_bench.tools.run(
+            api::EntryPoint::None,
             header.to_title(),
             benchmark_summary,
             self.baselines(),
@@ -238,6 +238,21 @@ impl BinBench {
             .map_or_else(OutputFormat::default, Into::into);
         output_format.kind = meta.args.output_format;
 
+        let mut tool_configs = ToolConfigs(vec![ToolConfig::new(
+            ValgrindTool::Callgrind,
+            true,
+            callgrind_args.clone(),
+            None,
+        )]);
+        tool_configs.extend(config.tools.0.into_iter().map(|mut t| {
+            if !config.valgrind_args.is_empty() {
+                let mut new_args = config.valgrind_args.clone();
+                new_args.extend_ignore_flag(t.raw_args.0.iter());
+                t.raw_args = new_args;
+            }
+            t.try_into()
+        }))?;
+
         Ok(Self {
             id: binary_benchmark_bench.id,
             args: binary_benchmark_bench.args,
@@ -249,21 +264,7 @@ impl BinBench {
                 &meta.regression_config,
             )
             .map(Into::into),
-            tools: ToolConfigs(
-                config
-                    .tools
-                    .0
-                    .into_iter()
-                    .map(|mut t| {
-                        if !config.valgrind_args.is_empty() {
-                            let mut new_args = config.valgrind_args.clone();
-                            new_args.extend_ignore_flag(t.raw_args.0.iter());
-                            t.raw_args = new_args;
-                        }
-                        t.try_into()
-                    })
-                    .collect::<Result<Vec<_>, _>>()?,
-            ),
+            tools: tool_configs,
             setup: binary_benchmark_bench
                 .has_setup
                 .then_some(Assistant::new_bench_assistant(
@@ -641,6 +642,7 @@ impl Benchmark for LoadBaselineBenchmark {
     fn output_path(&self, bin_bench: &BinBench, config: &Config, group: &Group) -> ToolOutputPath {
         ToolOutputPath::new(
             ToolOutputPathKind::Base(self.loaded_baseline.to_string()),
+            // TODO: CACHEGRIND
             ValgrindTool::Callgrind,
             &BaselineKind::Name(self.baseline.clone()),
             &config.meta.target_dir,
@@ -676,21 +678,8 @@ impl Benchmark for LoadBaselineBenchmark {
             header.description(),
         )?;
 
-        // TODO: FLAMEGRAPHS
-        // if let Some(flamegraph_config) = bin_bench.flamegraph_config.clone() {
-        //     callgrind_summary.flamegraphs = LoadBaselineFlamegraphGenerator {
-        //         loaded_baseline: self.loaded_baseline.clone(),
-        //         baseline: self.baseline.clone(),
-        //     }
-        //     .create(
-        //         &Flamegraph::new(header.to_title(), flamegraph_config),
-        //         &out_path,
-        //         None,
-        //         &config.meta.project_root,
-        //     )?;
-        // }
-
         bin_bench.tools.run_loaded_vs_base(
+            api::EntryPoint::None,
             header.to_title(),
             self.baseline.clone(),
             self.loaded_baseline.clone(),
@@ -782,6 +771,7 @@ impl Benchmark for SaveBaselineBenchmark {
     fn output_path(&self, bin_bench: &BinBench, config: &Config, group: &Group) -> ToolOutputPath {
         ToolOutputPath::new(
             ToolOutputPathKind::Base(self.baseline.to_string()),
+            // TODO: CACHEGRIND
             ValgrindTool::Callgrind,
             &BaselineKind::Name(self.baseline.clone()),
             &config.meta.target_dir,
@@ -809,11 +799,6 @@ impl Benchmark for SaveBaselineBenchmark {
         let out_path = self.output_path(bin_bench, config, group);
         out_path.init()?;
 
-        // TODO: DOUBLE CHECK THE CLEAR SINCE CAchegrind needs the log output in addition to the
-        // normal output
-        let log_path = out_path.to_log_output();
-        log_path.clear()?;
-
         let benchmark_summary = bin_bench.create_benchmark_summary(
             config,
             &out_path,
@@ -822,6 +807,8 @@ impl Benchmark for SaveBaselineBenchmark {
         )?;
 
         bin_bench.tools.run(
+            // TODO: MAYBE ADD EntryPoint in BinBench
+            api::EntryPoint::None,
             header.to_title(),
             benchmark_summary,
             self.baselines(),

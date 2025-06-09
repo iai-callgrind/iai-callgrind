@@ -79,7 +79,6 @@ main!(
         )
         // Helgrind is excluded since an assertion in helgrind itself fails and causes an error.
         // Looks like a bug in valgrind.
-        .tool(Tool::new(ValgrindTool::Cachegrind))
         .tool(Tool::new(ValgrindTool::DHAT))
         .tool(Tool::new(ValgrindTool::Memcheck))
         .tool(Tool::new(ValgrindTool::DRD))

@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
@@ -10,11 +11,14 @@ use super::error_metric_parser::ErrorMetricLogfileParser;
 use super::generic_parser::GenericLogfileParser;
 use super::{ToolOutputPath, ValgrindTool};
 use crate::error::Error;
-use crate::runner::cachegrind::summary_parser::SummaryParser;
+use crate::runner::callgrind::model::Positions;
+use crate::runner::callgrind::parser::CallgrindProperties;
 use crate::runner::dhat::logfile_parser::DhatLogfileParser;
+use crate::runner::metrics::Metrics;
 use crate::runner::summary::{
     SegmentDetails, ToolMetricSummary, ToolMetrics, ToolRun, ToolRunSegment,
 };
+use crate::runner::{cachegrind, callgrind};
 use crate::util::EitherOrBoth;
 
 // The different regex have to consider --time-stamp=yes
@@ -40,18 +44,20 @@ pub trait Parser {
     fn parse_single(&self, path: PathBuf) -> Result<ParserResult>;
     fn parse_with(&self, output_path: &ToolOutputPath) -> Result<Vec<ParserResult>> {
         debug!("{}: Parsing file '{}'", output_path.tool.id(), output_path);
-
-        let mut parser_results = vec![];
         let Ok(paths) = output_path.real_paths() else {
             return Ok(vec![]);
         };
 
+        let mut parser_results = Vec::with_capacity(paths.len());
         for path in paths {
-            let logfile = self.parse_single(path)?;
-            parser_results.push(logfile);
+            let parsed = self.parse_single(path)?;
+            let position = parser_results
+                .binary_search_by(|probe: &ParserResult| probe.compare_target_ids(&parsed))
+                .unwrap_or_else(|e| e);
+
+            parser_results.insert(position, parsed);
         }
 
-        parser_results.sort_by_key(|x| x.header.pid);
         Ok(parser_results)
     }
 
@@ -66,12 +72,13 @@ pub trait Parser {
     fn get_output_path(&self) -> &ToolOutputPath;
 }
 
-// TODO: Header should include the callgrind stuff too
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Header {
     pub command: String,
     pub pid: i32,
     pub parent_pid: Option<i32>,
+    pub thread: Option<usize>,
+    pub part: Option<u64>,
     pub desc: Vec<String>,
 }
 
@@ -81,6 +88,23 @@ pub struct ParserResult {
     pub header: Header,
     pub details: Vec<String>,
     pub metrics: ToolMetrics,
+}
+
+impl ParserResult {
+    /// Compare by target ids `pid`, `part` and `thread`
+    ///
+    /// Same as in [`CallgrindProperties::compare_target_ids`]
+    ///
+    /// Highest precedence takes `pid`. Second is `part` and third is `thread` all sorted ascending.
+    /// See also [Callgrind Format](https://valgrind.org/docs/manual/cl-format.html#cl-format.reference.grammar)
+    pub fn compare_target_ids(&self, other: &Self) -> Ordering {
+        self.header.pid.cmp(&other.header.pid).then_with(|| {
+            self.header
+                .thread
+                .cmp(&other.header.thread)
+                .then_with(|| self.header.part.cmp(&other.header.part))
+        })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -99,6 +123,21 @@ impl From<ParserResult> for SegmentDetails {
             path: value.path,
             part: None,
             thread: None,
+        }
+    }
+}
+
+impl From<ParserResult> for CallgrindProperties {
+    fn from(value: ParserResult) -> Self {
+        CallgrindProperties {
+            metrics_prototype: Metrics::default(),
+            positions_prototype: Positions::default(),
+            pid: Some(value.header.pid),
+            thread: value.header.thread,
+            part: value.header.part,
+            desc: value.header.desc,
+            cmd: Some(value.header.command),
+            creator: None,
         }
     }
 }
@@ -266,6 +305,8 @@ pub fn parse_header(path: &Path, mut lines: impl Iterator<Item = String>) -> Res
         })?,
         pid,
         parent_pid,
+        thread: None,
+        part: None,
         desc: vec![],
     })
 }
@@ -276,7 +317,10 @@ pub fn parser_factory(
     output_path: &ToolOutputPath,
 ) -> Box<dyn Parser> {
     match tool {
-        ValgrindTool::Cachegrind => Box::new(SummaryParser {
+        ValgrindTool::Callgrind => Box::new(callgrind::summary_parser::SummaryParser {
+            output_path: output_path.clone(),
+        }),
+        ValgrindTool::Cachegrind => Box::new(cachegrind::summary_parser::SummaryParser {
             output_path: output_path.clone(),
         }),
         ValgrindTool::DHAT => Box::new(DhatLogfileParser {

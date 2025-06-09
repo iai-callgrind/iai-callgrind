@@ -28,9 +28,9 @@ use super::bin_bench::Delay;
 use super::cachegrind;
 use super::callgrind::flamegraph::{
     BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
-    LoadBaselineFlamegraphGenerator,
+    LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
 };
-use super::callgrind::parser::{parse_header, CallgrindParser};
+use super::callgrind::parser::{parse_header, CallgrindParser, CallgrindProperties, Sentinel};
 use super::callgrind::summary_parser::SummaryParser;
 use super::callgrind::{RegressionConfig, Summaries};
 use super::common::{Assistant, Config, ModulePath, Sandbox};
@@ -38,9 +38,9 @@ use super::format::{print_no_capture_footer, Formatter, OutputFormat, VerticalFo
 use super::meta::Metadata;
 use super::summary::{
     BaselineKind, BaselineName, BenchmarkSummary, CallgrindRegression, CallgrindSummary,
-    MetricsSummary, ToolRun, ToolSummary,
+    MetricsSummary, ToolMetrics, ToolRun, ToolSummary,
 };
-use crate::api::{self, ExitWith, Stream};
+use crate::api::{self, EntryPoint, ExitWith, Stream};
 use crate::error::Error;
 use crate::util::{self, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
 
@@ -382,8 +382,8 @@ impl ToolConfigs {
             .collect()
     }
 
-    fn print_headline(tool_config: &ToolConfig, output_format: &OutputFormat) {
-        if output_format.is_default() {
+    fn print_headline(&self, tool_config: &ToolConfig, output_format: &OutputFormat) {
+        if output_format.is_default() && self.has_multiple() {
             let mut formatter = VerticalFormatter::new(output_format.clone());
             formatter.format_tool_headline(tool_config.tool);
             formatter.print_buffer();
@@ -421,6 +421,7 @@ impl ToolConfigs {
 
     pub fn run_loaded_vs_base(
         &self,
+        entry_point: EntryPoint,
         title: String,
         baseline: BaselineName,
         loaded_baseline: BaselineName,
@@ -437,14 +438,15 @@ impl ToolConfigs {
         let mut tool_summaries = vec![];
 
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
-            Self::print_headline(tool_config, output_format);
+            self.print_headline(tool_config, output_format);
 
             let tool = tool_config.tool;
             let output_path = output_path.to_tool_output(tool);
 
             if ValgrindTool::Callgrind == tool {
-                let parsed_new = SummaryParser.parse(&output_path)?;
-                let parsed_old = Some(SummaryParser.parse(&output_path.to_base_path())?);
+                let parsed_new = SummaryParser::new(&output_path).parse(&output_path)?;
+                let parsed_old =
+                    Some(SummaryParser::new(&output_path).parse(&output_path.to_base_path())?);
                 let summaries = Summaries::new(parsed_new, parsed_old);
 
                 VerticalFormatter::new(output_format.clone()).print(
@@ -465,8 +467,8 @@ impl ToolConfigs {
                         ));
 
                 callgrind_summary.add_summaries(
-                    &executable,
-                    &executable_args,
+                    executable,
+                    executable_args,
                     &baselines,
                     summaries,
                     regressions,
@@ -480,27 +482,21 @@ impl ToolConfigs {
                     .create(
                         &Flamegraph::new(title.clone(), flamegraph_config),
                         &output_path,
-                        // TODO: sentinel is ENTRY_POINT in case of library benchmark
-                        //         (lib_bench.entry_point == EntryPoint::Default)
-                        //             .then(Sentinel::default)
-                        //             .as_ref(),
-                        None,
+                        (entry_point == EntryPoint::Default)
+                            .then(Sentinel::default)
+                            .as_ref(),
                         &config.meta.project_root,
                     )?;
                 }
-
-                let log_path = output_path.to_log_output();
-                log_path.dump_log(log::Level::Info, &mut stderr())?;
             } else {
                 let tool_summary = tool_config.parse_load(config, &output_path)?;
 
                 Self::print(config, output_format, &tool_summary.summaries)?;
-
-                let log_path = output_path.to_log_output();
-                log_path.dump_log(log::Level::Info, &mut stderr())?;
-
                 tool_summaries.push(tool_summary);
             }
+
+            let log_path = output_path.to_log_output();
+            log_path.dump_log(log::Level::Info, &mut stderr())?;
         }
 
         Ok(benchmark_summary)
@@ -519,9 +515,14 @@ impl ToolConfigs {
         }
     }
 
-    // TODO: RETURN Result<BenchmarkSummary>
+    /// Return true if there are multiple tools configured and are enabled
+    pub fn has_multiple(&self) -> bool {
+        self.0.len() > 1 && self.0.iter().filter(|f| f.is_enabled).count() > 1
+    }
+
     pub fn run(
         &self,
+        entry_point: EntryPoint,
         title: String,
         mut benchmark_summary: BenchmarkSummary,
         baselines: (Option<String>, Option<String>),
@@ -545,8 +546,7 @@ impl ToolConfigs {
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
             // Print the headline as soon as possible, so if there are any errors, the errors shown
             // in the terminal output can be associated with the tool
-            // TODO: Print Callgrind/Cachegrind headline but only if multiple tools are configured
-            Self::print_headline(tool_config, output_format);
+            self.print_headline(tool_config, output_format);
 
             let tool = tool_config.tool;
 
@@ -624,12 +624,18 @@ impl ToolConfigs {
             }
 
             if tool_config.tool == ValgrindTool::Callgrind {
-                let old_path = output_path.to_base_path();
-                let parsed_new = SummaryParser.parse(&output_path)?;
-                let parsed_old = old_path
-                    .exists()
-                    .then(|| SummaryParser.parse(&old_path))
-                    .transpose()?;
+                // TODO: MOVE INTO ToolConfig::parse
+                let parsed_new = SummaryParser::new(&output_path).parse(&output_path)?;
+                let parsed_old = {
+                    let mut result = vec![];
+                    for old in old_summaries {
+                        let ToolMetrics::CallgrindMetrics(metrics) = old.metrics.clone() else {
+                            todo!("Remove this whole conversion back from ParserResult");
+                        };
+                        result.push((old.path.clone(), CallgrindProperties::from(old), metrics));
+                    }
+                    (!result.is_empty()).then_some(result)
+                };
 
                 let summaries = Summaries::new(parsed_new, parsed_old);
                 VerticalFormatter::new(output_format.clone()).print(
@@ -641,6 +647,8 @@ impl ToolConfigs {
                 let regressions =
                     Self::check_and_print_regressions(regression_config.as_ref(), &summaries.total);
 
+                // TODO: CallgrindSummary should be a ToolSummary and no different to the other
+                // tools
                 let callgrind_summary =
                     benchmark_summary
                         .callgrind_summary
@@ -657,23 +665,38 @@ impl ToolConfigs {
                     regressions,
                 );
 
-                if let Some(flamegraph_config) = flamegraph_config.clone() {
-                    // TODO: This can be difficult since the flamegraphs generators differ, maybe
-                    // move back into Baseline, SaveBaseline (, ...) impl and generate flamegraphs
-                    // last?
+                if save_baseline {
+                    let BaselineKind::Name(baseline) = baseline_kind.clone() else {
+                        todo!(
+                            "Necessary or can it be extracted from baselines directly? Both \
+                             options should have be present and have the same string"
+                        );
+                    };
+                    if let Some(flamegraph_config) = flamegraph_config.clone() {
+                        callgrind_summary.flamegraphs =
+                            SaveBaselineFlamegraphGenerator { baseline }.create(
+                                &Flamegraph::new(title.clone(), flamegraph_config),
+                                &output_path,
+                                (entry_point == EntryPoint::Default)
+                                    .then(Sentinel::default)
+                                    .as_ref(),
+                                &config.meta.project_root,
+                            )?;
+                    }
+                } else if let Some(flamegraph_config) = flamegraph_config.clone() {
                     callgrind_summary.flamegraphs = BaselineFlamegraphGenerator {
                         baseline_kind: baseline_kind.clone(),
                     }
                     .create(
                         &Flamegraph::new(title.clone(), flamegraph_config),
                         &output_path,
-                        // TODO: sentinel is ENTRY_POINT in case of library benchmark
-                        //         (lib_bench.entry_point == EntryPoint::Default)
-                        //             .then(Sentinel::default)
-                        //             .as_ref(),
-                        None,
+                        (entry_point == EntryPoint::Default)
+                            .then(Sentinel::default)
+                            .as_ref(),
                         &config.meta.project_root,
                     )?;
+                } else {
+                    // do nothing
                 }
             } else {
                 let tool_summary =
