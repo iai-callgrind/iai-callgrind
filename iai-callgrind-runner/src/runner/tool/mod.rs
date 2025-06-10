@@ -16,7 +16,7 @@ use std::process::{Child, Command, ExitStatus, Output};
 use anyhow::{anyhow, Context, Result};
 use lazy_static::lazy_static;
 use log::{debug, error, log_enabled};
-use logfile_parser::ParserResult;
+use logfile_parser::{parser_factory, ParserResult};
 use regex::Regex;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
@@ -30,15 +30,14 @@ use super::callgrind::flamegraph::{
     BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
     LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
 };
-use super::callgrind::parser::{parse_header, CallgrindParser, CallgrindProperties, Sentinel};
-use super::callgrind::summary_parser::SummaryParser;
-use super::callgrind::{RegressionConfig, Summaries};
+use super::callgrind::parser::{parse_header, Sentinel};
+use super::callgrind::RegressionConfig;
 use super::common::{Assistant, Config, ModulePath, Sandbox};
 use super::format::{print_no_capture_footer, Formatter, OutputFormat, VerticalFormatter};
 use super::meta::Metadata;
 use super::summary::{
-    BaselineKind, BaselineName, BenchmarkSummary, CallgrindRegression, CallgrindSummary,
-    MetricsSummary, ToolMetrics, ToolRun, ToolSummary,
+    BaselineKind, BaselineName, BenchmarkSummary, ToolMetricSummary, ToolRegression, ToolRun,
+    ToolSummary, ToolTotal,
 };
 use crate::api::{self, EntryPoint, ExitWith, Stream};
 use crate::error::Error;
@@ -344,6 +343,8 @@ impl ToolConfig {
             log_paths: out_path.to_log_output().real_paths()?,
             out_paths: out_path.real_paths()?,
             summaries,
+            // TODO: FLAMEGRAPHS EMPTY
+            flamegraphs: vec![],
         })
     }
 }
@@ -407,8 +408,8 @@ impl ToolConfigs {
 
         let summaries = match (parsed_new.is_empty(), old_summaries.is_empty()) {
             (true, false | true) => return Err(anyhow!("A new dataset should always be present")),
-            (false, true) => ToolRun::from(EitherOrBoth::Left(parsed_new)),
-            (false, false) => ToolRun::from(EitherOrBoth::Both(parsed_new, old_summaries)),
+            (false, true) => ToolRun::new(parsed_new, None),
+            (false, false) => ToolRun::new(parsed_new, Some(old_summaries)),
         };
 
         Ok(ToolSummary {
@@ -416,6 +417,8 @@ impl ToolConfigs {
             log_paths: out_path.to_log_output().real_paths()?,
             out_paths: out_path.real_paths()?,
             summaries,
+            // TODO: FLAMEGRAPHS EMPTY
+            flamegraphs: vec![],
         })
     }
 
@@ -435,47 +438,37 @@ impl ToolConfigs {
         output_path: &ToolOutputPath,
         output_format: &OutputFormat,
     ) -> Result<BenchmarkSummary> {
-        let mut tool_summaries = vec![];
-
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
             self.print_headline(tool_config, output_format);
 
             let tool = tool_config.tool;
             let output_path = output_path.to_tool_output(tool);
 
+            let parser = parser_factory(tool, config.meta.project_root.clone(), &output_path);
             if ValgrindTool::Callgrind == tool {
-                let parsed_new = SummaryParser::new(&output_path).parse(&output_path)?;
-                let parsed_old =
-                    Some(SummaryParser::new(&output_path).parse(&output_path.to_base_path())?);
-                let summaries = Summaries::new(parsed_new, parsed_old);
+                let parsed_new = parser.parse()?;
+                let parsed_old = Some(parser.parse_base()?);
 
+                let mut tool_run = ToolRun::new(parsed_new, parsed_old);
                 VerticalFormatter::new(output_format.clone()).print(
                     config,
                     baselines.clone(),
-                    &ToolRun::from(&summaries),
+                    &tool_run,
                 )?;
 
-                let regressions =
-                    Self::check_and_print_regressions(regression_config.as_ref(), &summaries.total);
+                tool_run.total.regressions =
+                    Self::check_and_print_regressions(regression_config.as_ref(), &tool_run.total);
 
-                let callgrind_summary =
-                    benchmark_summary
-                        .callgrind_summary
-                        .insert(CallgrindSummary::new(
-                            output_path.to_log_output().real_paths()?,
-                            output_path.real_paths()?,
-                        ));
-
-                callgrind_summary.add_summaries(
-                    executable,
-                    executable_args,
-                    &baselines,
-                    summaries,
-                    regressions,
-                );
+                let mut tool_summary = ToolSummary {
+                    tool: tool_config.tool,
+                    out_paths: output_path.real_paths()?,
+                    log_paths: output_path.to_log_output().real_paths()?,
+                    flamegraphs: vec![],
+                    summaries: tool_run,
+                };
 
                 if let Some(flamegraph_config) = flamegraph_config.clone() {
-                    callgrind_summary.flamegraphs = LoadBaselineFlamegraphGenerator {
+                    tool_summary.flamegraphs = LoadBaselineFlamegraphGenerator {
                         loaded_baseline: loaded_baseline.clone(),
                         baseline: baseline.clone(),
                     }
@@ -488,11 +481,13 @@ impl ToolConfigs {
                         &config.meta.project_root,
                     )?;
                 }
+
+                benchmark_summary.tool_summaries.push(tool_summary);
             } else {
                 let tool_summary = tool_config.parse_load(config, &output_path)?;
 
                 Self::print(config, output_format, &tool_summary.summaries)?;
-                tool_summaries.push(tool_summary);
+                benchmark_summary.tool_summaries.push(tool_summary);
             }
 
             let log_path = output_path.to_log_output();
@@ -504,15 +499,31 @@ impl ToolConfigs {
 
     /// Check for regressions as defined in [`RegressionConfig`] and print an error if a regression
     /// occurred
+    ///
+    /// # Panics
+    ///
+    /// Checking performance regressions for other tools than callgrind is not implemented and
+    /// treated as programming error.
     fn check_and_print_regressions(
         regression_config: Option<&RegressionConfig>,
-        metrics_summary: &MetricsSummary,
-    ) -> Vec<CallgrindRegression> {
+        tool_total: &ToolTotal,
+    ) -> Vec<ToolRegression> {
         if let Some(regression_config) = regression_config {
-            regression_config.check_and_print(metrics_summary)
-        } else {
-            vec![]
+            let regressions = match &tool_total.summary {
+                ToolMetricSummary::CallgrindSummary(metrics_summary) => {
+                    regression_config.check_and_print(metrics_summary)
+                }
+                _ => {
+                    panic!(
+                        "Checking performance regressions for other tools than callgrind is \
+                         currently not implemented"
+                    )
+                }
+            };
+            return regressions;
         }
+
+        vec![]
     }
 
     /// Return true if there are multiple tools configured and are enabled
@@ -542,7 +553,6 @@ impl ToolConfigs {
         delay: Option<&Delay>,
         output_format: &OutputFormat,
     ) -> Result<BenchmarkSummary> {
-        let mut tool_summaries = vec![];
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
             // Print the headline as soon as possible, so if there are any errors, the errors shown
             // in the terminal output can be associated with the tool
@@ -624,57 +634,28 @@ impl ToolConfigs {
             }
 
             if tool_config.tool == ValgrindTool::Callgrind {
-                // TODO: MOVE INTO ToolConfig::parse
-                let parsed_new = SummaryParser::new(&output_path).parse(&output_path)?;
-                let parsed_old = {
-                    let mut result = vec![];
-                    for old in old_summaries {
-                        let ToolMetrics::CallgrindMetrics(metrics) = old.metrics.clone() else {
-                            todo!("Remove this whole conversion back from ParserResult");
-                        };
-                        result.push((old.path.clone(), CallgrindProperties::from(old), metrics));
-                    }
-                    (!result.is_empty()).then_some(result)
-                };
+                let mut tool_summary =
+                    Self::parse(tool_config, &config.meta, &output_path, old_summaries)?;
 
-                let summaries = Summaries::new(parsed_new, parsed_old);
                 VerticalFormatter::new(output_format.clone()).print(
                     config,
                     baselines.clone(),
-                    &ToolRun::from(&summaries),
+                    &tool_summary.summaries,
                 )?;
 
-                let regressions =
-                    Self::check_and_print_regressions(regression_config.as_ref(), &summaries.total);
-
-                // TODO: CallgrindSummary should be a ToolSummary and no different to the other
-                // tools
-                let callgrind_summary =
-                    benchmark_summary
-                        .callgrind_summary
-                        .insert(CallgrindSummary::new(
-                            log_path.real_paths()?,
-                            output_path.real_paths()?,
-                        ));
-
-                callgrind_summary.add_summaries(
-                    executable,
-                    executable_args,
-                    &baselines,
-                    summaries,
-                    regressions,
+                tool_summary.summaries.total.regressions = Self::check_and_print_regressions(
+                    regression_config.as_ref(),
+                    &tool_summary.summaries.total,
                 );
 
                 if save_baseline {
+                    // TODO: Can this be improved?
                     let BaselineKind::Name(baseline) = baseline_kind.clone() else {
-                        todo!(
-                            "Necessary or can it be extracted from baselines directly? Both \
-                             options should have be present and have the same string"
-                        );
+                        panic!("A baseline with name should be present");
                     };
                     if let Some(flamegraph_config) = flamegraph_config.clone() {
-                        callgrind_summary.flamegraphs =
-                            SaveBaselineFlamegraphGenerator { baseline }.create(
+                        tool_summary.flamegraphs = SaveBaselineFlamegraphGenerator { baseline }
+                            .create(
                                 &Flamegraph::new(title.clone(), flamegraph_config),
                                 &output_path,
                                 (entry_point == EntryPoint::Default)
@@ -684,7 +665,7 @@ impl ToolConfigs {
                             )?;
                     }
                 } else if let Some(flamegraph_config) = flamegraph_config.clone() {
-                    callgrind_summary.flamegraphs = BaselineFlamegraphGenerator {
+                    tool_summary.flamegraphs = BaselineFlamegraphGenerator {
                         baseline_kind: baseline_kind.clone(),
                     }
                     .create(
@@ -698,20 +679,21 @@ impl ToolConfigs {
                 } else {
                     // do nothing
                 }
+
+                benchmark_summary.tool_summaries.push(tool_summary);
             } else {
                 let tool_summary =
                     Self::parse(tool_config, &config.meta, &output_path, old_summaries)?;
 
                 Self::print(config, output_format, &tool_summary.summaries)?;
 
-                tool_summaries.push(tool_summary);
+                benchmark_summary.tool_summaries.push(tool_summary);
             }
 
             output.dump_log(log::Level::Info);
             log_path.dump_log(log::Level::Info, &mut stderr())?;
         }
 
-        benchmark_summary.tool_summaries = tool_summaries;
         Ok(benchmark_summary)
     }
 
@@ -1619,6 +1601,7 @@ impl From<api::ValgrindTool> for ValgrindTool {
             api::ValgrindTool::DHAT => Self::DHAT,
             api::ValgrindTool::BBV => Self::BBV,
             api::ValgrindTool::Cachegrind => Self::Cachegrind,
+            api::ValgrindTool::Callgrind => Self::Callgrind,
         }
     }
 }

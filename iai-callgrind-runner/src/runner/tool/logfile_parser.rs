@@ -16,7 +16,7 @@ use crate::runner::callgrind::parser::CallgrindProperties;
 use crate::runner::dhat::logfile_parser::DhatLogfileParser;
 use crate::runner::metrics::Metrics;
 use crate::runner::summary::{
-    SegmentDetails, ToolMetricSummary, ToolMetrics, ToolRun, ToolRunSegment,
+    SegmentDetails, ToolMetricSummary, ToolMetrics, ToolRun, ToolRunSegment, ToolTotal,
 };
 use crate::runner::{cachegrind, callgrind};
 use crate::util::EitherOrBoth;
@@ -61,6 +61,7 @@ pub trait Parser {
         Ok(parser_results)
     }
 
+    // TODO: RETURN Error if not at least 1 file could be parsed?
     fn parse(&self) -> Result<Vec<ParserResult>> {
         self.parse_with(self.get_output_path())
     }
@@ -121,8 +122,8 @@ impl From<ParserResult> for SegmentDetails {
             parent_pid: value.header.parent_pid,
             details: (!value.details.is_empty()).then(|| value.details.join("\n")),
             path: value.path,
-            part: None,
-            thread: None,
+            part: value.header.part,
+            thread: value.header.thread,
         }
     }
 }
@@ -142,11 +143,14 @@ impl From<ParserResult> for CallgrindProperties {
     }
 }
 
+// TODO: MOVE THIS INTO module where ToolRun is defined instead of where ParserResult is defined
+// TODO: RENAME logfiles to parser_result of whatever the name will be
 // Logfiles are separated per process but not per threads by any tool
 impl From<EitherOrBoth<Vec<ParserResult>>> for ToolRun {
     fn from(logfiles: EitherOrBoth<Vec<ParserResult>>) -> Self {
         let mut total: Option<ToolMetricSummary> = None;
 
+        // TODO: REPLACE THIS with the impl in Summaries::new
         let segments: Vec<ToolRunSegment> = match logfiles {
             EitherOrBoth::Left(new) => new
                 .into_iter()
@@ -161,6 +165,8 @@ impl From<EitherOrBoth<Vec<ParserResult>>> for ToolRun {
                     ToolRunSegment {
                         details: EitherOrBoth::Left(logfile.into()),
                         metrics_summary,
+                        // TODO: Add baseline, Why is baseline in segment instead of ToolRun?
+                        baseline: None,
                     }
                 })
                 .collect(),
@@ -177,6 +183,8 @@ impl From<EitherOrBoth<Vec<ParserResult>>> for ToolRun {
                     ToolRunSegment {
                         details: EitherOrBoth::Right(logfile.into()),
                         metrics_summary,
+                        // TODO: Add baseline
+                        baseline: None,
                     }
                 })
                 .collect(),
@@ -200,6 +208,8 @@ impl From<EitherOrBoth<Vec<ParserResult>>> for ToolRun {
                         ToolRunSegment {
                             details: EitherOrBoth::Both(new.into(), old.into()),
                             metrics_summary,
+                            // TODO: Add baseline
+                            baseline: None,
                         }
                     }
                     itertools::EitherOrBoth::Left(new) => {
@@ -213,6 +223,8 @@ impl From<EitherOrBoth<Vec<ParserResult>>> for ToolRun {
                         ToolRunSegment {
                             details: EitherOrBoth::Left(new.into()),
                             metrics_summary,
+                            // TODO: Add baseline
+                            baseline: None,
                         }
                     }
                     itertools::EitherOrBoth::Right(old) => {
@@ -226,16 +238,21 @@ impl From<EitherOrBoth<Vec<ParserResult>>> for ToolRun {
                         ToolRunSegment {
                             details: EitherOrBoth::Right(old.into()),
                             metrics_summary,
+                            // TODO: Add baseline
+                            baseline: None,
                         }
                     }
                 })
                 .collect(),
         };
 
-        Self {
-            segments,
-            total: total.expect("A total should be present"),
-        }
+        let total = ToolTotal {
+            summary: total.expect("A total should be present"),
+            // TODO: ADD REGRESSIONS HERE or later?
+            regressions: vec![],
+        };
+
+        Self { segments, total }
     }
 }
 
@@ -311,6 +328,7 @@ pub fn parse_header(path: &Path, mut lines: impl Iterator<Item = String>) -> Res
     })
 }
 
+/// TODO: MOVE THIS and everything not related to log file parsing OUT OF logfile module
 pub fn parser_factory(
     tool: ValgrindTool,
     root_dir: PathBuf,

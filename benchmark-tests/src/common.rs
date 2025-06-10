@@ -2,7 +2,8 @@ use std::fs::File;
 use std::path::Path;
 
 use anyhow::{anyhow, Result};
-use iai_callgrind_runner::runner::summary::BenchmarkSummary;
+use iai_callgrind::ValgrindTool;
+use iai_callgrind_runner::runner::summary::{BenchmarkSummary, ToolMetricSummary};
 use iai_callgrind_runner::util::EitherOrBoth;
 
 #[derive(Debug)]
@@ -24,19 +25,27 @@ impl Summary {
         }
     }
 
+    // TODO: DOUBLE CHECK CallgrindRegression -> ToolRegression, also for other regressions like
+    // the upcoming cachegrind, dhat
     #[track_caller]
     pub fn assert_costs_not_all_zero(&self) {
-        if let Some(callgrind_summary) = &self.0.callgrind_summary {
-            for summary in callgrind_summary
-                .callgrind_run
+        if let Some(tool_summary) = &self
+            .0
+            .tool_summaries
+            .iter()
+            .find(|p| p.tool == ValgrindTool::Callgrind.into())
+        {
+            for summary in tool_summary
+                .summaries
                 .segments
                 .iter()
-                .map(|s| &s.events)
-                .chain(std::iter::once(
-                    &callgrind_summary.callgrind_run.total.summary,
-                ))
+                .map(|s| &s.metrics_summary)
+                .chain(std::iter::once(&tool_summary.summaries.total.summary))
             {
-                match summary.extract_costs() {
+                let ToolMetricSummary::CallgrindSummary(metrics_summary) = summary else {
+                    panic!()
+                };
+                match metrics_summary.extract_costs() {
                     EitherOrBoth::Left(new_costs) => {
                         assert!(
                             !new_costs.0.iter().all(|(_, c)| *c == 0),

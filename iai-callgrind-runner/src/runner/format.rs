@@ -16,6 +16,7 @@ use super::tool::ValgrindTool;
 use crate::api::{
     self, CachegrindMetric, CallgrindMetrics, DhatMetricKind, ErrorMetricKind, EventKind,
 };
+use crate::runner::summary::MetricKind;
 use crate::util::{
     make_relative, to_string_signed_short, to_string_unsigned_short, truncate_str_utf8,
     EitherOrBoth,
@@ -444,6 +445,7 @@ impl SummaryFormatter {
                     .as_secs_f64(),
             );
 
+            // TODO: multiple tools should be able to have regressions
             if summaries.is_regressed() {
                 println!("\nRegressions:\n");
                 let mut num_regressed = 0;
@@ -454,13 +456,21 @@ impl SummaryFormatter {
                         println!("  {}:", summary.module_path.green());
                     }
                     for regression in summary
-                        .callgrind_summary
+                        .tool_summaries
                         .iter()
-                        .flat_map(|p| &p.callgrind_run.total.regressions)
+                        .flat_map(|t| &t.summaries.total.regressions)
                     {
+                        // TODO: Keep this for the moment this way. The format might need to change
+                        // in case of different metric kinds.
+                        let metric_string = if let MetricKind::Callgrind(event) = regression.metric
+                        {
+                            event.to_string()
+                        } else {
+                            regression.metric.to_string()
+                        };
                         println!(
                             "    {} ({} -> {}): {:>6}{} exceeds limit of {:>6}{}",
-                            regression.event_kind.to_string().bold(),
+                            metric_string.bold(),
                             regression.old,
                             regression.new.to_string().bold(),
                             to_string_signed_short(regression.diff_pct)
@@ -966,10 +976,10 @@ impl Formatter for VerticalFormatter {
 
             if tool_run.total.is_some() {
                 self.format_tool_total_header();
-                self.format_single((None, None), None, &tool_run.total)?;
+                self.format_single((None, None), None, &tool_run.total.summary)?;
             }
         } else if tool_run.total.is_some() {
-            self.format_single(baselines, None, &tool_run.total)?;
+            self.format_single(baselines, None, &tool_run.total.summary)?;
         } else if tool_run.total.is_none() && !tool_run.segments.is_empty() {
             // Since there is no total, show_all is partly ignored, and we show all data in a little
             // bit more aggregated form without the multiple files headlines. This affects currently
@@ -990,6 +1000,9 @@ impl Formatter for VerticalFormatter {
         Ok(())
     }
 
+    // TODO: Not only callgrind benchmarks are compared anymore. In the event of multiple tool
+    // comparisons the header could indicate the tool somehow. Callgrind and Cachegrind are hard to
+    // differentiate.
     fn print_comparison(
         &mut self,
         function_name: &str,

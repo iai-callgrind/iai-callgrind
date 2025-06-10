@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::ffi::OsString;
 use std::fmt::{Debug, Display};
 use std::fs::File;
 use std::hash::Hash;
@@ -11,14 +10,15 @@ use anyhow::{anyhow, Context, Result};
 use derive_more::AsRef;
 use glob::glob;
 use indexmap::{indexmap, IndexMap, IndexSet};
+use itertools::Itertools;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::callgrind::Summaries;
 use super::common::ModulePath;
 use super::format::{Formatter, OutputFormat, OutputFormatKind, VerticalFormatter};
 use super::metrics::Metrics;
+use super::tool::logfile_parser::ParserResult;
 use super::tool::ValgrindTool;
 use crate::api::{CachegrindMetric, DhatMetricKind, ErrorMetricKind, EventKind};
 use crate::error::Error;
@@ -92,88 +92,8 @@ pub struct BenchmarkSummary {
     pub id: Option<String>,
     /// More details describing this benchmark run
     pub details: Option<String>,
-    /// The summary of the callgrind run
-    pub callgrind_summary: Option<CallgrindSummary>,
     /// The summary of other valgrind tool runs
-    pub tool_summaries: Vec<ToolSummary>,
-}
-
-/// The `CallgrindRegression` describing a single event based performance regression
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct CallgrindRegression {
-    /// The [`EventKind`] which is affected by a performance regression
-    pub event_kind: EventKind,
-    /// The value of the new benchmark run
-    pub new: u64,
-    /// The value of the old benchmark run
-    pub old: u64,
-    /// The difference between new and old in percent. Serialized as string to preserve infinity
-    /// values and avoid null in json.
-    #[serde(with = "crate::serde::float_64")]
-    #[cfg_attr(feature = "schema", schemars(with = "String"))]
-    pub diff_pct: f64,
-    /// The value of the limit which was exceeded to cause a performance regression. Serialized as
-    /// string to preserve infinity values and avoid null in json.
-    #[serde(with = "crate::serde::float_64")]
-    #[cfg_attr(feature = "schema", schemars(with = "String"))]
-    pub limit: f64,
-}
-
-/// The `CallgrindRun` contains all `CallgrindRunSegments` and their total costs in a
-/// `CallgrindTotal`.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct CallgrindRun {
-    /// All `CallgrindRunSummary`s
-    pub segments: Vec<CallgrindRunSegment>,
-    /// The total costs of all `CallgrindRunSummary`s in this `CallgrindRunSummaries`
-    pub total: CallgrindTotal,
-}
-
-/// The `CallgrindRunSegment` containing the metric differences, performance regressions of a
-/// callgrind run segment.
-///
-/// A segment can be a part (caused by options like `--dump-every-bb=xxx`), a thread (caused by
-/// `--separate-threads`) or a pid (possibly caused by `--trace-children`). A segment is a summary
-/// over a single file which contains the costs of that part, thread and/or pid.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct CallgrindRunSegment {
-    /// The executed command extracted from Valgrind output
-    pub command: String,
-    /// If present, the `Baseline` used to compare the new with the old output
-    pub baseline: Option<Baseline>,
-    /// All recorded metrics for the `EventKinds`
-    pub events: MetricsSummary<EventKind>,
-    /// All detected performance regressions per callgrind run
-    pub regressions: Vec<CallgrindRegression>,
-}
-
-/// The total callgrind costs over the `CallgrindRunSegments` and all detected regressions for the
-/// total
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct CallgrindTotal {
-    /// The total over the segment metrics
-    pub summary: MetricsSummary,
-    /// All detected regressions for the total metrics
-    pub regressions: Vec<CallgrindRegression>,
-}
-
-/// The `CallgrindSummary` contains the callgrind run, flamegraph paths and other paths to the
-/// segments of the callgrind run.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct CallgrindSummary {
-    /// The paths to the `*.log` files
-    pub log_paths: Vec<PathBuf>,
-    /// The paths to the `*.out` files
-    pub out_paths: Vec<PathBuf>,
-    /// The summaries of possibly created flamegraphs
-    pub flamegraphs: Vec<FlamegraphSummary>,
-    /// The summary of all callgrind segments is a `CallgrindRun`
-    pub callgrind_run: CallgrindRun,
+    pub tool_summaries: ToolSummaries,
 }
 
 /// The `MetricsDiff` describes the difference between a `new` and `old` metric as percentage and
@@ -325,7 +245,62 @@ pub struct ToolRun {
     /// All `ToolRunSegment`s
     pub segments: Vec<ToolRunSegment>,
     /// The total over the `ToolRunSegment`s
-    pub total: ToolMetricSummary,
+    pub total: ToolTotal,
+}
+
+/// TODO: DOCS
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct ToolTotal {
+    pub summary: ToolMetricSummary,
+    pub regressions: Vec<ToolRegression>,
+}
+
+/// TODO: SORT
+impl ToolTotal {
+    pub fn is_regressed(&self) -> bool {
+        !self.regressions.is_empty()
+    }
+
+    pub fn is_some(&self) -> bool {
+        self.summary.is_some()
+    }
+
+    pub fn is_none(&self) -> bool {
+        self.summary.is_none()
+    }
+}
+
+/// TODO: DOCS, see description of [`ToolMetrics`]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum MetricKind {
+    None,
+    Callgrind(EventKind),
+    Cachegrind(CachegrindMetric),
+    Dhat(DhatMetricKind),
+    ErrorMetric(ErrorMetricKind),
+}
+
+// TODO: DOCS
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct ToolRegression {
+    pub metric: MetricKind,
+    /// The value of the new benchmark run
+    pub new: u64,
+    /// The value of the old benchmark run
+    pub old: u64,
+    /// The difference between new and old in percent. Serialized as string to preserve infinity
+    /// values and avoid null in json.
+    #[serde(with = "crate::serde::float_64")]
+    #[cfg_attr(feature = "schema", schemars(with = "String"))]
+    pub diff_pct: f64,
+    /// The value of the limit which was exceeded to cause a performance regression. Serialized as
+    /// string to preserve infinity values and avoid null in json.
+    #[serde(with = "crate::serde::float_64")]
+    #[cfg_attr(feature = "schema", schemars(with = "String"))]
+    pub limit: f64,
 }
 
 /// A single segment of a tool run and if present the comparison with the "old" segment
@@ -335,6 +310,8 @@ pub struct ToolRun {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ToolRunSegment {
+    /// TODO: MOVE INTO `ToolRun` instead
+    pub baseline: Option<Baseline>,
     /// The details (like command, thread number etc.) about the segment(s)
     pub details: EitherOrBoth<SegmentDetails>,
     /// The `ToolMetricSummary`
@@ -352,8 +329,17 @@ pub struct ToolSummary {
     /// The paths to the `*.out` files. Not all tools produce an output in addition to the log
     /// files
     pub out_paths: Vec<PathBuf>,
+    /// TODO: DOCS
+    pub flamegraphs: Vec<FlamegraphSummary>,
     /// The metrics and details about the tool run
     pub summaries: ToolRun,
+}
+
+/// TODO: SORT
+impl ToolSummary {
+    pub fn is_regressed(&self) -> bool {
+        self.summaries.is_regressed()
+    }
 }
 
 impl FromStr for BaselineName {
@@ -403,8 +389,7 @@ impl BenchmarkSummary {
             function_name: function_name.to_owned(),
             id,
             details,
-            callgrind_summary: None,
-            tool_summaries: vec![],
+            tool_summaries: ToolSummaries::default(),
             summary_output: output,
             project_root,
             package_dir,
@@ -457,15 +442,12 @@ impl BenchmarkSummary {
 
     /// Check if this `BenchmarkSummary` has recorded any performance regressions
     ///
-    /// If the regressions are configured to be not `fail_fast` and there is a regressions, then the
-    /// `is_regressed` variable is updated to true.
-    ///
     /// # Errors
     ///
-    /// If the regressions are configured to be `fail_fast` an error is returned
-    pub fn check_regression(&self, fail_fast: bool) -> Result<()> {
-        if let Some(callgrind_summary) = &self.callgrind_summary {
-            if callgrind_summary.is_regressed() && fail_fast {
+    /// If a regressions is present and are configured to be `fail_fast` an error is returned
+    pub fn check_regression(&self, fail_fast: bool, tool: ValgrindTool) -> Result<()> {
+        if let Some(summary) = &self.tool_summaries.iter().find(|p| p.tool == tool) {
+            if summary.is_regressed() && fail_fast {
                 return Err(Error::RegressionError(true).into());
             }
         }
@@ -473,42 +455,58 @@ impl BenchmarkSummary {
         Ok(())
     }
 
+    /// TODO: Check usages of this function to be correct with the new method and not only callgrind
+    /// can regress
     pub fn is_regressed(&self) -> bool {
-        self.callgrind_summary
-            .as_ref()
-            .is_some_and(CallgrindSummary::is_regressed)
+        self.tool_summaries.iter().any(ToolSummary::is_regressed)
     }
 
+    /// TODO: REFACTOR and simplify
     pub fn compare_and_print(
         &self,
         id: &str,
         other: &Self,
         output_format: &OutputFormat,
     ) -> Result<()> {
-        if let (Some(callgrind_summary), Some(other_callgrind_summary)) =
-            (&self.callgrind_summary, &other.callgrind_summary)
-        {
-            if let (
-                EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _),
-                EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
-            ) = (
-                callgrind_summary
-                    .callgrind_run
-                    .total
-                    .summary
-                    .extract_costs(),
-                other_callgrind_summary
-                    .callgrind_run
-                    .total
-                    .summary
-                    .extract_costs(),
-            ) {
-                let new_summary = MetricsSummary::new(EitherOrBoth::Both(new, other_new));
+        for summary in self.tool_summaries.iter() {
+            if let Some(other_summary) =
+                other.tool_summaries.iter().find(|s| s.tool == summary.tool)
+            {
+                let metrics_summary = match (
+                    &summary.summaries.total.summary,
+                    &other_summary.summaries.total.summary,
+                ) {
+                    // TODO: REFACTOR AND PUT THIS INTO A FUNCTION IN ToolMetricSummary
+                    // TODO: Add other tools. The comparison header should only be printed once. The
+                    // metrics might need to be separated by a line with hyphens (definitely not
+                    // equal signs)
+                    (
+                        ToolMetricSummary::CallgrindSummary(metrics),
+                        ToolMetricSummary::CallgrindSummary(other_metrics),
+                    ) => {
+                        let costs = metrics.extract_costs();
+                        let other_costs = other_metrics.extract_costs();
+
+                        if let (
+                            EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _),
+                            EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
+                        ) = (costs, other_costs)
+                        {
+                            ToolMetricSummary::CallgrindSummary(MetricsSummary::new(
+                                EitherOrBoth::Both(new, other_new),
+                            ))
+                        } else {
+                            return Ok(());
+                        }
+                    }
+                    _ => return Ok(()),
+                };
+
                 VerticalFormatter::new(output_format.clone()).print_comparison(
                     &self.function_name,
                     id,
                     self.details.as_deref(),
-                    &ToolMetricSummary::CallgrindSummary(new_summary),
+                    &metrics_summary,
                 )?;
             }
         }
@@ -517,65 +515,16 @@ impl BenchmarkSummary {
     }
 }
 
-impl CallgrindSummary {
-    /// Create a new `CallgrindSummary`
-    pub fn new(log_paths: Vec<PathBuf>, out_paths: Vec<PathBuf>) -> CallgrindSummary {
-        Self {
-            log_paths,
-            out_paths,
-            flamegraphs: Vec::default(),
-            callgrind_run: CallgrindRun::default(),
+// TODO: Try to figure out a good format. Needed for example when printing regressions
+impl Display for MetricKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MetricKind::None => Ok(()),
+            MetricKind::Callgrind(metric) => f.write_fmt(format_args!("Callgrind: {metric}")),
+            MetricKind::Cachegrind(metric) => f.write_fmt(format_args!("Cachegrind: {metric}")),
+            MetricKind::Dhat(metric) => f.write_fmt(format_args!("DHAT: {metric}")),
+            MetricKind::ErrorMetric(metric) => f.write_fmt(format_args!("Error: {metric}")),
         }
-    }
-
-    /// Return true if there are any recorded regressions in this `CallgrindSummary`
-    pub fn is_regressed(&self) -> bool {
-        !self.callgrind_run.total.regressions.is_empty()
-    }
-
-    pub fn add_summaries(
-        &mut self,
-        bench_bin: &Path,
-        bench_args: &[OsString],
-        baselines: &(Option<String>, Option<String>),
-        summaries: Summaries,
-        regressions: Vec<CallgrindRegression>,
-    ) {
-        let command = format!(
-            "{} {}",
-            bench_bin.display(),
-            shlex::try_join(
-                bench_args
-                    .iter()
-                    .map(|s| s.to_string_lossy().to_string())
-                    .collect::<Vec<String>>()
-                    .as_slice()
-                    .iter()
-                    .map(String::as_str)
-            )
-            .unwrap()
-        );
-        for summary in summaries.summaries {
-            let old_baseline = match summary.details {
-                EitherOrBoth::Left(_) => None,
-                EitherOrBoth::Both(_, old) | EitherOrBoth::Right(old) => Some(Baseline {
-                    kind: baselines.1.as_ref().map_or(BaselineKind::Old, |name| {
-                        BaselineKind::Name(BaselineName(name.to_owned()))
-                    }),
-                    path: old.0,
-                }),
-            };
-
-            self.callgrind_run.segments.push(CallgrindRunSegment {
-                command: command.clone(),
-                baseline: old_baseline,
-                events: summary.metrics_summary,
-                regressions: vec![],
-            });
-        }
-
-        self.callgrind_run.total.summary = summaries.total.clone();
-        self.callgrind_run.total.regressions = regressions;
     }
 }
 
@@ -932,8 +881,175 @@ impl ToolRun {
         self.segments.is_empty()
     }
 
+    pub fn is_regressed(&self) -> bool {
+        self.total.is_regressed()
+    }
+
     pub fn has_multiple(&self) -> bool {
         self.segments.len() > 1
+    }
+
+    /// Used internally to group the output by pid, then by parts and then by threads
+    ///
+    /// The grouping simplifies the zipping of the new and old parser output later.
+    ///
+    /// A simplified example. `(pid, part, thread)`
+    ///
+    /// ```rust,ignore
+    /// let parsed: Vec<(i32, u64, usize)> = [
+    ///     (10, 1, 1),
+    ///     (10, 1, 2),
+    ///     (20, 1, 1)
+    /// ];
+    ///
+    /// let grouped = group(parsed);
+    /// assert_eq!(grouped,
+    /// vec![
+    ///     vec![
+    ///         vec![
+    ///             (10, 1, 1),
+    ///             (10, 1, 2)
+    ///         ]
+    ///     ],
+    ///     vec![
+    ///         vec![
+    ///             (20, 1, 1)
+    ///         ]
+    ///     ]
+    /// ])
+    /// ```
+    fn group(parsed: impl Iterator<Item = ParserResult>) -> Vec<Vec<Vec<ParserResult>>> {
+        let mut grouped = vec![];
+        let mut cur_pid = 0_i32;
+        let mut cur_part = 0;
+
+        for element in parsed {
+            let pid = element.header.pid;
+            let part = element.header.part.unwrap_or(0);
+
+            if pid != cur_pid {
+                grouped.push(vec![vec![element]]);
+                cur_pid = pid;
+                cur_part = part;
+            } else if part != cur_part {
+                let parts = grouped.last_mut().unwrap();
+                parts.push(vec![element]);
+                cur_part = part;
+            } else {
+                let parts = grouped.last_mut().unwrap();
+                let threads = parts.last_mut().unwrap();
+                threads.push(element);
+            }
+        }
+        grouped
+    }
+
+    /// Create a new `ToolRun` from the output(s) of the tool parsers
+    ///
+    /// The summaries created from the new parser outputs and the old parser outputs are grouped by
+    /// pid (subprocesses recorded with `--trace-children`), then by part (for example cause by a
+    /// `--dump-every-bb=xxx`) and then by thread (caused by `--separate-threads`). Since each of
+    /// these components can differ between the new and the old parser output, this complicates the
+    /// creation of each `ToolRun`. We can't just zip the new and old parser output directly to get
+    /// (as far as possible) correct comparisons between the new and old costs. To remedy the
+    /// possibly incorrect comparisons, there is always a total created.
+    ///
+    /// In a first step the parsed outputs are grouped in vectors by pid, then by parts and then by
+    /// threads. This solution is not very efficient but there are not too many parsed outputs to be
+    /// expected. 100 at most and maybe 2-10 on average, so the tradeoff between performance and
+    /// clearer structure of this method looks reasonable.
+    ///
+    /// Secondly and finally, the groups are processed and summarized in a total.
+    pub fn new(parsed_new: Vec<ParserResult>, parsed_old: Option<Vec<ParserResult>>) -> Self {
+        let mut total = match parsed_new
+            .first()
+            .expect("At least 1 parsed result should be present")
+            .metrics
+        {
+            ToolMetrics::None => ToolMetricSummary::None,
+            ToolMetrics::DhatMetrics(_) => {
+                ToolMetricSummary::DhatSummary(MetricsSummary::default())
+            }
+            ToolMetrics::ErrorMetrics(_) => {
+                ToolMetricSummary::ErrorSummary(MetricsSummary::default())
+            }
+            ToolMetrics::CallgrindMetrics(_) => {
+                ToolMetricSummary::CallgrindSummary(MetricsSummary::default())
+            }
+            ToolMetrics::CachegrindMetrics(_) => {
+                ToolMetricSummary::CachegrindSummary(MetricsSummary::default())
+            }
+        };
+
+        let grouped_new = Self::group(parsed_new.into_iter());
+        let grouped_old = Self::group(parsed_old.into_iter().flatten());
+
+        let mut summaries = vec![];
+
+        for e_pids in grouped_new.into_iter().zip_longest(grouped_old) {
+            match e_pids {
+                itertools::EitherOrBoth::Both(new_parts, old_parts) => {
+                    for e_parts in new_parts.into_iter().zip_longest(old_parts) {
+                        match e_parts {
+                            itertools::EitherOrBoth::Both(new_threads, old_threads) => {
+                                for e_threads in new_threads.into_iter().zip_longest(old_threads) {
+                                    let summary = match e_threads {
+                                        itertools::EitherOrBoth::Both(new, old) => {
+                                            ToolRunSegment::from_new_and_old(new, old)
+                                        }
+                                        itertools::EitherOrBoth::Left(new) => {
+                                            ToolRunSegment::from_new(new)
+                                        }
+                                        itertools::EitherOrBoth::Right(old) => {
+                                            ToolRunSegment::from_old(old)
+                                        }
+                                    };
+                                    total.add_mut(&summary.metrics_summary);
+                                    summaries.push(summary);
+                                }
+                            }
+                            itertools::EitherOrBoth::Left(left) => {
+                                for new in left {
+                                    let summary = ToolRunSegment::from_new(new);
+                                    total.add_mut(&summary.metrics_summary);
+                                    summaries.push(summary);
+                                }
+                            }
+                            itertools::EitherOrBoth::Right(right) => {
+                                for old in right {
+                                    let summary = ToolRunSegment::from_old(old);
+                                    total.add_mut(&summary.metrics_summary);
+                                    summaries.push(summary);
+                                }
+                            }
+                        }
+                    }
+                }
+                itertools::EitherOrBoth::Left(left) => {
+                    for new in left.into_iter().flatten() {
+                        let summary = ToolRunSegment::from_new(new);
+                        total.add_mut(&summary.metrics_summary);
+                        summaries.push(summary);
+                    }
+                }
+                itertools::EitherOrBoth::Right(right) => {
+                    for old in right.into_iter().flatten() {
+                        let summary = ToolRunSegment::from_old(old);
+                        total.add_mut(&summary.metrics_summary);
+                        summaries.push(summary);
+                    }
+                }
+            }
+        }
+
+        Self {
+            segments: summaries,
+            total: ToolTotal {
+                summary: total,
+                // TODO: REGRESSIONS?
+                regressions: vec![],
+            },
+        }
     }
 }
 
@@ -951,6 +1067,79 @@ impl ToolRunSegment {
                     EitherOrBoth::Right(_) => false,
                 }),
         }
+    }
+
+    /// TODO: BASELINE ??
+    pub fn from_new(new: ParserResult) -> Self {
+        let metrics_summary = ToolMetricSummary::from_new_metrics(&new.metrics);
+        Self {
+            baseline: None,
+            details: EitherOrBoth::Left(new.into()),
+            metrics_summary,
+        }
+    }
+
+    /// TODO: BASELINE ??
+    pub fn from_old(old: ParserResult) -> Self {
+        let metrics_summary = ToolMetricSummary::from_old_metrics(&old.metrics);
+        Self {
+            baseline: None,
+            details: EitherOrBoth::Left(old.into()),
+            metrics_summary,
+        }
+    }
+
+    /// TODO: BASELINE ??
+    ///
+    /// # Panics
+    ///
+    /// Treat new and old with different metric kinds as programming error and not as runtime error
+    pub fn from_new_and_old(new: ParserResult, old: ParserResult) -> Self {
+        let metrics_summary =
+            ToolMetricSummary::try_from_new_and_old_metrics(&new.metrics, &old.metrics)
+                .expect("New and old metrics should have a matching kind");
+        Self {
+            baseline: None,
+            details: EitherOrBoth::Both(new.into(), old.into()),
+            metrics_summary,
+        }
+    }
+}
+
+/// TODO: IMPLEMENT things like `get_tool_summary()`, ...
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct ToolSummaries(Vec<ToolSummary>);
+
+/// TODO: DOCS
+impl ToolSummaries {
+    pub fn new(values: Vec<ToolSummary>) -> Self {
+        Self(values)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &ToolSummary> {
+        self.0.iter()
+    }
+
+    pub fn push(&mut self, summary: ToolSummary) {
+        self.0.push(summary);
+    }
+}
+
+/// TODO: DOCS
+impl Default for ToolSummaries {
+    fn default() -> Self {
+        Self(Vec::default())
+    }
+}
+
+/// TODO: DOCS
+impl IntoIterator for ToolSummaries {
+    type Item = ToolSummary;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 
