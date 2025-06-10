@@ -6,8 +6,9 @@ use std::process::{ExitStatus, Output};
 
 use version_compare::Cmp;
 
+use crate::api::ValgrindTool;
 use crate::runner::common::ModulePath;
-use crate::runner::tool::{ToolOutputPath, ValgrindTool};
+use crate::runner::tool::ToolOutputPath;
 use crate::util::write_all_to_stderr;
 
 /// The iai-callgrind error

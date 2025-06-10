@@ -1,6 +1,7 @@
+use iai_callgrind_runner::api::ValgrindTool;
 use iai_callgrind_runner::runner::callgrind::hashmap_parser::{CallgrindMap, HashMapParser};
 use iai_callgrind_runner::runner::callgrind::parser::CallgrindParser;
-use iai_callgrind_runner::runner::tool::{ToolOutputPathKind, ValgrindTool};
+use iai_callgrind_runner::runner::tool::ToolOutputPathKind;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 

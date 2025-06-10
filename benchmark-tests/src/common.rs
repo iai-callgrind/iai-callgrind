@@ -33,7 +33,7 @@ impl Summary {
             .0
             .tool_summaries
             .iter()
-            .find(|p| p.tool == ValgrindTool::Callgrind.into())
+            .find(|p| p.tool == ValgrindTool::Callgrind)
         {
             for summary in tool_summary
                 .summaries

@@ -12,9 +12,9 @@ use super::common::{BenchmarkSummaries, Config, ModulePath};
 use super::lib_bench::LibBench;
 use super::meta::Metadata;
 use super::summary::{Diffs, MetricsDiff, SegmentDetails, ToolMetricSummary, ToolRun};
-use super::tool::ValgrindTool;
 use crate::api::{
     self, CachegrindMetric, CallgrindMetrics, DhatMetricKind, ErrorMetricKind, EventKind,
+    ValgrindTool,
 };
 use crate::runner::summary::MetricKind;
 use crate::util::{

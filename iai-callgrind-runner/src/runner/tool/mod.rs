@@ -18,9 +18,6 @@ use lazy_static::lazy_static;
 use log::{debug, error, log_enabled};
 use logfile_parser::{parser_factory, ParserResult};
 use regex::Regex;
-#[cfg(feature = "schema")]
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use self::args::ToolArgs;
 use super::args::NoCapture;
@@ -39,7 +36,7 @@ use super::summary::{
     BaselineKind, BaselineName, BenchmarkSummary, ToolMetricSummary, ToolRegression, ToolRun,
     ToolSummary, ToolTotal,
 };
-use crate::api::{self, EntryPoint, ExitWith, Stream};
+use crate::api::{self, EntryPoint, ExitWith, Stream, ValgrindTool};
 use crate::error::Error;
 use crate::util::{self, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
 
@@ -123,20 +120,6 @@ pub enum ToolOutputPathKind {
     OldLog,
     BaseLog(String),
     Base(String),
-}
-
-/// All currently available valgrind tools
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub enum ValgrindTool {
-    Callgrind,
-    Memcheck,
-    Helgrind,
-    DRD,
-    Massif,
-    DHAT,
-    BBV,
-    Cachegrind,
 }
 
 impl ToolCommand {
@@ -353,7 +336,7 @@ impl TryFrom<api::Tool> for ToolConfig {
     type Error = anyhow::Error;
 
     fn try_from(value: api::Tool) -> std::result::Result<Self, Self::Error> {
-        let tool = value.kind.into();
+        let tool = value.kind;
         let args = match tool {
             ValgrindTool::Cachegrind => {
                 cachegrind::args::Args::try_from_raw_args(&[&value.raw_args]).map(Into::into)?
@@ -1555,72 +1538,6 @@ impl ToolOutputPath {
 impl Display for ToolOutputPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.to_path().display()))
-    }
-}
-
-impl ValgrindTool {
-    /// Return the id used by the `valgrind --tool` option
-    pub fn id(&self) -> String {
-        match self {
-            ValgrindTool::DHAT => "dhat".to_owned(),
-            ValgrindTool::Callgrind => "callgrind".to_owned(),
-            ValgrindTool::Memcheck => "memcheck".to_owned(),
-            ValgrindTool::Helgrind => "helgrind".to_owned(),
-            ValgrindTool::DRD => "drd".to_owned(),
-            ValgrindTool::Massif => "massif".to_owned(),
-            ValgrindTool::BBV => "exp-bbv".to_owned(),
-            ValgrindTool::Cachegrind => "cachegrind".to_owned(),
-        }
-    }
-
-    pub fn has_output_file(&self) -> bool {
-        matches!(
-            self,
-            ValgrindTool::Callgrind
-                | ValgrindTool::DHAT
-                | ValgrindTool::BBV
-                | ValgrindTool::Massif
-                | ValgrindTool::Cachegrind
-        )
-    }
-}
-
-impl Display for ValgrindTool {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.id())
-    }
-}
-
-impl From<api::ValgrindTool> for ValgrindTool {
-    fn from(value: api::ValgrindTool) -> Self {
-        match value {
-            api::ValgrindTool::Memcheck => Self::Memcheck,
-            api::ValgrindTool::Helgrind => Self::Helgrind,
-            api::ValgrindTool::DRD => Self::DRD,
-            api::ValgrindTool::Massif => Self::Massif,
-            api::ValgrindTool::DHAT => Self::DHAT,
-            api::ValgrindTool::BBV => Self::BBV,
-            api::ValgrindTool::Cachegrind => Self::Cachegrind,
-            api::ValgrindTool::Callgrind => Self::Callgrind,
-        }
-    }
-}
-
-impl TryFrom<&str> for ValgrindTool {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
-        match value {
-            "dhat" => Ok(ValgrindTool::DHAT),
-            "callgrind" => Ok(ValgrindTool::Callgrind),
-            "memcheck" => Ok(ValgrindTool::Memcheck),
-            "helgrind" => Ok(ValgrindTool::Helgrind),
-            "drd" => Ok(ValgrindTool::DRD),
-            "massif" => Ok(ValgrindTool::Massif),
-            "exp-bbv" => Ok(ValgrindTool::BBV),
-            "cachegrind" => Ok(ValgrindTool::Cachegrind),
-            v => Err(anyhow!("Unknown tool '{}'", v)),
-        }
     }
 }
 
