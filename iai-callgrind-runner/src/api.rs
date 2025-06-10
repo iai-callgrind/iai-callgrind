@@ -490,6 +490,7 @@ pub enum Direction {
     BottomToTop,
 }
 
+/// TODO: Rename to `DhatMetric`
 /// The metric kinds collected by DHAT
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
@@ -536,11 +537,12 @@ pub enum EntryPoint {
     Custom(String),
 }
 
-// The error metrics from a tool which reports errors
-//
-// The tools which report only errors are `helgrind`, `drd` and `memcheck`. The order in which the
-// variants are defined in this enum determines the order of the metrics in the benchmark terminal
-// output.
+/// TODO: Rename to `ErrorMetric`
+/// The error metrics from a tool which reports errors
+///
+/// The tools which report only errors are `helgrind`, `drd` and `memcheck`. The order in which the
+/// variants are defined in this enum determines the order of the metrics in the benchmark terminal
+/// output.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ErrorMetricKind {
@@ -554,6 +556,7 @@ pub enum ErrorMetricKind {
     SuppressedContexts,
 }
 
+/// TODO: Rename to `CallgrindMetric` ??
 /// All `EventKind`s callgrind produces and additionally some derived events
 ///
 /// Depending on the options passed to Callgrind, these are the events that Callgrind can produce.
@@ -809,6 +812,7 @@ pub struct Tool {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tools(pub Vec<Tool>);
 
+/// TODO: REPLACE WITH `iai_callgrind_runner::api::ValgrindTool`
 /// The valgrind tools which can be run in addition to callgrind
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ValgrindTool {
@@ -826,6 +830,8 @@ pub enum ValgrindTool {
     BBV,
     /// [Cachegrind: a high-precision tracing profiler](https://valgrind.org/docs/manual/cg-manual.html)
     Cachegrind,
+    /// TODO: DOCS
+    Callgrind,
 }
 
 impl BinaryBenchmarkConfig {

@@ -12,17 +12,6 @@
       "description": "The path to the benchmark file",
       "type": "string"
     },
-    "callgrind_summary": {
-      "description": "The summary of the callgrind run",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/CallgrindSummary"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "details": {
       "description": "More details describing this benchmark run",
       "type": ["string", "null"]
@@ -68,10 +57,11 @@
     },
     "tool_summaries": {
       "description": "The summary of other valgrind tool runs",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/ToolSummary"
-      }
+      "allOf": [
+        {
+          "$ref": "#/definitions/ToolSummaries"
+        }
+      ]
     },
     "version": {
       "description": "The version of this format. Only backwards incompatible changes cause an increase of the\n version",
@@ -148,157 +138,160 @@
         }
       ]
     },
-    "CallgrindRegression": {
-      "description": "The `CallgrindRegression` describing a single event based performance regression",
-      "type": "object",
-      "properties": {
-        "diff_pct": {
-          "description": "The difference between new and old in percent. Serialized as string to preserve infinity\n values and avoid null in json.",
-          "type": "string"
+    "CachegrindMetric": {
+      "description": "TODO: DOCS",
+      "oneOf": [
+        {
+          "description": "The default event. I cache reads (which equals the number of instructions executed)",
+          "type": "string",
+          "const": "Ir"
         },
-        "event_kind": {
-          "description": "The [`EventKind`] which is affected by a performance regression",
-          "allOf": [
-            {
-              "$ref": "#/definitions/EventKind"
-            }
-          ]
+        {
+          "description": "D Cache reads (which equals the number of memory reads) (--cache-sim=yes)",
+          "type": "string",
+          "const": "Dr"
         },
-        "limit": {
-          "description": "The value of the limit which was exceeded to cause a performance regression. Serialized as\n string to preserve infinity values and avoid null in json.",
-          "type": "string"
+        {
+          "description": "D Cache writes (which equals the number of memory writes) (--cache-sim=yes)",
+          "type": "string",
+          "const": "Dw"
         },
-        "new": {
-          "description": "The value of the new benchmark run",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0
+        {
+          "description": "I1 cache read misses (--cache-sim=yes)",
+          "type": "string",
+          "const": "I1mr"
         },
-        "old": {
-          "description": "The value of the old benchmark run",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0
+        {
+          "description": "D1 cache read misses (--cache-sim=yes)",
+          "type": "string",
+          "const": "D1mr"
+        },
+        {
+          "description": "D1 cache write misses (--cache-sim=yes)",
+          "type": "string",
+          "const": "D1mw"
+        },
+        {
+          "description": "LL cache instruction read misses (--cache-sim=yes)",
+          "type": "string",
+          "const": "ILmr"
+        },
+        {
+          "description": "LL cache data read misses (--cache-sim=yes)",
+          "type": "string",
+          "const": "DLmr"
+        },
+        {
+          "description": "LL cache data write misses (--cache-sim=yes)",
+          "type": "string",
+          "const": "DLmw"
+        },
+        {
+          "description": "Derived event showing the L1 hits (--cache-sim=yes)",
+          "type": "string",
+          "const": "L1hits"
+        },
+        {
+          "description": "Derived event showing the LL hits (--cache-sim=yes)",
+          "type": "string",
+          "const": "LLhits"
+        },
+        {
+          "description": "Derived event showing the RAM hits (--cache-sim=yes)",
+          "type": "string",
+          "const": "RamHits"
+        },
+        {
+          "description": "Derived event showing the total amount of cache reads and writes (--cache-sim=yes)",
+          "type": "string",
+          "const": "TotalRW"
+        },
+        {
+          "description": "Derived event showing estimated CPU cycles (--cache-sim=yes)",
+          "type": "string",
+          "const": "EstimatedCycles"
+        },
+        {
+          "description": "Conditional branches executed (--branch-sim=yes)",
+          "type": "string",
+          "const": "Bc"
+        },
+        {
+          "description": "Conditional branches mispredicted (--branch-sim=yes)",
+          "type": "string",
+          "const": "Bcm"
+        },
+        {
+          "description": "Indirect branches executed (--branch-sim=yes)",
+          "type": "string",
+          "const": "Bi"
+        },
+        {
+          "description": "Indirect branches mispredicted (--branch-sim=yes)",
+          "type": "string",
+          "const": "Bim"
         }
-      },
-      "required": ["event_kind", "new", "old", "diff_pct", "limit"]
+      ]
     },
-    "CallgrindRun": {
-      "description": "The `CallgrindRun` contains all `CallgrindRunSegments` and their total costs in a\n `CallgrindTotal`.",
-      "type": "object",
-      "properties": {
-        "segments": {
-          "description": "All `CallgrindRunSummary`s",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/CallgrindRunSegment"
-          }
+    "DhatMetricKind": {
+      "description": "TODO: Rename to `DhatMetric`\n The metric kinds collected by DHAT",
+      "oneOf": [
+        {
+          "description": "Total bytes allocated over the entire execution",
+          "type": "string",
+          "const": "TotalBytes"
         },
-        "total": {
-          "description": "The total costs of all `CallgrindRunSummary`s in this `CallgrindRunSummaries`",
-          "allOf": [
-            {
-              "$ref": "#/definitions/CallgrindTotal"
-            }
-          ]
+        {
+          "description": "Total heap blocks allocated over the entire execution",
+          "type": "string",
+          "const": "TotalBlocks"
+        },
+        {
+          "description": "The bytes alive at t-gmax, the time when the heap size reached its global maximum",
+          "type": "string",
+          "const": "AtTGmaxBytes"
+        },
+        {
+          "description": "The blocks alive at t-gmax",
+          "type": "string",
+          "const": "AtTGmaxBlocks"
+        },
+        {
+          "description": "The amount of bytes at the end of the execution.\n\n This is the amount of bytes which were not explicitly freed.",
+          "type": "string",
+          "const": "AtTEndBytes"
+        },
+        {
+          "description": "The amount of blocks at the end of the execution.\n\n This is the amount of heap blocks which were not explicitly freed.",
+          "type": "string",
+          "const": "AtTEndBlocks"
+        },
+        {
+          "description": "The amount of bytes read during the entire execution",
+          "type": "string",
+          "const": "ReadsBytes"
+        },
+        {
+          "description": "The amount of bytes written during the entire execution",
+          "type": "string",
+          "const": "WritesBytes"
+        },
+        {
+          "description": "The total lifetimes of all heap blocks allocated",
+          "type": "string",
+          "const": "TotalLifetimes"
+        },
+        {
+          "description": "The maximum amount of bytes",
+          "type": "string",
+          "const": "MaximumBytes"
+        },
+        {
+          "description": "The maximum amount of heap blocks",
+          "type": "string",
+          "const": "MaximumBlocks"
         }
-      },
-      "required": ["segments", "total"]
-    },
-    "CallgrindRunSegment": {
-      "description": "The `CallgrindRunSegment` containing the metric differences, performance regressions of a\n callgrind run segment.\n\n A segment can be a part (caused by options like `--dump-every-bb=xxx`), a thread (caused by\n `--separate-threads`) or a pid (possibly caused by `--trace-children`). A segment is a summary\n over a single file which contains the costs of that part, thread and/or pid.",
-      "type": "object",
-      "properties": {
-        "baseline": {
-          "description": "If present, the `Baseline` used to compare the new with the old output",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Baseline"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "command": {
-          "description": "The executed command extracted from Valgrind output",
-          "type": "string"
-        },
-        "events": {
-          "description": "All recorded metrics for the `EventKinds`",
-          "allOf": [
-            {
-              "$ref": "#/definitions/MetricsSummary_for_EventKind"
-            }
-          ]
-        },
-        "regressions": {
-          "description": "All detected performance regressions per callgrind run",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/CallgrindRegression"
-          }
-        }
-      },
-      "required": ["command", "events", "regressions"]
-    },
-    "CallgrindSummary": {
-      "description": "The `CallgrindSummary` contains the callgrind run, flamegraph paths and other paths to the\n segments of the callgrind run.",
-      "type": "object",
-      "properties": {
-        "callgrind_run": {
-          "description": "The summary of all callgrind segments is a `CallgrindRun`",
-          "allOf": [
-            {
-              "$ref": "#/definitions/CallgrindRun"
-            }
-          ]
-        },
-        "flamegraphs": {
-          "description": "The summaries of possibly created flamegraphs",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/FlamegraphSummary"
-          }
-        },
-        "log_paths": {
-          "description": "The paths to the `*.log` files",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "out_paths": {
-          "description": "The paths to the `*.out` files",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": ["log_paths", "out_paths", "flamegraphs", "callgrind_run"]
-    },
-    "CallgrindTotal": {
-      "description": "The total callgrind costs over the `CallgrindRunSegments` and all detected regressions for the\n total",
-      "type": "object",
-      "properties": {
-        "regressions": {
-          "description": "All detected regressions for the total metrics",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/CallgrindRegression"
-          }
-        },
-        "summary": {
-          "description": "The total over the segment metrics",
-          "allOf": [
-            {
-              "$ref": "#/definitions/MetricsSummary_for_EventKind"
-            }
-          ]
-        }
-      },
-      "required": ["summary", "regressions"]
+      ]
     },
     "Diffs": {
       "description": "The differences between two `Metrics` as percentage and factor",
@@ -419,8 +412,33 @@
         }
       ]
     },
+    "ErrorMetricKind": {
+      "description": "TODO: Rename to `ErrorMetric`\n The error metrics from a tool which reports errors\n\n The tools which report only errors are `helgrind`, `drd` and `memcheck`. The order in which the\n variants are defined in this enum determines the order of the metrics in the benchmark terminal\n output.",
+      "oneOf": [
+        {
+          "description": "The amount of detected unsuppressed errors",
+          "type": "string",
+          "const": "Errors"
+        },
+        {
+          "description": "The amount of detected unsuppressed error contexts",
+          "type": "string",
+          "const": "Contexts"
+        },
+        {
+          "description": "The amount of suppressed errors",
+          "type": "string",
+          "const": "SuppressedErrors"
+        },
+        {
+          "description": "The amount of suppressed error contexts",
+          "type": "string",
+          "const": "SuppressedContexts"
+        }
+      ]
+    },
     "EventKind": {
-      "description": "All `EventKind`s callgrind produces and additionally some derived events\n\n Depending on the options passed to Callgrind, these are the events that Callgrind can produce.\n See the [Callgrind\n documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.",
+      "description": "TODO: Rename to `CallgrindMetric` ??\n All `EventKind`s callgrind produces and additionally some derived events\n\n Depending on the options passed to Callgrind, these are the events that Callgrind can produce.\n See the [Callgrind\n documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.",
       "oneOf": [
         {
           "description": "The default event. I cache reads (which equals the number of instructions executed)",
@@ -596,6 +614,55 @@
       },
       "required": ["event_kind"]
     },
+    "MetricKind": {
+      "description": "TODO: DOCS, see description of [`ToolMetrics`]",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": ["None"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Callgrind": {
+              "$ref": "#/definitions/EventKind"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["Callgrind"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Cachegrind": {
+              "$ref": "#/definitions/CachegrindMetric"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["Cachegrind"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Dhat": {
+              "$ref": "#/definitions/DhatMetricKind"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["Dhat"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ErrorMetric": {
+              "$ref": "#/definitions/ErrorMetricKind"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["ErrorMetric"]
+        }
+      ]
+    },
     "MetricsDiff": {
       "description": "The `MetricsDiff` describes the difference between a `new` and `old` metric as percentage and\n factor.\n\n Only if both metrics are present there is also a `Diffs` present. Otherwise, it just stores the\n `new` or `old` metric.",
       "type": "object",
@@ -621,6 +688,13 @@
         }
       },
       "required": ["metrics"]
+    },
+    "MetricsSummary_for_CachegrindMetric": {
+      "description": "The `MetricsSummary` contains all differences between two tool run segments",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/MetricsDiff"
+      }
     },
     "MetricsSummary_for_DhatMetricKind": {
       "description": "The `MetricsSummary` contains all differences between two tool run segments",
@@ -758,8 +832,48 @@
           },
           "additionalProperties": false,
           "required": ["CallgrindSummary"]
+        },
+        {
+          "description": "The cachegrind summary",
+          "type": "object",
+          "properties": {
+            "CachegrindSummary": {
+              "$ref": "#/definitions/MetricsSummary_for_CachegrindMetric"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["CachegrindSummary"]
         }
       ]
+    },
+    "ToolRegression": {
+      "type": "object",
+      "properties": {
+        "diff_pct": {
+          "description": "The difference between new and old in percent. Serialized as string to preserve infinity\n values and avoid null in json.",
+          "type": "string"
+        },
+        "limit": {
+          "description": "The value of the limit which was exceeded to cause a performance regression. Serialized as\n string to preserve infinity values and avoid null in json.",
+          "type": "string"
+        },
+        "metric": {
+          "$ref": "#/definitions/MetricKind"
+        },
+        "new": {
+          "description": "The value of the new benchmark run",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "old": {
+          "description": "The value of the old benchmark run",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "required": ["metric", "new", "old", "diff_pct", "limit"]
     },
     "ToolRun": {
       "description": "The `ToolRun` contains all information about a single tool run with possibly multiple segments\n\n The total is always present and summarizes all tool run segments. In the special case of a\n single tool run segment, the total equals the metrics of this segment.",
@@ -776,7 +890,7 @@
           "description": "The total over the `ToolRunSegment`s",
           "allOf": [
             {
-              "$ref": "#/definitions/ToolMetricSummary"
+              "$ref": "#/definitions/ToolTotal"
             }
           ]
         }
@@ -787,6 +901,17 @@
       "description": "A single segment of a tool run and if present the comparison with the \"old\" segment\n\n A tool run can produce multiple segments, for example for each process and subprocess with\n (--trace-children).",
       "type": "object",
       "properties": {
+        "baseline": {
+          "description": "TODO: MOVE INTO `ToolRun` instead",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Baseline"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "details": {
           "description": "The details (like command, thread number etc.) about the segment(s)",
           "allOf": [
@@ -806,10 +931,24 @@
       },
       "required": ["details", "metrics_summary"]
     },
+    "ToolSummaries": {
+      "description": "TODO: IMPLEMENT things like `get_tool_summary()`, ...",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ToolSummary"
+      }
+    },
     "ToolSummary": {
       "description": "The `ToolSummary` containing all information about a valgrind tool run",
       "type": "object",
       "properties": {
+        "flamegraphs": {
+          "description": "TODO: DOCS",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FlamegraphSummary"
+          }
+        },
         "log_paths": {
           "description": "The paths to the `*.log` files. All tools produce at least one log file",
           "type": "array",
@@ -841,7 +980,23 @@
           ]
         }
       },
-      "required": ["tool", "log_paths", "out_paths", "summaries"]
+      "required": ["tool", "log_paths", "out_paths", "flamegraphs", "summaries"]
+    },
+    "ToolTotal": {
+      "description": "TODO: DOCS",
+      "type": "object",
+      "properties": {
+        "regressions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ToolRegression"
+          }
+        },
+        "summary": {
+          "$ref": "#/definitions/ToolMetricSummary"
+        }
+      },
+      "required": ["summary", "regressions"]
     },
     "ValgrindTool": {
       "description": "All currently available valgrind tools",
@@ -853,7 +1008,8 @@
         "DRD",
         "Massif",
         "DHAT",
-        "BBV"
+        "BBV",
+        "Cachegrind"
       ]
     }
   }

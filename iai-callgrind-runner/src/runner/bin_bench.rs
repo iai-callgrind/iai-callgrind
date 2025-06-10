@@ -21,7 +21,8 @@ use super::tool::{
     RunOptions, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind, ValgrindTool,
 };
 use crate::api::{
-    self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind, Stdin,
+    self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind,
+    EntryPoint, Stdin,
 };
 use crate::runner::format;
 
@@ -56,6 +57,7 @@ pub struct BinBench {
     pub sandbox: Option<api::Sandbox>,
     pub module_path: ModulePath,
     pub output_format: OutputFormat,
+    pub entry_point: EntryPoint,
 }
 
 /// The Command we derive from the `api::Command`
@@ -170,7 +172,7 @@ impl Benchmark for BaselineBenchmark {
         )?;
 
         bin_bench.tools.run(
-            api::EntryPoint::None,
+            bin_bench.entry_point.clone(),
             header.to_title(),
             benchmark_summary,
             self.baselines(),
@@ -304,6 +306,7 @@ impl BinBench {
             module_path,
             command,
             output_format,
+            entry_point: EntryPoint::None,
         })
     }
 
@@ -513,7 +516,8 @@ impl Group {
 
             let summary = benchmark.run(bench, config, self)?;
             summary.print_and_save(&config.meta.args.output_format)?;
-            summary.check_regression(fail_fast)?;
+            // TODO: DON'T LIMIT TO JUST CALLGRIND (Cachegrind, Dhat, ...)
+            summary.check_regression(fail_fast, ValgrindTool::Callgrind)?;
 
             benchmark_summaries.add_summary(summary.clone());
             if self.compare_by_id && bench.output_format.is_default() {
@@ -679,7 +683,7 @@ impl Benchmark for LoadBaselineBenchmark {
         )?;
 
         bin_bench.tools.run_loaded_vs_base(
-            api::EntryPoint::None,
+            bin_bench.entry_point.clone(),
             header.to_title(),
             self.baseline.clone(),
             self.loaded_baseline.clone(),
@@ -807,8 +811,7 @@ impl Benchmark for SaveBaselineBenchmark {
         )?;
 
         bin_bench.tools.run(
-            // TODO: MAYBE ADD EntryPoint in BinBench
-            api::EntryPoint::None,
+            bin_bench.entry_point.clone(),
             header.to_title(),
             benchmark_summary,
             self.baselines(),
