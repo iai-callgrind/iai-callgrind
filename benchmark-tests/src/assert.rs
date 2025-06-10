@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
+use iai_callgrind::ValgrindTool;
 use iai_callgrind_runner::runner::callgrind::hashmap_parser::{CallgrindMap, HashMapParser};
 use iai_callgrind_runner::runner::callgrind::parser::CallgrindParser;
 use iai_callgrind_runner::runner::common::ModulePath;
@@ -103,7 +104,7 @@ impl Assert {
         let maps = parser
             .parse(&ToolOutputPath::new(
                 tool::ToolOutputPathKind::Out,
-                tool::ValgrindTool::Callgrind,
+                ValgrindTool::Callgrind,
                 &BaselineKind::Old,
                 &self.target_dir,
                 &self.module_path.join(&self.group),

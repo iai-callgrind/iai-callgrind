@@ -10,6 +10,8 @@ use std::process::{Child, Command as StdCommand, Stdio as StdStdio};
 use std::time::Duration;
 
 #[cfg(feature = "runner")]
+use anyhow::anyhow;
+#[cfg(feature = "runner")]
 use indexmap::IndexSet;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
@@ -812,10 +814,16 @@ pub struct Tool {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tools(pub Vec<Tool>);
 
-/// TODO: REPLACE WITH `iai_callgrind_runner::api::ValgrindTool`
-/// The valgrind tools which can be run in addition to callgrind
+/// The valgrind tools which can be run
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ValgrindTool {
+    /// [Callgrind: a call-graph generating cache and branch prediction profiler](https://valgrind.org/docs/manual/cl-manual.html)
+    Callgrind,
+    /// [Cachegrind: a high-precision tracing profiler](https://valgrind.org/docs/manual/cg-manual.html)
+    Cachegrind,
+    /// [DHAT: a dynamic heap analysis tool](https://valgrind.org/docs/manual/dh-manual.html)
+    DHAT,
     /// [Memcheck: a memory error detector](https://valgrind.org/docs/manual/mc-manual.html)
     Memcheck,
     /// [Helgrind: a thread error detector](https://valgrind.org/docs/manual/hg-manual.html)
@@ -824,14 +832,8 @@ pub enum ValgrindTool {
     DRD,
     /// [Massif: a heap profiler](https://valgrind.org/docs/manual/ms-manual.html)
     Massif,
-    /// [DHAT: a dynamic heap analysis tool](https://valgrind.org/docs/manual/dh-manual.html)
-    DHAT,
     /// [BBV: an experimental basic block vector generation tool](https://valgrind.org/docs/manual/bbv-manual.html)
     BBV,
-    /// [Cachegrind: a high-precision tracing profiler](https://valgrind.org/docs/manual/cg-manual.html)
-    Cachegrind,
-    /// TODO: DOCS
-    Callgrind,
 }
 
 impl BinaryBenchmarkConfig {
@@ -1403,6 +1405,58 @@ impl Tools {
     /// Update `Tools` with another `Tools`
     pub fn update_from_other(&mut self, tools: &Tools) {
         self.update_all(tools.0.iter().cloned());
+    }
+}
+
+impl ValgrindTool {
+    /// Return the id used by the `valgrind --tool` option
+    pub fn id(&self) -> String {
+        match self {
+            ValgrindTool::DHAT => "dhat".to_owned(),
+            ValgrindTool::Callgrind => "callgrind".to_owned(),
+            ValgrindTool::Memcheck => "memcheck".to_owned(),
+            ValgrindTool::Helgrind => "helgrind".to_owned(),
+            ValgrindTool::DRD => "drd".to_owned(),
+            ValgrindTool::Massif => "massif".to_owned(),
+            ValgrindTool::BBV => "exp-bbv".to_owned(),
+            ValgrindTool::Cachegrind => "cachegrind".to_owned(),
+        }
+    }
+
+    pub fn has_output_file(&self) -> bool {
+        matches!(
+            self,
+            ValgrindTool::Callgrind
+                | ValgrindTool::DHAT
+                | ValgrindTool::BBV
+                | ValgrindTool::Massif
+                | ValgrindTool::Cachegrind
+        )
+    }
+}
+
+impl Display for ValgrindTool {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.id())
+    }
+}
+
+#[cfg(feature = "runner")]
+impl TryFrom<&str> for ValgrindTool {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        match value {
+            "dhat" => Ok(ValgrindTool::DHAT),
+            "callgrind" => Ok(ValgrindTool::Callgrind),
+            "memcheck" => Ok(ValgrindTool::Memcheck),
+            "helgrind" => Ok(ValgrindTool::Helgrind),
+            "drd" => Ok(ValgrindTool::DRD),
+            "massif" => Ok(ValgrindTool::Massif),
+            "exp-bbv" => Ok(ValgrindTool::BBV),
+            "cachegrind" => Ok(ValgrindTool::Cachegrind),
+            v => Err(anyhow!("Unknown tool '{}'", v)),
+        }
     }
 }
 

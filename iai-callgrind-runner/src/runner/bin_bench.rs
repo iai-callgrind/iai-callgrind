@@ -17,12 +17,10 @@ use super::common::{Assistant, AssistantKind, BenchmarkSummaries, Config, Module
 use super::format::{BinaryBenchmarkHeader, OutputFormat};
 use super::meta::Metadata;
 use super::summary::{BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput};
-use super::tool::{
-    RunOptions, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind, ValgrindTool,
-};
+use super::tool::{RunOptions, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind};
 use crate::api::{
     self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind,
-    EntryPoint, Stdin,
+    EntryPoint, Stdin, ValgrindTool,
 };
 use crate::runner::format;
 

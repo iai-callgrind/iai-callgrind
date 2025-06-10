@@ -14,12 +14,11 @@ use super::common::{Assistant, AssistantKind, BenchmarkSummaries, Config, Module
 use super::format::{LibraryBenchmarkHeader, OutputFormat};
 use super::meta::Metadata;
 use super::summary::{BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput};
-use super::tool::{
-    RunOptions, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind, ValgrindTool,
-};
+use super::tool::{RunOptions, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind};
 use super::DEFAULT_TOGGLE;
 use crate::api::{
     self, EntryPoint, LibraryBenchmarkBench, LibraryBenchmarkConfig, LibraryBenchmarkGroups,
+    ValgrindTool,
 };
 use crate::runner::format;
 

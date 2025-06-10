@@ -5,7 +5,7 @@ use std::str::FromStr;
 use anyhow::Result;
 use log::{log_enabled, warn};
 
-use crate::api::RawArgs;
+use crate::api::{RawArgs, ValgrindTool};
 use crate::error::Error;
 use crate::runner::tool;
 use crate::runner::tool::args::{defaults, FairSched};
@@ -127,7 +127,7 @@ impl From<Args> for tool::args::ToolArgs {
         other.append(&mut value.other);
 
         Self {
-            tool: tool::ValgrindTool::Cachegrind,
+            tool: ValgrindTool::Cachegrind,
             output_paths: value
                 .cachegrind_out_file
                 .map_or_else(Vec::new, |o| vec![o.into()]),
