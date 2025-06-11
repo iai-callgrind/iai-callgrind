@@ -48,9 +48,6 @@ pub struct BinBench {
     pub run_options: RunOptions,
     pub callgrind_args: Args,
     pub tools: ToolConfigs,
-    pub setup: Option<Assistant>,
-    pub teardown: Option<Assistant>,
-    pub sandbox: Option<api::Sandbox>,
     pub module_path: ModulePath,
     pub output_format: OutputFormat,
     pub entry_point: EntryPoint,
@@ -65,7 +62,6 @@ pub struct BinBench {
 pub struct Command {
     pub path: PathBuf,
     pub args: Vec<OsString>,
-    pub delay: Option<Delay>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -180,10 +176,6 @@ impl Benchmark for BaselineBenchmark {
             &out_path,
             false,
             &bin_bench.module_path,
-            bin_bench.sandbox.as_ref(),
-            bin_bench.setup.as_ref(),
-            bin_bench.teardown.as_ref(),
-            bin_bench.command.delay.as_ref(),
             &bin_bench.output_format,
         )
     }
@@ -213,7 +205,7 @@ impl BinBench {
             ..
         } = binary_benchmark_bench.command;
 
-        let command = Command::new(&module_path, path, args, delay.map(Into::into))?;
+        let command = Command::new(&module_path, path, args)?;
 
         let callgrind_args = Args::try_from_raw_args(&[
             &config.valgrind_args,
@@ -260,42 +252,43 @@ impl BinBench {
             function_name: binary_benchmark_bench.function_name,
             callgrind_args,
             tools: tool_configs,
-            setup: binary_benchmark_bench
-                .has_setup
-                .then_some(Assistant::new_bench_assistant(
-                    AssistantKind::Setup,
-                    &group.name,
-                    (group_index, bench_index),
-                    stdin.as_ref().and_then(|s| {
-                        if let Stdin::Setup(p) = s {
-                            Some(*p)
-                        } else {
-                            None
-                        }
-                    }),
-                    assistant_envs.clone(),
-                    config.setup_parallel.unwrap_or(false),
-                )),
-            teardown: binary_benchmark_bench.has_teardown.then_some(
-                Assistant::new_bench_assistant(
-                    AssistantKind::Teardown,
-                    &group.name,
-                    (group_index, bench_index),
-                    None,
-                    assistant_envs,
-                    false,
-                ),
-            ),
             run_options: RunOptions {
                 env_clear: config.env_clear.unwrap_or(defaults::ENV_CLEAR),
                 envs: command_envs,
-                stdin: stdin.or(Some(defaults::STDIN)),
+                stdin: stdin.clone().or(Some(defaults::STDIN)),
                 stdout,
                 stderr,
                 exit_with: config.exit_with,
                 current_dir: config.current_dir,
+                setup: binary_benchmark_bench
+                    .has_setup
+                    .then_some(Assistant::new_bench_assistant(
+                        AssistantKind::Setup,
+                        &group.name,
+                        (group_index, bench_index),
+                        stdin.as_ref().and_then(|s| {
+                            if let Stdin::Setup(p) = s {
+                                Some(*p)
+                            } else {
+                                None
+                            }
+                        }),
+                        assistant_envs.clone(),
+                        config.setup_parallel.unwrap_or(false),
+                    )),
+                teardown: binary_benchmark_bench.has_teardown.then_some(
+                    Assistant::new_bench_assistant(
+                        AssistantKind::Teardown,
+                        &group.name,
+                        (group_index, bench_index),
+                        None,
+                        assistant_envs,
+                        false,
+                    ),
+                ),
+                sandbox: config.sandbox,
+                delay: delay.map(Into::into),
             },
-            sandbox: config.sandbox,
             module_path,
             command,
             output_format,
@@ -342,17 +335,12 @@ impl BinBench {
 }
 
 impl Command {
-    fn new(
-        module_path: &ModulePath,
-        path: PathBuf,
-        args: Vec<OsString>,
-        delay: Option<Delay>,
-    ) -> Result<Self> {
+    fn new(module_path: &ModulePath, path: PathBuf, args: Vec<OsString>) -> Result<Self> {
         if path.as_os_str().is_empty() {
             return Err(anyhow!("{module_path}: Empty path in command",));
         }
 
-        Ok(Self { path, args, delay })
+        Ok(Self { path, args })
     }
 }
 
@@ -817,10 +805,6 @@ impl Benchmark for SaveBaselineBenchmark {
             &out_path,
             true,
             &bin_bench.module_path,
-            bin_bench.sandbox.as_ref(),
-            bin_bench.setup.as_ref(),
-            bin_bench.teardown.as_ref(),
-            bin_bench.command.delay.as_ref(),
             &bin_bench.output_format,
         )
     }
