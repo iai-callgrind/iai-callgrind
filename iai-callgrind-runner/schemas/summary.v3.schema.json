@@ -999,17 +999,48 @@
       "required": ["summary", "regressions"]
     },
     "ValgrindTool": {
-      "description": "All currently available valgrind tools",
-      "type": "string",
-      "enum": [
-        "Callgrind",
-        "Memcheck",
-        "Helgrind",
-        "DRD",
-        "Massif",
-        "DHAT",
-        "BBV",
-        "Cachegrind"
+      "description": "The valgrind tools which can be run",
+      "oneOf": [
+        {
+          "description": "[Callgrind: a call-graph generating cache and branch prediction profiler](https://valgrind.org/docs/manual/cl-manual.html)",
+          "type": "string",
+          "const": "Callgrind"
+        },
+        {
+          "description": "[Cachegrind: a high-precision tracing profiler](https://valgrind.org/docs/manual/cg-manual.html)",
+          "type": "string",
+          "const": "Cachegrind"
+        },
+        {
+          "description": "[DHAT: a dynamic heap analysis tool](https://valgrind.org/docs/manual/dh-manual.html)",
+          "type": "string",
+          "const": "DHAT"
+        },
+        {
+          "description": "[Memcheck: a memory error detector](https://valgrind.org/docs/manual/mc-manual.html)",
+          "type": "string",
+          "const": "Memcheck"
+        },
+        {
+          "description": "[Helgrind: a thread error detector](https://valgrind.org/docs/manual/hg-manual.html)",
+          "type": "string",
+          "const": "Helgrind"
+        },
+        {
+          "description": "[DRD: a thread error detector](https://valgrind.org/docs/manual/drd-manual.html)",
+          "type": "string",
+          "const": "DRD"
+        },
+        {
+          "description": "[Massif: a heap profiler](https://valgrind.org/docs/manual/ms-manual.html)",
+          "type": "string",
+          "const": "Massif"
+        },
+        {
+          "description": "[BBV: an experimental basic block vector generation tool](https://valgrind.org/docs/manual/bbv-manual.html)",
+          "type": "string",
+          "const": "BBV"
+        }
       ]
     }
   }
