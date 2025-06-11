@@ -170,10 +170,6 @@ impl Benchmark for BaselineBenchmark {
             &out_path,
             false,
             &lib_bench.module_path,
-            None,
-            None,
-            None,
-            None,
             &lib_bench.output_format,
         )
     }
@@ -603,8 +599,6 @@ impl Benchmark for SaveBaselineBenchmark {
         let out_path = self.output_path(lib_bench, config, group);
         out_path.init()?;
 
-        // TODO: Removed log path clear since there's already a log path clear in ToolConfigs::run
-
         let benchmark_summary = lib_bench.create_benchmark_summary(
             config,
             &out_path,
@@ -625,11 +619,6 @@ impl Benchmark for SaveBaselineBenchmark {
             &out_path,
             true,
             &lib_bench.module_path,
-            // We don't have a sandbox feature in library benchmarks
-            None,
-            None,
-            None,
-            None,
             &lib_bench.output_format,
         )
     }

@@ -77,6 +77,10 @@ pub struct RunOptions {
     pub stdin: Option<api::Stdin>,
     pub stdout: Option<api::Stdio>,
     pub stderr: Option<api::Stdio>,
+    pub setup: Option<Assistant>,
+    pub teardown: Option<Assistant>,
+    pub sandbox: Option<api::Sandbox>,
+    pub delay: Option<Delay>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -220,6 +224,7 @@ impl ToolCommand {
             stdin,
             stdout,
             stderr,
+            ..
         } = run_options;
 
         if env_clear {
@@ -587,10 +592,6 @@ impl ToolConfigs {
         output_path: &ToolOutputPath,
         save_baseline: bool,
         module_path: &ModulePath,
-        sandbox: Option<&api::Sandbox>,
-        setup: Option<&Assistant>,
-        teardown: Option<&Assistant>,
-        delay: Option<&Delay>,
         output_format: &OutputFormat,
     ) -> Result<BenchmarkSummary> {
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
@@ -629,15 +630,18 @@ impl ToolConfigs {
             // we don't run the benchmarks in a sandbox. Everything from here on runs
             // with the current directory set to the sandbox directory until the sandbox
             // is reset.
-            let sandbox = sandbox
+            let sandbox = run_options
+                .sandbox
+                .as_ref()
                 .map(|sandbox| Sandbox::setup(sandbox, &config.meta))
                 .transpose()?;
 
-            let mut child = setup
+            let mut child = run_options
+                .setup
                 .as_ref()
                 .map_or(Ok(None), |setup| setup.run(config, module_path))?;
 
-            if let Some(delay) = delay {
+            if let Some(delay) = run_options.delay.as_ref() {
                 if let Err(error) = delay.run() {
                     if let Some(mut child) = child.take() {
                         // To avoid zombies
@@ -657,7 +661,7 @@ impl ToolConfigs {
                 child,
             )?;
 
-            if let Some(teardown) = teardown {
+            if let Some(teardown) = run_options.teardown.as_ref() {
                 teardown.run(config, module_path)?;
             }
 
