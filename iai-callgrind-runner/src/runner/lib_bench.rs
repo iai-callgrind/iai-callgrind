@@ -8,13 +8,14 @@ use std::time::Instant;
 use anyhow::Result;
 
 use super::callgrind::args::Args;
-use super::callgrind::flamegraph::Config as FlamegraphConfig;
-use super::callgrind::RegressionConfig;
 use super::common::{Assistant, AssistantKind, BenchmarkSummaries, Config, ModulePath};
 use super::format::{LibraryBenchmarkHeader, OutputFormat};
 use super::meta::Metadata;
 use super::summary::{BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput};
-use super::tool::{RunOptions, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind};
+use super::tool::{
+    RunOptions, ToolConfig, ToolConfigs, ToolFlamegraphConfig, ToolOutputPath, ToolOutputPathKind,
+    ToolRegressionConfig,
+};
 use super::DEFAULT_TOGGLE;
 use crate::api::{
     self, EntryPoint, LibraryBenchmarkBench, LibraryBenchmarkConfig, LibraryBenchmarkGroups,
@@ -61,11 +62,6 @@ pub struct LibBench {
     pub function_name: String,
     pub args: Option<String>,
     pub run_options: RunOptions,
-    // TODO: REMOVE: is already in ToolConfig for Callgrind
-    pub callgrind_args: Args,
-    // TODO: These both should be part of a ToolConfig
-    pub flamegraph_config: Option<FlamegraphConfig>,
-    pub regression_config: Option<RegressionConfig>,
     pub tools: ToolConfigs,
     pub module_path: ModulePath,
     // TODO: Evaluate at LibBench creation level and remove if possible
@@ -167,8 +163,6 @@ impl Benchmark for BaselineBenchmark {
             benchmark_summary,
             self.baselines(),
             self.baseline_kind.clone(),
-            lib_bench.regression_config.clone(),
-            lib_bench.flamegraph_config.clone(),
             config,
             &config.bench_bin,
             &bench_args,
@@ -276,10 +270,12 @@ impl Groups {
             let mut lib_bench_summaries: HashMap<String, Vec<BenchmarkSummary>> =
                 HashMap::with_capacity(group.benches.len());
             for bench in &group.benches {
+                // TODO: Move the logic into ToolConfigs
                 let fail_fast = bench
-                    .regression_config
-                    .as_ref()
-                    .is_some_and(|r| r.fail_fast);
+                    .tools
+                    .0
+                    .iter()
+                    .any(|c| c.regression_config.is_fail_fast());
 
                 let lib_bench_summary = benchmark.run(bench, config, group)?;
                 lib_bench_summary.print_and_save(&config.meta.args.output_format)?;
@@ -341,23 +337,29 @@ impl LibBench {
             .output_format
             .map_or_else(OutputFormat::default, Into::into);
         output_format.kind = meta.args.output_format;
+        let entry_point = config.entry_point.clone().unwrap_or(EntryPoint::Default);
 
-        // TODO: REMOVE UNNECESSARY CLONE as soon as LibBEnch::entry_point is removed
-        match config.entry_point.clone().unwrap_or(EntryPoint::Default) {
+        match &entry_point {
             EntryPoint::None => {}
             EntryPoint::Default => {
                 callgrind_args.insert_toggle_collect(DEFAULT_TOGGLE);
             }
             EntryPoint::Custom(custom) => {
-                callgrind_args.insert_toggle_collect(&custom);
+                callgrind_args.insert_toggle_collect(custom);
             }
         }
 
+        let regression_config =
+            api::update_option(&config.regression_config, &meta.regression_config).map(Into::into);
+
+        // TODO: DEPENDS ON THE DEFAULT TOOL and the cachegrind feature (also in bin_bench)
         let mut tool_configs = ToolConfigs(vec![ToolConfig::new(
             ValgrindTool::Callgrind,
             true,
             callgrind_args.clone(),
             None,
+            ToolRegressionConfig::from(regression_config),
+            ToolFlamegraphConfig::from(flamegraph_config),
         )]);
         tool_configs.extend(config.tools.0.into_iter().map(|mut t| {
             if !config.valgrind_args.is_empty() {
@@ -374,19 +376,12 @@ impl LibBench {
             id: library_benchmark_bench.id,
             function_name: library_benchmark_bench.function_name,
             args: library_benchmark_bench.args,
-            entry_point: config.entry_point.unwrap_or(EntryPoint::Default),
+            entry_point,
             run_options: RunOptions {
                 env_clear: config.env_clear.unwrap_or(true),
                 envs,
                 ..Default::default()
             },
-            callgrind_args,
-            flamegraph_config,
-            regression_config: api::update_option(
-                &config.regression_config,
-                &meta.regression_config,
-            )
-            .map(Into::into),
             tools: tool_configs,
             module_path,
             output_format,
@@ -495,8 +490,6 @@ impl Benchmark for LoadBaselineBenchmark {
             &config.bench_bin,
             &bench_args,
             benchmark_summary,
-            lib_bench.regression_config.clone(),
-            lib_bench.flamegraph_config.clone(),
             self.baselines(),
             config,
             &out_path,
@@ -625,8 +618,6 @@ impl Benchmark for SaveBaselineBenchmark {
             benchmark_summary,
             self.baselines(),
             BaselineKind::Name(self.baseline.clone()),
-            lib_bench.regression_config.clone(),
-            lib_bench.flamegraph_config.clone(),
             config,
             &config.bench_bin,
             &lib_bench.bench_args(group),

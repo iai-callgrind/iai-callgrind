@@ -79,15 +79,61 @@ pub struct RunOptions {
     pub stderr: Option<api::Stdio>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ToolConfig {
     pub tool: ValgrindTool,
     pub is_enabled: bool,
     pub args: ToolArgs,
     pub outfile_modifier: Option<String>,
+    pub regression_config: ToolRegressionConfig,
+    pub flamegraph_config: ToolFlamegraphConfig,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+// TODO: SORT
+#[derive(Debug, Clone, PartialEq)]
+pub enum ToolRegressionConfig {
+    Callgrind(RegressionConfig),
+    None,
+}
+
+impl ToolRegressionConfig {
+    // TODO: DOCS
+    pub fn is_fail_fast(&self) -> bool {
+        match self {
+            ToolRegressionConfig::Callgrind(regression_config) => regression_config.fail_fast,
+            ToolRegressionConfig::None => false,
+        }
+    }
+}
+
+// TODO: SORT
+impl From<Option<RegressionConfig>> for ToolRegressionConfig {
+    fn from(value: Option<RegressionConfig>) -> Self {
+        match value {
+            Some(config) => ToolRegressionConfig::Callgrind(config),
+            None => ToolRegressionConfig::None,
+        }
+    }
+}
+
+// TODO: SORT
+impl From<Option<FlamegraphConfig>> for ToolFlamegraphConfig {
+    fn from(value: Option<FlamegraphConfig>) -> Self {
+        match value {
+            Some(config) => ToolFlamegraphConfig::Callgrind(config),
+            None => ToolFlamegraphConfig::None,
+        }
+    }
+}
+
+// TODO: SORT
+#[derive(Debug, Clone, PartialEq)]
+pub enum ToolFlamegraphConfig {
+    Callgrind(FlamegraphConfig),
+    None,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct ToolConfigs(pub Vec<ToolConfig>);
 
 pub struct ToolCommand {
@@ -301,7 +347,14 @@ impl ToolCommand {
 }
 
 impl ToolConfig {
-    pub fn new<T>(tool: ValgrindTool, is_enabled: bool, args: T, modifier: Option<String>) -> Self
+    pub fn new<T>(
+        tool: ValgrindTool,
+        is_enabled: bool,
+        args: T,
+        modifier: Option<String>,
+        regression_config: ToolRegressionConfig,
+        flamegraph_config: ToolFlamegraphConfig,
+    ) -> Self
     where
         T: Into<ToolArgs>,
     {
@@ -310,6 +363,8 @@ impl ToolConfig {
             is_enabled,
             args: args.into(),
             outfile_modifier: modifier,
+            regression_config,
+            flamegraph_config,
         }
     }
 
@@ -349,6 +404,8 @@ impl TryFrom<api::Tool> for ToolConfig {
             is_enabled: value.enable.unwrap_or(true),
             args,
             outfile_modifier: None,
+            regression_config: ToolRegressionConfig::None,
+            flamegraph_config: ToolFlamegraphConfig::None,
         })
     }
 }
@@ -414,8 +471,6 @@ impl ToolConfigs {
         executable: &Path,
         executable_args: &[OsString],
         mut benchmark_summary: BenchmarkSummary,
-        regression_config: Option<RegressionConfig>,
-        flamegraph_config: Option<FlamegraphConfig>,
         baselines: (Option<String>, Option<String>),
         config: &Config,
         output_path: &ToolOutputPath,
@@ -439,8 +494,10 @@ impl ToolConfigs {
                     &tool_run,
                 )?;
 
-                tool_run.total.regressions =
-                    Self::check_and_print_regressions(regression_config.as_ref(), &tool_run.total);
+                tool_run.total.regressions = Self::check_and_print_regressions(
+                    &tool_config.regression_config,
+                    &tool_run.total,
+                );
 
                 let mut tool_summary = ToolSummary {
                     tool: tool_config.tool,
@@ -450,13 +507,15 @@ impl ToolConfigs {
                     summaries: tool_run,
                 };
 
-                if let Some(flamegraph_config) = flamegraph_config.clone() {
+                if let ToolFlamegraphConfig::Callgrind(flamegraph_config) =
+                    &tool_config.flamegraph_config
+                {
                     tool_summary.flamegraphs = LoadBaselineFlamegraphGenerator {
                         loaded_baseline: loaded_baseline.clone(),
                         baseline: baseline.clone(),
                     }
                     .create(
-                        &Flamegraph::new(title.clone(), flamegraph_config),
+                        &Flamegraph::new(title.clone(), flamegraph_config.to_owned()),
                         &output_path,
                         (entry_point == EntryPoint::Default)
                             .then(Sentinel::default)
@@ -488,10 +547,10 @@ impl ToolConfigs {
     /// Checking performance regressions for other tools than callgrind is not implemented and
     /// treated as programming error.
     fn check_and_print_regressions(
-        regression_config: Option<&RegressionConfig>,
+        tool_regression_config: &ToolRegressionConfig,
         tool_total: &ToolTotal,
     ) -> Vec<ToolRegression> {
-        if let Some(regression_config) = regression_config {
+        if let ToolRegressionConfig::Callgrind(regression_config) = tool_regression_config {
             let regressions = match &tool_total.summary {
                 ToolMetricSummary::CallgrindSummary(metrics_summary) => {
                     regression_config.check_and_print(metrics_summary)
@@ -521,8 +580,6 @@ impl ToolConfigs {
         mut benchmark_summary: BenchmarkSummary,
         baselines: (Option<String>, Option<String>),
         baseline_kind: BaselineKind,
-        regression_config: Option<RegressionConfig>,
-        flamegraph_config: Option<FlamegraphConfig>,
         config: &Config,
         executable: &Path,
         executable_args: &[OsString],
@@ -627,7 +684,7 @@ impl ToolConfigs {
                 )?;
 
                 tool_summary.summaries.total.regressions = Self::check_and_print_regressions(
-                    regression_config.as_ref(),
+                    &tool_config.regression_config,
                     &tool_summary.summaries.total,
                 );
 
@@ -636,10 +693,12 @@ impl ToolConfigs {
                     let BaselineKind::Name(baseline) = baseline_kind.clone() else {
                         panic!("A baseline with name should be present");
                     };
-                    if let Some(flamegraph_config) = flamegraph_config.clone() {
+                    if let ToolFlamegraphConfig::Callgrind(flamegraph_config) =
+                        &tool_config.flamegraph_config
+                    {
                         tool_summary.flamegraphs = SaveBaselineFlamegraphGenerator { baseline }
                             .create(
-                                &Flamegraph::new(title.clone(), flamegraph_config),
+                                &Flamegraph::new(title.clone(), flamegraph_config.to_owned()),
                                 &output_path,
                                 (entry_point == EntryPoint::Default)
                                     .then(Sentinel::default)
@@ -647,12 +706,14 @@ impl ToolConfigs {
                                 &config.meta.project_root,
                             )?;
                     }
-                } else if let Some(flamegraph_config) = flamegraph_config.clone() {
+                } else if let ToolFlamegraphConfig::Callgrind(flamegraph_config) =
+                    &tool_config.flamegraph_config
+                {
                     tool_summary.flamegraphs = BaselineFlamegraphGenerator {
                         baseline_kind: baseline_kind.clone(),
                     }
                     .create(
-                        &Flamegraph::new(title.clone(), flamegraph_config),
+                        &Flamegraph::new(title.clone(), flamegraph_config.to_owned()),
                         &output_path,
                         (entry_point == EntryPoint::Default)
                             .then(Sentinel::default)
