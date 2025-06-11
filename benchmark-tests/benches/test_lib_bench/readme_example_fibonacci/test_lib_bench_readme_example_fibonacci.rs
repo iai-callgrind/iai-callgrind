@@ -1,6 +1,8 @@
 use std::hint::black_box;
 
-use iai_callgrind::{library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig};
+use iai_callgrind::{
+    library_benchmark, library_benchmark_group, main, Callgrind, LibraryBenchmarkConfig,
+};
 
 fn fibonacci(n: u64) -> u64 {
     match n {
@@ -23,6 +25,7 @@ library_benchmark_group!(
 );
 
 main!(
-    config = LibraryBenchmarkConfig::default().callgrind_args(["collect-jumps=yes"]);
+    config = LibraryBenchmarkConfig::default()
+        .tool(Callgrind::with_args(["collect-jumps=yes"]));
     library_benchmark_groups = bench_fibonacci_group
 );

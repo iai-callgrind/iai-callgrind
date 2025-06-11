@@ -1,14 +1,16 @@
 use iai_callgrind::{
     binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, EventKind,
-    RegressionConfig,
+    RegressionConfig, Callgrind
 };
 
 #[binary_benchmark]
 #[bench::regress_ir(
     args = [{{ array_length }}],
     config = BinaryBenchmarkConfig::default()
-        .regression(
-            RegressionConfig::default().limits([(EventKind::Ir, 0.0)]).fail_fast({{ fail_fast }})
+        .tool(Callgrind::default()
+            .regression(RegressionConfig::default()
+                .limits([(EventKind::Ir, 0.0)]).fail_fast({{ fail_fast }})
+            )
         )
 )]
 #[bench::should_not_run_after_regression(10)]

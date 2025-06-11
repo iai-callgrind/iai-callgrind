@@ -22,15 +22,18 @@ pub use iai_callgrind_runner::api::{
     BinaryBenchmarkConfig as InternalBinaryBenchmarkConfig,
     BinaryBenchmarkGroup as InternalBinaryBenchmarkGroup,
     BinaryBenchmarkGroups as InternalBinaryBenchmarkGroups, Command as InternalCommand,
-    Delay as InternalDelay, ExitWith as InternalExitWith, Fixtures as InternalFixtures,
-    FlamegraphConfig as InternalFlamegraphConfig,
+    Delay as InternalDelay, EntryPoint as InternalEntryPoint, ExitWith as InternalExitWith,
+    Fixtures as InternalFixtures, FlamegraphConfig as InternalFlamegraphConfig,
     LibraryBenchmark as InternalLibraryBenchmarkBenches,
     LibraryBenchmarkBench as InternalLibraryBenchmarkBench,
     LibraryBenchmarkConfig as InternalLibraryBenchmarkConfig,
     LibraryBenchmarkGroup as InternalLibraryBenchmarkGroup,
     LibraryBenchmarkGroups as InternalLibraryBenchmarkGroups, OutputFormat as InternalOutputFormat,
     RawArgs as InternalRawArgs, RegressionConfig as InternalRegressionConfig,
-    Sandbox as InternalSandbox, Tool as InternalTool, Tools as InternalTools,
+    Sandbox as InternalSandbox, Tool as InternalTool,
+    ToolFlamegraphConfig as InternalToolFlamegraphConfig,
+    ToolOutputFormat as InternalToolOutputFormat,
+    ToolRegressionConfig as InternalToolRegressionConfig, Tools as InternalTools,
 };
 
 /// Used in iai-callgrind-macros to store the essential information about a library benchmark

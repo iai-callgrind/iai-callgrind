@@ -3,15 +3,15 @@ use std::process::Command;
 
 use benchmark_tests::{find_primes_multi_thread, thread_in_thread_with_instrumentation};
 use iai_callgrind::{
-    library_benchmark, library_benchmark_group, main, EntryPoint, LibraryBenchmarkConfig,
-    OutputFormat, Tool, ValgrindTool,
+    library_benchmark, library_benchmark_group, main, Bbv, Callgrind, Dhat, Drd, EntryPoint,
+    LibraryBenchmarkConfig, Massif, Memcheck, OutputFormat,
 };
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .callgrind_args([
+        .tool(Callgrind::with_args([
             "toggle-collect=*::find_primes"
-        ])
+        ]))
 )]
 #[bench::two(2)]
 #[bench::three(3)]
@@ -21,10 +21,10 @@ fn bench_find_primes_multi_thread(num_threads: usize) -> Vec<u64> {
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .callgrind_args([
+        .tool(Callgrind::with_args([
             "toggle-collect=thread::main",
             "toggle-collect=*::find_primes",
-        ])
+        ]))
 )]
 #[bench::two(2)]
 #[bench::three(3)]
@@ -37,8 +37,9 @@ fn bench_thread_in_subprocess(num_threads: usize) {
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .callgrind_args(["--instr-atstart=no"])
-        .entry_point(EntryPoint::None)
+        .tool(Callgrind::with_args(["--instr-atstart=no"])
+            .entry_point(EntryPoint::None)
+        )
 )]
 fn bench_thread_in_thread() -> Vec<u64> {
     iai_callgrind::client_requests::callgrind::start_instrumentation();
@@ -49,8 +50,9 @@ fn bench_thread_in_thread() -> Vec<u64> {
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .callgrind_args(["instr-atstart=no"])
-        .entry_point(EntryPoint::None)
+        .tool(Callgrind::with_args(["instr-atstart=no"])
+            .entry_point(EntryPoint::None)
+        )
 )]
 fn bench_thread_in_thread_in_subprocess() {
     iai_callgrind::client_requests::callgrind::start_instrumentation();
@@ -79,10 +81,10 @@ main!(
         )
         // Helgrind is excluded since an assertion in helgrind itself fails and causes an error.
         // Looks like a bug in valgrind.
-        .tool(Tool::new(ValgrindTool::DHAT))
-        .tool(Tool::new(ValgrindTool::Memcheck))
-        .tool(Tool::new(ValgrindTool::DRD))
-        .tool(Tool::new(ValgrindTool::Massif))
-        .tool(Tool::new(ValgrindTool::BBV));
+        .tool(Dhat::default())
+        .tool(Memcheck::default())
+        .tool(Drd::default())
+        .tool(Massif::default())
+        .tool(Bbv::default());
     library_benchmark_groups = bench_group
 );

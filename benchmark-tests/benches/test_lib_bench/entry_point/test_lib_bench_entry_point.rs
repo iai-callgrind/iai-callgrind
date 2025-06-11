@@ -2,8 +2,8 @@ use std::hint::black_box;
 
 use benchmark_tests::assert::Assert;
 use iai_callgrind::{
-    library_benchmark, library_benchmark_group, main, EntryPoint, EventKind, FlamegraphConfig,
-    LibraryBenchmarkConfig, ValgrindTool,
+    library_benchmark, library_benchmark_group, main, Callgrind, EntryPoint, EventKind,
+    FlamegraphConfig, LibraryBenchmarkConfig, ValgrindTool,
 };
 use iai_callgrind_runner::runner::callgrind::hashmap_parser::SourcePath;
 use iai_callgrind_runner::runner::summary::{BenchmarkSummary, ToolMetricSummary};
@@ -21,15 +21,21 @@ fn some_func() -> u64 {
 #[library_benchmark]
 #[bench::none(
     config = LibraryBenchmarkConfig::default()
-        .entry_point(EntryPoint::None),
+        .tool(Callgrind::default()
+            .entry_point(EntryPoint::None)
+        )
 )]
 #[bench::default(
     config = LibraryBenchmarkConfig::default()
-        .entry_point(EntryPoint::Default)
+        .tool(Callgrind::default()
+            .entry_point(EntryPoint::Default)
+        )
 )]
 #[bench::nested(
     config = LibraryBenchmarkConfig::default()
-        .entry_point(EntryPoint::from("test_lib_bench_entry_point::nested"))
+        .tool(Callgrind::default()
+            .entry_point(EntryPoint::from("test_lib_bench_entry_point::nested"))
+        )
 )]
 fn bench_lib() -> u64 {
     black_box(some_func())
@@ -162,7 +168,10 @@ fn assert_benchmarks() {
 
 library_benchmark_group!(
     name = my_group;
-    config = LibraryBenchmarkConfig::default().flamegraph(FlamegraphConfig::default());
+    config = LibraryBenchmarkConfig::default()
+        .tool(Callgrind::default()
+            .flamegraph(FlamegraphConfig::default())
+        );
     teardown = assert_benchmarks();
     benchmarks = bench_lib
 );

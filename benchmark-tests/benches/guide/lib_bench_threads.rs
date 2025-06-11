@@ -1,8 +1,8 @@
 use std::hint::black_box;
 
 use iai_callgrind::{
-    library_benchmark, library_benchmark_group, main, EntryPoint, LibraryBenchmarkConfig,
-    OutputFormat,
+    library_benchmark, library_benchmark_group, main, Callgrind, EntryPoint,
+    LibraryBenchmarkConfig, OutputFormat,
 };
 
 /// Suppose this is your library
@@ -50,8 +50,9 @@ pub mod my_lib {
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .entry_point(EntryPoint::None)
-        .callgrind_args(["--collect-atstart=yes"])
+        .tool(Callgrind::with_args(["--collect-atstart=yes"])
+            .entry_point(EntryPoint::None)
+        )
 )]
 #[bench::two_threads(2)]
 fn bench_threads(num_threads: usize) -> Vec<u64> {

@@ -4,8 +4,223 @@ use std::vec::Vec;
 
 use derive_more::AsRef;
 use iai_callgrind_macros::IntoInner;
+use iai_callgrind_runner::api::EntryPoint;
 
 use super::{CallgrindMetrics, Direction, EventKind, FlamegraphKind, ValgrindTool, __internal};
+
+/// TODO: SORT and document
+#[derive(Debug, Clone, IntoInner, AsRef)]
+pub struct Callgrind(__internal::InternalTool);
+
+/// TODO: SORT and document
+#[derive(Debug, Clone, IntoInner, AsRef)]
+pub struct Cachegrind(__internal::InternalTool);
+
+/// TODO: SORT and document
+#[derive(Debug, Clone, IntoInner, AsRef)]
+pub struct Dhat(__internal::InternalTool);
+
+/// TODO: SORT and document
+#[derive(Debug, Clone, IntoInner, AsRef)]
+pub struct Memcheck(__internal::InternalTool);
+
+/// TODO: SORT and document
+#[derive(Debug, Clone, IntoInner, AsRef)]
+pub struct Helgrind(__internal::InternalTool);
+
+/// TODO: SORT and document
+#[derive(Debug, Clone, IntoInner, AsRef)]
+pub struct Drd(__internal::InternalTool);
+
+/// TODO: SORT and document
+#[derive(Debug, Clone, IntoInner, AsRef)]
+pub struct Massif(__internal::InternalTool);
+
+/// TODO: SORT and document
+#[derive(Debug, Clone, IntoInner, AsRef)]
+pub struct Bbv(__internal::InternalTool);
+
+impl Default for Callgrind {
+    fn default() -> Self {
+        Self(__internal::InternalTool::new(ValgrindTool::Callgrind))
+    }
+}
+
+impl Callgrind {
+    /// TODO: DOCS
+    pub fn with_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(__internal::InternalTool::with_args(
+            ValgrindTool::Callgrind,
+            args,
+        ))
+    }
+
+    /// TODO: DOCS
+    pub fn entry_point(&mut self, entry_point: EntryPoint) -> &mut Self {
+        self.0.entry_point = Some(entry_point);
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn regression<T>(&mut self, regression: T) -> &mut Self
+    where
+        T: Into<__internal::InternalRegressionConfig>,
+    {
+        self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Callgrind(
+            regression.into(),
+        ));
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn flamegraph<T>(&mut self, flamegraph: T) -> &mut Self
+    where
+        T: Into<__internal::InternalFlamegraphConfig>,
+    {
+        self.0.flamegraph_config = Some(__internal::InternalToolFlamegraphConfig::Callgrind(
+            flamegraph.into(),
+        ));
+        self
+    }
+}
+
+impl Default for Cachegrind {
+    fn default() -> Self {
+        Self(__internal::InternalTool::new(ValgrindTool::Cachegrind))
+    }
+}
+
+impl Cachegrind {
+    /// TODO: DOCS
+    pub fn with_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(__internal::InternalTool::with_args(
+            ValgrindTool::Cachegrind,
+            args,
+        ))
+    }
+}
+
+impl Default for Dhat {
+    fn default() -> Self {
+        Self(__internal::InternalTool::new(ValgrindTool::DHAT))
+    }
+}
+
+impl Dhat {
+    /// TODO: DOCS
+    pub fn with_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(__internal::InternalTool::with_args(
+            ValgrindTool::DHAT,
+            args,
+        ))
+    }
+}
+
+impl Default for Memcheck {
+    fn default() -> Self {
+        Self(__internal::InternalTool::new(ValgrindTool::Memcheck))
+    }
+}
+
+impl Memcheck {
+    /// TODO: DOCS
+    pub fn with_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(__internal::InternalTool::with_args(
+            ValgrindTool::Memcheck,
+            args,
+        ))
+    }
+}
+
+impl Default for Helgrind {
+    fn default() -> Self {
+        Self(__internal::InternalTool::new(ValgrindTool::Helgrind))
+    }
+}
+
+impl Helgrind {
+    /// TODO: DOCS
+    pub fn with_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(__internal::InternalTool::with_args(
+            ValgrindTool::Helgrind,
+            args,
+        ))
+    }
+}
+
+impl Default for Drd {
+    fn default() -> Self {
+        Self(__internal::InternalTool::new(ValgrindTool::DRD))
+    }
+}
+
+impl Drd {
+    /// TODO: DOCS
+    pub fn with_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(__internal::InternalTool::with_args(ValgrindTool::DRD, args))
+    }
+}
+
+impl Default for Massif {
+    fn default() -> Self {
+        Self(__internal::InternalTool::new(ValgrindTool::Massif))
+    }
+}
+
+impl Massif {
+    /// TODO: DOCS
+    pub fn with_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(__internal::InternalTool::with_args(
+            ValgrindTool::Massif,
+            args,
+        ))
+    }
+}
+
+impl Default for Bbv {
+    fn default() -> Self {
+        Self(__internal::InternalTool::new(ValgrindTool::BBV))
+    }
+}
+
+impl Bbv {
+    /// TODO: DOCS
+    pub fn with_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(__internal::InternalTool::with_args(ValgrindTool::BBV, args))
+    }
+}
 
 /// The `FlamegraphConfig` which allows the customization of the created flamegraphs
 ///
@@ -429,31 +644,32 @@ impl OutputFormat {
 #[derive(Debug, Default, Clone, IntoInner, AsRef)]
 pub struct RegressionConfig(__internal::InternalRegressionConfig);
 
-/// Configure to run other valgrind tools like `DHAT` or `Massif` in addition to callgrind
-///
-/// For a list of possible tools see [`ValgrindTool`].
-///
-/// See also the [Valgrind User Manual](https://valgrind.org/docs/manual/manual.html) for details
-/// about possible tools and their command line arguments.
-///
-/// # Examples
-///
-/// ```rust
-/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
-/// use iai_callgrind::{main, LibraryBenchmarkConfig, Tool, ValgrindTool};
-/// # #[library_benchmark]
-/// # fn some_func() {}
-/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
-/// # fn main() {
-/// main!(
-///     config = LibraryBenchmarkConfig::default()
-///                 .tool(Tool::new(ValgrindTool::DHAT));
-///     library_benchmark_groups = some_group
-/// );
-/// # }
-/// ```
-#[derive(Debug, Clone, PartialEq, Eq, IntoInner, AsRef)]
-pub struct Tool(__internal::InternalTool);
+// TODO: CLEANUP or deprecate?
+// /// Configure to run other valgrind tools like `DHAT` or `Massif` in addition to callgrind
+// ///
+// /// For a list of possible tools see [`ValgrindTool`].
+// ///
+// /// See also the [Valgrind User Manual](https://valgrind.org/docs/manual/manual.html) for details
+// /// about possible tools and their command line arguments.
+// ///
+// /// # Examples
+// ///
+// /// ```rust
+// /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+// /// use iai_callgrind::{main, LibraryBenchmarkConfig, Tool, ValgrindTool};
+// /// # #[library_benchmark]
+// /// # fn some_func() {}
+// /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+// /// # fn main() {
+// /// main!(
+// ///     config = LibraryBenchmarkConfig::default()
+// ///                 .tool(Tool::new(ValgrindTool::DHAT));
+// ///     library_benchmark_groups = some_group
+// /// );
+// /// # }
+// /// ```
+// #[derive(Debug, Clone, PartialEq, IntoInner, AsRef)]
+// pub struct Tool(__internal::InternalTool);
 
 impl FlamegraphConfig {
     /// Option to change the [`FlamegraphKind`]
@@ -701,58 +917,64 @@ impl RegressionConfig {
     }
 }
 
-impl Tool {
-    /// Create a new `Tool` configuration
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use iai_callgrind::{Tool, ValgrindTool};
-    ///
-    /// let tool = Tool::new(ValgrindTool::DHAT);
-    /// ```
-    pub fn new(tool: ValgrindTool) -> Self {
-        Self(__internal::InternalTool {
-            kind: tool,
-            enable: Option::default(),
-            show_log: Option::default(),
-            raw_args: __internal::InternalRawArgs::default(),
-        })
-    }
+// TODO: Cleanup or deprecate?
+// impl Tool {
+//     /// Create a new `Tool` configuration
+//     ///
+//     /// # Examples
+//     ///
+//     /// ```
+//     /// use iai_callgrind::{Tool, ValgrindTool};
+//     ///
+//     /// let tool = Tool::new(ValgrindTool::DHAT);
+//     /// ```
+//     pub fn new(tool: ValgrindTool) -> Self {
+//         Self(__internal::InternalTool {
+//             kind: tool,
+//             enable: Option::default(),
+//             show_log: Option::default(),
+//             raw_args: __internal::InternalRawArgs::default(),
+//             regression_config: Option::default(),
+//             flamegraph_config: Option::default(),
+//             output_format: Option::default(),
+//             entry_point: Option::default(),
+//         })
+//     }
+//
+//     /// If true, enable running this `Tool` (Default: true)
+//     ///
+//     /// # Examples
+//     ///
+//     /// ```
+//     /// use iai_callgrind::{Tool, ValgrindTool};
+//     ///
+//     /// let tool = Tool::new(ValgrindTool::DHAT).enable(true);
+//     /// ```
+//     pub fn enable(&mut self, value: bool) -> &mut Self {
+//         self.0.enable = Some(value);
+//         self
+//     }
+//
+//     /// Pass one or more arguments directly to the valgrind `Tool`
+//     ///
+//     /// # Examples
+//     ///
+//     /// ```
+//     /// use iai_callgrind::{Tool, ValgrindTool};
+//     ///
+//     /// let tool = Tool::new(ValgrindTool::DHAT).args(["--num-callers=5", "--mode=heap"]);
+//     /// ```
+//     pub fn args<I, T>(&mut self, args: T) -> &mut Self
+//     where
+//         I: AsRef<str>,
+//         T: IntoIterator<Item = I>,
+//     {
+//         self.0.raw_args.extend_ignore_flag(args);
+//         self
+//     }
+// }
 
-    /// If true, enable running this `Tool` (Default: true)
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use iai_callgrind::{Tool, ValgrindTool};
-    ///
-    /// let tool = Tool::new(ValgrindTool::DHAT).enable(true);
-    /// ```
-    pub fn enable(&mut self, value: bool) -> &mut Self {
-        self.0.enable = Some(value);
-        self
-    }
-
-    /// Pass one or more arguments directly to the valgrind `Tool`
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use iai_callgrind::{Tool, ValgrindTool};
-    ///
-    /// let tool = Tool::new(ValgrindTool::DHAT).args(["--num-callers=5", "--mode=heap"]);
-    /// ```
-    pub fn args<I, T>(&mut self, args: T) -> &mut Self
-    where
-        I: AsRef<str>,
-        T: IntoIterator<Item = I>,
-    {
-        self.0.raw_args.extend_ignore_flag(args);
-        self
-    }
-}
-
+/// TODO: REMOVE
 /// __DEPRECATED__: A function that is opaque to the optimizer
 ///
 /// It is used to prevent the compiler from optimizing away computations in a benchmark.
