@@ -29,7 +29,7 @@ use super::callgrind::flamegraph::{
 };
 use super::callgrind::parser::{parse_header, Sentinel};
 use super::callgrind::RegressionConfig;
-use super::common::{Assistant, Config, ModulePath, Sandbox};
+use super::common::{Assistant, Baselines, Config, ModulePath, Sandbox};
 use super::format::{print_no_capture_footer, Formatter, OutputFormat, VerticalFormatter};
 use super::meta::Metadata;
 use super::summary::{
@@ -473,13 +473,11 @@ impl ToolConfigs {
 
     pub fn run_loaded_vs_base(
         &self,
-        title: String,
-        baseline: BaselineName,
-        loaded_baseline: BaselineName,
-        executable: &Path,
-        executable_args: &[OsString],
+        title: &str,
+        baseline: &BaselineName,
+        loaded_baseline: &BaselineName,
         mut benchmark_summary: BenchmarkSummary,
-        baselines: (Option<String>, Option<String>),
+        baselines: &Baselines,
         config: &Config,
         output_path: &ToolOutputPath,
         output_format: &OutputFormat,
@@ -523,7 +521,7 @@ impl ToolConfigs {
                         baseline: baseline.clone(),
                     }
                     .create(
-                        &Flamegraph::new(title.clone(), flamegraph_config.to_owned()),
+                        &Flamegraph::new(title.to_owned(), flamegraph_config.to_owned()),
                         &output_path,
                         (tool_config.entry_point == EntryPoint::Default)
                             .then(Sentinel::default)
@@ -583,10 +581,10 @@ impl ToolConfigs {
 
     pub fn run(
         &self,
-        title: String,
+        title: &str,
         mut benchmark_summary: BenchmarkSummary,
-        baselines: (Option<String>, Option<String>),
-        baseline_kind: BaselineKind,
+        baselines: &Baselines,
+        baseline_kind: &BaselineKind,
         config: &Config,
         executable: &Path,
         executable_args: &[OsString],
@@ -704,7 +702,7 @@ impl ToolConfigs {
                     {
                         tool_summary.flamegraphs = SaveBaselineFlamegraphGenerator { baseline }
                             .create(
-                                &Flamegraph::new(title.clone(), flamegraph_config.to_owned()),
+                                &Flamegraph::new(title.to_owned(), flamegraph_config.to_owned()),
                                 &output_path,
                                 (tool_config.entry_point == EntryPoint::Default)
                                     .then(Sentinel::default)
@@ -719,7 +717,7 @@ impl ToolConfigs {
                         baseline_kind: baseline_kind.clone(),
                     }
                     .create(
-                        &Flamegraph::new(title.clone(), flamegraph_config.to_owned()),
+                        &Flamegraph::new(title.to_owned(), flamegraph_config.to_owned()),
                         &output_path,
                         (tool_config.entry_point == EntryPoint::Default)
                             .then(Sentinel::default)
