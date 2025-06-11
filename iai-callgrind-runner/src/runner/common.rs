@@ -37,6 +37,8 @@ pub enum AssistantKind {
     Teardown,
 }
 
+pub type Baselines = (Option<String>, Option<String>);
+
 /// Contains benchmark summaries of (binary, library) benchmark runs and their execution time
 ///
 /// Used to print a final summary after all benchmarks.

@@ -8,7 +8,7 @@ use std::time::Instant;
 use anyhow::Result;
 
 use super::callgrind::args::Args;
-use super::common::{Assistant, AssistantKind, BenchmarkSummaries, Config, ModulePath};
+use super::common::{Assistant, AssistantKind, Baselines, BenchmarkSummaries, Config, ModulePath};
 use super::format::{LibraryBenchmarkHeader, OutputFormat};
 use super::meta::Metadata;
 use super::summary::{BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput};
@@ -98,7 +98,7 @@ struct SaveBaselineBenchmark {
 /// designed to run a `LibBench` only.
 trait Benchmark: std::fmt::Debug {
     fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath;
-    fn baselines(&self) -> (Option<String>, Option<String>);
+    fn baselines(&self) -> Baselines;
     fn run(&self, lib_bench: &LibBench, config: &Config, group: &Group)
         -> Result<BenchmarkSummary>;
 }
@@ -117,7 +117,7 @@ impl Benchmark for BaselineBenchmark {
         )
     }
 
-    fn baselines(&self) -> (Option<String>, Option<String>) {
+    fn baselines(&self) -> Baselines {
         match &self.baseline_kind {
             BaselineKind::Old => (None, None),
             BaselineKind::Name(name) => (None, Some(name.to_string())),
@@ -132,8 +132,6 @@ impl Benchmark for BaselineBenchmark {
     ) -> Result<BenchmarkSummary> {
         let header = LibraryBenchmarkHeader::new(lib_bench);
         header.print();
-
-        let bench_args = lib_bench.bench_args(group);
 
         let out_path = self.output_path(lib_bench, config, group);
         out_path.init()?;
@@ -153,13 +151,13 @@ impl Benchmark for BaselineBenchmark {
         )?;
 
         lib_bench.tools.run(
-            header.to_title(),
+            &header.to_title(),
             benchmark_summary,
-            self.baselines(),
-            self.baseline_kind.clone(),
+            &self.baselines(),
+            &self.baseline_kind,
             config,
             &config.bench_bin,
-            &bench_args,
+            &lib_bench.bench_args(group),
             &lib_bench.run_options,
             &out_path,
             false,
@@ -446,7 +444,7 @@ impl Benchmark for LoadBaselineBenchmark {
         )
     }
 
-    fn baselines(&self) -> (Option<String>, Option<String>) {
+    fn baselines(&self) -> Baselines {
         (
             Some(self.loaded_baseline.to_string()),
             Some(self.baseline.to_string()),
@@ -462,7 +460,6 @@ impl Benchmark for LoadBaselineBenchmark {
         let header = LibraryBenchmarkHeader::new(lib_bench);
         header.print();
 
-        let bench_args = lib_bench.bench_args(group);
         let out_path = self.output_path(lib_bench, config, group);
 
         let benchmark_summary = lib_bench.create_benchmark_summary(
@@ -473,13 +470,11 @@ impl Benchmark for LoadBaselineBenchmark {
         )?;
 
         lib_bench.tools.run_loaded_vs_base(
-            header.to_title(),
-            self.baseline.clone(),
-            self.loaded_baseline.clone(),
-            &config.bench_bin,
-            &bench_args,
+            &header.to_title(),
+            &self.baseline,
+            &self.loaded_baseline,
             benchmark_summary,
-            self.baselines(),
+            &self.baselines(),
             config,
             &out_path,
             &lib_bench.output_format,
@@ -573,7 +568,7 @@ impl Benchmark for SaveBaselineBenchmark {
         )
     }
 
-    fn baselines(&self) -> (Option<String>, Option<String>) {
+    fn baselines(&self) -> Baselines {
         (
             Some(self.baseline.to_string()),
             Some(self.baseline.to_string()),
@@ -600,10 +595,10 @@ impl Benchmark for SaveBaselineBenchmark {
         )?;
 
         lib_bench.tools.run(
-            header.to_title(),
+            &header.to_title(),
             benchmark_summary,
-            self.baselines(),
-            BaselineKind::Name(self.baseline.clone()),
+            &self.baselines(),
+            &BaselineKind::Name(self.baseline.clone()),
             config,
             &config.bench_bin,
             &lib_bench.bench_args(group),
