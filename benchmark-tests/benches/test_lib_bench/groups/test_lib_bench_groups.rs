@@ -1,13 +1,14 @@
 //! This is an example for setting up library benchmarks. It's best to read all the comments from
 //! top to bottom to get a better understanding of the api.
+//! TODO: UPDATE DOCS WITH NEW structs Callgrind, Dhat and tool organization
 
 use std::hint::black_box;
 
 // These two functions from the benchmark-tests library serve as functions we want to benchmark
 use benchmark_tests::{bubble_sort, fibonacci};
 use iai_callgrind::{
-    library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,
-    RegressionConfig, Tool, ValgrindTool,
+    library_benchmark, library_benchmark_group, main, Callgrind, Dhat, EventKind,
+    LibraryBenchmarkConfig, Massif, RegressionConfig,
 };
 
 // This function is used to create the worst case array we want to sort with our implementation of
@@ -135,9 +136,7 @@ fn bench_fibonacci_with_config() -> u64 {
 #[bench::fib_with_config(
     args = (3, 4),
     config = LibraryBenchmarkConfig::default()
-        .tool_override(
-            Tool::new(ValgrindTool::Massif)
-        )
+        .tool_override(Massif::default())
 )]
 fn bench_fibonacci_with_config_at_bench_level(first: u64, second: u64) -> u64 {
     black_box(fibonacci(black_box(first + second)))
@@ -154,8 +153,10 @@ fn bench_fibonacci_with_config_at_bench_level(first: u64, second: u64) -> u64 {
 library_benchmark_group!(
     name = bubble_sort;
     config = LibraryBenchmarkConfig::default()
-        .regression(
-            RegressionConfig::default().fail_fast(false)
+        .tool(Callgrind::default()
+            .regression(RegressionConfig::default()
+                .fail_fast(false)
+            )
         );
     benchmarks =
         bench_bubble_sort_empty,
@@ -195,9 +196,11 @@ library_benchmark_group!(
 // the output files of the callgrind runs in `target/iai/...`.
 main!(
     config = LibraryBenchmarkConfig::default()
-        .regression(
-            RegressionConfig::default()
-                .limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
+        .tool(Callgrind::default()
+            .regression(
+                RegressionConfig::default()
+                    .limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
+            )
         )
-        .tool(Tool::new(ValgrindTool::DHAT));
+        .tool(Dhat::default());
     library_benchmark_groups = bubble_sort, fibonacci);

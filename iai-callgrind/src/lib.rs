@@ -408,7 +408,10 @@ pub use bin_bench::{
 #[cfg(feature = "default")]
 pub use bincode;
 #[cfg(feature = "default")]
-pub use common::{black_box, FlamegraphConfig, OutputFormat, RegressionConfig, Tool};
+pub use common::{
+    black_box, Bbv, Cachegrind, Callgrind, Dhat, Drd, FlamegraphConfig, Helgrind, Massif, Memcheck,
+    OutputFormat, RegressionConfig,
+};
 #[cfg(feature = "client_requests_defs")]
 pub use cty;
 #[cfg(feature = "default")]

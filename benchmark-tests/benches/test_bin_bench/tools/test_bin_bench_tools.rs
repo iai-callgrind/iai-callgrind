@@ -1,6 +1,6 @@
 use iai_callgrind::{
-    binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Command, OutputFormat,
-    Tool, ValgrindTool,
+    binary_benchmark, binary_benchmark_group, main, Bbv, BinaryBenchmarkConfig, Command, Dhat, Drd,
+    Helgrind, Massif, Memcheck, OutputFormat,
 };
 
 #[binary_benchmark]
@@ -26,11 +26,11 @@ main!(
             .show_intermediate(true)
             .truncate_description(None)
         )
-        .tool(Tool::new(ValgrindTool::DHAT).args(["--time-stamp=yes"]))
-        .tool(Tool::new(ValgrindTool::Massif))
-        .tool(Tool::new(ValgrindTool::BBV))
-        .tool(Tool::new(ValgrindTool::Memcheck).args(["--time-stamp=yes"]))
-        .tool(Tool::new(ValgrindTool::DRD))
-        .tool(Tool::new(ValgrindTool::Helgrind));
+        .tool(Dhat::with_args(["--time-stamp=yes"]))
+        .tool(Massif::default())
+        .tool(Bbv::default())
+        .tool(Memcheck::with_args(["--time-stamp=yes"]))
+        .tool(Drd::default())
+        .tool(Helgrind::default());
     binary_benchmark_groups = bench_group
 );

@@ -2,7 +2,7 @@ use std::hint::black_box;
 
 use benchmark_tests as my_lib;
 use iai_callgrind::{
-    library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,
+    library_benchmark, library_benchmark_group, main, Callgrind, EventKind, LibraryBenchmarkConfig,
     RegressionConfig,
 };
 
@@ -16,9 +16,9 @@ library_benchmark_group!(name = my_group; benchmarks = bench_library);
 
 main!(
     config = LibraryBenchmarkConfig::default()
-        .regression(
-            RegressionConfig::default()
+        .tool(Callgrind::default()
+            .regression(RegressionConfig::default()
                 .limits([(EventKind::Ir, 5.0)])
-        );
+        ));
     library_benchmark_groups = my_group
 );

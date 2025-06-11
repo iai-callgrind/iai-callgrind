@@ -15,6 +15,7 @@ use super::common::{Assistant, AssistantKind, Baselines, BenchmarkSummaries, Con
 use super::format::{BinaryBenchmarkHeader, OutputFormat};
 use super::meta::Metadata;
 use super::summary::{BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput};
+use super::tool::args::ToolArgs;
 use super::tool::{
     RunOptions, ToolConfig, ToolConfigs, ToolFlamegraphConfig, ToolOutputPath, ToolOutputPathKind,
     ToolRegressionConfig,
@@ -46,7 +47,6 @@ pub struct BinBench {
     pub function_name: String,
     pub command: Command,
     pub run_options: RunOptions,
-    pub callgrind_args: Args,
     pub tools: ToolConfigs,
     pub module_path: ModulePath,
     pub output_format: OutputFormat,
@@ -183,7 +183,7 @@ impl BinBench {
     fn new(
         meta: &Metadata,
         group: &Group,
-        config: BinaryBenchmarkConfig,
+        mut config: BinaryBenchmarkConfig,
         group_index: usize,
         bench_index: usize,
         meta_callgrind_args: &api::RawArgs,
@@ -205,12 +205,6 @@ impl BinBench {
 
         let command = Command::new(&module_path, path, args)?;
 
-        let callgrind_args = Args::try_from_raw_args(&[
-            &config.valgrind_args,
-            &config.callgrind_args,
-            meta_callgrind_args,
-        ])?;
-
         let mut assistant_envs = config.collect_envs();
         assistant_envs.push((
             OsString::from(defaults::WORKSPACE_ROOT_ENV),
@@ -218,38 +212,91 @@ impl BinBench {
         ));
 
         let command_envs = config.resolve_envs();
-        let flamegraph_config = config.flamegraph_config.map(Into::into);
-        let regression_config =
-            api::update_option(&config.regression_config, &meta.regression_config).map(Into::into);
 
         let mut output_format = config
             .output_format
             .map_or_else(OutputFormat::default, Into::into);
         output_format.kind = meta.args.output_format;
 
-        let mut tool_configs = ToolConfigs(vec![ToolConfig::new(
-            ValgrindTool::Callgrind,
-            true,
-            callgrind_args.clone(),
-            None,
-            ToolRegressionConfig::from(regression_config),
-            ToolFlamegraphConfig::from(flamegraph_config),
-            EntryPoint::None,
-        )]);
-        tool_configs.extend(config.tools.0.into_iter().map(|mut t| {
-            if !config.valgrind_args.is_empty() {
-                let mut new_args = config.valgrind_args.clone();
-                new_args.extend_ignore_flag(t.raw_args.0.iter());
-                t.raw_args = new_args;
+        // TODO: MOVE into ToolConfigs::new?
+        let default_tool = match config.default_tool.unwrap_or(ValgrindTool::Callgrind) {
+            ValgrindTool::Callgrind => {
+                if let Some(tool) = config.tools.consume(ValgrindTool::Callgrind) {
+                    let args = Args::try_from_raw_args(&[
+                        &config.valgrind_args,
+                        &tool.raw_args,
+                        meta_callgrind_args,
+                    ])?;
+                    ToolConfig::new(
+                        ValgrindTool::Callgrind,
+                        true,
+                        args,
+                        None,
+                        tool.regression_config.map_or(
+                            ToolRegressionConfig::None,
+                            |tool_regression_config| {
+                                if let Some(config) = &meta.regression_config {
+                                    ToolRegressionConfig::Callgrind(config.clone().into())
+                                } else {
+                                    tool_regression_config.into()
+                                }
+                            },
+                        ),
+                        tool.flamegraph_config
+                            .map_or(ToolFlamegraphConfig::None, Into::into),
+                        tool.entry_point.unwrap_or(EntryPoint::None),
+                    )
+                } else {
+                    let args =
+                        Args::try_from_raw_args(&[&config.valgrind_args, meta_callgrind_args])?;
+                    ToolConfig::new(
+                        ValgrindTool::Callgrind,
+                        true,
+                        args,
+                        None,
+                        meta.regression_config
+                            .as_ref()
+                            .map_or(ToolRegressionConfig::None, |t| {
+                                ToolRegressionConfig::Callgrind(t.clone().into())
+                            }),
+                        ToolFlamegraphConfig::None,
+                        EntryPoint::None,
+                    )
+                }
             }
-            t.try_into()
+            valgrind_tool => {
+                if let Some(mut tool) = config.tools.consume(valgrind_tool) {
+                    tool.raw_args.overwrite_other(&config.valgrind_args);
+                    tool.try_into()?
+                } else {
+                    ToolConfig::new(
+                        valgrind_tool,
+                        true,
+                        ToolArgs::try_from_raw_args(valgrind_tool, config.valgrind_args.clone())?,
+                        None,
+                        ToolRegressionConfig::None,
+                        ToolFlamegraphConfig::None,
+                        EntryPoint::None,
+                    )
+                }
+            }
+        };
+
+        let mut tool_configs = ToolConfigs(vec![default_tool]);
+        tool_configs.extend(config.tools.0.into_iter().map(|mut tool| {
+            // tool arguments overwrite valgrind args
+            tool.raw_args.overwrite_other(&config.valgrind_args);
+            if tool.kind == ValgrindTool::Callgrind {
+                // callgrind command line arguments overwrite tool arguments
+                tool.raw_args.update(meta_callgrind_args);
+            }
+            tool.try_into()
         }))?;
 
         Ok(Self {
             id: binary_benchmark_bench.id,
             args: binary_benchmark_bench.args,
             function_name: binary_benchmark_bench.function_name,
-            callgrind_args,
             tools: tool_configs,
             run_options: RunOptions {
                 env_clear: config.env_clear.unwrap_or(defaults::ENV_CLEAR),

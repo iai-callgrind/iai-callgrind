@@ -1,5 +1,5 @@
 use iai_callgrind::{
-    binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Command,
+    binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Callgrind, Command,
 };
 
 #[binary_benchmark]
@@ -12,7 +12,7 @@ fn run() -> Command {
 binary_benchmark_group!(
     name = client_requests;
     config = BinaryBenchmarkConfig::default()
-        .callgrind_args(["--instr-atstart=no"]);
+        .tool(Callgrind::with_args(["--instr-atstart=no"]));
     benchmarks = run,
 );
 

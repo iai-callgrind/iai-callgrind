@@ -12,8 +12,8 @@ use std::hint::black_box;
 
 use benchmark_tests::{bubble_sort, bubble_sort_allocate, subprocess};
 use iai_callgrind::{
-    library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,
-    OutputFormat, RegressionConfig, Tool, ValgrindTool,
+    library_benchmark, library_benchmark_group, main, Bbv, Callgrind, Dhat, Drd, EventKind,
+    Helgrind, LibraryBenchmarkConfig, Massif, Memcheck, OutputFormat, RegressionConfig,
 };
 
 fn setup_worst_case_array(start: i32) -> Vec<i32> {
@@ -40,9 +40,7 @@ fn bench_bubble_sort_allocate() -> i32 {
 #[bench::trace_children(
     args = (),
     config = LibraryBenchmarkConfig::default()
-        .callgrind_args([
-            "--toggle-collect=sort::main"
-        ])
+        .tool(Callgrind::with_args(["--toggle-collect=sort::main"]))
         .output_format(OutputFormat::default()
             .show_intermediate(true)
         )
@@ -65,12 +63,13 @@ fn bench_subprocess() -> io::Result<Output> {
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .tool_override(Tool::new(ValgrindTool::DHAT))
+        .tool_override(Dhat::default())
         .tool_override(
-            Tool::new(ValgrindTool::Memcheck)
-                .args(["--leak-check=full", "--errors-for-leak-kinds=all", "--error-exitcode=0", "--time-stamp=yes"])
+            Memcheck::with_args([
+                "--leak-check=full", "--errors-for-leak-kinds=all", "--error-exitcode=0", "--time-stamp=yes"
+            ])
         )
-        .tool_override(Tool::new(ValgrindTool::Massif))
+        .tool_override(Massif::default())
 )]
 fn bad_memory() {
     for _ in 0..100_000 {
@@ -79,7 +78,6 @@ fn bad_memory() {
         left.borrow_mut().0 = Some(Rc::clone(&right));
     }
 }
-
 library_benchmark_group!(
     name = bench_group;
     benchmarks = bench_bubble_sort_allocate, bench_subprocess, bench_bubble_sort, bad_memory
@@ -87,15 +85,16 @@ library_benchmark_group!(
 
 main!(
     config = LibraryBenchmarkConfig::default()
-        .regression(
-            RegressionConfig::default()
+        .tool(Callgrind::default()
+            .regression(RegressionConfig::default()
                 .limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
+            )
         )
-        .tool(Tool::new(ValgrindTool::DHAT).args(["--time-stamp=yes"]))
-        .tool(Tool::new(ValgrindTool::Massif))
-        .tool(Tool::new(ValgrindTool::BBV))
-        .tool(Tool::new(ValgrindTool::Memcheck).args(["--time-stamp=yes"]))
-        .tool(Tool::new(ValgrindTool::DRD))
-        .tool(Tool::new(ValgrindTool::Helgrind));
+        .tool(Dhat::with_args(["--time-stamp=yes"]))
+        .tool(Massif::default())
+        .tool(Bbv::default())
+        .tool(Memcheck::with_args(["--time-stamp=yes"]))
+        .tool(Drd::default())
+        .tool(Helgrind::default());
     library_benchmark_groups = bench_group
 );

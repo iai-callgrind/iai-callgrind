@@ -22,7 +22,6 @@ use regex::Regex;
 use self::args::ToolArgs;
 use super::args::NoCapture;
 use super::bin_bench::Delay;
-use super::cachegrind;
 use super::callgrind::flamegraph::{
     BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
     LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
@@ -36,6 +35,7 @@ use super::summary::{
     BaselineKind, BaselineName, BenchmarkSummary, ToolMetricSummary, ToolRegression, ToolRun,
     ToolSummary, ToolTotal,
 };
+use super::{cachegrind, callgrind};
 use crate::api::{self, EntryPoint, ExitWith, Stream, ValgrindTool};
 use crate::error::Error;
 use crate::util::{self, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
@@ -101,6 +101,17 @@ pub enum ToolRegressionConfig {
     None,
 }
 
+impl From<api::ToolRegressionConfig> for ToolRegressionConfig {
+    fn from(value: api::ToolRegressionConfig) -> Self {
+        match value {
+            api::ToolRegressionConfig::Callgrind(regression_config) => {
+                Self::Callgrind(regression_config.into())
+            }
+            api::ToolRegressionConfig::None => Self::None,
+        }
+    }
+}
+
 impl ToolRegressionConfig {
     // TODO: DOCS
     pub fn is_fail_fast(&self) -> bool {
@@ -127,6 +138,17 @@ impl From<Option<FlamegraphConfig>> for ToolFlamegraphConfig {
         match value {
             Some(config) => ToolFlamegraphConfig::Callgrind(config),
             None => ToolFlamegraphConfig::None,
+        }
+    }
+}
+
+impl From<api::ToolFlamegraphConfig> for ToolFlamegraphConfig {
+    fn from(value: api::ToolFlamegraphConfig) -> Self {
+        match value {
+            api::ToolFlamegraphConfig::Callgrind(flamegraph_config) => {
+                Self::Callgrind(flamegraph_config.into())
+            }
+            api::ToolFlamegraphConfig::None => Self::None,
         }
     }
 }
@@ -398,11 +420,15 @@ impl ToolConfig {
 impl TryFrom<api::Tool> for ToolConfig {
     type Error = anyhow::Error;
 
+    // TODO: DOUBLE CHECK
     fn try_from(value: api::Tool) -> std::result::Result<Self, Self::Error> {
         let tool = value.kind;
         let args = match tool {
+            ValgrindTool::Callgrind => {
+                callgrind::args::Args::try_from_raw_args(&[&value.raw_args])?.into()
+            }
             ValgrindTool::Cachegrind => {
-                cachegrind::args::Args::try_from_raw_args(&[&value.raw_args]).map(Into::into)?
+                cachegrind::args::Args::try_from_raw_args(&[&value.raw_args])?.into()
             }
             _ => ToolArgs::try_from_raw_args(tool, value.raw_args)?,
         };
@@ -412,9 +438,13 @@ impl TryFrom<api::Tool> for ToolConfig {
             is_enabled: value.enable.unwrap_or(true),
             args,
             outfile_modifier: None,
-            regression_config: ToolRegressionConfig::None,
-            flamegraph_config: ToolFlamegraphConfig::None,
-            entry_point: EntryPoint::None,
+            regression_config: value
+                .regression_config
+                .map_or(ToolRegressionConfig::None, Into::into),
+            flamegraph_config: value
+                .flamegraph_config
+                .map_or(ToolFlamegraphConfig::None, Into::into),
+            entry_point: value.entry_point.unwrap_or(EntryPoint::None),
         })
     }
 }
@@ -433,6 +463,7 @@ impl ToolConfigs {
     }
 
     fn print_headline(&self, tool_config: &ToolConfig, output_format: &OutputFormat) {
+        // TODO: Also print headline if single but not the default tool callgrind?
         if output_format.is_default() && self.has_multiple() {
             let mut formatter = VerticalFormatter::new(output_format.clone());
             formatter.format_tool_headline(tool_config.tool);
