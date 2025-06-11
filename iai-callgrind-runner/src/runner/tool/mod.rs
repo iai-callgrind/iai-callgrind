@@ -91,6 +91,7 @@ pub struct ToolConfig {
     pub outfile_modifier: Option<String>,
     pub regression_config: ToolRegressionConfig,
     pub flamegraph_config: ToolFlamegraphConfig,
+    pub entry_point: EntryPoint,
 }
 
 // TODO: SORT
@@ -359,6 +360,7 @@ impl ToolConfig {
         modifier: Option<String>,
         regression_config: ToolRegressionConfig,
         flamegraph_config: ToolFlamegraphConfig,
+        entry_point: EntryPoint,
     ) -> Self
     where
         T: Into<ToolArgs>,
@@ -370,6 +372,7 @@ impl ToolConfig {
             outfile_modifier: modifier,
             regression_config,
             flamegraph_config,
+            entry_point,
         }
     }
 
@@ -411,6 +414,7 @@ impl TryFrom<api::Tool> for ToolConfig {
             outfile_modifier: None,
             regression_config: ToolRegressionConfig::None,
             flamegraph_config: ToolFlamegraphConfig::None,
+            entry_point: EntryPoint::None,
         })
     }
 }
@@ -469,7 +473,6 @@ impl ToolConfigs {
 
     pub fn run_loaded_vs_base(
         &self,
-        entry_point: EntryPoint,
         title: String,
         baseline: BaselineName,
         loaded_baseline: BaselineName,
@@ -522,7 +525,7 @@ impl ToolConfigs {
                     .create(
                         &Flamegraph::new(title.clone(), flamegraph_config.to_owned()),
                         &output_path,
-                        (entry_point == EntryPoint::Default)
+                        (tool_config.entry_point == EntryPoint::Default)
                             .then(Sentinel::default)
                             .as_ref(),
                         &config.meta.project_root,
@@ -580,7 +583,6 @@ impl ToolConfigs {
 
     pub fn run(
         &self,
-        entry_point: EntryPoint,
         title: String,
         mut benchmark_summary: BenchmarkSummary,
         baselines: (Option<String>, Option<String>),
@@ -704,7 +706,7 @@ impl ToolConfigs {
                             .create(
                                 &Flamegraph::new(title.clone(), flamegraph_config.to_owned()),
                                 &output_path,
-                                (entry_point == EntryPoint::Default)
+                                (tool_config.entry_point == EntryPoint::Default)
                                     .then(Sentinel::default)
                                     .as_ref(),
                                 &config.meta.project_root,
@@ -719,7 +721,7 @@ impl ToolConfigs {
                     .create(
                         &Flamegraph::new(title.clone(), flamegraph_config.to_owned()),
                         &output_path,
-                        (entry_point == EntryPoint::Default)
+                        (tool_config.entry_point == EntryPoint::Default)
                             .then(Sentinel::default)
                             .as_ref(),
                         &config.meta.project_root,
