@@ -54,10 +54,8 @@ struct Groups(Vec<Group>);
 /// It needs an implementation of `Benchmark` to be run.
 #[derive(Debug)]
 pub struct LibBench {
-    // TODO: rename to group_index
+    pub group_index: usize,
     pub bench_index: usize,
-    // TODO: rename to bench_index
-    pub index: usize,
     pub id: Option<String>,
     pub function_name: String,
     pub args: Option<String>,
@@ -364,8 +362,8 @@ impl LibBench {
         }))?;
 
         Ok(Self {
-            bench_index: group_index,
-            index: bench_index,
+            group_index,
+            bench_index,
             id: library_benchmark_bench.id,
             function_name: library_benchmark_bench.function_name,
             args: library_benchmark_bench.args,
@@ -398,8 +396,8 @@ impl LibBench {
         vec![
             OsString::from("--iai-run".to_owned()),
             OsString::from(&group.id),
+            OsString::from(self.group_index.to_string()),
             OsString::from(self.bench_index.to_string()),
-            OsString::from(self.index.to_string()),
             OsString::from(self.module_path.to_string()),
         ]
     }
