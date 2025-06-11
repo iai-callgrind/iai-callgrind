@@ -50,7 +50,6 @@ pub struct BinBench {
     pub tools: ToolConfigs,
     pub module_path: ModulePath,
     pub output_format: OutputFormat,
-    pub entry_point: EntryPoint,
 }
 
 /// The Command we derive from the `api::Command`
@@ -164,7 +163,6 @@ impl Benchmark for BaselineBenchmark {
         )?;
 
         bin_bench.tools.run(
-            bin_bench.entry_point.clone(),
             header.to_title(),
             benchmark_summary,
             self.baselines(),
@@ -236,6 +234,7 @@ impl BinBench {
             None,
             ToolRegressionConfig::from(regression_config),
             ToolFlamegraphConfig::from(flamegraph_config),
+            EntryPoint::None,
         )]);
         tool_configs.extend(config.tools.0.into_iter().map(|mut t| {
             if !config.valgrind_args.is_empty() {
@@ -292,7 +291,6 @@ impl BinBench {
             module_path,
             command,
             output_format,
-            entry_point: EntryPoint::None,
         })
     }
 
@@ -665,7 +663,6 @@ impl Benchmark for LoadBaselineBenchmark {
         )?;
 
         bin_bench.tools.run_loaded_vs_base(
-            bin_bench.entry_point.clone(),
             header.to_title(),
             self.baseline.clone(),
             self.loaded_baseline.clone(),
@@ -791,7 +788,6 @@ impl Benchmark for SaveBaselineBenchmark {
         )?;
 
         bin_bench.tools.run(
-            bin_bench.entry_point.clone(),
             header.to_title(),
             benchmark_summary,
             self.baselines(),

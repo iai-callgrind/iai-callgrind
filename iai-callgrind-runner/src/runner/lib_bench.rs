@@ -64,9 +64,6 @@ pub struct LibBench {
     pub run_options: RunOptions,
     pub tools: ToolConfigs,
     pub module_path: ModulePath,
-    // TODO: Evaluate at LibBench creation level and remove if possible
-    // might be needed by the different FlamegraphGenerator impl
-    pub entry_point: EntryPoint,
     pub output_format: OutputFormat,
 }
 
@@ -158,7 +155,6 @@ impl Benchmark for BaselineBenchmark {
         )?;
 
         lib_bench.tools.run(
-            lib_bench.entry_point.clone(),
             header.to_title(),
             benchmark_summary,
             self.baselines(),
@@ -356,6 +352,7 @@ impl LibBench {
             None,
             ToolRegressionConfig::from(regression_config),
             ToolFlamegraphConfig::from(flamegraph_config),
+            entry_point,
         )]);
         tool_configs.extend(config.tools.0.into_iter().map(|mut t| {
             if !config.valgrind_args.is_empty() {
@@ -372,7 +369,6 @@ impl LibBench {
             id: library_benchmark_bench.id,
             function_name: library_benchmark_bench.function_name,
             args: library_benchmark_bench.args,
-            entry_point,
             run_options: RunOptions {
                 env_clear: config.env_clear.unwrap_or(true),
                 envs,
@@ -479,7 +475,6 @@ impl Benchmark for LoadBaselineBenchmark {
         )?;
 
         lib_bench.tools.run_loaded_vs_base(
-            lib_bench.entry_point.clone(),
             header.to_title(),
             self.baseline.clone(),
             self.loaded_baseline.clone(),
@@ -607,7 +602,6 @@ impl Benchmark for SaveBaselineBenchmark {
         )?;
 
         lib_bench.tools.run(
-            lib_bench.entry_point.clone(),
             header.to_title(),
             benchmark_summary,
             self.baselines(),
