@@ -37,7 +37,7 @@ pub struct CacheSummary {
     pub cycles: u64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RegressionConfig {
     pub limits: Vec<(EventKind, f64)>,
     pub fail_fast: bool,

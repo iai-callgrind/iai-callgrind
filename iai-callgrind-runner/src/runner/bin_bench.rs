@@ -11,13 +11,14 @@ use anyhow::{anyhow, Context, Result};
 use log::{debug, warn};
 
 use super::callgrind::args::Args;
-use super::callgrind::flamegraph::Config as FlamegraphConfig;
-use super::callgrind::RegressionConfig;
 use super::common::{Assistant, AssistantKind, BenchmarkSummaries, Config, ModulePath};
 use super::format::{BinaryBenchmarkHeader, OutputFormat};
 use super::meta::Metadata;
 use super::summary::{BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput};
-use super::tool::{RunOptions, ToolConfig, ToolConfigs, ToolOutputPath, ToolOutputPathKind};
+use super::tool::{
+    RunOptions, ToolConfig, ToolConfigs, ToolFlamegraphConfig, ToolOutputPath, ToolOutputPathKind,
+    ToolRegressionConfig,
+};
 use crate::api::{
     self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind,
     EntryPoint, Stdin, ValgrindTool,
@@ -29,7 +30,6 @@ mod defaults {
 
     pub const COMPARE_BY_ID: bool = false;
     pub const ENV_CLEAR: bool = true;
-    pub const REGRESSION_FAIL_FAST: bool = false;
     pub const STDIN: Stdin = Stdin::Pipe;
     pub const WORKSPACE_ROOT_ENV: &str = "_WORKSPACE_ROOT";
 }
@@ -47,8 +47,6 @@ pub struct BinBench {
     pub command: Command,
     pub run_options: RunOptions,
     pub callgrind_args: Args,
-    pub flamegraph_config: Option<FlamegraphConfig>,
-    pub regression_config: Option<RegressionConfig>,
     pub tools: ToolConfigs,
     pub setup: Option<Assistant>,
     pub teardown: Option<Assistant>,
@@ -175,8 +173,6 @@ impl Benchmark for BaselineBenchmark {
             benchmark_summary,
             self.baselines(),
             self.baseline_kind.clone(),
-            bin_bench.regression_config.clone(),
-            bin_bench.flamegraph_config.clone(),
             config,
             &bin_bench.command.path,
             &bin_bench.command.args,
@@ -233,6 +229,9 @@ impl BinBench {
 
         let command_envs = config.resolve_envs();
         let flamegraph_config = config.flamegraph_config.map(Into::into);
+        let regression_config =
+            api::update_option(&config.regression_config, &meta.regression_config).map(Into::into);
+
         let mut output_format = config
             .output_format
             .map_or_else(OutputFormat::default, Into::into);
@@ -243,6 +242,8 @@ impl BinBench {
             true,
             callgrind_args.clone(),
             None,
+            ToolRegressionConfig::from(regression_config),
+            ToolFlamegraphConfig::from(flamegraph_config),
         )]);
         tool_configs.extend(config.tools.0.into_iter().map(|mut t| {
             if !config.valgrind_args.is_empty() {
@@ -258,12 +259,6 @@ impl BinBench {
             args: binary_benchmark_bench.args,
             function_name: binary_benchmark_bench.function_name,
             callgrind_args,
-            flamegraph_config,
-            regression_config: api::update_option(
-                &config.regression_config,
-                &meta.regression_config,
-            )
-            .map(Into::into),
             tools: tool_configs,
             setup: binary_benchmark_bench
                 .has_setup
@@ -508,9 +503,10 @@ impl Group {
             HashMap::with_capacity(self.benches.len());
         for bench in &self.benches {
             let fail_fast = bench
-                .regression_config
-                .as_ref()
-                .map_or(defaults::REGRESSION_FAIL_FAST, |r| r.fail_fast);
+                .tools
+                .0
+                .iter()
+                .any(|c| c.regression_config.is_fail_fast());
 
             let summary = benchmark.run(bench, config, self)?;
             summary.print_and_save(&config.meta.args.output_format)?;
@@ -688,8 +684,6 @@ impl Benchmark for LoadBaselineBenchmark {
             &bin_bench.command.path,
             &bin_bench.command.args,
             benchmark_summary,
-            bin_bench.regression_config.clone(),
-            bin_bench.flamegraph_config.clone(),
             self.baselines(),
             config,
             &out_path,
@@ -816,8 +810,6 @@ impl Benchmark for SaveBaselineBenchmark {
             // TODO: Check if correct that we wrap th baseline into a BaselineKind that way. Was
             // different before
             BaselineKind::Name(self.baseline.clone()),
-            bin_bench.regression_config.clone(),
-            bin_bench.flamegraph_config.clone(),
             config,
             &bin_bench.command.path,
             &bin_bench.command.args,
