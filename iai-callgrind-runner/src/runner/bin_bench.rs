@@ -10,16 +10,11 @@ use std::{panic, thread};
 use anyhow::{anyhow, Context, Result};
 use log::{debug, warn};
 
-use super::callgrind::args::Args;
 use super::common::{Assistant, AssistantKind, Baselines, BenchmarkSummaries, Config, ModulePath};
 use super::format::{BinaryBenchmarkHeader, OutputFormat};
 use super::meta::Metadata;
 use super::summary::{BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput};
-use super::tool::args::ToolArgs;
-use super::tool::{
-    RunOptions, ToolConfig, ToolConfigs, ToolFlamegraphConfig, ToolOutputPath, ToolOutputPathKind,
-    ToolRegressionConfig,
-};
+use super::tool::{RunOptions, ToolConfigs, ToolOutputPath, ToolOutputPathKind};
 use crate::api::{
     self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind,
     EntryPoint, Stdin, ValgrindTool,
@@ -183,10 +178,9 @@ impl BinBench {
     fn new(
         meta: &Metadata,
         group: &Group,
-        mut config: BinaryBenchmarkConfig,
+        config: BinaryBenchmarkConfig,
         group_index: usize,
         bench_index: usize,
-        meta_callgrind_args: &api::RawArgs,
         binary_benchmark_bench: BinaryBenchmarkBench,
     ) -> Result<Self> {
         let module_path = group
@@ -218,80 +212,41 @@ impl BinBench {
             .map_or_else(OutputFormat::default, Into::into);
         output_format.kind = meta.args.output_format;
 
-        // TODO: MOVE into ToolConfigs::new?
-        let default_tool = match config.default_tool.unwrap_or(ValgrindTool::Callgrind) {
-            ValgrindTool::Callgrind => {
-                if let Some(tool) = config.tools.consume(ValgrindTool::Callgrind) {
-                    let args = Args::try_from_raw_args(&[
-                        &config.valgrind_args,
-                        &tool.raw_args,
-                        meta_callgrind_args,
-                    ])?;
-                    ToolConfig::new(
-                        ValgrindTool::Callgrind,
-                        true,
-                        args,
-                        None,
-                        tool.regression_config.map_or(
-                            ToolRegressionConfig::None,
-                            |tool_regression_config| {
-                                if let Some(config) = &meta.regression_config {
-                                    ToolRegressionConfig::Callgrind(config.clone().into())
-                                } else {
-                                    tool_regression_config.into()
-                                }
-                            },
-                        ),
-                        tool.flamegraph_config
-                            .map_or(ToolFlamegraphConfig::None, Into::into),
-                        tool.entry_point.unwrap_or(EntryPoint::None),
-                    )
-                } else {
-                    let args =
-                        Args::try_from_raw_args(&[&config.valgrind_args, meta_callgrind_args])?;
-                    ToolConfig::new(
-                        ValgrindTool::Callgrind,
-                        true,
-                        args,
-                        None,
-                        meta.regression_config
-                            .as_ref()
-                            .map_or(ToolRegressionConfig::None, |t| {
-                                ToolRegressionConfig::Callgrind(t.clone().into())
-                            }),
-                        ToolFlamegraphConfig::None,
-                        EntryPoint::None,
-                    )
-                }
-            }
-            valgrind_tool => {
-                if let Some(mut tool) = config.tools.consume(valgrind_tool) {
-                    tool.raw_args.overwrite_other(&config.valgrind_args);
-                    tool.try_into()?
-                } else {
-                    ToolConfig::new(
-                        valgrind_tool,
-                        true,
-                        ToolArgs::try_from_raw_args(valgrind_tool, config.valgrind_args.clone())?,
-                        None,
-                        ToolRegressionConfig::None,
-                        ToolFlamegraphConfig::None,
-                        EntryPoint::None,
-                    )
-                }
-            }
-        };
+        let tool_configs = ToolConfigs::new(
+            config.tools,
+            meta,
+            config.default_tool,
+            &EntryPoint::None,
+            &config.valgrind_args,
+        )?;
 
-        let mut tool_configs = ToolConfigs(vec![default_tool]);
-        tool_configs.extend(config.tools.0.into_iter().map(|mut tool| {
-            // tool arguments overwrite valgrind args
-            tool.raw_args.overwrite_other(&config.valgrind_args);
-            if tool.kind == ValgrindTool::Callgrind {
-                // callgrind command line arguments overwrite tool arguments
-                tool.raw_args.update(meta_callgrind_args);
-            }
-            tool.try_into()
-        }))?;
+        let setup = binary_benchmark_bench
+            .has_setup
+            .then_some(Assistant::new_bench_assistant(
+                AssistantKind::Setup,
+                &group.name,
+                (group_index, bench_index),
+                stdin.as_ref().and_then(|s| {
+                    if let Stdin::Setup(p) = s {
+                        Some(*p)
+                    } else {
+                        None
+                    }
+                }),
+                assistant_envs.clone(),
+                config.setup_parallel.unwrap_or(false),
+            ));
+        let teardown =
+            binary_benchmark_bench
+                .has_teardown
+                .then_some(Assistant::new_bench_assistant(
+                    AssistantKind::Teardown,
+                    &group.name,
+                    (group_index, bench_index),
+                    None,
+                    assistant_envs,
+                    false,
+                ));
 
         Ok(Self {
             id: binary_benchmark_bench.id,
@@ -306,32 +261,8 @@ impl BinBench {
                 stderr,
                 exit_with: config.exit_with,
                 current_dir: config.current_dir,
-                setup: binary_benchmark_bench
-                    .has_setup
-                    .then_some(Assistant::new_bench_assistant(
-                        AssistantKind::Setup,
-                        &group.name,
-                        (group_index, bench_index),
-                        stdin.as_ref().and_then(|s| {
-                            if let Stdin::Setup(p) = s {
-                                Some(*p)
-                            } else {
-                                None
-                            }
-                        }),
-                        assistant_envs.clone(),
-                        config.setup_parallel.unwrap_or(false),
-                    )),
-                teardown: binary_benchmark_bench.has_teardown.then_some(
-                    Assistant::new_bench_assistant(
-                        AssistantKind::Teardown,
-                        &group.name,
-                        (group_index, bench_index),
-                        None,
-                        assistant_envs,
-                        false,
-                    ),
-                ),
+                setup,
+                teardown,
                 sandbox: config.sandbox,
                 delay: delay.map(Into::into),
             },
@@ -572,7 +503,6 @@ impl Groups {
         meta: &Metadata,
     ) -> Result<Self> {
         let global_config = benchmark_groups.config;
-        let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
 
         let mut groups = vec![];
         for binary_benchmark_group in benchmark_groups.groups {
@@ -630,7 +560,6 @@ impl Groups {
                         config,
                         group_index,
                         bench_index,
-                        &meta_callgrind_args,
                         binary_benchmark_bench,
                     )?;
                     group.benches.push(bin_bench);
