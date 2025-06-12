@@ -9,7 +9,7 @@ use std::time::Duration;
 use derive_more::AsRef;
 use iai_callgrind_macros::IntoInner;
 
-use crate::{DelayKind, Stdin, Stdio, __internal};
+use crate::{DelayKind, Stdin, Stdio, ValgrindTool, __internal};
 
 /// [low level api](`crate::binary_benchmark_group`) only: Create a new benchmark id
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1029,7 +1029,6 @@ impl From<&BinaryBenchmark> for BinaryBenchmark {
     }
 }
 
-// TODO: ADD default_tool from internal config, check other fields, too
 impl BinaryBenchmarkConfig {
     /// Pass valgrind arguments to all tools
     ///
@@ -1630,6 +1629,12 @@ impl BinaryBenchmarkConfig {
     /// ```
     pub fn setup_parallel(&mut self, setup_parallel: bool) -> &mut Self {
         self.0.setup_parallel = Some(setup_parallel);
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn default_tool(&mut self, tool: ValgrindTool) -> &mut Self {
+        self.0.default_tool = Some(tool);
         self
     }
 }

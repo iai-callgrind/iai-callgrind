@@ -16,6 +16,9 @@ repository.workspace = true
 rust-version.workspace = true
 version = "0.1.0"
 
+[features]
+cachegrind = ["iai-callgrind/cachegrind"]
+
 [dependencies]
 anyhow = { workspace = true }
 cargo_metadata = { workspace = true }

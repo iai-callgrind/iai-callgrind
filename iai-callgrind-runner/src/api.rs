@@ -68,7 +68,7 @@ pub struct BinaryBenchmarkGroup {
 }
 
 /// The model for the main! macro
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BinaryBenchmarkGroups {
     pub config: BinaryBenchmarkConfig,
     pub groups: Vec<BinaryBenchmarkGroup>,
@@ -76,6 +76,7 @@ pub struct BinaryBenchmarkGroups {
     pub command_line_args: Vec<String>,
     pub has_setup: bool,
     pub has_teardown: bool,
+    pub default_tool: ValgrindTool,
 }
 
 /// TODO: DOCS
@@ -706,7 +707,7 @@ pub struct LibraryBenchmarkGroup {
 }
 
 /// The model for the `main` macro
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmarkGroups {
     pub config: LibraryBenchmarkConfig,
     pub groups: Vec<LibraryBenchmarkGroup>,
@@ -714,6 +715,7 @@ pub struct LibraryBenchmarkGroups {
     pub command_line_args: Vec<String>,
     pub has_setup: bool,
     pub has_teardown: bool,
+    pub default_tool: ValgrindTool,
 }
 
 /// The configuration values for the output format
@@ -878,13 +880,14 @@ impl Tool {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Tools(pub Vec<Tool>);
 
-// TODO: use `cfg_attr` to change the default depending on the cachegrind feature
 /// The valgrind tools which can be run
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+///
+/// Note the default changes from `Callgrind` to `Cachegrind` if the `cachegrind` feature is
+/// selected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ValgrindTool {
     /// [Callgrind: a call-graph generating cache and branch prediction profiler](https://valgrind.org/docs/manual/cl-manual.html)
-    #[default]
     Callgrind,
     /// [Cachegrind: a high-precision tracing profiler](https://valgrind.org/docs/manual/cg-manual.html)
     Cachegrind,
@@ -1127,7 +1130,7 @@ where
 }
 
 impl LibraryBenchmarkConfig {
-    // TODO: Adjust. Also in BinaryBenchmarkConfig
+    // TODO: Double Check. Also in BinaryBenchmarkConfig
     pub fn update_from_all<'a, T>(mut self, others: T) -> Self
     where
         T: IntoIterator<Item = Option<&'a Self>>,
@@ -1240,8 +1243,12 @@ impl From<CallgrindMetrics> for IndexSet<EventKind> {
 }
 
 impl RawArgs {
-    pub fn new(args: Vec<String>) -> Self {
-        Self(args)
+    pub fn new<I, T>(args: T) -> Self
+    where
+        I: Into<String>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(args.into_iter().map(Into::into).collect())
     }
 
     pub fn extend_ignore_flag<I, T>(&mut self, args: T)
@@ -1290,7 +1297,7 @@ impl RawArgs {
     }
 
     /// TODO: TEST
-    pub fn overwrite_other(&mut self, other: &Self) {
+    pub fn prepend(&mut self, other: &Self) {
         if !other.is_empty() {
             let mut other = other.clone();
             other.update(self);

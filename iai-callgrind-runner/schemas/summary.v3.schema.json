@@ -999,7 +999,7 @@
       "required": ["summary", "regressions"]
     },
     "ValgrindTool": {
-      "description": "The valgrind tools which can be run",
+      "description": "The valgrind tools which can be run\n\n Note the default changes from `Callgrind` to `Cachegrind` if the `cachegrind` feature is\n selected.",
       "oneOf": [
         {
           "description": "[Callgrind: a call-graph generating cache and branch prediction profiler](https://valgrind.org/docs/manual/cl-manual.html)",

@@ -87,6 +87,7 @@ pub struct RunOptions {
 pub struct ToolConfig {
     pub tool: ValgrindTool,
     pub is_enabled: bool,
+    pub is_default: bool,
     pub args: ToolArgs,
     pub outfile_modifier: Option<String>,
     pub regression_config: ToolRegressionConfig,
@@ -285,7 +286,7 @@ impl ToolCommand {
             .args(executable_args)
             .envs(envs);
 
-        if self.tool == ValgrindTool::Callgrind {
+        if config.is_default {
             debug!("Applying --nocapture options");
             self.nocapture.apply(&mut self.command);
         }
@@ -294,8 +295,8 @@ impl ToolCommand {
             stdin
                 .apply(&mut self.command, Stream::Stdin, child.as_mut())
                 .map_err(|error| {
-                    // TODO: Why only callgrind and not self.tool??
-                    Error::BenchmarkError(ValgrindTool::Callgrind, module_path.clone(), error)
+                    // TODO: Why was it ValgrindTool::Callgrind and not self.tool??
+                    Error::BenchmarkError(self.tool, module_path.clone(), error)
                 })?;
         }
 
@@ -312,9 +313,7 @@ impl ToolCommand {
         }
 
         let output = match self.nocapture {
-            NoCapture::True | NoCapture::Stderr | NoCapture::Stdout
-                if self.tool == ValgrindTool::Callgrind =>
-            {
+            NoCapture::True | NoCapture::Stderr | NoCapture::Stdout if config.is_default => {
                 self.command
                     .status()
                     .map_err(|error| {
@@ -383,6 +382,7 @@ impl ToolConfig {
         regression_config: ToolRegressionConfig,
         flamegraph_config: ToolFlamegraphConfig,
         entry_point: EntryPoint,
+        is_default: bool,
     ) -> Self
     where
         T: Into<ToolArgs>,
@@ -395,23 +395,28 @@ impl ToolConfig {
             regression_config,
             flamegraph_config,
             entry_point,
+            is_default,
         }
     }
 
-    // TODO: ADJUST DEFAULT TOOL TO cachegrind feature (also in BinBench)
     pub fn new_default_tool(
         meta: &Metadata,
-        default_tool: Option<ValgrindTool>,
+        default_tool: ValgrindTool,
         tool: Option<Tool>,
         default_entry_point: EntryPoint,
         valgrind_args: &RawArgs,
+        default_args: &HashMap<ValgrindTool, RawArgs>,
     ) -> Result<Self> {
         let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
 
-        let tool_config = match default_tool.unwrap_or(ValgrindTool::Callgrind) {
+        let tool_config = match default_tool {
             ValgrindTool::Callgrind => {
                 if let Some(tool) = tool {
                     let mut args = callgrind::args::Args::try_from_raw_args(&[
+                        &default_args
+                            .get(&ValgrindTool::Callgrind)
+                            .cloned()
+                            .unwrap_or_default(),
                         valgrind_args,
                         &tool.raw_args,
                         &meta_callgrind_args,
@@ -449,9 +454,14 @@ impl ToolConfig {
                         regression_config,
                         flamegraph_config,
                         entry_point,
+                        true,
                     )
                 } else {
                     let mut args = callgrind::args::Args::try_from_raw_args(&[
+                        &default_args
+                            .get(&ValgrindTool::Callgrind)
+                            .cloned()
+                            .unwrap_or_default(),
                         valgrind_args,
                         &meta_callgrind_args,
                     ])?;
@@ -480,22 +490,49 @@ impl ToolConfig {
                         regression_config,
                         ToolFlamegraphConfig::None,
                         entry_point,
+                        true,
                     )
                 }
             }
             valgrind_tool => {
                 if let Some(mut tool) = tool {
-                    tool.raw_args.overwrite_other(valgrind_args);
+                    tool.raw_args.prepend(
+                        &default_args
+                            .get(&valgrind_tool)
+                            .cloned()
+                            .unwrap_or_default(),
+                    );
+                    tool.raw_args.prepend(valgrind_args);
                     tool.try_into()?
                 } else {
+                    let mut raw_args = default_args
+                        .get(&valgrind_tool)
+                        .cloned()
+                        .unwrap_or_default();
+                    raw_args.update(valgrind_args);
+
+                    let args = match valgrind_tool {
+                        ValgrindTool::Cachegrind if raw_args.is_empty() => {
+                            cachegrind::args::Args::default().into()
+                        }
+                        ValgrindTool::Cachegrind => {
+                            cachegrind::args::Args::try_from_raw_args(&[&raw_args])?.into()
+                        }
+                        _ if raw_args.is_empty() => {
+                            ToolArgs::try_from_raw_args(valgrind_tool, RawArgs::default())?
+                        }
+                        _ => ToolArgs::try_from_raw_args(valgrind_tool, valgrind_args.clone())?,
+                    };
+
                     ToolConfig::new(
                         valgrind_tool,
                         true,
-                        ToolArgs::try_from_raw_args(valgrind_tool, valgrind_args.clone())?,
+                        args,
                         None,
                         ToolRegressionConfig::None,
                         ToolFlamegraphConfig::None,
                         EntryPoint::None, // the default entry point is just for callgrind
+                        true,
                     )
                 }
             }
@@ -526,7 +563,6 @@ impl ToolConfig {
 impl TryFrom<api::Tool> for ToolConfig {
     type Error = anyhow::Error;
 
-    // TODO: DOUBLE CHECK
     fn try_from(value: api::Tool) -> std::result::Result<Self, Self::Error> {
         let tool = value.kind;
         let args = match tool {
@@ -551,32 +587,50 @@ impl TryFrom<api::Tool> for ToolConfig {
                 .flamegraph_config
                 .map_or(ToolFlamegraphConfig::None, Into::into),
             entry_point: value.entry_point.unwrap_or(EntryPoint::None),
+            is_default: false,
         })
     }
 }
 
 impl ToolConfigs {
+    /// Create new `ToolConfigs`
+    ///
+    /// `default_entry_point` is callgrind specific and specified here because it is different for
+    /// library and binary benchmarks.
+    ///
+    /// `default_args` should only contain command-line arguments which are different for library
+    /// and binary benchmarks on a per tool basis. Usually, default arguments are part of the tool
+    /// specific `Args` struct for example for callgrind [`callgrind::args::Args`] or cachegrind
+    /// [`cachegrind::args::Args`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the configs cannot be created
     pub fn new(
         mut tools: Tools,
         meta: &Metadata,
-        default_tool: Option<ValgrindTool>,
+        default_tool: ValgrindTool,
         default_entry_point: &EntryPoint,
         valgrind_args: &RawArgs,
+        default_args: &HashMap<ValgrindTool, RawArgs>,
     ) -> Result<Self> {
         let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
 
-        let extracted_tool = tools.consume(default_tool.unwrap_or(ValgrindTool::Callgrind));
+        let extracted_tool = tools.consume(default_tool);
         let default_tool_config = ToolConfig::new_default_tool(
             meta,
             default_tool,
             extracted_tool,
             default_entry_point.clone(),
             valgrind_args,
+            default_args,
         )?;
 
         let mut tool_configs = ToolConfigs(vec![default_tool_config]);
         tool_configs.extend(tools.0.into_iter().map(|mut tool| {
-            tool.raw_args.overwrite_other(valgrind_args);
+            tool.raw_args
+                .prepend(&default_args.get(&tool.kind).cloned().unwrap_or_default());
+            tool.raw_args.prepend(valgrind_args);
 
             if tool.kind == ValgrindTool::Callgrind {
                 let mut args = callgrind::args::Args::try_from_raw_args(&[
@@ -615,6 +669,7 @@ impl ToolConfigs {
                     regression_config,
                     flamegraph_config,
                     entry_point,
+                    false,
                 ))
             } else {
                 tool.try_into()
@@ -806,7 +861,7 @@ impl ToolConfigs {
 
             let tool = tool_config.tool;
 
-            let nocapture = if ValgrindTool::Callgrind == tool {
+            let nocapture = if tool_config.is_default {
                 config.meta.args.nocapture
             } else {
                 NoCapture::False
@@ -815,7 +870,6 @@ impl ToolConfigs {
 
             let output_path = output_path.to_tool_output(tool);
 
-            // TODO: Make this work for callgrind. (cachegrind, too? should actually already work)
             let parser = logfile_parser::parser_factory(
                 tool,
                 config.meta.project_root.clone(),
@@ -826,7 +880,6 @@ impl ToolConfigs {
             let log_path = output_path.to_log_output();
 
             if save_baseline {
-                // TODO: Is this still right?
                 output_path.clear()?;
                 log_path.clear()?;
             }
@@ -1193,7 +1246,6 @@ impl ToolOutputPath {
         Ok(())
     }
 
-    /// TODO: modifiers are .mod.out instead of .out.mod or??
     /// This method can only be used to create the path passed to the tools
     ///
     /// The modifiers are extrapolated by the tools and won't match any real path name.

@@ -16,7 +16,6 @@ rust-version.workspace = true
 version.workspace = true
 
 [features]
-# TODO: ADD cachegrind feature
 api = ["dep:serde"]
 default = ["runner"]
 runner = [
