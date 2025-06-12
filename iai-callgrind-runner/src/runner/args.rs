@@ -7,7 +7,7 @@ use clap::{ArgAction, Parser};
 
 use super::format::OutputFormatKind;
 use super::summary::{BaselineName, SummaryFormat};
-use crate::api::{EventKind, RawArgs, RegressionConfig};
+use crate::api::{EventKind, RawArgs, RegressionConfig, ToolRegressionConfig};
 
 /// A filter for benchmarks
 ///
@@ -218,7 +218,7 @@ pub struct CommandLineArgs {
         value_parser = parse_regression_config,
         env = "IAI_CALLGRIND_REGRESSION",
     )]
-    pub regression: Option<RegressionConfig>,
+    pub regression: Option<ToolRegressionConfig>,
 
     /// If true, the first failed performance regression check fails the whole benchmark run
     ///
@@ -399,14 +399,15 @@ fn parse_args(value: &str) -> Result<RawArgs, String> {
         .map(RawArgs::new)
 }
 
-fn parse_regression_config(value: &str) -> Result<RegressionConfig, String> {
+/// TODO: HOW TO PARSE regression configs for other tools
+fn parse_regression_config(value: &str) -> Result<ToolRegressionConfig, String> {
     let value = value.trim();
     if value.is_empty() {
         return Err("No limits found: At least one limit must be specified".to_owned());
     }
 
     let regression_config = if value.eq_ignore_ascii_case("default") {
-        RegressionConfig::default()
+        ToolRegressionConfig::Callgrind(RegressionConfig::default())
     } else {
         let mut limits = vec![];
 
@@ -427,23 +428,13 @@ fn parse_regression_config(value: &str) -> Result<RegressionConfig, String> {
             }
         }
 
-        RegressionConfig {
+        ToolRegressionConfig::Callgrind(RegressionConfig {
             limits,
             ..Default::default()
-        }
+        })
     };
 
     Ok(regression_config)
-}
-
-impl From<&CommandLineArgs> for Option<RegressionConfig> {
-    fn from(value: &CommandLineArgs) -> Self {
-        let mut config = value.regression.clone();
-        if let Some(config) = config.as_mut() {
-            config.fail_fast = value.regression_fail_fast;
-        }
-        config
-    }
 }
 
 fn parse_nocapture(value: &str) -> Result<NoCapture, String> {
@@ -497,10 +488,10 @@ mod tests {
         #[case] regression_var: &str,
         #[case] expected_limits: Vec<(EventKind, f64)>,
     ) {
-        let expected = RegressionConfig {
+        let expected = ToolRegressionConfig::Callgrind(RegressionConfig {
             limits: expected_limits,
             fail_fast: None,
-        };
+        });
 
         let actual = parse_regression_config(regression_var).unwrap();
         assert_eq!(actual, expected);

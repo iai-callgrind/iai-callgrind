@@ -878,11 +878,11 @@ impl Tool {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Tools(pub Vec<Tool>);
 
+// TODO: use `cfg_attr` to change the default depending on the cachegrind feature
 /// The valgrind tools which can be run
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ValgrindTool {
-    /// TODO: use `cfg_attr` to change the default depending on the cachegrind feature
     /// [Callgrind: a call-graph generating cache and branch prediction profiler](https://valgrind.org/docs/manual/cl-manual.html)
     #[default]
     Callgrind,

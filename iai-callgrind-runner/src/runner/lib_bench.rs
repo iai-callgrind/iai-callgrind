@@ -7,20 +7,13 @@ use std::time::Instant;
 
 use anyhow::Result;
 
-use super::callgrind::args::Args;
 use super::common::{Assistant, AssistantKind, Baselines, BenchmarkSummaries, Config, ModulePath};
 use super::format::{LibraryBenchmarkHeader, OutputFormat};
 use super::meta::Metadata;
 use super::summary::{BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput};
-use super::tool::args::ToolArgs;
-use super::tool::{
-    RunOptions, ToolConfig, ToolConfigs, ToolFlamegraphConfig, ToolOutputPath, ToolOutputPathKind,
-    ToolRegressionConfig,
-};
-use super::DEFAULT_TOGGLE;
+use super::tool::{RunOptions, ToolConfigs, ToolOutputPath, ToolOutputPathKind};
 use crate::api::{
-    self, EntryPoint, LibraryBenchmarkBench, LibraryBenchmarkConfig, LibraryBenchmarkGroups,
-    ValgrindTool,
+    EntryPoint, LibraryBenchmarkBench, LibraryBenchmarkConfig, LibraryBenchmarkGroups, ValgrindTool,
 };
 use crate::runner::format;
 
@@ -177,7 +170,6 @@ impl Groups {
         meta: &Metadata,
     ) -> Result<Self> {
         let global_config = benchmark_groups.config;
-        let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
 
         let mut groups = vec![];
         for library_benchmark_group in benchmark_groups.groups {
@@ -235,7 +227,6 @@ impl Groups {
                         config,
                         group_index,
                         bench_index,
-                        &meta_callgrind_args,
                         library_benchmark_bench,
                     )?;
                     group.benches.push(lib_bench);
@@ -303,10 +294,9 @@ impl LibBench {
     fn new(
         meta: &Metadata,
         group: &Group,
-        mut config: LibraryBenchmarkConfig,
+        config: LibraryBenchmarkConfig,
         group_index: usize,
         bench_index: usize,
-        meta_callgrind_args: &api::RawArgs,
         library_benchmark_bench: LibraryBenchmarkBench,
     ) -> Result<Self> {
         let envs = config.resolve_envs();
@@ -320,129 +310,13 @@ impl LibBench {
             .map_or_else(OutputFormat::default, Into::into);
         output_format.kind = meta.args.output_format;
 
-        // TODO: ADJUST DEFAULT TOOL TO cachegrind feature (also in BinBench)
-        let default_tool = match config.default_tool.unwrap_or(ValgrindTool::Callgrind) {
-            ValgrindTool::Callgrind => {
-                if let Some(tool) = config.tools.consume(ValgrindTool::Callgrind) {
-                    let mut args = Args::try_from_raw_args(&[
-                        &config.valgrind_args,
-                        &tool.raw_args,
-                        meta_callgrind_args,
-                    ])?;
-                    let entry_point = tool.entry_point.unwrap_or(EntryPoint::Default);
-                    match &entry_point {
-                        EntryPoint::None => {}
-                        EntryPoint::Default => {
-                            args.insert_toggle_collect(DEFAULT_TOGGLE);
-                        }
-                        EntryPoint::Custom(custom) => {
-                            args.insert_toggle_collect(custom);
-                        }
-                    }
-                    ToolConfig::new(
-                        ValgrindTool::Callgrind,
-                        true,
-                        args,
-                        None,
-                        tool.regression_config.map_or(
-                            ToolRegressionConfig::None,
-                            |tool_regression_config| {
-                                if let Some(config) = &meta.regression_config {
-                                    ToolRegressionConfig::Callgrind(config.clone().into())
-                                } else {
-                                    tool_regression_config.into()
-                                }
-                            },
-                        ),
-                        tool.flamegraph_config
-                            .map_or(ToolFlamegraphConfig::None, Into::into),
-                        entry_point,
-                    )
-                } else {
-                    let mut args =
-                        Args::try_from_raw_args(&[&config.valgrind_args, meta_callgrind_args])?;
-                    let entry_point = EntryPoint::Default;
-                    match &entry_point {
-                        EntryPoint::None => {}
-                        EntryPoint::Default => {
-                            args.insert_toggle_collect(DEFAULT_TOGGLE);
-                        }
-                        EntryPoint::Custom(custom) => {
-                            args.insert_toggle_collect(custom);
-                        }
-                    }
-                    ToolConfig::new(
-                        ValgrindTool::Callgrind,
-                        true,
-                        args,
-                        None,
-                        meta.regression_config
-                            .as_ref()
-                            .map_or(ToolRegressionConfig::None, |t| {
-                                ToolRegressionConfig::Callgrind(t.clone().into())
-                            }),
-                        ToolFlamegraphConfig::None,
-                        entry_point,
-                    )
-                }
-            }
-            valgrind_tool => {
-                if let Some(mut tool) = config.tools.consume(valgrind_tool) {
-                    tool.raw_args.overwrite_other(&config.valgrind_args);
-                    tool.try_into()?
-                } else {
-                    ToolConfig::new(
-                        valgrind_tool,
-                        true,
-                        ToolArgs::try_from_raw_args(valgrind_tool, config.valgrind_args.clone())?,
-                        None,
-                        ToolRegressionConfig::None,
-                        ToolFlamegraphConfig::None,
-                        EntryPoint::None,
-                    )
-                }
-            }
-        };
-
-        let mut tool_configs = ToolConfigs(vec![default_tool]);
-        tool_configs.extend(config.tools.0.into_iter().map(|mut tool| {
-            // tool arguments overwrite valgrind args
-            tool.raw_args.overwrite_other(&config.valgrind_args);
-            if tool.kind == ValgrindTool::Callgrind {
-                let mut args = Args::try_from_raw_args(&[&tool.raw_args, meta_callgrind_args])?;
-                let entry_point = tool.entry_point.unwrap_or(EntryPoint::Default);
-                match &entry_point {
-                    EntryPoint::None => {}
-                    EntryPoint::Default => {
-                        args.insert_toggle_collect(DEFAULT_TOGGLE);
-                    }
-                    EntryPoint::Custom(custom) => {
-                        args.insert_toggle_collect(custom);
-                    }
-                }
-                Ok(ToolConfig::new(
-                    ValgrindTool::Callgrind,
-                    tool.enable.unwrap_or(true),
-                    args,
-                    None,
-                    tool.regression_config.map_or(
-                        ToolRegressionConfig::None,
-                        |tool_regression_config| {
-                            if let Some(config) = &meta.regression_config {
-                                ToolRegressionConfig::Callgrind(config.clone().into())
-                            } else {
-                                tool_regression_config.into()
-                            }
-                        },
-                    ),
-                    tool.flamegraph_config
-                        .map_or(ToolFlamegraphConfig::None, Into::into),
-                    entry_point,
-                ))
-            } else {
-                tool.try_into()
-            }
-        }))?;
+        let tool_configs = ToolConfigs::new(
+            config.tools,
+            meta,
+            config.default_tool,
+            &EntryPoint::Default,
+            &config.valgrind_args,
+        )?;
 
         Ok(Self {
             group_index,

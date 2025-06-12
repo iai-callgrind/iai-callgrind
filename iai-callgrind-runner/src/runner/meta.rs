@@ -9,7 +9,6 @@ use log::debug;
 
 use super::args::CommandLineArgs;
 use super::envs;
-use crate::api::RegressionConfig;
 use crate::util::resolve_binary_path;
 
 #[derive(Debug, Clone)]
@@ -36,7 +35,6 @@ pub struct Metadata {
     pub target_dir: PathBuf,
     pub valgrind: Cmd,
     pub valgrind_wrapper: Option<Cmd>,
-    pub regression_config: Option<RegressionConfig>,
     pub args: CommandLineArgs,
     pub bench_name: String,
 }
@@ -150,7 +148,6 @@ impl Metadata {
             },
             valgrind_wrapper,
             project_root,
-            regression_config: Into::<Option<RegressionConfig>>::into(&args),
             args,
             bench_name,
         })
