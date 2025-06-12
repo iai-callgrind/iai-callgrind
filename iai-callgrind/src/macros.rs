@@ -388,12 +388,24 @@ macro_rules! main {
                 config = Some($config.into());
             )?
 
-            let mut internal_benchmark_groups = $crate::__internal::InternalLibraryBenchmarkGroups {
-                config: config.unwrap_or_default(),
-                command_line_args: this_args.collect(),
-                has_setup: __run_setup(false),
-                has_teardown: __run_teardown(false),
-                ..Default::default()
+            let mut internal_benchmark_groups = if cfg!(feature = "cachegrind") {
+                $crate::__internal::InternalLibraryBenchmarkGroups {
+                    config: config.unwrap_or_default(),
+                    groups: Vec::default(),
+                    command_line_args: this_args.collect(),
+                    has_setup: __run_setup(false),
+                    has_teardown: __run_teardown(false),
+                    default_tool: $crate::ValgrindTool::Cachegrind
+                }
+            } else {
+                $crate::__internal::InternalLibraryBenchmarkGroups {
+                    config: config.unwrap_or_default(),
+                    groups: Vec::default(),
+                    command_line_args: this_args.collect(),
+                    has_setup: __run_setup(false),
+                    has_teardown: __run_teardown(false),
+                    default_tool: $crate::ValgrindTool::Callgrind
+                }
             };
 
             $(

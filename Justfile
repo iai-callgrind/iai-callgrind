@@ -275,8 +275,8 @@ reqs-test target:
 
 # Run a single benchmark test (Uses: 'coreutils', 'cargo')
 [group('test')]
-bench-test bench: build-runner
-    IAI_CALLGRIND_RUNNER=$(realpath target/release/iai-callgrind-runner) cargo bench -p benchmark-tests --bench {{ bench }} {{ if args != '' { '-- ' + args } else { '' } }}
+bench-test bench features='': build-runner
+    IAI_CALLGRIND_RUNNER=$(realpath target/release/iai-callgrind-runner) cargo bench -p benchmark-tests --bench {{ bench }} {{ if features != '' { '--features ' + features } else { '' } }} {{ if args != '' { '-- ' + args } else { '' } }}
 
 # Run all benchmark tests (Uses: 'coreutils', 'cargo')
 [group('test')]

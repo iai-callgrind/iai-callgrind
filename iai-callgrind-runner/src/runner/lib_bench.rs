@@ -13,7 +13,8 @@ use super::meta::Metadata;
 use super::summary::{BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput};
 use super::tool::{RunOptions, ToolConfigs, ToolOutputPath, ToolOutputPathKind};
 use crate::api::{
-    EntryPoint, LibraryBenchmarkBench, LibraryBenchmarkConfig, LibraryBenchmarkGroups, ValgrindTool,
+    EntryPoint, LibraryBenchmarkBench, LibraryBenchmarkConfig, LibraryBenchmarkGroups, RawArgs,
+    ValgrindTool,
 };
 use crate::runner::format;
 
@@ -57,6 +58,7 @@ pub struct LibBench {
     pub tools: ToolConfigs,
     pub module_path: ModulePath,
     pub output_format: OutputFormat,
+    pub default_tool: ValgrindTool,
 }
 
 /// Implements [`Benchmark`] to load a [`LibBench`] baseline run and compare against another
@@ -99,11 +101,14 @@ trait Benchmark: std::fmt::Debug {
 
 impl Benchmark for BaselineBenchmark {
     fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath {
+        let kind = if lib_bench.default_tool.has_output_file() {
+            ToolOutputPathKind::Out
+        } else {
+            ToolOutputPathKind::Log
+        };
         ToolOutputPath::new(
-            ToolOutputPathKind::Out,
-            // TODO: Change this depending on the default tool, cachegrind feature. also in other
-            // Benchmark impl (SaveBaselineBenchmark, ..)
-            ValgrindTool::Callgrind,
+            kind,
+            lib_bench.default_tool,
             &self.baseline_kind,
             &config.meta.target_dir,
             &group.module_path,
@@ -170,6 +175,7 @@ impl Groups {
         meta: &Metadata,
     ) -> Result<Self> {
         let global_config = benchmark_groups.config;
+        let default_tool = benchmark_groups.default_tool;
 
         let mut groups = vec![];
         for library_benchmark_group in benchmark_groups.groups {
@@ -228,6 +234,7 @@ impl Groups {
                         group_index,
                         bench_index,
                         library_benchmark_bench,
+                        default_tool,
                     )?;
                     group.benches.push(lib_bench);
                 }
@@ -298,8 +305,10 @@ impl LibBench {
         group_index: usize,
         bench_index: usize,
         library_benchmark_bench: LibraryBenchmarkBench,
+        default_tool: ValgrindTool,
     ) -> Result<Self> {
         let envs = config.resolve_envs();
+        let default_tool = config.default_tool.unwrap_or(default_tool);
 
         let module_path = group
             .module_path
@@ -310,12 +319,19 @@ impl LibBench {
             .map_or_else(OutputFormat::default, Into::into);
         output_format.kind = meta.args.output_format;
 
+        let mut default_args = HashMap::new();
+        default_args.insert(
+            ValgrindTool::Cachegrind,
+            RawArgs::new(["--instr-at-start=no"]),
+        );
+
         let tool_configs = ToolConfigs::new(
             config.tools,
             meta,
-            config.default_tool,
+            default_tool,
             &EntryPoint::Default,
             &config.valgrind_args,
+            &default_args,
         )?;
 
         Ok(Self {
@@ -332,6 +348,7 @@ impl LibBench {
             tools: tool_configs,
             module_path,
             output_format,
+            default_tool,
         })
     }
 
@@ -392,10 +409,14 @@ impl LibBench {
 
 impl Benchmark for LoadBaselineBenchmark {
     fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath {
+        let kind = if lib_bench.default_tool.has_output_file() {
+            ToolOutputPathKind::Base(self.loaded_baseline.to_string())
+        } else {
+            ToolOutputPathKind::BaseLog(self.loaded_baseline.to_string())
+        };
         ToolOutputPath::new(
-            ToolOutputPathKind::Base(self.loaded_baseline.to_string()),
-            // TODO: Cachegrind
-            ValgrindTool::Callgrind,
+            kind,
+            lib_bench.default_tool,
             &BaselineKind::Name(self.baseline.clone()),
             &config.meta.target_dir,
             &group.module_path,
@@ -516,10 +537,14 @@ impl Runner {
 
 impl Benchmark for SaveBaselineBenchmark {
     fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath {
+        let kind = if lib_bench.default_tool.has_output_file() {
+            ToolOutputPathKind::Base(self.baseline.to_string())
+        } else {
+            ToolOutputPathKind::BaseLog(self.baseline.to_string())
+        };
         ToolOutputPath::new(
-            ToolOutputPathKind::Base(self.baseline.to_string()),
-            // TODO: CACHEGRIND
-            ValgrindTool::Callgrind,
+            kind,
+            lib_bench.default_tool,
             &BaselineKind::Name(self.baseline.clone()),
             &config.meta.target_dir,
             &group.module_path,

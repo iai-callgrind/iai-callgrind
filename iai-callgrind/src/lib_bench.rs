@@ -2,6 +2,7 @@ use std::ffi::OsString;
 
 use derive_more::AsRef;
 use iai_callgrind_macros::IntoInner;
+use iai_callgrind_runner::api::ValgrindTool;
 
 use crate::__internal;
 
@@ -28,7 +29,7 @@ use crate::__internal;
 #[derive(Debug, Default, IntoInner, AsRef, Clone)]
 pub struct LibraryBenchmarkConfig(__internal::InternalLibraryBenchmarkConfig);
 
-// TODO: ADD default_tool from internal config, check other fields, too
+// BinaryBenchmarkConfig
 impl LibraryBenchmarkConfig {
     /// Pass valgrind arguments to all tools
     ///
@@ -444,6 +445,12 @@ impl LibraryBenchmarkConfig {
         T: Into<__internal::InternalOutputFormat>,
     {
         self.0.output_format = Some(output_format.into());
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn default_tool(&mut self, tool: ValgrindTool) -> &mut Self {
+        self.0.default_tool = Some(tool);
         self
     }
 }
