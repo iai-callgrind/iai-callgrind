@@ -62,7 +62,7 @@ groups:
     #
     # `args` (Mandatory): The arguments for `cargo bench -- ARGS`. ARGS are
     # passed to iai-callgrind
-    - args: [] 
+    - args: []
       # `expected` (Optional): Define the expectation values for this benchmark
       # run.
       #
@@ -86,7 +86,7 @@ runs, check that all expected files are present etc.
 ```yaml
 groups:
     - runs:
-        - args: ["--nocapture"] 
+        - args: ["--nocapture"]
     # The output files of the previous benchmark suite are deleted
     - runs:
         - args: ["--callgrind-args='--toggle-collect=main'"]
@@ -98,7 +98,7 @@ twice without deleting the output files.
 ```yaml
 groups:
     - runs:
-        - args: ["--nocapture"] 
+        - args: ["--nocapture"]
         # The output files of the previous benchmark run are NOT deleted
         - args: ["--callgrind-args='--toggle-collect=main'"]
 ```
@@ -118,10 +118,10 @@ define an expected `stdout/stderr` but also depends on the test.
 ```yaml
 groups:
     - runs:
-        - args: ["--nocapture"] 
+        - args: ["--nocapture"]
           expected:
             stdout: expected_stdout
-        - args: ["--nocapture"] 
+        - args: ["--nocapture"]
           expected:
             stdout: expected_stdout
 ```
@@ -179,7 +179,7 @@ test_bin_bench_foo::group::function id:() -> target/release/echo
 ```yaml
 groups:
     - runs:
-        - args: [] 
+        - args: []
           expected:
             files: expected_files
 ```
@@ -193,7 +193,7 @@ See for other examples in the `benches` folder.
 ```yaml
 groups:
     - runs:
-        - args: [] 
+        - args: []
           expected:
             exit_code: 0
 ```
@@ -208,7 +208,7 @@ See for example `benches/test_bin_bench/exit_with`
 template: test_bin_bench_foo.rs.j2
 groups:
     - runs:
-        - args: [] 
+        - args: []
           template_data:
             foo: "1234"
 ```
@@ -218,6 +218,17 @@ TODO:
 See for example `benches/test_bin_bench/exit_with`
 
 #### Other configuration values
+
+##### bench args
+
+Arguments passed to the `cargo bench` invocation
+
+```yaml
+groups:
+  - runs:
+      - args: []
+        cargo_args: ["--features", "cachegrind"]
+```
 
 ##### rust version
 

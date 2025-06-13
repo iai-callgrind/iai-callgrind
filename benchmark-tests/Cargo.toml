@@ -271,6 +271,11 @@ path = "benches/test_lib_bench/list_arg/test_lib_bench_list_arg.rs"
 
 [[bench]]
 harness = false
+name = "test_lib_bench_cachegrind"
+path = "benches/test_lib_bench/cachegrind/test_lib_bench_cachegrind.rs"
+
+[[bench]]
+harness = false
 name = "lib_bench_threads"
 path = "benches/guide/lib_bench_threads.rs"
 
