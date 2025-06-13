@@ -1163,10 +1163,32 @@ impl ToolOutputPath {
         }
     }
 
+    /// Convert this tool output to the output of another tool
+    ///
+    /// A tool with no `*.out` file is log-file based. If the other tool is a out-file based tool
+    /// the [`ToolOutputPathKind`] will be converted and vice-versa. The "old" (base) type (a tool
+    /// output converted with [`ToolOutputPath::to_base_path`]) will only be converted to the
+    /// according old (base) out-file (log-file).
     pub fn to_tool_output(&self, tool: ValgrindTool) -> Self {
+        // TODO: OldLog => Out, OldOut => Log ... ?
+        let kind = if tool.has_output_file() {
+            match &self.kind {
+                ToolOutputPathKind::Log => ToolOutputPathKind::Out,
+                ToolOutputPathKind::OldLog => ToolOutputPathKind::OldOut,
+                ToolOutputPathKind::BaseLog(name) => ToolOutputPathKind::Base(name.clone()),
+                kind => kind.clone(),
+            }
+        } else {
+            match &self.kind {
+                ToolOutputPathKind::Out => ToolOutputPathKind::Log,
+                ToolOutputPathKind::OldOut => ToolOutputPathKind::OldLog,
+                ToolOutputPathKind::Base(name) => ToolOutputPathKind::BaseLog(name.clone()),
+                kind => kind.clone(),
+            }
+        };
         Self {
             tool,
-            kind: self.kind.clone(),
+            kind,
             baseline_kind: self.baseline_kind.clone(),
             name: self.name.clone(),
             dir: self.dir.clone(),
@@ -1174,6 +1196,9 @@ impl ToolOutputPath {
         }
     }
 
+    /// Convert this tool output to the according log output
+    ///
+    /// All tools have a log output even the ones which are out-file based.
     pub fn to_log_output(&self) -> Self {
         Self {
             kind: match &self.kind {
