@@ -308,6 +308,19 @@ impl LibBench {
         default_tool: ValgrindTool,
     ) -> Result<Self> {
         let envs = config.resolve_envs();
+        let mut default_args = HashMap::new();
+
+        // The cachegrind client requests are not inserted into the benchmark function if the
+        // default tool is not cachegrind, so setting --instr-at-start to `no` is only required if
+        // the default tool sent by the benchmark harness is cachegrind. Also, we only need to set
+        // this in library benchmarks, so it's best to use `default_args` to add this command-line
+        // argument.
+        if default_tool == ValgrindTool::Cachegrind {
+            default_args.insert(
+                ValgrindTool::Cachegrind,
+                RawArgs::new(["--instr-at-start=no"]),
+            );
+        }
         let default_tool = config.default_tool.unwrap_or(default_tool);
 
         let module_path = group
@@ -318,12 +331,6 @@ impl LibBench {
             .output_format
             .map_or_else(OutputFormat::default, Into::into);
         output_format.kind = meta.args.output_format;
-
-        let mut default_args = HashMap::new();
-        default_args.insert(
-            ValgrindTool::Cachegrind,
-            RawArgs::new(["--instr-at-start=no"]),
-        );
 
         let tool_configs = ToolConfigs::new(
             config.tools,
