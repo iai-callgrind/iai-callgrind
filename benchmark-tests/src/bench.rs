@@ -644,12 +644,13 @@ impl BenchmarkOutput {
                         let white1 = caps.name("white1").unwrap().as_str();
                         let percent = caps.name("percent").unwrap().as_str();
                         let num = &percent[1..percent.len() - 2];
-                        if num.parse::<f64>().is_ok() {
+                        let pos = num.find(['+', '-']);
+                        if pos.is_some() && num[pos.unwrap() + 1..].parse::<f64>().is_ok() {
                             write!(
                                 string,
                                 "{white1}({}{}%)",
-                                num.chars().next().unwrap(),
-                                " ".repeat(num.len() - 1)
+                                &num[..pos.unwrap() + 1],
+                                " ".repeat(num.len() - pos.unwrap() - 1)
                             )
                             .unwrap();
                         } else {
@@ -660,12 +661,13 @@ impl BenchmarkOutput {
                         let white2 = caps.name("white2").unwrap().as_str();
                         let factor = caps.name("factor").unwrap().as_str();
                         let num = &factor[1..factor.len() - 2];
-                        if num.parse::<f64>().is_ok() {
+                        let pos = num.find(['+', '-']);
+                        if pos.is_some() && num[pos.unwrap() + 1..].parse::<f64>().is_ok() {
                             write!(
                                 string,
                                 "{white2}[{}{}x]",
-                                num.chars().next().unwrap(),
-                                " ".repeat(num.len() - 1)
+                                &num[..pos.unwrap() + 1],
+                                " ".repeat(num.len() - pos.unwrap() - 1)
                             )
                             .unwrap();
                         } else {
