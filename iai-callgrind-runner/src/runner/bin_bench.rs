@@ -156,7 +156,7 @@ impl Benchmark for BaselineBenchmark {
         }
         // TODO: move and shift ALSO FLAMEGRAPHS
 
-        // TODO: MOVE CREATION OF BENCHMARK SUMMARY INTO ToolConfigs::run
+        // TODO: MOVE CREATION OF BENCHMARK SUMMARY INTO ToolConfigs::run?
         let benchmark_summary = bin_bench.create_benchmark_summary(
             config,
             &out_path,
