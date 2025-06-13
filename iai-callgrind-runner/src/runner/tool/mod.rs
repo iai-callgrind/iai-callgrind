@@ -1173,15 +1173,13 @@ impl ToolOutputPath {
         // TODO: OldLog => Out, OldOut => Log ... ?
         let kind = if tool.has_output_file() {
             match &self.kind {
-                ToolOutputPathKind::Log => ToolOutputPathKind::Out,
-                ToolOutputPathKind::OldLog => ToolOutputPathKind::OldOut,
+                ToolOutputPathKind::Log | ToolOutputPathKind::OldLog => ToolOutputPathKind::Out,
                 ToolOutputPathKind::BaseLog(name) => ToolOutputPathKind::Base(name.clone()),
                 kind => kind.clone(),
             }
         } else {
             match &self.kind {
-                ToolOutputPathKind::Out => ToolOutputPathKind::Log,
-                ToolOutputPathKind::OldOut => ToolOutputPathKind::OldLog,
+                ToolOutputPathKind::Out | ToolOutputPathKind::OldOut => ToolOutputPathKind::Log,
                 ToolOutputPathKind::Base(name) => ToolOutputPathKind::BaseLog(name.clone()),
                 kind => kind.clone(),
             }

@@ -150,7 +150,9 @@ impl Benchmark for BaselineBenchmark {
 
         for path in bin_bench.tools.output_paths(&out_path) {
             path.shift()?;
-            path.to_log_output().shift()?;
+            if path.kind == ToolOutputPathKind::Out {
+                path.to_log_output().shift()?;
+            }
         }
         // TODO: move and shift ALSO FLAMEGRAPHS
 
