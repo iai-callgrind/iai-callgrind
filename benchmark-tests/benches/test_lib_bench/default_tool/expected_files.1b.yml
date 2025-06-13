@@ -1,0 +1,293 @@
+data:
+  - group: my_group
+    function: default_tool
+    id: bbv
+    expected:
+      files:
+        - exp-bbv.default_tool.bbv.bb.out
+        - exp-bbv.default_tool.bbv.bb.out.old
+        - exp-bbv.default_tool.bbv.log
+        - exp-bbv.default_tool.bbv.log.old
+        - exp-bbv.default_tool.bbv.pc.out
+        - exp-bbv.default_tool.bbv.pc.out.old
+        - summary.json
+  - group: my_group
+    function: default_tool
+    id: cachegrind
+    expected:
+      files:
+        - cachegrind.default_tool.cachegrind.log
+        - cachegrind.default_tool.cachegrind.log.old
+        - cachegrind.default_tool.cachegrind.out
+        - cachegrind.default_tool.cachegrind.out.old
+        - summary.json
+  - group: my_group
+    function: default_tool
+    id: callgrind
+    expected:
+      files:
+        - callgrind.default_tool.callgrind.log
+        - callgrind.default_tool.callgrind.log.old
+        - callgrind.default_tool.callgrind.out
+        - callgrind.default_tool.callgrind.out.old
+        - summary.json
+  - group: my_group
+    function: default_tool
+    id: dhat
+    expected:
+      files:
+        - dhat.default_tool.dhat.log
+        - dhat.default_tool.dhat.log.old
+        - dhat.default_tool.dhat.out
+        - dhat.default_tool.dhat.out.old
+        - summary.json
+  - group: my_group
+    function: default_tool
+    id: drd
+    expected:
+      files:
+        - drd.default_tool.drd.log
+        - drd.default_tool.drd.log.old
+        - summary.json
+  - group: my_group
+    function: default_tool
+    id: helgrind
+    expected:
+      files:
+        - helgrind.default_tool.helgrind.log
+        - helgrind.default_tool.helgrind.log.old
+        - summary.json
+  - group: my_group
+    function: default_tool
+    id: massif
+    expected:
+      files:
+        - massif.default_tool.massif.log
+        - massif.default_tool.massif.log.old
+        - massif.default_tool.massif.out
+        - massif.default_tool.massif.out.old
+        - summary.json
+  - group: my_group
+    function: default_tool
+    id: memcheck
+    expected:
+      files:
+        - memcheck.default_tool.memcheck.log
+        - memcheck.default_tool.memcheck.log.old
+        - summary.json
+  - group: my_group
+    function: default_tool_with_another_tool
+    id: bbv_and_massif
+    expected:
+      files:
+        - exp-bbv.default_tool_with_another_tool.bbv_and_massif.bb.out
+        - exp-bbv.default_tool_with_another_tool.bbv_and_massif.bb.out.old
+        - exp-bbv.default_tool_with_another_tool.bbv_and_massif.log
+        - exp-bbv.default_tool_with_another_tool.bbv_and_massif.log.old
+        - exp-bbv.default_tool_with_another_tool.bbv_and_massif.pc.out
+        - exp-bbv.default_tool_with_another_tool.bbv_and_massif.pc.out.old
+        - massif.default_tool_with_another_tool.bbv_and_massif.log
+        - massif.default_tool_with_another_tool.bbv_and_massif.log.old
+        - massif.default_tool_with_another_tool.bbv_and_massif.out
+        - massif.default_tool_with_another_tool.bbv_and_massif.out.old
+        - summary.json
+  - group: my_group
+    function: default_tool_with_another_tool
+    id: cachegrind_and_memcheck
+    expected:
+      files:
+        - cachegrind.default_tool_with_another_tool.cachegrind_and_memcheck.log
+        - cachegrind.default_tool_with_another_tool.cachegrind_and_memcheck.log.old
+        - cachegrind.default_tool_with_another_tool.cachegrind_and_memcheck.out
+        - cachegrind.default_tool_with_another_tool.cachegrind_and_memcheck.out.old
+        - memcheck.default_tool_with_another_tool.cachegrind_and_memcheck.log
+        - memcheck.default_tool_with_another_tool.cachegrind_and_memcheck.log.old
+        - summary.json
+  - group: my_group
+    function: default_tool_with_another_tool
+    id: callgrind_and_dhat
+    expected:
+      files:
+        - callgrind.default_tool_with_another_tool.callgrind_and_dhat.log
+        - callgrind.default_tool_with_another_tool.callgrind_and_dhat.log.old
+        - callgrind.default_tool_with_another_tool.callgrind_and_dhat.out
+        - callgrind.default_tool_with_another_tool.callgrind_and_dhat.out.old
+        - dhat.default_tool_with_another_tool.callgrind_and_dhat.log
+        - dhat.default_tool_with_another_tool.callgrind_and_dhat.log.old
+        - dhat.default_tool_with_another_tool.callgrind_and_dhat.out
+        - dhat.default_tool_with_another_tool.callgrind_and_dhat.out.old
+        - summary.json
+  - group: my_group
+    function: default_tool_with_another_tool
+    id: dhat_and_callgrind
+    expected:
+      files:
+        - callgrind.default_tool_with_another_tool.dhat_and_callgrind.log
+        - callgrind.default_tool_with_another_tool.dhat_and_callgrind.log.old
+        - callgrind.default_tool_with_another_tool.dhat_and_callgrind.out
+        - callgrind.default_tool_with_another_tool.dhat_and_callgrind.out.old
+        - dhat.default_tool_with_another_tool.dhat_and_callgrind.log
+        - dhat.default_tool_with_another_tool.dhat_and_callgrind.log.old
+        - dhat.default_tool_with_another_tool.dhat_and_callgrind.out
+        - dhat.default_tool_with_another_tool.dhat_and_callgrind.out.old
+        - summary.json
+  - group: my_group
+    function: default_tool_with_another_tool
+    id: drd_and_helgrind
+    expected:
+      files:
+        - drd.default_tool_with_another_tool.drd_and_helgrind.log
+        - drd.default_tool_with_another_tool.drd_and_helgrind.log.old
+        - helgrind.default_tool_with_another_tool.drd_and_helgrind.log
+        - helgrind.default_tool_with_another_tool.drd_and_helgrind.log.old
+        - summary.json
+  - group: my_group
+    function: default_tool_with_another_tool
+    id: helgrind_and_drd
+    expected:
+      files:
+        - drd.default_tool_with_another_tool.helgrind_and_drd.log
+        - drd.default_tool_with_another_tool.helgrind_and_drd.log.old
+        - helgrind.default_tool_with_another_tool.helgrind_and_drd.log
+        - helgrind.default_tool_with_another_tool.helgrind_and_drd.log.old
+        - summary.json
+  - group: my_group
+    function: default_tool_with_another_tool
+    id: bbv_and_massif
+    expected:
+      files:
+        - exp-bbv.default_tool_with_another_tool.bbv_and_massif.bb.out
+        - exp-bbv.default_tool_with_another_tool.bbv_and_massif.bb.out.old
+        - exp-bbv.default_tool_with_another_tool.bbv_and_massif.log
+        - exp-bbv.default_tool_with_another_tool.bbv_and_massif.log.old
+        - exp-bbv.default_tool_with_another_tool.bbv_and_massif.pc.out
+        - exp-bbv.default_tool_with_another_tool.bbv_and_massif.pc.out.old
+        - massif.default_tool_with_another_tool.bbv_and_massif.log
+        - massif.default_tool_with_another_tool.bbv_and_massif.log.old
+        - massif.default_tool_with_another_tool.bbv_and_massif.out
+        - massif.default_tool_with_another_tool.bbv_and_massif.out.old
+        - summary.json
+  - group: my_group
+    function: default_tool_with_another_tool
+    id: memcheck_and_cachegrind
+    expected:
+      files:
+        - cachegrind.default_tool_with_another_tool.memcheck_and_cachegrind.log
+        - cachegrind.default_tool_with_another_tool.memcheck_and_cachegrind.log.old
+        - cachegrind.default_tool_with_another_tool.memcheck_and_cachegrind.out
+        - cachegrind.default_tool_with_another_tool.memcheck_and_cachegrind.out.old
+        - memcheck.default_tool_with_another_tool.memcheck_and_cachegrind.log
+        - memcheck.default_tool_with_another_tool.memcheck_and_cachegrind.log.old
+        - summary.json
+  - group: my_group
+    function: default_tool_with_config
+    id: bbv
+    expected:
+      globs:
+        - pattern: exp-bbv.default_tool_with_config.bbv.*.bb.out
+          count: 2
+        - pattern: exp-bbv.default_tool_with_config.bbv.*.bb.out.old
+          count: 2
+        - pattern: exp-bbv.default_tool_with_config.bbv.*.log
+          count: 2
+        - pattern: exp-bbv.default_tool_with_config.bbv.*.log.old
+          count: 2
+        - pattern: exp-bbv.default_tool_with_config.bbv.*.pc.out
+          count: 2
+        - pattern: exp-bbv.default_tool_with_config.bbv.*.pc.out.old
+          count: 2
+      files:
+        - summary.json
+  - group: my_group
+    function: default_tool_with_config
+    id: cachegrind
+    expected:
+      files:
+        - summary.json
+      globs:
+        - pattern: cachegrind.default_tool_with_config.cachegrind.*.log
+          count: 2
+        - pattern: cachegrind.default_tool_with_config.cachegrind.*.log.old
+          count: 2
+        - pattern: cachegrind.default_tool_with_config.cachegrind.*.out
+          count: 2
+        - pattern: cachegrind.default_tool_with_config.cachegrind.*.out.old
+          count: 2
+  - group: my_group
+    function: default_tool_with_config
+    id: callgrind
+    expected:
+      files:
+        - summary.json
+      globs:
+        - pattern: callgrind.default_tool_with_config.callgrind.*.log
+          count: 2
+        - pattern: callgrind.default_tool_with_config.callgrind.*.log.old
+          count: 2
+        - pattern: callgrind.default_tool_with_config.callgrind.*.out
+          count: 2
+        - pattern: callgrind.default_tool_with_config.callgrind.*.out.old
+          count: 2
+  - group: my_group
+    function: default_tool_with_config
+    id: dhat
+    expected:
+      files:
+        - summary.json
+      globs:
+        - pattern: dhat.default_tool_with_config.dhat.*.log
+          count: 2
+        - pattern: dhat.default_tool_with_config.dhat.*.log.old
+          count: 2
+        - pattern: dhat.default_tool_with_config.dhat.*.out
+          count: 2
+        - pattern: dhat.default_tool_with_config.dhat.*.out.old
+          count: 2
+  - group: my_group
+    function: default_tool_with_config
+    id: drd
+    expected:
+      files:
+        - summary.json
+      globs:
+        - pattern: drd.default_tool_with_config.drd.*.log
+          count: 2
+        - pattern: drd.default_tool_with_config.drd.*.log.old
+          count: 2
+  - group: my_group
+    function: default_tool_with_config
+    id: helgrind
+    expected:
+      files:
+        - summary.json
+      globs:
+        - pattern: helgrind.default_tool_with_config.helgrind.*.log
+          count: 2
+        - pattern: helgrind.default_tool_with_config.helgrind.*.log.old
+          count: 2
+  - group: my_group
+    function: default_tool_with_config
+    id: massif
+    expected:
+      files:
+        - summary.json
+      globs:
+        - pattern: massif.default_tool_with_config.massif.*.log
+          count: 2
+        - pattern: massif.default_tool_with_config.massif.*.log.old
+          count: 2
+        - pattern: massif.default_tool_with_config.massif.*.out
+          count: 2
+        - pattern: massif.default_tool_with_config.massif.*.out.old
+          count: 2
+  - group: my_group
+    function: default_tool_with_config
+    id: memcheck
+    expected:
+      files:
+        - summary.json
+      globs:
+        - pattern: memcheck.default_tool_with_config.memcheck.*.log
+          count: 2
+        - pattern: memcheck.default_tool_with_config.memcheck.*.log.old
+          count: 2
