@@ -537,6 +537,7 @@ impl OutputFormat {
         self
     }
 
+    // TODO: MOVE INTO Callgrind::output_format, Also implement the output format for other tools
     /// Customize the format of the callgrind output
     ///
     /// This option allows customizing the output format of callgrind metrics. It does not set any

@@ -1163,6 +1163,7 @@ impl ToolOutputPath {
         }
     }
 
+    // TODO: UPDATE DOCS
     /// Convert this tool output to the output of another tool
     ///
     /// A tool with no `*.out` file is log-file based. If the other tool is a out-file based tool

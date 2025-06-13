@@ -1040,11 +1040,11 @@ pub fn format_float(float: f64, unit: char) -> ColoredString {
                 .bold()
         }
     } else if float.is_sign_positive() {
-        format!("{signed_short:^+FLOAT_WIDTH$}{unit}")
+        format!("{signed_short:>+FLOAT_WIDTH$}{unit}")
             .bright_red()
             .bold()
     } else {
-        format!("{signed_short:^+FLOAT_WIDTH$}{unit}")
+        format!("{signed_short:>+FLOAT_WIDTH$}{unit}")
             .bright_green()
             .bold()
     }
