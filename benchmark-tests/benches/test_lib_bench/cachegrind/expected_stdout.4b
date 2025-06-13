@@ -14,7 +14,7 @@ test_lib_bench_cachegrind::my_group::bench_default_tool cachegrind_config:vec! [
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
   ======= CACHEGRIND ===================================================================
-  Instructions:                            |                     (+450411 %) [+       x]
+  Instructions:                            |                     ( +      %) [+       x]
 test_lib_bench_cachegrind::my_group::bench_default_tool callgrind_config:vec! [3, 2, 1]
   Instructions:                            |                     (-       %) [-       x]
 test_lib_bench_cachegrind::my_group::test_config_overwrite default_config:setup_best_case_array(10)
