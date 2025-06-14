@@ -4,6 +4,20 @@
   "description": "The `BenchmarkSummary` containing all the information of a single benchmark run\n\n This includes produced files, recorded callgrind events, performance regressions ...",
   "type": "object",
   "properties": {
+    "baselines": {
+      "description": "The baselines if any. An absent first baseline indicates that new output was produced. An\n absent second baseline indicates the usage of the usual \"*.old\" output.",
+      "type": "array",
+      "items": [
+        {
+          "type": ["string", "null"]
+        },
+        {
+          "type": ["string", "null"]
+        }
+      ],
+      "maxItems": 2,
+      "minItems": 2
+    },
     "benchmark_exe": {
       "description": "The path to the binary which is executed by valgrind. In case of a library benchmark this\n is the compiled benchmark file. In case of a binary benchmark this is the path to the\n command.",
       "type": "string"
@@ -77,52 +91,10 @@
     "benchmark_exe",
     "function_name",
     "module_path",
+    "baselines",
     "profiles"
   ],
   "definitions": {
-    "Baseline": {
-      "description": "A `Baseline` depending on the [`BaselineKind`] which points to the corresponding path\n\n This baseline is used for comparisons with the new output of valgrind tools.",
-      "type": "object",
-      "properties": {
-        "kind": {
-          "description": "The kind of the `Baseline`",
-          "allOf": [
-            {
-              "$ref": "#/definitions/BaselineKind"
-            }
-          ]
-        },
-        "path": {
-          "description": "The path to the file which is used to compare against the new output",
-          "type": "string"
-        }
-      },
-      "required": ["kind", "path"]
-    },
-    "BaselineKind": {
-      "description": "The `BaselineKind` describing the baseline",
-      "oneOf": [
-        {
-          "description": "Compare new against `*.old` output files",
-          "type": "string",
-          "const": "Old"
-        },
-        {
-          "description": "Compare new against a named baseline",
-          "type": "object",
-          "properties": {
-            "Name": {
-              "$ref": "#/definitions/BaselineName"
-            }
-          },
-          "additionalProperties": false,
-          "required": ["Name"]
-        }
-      ]
-    },
-    "BaselineName": {
-      "type": "string"
-    },
     "BenchmarkKind": {
       "description": "The `BenchmarkKind`, differentiating between library and binary benchmarks",
       "oneOf": [
@@ -828,19 +800,8 @@
       "description": "A single segment of a tool run and if present the comparison with the \"old\" segment\n\n A tool run can produce multiple segments, for example for each process and subprocess with\n (--trace-children).",
       "type": "object",
       "properties": {
-        "baseline": {
-          "description": "TODO: MOVE INTO `ToolRun` instead",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Baseline"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
         "details": {
-          "description": "The details (like command, thread number etc.) about the segment(s)",
+          "description": "Details like command, pid, ppid, thread number etc. (see [`ProfileInfo`])",
           "allOf": [
             {
               "$ref": "#/definitions/EitherOrBoth_for_ProfileInfo"
@@ -848,7 +809,7 @@
           ]
         },
         "metrics_summary": {
-          "description": "The `ToolMetricSummary`",
+          "description": "The [`ToolMetricSummary`]",
           "allOf": [
             {
               "$ref": "#/definitions/ToolMetricSummary"
