@@ -8,8 +8,8 @@ use log::{debug, trace};
 use super::parser::parse_header;
 use crate::error::Error;
 use crate::runner::summary::ToolMetrics;
-use crate::runner::tool::logfile_parser::{self, Header, Parser};
-use crate::runner::tool::ToolOutputPath;
+use crate::runner::tool::parser::{Header, Parser, ParserOutput};
+use crate::runner::tool::{logfile_parser, ToolOutputPath};
 
 /// Parse the `summary:` line in the cachegrind output file
 ///
@@ -27,7 +27,7 @@ pub struct SummaryParser {
 }
 
 impl Parser for SummaryParser {
-    fn parse_single(&self, path: PathBuf) -> Result<logfile_parser::ParserResult> {
+    fn parse_single(&self, path: PathBuf) -> Result<ParserOutput> {
         debug!(
             "Parsing cachegrind output file '{}' for the summary",
             path.display()
@@ -76,7 +76,7 @@ impl Parser for SummaryParser {
                 part: None,
                 desc: properties.desc,
             };
-            Ok(logfile_parser::ParserResult {
+            Ok(ParserOutput {
                 path,
                 header,
                 // TODO: The details could be actually parsed from the logfile

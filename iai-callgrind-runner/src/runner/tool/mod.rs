@@ -3,6 +3,7 @@ pub mod args;
 pub mod error_metric_parser;
 pub mod generic_parser;
 pub mod logfile_parser;
+pub mod parser;
 
 use std::collections::HashMap;
 use std::ffi::OsString;
@@ -14,9 +15,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output};
 
 use anyhow::{anyhow, Context, Result};
+use error_metric_parser::ErrorMetricLogfileParser;
+use generic_parser::GenericLogfileParser;
 use lazy_static::lazy_static;
 use log::{debug, error, log_enabled};
-use logfile_parser::{parser_factory, ParserResult};
+use parser::{Parser, ParserOutput};
 use regex::Regex;
 
 use self::args::ToolArgs;
@@ -29,6 +32,7 @@ use super::callgrind::flamegraph::{
 use super::callgrind::parser::{parse_header, Sentinel};
 use super::callgrind::RegressionConfig;
 use super::common::{Assistant, Baselines, Config, ModulePath, Sandbox};
+use super::dhat::logfile_parser::DhatLogfileParser;
 use super::format::{print_no_capture_footer, Formatter, OutputFormat, VerticalFormatter};
 use super::meta::Metadata;
 use super::summary::{
@@ -542,8 +546,7 @@ impl ToolConfig {
     }
 
     fn parse_load(&self, config: &Config, out_path: &ToolOutputPath) -> Result<ToolSummary> {
-        let parser =
-            logfile_parser::parser_factory(self.tool, config.meta.project_root.clone(), out_path);
+        let parser = parser_factory(self.tool, config.meta.project_root.clone(), out_path);
 
         let parsed_new = parser.parse()?;
         let parsed_old = parser.parse_base()?;
@@ -708,10 +711,9 @@ impl ToolConfigs {
         tool_config: &ToolConfig,
         meta: &Metadata,
         out_path: &ToolOutputPath,
-        old_summaries: Vec<ParserResult>,
+        old_summaries: Vec<ParserOutput>,
     ) -> Result<ToolSummary> {
-        let parser =
-            logfile_parser::parser_factory(tool_config.tool, meta.project_root.clone(), out_path);
+        let parser = parser_factory(tool_config.tool, meta.project_root.clone(), out_path);
 
         let parsed_new = parser.parse()?;
 
@@ -870,11 +872,7 @@ impl ToolConfigs {
 
             let output_path = output_path.to_tool_output(tool);
 
-            let parser = logfile_parser::parser_factory(
-                tool,
-                config.meta.project_root.clone(),
-                &output_path,
-            );
+            let parser = parser_factory(tool, config.meta.project_root.clone(), &output_path);
             let old_summaries = parser.parse_base()?;
 
             let log_path = output_path.to_log_output();
@@ -1946,6 +1944,36 @@ pub fn check_exit(
         _ => {
             Err(Error::ProcessError((tool.id(), output, status, Some(output_path.clone()))).into())
         }
+    }
+}
+
+/// TODO: MOVE THIS and everything not related to log file parsing OUT OF logfile module
+pub fn parser_factory(
+    tool: ValgrindTool,
+    root_dir: PathBuf,
+    output_path: &ToolOutputPath,
+) -> Box<dyn Parser> {
+    match tool {
+        ValgrindTool::Callgrind => Box::new(callgrind::summary_parser::SummaryParser {
+            output_path: output_path.clone(),
+        }),
+        ValgrindTool::Cachegrind => Box::new(cachegrind::summary_parser::SummaryParser {
+            output_path: output_path.clone(),
+        }),
+        ValgrindTool::DHAT => Box::new(DhatLogfileParser {
+            output_path: output_path.to_log_output(),
+            root_dir,
+        }),
+        ValgrindTool::Memcheck | ValgrindTool::DRD | ValgrindTool::Helgrind => {
+            Box::new(ErrorMetricLogfileParser {
+                output_path: output_path.to_log_output(),
+                root_dir,
+            })
+        }
+        _ => Box::new(GenericLogfileParser {
+            output_path: output_path.to_log_output(),
+            root_dir,
+        }),
     }
 }
 

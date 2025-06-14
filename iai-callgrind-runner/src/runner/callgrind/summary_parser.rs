@@ -9,7 +9,7 @@ use super::model::Metrics;
 use super::parser::{parse_header, CallgrindParser, CallgrindProperties};
 use crate::error::Error;
 use crate::runner::summary::ToolMetrics::CallgrindMetrics;
-use crate::runner::tool::logfile_parser::{Header, Parser, ParserResult};
+use crate::runner::tool::parser::{Header, Parser, ParserOutput};
 use crate::runner::tool::ToolOutputPath;
 
 /// Parse the `total:` line in the callgrind output or `summary:` if total is not present
@@ -95,8 +95,8 @@ impl CallgrindParser for SummaryParser {
 }
 
 impl Parser for SummaryParser {
-    fn parse_single(&self, path: PathBuf) -> Result<ParserResult> {
-        CallgrindParser::parse_single(self, &path).map(|(props, metrics)| ParserResult {
+    fn parse_single(&self, path: PathBuf) -> Result<ParserOutput> {
+        CallgrindParser::parse_single(self, &path).map(|(props, metrics)| ParserOutput {
             path: path.clone(),
             header: Header {
                 command: props.cmd.expect("A command should be present"),

@@ -4,7 +4,7 @@ use iai_callgrind_runner::api::{ErrorMetricKind, ValgrindTool};
 use iai_callgrind_runner::runner::metrics::Metrics;
 use iai_callgrind_runner::runner::summary::ToolMetrics;
 use iai_callgrind_runner::runner::tool::error_metric_parser::ErrorMetricLogfileParser;
-use iai_callgrind_runner::runner::tool::logfile_parser::Parser;
+use iai_callgrind_runner::runner::tool::parser::Parser;
 use iai_callgrind_runner::runner::tool::ToolOutputPathKind;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
@@ -18,8 +18,6 @@ use crate::common::Fixtures;
 #[case::with_errors("with_errors", [12, 34, 56, 78])]
 #[case::with_multiple_error_lines("with_two_error_lines", [12, 34, 56, 78])]
 fn test_drd_error_metric_parser(#[case] fixture: &str, #[case] expected: [u64; 4]) {
-    use iai_callgrind_runner::api::ValgrindTool;
-
     let metrics = Metrics::with_metric_kinds([
         (ErrorMetricKind::Errors, expected[0]),
         (ErrorMetricKind::Contexts, expected[1]),

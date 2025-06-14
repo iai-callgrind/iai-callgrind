@@ -1,6 +1,10 @@
+use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-use iai_callgrind_runner::runner::tool::logfile_parser::{parse_header, Header};
+use iai_callgrind_runner::api::ValgrindTool;
+use iai_callgrind_runner::runner::tool::logfile_parser::parse_header;
+use iai_callgrind_runner::runner::tool::parser::Header;
+use iai_callgrind_runner::runner::tool::ToolOutputPathKind;
 use rstest::rstest;
 
 use crate::common::Fixtures;
@@ -40,11 +44,6 @@ fn expected_header(command: &str, pid: i32, parent_pid: Option<i32>, desc: Vec<S
     )
 )]
 fn test_parse_logfile_header(#[case] name: &str, #[case] expected_header: Header) {
-    use std::fs::File;
-
-    use iai_callgrind_runner::api::ValgrindTool;
-    use iai_callgrind_runner::runner::tool::ToolOutputPathKind;
-
     let tool_output_path =
         Fixtures::get_tool_output_path("drd", ValgrindTool::DRD, ToolOutputPathKind::Log, name);
     let mut logfile_headers = vec![];

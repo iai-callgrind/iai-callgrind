@@ -7,9 +7,8 @@ use anyhow::{Context, Result};
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use super::logfile_parser::{
-    parse_header, Parser, ParserResult, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
-};
+use super::logfile_parser::{parse_header, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE};
+use super::parser::{Parser, ParserOutput};
 use super::ToolOutputPath;
 use crate::api::ErrorMetricKind;
 use crate::runner::metrics::Metrics;
@@ -34,7 +33,7 @@ pub struct ErrorMetricLogfileParser {
 }
 
 impl Parser for ErrorMetricLogfileParser {
-    fn parse_single(&self, path: PathBuf) -> Result<ParserResult> {
+    fn parse_single(&self, path: PathBuf) -> Result<ParserOutput> {
         let file = File::open(&path)
             .with_context(|| format!("Error opening log file '{}'", path.display()))?;
 
@@ -114,7 +113,7 @@ impl Parser for ErrorMetricLogfileParser {
             }
         }
 
-        Ok(ParserResult {
+        Ok(ParserOutput {
             header,
             path,
             metrics: ToolMetrics::ErrorMetrics(metrics.context(

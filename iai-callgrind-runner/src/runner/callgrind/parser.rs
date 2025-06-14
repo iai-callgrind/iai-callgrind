@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use super::model::{Metrics, Positions};
 use crate::runner::summary::SegmentDetails;
+use crate::runner::tool::parser::ParserOutput;
 use crate::runner::tool::ToolOutputPath;
 use crate::runner::DEFAULT_TOGGLE;
 
@@ -17,8 +18,6 @@ lazy_static! {
     static ref GLOB_TO_REGEX_RE: Regex =
         Regex::new(r"(\\)([*]|[?])").expect("Regex should compile");
 }
-
-pub type ParserOutput = Vec<(PathBuf, CallgrindProperties, Metrics)>;
 
 pub trait CallgrindParser {
     type Output;
@@ -57,20 +56,6 @@ pub struct CallgrindProperties {
     pub creator: Option<String>,
 }
 
-impl CallgrindProperties {
-    pub fn into_info(self, path: &Path) -> SegmentDetails {
-        SegmentDetails {
-            command: self.cmd.expect("A command should be present"),
-            pid: self.pid.expect("A pid should be present"),
-            parent_pid: None,
-            details: None,
-            path: path.to_owned(),
-            part: self.part,
-            thread: self.thread,
-        }
-    }
-}
-
 #[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Sentinel(#[serde(with = "serde_regex")] Regex);
@@ -86,6 +71,33 @@ impl CallgrindProperties {
                 .cmp(&other.thread)
                 .then_with(|| self.part.cmp(&other.part))
         })
+    }
+
+    pub fn into_info(self, path: &Path) -> SegmentDetails {
+        SegmentDetails {
+            command: self.cmd.expect("A command should be present"),
+            pid: self.pid.expect("A pid should be present"),
+            parent_pid: None,
+            details: None,
+            path: path.to_owned(),
+            part: self.part,
+            thread: self.thread,
+        }
+    }
+}
+
+impl From<ParserOutput> for CallgrindProperties {
+    fn from(value: ParserOutput) -> Self {
+        CallgrindProperties {
+            metrics_prototype: Metrics::default(),
+            positions_prototype: Positions::default(),
+            pid: Some(value.header.pid),
+            thread: value.header.thread,
+            part: value.header.part,
+            desc: value.header.desc,
+            cmd: Some(value.header.command),
+            creator: None,
+        }
     }
 }
 
