@@ -8,7 +8,7 @@ use indexmap::{indexset, IndexSet};
 
 use super::args::NoCapture;
 use super::bin_bench::BinBench;
-use super::common::{BenchmarkSummaries, Config, ModulePath};
+use super::common::{Baselines, BenchmarkSummaries, Config, ModulePath};
 use super::lib_bench::LibBench;
 use super::meta::Metadata;
 use super::summary::{Diffs, MetricsDiff, ProfileData, ProfileInfo, ToolMetricSummary};
@@ -80,29 +80,32 @@ pub const MAX_WIDTH: usize = 2 + LEFT_WIDTH + 1 + METRIC_WIDTH + 2 * 11;
 pub trait Formatter {
     fn format_single(
         &mut self,
-        baselines: (Option<String>, Option<String>),
+        baselines: &Baselines,
         info: Option<&EitherOrBoth<ProfileInfo>>,
         metrics_summary: &ToolMetricSummary,
+        is_default_tool: bool,
     ) -> Result<()>;
 
     fn format(
         &mut self,
         config: &Config,
-        baselines: (Option<String>, Option<String>),
+        baselines: &Baselines,
         data: &ProfileData,
+        is_default_tool: bool,
     ) -> Result<()>;
 
     fn print(
         &mut self,
         config: &Config,
-        baselines: (Option<String>, Option<String>),
+        baselines: &Baselines,
         data: &ProfileData,
+        is_default_tool: bool,
     ) -> Result<()>
     where
         Self: std::fmt::Display,
     {
         if self.get_output_format().is_default() {
-            self.format(config, baselines, data)?;
+            self.format(config, baselines, data, is_default_tool)?;
             print!("{self}");
             self.clear();
         }
@@ -695,13 +698,13 @@ impl VerticalFormatter {
     }
 
     /// Format the baseline
-    fn format_baseline(&mut self, baselines: (Option<String>, Option<String>)) {
+    fn format_baseline(&mut self, baselines: &Baselines) {
         match baselines {
             (None, None) => {}
             _ => {
                 self.write_field(
                     "Baselines:",
-                    &EitherOrBoth::try_from(baselines)
+                    &EitherOrBoth::try_from(baselines.clone())
                         .expect("At least on baseline should be present")
                         .as_ref()
                         .map(String::as_str),
@@ -883,10 +886,15 @@ impl Write for VerticalFormatter {
 impl Formatter for VerticalFormatter {
     fn format_single(
         &mut self,
-        baselines: (Option<String>, Option<String>),
+        baselines: &Baselines,
         info: Option<&EitherOrBoth<ProfileInfo>>,
         metrics_summary: &ToolMetricSummary,
+        is_default_tool: bool,
     ) -> Result<()> {
+        if is_default_tool {
+            self.format_baseline(baselines);
+        }
+
         match metrics_summary {
             ToolMetricSummary::None => {
                 if let Some(info) = info {
@@ -925,7 +933,6 @@ impl Formatter for VerticalFormatter {
                     .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
             ),
             ToolMetricSummary::Callgrind(summary) => {
-                self.format_baseline(baselines);
                 self.format_metrics(
                     self.output_format
                         .event_kinds
@@ -948,8 +955,9 @@ impl Formatter for VerticalFormatter {
     fn format(
         &mut self,
         config: &Config,
-        baselines: (Option<String>, Option<String>),
+        baselines: &Baselines,
         data: &ProfileData,
+        is_default_tool: bool,
     ) -> Result<()> {
         if data.has_multiple() && self.output_format.show_intermediate {
             let mut first = true;
@@ -959,22 +967,28 @@ impl Formatter for VerticalFormatter {
 
                 if first {
                     self.format_single(
-                        baselines.clone(),
+                        baselines,
                         Some(&part.details),
                         &part.metrics_summary,
+                        is_default_tool,
                     )?;
                     first = false;
                 } else {
-                    self.format_single((None, None), Some(&part.details), &part.metrics_summary)?;
+                    self.format_single(
+                        &(None, None),
+                        Some(&part.details),
+                        &part.metrics_summary,
+                        is_default_tool,
+                    )?;
                 }
             }
 
             if data.total.is_some() {
                 self.format_tool_total_header();
-                self.format_single((None, None), None, &data.total.summary)?;
+                self.format_single(&(None, None), None, &data.total.summary, is_default_tool)?;
             }
         } else if data.total.is_some() {
-            self.format_single(baselines, None, &data.total.summary)?;
+            self.format_single(baselines, None, &data.total.summary, is_default_tool)?;
         } else if data.total.is_none() && !data.parts.is_empty() {
             // Since there is no total, show_all is partly ignored, and we show all data in a little
             // bit more aggregated form without the multiple files headlines. This affects currently
@@ -1008,7 +1022,7 @@ impl Formatter for VerticalFormatter {
         if self.output_format.is_default() {
             ComparisonHeader::new(function_name, id, details, &self.output_format).print();
 
-            self.format_single((None, None), None, metrics_summary)?;
+            self.format_single(&(None, None), None, metrics_summary, false)?;
             self.print_buffer();
         }
 
