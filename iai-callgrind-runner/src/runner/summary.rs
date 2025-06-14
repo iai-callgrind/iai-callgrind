@@ -15,7 +15,7 @@ use itertools::Itertools;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::common::ModulePath;
+use super::common::{Baselines, ModulePath};
 use super::format::{Formatter, OutputFormat, OutputFormatKind, VerticalFormatter};
 use super::metrics::Metrics;
 use super::tool::parser::ParserOutput;
@@ -91,6 +91,9 @@ pub struct BenchmarkSummary {
     pub id: Option<String>,
     /// More details describing this benchmark run
     pub details: Option<String>,
+    /// The baselines if any. An absent first baseline indicates that new output was produced. An
+    /// absent second baseline indicates the usage of the usual "*.old" output.
+    pub baselines: (Option<String>, Option<String>),
     /// The summary of other valgrind tool runs
     pub profiles: Profiles,
 }
@@ -226,11 +229,9 @@ pub struct ProfileInfo {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ProfilePart {
-    /// TODO: MOVE INTO `ToolRun` instead
-    pub baseline: Option<Baseline>,
-    /// The details (like command, thread number etc.) about the segment(s)
+    /// Details like command, pid, ppid, thread number etc. (see [`ProfileInfo`])
     pub details: EitherOrBoth<ProfileInfo>,
-    /// The `ToolMetricSummary`
+    /// The [`ToolMetricSummary`]
     pub metrics_summary: ToolMetricSummary,
 }
 
@@ -361,6 +362,7 @@ impl BenchmarkSummary {
         id: Option<String>,
         details: Option<String>,
         output: Option<SummaryOutput>,
+        baselines: Baselines,
     ) -> Self {
         Self {
             version: "3".to_owned(),
@@ -375,6 +377,7 @@ impl BenchmarkSummary {
             summary_output: output,
             project_root,
             package_dir,
+            baselines,
         }
     }
 
@@ -801,9 +804,9 @@ impl ProfileData {
     /// pid (subprocesses recorded with `--trace-children`), then by part (for example cause by a
     /// `--dump-every-bb=xxx`) and then by thread (caused by `--separate-threads`). Since each of
     /// these components can differ between the new and the old parser output, this complicates the
-    /// creation of each `ToolRun`. We can't just zip the new and old parser output directly to get
-    /// (as far as possible) correct comparisons between the new and old costs. To remedy the
-    /// possibly incorrect comparisons, there is always a total created.
+    /// creation of each [`ProfileData`]. We can't just zip the new and old parser output directly
+    /// to get (as far as possible) correct comparisons between the new and old costs. To remedy
+    /// the possibly incorrect comparisons, there is always a total created.
     ///
     /// In a first step the parsed outputs are grouped in vectors by pid, then by parts and then by
     /// threads. This solution is not very efficient but there are not too many parsed outputs to be
@@ -925,27 +928,23 @@ impl ProfilePart {
         }
     }
 
-    /// TODO: BASELINE ??
     pub fn from_new(new: ParserOutput) -> Self {
         let metrics_summary = ToolMetricSummary::from_new_metrics(&new.metrics);
         Self {
-            baseline: None,
             details: EitherOrBoth::Left(new.into()),
             metrics_summary,
         }
     }
 
-    /// TODO: BASELINE ??
     pub fn from_old(old: ParserOutput) -> Self {
         let metrics_summary = ToolMetricSummary::from_old_metrics(&old.metrics);
         Self {
-            baseline: None,
             details: EitherOrBoth::Left(old.into()),
             metrics_summary,
         }
     }
 
-    /// TODO: BASELINE ??
+    /// TODO: DOCS
     ///
     /// # Panics
     ///
@@ -955,7 +954,6 @@ impl ProfilePart {
             ToolMetricSummary::try_from_new_and_old_metrics(&new.metrics, &old.metrics)
                 .expect("New and old metrics should have a matching kind");
         Self {
-            baseline: None,
             details: EitherOrBoth::Both(new.into(), old.into()),
             metrics_summary,
         }
