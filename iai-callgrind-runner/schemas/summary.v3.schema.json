@@ -40,6 +40,14 @@
       "description": "The directory of the package",
       "type": "string"
     },
+    "profiles": {
+      "description": "The summary of other valgrind tool runs",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Profiles"
+        }
+      ]
+    },
     "project_root": {
       "description": "The project's root directory",
       "type": "string"
@@ -52,14 +60,6 @@
         },
         {
           "type": "null"
-        }
-      ]
-    },
-    "tool_summaries": {
-      "description": "The summary of other valgrind tool runs",
-      "allOf": [
-        {
-          "$ref": "#/definitions/ToolSummaries"
         }
       ]
     },
@@ -77,7 +77,7 @@
     "benchmark_exe",
     "function_name",
     "module_path",
-    "tool_summaries"
+    "profiles"
   ],
   "definitions": {
     "Baseline": {
@@ -139,7 +139,7 @@
       ]
     },
     "CachegrindMetric": {
-      "description": "TODO: DOCS",
+      "description": "All metrics which cachegrind produces and additionally some derived events\n\n Depending on the options passed to Cachegrind, these are the events that Cachegrind can produce.\n See the [Cachegrind\n documentation](https://valgrind.org/docs/manual/cg-manual.html#cg-manual.cgopts) for details.",
       "oneOf": [
         {
           "description": "The default event. I cache reads (which equals the number of instructions executed)",
@@ -233,8 +233,8 @@
         }
       ]
     },
-    "DhatMetricKind": {
-      "description": "TODO: Rename to `DhatMetric`\n The metric kinds collected by DHAT",
+    "DhatMetric": {
+      "description": "The metrics collected by DHAT",
       "oneOf": [
         {
           "description": "Total bytes allocated over the entire execution",
@@ -308,7 +308,7 @@
       },
       "required": ["diff_pct", "factor"]
     },
-    "EitherOrBoth_for_SegmentDetails": {
+    "EitherOrBoth_for_ProfileInfo": {
       "description": "Either left or right or both can be present\n\n Most of the time, this enum is used to store (new, old) output, metrics, etc. Per convention\n left is `new` and right is `old`.",
       "oneOf": [
         {
@@ -316,7 +316,7 @@
           "type": "object",
           "properties": {
             "Left": {
-              "$ref": "#/definitions/SegmentDetails"
+              "$ref": "#/definitions/ProfileInfo"
             }
           },
           "additionalProperties": false,
@@ -327,7 +327,7 @@
           "type": "object",
           "properties": {
             "Right": {
-              "$ref": "#/definitions/SegmentDetails"
+              "$ref": "#/definitions/ProfileInfo"
             }
           },
           "additionalProperties": false,
@@ -341,10 +341,10 @@
               "type": "array",
               "items": [
                 {
-                  "$ref": "#/definitions/SegmentDetails"
+                  "$ref": "#/definitions/ProfileInfo"
                 },
                 {
-                  "$ref": "#/definitions/SegmentDetails"
+                  "$ref": "#/definitions/ProfileInfo"
                 }
               ],
               "maxItems": 2,
@@ -412,8 +412,8 @@
         }
       ]
     },
-    "ErrorMetricKind": {
-      "description": "TODO: Rename to `ErrorMetric`\n The error metrics from a tool which reports errors\n\n The tools which report only errors are `helgrind`, `drd` and `memcheck`. The order in which the\n variants are defined in this enum determines the order of the metrics in the benchmark terminal\n output.",
+    "ErrorMetric": {
+      "description": "The error metrics from a tool which reports errors\n\n The tools which report only errors are `helgrind`, `drd` and `memcheck`. The order in which the\n variants are defined in this enum determines the order of the metrics in the benchmark terminal\n output.",
       "oneOf": [
         {
           "description": "The amount of detected unsuppressed errors",
@@ -438,7 +438,7 @@
       ]
     },
     "EventKind": {
-      "description": "TODO: Rename to `CallgrindMetric` ??\n All `EventKind`s callgrind produces and additionally some derived events\n\n Depending on the options passed to Callgrind, these are the events that Callgrind can produce.\n See the [Callgrind\n documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.",
+      "description": "All `EventKind`s callgrind produces and additionally some derived events\n\n Depending on the options passed to Callgrind, these are the events that Callgrind can produce.\n See the [Callgrind\n documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.",
       "oneOf": [
         {
           "description": "The default event. I cache reads (which equals the number of instructions executed)",
@@ -645,7 +645,7 @@
           "type": "object",
           "properties": {
             "Dhat": {
-              "$ref": "#/definitions/DhatMetricKind"
+              "$ref": "#/definitions/DhatMetric"
             }
           },
           "additionalProperties": false,
@@ -655,7 +655,7 @@
           "type": "object",
           "properties": {
             "ErrorMetric": {
-              "$ref": "#/definitions/ErrorMetricKind"
+              "$ref": "#/definitions/ErrorMetric"
             }
           },
           "additionalProperties": false,
@@ -696,14 +696,14 @@
         "$ref": "#/definitions/MetricsDiff"
       }
     },
-    "MetricsSummary_for_DhatMetricKind": {
+    "MetricsSummary_for_DhatMetric": {
       "description": "The `MetricsSummary` contains all differences between two tool run segments",
       "type": "object",
       "additionalProperties": {
         "$ref": "#/definitions/MetricsDiff"
       }
     },
-    "MetricsSummary_for_ErrorMetricKind": {
+    "MetricsSummary_for_ErrorMetric": {
       "description": "The `MetricsSummary` contains all differences between two tool run segments",
       "type": "object",
       "additionalProperties": {
@@ -717,7 +717,73 @@
         "$ref": "#/definitions/MetricsDiff"
       }
     },
-    "SegmentDetails": {
+    "Profile": {
+      "description": "The `ToolSummary` containing all information about a valgrind tool run",
+      "type": "object",
+      "properties": {
+        "flamegraphs": {
+          "description": "TODO: DOCS",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FlamegraphSummary"
+          }
+        },
+        "log_paths": {
+          "description": "The paths to the `*.log` files. All tools produce at least one log file",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "out_paths": {
+          "description": "The paths to the `*.out` files. Not all tools produce an output in addition to the log\n files",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "summaries": {
+          "description": "The metrics and details about the tool run",
+          "allOf": [
+            {
+              "$ref": "#/definitions/ProfileData"
+            }
+          ]
+        },
+        "tool": {
+          "description": "The Valgrind tool like `DHAT`, `Memcheck` etc.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/ValgrindTool"
+            }
+          ]
+        }
+      },
+      "required": ["tool", "log_paths", "out_paths", "flamegraphs", "summaries"]
+    },
+    "ProfileData": {
+      "description": "The `ToolRun` contains all information about a single tool run with possibly multiple segments\n\n The total is always present and summarizes all tool run segments. In the special case of a\n single tool run segment, the total equals the metrics of this segment.",
+      "type": "object",
+      "properties": {
+        "parts": {
+          "description": "All [`ProfilePart`]s",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ProfilePart"
+          }
+        },
+        "total": {
+          "description": "The total over the [`ProfilePart`]s",
+          "allOf": [
+            {
+              "$ref": "#/definitions/ProfileTotal"
+            }
+          ]
+        }
+      },
+      "required": ["parts", "total"]
+    },
+    "ProfileInfo": {
       "description": "Some additional and necessary information about the tool run segment",
       "type": "object",
       "properties": {
@@ -757,6 +823,63 @@
         }
       },
       "required": ["command", "pid", "path"]
+    },
+    "ProfilePart": {
+      "description": "A single segment of a tool run and if present the comparison with the \"old\" segment\n\n A tool run can produce multiple segments, for example for each process and subprocess with\n (--trace-children).",
+      "type": "object",
+      "properties": {
+        "baseline": {
+          "description": "TODO: MOVE INTO `ToolRun` instead",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Baseline"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "details": {
+          "description": "The details (like command, thread number etc.) about the segment(s)",
+          "allOf": [
+            {
+              "$ref": "#/definitions/EitherOrBoth_for_ProfileInfo"
+            }
+          ]
+        },
+        "metrics_summary": {
+          "description": "The `ToolMetricSummary`",
+          "allOf": [
+            {
+              "$ref": "#/definitions/ToolMetricSummary"
+            }
+          ]
+        }
+      },
+      "required": ["details", "metrics_summary"]
+    },
+    "ProfileTotal": {
+      "description": "TODO: DOCS",
+      "type": "object",
+      "properties": {
+        "regressions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ToolRegression"
+          }
+        },
+        "summary": {
+          "$ref": "#/definitions/ToolMetricSummary"
+        }
+      },
+      "required": ["summary", "regressions"]
+    },
+    "Profiles": {
+      "description": "TODO: IMPLEMENT things like `get_tool_summary()`, ...",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Profile"
+      }
     },
     "SummaryFormat": {
       "description": "The format (json, ...) in which the summary file should be saved or printed",
@@ -804,45 +927,45 @@
           "description": "The error summary of tools which reports errors (memcheck, helgrind, drd)",
           "type": "object",
           "properties": {
-            "ErrorSummary": {
-              "$ref": "#/definitions/MetricsSummary_for_ErrorMetricKind"
+            "ErrorTool": {
+              "$ref": "#/definitions/MetricsSummary_for_ErrorMetric"
             }
           },
           "additionalProperties": false,
-          "required": ["ErrorSummary"]
+          "required": ["ErrorTool"]
         },
         {
           "description": "The dhat summary",
           "type": "object",
           "properties": {
-            "DhatSummary": {
-              "$ref": "#/definitions/MetricsSummary_for_DhatMetricKind"
+            "Dhat": {
+              "$ref": "#/definitions/MetricsSummary_for_DhatMetric"
             }
           },
           "additionalProperties": false,
-          "required": ["DhatSummary"]
+          "required": ["Dhat"]
         },
         {
           "description": "The callgrind summary",
           "type": "object",
           "properties": {
-            "CallgrindSummary": {
+            "Callgrind": {
               "$ref": "#/definitions/MetricsSummary_for_EventKind"
             }
           },
           "additionalProperties": false,
-          "required": ["CallgrindSummary"]
+          "required": ["Callgrind"]
         },
         {
           "description": "The cachegrind summary",
           "type": "object",
           "properties": {
-            "CachegrindSummary": {
+            "Cachegrind": {
               "$ref": "#/definitions/MetricsSummary_for_CachegrindMetric"
             }
           },
           "additionalProperties": false,
-          "required": ["CachegrindSummary"]
+          "required": ["Cachegrind"]
         }
       ]
     },
@@ -874,129 +997,6 @@
         }
       },
       "required": ["metric", "new", "old", "diff_pct", "limit"]
-    },
-    "ToolRun": {
-      "description": "The `ToolRun` contains all information about a single tool run with possibly multiple segments\n\n The total is always present and summarizes all tool run segments. In the special case of a\n single tool run segment, the total equals the metrics of this segment.",
-      "type": "object",
-      "properties": {
-        "segments": {
-          "description": "All `ToolRunSegment`s",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/ToolRunSegment"
-          }
-        },
-        "total": {
-          "description": "The total over the `ToolRunSegment`s",
-          "allOf": [
-            {
-              "$ref": "#/definitions/ToolTotal"
-            }
-          ]
-        }
-      },
-      "required": ["segments", "total"]
-    },
-    "ToolRunSegment": {
-      "description": "A single segment of a tool run and if present the comparison with the \"old\" segment\n\n A tool run can produce multiple segments, for example for each process and subprocess with\n (--trace-children).",
-      "type": "object",
-      "properties": {
-        "baseline": {
-          "description": "TODO: MOVE INTO `ToolRun` instead",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Baseline"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "details": {
-          "description": "The details (like command, thread number etc.) about the segment(s)",
-          "allOf": [
-            {
-              "$ref": "#/definitions/EitherOrBoth_for_SegmentDetails"
-            }
-          ]
-        },
-        "metrics_summary": {
-          "description": "The `ToolMetricSummary`",
-          "allOf": [
-            {
-              "$ref": "#/definitions/ToolMetricSummary"
-            }
-          ]
-        }
-      },
-      "required": ["details", "metrics_summary"]
-    },
-    "ToolSummaries": {
-      "description": "TODO: IMPLEMENT things like `get_tool_summary()`, ...",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/ToolSummary"
-      }
-    },
-    "ToolSummary": {
-      "description": "The `ToolSummary` containing all information about a valgrind tool run",
-      "type": "object",
-      "properties": {
-        "flamegraphs": {
-          "description": "TODO: DOCS",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/FlamegraphSummary"
-          }
-        },
-        "log_paths": {
-          "description": "The paths to the `*.log` files. All tools produce at least one log file",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "out_paths": {
-          "description": "The paths to the `*.out` files. Not all tools produce an output in addition to the log\n files",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "summaries": {
-          "description": "The metrics and details about the tool run",
-          "allOf": [
-            {
-              "$ref": "#/definitions/ToolRun"
-            }
-          ]
-        },
-        "tool": {
-          "description": "The Valgrind tool like `DHAT`, `Memcheck` etc.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/ValgrindTool"
-            }
-          ]
-        }
-      },
-      "required": ["tool", "log_paths", "out_paths", "flamegraphs", "summaries"]
-    },
-    "ToolTotal": {
-      "description": "TODO: DOCS",
-      "type": "object",
-      "properties": {
-        "regressions": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/ToolRegression"
-          }
-        },
-        "summary": {
-          "$ref": "#/definitions/ToolMetricSummary"
-        }
-      },
-      "required": ["summary", "regressions"]
     },
     "ValgrindTool": {
       "description": "The valgrind tools which can be run\n\n Note the default changes from `Callgrind` to `Cachegrind` if the `cachegrind` feature is\n selected.",
