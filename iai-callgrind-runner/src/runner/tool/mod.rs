@@ -507,7 +507,29 @@ impl ToolConfig {
                             .unwrap_or_default(),
                     );
                     tool.raw_args.prepend(valgrind_args);
-                    tool.try_into()?
+
+                    let args = match valgrind_tool {
+                        ValgrindTool::Callgrind => {
+                            callgrind::args::Args::try_from_raw_args(&[&tool.raw_args])?.into()
+                        }
+                        ValgrindTool::Cachegrind => {
+                            cachegrind::args::Args::try_from_raw_args(&[&tool.raw_args])?.into()
+                        }
+                        _ => ToolArgs::try_from_raw_args(valgrind_tool, tool.raw_args)?,
+                    };
+
+                    ToolConfig::new(
+                        valgrind_tool,
+                        true,
+                        args,
+                        None,
+                        tool.regression_config
+                            .map_or(ToolRegressionConfig::None, Into::into),
+                        tool.flamegraph_config
+                            .map_or(ToolFlamegraphConfig::None, Into::into),
+                        tool.entry_point.unwrap_or(EntryPoint::None),
+                        true,
+                    )
                 } else {
                     let mut raw_args = default_args
                         .get(&valgrind_tool)
@@ -561,6 +583,21 @@ impl ToolConfig {
             // TODO: FLAMEGRAPHS EMPTY
             flamegraphs: vec![],
         })
+    }
+
+    fn print(
+        &self,
+        config: &Config,
+        output_format: &OutputFormat,
+        data: &ProfileData,
+        baselines: &Baselines,
+    ) -> Result<()> {
+        VerticalFormatter::new(output_format.clone()).print(
+            config,
+            baselines,
+            data,
+            self.is_default,
+        )
     }
 }
 
@@ -704,10 +741,6 @@ impl ToolConfigs {
         }
     }
 
-    fn print(config: &Config, output_format: &OutputFormat, data: &ProfileData) -> Result<()> {
-        VerticalFormatter::new(output_format.clone()).print(config, (None, None), data)
-    }
-
     pub fn parse(
         tool_config: &ToolConfig,
         meta: &Metadata,
@@ -757,11 +790,7 @@ impl ToolConfigs {
                 let parsed_old = Some(parser.parse_base()?);
 
                 let mut data = ProfileData::new(parsed_new, parsed_old);
-                VerticalFormatter::new(output_format.clone()).print(
-                    config,
-                    baselines.clone(),
-                    &data,
-                )?;
+                tool_config.print(config, output_format, &data, baselines)?;
 
                 data.total.regressions =
                     Self::check_and_print_regressions(&tool_config.regression_config, &data.total);
@@ -795,7 +824,7 @@ impl ToolConfigs {
             } else {
                 let profile = tool_config.parse_load(config, &output_path)?;
 
-                Self::print(config, output_format, &profile.summaries)?;
+                tool_config.print(config, output_format, &profile.summaries, baselines)?;
                 benchmark_summary.profiles.push(profile);
             }
 
@@ -935,11 +964,7 @@ impl ToolConfigs {
             if tool_config.tool == ValgrindTool::Callgrind {
                 let mut profile = Self::parse(tool_config, &config.meta, &output_path, parsed_old)?;
 
-                VerticalFormatter::new(output_format.clone()).print(
-                    config,
-                    baselines.clone(),
-                    &profile.summaries,
-                )?;
+                tool_config.print(config, output_format, &profile.summaries, baselines)?;
 
                 profile.summaries.total.regressions = Self::check_and_print_regressions(
                     &tool_config.regression_config,
@@ -985,7 +1010,7 @@ impl ToolConfigs {
             } else {
                 let profile = Self::parse(tool_config, &config.meta, &output_path, parsed_old)?;
 
-                Self::print(config, output_format, &profile.summaries)?;
+                tool_config.print(config, output_format, &profile.summaries, baselines)?;
 
                 benchmark_summary.profiles.push(profile);
             }

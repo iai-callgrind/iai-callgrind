@@ -86,6 +86,14 @@ impl Callgrind {
         ));
         self
     }
+
+    /// TODO: DOCS
+    ///
+    /// is enabled is ignored if the tool is configured to be the default tool
+    pub fn is_enabled(&mut self, value: bool) -> &mut Self {
+        self.0.enable = Some(value);
+        self
+    }
 }
 
 impl Default for Cachegrind {
