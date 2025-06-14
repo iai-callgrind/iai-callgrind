@@ -81,7 +81,7 @@ impl Parser for SummaryParser {
                 header,
                 // TODO: The details could be actually parsed from the logfile
                 details: vec![],
-                metrics: ToolMetrics::CachegrindMetrics(metrics),
+                metrics: ToolMetrics::Cachegrind(metrics),
             })
         } else {
             Err(Error::ParseError((path.clone(), "No summary line found".to_owned())).into())

@@ -10,7 +10,7 @@ use regex::Regex;
 use super::logfile_parser::{parse_header, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE};
 use super::parser::{Parser, ParserOutput};
 use super::ToolOutputPath;
-use crate::api::ErrorMetricKind;
+use crate::api::ErrorMetric;
 use crate::runner::metrics::Metrics;
 use crate::runner::summary::ToolMetrics;
 
@@ -45,10 +45,10 @@ impl Parser for ErrorMetricLogfileParser {
         let header = parse_header(&path, &mut iter)?;
 
         let metrics_prototype = Metrics::from_iter([
-            ErrorMetricKind::Errors,
-            ErrorMetricKind::Contexts,
-            ErrorMetricKind::SuppressedErrors,
-            ErrorMetricKind::SuppressedContexts,
+            ErrorMetric::Errors,
+            ErrorMetric::Contexts,
+            ErrorMetric::SuppressedErrors,
+            ErrorMetric::SuppressedContexts,
         ]);
 
         let mut details = vec![];
@@ -79,8 +79,7 @@ impl Parser for ErrorMetricLogfileParser {
                             // The comments in the valgrind source code (`coregrind/m_errormgr.c`)
                             // state that the error summary line is only reprinted to avoid having
                             // to scroll up.
-                            let mut new_metrics: Metrics<ErrorMetricKind> =
-                                metrics_prototype.clone();
+                            let mut new_metrics: Metrics<ErrorMetric> = metrics_prototype.clone();
                             new_metrics.add_iter_str([
                                 caps.name("errs").unwrap().as_str(),
                                 caps.name("ctxs").unwrap().as_str(),
@@ -116,7 +115,7 @@ impl Parser for ErrorMetricLogfileParser {
         Ok(ParserOutput {
             header,
             path,
-            metrics: ToolMetrics::ErrorMetrics(metrics.context(
+            metrics: ToolMetrics::ErrorTool(metrics.context(
                 "Failed collecting error metrics: An error summary line should be present",
             )?),
             details,

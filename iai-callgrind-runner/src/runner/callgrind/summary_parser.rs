@@ -8,7 +8,7 @@ use log::{debug, trace};
 use super::model::Metrics;
 use super::parser::{parse_header, CallgrindParser, CallgrindProperties};
 use crate::error::Error;
-use crate::runner::summary::ToolMetrics::CallgrindMetrics;
+use crate::runner::summary::ToolMetrics::Callgrind;
 use crate::runner::tool::parser::{Header, Parser, ParserOutput};
 use crate::runner::tool::ToolOutputPath;
 
@@ -107,7 +107,7 @@ impl Parser for SummaryParser {
                 desc: props.desc,
             },
             details: vec![],
-            metrics: CallgrindMetrics(metrics),
+            metrics: Callgrind(metrics),
         })
     }
 
