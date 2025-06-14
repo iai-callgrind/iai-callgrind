@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 
-use crate::BenchmarkId;
 use crate::__internal::error::{Error, Errors};
 use crate::__internal::{
     InternalBinaryBenchmark, InternalBinaryBenchmarkBench, InternalBinaryBenchmarkConfig,
     InternalBinaryBenchmarkGroup, InternalBinaryBenchmarkGroups, InternalMacroBinBench, ModulePath,
 };
+use crate::{BenchmarkId, ValgrindTool};
 
 pub type InternalMacroBinBenches = &'static [&'static (
     &'static str,
@@ -26,14 +26,28 @@ impl GroupsBuilder {
         has_setup: bool,
         has_teardown: bool,
     ) -> Self {
-        Self {
-            groups: InternalBinaryBenchmarkGroups {
+        let groups = if cfg!(feature = "cachegrind") {
+            InternalBinaryBenchmarkGroups {
                 config: config.unwrap_or_default(),
+                groups: Vec::default(),
                 command_line_args: args,
                 has_setup,
                 has_teardown,
-                ..Default::default()
-            },
+                default_tool: ValgrindTool::Cachegrind,
+            }
+        } else {
+            InternalBinaryBenchmarkGroups {
+                config: config.unwrap_or_default(),
+                groups: Vec::default(),
+                command_line_args: args,
+                has_setup,
+                has_teardown,
+                default_tool: ValgrindTool::Callgrind,
+            }
+        };
+
+        Self {
+            groups,
             errors: Errors::default(),
         }
     }

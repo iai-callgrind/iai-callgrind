@@ -6,8 +6,9 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 use anyhow::Result;
+use iai_callgrind_runner::api::ValgrindTool;
 use iai_callgrind_runner::runner::summary::BaselineKind;
-use iai_callgrind_runner::runner::tool::{ToolOutputPath, ToolOutputPathKind, ValgrindTool};
+use iai_callgrind_runner::runner::tool::{ToolOutputPath, ToolOutputPathKind};
 use pretty_assertions::assert_eq;
 use serde::{Deserialize, Serialize};
 

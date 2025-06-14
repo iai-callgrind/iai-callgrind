@@ -8,9 +8,8 @@ use std::time::Duration;
 
 use derive_more::AsRef;
 use iai_callgrind_macros::IntoInner;
-use iai_callgrind_runner::api::RawArgs;
 
-use crate::{DelayKind, Stdin, Stdio, __internal};
+use crate::{DelayKind, Stdin, Stdio, ValgrindTool, __internal};
 
 /// [low level api](`crate::binary_benchmark_group`) only: Create a new benchmark id
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1031,91 +1030,6 @@ impl From<&BinaryBenchmark> for BinaryBenchmark {
 }
 
 impl BinaryBenchmarkConfig {
-    /// Pass arguments to valgrind's callgrind
-    ///
-    /// It's not needed to pass the arguments with flags. Instead of `--collect-atstart=no` simply
-    /// write `collect-atstart=no`.
-    ///
-    /// See also [Callgrind Command-line
-    /// Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for a full
-    /// overview of possible arguments.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use iai_callgrind::BinaryBenchmarkConfig;
-    ///
-    /// BinaryBenchmarkConfig::default()
-    ///     .callgrind_args(["collect-atstart=no", "toggle-collect=some::path"]);
-    /// ```
-    #[deprecated = "Please use callgrind_args instead"]
-    pub fn raw_callgrind_args<I, T>(&mut self, args: T) -> &mut Self
-    where
-        I: AsRef<str>,
-        T: IntoIterator<Item = I>,
-    {
-        self.0.callgrind_args.extend_ignore_flag(args);
-        self
-    }
-
-    /// Create a new `BinaryBenchmarkConfig` with initial callgrind arguments
-    ///
-    /// See also [`BinaryBenchmarkConfig::callgrind_args`].
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use iai_callgrind::{binary_benchmark, binary_benchmark_group};
-    /// # #[binary_benchmark]
-    /// # fn some_func() -> iai_callgrind::Command { iai_callgrind::Command::new("/some/path") }
-    /// # binary_benchmark_group!(name = some_group; benchmarks = some_func);
-    /// # fn main() {
-    /// use iai_callgrind::{BinaryBenchmarkConfig, main};
-    ///
-    /// main!(
-    ///     config =
-    ///         BinaryBenchmarkConfig::with_callgrind_args(["toggle-collect=something"]);
-    ///     binary_benchmark_groups = some_group
-    /// );
-    /// # }
-    /// ```
-    pub fn with_callgrind_args<I, T>(args: T) -> Self
-    where
-        I: AsRef<str>,
-        T: IntoIterator<Item = I>,
-    {
-        Self(__internal::InternalBinaryBenchmarkConfig {
-            callgrind_args: RawArgs::from_iter(args),
-            ..Default::default()
-        })
-    }
-
-    /// Pass arguments to valgrind's callgrind
-    ///
-    /// It's not needed to pass the arguments with flags. Instead of `--collect-atstart=no` simply
-    /// write `collect-atstart=no`.
-    ///
-    /// See also [Callgrind Command-line
-    /// Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for a full
-    /// overview of possible arguments.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use iai_callgrind::BinaryBenchmarkConfig;
-    ///
-    /// BinaryBenchmarkConfig::default()
-    ///     .callgrind_args(["collect-atstart=no", "toggle-collect=some::path"]);
-    /// ```
-    pub fn callgrind_args<I, T>(&mut self, args: T) -> &mut Self
-    where
-        I: AsRef<str>,
-        T: IntoIterator<Item = I>,
-    {
-        self.0.callgrind_args.extend_ignore_flag(args);
-        self
-    }
-
     /// Pass valgrind arguments to all tools
     ///
     /// Only core [valgrind
@@ -1426,58 +1340,7 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    /// Option to produce flamegraphs from callgrind output using the [`crate::FlamegraphConfig`]
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use iai_callgrind::{binary_benchmark_group};
-    /// # binary_benchmark_group!(
-    /// #    name = my_group;
-    /// #    benchmarks = |_group: &mut BinaryBenchmarkGroup| {});
-    /// use iai_callgrind::{main, BinaryBenchmarkConfig, FlamegraphConfig };
-    ///
-    /// # fn main() {
-    /// main!(
-    ///     config = BinaryBenchmarkConfig::default().flamegraph(FlamegraphConfig::default());
-    ///     binary_benchmark_groups = my_group
-    /// );
-    /// # }
-    /// ```
-    pub fn flamegraph<T>(&mut self, config: T) -> &mut Self
-    where
-        T: Into<__internal::InternalFlamegraphConfig>,
-    {
-        self.0.flamegraph_config = Some(config.into());
-        self
-    }
-
-    /// Enable performance regression checks with a [`crate::RegressionConfig`]
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use iai_callgrind::{binary_benchmark_group};
-    /// # binary_benchmark_group!(
-    /// #    name = my_group;
-    /// #    benchmarks = |_group: &mut BinaryBenchmarkGroup| {});
-    /// use iai_callgrind::{main, BinaryBenchmarkConfig, RegressionConfig};
-    ///
-    /// # fn main() {
-    /// main!(
-    ///     config = BinaryBenchmarkConfig::default().regression(RegressionConfig::default());
-    ///     binary_benchmark_groups = my_group
-    /// );
-    /// # }
-    /// ```
-    pub fn regression<T>(&mut self, config: T) -> &mut Self
-    where
-        T: Into<__internal::InternalRegressionConfig>,
-    {
-        self.0.regression_config = Some(config.into());
-        self
-    }
-
+    // TODO: CLEANUP or KEEP?
     /// Add a configuration to run a valgrind [`crate::Tool`] in addition to callgrind
     ///
     /// # Examples
@@ -1507,6 +1370,7 @@ impl BinaryBenchmarkConfig {
         self
     }
 
+    // TODO: CLEANUP or KEEP?
     /// Add multiple configurations to run valgrind [`crate::Tool`]s in addition to callgrind
     ///
     /// # Examples
@@ -1540,14 +1404,15 @@ impl BinaryBenchmarkConfig {
         self
     }
 
+    // TODO: CLEANUP or KEEP?
     /// Override previously defined configurations of valgrind [`crate::Tool`]s
     ///
     /// See also [`crate::LibraryBenchmarkConfig::tool_override`] for more details.
     ///
     /// # Example
     ///
-    /// The following will run `DHAT` and `Massif` (and the default callgrind) for all benchmarks in
-    /// `main!` besides for `foo` which will just run `Memcheck` (and callgrind).
+    /// The following will run `DHAT` and `Massif` (and the default callgrind) for all benchmarks
+    /// in `main!` besides for `foo` which will just run `Memcheck` (and callgrind).
     ///
     /// ```rust
     /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
@@ -1594,6 +1459,7 @@ impl BinaryBenchmarkConfig {
         self
     }
 
+    // TODO: CLEANUP or KEEP?
     /// Override previously defined configurations of valgrind [`crate::Tool`]s
     ///
     /// See also [`crate::LibraryBenchmarkConfig::tool_override`] for more details.
@@ -1763,6 +1629,12 @@ impl BinaryBenchmarkConfig {
     /// ```
     pub fn setup_parallel(&mut self, setup_parallel: bool) -> &mut Self {
         self.0.setup_parallel = Some(setup_parallel);
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn default_tool(&mut self, tool: ValgrindTool) -> &mut Self {
+        self.0.default_tool = Some(tool);
         self
     }
 }

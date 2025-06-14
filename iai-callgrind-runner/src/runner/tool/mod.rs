@@ -3,6 +3,7 @@ pub mod args;
 pub mod error_metric_parser;
 pub mod generic_parser;
 pub mod logfile_parser;
+pub mod parser;
 
 use std::collections::HashMap;
 use std::ffi::OsString;
@@ -14,25 +15,34 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output};
 
 use anyhow::{anyhow, Context, Result};
+use error_metric_parser::ErrorMetricLogfileParser;
+use generic_parser::GenericLogfileParser;
 use lazy_static::lazy_static;
 use log::{debug, error, log_enabled};
-use logfile_parser::Logfile;
+use parser::{Parser, ParserOutput};
 use regex::Regex;
-#[cfg(feature = "schema")]
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use self::args::ToolArgs;
 use super::args::NoCapture;
 use super::bin_bench::Delay;
-use super::callgrind::parser::parse_header;
-use super::common::{Assistant, Config, ModulePath, Sandbox};
+use super::callgrind::flamegraph::{
+    BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
+    LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
+};
+use super::callgrind::parser::{parse_header, Sentinel};
+use super::callgrind::RegressionConfig;
+use super::common::{Assistant, Baselines, Config, ModulePath, Sandbox};
+use super::dhat::logfile_parser::DhatLogfileParser;
 use super::format::{print_no_capture_footer, Formatter, OutputFormat, VerticalFormatter};
 use super::meta::Metadata;
-use super::summary::{BaselineKind, ToolRun, ToolSummary};
-use crate::api::{self, ExitWith, Stream};
+use super::summary::{
+    BaselineKind, BaselineName, BenchmarkSummary, Profile, ProfileData, ProfileTotal,
+    ToolMetricSummary, ToolRegression,
+};
+use super::{cachegrind, callgrind, DEFAULT_TOGGLE};
+use crate::api::{self, EntryPoint, ExitWith, RawArgs, Stream, Tool, Tools, ValgrindTool};
 use crate::error::Error;
-use crate::util::{self, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
+use crate::util::{self, resolve_binary_path, truncate_str_utf8};
 
 lazy_static! {
     // This regex matches the original file name without the prefix as it is created by callgrind.
@@ -55,6 +65,11 @@ lazy_static! {
         r"^(?<type>[.](?:out|log))(?<base>[.](old|base@[^.]+))?(?<pid>[.][#][0-9]+)?$"
     )
     .expect("Regex should compile");
+
+    static ref REAL_FILENAME_RE: Regex = Regex::new(
+        r"^(?:[.](?<pid>[0-9]+))?(?:[.]t(?<tid>[0-9]+))?(?:[.]p(?<part>[0-9]+))?(?:[.](?<bbv>bb|pc))?(?:[.](?<type>out|log))(?:[.](?<base>old|base@[^.]+))?$"
+    )
+    .expect("Regex should compile");
 }
 
 #[derive(Debug, Default, Clone)]
@@ -66,17 +81,91 @@ pub struct RunOptions {
     pub stdin: Option<api::Stdin>,
     pub stdout: Option<api::Stdio>,
     pub stderr: Option<api::Stdio>,
+    pub setup: Option<Assistant>,
+    pub teardown: Option<Assistant>,
+    pub sandbox: Option<api::Sandbox>,
+    pub delay: Option<Delay>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ToolConfig {
     pub tool: ValgrindTool,
     pub is_enabled: bool,
+    pub is_default: bool,
     pub args: ToolArgs,
     pub outfile_modifier: Option<String>,
+    pub regression_config: ToolRegressionConfig,
+    pub flamegraph_config: ToolFlamegraphConfig,
+    pub entry_point: EntryPoint,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+// TODO: SORT
+#[derive(Debug, Clone, PartialEq)]
+pub enum ToolRegressionConfig {
+    Callgrind(RegressionConfig),
+    None,
+}
+
+impl From<api::ToolRegressionConfig> for ToolRegressionConfig {
+    fn from(value: api::ToolRegressionConfig) -> Self {
+        match value {
+            api::ToolRegressionConfig::Callgrind(regression_config) => {
+                Self::Callgrind(regression_config.into())
+            }
+            api::ToolRegressionConfig::None => Self::None,
+        }
+    }
+}
+
+impl ToolRegressionConfig {
+    // TODO: DOCS
+    pub fn is_fail_fast(&self) -> bool {
+        match self {
+            ToolRegressionConfig::Callgrind(regression_config) => regression_config.fail_fast,
+            ToolRegressionConfig::None => false,
+        }
+    }
+}
+
+// TODO: SORT
+impl From<Option<RegressionConfig>> for ToolRegressionConfig {
+    fn from(value: Option<RegressionConfig>) -> Self {
+        match value {
+            Some(config) => ToolRegressionConfig::Callgrind(config),
+            None => ToolRegressionConfig::None,
+        }
+    }
+}
+
+// TODO: SORT
+impl From<Option<FlamegraphConfig>> for ToolFlamegraphConfig {
+    fn from(value: Option<FlamegraphConfig>) -> Self {
+        match value {
+            Some(config) => ToolFlamegraphConfig::Callgrind(config),
+            None => ToolFlamegraphConfig::None,
+        }
+    }
+}
+
+impl From<api::ToolFlamegraphConfig> for ToolFlamegraphConfig {
+    fn from(value: api::ToolFlamegraphConfig) -> Self {
+        match value {
+            api::ToolFlamegraphConfig::Callgrind(flamegraph_config) => {
+                Self::Callgrind(flamegraph_config.into())
+            }
+            api::ToolFlamegraphConfig::None => Self::None,
+        }
+    }
+}
+
+// TODO: SORT
+#[derive(Debug, Clone, PartialEq)]
+pub enum ToolFlamegraphConfig {
+    Callgrind(FlamegraphConfig),
+    None,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct ToolConfigs(pub Vec<ToolConfig>);
 
 pub struct ToolCommand {
@@ -109,19 +198,6 @@ pub enum ToolOutputPathKind {
     OldLog,
     BaseLog(String),
     Base(String),
-}
-
-/// All currently available valgrind tools
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub enum ValgrindTool {
-    Callgrind,
-    Memcheck,
-    Helgrind,
-    DRD,
-    Massif,
-    DHAT,
-    BBV,
 }
 
 impl ToolCommand {
@@ -176,6 +252,7 @@ impl ToolCommand {
             stdin,
             stdout,
             stderr,
+            ..
         } = run_options;
 
         if env_clear {
@@ -213,7 +290,7 @@ impl ToolCommand {
             .args(executable_args)
             .envs(envs);
 
-        if self.tool == ValgrindTool::Callgrind {
+        if config.is_default {
             debug!("Applying --nocapture options");
             self.nocapture.apply(&mut self.command);
         }
@@ -222,7 +299,8 @@ impl ToolCommand {
             stdin
                 .apply(&mut self.command, Stream::Stdin, child.as_mut())
                 .map_err(|error| {
-                    Error::BenchmarkError(ValgrindTool::Callgrind, module_path.clone(), error)
+                    // TODO: Why was it ValgrindTool::Callgrind and not self.tool??
+                    Error::BenchmarkError(self.tool, module_path.clone(), error)
                 })?;
         }
 
@@ -239,9 +317,7 @@ impl ToolCommand {
         }
 
         let output = match self.nocapture {
-            NoCapture::True | NoCapture::Stderr | NoCapture::Stdout
-                if self.tool == ValgrindTool::Callgrind =>
-            {
+            NoCapture::True | NoCapture::Stderr | NoCapture::Stdout if config.is_default => {
                 self.command
                     .status()
                     .map_err(|error| {
@@ -302,7 +378,16 @@ impl ToolCommand {
 }
 
 impl ToolConfig {
-    pub fn new<T>(tool: ValgrindTool, is_enabled: bool, args: T, modifier: Option<String>) -> Self
+    pub fn new<T>(
+        tool: ValgrindTool,
+        is_enabled: bool,
+        args: T,
+        modifier: Option<String>,
+        regression_config: ToolRegressionConfig,
+        flamegraph_config: ToolFlamegraphConfig,
+        entry_point: EntryPoint,
+        is_default: bool,
+    ) -> Self
     where
         T: Into<ToolArgs>,
     {
@@ -311,27 +396,208 @@ impl ToolConfig {
             is_enabled,
             args: args.into(),
             outfile_modifier: modifier,
+            regression_config,
+            flamegraph_config,
+            entry_point,
+            is_default,
         }
     }
 
-    fn parse_load(
+    pub fn new_default_tool(
+        meta: &Metadata,
+        default_tool: ValgrindTool,
+        tool: Option<Tool>,
+        default_entry_point: EntryPoint,
+        valgrind_args: &RawArgs,
+        default_args: &HashMap<ValgrindTool, RawArgs>,
+    ) -> Result<Self> {
+        let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
+
+        let tool_config = match default_tool {
+            ValgrindTool::Callgrind => {
+                if let Some(tool) = tool {
+                    let mut args = callgrind::args::Args::try_from_raw_args(&[
+                        &default_args
+                            .get(&ValgrindTool::Callgrind)
+                            .cloned()
+                            .unwrap_or_default(),
+                        valgrind_args,
+                        &tool.raw_args,
+                        &meta_callgrind_args,
+                    ])?;
+
+                    let entry_point = tool.entry_point.unwrap_or(default_entry_point);
+
+                    // TODO: TEST AND CHECK
+                    let regression_config = meta
+                        .args
+                        .regression
+                        .clone()
+                        .or_else(|| tool.regression_config.clone())
+                        .map_or(ToolRegressionConfig::None, Into::into);
+
+                    let flamegraph_config = tool
+                        .flamegraph_config
+                        .map_or(ToolFlamegraphConfig::None, Into::into);
+
+                    match &entry_point {
+                        EntryPoint::None => {}
+                        EntryPoint::Default => {
+                            args.insert_toggle_collect(DEFAULT_TOGGLE);
+                        }
+                        EntryPoint::Custom(custom) => {
+                            args.insert_toggle_collect(custom);
+                        }
+                    }
+
+                    ToolConfig::new(
+                        ValgrindTool::Callgrind,
+                        true,
+                        args,
+                        None,
+                        regression_config,
+                        flamegraph_config,
+                        entry_point,
+                        true,
+                    )
+                } else {
+                    let mut args = callgrind::args::Args::try_from_raw_args(&[
+                        &default_args
+                            .get(&ValgrindTool::Callgrind)
+                            .cloned()
+                            .unwrap_or_default(),
+                        valgrind_args,
+                        &meta_callgrind_args,
+                    ])?;
+
+                    let entry_point = default_entry_point;
+                    let regression_config = meta
+                        .args
+                        .regression
+                        .clone()
+                        .map_or(ToolRegressionConfig::None, Into::into);
+
+                    match &entry_point {
+                        EntryPoint::None => {}
+                        EntryPoint::Default => {
+                            args.insert_toggle_collect(DEFAULT_TOGGLE);
+                        }
+                        EntryPoint::Custom(custom) => {
+                            args.insert_toggle_collect(custom);
+                        }
+                    }
+                    ToolConfig::new(
+                        ValgrindTool::Callgrind,
+                        true,
+                        args,
+                        None,
+                        regression_config,
+                        ToolFlamegraphConfig::None,
+                        entry_point,
+                        true,
+                    )
+                }
+            }
+            valgrind_tool => {
+                if let Some(mut tool) = tool {
+                    tool.raw_args.prepend(
+                        &default_args
+                            .get(&valgrind_tool)
+                            .cloned()
+                            .unwrap_or_default(),
+                    );
+                    tool.raw_args.prepend(valgrind_args);
+
+                    let args = match valgrind_tool {
+                        ValgrindTool::Callgrind => {
+                            callgrind::args::Args::try_from_raw_args(&[&tool.raw_args])?.into()
+                        }
+                        ValgrindTool::Cachegrind => {
+                            cachegrind::args::Args::try_from_raw_args(&[&tool.raw_args])?.into()
+                        }
+                        _ => ToolArgs::try_from_raw_args(valgrind_tool, tool.raw_args)?,
+                    };
+
+                    ToolConfig::new(
+                        valgrind_tool,
+                        true,
+                        args,
+                        None,
+                        tool.regression_config
+                            .map_or(ToolRegressionConfig::None, Into::into),
+                        tool.flamegraph_config
+                            .map_or(ToolFlamegraphConfig::None, Into::into),
+                        tool.entry_point.unwrap_or(EntryPoint::None),
+                        true,
+                    )
+                } else {
+                    let mut raw_args = default_args
+                        .get(&valgrind_tool)
+                        .cloned()
+                        .unwrap_or_default();
+                    raw_args.update(valgrind_args);
+
+                    let args = match valgrind_tool {
+                        ValgrindTool::Cachegrind if raw_args.is_empty() => {
+                            cachegrind::args::Args::default().into()
+                        }
+                        ValgrindTool::Cachegrind => {
+                            cachegrind::args::Args::try_from_raw_args(&[&raw_args])?.into()
+                        }
+                        _ if raw_args.is_empty() => {
+                            ToolArgs::try_from_raw_args(valgrind_tool, RawArgs::default())?
+                        }
+                        _ => ToolArgs::try_from_raw_args(valgrind_tool, valgrind_args.clone())?,
+                    };
+
+                    ToolConfig::new(
+                        valgrind_tool,
+                        true,
+                        args,
+                        None,
+                        ToolRegressionConfig::None,
+                        ToolFlamegraphConfig::None,
+                        EntryPoint::None, // the default entry point is just for callgrind
+                        true,
+                    )
+                }
+            }
+        };
+
+        Ok(tool_config)
+    }
+
+    fn parse_load(&self, config: &Config, out_path: &ToolOutputPath) -> Result<Profile> {
+        let parser = parser_factory(self.tool, config.meta.project_root.clone(), out_path);
+
+        let parsed_new = parser.parse()?;
+        let parsed_old = parser.parse_base()?;
+
+        let summaries =
+            ProfileData::new(parsed_new, (!parsed_old.is_empty()).then_some(parsed_old));
+        Ok(Profile {
+            tool: self.tool,
+            log_paths: out_path.to_log_output().real_paths()?,
+            out_paths: out_path.real_paths()?,
+            summaries,
+            // TODO: FLAMEGRAPHS EMPTY
+            flamegraphs: vec![],
+        })
+    }
+
+    fn print(
         &self,
         config: &Config,
-        log_path: &ToolOutputPath,
-        out_path: Option<&ToolOutputPath>,
-    ) -> Result<ToolSummary> {
-        let parser = logfile_parser::parser_factory(self.tool, config.meta.project_root.clone());
-
-        let parsed_new = parser.parse(log_path)?;
-        let parsed_old = parser.parse(&log_path.to_base_path())?;
-
-        let summaries = ToolRun::from(EitherOrBoth::Both(parsed_new, parsed_old));
-        Ok(ToolSummary {
-            tool: self.tool,
-            log_paths: log_path.real_paths()?,
-            out_paths: out_path.map_or_else(|| Ok(Vec::default()), ToolOutputPath::real_paths)?,
-            summaries,
-        })
+        output_format: &OutputFormat,
+        data: &ProfileData,
+        baselines: &Baselines,
+    ) -> Result<()> {
+        VerticalFormatter::new(output_format.clone()).print(
+            config,
+            baselines,
+            data,
+            self.is_default,
+        )
     }
 }
 
@@ -339,17 +605,121 @@ impl TryFrom<api::Tool> for ToolConfig {
     type Error = anyhow::Error;
 
     fn try_from(value: api::Tool) -> std::result::Result<Self, Self::Error> {
-        let tool = value.kind.into();
-        ToolArgs::try_from_raw_args(tool, value.raw_args).map(|args| Self {
+        let tool = value.kind;
+        let args = match tool {
+            ValgrindTool::Callgrind => {
+                callgrind::args::Args::try_from_raw_args(&[&value.raw_args])?.into()
+            }
+            ValgrindTool::Cachegrind => {
+                cachegrind::args::Args::try_from_raw_args(&[&value.raw_args])?.into()
+            }
+            _ => ToolArgs::try_from_raw_args(tool, value.raw_args)?,
+        };
+
+        Ok(Self {
             tool,
             is_enabled: value.enable.unwrap_or(true),
             args,
             outfile_modifier: None,
+            regression_config: value
+                .regression_config
+                .map_or(ToolRegressionConfig::None, Into::into),
+            flamegraph_config: value
+                .flamegraph_config
+                .map_or(ToolFlamegraphConfig::None, Into::into),
+            entry_point: value.entry_point.unwrap_or(EntryPoint::None),
+            is_default: false,
         })
     }
 }
 
 impl ToolConfigs {
+    /// Create new `ToolConfigs`
+    ///
+    /// `default_entry_point` is callgrind specific and specified here because it is different for
+    /// library and binary benchmarks.
+    ///
+    /// `default_args` should only contain command-line arguments which are different for library
+    /// and binary benchmarks on a per tool basis. Usually, default arguments are part of the tool
+    /// specific `Args` struct for example for callgrind [`callgrind::args::Args`] or cachegrind
+    /// [`cachegrind::args::Args`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the configs cannot be created
+    pub fn new(
+        mut tools: Tools,
+        meta: &Metadata,
+        default_tool: ValgrindTool,
+        default_entry_point: &EntryPoint,
+        valgrind_args: &RawArgs,
+        default_args: &HashMap<ValgrindTool, RawArgs>,
+    ) -> Result<Self> {
+        let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
+
+        let extracted_tool = tools.consume(default_tool);
+        let default_tool_config = ToolConfig::new_default_tool(
+            meta,
+            default_tool,
+            extracted_tool,
+            default_entry_point.clone(),
+            valgrind_args,
+            default_args,
+        )?;
+
+        let mut tool_configs = ToolConfigs(vec![default_tool_config]);
+        tool_configs.extend(tools.0.into_iter().map(|mut tool| {
+            tool.raw_args
+                .prepend(&default_args.get(&tool.kind).cloned().unwrap_or_default());
+            tool.raw_args.prepend(valgrind_args);
+
+            if tool.kind == ValgrindTool::Callgrind {
+                let mut args = callgrind::args::Args::try_from_raw_args(&[
+                    &tool.raw_args,
+                    &meta_callgrind_args,
+                ])?;
+
+                let entry_point = tool.entry_point.unwrap_or(default_entry_point.clone());
+                // TODO: TEST AND CHECK
+                let regression_config = meta
+                    .args
+                    .regression
+                    .clone()
+                    .or_else(|| tool.regression_config.clone())
+                    .map_or(ToolRegressionConfig::None, Into::into);
+
+                let flamegraph_config = tool
+                    .flamegraph_config
+                    .map_or(ToolFlamegraphConfig::None, Into::into);
+
+                match &entry_point {
+                    EntryPoint::None => {}
+                    EntryPoint::Default => {
+                        args.insert_toggle_collect(DEFAULT_TOGGLE);
+                    }
+                    EntryPoint::Custom(custom) => {
+                        args.insert_toggle_collect(custom);
+                    }
+                }
+
+                Ok(ToolConfig::new(
+                    ValgrindTool::Callgrind,
+                    tool.enable.unwrap_or(true),
+                    args,
+                    None,
+                    regression_config,
+                    flamegraph_config,
+                    entry_point,
+                    false,
+                ))
+            } else {
+                tool.try_into()
+            }
+        }))?;
+
+        Ok(tool_configs)
+    }
+
     pub fn has_tools_enabled(&self) -> bool {
         self.0.iter().any(|t| t.is_enabled)
     }
@@ -362,72 +732,149 @@ impl ToolConfigs {
             .collect()
     }
 
-    fn print_headline(tool_config: &ToolConfig, output_format: &OutputFormat) {
-        if output_format.is_default() {
+    fn print_headline(&self, tool_config: &ToolConfig, output_format: &OutputFormat) {
+        // TODO: Also print headline if single but not the default tool callgrind?
+        if output_format.is_default() && self.has_multiple() {
             let mut formatter = VerticalFormatter::new(output_format.clone());
             formatter.format_tool_headline(tool_config.tool);
             formatter.print_buffer();
         }
     }
 
-    fn print(config: &Config, output_format: &OutputFormat, tool_run: &ToolRun) -> Result<()> {
-        VerticalFormatter::new(output_format.clone()).print(config, (None, None), tool_run)
-    }
-
     pub fn parse(
         tool_config: &ToolConfig,
         meta: &Metadata,
-        log_path: &ToolOutputPath,
-        out_path: Option<&ToolOutputPath>,
-        old_summaries: Vec<Logfile>,
-    ) -> Result<ToolSummary> {
-        let parser = logfile_parser::parser_factory(tool_config.tool, meta.project_root.clone());
+        output_path: &ToolOutputPath,
+        parsed_old: Vec<ParserOutput>,
+    ) -> Result<Profile> {
+        let parser = parser_factory(tool_config.tool, meta.project_root.clone(), output_path);
 
-        let parsed_new = parser.parse(log_path)?;
+        let parsed_new = parser.parse()?;
 
-        let summaries = match (parsed_new.is_empty(), old_summaries.is_empty()) {
+        let data = match (parsed_new.is_empty(), parsed_old.is_empty()) {
             (true, false | true) => return Err(anyhow!("A new dataset should always be present")),
-            (false, true) => ToolRun::from(EitherOrBoth::Left(parsed_new)),
-            (false, false) => ToolRun::from(EitherOrBoth::Both(parsed_new, old_summaries)),
+            (false, true) => ProfileData::new(parsed_new, None),
+            (false, false) => ProfileData::new(parsed_new, Some(parsed_old)),
         };
 
-        Ok(ToolSummary {
+        Ok(Profile {
             tool: tool_config.tool,
-            log_paths: log_path.real_paths()?,
-            out_paths: out_path.map_or_else(|| Ok(Vec::default()), ToolOutputPath::real_paths)?,
-            summaries,
+            log_paths: output_path.to_log_output().real_paths()?,
+            out_paths: output_path.real_paths()?,
+            summaries: data,
+            // TODO: FLAMEGRAPHS EMPTY
+            flamegraphs: vec![],
         })
     }
 
     pub fn run_loaded_vs_base(
         &self,
+        title: &str,
+        baseline: &BaselineName,
+        loaded_baseline: &BaselineName,
+        mut benchmark_summary: BenchmarkSummary,
+        baselines: &Baselines,
         config: &Config,
         output_path: &ToolOutputPath,
         output_format: &OutputFormat,
-    ) -> Result<Vec<ToolSummary>> {
-        let mut tool_summaries = vec![];
+    ) -> Result<BenchmarkSummary> {
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
-            Self::print_headline(tool_config, output_format);
+            self.print_headline(tool_config, output_format);
 
             let tool = tool_config.tool;
-
             let output_path = output_path.to_tool_output(tool);
+
+            let parser = parser_factory(tool, config.meta.project_root.clone(), &output_path);
+            if ValgrindTool::Callgrind == tool {
+                let parsed_new = parser.parse()?;
+                let parsed_old = Some(parser.parse_base()?);
+
+                let mut data = ProfileData::new(parsed_new, parsed_old);
+                tool_config.print(config, output_format, &data, baselines)?;
+
+                data.total.regressions =
+                    Self::check_and_print_regressions(&tool_config.regression_config, &data.total);
+
+                let mut profile = Profile {
+                    tool: tool_config.tool,
+                    out_paths: output_path.real_paths()?,
+                    log_paths: output_path.to_log_output().real_paths()?,
+                    flamegraphs: vec![],
+                    summaries: data,
+                };
+
+                if let ToolFlamegraphConfig::Callgrind(flamegraph_config) =
+                    &tool_config.flamegraph_config
+                {
+                    profile.flamegraphs = LoadBaselineFlamegraphGenerator {
+                        loaded_baseline: loaded_baseline.clone(),
+                        baseline: baseline.clone(),
+                    }
+                    .create(
+                        &Flamegraph::new(title.to_owned(), flamegraph_config.to_owned()),
+                        &output_path,
+                        (tool_config.entry_point == EntryPoint::Default)
+                            .then(Sentinel::default)
+                            .as_ref(),
+                        &config.meta.project_root,
+                    )?;
+                }
+
+                benchmark_summary.profiles.push(profile);
+            } else {
+                let profile = tool_config.parse_load(config, &output_path)?;
+
+                tool_config.print(config, output_format, &profile.summaries, baselines)?;
+                benchmark_summary.profiles.push(profile);
+            }
+
             let log_path = output_path.to_log_output();
-
-            let tool_summary = tool_config.parse_load(config, &log_path, None)?;
-
-            Self::print(config, output_format, &tool_summary.summaries)?;
-
             log_path.dump_log(log::Level::Info, &mut stderr())?;
-
-            tool_summaries.push(tool_summary);
         }
 
-        Ok(tool_summaries)
+        Ok(benchmark_summary)
+    }
+
+    /// Check for regressions as defined in [`RegressionConfig`] and print an error if a regression
+    /// occurred
+    ///
+    /// # Panics
+    ///
+    /// Checking performance regressions for other tools than callgrind is not implemented and
+    /// treated as programming error.
+    fn check_and_print_regressions(
+        tool_regression_config: &ToolRegressionConfig,
+        tool_total: &ProfileTotal,
+    ) -> Vec<ToolRegression> {
+        if let ToolRegressionConfig::Callgrind(regression_config) = tool_regression_config {
+            let regressions = match &tool_total.summary {
+                ToolMetricSummary::Callgrind(metrics_summary) => {
+                    regression_config.check_and_print(metrics_summary)
+                }
+                _ => {
+                    panic!(
+                        "Checking performance regressions for other tools than callgrind is \
+                         currently not implemented"
+                    )
+                }
+            };
+            return regressions;
+        }
+
+        vec![]
+    }
+
+    /// Return true if there are multiple tools configured and are enabled
+    pub fn has_multiple(&self) -> bool {
+        self.0.len() > 1 && self.0.iter().filter(|f| f.is_enabled).count() > 1
     }
 
     pub fn run(
         &self,
+        title: &str,
+        mut benchmark_summary: BenchmarkSummary,
+        baselines: &Baselines,
+        baseline_kind: &BaselineKind,
         config: &Config,
         executable: &Path,
         executable_args: &[OsString],
@@ -435,42 +882,50 @@ impl ToolConfigs {
         output_path: &ToolOutputPath,
         save_baseline: bool,
         module_path: &ModulePath,
-        sandbox: Option<&api::Sandbox>,
-        setup: Option<&Assistant>,
-        teardown: Option<&Assistant>,
-        delay: Option<&Delay>,
         output_format: &OutputFormat,
-    ) -> Result<Vec<ToolSummary>> {
-        let mut tool_summaries = vec![];
+    ) -> Result<BenchmarkSummary> {
         for tool_config in self.0.iter().filter(|t| t.is_enabled) {
             // Print the headline as soon as possible, so if there are any errors, the errors shown
             // in the terminal output can be associated with the tool
-            Self::print_headline(tool_config, output_format);
+            self.print_headline(tool_config, output_format);
 
             let tool = tool_config.tool;
 
-            let command = ToolCommand::new(tool, &config.meta, NoCapture::False);
+            let nocapture = if tool_config.is_default {
+                config.meta.args.nocapture
+            } else {
+                NoCapture::False
+            };
+            let command = ToolCommand::new(tool, &config.meta, nocapture);
 
             let output_path = output_path.to_tool_output(tool);
+
+            let parser = parser_factory(tool, config.meta.project_root.clone(), &output_path);
+            let parsed_old = parser.parse_base()?;
+
             let log_path = output_path.to_log_output();
 
-            let parser = logfile_parser::parser_factory(tool, config.meta.project_root.clone());
-
-            let old_summaries = parser.parse(&log_path.to_base_path())?;
             if save_baseline {
                 output_path.clear()?;
                 log_path.clear()?;
             }
 
-            let sandbox = sandbox
+            // We're implicitly applying the default here: In the absence of a user provided sandbox
+            // we don't run the benchmarks in a sandbox. Everything from here on runs
+            // with the current directory set to the sandbox directory until the sandbox
+            // is reset.
+            let sandbox = run_options
+                .sandbox
+                .as_ref()
                 .map(|sandbox| Sandbox::setup(sandbox, &config.meta))
                 .transpose()?;
 
-            let mut child = setup
+            let mut child = run_options
+                .setup
                 .as_ref()
                 .map_or(Ok(None), |setup| setup.run(config, module_path))?;
 
-            if let Some(delay) = delay {
+            if let Some(delay) = run_options.delay.as_ref() {
                 if let Err(error) = delay.run() {
                     if let Some(mut child) = child.take() {
                         // To avoid zombies
@@ -490,12 +945,14 @@ impl ToolConfigs {
                 child,
             )?;
 
-            if let Some(teardown) = teardown {
+            if let Some(teardown) = run_options.teardown.as_ref() {
                 teardown.run(config, module_path)?;
             }
 
+            // We print the no capture footer after the teardown to keep the output consistent with
+            // library benchmarks.
             print_no_capture_footer(
-                NoCapture::False,
+                nocapture,
                 run_options.stdout.as_ref(),
                 run_options.stderr.as_ref(),
             );
@@ -504,23 +961,73 @@ impl ToolConfigs {
                 sandbox.reset()?;
             }
 
-            let tool_summary = Self::parse(
-                tool_config,
-                &config.meta,
-                &log_path,
-                tool.has_output_file().then_some(&output_path),
-                old_summaries,
-            )?;
+            if tool_config.tool == ValgrindTool::Callgrind {
+                let mut profile = Self::parse(tool_config, &config.meta, &output_path, parsed_old)?;
 
-            Self::print(config, output_format, &tool_summary.summaries)?;
+                tool_config.print(config, output_format, &profile.summaries, baselines)?;
+
+                profile.summaries.total.regressions = Self::check_and_print_regressions(
+                    &tool_config.regression_config,
+                    &profile.summaries.total,
+                );
+
+                if save_baseline {
+                    // TODO: Can this be improved?
+                    let BaselineKind::Name(baseline) = baseline_kind.clone() else {
+                        panic!("A baseline with name should be present");
+                    };
+                    if let ToolFlamegraphConfig::Callgrind(flamegraph_config) =
+                        &tool_config.flamegraph_config
+                    {
+                        profile.flamegraphs = SaveBaselineFlamegraphGenerator { baseline }.create(
+                            &Flamegraph::new(title.to_owned(), flamegraph_config.to_owned()),
+                            &output_path,
+                            (tool_config.entry_point == EntryPoint::Default)
+                                .then(Sentinel::default)
+                                .as_ref(),
+                            &config.meta.project_root,
+                        )?;
+                    }
+                } else if let ToolFlamegraphConfig::Callgrind(flamegraph_config) =
+                    &tool_config.flamegraph_config
+                {
+                    profile.flamegraphs = BaselineFlamegraphGenerator {
+                        baseline_kind: baseline_kind.clone(),
+                    }
+                    .create(
+                        &Flamegraph::new(title.to_owned(), flamegraph_config.to_owned()),
+                        &output_path,
+                        (tool_config.entry_point == EntryPoint::Default)
+                            .then(Sentinel::default)
+                            .as_ref(),
+                        &config.meta.project_root,
+                    )?;
+                } else {
+                    // do nothing
+                }
+
+                benchmark_summary.profiles.push(profile);
+            } else {
+                let profile = Self::parse(tool_config, &config.meta, &output_path, parsed_old)?;
+
+                tool_config.print(config, output_format, &profile.summaries, baselines)?;
+
+                benchmark_summary.profiles.push(profile);
+            }
 
             output.dump_log(log::Level::Info);
             log_path.dump_log(log::Level::Info, &mut stderr())?;
-
-            tool_summaries.push(tool_summary);
         }
 
-        Ok(tool_summaries)
+        Ok(benchmark_summary)
+    }
+
+    pub fn extend(&mut self, iter: impl Iterator<Item = Result<ToolConfig>>) -> Result<()> {
+        for a in iter {
+            self.0.push(a?);
+        }
+
+        Ok(())
     }
 }
 
@@ -546,6 +1053,8 @@ impl ToolOutputPath {
     /// Create a new `ToolOutputPath`.
     ///
     /// The `base_dir` is supposed to be the same as [`crate::runner::meta::Metadata::target_dir`].
+    /// The `name` is supposed to be the name of the benchmark function. If a benchmark id is
+    /// present join both with a dot as separator to get the final `name`.
     pub fn new(
         kind: ToolOutputPathKind,
         tool: ValgrindTool,
@@ -673,10 +1182,31 @@ impl ToolOutputPath {
         }
     }
 
+    // TODO: UPDATE DOCS
+    /// Convert this tool output to the output of another tool
+    ///
+    /// A tool with no `*.out` file is log-file based. If the other tool is a out-file based tool
+    /// the [`ToolOutputPathKind`] will be converted and vice-versa. The "old" (base) type (a tool
+    /// output converted with [`ToolOutputPath::to_base_path`]) will only be converted to the
+    /// according old (base) out-file (log-file).
     pub fn to_tool_output(&self, tool: ValgrindTool) -> Self {
+        // TODO: OldLog => Out, OldOut => Log ... ?
+        let kind = if tool.has_output_file() {
+            match &self.kind {
+                ToolOutputPathKind::Log | ToolOutputPathKind::OldLog => ToolOutputPathKind::Out,
+                ToolOutputPathKind::BaseLog(name) => ToolOutputPathKind::Base(name.clone()),
+                kind => kind.clone(),
+            }
+        } else {
+            match &self.kind {
+                ToolOutputPathKind::Out | ToolOutputPathKind::OldOut => ToolOutputPathKind::Log,
+                ToolOutputPathKind::Base(name) => ToolOutputPathKind::BaseLog(name.clone()),
+                kind => kind.clone(),
+            }
+        };
         Self {
             tool,
-            kind: self.kind.clone(),
+            kind,
             baseline_kind: self.baseline_kind.clone(),
             name: self.name.clone(),
             dir: self.dir.clone(),
@@ -684,6 +1214,9 @@ impl ToolOutputPath {
         }
     }
 
+    /// Convert this tool output to the according log output
+    ///
+    /// All tools have a log output even the ones which are out-file based.
     pub fn to_log_output(&self) -> Self {
         Self {
             kind: match &self.kind {
@@ -697,6 +1230,38 @@ impl ToolOutputPath {
             dir: self.dir.clone(),
             modifiers: self.modifiers.clone(),
         }
+    }
+
+    /// Return the path to the log file for the given `path`
+    ///
+    /// `path` is supposed to be a path to a valid file in the directory of this [`ToolOutputPath`].
+    pub fn log_path_of(&self, path: &Path) -> Option<PathBuf> {
+        let file_name = path.strip_prefix(&self.dir).ok()?;
+        if let Some(suffix) = self.strip_prefix(&file_name.to_string_lossy()) {
+            let caps = REAL_FILENAME_RE.captures(suffix)?;
+            if let Some(kind) = caps.name("type") {
+                match kind.as_str() {
+                    "out" => {
+                        let mut string = self.prefix();
+                        for s in [
+                            caps.name("pid").map(|c| format!(".{}", c.as_str())),
+                            Some(".log".to_owned()),
+                            caps.name("base").map(|c| format!(".{}", c.as_str())),
+                        ]
+                        .iter()
+                        .filter_map(|s| s.as_ref())
+                        {
+                            string.push_str(s);
+                        }
+
+                        return Some(self.dir.join(string));
+                    }
+                    _ => return Some(path.to_owned()),
+                }
+            }
+        }
+
+        None
     }
 
     pub fn dump_log(&self, log_level: log::Level, writer: &mut impl Write) -> Result<()> {
@@ -1325,6 +1890,7 @@ impl ToolOutputPath {
     /// sanitize_<tool> method.
     pub fn sanitize(&self) -> Result<()> {
         match self.tool {
+            // TODO: sanitize cachegrind
             ValgrindTool::Callgrind => self.sanitize_callgrind()?,
             ValgrindTool::BBV => self.sanitize_bbv()?,
             _ => self.sanitize_generic()?,
@@ -1337,64 +1903,6 @@ impl ToolOutputPath {
 impl Display for ToolOutputPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.to_path().display()))
-    }
-}
-
-impl ValgrindTool {
-    /// Return the id used by the `valgrind --tool` option
-    pub fn id(&self) -> String {
-        match self {
-            ValgrindTool::DHAT => "dhat".to_owned(),
-            ValgrindTool::Callgrind => "callgrind".to_owned(),
-            ValgrindTool::Memcheck => "memcheck".to_owned(),
-            ValgrindTool::Helgrind => "helgrind".to_owned(),
-            ValgrindTool::DRD => "drd".to_owned(),
-            ValgrindTool::Massif => "massif".to_owned(),
-            ValgrindTool::BBV => "exp-bbv".to_owned(),
-        }
-    }
-
-    pub fn has_output_file(&self) -> bool {
-        matches!(
-            self,
-            ValgrindTool::Callgrind | ValgrindTool::DHAT | ValgrindTool::BBV | ValgrindTool::Massif
-        )
-    }
-}
-
-impl Display for ValgrindTool {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.id())
-    }
-}
-
-impl From<api::ValgrindTool> for ValgrindTool {
-    fn from(value: api::ValgrindTool) -> Self {
-        match value {
-            api::ValgrindTool::Memcheck => ValgrindTool::Memcheck,
-            api::ValgrindTool::Helgrind => ValgrindTool::Helgrind,
-            api::ValgrindTool::DRD => ValgrindTool::DRD,
-            api::ValgrindTool::Massif => ValgrindTool::Massif,
-            api::ValgrindTool::DHAT => ValgrindTool::DHAT,
-            api::ValgrindTool::BBV => ValgrindTool::BBV,
-        }
-    }
-}
-
-impl TryFrom<&str> for ValgrindTool {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
-        match value {
-            "dhat" => Ok(ValgrindTool::DHAT),
-            "callgrind" => Ok(ValgrindTool::Callgrind),
-            "memcheck" => Ok(ValgrindTool::Memcheck),
-            "helgrind" => Ok(ValgrindTool::Helgrind),
-            "drd" => Ok(ValgrindTool::DRD),
-            "massif" => Ok(ValgrindTool::Massif),
-            "exp-bbv" => Ok(ValgrindTool::BBV),
-            v => Err(anyhow!("Unknown tool '{}'", v)),
-        }
     }
 }
 
@@ -1460,6 +1968,36 @@ pub fn check_exit(
     }
 }
 
+/// TODO: MOVE THIS and everything not related to log file parsing OUT OF logfile module
+pub fn parser_factory(
+    tool: ValgrindTool,
+    root_dir: PathBuf,
+    output_path: &ToolOutputPath,
+) -> Box<dyn Parser> {
+    match tool {
+        ValgrindTool::Callgrind => Box::new(callgrind::summary_parser::SummaryParser {
+            output_path: output_path.clone(),
+        }),
+        ValgrindTool::Cachegrind => Box::new(cachegrind::summary_parser::SummaryParser {
+            output_path: output_path.clone(),
+        }),
+        ValgrindTool::DHAT => Box::new(DhatLogfileParser {
+            output_path: output_path.to_log_output(),
+            root_dir,
+        }),
+        ValgrindTool::Memcheck | ValgrindTool::DRD | ValgrindTool::Helgrind => {
+            Box::new(ErrorMetricLogfileParser {
+                output_path: output_path.to_log_output(),
+                root_dir,
+            })
+        }
+        _ => Box::new(GenericLogfileParser {
+            output_path: output_path.to_log_output(),
+            root_dir,
+        }),
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -1496,5 +2034,141 @@ mod tests {
     #[case::log_with_pid(".log.#1234")]
     fn test_bbv_filename_regex(#[case] haystack: &str) {
         assert!(BBV_ORIG_FILENAME_RE.is_match(haystack));
+    }
+
+    #[rstest]
+    #[case::out(".out", vec![("type", "out")])]
+    #[case::pid_out(".2049595.out", vec![("pid", "2049595"), ("type", "out")])]
+    #[case::pid_thread_out(".2049595.t1.out", vec![("pid", "2049595"), ("tid", "1"), ("type", "out")])]
+    #[case::pid_thread_part_out(".2049595.t1.p1.out", vec![("pid", "2049595"), ("tid", "1"), ("part", "1"), ("type", "out")])]
+    #[case::out_old(".out.old", vec![("type", "out"), ("base", "old")])]
+    #[case::pid_out_old(".2049595.out.old", vec![("pid", "2049595"), ("type", "out"), ("base", "old")])]
+    #[case::pid_thread_out_old(".2049595.t1.out.old", vec![("pid", "2049595"), ("tid", "1"), ("type", "out"), ("base", "old")])]
+    #[case::pid_thread_part_out_old(".2049595.t1.p1.out.old", vec![("pid", "2049595"), ("tid", "1"), ("part", "1"), ("type", "out"), ("base", "old")])]
+    #[case::out_base(".out.base@name", vec![("type", "out"), ("base", "base@name")])]
+    #[case::pid_out_base(".2049595.out.base@name", vec![("pid", "2049595"), ("type", "out"), ("base", "base@name")])]
+    #[case::pid_thread_out_base(".2049595.t1.out.base@name", vec![("pid", "2049595"), ("tid", "1"), ("type", "out"), ("base", "base@name")])]
+    #[case::pid_thread_part_out_base(".2049595.t1.p1.out.base@name", vec![("pid", "2049595"), ("tid", "1"), ("part", "1"), ("type", "out"), ("base", "base@name")])]
+    #[case::bb_out(".bb.out", vec![("bbv", "bb"), ("type", "out")])]
+    #[case::pc_out(".pc.out", vec![("bbv", "pc"), ("type", "out")])]
+    #[case::pid_bb_out(".123.bb.out", vec![("pid", "123"), ("bbv", "bb"), ("type", "out")])]
+    #[case::pid_thread_bb_out(".123.t1.bb.out", vec![("pid", "123"), ("tid", "1"), ("bbv", "bb"), ("type", "out")])]
+    #[case::log(".log", vec![("type", "log")])]
+    fn test_real_file_name_regex(#[case] haystack: &str, #[case] expected: Vec<(&str, &str)>) {
+        assert!(REAL_FILENAME_RE.is_match(haystack));
+
+        let caps = REAL_FILENAME_RE.captures(haystack).unwrap();
+        for (name, value) in expected {
+            assert_eq!(caps.name(name).unwrap().as_str(), value);
+        }
+    }
+
+    #[rstest]
+    #[case::out(
+        ValgrindTool::Callgrind,
+        "callgrind.bench_thread_in_subprocess.two.out",
+        "callgrind.bench_thread_in_subprocess.two.log"
+    )]
+    #[case::out_old(
+        ValgrindTool::Callgrind,
+        "callgrind.bench_thread_in_subprocess.two.out.old",
+        "callgrind.bench_thread_in_subprocess.two.log.old"
+    )]
+    #[case::pid_out(
+        ValgrindTool::Callgrind,
+        "callgrind.bench_thread_in_subprocess.two.123.out",
+        "callgrind.bench_thread_in_subprocess.two.123.log"
+    )]
+    #[case::pid_tid_out(
+        ValgrindTool::Callgrind,
+        "callgrind.bench_thread_in_subprocess.two.123.t1.out",
+        "callgrind.bench_thread_in_subprocess.two.123.log"
+    )]
+    #[case::pid_tid_part_out(
+        ValgrindTool::Callgrind,
+        "callgrind.bench_thread_in_subprocess.two.123.t1.p2.out",
+        "callgrind.bench_thread_in_subprocess.two.123.log"
+    )]
+    #[case::pid_out_old(
+        ValgrindTool::Callgrind,
+        "callgrind.bench_thread_in_subprocess.two.123.out.old",
+        "callgrind.bench_thread_in_subprocess.two.123.log.old"
+    )]
+    #[case::pid_tid_part_out_old(
+        ValgrindTool::Callgrind,
+        "callgrind.bench_thread_in_subprocess.two.123.t1.p2.out.old",
+        "callgrind.bench_thread_in_subprocess.two.123.log.old"
+    )]
+    #[case::bb_out(
+        ValgrindTool::BBV,
+        "exp-bbv.bench_thread_in_subprocess.two.bb.out",
+        "exp-bbv.bench_thread_in_subprocess.two.log"
+    )]
+    #[case::bb_pid_out(
+        ValgrindTool::BBV,
+        "exp-bbv.bench_thread_in_subprocess.two.123.bb.out",
+        "exp-bbv.bench_thread_in_subprocess.two.123.log"
+    )]
+    #[case::bb_pid_tid_out(
+        ValgrindTool::BBV,
+        "exp-bbv.bench_thread_in_subprocess.two.123.t1.bb.out",
+        "exp-bbv.bench_thread_in_subprocess.two.123.log"
+    )]
+    fn test_tool_output_path_log_path_of(
+        #[case] tool: ValgrindTool,
+        #[case] input: PathBuf,
+        #[case] expected: PathBuf,
+    ) {
+        let output_path = ToolOutputPath::new(
+            ToolOutputPathKind::Out,
+            tool,
+            &BaselineKind::Old,
+            &PathBuf::from("/root"),
+            &ModulePath::new("hello::world"),
+            "bench_thread_in_subprocess.two",
+        );
+        let expected = output_path.dir.join(expected);
+        let actual = output_path
+            .log_path_of(&output_path.dir.join(input))
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_tool_output_path_log_path_of_when_not_in_dir_then_none() {
+        let output_path = ToolOutputPath::new(
+            ToolOutputPathKind::Out,
+            ValgrindTool::Callgrind,
+            &BaselineKind::Old,
+            &PathBuf::from("/root"),
+            &ModulePath::new("hello::world"),
+            "bench_thread_in_subprocess.two",
+        );
+
+        assert!(output_path
+            .log_path_of(&PathBuf::from(
+                "/root/not/here/bench_thread_in_subprocess.two/callgrind.\
+                 bench_thread_in_subprocess.two.out"
+            ))
+            .is_none());
+    }
+
+    #[test]
+    fn test_tool_output_path_log_path_of_when_log_then_same() {
+        let output_path = ToolOutputPath::new(
+            ToolOutputPathKind::Log,
+            ValgrindTool::Callgrind,
+            &BaselineKind::Old,
+            &PathBuf::from("/root"),
+            &ModulePath::new("hello::world"),
+            "bench_thread_in_subprocess.two",
+        );
+        let path = PathBuf::from(
+            "/root/hello/world/bench_thread_in_subprocess.two/callgrind.\
+             bench_thread_in_subprocess.two.log",
+        );
+
+        assert_eq!(output_path.log_path_of(&path), Some(path));
     }
 }

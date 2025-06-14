@@ -9,7 +9,6 @@ use log::debug;
 
 use super::args::CommandLineArgs;
 use super::envs;
-use crate::api::RegressionConfig;
 use crate::util::resolve_binary_path;
 
 #[derive(Debug, Clone)]
@@ -36,7 +35,6 @@ pub struct Metadata {
     pub target_dir: PathBuf,
     pub valgrind: Cmd,
     pub valgrind_wrapper: Option<Cmd>,
-    pub regression_config: Option<RegressionConfig>,
     pub args: CommandLineArgs,
     pub bench_name: String,
 }
@@ -93,6 +91,7 @@ impl Metadata {
 
         debug!("Detected target directory: '{}'", target_dir.display());
 
+        // TODO: CHECK valgrind version is at least 3.22 (??) if cachegrind feature is on
         // Invoke Valgrind, disabling ASLR if possible because ASLR could noise up the results a bit
         let valgrind_path = resolve_binary_path("valgrind")?;
         let valgrind_wrapper = if args.allow_aslr.unwrap_or_default() {
@@ -149,7 +148,6 @@ impl Metadata {
             },
             valgrind_wrapper,
             project_root,
-            regression_config: Into::<Option<RegressionConfig>>::into(&args),
             args,
             bench_name,
         })

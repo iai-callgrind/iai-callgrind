@@ -166,6 +166,8 @@ struct Metadata {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct RunConfig {
     #[serde(default)]
+    cargo_args: Vec<String>,
+    #[serde(default)]
     args: Vec<String>,
     #[serde(default)]
     template_data: HashMap<String, minijinja::Value>,
@@ -245,7 +247,12 @@ impl Benchmark {
         }
     }
 
-    pub fn run_bench(&self, args: &[String], capture: bool) -> BenchmarkOutput {
+    pub fn run_bench(
+        &self,
+        cargo_args: &[String],
+        args: &[String],
+        capture: bool,
+    ) -> BenchmarkOutput {
         let stdio = if capture {
             std::env::set_var("IAI_CALLGRIND_COLOR", "never");
             Stdio::piped
@@ -256,6 +263,7 @@ impl Benchmark {
 
         let mut command = std::process::Command::new(env!("CARGO"));
         command.args(["bench", "--package", PACKAGE, "--bench", &self.bench_name]);
+        command.args(cargo_args);
         if capture {
             command.args(["--color", "never"]);
         }
@@ -275,6 +283,7 @@ impl Benchmark {
     pub fn run_template(
         &self,
         template_path: &Path,
+        cargo_args: &[String],
         args: &[String],
         template_data: &HashMap<String, minijinja::Value>,
         meta: &Metadata,
@@ -294,7 +303,7 @@ impl Benchmark {
         let dest = File::create(meta.get_template()).unwrap();
         template.render_to_write(template_data, dest).unwrap();
 
-        self.run_bench(args, capture)
+        self.run_bench(cargo_args, args, capture)
     }
 
     pub fn run(&self, group: &GroupConfig, meta: &Metadata, schema: &ScopedSchema<'_>) {
@@ -345,6 +354,10 @@ impl Benchmark {
                     std::fs::remove_dir_all(r).unwrap();
                 }
 
+                if !run.cargo_args.is_empty() {
+                    print_info(format!("Cargo arguments: {}", run.cargo_args.join(" ")))
+                }
+
                 if !run.args.is_empty() {
                     print_info(format!("Benchmark arguments: {}", run.args.join(" ")))
                 }
@@ -355,12 +368,18 @@ impl Benchmark {
                     .is_some_and(|e| e.stdout.is_some() || e.stderr.is_some());
 
                 let output = if let Some(template) = &self.config.template {
-                    let output =
-                        self.run_template(template, &run.args, &run.template_data, meta, capture);
+                    let output = self.run_template(
+                        template,
+                        &run.cargo_args,
+                        &run.args,
+                        &run.template_data,
+                        meta,
+                        capture,
+                    );
                     self.reset_template(meta);
                     output
                 } else {
-                    self.run_bench(&run.args, capture)
+                    self.run_bench(&run.cargo_args, &run.args, capture)
                 };
 
                 if tries < max_tries {
@@ -625,12 +644,13 @@ impl BenchmarkOutput {
                         let white1 = caps.name("white1").unwrap().as_str();
                         let percent = caps.name("percent").unwrap().as_str();
                         let num = &percent[1..percent.len() - 2];
-                        if num.parse::<f64>().is_ok() {
+                        let pos = num.find(['+', '-']);
+                        if pos.is_some() && num[pos.unwrap() + 1..].parse::<f64>().is_ok() {
                             write!(
                                 string,
                                 "{white1}({}{}%)",
-                                num.chars().next().unwrap(),
-                                " ".repeat(num.len() - 1)
+                                &num[..pos.unwrap() + 1],
+                                " ".repeat(num.len() - pos.unwrap() - 1)
                             )
                             .unwrap();
                         } else {
@@ -641,12 +661,13 @@ impl BenchmarkOutput {
                         let white2 = caps.name("white2").unwrap().as_str();
                         let factor = caps.name("factor").unwrap().as_str();
                         let num = &factor[1..factor.len() - 2];
-                        if num.parse::<f64>().is_ok() {
+                        let pos = num.find(['+', '-']);
+                        if pos.is_some() && num[pos.unwrap() + 1..].parse::<f64>().is_ok() {
                             write!(
                                 string,
                                 "{white2}[{}{}x]",
-                                num.chars().next().unwrap(),
-                                " ".repeat(num.len() - 1)
+                                &num[..pos.unwrap() + 1],
+                                " ".repeat(num.len() - pos.unwrap() - 1)
                             )
                             .unwrap();
                         } else {

@@ -1,16 +1,22 @@
+use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-use iai_callgrind_runner::runner::tool::logfile_parser::{parse_header, Header};
-use iai_callgrind_runner::runner::tool::ValgrindTool;
+use iai_callgrind_runner::api::ValgrindTool;
+use iai_callgrind_runner::runner::tool::logfile_parser::parse_header;
+use iai_callgrind_runner::runner::tool::parser::Header;
+use iai_callgrind_runner::runner::tool::ToolOutputPathKind;
 use rstest::rstest;
 
 use crate::common::Fixtures;
 
-fn expected_header(command: &str, pid: i32, parent_pid: Option<i32>) -> Header {
+fn expected_header(command: &str, pid: i32, parent_pid: Option<i32>, desc: Vec<String>) -> Header {
     Header {
         command: command.to_owned(),
         pid,
         parent_pid,
+        thread: None,
+        part: None,
+        desc,
     }
 }
 
@@ -22,7 +28,8 @@ fn expected_header(command: &str, pid: i32, parent_pid: Option<i32>) -> Header {
     expected_header(
         "/home/some/workspace/target/release/deps/test_lib_bench_some-4c5214398e2f5bd1",
         1915454,
-        Some(1915177)
+        Some(1915177),
+        vec![],
     )
 )]
 // What comes after the header and if there are errors or not should not influence the resulting
@@ -32,14 +39,11 @@ fn expected_header(command: &str, pid: i32, parent_pid: Option<i32>) -> Header {
     expected_header(
         "/home/some/workspace/target/release/deps/test_lib_bench_some-4c5214398e2f5bd1",
         1915455,
-        Some(1915178)
+        Some(1915178),
+        vec![],
     )
 )]
 fn test_parse_logfile_header(#[case] name: &str, #[case] expected_header: Header) {
-    use std::fs::File;
-
-    use iai_callgrind_runner::runner::tool::ToolOutputPathKind;
-
     let tool_output_path =
         Fixtures::get_tool_output_path("drd", ValgrindTool::DRD, ToolOutputPathKind::Log, name);
     let mut logfile_headers = vec![];

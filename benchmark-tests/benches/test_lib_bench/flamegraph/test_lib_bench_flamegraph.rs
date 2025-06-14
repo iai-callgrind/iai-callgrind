@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
 use iai_callgrind::{
-    library_benchmark, library_benchmark_group, main, FlamegraphConfig, FlamegraphKind,
+    library_benchmark, library_benchmark_group, main, Callgrind, FlamegraphConfig, FlamegraphKind,
     LibraryBenchmarkConfig,
 };
 
@@ -18,54 +18,59 @@ fn setup_worst_case_array(start: i32) -> Vec<i32> {
 #[library_benchmark]
 #[bench::all_kinds(
     args = (setup_worst_case_array(10)),
-    config =
-        LibraryBenchmarkConfig::default()
+    config = LibraryBenchmarkConfig::default()
+        .tool(Callgrind::default()
             .flamegraph(
                FlamegraphConfig::default()
                    .title("Bench-level flamegraph both kinds".to_owned())
                    .kind(FlamegraphKind::All)
             )
+        )
 )]
 #[bench::regular_kind(
     args = (setup_worst_case_array(10)),
-    config =
-        LibraryBenchmarkConfig::default()
+    config = LibraryBenchmarkConfig::default()
+        .tool(Callgrind::default()
             .flamegraph(
                FlamegraphConfig::default()
                    .title("Bench-level flamegraph only regular kind".to_owned())
                    .kind(FlamegraphKind::Regular)
             )
+        )
 )]
 #[bench::differential_kind(
     args = (setup_worst_case_array(1000)),
-    config =
-        LibraryBenchmarkConfig::default()
+    config = LibraryBenchmarkConfig::default()
+        .tool(Callgrind::default()
             .flamegraph(
                FlamegraphConfig::default()
                    .title("Bench-level flamegraph only differential kind".to_owned())
                    .kind(FlamegraphKind::Differential)
             )
+        )
 )]
 #[bench::none_kind(
     args = (setup_worst_case_array(10)),
-    config =
-        LibraryBenchmarkConfig::default()
+    config = LibraryBenchmarkConfig::default()
+        .tool(Callgrind::default()
             .flamegraph(
                FlamegraphConfig::default()
                    .title("No bench-level flamegraph".to_owned())
                    .kind(FlamegraphKind::None)
             )
+        )
 )]
 fn bench_level_flamegraphs(array: Vec<i32>) -> Vec<i32> {
     black_box(benchmark_tests::bubble_sort(array))
 }
 
 #[library_benchmark(
-    config =
-        LibraryBenchmarkConfig::default()
+    config = LibraryBenchmarkConfig::default()
+        .tool(Callgrind::default()
             .flamegraph(
                FlamegraphConfig::default().title("Library benchmark flamegraph".to_owned())
             )
+        )
 )]
 fn without_bench_attribute() -> Vec<i32> {
     black_box(benchmark_tests::bubble_sort(vec![]))
@@ -99,17 +104,20 @@ fn recursive_function(n: u64) -> u64 {
 
 library_benchmark_group!(
     name = recursive;
-    config =
-        LibraryBenchmarkConfig::default()
+    config = LibraryBenchmarkConfig::default()
+        .tool(Callgrind::default()
             .flamegraph(
                 FlamegraphConfig::default().title("Group level flamegraph".to_owned())
-            );
+            )
+        );
     benchmarks = recursive_function
 );
 
 main!(
     config = LibraryBenchmarkConfig::default()
-        .flamegraph(
-            FlamegraphConfig::default().title("Main level flamegraph".to_owned())
+        .tool(Callgrind::default()
+            .flamegraph(
+                FlamegraphConfig::default().title("Main level flamegraph".to_owned())
+            )
         );
     library_benchmark_groups = benches, recursive);

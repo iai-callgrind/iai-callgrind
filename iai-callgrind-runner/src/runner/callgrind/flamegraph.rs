@@ -20,7 +20,7 @@ pub struct BaselineFlamegraphGenerator {
     pub baseline_kind: BaselineKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Config {
     pub kind: FlamegraphKind,

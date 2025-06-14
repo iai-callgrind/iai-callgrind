@@ -2,8 +2,8 @@ use std::hint::black_box;
 
 use benchmark_tests::{bubble_sort, setup_worst_case_array};
 use iai_callgrind::{
-    library_benchmark, library_benchmark_group, main, CallgrindMetrics, EntryPoint, EventKind,
-    LibraryBenchmarkConfig, OutputFormat, Tool, ValgrindTool,
+    library_benchmark, library_benchmark_group, main, Callgrind, CallgrindMetrics, Dhat,
+    EntryPoint, EventKind, LibraryBenchmarkConfig, OutputFormat,
 };
 
 // The --collect-systime=nsec option is not supported on freebsd and apple, so we use
@@ -13,26 +13,26 @@ use iai_callgrind::{
 #[cfg(any(target_vendor = "apple", target_os = "freebsd"))]
 pub fn config_with_all_data_collection_options() -> LibraryBenchmarkConfig {
     LibraryBenchmarkConfig::default()
-        .callgrind_args([
+        .tool(Callgrind::with_args([
             "collect-jumps=yes",
             "collect-systime=yes",
             "collect-bus=yes",
             "cache-sim=yes",
             "branch-sim=yes",
-        ])
+        ]))
         .clone()
 }
 
 #[cfg(not(any(target_vendor = "apple", target_os = "freebsd")))]
 pub fn base_config() -> LibraryBenchmarkConfig {
     LibraryBenchmarkConfig::default()
-        .callgrind_args([
+        .tool(Callgrind::with_args([
             "collect-jumps=yes",
             "collect-systime=nsec",
             "collect-bus=yes",
             "cache-sim=yes",
             "branch-sim=yes",
-        ])
+        ]))
         .clone()
 }
 
@@ -62,11 +62,15 @@ fn bench_without_format(_: &str) -> Vec<u64> {
 }
 
 #[library_benchmark]
-#[bench::implicit_default_with_wb(config = base_config().callgrind_args(["simulate-wb=yes"]))]
-#[bench::implicit_default_with_cacheuse(config = base_config().callgrind_args(["cacheuse=yes"]))]
+#[bench::implicit_default_with_wb(config = base_config()
+    .tool(Callgrind::with_args(["simulate-wb=yes"]))
+)]
+#[bench::implicit_default_with_cacheuse(config = base_config()
+    .tool(Callgrind::with_args(["cacheuse=yes"]))
+)]
 #[bench::explicit_default_with_wb(config =
     base_config()
-        .callgrind_args(["simulate-wb=yes"])
+        .tool(Callgrind::with_args(["simulate-wb=yes"]))
         .output_format(
             OutputFormat::default()
                 .callgrind([CallgrindMetrics::Default])
@@ -74,7 +78,7 @@ fn bench_without_format(_: &str) -> Vec<u64> {
 )]
 #[bench::explicit_default_with_cacheuse(config =
     base_config()
-        .callgrind_args(["cacheuse=yes"])
+        .tool(Callgrind::with_args(["cacheuse=yes"]))
         .output_format(
             OutputFormat::default()
                 .callgrind([CallgrindMetrics::Default])
@@ -82,7 +86,7 @@ fn bench_without_format(_: &str) -> Vec<u64> {
 )]
 #[bench::all_with_wb(config =
     base_config()
-        .callgrind_args(["simulate-wb=yes"])
+        .tool(Callgrind::with_args(["simulate-wb=yes"]))
         .output_format(
             OutputFormat::default()
                 .callgrind([CallgrindMetrics::All])
@@ -90,7 +94,7 @@ fn bench_without_format(_: &str) -> Vec<u64> {
 )]
 #[bench::all_with_cachuse(config =
     base_config()
-        .callgrind_args(["cacheuse=yes"])
+        .tool(Callgrind::with_args(["cacheuse=yes"]))
         .output_format(
             OutputFormat::default()
                 .callgrind([CallgrindMetrics::All])
@@ -119,7 +123,7 @@ fn bench_without_format(_: &str) -> Vec<u64> {
 )]
 #[bench::cache_use(config =
     base_config()
-        .callgrind_args(["cacheuse=yes"])
+        .tool(Callgrind::with_args(["cacheuse=yes"]))
         .output_format(
             OutputFormat::default()
                 .callgrind([CallgrindMetrics::CacheUse])
@@ -141,7 +145,7 @@ fn bench_without_format(_: &str) -> Vec<u64> {
 )]
 #[bench::write_back(config =
     base_config()
-        .callgrind_args(["simulate-wb=yes"])
+        .tool(Callgrind::with_args(["simulate-wb=yes"]))
         .output_format(
             OutputFormat::default()
                 .callgrind([
@@ -189,12 +193,13 @@ fn bench_with_custom_callgrind_format() -> Vec<i32> {
 library_benchmark_group!(
     name = my_group;
     config = LibraryBenchmarkConfig::default()
-        .entry_point(EntryPoint::None)
-        .callgrind_args([
+        .tool(Callgrind::with_args([
             "--toggle-collect=benchmark_tests::find_primes_multi_thread",
             "--toggle-collect=benchmark_tests::find_primes"
-        ])
-        .tool(Tool::new(ValgrindTool::DHAT));
+            ])
+            .entry_point(EntryPoint::None)
+        )
+        .tool(Dhat::default());
     compare_by_id = true;
     benchmarks = bench_without_format, bench_with_format
 );
