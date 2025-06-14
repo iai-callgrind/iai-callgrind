@@ -5,7 +5,7 @@ use anyhow::Result;
 use log::debug;
 
 use super::ToolOutputPath;
-use crate::runner::summary::{SegmentDetails, ToolMetrics};
+use crate::runner::summary::ToolMetrics;
 
 pub trait Parser {
     fn parse_single(&self, path: PathBuf) -> Result<ParserOutput>;
@@ -73,20 +73,5 @@ impl ParserOutput {
                 .cmp(&other.header.thread)
                 .then_with(|| self.header.part.cmp(&other.header.part))
         })
-    }
-}
-
-// TODO: MOVE to SegmentDetails
-impl From<ParserOutput> for SegmentDetails {
-    fn from(value: ParserOutput) -> Self {
-        Self {
-            command: value.header.command,
-            pid: value.header.pid,
-            parent_pid: value.header.parent_pid,
-            details: (!value.details.is_empty()).then(|| value.details.join("\n")),
-            path: value.path,
-            part: value.header.part,
-            thread: value.header.thread,
-        }
     }
 }

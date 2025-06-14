@@ -79,7 +79,11 @@ pub struct BinaryBenchmarkGroups {
     pub default_tool: ValgrindTool,
 }
 
-/// TODO: DOCS
+/// All metrics which cachegrind produces and additionally some derived events
+///
+/// Depending on the options passed to Cachegrind, these are the events that Cachegrind can produce.
+/// See the [Cachegrind
+/// documentation](https://valgrind.org/docs/manual/cg-manual.html#cg-manual.cgopts) for details.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 #[cfg_attr(feature = "runner", derive(EnumIter))]
@@ -120,133 +124,6 @@ pub enum CachegrindMetric {
     Bi,
     /// Indirect branches mispredicted (--branch-sim=yes)
     Bim,
-}
-
-/// TODO: SORT into impl section
-/// TODO: DOCS from callgrind to cachegrind
-impl CachegrindMetric {
-    /// Return true if this `EventKind` is a derived event
-    ///
-    /// Derived events are calculated from Callgrind's native event types. See also
-    /// [`crate::runner::callgrind::model::Metrics::make_summary`]. Currently all derived events
-    /// are:
-    ///
-    /// * [`CachegrindMetric::L1hits`]
-    /// * [`CachegrindMetric::LLhits`]
-    /// * [`CachegrindMetric::RamHits`]
-    /// * [`CachegrindMetric::TotalRW`]
-    /// * [`CachegrindMetric::EstimatedCycles`]
-    pub fn is_derived(&self) -> bool {
-        matches!(
-            self,
-            CachegrindMetric::L1hits
-                | CachegrindMetric::LLhits
-                | CachegrindMetric::RamHits
-                | CachegrindMetric::TotalRW
-                | CachegrindMetric::EstimatedCycles
-        )
-    }
-
-    pub fn from_str_ignore_case(value: &str) -> Option<Self> {
-        match value.to_lowercase().as_str() {
-            "ir" => Some(Self::Ir),
-            "dr" => Some(Self::Dr),
-            "dw" => Some(Self::Dw),
-            "i1mr" => Some(Self::I1mr),
-            "ilmr" => Some(Self::ILmr),
-            "d1mr" => Some(Self::D1mr),
-            "dlmr" => Some(Self::DLmr),
-            "d1mw" => Some(Self::D1mw),
-            "dlmw" => Some(Self::DLmw),
-            "bc" => Some(Self::Bc),
-            "bcm" => Some(Self::Bcm),
-            "bi" => Some(Self::Bi),
-            "bim" => Some(Self::Bim),
-            "l1hits" => Some(Self::L1hits),
-            "llhits" => Some(Self::LLhits),
-            "ramhits" => Some(Self::RamHits),
-            "totalrw" => Some(Self::TotalRW),
-            "estimatedcycles" => Some(Self::EstimatedCycles),
-            _ => None,
-        }
-    }
-
-    pub fn to_name(&self) -> String {
-        format!("{:?}", *self)
-    }
-}
-
-// TODO: SORT
-impl Display for CachegrindMetric {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Ir => f.write_str("Instructions"),
-            Self::L1hits => f.write_str("L1 Hits"),
-            Self::LLhits => f.write_str("L2 Hits"),
-            Self::RamHits => f.write_str("RAM Hits"),
-            Self::TotalRW => f.write_str("Total read+write"),
-            Self::EstimatedCycles => f.write_str("Estimated Cycles"),
-            _ => f.write_fmt(format_args!("{self:?}")),
-        }
-    }
-}
-
-/// TODO: SORT
-/// TODO: Use `TryFrom` instead of panic??
-impl<T> From<T> for CachegrindMetric
-where
-    T: AsRef<str>,
-{
-    fn from(value: T) -> Self {
-        match value.as_ref() {
-            "Ir" => Self::Ir,
-            "Dr" => Self::Dr,
-            "Dw" => Self::Dw,
-            "I1mr" => Self::I1mr,
-            "ILmr" => Self::ILmr,
-            "D1mr" => Self::D1mr,
-            "DLmr" => Self::DLmr,
-            "D1mw" => Self::D1mw,
-            "DLmw" => Self::DLmw,
-            "Bc" => Self::Bc,
-            "Bcm" => Self::Bcm,
-            "Bi" => Self::Bi,
-            "Bim" => Self::Bim,
-            "L1hits" => Self::L1hits,
-            "LLhits" => Self::LLhits,
-            "RamHits" => Self::RamHits,
-            "TotalRW" => Self::TotalRW,
-            "EstimatedCycles" => Self::EstimatedCycles,
-            unknown => panic!("Unknown event type: {unknown}"),
-        }
-    }
-}
-
-/// TODO: SORT
-/// TODO: NEEDED ?
-impl From<CachegrindMetric> for EventKind {
-    fn from(value: CachegrindMetric) -> Self {
-        match value {
-            CachegrindMetric::Ir => Self::Ir,
-            CachegrindMetric::Dr => Self::Dr,
-            CachegrindMetric::Dw => Self::Dw,
-            CachegrindMetric::I1mr => Self::I1mr,
-            CachegrindMetric::D1mr => Self::D1mr,
-            CachegrindMetric::D1mw => Self::D1mw,
-            CachegrindMetric::ILmr => Self::ILmr,
-            CachegrindMetric::DLmr => Self::DLmr,
-            CachegrindMetric::DLmw => Self::DLmw,
-            CachegrindMetric::L1hits => Self::L1hits,
-            CachegrindMetric::LLhits => Self::LLhits,
-            CachegrindMetric::RamHits => Self::RamHits,
-            CachegrindMetric::TotalRW => Self::TotalRW,
-            CachegrindMetric::EstimatedCycles => Self::EstimatedCycles,
-            CachegrindMetric::Bc => Self::Bc,
-            CachegrindMetric::Bcm => Self::Bcm,
-            CachegrindMetric::Bi => Self::Bi,
-            CachegrindMetric::Bim => Self::Bim,
-        }
-    }
 }
 
 /// A collection of groups of [`EventKind`]s
@@ -493,11 +370,10 @@ pub enum Direction {
     BottomToTop,
 }
 
-/// TODO: Rename to `DhatMetric`
-/// The metric kinds collected by DHAT
+/// The metrics collected by DHAT
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub enum DhatMetricKind {
+pub enum DhatMetric {
     /// Total bytes allocated over the entire execution
     TotalBytes,
     /// Total heap blocks allocated over the entire execution
@@ -540,7 +416,6 @@ pub enum EntryPoint {
     Custom(String),
 }
 
-/// TODO: Rename to `ErrorMetric`
 /// The error metrics from a tool which reports errors
 ///
 /// The tools which report only errors are `helgrind`, `drd` and `memcheck`. The order in which the
@@ -548,7 +423,7 @@ pub enum EntryPoint {
 /// output.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub enum ErrorMetricKind {
+pub enum ErrorMetric {
     /// The amount of detected unsuppressed errors
     Errors,
     /// The amount of detected unsuppressed error contexts
@@ -559,7 +434,7 @@ pub enum ErrorMetricKind {
     SuppressedContexts,
 }
 
-/// TODO: Rename to `CallgrindMetric` ??
+// TODO: Rename to `CallgrindMetric`
 /// All `EventKind`s callgrind produces and additionally some derived events
 ///
 /// Depending on the options passed to Callgrind, these are the events that Callgrind can produce.
@@ -802,28 +677,6 @@ pub enum Stdin {
     Pipe,
 }
 
-// TODO: CONTINUE and sort
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum ToolRegressionConfig {
-    Callgrind(RegressionConfig),
-    None,
-}
-
-// TODO: CONTINUE and sort
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum ToolFlamegraphConfig {
-    Callgrind(FlamegraphConfig),
-    None,
-}
-
-// TODO: CONTINUE and sort
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum ToolOutputFormat {
-    Callgrind(Option<Vec<CallgrindMetrics>>),
-    None,
-}
-
-// TODO: CONTINUE and sort
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Tool {
     pub kind: ValgrindTool,
@@ -836,45 +689,22 @@ pub struct Tool {
     pub entry_point: Option<EntryPoint>,
 }
 
-impl Tool {
-    pub fn new(kind: ValgrindTool) -> Self {
-        Self {
-            kind,
-            enable: None,
-            raw_args: RawArgs::default(),
-            show_log: None,
-            regression_config: None,
-            flamegraph_config: None,
-            output_format: None,
-            entry_point: None,
-        }
-    }
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ToolRegressionConfig {
+    Callgrind(RegressionConfig),
+    None,
+}
 
-    pub fn with_args<I, T>(kind: ValgrindTool, args: T) -> Self
-    where
-        I: AsRef<str>,
-        T: IntoIterator<Item = I>,
-    {
-        let mut this = Self::new(kind);
-        this.raw_args = RawArgs::from_iter(args);
-        this
-    }
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ToolFlamegraphConfig {
+    Callgrind(FlamegraphConfig),
+    None,
+}
 
-    /// TODO: TEST
-    pub fn update(&mut self, other: &Self) {
-        if self.kind == other.kind {
-            self.enable = update_option(&self.enable, &other.enable);
-            self.show_log = update_option(&self.show_log, &other.show_log);
-            self.regression_config =
-                update_option(&self.regression_config, &other.regression_config);
-            self.flamegraph_config =
-                update_option(&self.flamegraph_config, &other.flamegraph_config);
-            self.output_format = update_option(&self.output_format, &other.output_format);
-            self.entry_point = update_option(&self.entry_point, &other.entry_point);
-
-            self.raw_args.extend_ignore_flag(other.raw_args.0.iter());
-        }
-    }
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ToolOutputFormat {
+    Callgrind(Option<Vec<CallgrindMetrics>>),
+    None,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -910,7 +740,6 @@ impl BinaryBenchmarkConfig {
     where
         T: IntoIterator<Item = Option<&'a Self>>,
     {
-        // TODO: CLEANUP and double check
         for other in others.into_iter().flatten() {
             self.default_tool = update_option(&self.default_tool, &other.default_tool);
             self.env_clear = update_option(&self.env_clear, &other.env_clear);
@@ -955,6 +784,126 @@ impl BinaryBenchmarkConfig {
     }
 }
 
+impl CachegrindMetric {
+    /// Return true if this `EventKind` is a derived event
+    ///
+    /// Derived events are calculated from Cachegrind's native event types the same ways as for
+    /// callgrind's [`EventKind`]
+    ///
+    /// * [`CachegrindMetric::L1hits`]
+    /// * [`CachegrindMetric::LLhits`]
+    /// * [`CachegrindMetric::RamHits`]
+    /// * [`CachegrindMetric::TotalRW`]
+    /// * [`CachegrindMetric::EstimatedCycles`]
+    pub fn is_derived(&self) -> bool {
+        matches!(
+            self,
+            CachegrindMetric::L1hits
+                | CachegrindMetric::LLhits
+                | CachegrindMetric::RamHits
+                | CachegrindMetric::TotalRW
+                | CachegrindMetric::EstimatedCycles
+        )
+    }
+
+    pub fn from_str_ignore_case(value: &str) -> Option<Self> {
+        match value.to_lowercase().as_str() {
+            "ir" => Some(Self::Ir),
+            "dr" => Some(Self::Dr),
+            "dw" => Some(Self::Dw),
+            "i1mr" => Some(Self::I1mr),
+            "ilmr" => Some(Self::ILmr),
+            "d1mr" => Some(Self::D1mr),
+            "dlmr" => Some(Self::DLmr),
+            "d1mw" => Some(Self::D1mw),
+            "dlmw" => Some(Self::DLmw),
+            "bc" => Some(Self::Bc),
+            "bcm" => Some(Self::Bcm),
+            "bi" => Some(Self::Bi),
+            "bim" => Some(Self::Bim),
+            "l1hits" => Some(Self::L1hits),
+            "llhits" => Some(Self::LLhits),
+            "ramhits" => Some(Self::RamHits),
+            "totalrw" => Some(Self::TotalRW),
+            "estimatedcycles" => Some(Self::EstimatedCycles),
+            _ => None,
+        }
+    }
+
+    pub fn to_name(&self) -> String {
+        format!("{:?}", *self)
+    }
+}
+
+impl Display for CachegrindMetric {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ir => f.write_str("Instructions"),
+            Self::L1hits => f.write_str("L1 Hits"),
+            Self::LLhits => f.write_str("L2 Hits"),
+            Self::RamHits => f.write_str("RAM Hits"),
+            Self::TotalRW => f.write_str("Total read+write"),
+            Self::EstimatedCycles => f.write_str("Estimated Cycles"),
+            _ => f.write_fmt(format_args!("{self:?}")),
+        }
+    }
+}
+
+// TODO: Use `TryFrom` instead of panic??
+impl<T> From<T> for CachegrindMetric
+where
+    T: AsRef<str>,
+{
+    fn from(value: T) -> Self {
+        match value.as_ref() {
+            "Ir" => Self::Ir,
+            "Dr" => Self::Dr,
+            "Dw" => Self::Dw,
+            "I1mr" => Self::I1mr,
+            "ILmr" => Self::ILmr,
+            "D1mr" => Self::D1mr,
+            "DLmr" => Self::DLmr,
+            "D1mw" => Self::D1mw,
+            "DLmw" => Self::DLmw,
+            "Bc" => Self::Bc,
+            "Bcm" => Self::Bcm,
+            "Bi" => Self::Bi,
+            "Bim" => Self::Bim,
+            "L1hits" => Self::L1hits,
+            "LLhits" => Self::LLhits,
+            "RamHits" => Self::RamHits,
+            "TotalRW" => Self::TotalRW,
+            "EstimatedCycles" => Self::EstimatedCycles,
+            unknown => panic!("Unknown event type: {unknown}"),
+        }
+    }
+}
+
+impl From<CachegrindMetric> for EventKind {
+    fn from(value: CachegrindMetric) -> Self {
+        match value {
+            CachegrindMetric::Ir => Self::Ir,
+            CachegrindMetric::Dr => Self::Dr,
+            CachegrindMetric::Dw => Self::Dw,
+            CachegrindMetric::I1mr => Self::I1mr,
+            CachegrindMetric::D1mr => Self::D1mr,
+            CachegrindMetric::D1mw => Self::D1mw,
+            CachegrindMetric::ILmr => Self::ILmr,
+            CachegrindMetric::DLmr => Self::DLmr,
+            CachegrindMetric::DLmw => Self::DLmw,
+            CachegrindMetric::L1hits => Self::L1hits,
+            CachegrindMetric::LLhits => Self::LLhits,
+            CachegrindMetric::RamHits => Self::RamHits,
+            CachegrindMetric::TotalRW => Self::TotalRW,
+            CachegrindMetric::EstimatedCycles => Self::EstimatedCycles,
+            CachegrindMetric::Bc => Self::Bc,
+            CachegrindMetric::Bcm => Self::Bcm,
+            CachegrindMetric::Bi => Self::Bi,
+            CachegrindMetric::Bim => Self::Bim,
+        }
+    }
+}
+
 impl Default for DelayKind {
     fn default() -> Self {
         Self::DurationElapse(Duration::from_secs(60))
@@ -967,26 +916,26 @@ impl Default for Direction {
     }
 }
 
-impl Display for DhatMetricKind {
+impl Display for DhatMetric {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DhatMetricKind::TotalBytes => f.write_str("Total bytes"),
-            DhatMetricKind::TotalBlocks => f.write_str("Total blocks"),
-            DhatMetricKind::AtTGmaxBytes => f.write_str("At t-gmax bytes"),
-            DhatMetricKind::AtTGmaxBlocks => f.write_str("At t-gmax blocks"),
-            DhatMetricKind::AtTEndBytes => f.write_str("At t-end bytes"),
-            DhatMetricKind::AtTEndBlocks => f.write_str("At t-end blocks"),
-            DhatMetricKind::ReadsBytes => f.write_str("Reads bytes"),
-            DhatMetricKind::WritesBytes => f.write_str("Writes bytes"),
-            DhatMetricKind::TotalLifetimes => f.write_str("Total lifetimes"),
-            DhatMetricKind::MaximumBytes => f.write_str("Maximum bytes"),
-            DhatMetricKind::MaximumBlocks => f.write_str("Maximum blocks"),
+            DhatMetric::TotalBytes => f.write_str("Total bytes"),
+            DhatMetric::TotalBlocks => f.write_str("Total blocks"),
+            DhatMetric::AtTGmaxBytes => f.write_str("At t-gmax bytes"),
+            DhatMetric::AtTGmaxBlocks => f.write_str("At t-gmax blocks"),
+            DhatMetric::AtTEndBytes => f.write_str("At t-end bytes"),
+            DhatMetric::AtTEndBlocks => f.write_str("At t-end blocks"),
+            DhatMetric::ReadsBytes => f.write_str("Reads bytes"),
+            DhatMetric::WritesBytes => f.write_str("Writes bytes"),
+            DhatMetric::TotalLifetimes => f.write_str("Total lifetimes"),
+            DhatMetric::MaximumBytes => f.write_str("Maximum bytes"),
+            DhatMetric::MaximumBlocks => f.write_str("Maximum blocks"),
         }
     }
 }
 
 #[cfg(feature = "runner")]
-impl Summarize for DhatMetricKind {}
+impl Summarize for DhatMetric {}
 
 impl<T> From<T> for EntryPoint
 where
@@ -998,15 +947,15 @@ where
 }
 
 #[cfg(feature = "runner")]
-impl Summarize for ErrorMetricKind {}
+impl Summarize for ErrorMetric {}
 
-impl Display for ErrorMetricKind {
+impl Display for ErrorMetric {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ErrorMetricKind::Errors => f.write_str("Errors"),
-            ErrorMetricKind::Contexts => f.write_str("Contexts"),
-            ErrorMetricKind::SuppressedErrors => f.write_str("Suppressed Errors"),
-            ErrorMetricKind::SuppressedContexts => f.write_str("Suppressed Contexts"),
+            ErrorMetric::Errors => f.write_str("Errors"),
+            ErrorMetric::Contexts => f.write_str("Contexts"),
+            ErrorMetric::SuppressedErrors => f.write_str("Suppressed Errors"),
+            ErrorMetric::SuppressedContexts => f.write_str("Suppressed Contexts"),
         }
     }
 }
@@ -1130,7 +1079,6 @@ where
 }
 
 impl LibraryBenchmarkConfig {
-    // TODO: Double Check. Also in BinaryBenchmarkConfig
     pub fn update_from_all<'a, T>(mut self, others: T) -> Self
     where
         T: IntoIterator<Item = Option<&'a Self>>,
@@ -1442,6 +1390,47 @@ impl From<&Path> for Stdio {
     }
 }
 
+impl Tool {
+    pub fn new(kind: ValgrindTool) -> Self {
+        Self {
+            kind,
+            enable: None,
+            raw_args: RawArgs::default(),
+            show_log: None,
+            regression_config: None,
+            flamegraph_config: None,
+            output_format: None,
+            entry_point: None,
+        }
+    }
+
+    pub fn with_args<I, T>(kind: ValgrindTool, args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        let mut this = Self::new(kind);
+        this.raw_args = RawArgs::from_iter(args);
+        this
+    }
+
+    /// TODO: TEST
+    pub fn update(&mut self, other: &Self) {
+        if self.kind == other.kind {
+            self.enable = update_option(&self.enable, &other.enable);
+            self.show_log = update_option(&self.show_log, &other.show_log);
+            self.regression_config =
+                update_option(&self.regression_config, &other.regression_config);
+            self.flamegraph_config =
+                update_option(&self.flamegraph_config, &other.flamegraph_config);
+            self.output_format = update_option(&self.output_format, &other.output_format);
+            self.entry_point = update_option(&self.entry_point, &other.entry_point);
+
+            self.raw_args.extend_ignore_flag(other.raw_args.0.iter());
+        }
+    }
+}
+
 #[cfg(feature = "runner")]
 impl Display for Stream {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1455,7 +1444,6 @@ impl Tools {
         self.0.is_empty()
     }
 
-    /// TODO: UPDATE DOCS
     /// Update `Tools`
     pub fn update(&mut self, other: Tool) {
         if let Some(tool) = self.0.iter_mut().find(|t| t.kind == other.kind) {
@@ -1563,17 +1551,13 @@ mod tests {
         );
     }
 
-    // TODO: UPDATE and cleanup TESTS
     #[test]
     fn test_library_benchmark_config_update_from_all_when_no_tools_override() {
         let base = LibraryBenchmarkConfig::default();
         let other = LibraryBenchmarkConfig {
             env_clear: Some(true),
-            // callgrind_args: RawArgs(vec!["--just-testing=yes".to_owned()]),
             valgrind_args: RawArgs(vec!["--valgrind-arg=yes".to_owned()]),
             envs: vec![(OsString::from("MY_ENV"), Some(OsString::from("value")))],
-            // flamegraph_config: Some(FlamegraphConfig::default()),
-            // regression_config: Some(RegressionConfig::default()),
             tools: Tools(vec![Tool {
                 kind: ValgrindTool::DHAT,
                 enable: None,
@@ -1589,7 +1573,6 @@ mod tests {
                 output_format: Some(ToolOutputFormat::None),
             }]),
             tools_override: None,
-            // entry_point: None,
             output_format: None,
             default_tool: Some(ValgrindTool::BBV),
         };
@@ -1597,17 +1580,13 @@ mod tests {
         assert_eq!(base.update_from_all([Some(&other.clone())]), other);
     }
 
-    // TODO: UPDATE TESTS
     #[test]
     fn test_library_benchmark_config_update_from_all_when_tools_override() {
         let base = LibraryBenchmarkConfig::default();
         let other = LibraryBenchmarkConfig {
             env_clear: Some(true),
-            // callgrind_args: RawArgs(vec!["--just-testing=yes".to_owned()]),
             valgrind_args: RawArgs(vec!["--valgrind-arg=yes".to_owned()]),
             envs: vec![(OsString::from("MY_ENV"), Some(OsString::from("value")))],
-            // flamegraph_config: Some(FlamegraphConfig::default()),
-            // regression_config: Some(RegressionConfig::default()),
             tools: Tools(vec![Tool {
                 kind: ValgrindTool::DHAT,
                 enable: None,
@@ -1623,7 +1602,6 @@ mod tests {
                 output_format: Some(ToolOutputFormat::None),
             }]),
             tools_override: Some(Tools(vec![])),
-            // entry_point: Some(EntryPoint::default()),
             output_format: Some(OutputFormat::default()),
             default_tool: Some(ValgrindTool::BBV),
         };

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use iai_callgrind_runner::api::{ErrorMetricKind, ValgrindTool};
+use iai_callgrind_runner::api::{ErrorMetric, ValgrindTool};
 use iai_callgrind_runner::runner::metrics::Metrics;
 use iai_callgrind_runner::runner::summary::ToolMetrics;
 use iai_callgrind_runner::runner::tool::error_metric_parser::ErrorMetricLogfileParser;
@@ -19,12 +19,12 @@ use crate::common::Fixtures;
 #[case::with_multiple_error_lines("with_two_error_lines", [12, 34, 56, 78])]
 fn test_drd_error_metric_parser(#[case] fixture: &str, #[case] expected: [u64; 4]) {
     let metrics = Metrics::with_metric_kinds([
-        (ErrorMetricKind::Errors, expected[0]),
-        (ErrorMetricKind::Contexts, expected[1]),
-        (ErrorMetricKind::SuppressedErrors, expected[2]),
-        (ErrorMetricKind::SuppressedContexts, expected[3]),
+        (ErrorMetric::Errors, expected[0]),
+        (ErrorMetric::Contexts, expected[1]),
+        (ErrorMetric::SuppressedErrors, expected[2]),
+        (ErrorMetric::SuppressedContexts, expected[3]),
     ]);
-    let expected_metrics = ToolMetrics::ErrorMetrics(metrics);
+    let expected_metrics = ToolMetrics::ErrorTool(metrics);
 
     let drd_output_path =
         Fixtures::get_tool_output_path("drd", ValgrindTool::DRD, ToolOutputPathKind::Log, fixture);
@@ -42,19 +42,19 @@ fn test_drd_error_metric_parser(#[case] fixture: &str, #[case] expected: [u64; 4
 #[test]
 fn test_drd_error_metric_parser_when_multiple_pids() {
     let first_metrics = Metrics::with_metric_kinds([
-        (ErrorMetricKind::Errors, 0),
-        (ErrorMetricKind::Contexts, 0),
-        (ErrorMetricKind::SuppressedErrors, 0),
-        (ErrorMetricKind::SuppressedContexts, 0),
+        (ErrorMetric::Errors, 0),
+        (ErrorMetric::Contexts, 0),
+        (ErrorMetric::SuppressedErrors, 0),
+        (ErrorMetric::SuppressedContexts, 0),
     ]);
-    let expected_first_metrics = ToolMetrics::ErrorMetrics(first_metrics);
+    let expected_first_metrics = ToolMetrics::ErrorTool(first_metrics);
     let second_metrics = Metrics::with_metric_kinds([
-        (ErrorMetricKind::Errors, 1),
-        (ErrorMetricKind::Contexts, 23),
-        (ErrorMetricKind::SuppressedErrors, 345),
-        (ErrorMetricKind::SuppressedContexts, 4567),
+        (ErrorMetric::Errors, 1),
+        (ErrorMetric::Contexts, 23),
+        (ErrorMetric::SuppressedErrors, 345),
+        (ErrorMetric::SuppressedContexts, 4567),
     ]);
-    let expected_second_metrics = ToolMetrics::ErrorMetrics(second_metrics);
+    let expected_second_metrics = ToolMetrics::ErrorTool(second_metrics);
 
     let drd_output_path = Fixtures::get_tool_output_path(
         "drd",
@@ -83,12 +83,12 @@ fn test_drd_error_metric_parser_when_multiple_pids() {
 #[case::with_multiple_error_lines("with_multiple_error_lines", [44, 555, 6666, 77777])]
 fn test_memcheck_error_metric_parser(#[case] fixture: &str, #[case] expected: [u64; 4]) {
     let metrics = Metrics::with_metric_kinds([
-        (ErrorMetricKind::Errors, expected[0]),
-        (ErrorMetricKind::Contexts, expected[1]),
-        (ErrorMetricKind::SuppressedErrors, expected[2]),
-        (ErrorMetricKind::SuppressedContexts, expected[3]),
+        (ErrorMetric::Errors, expected[0]),
+        (ErrorMetric::Contexts, expected[1]),
+        (ErrorMetric::SuppressedErrors, expected[2]),
+        (ErrorMetric::SuppressedContexts, expected[3]),
     ]);
-    let expected_metrics = ToolMetrics::ErrorMetrics(metrics);
+    let expected_metrics = ToolMetrics::ErrorTool(metrics);
 
     let memcheck_output_path = Fixtures::get_tool_output_path(
         "memcheck",
@@ -110,19 +110,19 @@ fn test_memcheck_error_metric_parser(#[case] fixture: &str, #[case] expected: [u
 #[test]
 fn test_memcheck_error_metric_parser_when_multiple_pids() {
     let first_metrics = Metrics::with_metric_kinds([
-        (ErrorMetricKind::Errors, 0),
-        (ErrorMetricKind::Contexts, 0),
-        (ErrorMetricKind::SuppressedErrors, 0),
-        (ErrorMetricKind::SuppressedContexts, 0),
+        (ErrorMetric::Errors, 0),
+        (ErrorMetric::Contexts, 0),
+        (ErrorMetric::SuppressedErrors, 0),
+        (ErrorMetric::SuppressedContexts, 0),
     ]);
-    let expected_first_metrics = ToolMetrics::ErrorMetrics(first_metrics);
+    let expected_first_metrics = ToolMetrics::ErrorTool(first_metrics);
     let second_metrics = Metrics::with_metric_kinds([
-        (ErrorMetricKind::Errors, 11),
-        (ErrorMetricKind::Contexts, 222),
-        (ErrorMetricKind::SuppressedErrors, 3333),
-        (ErrorMetricKind::SuppressedContexts, 44444),
+        (ErrorMetric::Errors, 11),
+        (ErrorMetric::Contexts, 222),
+        (ErrorMetric::SuppressedErrors, 3333),
+        (ErrorMetric::SuppressedContexts, 44444),
     ]);
-    let expected_second_metrics = ToolMetrics::ErrorMetrics(second_metrics);
+    let expected_second_metrics = ToolMetrics::ErrorTool(second_metrics);
 
     let memcheck_output_path = Fixtures::get_tool_output_path(
         "memcheck",

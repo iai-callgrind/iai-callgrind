@@ -7,7 +7,7 @@ use lazy_static::lazy_static;
 use log::debug;
 use regex::Regex;
 
-use crate::api::DhatMetricKind;
+use crate::api::DhatMetric;
 use crate::runner::metrics::Metrics;
 use crate::runner::summary::ToolMetrics;
 use crate::runner::tool::logfile_parser::{
@@ -45,7 +45,7 @@ impl DhatLogfileParser {
     fn parse_line(
         line: &str,
         state: &mut State,
-        metrics: &mut Metrics<DhatMetricKind>,
+        metrics: &mut Metrics<DhatMetric>,
         details: &mut Vec<String>,
     ) -> Result<bool> {
         match &state {
@@ -100,32 +100,32 @@ impl DhatLogfileParser {
 
                         match key {
                             "Total" => {
-                                metrics.insert(DhatMetricKind::TotalBytes, num_bytes);
+                                metrics.insert(DhatMetric::TotalBytes, num_bytes);
                                 metrics.insert(
-                                    DhatMetricKind::TotalBlocks,
+                                    DhatMetric::TotalBlocks,
                                     num_blocks.ok_or_else(|| anyhow!("Error parsing blocks"))?,
                                 );
                             }
                             "At t-gmax" => {
-                                metrics.insert(DhatMetricKind::AtTGmaxBytes, num_bytes);
+                                metrics.insert(DhatMetric::AtTGmaxBytes, num_bytes);
                                 metrics.insert(
-                                    DhatMetricKind::AtTGmaxBlocks,
+                                    DhatMetric::AtTGmaxBlocks,
                                     num_blocks.ok_or_else(|| anyhow!("Error parsing blocks"))?,
                                 );
                             }
                             "At t-end" => {
-                                metrics.insert(DhatMetricKind::AtTEndBytes, num_bytes);
+                                metrics.insert(DhatMetric::AtTEndBytes, num_bytes);
                                 metrics.insert(
-                                    DhatMetricKind::AtTEndBlocks,
+                                    DhatMetric::AtTEndBlocks,
                                     num_blocks.ok_or_else(|| anyhow!("Error parsing blocks"))?,
                                 );
                             }
                             "Reads" => {
-                                let metric_kind = DhatMetricKind::ReadsBytes;
+                                let metric_kind = DhatMetric::ReadsBytes;
                                 metrics.insert(metric_kind, num_bytes);
                             }
                             "Writes" => {
-                                let metric_kind = DhatMetricKind::WritesBytes;
+                                let metric_kind = DhatMetric::WritesBytes;
                                 metrics.insert(metric_kind, num_bytes);
                             }
                             _ => {
@@ -181,7 +181,7 @@ impl Parser for DhatLogfileParser {
             header,
             path,
             details,
-            metrics: ToolMetrics::DhatMetrics(metrics),
+            metrics: ToolMetrics::Dhat(metrics),
         })
     }
 

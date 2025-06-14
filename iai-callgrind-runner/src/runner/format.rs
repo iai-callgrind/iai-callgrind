@@ -11,10 +11,9 @@ use super::bin_bench::BinBench;
 use super::common::{BenchmarkSummaries, Config, ModulePath};
 use super::lib_bench::LibBench;
 use super::meta::Metadata;
-use super::summary::{Diffs, MetricsDiff, SegmentDetails, ToolMetricSummary, ToolRun};
+use super::summary::{Diffs, MetricsDiff, ProfileData, ProfileInfo, ToolMetricSummary};
 use crate::api::{
-    self, CachegrindMetric, CallgrindMetrics, DhatMetricKind, ErrorMetricKind, EventKind,
-    ValgrindTool,
+    self, CachegrindMetric, CallgrindMetrics, DhatMetric, ErrorMetric, EventKind, ValgrindTool,
 };
 use crate::runner::summary::MetricKind;
 use crate::util::{
@@ -24,24 +23,24 @@ use crate::util::{
 
 /// TODO: Remove and Replace with `output_format`
 /// The error metrics to format in the given order
-pub const ERROR_METRICS_DEFAULT: [ErrorMetricKind; 4] = [
-    ErrorMetricKind::Errors,
-    ErrorMetricKind::Contexts,
-    ErrorMetricKind::SuppressedErrors,
-    ErrorMetricKind::SuppressedContexts,
+pub const ERROR_METRICS_DEFAULT: [ErrorMetric; 4] = [
+    ErrorMetric::Errors,
+    ErrorMetric::Contexts,
+    ErrorMetric::SuppressedErrors,
+    ErrorMetric::SuppressedContexts,
 ];
 
 /// TODO: Remove and Replace with `output_format`
 /// The subset of dhat metrics to format in the given order
-pub const DHAT_DEFAULT: [DhatMetricKind; 8] = [
-    DhatMetricKind::TotalBytes,
-    DhatMetricKind::TotalBlocks,
-    DhatMetricKind::AtTGmaxBytes,
-    DhatMetricKind::AtTGmaxBlocks,
-    DhatMetricKind::AtTEndBytes,
-    DhatMetricKind::AtTEndBlocks,
-    DhatMetricKind::ReadsBytes,
-    DhatMetricKind::WritesBytes,
+pub const DHAT_DEFAULT: [DhatMetric; 8] = [
+    DhatMetric::TotalBytes,
+    DhatMetric::TotalBlocks,
+    DhatMetric::AtTGmaxBytes,
+    DhatMetric::AtTGmaxBlocks,
+    DhatMetric::AtTEndBytes,
+    DhatMetric::AtTEndBlocks,
+    DhatMetric::ReadsBytes,
+    DhatMetric::WritesBytes,
 ];
 
 /// TODO: DOCS
@@ -82,7 +81,7 @@ pub trait Formatter {
     fn format_single(
         &mut self,
         baselines: (Option<String>, Option<String>),
-        details: Option<&EitherOrBoth<SegmentDetails>>,
+        info: Option<&EitherOrBoth<ProfileInfo>>,
         metrics_summary: &ToolMetricSummary,
     ) -> Result<()>;
 
@@ -90,20 +89,20 @@ pub trait Formatter {
         &mut self,
         config: &Config,
         baselines: (Option<String>, Option<String>),
-        tool_run: &ToolRun,
+        data: &ProfileData,
     ) -> Result<()>;
 
     fn print(
         &mut self,
         config: &Config,
         baselines: (Option<String>, Option<String>),
-        tool_run: &ToolRun,
+        data: &ProfileData,
     ) -> Result<()>
     where
         Self: std::fmt::Display,
     {
         if self.get_output_format().is_default() {
-            self.format(config, baselines, tool_run)?;
+            self.format(config, baselines, data)?;
             print!("{self}");
             self.clear();
         }
@@ -456,7 +455,7 @@ impl SummaryFormatter {
                         println!("  {}:", summary.module_path.green());
                     }
                     for regression in summary
-                        .tool_summaries
+                        .profiles
                         .iter()
                         .flat_map(|t| &t.summaries.total.regressions)
                     {
@@ -743,8 +742,8 @@ impl VerticalFormatter {
         writeln!(self, "{} {}", "##".yellow(), "Total".bold()).unwrap();
     }
 
-    fn format_multiple_segment_header(&mut self, details: &EitherOrBoth<SegmentDetails>) {
-        fn fields(detail: &SegmentDetails) -> String {
+    fn format_multiple_segment_header(&mut self, details: &EitherOrBoth<ProfileInfo>) {
+        fn fields(detail: &ProfileInfo) -> String {
             let mut result = String::new();
             write!(result, "pid: {}", detail.pid).unwrap();
 
@@ -885,12 +884,12 @@ impl Formatter for VerticalFormatter {
     fn format_single(
         &mut self,
         baselines: (Option<String>, Option<String>),
-        details: Option<&EitherOrBoth<SegmentDetails>>,
+        info: Option<&EitherOrBoth<ProfileInfo>>,
         metrics_summary: &ToolMetricSummary,
     ) -> Result<()> {
         match metrics_summary {
             ToolMetricSummary::None => {
-                if let Some(info) = details {
+                if let Some(info) = info {
                     if let Some(new) = info.left() {
                         if let Some(details) = &new.details {
                             self.format_details(details);
@@ -898,7 +897,7 @@ impl Formatter for VerticalFormatter {
                     }
                 }
             }
-            ToolMetricSummary::ErrorSummary(summary) => {
+            ToolMetricSummary::ErrorTool(summary) => {
                 // TODO: USE output_format
                 self.format_metrics(
                     ERROR_METRICS_DEFAULT
@@ -907,9 +906,9 @@ impl Formatter for VerticalFormatter {
                 );
 
                 // We only check for `new` errors
-                if let Some(info) = details {
+                if let Some(info) = info {
                     if summary
-                        .diff_by_kind(&ErrorMetricKind::Errors)
+                        .diff_by_kind(&ErrorMetric::Errors)
                         .is_some_and(|e| e.metrics.left().is_some_and(|l| *l > 0))
                     {
                         if let Some(new) = info.left() {
@@ -920,12 +919,12 @@ impl Formatter for VerticalFormatter {
                     }
                 }
             }
-            ToolMetricSummary::DhatSummary(summary) => self.format_metrics(
+            ToolMetricSummary::Dhat(summary) => self.format_metrics(
                 DHAT_DEFAULT
                     .iter()
                     .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
             ),
-            ToolMetricSummary::CallgrindSummary(summary) => {
+            ToolMetricSummary::Callgrind(summary) => {
                 self.format_baseline(baselines);
                 self.format_metrics(
                     self.output_format
@@ -935,7 +934,7 @@ impl Formatter for VerticalFormatter {
                         .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
                 );
             }
-            ToolMetricSummary::CachegrindSummary(summary) => {
+            ToolMetricSummary::Cachegrind(summary) => {
                 self.format_metrics(
                     CACHEGRIND_DEFAULT
                         .iter()
@@ -950,44 +949,40 @@ impl Formatter for VerticalFormatter {
         &mut self,
         config: &Config,
         baselines: (Option<String>, Option<String>),
-        tool_run: &ToolRun,
+        data: &ProfileData,
     ) -> Result<()> {
-        if tool_run.has_multiple() && self.output_format.show_intermediate {
+        if data.has_multiple() && self.output_format.show_intermediate {
             let mut first = true;
-            for segment in &tool_run.segments {
-                self.format_multiple_segment_header(&segment.details);
-                self.format_command(config, &segment.details.as_ref().map(|i| &i.command));
+            for part in &data.parts {
+                self.format_multiple_segment_header(&part.details);
+                self.format_command(config, &part.details.as_ref().map(|i| &i.command));
 
                 if first {
                     self.format_single(
                         baselines.clone(),
-                        Some(&segment.details),
-                        &segment.metrics_summary,
+                        Some(&part.details),
+                        &part.metrics_summary,
                     )?;
                     first = false;
                 } else {
-                    self.format_single(
-                        (None, None),
-                        Some(&segment.details),
-                        &segment.metrics_summary,
-                    )?;
+                    self.format_single((None, None), Some(&part.details), &part.metrics_summary)?;
                 }
             }
 
-            if tool_run.total.is_some() {
+            if data.total.is_some() {
                 self.format_tool_total_header();
-                self.format_single((None, None), None, &tool_run.total.summary)?;
+                self.format_single((None, None), None, &data.total.summary)?;
             }
-        } else if tool_run.total.is_some() {
-            self.format_single(baselines, None, &tool_run.total.summary)?;
-        } else if tool_run.total.is_none() && !tool_run.segments.is_empty() {
+        } else if data.total.is_some() {
+            self.format_single(baselines, None, &data.total.summary)?;
+        } else if data.total.is_none() && !data.parts.is_empty() {
             // Since there is no total, show_all is partly ignored, and we show all data in a little
             // bit more aggregated form without the multiple files headlines. This affects currently
             // the output of `Massif` and `BBV`.
-            for segment in &tool_run.segments {
-                self.format_command(config, &segment.details.as_ref().map(|i| &i.command));
+            for part in &data.parts {
+                self.format_command(config, &part.details.as_ref().map(|i| &i.command));
 
-                if let Some(new) = segment.details.left() {
+                if let Some(new) = part.details.left() {
                     if let Some(details) = &new.details {
                         self.format_details(details);
                     }

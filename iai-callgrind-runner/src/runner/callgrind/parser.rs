@@ -9,7 +9,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use super::model::{Metrics, Positions};
-use crate::runner::summary::SegmentDetails;
+use crate::runner::summary::ProfileInfo;
 use crate::runner::tool::parser::ParserOutput;
 use crate::runner::tool::ToolOutputPath;
 use crate::runner::DEFAULT_TOGGLE;
@@ -73,8 +73,8 @@ impl CallgrindProperties {
         })
     }
 
-    pub fn into_info(self, path: &Path) -> SegmentDetails {
-        SegmentDetails {
+    pub fn into_info(self, path: &Path) -> ProfileInfo {
+        ProfileInfo {
             command: self.cmd.expect("A command should be present"),
             pid: self.pid.expect("A pid should be present"),
             parent_pid: None,

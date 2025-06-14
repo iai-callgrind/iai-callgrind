@@ -31,18 +31,18 @@ impl Summary {
     pub fn assert_costs_not_all_zero(&self) {
         if let Some(tool_summary) = &self
             .0
-            .tool_summaries
+            .profiles
             .iter()
             .find(|p| p.tool == ValgrindTool::Callgrind)
         {
             for summary in tool_summary
                 .summaries
-                .segments
+                .parts
                 .iter()
                 .map(|s| &s.metrics_summary)
                 .chain(std::iter::once(&tool_summary.summaries.total.summary))
             {
-                let ToolMetricSummary::CallgrindSummary(metrics_summary) = summary else {
+                let ToolMetricSummary::Callgrind(metrics_summary) = summary else {
                     panic!()
                 };
                 match metrics_summary.extract_costs() {

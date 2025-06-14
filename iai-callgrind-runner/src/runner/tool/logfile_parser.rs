@@ -7,7 +7,7 @@ use regex::Regex;
 
 use super::parser::{Header, ParserOutput};
 use crate::error::Error;
-use crate::runner::summary::{ToolMetricSummary, ToolRun, ToolRunSegment, ToolTotal};
+use crate::runner::summary::{ProfileData, ProfilePart, ProfileTotal, ToolMetricSummary};
 use crate::util::EitherOrBoth;
 
 // The different regex have to consider --time-stamp=yes
@@ -36,24 +36,25 @@ pub struct LogfileSummary {
 // TODO: MOVE THIS INTO module where ToolRun is defined instead of where ParserResult is defined
 // TODO: RENAME logfiles to parser_result of whatever the name will be
 // Logfiles are separated per process but not per threads by any tool
-impl From<EitherOrBoth<Vec<ParserOutput>>> for ToolRun {
+impl From<EitherOrBoth<Vec<ParserOutput>>> for ProfileData {
     fn from(logfiles: EitherOrBoth<Vec<ParserOutput>>) -> Self {
         let mut total: Option<ToolMetricSummary> = None;
 
         // TODO: REPLACE THIS with the impl in Summaries::new
-        let segments: Vec<ToolRunSegment> = match logfiles {
+        let parts: Vec<ProfilePart> = match logfiles {
             EitherOrBoth::Left(new) => new
                 .into_iter()
-                .map(|logfile| {
-                    let metrics_summary = ToolMetricSummary::from_new_metrics(&logfile.metrics);
+                .map(|parser_output| {
+                    let metrics_summary =
+                        ToolMetricSummary::from_new_metrics(&parser_output.metrics);
                     if let Some(entry) = total.as_mut() {
                         entry.add_mut(&metrics_summary);
                     } else {
                         total = Some(metrics_summary.clone());
                     }
 
-                    ToolRunSegment {
-                        details: EitherOrBoth::Left(logfile.into()),
+                    ProfilePart {
+                        details: EitherOrBoth::Left(parser_output.into()),
                         metrics_summary,
                         // TODO: Add baseline, Why is baseline in segment instead of ToolRun?
                         baseline: None,
@@ -62,16 +63,17 @@ impl From<EitherOrBoth<Vec<ParserOutput>>> for ToolRun {
                 .collect(),
             EitherOrBoth::Right(old) => old
                 .into_iter()
-                .map(|logfile| {
-                    let metrics_summary = ToolMetricSummary::from_old_metrics(&logfile.metrics);
+                .map(|parser_output| {
+                    let metrics_summary =
+                        ToolMetricSummary::from_old_metrics(&parser_output.metrics);
                     if let Some(entry) = total.as_mut() {
                         entry.add_mut(&metrics_summary);
                     } else {
                         total = Some(metrics_summary.clone());
                     }
 
-                    ToolRunSegment {
-                        details: EitherOrBoth::Right(logfile.into()),
+                    ProfilePart {
+                        details: EitherOrBoth::Right(parser_output.into()),
                         metrics_summary,
                         // TODO: Add baseline
                         baseline: None,
@@ -81,7 +83,7 @@ impl From<EitherOrBoth<Vec<ParserOutput>>> for ToolRun {
             EitherOrBoth::Both(new, old) => new
                 .into_iter()
                 .zip_longest(old)
-                .map(|either_or_both| match either_or_both {
+                .map(|parser_output| match parser_output {
                     itertools::EitherOrBoth::Both(new, old) => {
                         let metrics_summary = ToolMetricSummary::try_from_new_and_old_metrics(
                             &new.metrics,
@@ -95,7 +97,7 @@ impl From<EitherOrBoth<Vec<ParserOutput>>> for ToolRun {
                             total = Some(metrics_summary.clone());
                         }
 
-                        ToolRunSegment {
+                        ProfilePart {
                             details: EitherOrBoth::Both(new.into(), old.into()),
                             metrics_summary,
                             // TODO: Add baseline
@@ -110,7 +112,7 @@ impl From<EitherOrBoth<Vec<ParserOutput>>> for ToolRun {
                             total = Some(metrics_summary.clone());
                         }
 
-                        ToolRunSegment {
+                        ProfilePart {
                             details: EitherOrBoth::Left(new.into()),
                             metrics_summary,
                             // TODO: Add baseline
@@ -125,7 +127,7 @@ impl From<EitherOrBoth<Vec<ParserOutput>>> for ToolRun {
                             total = Some(metrics_summary.clone());
                         }
 
-                        ToolRunSegment {
+                        ProfilePart {
                             details: EitherOrBoth::Right(old.into()),
                             metrics_summary,
                             // TODO: Add baseline
@@ -136,13 +138,13 @@ impl From<EitherOrBoth<Vec<ParserOutput>>> for ToolRun {
                 .collect(),
         };
 
-        let total = ToolTotal {
+        let total = ProfileTotal {
             summary: total.expect("A total should be present"),
             // TODO: ADD REGRESSIONS HERE or later?
             regressions: vec![],
         };
 
-        Self { segments, total }
+        Self { parts, total }
     }
 }
 

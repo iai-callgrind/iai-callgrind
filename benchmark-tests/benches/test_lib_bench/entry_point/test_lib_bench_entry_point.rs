@@ -49,12 +49,12 @@ fn assert_none() {
     assert
         .summary(|b| {
             let callgrind_summary = b
-                .tool_summaries
+                .profiles
                 .iter()
                 .find(|p| p.tool == ValgrindTool::Callgrind)
                 .unwrap();
-            let ToolMetricSummary::CallgrindSummary(metrics_summary) =
-                &callgrind_summary.summaries.segments[0].metrics_summary
+            let ToolMetricSummary::Callgrind(metrics_summary) =
+                &callgrind_summary.summaries.parts[0].metrics_summary
             else {
                 panic!();
             };
@@ -73,12 +73,12 @@ fn assert_none() {
 fn assert_default() {
     let check_summary = |b: BenchmarkSummary| {
         let callgrind_summary = b
-            .tool_summaries
+            .profiles
             .iter()
             .find(|p| p.tool == ValgrindTool::Callgrind)
             .unwrap();
-        let ToolMetricSummary::CallgrindSummary(metrics_summary) =
-            &callgrind_summary.summaries.segments[0].metrics_summary
+        let ToolMetricSummary::Callgrind(metrics_summary) =
+            &callgrind_summary.summaries.parts[0].metrics_summary
         else {
             panic!();
         };
@@ -119,12 +119,12 @@ fn assert_default() {
 fn assert_nested() {
     let check_summary = |b: BenchmarkSummary| {
         let callgrind_summary = b
-            .tool_summaries
+            .profiles
             .iter()
             .find(|p| p.tool == ValgrindTool::Callgrind)
             .unwrap();
-        let ToolMetricSummary::CallgrindSummary(metrics_summary) =
-            &callgrind_summary.summaries.segments[0].metrics_summary
+        let ToolMetricSummary::Callgrind(metrics_summary) =
+            &callgrind_summary.summaries.parts[0].metrics_summary
         else {
             panic!();
         };
