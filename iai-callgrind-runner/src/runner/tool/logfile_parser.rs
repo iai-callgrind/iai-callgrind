@@ -1,24 +1,13 @@
-use std::cmp::Ordering;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use anyhow::{Context, Result};
 use itertools::Itertools;
 use lazy_static::lazy_static;
-use log::debug;
 use regex::Regex;
 
-use super::error_metric_parser::ErrorMetricLogfileParser;
-use super::generic_parser::GenericLogfileParser;
-use super::{ToolOutputPath, ValgrindTool};
+use super::parser::{Header, ParserOutput};
 use crate::error::Error;
-use crate::runner::callgrind::model::Positions;
-use crate::runner::callgrind::parser::CallgrindProperties;
-use crate::runner::dhat::logfile_parser::DhatLogfileParser;
-use crate::runner::metrics::Metrics;
-use crate::runner::summary::{
-    SegmentDetails, ToolMetricSummary, ToolMetrics, ToolRun, ToolRunSegment, ToolTotal,
-};
-use crate::runner::{cachegrind, callgrind};
+use crate::runner::summary::{ToolMetricSummary, ToolRun, ToolRunSegment, ToolTotal};
 use crate::util::EitherOrBoth;
 
 // The different regex have to consider --time-stamp=yes
@@ -38,116 +27,17 @@ lazy_static! {
             .expect("Regex should compile");
 }
 
-// TODO: Adjust variables, messages to rename and move into parser module?
-// TODO: Adjust usages names like logfile_parser etc.
-pub trait Parser {
-    fn parse_single(&self, path: PathBuf) -> Result<ParserResult>;
-    fn parse_with(&self, output_path: &ToolOutputPath) -> Result<Vec<ParserResult>> {
-        debug!("{}: Parsing file '{}'", output_path.tool.id(), output_path);
-        let Ok(paths) = output_path.real_paths() else {
-            return Ok(vec![]);
-        };
-
-        let mut parser_results = Vec::with_capacity(paths.len());
-        for path in paths {
-            let parsed = self.parse_single(path)?;
-            let position = parser_results
-                .binary_search_by(|probe: &ParserResult| probe.compare_target_ids(&parsed))
-                .unwrap_or_else(|e| e);
-
-            parser_results.insert(position, parsed);
-        }
-
-        Ok(parser_results)
-    }
-
-    // TODO: RETURN Error if not at least 1 file could be parsed?
-    fn parse(&self) -> Result<Vec<ParserResult>> {
-        self.parse_with(self.get_output_path())
-    }
-
-    fn parse_base(&self) -> Result<Vec<ParserResult>> {
-        self.parse_with(&self.get_output_path().to_base_path())
-    }
-
-    fn get_output_path(&self) -> &ToolOutputPath;
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Header {
-    pub command: String,
-    pub pid: i32,
-    pub parent_pid: Option<i32>,
-    pub thread: Option<usize>,
-    pub part: Option<u64>,
-    pub desc: Vec<String>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ParserResult {
-    pub path: PathBuf,
-    pub header: Header,
-    pub details: Vec<String>,
-    pub metrics: ToolMetrics,
-}
-
-impl ParserResult {
-    /// Compare by target ids `pid`, `part` and `thread`
-    ///
-    /// Same as in [`CallgrindProperties::compare_target_ids`]
-    ///
-    /// Highest precedence takes `pid`. Second is `part` and third is `thread` all sorted ascending.
-    /// See also [Callgrind Format](https://valgrind.org/docs/manual/cl-format.html#cl-format.reference.grammar)
-    pub fn compare_target_ids(&self, other: &Self) -> Ordering {
-        self.header.pid.cmp(&other.header.pid).then_with(|| {
-            self.header
-                .thread
-                .cmp(&other.header.thread)
-                .then_with(|| self.header.part.cmp(&other.header.part))
-        })
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct LogfileSummary {
-    pub logfile: EitherOrBoth<ParserResult>,
+    pub logfile: EitherOrBoth<ParserOutput>,
     pub metrics_summary: ToolMetricSummary,
-}
-
-impl From<ParserResult> for SegmentDetails {
-    fn from(value: ParserResult) -> Self {
-        Self {
-            command: value.header.command,
-            pid: value.header.pid,
-            parent_pid: value.header.parent_pid,
-            details: (!value.details.is_empty()).then(|| value.details.join("\n")),
-            path: value.path,
-            part: value.header.part,
-            thread: value.header.thread,
-        }
-    }
-}
-
-impl From<ParserResult> for CallgrindProperties {
-    fn from(value: ParserResult) -> Self {
-        CallgrindProperties {
-            metrics_prototype: Metrics::default(),
-            positions_prototype: Positions::default(),
-            pid: Some(value.header.pid),
-            thread: value.header.thread,
-            part: value.header.part,
-            desc: value.header.desc,
-            cmd: Some(value.header.command),
-            creator: None,
-        }
-    }
 }
 
 // TODO: MOVE THIS INTO module where ToolRun is defined instead of where ParserResult is defined
 // TODO: RENAME logfiles to parser_result of whatever the name will be
 // Logfiles are separated per process but not per threads by any tool
-impl From<EitherOrBoth<Vec<ParserResult>>> for ToolRun {
-    fn from(logfiles: EitherOrBoth<Vec<ParserResult>>) -> Self {
+impl From<EitherOrBoth<Vec<ParserOutput>>> for ToolRun {
+    fn from(logfiles: EitherOrBoth<Vec<ParserOutput>>) -> Self {
         let mut total: Option<ToolMetricSummary> = None;
 
         // TODO: REPLACE THIS with the impl in Summaries::new
@@ -326,36 +216,6 @@ pub fn parse_header(path: &Path, mut lines: impl Iterator<Item = String>) -> Res
         part: None,
         desc: vec![],
     })
-}
-
-/// TODO: MOVE THIS and everything not related to log file parsing OUT OF logfile module
-pub fn parser_factory(
-    tool: ValgrindTool,
-    root_dir: PathBuf,
-    output_path: &ToolOutputPath,
-) -> Box<dyn Parser> {
-    match tool {
-        ValgrindTool::Callgrind => Box::new(callgrind::summary_parser::SummaryParser {
-            output_path: output_path.clone(),
-        }),
-        ValgrindTool::Cachegrind => Box::new(cachegrind::summary_parser::SummaryParser {
-            output_path: output_path.clone(),
-        }),
-        ValgrindTool::DHAT => Box::new(DhatLogfileParser {
-            output_path: output_path.to_log_output(),
-            root_dir,
-        }),
-        ValgrindTool::Memcheck | ValgrindTool::DRD | ValgrindTool::Helgrind => {
-            Box::new(ErrorMetricLogfileParser {
-                output_path: output_path.to_log_output(),
-                root_dir,
-            })
-        }
-        _ => Box::new(GenericLogfileParser {
-            output_path: output_path.to_log_output(),
-            root_dir,
-        }),
-    }
 }
 
 #[cfg(test)]

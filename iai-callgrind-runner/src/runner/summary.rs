@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use super::common::ModulePath;
 use super::format::{Formatter, OutputFormat, OutputFormatKind, VerticalFormatter};
 use super::metrics::Metrics;
-use super::tool::logfile_parser::ParserResult;
+use super::tool::parser::ParserOutput;
 use crate::api::{CachegrindMetric, DhatMetricKind, ErrorMetricKind, EventKind, ValgrindTool};
 use crate::error::Error;
 use crate::runner::metrics::Summarize;
@@ -917,7 +917,7 @@ impl ToolRun {
     ///     ]
     /// ])
     /// ```
-    fn group(parsed: impl Iterator<Item = ParserResult>) -> Vec<Vec<Vec<ParserResult>>> {
+    fn group(parsed: impl Iterator<Item = ParserOutput>) -> Vec<Vec<Vec<ParserOutput>>> {
         let mut grouped = vec![];
         let mut cur_pid = 0_i32;
         let mut cur_part = 0;
@@ -959,7 +959,7 @@ impl ToolRun {
     /// clearer structure of this method looks reasonable.
     ///
     /// Secondly and finally, the groups are processed and summarized in a total.
-    pub fn new(parsed_new: Vec<ParserResult>, parsed_old: Option<Vec<ParserResult>>) -> Self {
+    pub fn new(parsed_new: Vec<ParserOutput>, parsed_old: Option<Vec<ParserOutput>>) -> Self {
         let mut total = match parsed_new
             .first()
             .expect("At least 1 parsed result should be present")
@@ -1069,7 +1069,7 @@ impl ToolRunSegment {
     }
 
     /// TODO: BASELINE ??
-    pub fn from_new(new: ParserResult) -> Self {
+    pub fn from_new(new: ParserOutput) -> Self {
         let metrics_summary = ToolMetricSummary::from_new_metrics(&new.metrics);
         Self {
             baseline: None,
@@ -1079,7 +1079,7 @@ impl ToolRunSegment {
     }
 
     /// TODO: BASELINE ??
-    pub fn from_old(old: ParserResult) -> Self {
+    pub fn from_old(old: ParserOutput) -> Self {
         let metrics_summary = ToolMetricSummary::from_old_metrics(&old.metrics);
         Self {
             baseline: None,
@@ -1093,7 +1093,7 @@ impl ToolRunSegment {
     /// # Panics
     ///
     /// Treat new and old with different metric kinds as programming error and not as runtime error
-    pub fn from_new_and_old(new: ParserResult, old: ParserResult) -> Self {
+    pub fn from_new_and_old(new: ParserOutput, old: ParserOutput) -> Self {
         let metrics_summary =
             ToolMetricSummary::try_from_new_and_old_metrics(&new.metrics, &old.metrics)
                 .expect("New and old metrics should have a matching kind");
