@@ -42,7 +42,7 @@ use super::summary::{
 use super::{cachegrind, callgrind, DEFAULT_TOGGLE};
 use crate::api::{self, EntryPoint, ExitWith, RawArgs, Stream, Tool, Tools, ValgrindTool};
 use crate::error::Error;
-use crate::util::{self, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
+use crate::util::{self, resolve_binary_path, truncate_str_utf8};
 
 lazy_static! {
     // This regex matches the original file name without the prefix as it is created by callgrind.
@@ -551,7 +551,8 @@ impl ToolConfig {
         let parsed_new = parser.parse()?;
         let parsed_old = parser.parse_base()?;
 
-        let summaries = ProfileData::from(EitherOrBoth::Both(parsed_new, parsed_old));
+        let summaries =
+            ProfileData::new(parsed_new, (!parsed_old.is_empty()).then_some(parsed_old));
         Ok(Profile {
             tool: self.tool,
             log_paths: out_path.to_log_output().real_paths()?,

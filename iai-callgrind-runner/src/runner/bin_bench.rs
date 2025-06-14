@@ -144,7 +144,6 @@ impl Benchmark for BaselineBenchmark {
         let header = BinaryBenchmarkHeader::new(&config.meta, bin_bench);
         header.print();
 
-        // TODO: THIS CAN STAY?
         let out_path = self.output_path(bin_bench, config, group);
         out_path.init()?;
 
@@ -154,14 +153,15 @@ impl Benchmark for BaselineBenchmark {
                 path.to_log_output().shift()?;
             }
         }
+
         // TODO: move and shift ALSO FLAMEGRAPHS
 
-        // TODO: MOVE CREATION OF BENCHMARK SUMMARY INTO ToolConfigs::run?
         let benchmark_summary = bin_bench.create_benchmark_summary(
             config,
             &out_path,
             &bin_bench.function_name,
             header.description(),
+            self.baselines(),
         )?;
 
         bin_bench.tools.run(
@@ -297,6 +297,7 @@ impl BinBench {
         output_path: &ToolOutputPath,
         function_name: &str,
         description: Option<String>,
+        baselines: Baselines,
     ) -> Result<BenchmarkSummary> {
         let summary_output = if let Some(format) = config.meta.args.save_summary {
             let output = SummaryOutput::new(format, &output_path.dir);
@@ -317,6 +318,7 @@ impl BinBench {
             self.id.clone(),
             description,
             summary_output,
+            baselines,
         ))
     }
 }
@@ -644,15 +646,13 @@ impl Benchmark for LoadBaselineBenchmark {
         let header = BinaryBenchmarkHeader::new(&config.meta, bin_bench);
         header.print();
 
-        // TODO: MOVE INTO ToolConfigs::load_baseline run
         let out_path = self.output_path(bin_bench, config, group);
-
-        // TODO: MOVE INTO ToolConfigs::load_baseline run
         let benchmark_summary = bin_bench.create_benchmark_summary(
             config,
             &out_path,
             &bin_bench.function_name,
             header.description(),
+            self.baselines(),
         )?;
 
         bin_bench.tools.run_loaded_vs_base(
@@ -780,6 +780,7 @@ impl Benchmark for SaveBaselineBenchmark {
             &out_path,
             &bin_bench.function_name,
             header.description(),
+            self.baselines(),
         )?;
 
         bin_bench.tools.run(

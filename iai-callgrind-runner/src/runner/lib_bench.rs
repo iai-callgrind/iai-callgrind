@@ -149,6 +149,7 @@ impl Benchmark for BaselineBenchmark {
             &out_path,
             &lib_bench.function_name,
             header.description(),
+            self.baselines(),
         )?;
 
         lib_bench.tools.run(
@@ -392,6 +393,7 @@ impl LibBench {
         output_path: &ToolOutputPath,
         function_name: &str,
         description: Option<String>,
+        baselines: Baselines,
     ) -> Result<BenchmarkSummary> {
         let summary_output = if let Some(format) = config.meta.args.save_summary {
             let output = SummaryOutput::new(format, &output_path.dir);
@@ -412,6 +414,7 @@ impl LibBench {
             self.id.clone(),
             description,
             summary_output,
+            baselines,
         ))
     }
 }
@@ -456,6 +459,7 @@ impl Benchmark for LoadBaselineBenchmark {
             &out_path,
             &lib_bench.function_name,
             header.description(),
+            self.baselines(),
         )?;
 
         lib_bench.tools.run_loaded_vs_base(
@@ -585,6 +589,7 @@ impl Benchmark for SaveBaselineBenchmark {
             &out_path,
             &lib_bench.function_name,
             header.description(),
+            self.baselines(),
         )?;
 
         lib_bench.tools.run(
