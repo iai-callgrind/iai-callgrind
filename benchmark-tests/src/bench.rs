@@ -51,12 +51,12 @@ lazy_static! {
     // Performance has regressed: Instructions (133 -> 196) regressed by +47.3684% (>+0.00000%)
     // $1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__NUM__>$9
     static ref REGRESSION_RE: Regex =
-        Regex::new(r"^(Performance has regressed:\s*\w+\s*\()([0-9]+)(\s*->\s*)([0-9]+)(\)\s*regressed\s*by\s*[+-])([0-9.]+)(%\s*\([><][+-])([0-9.]+)(%\)\s*)$")
+        Regex::new(r"^(Performance has regressed:\s*[^0-9]+\()([0-9]+)(\s*->\s*)([0-9]+)(\)\s*regressed\s*by\s*[+-])([0-9.]+)(%\s*\([><][+-])([0-9.]+)(%\)\s*)$")
             .expect("Regex should compile");
     // Instructions (357182 -> 357704): +0.14614% exceeds limit of +0.00000%
     // $1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__PERCENT__>$9
     static ref SUMMARY_REGRESSION_RE: Regex =
-        Regex::new(r"^(\s*\w+\s*\()([0-9]+)(\s*->\s*)([0-9]+)(\):\s*[+-])([0-9.]+)(%\s*exceeds limit of [+-])([0-9.]+)(%\s*)$")
+        Regex::new(r"^(\s*[^0-9]+\()([0-9]+)(\s*->\s*)([0-9]+)(\):\s*[+-])([0-9.]+)(%\s*exceeds limit of [+-])([0-9.]+)(%\s*)$")
             .expect("Regex should compile");
     // Command: target/release/deps/test_lib_bench_threads-c2a88f916ff580f9
     static ref COMMAND_RE: Regex =
