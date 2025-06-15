@@ -21,7 +21,7 @@ use crate::util::{
     EitherOrBoth,
 };
 
-/// TODO: Remove and Replace with `output_format`
+// TODO: Remove and Replace with `output_format`
 /// The error metrics to format in the given order
 pub const ERROR_METRICS_DEFAULT: [ErrorMetric; 4] = [
     ErrorMetric::Errors,
@@ -30,7 +30,7 @@ pub const ERROR_METRICS_DEFAULT: [ErrorMetric; 4] = [
     ErrorMetric::SuppressedContexts,
 ];
 
-/// TODO: Remove and Replace with `output_format`
+// TODO: Remove and Replace with `output_format`
 /// The subset of dhat metrics to format in the given order
 pub const DHAT_DEFAULT: [DhatMetric; 8] = [
     DhatMetric::TotalBytes,
@@ -43,7 +43,8 @@ pub const DHAT_DEFAULT: [DhatMetric; 8] = [
     DhatMetric::WritesBytes,
 ];
 
-/// TODO: DOCS
+// TODO: Remove and Replace with `output_format`
+// The `Cachegrind` default metrics to show
 pub const CACHEGRIND_DEFAULT: [CachegrindMetric; 10] = [
     CachegrindMetric::Ir,
     CachegrindMetric::L1hits,
@@ -447,7 +448,6 @@ impl SummaryFormatter {
                     .as_secs_f64(),
             );
 
-            // TODO: multiple tools should be able to have regressions
             if summaries.is_regressed() {
                 println!("\nRegressions:\n");
                 let mut num_regressed = 0;
@@ -462,8 +462,6 @@ impl SummaryFormatter {
                         .iter()
                         .flat_map(|t| &t.summaries.total.regressions)
                     {
-                        // TODO: Keep this for the moment this way. The format might need to change
-                        // in case of different metric kinds.
                         let metric_string = if let MetricKind::Callgrind(event) = regression.metric
                         {
                             event.to_string()
@@ -906,7 +904,6 @@ impl Formatter for VerticalFormatter {
                 }
             }
             ToolMetricSummary::ErrorTool(summary) => {
-                // TODO: USE output_format
                 self.format_metrics(
                     ERROR_METRICS_DEFAULT
                         .iter()

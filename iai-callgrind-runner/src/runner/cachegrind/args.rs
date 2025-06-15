@@ -7,12 +7,8 @@ use log::{log_enabled, warn};
 
 use crate::api::{RawArgs, ValgrindTool};
 use crate::error::Error;
-use crate::runner::tool;
-use crate::runner::tool::args::{defaults, FairSched};
+use crate::runner::tool::args::{defaults, FairSched, ToolArgs};
 use crate::util::{bool_to_yesno, yesno_to_bool};
-
-// TODO: If the cachegrind feature is on --instr-at-start should be false per default but only for
-// library benchmarks.
 
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone)]
@@ -115,8 +111,7 @@ impl Default for Args {
     }
 }
 
-// TODO: Move this into tool::args::ToolArgs, also callgrind::args, dhat::args, ...
-impl From<Args> for tool::args::ToolArgs {
+impl From<Args> for ToolArgs {
     fn from(mut value: Args) -> Self {
         let mut other = vec![
             format!("--I1={}", &value.i1),

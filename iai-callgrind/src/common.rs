@@ -653,33 +653,6 @@ impl OutputFormat {
 #[derive(Debug, Default, Clone, IntoInner, AsRef)]
 pub struct RegressionConfig(__internal::InternalRegressionConfig);
 
-// TODO: CLEANUP or deprecate?
-// /// Configure to run other valgrind tools like `DHAT` or `Massif` in addition to callgrind
-// ///
-// /// For a list of possible tools see [`ValgrindTool`].
-// ///
-// /// See also the [Valgrind User Manual](https://valgrind.org/docs/manual/manual.html) for details
-// /// about possible tools and their command line arguments.
-// ///
-// /// # Examples
-// ///
-// /// ```rust
-// /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
-// /// use iai_callgrind::{main, LibraryBenchmarkConfig, Tool, ValgrindTool};
-// /// # #[library_benchmark]
-// /// # fn some_func() {}
-// /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
-// /// # fn main() {
-// /// main!(
-// ///     config = LibraryBenchmarkConfig::default()
-// ///                 .tool(Tool::new(ValgrindTool::DHAT));
-// ///     library_benchmark_groups = some_group
-// /// );
-// /// # }
-// /// ```
-// #[derive(Debug, Clone, PartialEq, IntoInner, AsRef)]
-// pub struct Tool(__internal::InternalTool);
-
 impl FlamegraphConfig {
     /// Option to change the [`FlamegraphKind`]
     ///
@@ -924,73 +897,4 @@ impl RegressionConfig {
         self.0.fail_fast = Some(value);
         self
     }
-}
-
-// TODO: Cleanup or deprecate?
-// impl Tool {
-//     /// Create a new `Tool` configuration
-//     ///
-//     /// # Examples
-//     ///
-//     /// ```
-//     /// use iai_callgrind::{Tool, ValgrindTool};
-//     ///
-//     /// let tool = Tool::new(ValgrindTool::DHAT);
-//     /// ```
-//     pub fn new(tool: ValgrindTool) -> Self {
-//         Self(__internal::InternalTool {
-//             kind: tool,
-//             enable: Option::default(),
-//             show_log: Option::default(),
-//             raw_args: __internal::InternalRawArgs::default(),
-//             regression_config: Option::default(),
-//             flamegraph_config: Option::default(),
-//             output_format: Option::default(),
-//             entry_point: Option::default(),
-//         })
-//     }
-//
-//     /// If true, enable running this `Tool` (Default: true)
-//     ///
-//     /// # Examples
-//     ///
-//     /// ```
-//     /// use iai_callgrind::{Tool, ValgrindTool};
-//     ///
-//     /// let tool = Tool::new(ValgrindTool::DHAT).enable(true);
-//     /// ```
-//     pub fn enable(&mut self, value: bool) -> &mut Self {
-//         self.0.enable = Some(value);
-//         self
-//     }
-//
-//     /// Pass one or more arguments directly to the valgrind `Tool`
-//     ///
-//     /// # Examples
-//     ///
-//     /// ```
-//     /// use iai_callgrind::{Tool, ValgrindTool};
-//     ///
-//     /// let tool = Tool::new(ValgrindTool::DHAT).args(["--num-callers=5", "--mode=heap"]);
-//     /// ```
-//     pub fn args<I, T>(&mut self, args: T) -> &mut Self
-//     where
-//         I: AsRef<str>,
-//         T: IntoIterator<Item = I>,
-//     {
-//         self.0.raw_args.extend_ignore_flag(args);
-//         self
-//     }
-// }
-
-/// TODO: REMOVE
-/// __DEPRECATED__: A function that is opaque to the optimizer
-///
-/// It is used to prevent the compiler from optimizing away computations in a benchmark.
-///
-/// This method is deprecated and is in newer versions of `iai-callgrind` merely a wrapper around
-/// [`std::hint::black_box`]. Please use `std::hint::black_box` directly.
-#[inline]
-pub fn black_box<T>(dummy: T) -> T {
-    std::hint::black_box(dummy)
 }

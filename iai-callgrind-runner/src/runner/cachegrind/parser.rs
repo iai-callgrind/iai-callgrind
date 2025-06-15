@@ -17,8 +17,11 @@ pub struct CachegrindProperties {
     pub cmd: String,
 }
 
-/// TODO: Convert (docs) from callgrind to cachegrind
-/// TODO: Double check this
+/// Parse the output file header of a cachegrind out file
+///
+/// The format as described here
+/// <https://valgrind.org/docs/manual/cg-manual.html#cg-manual.impl-details.file-format>:
+///
 /// ```text
 /// file         ::= desc_line* cmd_line events_line data_line+ summary_line
 /// desc_line    ::= "desc:" ws? non_nl_string

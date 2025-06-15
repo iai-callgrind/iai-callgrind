@@ -31,8 +31,7 @@ struct BaselineBenchmark {
 // A `Group` is the organizational unit and counterpart of the `library_benchmark_group!` macro
 #[derive(Debug)]
 struct Group {
-    // TODO: Either rename to name as in bin_bench::Group or rename bin_bench::Group::name to id
-    id: String,
+    name: String,
     benches: Vec<LibBench>,
     compare_by_id: bool,
     module_path: ModulePath,
@@ -207,7 +206,7 @@ impl Groups {
                     ));
 
             let mut group = Group {
-                id: library_benchmark_group.id,
+                name: library_benchmark_group.id,
                 module_path: group_module_path,
                 benches: vec![],
                 setup,
@@ -269,8 +268,7 @@ impl Groups {
 
                 let lib_bench_summary = benchmark.run(bench, config, group)?;
                 lib_bench_summary.print_and_save(&config.meta.args.output_format)?;
-                // TODO: Check all tools?
-                lib_bench_summary.check_regression(fail_fast, ValgrindTool::Callgrind)?;
+                lib_bench_summary.check_regression(fail_fast)?;
 
                 benchmark_summaries.add_summary(lib_bench_summary.clone());
                 if group.compare_by_id && bench.output_format.is_default() {
@@ -379,7 +377,7 @@ impl LibBench {
     fn bench_args(&self, group: &Group) -> Vec<OsString> {
         vec![
             OsString::from("--iai-run".to_owned()),
-            OsString::from(&group.id),
+            OsString::from(&group.name),
             OsString::from(self.group_index.to_string()),
             OsString::from(self.bench_index.to_string()),
             OsString::from(self.module_path.to_string()),

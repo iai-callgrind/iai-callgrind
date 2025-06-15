@@ -37,13 +37,6 @@ pub struct CacheSummary {
     pub cycles: u64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct RegressionConfig {
-    pub limits: Vec<(EventKind, f64)>,
-    pub fail_fast: bool,
-}
-
-/// TODO: SORT, other module??
 #[derive(Debug, Clone)]
 pub struct CyclesEstimator {
     instructions: u64,
@@ -57,7 +50,33 @@ pub struct CyclesEstimator {
     l3_data_cache_write_misses: u64,
 }
 
-/// TODO: MOVE THIS INTO `CacheSummary`?
+#[derive(Debug, Clone, PartialEq)]
+pub struct RegressionConfig {
+    pub limits: Vec<(EventKind, f64)>,
+    pub fail_fast: bool,
+}
+
+impl TryFrom<&Metrics> for CacheSummary {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &Metrics) -> std::result::Result<Self, Self::Error> {
+        use EventKind::*;
+        let estimator = CyclesEstimator::new(
+            value.try_metric_by_kind(&Ir)?,
+            value.try_metric_by_kind(&Dr)?,
+            value.try_metric_by_kind(&Dw)?,
+            value.try_metric_by_kind(&I1mr)?,
+            value.try_metric_by_kind(&D1mr)?,
+            value.try_metric_by_kind(&D1mw)?,
+            value.try_metric_by_kind(&ILmr)?,
+            value.try_metric_by_kind(&DLmr)?,
+            value.try_metric_by_kind(&DLmw)?,
+        );
+
+        Ok(estimator.calculate())
+    }
+}
+
 impl CyclesEstimator {
     pub fn new(
         instructions: u64,
@@ -109,27 +128,6 @@ impl CyclesEstimator {
     }
 }
 
-impl TryFrom<&Metrics> for CacheSummary {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &Metrics) -> std::result::Result<Self, Self::Error> {
-        use EventKind::*;
-        let estimator = CyclesEstimator::new(
-            value.try_metric_by_kind(&Ir)?,
-            value.try_metric_by_kind(&Dr)?,
-            value.try_metric_by_kind(&Dw)?,
-            value.try_metric_by_kind(&I1mr)?,
-            value.try_metric_by_kind(&D1mr)?,
-            value.try_metric_by_kind(&D1mw)?,
-            value.try_metric_by_kind(&ILmr)?,
-            value.try_metric_by_kind(&DLmr)?,
-            value.try_metric_by_kind(&DLmw)?,
-        );
-
-        Ok(estimator.calculate())
-    }
-}
-
 impl RegressionConfig {
     /// Check regression of the [`super::metrics::Metrics`] for the configured [`EventKind`]s and
     /// print it
@@ -152,11 +150,8 @@ impl RegressionConfig {
             limit,
         } in &regression
         {
-            // TODO: Printing the `MetricKind` is maybe not necessary since the regressions are
-            // printed directly after the tool run. And the old way just printing the `EventKind`
-            // might be fully sufficient
             let MetricKind::Callgrind(event) = metric else {
-                panic!("Only callgrind metrics should be present");
+                panic!("Other regression kinds than callgrind are not implemented yet");
             };
             if limit.is_sign_positive() {
                 eprintln!(
@@ -352,7 +347,6 @@ mod tests {
             ..Default::default()
         };
 
-        // TODO: DOUBLE CHECK CallgrindRegression -> ToolRegression
         let new = cachesim_costs(new);
         let old = cachesim_costs(old);
         let summary = MetricsSummary::new(EitherOrBoth::Both(new, old));

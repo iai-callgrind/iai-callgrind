@@ -1340,7 +1340,6 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    // TODO: CLEANUP or KEEP?
     /// Add a configuration to run a valgrind [`crate::Tool`] in addition to callgrind
     ///
     /// # Examples
@@ -1370,7 +1369,6 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    // TODO: CLEANUP or KEEP?
     /// Add multiple configurations to run valgrind [`crate::Tool`]s in addition to callgrind
     ///
     /// # Examples
@@ -1404,7 +1402,6 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    // TODO: CLEANUP or KEEP?
     /// Override previously defined configurations of valgrind [`crate::Tool`]s
     ///
     /// See also [`crate::LibraryBenchmarkConfig::tool_override`] for more details.
@@ -1459,7 +1456,6 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    // TODO: CLEANUP or KEEP?
     /// Override previously defined configurations of valgrind [`crate::Tool`]s
     ///
     /// See also [`crate::LibraryBenchmarkConfig::tool_override`] for more details.

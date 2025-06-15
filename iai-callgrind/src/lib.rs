@@ -409,7 +409,7 @@ pub use bin_bench::{
 pub use bincode;
 #[cfg(feature = "default")]
 pub use common::{
-    black_box, Bbv, Cachegrind, Callgrind, Dhat, Drd, FlamegraphConfig, Helgrind, Massif, Memcheck,
+    Bbv, Cachegrind, Callgrind, Dhat, Drd, FlamegraphConfig, Helgrind, Massif, Memcheck,
     OutputFormat, RegressionConfig,
 };
 #[cfg(feature = "client_requests_defs")]

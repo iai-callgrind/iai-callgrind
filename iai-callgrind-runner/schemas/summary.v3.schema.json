@@ -587,7 +587,7 @@
       "required": ["event_kind"]
     },
     "MetricKind": {
-      "description": "TODO: DOCS, see description of [`ToolMetrics`]",
+      "description": "The different metrics distinguished by tool and if it is an error checking tool as `ErrorMetric`",
       "oneOf": [
         {
           "type": "string",
@@ -694,7 +694,7 @@
       "type": "object",
       "properties": {
         "flamegraphs": {
-          "description": "TODO: DOCS",
+          "description": "Details and information about the created flamegraphs if any",
           "type": "array",
           "items": {
             "$ref": "#/definitions/FlamegraphSummary"
@@ -820,7 +820,7 @@
       "required": ["details", "metrics_summary"]
     },
     "ProfileTotal": {
-      "description": "TODO: DOCS",
+      "description": "The total metrics over all [`ProfilePart`]s and if detected any [`ToolRegression`]",
       "type": "object",
       "properties": {
         "regressions": {
@@ -836,7 +836,7 @@
       "required": ["summary", "regressions"]
     },
     "Profiles": {
-      "description": "TODO: IMPLEMENT things like `get_tool_summary()`, ...",
+      "description": "The collection of all generated [`Profile`]s",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Profile"

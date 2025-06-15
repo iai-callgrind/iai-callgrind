@@ -142,7 +142,7 @@ pub struct FlamegraphSummary {
     pub diff_path: Option<PathBuf>,
 }
 
-/// TODO: DOCS, see description of [`ToolMetrics`]
+/// The different metrics distinguished by tool and if it is an error checking tool as `ErrorMetric`
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum MetricKind {
@@ -183,7 +183,7 @@ pub struct Profile {
     /// The paths to the `*.out` files. Not all tools produce an output in addition to the log
     /// files
     pub out_paths: Vec<PathBuf>,
-    /// TODO: DOCS
+    /// Details and information about the created flamegraphs if any
     pub flamegraphs: Vec<FlamegraphSummary>,
     /// The metrics and details about the tool run
     pub summaries: ProfileData,
@@ -235,7 +235,7 @@ pub struct ProfilePart {
     pub metrics_summary: ToolMetricSummary,
 }
 
-/// TODO: DOCS
+/// The total metrics over all [`ProfilePart`]s and if detected any [`ToolRegression`]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ProfileTotal {
@@ -243,9 +243,10 @@ pub struct ProfileTotal {
     pub regressions: Vec<ToolRegression>,
 }
 
-/// TODO: IMPLEMENT things like `get_tool_summary()`, ...
+/// The collection of all generated [`Profile`]s
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[derive(Default)]
 pub struct Profiles(Vec<Profile>);
 
 /// The format (json, ...) in which the summary file should be saved or printed
@@ -304,7 +305,7 @@ pub enum ToolMetricSummary {
     Cachegrind(MetricsSummary<CachegrindMetric>),
 }
 
-// TODO: DOCS
+// The regression of a specific `MetricKind`
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ToolRegression {
@@ -430,22 +431,20 @@ impl BenchmarkSummary {
     /// # Errors
     ///
     /// If a regressions is present and are configured to be `fail_fast` an error is returned
-    pub fn check_regression(&self, fail_fast: bool, tool: ValgrindTool) -> Result<()> {
-        if let Some(summary) = &self.profiles.iter().find(|p| p.tool == tool) {
-            if summary.is_regressed() && fail_fast {
-                return Err(Error::RegressionError(true).into());
-            }
+    pub fn check_regression(&self, fail_fast: bool) -> Result<()> {
+        if self.profiles.is_regressed() && fail_fast {
+            return Err(Error::RegressionError(true).into());
         }
 
         Ok(())
     }
 
-    /// TODO: Check usages of this function to be correct with the new method and not only callgrind
-    /// can regress
+    /// Return true if any [`Profile`] has regressed
     pub fn is_regressed(&self) -> bool {
-        self.profiles.iter().any(Profile::is_regressed)
+        self.profiles.is_regressed()
     }
 
+    /// TODO: STOPPED HERE
     /// TODO: REFACTOR and simplify
     pub fn compare_and_print(
         &self,
@@ -912,6 +911,7 @@ impl From<ParserOutput> for ProfileInfo {
         }
     }
 }
+
 impl ProfilePart {
     pub fn new_has_errors(&self) -> bool {
         match &self.metrics_summary {
@@ -944,11 +944,12 @@ impl ProfilePart {
         }
     }
 
-    /// TODO: DOCS
+    /// Create a new `ProfilePart` from new and old [`ParserOutput`]
     ///
     /// # Panics
     ///
     /// Treat new and old with different metric kinds as programming error and not as runtime error
+    /// and panic
     pub fn from_new_and_old(new: ParserOutput, old: ParserOutput) -> Self {
         let metrics_summary =
             ToolMetricSummary::try_from_new_and_old_metrics(&new.metrics, &old.metrics)
@@ -960,7 +961,6 @@ impl ProfilePart {
     }
 }
 
-/// TODO: SORT
 impl ProfileTotal {
     pub fn is_regressed(&self) -> bool {
         !self.regressions.is_empty()
@@ -975,7 +975,6 @@ impl ProfileTotal {
     }
 }
 
-/// TODO: DOCS
 impl Profiles {
     pub fn new(values: Vec<Profile>) -> Self {
         Self(values)
@@ -988,16 +987,12 @@ impl Profiles {
     pub fn push(&mut self, summary: Profile) {
         self.0.push(summary);
     }
-}
 
-/// TODO: DOCS
-impl Default for Profiles {
-    fn default() -> Self {
-        Self(Vec::default())
+    pub fn is_regressed(&self) -> bool {
+        self.iter().any(Profile::is_regressed)
     }
 }
 
-/// TODO: DOCS
 impl IntoIterator for Profiles {
     type Item = Profile;
     type IntoIter = std::vec::IntoIter<Self::Item>;

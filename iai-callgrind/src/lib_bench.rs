@@ -248,10 +248,6 @@ impl LibraryBenchmarkConfig {
         self
     }
 
-    // TODO: UPDATE DOCS. Also other methods like `tools`, `tool_override`, .... Also make aware
-    // that running callgrind twice is usually a bad idea. Maybe print a warning if
-    // callgrind/cachegrind is configured as default tool and configured here as an additional
-    // tool.
     /// Add a configuration to run a valgrind [`crate::Tool`] in addition to callgrind
     ///
     /// # Examples

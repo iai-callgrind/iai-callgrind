@@ -1239,12 +1239,10 @@ impl RawArgs {
         self.0.is_empty()
     }
 
-    /// TODO: TEST
     pub fn update(&mut self, other: &Self) {
         self.extend_ignore_flag(other.0.iter());
     }
 
-    /// TODO: TEST
     pub fn prepend(&mut self, other: &Self) {
         if !other.is_empty() {
             let mut other = other.clone();
@@ -1414,7 +1412,6 @@ impl Tool {
         this
     }
 
-    /// TODO: TEST
     pub fn update(&mut self, other: &Self) {
         if self.kind == other.kind {
             self.enable = update_option(&self.enable, &other.enable);
@@ -1468,11 +1465,11 @@ impl Tools {
         self.update_all(tools.0.iter().cloned());
     }
 
-    /// TODO: DOCS
-    pub fn consume(&mut self, tool: ValgrindTool) -> Option<Tool> {
+    /// Search for the [`Tool`] with `kind` and if present remove it from this `Tools` and return it
+    pub fn consume(&mut self, kind: ValgrindTool) -> Option<Tool> {
         self.0
             .iter()
-            .position(|p| p.kind == tool)
+            .position(|p| p.kind == kind)
             .map(|position| self.0.remove(position))
     }
 }
@@ -1686,5 +1683,62 @@ mod tests {
         #[case] expected_metrics: IndexSet<EventKind>,
     ) {
         assert_eq!(IndexSet::from(callgrind_metrics), expected_metrics);
+    }
+
+    #[rstest]
+    #[case::empty(&[], &[], &[])]
+    #[case::prepend_empty(&["--some"], &[], &["--some"])]
+    #[case::initial_empty(&[], &["--some"], &["--some"])]
+    #[case::both_same_arg(&["--some"], &["--some"], &["--some", "--some"])]
+    #[case::both_different_arg(&["--some"], &["--other"], &["--other", "--some"])]
+    fn test_raw_args_prepend(
+        #[case] raw_args: &[&str],
+        #[case] other: &[&str],
+        #[case] expected: &[&str],
+    ) {
+        let mut raw_args = RawArgs::new(raw_args.iter().map(ToOwned::to_owned));
+        let other = RawArgs::new(other.iter().map(ToOwned::to_owned));
+        let expected = RawArgs::new(expected.iter().map(ToOwned::to_owned));
+
+        raw_args.prepend(&other);
+        assert_eq!(raw_args, expected);
+    }
+
+    #[test]
+    fn test_tool_update_when_tools_match() {
+        let mut base = Tool::new(ValgrindTool::Callgrind);
+        let other = Tool {
+            kind: ValgrindTool::Callgrind,
+            enable: Some(true),
+            raw_args: RawArgs::new(["--some"]),
+            show_log: Some(false),
+            regression_config: Some(ToolRegressionConfig::None),
+            flamegraph_config: Some(ToolFlamegraphConfig::None),
+            output_format: Some(ToolOutputFormat::None),
+            entry_point: Some(EntryPoint::Default),
+        };
+        let expected = other.clone();
+        base.update(&other);
+        assert_eq!(base, expected);
+    }
+
+    #[test]
+    fn test_tool_update_when_tools_not_match() {
+        let mut base = Tool::new(ValgrindTool::Callgrind);
+        let other = Tool {
+            kind: ValgrindTool::DRD,
+            enable: Some(true),
+            raw_args: RawArgs::new(["--some"]),
+            show_log: Some(false),
+            regression_config: Some(ToolRegressionConfig::None),
+            flamegraph_config: Some(ToolFlamegraphConfig::None),
+            output_format: Some(ToolOutputFormat::None),
+            entry_point: Some(EntryPoint::Default),
+        };
+
+        let expected = base.clone();
+        base.update(&other);
+
+        assert_eq!(base, expected);
     }
 }

@@ -154,8 +154,6 @@ impl Benchmark for BaselineBenchmark {
             }
         }
 
-        // TODO: move and shift ALSO FLAMEGRAPHS
-
         let benchmark_summary = bin_bench.create_benchmark_summary(
             config,
             &out_path,
@@ -487,8 +485,7 @@ impl Group {
 
             let summary = benchmark.run(bench, config, self)?;
             summary.print_and_save(&config.meta.args.output_format)?;
-            // TODO: DON'T LIMIT TO JUST CALLGRIND (Cachegrind, Dhat, ...)
-            summary.check_regression(fail_fast, ValgrindTool::Callgrind)?;
+            summary.check_regression(fail_fast)?;
 
             benchmark_summaries.add_summary(summary.clone());
             if self.compare_by_id && bench.output_format.is_default() {

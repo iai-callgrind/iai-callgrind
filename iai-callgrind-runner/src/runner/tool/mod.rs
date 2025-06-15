@@ -244,10 +244,7 @@ impl ToolCommand {
         if let Some(stdin) = stdin {
             stdin
                 .apply(&mut self.command, Stream::Stdin, child.as_mut())
-                .map_err(|error| {
-                    // TODO: Why was it ValgrindTool::Callgrind and not self.tool??
-                    Error::BenchmarkError(self.tool, module_path.clone(), error)
-                })?;
+                .map_err(|error| Error::BenchmarkError(self.tool, module_path.clone(), error))?;
         }
 
         if let Some(stdout) = stdout {
