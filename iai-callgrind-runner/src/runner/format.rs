@@ -1044,8 +1044,11 @@ impl Formatter for VerticalFormatter {
             ComparisonHeader::new(function_name, id, details, &self.output_format).print();
 
             let is_multiple = summaries.len() > 1;
-            for (tool, summary) in summaries {
-                if is_multiple || tool != ValgrindTool::Callgrind {
+            for (tool, summary) in summaries
+                .iter()
+                .filter(|(_, s)| *s != ToolMetricSummary::None)
+            {
+                if is_multiple || *tool != ValgrindTool::Callgrind {
                     self.format_free_form(&format!(
                         "{}{} {}\n",
                         self.indent_sub_header,
@@ -1053,7 +1056,7 @@ impl Formatter for VerticalFormatter {
                         tool.to_string().to_uppercase()
                     ))?;
                 }
-                self.format_single(tool, &(None, None), None, &summary, false)?;
+                self.format_single(*tool, &(None, None), None, summary, false)?;
             }
             self.print_buffer();
         }
