@@ -1,4 +1,5 @@
 test_lib_bench_cachegrind::my_group::bench_default_tool no_config:vec! [3, 2, 1]
+  ======= CACHEGRIND ===================================================================
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
   L2 Hits:                                 |N/A                  (*********)
@@ -6,6 +7,7 @@ test_lib_bench_cachegrind::my_group::bench_default_tool no_config:vec! [3, 2, 1]
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
 test_lib_bench_cachegrind::my_group::bench_default_tool cachegrind_config:vec! [3, 2, 1]
+  ======= CACHEGRIND ===================================================================
   Instructions:                            |                     (-       %) [-       x]
 test_lib_bench_cachegrind::my_group::bench_default_tool callgrind_config:vec! [3, 2, 1]
   ======= CACHEGRIND ===================================================================
@@ -53,8 +55,10 @@ test_lib_bench_cachegrind::my_group::test_config_overwrite overwrite_default_cal
   ======= CALLGRIND ====================================================================
   Instructions:                            |                     (+       %) [+       x]
 test_lib_bench_cachegrind::my_group::test_config_overwrite tool_override:setup_best_case_array(10)
+  ======= CACHEGRIND ===================================================================
   Instructions:                            |                     (-       %) [-       x]
 test_lib_bench_cachegrind::my_group::manual_cachegrind_setup set_instr_at_start:vec! [3, 2, 1]
+  ======= CACHEGRIND ===================================================================
   Instructions:                            |                     (+       %) [+       x]
   L1 Hits:                                 |                     (         )
   L2 Hits:                                 |                     (         )

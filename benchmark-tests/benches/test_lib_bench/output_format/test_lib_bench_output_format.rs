@@ -2,8 +2,9 @@ use std::hint::black_box;
 
 use benchmark_tests::{bubble_sort, setup_worst_case_array};
 use iai_callgrind::{
-    library_benchmark, library_benchmark_group, main, Callgrind, CallgrindMetrics, Dhat,
-    EntryPoint, EventKind, LibraryBenchmarkConfig, OutputFormat,
+    library_benchmark, library_benchmark_group, main, Cachegrind, CachegrindMetric, Callgrind,
+    CallgrindMetrics, Dhat, DhatMetric, Drd, EntryPoint, ErrorMetric, EventKind, Helgrind,
+    LibraryBenchmarkConfig, Memcheck, OutputFormat, ValgrindTool,
 };
 
 // The --collect-systime=nsec option is not supported on freebsd and apple, so we use
@@ -70,120 +71,137 @@ fn bench_without_format(_: &str) -> Vec<u64> {
 )]
 #[bench::explicit_default_with_wb(config =
     base_config()
-        .tool(Callgrind::with_args(["simulate-wb=yes"]))
-        .output_format(
-            OutputFormat::default()
-                .callgrind([CallgrindMetrics::Default])
+        .tool(Callgrind::with_args(["simulate-wb=yes"])
+            .format([CallgrindMetrics::Default])
         )
 )]
 #[bench::explicit_default_with_cacheuse(config =
     base_config()
-        .tool(Callgrind::with_args(["cacheuse=yes"]))
-        .output_format(
-            OutputFormat::default()
-                .callgrind([CallgrindMetrics::Default])
+        .tool(Callgrind::with_args(["cacheuse=yes"])
+            .format([CallgrindMetrics::Default])
         )
 )]
 #[bench::all_with_wb(config =
     base_config()
-        .tool(Callgrind::with_args(["simulate-wb=yes"]))
-        .output_format(
-            OutputFormat::default()
-                .callgrind([CallgrindMetrics::All])
+        .tool(Callgrind::with_args(["simulate-wb=yes"])
+            .format([CallgrindMetrics::All])
         )
 )]
 #[bench::all_with_cachuse(config =
     base_config()
-        .tool(Callgrind::with_args(["cacheuse=yes"]))
-        .output_format(
-            OutputFormat::default()
-                .callgrind([CallgrindMetrics::All])
+        .tool(Callgrind::with_args(["cacheuse=yes"])
+            .format([CallgrindMetrics::All])
         )
 )]
 #[bench::cache_misses(config =
     base_config()
-        .output_format(
-            OutputFormat::default()
-                .callgrind([CallgrindMetrics::CacheMisses])
+        .tool(Callgrind::default()
+            .format([CallgrindMetrics::CacheMisses])
         )
 )]
 #[bench::cache_hits(config =
     base_config()
-        .output_format(
-            OutputFormat::default()
-                .callgrind([CallgrindMetrics::CacheHits])
+        .tool(Callgrind::default()
+            .format([CallgrindMetrics::CacheHits])
         )
 )]
 #[bench::cache_sim(config =
     base_config()
-        .output_format(
-            OutputFormat::default()
-                .callgrind([CallgrindMetrics::CacheSim])
+        .tool(Callgrind::default()
+            .format([CallgrindMetrics::CacheSim])
         )
 )]
 #[bench::cache_use(config =
     base_config()
-        .tool(Callgrind::with_args(["cacheuse=yes"]))
-        .output_format(
-            OutputFormat::default()
-                .callgrind([CallgrindMetrics::CacheUse])
+        .tool(Callgrind::with_args(["cacheuse=yes"])
+            .format([CallgrindMetrics::CacheUse])
         )
 )]
 #[bench::system_calls(config =
     base_config()
-        .output_format(
-            OutputFormat::default()
-                .callgrind([CallgrindMetrics::SystemCalls])
+        .tool(Callgrind::default()
+            .format([CallgrindMetrics::SystemCalls])
         )
 )]
 #[bench::branch_sim(config =
     base_config()
-        .output_format(
-            OutputFormat::default()
-                .callgrind([CallgrindMetrics::BranchSim])
+        .tool(Callgrind::default()
+            .format([CallgrindMetrics::BranchSim])
         )
 )]
 #[bench::write_back(config =
     base_config()
-        .tool(Callgrind::with_args(["simulate-wb=yes"]))
-        .output_format(
-            OutputFormat::default()
-                .callgrind([
+        .tool(Callgrind::with_args(["simulate-wb=yes"])
+            .format([
                     // Without `Ir` the counts would be all zero
                     CallgrindMetrics::SingleEvent(EventKind::Ir),
                     CallgrindMetrics::WriteBackBehaviour
-                ])
+                ]
+            )
         )
 )]
 #[bench::single_event_ir(config =
     base_config()
-        .output_format(
-            OutputFormat::default()
-                .callgrind([CallgrindMetrics::SingleEvent(EventKind::Ir)])
+        .tool(Callgrind::default()
+            .format([CallgrindMetrics::SingleEvent(EventKind::Ir)])
         )
 )]
 #[bench::single_event_ge(config =
     base_config()
-        .output_format(
-            OutputFormat::default()
-                .callgrind([CallgrindMetrics::SingleEvent(EventKind::Ge)])
+        .tool(Callgrind::default()
+            .format([CallgrindMetrics::SingleEvent(EventKind::Ge)])
         )
 )]
 #[bench::single_event_total_rw(config =
     base_config()
-        .output_format(
-            OutputFormat::default()
-                .callgrind([CallgrindMetrics::SingleEvent(EventKind::TotalRW)])
+        .tool(Callgrind::default()
+            .format([CallgrindMetrics::SingleEvent(EventKind::TotalRW)])
         )
 )]
 #[bench::single_event_estimated_cycles(config =
     base_config()
-        .output_format(
-            OutputFormat::default()
-                .callgrind([CallgrindMetrics::SingleEvent(EventKind::EstimatedCycles)])
+        .tool(Callgrind::default()
+            .format([CallgrindMetrics::SingleEvent(EventKind::EstimatedCycles)])
         )
 )]
 fn bench_with_custom_callgrind_format() -> Vec<i32> {
+    println!("Hello world!");
+    black_box(bubble_sort(black_box(setup_worst_case_array(black_box(
+        10,
+    )))))
+}
+
+#[library_benchmark]
+#[bench::cachegrind(
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(ValgrindTool::Cachegrind)
+        .tool(Cachegrind::default()
+            .format([CachegrindMetric::I1mr, CachegrindMetric::EstimatedCycles])
+        )
+)]
+#[bench::dhat(
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(ValgrindTool::DHAT)
+        .tool(Dhat::default().format([DhatMetric::TotalBlocks, DhatMetric::TotalBytes]))
+)]
+#[bench::memcheck(
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(ValgrindTool::Memcheck)
+        .tool(Memcheck::default().format([ErrorMetric::SuppressedErrors, ErrorMetric::Errors]))
+)]
+#[bench::helgrind(
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(ValgrindTool::Helgrind)
+        .tool(Helgrind::default()
+            .format([ErrorMetric::Contexts, ErrorMetric::SuppressedContexts])
+        )
+)]
+#[bench::drd(
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(ValgrindTool::DRD)
+        .tool(Drd::default().format([ErrorMetric::Errors, ErrorMetric::Contexts]))
+)]
+fn bench_with_custom_format() -> Vec<i32> {
     println!("Hello world!");
     black_box(bubble_sort(black_box(setup_worst_case_array(black_box(
         10,
@@ -206,7 +224,7 @@ library_benchmark_group!(
 
 library_benchmark_group!(
     name = custom_format;
-    benchmarks = bench_with_custom_callgrind_format
+    benchmarks = bench_with_custom_callgrind_format, bench_with_custom_format
 );
 
 main!(library_benchmark_groups = my_group, custom_format);

@@ -66,12 +66,22 @@ test_lib_bench_output_format::my_group::bench_with_format for_comparison:"Anothe
 | Reads bytes:                             |N/A                  (*********)
 | Writes bytes:                            |N/A                  (*********)
 |-Comparison with bench_without_format for_comparison:"A very long string to see if the truncation of th...
+|-------- CALLGRIND
 | Instructions:                            |                     (-       %) [-       x]
 | L1 Hits:                                 |                     (         )
 | L2 Hits:                                 |                     (         )
 | RAM Hits:                                |                     (         )
 | Total read+write:                        |                     (-       %) [-       x]
 | Estimated Cycles:                        |                     (         )
+|-------- DHAT
+| Total bytes:                             |                     (-       %) [-       x]
+| Total blocks:                            |                     (-       %) [-       x]
+| At t-gmax bytes:                         |                     (         )
+| At t-gmax blocks:                        |                     (         )
+| At t-end bytes:                          |                     (No change)
+| At t-end blocks:                         |                     (No change)
+| Reads bytes:                             |                     (-       %) [-       x]
+| Writes bytes:                            |                     (-       %) [-       x]
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format implicit_default_with_wb
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -251,3 +261,23 @@ test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format 
   Total read+write:                        |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format single_event_estimated_cycles
   Estimated Cycles:                        |N/A                  (*********)
+test_lib_bench_output_format::custom_format::bench_with_custom_format cachegrind
+  ======= CACHEGRIND ===================================================================
+  I1mr:                                    |N/A                  (*********)
+  Estimated Cycles:                        |N/A                  (*********)
+test_lib_bench_output_format::custom_format::bench_with_custom_format dhat
+  ======= DHAT =========================================================================
+  Total blocks:                            |N/A                  (*********)
+  Total bytes:                             |N/A                  (*********)
+test_lib_bench_output_format::custom_format::bench_with_custom_format memcheck
+  ======= MEMCHECK =====================================================================
+  Suppressed Errors:                       |N/A                  (*********)
+  Errors:                                  |N/A                  (*********)
+test_lib_bench_output_format::custom_format::bench_with_custom_format helgrind
+  ======= HELGRIND =====================================================================
+  Contexts:                                |N/A                  (*********)
+  Suppressed Contexts:                     |N/A                  (*********)
+test_lib_bench_output_format::custom_format::bench_with_custom_format drd
+  ======= DRD ==========================================================================
+  Errors:                                  |N/A                  (*********)
+  Contexts:                                |N/A                  (*********)

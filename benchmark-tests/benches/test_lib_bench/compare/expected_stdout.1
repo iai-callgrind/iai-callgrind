@@ -229,12 +229,22 @@ test_lib_bench_compare::bubble_sort_compare_with_dhat::bench_bubble_sort_dhat_ot
   Reads bytes:                             |N/A                  (*********)
   Writes bytes:                            |N/A                  (*********)
   Comparison with bench_bubble_sort_dhat case_3:vec! [3, 2, 1]
+  ------- CALLGRIND
   Instructions:                            |                     (+       %) [+       x]
   L1 Hits:                                 |                     (         )
   L2 Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (+       %) [+       x]
   Estimated Cycles:                        |                     (         )
+  ------- DHAT
+  Total bytes:                             |                     (-       %) [-       x]
+  Total blocks:                            |                     (No change)
+  At t-gmax bytes:                         |                     (         )
+  At t-gmax blocks:                        |                     (         )
+  At t-end bytes:                          |                     (No change)
+  At t-end blocks:                         |                     (No change)
+  Reads bytes:                             |                     (No change)
+  Writes bytes:                            |                     (+       %) [+       x]
 test_lib_bench_compare::bubble_sort_compare_with_dhat::bench_bubble_sort_mixed_case case_3:vec! [2, 3, 1]
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
