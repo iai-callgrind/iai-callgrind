@@ -11,8 +11,6 @@ use super::{
 };
 use crate::EntryPoint;
 
-// TODO: ADD OUTPUT FORMAT TO the structs
-
 /// TODO: DOCS
 #[derive(Debug, Clone, IntoInner, AsRef)]
 pub struct Bbv(__internal::InternalTool);

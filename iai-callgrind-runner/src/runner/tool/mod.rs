@@ -360,7 +360,6 @@ impl ToolConfig {
     ) -> Result<Self> {
         let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
 
-        // TODO: ADJUST OUTPUT FORMAT
         let tool_config = match default_tool {
             ValgrindTool::Callgrind => {
                 if let Some(tool) = tool {
