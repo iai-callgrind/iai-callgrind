@@ -21,43 +21,6 @@ use crate::util::{
     EitherOrBoth,
 };
 
-// TODO: Remove and Replace with `output_format`
-/// The error metrics to format in the given order
-pub const ERROR_METRICS_DEFAULT: [ErrorMetric; 4] = [
-    ErrorMetric::Errors,
-    ErrorMetric::Contexts,
-    ErrorMetric::SuppressedErrors,
-    ErrorMetric::SuppressedContexts,
-];
-
-// TODO: Remove and Replace with `output_format`
-/// The subset of dhat metrics to format in the given order
-pub const DHAT_DEFAULT: [DhatMetric; 8] = [
-    DhatMetric::TotalBytes,
-    DhatMetric::TotalBlocks,
-    DhatMetric::AtTGmaxBytes,
-    DhatMetric::AtTGmaxBlocks,
-    DhatMetric::AtTEndBytes,
-    DhatMetric::AtTEndBlocks,
-    DhatMetric::ReadsBytes,
-    DhatMetric::WritesBytes,
-];
-
-// TODO: Remove and Replace with `output_format`
-// The `Cachegrind` default metrics to show
-pub const CACHEGRIND_DEFAULT: [CachegrindMetric; 10] = [
-    CachegrindMetric::Ir,
-    CachegrindMetric::L1hits,
-    CachegrindMetric::LLhits,
-    CachegrindMetric::RamHits,
-    CachegrindMetric::TotalRW,
-    CachegrindMetric::EstimatedCycles,
-    CachegrindMetric::Bc,
-    CachegrindMetric::Bcm,
-    CachegrindMetric::Bi,
-    CachegrindMetric::Bim,
-];
-
 /// The string used to signal that a value is not available
 pub const NOT_AVAILABLE: &str = "N/A";
 pub const UNKNOWN: &str = "*********";
@@ -81,6 +44,7 @@ pub const MAX_WIDTH: usize = 2 + LEFT_WIDTH + 1 + METRIC_WIDTH + 2 * 11;
 pub trait Formatter {
     fn format_single(
         &mut self,
+        tool: ValgrindTool,
         baselines: &Baselines,
         info: Option<&EitherOrBoth<ProfileInfo>>,
         metrics_summary: &ToolMetricSummary,
@@ -89,6 +53,7 @@ pub trait Formatter {
 
     fn format(
         &mut self,
+        tool: ValgrindTool,
         config: &Config,
         baselines: &Baselines,
         data: &ProfileData,
@@ -99,6 +64,7 @@ pub trait Formatter {
 
     fn print(
         &mut self,
+        tool: ValgrindTool,
         config: &Config,
         baselines: &Baselines,
         data: &ProfileData,
@@ -108,7 +74,7 @@ pub trait Formatter {
         Self: std::fmt::Display,
     {
         if self.get_output_format().is_default() {
-            self.format(config, baselines, data, is_default_tool)?;
+            self.format(tool, config, baselines, data, is_default_tool)?;
             print!("{self}");
             self.clear();
         }
@@ -171,7 +137,12 @@ pub struct OutputFormat {
     pub truncate_description: Option<usize>,
     pub show_intermediate: bool,
     pub show_grid: bool,
-    pub event_kinds: IndexSet<EventKind>,
+    pub callgrind: IndexSet<EventKind>,
+    pub cachegrind: IndexSet<CachegrindMetric>,
+    pub dhat: IndexSet<DhatMetric>,
+    pub memcheck: IndexSet<ErrorMetric>,
+    pub helgrind: IndexSet<ErrorMetric>,
+    pub drd: IndexSet<ErrorMetric>,
 }
 
 #[derive(Debug, Clone)]
@@ -403,22 +374,12 @@ impl OutputFormat {
 
 impl From<api::OutputFormat> for OutputFormat {
     fn from(value: api::OutputFormat) -> Self {
-        let event_kinds = match value.callgrind_metrics {
-            None => IndexSet::from(CallgrindMetrics::Default),
-            Some(metrics) => {
-                let mut event_kinds = indexset! {};
-                for metric in metrics {
-                    event_kinds.extend(IndexSet::from(metric));
-                }
-                event_kinds
-            }
-        };
         Self {
             kind: OutputFormatKind::Default,
             truncate_description: value.truncate_description.unwrap_or(Some(50)),
             show_intermediate: value.show_intermediate.unwrap_or(false),
             show_grid: value.show_grid.unwrap_or(false),
-            event_kinds,
+            ..Default::default()
         }
     }
 }
@@ -430,7 +391,47 @@ impl Default for OutputFormat {
             truncate_description: Some(50),
             show_intermediate: false,
             show_grid: false,
-            event_kinds: IndexSet::from(CallgrindMetrics::Default),
+            callgrind: IndexSet::from(CallgrindMetrics::Default),
+            cachegrind: indexset![
+                CachegrindMetric::Ir,
+                CachegrindMetric::L1hits,
+                CachegrindMetric::LLhits,
+                CachegrindMetric::RamHits,
+                CachegrindMetric::TotalRW,
+                CachegrindMetric::EstimatedCycles,
+                CachegrindMetric::Bc,
+                CachegrindMetric::Bcm,
+                CachegrindMetric::Bi,
+                CachegrindMetric::Bim,
+            ],
+            dhat: indexset![
+                DhatMetric::TotalBytes,
+                DhatMetric::TotalBlocks,
+                DhatMetric::AtTGmaxBytes,
+                DhatMetric::AtTGmaxBlocks,
+                DhatMetric::AtTEndBytes,
+                DhatMetric::AtTEndBlocks,
+                DhatMetric::ReadsBytes,
+                DhatMetric::WritesBytes,
+            ],
+            memcheck: indexset![
+                ErrorMetric::Errors,
+                ErrorMetric::Contexts,
+                ErrorMetric::SuppressedErrors,
+                ErrorMetric::SuppressedContexts,
+            ],
+            helgrind: indexset![
+                ErrorMetric::Errors,
+                ErrorMetric::Contexts,
+                ErrorMetric::SuppressedErrors,
+                ErrorMetric::SuppressedContexts,
+            ],
+            drd: indexset![
+                ErrorMetric::Errors,
+                ErrorMetric::Contexts,
+                ErrorMetric::SuppressedErrors,
+                ErrorMetric::SuppressedContexts,
+            ],
         }
     }
 }
@@ -886,6 +887,7 @@ impl Write for VerticalFormatter {
 impl Formatter for VerticalFormatter {
     fn format_single(
         &mut self,
+        tool: ValgrindTool,
         baselines: &Baselines,
         info: Option<&EitherOrBoth<ProfileInfo>>,
         metrics_summary: &ToolMetricSummary,
@@ -906,8 +908,18 @@ impl Formatter for VerticalFormatter {
                 }
             }
             ToolMetricSummary::ErrorTool(summary) => {
+                let format = match tool {
+                    ValgrindTool::Memcheck => &self.output_format.memcheck,
+                    ValgrindTool::Helgrind => &self.output_format.helgrind,
+                    ValgrindTool::DRD => &self.output_format.drd,
+                    _ => {
+                        unreachable!("{tool} should be an error metric tool");
+                    }
+                };
+
                 self.format_metrics(
-                    ERROR_METRICS_DEFAULT
+                    format
+                        .clone()
                         .iter()
                         .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
                 );
@@ -927,14 +939,16 @@ impl Formatter for VerticalFormatter {
                 }
             }
             ToolMetricSummary::Dhat(summary) => self.format_metrics(
-                DHAT_DEFAULT
+                self.output_format
+                    .dhat
+                    .clone()
                     .iter()
                     .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
             ),
             ToolMetricSummary::Callgrind(summary) => {
                 self.format_metrics(
                     self.output_format
-                        .event_kinds
+                        .callgrind
                         .clone()
                         .iter()
                         .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
@@ -942,7 +956,9 @@ impl Formatter for VerticalFormatter {
             }
             ToolMetricSummary::Cachegrind(summary) => {
                 self.format_metrics(
-                    CACHEGRIND_DEFAULT
+                    self.output_format
+                        .cachegrind
+                        .clone()
                         .iter()
                         .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
                 );
@@ -953,6 +969,7 @@ impl Formatter for VerticalFormatter {
 
     fn format(
         &mut self,
+        tool: ValgrindTool,
         config: &Config,
         baselines: &Baselines,
         data: &ProfileData,
@@ -966,6 +983,7 @@ impl Formatter for VerticalFormatter {
 
                 if first {
                     self.format_single(
+                        tool,
                         baselines,
                         Some(&part.details),
                         &part.metrics_summary,
@@ -974,6 +992,7 @@ impl Formatter for VerticalFormatter {
                     first = false;
                 } else {
                     self.format_single(
+                        tool,
                         &(None, None),
                         Some(&part.details),
                         &part.metrics_summary,
@@ -984,10 +1003,16 @@ impl Formatter for VerticalFormatter {
 
             if data.total.is_some() {
                 self.format_tool_total_header();
-                self.format_single(&(None, None), None, &data.total.summary, is_default_tool)?;
+                self.format_single(
+                    tool,
+                    &(None, None),
+                    None,
+                    &data.total.summary,
+                    is_default_tool,
+                )?;
             }
         } else if data.total.is_some() {
-            self.format_single(baselines, None, &data.total.summary, is_default_tool)?;
+            self.format_single(tool, baselines, None, &data.total.summary, is_default_tool)?;
         } else if data.total.is_none() && !data.parts.is_empty() {
             // Since there is no total, show_all is partly ignored, and we show all data in a little
             // bit more aggregated form without the multiple files headlines. This affects currently
@@ -1028,7 +1053,7 @@ impl Formatter for VerticalFormatter {
                         tool.to_string().to_uppercase()
                     ))?;
                 }
-                self.format_single(&(None, None), None, &summary, false)?;
+                self.format_single(tool, &(None, None), None, &summary, false)?;
             }
             self.print_buffer();
         }

@@ -17,6 +17,7 @@ use std::process::{Child, Command, ExitStatus, Output};
 use anyhow::{anyhow, Context, Result};
 use error_metric_parser::ErrorMetricLogfileParser;
 use generic_parser::GenericLogfileParser;
+use indexmap::IndexSet;
 use lazy_static::lazy_static;
 use log::{debug, error, log_enabled};
 use parser::{Parser, ParserOutput};
@@ -40,7 +41,9 @@ use super::summary::{
     ToolMetricSummary, ToolRegression,
 };
 use super::{cachegrind, callgrind, DEFAULT_TOGGLE};
-use crate::api::{self, EntryPoint, ExitWith, RawArgs, Stream, Tool, Tools, ValgrindTool};
+use crate::api::{
+    self, EntryPoint, ExitWith, RawArgs, Stream, Tool, ToolOutputFormat, Tools, ValgrindTool,
+};
 use crate::error::Error;
 use crate::util::{self, resolve_binary_path, truncate_str_utf8};
 
@@ -347,6 +350,7 @@ impl ToolConfig {
     }
 
     pub fn new_default_tool(
+        output_format: &mut OutputFormat,
         meta: &Metadata,
         default_tool: ValgrindTool,
         tool: Option<Tool>,
@@ -356,6 +360,7 @@ impl ToolConfig {
     ) -> Result<Self> {
         let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
 
+        // TODO: ADJUST OUTPUT FORMAT
         let tool_config = match default_tool {
             ValgrindTool::Callgrind => {
                 if let Some(tool) = tool {
@@ -381,6 +386,14 @@ impl ToolConfig {
                     let flamegraph_config = tool
                         .flamegraph_config
                         .map_or(ToolFlamegraphConfig::None, Into::into);
+
+                    if let Some(ToolOutputFormat::Callgrind(metrics)) = tool.output_format {
+                        output_format.callgrind =
+                            metrics.into_iter().fold(IndexSet::new(), |mut acc, m| {
+                                acc.extend(IndexSet::from(m));
+                                acc
+                            });
+                    }
 
                     match &entry_point {
                         EntryPoint::None => {}
@@ -449,6 +462,34 @@ impl ToolConfig {
                             .unwrap_or_default(),
                     );
                     tool.raw_args.prepend(valgrind_args);
+
+                    if let Some(format) = tool.output_format {
+                        match format {
+                            ToolOutputFormat::Callgrind(metrics) => {
+                                output_format.callgrind =
+                                    metrics.into_iter().fold(IndexSet::new(), |mut acc, m| {
+                                        acc.extend(IndexSet::from(m));
+                                        acc
+                                    });
+                            }
+                            ToolOutputFormat::Cachegrind(metrics) => {
+                                output_format.cachegrind = metrics.into_iter().collect();
+                            }
+                            ToolOutputFormat::DHAT(metrics) => {
+                                output_format.dhat = metrics.into_iter().collect();
+                            }
+                            ToolOutputFormat::Memcheck(metrics) => {
+                                output_format.memcheck = metrics.into_iter().collect();
+                            }
+                            ToolOutputFormat::Helgrind(metrics) => {
+                                output_format.helgrind = metrics.into_iter().collect();
+                            }
+                            ToolOutputFormat::DRD(metrics) => {
+                                output_format.drd = metrics.into_iter().collect();
+                            }
+                            ToolOutputFormat::None => {}
+                        }
+                    }
 
                     let args = match valgrind_tool {
                         ValgrindTool::Callgrind => {
@@ -559,6 +600,7 @@ impl ToolConfig {
         baselines: &Baselines,
     ) -> Result<()> {
         VerticalFormatter::new(output_format.clone()).print(
+            self.tool,
             config,
             baselines,
             data,
@@ -614,6 +656,7 @@ impl ToolConfigs {
     ///
     /// This function will return an error if the configs cannot be created
     pub fn new(
+        output_format: &mut OutputFormat,
         mut tools: Tools,
         meta: &Metadata,
         default_tool: ValgrindTool,
@@ -625,6 +668,7 @@ impl ToolConfigs {
 
         let extracted_tool = tools.consume(default_tool);
         let default_tool_config = ToolConfig::new_default_tool(
+            output_format,
             meta,
             default_tool,
             extracted_tool,
@@ -638,6 +682,34 @@ impl ToolConfigs {
             tool.raw_args
                 .prepend(&default_args.get(&tool.kind).cloned().unwrap_or_default());
             tool.raw_args.prepend(valgrind_args);
+
+            if let Some(format) = &tool.output_format {
+                match format {
+                    ToolOutputFormat::Callgrind(metrics) => {
+                        output_format.callgrind =
+                            metrics.iter().fold(IndexSet::new(), |mut acc, m| {
+                                acc.extend(IndexSet::from(*m));
+                                acc
+                            });
+                    }
+                    ToolOutputFormat::Cachegrind(metrics) => {
+                        output_format.cachegrind = metrics.iter().copied().collect();
+                    }
+                    ToolOutputFormat::DHAT(metrics) => {
+                        output_format.dhat = metrics.iter().copied().collect();
+                    }
+                    ToolOutputFormat::Memcheck(metrics) => {
+                        output_format.memcheck = metrics.iter().copied().collect();
+                    }
+                    ToolOutputFormat::Helgrind(metrics) => {
+                        output_format.helgrind = metrics.iter().copied().collect();
+                    }
+                    ToolOutputFormat::DRD(metrics) => {
+                        output_format.drd = metrics.iter().copied().collect();
+                    }
+                    ToolOutputFormat::None => {}
+                }
+            }
 
             if tool.kind == ValgrindTool::Callgrind {
                 let mut args = callgrind::args::Args::try_from_raw_args(&[

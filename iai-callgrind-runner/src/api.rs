@@ -131,7 +131,7 @@ pub enum CachegrindMetric {
 /// `Callgrind` supports a large amount of metrics and their collection can be enabled with various
 /// command-line flags. [`CallgrindMetrics`] groups these metrics to make it less cumbersome to
 /// specify multiple [`EventKind`]s at once if necessary.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum CallgrindMetrics {
     /// The default group contains all event kinds except the [`CallgrindMetrics::CacheMisses`] and
@@ -599,7 +599,6 @@ pub struct OutputFormat {
     pub truncate_description: Option<Option<usize>>,
     pub show_intermediate: Option<bool>,
     pub show_grid: Option<bool>,
-    pub callgrind_metrics: Option<Vec<CallgrindMetrics>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -703,7 +702,12 @@ pub enum ToolFlamegraphConfig {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ToolOutputFormat {
-    Callgrind(Option<Vec<CallgrindMetrics>>),
+    Callgrind(Vec<CallgrindMetrics>),
+    Cachegrind(Vec<CachegrindMetric>),
+    DHAT(Vec<DhatMetric>),
+    Memcheck(Vec<ErrorMetric>),
+    Helgrind(Vec<ErrorMetric>),
+    DRD(Vec<ErrorMetric>),
     None,
 }
 

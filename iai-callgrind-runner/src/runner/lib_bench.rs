@@ -331,6 +331,7 @@ impl LibBench {
         output_format.kind = meta.args.output_format;
 
         let tool_configs = ToolConfigs::new(
+            &mut output_format,
             config.tools,
             meta,
             default_tool,
