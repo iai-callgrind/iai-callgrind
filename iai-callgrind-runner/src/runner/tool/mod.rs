@@ -99,72 +99,6 @@ pub struct ToolConfig {
     pub entry_point: EntryPoint,
 }
 
-// TODO: SORT
-#[derive(Debug, Clone, PartialEq)]
-pub enum ToolRegressionConfig {
-    Callgrind(RegressionConfig),
-    None,
-}
-
-impl From<api::ToolRegressionConfig> for ToolRegressionConfig {
-    fn from(value: api::ToolRegressionConfig) -> Self {
-        match value {
-            api::ToolRegressionConfig::Callgrind(regression_config) => {
-                Self::Callgrind(regression_config.into())
-            }
-            api::ToolRegressionConfig::None => Self::None,
-        }
-    }
-}
-
-impl ToolRegressionConfig {
-    // TODO: DOCS
-    pub fn is_fail_fast(&self) -> bool {
-        match self {
-            ToolRegressionConfig::Callgrind(regression_config) => regression_config.fail_fast,
-            ToolRegressionConfig::None => false,
-        }
-    }
-}
-
-// TODO: SORT
-impl From<Option<RegressionConfig>> for ToolRegressionConfig {
-    fn from(value: Option<RegressionConfig>) -> Self {
-        match value {
-            Some(config) => ToolRegressionConfig::Callgrind(config),
-            None => ToolRegressionConfig::None,
-        }
-    }
-}
-
-// TODO: SORT
-impl From<Option<FlamegraphConfig>> for ToolFlamegraphConfig {
-    fn from(value: Option<FlamegraphConfig>) -> Self {
-        match value {
-            Some(config) => ToolFlamegraphConfig::Callgrind(config),
-            None => ToolFlamegraphConfig::None,
-        }
-    }
-}
-
-impl From<api::ToolFlamegraphConfig> for ToolFlamegraphConfig {
-    fn from(value: api::ToolFlamegraphConfig) -> Self {
-        match value {
-            api::ToolFlamegraphConfig::Callgrind(flamegraph_config) => {
-                Self::Callgrind(flamegraph_config.into())
-            }
-            api::ToolFlamegraphConfig::None => Self::None,
-        }
-    }
-}
-
-// TODO: SORT
-#[derive(Debug, Clone, PartialEq)]
-pub enum ToolFlamegraphConfig {
-    Callgrind(FlamegraphConfig),
-    None,
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct ToolConfigs(pub Vec<ToolConfig>);
 
@@ -172,6 +106,12 @@ pub struct ToolCommand {
     tool: ValgrindTool,
     nocapture: NoCapture,
     command: Command,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ToolFlamegraphConfig {
+    Callgrind(FlamegraphConfig),
+    None,
 }
 
 pub struct ToolOutput {
@@ -198,6 +138,12 @@ pub enum ToolOutputPathKind {
     OldLog,
     BaseLog(String),
     Base(String),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ToolRegressionConfig {
+    Callgrind(RegressionConfig),
+    None,
 }
 
 impl ToolCommand {
@@ -428,7 +374,6 @@ impl ToolConfig {
 
                     let entry_point = tool.entry_point.unwrap_or(default_entry_point);
 
-                    // TODO: TEST AND CHECK
                     let regression_config = meta
                         .args
                         .regression
@@ -567,6 +512,31 @@ impl ToolConfig {
         Ok(tool_config)
     }
 
+    pub fn parse(
+        &self,
+        meta: &Metadata,
+        output_path: &ToolOutputPath,
+        parsed_old: Vec<ParserOutput>,
+    ) -> Result<Profile> {
+        let parser = parser_factory(self.tool, meta.project_root.clone(), output_path);
+
+        let parsed_new = parser.parse()?;
+
+        let data = match (parsed_new.is_empty(), parsed_old.is_empty()) {
+            (true, false | true) => return Err(anyhow!("A new dataset should always be present")),
+            (false, true) => ProfileData::new(parsed_new, None),
+            (false, false) => ProfileData::new(parsed_new, Some(parsed_old)),
+        };
+
+        Ok(Profile {
+            tool: self.tool,
+            log_paths: output_path.to_log_output().real_paths()?,
+            out_paths: output_path.real_paths()?,
+            summaries: data,
+            flamegraphs: vec![],
+        })
+    }
+
     fn parse_load(&self, config: &Config, out_path: &ToolOutputPath) -> Result<Profile> {
         let parser = parser_factory(self.tool, config.meta.project_root.clone(), out_path);
 
@@ -580,7 +550,6 @@ impl ToolConfig {
             log_paths: out_path.to_log_output().real_paths()?,
             out_paths: out_path.real_paths()?,
             summaries,
-            // TODO: FLAMEGRAPHS EMPTY
             flamegraphs: vec![],
         })
     }
@@ -680,7 +649,6 @@ impl ToolConfigs {
                 ])?;
 
                 let entry_point = tool.entry_point.unwrap_or(default_entry_point.clone());
-                // TODO: TEST AND CHECK
                 let regression_config = meta
                     .args
                     .regression
@@ -739,32 +707,6 @@ impl ToolConfigs {
             formatter.format_tool_headline(tool_config.tool);
             formatter.print_buffer();
         }
-    }
-
-    pub fn parse(
-        tool_config: &ToolConfig,
-        meta: &Metadata,
-        output_path: &ToolOutputPath,
-        parsed_old: Vec<ParserOutput>,
-    ) -> Result<Profile> {
-        let parser = parser_factory(tool_config.tool, meta.project_root.clone(), output_path);
-
-        let parsed_new = parser.parse()?;
-
-        let data = match (parsed_new.is_empty(), parsed_old.is_empty()) {
-            (true, false | true) => return Err(anyhow!("A new dataset should always be present")),
-            (false, true) => ProfileData::new(parsed_new, None),
-            (false, false) => ProfileData::new(parsed_new, Some(parsed_old)),
-        };
-
-        Ok(Profile {
-            tool: tool_config.tool,
-            log_paths: output_path.to_log_output().real_paths()?,
-            out_paths: output_path.real_paths()?,
-            summaries: data,
-            // TODO: FLAMEGRAPHS EMPTY
-            flamegraphs: vec![],
-        })
     }
 
     pub fn run_loaded_vs_base(
@@ -962,7 +904,7 @@ impl ToolConfigs {
             }
 
             if tool_config.tool == ValgrindTool::Callgrind {
-                let mut profile = Self::parse(tool_config, &config.meta, &output_path, parsed_old)?;
+                let mut profile = tool_config.parse(&config.meta, &output_path, parsed_old)?;
 
                 tool_config.print(config, output_format, &profile.summaries, baselines)?;
 
@@ -972,7 +914,6 @@ impl ToolConfigs {
                 );
 
                 if save_baseline {
-                    // TODO: Can this be improved?
                     let BaselineKind::Name(baseline) = baseline_kind.clone() else {
                         panic!("A baseline with name should be present");
                     };
@@ -1008,7 +949,7 @@ impl ToolConfigs {
 
                 benchmark_summary.profiles.push(profile);
             } else {
-                let profile = Self::parse(tool_config, &config.meta, &output_path, parsed_old)?;
+                let profile = tool_config.parse(&config.meta, &output_path, parsed_old)?;
 
                 tool_config.print(config, output_format, &profile.summaries, baselines)?;
 
@@ -1182,15 +1123,13 @@ impl ToolOutputPath {
         }
     }
 
-    // TODO: UPDATE DOCS
     /// Convert this tool output to the output of another tool
     ///
     /// A tool with no `*.out` file is log-file based. If the other tool is a out-file based tool
     /// the [`ToolOutputPathKind`] will be converted and vice-versa. The "old" (base) type (a tool
-    /// output converted with [`ToolOutputPath::to_base_path`]) will only be converted to the
-    /// according old (base) out-file (log-file).
+    /// output converted with [`ToolOutputPath::to_base_path`]) will be converted to a new
+    /// `ToolOutputPath`.
     pub fn to_tool_output(&self, tool: ValgrindTool) -> Self {
-        // TODO: OldLog => Out, OldOut => Log ... ?
         let kind = if tool.has_output_file() {
             match &self.kind {
                 ToolOutputPathKind::Log | ToolOutputPathKind::OldLog => ToolOutputPathKind::Out,
@@ -1890,7 +1829,6 @@ impl ToolOutputPath {
     /// sanitize_<tool> method.
     pub fn sanitize(&self) -> Result<()> {
         match self.tool {
-            // TODO: sanitize cachegrind
             ValgrindTool::Callgrind => self.sanitize_callgrind()?,
             ValgrindTool::BBV => self.sanitize_bbv()?,
             _ => self.sanitize_generic()?,
@@ -1903,6 +1841,55 @@ impl ToolOutputPath {
 impl Display for ToolOutputPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.to_path().display()))
+    }
+}
+
+impl ToolRegressionConfig {
+    pub fn is_fail_fast(&self) -> bool {
+        match self {
+            ToolRegressionConfig::Callgrind(regression_config) => regression_config.fail_fast,
+            ToolRegressionConfig::None => false,
+        }
+    }
+}
+
+impl From<api::ToolRegressionConfig> for ToolRegressionConfig {
+    fn from(value: api::ToolRegressionConfig) -> Self {
+        match value {
+            api::ToolRegressionConfig::Callgrind(regression_config) => {
+                Self::Callgrind(regression_config.into())
+            }
+            api::ToolRegressionConfig::None => Self::None,
+        }
+    }
+}
+
+impl From<Option<RegressionConfig>> for ToolRegressionConfig {
+    fn from(value: Option<RegressionConfig>) -> Self {
+        match value {
+            Some(config) => ToolRegressionConfig::Callgrind(config),
+            None => ToolRegressionConfig::None,
+        }
+    }
+}
+
+impl From<Option<FlamegraphConfig>> for ToolFlamegraphConfig {
+    fn from(value: Option<FlamegraphConfig>) -> Self {
+        match value {
+            Some(config) => ToolFlamegraphConfig::Callgrind(config),
+            None => ToolFlamegraphConfig::None,
+        }
+    }
+}
+
+impl From<api::ToolFlamegraphConfig> for ToolFlamegraphConfig {
+    fn from(value: api::ToolFlamegraphConfig) -> Self {
+        match value {
+            api::ToolFlamegraphConfig::Callgrind(flamegraph_config) => {
+                Self::Callgrind(flamegraph_config.into())
+            }
+            api::ToolFlamegraphConfig::None => Self::None,
+        }
     }
 }
 
@@ -1968,7 +1955,6 @@ pub fn check_exit(
     }
 }
 
-/// TODO: MOVE THIS and everything not related to log file parsing OUT OF logfile module
 pub fn parser_factory(
     tool: ValgrindTool,
     root_dir: PathBuf,

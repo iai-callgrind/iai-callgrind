@@ -130,7 +130,7 @@ struct ExpectedConfig {
     #[serde(default)]
     exit_code: Option<i32>,
     #[serde(default)]
-    zero_callgrind_metrics: bool,
+    zero_metrics: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -980,7 +980,7 @@ impl RunConfig {
         if self
             .expected
             .as_ref()
-            .is_some_and(|expected| !expected.zero_callgrind_metrics)
+            .is_some_and(|expected| !expected.zero_metrics)
         {
             let base_dir = home_dir.join(PACKAGE).join(bench_name);
             // These checks heavily depends on the creation of the `summary.json` files, but we

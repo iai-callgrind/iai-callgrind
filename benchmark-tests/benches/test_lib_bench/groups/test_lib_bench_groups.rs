@@ -1,6 +1,5 @@
 //! This is an example for setting up library benchmarks. It's best to read all the comments from
 //! top to bottom to get a better understanding of the api.
-//! TODO: UPDATE DOCS WITH NEW structs Callgrind, Dhat and tool organization
 
 use std::hint::black_box;
 
@@ -119,15 +118,10 @@ fn bench_fibonacci_with_config() -> u64 {
 // A `config` per `bench` or `benches` attribute is also possible using the alternative `bench`
 // or `benches` attribute with key = value pairs
 //
-// Note that `LibraryBenchmarkConfig` is additive for callgrind arguments, tools and environment
-// variables and appends them to the variables of `configs` of higher levels (like
-// #[library_benchmark(config = ...)]). Only the last definition of a such configuration values is
-// taken into account. Other non-collection like configuration values (like `RegressionConfig`) are
-// overridden. In our example here: If `callgrind_args(["--dump-instr=yes"])` would have been
-// specified in a higher level configuration, then specifying
-// `callgrind_args(["--dump-instr=no")` in our configurations at this level would effectively
-// overwrite the value for `--dump-instr` and only `--dump-instr=no` is applied for the benchmark
-// run `fib_with_config`.
+// Note that `LibraryBenchmarkConfig` is additive for tools and environment variables and appends
+// them to the variables of `configs` of higher levels (like #[library_benchmark(config = ...)]).
+// Only the last definition of a such configuration values is taken into account. Other
+// non-collection like configuration values (like `RegressionConfig`) are overridden.
 //
 // Completely overriding previous definitions of valgrind tools instead of appending them with
 // `LibraryBenchmarkConfig::tool` or `LibraryBenchmarkConfig::tools` can be achieved with
@@ -192,8 +186,15 @@ library_benchmark_group!(
 // In addition to running `callgrind` it's possible to run other valgrind tools like DHAT, Massif,
 // (the experimental) BBV, Memcheck, Helgrind or DRD. Below we specify to run DHAT in addition to
 // callgrind for all benchmarks (if not specified otherwise and/or overridden in a lower-level
-// configuration). The output files of the profiling tools (DHAT, Massif, BBV) can be found next to
-// the output files of the callgrind runs in `target/iai/...`.
+// configuration). It's also possible to change the default tool to something else than callgrind
+// for example if you're just interested in running Dhat with
+// `LibraryBenchmarkConfig::default_tool`. Running cachegrind instead of callgrind is also possible
+// but requires additional steps. This is best described in the guide:
+// https://iai-callgrind.github.io/iai-callgrind/latest/html/index.html. You can also find a lot of
+// other Iai-Callgrind feature descriptions there.
+//
+// The output files of the profiling tools (DHAT, Massif,
+// BBV) can be found next to the output files of the callgrind runs in `target/iai/...`.
 main!(
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()

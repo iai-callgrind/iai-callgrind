@@ -41,7 +41,6 @@ fn bench_lib() -> u64 {
     black_box(some_func())
 }
 
-// TODO: DOUBLE CHECK DUE TO CHANGE to use ToolSummary, ToolMetricSummary::CallgrindSummary, ...
 // We need to check some gory details in the group teardown to see if the entry point is being
 // applied correctly.
 fn assert_none() {
@@ -69,7 +68,6 @@ fn assert_none() {
         .unwrap();
 }
 
-// TODO: DOUBLE CHECK DUE TO same change in assert_none
 fn assert_default() {
     let check_summary = |b: BenchmarkSummary| {
         let callgrind_summary = b
@@ -115,7 +113,6 @@ fn assert_default() {
         .unwrap();
 }
 
-// TODO: DOUBLE CHECK DUE TO same change in assert_none
 fn assert_nested() {
     let check_summary = |b: BenchmarkSummary| {
         let callgrind_summary = b
