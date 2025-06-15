@@ -9,6 +9,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use super::model::{Metrics, Positions};
+use crate::api::EventKind;
 use crate::runner::summary::ProfileInfo;
 use crate::runner::tool::parser::ParserOutput;
 use crate::runner::tool::ToolOutputPath;
@@ -274,7 +275,12 @@ pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<Callgrind
             // but it is only optional. So, we break out of the loop here and stop the parsing.
             Some(("events", events)) => {
                 trace!("Using events '{events}' from line: '{line}'");
-                metrics_prototype = Some(events.split_ascii_whitespace().collect());
+                metrics_prototype = Some(
+                    events
+                        .split_ascii_whitespace()
+                        .map(EventKind::try_from)
+                        .collect::<Result<Metrics>>()?,
+                );
                 break;
             }
             // None is actually a malformed header line we just ignore here

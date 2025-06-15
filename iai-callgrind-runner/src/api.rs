@@ -849,13 +849,11 @@ impl Display for CachegrindMetric {
     }
 }
 
-// TODO: Use `TryFrom` instead of panic??
-impl<T> From<T> for CachegrindMetric
-where
-    T: AsRef<str>,
-{
-    fn from(value: T) -> Self {
-        match value.as_ref() {
+impl TryFrom<&str> for CachegrindMetric {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let metric = match value {
             "Ir" => Self::Ir,
             "Dr" => Self::Dr,
             "Dw" => Self::Dw,
@@ -874,8 +872,10 @@ where
             "RamHits" => Self::RamHits,
             "TotalRW" => Self::TotalRW,
             "EstimatedCycles" => Self::EstimatedCycles,
-            unknown => panic!("Unknown event type: {unknown}"),
-        }
+            unknown => return Err(anyhow!("Unknown event type: {unknown}")),
+        };
+
+        Ok(metric)
     }
 }
 
@@ -1037,13 +1037,11 @@ impl Display for EventKind {
     }
 }
 
-/// TODO: Use `TryFrom` instead of panic??
-impl<T> From<T> for EventKind
-where
-    T: AsRef<str>,
-{
-    fn from(value: T) -> Self {
-        match value.as_ref() {
+impl TryFrom<&str> for EventKind {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let metric = match value {
             "Ir" => Self::Ir,
             "Dr" => Self::Dr,
             "Dw" => Self::Dw,
@@ -1073,8 +1071,10 @@ where
             "RamHits" => Self::RamHits,
             "TotalRW" => Self::TotalRW,
             "EstimatedCycles" => Self::EstimatedCycles,
-            unknown => panic!("Unknown event type: {unknown}"),
-        }
+            unknown => return Err(anyhow!("Unknown event type: {unknown}")),
+        };
+
+        Ok(metric)
     }
 }
 
