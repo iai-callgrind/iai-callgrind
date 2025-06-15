@@ -698,8 +698,9 @@ impl ToolConfigs {
     }
 
     fn print_headline(&self, tool_config: &ToolConfig, output_format: &OutputFormat) {
-        // TODO: Also print headline if single but not the default tool callgrind?
-        if output_format.is_default() && self.has_multiple() {
+        if output_format.is_default()
+            && (self.has_multiple() || tool_config.tool != ValgrindTool::Callgrind)
+        {
             let mut formatter = VerticalFormatter::new(output_format.clone());
             formatter.format_tool_headline(tool_config.tool);
             formatter.print_buffer();
