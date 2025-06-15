@@ -63,7 +63,6 @@ impl Parser for SummaryParser {
             let header = logfile_parser::parse_header(&logfile, iter)?;
             (header.pid, header.parent_pid)
         } else {
-            // TODO: SHOW A PID OF 0 as N/A ?? in the terminal output
             (0i32, None)
         };
 
@@ -79,7 +78,6 @@ impl Parser for SummaryParser {
             Ok(ParserOutput {
                 path,
                 header,
-                // TODO: The details could be actually parsed from the logfile
                 details: vec![],
                 metrics: ToolMetrics::Cachegrind(metrics),
             })

@@ -44,8 +44,6 @@ impl TryFrom<&Metrics> for CacheSummary {
     }
 }
 
-/// TODO: UPDATE DOCS from callgrind to cachegrind, event kinds to cachegrind metrics,...
-/// TODO: This is very similar to the impl in `callgrind::model`
 impl Metrics {
     /// Calculate and add derived summary events (i.e. estimated cycles) in-place
     ///
@@ -53,7 +51,7 @@ impl Metrics {
     ///
     /// # Errors
     ///
-    /// If the necessary cache simulation events (when running callgrind with --cache-sim) were not
+    /// If the necessary cache simulation events (when running cachegrind with --cache-sim) were not
     /// present.
     pub fn make_summary(&mut self) -> Result<()> {
         let CacheSummary {
@@ -83,7 +81,7 @@ impl Metrics {
 
     /// Return true if costs can be summarized
     ///
-    /// This method probes for [`EventKind::I1mr`] which is present if callgrind was run with the
+    /// This method probes for [`EventKind::I1mr`] which is present if cachegrind was run with the
     /// cache simulation (`--cache-sim=yes`) enabled.
     pub fn can_summarize(&self) -> bool {
         self.metric_by_kind(&CachegrindMetric::I1mr).is_some()

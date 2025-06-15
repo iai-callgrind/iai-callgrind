@@ -91,7 +91,6 @@ impl Metadata {
 
         debug!("Detected target directory: '{}'", target_dir.display());
 
-        // TODO: CHECK valgrind version is at least 3.22 (??) if cachegrind feature is on
         // Invoke Valgrind, disabling ASLR if possible because ASLR could noise up the results a bit
         let valgrind_path = resolve_binary_path("valgrind")?;
         let valgrind_wrapper = if args.allow_aslr.unwrap_or_default() {

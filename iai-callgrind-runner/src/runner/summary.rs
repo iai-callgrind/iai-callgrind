@@ -444,56 +444,37 @@ impl BenchmarkSummary {
         self.profiles.is_regressed()
     }
 
-    /// TODO: STOPPED HERE
-    /// TODO: REFACTOR and simplify
     pub fn compare_and_print(
         &self,
         id: &str,
         other: &Self,
         output_format: &OutputFormat,
     ) -> Result<()> {
+        let mut summaries = vec![];
+
         for profile in self.profiles.iter() {
             if let Some(other_profile) = other.profiles.iter().find(|s| s.tool == profile.tool) {
-                let metrics_summary = match (
+                if let Some(summary) = ToolMetricSummary::from_self_and_other(
                     &profile.summaries.total.summary,
                     &other_profile.summaries.total.summary,
                 ) {
-                    // TODO: REFACTOR AND PUT THIS INTO A FUNCTION IN ToolMetricSummary
-                    // TODO: Add other tools. The comparison header should only be printed once. The
-                    // metrics might need to be separated by a line with hyphens (definitely not
-                    // equal signs)
-                    (
-                        ToolMetricSummary::Callgrind(metrics),
-                        ToolMetricSummary::Callgrind(other_metrics),
-                    ) => {
-                        let costs = metrics.extract_costs();
-                        let other_costs = other_metrics.extract_costs();
-
-                        if let (
-                            EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _),
-                            EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
-                        ) = (costs, other_costs)
-                        {
-                            ToolMetricSummary::Callgrind(MetricsSummary::new(EitherOrBoth::Both(
-                                new, other_new,
-                            )))
-                        } else {
-                            return Ok(());
-                        }
-                    }
-                    _ => return Ok(()),
-                };
-
-                VerticalFormatter::new(output_format.clone()).print_comparison(
-                    &self.function_name,
-                    id,
-                    self.details.as_deref(),
-                    &metrics_summary,
-                )?;
+                    summaries.push((profile.tool, summary));
+                }
             }
         }
 
-        Ok(())
+        // There really should always be at least one summary. Also, if the default tool is massif
+        // or bbv which (currently) don't have an actual summary.
+        if summaries.is_empty() {
+            Ok(())
+        } else {
+            VerticalFormatter::new(output_format.clone()).print_comparison(
+                &self.function_name,
+                id,
+                self.details.as_deref(),
+                summaries,
+            )
+        }
     }
 }
 
@@ -518,7 +499,6 @@ impl FlamegraphSummary {
     }
 }
 
-// TODO: Try to figure out a good format. Needed for example when printing regressions
 impl Display for MetricKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -891,7 +871,6 @@ impl ProfileData {
             parts: summaries,
             total: ProfileTotal {
                 summary: total,
-                // TODO: REGRESSIONS?
                 regressions: vec![],
             },
         }
@@ -1118,6 +1097,86 @@ impl ToolMetricSummary {
                 )))
             }
             _ => Err(anyhow!("Cannot create summary from incompatible costs")),
+        }
+    }
+
+    pub fn from_self_and_other(this: &Self, other: &Self) -> Option<Self> {
+        match (this, other) {
+            (ToolMetricSummary::None, ToolMetricSummary::None) => Some(ToolMetricSummary::None),
+            (
+                ToolMetricSummary::Callgrind(metrics),
+                ToolMetricSummary::Callgrind(other_metrics),
+            ) => {
+                let costs = metrics.extract_costs();
+                let other_costs = other_metrics.extract_costs();
+
+                if let (
+                    EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _),
+                    EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
+                ) = (costs, other_costs)
+                {
+                    Some(ToolMetricSummary::Callgrind(MetricsSummary::new(
+                        EitherOrBoth::Both(new, other_new),
+                    )))
+                } else {
+                    None
+                }
+            }
+            (
+                ToolMetricSummary::ErrorTool(metrics),
+                ToolMetricSummary::ErrorTool(other_metrics),
+            ) => {
+                let costs = metrics.extract_costs();
+                let other_costs = other_metrics.extract_costs();
+
+                if let (
+                    EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _),
+                    EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
+                ) = (costs, other_costs)
+                {
+                    Some(ToolMetricSummary::ErrorTool(MetricsSummary::new(
+                        EitherOrBoth::Both(new, other_new),
+                    )))
+                } else {
+                    None
+                }
+            }
+            (ToolMetricSummary::Dhat(metrics), ToolMetricSummary::Dhat(other_metrics)) => {
+                let costs = metrics.extract_costs();
+                let other_costs = other_metrics.extract_costs();
+
+                if let (
+                    EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _),
+                    EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
+                ) = (costs, other_costs)
+                {
+                    Some(ToolMetricSummary::Dhat(MetricsSummary::new(
+                        EitherOrBoth::Both(new, other_new),
+                    )))
+                } else {
+                    None
+                }
+            }
+            (
+                ToolMetricSummary::Cachegrind(metrics),
+                ToolMetricSummary::Cachegrind(other_metrics),
+            ) => {
+                let costs = metrics.extract_costs();
+                let other_costs = other_metrics.extract_costs();
+
+                if let (
+                    EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _),
+                    EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
+                ) = (costs, other_costs)
+                {
+                    Some(ToolMetricSummary::Cachegrind(MetricsSummary::new(
+                        EitherOrBoth::Both(new, other_new),
+                    )))
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
     }
 

@@ -141,8 +141,6 @@ impl Benchmark for BaselineBenchmark {
             }
         }
 
-        // TODO: ALSO SHIFT AND MOVE AND INIT FLAMEGRAPHS
-
         let benchmark_summary = lib_bench.create_benchmark_summary(
             config,
             &out_path,
@@ -259,7 +257,6 @@ impl Groups {
             let mut lib_bench_summaries: HashMap<String, Vec<BenchmarkSummary>> =
                 HashMap::with_capacity(group.benches.len());
             for bench in &group.benches {
-                // TODO: Move the logic into ToolConfigs
                 let fail_fast = bench
                     .tools
                     .0

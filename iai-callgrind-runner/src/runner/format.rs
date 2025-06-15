@@ -95,6 +95,8 @@ pub trait Formatter {
         is_default_tool: bool,
     ) -> Result<()>;
 
+    fn format_free_form(&mut self, line: &str) -> Result<()>;
+
     fn print(
         &mut self,
         config: &Config,
@@ -122,7 +124,7 @@ pub trait Formatter {
         function_name: &str,
         id: &str,
         details: Option<&str>,
-        metrics_summary: &ToolMetricSummary,
+        summaries: Vec<(ValgrindTool, ToolMetricSummary)>,
     ) -> Result<()>;
 }
 
@@ -1006,20 +1008,28 @@ impl Formatter for VerticalFormatter {
         Ok(())
     }
 
-    // TODO: Not only callgrind benchmarks are compared anymore. In the event of multiple tool
-    // comparisons the header could indicate the tool somehow. Callgrind and Cachegrind are hard to
-    // differentiate.
     fn print_comparison(
         &mut self,
         function_name: &str,
         id: &str,
         details: Option<&str>,
-        metrics_summary: &ToolMetricSummary,
+        summaries: Vec<(ValgrindTool, ToolMetricSummary)>,
     ) -> Result<()> {
         if self.output_format.is_default() {
             ComparisonHeader::new(function_name, id, details, &self.output_format).print();
 
-            self.format_single(&(None, None), None, metrics_summary, false)?;
+            let is_multiple = summaries.len() > 1;
+            for (tool, summary) in summaries {
+                if is_multiple || tool != ValgrindTool::Callgrind {
+                    self.format_free_form(&format!(
+                        "{}{} {}\n",
+                        self.indent_sub_header,
+                        "-------".bright_black(),
+                        tool.to_string().to_uppercase()
+                    ))?;
+                }
+                self.format_single(&(None, None), None, &summary, false)?;
+            }
             self.print_buffer();
         }
 
@@ -1032,6 +1042,11 @@ impl Formatter for VerticalFormatter {
 
     fn get_output_format(&self) -> &OutputFormat {
         &self.output_format
+    }
+
+    fn format_free_form(&mut self, line: &str) -> Result<()> {
+        self.buffer.push_str(line);
+        Ok(())
     }
 }
 
