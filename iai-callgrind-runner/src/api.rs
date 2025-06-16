@@ -853,6 +853,7 @@ impl Display for CachegrindMetric {
     }
 }
 
+#[cfg(feature = "runner")]
 impl TryFrom<&str> for CachegrindMetric {
     type Error = anyhow::Error;
 
@@ -1041,6 +1042,7 @@ impl Display for EventKind {
     }
 }
 
+#[cfg(feature = "runner")]
 impl TryFrom<&str> for EventKind {
     type Error = anyhow::Error;
 
