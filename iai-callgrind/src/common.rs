@@ -140,12 +140,6 @@ pub struct OutputFormat(__internal::InternalOutputFormat);
 #[derive(Debug, Default, Clone, IntoInner, AsRef)]
 pub struct RegressionConfig(__internal::InternalRegressionConfig);
 
-impl Default for Bbv {
-    fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::BBV))
-    }
-}
-
 impl Bbv {
     /// TODO: DOCS
     pub fn with_args<I, T>(args: T) -> Self
@@ -165,9 +159,9 @@ impl Bbv {
     }
 }
 
-impl Default for Cachegrind {
+impl Default for Bbv {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::Cachegrind))
+        Self(__internal::InternalTool::new(ValgrindTool::BBV))
     }
 }
 
@@ -211,9 +205,9 @@ impl Cachegrind {
     }
 }
 
-impl Default for Callgrind {
+impl Default for Cachegrind {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::Callgrind))
+        Self(__internal::InternalTool::new(ValgrindTool::Cachegrind))
     }
 }
 
@@ -349,9 +343,9 @@ impl Callgrind {
     }
 }
 
-impl Default for Dhat {
+impl Default for Callgrind {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::DHAT))
+        Self(__internal::InternalTool::new(ValgrindTool::Callgrind))
     }
 }
 
@@ -395,9 +389,9 @@ impl Dhat {
     }
 }
 
-impl Default for Drd {
+impl Default for Dhat {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::DRD))
+        Self(__internal::InternalTool::new(ValgrindTool::DHAT))
     }
 }
 
@@ -435,6 +429,12 @@ impl Drd {
         }
 
         self
+    }
+}
+
+impl Default for Drd {
+    fn default() -> Self {
+        Self(__internal::InternalTool::new(ValgrindTool::DRD))
     }
 }
 
@@ -613,12 +613,6 @@ impl FlamegraphConfig {
     }
 }
 
-impl Default for Helgrind {
-    fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::Helgrind))
-    }
-}
-
 impl Helgrind {
     /// TODO: DOCS
     pub fn with_args<I, T>(args: T) -> Self
@@ -659,9 +653,9 @@ impl Helgrind {
     }
 }
 
-impl Default for Massif {
+impl Default for Helgrind {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::Massif))
+        Self(__internal::InternalTool::new(ValgrindTool::Helgrind))
     }
 }
 
@@ -687,9 +681,9 @@ impl Massif {
     }
 }
 
-impl Default for Memcheck {
+impl Default for Massif {
     fn default() -> Self {
-        Self(__internal::InternalTool::new(ValgrindTool::Memcheck))
+        Self(__internal::InternalTool::new(ValgrindTool::Massif))
     }
 }
 
@@ -730,6 +724,12 @@ impl Memcheck {
         }
 
         self
+    }
+}
+
+impl Default for Memcheck {
+    fn default() -> Self {
+        Self(__internal::InternalTool::new(ValgrindTool::Memcheck))
     }
 }
 

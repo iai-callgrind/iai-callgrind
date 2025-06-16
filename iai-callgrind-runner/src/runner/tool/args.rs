@@ -6,7 +6,7 @@ use anyhow::{anyhow, Result};
 use log::warn;
 
 use super::{ToolOutputPath, ValgrindTool};
-use crate::api::{self};
+use crate::api::RawArgs;
 use crate::error::Error;
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
@@ -87,7 +87,7 @@ impl FromStr for FairSched {
 }
 
 impl ToolArgs {
-    pub fn try_from_raw_args(tool: ValgrindTool, raw_args: api::RawArgs) -> Result<Self> {
+    pub fn try_from_raw_args(tool: ValgrindTool, raw_args: &[&RawArgs]) -> Result<Self> {
         let mut tool_args = Self {
             tool,
             output_paths: Vec::default(),
@@ -108,48 +108,50 @@ impl ToolArgs {
             fair_sched: defaults::FAIR_SCHED,
         };
 
-        for arg in raw_args.0 {
-            match arg
-                .trim()
-                .split_once('=')
-                .map(|(k, v)| (k.trim(), v.trim()))
-            {
-                Some(("--tool", _)) => warn!("Ignoring {} argument '{arg}'", tool.id()),
-                Some((
-                    "--dhat-out-file" | "--massif-out-file" | "--bb-out-file" | "--pc-out-file"
-                    | "--log-file" | "--log-fd" | "--log-socket" | "--xml" | "--xml-file"
-                    | "--xml-fd" | "--xml-socket" | "--xml-user-comment",
-                    _,
-                )) => warn!(
-                    "Ignoring {} argument '{arg}': Output/Log files of tools are managed by \
-                     Iai-Callgrind",
-                    tool.id()
-                ),
-                Some(("--error-exitcode", value)) => {
-                    value.clone_into(&mut tool_args.error_exitcode);
-                }
-                Some((key @ "--trace-children", value)) => {
-                    tool_args.trace_children = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
-                    })?;
-                }
-                Some(("--fair-sched", value)) => {
-                    tool_args.fair_sched = FairSched::from_str(value)?;
-                }
-                None if matches!(
-                    arg.as_str(),
-                    "-h" | "--help"
-                        | "--help-dyn-options"
-                        | "--help-debug"
-                        | "--version"
-                        | "-q"
-                        | "--quiet"
-                ) =>
+        for args in raw_args {
+            for arg in &args.0 {
+                match arg
+                    .trim()
+                    .split_once('=')
+                    .map(|(k, v)| (k.trim(), v.trim()))
                 {
-                    warn!("Ignoring {} argument '{arg}'", tool.id());
+                    Some(("--tool", _)) => warn!("Ignoring {} argument '{arg}'", tool.id()),
+                    Some((
+                        "--dhat-out-file" | "--massif-out-file" | "--bb-out-file" | "--pc-out-file"
+                        | "--log-file" | "--log-fd" | "--log-socket" | "--xml" | "--xml-file"
+                        | "--xml-fd" | "--xml-socket" | "--xml-user-comment",
+                        _,
+                    )) => warn!(
+                        "Ignoring {} argument '{arg}': Output/Log files of tools are managed by \
+                         Iai-Callgrind",
+                        tool.id()
+                    ),
+                    Some(("--error-exitcode", value)) => {
+                        value.clone_into(&mut tool_args.error_exitcode);
+                    }
+                    Some((key @ "--trace-children", value)) => {
+                        tool_args.trace_children = yesno_to_bool(value).ok_or_else(|| {
+                            Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
+                        })?;
+                    }
+                    Some(("--fair-sched", value)) => {
+                        tool_args.fair_sched = FairSched::from_str(value)?;
+                    }
+                    None if matches!(
+                        arg.as_str(),
+                        "-h" | "--help"
+                            | "--help-dyn-options"
+                            | "--help-debug"
+                            | "--version"
+                            | "-q"
+                            | "--quiet"
+                    ) =>
+                    {
+                        warn!("Ignoring {} argument '{arg}'", tool.id());
+                    }
+                    None if matches!(arg.as_str(), "--verbose") => tool_args.verbose = true,
+                    None | Some(_) => tool_args.other.push(arg.to_owned()),
                 }
-                None if matches!(arg.as_str(), "--verbose") => tool_args.verbose = true,
-                None | Some(_) => tool_args.other.push(arg),
             }
         }
 

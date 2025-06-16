@@ -349,7 +349,105 @@ impl ToolConfig {
         }
     }
 
-    pub fn new_default_tool(
+    pub fn from_tool(
+        output_format: &mut OutputFormat,
+        valgrind_tool: ValgrindTool,
+        tool: Option<Tool>,
+        meta: &Metadata,
+        base_args: &RawArgs,
+        is_default: bool,
+        regression_config: Option<api::ToolRegressionConfig>,
+        flamegraph_config: Option<api::ToolFlamegraphConfig>,
+        entry_point: Option<EntryPoint>,
+    ) -> Result<Self> {
+        if let Some(tool) = tool {
+            if let Some(format) = tool.output_format {
+                match format {
+                    ToolOutputFormat::Callgrind(metrics) => {
+                        output_format.callgrind =
+                            metrics.into_iter().fold(IndexSet::new(), |mut acc, m| {
+                                acc.extend(IndexSet::from(m));
+                                acc
+                            });
+                    }
+                    ToolOutputFormat::Cachegrind(metrics) => {
+                        output_format.cachegrind = metrics.into_iter().collect();
+                    }
+                    ToolOutputFormat::DHAT(metrics) => {
+                        output_format.dhat = metrics.into_iter().collect();
+                    }
+                    ToolOutputFormat::Memcheck(metrics) => {
+                        output_format.memcheck = metrics.into_iter().collect();
+                    }
+                    ToolOutputFormat::Helgrind(metrics) => {
+                        output_format.helgrind = metrics.into_iter().collect();
+                    }
+                    ToolOutputFormat::DRD(metrics) => {
+                        output_format.drd = metrics.into_iter().collect();
+                    }
+                    ToolOutputFormat::None => {}
+                }
+            }
+
+            let args = match valgrind_tool {
+                ValgrindTool::Callgrind => callgrind::args::Args::try_from_raw_args(&[
+                    base_args,
+                    &tool.raw_args,
+                    &meta.args.callgrind_args.clone().unwrap_or_default(),
+                ])?
+                .into(),
+                ValgrindTool::Cachegrind => cachegrind::args::Args::try_from_raw_args(&[
+                    base_args,
+                    &tool.raw_args,
+                    &meta.args.cachegrind_args.clone().unwrap_or_default(),
+                ])?
+                .into(),
+                _ => ToolArgs::try_from_raw_args(valgrind_tool, &[base_args, &tool.raw_args])?,
+            };
+
+            Ok(ToolConfig::new(
+                valgrind_tool,
+                is_default || tool.enable.unwrap_or(true),
+                args,
+                None,
+                regression_config
+                    .or(tool.regression_config)
+                    .map_or(ToolRegressionConfig::None, Into::into),
+                flamegraph_config
+                    .or(tool.flamegraph_config)
+                    .map_or(ToolFlamegraphConfig::None, Into::into),
+                entry_point.or(tool.entry_point).unwrap_or(EntryPoint::None),
+                is_default,
+            ))
+        } else {
+            let args = match valgrind_tool {
+                ValgrindTool::Callgrind => callgrind::args::Args::try_from_raw_args(&[
+                    base_args,
+                    &meta.args.callgrind_args.clone().unwrap_or_default(),
+                ])?
+                .into(),
+                ValgrindTool::Cachegrind => cachegrind::args::Args::try_from_raw_args(&[
+                    base_args,
+                    &meta.args.cachegrind_args.clone().unwrap_or_default(),
+                ])?
+                .into(),
+                _ => ToolArgs::try_from_raw_args(valgrind_tool, &[base_args])?,
+            };
+
+            Ok(ToolConfig::new(
+                valgrind_tool,
+                true,
+                args,
+                None,
+                regression_config.map_or(ToolRegressionConfig::None, Into::into),
+                flamegraph_config.map_or(ToolFlamegraphConfig::None, Into::into),
+                entry_point.unwrap_or(EntryPoint::None),
+                is_default,
+            ))
+        }
+    }
+
+    pub fn new_default_config(
         output_format: &mut OutputFormat,
         meta: &Metadata,
         default_tool: ValgrindTool,
@@ -358,195 +456,61 @@ impl ToolConfig {
         valgrind_args: &RawArgs,
         default_args: &HashMap<ValgrindTool, RawArgs>,
     ) -> Result<Self> {
-        let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
-
-        let tool_config = match default_tool {
+        match default_tool {
             ValgrindTool::Callgrind => {
-                if let Some(tool) = tool {
-                    let mut args = callgrind::args::Args::try_from_raw_args(&[
-                        &default_args
-                            .get(&ValgrindTool::Callgrind)
-                            .cloned()
-                            .unwrap_or_default(),
-                        valgrind_args,
-                        &tool.raw_args,
-                        &meta_callgrind_args,
-                    ])?;
+                let mut base_args = default_args
+                    .get(&ValgrindTool::Callgrind)
+                    .cloned()
+                    .unwrap_or_default();
+                base_args.update(valgrind_args);
 
-                    let entry_point = tool.entry_point.unwrap_or(default_entry_point);
+                let entry_point = tool
+                    .as_ref()
+                    .and_then(|t| t.entry_point.clone())
+                    .unwrap_or(default_entry_point);
 
-                    let regression_config = meta
-                        .args
-                        .regression
-                        .clone()
-                        .or_else(|| tool.regression_config.clone())
-                        .map_or(ToolRegressionConfig::None, Into::into);
-
-                    let flamegraph_config = tool
-                        .flamegraph_config
-                        .map_or(ToolFlamegraphConfig::None, Into::into);
-
-                    if let Some(ToolOutputFormat::Callgrind(metrics)) = tool.output_format {
-                        output_format.callgrind =
-                            metrics.into_iter().fold(IndexSet::new(), |mut acc, m| {
-                                acc.extend(IndexSet::from(m));
-                                acc
-                            });
+                match &entry_point {
+                    EntryPoint::None => {}
+                    EntryPoint::Default => {
+                        base_args.extend_ignore_flag(&[format!("toggle-collect={DEFAULT_TOGGLE}")]);
                     }
-
-                    match &entry_point {
-                        EntryPoint::None => {}
-                        EntryPoint::Default => {
-                            args.insert_toggle_collect(DEFAULT_TOGGLE);
-                        }
-                        EntryPoint::Custom(custom) => {
-                            args.insert_toggle_collect(custom);
-                        }
+                    EntryPoint::Custom(custom) => {
+                        base_args.extend_ignore_flag(&[format!("toggle-collect={custom}")]);
                     }
-
-                    ToolConfig::new(
-                        ValgrindTool::Callgrind,
-                        true,
-                        args,
-                        None,
-                        regression_config,
-                        flamegraph_config,
-                        entry_point,
-                        true,
-                    )
-                } else {
-                    let mut args = callgrind::args::Args::try_from_raw_args(&[
-                        &default_args
-                            .get(&ValgrindTool::Callgrind)
-                            .cloned()
-                            .unwrap_or_default(),
-                        valgrind_args,
-                        &meta_callgrind_args,
-                    ])?;
-
-                    let entry_point = default_entry_point;
-                    let regression_config = meta
-                        .args
-                        .regression
-                        .clone()
-                        .map_or(ToolRegressionConfig::None, Into::into);
-
-                    match &entry_point {
-                        EntryPoint::None => {}
-                        EntryPoint::Default => {
-                            args.insert_toggle_collect(DEFAULT_TOGGLE);
-                        }
-                        EntryPoint::Custom(custom) => {
-                            args.insert_toggle_collect(custom);
-                        }
-                    }
-                    ToolConfig::new(
-                        ValgrindTool::Callgrind,
-                        true,
-                        args,
-                        None,
-                        regression_config,
-                        ToolFlamegraphConfig::None,
-                        entry_point,
-                        true,
-                    )
                 }
+
+                ToolConfig::from_tool(
+                    output_format,
+                    default_tool,
+                    tool,
+                    meta,
+                    &base_args,
+                    true,
+                    meta.args.regression.clone(),
+                    None,
+                    Some(entry_point),
+                )
             }
             valgrind_tool => {
-                if let Some(mut tool) = tool {
-                    tool.raw_args.prepend(
-                        &default_args
-                            .get(&valgrind_tool)
-                            .cloned()
-                            .unwrap_or_default(),
-                    );
-                    tool.raw_args.prepend(valgrind_args);
+                let mut base_args = default_args
+                    .get(&valgrind_tool)
+                    .cloned()
+                    .unwrap_or_default();
+                base_args.update(valgrind_args);
 
-                    if let Some(format) = tool.output_format {
-                        match format {
-                            ToolOutputFormat::Callgrind(metrics) => {
-                                output_format.callgrind =
-                                    metrics.into_iter().fold(IndexSet::new(), |mut acc, m| {
-                                        acc.extend(IndexSet::from(m));
-                                        acc
-                                    });
-                            }
-                            ToolOutputFormat::Cachegrind(metrics) => {
-                                output_format.cachegrind = metrics.into_iter().collect();
-                            }
-                            ToolOutputFormat::DHAT(metrics) => {
-                                output_format.dhat = metrics.into_iter().collect();
-                            }
-                            ToolOutputFormat::Memcheck(metrics) => {
-                                output_format.memcheck = metrics.into_iter().collect();
-                            }
-                            ToolOutputFormat::Helgrind(metrics) => {
-                                output_format.helgrind = metrics.into_iter().collect();
-                            }
-                            ToolOutputFormat::DRD(metrics) => {
-                                output_format.drd = metrics.into_iter().collect();
-                            }
-                            ToolOutputFormat::None => {}
-                        }
-                    }
-
-                    let args = match valgrind_tool {
-                        ValgrindTool::Callgrind => {
-                            callgrind::args::Args::try_from_raw_args(&[&tool.raw_args])?.into()
-                        }
-                        ValgrindTool::Cachegrind => {
-                            cachegrind::args::Args::try_from_raw_args(&[&tool.raw_args])?.into()
-                        }
-                        _ => ToolArgs::try_from_raw_args(valgrind_tool, tool.raw_args)?,
-                    };
-
-                    ToolConfig::new(
-                        valgrind_tool,
-                        true,
-                        args,
-                        None,
-                        tool.regression_config
-                            .map_or(ToolRegressionConfig::None, Into::into),
-                        tool.flamegraph_config
-                            .map_or(ToolFlamegraphConfig::None, Into::into),
-                        tool.entry_point.unwrap_or(EntryPoint::None),
-                        true,
-                    )
-                } else {
-                    let mut raw_args = default_args
-                        .get(&valgrind_tool)
-                        .cloned()
-                        .unwrap_or_default();
-                    raw_args.update(valgrind_args);
-
-                    let args = match valgrind_tool {
-                        ValgrindTool::Cachegrind if raw_args.is_empty() => {
-                            cachegrind::args::Args::default().into()
-                        }
-                        ValgrindTool::Cachegrind => {
-                            cachegrind::args::Args::try_from_raw_args(&[&raw_args])?.into()
-                        }
-                        _ if raw_args.is_empty() => {
-                            ToolArgs::try_from_raw_args(valgrind_tool, RawArgs::default())?
-                        }
-                        _ => ToolArgs::try_from_raw_args(valgrind_tool, valgrind_args.clone())?,
-                    };
-
-                    ToolConfig::new(
-                        valgrind_tool,
-                        true,
-                        args,
-                        None,
-                        ToolRegressionConfig::None,
-                        ToolFlamegraphConfig::None,
-                        EntryPoint::None, // the default entry point is just for callgrind
-                        true,
-                    )
-                }
+                ToolConfig::from_tool(
+                    output_format,
+                    valgrind_tool,
+                    tool,
+                    meta,
+                    &base_args,
+                    true,
+                    None,
+                    None,
+                    None, // The default entry point is currently just for callgrind
+                )
             }
-        };
-
-        Ok(tool_config)
+        }
     }
 
     pub fn parse(
@@ -620,7 +584,7 @@ impl TryFrom<api::Tool> for ToolConfig {
             ValgrindTool::Cachegrind => {
                 cachegrind::args::Args::try_from_raw_args(&[&value.raw_args])?.into()
             }
-            _ => ToolArgs::try_from_raw_args(tool, value.raw_args)?,
+            _ => ToolArgs::try_from_raw_args(tool, &[&value.raw_args])?,
         };
 
         Ok(Self {
@@ -663,10 +627,8 @@ impl ToolConfigs {
         valgrind_args: &RawArgs,
         default_args: &HashMap<ValgrindTool, RawArgs>,
     ) -> Result<Self> {
-        let meta_callgrind_args = meta.args.callgrind_args.clone().unwrap_or_default();
-
         let extracted_tool = tools.consume(default_tool);
-        let default_tool_config = ToolConfig::new_default_tool(
+        let default_tool_config = ToolConfig::new_default_config(
             output_format,
             meta,
             default_tool,
@@ -677,79 +639,51 @@ impl ToolConfigs {
         )?;
 
         let mut tool_configs = ToolConfigs(vec![default_tool_config]);
-        tool_configs.extend(tools.0.into_iter().map(|mut tool| {
-            tool.raw_args
-                .prepend(&default_args.get(&tool.kind).cloned().unwrap_or_default());
-            tool.raw_args.prepend(valgrind_args);
+        tool_configs.extend(tools.0.into_iter().map(|tool| {
+            let mut base_args = default_args.get(&tool.kind).cloned().unwrap_or_default();
+            base_args.update(valgrind_args);
 
-            if let Some(format) = &tool.output_format {
-                match format {
-                    ToolOutputFormat::Callgrind(metrics) => {
-                        output_format.callgrind =
-                            metrics.iter().fold(IndexSet::new(), |mut acc, m| {
-                                acc.extend(IndexSet::from(*m));
-                                acc
-                            });
+            match tool.kind {
+                ValgrindTool::Callgrind => {
+                    let entry_point = tool
+                        .entry_point
+                        .clone()
+                        .unwrap_or(default_entry_point.clone());
+
+                    match &entry_point {
+                        EntryPoint::None => {}
+                        EntryPoint::Default => {
+                            base_args
+                                .extend_ignore_flag(&[format!("toggle-collect={DEFAULT_TOGGLE}")]);
+                        }
+                        EntryPoint::Custom(custom) => {
+                            base_args.extend_ignore_flag(&[format!("toggle-collect={custom}")]);
+                        }
                     }
-                    ToolOutputFormat::Cachegrind(metrics) => {
-                        output_format.cachegrind = metrics.iter().copied().collect();
-                    }
-                    ToolOutputFormat::DHAT(metrics) => {
-                        output_format.dhat = metrics.iter().copied().collect();
-                    }
-                    ToolOutputFormat::Memcheck(metrics) => {
-                        output_format.memcheck = metrics.iter().copied().collect();
-                    }
-                    ToolOutputFormat::Helgrind(metrics) => {
-                        output_format.helgrind = metrics.iter().copied().collect();
-                    }
-                    ToolOutputFormat::DRD(metrics) => {
-                        output_format.drd = metrics.iter().copied().collect();
-                    }
-                    ToolOutputFormat::None => {}
+
+                    ToolConfig::from_tool(
+                        output_format,
+                        tool.kind,
+                        Some(tool),
+                        meta,
+                        &base_args,
+                        false,
+                        meta.args.regression.clone(),
+                        None,
+                        Some(entry_point),
+                    )
                 }
-            }
-
-            if tool.kind == ValgrindTool::Callgrind {
-                let mut args = callgrind::args::Args::try_from_raw_args(&[
-                    &tool.raw_args,
-                    &meta_callgrind_args,
-                ])?;
-
-                let entry_point = tool.entry_point.unwrap_or(default_entry_point.clone());
-                let regression_config = meta
-                    .args
-                    .regression
-                    .clone()
-                    .or_else(|| tool.regression_config.clone())
-                    .map_or(ToolRegressionConfig::None, Into::into);
-
-                let flamegraph_config = tool
-                    .flamegraph_config
-                    .map_or(ToolFlamegraphConfig::None, Into::into);
-
-                match &entry_point {
-                    EntryPoint::None => {}
-                    EntryPoint::Default => {
-                        args.insert_toggle_collect(DEFAULT_TOGGLE);
-                    }
-                    EntryPoint::Custom(custom) => {
-                        args.insert_toggle_collect(custom);
-                    }
-                }
-
-                Ok(ToolConfig::new(
-                    ValgrindTool::Callgrind,
-                    tool.enable.unwrap_or(true),
-                    args,
-                    None,
-                    regression_config,
-                    flamegraph_config,
-                    entry_point,
+                _ => ToolConfig::from_tool(
+                    output_format,
+                    tool.kind,
+                    Some(tool),
+                    meta,
+                    &base_args,
                     false,
-                ))
-            } else {
-                tool.try_into()
+                    None,
+                    None,
+                    None, // The default entry point is currently just for callgrind
+                ),
             }
         }))?;
 

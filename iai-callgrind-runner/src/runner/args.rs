@@ -174,6 +174,22 @@ pub struct CommandLineArgs {
     )]
     pub callgrind_args: Option<RawArgs>,
 
+    /// The raw arguments to pass through to Cachegrind
+    ///
+    /// List of command-line-arguments specified as if they were passed directly to valgrind.
+    ///
+    /// Examples:
+    ///   * --cachegrind-args=--intr-at-start=no
+    ///   * --cachegrind-args='--branch-sim=yes --instr-at-start=no'
+    #[arg(
+        long = "cachegrind-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_CACHEGRIND_ARGS"
+    )]
+    pub cachegrind_args: Option<RawArgs>,
+
     /// Save a machine-readable summary of each benchmark run in json format next to the usual
     /// benchmark output
     #[arg(
