@@ -126,6 +126,12 @@ impl ToolArgs {
                          Iai-Callgrind",
                         tool.id()
                     ),
+                    Some(("--xtree-memory" | "--xtree-leak-file" | "xtree-memory-file", _)) => {
+                        warn!(
+                            "Ignoring {} argument '{arg}': Currently unsupported",
+                            tool.id()
+                        );
+                    }
                     Some(("--error-exitcode", value)) => {
                         value.clone_into(&mut tool_args.error_exitcode);
                     }

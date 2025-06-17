@@ -393,16 +393,71 @@ impl ToolConfig {
                 ValgrindTool::Callgrind => callgrind::args::Args::try_from_raw_args(&[
                     base_args,
                     &tool.raw_args,
+                    &meta.args.valgrind_args.clone().unwrap_or_default(),
                     &meta.args.callgrind_args.clone().unwrap_or_default(),
                 ])?
                 .into(),
                 ValgrindTool::Cachegrind => cachegrind::args::Args::try_from_raw_args(&[
                     base_args,
                     &tool.raw_args,
+                    &meta.args.valgrind_args.clone().unwrap_or_default(),
                     &meta.args.cachegrind_args.clone().unwrap_or_default(),
                 ])?
                 .into(),
-                _ => ToolArgs::try_from_raw_args(valgrind_tool, &[base_args, &tool.raw_args])?,
+                ValgrindTool::DHAT => ToolArgs::try_from_raw_args(
+                    ValgrindTool::DHAT,
+                    &[
+                        base_args,
+                        &tool.raw_args,
+                        &meta.args.valgrind_args.clone().unwrap_or_default(),
+                        &meta.args.dhat_args.clone().unwrap_or_default(),
+                    ],
+                )?,
+                ValgrindTool::Memcheck => ToolArgs::try_from_raw_args(
+                    ValgrindTool::Memcheck,
+                    &[
+                        base_args,
+                        &tool.raw_args,
+                        &meta.args.valgrind_args.clone().unwrap_or_default(),
+                        &meta.args.memcheck_args.clone().unwrap_or_default(),
+                    ],
+                )?,
+                ValgrindTool::Helgrind => ToolArgs::try_from_raw_args(
+                    ValgrindTool::Helgrind,
+                    &[
+                        base_args,
+                        &tool.raw_args,
+                        &meta.args.valgrind_args.clone().unwrap_or_default(),
+                        &meta.args.helgrind_args.clone().unwrap_or_default(),
+                    ],
+                )?,
+                ValgrindTool::DRD => ToolArgs::try_from_raw_args(
+                    ValgrindTool::DRD,
+                    &[
+                        base_args,
+                        &tool.raw_args,
+                        &meta.args.valgrind_args.clone().unwrap_or_default(),
+                        &meta.args.drd_args.clone().unwrap_or_default(),
+                    ],
+                )?,
+                ValgrindTool::Massif => ToolArgs::try_from_raw_args(
+                    ValgrindTool::Massif,
+                    &[
+                        base_args,
+                        &tool.raw_args,
+                        &meta.args.valgrind_args.clone().unwrap_or_default(),
+                        &meta.args.memcheck_args.clone().unwrap_or_default(),
+                    ],
+                )?,
+                ValgrindTool::BBV => ToolArgs::try_from_raw_args(
+                    ValgrindTool::BBV,
+                    &[
+                        base_args,
+                        &tool.raw_args,
+                        &meta.args.valgrind_args.clone().unwrap_or_default(),
+                        &meta.args.bbv_args.clone().unwrap_or_default(),
+                    ],
+                )?,
             };
 
             Ok(ToolConfig::new(
@@ -423,15 +478,64 @@ impl ToolConfig {
             let args = match valgrind_tool {
                 ValgrindTool::Callgrind => callgrind::args::Args::try_from_raw_args(&[
                     base_args,
+                    &meta.args.valgrind_args.clone().unwrap_or_default(),
                     &meta.args.callgrind_args.clone().unwrap_or_default(),
                 ])?
                 .into(),
                 ValgrindTool::Cachegrind => cachegrind::args::Args::try_from_raw_args(&[
                     base_args,
+                    &meta.args.valgrind_args.clone().unwrap_or_default(),
                     &meta.args.cachegrind_args.clone().unwrap_or_default(),
                 ])?
                 .into(),
-                _ => ToolArgs::try_from_raw_args(valgrind_tool, &[base_args])?,
+                ValgrindTool::DHAT => ToolArgs::try_from_raw_args(
+                    ValgrindTool::DHAT,
+                    &[
+                        base_args,
+                        &meta.args.valgrind_args.clone().unwrap_or_default(),
+                        &meta.args.dhat_args.clone().unwrap_or_default(),
+                    ],
+                )?,
+                ValgrindTool::Memcheck => ToolArgs::try_from_raw_args(
+                    ValgrindTool::Memcheck,
+                    &[
+                        base_args,
+                        &meta.args.valgrind_args.clone().unwrap_or_default(),
+                        &meta.args.memcheck_args.clone().unwrap_or_default(),
+                    ],
+                )?,
+                ValgrindTool::Helgrind => ToolArgs::try_from_raw_args(
+                    ValgrindTool::Helgrind,
+                    &[
+                        base_args,
+                        &meta.args.valgrind_args.clone().unwrap_or_default(),
+                        &meta.args.helgrind_args.clone().unwrap_or_default(),
+                    ],
+                )?,
+                ValgrindTool::DRD => ToolArgs::try_from_raw_args(
+                    ValgrindTool::DRD,
+                    &[
+                        base_args,
+                        &meta.args.valgrind_args.clone().unwrap_or_default(),
+                        &meta.args.drd_args.clone().unwrap_or_default(),
+                    ],
+                )?,
+                ValgrindTool::Massif => ToolArgs::try_from_raw_args(
+                    ValgrindTool::Massif,
+                    &[
+                        base_args,
+                        &meta.args.valgrind_args.clone().unwrap_or_default(),
+                        &meta.args.memcheck_args.clone().unwrap_or_default(),
+                    ],
+                )?,
+                ValgrindTool::BBV => ToolArgs::try_from_raw_args(
+                    ValgrindTool::BBV,
+                    &[
+                        base_args,
+                        &meta.args.valgrind_args.clone().unwrap_or_default(),
+                        &meta.args.bbv_args.clone().unwrap_or_default(),
+                    ],
+                )?,
             };
 
             Ok(ToolConfig::new(

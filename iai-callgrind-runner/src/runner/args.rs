@@ -59,7 +59,6 @@ impl NoCapture {
     }
 }
 
-// TODO: ADD valgrind-args, cachegrind-args, dhat-args, ...,
 // TODO: ADD regression for cachegrind
 // TODO: Add default-tool
 /// The command line arguments the user provided after `--` when running cargo bench
@@ -158,9 +157,32 @@ pub struct CommandLineArgs {
     #[arg(name = "BENCHNAME", num_args = 0..=1, env = "IAI_CALLGRIND_FILTER")]
     pub filter: Option<BenchmarkFilter>,
 
-    /// The raw arguments to pass through to Callgrind
+    /// The command-line arguments to pass through to all tools
     ///
-    /// List of command-line-arguments specified as if they were passed directly to valgrind.
+    /// The core valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options> which are recognized
+    /// by all tools. More specific arguments for example set with --callgrind-args override the
+    /// arguments with the same name specified with this option.
+    ///
+    /// Examples:
+    ///   * --valgrind-args=--time-stamp=yes
+    ///   * --valgrind-args='--error-exitcode=202 --num-callers=50'
+    #[arg(
+        long = "valgrind-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_VALGRIND_ARGS"
+    )]
+    pub valgrind_args: Option<RawArgs>,
+
+    /// The command-line arguments to pass through to Callgrind
+    ///
+    /// <https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options> and the core valgrind
+    /// command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options>. Note that not all
+    /// command-line arguments are supported especially the ones which change output paths.
+    /// Unsupported arguments will be ignored printing a warning.
     ///
     /// Examples:
     ///   * --callgrind-args=--dump-instr=yes
@@ -174,9 +196,10 @@ pub struct CommandLineArgs {
     )]
     pub callgrind_args: Option<RawArgs>,
 
-    /// The raw arguments to pass through to Cachegrind
+    /// The command-line arguments to pass through to Cachegrind
     ///
-    /// List of command-line-arguments specified as if they were passed directly to valgrind.
+    /// <https://valgrind.org/docs/manual/cg-manual.html#cg-manual.cgopts>. See also the description
+    /// for --callgrind-args for more details and restrictions.
     ///
     /// Examples:
     ///   * --cachegrind-args=--intr-at-start=no
@@ -189,6 +212,107 @@ pub struct CommandLineArgs {
         env = "IAI_CALLGRIND_CACHEGRIND_ARGS"
     )]
     pub cachegrind_args: Option<RawArgs>,
+
+    /// The command-line arguments to pass through to DHAT
+    ///
+    /// <https://valgrind.org/docs/manual/dh-manual.html#dh-manual.options>. See also the description
+    /// for --callgrind-args for more details and restrictions.
+    ///
+    /// Examples:
+    ///   * --dhat-args=--mode=ad-hoc
+    #[arg(
+        long = "dhat-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_DHAT_ARGS"
+    )]
+    pub dhat_args: Option<RawArgs>,
+
+    /// The command-line arguments to pass through to Memcheck
+    ///
+    /// <https://valgrind.org/docs/manual/mc-manual.html#mc-manual.options>. See also the description
+    /// for --callgrind-args for more details and restrictions.
+    ///
+    /// Examples:
+    ///   * --memcheck-args=--leak-check=full
+    ///   * --memcheck-args='--leak-check=yes --show-leak-kinds=all'
+    #[arg(
+        long = "memcheck-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_MEMCHECK_ARGS"
+    )]
+    pub memcheck_args: Option<RawArgs>,
+
+    /// The command-line arguments to pass through to Helgrind
+    ///
+    /// <https://valgrind.org/docs/manual/hg-manual.html#hg-manual.options>. See also the description
+    /// for --callgrind-args for more details and restrictions.
+    ///
+    /// Examples:
+    ///   * --helgrind-args=--free-is-write=yes
+    ///   * --helgrind-args='--conflict-cache-size=100000 --free-is-write=yes'
+    #[arg(
+        long = "helgrind-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_HELGRIND_ARGS"
+    )]
+    pub helgrind_args: Option<RawArgs>,
+
+    /// The command-line arguments to pass through to DRD
+    ///
+    /// <https://valgrind.org/docs/manual/drd-manual.html#drd-manual.options>. See also the description
+    /// for --callgrind-args for more details and restrictions.
+    ///
+    /// Examples:
+    ///   * --drd-args=--exclusive-threshold=100
+    ///   * --drd-args='--exclusive-threshold=100 --free-is-write=yes'
+    #[arg(
+        long = "drd-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_DRD_ARGS"
+    )]
+    pub drd_args: Option<RawArgs>,
+
+    /// The command-line arguments to pass through to Massif
+    ///
+    /// <https://valgrind.org/docs/manual/ms-manual.html#ms-manual.options>. See also the description
+    /// for --callgrind-args for more details and restrictions.
+    ///
+    /// Examples:
+    ///   * --massif-args=--heap=no
+    ///   * --massif-args='--heap=no --threshold=2.0'
+    #[arg(
+        long = "massif-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_MASSIF_ARGS"
+    )]
+    pub massif_args: Option<RawArgs>,
+
+    /// The command-line arguments to pass through to the experimental BBV
+    ///
+    /// <https://valgrind.org/docs/manual/bbv-manual.html#bbv-manual.usage>. See also the description
+    /// for --callgrind-args for more details and restrictions.
+    ///
+    /// Examples:
+    ///   * --bbv-args=--interval-size=10000
+    ///   * --bbv-args='--interval-size=10000 --instr-count-only=yes'
+    #[arg(
+        long = "bbv-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_BBV_ARGS"
+    )]
+    pub bbv_args: Option<RawArgs>,
 
     /// Save a machine-readable summary of each benchmark run in json format next to the usual
     /// benchmark output
