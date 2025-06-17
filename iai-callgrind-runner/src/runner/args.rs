@@ -7,7 +7,7 @@ use clap::{ArgAction, Parser};
 
 use super::format::OutputFormatKind;
 use super::summary::{BaselineName, SummaryFormat};
-use crate::api::{EventKind, RawArgs, RegressionConfig, ToolRegressionConfig};
+use crate::api::{EventKind, RawArgs, RegressionConfig, ToolRegressionConfig, ValgrindTool};
 
 /// A filter for benchmarks
 ///
@@ -60,7 +60,6 @@ impl NoCapture {
 }
 
 // TODO: ADD regression for cachegrind
-// TODO: Add default-tool
 /// The command line arguments the user provided after `--` when running cargo bench
 ///
 /// These arguments are not the command line arguments passed to `iai-callgrind-runner`. We collect
@@ -156,6 +155,33 @@ pub struct CommandLineArgs {
     /// Note that a benchmark name might differ from the benchmark file name.
     #[arg(name = "BENCHNAME", num_args = 0..=1, env = "IAI_CALLGRIND_FILTER")]
     pub filter: Option<BenchmarkFilter>,
+
+    /// The default tool used to run the benchmarks
+    ///
+    /// The standard tool to run the benchmarks is callgrind but can be overridden with this
+    /// option. Any valgrind tool can be used:
+    ///   * callgrind
+    ///   * cachegrind
+    ///   * dhat
+    ///   * memcheck
+    ///   * helgrind
+    ///   * drd
+    ///   * massif
+    ///   * exp-bbv
+    ///
+    /// This argument matches the tool case-insensitive. Note that using cachegrind with this
+    /// option to benchmark library functions needs adjustments to the benchmarking functions
+    /// with client-requests to measure the counts correctly. If you want to switch permanently
+    /// to cachegrind, it is usually better to activate the `cachegrind` feature of
+    /// iai-callgrind in your Cargo.toml. However, setting a tool with this option overrides
+    /// cachegrind set with the iai-callgrind feature. See the guide for all details.
+    #[arg(
+        long = "default-tool",
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_DEFAULT_TOOL"
+    )]
+    pub default_tool: Option<ValgrindTool>,
 
     /// The command-line arguments to pass through to all tools
     ///

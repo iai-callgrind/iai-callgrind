@@ -192,7 +192,11 @@ impl BinBench {
         let module_path = group
             .module_path
             .join(&binary_benchmark_bench.function_name);
-        let default_tool = config.default_tool.unwrap_or(default_tool);
+
+        let default_tool = meta
+            .args
+            .default_tool
+            .unwrap_or_else(|| config.default_tool.unwrap_or(default_tool));
 
         let api::Command {
             path,

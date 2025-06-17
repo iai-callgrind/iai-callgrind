@@ -8,3 +8,8 @@ groups:
         expected:
           files: expected_files.1b.yml
           stdout: expected_stdout.1b
+  - runs:
+      - args: ["--default-tool=memcheck"]
+        expected:
+          files: expected_files.2a.yml
+          stdout: expected_stdout.2a

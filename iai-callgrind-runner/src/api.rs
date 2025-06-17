@@ -7,6 +7,7 @@ use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 #[cfg(feature = "runner")]
 use std::process::{Child, Command as StdCommand, Stdio as StdStdio};
+use std::str::FromStr;
 use std::time::Duration;
 
 #[cfg(feature = "runner")]
@@ -1519,16 +1520,25 @@ impl TryFrom<&str> for ValgrindTool {
 
     fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
         match value {
-            "dhat" => Ok(ValgrindTool::DHAT),
             "callgrind" => Ok(ValgrindTool::Callgrind),
+            "cachegrind" => Ok(ValgrindTool::Cachegrind),
+            "dhat" => Ok(ValgrindTool::DHAT),
             "memcheck" => Ok(ValgrindTool::Memcheck),
             "helgrind" => Ok(ValgrindTool::Helgrind),
             "drd" => Ok(ValgrindTool::DRD),
             "massif" => Ok(ValgrindTool::Massif),
             "exp-bbv" => Ok(ValgrindTool::BBV),
-            "cachegrind" => Ok(ValgrindTool::Cachegrind),
             v => Err(anyhow!("Unknown tool '{}'", v)),
         }
+    }
+}
+
+#[cfg(feature = "runner")]
+impl FromStr for ValgrindTool {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::try_from(s.to_lowercase().as_str())
     }
 }
 

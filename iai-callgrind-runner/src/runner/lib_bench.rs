@@ -310,16 +310,20 @@ impl LibBench {
 
         // The cachegrind client requests are not inserted into the benchmark function if the
         // default tool is not cachegrind, so setting --instr-at-start to `no` is only required if
-        // the default tool sent by the benchmark harness is cachegrind. Also, we only need to set
-        // this in library benchmarks, so it's best to use `default_args` to add this command-line
-        // argument.
-        if default_tool == ValgrindTool::Cachegrind {
-            default_args.insert(
-                ValgrindTool::Cachegrind,
-                RawArgs::new(["--instr-at-start=no"]),
-            );
-        }
-        let default_tool = config.default_tool.unwrap_or(default_tool);
+        // the default tool sent by the benchmark harness (not with command-line arguments) is
+        // cachegrind. Also, we only need to set this in library benchmarks, so it's best to use
+        // `default_args` to add this command-line argument.
+        let default_tool = if let Some(meta_default_tool) = meta.args.default_tool {
+            meta_default_tool
+        } else {
+            if default_tool == ValgrindTool::Cachegrind {
+                default_args.insert(
+                    ValgrindTool::Cachegrind,
+                    RawArgs::new(["--instr-at-start=no"]),
+                );
+            }
+            config.default_tool.unwrap_or(default_tool)
+        };
 
         let module_path = group
             .module_path
