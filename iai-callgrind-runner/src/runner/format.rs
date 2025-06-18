@@ -11,7 +11,9 @@ use super::bin_bench::BinBench;
 use super::common::{Baselines, BenchmarkSummaries, Config, ModulePath};
 use super::lib_bench::LibBench;
 use super::meta::Metadata;
-use super::summary::{Diffs, MetricsDiff, ProfileData, ProfileInfo, ToolMetricSummary};
+use super::summary::{
+    Diffs, MetricsDiff, ProfileData, ProfileInfo, ToolMetricSummary, ToolRegression,
+};
 use crate::api::{
     self, CachegrindMetric, CallgrindMetrics, DhatMetric, ErrorMetric, EventKind, ValgrindTool,
 };
@@ -465,15 +467,9 @@ impl SummaryFormatter {
                         .iter()
                         .flat_map(|t| &t.summaries.total.regressions)
                     {
-                        let metric_string = if let MetricKind::Callgrind(event) = regression.metric
-                        {
-                            event.to_string()
-                        } else {
-                            regression.metric.to_string()
-                        };
                         println!(
                             "    {} ({} -> {}): {:>6}{} exceeds limit of {:>6}{}",
-                            metric_string.bold(),
+                            regression.metric.to_string().bold(),
                             regression.old,
                             regression.new.to_string().bold(),
                             to_string_signed_short(regression.diff_pct)
@@ -1172,6 +1168,49 @@ fn truncate_description(description: &str, truncate_description: Option<usize>) 
         }
     } else {
         Cow::Borrowed(description)
+    }
+}
+
+pub fn print_regressions(regressions: &[ToolRegression]) {
+    for ToolRegression {
+        metric: kind,
+        new,
+        old,
+        diff_pct,
+        limit,
+    } in regressions
+    {
+        let string = match kind {
+            MetricKind::Callgrind(event_kind) => event_kind.to_string(),
+            MetricKind::Cachegrind(cachegrind_metric) => cachegrind_metric.to_string(),
+            MetricKind::Dhat(dhat_metric) => dhat_metric.to_string(),
+            MetricKind::ErrorMetric(error_metric) => error_metric.to_string(),
+            MetricKind::None => return,
+        };
+
+        if limit.is_sign_positive() {
+            eprintln!(
+                "Performance has {0}: {1} ({old} -> {2}) regressed by {3:>+6} (>{4:>+6})",
+                "regressed".bold().bright_red(),
+                string.bold(),
+                new.to_string().bold(),
+                format!("{}%", to_string_signed_short(*diff_pct))
+                    .bold()
+                    .bright_red(),
+                format!("{}%", to_string_signed_short(*limit)).bright_black()
+            );
+        } else {
+            eprintln!(
+                "Performance has {0}: {1} ({old} -> {2}) regressed by {3:>+6} (<{4:>+6})",
+                "regressed".bold().bright_red(),
+                string.bold(),
+                new.to_string().bold(),
+                format!("{}%", to_string_signed_short(*diff_pct))
+                    .bold()
+                    .bright_red(),
+                format!("{}%", to_string_signed_short(*limit)).bright_black()
+            );
+        }
     }
 }
 

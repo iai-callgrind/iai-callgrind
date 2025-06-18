@@ -22,7 +22,7 @@ pub use iai_callgrind_runner::api::{
     BinaryBenchmarkConfig as InternalBinaryBenchmarkConfig,
     BinaryBenchmarkGroup as InternalBinaryBenchmarkGroup,
     BinaryBenchmarkGroups as InternalBinaryBenchmarkGroups,
-    CachegrindRegressions as InternalCachegrindRegressions,
+    CachegrindRegressionConfig as InternalCachegrindRegressionConfig,
     CallgrindRegressionConfig as InternalCallgrindRegressionConfig, Command as InternalCommand,
     Delay as InternalDelay, EntryPoint as InternalEntryPoint, ExitWith as InternalExitWith,
     Fixtures as InternalFixtures, FlamegraphConfig as InternalFlamegraphConfig,

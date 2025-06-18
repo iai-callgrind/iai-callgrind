@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fmt::{Display, Write as FmtWrite};
 use std::fs::{DirEntry, File};
+use std::hash::Hash;
 use std::io::{stderr, BufRead, BufReader, Write};
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
@@ -26,6 +27,7 @@ use regex::Regex;
 use self::args::ToolArgs;
 use super::args::NoCapture;
 use super::bin_bench::Delay;
+use super::cachegrind::CachegrindRegressionConfig;
 use super::callgrind::flamegraph::{
     BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
     LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
@@ -34,18 +36,21 @@ use super::callgrind::parser::{parse_header, Sentinel};
 use super::callgrind::CallgrindRegressionConfig;
 use super::common::{Assistant, Baselines, Config, ModulePath, Sandbox};
 use super::dhat::logfile_parser::DhatLogfileParser;
-use super::format::{print_no_capture_footer, Formatter, OutputFormat, VerticalFormatter};
+use super::format::{
+    print_no_capture_footer, print_regressions, Formatter, OutputFormat, VerticalFormatter,
+};
 use super::meta::Metadata;
+use super::metrics::Summarize;
 use super::summary::{
-    BaselineKind, BaselineName, BenchmarkSummary, Profile, ProfileData, ProfileTotal,
-    ToolMetricSummary, ToolRegression,
+    BaselineKind, BaselineName, BenchmarkSummary, MetricsSummary, Profile, ProfileData,
+    ProfileTotal, RegressionMetrics, ToolMetricSummary, ToolRegression,
 };
 use super::{cachegrind, callgrind, DEFAULT_TOGGLE};
 use crate::api::{
     self, EntryPoint, ExitWith, RawArgs, Stream, Tool, ToolOutputFormat, Tools, ValgrindTool,
 };
 use crate::error::Error;
-use crate::util::{self, resolve_binary_path, truncate_str_utf8};
+use crate::util::{self, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
 
 lazy_static! {
     // This regex matches the original file name without the prefix as it is created by callgrind.
@@ -73,6 +78,48 @@ lazy_static! {
         r"^(?:[.](?<pid>[0-9]+))?(?:[.]t(?<tid>[0-9]+))?(?:[.]p(?<part>[0-9]+))?(?:[.](?<bbv>bb|pc))?(?:[.](?<type>out|log))(?:[.](?<base>old|base@[^.]+))?$"
     )
     .expect("Regex should compile");
+}
+
+pub trait RegressionConfig<T: Hash + Eq + Summarize + Display + Clone> {
+    fn check_and_print(&self, metrics_summary: &MetricsSummary<T>) -> Vec<ToolRegression> {
+        let regressions = self.check(metrics_summary);
+        print_regressions(&regressions);
+        regressions
+    }
+
+    // Check the `MetricsSummary` for regressions.
+    //
+    // The limits for event kinds which are not present in the `MetricsSummary` are ignored.
+    fn check(&self, metrics_summary: &MetricsSummary<T>) -> Vec<ToolRegression>;
+    fn check_regressions(&self, metrics_summary: &MetricsSummary<T>) -> Vec<RegressionMetrics<T>> {
+        let mut regressions = vec![];
+        for (metric, new_cost, old_cost, pct, limit) in
+            self.get_limits().iter().filter_map(|(kind, limit)| {
+                metrics_summary.diff_by_kind(kind).and_then(|d| {
+                    if let EitherOrBoth::Both(new, old) = d.metrics {
+                        // This unwrap is safe since the diffs are calculated if both costs are
+                        // present
+                        Some((kind, new, old, d.diffs.unwrap().diff_pct, limit))
+                    } else {
+                        None
+                    }
+                })
+            })
+        {
+            if limit.is_sign_positive() {
+                if pct > *limit {
+                    regressions.push((metric.clone(), new_cost, old_cost, pct, *limit));
+                }
+            } else if pct < *limit {
+                regressions.push((metric.clone(), new_cost, old_cost, pct, *limit));
+            } else {
+                // no regression
+            }
+        }
+        regressions
+    }
+
+    fn get_limits(&self) -> &[(T, f64)];
 }
 
 #[derive(Debug, Default, Clone)]
@@ -146,6 +193,7 @@ pub enum ToolOutputPathKind {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ToolRegressionConfig {
     Callgrind(CallgrindRegressionConfig),
+    Cachegrind(CachegrindRegressionConfig),
     None,
 }
 
@@ -621,11 +669,16 @@ impl ToolConfig {
         &self,
         meta: &Metadata,
         output_path: &ToolOutputPath,
-        parsed_old: Vec<ParserOutput>,
+        parsed_old: Option<Vec<ParserOutput>>,
     ) -> Result<Profile> {
         let parser = parser_factory(self.tool, meta.project_root.clone(), output_path);
 
         let parsed_new = parser.parse()?;
+        let parsed_old = if let Some(parsed_old) = parsed_old {
+            parsed_old
+        } else {
+            parser.parse_base()?
+        };
 
         let data = match (parsed_new.is_empty(), parsed_old.is_empty()) {
             (true, false | true) => return Err(anyhow!("A new dataset should always be present")),
@@ -638,23 +691,6 @@ impl ToolConfig {
             log_paths: output_path.to_log_output().real_paths()?,
             out_paths: output_path.real_paths()?,
             summaries: data,
-            flamegraphs: vec![],
-        })
-    }
-
-    fn parse_load(&self, config: &Config, out_path: &ToolOutputPath) -> Result<Profile> {
-        let parser = parser_factory(self.tool, config.meta.project_root.clone(), out_path);
-
-        let parsed_new = parser.parse()?;
-        let parsed_old = parser.parse_base()?;
-
-        let summaries =
-            ProfileData::new(parsed_new, (!parsed_old.is_empty()).then_some(parsed_old));
-        Ok(Profile {
-            tool: self.tool,
-            log_paths: out_path.to_log_output().real_paths()?,
-            out_paths: out_path.real_paths()?,
-            summaries,
             flamegraphs: vec![],
         })
     }
@@ -798,12 +834,25 @@ impl ToolConfigs {
         self.0.iter().any(|t| t.is_enabled)
     }
 
+    /// Return true if there are multiple tools configured and are enabled
+    pub fn has_multiple(&self) -> bool {
+        self.0.len() > 1 && self.0.iter().filter(|f| f.is_enabled).count() > 1
+    }
+
     pub fn output_paths(&self, output_path: &ToolOutputPath) -> Vec<ToolOutputPath> {
         self.0
             .iter()
             .filter(|t| t.is_enabled)
             .map(|t| output_path.to_tool_output(t.tool))
             .collect()
+    }
+
+    pub fn extend(&mut self, iter: impl Iterator<Item = Result<ToolConfig>>) -> Result<()> {
+        for a in iter {
+            self.0.push(a?);
+        }
+
+        Ok(())
     }
 
     fn print_headline(&self, tool_config: &ToolConfig, output_format: &OutputFormat) {
@@ -813,6 +862,33 @@ impl ToolConfigs {
             let mut formatter = VerticalFormatter::new(output_format.clone());
             formatter.format_tool_headline(tool_config.tool);
             formatter.print_buffer();
+        }
+    }
+
+    /// Check for regressions as defined in [`RegressionConfig`] and print an error if a regression
+    /// occurred
+    ///
+    /// # Panics
+    ///
+    /// Checking performance regressions for other tools than callgrind and cachegrind is not
+    /// implemented and panics
+    fn check_and_print_regressions(
+        tool_regression_config: &ToolRegressionConfig,
+        tool_total: &ProfileTotal,
+    ) -> Vec<ToolRegression> {
+        match (tool_regression_config, &tool_total.summary) {
+            (
+                ToolRegressionConfig::Callgrind(callgrind_regression_config),
+                ToolMetricSummary::Callgrind(metrics_summary),
+            ) => callgrind_regression_config.check_and_print(metrics_summary),
+            (
+                ToolRegressionConfig::Cachegrind(cachegrind_regression_config),
+                ToolMetricSummary::Cachegrind(metrics_summary),
+            ) => cachegrind_regression_config.check_and_print(metrics_summary),
+            (ToolRegressionConfig::None, _) => vec![],
+            _ => {
+                panic!("The summary type should match the regression config")
+            }
         }
     }
 
@@ -833,25 +909,15 @@ impl ToolConfigs {
             let tool = tool_config.tool;
             let output_path = output_path.to_tool_output(tool);
 
-            let parser = parser_factory(tool, config.meta.project_root.clone(), &output_path);
+            let mut profile = tool_config.parse(&config.meta, &output_path, None)?;
+
+            tool_config.print(config, output_format, &profile.summaries, baselines)?;
+            profile.summaries.total.regressions = Self::check_and_print_regressions(
+                &tool_config.regression_config,
+                &profile.summaries.total,
+            );
+
             if ValgrindTool::Callgrind == tool {
-                let parsed_new = parser.parse()?;
-                let parsed_old = Some(parser.parse_base()?);
-
-                let mut data = ProfileData::new(parsed_new, parsed_old);
-                tool_config.print(config, output_format, &data, baselines)?;
-
-                data.total.regressions =
-                    Self::check_and_print_regressions(&tool_config.regression_config, &data.total);
-
-                let mut profile = Profile {
-                    tool: tool_config.tool,
-                    out_paths: output_path.real_paths()?,
-                    log_paths: output_path.to_log_output().real_paths()?,
-                    flamegraphs: vec![],
-                    summaries: data,
-                };
-
                 if let ToolFlamegraphConfig::Callgrind(flamegraph_config) =
                     &tool_config.flamegraph_config
                 {
@@ -868,54 +934,15 @@ impl ToolConfigs {
                         &config.meta.project_root,
                     )?;
                 }
-
-                benchmark_summary.profiles.push(profile);
-            } else {
-                let profile = tool_config.parse_load(config, &output_path)?;
-
-                tool_config.print(config, output_format, &profile.summaries, baselines)?;
-                benchmark_summary.profiles.push(profile);
             }
+
+            benchmark_summary.profiles.push(profile);
 
             let log_path = output_path.to_log_output();
             log_path.dump_log(log::Level::Info, &mut stderr())?;
         }
 
         Ok(benchmark_summary)
-    }
-
-    /// Check for regressions as defined in [`RegressionConfig`] and print an error if a regression
-    /// occurred
-    ///
-    /// # Panics
-    ///
-    /// Checking performance regressions for other tools than callgrind is not implemented and
-    /// treated as programming error.
-    fn check_and_print_regressions(
-        tool_regression_config: &ToolRegressionConfig,
-        tool_total: &ProfileTotal,
-    ) -> Vec<ToolRegression> {
-        if let ToolRegressionConfig::Callgrind(regression_config) = tool_regression_config {
-            let regressions = match &tool_total.summary {
-                ToolMetricSummary::Callgrind(metrics_summary) => {
-                    regression_config.check_and_print(metrics_summary)
-                }
-                _ => {
-                    panic!(
-                        "Checking performance regressions for other tools than callgrind is \
-                         currently not implemented"
-                    )
-                }
-            };
-            return regressions;
-        }
-
-        vec![]
-    }
-
-    /// Return true if there are multiple tools configured and are enabled
-    pub fn has_multiple(&self) -> bool {
-        self.0.len() > 1 && self.0.iter().filter(|f| f.is_enabled).count() > 1
     }
 
     pub fn run(
@@ -1010,16 +1037,15 @@ impl ToolConfigs {
                 sandbox.reset()?;
             }
 
+            let mut profile = tool_config.parse(&config.meta, &output_path, Some(parsed_old))?;
+
+            tool_config.print(config, output_format, &profile.summaries, baselines)?;
+            profile.summaries.total.regressions = Self::check_and_print_regressions(
+                &tool_config.regression_config,
+                &profile.summaries.total,
+            );
+
             if tool_config.tool == ValgrindTool::Callgrind {
-                let mut profile = tool_config.parse(&config.meta, &output_path, parsed_old)?;
-
-                tool_config.print(config, output_format, &profile.summaries, baselines)?;
-
-                profile.summaries.total.regressions = Self::check_and_print_regressions(
-                    &tool_config.regression_config,
-                    &profile.summaries.total,
-                );
-
                 if save_baseline {
                     let BaselineKind::Name(baseline) = baseline_kind.clone() else {
                         panic!("A baseline with name should be present");
@@ -1053,29 +1079,15 @@ impl ToolConfigs {
                 } else {
                     // do nothing
                 }
-
-                benchmark_summary.profiles.push(profile);
-            } else {
-                let profile = tool_config.parse(&config.meta, &output_path, parsed_old)?;
-
-                tool_config.print(config, output_format, &profile.summaries, baselines)?;
-
-                benchmark_summary.profiles.push(profile);
             }
+
+            benchmark_summary.profiles.push(profile);
 
             output.dump_log(log::Level::Info);
             log_path.dump_log(log::Level::Info, &mut stderr())?;
         }
 
         Ok(benchmark_summary)
-    }
-
-    pub fn extend(&mut self, iter: impl Iterator<Item = Result<ToolConfig>>) -> Result<()> {
-        for a in iter {
-            self.0.push(a?);
-        }
-
-        Ok(())
     }
 }
 
@@ -1955,6 +1967,7 @@ impl ToolRegressionConfig {
     pub fn is_fail_fast(&self) -> bool {
         match self {
             ToolRegressionConfig::Callgrind(regression_config) => regression_config.fail_fast,
+            ToolRegressionConfig::Cachegrind(regression_config) => regression_config.fail_fast,
             ToolRegressionConfig::None => false,
         }
     }
@@ -1966,16 +1979,10 @@ impl From<api::ToolRegressionConfig> for ToolRegressionConfig {
             api::ToolRegressionConfig::Callgrind(regression_config) => {
                 Self::Callgrind(regression_config.into())
             }
+            api::ToolRegressionConfig::Cachegrind(regression_config) => {
+                Self::Cachegrind(regression_config.into())
+            }
             api::ToolRegressionConfig::None => Self::None,
-        }
-    }
-}
-
-impl From<Option<CallgrindRegressionConfig>> for ToolRegressionConfig {
-    fn from(value: Option<CallgrindRegressionConfig>) -> Self {
-        match value {
-            Some(config) => ToolRegressionConfig::Callgrind(config),
-            None => ToolRegressionConfig::None,
         }
     }
 }

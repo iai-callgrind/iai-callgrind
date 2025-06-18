@@ -173,6 +173,64 @@ impl Cachegrind {
 
         self
     }
+
+    /// Configure the limits percentages over/below which a performance regression can be assumed
+    ///
+    /// See also [`Callgrind::limits`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::{Cachegrind, CachegrindMetric};
+    ///
+    /// let config = Cachegrind::default().limits([(CachegrindMetric::Ir, 5f64)]);
+    /// ```
+    pub fn limits<T>(&mut self, limits: T) -> &mut Self
+    where
+        T: IntoIterator<Item = (CachegrindMetric, f64)>,
+    {
+        if let Some(__internal::InternalToolRegressionConfig::Cachegrind(config)) =
+            &mut self.0.regression_config
+        {
+            config.limits.extend(limits);
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Cachegrind(
+                __internal::InternalCachegrindRegressionConfig {
+                    limits: limits.into_iter().collect(),
+                    fail_fast: None,
+                },
+            ));
+        }
+        self
+    }
+
+    /// If set to true, then the benchmarks fail on the first encountered regression
+    ///
+    /// The default is `false` and the whole benchmark run fails with a regression error after all
+    /// benchmarks have been run.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::Cachegrind;
+    ///
+    /// let config = Cachegrind::default().fail_fast(true);
+    /// ```
+    pub fn fail_fast(&mut self, value: bool) -> &mut Self {
+        if let Some(__internal::InternalToolRegressionConfig::Cachegrind(config)) =
+            &mut self.0.regression_config
+        {
+            config.fail_fast = Some(value);
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Cachegrind(
+                __internal::InternalCachegrindRegressionConfig {
+                    limits: vec![],
+                    fail_fast: Some(value),
+                },
+            ));
+        }
+        self
+    }
 }
 
 impl Default for Cachegrind {

@@ -128,7 +128,7 @@ pub enum CachegrindMetric {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct CachegrindRegressions {
+pub struct CachegrindRegressionConfig {
     pub limits: Vec<(CachegrindMetric, f64)>,
     pub fail_fast: Option<bool>,
 }
@@ -698,6 +698,7 @@ pub struct Tool {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ToolRegressionConfig {
     Callgrind(CallgrindRegressionConfig),
+    Cachegrind(CachegrindRegressionConfig),
     None,
 }
 

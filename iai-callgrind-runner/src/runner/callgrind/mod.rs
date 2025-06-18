@@ -8,13 +8,13 @@ pub mod summary_parser;
 
 use std::path::PathBuf;
 
-use colored::Colorize;
 use parser::CallgrindProperties;
 
 use self::model::Metrics;
 use super::summary::{MetricKind, MetricsSummary, ToolRegression};
+use super::tool::RegressionConfig;
 use crate::api::{self, EventKind};
-use crate::util::{to_string_signed_short, EitherOrBoth};
+use crate::util::EitherOrBoth;
 
 #[derive(Debug, Clone)]
 pub struct Summary {
@@ -128,102 +128,25 @@ impl CyclesEstimator {
     }
 }
 
-impl CallgrindRegressionConfig {
-    /// Check regression of the [`super::metrics::Metrics`] for the configured [`EventKind`]s and
-    /// print it
-    ///
-    /// If the old `Metrics` is None then no regression checks are performed and this method returns
-    /// [`Ok`].
-    ///
-    /// # Errors
-    ///
-    /// Returns an [`anyhow::Error`] with the only source [`crate::error::Error::RegressionError`]
-    /// if a regression error occurred
-    pub fn check_and_print(&self, metrics_summary: &MetricsSummary) -> Vec<ToolRegression> {
-        let regression = self.check(metrics_summary);
-
-        for ToolRegression {
-            metric,
-            new,
-            old,
-            diff_pct,
-            limit,
-        } in &regression
-        {
-            let MetricKind::Callgrind(event) = metric else {
-                panic!("Other regression kinds than callgrind are not implemented yet");
-            };
-            if limit.is_sign_positive() {
-                eprintln!(
-                    "Performance has {0}: {1} ({old} -> {2}) regressed by {3:>+6} (>{4:>+6})",
-                    "regressed".bold().bright_red(),
-                    event.to_string().bold(),
-                    new.to_string().bold(),
-                    format!("{}%", to_string_signed_short(*diff_pct))
-                        .bold()
-                        .bright_red(),
-                    format!("{}%", to_string_signed_short(*limit)).bright_black()
-                );
-            } else {
-                eprintln!(
-                    "Performance has {0}: {1} ({old} -> {2}) regressed by {3:>+6} (<{4:>+6})",
-                    "regressed".bold().bright_red(),
-                    event.to_string().bold(),
-                    new.to_string().bold(),
-                    format!("{}%", to_string_signed_short(*diff_pct))
-                        .bold()
-                        .bright_red(),
-                    format!("{}%", to_string_signed_short(*limit)).bright_black()
-                );
-            }
-        }
-
-        regression
-    }
-
+impl RegressionConfig<EventKind> for CallgrindRegressionConfig {
     // Check the `MetricsSummary` for regressions.
     //
     // The limits for event kinds which are not present in the `MetricsSummary` are ignored.
-    pub fn check(&self, metrics_summary: &MetricsSummary) -> Vec<ToolRegression> {
-        let mut regressions = vec![];
-        for (event_kind, new_cost, old_cost, pct, limit) in
-            self.limits.iter().filter_map(|(event_kind, limit)| {
-                metrics_summary.diff_by_kind(event_kind).and_then(|d| {
-                    if let EitherOrBoth::Both(new, old) = d.metrics {
-                        // This unwrap is safe since the diffs are calculated if both costs are
-                        // present
-                        Some((event_kind, new, old, d.diffs.unwrap().diff_pct, limit))
-                    } else {
-                        None
-                    }
-                })
+    fn check(&self, metrics_summary: &MetricsSummary) -> Vec<ToolRegression> {
+        self.check_regressions(metrics_summary)
+            .into_iter()
+            .map(|(metric, new, old, diff_pct, limit)| ToolRegression {
+                metric: MetricKind::Callgrind(metric),
+                new,
+                old,
+                diff_pct,
+                limit,
             })
-        {
-            if limit.is_sign_positive() {
-                if pct > *limit {
-                    let regression = ToolRegression {
-                        metric: super::summary::MetricKind::Callgrind(*event_kind),
-                        new: new_cost,
-                        old: old_cost,
-                        diff_pct: pct,
-                        limit: *limit,
-                    };
-                    regressions.push(regression);
-                }
-            } else if pct < *limit {
-                let regression = ToolRegression {
-                    metric: super::summary::MetricKind::Callgrind(*event_kind),
-                    new: new_cost,
-                    old: old_cost,
-                    diff_pct: pct,
-                    limit: *limit,
-                };
-                regressions.push(regression);
-            } else {
-                // no regression
-            }
-        }
-        regressions
+            .collect()
+    }
+
+    fn get_limits(&self) -> &[(EventKind, f64)] {
+        &self.limits
     }
 }
 
