@@ -60,7 +60,7 @@ in your `$PATH` so that Iai-callgrind can find it.
 #### Alpine Linux
 
 ```bash
-apk add just
+apk add valgrind
 ```
 
 #### Arch Linux
