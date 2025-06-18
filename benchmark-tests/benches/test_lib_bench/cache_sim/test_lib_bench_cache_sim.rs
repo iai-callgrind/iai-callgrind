@@ -2,8 +2,8 @@ use std::hint::black_box;
 
 use benchmark_tests::bubble_sort;
 use iai_callgrind::{
-    library_benchmark, library_benchmark_group, main, Callgrind, FlamegraphConfig,
-    LibraryBenchmarkConfig, RegressionConfig,
+    library_benchmark, library_benchmark_group, main, Callgrind, EventKind, FlamegraphConfig,
+    LibraryBenchmarkConfig,
 };
 
 fn setup_worst_case_array(start: i32) -> Vec<i32> {
@@ -38,7 +38,7 @@ library_benchmark_group!(
 main!(
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()
-            .regression(RegressionConfig::default())
+            .limits([(EventKind::Ir, 10.0)])
             .flamegraph(FlamegraphConfig::default())
         );
     library_benchmark_groups = bench_cache_sim);

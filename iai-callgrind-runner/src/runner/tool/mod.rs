@@ -31,7 +31,7 @@ use super::callgrind::flamegraph::{
     LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
 };
 use super::callgrind::parser::{parse_header, Sentinel};
-use super::callgrind::RegressionConfig;
+use super::callgrind::CallgrindRegressionConfig;
 use super::common::{Assistant, Baselines, Config, ModulePath, Sandbox};
 use super::dhat::logfile_parser::DhatLogfileParser;
 use super::format::{print_no_capture_footer, Formatter, OutputFormat, VerticalFormatter};
@@ -145,7 +145,7 @@ pub enum ToolOutputPathKind {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ToolRegressionConfig {
-    Callgrind(RegressionConfig),
+    Callgrind(CallgrindRegressionConfig),
     None,
 }
 
@@ -1971,8 +1971,8 @@ impl From<api::ToolRegressionConfig> for ToolRegressionConfig {
     }
 }
 
-impl From<Option<RegressionConfig>> for ToolRegressionConfig {
-    fn from(value: Option<RegressionConfig>) -> Self {
+impl From<Option<CallgrindRegressionConfig>> for ToolRegressionConfig {
+    fn from(value: Option<CallgrindRegressionConfig>) -> Self {
         match value {
             Some(config) => ToolRegressionConfig::Callgrind(config),
             None => ToolRegressionConfig::None,

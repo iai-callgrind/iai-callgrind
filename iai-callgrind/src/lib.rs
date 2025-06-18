@@ -410,7 +410,7 @@ pub use bincode;
 #[cfg(feature = "default")]
 pub use common::{
     Bbv, Cachegrind, Callgrind, Dhat, Drd, FlamegraphConfig, Helgrind, Massif, Memcheck,
-    OutputFormat, RegressionConfig,
+    OutputFormat,
 };
 #[cfg(feature = "client_requests_defs")]
 pub use cty;

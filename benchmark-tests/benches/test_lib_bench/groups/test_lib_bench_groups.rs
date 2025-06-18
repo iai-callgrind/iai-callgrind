@@ -7,7 +7,7 @@ use std::hint::black_box;
 use benchmark_tests::{bubble_sort, fibonacci};
 use iai_callgrind::{
     library_benchmark, library_benchmark_group, main, Callgrind, Dhat, EventKind,
-    LibraryBenchmarkConfig, Massif, RegressionConfig,
+    LibraryBenchmarkConfig, Massif,
 };
 
 // This function is used to create the worst case array we want to sort with our implementation of
@@ -147,11 +147,7 @@ fn bench_fibonacci_with_config_at_bench_level(first: u64, second: u64) -> u64 {
 library_benchmark_group!(
     name = bubble_sort;
     config = LibraryBenchmarkConfig::default()
-        .tool(Callgrind::default()
-            .regression(RegressionConfig::default()
-                .fail_fast(false)
-            )
-        );
+        .tool(Callgrind::default().limits([(EventKind::Ir, 10.0)]).fail_fast(false));
     benchmarks =
         bench_bubble_sort_empty,
         bench_bubble_sort,
@@ -198,10 +194,7 @@ library_benchmark_group!(
 main!(
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()
-            .regression(
-                RegressionConfig::default()
-                    .limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
-            )
+            .limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
         )
         .tool(Dhat::default());
     library_benchmark_groups = bubble_sort, fibonacci);

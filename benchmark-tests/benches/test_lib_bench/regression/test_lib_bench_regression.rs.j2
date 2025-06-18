@@ -3,7 +3,7 @@ use std::hint::black_box;
 use benchmark_tests::{bubble_sort, setup_worst_case_array};
 use iai_callgrind::{
     library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,
-    RegressionConfig, Callgrind
+    Callgrind
 };
 
 #[library_benchmark]
@@ -12,9 +12,7 @@ use iai_callgrind::{
     setup = setup_worst_case_array,
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()
-            .regression(RegressionConfig::default()
-                .limits([(EventKind::Ir, 0.0)]).fail_fast({{ fail_fast }})
-            )
+            .limits([(EventKind::Ir, 0.0)]).fail_fast({{ fail_fast }})
         )
 )]
 #[bench::should_not_run_after_regression(setup_worst_case_array(10))]

@@ -7,7 +7,9 @@ use clap::{ArgAction, Parser};
 
 use super::format::OutputFormatKind;
 use super::summary::{BaselineName, SummaryFormat};
-use crate::api::{EventKind, RawArgs, RegressionConfig, ToolRegressionConfig, ValgrindTool};
+use crate::api::{
+    CallgrindRegressionConfig, EventKind, RawArgs, ToolRegressionConfig, ValgrindTool,
+};
 
 /// A filter for benchmarks
 ///
@@ -576,7 +578,7 @@ fn parse_regression_config(value: &str) -> Result<ToolRegressionConfig, String> 
     }
 
     let regression_config = if value.eq_ignore_ascii_case("default") {
-        ToolRegressionConfig::Callgrind(RegressionConfig::default())
+        ToolRegressionConfig::Callgrind(CallgrindRegressionConfig::default())
     } else {
         let mut limits = vec![];
 
@@ -597,7 +599,7 @@ fn parse_regression_config(value: &str) -> Result<ToolRegressionConfig, String> 
             }
         }
 
-        ToolRegressionConfig::Callgrind(RegressionConfig {
+        ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
             limits,
             ..Default::default()
         })
@@ -657,7 +659,7 @@ mod tests {
         #[case] regression_var: &str,
         #[case] expected_limits: Vec<(EventKind, f64)>,
     ) {
-        let expected = ToolRegressionConfig::Callgrind(RegressionConfig {
+        let expected = ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
             limits: expected_limits,
             fail_fast: None,
         });

@@ -110,36 +110,6 @@ pub struct Memcheck(__internal::InternalTool);
 #[derive(Debug, Clone, Default, IntoInner, AsRef)]
 pub struct OutputFormat(__internal::InternalOutputFormat);
 
-/// Configure performance regression checks and behavior
-///
-/// A performance regression check consists of an [`EventKind`] and a percentage over which a
-/// regression is assumed. If the percentage is negative, then a regression is assumed to be below
-/// this limit. The default [`EventKind`] is [`EventKind::Ir`] with a value of
-/// `+10f64`
-///
-/// If `fail_fast` is set to true, then the whole benchmark run fails on the first encountered
-/// regression. Else, the default behavior is, that the benchmark run fails with a regression error
-/// after all benchmarks have been run.
-///
-/// # Examples
-///
-/// ```rust
-/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
-/// use iai_callgrind::{main, LibraryBenchmarkConfig, RegressionConfig};
-/// # #[library_benchmark]
-/// # fn some_func() {}
-/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
-/// # fn main() {
-/// main!(
-///     config = LibraryBenchmarkConfig::default()
-///                 .regression(RegressionConfig::default());
-///     library_benchmark_groups = some_group
-/// );
-/// # }
-/// ```
-#[derive(Debug, Default, Clone, IntoInner, AsRef)]
-pub struct RegressionConfig(__internal::InternalRegressionConfig);
-
 impl Bbv {
     /// TODO: DOCS
     pub fn with_args<I, T>(args: T) -> Self
@@ -238,14 +208,63 @@ impl Callgrind {
         self
     }
 
-    /// TODO: DOCS
-    pub fn regression<T>(&mut self, regression: T) -> &mut Self
+    /// Configure the limits percentages over/below which a performance regression can be assumed
+    ///
+    /// A performance regression check consists of an [`EventKind`] and a percentage over which a
+    /// regression is assumed. If the percentage is negative, then a regression is assumed to be
+    /// below this limit.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::{Callgrind, EventKind};
+    ///
+    /// let config = Callgrind::default().limits([(EventKind::Ir, 5f64)]);
+    /// ```
+    pub fn limits<T>(&mut self, limits: T) -> &mut Self
     where
-        T: Into<__internal::InternalRegressionConfig>,
+        T: IntoIterator<Item = (EventKind, f64)>,
     {
-        self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Callgrind(
-            regression.into(),
-        ));
+        if let Some(__internal::InternalToolRegressionConfig::Callgrind(config)) =
+            &mut self.0.regression_config
+        {
+            config.limits.extend(limits);
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Callgrind(
+                __internal::InternalCallgrindRegressionConfig {
+                    limits: limits.into_iter().collect(),
+                    fail_fast: None,
+                },
+            ));
+        }
+        self
+    }
+
+    /// If set to true, then the benchmarks fail on the first encountered regression
+    ///
+    /// The default is `false` and the whole benchmark run fails with a regression error after all
+    /// benchmarks have been run.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::Callgrind;
+    ///
+    /// let config = Callgrind::default().fail_fast(true);
+    /// ```
+    pub fn fail_fast(&mut self, value: bool) -> &mut Self {
+        if let Some(__internal::InternalToolRegressionConfig::Callgrind(config)) =
+            &mut self.0.regression_config
+        {
+            config.fail_fast = Some(value);
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Callgrind(
+                __internal::InternalCallgrindRegressionConfig {
+                    limits: vec![],
+                    fail_fast: Some(value),
+                },
+            ));
+        }
         self
     }
 
@@ -260,7 +279,7 @@ impl Callgrind {
         self
     }
 
-    // TODO: Update docs due to movement from OutputFormat
+    // TODO: Update docs due to movement from OutputFormat, Rename?
     /// Customize the format of the callgrind output
     ///
     /// This option allows customizing the output format of callgrind metrics. It does not set any
@@ -978,77 +997,6 @@ impl OutputFormat {
     /// | Estimated Cycles:               10801879|10819829             (-0.16590%) [-1.00166x]
     pub fn show_grid(&mut self, value: bool) -> &mut Self {
         self.0.show_grid = Some(value);
-        self
-    }
-}
-
-/// Enable performance regression checks with a [`RegressionConfig`]
-///
-/// A performance regression check consists of an [`EventKind`] and a percentage over which a
-/// regression is assumed. If the percentage is negative, then a regression is assumed to be below
-/// this limit. The default [`EventKind`] is [`EventKind::Ir`] with a value of
-/// `+10f64`
-///
-/// If `fail_fast` is set to true, then the whole benchmark run fails on the first encountered
-/// regression. Else, the default behavior is, that the benchmark run fails with a regression error
-/// after all benchmarks have been run.
-///
-/// # Examples
-///
-/// ```rust
-/// # use iai_callgrind::{library_benchmark, library_benchmark_group, main};
-/// # #[library_benchmark]
-/// # fn some_func() {}
-/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
-/// use iai_callgrind::{LibraryBenchmarkConfig, RegressionConfig};
-///
-/// # fn main() {
-/// main!(
-///     config = LibraryBenchmarkConfig::default()
-///                 .regression(RegressionConfig::default());
-///     library_benchmark_groups = some_group
-/// );
-/// # }
-/// ```
-impl RegressionConfig {
-    /// Configure the limits percentages over/below which a performance regression can be assumed
-    ///
-    /// A performance regression check consists of an [`EventKind`] and a percentage over which a
-    /// regression is assumed. If the percentage is negative, then a regression is assumed to be
-    /// below this limit.
-    ///
-    /// If no `limits` or empty `targets` are specified with this function, the default
-    /// [`EventKind`] is [`EventKind::Ir`] with a value of `+10f64`
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use iai_callgrind::{EventKind, RegressionConfig};
-    ///
-    /// let config = RegressionConfig::default().limits([(EventKind::Ir, 5f64)]);
-    /// ```
-    pub fn limits<T>(&mut self, targets: T) -> &mut Self
-    where
-        T: IntoIterator<Item = (EventKind, f64)>,
-    {
-        self.0.limits.extend(targets);
-        self
-    }
-
-    /// If set to true, then the benchmarks fail on the first encountered regression
-    ///
-    /// The default is `false` and the whole benchmark run fails with a regression error after all
-    /// benchmarks have been run.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use iai_callgrind::RegressionConfig;
-    ///
-    /// let config = RegressionConfig::default().fail_fast(true);
-    /// ```
-    pub fn fail_fast(&mut self, value: bool) -> &mut Self {
-        self.0.fail_fast = Some(value);
         self
     }
 }

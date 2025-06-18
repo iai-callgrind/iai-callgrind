@@ -13,7 +13,7 @@ use std::hint::black_box;
 use benchmark_tests::{bubble_sort, bubble_sort_allocate, subprocess};
 use iai_callgrind::{
     library_benchmark, library_benchmark_group, main, Bbv, Callgrind, Dhat, Drd, EventKind,
-    Helgrind, LibraryBenchmarkConfig, Massif, Memcheck, OutputFormat, RegressionConfig,
+    Helgrind, LibraryBenchmarkConfig, Massif, Memcheck, OutputFormat,
 };
 
 fn setup_worst_case_array(start: i32) -> Vec<i32> {
@@ -86,9 +86,7 @@ library_benchmark_group!(
 main!(
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()
-            .regression(RegressionConfig::default()
-                .limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
-            )
+            .limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
         )
         .tool(Dhat::with_args(["--time-stamp=yes"]))
         .tool(Massif::default())

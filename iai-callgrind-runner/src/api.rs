@@ -127,6 +127,12 @@ pub enum CachegrindMetric {
     Bim,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct CachegrindRegressions {
+    pub limits: Vec<(CachegrindMetric, f64)>,
+    pub fail_fast: Option<bool>,
+}
+
 /// A collection of groups of [`EventKind`]s
 ///
 /// `Callgrind` supports a large amount of metrics and their collection can be enabled with various
@@ -328,6 +334,23 @@ pub enum CallgrindMetrics {
     SingleEvent(EventKind),
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct CallgrindRegressionConfig {
+    pub limits: Vec<(EventKind, f64)>,
+    pub fail_fast: Option<bool>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Command {
+    pub path: PathBuf,
+    pub args: Vec<OsString>,
+    pub stdin: Option<Stdin>,
+    pub stdout: Option<Stdio>,
+    pub stderr: Option<Stdio>,
+    pub config: BinaryBenchmarkConfig,
+    pub delay: Option<Delay>,
+}
+
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Delay {
     pub poll: Option<Duration>,
@@ -347,17 +370,6 @@ pub enum DelayKind {
     UdpResponse(SocketAddr, Vec<u8>),
     /// Delay the `Command` until the specified path exists
     PathExists(PathBuf),
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct Command {
-    pub path: PathBuf,
-    pub args: Vec<OsString>,
-    pub stdin: Option<Stdin>,
-    pub stdout: Option<Stdio>,
-    pub stderr: Option<Stdio>,
-    pub config: BinaryBenchmarkConfig,
-    pub delay: Option<Delay>,
 }
 
 /// The `Direction` in which the flamegraph should grow.
@@ -605,12 +617,6 @@ pub struct OutputFormat {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RawArgs(pub Vec<String>);
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct RegressionConfig {
-    pub limits: Vec<(EventKind, f64)>,
-    pub fail_fast: Option<bool>,
-}
-
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Sandbox {
     pub enabled: Option<bool>,
@@ -691,7 +697,7 @@ pub struct Tool {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ToolRegressionConfig {
-    Callgrind(RegressionConfig),
+    Callgrind(CallgrindRegressionConfig),
     None,
 }
 
@@ -1577,7 +1583,7 @@ mod tests {
                 raw_args: RawArgs(vec![]),
                 show_log: None,
                 regression_config: Some(ToolRegressionConfig::Callgrind(
-                    RegressionConfig::default(),
+                    CallgrindRegressionConfig::default(),
                 )),
                 flamegraph_config: Some(ToolFlamegraphConfig::Callgrind(
                     FlamegraphConfig::default(),
@@ -1606,7 +1612,7 @@ mod tests {
                 raw_args: RawArgs(vec![]),
                 show_log: None,
                 regression_config: Some(ToolRegressionConfig::Callgrind(
-                    RegressionConfig::default(),
+                    CallgrindRegressionConfig::default(),
                 )),
                 flamegraph_config: Some(ToolFlamegraphConfig::Callgrind(
                     FlamegraphConfig::default(),

@@ -51,7 +51,7 @@ pub struct CyclesEstimator {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct RegressionConfig {
+pub struct CallgrindRegressionConfig {
     pub limits: Vec<(EventKind, f64)>,
     pub fail_fast: bool,
 }
@@ -128,7 +128,7 @@ impl CyclesEstimator {
     }
 }
 
-impl RegressionConfig {
+impl CallgrindRegressionConfig {
     /// Check regression of the [`super::metrics::Metrics`] for the configured [`EventKind`]s and
     /// print it
     ///
@@ -227,10 +227,10 @@ impl RegressionConfig {
     }
 }
 
-impl From<api::RegressionConfig> for RegressionConfig {
-    fn from(value: api::RegressionConfig) -> Self {
-        let api::RegressionConfig { limits, fail_fast } = value;
-        RegressionConfig {
+impl From<api::CallgrindRegressionConfig> for CallgrindRegressionConfig {
+    fn from(value: api::CallgrindRegressionConfig) -> Self {
+        let api::CallgrindRegressionConfig { limits, fail_fast } = value;
+        CallgrindRegressionConfig {
             limits: if limits.is_empty() {
                 vec![(EventKind::Ir, 10f64)]
             } else {
@@ -241,7 +241,7 @@ impl From<api::RegressionConfig> for RegressionConfig {
     }
 }
 
-impl Default for RegressionConfig {
+impl Default for CallgrindRegressionConfig {
     fn default() -> Self {
         Self {
             limits: vec![(EventKind::Ir, 10f64)],
@@ -274,7 +274,7 @@ mod tests {
 
     #[rstest]
     fn test_regression_check_when_old_is_none() {
-        let regression = RegressionConfig::default();
+        let regression = CallgrindRegressionConfig::default();
         let new = cachesim_costs([0, 0, 0, 0, 0, 0, 0, 0, 0]);
         let summary = MetricsSummary::new(EitherOrBoth::Left(new));
 
@@ -342,7 +342,7 @@ mod tests {
         #[case] old: [u64; 9],
         #[case] expected: Vec<(EventKind, u64, u64, f64, f64)>,
     ) {
-        let regression = RegressionConfig {
+        let regression = CallgrindRegressionConfig {
             limits,
             ..Default::default()
         };
