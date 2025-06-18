@@ -3,16 +3,25 @@ use std::hint::black_box;
 use benchmark_tests::{bubble_sort, setup_worst_case_array};
 use iai_callgrind::{
     library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,
-    Callgrind
+    Callgrind, ValgrindTool, Cachegrind, CachegrindMetric
 };
 
 #[library_benchmark]
-#[bench::regress_ir(
+#[bench::regress_callgrind(
     args = [{{ array_length }}],
     setup = setup_worst_case_array,
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()
             .limits([(EventKind::Ir, 0.0)]).fail_fast({{ fail_fast }})
+        )
+)]
+#[bench::regress_cachegrind(
+    args = [{{ array_length }}],
+    setup = setup_worst_case_array,
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(ValgrindTool::Cachegrind)
+        .tool(Cachegrind::default()
+            .limits([(CachegrindMetric::Ir, 0.0)]).fail_fast({{ fail_fast }})
         )
 )]
 #[bench::should_not_run_after_regression(setup_worst_case_array(10))]

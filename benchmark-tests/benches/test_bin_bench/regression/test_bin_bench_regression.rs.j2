@@ -1,14 +1,22 @@
 use iai_callgrind::{
     binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, EventKind,
-    Callgrind
+    Callgrind, ValgrindTool, Cachegrind, CachegrindMetric
 };
 
 #[binary_benchmark]
-#[bench::regress_ir(
+#[bench::regress_callgrind(
     args = [{{ array_length }}],
     config = BinaryBenchmarkConfig::default()
         .tool(Callgrind::default()
             .limits([(EventKind::Ir, 0.0)]).fail_fast({{ fail_fast }})
+        )
+)]
+#[bench::regress_cachegrind(
+    args = [{{ array_length }}],
+    config = BinaryBenchmarkConfig::default()
+        .default_tool(ValgrindTool::Cachegrind)
+        .tool(Cachegrind::default()
+            .limits([(CachegrindMetric::Ir, 0.0)]).fail_fast({{ fail_fast }})
         )
 )]
 #[bench::should_not_run_after_regression(10)]

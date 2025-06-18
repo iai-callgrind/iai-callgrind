@@ -24,7 +24,6 @@ use crate::error::Error;
 use crate::runner::metrics::Summarize;
 use crate::util::{factor_diff, make_absolute, percentage_diff, EitherOrBoth};
 
-// TODO: SORT
 pub type RegressionMetrics<T> = (T, u64, u64, f64, f64);
 
 /// A `Baseline` depending on the [`BaselineKind`] which points to the corresponding path
