@@ -65,6 +65,10 @@ impl CargoMetadata {
 /// ```rust
 /// # use iai_callgrind_macros::library_benchmark;
 /// # mod iai_callgrind {
+/// # pub mod client_requests { pub mod cachegrind {
+/// # pub fn start_instrumentation() {}
+/// # pub fn stop_instrumentation() {}
+/// # }}
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod __internal {
 /// # pub struct InternalMacroLibBench {
@@ -127,6 +131,10 @@ impl CargoMetadata {
 /// ```rust
 /// # use iai_callgrind_macros::library_benchmark;
 /// # mod iai_callgrind {
+/// # pub mod client_requests { pub mod cachegrind {
+/// # pub fn start_instrumentation() {}
+/// # pub fn stop_instrumentation() {}
+/// # }}
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod __internal {
 /// # pub struct InternalMacroLibBench {
@@ -163,6 +171,10 @@ impl CargoMetadata {
 /// # use iai_callgrind_macros::library_benchmark;
 /// # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
 /// # mod iai_callgrind {
+/// # pub mod client_requests { pub mod cachegrind {
+/// # pub fn start_instrumentation() {}
+/// # pub fn stop_instrumentation() {}
+/// # }}
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod __internal {
 /// # pub struct InternalMacroLibBench {
@@ -202,6 +214,10 @@ impl CargoMetadata {
 /// # use iai_callgrind_macros::library_benchmark;
 /// # mod iai_callgrind {
 /// # pub struct LibraryBenchmarkConfig {}
+/// # pub mod client_requests { pub mod cachegrind {
+/// # pub fn start_instrumentation() {}
+/// # pub fn stop_instrumentation() {}
+/// # }}
 /// # pub mod __internal {
 /// # pub struct InternalMacroLibBench {
 /// #   pub id_display: Option<&'static str>,
@@ -246,6 +262,10 @@ impl CargoMetadata {
 /// ```rust
 /// # use iai_callgrind_macros::library_benchmark;
 /// # mod iai_callgrind {
+/// # pub mod client_requests { pub mod cachegrind {
+/// # pub fn start_instrumentation() {}
+/// # pub fn stop_instrumentation() {}
+/// # }}
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod __internal {
 /// # pub struct InternalMacroLibBench {
@@ -300,6 +320,10 @@ impl CargoMetadata {
 /// ```rust
 /// # use iai_callgrind_macros::library_benchmark;
 /// # mod iai_callgrind {
+/// # pub mod client_requests { pub mod cachegrind {
+/// # pub fn start_instrumentation() {}
+/// # pub fn stop_instrumentation() {}
+/// # }}
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod __internal {
 /// # pub struct InternalMacroLibBench {
@@ -332,6 +356,10 @@ impl CargoMetadata {
 /// ```rust
 /// # use iai_callgrind_macros::library_benchmark;
 /// # mod iai_callgrind {
+/// # pub mod client_requests { pub mod cachegrind {
+/// # pub fn start_instrumentation() {}
+/// # pub fn stop_instrumentation() {}
+/// # }}
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod __internal {
 /// # pub struct InternalMacroLibBench {
