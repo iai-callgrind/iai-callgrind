@@ -1,13 +1,5 @@
 Handling new value --leak-check=summary for option --leak-check=summary
-Searching for pointers to <__NUMBER__> not-freed blocks
-Checked <__FILTER__> bytes
-
-LEAK SUMMARY:
-definitely lost: <__FILTER__> bytes in <__FILTER__> blocks
-indirectly lost: <__FILTER__> bytes in <__FILTER__> blocks
-possibly lost: <__FILTER__> bytes in <__FILTER__> blocks
-still reachable: <__FILTER__> bytes in <__FILTER__> blocks
-suppressed: <__FILTER__> bytes in <__FILTER__> blocks
+All heap blocks were freed -- no leaks are possible
 
 First value of leaked memory: <__NUMBER__>
 Searching for pointers to <__NUMBER__> not-freed blocks
@@ -52,9 +44,5 @@ possibly lost: <__FILTER__> bytes in <__FILTER__> blocks
 still reachable: <__FILTER__> bytes in <__FILTER__> blocks
 suppressed: <__FILTER__> bytes in <__FILTER__> blocks
 Rerun with --leak-check=full to see details of leaked memory
-
-ERROR SUMMARY: <__NUMBER__> errors from <__NUMBER__> contexts (suppressed: <__NUMBER__> from <__NUMBER__>)
-
-used_suppression:      <__NUMBER__> MEMCHECK-LIBTHR-REACHABLE<__NUMBER__> /usr/local/libexec/valgrind/default.supp:<__NUMBER__> suppressed: <__FILTER__> bytes in <__FILTER__> blocks
 
 ERROR SUMMARY: <__NUMBER__> errors from <__NUMBER__> contexts (suppressed: <__NUMBER__> from <__NUMBER__>)
