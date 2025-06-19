@@ -31,7 +31,6 @@ pub mod defaults {
     pub const SEPARATE_THREADS: bool = true;
 
     // Shared defaults between error emitting tools like Memcheck
-    // TODO: Change this to `4` and document it with the other error codes ?
     pub const ERROR_EXIT_CODE_ERROR_TOOL: &str = "201";
     pub const ERROR_EXIT_CODE_OTHER_TOOL: &str = "0";
 

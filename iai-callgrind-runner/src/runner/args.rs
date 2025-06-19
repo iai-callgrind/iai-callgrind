@@ -62,7 +62,6 @@ impl NoCapture {
     }
 }
 
-// TODO: ADD regression for cachegrind
 /// The command line arguments the user provided after `--` when running cargo bench
 ///
 /// These arguments are not the command line arguments passed to `iai-callgrind-runner`. We collect

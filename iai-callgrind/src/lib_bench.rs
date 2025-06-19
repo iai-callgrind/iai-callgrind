@@ -27,8 +27,79 @@ use crate::__internal;
 #[derive(Debug, Default, IntoInner, AsRef, Clone)]
 pub struct LibraryBenchmarkConfig(__internal::InternalLibraryBenchmarkConfig);
 
-// BinaryBenchmarkConfig
 impl LibraryBenchmarkConfig {
+    /// Change the default tool to something different than callgrind
+    ///
+    /// Any [`ValgrindTool`] is valid, however using cachegrind also requires to use client requests
+    /// to produce correct metrics. The guide fully describes how to use cachegrind instead of
+    /// callgrind.
+    ///
+    /// # Example for dhat
+    ///
+    /// ```rust
+    /// # mod lib { pub fn some_func(value: u64) -> u64 { value + 2 }}
+    /// use iai_callgrind::{
+    ///     main, LibraryBenchmarkConfig, ValgrindTool, library_benchmark_group, library_benchmark
+    /// };
+    ///
+    /// #[library_benchmark]
+    /// fn bench_me() -> u64 {
+    ///     lib::some_func(10)
+    /// }
+    ///
+    /// library_benchmark_group!(
+    ///    name = my_group;
+    ///    benchmarks = bench_me
+    /// );
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .default_tool(ValgrindTool::DHAT);
+    ///     library_benchmark_groups = my_group
+    /// );
+    /// # }
+    /// ```
+    ///
+    /// # Example for using cachegrind as default tool on the fly
+    ///
+    /// `--instr-at-start=no` is required to only measure the metrics between the two client
+    /// request calls.
+    ///
+    /// ```rust
+    /// # mod lib { pub fn some_func(value: u64) -> u64 { value + 2 }}
+    /// use iai_callgrind::{
+    ///     main, LibraryBenchmarkConfig, ValgrindTool, library_benchmark_group, library_benchmark,
+    ///     Cachegrind
+    /// };
+    /// use iai_callgrind::client_requests::cachegrind as cr;
+    ///
+    /// #[library_benchmark(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .default_tool(ValgrindTool::Cachegrind)
+    ///         .tool(Cachegrind::with_args(["--instr-at-start=no"]))
+    /// )]
+    /// fn bench_me() -> u64 {
+    ///     cr::start_instrumentation();
+    ///     let r = lib::some_func(10);
+    ///     cr::stop_instrumentation();
+    ///     r
+    /// }
+    ///
+    /// library_benchmark_group!(
+    ///    name = my_group;
+    ///    benchmarks = bench_me
+    /// );
+    ///
+    /// # fn main() {
+    /// main!(library_benchmark_groups = my_group);
+    /// # }
+    /// ```
+    pub fn default_tool(&mut self, tool: ValgrindTool) -> &mut Self {
+        self.0.default_tool = Some(tool);
+        self
+    }
+
     /// Pass valgrind arguments to all tools
     ///
     /// Only core [valgrind
@@ -245,9 +316,15 @@ impl LibraryBenchmarkConfig {
         self
     }
 
-    /// Add a configuration to run a valgrind tool in addition to callgrind
+    /// Add a configuration for a valgrind tool
     ///
-    /// # Examples
+    /// Valid configurations are [`crate::Callgrind`], [`crate::Cachegrind`], [`crate::Dhat`],
+    /// [`crate::Memcheck`], [`crate::Helgrind`], [`crate::Drd`], [`crate::Massif`] and
+    /// [`crate::Bbv`].
+    ///
+    /// # Example
+    ///
+    /// Run DHAT in addition to callgrind.
     ///
     /// ```rust
     /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
@@ -346,12 +423,6 @@ impl LibraryBenchmarkConfig {
         T: Into<__internal::InternalOutputFormat>,
     {
         self.0.output_format = Some(output_format.into());
-        self
-    }
-
-    /// TODO: DOCS
-    pub fn default_tool(&mut self, tool: ValgrindTool) -> &mut Self {
-        self.0.default_tool = Some(tool);
         self
     }
 }

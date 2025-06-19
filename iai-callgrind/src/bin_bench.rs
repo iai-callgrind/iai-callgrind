@@ -1031,6 +1031,40 @@ impl From<&BinaryBenchmark> for BinaryBenchmark {
 }
 
 impl BinaryBenchmarkConfig {
+    /// Change the default tool to something different than callgrind
+    ///
+    /// See also [`crate::LibraryBenchmarkConfig::default_tool`].
+    ///
+    /// # Example for using cachegrind on the fly
+    ///
+    /// ```rust
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    /// use iai_callgrind::{
+    ///     main, binary_benchmark, binary_benchmark_group, BinaryBenchmarkConfig, ValgrindTool
+    /// };
+    ///
+    /// #[binary_benchmark(
+    ///     config = BinaryBenchmarkConfig::default()
+    ///         .default_tool(ValgrindTool::Cachegrind)
+    /// )]
+    /// fn bench_me() -> iai_callgrind::Command {
+    ///     iai_callgrind::Command::new(env!("CARGO_BIN_EXE_echo"))
+    /// }
+    ///
+    /// binary_benchmark_group!(
+    ///    name = my_group;
+    ///    benchmarks = bench_me
+    /// );
+    ///
+    /// # fn main() {
+    /// main!(binary_benchmark_groups = my_group);
+    /// # }
+    /// ```
+    pub fn default_tool(&mut self, tool: ValgrindTool) -> &mut Self {
+        self.0.default_tool = Some(tool);
+        self
+    }
+
     /// Pass valgrind arguments to all tools
     ///
     /// Only core [valgrind
@@ -1339,9 +1373,15 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    /// Add a configuration to run a valgrind tool in addition to callgrind
+    /// Add a configuration for a valgrind tool
+    ///
+    /// Valid configurations are [`crate::Callgrind`], [`crate::Cachegrind`], [`crate::Dhat`],
+    /// [`crate::Memcheck`], [`crate::Helgrind`], [`crate::Drd`], [`crate::Massif`] and
+    /// [`crate::Bbv`].
     ///
     /// # Examples
+    ///
+    /// Run DHAT in addition to callgrind.
     ///
     /// ```rust
     /// # use iai_callgrind::{binary_benchmark_group};
@@ -1530,12 +1570,6 @@ impl BinaryBenchmarkConfig {
     /// ```
     pub fn setup_parallel(&mut self, setup_parallel: bool) -> &mut Self {
         self.0.setup_parallel = Some(setup_parallel);
-        self
-    }
-
-    /// TODO: DOCS
-    pub fn default_tool(&mut self, tool: ValgrindTool) -> &mut Self {
-        self.0.default_tool = Some(tool);
         self
     }
 }

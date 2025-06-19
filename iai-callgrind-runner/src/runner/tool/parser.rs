@@ -29,7 +29,6 @@ pub trait Parser {
         Ok(parser_results)
     }
 
-    // TODO: RETURN Error if not at least 1 file could be parsed?
     fn parse(&self) -> Result<Vec<ParserOutput>> {
         self.parse_with(self.get_output_path())
     }

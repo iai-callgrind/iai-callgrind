@@ -448,7 +448,6 @@ pub enum ErrorMetric {
     SuppressedContexts,
 }
 
-// TODO: Rename to `CallgrindMetric`
 /// All `EventKind`s callgrind produces and additionally some derived events
 ///
 /// Depending on the options passed to Callgrind, these are the events that Callgrind can produce.

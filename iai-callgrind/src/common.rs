@@ -11,23 +11,128 @@ use super::{
 };
 use crate::EntryPoint;
 
-/// TODO: DOCS
+/// The configuration for the experimental bbv
+///
+/// Can be specified in [`crate::LibraryBenchmarkConfig::tool`] or
+/// [`crate::BinaryBenchmarkConfig::tool`].
+///
+/// # Example
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// use iai_callgrind::{LibraryBenchmarkConfig, main, Bbv};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///         .tool(Bbv::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
 pub struct Bbv(__internal::InternalTool);
 
-/// TODO: DOCS
+/// The configuration for cachegrind
+///
+/// Can be specified in [`crate::LibraryBenchmarkConfig::tool`] or
+/// [`crate::BinaryBenchmarkConfig::tool`].
+///
+/// # Example
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// use iai_callgrind::{LibraryBenchmarkConfig, main, Cachegrind};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///         .tool(Cachegrind::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
 pub struct Cachegrind(__internal::InternalTool);
 
-/// TODO: DOCS
+/// The configuration for Callgrind
+///
+/// Can be specified in [`crate::LibraryBenchmarkConfig::tool`] or
+/// [`crate::BinaryBenchmarkConfig::tool`].
+///
+/// # Example
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// use iai_callgrind::{LibraryBenchmarkConfig, main, Callgrind};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///         .tool(Callgrind::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
 pub struct Callgrind(__internal::InternalTool);
 
-/// TODO: DOCS
+/// The configuration for Dhat
+///
+/// Can be specified in [`crate::LibraryBenchmarkConfig::tool`] or
+/// [`crate::BinaryBenchmarkConfig::tool`].
+///
+/// # Example
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// use iai_callgrind::{LibraryBenchmarkConfig, main, Dhat};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///         .tool(Dhat::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
 pub struct Dhat(__internal::InternalTool);
 
-/// TODO: DOCS
+/// The configuration for DRD
+///
+/// Can be specified in [`crate::LibraryBenchmarkConfig::tool`] or
+/// [`crate::BinaryBenchmarkConfig::tool`].
+///
+/// # Example
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// use iai_callgrind::{LibraryBenchmarkConfig, main, Drd};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///         .tool(Drd::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
 pub struct Drd(__internal::InternalTool);
 
@@ -69,15 +174,78 @@ pub struct Drd(__internal::InternalTool);
 #[derive(Debug, Clone, Default, IntoInner, AsRef)]
 pub struct FlamegraphConfig(__internal::InternalFlamegraphConfig);
 
-/// TODO: DOCS
+/// The configuration for Helgrind
+///
+/// Can be specified in [`crate::LibraryBenchmarkConfig::tool`] or
+/// [`crate::BinaryBenchmarkConfig::tool`].
+///
+/// # Example
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// use iai_callgrind::{LibraryBenchmarkConfig, main, Helgrind};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///         .tool(Helgrind::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
 pub struct Helgrind(__internal::InternalTool);
 
-/// TODO: DOCS
+/// The configuration for Massif
+///
+/// Can be specified in [`crate::LibraryBenchmarkConfig::tool`] or
+/// [`crate::BinaryBenchmarkConfig::tool`].
+///
+/// # Example
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// use iai_callgrind::{LibraryBenchmarkConfig, main, Massif};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///         .tool(Massif::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
 pub struct Massif(__internal::InternalTool);
 
-/// TODO: DOCS
+/// The configuration for Memcheck
+///
+/// Can be specified in [`crate::LibraryBenchmarkConfig::tool`] or
+/// [`crate::BinaryBenchmarkConfig::tool`].
+///
+/// # Example
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// use iai_callgrind::{LibraryBenchmarkConfig, main, Memcheck};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///         .tool(Memcheck::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
 #[derive(Debug, Clone, IntoInner, AsRef)]
 pub struct Memcheck(__internal::InternalTool);
 
@@ -112,9 +280,18 @@ pub struct Memcheck(__internal::InternalTool);
 #[derive(Debug, Clone, Default, IntoInner, AsRef)]
 pub struct OutputFormat(__internal::InternalOutputFormat);
 
-// TODO: ADD args method
 impl Bbv {
-    /// TODO: DOCS
+    /// Create a new `BBV` configuration with initial command-line arguments
+    ///
+    /// See also [`Callgrind::args`] and [`Bbv::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Bbv;
+    ///
+    /// let config = Bbv::with_args(["interval-size=10000"]);
+    /// ```
     pub fn with_args<I, T>(args: T) -> Self
     where
         I: AsRef<str>,
@@ -123,7 +300,22 @@ impl Bbv {
         Self(__internal::InternalTool::with_args(ValgrindTool::BBV, args))
     }
 
-    /// TODO: DOCS
+    /// Add command-line arguments to the `BBV` configuration
+    ///
+    /// Valid arguments
+    /// are <https://valgrind.org/docs/manual/bbv-manual.html#bbv-manual.usage> and the core
+    /// valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options>.
+    ///
+    /// See also [`Callgrind::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Bbv;
+    ///
+    /// let config = Bbv::default().args(["interval-size=10000"]);
+    /// ```
     pub fn args<I, T>(&mut self, args: T) -> &mut Self
     where
         I: AsRef<str>,
@@ -133,9 +325,15 @@ impl Bbv {
         self
     }
 
-    /// TODO: DOCS
+    /// Enable this tool. This is the default.
     ///
-    /// is enabled is ignored if the tool is configured to be the default tool
+    /// See also [`Callgrind::enable`]
+    ///
+    /// ```rust
+    /// use iai_callgrind::Bbv;
+    ///
+    /// let config = Bbv::default().enable(false);
+    /// ```
     pub fn enable(&mut self, value: bool) -> &mut Self {
         self.0.enable = Some(value);
         self
@@ -149,7 +347,17 @@ impl Default for Bbv {
 }
 
 impl Cachegrind {
-    /// TODO: DOCS
+    /// Create a new `Cachegrind` configuration with initial command-line arguments
+    ///
+    /// See also [`Callgrind::args`] and [`Cachegrind::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Cachegrind;
+    ///
+    /// let config = Cachegrind::with_args(["intr-at-start=no"]);
+    /// ```
     pub fn with_args<I, T>(args: T) -> Self
     where
         I: AsRef<str>,
@@ -161,7 +369,22 @@ impl Cachegrind {
         ))
     }
 
-    /// TODO: DOCS
+    /// Add command-line arguments to the `Cachegrind` configuration
+    ///
+    /// Valid arguments
+    /// are <https://valgrind.org/docs/manual/cg-manual.html#cg-manual.cgopts> and the core
+    /// valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options>.
+    ///
+    /// See also [`Callgrind::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Cachegrind;
+    ///
+    /// let config = Cachegrind::default().args(["intr-at-start=no"]);
+    /// ```
     pub fn args<I, T>(&mut self, args: T) -> &mut Self
     where
         I: AsRef<str>,
@@ -171,15 +394,34 @@ impl Cachegrind {
         self
     }
 
-    /// TODO: DOCS
+    /// Enable this tool. This is the default.
     ///
-    /// is enabled is ignored if the tool is configured to be the default tool
+    /// See also [`Callgrind::enable`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Cachegrind;
+    ///
+    /// let config = Cachegrind::default().enable(false);
+    /// ```
     pub fn enable(&mut self, value: bool) -> &mut Self {
         self.0.enable = Some(value);
         self
     }
 
-    /// TODO: DOCS
+    /// Customize the format of the cachegrind output
+    ///
+    /// See also [`Callgrind::format`] for more details and [`CachegrindMetric`] for valid metrics.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::{Cachegrind, CachegrindMetric};
+    ///
+    /// let config =
+    ///     Cachegrind::default().format([CachegrindMetric::Ir, CachegrindMetric::EstimatedCycles]);
+    /// ```
     pub fn format<I, T>(&mut self, cachegrind_metrics: T) -> &mut Self
     where
         I: Into<CachegrindMetric>,
@@ -263,7 +505,17 @@ impl Default for Cachegrind {
 }
 
 impl Callgrind {
-    /// TODO: DOCS
+    /// Create a new `Callgrind` configuration with initial command-line arguments
+    ///
+    /// See also [`Callgrind::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Callgrind;
+    ///
+    /// let config = Callgrind::with_args(["collect-bus=yes"]);
+    /// ```
     pub fn with_args<I, T>(args: T) -> Self
     where
         I: AsRef<str>,
@@ -275,7 +527,24 @@ impl Callgrind {
         ))
     }
 
-    /// TODO: DOCS
+    /// Add command-line arguments to the `Callgrind` configuration
+    ///
+    /// The command-line arguments are passed directly to the callgrind invocation. Valid arguments
+    /// are <https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options> and the core
+    /// valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options>. Note that not all
+    /// command-line arguments are supported especially the ones which change output paths.
+    /// Unsupported arguments will be ignored printing a warning.
+    ///
+    /// The flags can be omitted ("collect-bus" instead of "--collect-bus").
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Callgrind;
+    ///
+    /// let config = Callgrind::default().args(["collect-bus=yes"]);
+    /// ```
     pub fn args<I, T>(&mut self, args: T) -> &mut Self
     where
         I: AsRef<str>,
@@ -285,15 +554,110 @@ impl Callgrind {
         self
     }
 
-    /// TODO: DOCS
+    /// Enable this tool. This is the default.
     ///
-    /// is enabled is ignored if the tool is configured to be the default tool
+    /// This is mostly useful to disable a tool which has been enabled in a
+    /// [`crate::LibraryBenchmarkConfig`] (or [`crate::BinaryBenchmarkConfig`]) at a higher-level.
+    /// However, the default tool (usually callgrind) cannot be disabled.
+    ///
+    /// ```rust
+    /// use iai_callgrind::Callgrind;
+    ///
+    /// let config = Callgrind::default().enable(false);
+    /// ```
     pub fn enable(&mut self, value: bool) -> &mut Self {
         self.0.enable = Some(value);
         self
     }
 
-    /// TODO: DOCS
+    /// Set or unset the entry point for a benchmark
+    ///
+    /// Iai-Callgrind sets the [`--toggle-collect`] argument of callgrind to the benchmark function
+    /// which we call [`EntryPoint::Default`]. Specifying a `--toggle-collect` argument, sets
+    /// automatically `--collect-at-start=no`. This ensures that only the metrics from the benchmark
+    /// itself are collected and not the `setup` or `teardown` or anything before/after the
+    /// benchmark function.
+    ///
+    /// However, there are cases when the default toggle is not enough [`EntryPoint::Custom`] or in
+    /// the way [`EntryPoint::None`].
+    ///
+    /// Setting [`EntryPoint::Custom`] is convenience for disabling the entry point with
+    /// [`EntryPoint::None`] and setting `--toggle-collect=CUSTOM_ENTRY_POINT` in
+    /// [`Callgrind::args`]. [`EntryPoint::Custom`] can be useful if you
+    /// want to benchmark a private function and only need the function in the benchmark function as
+    /// access point. [`EntryPoint::Custom`] accepts glob patterns the same way as
+    /// [`--toggle-collect`] does.
+    ///
+    /// # Examples
+    ///
+    /// If you're using callgrind client requests either in the benchmark function itself or in your
+    /// library, then using [`EntryPoint::None`] is presumably be required. Consider the following
+    /// example (`DEFAULT_ENTRY_POINT` marks the default entry point):
+    #[cfg_attr(not(feature = "client_requests_defs"), doc = "```rust,ignore")]
+    #[cfg_attr(feature = "client_requests_defs", doc = "```rust")]
+    /// use iai_callgrind::{
+    ///     main, LibraryBenchmarkConfig,library_benchmark, library_benchmark_group
+    /// };
+    /// use std::hint::black_box;
+    ///
+    /// fn to_be_benchmarked() -> u64 {
+    ///     println!("Some info output");
+    ///     iai_callgrind::client_requests::callgrind::start_instrumentation();
+    ///     let result = {
+    ///         // some heavy calculations
+    /// #       10
+    ///     };
+    ///     iai_callgrind::client_requests::callgrind::stop_instrumentation();
+    ///
+    ///     result
+    /// }
+    ///
+    /// #[library_benchmark]
+    /// fn some_bench() -> u64 { // <-- DEFAULT ENTRY POINT
+    ///     black_box(to_be_benchmarked())
+    /// }
+    ///
+    /// library_benchmark_group!(name = some_group; benchmarks = some_bench);
+    /// # fn main() {
+    /// main!(library_benchmark_groups = some_group);
+    /// # }
+    /// ```
+    /// 
+    /// In the example above [`EntryPoint::Default`] is active, so the counting of events starts
+    /// when the `some_bench` function is entered. In `to_be_benchmarked`, the client request
+    /// `start_instrumentation` does effectively nothing and `stop_instrumentation` will stop the
+    /// event counting as requested. This is most likely not what you intended. The event counting
+    /// should start with `start_instrumentation`. To achieve this, you can set [`EntryPoint::None`]
+    /// which removes the default toggle, but also `--collect-at-start=no`. So, you need to specify
+    /// `--collect-at-start=no` in [`LibraryBenchmarkConfig::callgrind_args`]. The example would
+    /// then look like this:
+    /// ```rust
+    /// use std::hint::black_box;
+    ///
+    /// use iai_callgrind::{library_benchmark, EntryPoint, LibraryBenchmarkConfig, Callgrind};
+    /// # use iai_callgrind::{library_benchmark_group, main};
+    /// # fn to_be_benchmarked() -> u64 { 10 }
+    ///
+    /// // ...
+    ///
+    /// #[library_benchmark(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .tool(Callgrind::with_args(["--collect-at-start=no"])
+    ///             .entry_point(EntryPoint::None)
+    ///         )
+    /// )]
+    /// fn some_bench() -> u64 {
+    ///     black_box(to_be_benchmarked())
+    /// }
+    ///
+    /// // ...
+    ///
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_bench);
+    /// # fn main() {
+    /// # main!(library_benchmark_groups = some_group);
+    /// # }
+    /// ```
+    /// [`--toggle-collect`]: https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options
     pub fn entry_point(&mut self, entry_point: EntryPoint) -> &mut Self {
         self.0.entry_point = Some(entry_point);
         self
@@ -359,7 +723,35 @@ impl Callgrind {
         self
     }
 
-    /// TODO: DOCS
+    /// Option to produce flamegraphs from callgrind output with a [`crate::FlamegraphConfig`]
+    ///
+    /// The flamegraphs are usable but still in an experimental stage. Callgrind lacks the tool like
+    /// `cg_diff` for cachegrind to compare two different profiles. Flamegraphs on the other hand
+    /// can bridge the gap and be [`FlamegraphKind::Differential`] to compare two benchmark runs.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// use iai_callgrind::{
+    ///     LibraryBenchmarkConfig, main, FlamegraphConfig, FlamegraphKind, Callgrind
+    /// };
+    ///
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .tool(Callgrind::default()
+    ///             .flamegraph(FlamegraphConfig::default()
+    ///                 .kind(FlamegraphKind::Differential)
+    ///             )
+    ///         );
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
     pub fn flamegraph<T>(&mut self, flamegraph: T) -> &mut Self
     where
         T: Into<__internal::InternalFlamegraphConfig>,
@@ -458,7 +850,17 @@ impl Default for Callgrind {
 }
 
 impl Dhat {
-    /// TODO: DOCS
+    /// Create a new `Callgrind` configuration with initial command-line arguments
+    ///
+    /// See also [`Callgrind::args`] and [`Dhat::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Dhat;
+    ///
+    /// let config = Dhat::with_args(["mode=ad-hoc"]);
+    /// ```
     pub fn with_args<I, T>(args: T) -> Self
     where
         I: AsRef<str>,
@@ -470,7 +872,22 @@ impl Dhat {
         ))
     }
 
-    /// TODO: DOCS
+    /// Add command-line arguments to the `Dhat` configuration
+    ///
+    /// Valid arguments
+    /// are <https://valgrind.org/docs/manual/dh-manual.html#dh-manual.options> and the core
+    /// valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options>.
+    ///
+    /// See also [`Callgrind::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Dhat;
+    ///
+    /// let config = Dhat::default().args(["interval-size=10000"]);
+    /// ```
     pub fn args<I, T>(&mut self, args: T) -> &mut Self
     where
         I: AsRef<str>,
@@ -480,15 +897,31 @@ impl Dhat {
         self
     }
 
-    /// TODO: DOCS
+    /// Enable this tool. This is the default.
     ///
-    /// is enabled is ignored if the tool is configured to be the default tool
+    /// See also [`Callgrind::enable`]
+    ///
+    /// ```rust
+    /// use iai_callgrind::Dhat;
+    ///
+    /// let config = Dhat::default().enable(false);
+    /// ```
     pub fn enable(&mut self, value: bool) -> &mut Self {
         self.0.enable = Some(value);
         self
     }
 
-    /// TODO: DOCS
+    /// Customize the format of the dhat output
+    ///
+    /// See also [`Callgrind::format`] for more details and [`DhatMetric`] for valid metrics.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::{Dhat, DhatMetric};
+    ///
+    /// let config = Dhat::default().format([DhatMetric::TotalBytes, DhatMetric::AtTGmaxBytes]);
+    /// ```
     pub fn format<I, T>(&mut self, kinds: T) -> &mut Self
     where
         I: Into<DhatMetric>,
@@ -514,7 +947,17 @@ impl Default for Dhat {
 }
 
 impl Drd {
-    /// TODO: DOCS
+    /// Create a new `Drd` configuration with initial command-line arguments
+    ///
+    /// See also [`Callgrind::args`] and [`Drd::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Drd;
+    ///
+    /// let config = Drd::with_args(["exclusive-threshold=100"]);
+    /// ```
     pub fn with_args<I, T>(args: T) -> Self
     where
         I: AsRef<str>,
@@ -523,7 +966,21 @@ impl Drd {
         Self(__internal::InternalTool::with_args(ValgrindTool::DRD, args))
     }
 
-    /// TODO: DOCS
+    /// Add command-line arguments to the `Drd` configuration
+    ///
+    /// Valid arguments are <https://valgrind.org/docs/manual/drd-manual.html#drd-manual.options>
+    /// and the core valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options>.
+    ///
+    /// See also [`Callgrind::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Drd;
+    ///
+    /// let config = Drd::default().args(["exclusive-threshold=100"]);
+    /// ```
     pub fn args<I, T>(&mut self, args: T) -> &mut Self
     where
         I: AsRef<str>,
@@ -533,15 +990,33 @@ impl Drd {
         self
     }
 
-    /// TODO: DOCS
+    /// Enable this tool. This is the default.
     ///
-    /// is enabled is ignored if the tool is configured to be the default tool
+    /// See also [`Callgrind::enable`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Drd;
+    ///
+    /// let config = Drd::default().enable(false);
+    /// ```
     pub fn enable(&mut self, value: bool) -> &mut Self {
         self.0.enable = Some(value);
         self
     }
 
-    /// TODO: DOCS
+    /// Customize the format of the `DRD` output
+    ///
+    /// See also [`Callgrind::format`] for more details and [`ErrorMetric`] for valid metrics.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::{Drd, ErrorMetric};
+    ///
+    /// let config = Drd::default().format([ErrorMetric::Errors, ErrorMetric::SuppressedErrors]);
+    /// ```
     pub fn format<I, T>(&mut self, kinds: T) -> &mut Self
     where
         I: Into<ErrorMetric>,
@@ -742,7 +1217,17 @@ impl FlamegraphConfig {
 }
 
 impl Helgrind {
-    /// TODO: DOCS
+    /// Create a new `Helgrind` configuration with initial command-line arguments
+    ///
+    /// See also [`Callgrind::args`] and [`Helgrind::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Helgrind;
+    ///
+    /// let config = Helgrind::with_args(["free-is-write=yes"]);
+    /// ```
     pub fn with_args<I, T>(args: T) -> Self
     where
         I: AsRef<str>,
@@ -754,7 +1239,22 @@ impl Helgrind {
         ))
     }
 
-    /// TODO: DOCS
+    /// Add command-line arguments to the `Helgrind` configuration
+    ///
+    /// Valid arguments
+    /// are <https://valgrind.org/docs/manual/hg-manual.html#hg-manual.options> and the core
+    /// valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options>.
+    ///
+    /// See also [`Callgrind::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Helgrind;
+    ///
+    /// let config = Helgrind::default().args(["free-is-write=yes"]);
+    /// ```
     pub fn args<I, T>(&mut self, args: T) -> &mut Self
     where
         I: AsRef<str>,
@@ -764,15 +1264,33 @@ impl Helgrind {
         self
     }
 
-    /// TODO: DOCS
+    /// Enable this tool. This is the default.
     ///
-    /// is enabled is ignored if the tool is configured to be the default tool
+    /// See also [`Callgrind::enable`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Helgrind;
+    ///
+    /// let config = Helgrind::default().enable(false);
+    /// ```
     pub fn enable(&mut self, value: bool) -> &mut Self {
         self.0.enable = Some(value);
         self
     }
 
-    /// TODO: DOCS
+    /// Customize the format of the `Helgrind` output
+    ///
+    /// See also [`Callgrind::format`] for more details and [`ErrorMetric`] for valid metrics.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::{ErrorMetric, Helgrind};
+    ///
+    /// let config = Helgrind::default().format([ErrorMetric::Errors, ErrorMetric::SuppressedErrors]);
+    /// ```
     pub fn format<I, T>(&mut self, kinds: T) -> &mut Self
     where
         I: Into<ErrorMetric>,
@@ -798,7 +1316,17 @@ impl Default for Helgrind {
 }
 
 impl Massif {
-    /// TODO: DOCS
+    /// Create a new `Massif` configuration with initial command-line arguments
+    ///
+    /// See also [`Callgrind::args`] and [`Massif::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Massif;
+    ///
+    /// let config = Massif::with_args(["threshold=2.0"]);
+    /// ```
     pub fn with_args<I, T>(args: T) -> Self
     where
         I: AsRef<str>,
@@ -810,7 +1338,22 @@ impl Massif {
         ))
     }
 
-    /// TODO: DOCS
+    /// Add command-line arguments to the `Massif` configuration
+    ///
+    /// Valid arguments
+    /// are <https://valgrind.org/docs/manual/ms-manual.html#ms-manual.options> and the core
+    /// valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options>.
+    ///
+    /// See also [`Callgrind::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Massif;
+    ///
+    /// let config = Massif::default().args(["threshold=2.0"]);
+    /// ```
     pub fn args<I, T>(&mut self, args: T) -> &mut Self
     where
         I: AsRef<str>,
@@ -820,9 +1363,17 @@ impl Massif {
         self
     }
 
-    /// TODO: DOCS
+    /// Enable this tool. This is the default.
     ///
-    /// is enabled is ignored if the tool is configured to be the default tool
+    /// See also [`Callgrind::enable`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Massif;
+    ///
+    /// let config = Massif::default().enable(false);
+    /// ```
     pub fn enable(&mut self, value: bool) -> &mut Self {
         self.0.enable = Some(value);
         self
@@ -836,7 +1387,17 @@ impl Default for Massif {
 }
 
 impl Memcheck {
-    /// TODO: DOCS
+    /// Create a new `Memcheck` configuration with initial command-line arguments
+    ///
+    /// See also [`Callgrind::args`] and [`Memcheck::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Memcheck;
+    ///
+    /// let config = Memcheck::with_args(["free-is-write=yes"]);
+    /// ```
     pub fn with_args<I, T>(args: T) -> Self
     where
         I: AsRef<str>,
@@ -848,7 +1409,22 @@ impl Memcheck {
         ))
     }
 
-    /// TODO: DOCS
+    /// Add command-line arguments to the `Memcheck` configuration
+    ///
+    /// Valid arguments
+    /// are <https://valgrind.org/docs/manual/mc-manual.html#mc-manual.options> and the core
+    /// valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options>.
+    ///
+    /// See also [`Callgrind::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Memcheck;
+    ///
+    /// let config = Memcheck::default().args(["show-leak-kinds=all"]);
+    /// ```
     pub fn args<I, T>(&mut self, args: T) -> &mut Self
     where
         I: AsRef<str>,
@@ -858,15 +1434,33 @@ impl Memcheck {
         self
     }
 
-    /// TODO: DOCS
+    /// Enable this tool. This is the default.
     ///
-    /// is enabled is ignored if the tool is configured to be the default tool
+    /// See also [`Callgrind::enable`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Memcheck;
+    ///
+    /// let config = Memcheck::default().enable(false);
+    /// ```
     pub fn enable(&mut self, value: bool) -> &mut Self {
         self.0.enable = Some(value);
         self
     }
 
-    /// TODO: DOCS
+    /// Customize the format of the `Memcheck` output
+    ///
+    /// See also [`Callgrind::format`] for more details and [`ErrorMetric`] for valid metrics.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::{ErrorMetric, Memcheck};
+    ///
+    /// let config = Memcheck::default().format([ErrorMetric::Errors, ErrorMetric::SuppressedErrors]);
+    /// ```
     pub fn format<I, T>(&mut self, kinds: T) -> &mut Self
     where
         I: Into<ErrorMetric>,
