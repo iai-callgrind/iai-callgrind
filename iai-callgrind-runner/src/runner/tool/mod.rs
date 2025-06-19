@@ -638,9 +638,28 @@ impl ToolConfig {
                     meta,
                     &base_args,
                     true,
-                    meta.args.regression.clone(),
+                    meta.args.callgrind_limits.clone(),
                     None,
                     Some(entry_point),
+                )
+            }
+            ValgrindTool::Cachegrind => {
+                let mut base_args = default_args
+                    .get(&ValgrindTool::Cachegrind)
+                    .cloned()
+                    .unwrap_or_default();
+                base_args.update(valgrind_args);
+
+                ToolConfig::from_tool(
+                    output_format,
+                    ValgrindTool::Cachegrind,
+                    tool,
+                    meta,
+                    &base_args,
+                    true,
+                    meta.args.cachegrind_limits.clone(),
+                    None,
+                    None, // The default entry point is currently just for callgrind
                 )
             }
             valgrind_tool => {
@@ -808,9 +827,22 @@ impl ToolConfigs {
                         meta,
                         &base_args,
                         false,
-                        meta.args.regression.clone(),
+                        meta.args.callgrind_limits.clone(),
                         None,
                         Some(entry_point),
+                    )
+                }
+                ValgrindTool::Cachegrind => {
+                    ToolConfig::from_tool(
+                        output_format,
+                        ValgrindTool::Cachegrind,
+                        Some(tool),
+                        meta,
+                        &base_args,
+                        false,
+                        meta.args.cachegrind_limits.clone(),
+                        None,
+                        None, // The default entry point is currently just for callgrind
                     )
                 }
                 _ => ToolConfig::from_tool(

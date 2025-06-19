@@ -8,7 +8,8 @@ use clap::{ArgAction, Parser};
 use super::format::OutputFormatKind;
 use super::summary::{BaselineName, SummaryFormat};
 use crate::api::{
-    CallgrindRegressionConfig, EventKind, RawArgs, ToolRegressionConfig, ValgrindTool,
+    CachegrindMetric, CachegrindRegressionConfig, CallgrindRegressionConfig, EventKind, RawArgs,
+    ToolRegressionConfig, ValgrindTool,
 };
 
 /// A filter for benchmarks
@@ -382,14 +383,30 @@ pub struct CommandLineArgs {
     /// If regressions are defined and one ore more regressions occurred during the benchmark run
     /// the program exits with error and exit code `3`.
     ///
-    /// Examples: --regression='ir=0.0' or --regression='ir=0, EstimatedCycles=10'
+    /// Examples: --callgrind-limits='ir=0.0' or --callgrind-limits='ir=0, EstimatedCycles=10'
     #[arg(
-        long = "regression",
+        long = "callgrind-limits",
         num_args = 1,
-        value_parser = parse_regression_config,
-        env = "IAI_CALLGRIND_REGRESSION",
+        value_parser = parse_callgrind_limits,
+        env = "IAI_CALLGRIND_CALLGRIND_LIMITS",
     )]
-    pub regression: Option<ToolRegressionConfig>,
+    pub callgrind_limits: Option<ToolRegressionConfig>,
+
+    /// Set performance regression limits for specific cachegrind metrics
+    ///
+    /// This is a `,` separate list of CachegrindMetric=limit (key=value) pairs. See the
+    /// description of --callgrind-limits for the details and
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetric.html> for valid
+    /// metrics.
+    ///
+    /// Examples: --cachegrind-limits='ir=0.0' or --cachegrind-limits='ir=0, EstimatedCycles=10'
+    #[arg(
+        long = "cachegrind-limits",
+        num_args = 1,
+        value_parser = parse_cachegrind_limits,
+        env = "IAI_CALLGRIND_CACHEGRIND_LIMITS",
+    )]
+    pub cachegrind_limits: Option<ToolRegressionConfig>,
 
     /// If true, the first failed performance regression check fails the whole benchmark run
     ///
@@ -570,8 +587,7 @@ fn parse_args(value: &str) -> Result<RawArgs, String> {
         .map(RawArgs::new)
 }
 
-/// TODO: HOW TO PARSE regression configs for other tools
-fn parse_regression_config(value: &str) -> Result<ToolRegressionConfig, String> {
+fn parse_callgrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
     let value = value.trim();
     if value.is_empty() {
         return Err("No limits found: At least one limit must be specified".to_owned());
@@ -600,6 +616,43 @@ fn parse_regression_config(value: &str) -> Result<ToolRegressionConfig, String> 
         }
 
         ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
+            limits,
+            ..Default::default()
+        })
+    };
+
+    Ok(regression_config)
+}
+
+fn parse_cachegrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err("No limits found: At least one limit must be specified".to_owned());
+    }
+
+    let regression_config = if value.eq_ignore_ascii_case("default") {
+        ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig::default())
+    } else {
+        let mut limits = vec![];
+
+        for split in value.split(',') {
+            let split = split.trim();
+
+            if let Some((key, value)) = split.split_once('=') {
+                let (key, value) = (key.trim(), value.trim());
+                let event_kind = CachegrindMetric::from_str_ignore_case(key)
+                    .ok_or_else(|| -> String { format!("Unknown event kind: '{key}'") })?;
+
+                let pct = value.parse::<f64>().map_err(|error| -> String {
+                    format!("Invalid percentage for '{key}': {error}")
+                })?;
+                limits.push((event_kind, pct));
+            } else {
+                return Err(format!("Invalid format of key/value pair: '{split}'"));
+            }
+        }
+
+        ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig {
             limits,
             ..Default::default()
         })
@@ -664,7 +717,7 @@ mod tests {
             fail_fast: None,
         });
 
-        let actual = parse_regression_config(regression_var).unwrap();
+        let actual = parse_callgrind_limits(regression_var).unwrap();
         assert_eq!(actual, expected);
     }
 
@@ -684,7 +737,7 @@ mod tests {
         #[case] expected_reason: &str,
     ) {
         assert_eq!(
-            &parse_regression_config(regression_var).unwrap_err(),
+            &parse_callgrind_limits(regression_var).unwrap_err(),
             expected_reason,
         );
     }
