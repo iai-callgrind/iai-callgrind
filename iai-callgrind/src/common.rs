@@ -52,14 +52,16 @@ pub struct Drd(__internal::InternalTool);
 ///
 /// ```rust
 /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
-/// use iai_callgrind::{LibraryBenchmarkConfig, FlamegraphConfig, main};
+/// use iai_callgrind::{LibraryBenchmarkConfig, FlamegraphConfig, main, Callgrind};
 /// # #[library_benchmark]
 /// # fn some_func() {}
 /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
 /// # fn main() {
 /// main!(
 ///     config = LibraryBenchmarkConfig::default()
-///                 .flamegraph(FlamegraphConfig::default());
+///                 .tool(Callgrind::default()
+///                     .flamegraph(FlamegraphConfig::default())
+///                 );
 ///     library_benchmark_groups = some_group
 /// );
 /// # }
@@ -110,6 +112,7 @@ pub struct Memcheck(__internal::InternalTool);
 #[derive(Debug, Clone, Default, IntoInner, AsRef)]
 pub struct OutputFormat(__internal::InternalOutputFormat);
 
+// TODO: ADD args method
 impl Bbv {
     /// TODO: DOCS
     pub fn with_args<I, T>(args: T) -> Self
@@ -118,6 +121,16 @@ impl Bbv {
         T: IntoIterator<Item = I>,
     {
         Self(__internal::InternalTool::with_args(ValgrindTool::BBV, args))
+    }
+
+    /// TODO: DOCS
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_args.extend_ignore_flag(args);
+        self
     }
 
     /// TODO: DOCS
@@ -146,6 +159,16 @@ impl Cachegrind {
             ValgrindTool::Cachegrind,
             args,
         ))
+    }
+
+    /// TODO: DOCS
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_args.extend_ignore_flag(args);
+        self
     }
 
     /// TODO: DOCS
@@ -253,6 +276,16 @@ impl Callgrind {
     }
 
     /// TODO: DOCS
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_args.extend_ignore_flag(args);
+        self
+    }
+
+    /// TODO: DOCS
     ///
     /// is enabled is ignored if the tool is configured to be the default tool
     pub fn enable(&mut self, value: bool) -> &mut Self {
@@ -337,7 +370,6 @@ impl Callgrind {
         self
     }
 
-    // TODO: Update docs due to movement from OutputFormat, Rename?
     /// Customize the format of the callgrind output
     ///
     /// This option allows customizing the output format of callgrind metrics. It does not set any
@@ -354,8 +386,8 @@ impl Callgrind {
     /// [`EventKind`]s, to avoid having to specify all [`EventKind`]s one-by-one (although still
     /// possible with [`CallgrindMetrics::SingleEvent`]).
     ///
-    /// Note that all command-line arguments of callgrind and which metric they collect are
-    /// described in full detail in the [callgrind
+    /// All command-line arguments of callgrind and which metric they collect are described in full
+    /// detail in the [callgrind
     /// documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options).
     ///
     /// # Examples
@@ -366,16 +398,15 @@ impl Callgrind {
     ///
     /// ```rust
     /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
-    /// use iai_callgrind::{main, LibraryBenchmarkConfig, OutputFormat, CallgrindMetrics};
+    /// use iai_callgrind::{main, LibraryBenchmarkConfig, OutputFormat, CallgrindMetrics, Callgrind};
     /// # #[library_benchmark]
     /// # fn some_func() {}
     /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
     /// # fn main() {
     /// main!(
     ///     config = LibraryBenchmarkConfig::default()
-    ///                 .output_format(OutputFormat::default()
-    ///                     .callgrind([CallgrindMetrics::All])
-    ///                 );
+    ///                  .tool(Callgrind::default()
+    ///                      .format([CallgrindMetrics::All]));
     ///     library_benchmark_groups = some_group
     /// );
     /// # }
@@ -440,6 +471,16 @@ impl Dhat {
     }
 
     /// TODO: DOCS
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_args.extend_ignore_flag(args);
+        self
+    }
+
+    /// TODO: DOCS
     ///
     /// is enabled is ignored if the tool is configured to be the default tool
     pub fn enable(&mut self, value: bool) -> &mut Self {
@@ -480,6 +521,16 @@ impl Drd {
         T: IntoIterator<Item = I>,
     {
         Self(__internal::InternalTool::with_args(ValgrindTool::DRD, args))
+    }
+
+    /// TODO: DOCS
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_args.extend_ignore_flag(args);
+        self
     }
 
     /// TODO: DOCS
@@ -704,6 +755,16 @@ impl Helgrind {
     }
 
     /// TODO: DOCS
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_args.extend_ignore_flag(args);
+        self
+    }
+
+    /// TODO: DOCS
     ///
     /// is enabled is ignored if the tool is configured to be the default tool
     pub fn enable(&mut self, value: bool) -> &mut Self {
@@ -750,6 +811,16 @@ impl Massif {
     }
 
     /// TODO: DOCS
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_args.extend_ignore_flag(args);
+        self
+    }
+
+    /// TODO: DOCS
     ///
     /// is enabled is ignored if the tool is configured to be the default tool
     pub fn enable(&mut self, value: bool) -> &mut Self {
@@ -775,6 +846,16 @@ impl Memcheck {
             ValgrindTool::Memcheck,
             args,
         ))
+    }
+
+    /// TODO: DOCS
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_args.extend_ignore_flag(args);
+        self
     }
 
     /// TODO: DOCS
@@ -881,14 +962,15 @@ impl OutputFormat {
     /// ```rust
     /// use iai_callgrind::{
     ///     main, LibraryBenchmarkConfig, OutputFormat, EntryPoint, library_benchmark,
-    ///     library_benchmark_group
+    ///     library_benchmark_group, Callgrind
     /// };
     /// # mod my_lib { pub fn heavy_calculation() -> u64 { 42 }}
     ///
     /// #[library_benchmark(
     ///     config = LibraryBenchmarkConfig::default()
-    ///         .entry_point(EntryPoint::None)
-    ///         .callgrind_args(["--toggle-collect=my_lib::heavy_calculation"])
+    ///         .tool(Callgrind::with_args(["--toggle-collect=my_lib::heavy_calculation"])
+    ///             .entry_point(EntryPoint::None)
+    ///         )
     ///         .output_format(OutputFormat::default().show_intermediate(true))
     /// )]
     /// fn bench_thread() -> u64 {

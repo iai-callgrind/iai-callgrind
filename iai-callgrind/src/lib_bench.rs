@@ -8,20 +8,18 @@ use crate::__internal;
 
 /// The main configuration of a library benchmark.
 ///
-/// See [`LibraryBenchmarkConfig::callgrind_args`] for more details.
-///
 /// # Examples
 ///
 /// ```rust
 /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
-/// use iai_callgrind::{LibraryBenchmarkConfig, main};
+/// use iai_callgrind::{LibraryBenchmarkConfig, main, Callgrind};
 /// # #[library_benchmark]
 /// # fn some_func() {}
 /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
 /// # fn main() {
 /// main!(
 ///     config = LibraryBenchmarkConfig::default()
-///                 .callgrind_args(["toggle-collect=something"]);
+///                 .tool(Callgrind::with_args(["toggle-collect=something"]));
 ///     library_benchmark_groups = some_group
 /// );
 /// # }
@@ -38,7 +36,7 @@ impl LibraryBenchmarkConfig {
     /// allowed.
     ///
     /// These arguments can be overwritten by tool specific arguments for example with
-    /// [`LibraryBenchmarkConfig::callgrind_args`] or [`crate::Tool::args`].
+    /// [`crate::Callgrind::args`]
     ///
     /// # Examples
     ///
@@ -51,13 +49,13 @@ impl LibraryBenchmarkConfig {
     /// #    name = my_group;
     /// #    benchmarks = bench_me
     /// # );
-    /// use iai_callgrind::{main, LibraryBenchmarkConfig, Tool, ValgrindTool};
+    /// use iai_callgrind::{main, LibraryBenchmarkConfig, Dhat};
     ///
     /// # fn main() {
     /// main!(
     ///     config = LibraryBenchmarkConfig::default()
     ///         .valgrind_args(["--trace-children=no"])
-    ///         .tool(Tool::new(ValgrindTool::DHAT));
+    ///         .tool(Dhat::default());
     ///     library_benchmark_groups = my_group
     /// );
     /// # }
@@ -72,15 +70,13 @@ impl LibraryBenchmarkConfig {
     /// #    name = my_group;
     /// #    benchmarks = bench_me
     /// # );
-    /// use iai_callgrind::{main, LibraryBenchmarkConfig, Tool, ValgrindTool};
+    /// use iai_callgrind::{main, LibraryBenchmarkConfig, Dhat};
     ///
     /// # fn main() {
     /// main!(
     ///     config = LibraryBenchmarkConfig::default()
     ///         .valgrind_args(["--num-callers=25"])
-    ///         .tool(Tool::new(ValgrindTool::DHAT)
-    ///             .args(["--num-callers=30"])
-    ///         );
+    ///         .tool(Dhat::with_args(["--num-callers=30"]));
     ///     library_benchmark_groups = my_group
     /// );
     /// # }
@@ -165,7 +161,8 @@ impl LibraryBenchmarkConfig {
     /// # fn main() {
     /// main!(
     ///     config =
-    ///         LibraryBenchmarkConfig::default().envs([("MY_CUSTOM_VAR", "SOME_VALUE"), ("FOO", "BAR")]);
+    ///         LibraryBenchmarkConfig::default()
+    ///             .envs([("MY_CUSTOM_VAR", "SOME_VALUE"), ("FOO", "BAR")]);
     ///     library_benchmark_groups = some_group
     /// );
     /// # }
@@ -248,7 +245,7 @@ impl LibraryBenchmarkConfig {
         self
     }
 
-    /// Add a configuration to run a valgrind [`crate::Tool`] in addition to callgrind
+    /// Add a configuration to run a valgrind tool in addition to callgrind
     ///
     /// # Examples
     ///
@@ -257,12 +254,12 @@ impl LibraryBenchmarkConfig {
     /// # #[library_benchmark]
     /// # fn some_func() {}
     /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
-    /// use iai_callgrind::{LibraryBenchmarkConfig, main, Tool, ValgrindTool};
+    /// use iai_callgrind::{LibraryBenchmarkConfig, main, Dhat};
     ///
     /// # fn main() {
     /// main!(
     ///     config = LibraryBenchmarkConfig::default()
-    ///         .tool(Tool::new(ValgrindTool::DHAT));
+    ///         .tool(Dhat::default());
     ///     library_benchmark_groups = some_group
     /// );
     /// # }
@@ -275,49 +272,11 @@ impl LibraryBenchmarkConfig {
         self
     }
 
-    /// Add multiple configurations to run valgrind [`crate::Tool`]s in addition to callgrind
+    /// Override previously defined configurations of valgrind tools
     ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
-    /// # #[library_benchmark]
-    /// # fn some_func() {}
-    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
-    /// use iai_callgrind::{LibraryBenchmarkConfig, main, Tool, ValgrindTool};
-    ///
-    /// # fn main() {
-    /// main!(
-    ///     config = LibraryBenchmarkConfig::default()
-    ///         .tools(
-    ///             [
-    ///                 Tool::new(ValgrindTool::DHAT),
-    ///                 Tool::new(ValgrindTool::Massif)
-    ///             ]
-    ///         );
-    ///     library_benchmark_groups = some_group
-    /// );
-    /// # }
-    /// ```
-    pub fn tools<I, T>(&mut self, tools: T) -> &mut Self
-    where
-        I: Into<__internal::InternalTool>,
-        T: IntoIterator<Item = I>,
-    {
-        self.0.tools.update_all(tools.into_iter().map(Into::into));
-        self
-    }
-
-    /// Override previously defined configurations of valgrind [`crate::Tool`]s
-    ///
-    /// Usually, if specifying [`crate::Tool`] configurations with [`LibraryBenchmarkConfig::tool`]
-    /// these tools are appended to the configuration of a [`LibraryBenchmarkConfig`] of
-    /// higher-levels. Specifying a [`crate::Tool`] with this method overrides previously defined
-    /// configurations.
-    ///
-    /// Note that [`crate::Tool`]s specified with [`LibraryBenchmarkConfig::tool`] will be ignored,
-    /// if in the very same `LibraryBenchmarkConfig`, [`crate::Tool`]s are specified by this method
-    /// (or [`LibraryBenchmarkConfig::tools_override`]).
+    /// Usually, if specifying tool configurations with [`LibraryBenchmarkConfig::tool`] these tools
+    /// are appended to the configuration of a [`LibraryBenchmarkConfig`] of higher-levels.
+    /// Specifying a tool with this method overrides previously defined configurations.
     ///
     /// # Examples
     ///
@@ -326,13 +285,12 @@ impl LibraryBenchmarkConfig {
     ///
     /// ```rust
     /// use iai_callgrind::{
-    ///     main, library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, Tool, ValgrindTool
+    ///     main, library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, Memcheck,
+    ///     Massif, Dhat
     /// };
     ///
     /// #[library_benchmark(config = LibraryBenchmarkConfig::default()
-    ///     .tool_override(
-    ///         Tool::new(ValgrindTool::Memcheck)
-    ///     )
+    ///     .tool_override(Memcheck::default())
     /// )]
     /// fn some_func() {}
     ///
@@ -344,12 +302,8 @@ impl LibraryBenchmarkConfig {
     /// # fn main() {
     /// main!(
     ///     config = LibraryBenchmarkConfig::default()
-    ///         .tools(
-    ///             [
-    ///                 Tool::new(ValgrindTool::DHAT),
-    ///                 Tool::new(ValgrindTool::Massif)
-    ///             ]
-    ///         );
+    ///         .tool(Dhat::default())
+    ///         .tool(Massif::default());
     ///     library_benchmark_groups = some_group
     /// );
     /// # }
@@ -362,55 +316,6 @@ impl LibraryBenchmarkConfig {
             .tools_override
             .get_or_insert(__internal::InternalTools::default())
             .update(tool.into());
-        self
-    }
-
-    /// Override previously defined configurations of valgrind [`crate::Tool`]s
-    ///
-    /// See also [`LibraryBenchmarkConfig::tool_override`].
-    ///
-    /// # Examples
-    ///
-    /// The following will run `DHAT` (and the default callgrind) for all benchmarks in
-    /// `main!` besides for `some_func` which will run `Massif` and `Memcheck` (and callgrind).
-    ///
-    /// ```rust
-    /// use iai_callgrind::{
-    ///     main, library_benchmark, library_benchmark_group, LibraryBenchmarkConfig, Tool, ValgrindTool
-    /// };
-    ///
-    /// #[library_benchmark(config = LibraryBenchmarkConfig::default()
-    ///     .tools_override([
-    ///         Tool::new(ValgrindTool::Massif),
-    ///         Tool::new(ValgrindTool::Memcheck)
-    ///     ])
-    /// )]
-    /// fn some_func() {}
-    ///
-    /// library_benchmark_group!(
-    ///     name = some_group;
-    ///     benchmarks = some_func
-    /// );
-    ///
-    /// # fn main() {
-    /// main!(
-    ///     config = LibraryBenchmarkConfig::default()
-    ///         .tool(
-    ///             Tool::new(ValgrindTool::DHAT),
-    ///         );
-    ///     library_benchmark_groups = some_group
-    /// );
-    /// # }
-    /// ```
-    pub fn tools_override<I, T>(&mut self, tools: T) -> &mut Self
-    where
-        I: Into<__internal::InternalTool>,
-        T: IntoIterator<Item = I>,
-    {
-        self.0
-            .tools_override
-            .get_or_insert(__internal::InternalTools::default())
-            .update_all(tools.into_iter().map(Into::into));
         self
     }
 

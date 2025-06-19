@@ -135,11 +135,13 @@ macro_rules! binary_benchmark_attribute {
 /// # }
 /// ```
 ///
-/// If you need to pass arguments to valgrind's callgrind, you can specify callgrind arguments via
-/// [`crate::LibraryBenchmarkConfig::callgrind_args`]:
+/// If you need to pass arguments to valgrind's callgrind or other tools, you can specify arguments
+/// via [`crate::Callgrind::args`], [`crate::Dhat::args`], ...:
 ///
 /// ```rust
-/// # use iai_callgrind::{main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig};
+/// # use iai_callgrind::{
+/// #   main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig, Callgrind
+/// # };
 /// # #[library_benchmark]
 /// # fn bench_fibonacci() { }
 /// # library_benchmark_group!(
@@ -149,9 +151,9 @@ macro_rules! binary_benchmark_attribute {
 /// # fn main() {
 /// main!(
 ///     config = LibraryBenchmarkConfig::default()
-///                 .callgrind_args(
+///                 .tool(Callgrind::with_args(
 ///                     ["--arg-with-flags=yes", "arg-without-flags=is_ok_too"]
-///                 );
+///                 ));
 ///     library_benchmark_groups = some_group
 /// );
 /// # }
@@ -161,9 +163,7 @@ macro_rules! binary_benchmark_attribute {
 /// options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options).
 ///
 /// For an in-depth description of library benchmarks and more examples see the
-/// [README#Library
-/// Benchmarks](https://github.com/iai-callgrind/iai-callgrind#library-benchmarks) of this
-/// crate.
+/// [guide](https://iai-callgrind.github.io/iai-callgrind/latest/html/benchmarks/library_benchmarks.html).
 ///
 /// # Binary Benchmarks
 ///

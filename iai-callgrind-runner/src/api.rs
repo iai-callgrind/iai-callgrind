@@ -7,6 +7,7 @@ use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 #[cfg(feature = "runner")]
 use std::process::{Child, Command as StdCommand, Stdio as StdStdio};
+#[cfg(feature = "runner")]
 use std::str::FromStr;
 use std::time::Duration;
 
