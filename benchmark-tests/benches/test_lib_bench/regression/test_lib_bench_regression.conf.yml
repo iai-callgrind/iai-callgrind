@@ -64,3 +64,11 @@ groups:
         template_data:
           array_length: 5
           fail_fast: false
+      - args: ["--regression-fail-fast"]
+        expected:
+          stdout: expected_stdout.args.fail-fast
+          stderr: expected_stderr.fail-fast
+          exit_code: 3
+        template_data:
+          array_length: 7
+          fail_fast: false

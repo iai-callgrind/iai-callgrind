@@ -411,11 +411,8 @@ pub struct CommandLineArgs {
     /// If true, the first failed performance regression check fails the whole benchmark run
     ///
     /// Note that if --regression-fail-fast is set to true, no summary is printed.
-    ///
-    /// This option requires `--regression=...` or `IAI_CALLGRIND_REGRESSION=...` to be present.
     #[arg(
         long = "regression-fail-fast",
-        requires = "regression",
         default_missing_value = "true",
         num_args = 0..=1,
         require_equals = true,

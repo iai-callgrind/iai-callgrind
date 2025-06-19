@@ -508,14 +508,27 @@ impl ToolConfig {
                 )?,
             };
 
+            let mut regression_config = regression_config
+                .or(tool.regression_config)
+                .map_or(ToolRegressionConfig::None, Into::into);
+            if let Some(fail_fast) = meta.args.regression_fail_fast {
+                match &mut regression_config {
+                    ToolRegressionConfig::Callgrind(callgrind_regression_config) => {
+                        callgrind_regression_config.fail_fast = fail_fast;
+                    }
+                    ToolRegressionConfig::Cachegrind(cachegrind_regression_config) => {
+                        cachegrind_regression_config.fail_fast = fail_fast;
+                    }
+                    ToolRegressionConfig::None => {}
+                }
+            }
+
             Ok(ToolConfig::new(
                 valgrind_tool,
                 is_default || tool.enable.unwrap_or(true),
                 args,
                 None,
-                regression_config
-                    .or(tool.regression_config)
-                    .map_or(ToolRegressionConfig::None, Into::into),
+                regression_config,
                 flamegraph_config
                     .or(tool.flamegraph_config)
                     .map_or(ToolFlamegraphConfig::None, Into::into),
@@ -586,12 +599,25 @@ impl ToolConfig {
                 )?,
             };
 
+            let mut regression_config =
+                regression_config.map_or(ToolRegressionConfig::None, Into::into);
+            if let Some(fail_fast) = meta.args.regression_fail_fast {
+                match &mut regression_config {
+                    ToolRegressionConfig::Callgrind(callgrind_regression_config) => {
+                        callgrind_regression_config.fail_fast = fail_fast;
+                    }
+                    ToolRegressionConfig::Cachegrind(cachegrind_regression_config) => {
+                        cachegrind_regression_config.fail_fast = fail_fast;
+                    }
+                    ToolRegressionConfig::None => {}
+                }
+            }
             Ok(ToolConfig::new(
                 valgrind_tool,
                 true,
                 args,
                 None,
-                regression_config.map_or(ToolRegressionConfig::None, Into::into),
+                regression_config,
                 flamegraph_config.map_or(ToolFlamegraphConfig::None, Into::into),
                 entry_point.unwrap_or(EntryPoint::None),
                 is_default,
