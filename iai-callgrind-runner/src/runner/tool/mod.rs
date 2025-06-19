@@ -823,8 +823,22 @@ impl ToolConfigs {
             default_args,
         )?;
 
+        let meta_tools = if meta.args.tools.is_empty() {
+            tools.0
+        } else {
+            let mut meta_tools = Vec::with_capacity(meta.args.tools.len());
+            for kind in &meta.args.tools {
+                if let Some(tool) = tools.consume(*kind) {
+                    meta_tools.push(tool);
+                } else {
+                    meta_tools.push(Tool::new(*kind));
+                }
+            }
+            meta_tools
+        };
+
         let mut tool_configs = ToolConfigs(vec![default_tool_config]);
-        tool_configs.extend(tools.0.into_iter().map(|tool| {
+        tool_configs.extend(meta_tools.into_iter().map(|tool| {
             let mut base_args = default_args.get(&tool.kind).cloned().unwrap_or_default();
             base_args.update(valgrind_args);
 

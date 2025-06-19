@@ -119,14 +119,14 @@ data:
         - summary.json
   - group: my_group
     function: default_tool_with_another_tool
-    id: bbv_and_massif
+    id: massif_and_bbv
     expected:
       files:
-        - exp-bbv.default_tool_with_another_tool.bbv_and_massif.bb.out
-        - exp-bbv.default_tool_with_another_tool.bbv_and_massif.log
-        - exp-bbv.default_tool_with_another_tool.bbv_and_massif.pc.out
-        - massif.default_tool_with_another_tool.bbv_and_massif.log
-        - massif.default_tool_with_another_tool.bbv_and_massif.out
+        - exp-bbv.default_tool_with_another_tool.massif_and_bbv.bb.out
+        - exp-bbv.default_tool_with_another_tool.massif_and_bbv.log
+        - exp-bbv.default_tool_with_another_tool.massif_and_bbv.pc.out
+        - massif.default_tool_with_another_tool.massif_and_bbv.log
+        - massif.default_tool_with_another_tool.massif_and_bbv.out
         - summary.json
   - group: my_group
     function: default_tool_with_another_tool

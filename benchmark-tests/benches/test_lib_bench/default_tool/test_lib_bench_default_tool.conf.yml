@@ -13,3 +13,8 @@ groups:
         expected:
           files: expected_files.2a.yml
           stdout: expected_stdout.2a
+  - runs:
+      - args: ["--default-tool=memcheck", "--tools=dhat,helgrind"]
+        expected:
+          files: expected_files.3a.yml
+          stdout: expected_stdout.3a

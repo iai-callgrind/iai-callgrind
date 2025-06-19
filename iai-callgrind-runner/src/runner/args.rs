@@ -186,6 +186,24 @@ pub struct CommandLineArgs {
     )]
     pub default_tool: Option<ValgrindTool>,
 
+    /// A comma separated list of tools to run additionally to callgrind or another default tool
+    ///
+    /// The tools specified here take precedence over the tools in the benchmarks. The valgrind
+    /// tools which are allowed here are the same as the ones listed in the documentation of
+    /// --default-tool.
+    ///
+    /// Examples
+    ///   * --tools dhat
+    ///   * --tools memcheck,drd
+    #[arg(
+        long = "tools",
+        num_args = 1..,
+        value_delimiter = ',',
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_TOOLS"
+    )]
+    pub tools: Vec<ValgrindTool>,
+
     /// The command-line arguments to pass through to all tools
     ///
     /// The core valgrind command-line arguments
@@ -878,6 +896,14 @@ mod tests {
         std::env::set_var("IAI_CALLGRIND_NOCAPTURE", "true");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(result.nocapture, NoCapture::True);
+    }
+
+    #[rstest]
+    #[case::single("drd", &[ValgrindTool::DRD])]
+    #[case::two("drd,callgrind", &[ValgrindTool::DRD, ValgrindTool::Callgrind])]
+    fn test_tools_cli(#[case] tools: &str, #[case] expected: &[ValgrindTool]) {
+        let actual = CommandLineArgs::parse_from([format!("--tools={tools}")]);
+        assert_eq!(actual.tools, expected);
     }
 
     #[rstest]
