@@ -118,5 +118,5 @@ The ones known to the author of this humble guide are
   metrics and cycles.
 
 If you know of others, please feel free to
-[add](https://github.com/iai-callgrind/iai-callgrind/master/docs/src/regressions.md)
+[add](https://github.com/iai-callgrind/iai-callgrind/blob/5bec95ee37330954916ea29e7a7dc40ca62bc454/docs/src/regressions.md)
 them to this list.
