@@ -1,8 +1,10 @@
+use std::hint::black_box;
+
 /// See issue https://github.com/iai-callgrind/iai-callgrind/issues/198
 /// Generic bench arguments cause compilation failure
 ///
 /// After the fix the benchmark should now compile
-use iai_callgrind::{black_box, library_benchmark, library_benchmark_group, main};
+use iai_callgrind::{library_benchmark, library_benchmark_group, main};
 
 #[derive(Debug)]
 struct A;

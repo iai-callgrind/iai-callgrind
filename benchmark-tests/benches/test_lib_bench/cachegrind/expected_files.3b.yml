@@ -1,0 +1,97 @@
+data:
+  - group: my_group
+    function: bench_default_tool
+    id: cachegrind_config
+    expected:
+      files:
+        - cachegrind.bench_default_tool.cachegrind_config.log
+        - cachegrind.bench_default_tool.cachegrind_config.log.old
+        - cachegrind.bench_default_tool.cachegrind_config.out
+        - cachegrind.bench_default_tool.cachegrind_config.out.old
+        - summary.json
+  - group: my_group
+    function: bench_default_tool
+    id: callgrind_config
+    expected:
+      files:
+        - cachegrind.bench_default_tool.callgrind_config.log
+        - cachegrind.bench_default_tool.callgrind_config.log.old
+        - cachegrind.bench_default_tool.callgrind_config.out
+        - cachegrind.bench_default_tool.callgrind_config.out.old
+        - callgrind.bench_default_tool.callgrind_config.log
+        - callgrind.bench_default_tool.callgrind_config.log.old
+        - callgrind.bench_default_tool.callgrind_config.out
+        - callgrind.bench_default_tool.callgrind_config.out.old
+        - summary.json
+  - group: my_group
+    function: bench_default_tool
+    id: no_config
+    expected:
+      files:
+        - cachegrind.bench_default_tool.no_config.log
+        - cachegrind.bench_default_tool.no_config.log.old
+        - cachegrind.bench_default_tool.no_config.out
+        - cachegrind.bench_default_tool.no_config.out.old
+        - summary.json
+  - group: my_group
+    function: manual_cachegrind_setup
+    id: set_instr_at_start
+    expected:
+      files:
+        - cachegrind.manual_cachegrind_setup.set_instr_at_start.log
+        - cachegrind.manual_cachegrind_setup.set_instr_at_start.log.old
+        - cachegrind.manual_cachegrind_setup.set_instr_at_start.out
+        - cachegrind.manual_cachegrind_setup.set_instr_at_start.out.old
+        - summary.json
+  - group: my_group
+    function: test_config_overwrite
+    id: default_config
+    expected:
+      files:
+        - cachegrind.test_config_overwrite.default_config.log
+        - cachegrind.test_config_overwrite.default_config.log.old
+        - cachegrind.test_config_overwrite.default_config.out
+        - cachegrind.test_config_overwrite.default_config.out.old
+        - callgrind.test_config_overwrite.default_config.log
+        - callgrind.test_config_overwrite.default_config.log.old
+        - callgrind.test_config_overwrite.default_config.out
+        - callgrind.test_config_overwrite.default_config.out.old
+        - summary.json
+  - group: my_group
+    function: test_config_overwrite
+    id: overwrite_default_cachegrind_config
+    expected:
+      files:
+        - cachegrind.test_config_overwrite.overwrite_default_cachegrind_config.log
+        - cachegrind.test_config_overwrite.overwrite_default_cachegrind_config.log.old
+        - cachegrind.test_config_overwrite.overwrite_default_cachegrind_config.out
+        - cachegrind.test_config_overwrite.overwrite_default_cachegrind_config.out.old
+        - callgrind.test_config_overwrite.overwrite_default_cachegrind_config.log
+        - callgrind.test_config_overwrite.overwrite_default_cachegrind_config.log.old
+        - callgrind.test_config_overwrite.overwrite_default_cachegrind_config.out
+        - callgrind.test_config_overwrite.overwrite_default_cachegrind_config.out.old
+        - summary.json
+  - group: my_group
+    function: test_config_overwrite
+    id: overwrite_default_callgrind_config
+    expected:
+      files:
+        - cachegrind.test_config_overwrite.overwrite_default_callgrind_config.log
+        - cachegrind.test_config_overwrite.overwrite_default_callgrind_config.log.old
+        - cachegrind.test_config_overwrite.overwrite_default_callgrind_config.out
+        - cachegrind.test_config_overwrite.overwrite_default_callgrind_config.out.old
+        - callgrind.test_config_overwrite.overwrite_default_callgrind_config.log
+        - callgrind.test_config_overwrite.overwrite_default_callgrind_config.log.old
+        - callgrind.test_config_overwrite.overwrite_default_callgrind_config.out
+        - callgrind.test_config_overwrite.overwrite_default_callgrind_config.out.old
+        - summary.json
+  - group: my_group
+    function: test_config_overwrite
+    id: tool_override
+    expected:
+      files:
+        - cachegrind.test_config_overwrite.tool_override.log
+        - cachegrind.test_config_overwrite.tool_override.log.old
+        - cachegrind.test_config_overwrite.tool_override.out
+        - cachegrind.test_config_overwrite.tool_override.out.old
+        - summary.json

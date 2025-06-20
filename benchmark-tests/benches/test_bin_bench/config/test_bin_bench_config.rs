@@ -1,8 +1,7 @@
 use std::process::Command;
 
 use iai_callgrind::{
-    binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Stdio, Tool,
-    ValgrindTool,
+    binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Dhat, Stdio,
 };
 
 #[binary_benchmark(config = BinaryBenchmarkConfig::default().env("BINARY_BENCHMARK_ENV", "3"))]
@@ -66,7 +65,7 @@ fn check_teardown_is_not_cleared() {
     teardown = check_teardown_is_not_cleared,
     config = BinaryBenchmarkConfig::default()
         .env("BENCH_ENV", "4")
-        .tool(Tool::new(ValgrindTool::DHAT))
+        .tool(Dhat::default())
 )]
 fn check_env_is_cleared() -> iai_callgrind::Command {
     iai_callgrind::Command::new(env!("CARGO_BIN_EXE_env"))

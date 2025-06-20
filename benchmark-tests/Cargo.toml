@@ -16,6 +16,9 @@ repository.workspace = true
 rust-version.workspace = true
 version = "0.1.0"
 
+[features]
+cachegrind = ["iai-callgrind/cachegrind"]
+
 [dependencies]
 anyhow = { workspace = true }
 cargo_metadata = { workspace = true }
@@ -265,6 +268,16 @@ path = "benches/test_lib_bench/all_args/test_lib_bench_all_args.rs"
 harness = false
 name = "test_lib_bench_list_arg"
 path = "benches/test_lib_bench/list_arg/test_lib_bench_list_arg.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_cachegrind"
+path = "benches/test_lib_bench/cachegrind/test_lib_bench_cachegrind.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_default_tool"
+path = "benches/test_lib_bench/default_tool/test_lib_bench_default_tool.rs"
 
 [[bench]]
 harness = false

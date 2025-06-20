@@ -1,7 +1,9 @@
 use std::hint::black_box;
 
 use benchmark_tests::{bubble_sort, setup_worst_case_array};
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use iai_callgrind::{
+    library_benchmark, library_benchmark_group, main, Dhat, LibraryBenchmarkConfig,
+};
 
 #[library_benchmark]
 #[bench::case_3(vec![1, 2, 3])]
@@ -24,6 +26,24 @@ fn bench_bubble_sort_mixed_case(input: Vec<i32>) -> Vec<i32> {
     black_box(bubble_sort(input))
 }
 
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .tool(Dhat::default())
+)]
+#[bench::case_3(vec![3, 2, 1])]
+fn bench_bubble_sort_dhat(input: Vec<i32>) -> Vec<i32> {
+    black_box(bubble_sort(input))
+}
+
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .tool(Dhat::default())
+)]
+#[bench::case_3(vec![1, 2, 3])]
+fn bench_bubble_sort_dhat_other(input: Vec<i32>) -> Vec<i32> {
+    black_box(bubble_sort(input))
+}
+
 library_benchmark_group!(
     name = bubble_sort_compare_one;
     compare_by_id = true;
@@ -41,6 +61,13 @@ library_benchmark_group!(
     compare_by_id = true;
     benchmarks =
         bench_bubble_sort_best_case, bench_bubble_sort_worst_case, bench_bubble_sort_mixed_case
+);
+
+library_benchmark_group!(
+    name = bubble_sort_compare_with_dhat;
+    compare_by_id = true;
+    benchmarks =
+        bench_bubble_sort_dhat, bench_bubble_sort_dhat_other, bench_bubble_sort_mixed_case
 );
 
 #[library_benchmark]
@@ -66,4 +93,5 @@ main!(
     bubble_sort_compare_two,
     bubble_sort_compare_three,
     bubble_sort_compare_no_id,
+    bubble_sort_compare_with_dhat
 );

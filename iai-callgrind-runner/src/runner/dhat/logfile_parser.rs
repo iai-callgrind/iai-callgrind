@@ -7,12 +7,14 @@ use lazy_static::lazy_static;
 use log::debug;
 use regex::Regex;
 
-use crate::api::DhatMetricKind;
+use crate::api::DhatMetric;
 use crate::runner::metrics::Metrics;
 use crate::runner::summary::ToolMetrics;
 use crate::runner::tool::logfile_parser::{
-    parse_header, Logfile, LogfileParser, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
+    parse_header, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
 };
+use crate::runner::tool::parser::{Parser, ParserOutput};
+use crate::runner::tool::ToolOutputPath;
 
 // The different regex have to consider --time-stamp=yes
 lazy_static! {
@@ -32,6 +34,7 @@ enum State {
 }
 
 pub struct DhatLogfileParser {
+    pub output_path: ToolOutputPath,
     pub root_dir: PathBuf,
 }
 
@@ -42,7 +45,7 @@ impl DhatLogfileParser {
     fn parse_line(
         line: &str,
         state: &mut State,
-        metrics: &mut Metrics<DhatMetricKind>,
+        metrics: &mut Metrics<DhatMetric>,
         details: &mut Vec<String>,
     ) -> Result<bool> {
         match &state {
@@ -97,32 +100,32 @@ impl DhatLogfileParser {
 
                         match key {
                             "Total" => {
-                                metrics.insert(DhatMetricKind::TotalBytes, num_bytes);
+                                metrics.insert(DhatMetric::TotalBytes, num_bytes);
                                 metrics.insert(
-                                    DhatMetricKind::TotalBlocks,
+                                    DhatMetric::TotalBlocks,
                                     num_blocks.ok_or_else(|| anyhow!("Error parsing blocks"))?,
                                 );
                             }
                             "At t-gmax" => {
-                                metrics.insert(DhatMetricKind::AtTGmaxBytes, num_bytes);
+                                metrics.insert(DhatMetric::AtTGmaxBytes, num_bytes);
                                 metrics.insert(
-                                    DhatMetricKind::AtTGmaxBlocks,
+                                    DhatMetric::AtTGmaxBlocks,
                                     num_blocks.ok_or_else(|| anyhow!("Error parsing blocks"))?,
                                 );
                             }
                             "At t-end" => {
-                                metrics.insert(DhatMetricKind::AtTEndBytes, num_bytes);
+                                metrics.insert(DhatMetric::AtTEndBytes, num_bytes);
                                 metrics.insert(
-                                    DhatMetricKind::AtTEndBlocks,
+                                    DhatMetric::AtTEndBlocks,
                                     num_blocks.ok_or_else(|| anyhow!("Error parsing blocks"))?,
                                 );
                             }
                             "Reads" => {
-                                let metric_kind = DhatMetricKind::ReadsBytes;
+                                let metric_kind = DhatMetric::ReadsBytes;
                                 metrics.insert(metric_kind, num_bytes);
                             }
                             "Writes" => {
-                                let metric_kind = DhatMetricKind::WritesBytes;
+                                let metric_kind = DhatMetric::WritesBytes;
                                 metrics.insert(metric_kind, num_bytes);
                             }
                             _ => {
@@ -143,8 +146,8 @@ impl DhatLogfileParser {
     }
 }
 
-impl LogfileParser for DhatLogfileParser {
-    fn parse_single(&self, path: PathBuf) -> Result<Logfile> {
+impl Parser for DhatLogfileParser {
+    fn parse_single(&self, path: PathBuf) -> Result<ParserOutput> {
         let file = File::open(&path)
             .with_context(|| format!("Error opening log file '{}'", path.display()))?;
 
@@ -174,12 +177,16 @@ impl LogfileParser for DhatLogfileParser {
             }
         }
 
-        Ok(Logfile {
+        Ok(ParserOutput {
             header,
             path,
             details,
-            metrics: ToolMetrics::DhatMetrics(metrics),
+            metrics: ToolMetrics::Dhat(metrics),
         })
+    }
+
+    fn get_output_path(&self) -> &ToolOutputPath {
+        &self.output_path
     }
 }
 

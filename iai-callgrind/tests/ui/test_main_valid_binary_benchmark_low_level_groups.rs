@@ -31,7 +31,7 @@ mod test_main_when_config_is_ref {
 }
 
 mod test_main_when_config_is_mut_ref {
-    use iai_callgrind::{binary_benchmark_group, main, BinaryBenchmarkConfig};
+    use iai_callgrind::{binary_benchmark_group, main, BinaryBenchmarkConfig, Cachegrind};
 
     binary_benchmark_group!(
         name = some;
@@ -41,7 +41,7 @@ mod test_main_when_config_is_mut_ref {
     );
 
     main!(
-        config = BinaryBenchmarkConfig::default().callgrind_args(["--just=testing"]);
+        config = BinaryBenchmarkConfig::default().tool(Cachegrind::with_args(["--just=testing"]));
         binary_benchmark_groups = some
     );
 }

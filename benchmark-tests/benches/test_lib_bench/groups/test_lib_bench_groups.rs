@@ -6,8 +6,8 @@ use std::hint::black_box;
 // These two functions from the benchmark-tests library serve as functions we want to benchmark
 use benchmark_tests::{bubble_sort, fibonacci};
 use iai_callgrind::{
-    library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,
-    RegressionConfig, Tool, ValgrindTool,
+    library_benchmark, library_benchmark_group, main, Callgrind, Dhat, EventKind,
+    LibraryBenchmarkConfig, Massif,
 };
 
 // This function is used to create the worst case array we want to sort with our implementation of
@@ -112,21 +112,16 @@ fn bench_bubble_sort_with_multiple_parameters(a: i32, b: i32) -> Vec<i32> {
 // nothing changes. The default configuration is always applied.
 #[library_benchmark(config = LibraryBenchmarkConfig::default())]
 fn bench_fibonacci_with_config() -> u64 {
-    black_box(black_box(fibonacci(black_box(8))))
+    black_box(fibonacci(black_box(8)))
 }
 
 // A `config` per `bench` or `benches` attribute is also possible using the alternative `bench`
 // or `benches` attribute with key = value pairs
 //
-// Note that `LibraryBenchmarkConfig` is additive for callgrind arguments, tools and environment
-// variables and appends them to the variables of `configs` of higher levels (like
-// #[library_benchmark(config = ...)]). Only the last definition of a such configuration values is
-// taken into account. Other non-collection like configuration values (like `RegressionConfig`) are
-// overridden. In our example here: If `callgrind_args(["--dump-instr=yes"])` would have been
-// specified in a higher level configuration, then specifying
-// `callgrind_args(["--dump-instr=no")` in our configurations at this level would effectively
-// overwrite the value for `--dump-instr` and only `--dump-instr=no` is applied for the benchmark
-// run `fib_with_config`.
+// Note that `LibraryBenchmarkConfig` is additive for tools and environment variables and appends
+// them to the variables of `configs` of higher levels (like #[library_benchmark(config = ...)]).
+// Only the last definition of a such configuration values is taken into account. Other
+// non-collection like configuration values (like `RegressionConfig`) are overridden.
 //
 // Completely overriding previous definitions of valgrind tools instead of appending them with
 // `LibraryBenchmarkConfig::tool` or `LibraryBenchmarkConfig::tools` can be achieved with
@@ -135,12 +130,10 @@ fn bench_fibonacci_with_config() -> u64 {
 #[bench::fib_with_config(
     args = (3, 4),
     config = LibraryBenchmarkConfig::default()
-        .tool_override(
-            Tool::new(ValgrindTool::Massif)
-        )
+        .tool_override(Massif::default())
 )]
 fn bench_fibonacci_with_config_at_bench_level(first: u64, second: u64) -> u64 {
-    black_box(black_box(fibonacci(black_box(first + second))))
+    black_box(fibonacci(black_box(first + second)))
 }
 
 // Use the `benchmarks` argument of the `library_benchmark_group!` macro to collect all benchmarks
@@ -154,9 +147,7 @@ fn bench_fibonacci_with_config_at_bench_level(first: u64, second: u64) -> u64 {
 library_benchmark_group!(
     name = bubble_sort;
     config = LibraryBenchmarkConfig::default()
-        .regression(
-            RegressionConfig::default().fail_fast(false)
-        );
+        .tool(Callgrind::default().limits([(EventKind::Ir, 10.0)]).fail_fast(false));
     benchmarks =
         bench_bubble_sort_empty,
         bench_bubble_sort,
@@ -191,13 +182,19 @@ library_benchmark_group!(
 // In addition to running `callgrind` it's possible to run other valgrind tools like DHAT, Massif,
 // (the experimental) BBV, Memcheck, Helgrind or DRD. Below we specify to run DHAT in addition to
 // callgrind for all benchmarks (if not specified otherwise and/or overridden in a lower-level
-// configuration). The output files of the profiling tools (DHAT, Massif, BBV) can be found next to
-// the output files of the callgrind runs in `target/iai/...`.
+// configuration). It's also possible to change the default tool to something else than callgrind
+// for example if you're just interested in running Dhat with
+// `LibraryBenchmarkConfig::default_tool`. Running cachegrind instead of callgrind is also possible
+// but requires additional steps. This is best described in the guide:
+// https://iai-callgrind.github.io/iai-callgrind/latest/html/index.html. You can also find a lot of
+// other Iai-Callgrind feature descriptions there.
+//
+// The output files of the profiling tools (DHAT, Massif,
+// BBV) can be found next to the output files of the callgrind runs in `target/iai/...`.
 main!(
     config = LibraryBenchmarkConfig::default()
-        .regression(
-            RegressionConfig::default()
-                .limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
+        .tool(Callgrind::default()
+            .limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
         )
-        .tool(Tool::new(ValgrindTool::DHAT));
+        .tool(Dhat::default());
     library_benchmark_groups = bubble_sort, fibonacci);

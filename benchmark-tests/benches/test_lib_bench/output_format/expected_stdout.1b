@@ -72,12 +72,22 @@ Number of primes found in the range 0 to 30000: 3245
 | Reads bytes:                             |                     (No change)
 | Writes bytes:                            |                     (No change)
 |-Comparison with bench_without_format for_comparison:"A very long string to see if the truncation of th...
+|-------- CALLGRIND
 | Instructions:                            |                     (-       %) [-       x]
 | L1 Hits:                                 |                     (         )
 | L2 Hits:                                 |                     (         )
 | RAM Hits:                                |                     (         )
 | Total read+write:                        |                     (-       %) [-       x]
 | Estimated Cycles:                        |                     (         )
+|-------- DHAT
+| Total bytes:                             |                     (-       %) [-       x]
+| Total blocks:                            |                     (-       %) [-       x]
+| At t-gmax bytes:                         |                     (         )
+| At t-gmax blocks:                        |                     (         )
+| At t-end bytes:                          |                     (No change)
+| At t-end blocks:                         |                     (No change)
+| Reads bytes:                             |                     (-       %) [-       x]
+| Writes bytes:                            |                     (-       %) [-       x]
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format implicit_default_with_wb
 Hello world!
 - end of stdout/stderr
@@ -291,5 +301,35 @@ test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format 
 Hello world!
 - end of stdout/stderr
   Estimated Cycles:                        |                     (         )
+test_lib_bench_output_format::custom_format::bench_with_custom_format cachegrind
+  ======= CACHEGRIND ===================================================================
+Hello world!
+- end of stdout/stderr
+  I1mr:                                    |                     (No change)
+  Estimated Cycles:                        |                     (         )
+test_lib_bench_output_format::custom_format::bench_with_custom_format dhat
+  ======= DHAT =========================================================================
+Hello world!
+- end of stdout/stderr
+  Total blocks:                            |                     (No change)
+  Total bytes:                             |                     (No change)
+test_lib_bench_output_format::custom_format::bench_with_custom_format memcheck
+  ======= MEMCHECK =====================================================================
+Hello world!
+- end of stdout/stderr
+  Suppressed Errors:                       |                     (         )
+  Errors:                                  |                     (No change)
+test_lib_bench_output_format::custom_format::bench_with_custom_format helgrind
+  ======= HELGRIND =====================================================================
+Hello world!
+- end of stdout/stderr
+  Contexts:                                |                     (No change)
+  Suppressed Contexts:                     |                     (         )
+test_lib_bench_output_format::custom_format::bench_with_custom_format drd
+  ======= DRD ==========================================================================
+Hello world!
+- end of stdout/stderr
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
 
-Iai-Callgrind result: Ok. 19 without regressions; 0 regressed; 19 benchmarks finished in <__SECONDS__>s
+Iai-Callgrind result: Ok. 24 without regressions; 0 regressed; 24 benchmarks finished in <__SECONDS__>s

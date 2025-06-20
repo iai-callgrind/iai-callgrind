@@ -1,5 +1,6 @@
 pub mod args;
 pub mod bin_bench;
+pub mod cachegrind;
 pub mod callgrind;
 pub mod common;
 pub mod dhat;

@@ -22,6 +22,7 @@ benchmark = [
   "dep:iai-callgrind-macros",
   "dep:derive_more",
 ]
+cachegrind = ["iai-callgrind-macros/cachegrind", "client_requests"]
 client_requests = ["client_requests_defs"]
 client_requests_defs = [
   "dep:cty",

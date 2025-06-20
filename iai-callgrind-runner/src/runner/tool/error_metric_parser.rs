@@ -7,10 +7,10 @@ use anyhow::{Context, Result};
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use super::logfile_parser::{
-    parse_header, Logfile, LogfileParser, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
-};
-use crate::api::ErrorMetricKind;
+use super::logfile_parser::{parse_header, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE};
+use super::parser::{Parser, ParserOutput};
+use super::ToolOutputPath;
+use crate::api::ErrorMetric;
 use crate::runner::metrics::Metrics;
 use crate::runner::summary::ToolMetrics;
 
@@ -28,11 +28,12 @@ enum State {
 }
 
 pub struct ErrorMetricLogfileParser {
+    pub output_path: ToolOutputPath,
     pub root_dir: PathBuf,
 }
 
-impl LogfileParser for ErrorMetricLogfileParser {
-    fn parse_single(&self, path: PathBuf) -> Result<Logfile> {
+impl Parser for ErrorMetricLogfileParser {
+    fn parse_single(&self, path: PathBuf) -> Result<ParserOutput> {
         let file = File::open(&path)
             .with_context(|| format!("Error opening log file '{}'", path.display()))?;
 
@@ -44,10 +45,10 @@ impl LogfileParser for ErrorMetricLogfileParser {
         let header = parse_header(&path, &mut iter)?;
 
         let metrics_prototype = Metrics::from_iter([
-            ErrorMetricKind::Errors,
-            ErrorMetricKind::Contexts,
-            ErrorMetricKind::SuppressedErrors,
-            ErrorMetricKind::SuppressedContexts,
+            ErrorMetric::Errors,
+            ErrorMetric::Contexts,
+            ErrorMetric::SuppressedErrors,
+            ErrorMetric::SuppressedContexts,
         ]);
 
         let mut details = vec![];
@@ -78,8 +79,7 @@ impl LogfileParser for ErrorMetricLogfileParser {
                             // The comments in the valgrind source code (`coregrind/m_errormgr.c`)
                             // state that the error summary line is only reprinted to avoid having
                             // to scroll up.
-                            let mut new_metrics: Metrics<ErrorMetricKind> =
-                                metrics_prototype.clone();
+                            let mut new_metrics: Metrics<ErrorMetric> = metrics_prototype.clone();
                             new_metrics.add_iter_str([
                                 caps.name("errs").unwrap().as_str(),
                                 caps.name("ctxs").unwrap().as_str(),
@@ -112,14 +112,18 @@ impl LogfileParser for ErrorMetricLogfileParser {
             }
         }
 
-        Ok(Logfile {
+        Ok(ParserOutput {
             header,
             path,
-            metrics: ToolMetrics::ErrorMetrics(metrics.context(
+            metrics: ToolMetrics::ErrorTool(metrics.context(
                 "Failed collecting error metrics: An error summary line should be present",
             )?),
             details,
         })
+    }
+
+    fn get_output_path(&self) -> &ToolOutputPath {
+        &self.output_path
     }
 }
 

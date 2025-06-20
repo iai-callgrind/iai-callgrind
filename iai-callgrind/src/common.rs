@@ -5,7 +5,136 @@ use std::vec::Vec;
 use derive_more::AsRef;
 use iai_callgrind_macros::IntoInner;
 
-use super::{CallgrindMetrics, Direction, EventKind, FlamegraphKind, ValgrindTool, __internal};
+use super::{
+    CachegrindMetric, CallgrindMetrics, DhatMetric, Direction, ErrorMetric, EventKind,
+    FlamegraphKind, ValgrindTool, __internal,
+};
+use crate::EntryPoint;
+
+/// The configuration for the experimental bbv
+///
+/// Can be specified in [`crate::LibraryBenchmarkConfig::tool`] or
+/// [`crate::BinaryBenchmarkConfig::tool`].
+///
+/// # Example
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// use iai_callgrind::{LibraryBenchmarkConfig, main, Bbv};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///         .tool(Bbv::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
+#[derive(Debug, Clone, IntoInner, AsRef)]
+pub struct Bbv(__internal::InternalTool);
+
+/// The configuration for cachegrind
+///
+/// Can be specified in [`crate::LibraryBenchmarkConfig::tool`] or
+/// [`crate::BinaryBenchmarkConfig::tool`].
+///
+/// # Example
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// use iai_callgrind::{LibraryBenchmarkConfig, main, Cachegrind};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///         .tool(Cachegrind::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
+#[derive(Debug, Clone, IntoInner, AsRef)]
+pub struct Cachegrind(__internal::InternalTool);
+
+/// The configuration for Callgrind
+///
+/// Can be specified in [`crate::LibraryBenchmarkConfig::tool`] or
+/// [`crate::BinaryBenchmarkConfig::tool`].
+///
+/// # Example
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// use iai_callgrind::{LibraryBenchmarkConfig, main, Callgrind};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///         .tool(Callgrind::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
+#[derive(Debug, Clone, IntoInner, AsRef)]
+pub struct Callgrind(__internal::InternalTool);
+
+/// The configuration for Dhat
+///
+/// Can be specified in [`crate::LibraryBenchmarkConfig::tool`] or
+/// [`crate::BinaryBenchmarkConfig::tool`].
+///
+/// # Example
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// use iai_callgrind::{LibraryBenchmarkConfig, main, Dhat};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///         .tool(Dhat::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
+#[derive(Debug, Clone, IntoInner, AsRef)]
+pub struct Dhat(__internal::InternalTool);
+
+/// The configuration for DRD
+///
+/// Can be specified in [`crate::LibraryBenchmarkConfig::tool`] or
+/// [`crate::BinaryBenchmarkConfig::tool`].
+///
+/// # Example
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// use iai_callgrind::{LibraryBenchmarkConfig, main, Drd};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///         .tool(Drd::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
+#[derive(Debug, Clone, IntoInner, AsRef)]
+pub struct Drd(__internal::InternalTool);
 
 /// The `FlamegraphConfig` which allows the customization of the created flamegraphs
 ///
@@ -28,20 +157,97 @@ use super::{CallgrindMetrics, Direction, EventKind, FlamegraphKind, ValgrindTool
 ///
 /// ```rust
 /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
-/// use iai_callgrind::{LibraryBenchmarkConfig, FlamegraphConfig, main};
+/// use iai_callgrind::{LibraryBenchmarkConfig, FlamegraphConfig, main, Callgrind};
 /// # #[library_benchmark]
 /// # fn some_func() {}
 /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
 /// # fn main() {
 /// main!(
 ///     config = LibraryBenchmarkConfig::default()
-///                 .flamegraph(FlamegraphConfig::default());
+///                 .tool(Callgrind::default()
+///                     .flamegraph(FlamegraphConfig::default())
+///                 );
 ///     library_benchmark_groups = some_group
 /// );
 /// # }
 /// ```
 #[derive(Debug, Clone, Default, IntoInner, AsRef)]
 pub struct FlamegraphConfig(__internal::InternalFlamegraphConfig);
+
+/// The configuration for Helgrind
+///
+/// Can be specified in [`crate::LibraryBenchmarkConfig::tool`] or
+/// [`crate::BinaryBenchmarkConfig::tool`].
+///
+/// # Example
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// use iai_callgrind::{LibraryBenchmarkConfig, main, Helgrind};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///         .tool(Helgrind::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
+#[derive(Debug, Clone, IntoInner, AsRef)]
+pub struct Helgrind(__internal::InternalTool);
+
+/// The configuration for Massif
+///
+/// Can be specified in [`crate::LibraryBenchmarkConfig::tool`] or
+/// [`crate::BinaryBenchmarkConfig::tool`].
+///
+/// # Example
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// use iai_callgrind::{LibraryBenchmarkConfig, main, Massif};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///         .tool(Massif::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
+#[derive(Debug, Clone, IntoInner, AsRef)]
+pub struct Massif(__internal::InternalTool);
+
+/// The configuration for Memcheck
+///
+/// Can be specified in [`crate::LibraryBenchmarkConfig::tool`] or
+/// [`crate::BinaryBenchmarkConfig::tool`].
+///
+/// # Example
+///
+/// ```rust
+/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+/// # #[library_benchmark]
+/// # fn some_func() {}
+/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+/// use iai_callgrind::{LibraryBenchmarkConfig, main, Memcheck};
+///
+/// # fn main() {
+/// main!(
+///     config = LibraryBenchmarkConfig::default()
+///         .tool(Memcheck::default());
+///     library_benchmark_groups = some_group
+/// );
+/// # }
+/// ```
+#[derive(Debug, Clone, IntoInner, AsRef)]
+pub struct Memcheck(__internal::InternalTool);
 
 /// Configure the default output format of the terminal output of Iai-Callgrind
 ///
@@ -74,251 +280,485 @@ pub struct FlamegraphConfig(__internal::InternalFlamegraphConfig);
 #[derive(Debug, Clone, Default, IntoInner, AsRef)]
 pub struct OutputFormat(__internal::InternalOutputFormat);
 
-impl OutputFormat {
-    /// Adjust, enable or disable the truncation of the description in the iai-callgrind output
+impl Bbv {
+    /// Create a new `BBV` configuration with initial command-line arguments
     ///
-    /// The default is to truncate the description to the size of 50 ascii characters. A `None`
-    /// value disables the truncation entirely and a `Some` value will truncate the description to
-    /// the given amount of characters excluding the ellipsis.
-    ///
-    /// To clearify which part of the output is meant by `DESCRIPTION`:
-    ///
-    /// ```text
-    /// benchmark_file::group_name::function_name id:DESCRIPTION
-    ///   Instructions:              352135|352135          (No change)
-    ///   L1 Hits:                   470117|470117          (No change)
-    ///   L2 Hits:                      748|748             (No change)
-    ///   RAM Hits:                    4112|4112            (No change)
-    ///   Total read+write:          474977|474977          (No change)
-    ///   Estimated Cycles:          617777|617777          (No change)
-    /// ```
+    /// See also [`Callgrind::args`] and [`Bbv::args`]
     ///
     /// # Examples
     ///
-    /// For example, specifying this option with a `None` value in the `main!` macro disables the
-    /// truncation of the description for all benchmarks.
+    /// ```rust
+    /// use iai_callgrind::Bbv;
+    ///
+    /// let config = Bbv::with_args(["interval-size=10000"]);
+    /// ```
+    pub fn with_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(__internal::InternalTool::with_args(ValgrindTool::BBV, args))
+    }
+
+    /// Add command-line arguments to the `BBV` configuration
+    ///
+    /// Valid arguments
+    /// are <https://valgrind.org/docs/manual/bbv-manual.html#bbv-manual.usage> and the core
+    /// valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options>.
+    ///
+    /// See also [`Callgrind::args`]
+    ///
+    /// # Examples
     ///
     /// ```rust
-    /// use iai_callgrind::{main, LibraryBenchmarkConfig, OutputFormat};
+    /// use iai_callgrind::Bbv;
+    ///
+    /// let config = Bbv::default().args(["interval-size=10000"]);
+    /// ```
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_args.extend_ignore_flag(args);
+        self
+    }
+
+    /// Enable this tool. This is the default.
+    ///
+    /// See also [`Callgrind::enable`]
+    ///
+    /// ```rust
+    /// use iai_callgrind::Bbv;
+    ///
+    /// let config = Bbv::default().enable(false);
+    /// ```
+    pub fn enable(&mut self, value: bool) -> &mut Self {
+        self.0.enable = Some(value);
+        self
+    }
+}
+
+impl Default for Bbv {
+    fn default() -> Self {
+        Self(__internal::InternalTool::new(ValgrindTool::BBV))
+    }
+}
+
+impl Cachegrind {
+    /// Create a new `Cachegrind` configuration with initial command-line arguments
+    ///
+    /// See also [`Callgrind::args`] and [`Cachegrind::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Cachegrind;
+    ///
+    /// let config = Cachegrind::with_args(["intr-at-start=no"]);
+    /// ```
+    pub fn with_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(__internal::InternalTool::with_args(
+            ValgrindTool::Cachegrind,
+            args,
+        ))
+    }
+
+    /// Add command-line arguments to the `Cachegrind` configuration
+    ///
+    /// Valid arguments
+    /// are <https://valgrind.org/docs/manual/cg-manual.html#cg-manual.cgopts> and the core
+    /// valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options>.
+    ///
+    /// See also [`Callgrind::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Cachegrind;
+    ///
+    /// let config = Cachegrind::default().args(["intr-at-start=no"]);
+    /// ```
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_args.extend_ignore_flag(args);
+        self
+    }
+
+    /// Enable this tool. This is the default.
+    ///
+    /// See also [`Callgrind::enable`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Cachegrind;
+    ///
+    /// let config = Cachegrind::default().enable(false);
+    /// ```
+    pub fn enable(&mut self, value: bool) -> &mut Self {
+        self.0.enable = Some(value);
+        self
+    }
+
+    /// Customize the format of the cachegrind output
+    ///
+    /// See also [`Callgrind::format`] for more details and [`CachegrindMetric`] for valid metrics.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::{Cachegrind, CachegrindMetric};
+    ///
+    /// let config =
+    ///     Cachegrind::default().format([CachegrindMetric::Ir, CachegrindMetric::EstimatedCycles]);
+    /// ```
+    pub fn format<I, T>(&mut self, cachegrind_metrics: T) -> &mut Self
+    where
+        I: Into<CachegrindMetric>,
+        T: IntoIterator<Item = I>,
+    {
+        let format = self
+            .0
+            .output_format
+            .get_or_insert_with(|| __internal::InternalToolOutputFormat::Cachegrind(Vec::new()));
+
+        if let __internal::InternalToolOutputFormat::Cachegrind(items) = format {
+            items.extend(cachegrind_metrics.into_iter().map(Into::into));
+        }
+
+        self
+    }
+
+    /// Configure the limits percentages over/below which a performance regression can be assumed
+    ///
+    /// See also [`Callgrind::limits`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::{Cachegrind, CachegrindMetric};
+    ///
+    /// let config = Cachegrind::default().limits([(CachegrindMetric::Ir, 5f64)]);
+    /// ```
+    pub fn limits<T>(&mut self, limits: T) -> &mut Self
+    where
+        T: IntoIterator<Item = (CachegrindMetric, f64)>,
+    {
+        if let Some(__internal::InternalToolRegressionConfig::Cachegrind(config)) =
+            &mut self.0.regression_config
+        {
+            config.limits.extend(limits);
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Cachegrind(
+                __internal::InternalCachegrindRegressionConfig {
+                    limits: limits.into_iter().collect(),
+                    fail_fast: None,
+                },
+            ));
+        }
+        self
+    }
+
+    /// If set to true, then the benchmarks fail on the first encountered regression
+    ///
+    /// The default is `false` and the whole benchmark run fails with a regression error after all
+    /// benchmarks have been run.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::Cachegrind;
+    ///
+    /// let config = Cachegrind::default().fail_fast(true);
+    /// ```
+    pub fn fail_fast(&mut self, value: bool) -> &mut Self {
+        if let Some(__internal::InternalToolRegressionConfig::Cachegrind(config)) =
+            &mut self.0.regression_config
+        {
+            config.fail_fast = Some(value);
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Cachegrind(
+                __internal::InternalCachegrindRegressionConfig {
+                    limits: vec![],
+                    fail_fast: Some(value),
+                },
+            ));
+        }
+        self
+    }
+}
+
+impl Default for Cachegrind {
+    fn default() -> Self {
+        Self(__internal::InternalTool::new(ValgrindTool::Cachegrind))
+    }
+}
+
+impl Callgrind {
+    /// Create a new `Callgrind` configuration with initial command-line arguments
+    ///
+    /// See also [`Callgrind::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Callgrind;
+    ///
+    /// let config = Callgrind::with_args(["collect-bus=yes"]);
+    /// ```
+    pub fn with_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(__internal::InternalTool::with_args(
+            ValgrindTool::Callgrind,
+            args,
+        ))
+    }
+
+    /// Add command-line arguments to the `Callgrind` configuration
+    ///
+    /// The command-line arguments are passed directly to the callgrind invocation. Valid arguments
+    /// are <https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options> and the core
+    /// valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options>. Note that not all
+    /// command-line arguments are supported especially the ones which change output paths.
+    /// Unsupported arguments will be ignored printing a warning.
+    ///
+    /// The flags can be omitted ("collect-bus" instead of "--collect-bus").
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Callgrind;
+    ///
+    /// let config = Callgrind::default().args(["collect-bus=yes"]);
+    /// ```
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_args.extend_ignore_flag(args);
+        self
+    }
+
+    /// Enable this tool. This is the default.
+    ///
+    /// This is mostly useful to disable a tool which has been enabled in a
+    /// [`crate::LibraryBenchmarkConfig`] (or [`crate::BinaryBenchmarkConfig`]) at a higher-level.
+    /// However, the default tool (usually callgrind) cannot be disabled.
+    ///
+    /// ```rust
+    /// use iai_callgrind::Callgrind;
+    ///
+    /// let config = Callgrind::default().enable(false);
+    /// ```
+    pub fn enable(&mut self, value: bool) -> &mut Self {
+        self.0.enable = Some(value);
+        self
+    }
+
+    /// Set or unset the entry point for a benchmark
+    ///
+    /// Iai-Callgrind sets the [`--toggle-collect`] argument of callgrind to the benchmark function
+    /// which we call [`EntryPoint::Default`]. Specifying a `--toggle-collect` argument, sets
+    /// automatically `--collect-at-start=no`. This ensures that only the metrics from the benchmark
+    /// itself are collected and not the `setup` or `teardown` or anything before/after the
+    /// benchmark function.
+    ///
+    /// However, there are cases when the default toggle is not enough [`EntryPoint::Custom`] or in
+    /// the way [`EntryPoint::None`].
+    ///
+    /// Setting [`EntryPoint::Custom`] is convenience for disabling the entry point with
+    /// [`EntryPoint::None`] and setting `--toggle-collect=CUSTOM_ENTRY_POINT` in
+    /// [`Callgrind::args`]. [`EntryPoint::Custom`] can be useful if you
+    /// want to benchmark a private function and only need the function in the benchmark function as
+    /// access point. [`EntryPoint::Custom`] accepts glob patterns the same way as
+    /// [`--toggle-collect`] does.
+    ///
+    /// # Examples
+    ///
+    /// If you're using callgrind client requests either in the benchmark function itself or in your
+    /// library, then using [`EntryPoint::None`] is presumably be required. Consider the following
+    /// example (`DEFAULT_ENTRY_POINT` marks the default entry point):
+    #[cfg_attr(not(feature = "client_requests_defs"), doc = "```rust,ignore")]
+    #[cfg_attr(feature = "client_requests_defs", doc = "```rust")]
+    /// use iai_callgrind::{
+    ///     main, LibraryBenchmarkConfig,library_benchmark, library_benchmark_group
+    /// };
+    /// use std::hint::black_box;
+    ///
+    /// fn to_be_benchmarked() -> u64 {
+    ///     println!("Some info output");
+    ///     iai_callgrind::client_requests::callgrind::start_instrumentation();
+    ///     let result = {
+    ///         // some heavy calculations
+    /// #       10
+    ///     };
+    ///     iai_callgrind::client_requests::callgrind::stop_instrumentation();
+    ///
+    ///     result
+    /// }
+    ///
+    /// #[library_benchmark]
+    /// fn some_bench() -> u64 { // <-- DEFAULT ENTRY POINT
+    ///     black_box(to_be_benchmarked())
+    /// }
+    ///
+    /// library_benchmark_group!(name = some_group; benchmarks = some_bench);
+    /// # fn main() {
+    /// main!(library_benchmark_groups = some_group);
+    /// # }
+    /// ```
+    /// 
+    /// In the example above [`EntryPoint::Default`] is active, so the counting of events starts
+    /// when the `some_bench` function is entered. In `to_be_benchmarked`, the client request
+    /// `start_instrumentation` does effectively nothing and `stop_instrumentation` will stop the
+    /// event counting as requested. This is most likely not what you intended. The event counting
+    /// should start with `start_instrumentation`. To achieve this, you can set [`EntryPoint::None`]
+    /// which removes the default toggle, but also `--collect-at-start=no`. So, you need to specify
+    /// `--collect-at-start=no` in [`LibraryBenchmarkConfig::callgrind_args`]. The example would
+    /// then look like this:
+    /// ```rust
+    /// use std::hint::black_box;
+    ///
+    /// use iai_callgrind::{library_benchmark, EntryPoint, LibraryBenchmarkConfig, Callgrind};
+    /// # use iai_callgrind::{library_benchmark_group, main};
+    /// # fn to_be_benchmarked() -> u64 { 10 }
+    ///
+    /// // ...
+    ///
+    /// #[library_benchmark(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .tool(Callgrind::with_args(["--collect-at-start=no"])
+    ///             .entry_point(EntryPoint::None)
+    ///         )
+    /// )]
+    /// fn some_bench() -> u64 {
+    ///     black_box(to_be_benchmarked())
+    /// }
+    ///
+    /// // ...
+    ///
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_bench);
+    /// # fn main() {
+    /// # main!(library_benchmark_groups = some_group);
+    /// # }
+    /// ```
+    /// [`--toggle-collect`]: https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options
+    pub fn entry_point(&mut self, entry_point: EntryPoint) -> &mut Self {
+        self.0.entry_point = Some(entry_point);
+        self
+    }
+
+    /// Configure the limits percentages over/below which a performance regression can be assumed
+    ///
+    /// A performance regression check consists of an [`EventKind`] and a percentage over which a
+    /// regression is assumed. If the percentage is negative, then a regression is assumed to be
+    /// below this limit.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::{Callgrind, EventKind};
+    ///
+    /// let config = Callgrind::default().limits([(EventKind::Ir, 5f64)]);
+    /// ```
+    pub fn limits<T>(&mut self, limits: T) -> &mut Self
+    where
+        T: IntoIterator<Item = (EventKind, f64)>,
+    {
+        if let Some(__internal::InternalToolRegressionConfig::Callgrind(config)) =
+            &mut self.0.regression_config
+        {
+            config.limits.extend(limits);
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Callgrind(
+                __internal::InternalCallgrindRegressionConfig {
+                    limits: limits.into_iter().collect(),
+                    fail_fast: None,
+                },
+            ));
+        }
+        self
+    }
+
+    /// If set to true, then the benchmarks fail on the first encountered regression
+    ///
+    /// The default is `false` and the whole benchmark run fails with a regression error after all
+    /// benchmarks have been run.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::Callgrind;
+    ///
+    /// let config = Callgrind::default().fail_fast(true);
+    /// ```
+    pub fn fail_fast(&mut self, value: bool) -> &mut Self {
+        if let Some(__internal::InternalToolRegressionConfig::Callgrind(config)) =
+            &mut self.0.regression_config
+        {
+            config.fail_fast = Some(value);
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Callgrind(
+                __internal::InternalCallgrindRegressionConfig {
+                    limits: vec![],
+                    fail_fast: Some(value),
+                },
+            ));
+        }
+        self
+    }
+
+    /// Option to produce flamegraphs from callgrind output with a [`crate::FlamegraphConfig`]
+    ///
+    /// The flamegraphs are usable but still in an experimental stage. Callgrind lacks the tool like
+    /// `cg_diff` for cachegrind to compare two different profiles. Flamegraphs on the other hand
+    /// can bridge the gap and be [`FlamegraphKind::Differential`] to compare two benchmark runs.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
     /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
     /// # #[library_benchmark]
     /// # fn some_func() {}
-    /// # library_benchmark_group!(
-    /// #    name = some_group;
-    /// #    benchmarks = some_func
-    /// # );
+    /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
+    /// use iai_callgrind::{
+    ///     LibraryBenchmarkConfig, main, FlamegraphConfig, FlamegraphKind, Callgrind
+    /// };
+    ///
     /// # fn main() {
     /// main!(
     ///     config = LibraryBenchmarkConfig::default()
-    ///         .output_format(OutputFormat::default()
-    ///             .truncate_description(None)
+    ///         .tool(Callgrind::default()
+    ///             .flamegraph(FlamegraphConfig::default()
+    ///                 .kind(FlamegraphKind::Differential)
+    ///             )
     ///         );
     ///     library_benchmark_groups = some_group
     /// );
     /// # }
     /// ```
-    pub fn truncate_description(&mut self, value: Option<usize>) -> &mut Self {
-        self.0.truncate_description = Some(value);
-        self
-    }
-
-    /// Show intermediate metrics from parts, subprocesses, threads, ... (Default: false)
-    ///
-    /// In callgrind, threads are treated as separate units (similar to subprocesses) and the
-    /// metrics for them are dumped into an own file. Other valgrind tools usually separate the
-    /// output files only by subprocesses. To also show the metrics of any intermediate fragments
-    /// and not just the total over all of them, set the value of this method to `true`.
-    ///
-    /// Temporarily setting `show_intermediate` to `true` can help to find misconfigurations in
-    /// multi-thread/multi-process benchmarks.
-    ///
-    /// # Examples
-    ///
-    /// As opposed to valgrind/callgrind, `--trace-children=yes`, `--separate-threads=yes` and
-    /// `--fair-sched=try` are the defaults in Iai-Callgrind, so in the following example it's not
-    /// necessary to specify `--separate-threads` to track the metrics of the spawned thread.
-    /// However, it is necessary to specify an additional toggle or else the metrics of the thread
-    /// are all zero. We also set the [`super::EntryPoint`] to `None` to disable the default entry
-    /// point (toggle) which is the benchmark function. So, with this setup we collect only the
-    /// metrics of the method `my_lib::heavy_calculation` in the spawned thread and nothing else.
-    ///
-    /// ```rust
-    /// use iai_callgrind::{
-    ///     main, LibraryBenchmarkConfig, OutputFormat, EntryPoint, library_benchmark,
-    ///     library_benchmark_group
-    /// };
-    /// # mod my_lib { pub fn heavy_calculation() -> u64 { 42 }}
-    ///
-    /// #[library_benchmark(
-    ///     config = LibraryBenchmarkConfig::default()
-    ///         .entry_point(EntryPoint::None)
-    ///         .callgrind_args(["--toggle-collect=my_lib::heavy_calculation"])
-    ///         .output_format(OutputFormat::default().show_intermediate(true))
-    /// )]
-    /// fn bench_thread() -> u64 {
-    ///     let handle = std::thread::spawn(|| my_lib::heavy_calculation());
-    ///     handle.join().unwrap()
-    /// }
-    ///
-    /// library_benchmark_group!(name = some_group; benchmarks = bench_thread);
-    /// # fn main() {
-    /// main!(library_benchmark_groups = some_group);
-    /// # }
-    /// ```
-    ///
-    /// Running the above benchmark the first time will print something like the below (The exact
-    /// metric counts are made up for demonstration purposes):
-    ///
-    /// ```text
-    /// my_benchmark::some_group::bench_thread
-    ///   ## pid: 633247 part: 1 thread: 1   |N/A
-    ///   Command:            target/release/deps/my_benchmark-08fe8356975cd1af
-    ///   Instructions:                     0|N/A             (*********)
-    ///   L1 Hits:                          0|N/A             (*********)
-    ///   L2 Hits:                          0|N/A             (*********)
-    ///   RAM Hits:                         0|N/A             (*********)
-    ///   Total read+write:                 0|N/A             (*********)
-    ///   Estimated Cycles:                 0|N/A             (*********)
-    ///   ## pid: 633247 part: 1 thread: 2   |N/A
-    ///   Command:            target/release/deps/my_benchmark-08fe8356975cd1af
-    ///   Instructions:                  3905|N/A             (*********)
-    ///   L1 Hits:                       4992|N/A             (*********)
-    ///   L2 Hits:                          0|N/A             (*********)
-    ///   RAM Hits:                       464|N/A             (*********)
-    ///   Total read+write:              5456|N/A             (*********)
-    ///   Estimated Cycles:             21232|N/A             (*********)
-    ///   ## Total
-    ///   Instructions:                  3905|N/A             (*********)
-    ///   L1 Hits:                       4992|N/A             (*********)
-    ///   L2 Hits:                          0|N/A             (*********)
-    ///   RAM Hits:                       464|N/A             (*********)
-    ///   Total read+write:              5456|N/A             (*********)
-    ///   Estimated Cycles:             21232|N/A             (*********)
-    /// ```
-    ///
-    /// With `show_intermediate` set to `false` (the default), only the total is shown:
-    ///
-    /// ```text
-    /// my_benchmark::some_group::bench_thread
-    ///   Instructions:                  3905|N/A             (*********)
-    ///   L1 Hits:                       4992|N/A             (*********)
-    ///   L2 Hits:                          0|N/A             (*********)
-    ///   RAM Hits:                       464|N/A             (*********)
-    ///   Total read+write:              5456|N/A             (*********)
-    ///   Estimated Cycles:             21232|N/A             (*********)
-    /// ```
-    pub fn show_intermediate(&mut self, value: bool) -> &mut Self {
-        self.0.show_intermediate = Some(value);
-        self
-    }
-
-    /// Show an ascii grid in the benchmark terminal output
-    ///
-    /// This option adds guiding lines which can help reading the benchmark output when running
-    /// multiple tools with multiple threads/subprocesses.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use iai_callgrind::OutputFormat;
-    ///
-    /// let output_format = OutputFormat::default().show_grid(true);
-    /// ```
-    ///
-    /// Below is the output of a Iai-Callgrind run with DHAT as additional tool benchmarking a
-    /// function that executes a subprocess which itself starts multiple threads. For the benchmark
-    /// run below [`OutputFormat::show_intermediate`] was also active to show the threads and
-    /// subprocesses.
-    ///
-    /// ```text
-    /// test_lib_bench_threads::bench_group::bench_thread_in_subprocess three:3
-    /// |======== CALLGRIND ===================================================================
-    /// |-## pid: 3186352 part: 1 thread: 1       |pid: 2721318 part: 1 thread: 1
-    /// | Command:            target/release/deps/test_lib_bench_threads-b0b85adec9a45de1
-    /// | Instructions:                       4697|4697                 (No change)
-    /// | L1 Hits:                            6420|6420                 (No change)
-    /// | L2 Hits:                              17|17                   (No change)
-    /// | RAM Hits:                            202|202                  (No change)
-    /// | Total read+write:                   6639|6639                 (No change)
-    /// | Estimated Cycles:                  13575|13575                (No change)
-    /// |-## pid: 3186468 part: 1 thread: 1       |pid: 2721319 part: 1 thread: 1
-    /// | Command:            target/release/thread 3
-    /// | Instructions:                      35452|35452                (No change)
-    /// | L1 Hits:                           77367|77367                (No change)
-    /// | L2 Hits:                             610|610                  (No change)
-    /// | RAM Hits:                            784|784                  (No change)
-    /// | Total read+write:                  78761|78761                (No change)
-    /// | Estimated Cycles:                 107857|107857               (No change)
-    /// |-## pid: 3186468 part: 1 thread: 2       |pid: 2721319 part: 1 thread: 2
-    /// | Command:            target/release/thread 3
-    /// | Instructions:                    2460507|2460507              (No change)
-    /// | L1 Hits:                         2534939|2534939              (No change)
-    /// | L2 Hits:                              17|17                   (No change)
-    /// | RAM Hits:                            186|186                  (No change)
-    /// | Total read+write:                2535142|2535142              (No change)
-    /// | Estimated Cycles:                2541534|2541534              (No change)
-    /// |-## pid: 3186468 part: 1 thread: 3       |pid: 2721319 part: 1 thread: 3
-    /// | Command:            target/release/thread 3
-    /// | Instructions:                    3650414|3650414              (No change)
-    /// | L1 Hits:                         3724275|3724275              (No change)
-    /// | L2 Hits:                              21|21                   (No change)
-    /// | RAM Hits:                            130|130                  (No change)
-    /// | Total read+write:                3724426|3724426              (No change)
-    /// | Estimated Cycles:                3728930|3728930              (No change)
-    /// |-## pid: 3186468 part: 1 thread: 4       |pid: 2721319 part: 1 thread: 4
-    /// | Command:            target/release/thread 3
-    /// | Instructions:                    4349846|4349846              (No change)
-    /// | L1 Hits:                         4423438|4423438              (No change)
-    /// | L2 Hits:                              24|24                   (No change)
-    /// | RAM Hits:                            125|125                  (No change)
-    /// | Total read+write:                4423587|4423587              (No change)
-    /// | Estimated Cycles:                4427933|4427933              (No change)
-    /// |-## Total
-    /// | Instructions:                   10500916|10500916             (No change)
-    /// | L1 Hits:                        10766439|10766439             (No change)
-    /// | L2 Hits:                             689|689                  (No change)
-    /// | RAM Hits:                           1427|1427                 (No change)
-    /// | Total read+write:               10768555|10768555             (No change)
-    /// | Estimated Cycles:               10819829|10819829             (No change)
-    /// |======== DHAT ========================================================================
-    /// |-## pid: 3186472 ppid: 3185288           |pid: 2721323 ppid: 2720196
-    /// | Command:            target/release/deps/test_lib_bench_threads-b0b85adec9a45de1
-    /// | Total bytes:                        2774|2774                 (No change)
-    /// | Total blocks:                         24|24                   (No change)
-    /// | At t-gmax bytes:                    1736|1736                 (No change)
-    /// | At t-gmax blocks:                      3|3                    (No change)
-    /// | At t-end bytes:                        0|0                    (No change)
-    /// | At t-end blocks:                       0|0                    (No change)
-    /// | Reads bytes:                       21054|21054                (No change)
-    /// | Writes bytes:                      13165|13165                (No change)
-    /// |-## pid: 3186473 ppid: 3186472           |pid: 2721324 ppid: 2721323
-    /// | Command:            target/release/thread 3
-    /// | Total bytes:                      156158|156158               (No change)
-    /// | Total blocks:                         73|73                   (No change)
-    /// | At t-gmax bytes:                   52225|52225                (No change)
-    /// | At t-gmax blocks:                     19|19                   (No change)
-    /// | At t-end bytes:                        0|0                    (No change)
-    /// | At t-end blocks:                       0|0                    (No change)
-    /// | Reads bytes:                      118403|118403               (No change)
-    /// | Writes bytes:                     135926|135926               (No change)
-    /// |-## Total
-    /// | Total bytes:                      158932|158932               (No change)
-    /// | Total blocks:                         97|97                   (No change)
-    /// | At t-gmax bytes:                   53961|53961                (No change)
-    /// | At t-gmax blocks:                     22|22                   (No change)
-    /// | At t-end bytes:                        0|0                    (No change)
-    /// | At t-end blocks:                       0|0                    (No change)
-    /// | Reads bytes:                      139457|139457               (No change)
-    /// | Writes bytes:                     149091|149091               (No change)
-    /// |-Comparison with bench_find_primes_multi_thread three:3
-    /// | Instructions:                   10494117|10500916             (-0.06475%) [-1.00065x]
-    /// | L1 Hits:                        10757259|10766439             (-0.08526%) [-1.00085x]
-    /// | L2 Hits:                             601|689                  (-12.7721%) [-1.14642x]
-    /// | RAM Hits:                           1189|1427                 (-16.6783%) [-1.20017x]
-    /// | Total read+write:               10759049|10768555             (-0.08828%) [-1.00088x]
-    /// | Estimated Cycles:               10801879|10819829             (-0.16590%) [-1.00166x]
-    pub fn show_grid(&mut self, value: bool) -> &mut Self {
-        self.0.show_grid = Some(value);
+    pub fn flamegraph<T>(&mut self, flamegraph: T) -> &mut Self
+    where
+        T: Into<__internal::InternalFlamegraphConfig>,
+    {
+        self.0.flamegraph_config = Some(__internal::InternalToolFlamegraphConfig::Callgrind(
+            flamegraph.into(),
+        ));
         self
     }
 
@@ -338,8 +778,8 @@ impl OutputFormat {
     /// [`EventKind`]s, to avoid having to specify all [`EventKind`]s one-by-one (although still
     /// possible with [`CallgrindMetrics::SingleEvent`]).
     ///
-    /// Note that all command-line arguments of callgrind and which metric they collect are
-    /// described in full detail in the [callgrind
+    /// All command-line arguments of callgrind and which metric they collect are described in full
+    /// detail in the [callgrind
     /// documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options).
     ///
     /// # Examples
@@ -350,16 +790,15 @@ impl OutputFormat {
     ///
     /// ```rust
     /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
-    /// use iai_callgrind::{main, LibraryBenchmarkConfig, OutputFormat, CallgrindMetrics};
+    /// use iai_callgrind::{main, LibraryBenchmarkConfig, OutputFormat, CallgrindMetrics, Callgrind};
     /// # #[library_benchmark]
     /// # fn some_func() {}
     /// # library_benchmark_group!(name = some_group; benchmarks = some_func);
     /// # fn main() {
     /// main!(
     ///     config = LibraryBenchmarkConfig::default()
-    ///                 .output_format(OutputFormat::default()
-    ///                     .callgrind([CallgrindMetrics::All])
-    ///                 );
+    ///                  .tool(Callgrind::default()
+    ///                      .format([CallgrindMetrics::All]));
     ///     library_benchmark_groups = some_group
     /// );
     /// # }
@@ -386,74 +825,221 @@ impl OutputFormat {
     ///   Total read+write:                    1841|1841                 (No change)
     ///   Estimated Cycles:                    3785|3785                 (No change)
     /// ```
-    pub fn callgrind<I, T>(&mut self, callgrind_metrics: T) -> &mut Self
+    pub fn format<I, T>(&mut self, callgrind_metrics: T) -> &mut Self
     where
         I: Into<CallgrindMetrics>,
         T: IntoIterator<Item = I>,
     {
-        self.0
-            .callgrind_metrics
-            .get_or_insert_with(Vec::new)
-            .extend(callgrind_metrics.into_iter().map(Into::into));
+        let format = self
+            .0
+            .output_format
+            .get_or_insert_with(|| __internal::InternalToolOutputFormat::Callgrind(Vec::new()));
+
+        if let __internal::InternalToolOutputFormat::Callgrind(items) = format {
+            items.extend(callgrind_metrics.into_iter().map(Into::into));
+        }
+
         self
     }
 }
 
-/// Configure performance regression checks and behavior
-///
-/// A performance regression check consists of an [`EventKind`] and a percentage over which a
-/// regression is assumed. If the percentage is negative, then a regression is assumed to be below
-/// this limit. The default [`EventKind`] is [`EventKind::Ir`] with a value of
-/// `+10f64`
-///
-/// If `fail_fast` is set to true, then the whole benchmark run fails on the first encountered
-/// regression. Else, the default behavior is, that the benchmark run fails with a regression error
-/// after all benchmarks have been run.
-///
-/// # Examples
-///
-/// ```rust
-/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
-/// use iai_callgrind::{main, LibraryBenchmarkConfig, RegressionConfig};
-/// # #[library_benchmark]
-/// # fn some_func() {}
-/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
-/// # fn main() {
-/// main!(
-///     config = LibraryBenchmarkConfig::default()
-///                 .regression(RegressionConfig::default());
-///     library_benchmark_groups = some_group
-/// );
-/// # }
-/// ```
-#[derive(Debug, Default, Clone, IntoInner, AsRef)]
-pub struct RegressionConfig(__internal::InternalRegressionConfig);
+impl Default for Callgrind {
+    fn default() -> Self {
+        Self(__internal::InternalTool::new(ValgrindTool::Callgrind))
+    }
+}
 
-/// Configure to run other valgrind tools like `DHAT` or `Massif` in addition to callgrind
-///
-/// For a list of possible tools see [`ValgrindTool`].
-///
-/// See also the [Valgrind User Manual](https://valgrind.org/docs/manual/manual.html) for details
-/// about possible tools and their command line arguments.
-///
-/// # Examples
-///
-/// ```rust
-/// # use iai_callgrind::{library_benchmark, library_benchmark_group};
-/// use iai_callgrind::{main, LibraryBenchmarkConfig, Tool, ValgrindTool};
-/// # #[library_benchmark]
-/// # fn some_func() {}
-/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
-/// # fn main() {
-/// main!(
-///     config = LibraryBenchmarkConfig::default()
-///                 .tool(Tool::new(ValgrindTool::DHAT));
-///     library_benchmark_groups = some_group
-/// );
-/// # }
-/// ```
-#[derive(Debug, Clone, PartialEq, Eq, IntoInner, AsRef)]
-pub struct Tool(__internal::InternalTool);
+impl Dhat {
+    /// Create a new `Callgrind` configuration with initial command-line arguments
+    ///
+    /// See also [`Callgrind::args`] and [`Dhat::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Dhat;
+    ///
+    /// let config = Dhat::with_args(["mode=ad-hoc"]);
+    /// ```
+    pub fn with_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(__internal::InternalTool::with_args(
+            ValgrindTool::DHAT,
+            args,
+        ))
+    }
+
+    /// Add command-line arguments to the `Dhat` configuration
+    ///
+    /// Valid arguments
+    /// are <https://valgrind.org/docs/manual/dh-manual.html#dh-manual.options> and the core
+    /// valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options>.
+    ///
+    /// See also [`Callgrind::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Dhat;
+    ///
+    /// let config = Dhat::default().args(["interval-size=10000"]);
+    /// ```
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_args.extend_ignore_flag(args);
+        self
+    }
+
+    /// Enable this tool. This is the default.
+    ///
+    /// See also [`Callgrind::enable`]
+    ///
+    /// ```rust
+    /// use iai_callgrind::Dhat;
+    ///
+    /// let config = Dhat::default().enable(false);
+    /// ```
+    pub fn enable(&mut self, value: bool) -> &mut Self {
+        self.0.enable = Some(value);
+        self
+    }
+
+    /// Customize the format of the dhat output
+    ///
+    /// See also [`Callgrind::format`] for more details and [`DhatMetric`] for valid metrics.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::{Dhat, DhatMetric};
+    ///
+    /// let config = Dhat::default().format([DhatMetric::TotalBytes, DhatMetric::AtTGmaxBytes]);
+    /// ```
+    pub fn format<I, T>(&mut self, kinds: T) -> &mut Self
+    where
+        I: Into<DhatMetric>,
+        T: IntoIterator<Item = I>,
+    {
+        let format = self
+            .0
+            .output_format
+            .get_or_insert_with(|| __internal::InternalToolOutputFormat::DHAT(Vec::new()));
+
+        if let __internal::InternalToolOutputFormat::DHAT(items) = format {
+            items.extend(kinds.into_iter().map(Into::into));
+        }
+
+        self
+    }
+}
+
+impl Default for Dhat {
+    fn default() -> Self {
+        Self(__internal::InternalTool::new(ValgrindTool::DHAT))
+    }
+}
+
+impl Drd {
+    /// Create a new `Drd` configuration with initial command-line arguments
+    ///
+    /// See also [`Callgrind::args`] and [`Drd::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Drd;
+    ///
+    /// let config = Drd::with_args(["exclusive-threshold=100"]);
+    /// ```
+    pub fn with_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(__internal::InternalTool::with_args(ValgrindTool::DRD, args))
+    }
+
+    /// Add command-line arguments to the `Drd` configuration
+    ///
+    /// Valid arguments are <https://valgrind.org/docs/manual/drd-manual.html#drd-manual.options>
+    /// and the core valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options>.
+    ///
+    /// See also [`Callgrind::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Drd;
+    ///
+    /// let config = Drd::default().args(["exclusive-threshold=100"]);
+    /// ```
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_args.extend_ignore_flag(args);
+        self
+    }
+
+    /// Enable this tool. This is the default.
+    ///
+    /// See also [`Callgrind::enable`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Drd;
+    ///
+    /// let config = Drd::default().enable(false);
+    /// ```
+    pub fn enable(&mut self, value: bool) -> &mut Self {
+        self.0.enable = Some(value);
+        self
+    }
+
+    /// Customize the format of the `DRD` output
+    ///
+    /// See also [`Callgrind::format`] for more details and [`ErrorMetric`] for valid metrics.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::{Drd, ErrorMetric};
+    ///
+    /// let config = Drd::default().format([ErrorMetric::Errors, ErrorMetric::SuppressedErrors]);
+    /// ```
+    pub fn format<I, T>(&mut self, kinds: T) -> &mut Self
+    where
+        I: Into<ErrorMetric>,
+        T: IntoIterator<Item = I>,
+    {
+        let format = self
+            .0
+            .output_format
+            .get_or_insert_with(|| __internal::InternalToolOutputFormat::DRD(Vec::new()));
+
+        if let __internal::InternalToolOutputFormat::DRD(items) = format {
+            items.extend(kinds.into_iter().map(Into::into));
+        }
+
+        self
+    }
+}
+
+impl Default for Drd {
+    fn default() -> Self {
+        Self(__internal::InternalTool::new(ValgrindTool::DRD))
+    }
+}
 
 impl FlamegraphConfig {
     /// Option to change the [`FlamegraphKind`]
@@ -630,118 +1216,44 @@ impl FlamegraphConfig {
     }
 }
 
-/// Enable performance regression checks with a [`RegressionConfig`]
-///
-/// A performance regression check consists of an [`EventKind`] and a percentage over which a
-/// regression is assumed. If the percentage is negative, then a regression is assumed to be below
-/// this limit. The default [`EventKind`] is [`EventKind::Ir`] with a value of
-/// `+10f64`
-///
-/// If `fail_fast` is set to true, then the whole benchmark run fails on the first encountered
-/// regression. Else, the default behavior is, that the benchmark run fails with a regression error
-/// after all benchmarks have been run.
-///
-/// # Examples
-///
-/// ```rust
-/// # use iai_callgrind::{library_benchmark, library_benchmark_group, main};
-/// # #[library_benchmark]
-/// # fn some_func() {}
-/// # library_benchmark_group!(name = some_group; benchmarks = some_func);
-/// use iai_callgrind::{LibraryBenchmarkConfig, RegressionConfig};
-///
-/// # fn main() {
-/// main!(
-///     config = LibraryBenchmarkConfig::default()
-///                 .regression(RegressionConfig::default());
-///     library_benchmark_groups = some_group
-/// );
-/// # }
-/// ```
-impl RegressionConfig {
-    /// Configure the limits percentages over/below which a performance regression can be assumed
+impl Helgrind {
+    /// Create a new `Helgrind` configuration with initial command-line arguments
     ///
-    /// A performance regression check consists of an [`EventKind`] and a percentage over which a
-    /// regression is assumed. If the percentage is negative, then a regression is assumed to be
-    /// below this limit.
-    ///
-    /// If no `limits` or empty `targets` are specified with this function, the default
-    /// [`EventKind`] is [`EventKind::Ir`] with a value of `+10f64`
+    /// See also [`Callgrind::args`] and [`Helgrind::args`]
     ///
     /// # Examples
     ///
-    /// ```
-    /// use iai_callgrind::{EventKind, RegressionConfig};
+    /// ```rust
+    /// use iai_callgrind::Helgrind;
     ///
-    /// let config = RegressionConfig::default().limits([(EventKind::Ir, 5f64)]);
+    /// let config = Helgrind::with_args(["free-is-write=yes"]);
     /// ```
-    pub fn limits<T>(&mut self, targets: T) -> &mut Self
+    pub fn with_args<I, T>(args: T) -> Self
     where
-        T: IntoIterator<Item = (EventKind, f64)>,
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
     {
-        self.0.limits.extend(targets);
-        self
+        Self(__internal::InternalTool::with_args(
+            ValgrindTool::Helgrind,
+            args,
+        ))
     }
 
-    /// If set to true, then the benchmarks fail on the first encountered regression
+    /// Add command-line arguments to the `Helgrind` configuration
     ///
-    /// The default is `false` and the whole benchmark run fails with a regression error after all
-    /// benchmarks have been run.
+    /// Valid arguments
+    /// are <https://valgrind.org/docs/manual/hg-manual.html#hg-manual.options> and the core
+    /// valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options>.
+    ///
+    /// See also [`Callgrind::args`]
     ///
     /// # Examples
     ///
-    /// ```
-    /// use iai_callgrind::RegressionConfig;
+    /// ```rust
+    /// use iai_callgrind::Helgrind;
     ///
-    /// let config = RegressionConfig::default().fail_fast(true);
-    /// ```
-    pub fn fail_fast(&mut self, value: bool) -> &mut Self {
-        self.0.fail_fast = Some(value);
-        self
-    }
-}
-
-impl Tool {
-    /// Create a new `Tool` configuration
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use iai_callgrind::{Tool, ValgrindTool};
-    ///
-    /// let tool = Tool::new(ValgrindTool::DHAT);
-    /// ```
-    pub fn new(tool: ValgrindTool) -> Self {
-        Self(__internal::InternalTool {
-            kind: tool,
-            enable: Option::default(),
-            show_log: Option::default(),
-            raw_args: __internal::InternalRawArgs::default(),
-        })
-    }
-
-    /// If true, enable running this `Tool` (Default: true)
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use iai_callgrind::{Tool, ValgrindTool};
-    ///
-    /// let tool = Tool::new(ValgrindTool::DHAT).enable(true);
-    /// ```
-    pub fn enable(&mut self, value: bool) -> &mut Self {
-        self.0.enable = Some(value);
-        self
-    }
-
-    /// Pass one or more arguments directly to the valgrind `Tool`
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use iai_callgrind::{Tool, ValgrindTool};
-    ///
-    /// let tool = Tool::new(ValgrindTool::DHAT).args(["--num-callers=5", "--mode=heap"]);
+    /// let config = Helgrind::default().args(["free-is-write=yes"]);
     /// ```
     pub fn args<I, T>(&mut self, args: T) -> &mut Self
     where
@@ -751,15 +1263,474 @@ impl Tool {
         self.0.raw_args.extend_ignore_flag(args);
         self
     }
+
+    /// Enable this tool. This is the default.
+    ///
+    /// See also [`Callgrind::enable`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Helgrind;
+    ///
+    /// let config = Helgrind::default().enable(false);
+    /// ```
+    pub fn enable(&mut self, value: bool) -> &mut Self {
+        self.0.enable = Some(value);
+        self
+    }
+
+    /// Customize the format of the `Helgrind` output
+    ///
+    /// See also [`Callgrind::format`] for more details and [`ErrorMetric`] for valid metrics.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::{ErrorMetric, Helgrind};
+    ///
+    /// let config = Helgrind::default().format([ErrorMetric::Errors, ErrorMetric::SuppressedErrors]);
+    /// ```
+    pub fn format<I, T>(&mut self, kinds: T) -> &mut Self
+    where
+        I: Into<ErrorMetric>,
+        T: IntoIterator<Item = I>,
+    {
+        let format = self
+            .0
+            .output_format
+            .get_or_insert_with(|| __internal::InternalToolOutputFormat::Helgrind(Vec::new()));
+
+        if let __internal::InternalToolOutputFormat::Helgrind(items) = format {
+            items.extend(kinds.into_iter().map(Into::into));
+        }
+
+        self
+    }
 }
 
-/// __DEPRECATED__: A function that is opaque to the optimizer
-///
-/// It is used to prevent the compiler from optimizing away computations in a benchmark.
-///
-/// This method is deprecated and is in newer versions of `iai-callgrind` merely a wrapper around
-/// [`std::hint::black_box`]. Please use `std::hint::black_box` directly.
-#[inline]
-pub fn black_box<T>(dummy: T) -> T {
-    std::hint::black_box(dummy)
+impl Default for Helgrind {
+    fn default() -> Self {
+        Self(__internal::InternalTool::new(ValgrindTool::Helgrind))
+    }
+}
+
+impl Massif {
+    /// Create a new `Massif` configuration with initial command-line arguments
+    ///
+    /// See also [`Callgrind::args`] and [`Massif::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Massif;
+    ///
+    /// let config = Massif::with_args(["threshold=2.0"]);
+    /// ```
+    pub fn with_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(__internal::InternalTool::with_args(
+            ValgrindTool::Massif,
+            args,
+        ))
+    }
+
+    /// Add command-line arguments to the `Massif` configuration
+    ///
+    /// Valid arguments
+    /// are <https://valgrind.org/docs/manual/ms-manual.html#ms-manual.options> and the core
+    /// valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options>.
+    ///
+    /// See also [`Callgrind::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Massif;
+    ///
+    /// let config = Massif::default().args(["threshold=2.0"]);
+    /// ```
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_args.extend_ignore_flag(args);
+        self
+    }
+
+    /// Enable this tool. This is the default.
+    ///
+    /// See also [`Callgrind::enable`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Massif;
+    ///
+    /// let config = Massif::default().enable(false);
+    /// ```
+    pub fn enable(&mut self, value: bool) -> &mut Self {
+        self.0.enable = Some(value);
+        self
+    }
+}
+
+impl Default for Massif {
+    fn default() -> Self {
+        Self(__internal::InternalTool::new(ValgrindTool::Massif))
+    }
+}
+
+impl Memcheck {
+    /// Create a new `Memcheck` configuration with initial command-line arguments
+    ///
+    /// See also [`Callgrind::args`] and [`Memcheck::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Memcheck;
+    ///
+    /// let config = Memcheck::with_args(["free-is-write=yes"]);
+    /// ```
+    pub fn with_args<I, T>(args: T) -> Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        Self(__internal::InternalTool::with_args(
+            ValgrindTool::Memcheck,
+            args,
+        ))
+    }
+
+    /// Add command-line arguments to the `Memcheck` configuration
+    ///
+    /// Valid arguments
+    /// are <https://valgrind.org/docs/manual/mc-manual.html#mc-manual.options> and the core
+    /// valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options>.
+    ///
+    /// See also [`Callgrind::args`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Memcheck;
+    ///
+    /// let config = Memcheck::default().args(["show-leak-kinds=all"]);
+    /// ```
+    pub fn args<I, T>(&mut self, args: T) -> &mut Self
+    where
+        I: AsRef<str>,
+        T: IntoIterator<Item = I>,
+    {
+        self.0.raw_args.extend_ignore_flag(args);
+        self
+    }
+
+    /// Enable this tool. This is the default.
+    ///
+    /// See also [`Callgrind::enable`]
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::Memcheck;
+    ///
+    /// let config = Memcheck::default().enable(false);
+    /// ```
+    pub fn enable(&mut self, value: bool) -> &mut Self {
+        self.0.enable = Some(value);
+        self
+    }
+
+    /// Customize the format of the `Memcheck` output
+    ///
+    /// See also [`Callgrind::format`] for more details and [`ErrorMetric`] for valid metrics.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::{ErrorMetric, Memcheck};
+    ///
+    /// let config = Memcheck::default().format([ErrorMetric::Errors, ErrorMetric::SuppressedErrors]);
+    /// ```
+    pub fn format<I, T>(&mut self, kinds: T) -> &mut Self
+    where
+        I: Into<ErrorMetric>,
+        T: IntoIterator<Item = I>,
+    {
+        let format = self
+            .0
+            .output_format
+            .get_or_insert_with(|| __internal::InternalToolOutputFormat::Memcheck(Vec::new()));
+
+        if let __internal::InternalToolOutputFormat::Memcheck(items) = format {
+            items.extend(kinds.into_iter().map(Into::into));
+        }
+
+        self
+    }
+}
+
+impl Default for Memcheck {
+    fn default() -> Self {
+        Self(__internal::InternalTool::new(ValgrindTool::Memcheck))
+    }
+}
+
+impl OutputFormat {
+    /// Adjust, enable or disable the truncation of the description in the iai-callgrind output
+    ///
+    /// The default is to truncate the description to the size of 50 ascii characters. A `None`
+    /// value disables the truncation entirely and a `Some` value will truncate the description to
+    /// the given amount of characters excluding the ellipsis.
+    ///
+    /// To clearify which part of the output is meant by `DESCRIPTION`:
+    ///
+    /// ```text
+    /// benchmark_file::group_name::function_name id:DESCRIPTION
+    ///   Instructions:              352135|352135          (No change)
+    ///   L1 Hits:                   470117|470117          (No change)
+    ///   L2 Hits:                      748|748             (No change)
+    ///   RAM Hits:                    4112|4112            (No change)
+    ///   Total read+write:          474977|474977          (No change)
+    ///   Estimated Cycles:          617777|617777          (No change)
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// For example, specifying this option with a `None` value in the `main!` macro disables the
+    /// truncation of the description for all benchmarks.
+    ///
+    /// ```rust
+    /// use iai_callgrind::{main, LibraryBenchmarkConfig, OutputFormat};
+    /// # use iai_callgrind::{library_benchmark, library_benchmark_group};
+    /// # #[library_benchmark]
+    /// # fn some_func() {}
+    /// # library_benchmark_group!(
+    /// #    name = some_group;
+    /// #    benchmarks = some_func
+    /// # );
+    /// # fn main() {
+    /// main!(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .output_format(OutputFormat::default()
+    ///             .truncate_description(None)
+    ///         );
+    ///     library_benchmark_groups = some_group
+    /// );
+    /// # }
+    /// ```
+    pub fn truncate_description(&mut self, value: Option<usize>) -> &mut Self {
+        self.0.truncate_description = Some(value);
+        self
+    }
+
+    /// Show intermediate metrics from parts, subprocesses, threads, ... (Default: false)
+    ///
+    /// In callgrind, threads are treated as separate units (similar to subprocesses) and the
+    /// metrics for them are dumped into an own file. Other valgrind tools usually separate the
+    /// output files only by subprocesses. To also show the metrics of any intermediate fragments
+    /// and not just the total over all of them, set the value of this method to `true`.
+    ///
+    /// Temporarily setting `show_intermediate` to `true` can help to find misconfigurations in
+    /// multi-thread/multi-process benchmarks.
+    ///
+    /// # Examples
+    ///
+    /// As opposed to valgrind/callgrind, `--trace-children=yes`, `--separate-threads=yes` and
+    /// `--fair-sched=try` are the defaults in Iai-Callgrind, so in the following example it's not
+    /// necessary to specify `--separate-threads` to track the metrics of the spawned thread.
+    /// However, it is necessary to specify an additional toggle or else the metrics of the thread
+    /// are all zero. We also set the [`super::EntryPoint`] to `None` to disable the default entry
+    /// point (toggle) which is the benchmark function. So, with this setup we collect only the
+    /// metrics of the method `my_lib::heavy_calculation` in the spawned thread and nothing else.
+    ///
+    /// ```rust
+    /// use iai_callgrind::{
+    ///     main, LibraryBenchmarkConfig, OutputFormat, EntryPoint, library_benchmark,
+    ///     library_benchmark_group, Callgrind
+    /// };
+    /// # mod my_lib { pub fn heavy_calculation() -> u64 { 42 }}
+    ///
+    /// #[library_benchmark(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .tool(Callgrind::with_args(["--toggle-collect=my_lib::heavy_calculation"])
+    ///             .entry_point(EntryPoint::None)
+    ///         )
+    ///         .output_format(OutputFormat::default().show_intermediate(true))
+    /// )]
+    /// fn bench_thread() -> u64 {
+    ///     let handle = std::thread::spawn(|| my_lib::heavy_calculation());
+    ///     handle.join().unwrap()
+    /// }
+    ///
+    /// library_benchmark_group!(name = some_group; benchmarks = bench_thread);
+    /// # fn main() {
+    /// main!(library_benchmark_groups = some_group);
+    /// # }
+    /// ```
+    ///
+    /// Running the above benchmark the first time will print something like the below (The exact
+    /// metric counts are made up for demonstration purposes):
+    ///
+    /// ```text
+    /// my_benchmark::some_group::bench_thread
+    ///   ## pid: 633247 part: 1 thread: 1   |N/A
+    ///   Command:            target/release/deps/my_benchmark-08fe8356975cd1af
+    ///   Instructions:                     0|N/A             (*********)
+    ///   L1 Hits:                          0|N/A             (*********)
+    ///   L2 Hits:                          0|N/A             (*********)
+    ///   RAM Hits:                         0|N/A             (*********)
+    ///   Total read+write:                 0|N/A             (*********)
+    ///   Estimated Cycles:                 0|N/A             (*********)
+    ///   ## pid: 633247 part: 1 thread: 2   |N/A
+    ///   Command:            target/release/deps/my_benchmark-08fe8356975cd1af
+    ///   Instructions:                  3905|N/A             (*********)
+    ///   L1 Hits:                       4992|N/A             (*********)
+    ///   L2 Hits:                          0|N/A             (*********)
+    ///   RAM Hits:                       464|N/A             (*********)
+    ///   Total read+write:              5456|N/A             (*********)
+    ///   Estimated Cycles:             21232|N/A             (*********)
+    ///   ## Total
+    ///   Instructions:                  3905|N/A             (*********)
+    ///   L1 Hits:                       4992|N/A             (*********)
+    ///   L2 Hits:                          0|N/A             (*********)
+    ///   RAM Hits:                       464|N/A             (*********)
+    ///   Total read+write:              5456|N/A             (*********)
+    ///   Estimated Cycles:             21232|N/A             (*********)
+    /// ```
+    ///
+    /// With `show_intermediate` set to `false` (the default), only the total is shown:
+    ///
+    /// ```text
+    /// my_benchmark::some_group::bench_thread
+    ///   Instructions:                  3905|N/A             (*********)
+    ///   L1 Hits:                       4992|N/A             (*********)
+    ///   L2 Hits:                          0|N/A             (*********)
+    ///   RAM Hits:                       464|N/A             (*********)
+    ///   Total read+write:              5456|N/A             (*********)
+    ///   Estimated Cycles:             21232|N/A             (*********)
+    /// ```
+    pub fn show_intermediate(&mut self, value: bool) -> &mut Self {
+        self.0.show_intermediate = Some(value);
+        self
+    }
+
+    /// Show an ascii grid in the benchmark terminal output
+    ///
+    /// This option adds guiding lines which can help reading the benchmark output when running
+    /// multiple tools with multiple threads/subprocesses.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::OutputFormat;
+    ///
+    /// let output_format = OutputFormat::default().show_grid(true);
+    /// ```
+    ///
+    /// Below is the output of a Iai-Callgrind run with DHAT as additional tool benchmarking a
+    /// function that executes a subprocess which itself starts multiple threads. For the benchmark
+    /// run below [`OutputFormat::show_intermediate`] was also active to show the threads and
+    /// subprocesses.
+    ///
+    /// ```text
+    /// test_lib_bench_threads::bench_group::bench_thread_in_subprocess three:3
+    /// |======== CALLGRIND ===================================================================
+    /// |-## pid: 3186352 part: 1 thread: 1       |pid: 2721318 part: 1 thread: 1
+    /// | Command:            target/release/deps/test_lib_bench_threads-b0b85adec9a45de1
+    /// | Instructions:                       4697|4697                 (No change)
+    /// | L1 Hits:                            6420|6420                 (No change)
+    /// | L2 Hits:                              17|17                   (No change)
+    /// | RAM Hits:                            202|202                  (No change)
+    /// | Total read+write:                   6639|6639                 (No change)
+    /// | Estimated Cycles:                  13575|13575                (No change)
+    /// |-## pid: 3186468 part: 1 thread: 1       |pid: 2721319 part: 1 thread: 1
+    /// | Command:            target/release/thread 3
+    /// | Instructions:                      35452|35452                (No change)
+    /// | L1 Hits:                           77367|77367                (No change)
+    /// | L2 Hits:                             610|610                  (No change)
+    /// | RAM Hits:                            784|784                  (No change)
+    /// | Total read+write:                  78761|78761                (No change)
+    /// | Estimated Cycles:                 107857|107857               (No change)
+    /// |-## pid: 3186468 part: 1 thread: 2       |pid: 2721319 part: 1 thread: 2
+    /// | Command:            target/release/thread 3
+    /// | Instructions:                    2460507|2460507              (No change)
+    /// | L1 Hits:                         2534939|2534939              (No change)
+    /// | L2 Hits:                              17|17                   (No change)
+    /// | RAM Hits:                            186|186                  (No change)
+    /// | Total read+write:                2535142|2535142              (No change)
+    /// | Estimated Cycles:                2541534|2541534              (No change)
+    /// |-## pid: 3186468 part: 1 thread: 3       |pid: 2721319 part: 1 thread: 3
+    /// | Command:            target/release/thread 3
+    /// | Instructions:                    3650414|3650414              (No change)
+    /// | L1 Hits:                         3724275|3724275              (No change)
+    /// | L2 Hits:                              21|21                   (No change)
+    /// | RAM Hits:                            130|130                  (No change)
+    /// | Total read+write:                3724426|3724426              (No change)
+    /// | Estimated Cycles:                3728930|3728930              (No change)
+    /// |-## pid: 3186468 part: 1 thread: 4       |pid: 2721319 part: 1 thread: 4
+    /// | Command:            target/release/thread 3
+    /// | Instructions:                    4349846|4349846              (No change)
+    /// | L1 Hits:                         4423438|4423438              (No change)
+    /// | L2 Hits:                              24|24                   (No change)
+    /// | RAM Hits:                            125|125                  (No change)
+    /// | Total read+write:                4423587|4423587              (No change)
+    /// | Estimated Cycles:                4427933|4427933              (No change)
+    /// |-## Total
+    /// | Instructions:                   10500916|10500916             (No change)
+    /// | L1 Hits:                        10766439|10766439             (No change)
+    /// | L2 Hits:                             689|689                  (No change)
+    /// | RAM Hits:                           1427|1427                 (No change)
+    /// | Total read+write:               10768555|10768555             (No change)
+    /// | Estimated Cycles:               10819829|10819829             (No change)
+    /// |======== DHAT ========================================================================
+    /// |-## pid: 3186472 ppid: 3185288           |pid: 2721323 ppid: 2720196
+    /// | Command:            target/release/deps/test_lib_bench_threads-b0b85adec9a45de1
+    /// | Total bytes:                        2774|2774                 (No change)
+    /// | Total blocks:                         24|24                   (No change)
+    /// | At t-gmax bytes:                    1736|1736                 (No change)
+    /// | At t-gmax blocks:                      3|3                    (No change)
+    /// | At t-end bytes:                        0|0                    (No change)
+    /// | At t-end blocks:                       0|0                    (No change)
+    /// | Reads bytes:                       21054|21054                (No change)
+    /// | Writes bytes:                      13165|13165                (No change)
+    /// |-## pid: 3186473 ppid: 3186472           |pid: 2721324 ppid: 2721323
+    /// | Command:            target/release/thread 3
+    /// | Total bytes:                      156158|156158               (No change)
+    /// | Total blocks:                         73|73                   (No change)
+    /// | At t-gmax bytes:                   52225|52225                (No change)
+    /// | At t-gmax blocks:                     19|19                   (No change)
+    /// | At t-end bytes:                        0|0                    (No change)
+    /// | At t-end blocks:                       0|0                    (No change)
+    /// | Reads bytes:                      118403|118403               (No change)
+    /// | Writes bytes:                     135926|135926               (No change)
+    /// |-## Total
+    /// | Total bytes:                      158932|158932               (No change)
+    /// | Total blocks:                         97|97                   (No change)
+    /// | At t-gmax bytes:                   53961|53961                (No change)
+    /// | At t-gmax blocks:                     22|22                   (No change)
+    /// | At t-end bytes:                        0|0                    (No change)
+    /// | At t-end blocks:                       0|0                    (No change)
+    /// | Reads bytes:                      139457|139457               (No change)
+    /// | Writes bytes:                     149091|149091               (No change)
+    /// |-Comparison with bench_find_primes_multi_thread three:3
+    /// | Instructions:                   10494117|10500916             (-0.06475%) [-1.00065x]
+    /// | L1 Hits:                        10757259|10766439             (-0.08526%) [-1.00085x]
+    /// | L2 Hits:                             601|689                  (-12.7721%) [-1.14642x]
+    /// | RAM Hits:                           1189|1427                 (-16.6783%) [-1.20017x]
+    /// | Total read+write:               10759049|10768555             (-0.08828%) [-1.00088x]
+    /// | Estimated Cycles:               10801879|10819829             (-0.16590%) [-1.00166x]
+    pub fn show_grid(&mut self, value: bool) -> &mut Self {
+        self.0.show_grid = Some(value);
+        self
+    }
 }

@@ -5,14 +5,14 @@ groups:
         flaky: 2
         rust_version: ">1.67.1"
         expected:
-          zero_callgrind_metrics: true
+          zero_metrics: true
           files: expected_files.yml
           stdout: expected_stdout
       - args: ["--nocapture"]
         flaky: 2
         rust_version: "<=1.67.1"
         expected:
-          zero_callgrind_metrics: true
+          zero_metrics: true
           files: expected_files.1.67.1.yml
           stdout: expected_stdout.1.67.1
   # The scheduler on freebsd is causing random results and neither the files
@@ -24,4 +24,4 @@ groups:
       - args: ["--nocapture"]
         flaky: 2
         expected:
-          zero_callgrind_metrics: true
+          zero_metrics: true

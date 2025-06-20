@@ -8,9 +8,8 @@ use std::time::Duration;
 
 use derive_more::AsRef;
 use iai_callgrind_macros::IntoInner;
-use iai_callgrind_runner::api::RawArgs;
 
-use crate::{DelayKind, Stdin, Stdio, __internal};
+use crate::{DelayKind, Stdin, Stdio, ValgrindTool, __internal};
 
 /// [low level api](`crate::binary_benchmark_group`) only: Create a new benchmark id
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -32,10 +31,11 @@ pub struct BenchmarkId(String);
 /// ```rust
 /// # use iai_callgrind::binary_benchmark_group;
 /// # binary_benchmark_group!(name = some_group; benchmarks = |_group: &mut BinaryBenchmarkGroup| {});
-/// use iai_callgrind::{BinaryBenchmarkConfig, main};
+/// use iai_callgrind::{BinaryBenchmarkConfig, main, Callgrind};
 ///
 /// main!(
-///     config = BinaryBenchmarkConfig::default().callgrind_args(["toggle-collect=something"]);
+///     config = BinaryBenchmarkConfig::default()
+///         .tool(Callgrind::with_args(["toggle-collect=something"]));
 ///     binary_benchmark_groups = some_group
 /// );
 /// ```
@@ -1031,88 +1031,37 @@ impl From<&BinaryBenchmark> for BinaryBenchmark {
 }
 
 impl BinaryBenchmarkConfig {
-    /// Pass arguments to valgrind's callgrind
+    /// Change the default tool to something different than callgrind
     ///
-    /// It's not needed to pass the arguments with flags. Instead of `--collect-atstart=no` simply
-    /// write `collect-atstart=no`.
+    /// See also [`crate::LibraryBenchmarkConfig::default_tool`].
     ///
-    /// See also [Callgrind Command-line
-    /// Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for a full
-    /// overview of possible arguments.
-    ///
-    /// # Examples
+    /// # Example for using cachegrind on the fly
     ///
     /// ```rust
-    /// use iai_callgrind::BinaryBenchmarkConfig;
+    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
+    /// use iai_callgrind::{
+    ///     main, binary_benchmark, binary_benchmark_group, BinaryBenchmarkConfig, ValgrindTool
+    /// };
     ///
-    /// BinaryBenchmarkConfig::default()
-    ///     .callgrind_args(["collect-atstart=no", "toggle-collect=some::path"]);
-    /// ```
-    #[deprecated = "Please use callgrind_args instead"]
-    pub fn raw_callgrind_args<I, T>(&mut self, args: T) -> &mut Self
-    where
-        I: AsRef<str>,
-        T: IntoIterator<Item = I>,
-    {
-        self.0.callgrind_args.extend_ignore_flag(args);
-        self
-    }
-
-    /// Create a new `BinaryBenchmarkConfig` with initial callgrind arguments
+    /// #[binary_benchmark(
+    ///     config = BinaryBenchmarkConfig::default()
+    ///         .default_tool(ValgrindTool::Cachegrind)
+    /// )]
+    /// fn bench_me() -> iai_callgrind::Command {
+    ///     iai_callgrind::Command::new(env!("CARGO_BIN_EXE_echo"))
+    /// }
     ///
-    /// See also [`BinaryBenchmarkConfig::callgrind_args`].
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use iai_callgrind::{binary_benchmark, binary_benchmark_group};
-    /// # #[binary_benchmark]
-    /// # fn some_func() -> iai_callgrind::Command { iai_callgrind::Command::new("/some/path") }
-    /// # binary_benchmark_group!(name = some_group; benchmarks = some_func);
-    /// # fn main() {
-    /// use iai_callgrind::{BinaryBenchmarkConfig, main};
-    ///
-    /// main!(
-    ///     config =
-    ///         BinaryBenchmarkConfig::with_callgrind_args(["toggle-collect=something"]);
-    ///     binary_benchmark_groups = some_group
+    /// binary_benchmark_group!(
+    ///    name = my_group;
+    ///    benchmarks = bench_me
     /// );
+    ///
+    /// # fn main() {
+    /// main!(binary_benchmark_groups = my_group);
     /// # }
     /// ```
-    pub fn with_callgrind_args<I, T>(args: T) -> Self
-    where
-        I: AsRef<str>,
-        T: IntoIterator<Item = I>,
-    {
-        Self(__internal::InternalBinaryBenchmarkConfig {
-            callgrind_args: RawArgs::from_iter(args),
-            ..Default::default()
-        })
-    }
-
-    /// Pass arguments to valgrind's callgrind
-    ///
-    /// It's not needed to pass the arguments with flags. Instead of `--collect-atstart=no` simply
-    /// write `collect-atstart=no`.
-    ///
-    /// See also [Callgrind Command-line
-    /// Options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for a full
-    /// overview of possible arguments.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use iai_callgrind::BinaryBenchmarkConfig;
-    ///
-    /// BinaryBenchmarkConfig::default()
-    ///     .callgrind_args(["collect-atstart=no", "toggle-collect=some::path"]);
-    /// ```
-    pub fn callgrind_args<I, T>(&mut self, args: T) -> &mut Self
-    where
-        I: AsRef<str>,
-        T: IntoIterator<Item = I>,
-    {
-        self.0.callgrind_args.extend_ignore_flag(args);
+    pub fn default_tool(&mut self, tool: ValgrindTool) -> &mut Self {
+        self.0.default_tool = Some(tool);
         self
     }
 
@@ -1123,7 +1072,7 @@ impl BinaryBenchmarkConfig {
     /// allowed.
     ///
     /// These arguments can be overwritten by tool specific arguments for example with
-    /// [`BinaryBenchmarkConfig::callgrind_args`] or [`crate::Tool::args`].
+    /// [`crate::Callgrind::args`].
     ///
     /// # Examples
     ///
@@ -1134,13 +1083,13 @@ impl BinaryBenchmarkConfig {
     /// # binary_benchmark_group!(
     /// #    name = my_group;
     /// #    benchmarks = |_group: &mut BinaryBenchmarkGroup| {});
-    /// use iai_callgrind::{main, BinaryBenchmarkConfig, Tool, ValgrindTool};
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig, Dhat};
     ///
     /// # fn main() {
     /// main!(
     ///     config = BinaryBenchmarkConfig::default()
     ///         .valgrind_args(["--trace-children=no"])
-    ///         .tool(Tool::new(ValgrindTool::DHAT));
+    ///         .tool(Dhat::default());
     ///     binary_benchmark_groups = my_group
     /// );
     /// # }
@@ -1153,15 +1102,13 @@ impl BinaryBenchmarkConfig {
     /// # binary_benchmark_group!(
     /// #    name = my_group;
     /// #    benchmarks = |_group: &mut BinaryBenchmarkGroup| {});
-    /// use iai_callgrind::{main, BinaryBenchmarkConfig, Tool, ValgrindTool};
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig, Dhat};
     ///
     /// # fn main() {
     /// main!(
     ///     config = BinaryBenchmarkConfig::default()
     ///         .valgrind_args(["--num-callers=25"])
-    ///         .tool(Tool::new(ValgrindTool::DHAT)
-    ///             .args(["--num-callers=30"])
-    ///         );
+    ///         .tool(Dhat::with_args(["--num-callers=30"]));
     ///     binary_benchmark_groups = my_group
     /// );
     /// # }
@@ -1426,75 +1373,27 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    /// Option to produce flamegraphs from callgrind output using the [`crate::FlamegraphConfig`]
+    /// Add a configuration for a valgrind tool
+    ///
+    /// Valid configurations are [`crate::Callgrind`], [`crate::Cachegrind`], [`crate::Dhat`],
+    /// [`crate::Memcheck`], [`crate::Helgrind`], [`crate::Drd`], [`crate::Massif`] and
+    /// [`crate::Bbv`].
     ///
     /// # Examples
+    ///
+    /// Run DHAT in addition to callgrind.
     ///
     /// ```rust
     /// # use iai_callgrind::{binary_benchmark_group};
     /// # binary_benchmark_group!(
     /// #    name = my_group;
     /// #    benchmarks = |_group: &mut BinaryBenchmarkGroup| {});
-    /// use iai_callgrind::{main, BinaryBenchmarkConfig, FlamegraphConfig };
-    ///
-    /// # fn main() {
-    /// main!(
-    ///     config = BinaryBenchmarkConfig::default().flamegraph(FlamegraphConfig::default());
-    ///     binary_benchmark_groups = my_group
-    /// );
-    /// # }
-    /// ```
-    pub fn flamegraph<T>(&mut self, config: T) -> &mut Self
-    where
-        T: Into<__internal::InternalFlamegraphConfig>,
-    {
-        self.0.flamegraph_config = Some(config.into());
-        self
-    }
-
-    /// Enable performance regression checks with a [`crate::RegressionConfig`]
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use iai_callgrind::{binary_benchmark_group};
-    /// # binary_benchmark_group!(
-    /// #    name = my_group;
-    /// #    benchmarks = |_group: &mut BinaryBenchmarkGroup| {});
-    /// use iai_callgrind::{main, BinaryBenchmarkConfig, RegressionConfig};
-    ///
-    /// # fn main() {
-    /// main!(
-    ///     config = BinaryBenchmarkConfig::default().regression(RegressionConfig::default());
-    ///     binary_benchmark_groups = my_group
-    /// );
-    /// # }
-    /// ```
-    pub fn regression<T>(&mut self, config: T) -> &mut Self
-    where
-        T: Into<__internal::InternalRegressionConfig>,
-    {
-        self.0.regression_config = Some(config.into());
-        self
-    }
-
-    /// Add a configuration to run a valgrind [`crate::Tool`] in addition to callgrind
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use iai_callgrind::{binary_benchmark_group};
-    /// # binary_benchmark_group!(
-    /// #    name = my_group;
-    /// #    benchmarks = |_group: &mut BinaryBenchmarkGroup| {});
-    /// use iai_callgrind::{main, BinaryBenchmarkConfig, Tool, ValgrindTool};
+    /// use iai_callgrind::{main, BinaryBenchmarkConfig, Dhat, ValgrindTool};
     ///
     /// # fn main() {
     /// main!(
     ///     config = BinaryBenchmarkConfig::default()
-    ///         .tool(
-    ///             Tool::new(ValgrindTool::DHAT)
-    ///         );
+    ///         .tool(Dhat::default());
     ///     binary_benchmark_groups = my_group
     /// );
     /// # }
@@ -1507,59 +1406,26 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    /// Add multiple configurations to run valgrind [`crate::Tool`]s in addition to callgrind
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use iai_callgrind::{binary_benchmark_group};
-    /// # binary_benchmark_group!(
-    /// #    name = my_group;
-    /// #    benchmarks = |_group: &mut BinaryBenchmarkGroup| {});
-    /// use iai_callgrind::{main, BinaryBenchmarkConfig, Tool, ValgrindTool};
-    ///
-    /// # fn main() {
-    /// main!(
-    ///     config = BinaryBenchmarkConfig::default()
-    ///         .tools(
-    ///             [
-    ///                 Tool::new(ValgrindTool::DHAT),
-    ///                 Tool::new(ValgrindTool::Massif)
-    ///             ]
-    ///         );
-    ///     binary_benchmark_groups = my_group
-    /// );
-    /// # }
-    /// ```
-    pub fn tools<I, T>(&mut self, tools: T) -> &mut Self
-    where
-        I: Into<__internal::InternalTool>,
-        T: IntoIterator<Item = I>,
-    {
-        self.0.tools.update_all(tools.into_iter().map(Into::into));
-        self
-    }
-
-    /// Override previously defined configurations of valgrind [`crate::Tool`]s
+    /// Override previously defined configurations of valgrind tools
     ///
     /// See also [`crate::LibraryBenchmarkConfig::tool_override`] for more details.
     ///
     /// # Example
     ///
-    /// The following will run `DHAT` and `Massif` (and the default callgrind) for all benchmarks in
-    /// `main!` besides for `foo` which will just run `Memcheck` (and callgrind).
+    /// The following will run `DHAT` and `Massif` (and the default callgrind) for all benchmarks
+    /// in `main!` besides for `foo` which will just run `Memcheck` (and callgrind).
     ///
     /// ```rust
     /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
     /// use iai_callgrind::{
-    ///     binary_benchmark, binary_benchmark_group, BinaryBenchmarkConfig, main, Tool,
-    ///     ValgrindTool
+    ///     binary_benchmark, binary_benchmark_group, BinaryBenchmarkConfig, main, Memcheck, Dhat,
+    ///     Massif
     /// };
     ///
     /// #[binary_benchmark]
     /// #[bench::some(
     ///     config = BinaryBenchmarkConfig::default()
-    ///         .tool_override(Tool::new(ValgrindTool::Memcheck))
+    ///         .tool_override(Memcheck::default())
     /// )]
     /// fn bench_binary() -> iai_callgrind::Command {
     ///     iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-exe"))
@@ -1573,12 +1439,8 @@ impl BinaryBenchmarkConfig {
     /// # fn main() {
     /// main!(
     ///     config = BinaryBenchmarkConfig::default()
-    ///         .tools(
-    ///             [
-    ///                 Tool::new(ValgrindTool::DHAT),
-    ///                 Tool::new(ValgrindTool::Massif)
-    ///             ]
-    ///         );
+    ///         .tool(Dhat::default())
+    ///         .tool(Massif::default());
     ///     binary_benchmark_groups = my_group
     /// );
     /// # }
@@ -1591,61 +1453,6 @@ impl BinaryBenchmarkConfig {
             .tools_override
             .get_or_insert(__internal::InternalTools::default())
             .update(tool.into());
-        self
-    }
-
-    /// Override previously defined configurations of valgrind [`crate::Tool`]s
-    ///
-    /// See also [`crate::LibraryBenchmarkConfig::tool_override`] for more details.
-    ///
-    /// # Example
-    ///
-    /// The following will run `DHAT` (and the default callgrind) for all benchmarks in
-    /// `main!` besides for `foo` which will run `Massif` and `Memcheck` (and callgrind).
-    ///
-    /// ```rust
-    /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-    /// use iai_callgrind::{
-    ///     binary_benchmark, binary_benchmark_group, BinaryBenchmarkConfig, main, Tool,
-    ///     ValgrindTool
-    /// };
-    ///
-    /// #[binary_benchmark]
-    /// #[bench::some(
-    ///     config = BinaryBenchmarkConfig::default()
-    ///         .tools_override([
-    ///             Tool::new(ValgrindTool::Massif),
-    ///             Tool::new(ValgrindTool::Memcheck),
-    ///         ])
-    /// )]
-    /// fn bench_binary() -> iai_callgrind::Command {
-    ///     iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-exe"))
-    /// }
-    ///
-    /// binary_benchmark_group!(
-    ///     name = my_group;
-    ///     benchmarks = bench_binary
-    /// );
-    ///
-    /// # fn main() {
-    /// main!(
-    ///     config = BinaryBenchmarkConfig::default()
-    ///         .tool(
-    ///             Tool::new(ValgrindTool::DHAT),
-    ///         );
-    ///     binary_benchmark_groups = my_group
-    /// );
-    /// # }
-    /// ```
-    pub fn tools_override<I, T>(&mut self, tools: T) -> &mut Self
-    where
-        I: Into<__internal::InternalTool>,
-        T: IntoIterator<Item = I>,
-    {
-        self.0
-            .tools_override
-            .get_or_insert(__internal::InternalTools::default())
-            .update_all(tools.into_iter().map(Into::into));
         self
     }
 

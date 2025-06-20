@@ -6,9 +6,39 @@ use anyhow::{anyhow, Result};
 use log::warn;
 
 use super::{ToolOutputPath, ValgrindTool};
-use crate::api::{self};
+use crate::api::RawArgs;
 use crate::error::Error;
 use crate::util::{bool_to_yesno, yesno_to_bool};
+
+pub mod defaults {
+    use super::FairSched;
+
+    // Shared defaults between cachegrind and callgrind
+    // Set some reasonable cache sizes. The exact sizes matter less than having fixed sizes, since
+    // otherwise callgrind would take them from the CPU and make benchmark runs even more
+    // incomparable between machines.
+    pub const I1: &str = "32768,8,64";
+    pub const D1: &str = "32768,8,64";
+    pub const LL: &str = "8388608,16,64";
+    pub const CACHE_SIM: bool = true;
+
+    // Defaults specific to callgrind
+    pub const COMPRESS_POS: bool = false;
+    pub const COMPRESS_STRINGS: bool = false;
+    pub const COMBINE_DUMPS: bool = false;
+    pub const DUMP_LINE: bool = true;
+    pub const DUMP_INSTR: bool = false;
+    pub const SEPARATE_THREADS: bool = true;
+
+    // Shared defaults between error emitting tools like Memcheck
+    pub const ERROR_EXIT_CODE_ERROR_TOOL: &str = "201";
+    pub const ERROR_EXIT_CODE_OTHER_TOOL: &str = "0";
+
+    // Shared defaults between all tools
+    pub const TRACE_CHILDREN: bool = true;
+    pub const FAIR_SCHED: FairSched = FairSched::Try;
+    pub const VERBOSE: bool = false;
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FairSched {
@@ -56,68 +86,77 @@ impl FromStr for FairSched {
 }
 
 impl ToolArgs {
-    pub fn try_from_raw_args(tool: ValgrindTool, raw_args: api::RawArgs) -> Result<Self> {
+    pub fn try_from_raw_args(tool: ValgrindTool, raw_args: &[&RawArgs]) -> Result<Self> {
         let mut tool_args = Self {
             tool,
             output_paths: Vec::default(),
             log_path: Option::default(),
             error_exitcode: match tool {
                 ValgrindTool::Memcheck | ValgrindTool::Helgrind | ValgrindTool::DRD => {
-                    "201".to_owned()
+                    defaults::ERROR_EXIT_CODE_ERROR_TOOL.to_owned()
                 }
                 ValgrindTool::Callgrind
                 | ValgrindTool::Massif
                 | ValgrindTool::DHAT
-                | ValgrindTool::BBV => "0".to_owned(),
+                | ValgrindTool::BBV
+                | ValgrindTool::Cachegrind => defaults::ERROR_EXIT_CODE_OTHER_TOOL.to_owned(),
             },
-            verbose: false,
+            verbose: defaults::VERBOSE,
             other: Vec::default(),
-            trace_children: true,
-            fair_sched: FairSched::Try,
+            trace_children: defaults::TRACE_CHILDREN,
+            fair_sched: defaults::FAIR_SCHED,
         };
 
-        for arg in raw_args.0 {
-            match arg
-                .trim()
-                .split_once('=')
-                .map(|(k, v)| (k.trim(), v.trim()))
-            {
-                Some(("--tool", _)) => warn!("Ignoring {} argument '{arg}'", tool.id()),
-                Some((
-                    "--dhat-out-file" | "--massif-out-file" | "--bb-out-file" | "--pc-out-file"
-                    | "--log-file" | "--log-fd" | "--log-socket" | "--xml" | "--xml-file"
-                    | "--xml-fd" | "--xml-socket" | "--xml-user-comment",
-                    _,
-                )) => warn!(
-                    "Ignoring {} argument '{arg}': Output/Log files of tools are managed by \
-                     Iai-Callgrind",
-                    tool.id()
-                ),
-                Some(("--error-exitcode", value)) => {
-                    value.clone_into(&mut tool_args.error_exitcode);
-                }
-                Some((key @ "--trace-children", value)) => {
-                    tool_args.trace_children = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
-                    })?;
-                }
-                Some(("--fair-sched", value)) => {
-                    tool_args.fair_sched = FairSched::from_str(value)?;
-                }
-                None if matches!(
-                    arg.as_str(),
-                    "-h" | "--help"
-                        | "--help-dyn-options"
-                        | "--help-debug"
-                        | "--version"
-                        | "-q"
-                        | "--quiet"
-                ) =>
+        for args in raw_args {
+            for arg in &args.0 {
+                match arg
+                    .trim()
+                    .split_once('=')
+                    .map(|(k, v)| (k.trim(), v.trim()))
                 {
-                    warn!("Ignoring {} argument '{arg}'", tool.id());
+                    Some(("--tool", _)) => warn!("Ignoring {} argument '{arg}'", tool.id()),
+                    Some((
+                        "--dhat-out-file" | "--massif-out-file" | "--bb-out-file" | "--pc-out-file"
+                        | "--log-file" | "--log-fd" | "--log-socket" | "--xml" | "--xml-file"
+                        | "--xml-fd" | "--xml-socket" | "--xml-user-comment",
+                        _,
+                    )) => warn!(
+                        "Ignoring {} argument '{arg}': Output/Log files of tools are managed by \
+                         Iai-Callgrind",
+                        tool.id()
+                    ),
+                    Some(("--xtree-memory" | "--xtree-leak-file" | "xtree-memory-file", _)) => {
+                        warn!(
+                            "Ignoring {} argument '{arg}': Currently unsupported",
+                            tool.id()
+                        );
+                    }
+                    Some(("--error-exitcode", value)) => {
+                        value.clone_into(&mut tool_args.error_exitcode);
+                    }
+                    Some((key @ "--trace-children", value)) => {
+                        tool_args.trace_children = yesno_to_bool(value).ok_or_else(|| {
+                            Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
+                        })?;
+                    }
+                    Some(("--fair-sched", value)) => {
+                        tool_args.fair_sched = FairSched::from_str(value)?;
+                    }
+                    None if matches!(
+                        arg.as_str(),
+                        "-h" | "--help"
+                            | "--help-dyn-options"
+                            | "--help-debug"
+                            | "--version"
+                            | "-q"
+                            | "--quiet"
+                    ) =>
+                    {
+                        warn!("Ignoring {} argument '{arg}'", tool.id());
+                    }
+                    None if matches!(arg.as_str(), "--verbose") => tool_args.verbose = true,
+                    None | Some(_) => tool_args.other.push(arg.to_owned()),
                 }
-                None if matches!(arg.as_str(), "--verbose") => tool_args.verbose = true,
-                None | Some(_) => tool_args.other.push(arg),
             }
         }
 
@@ -193,6 +232,18 @@ impl ToolArgs {
                 pc_arg.push(pc_out.to_path());
                 self.output_paths.push(bb_arg);
                 self.output_paths.push(pc_arg);
+            }
+            ValgrindTool::Cachegrind => {
+                let mut arg = OsString::from("--cachegrind-out-file=");
+                let cachegrind_out_path = if let Some(modifier) = modifier {
+                    output_path.with_modifiers([modifier.as_ref()])
+                } else if self.trace_children {
+                    output_path.with_modifiers(["#%p"])
+                } else {
+                    output_path.clone()
+                };
+                arg.push(cachegrind_out_path.to_path());
+                self.output_paths.push(arg);
             }
             // The other tools don't have an outfile
             _ => {}

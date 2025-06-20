@@ -18,6 +18,13 @@ fn print_warnings() {
             "The RUST_LOG environment variable to set the log level changed to IAI_CALLGRIND_LOG"
         );
     }
+
+    if std::env::var("IAI_CALLGRIND_REGRESSION").is_ok() {
+        warn!(
+            "The IAI_CALLGRIND_REGRESSION environment variable changed to \
+             IAI_CALLGRIND_CALLGRIND_LIMITS"
+        );
+    }
 }
 
 /// The main function of the `iai-callgrind-runner` binary

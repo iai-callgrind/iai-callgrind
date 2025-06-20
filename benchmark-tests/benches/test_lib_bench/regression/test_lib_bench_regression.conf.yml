@@ -34,3 +34,41 @@ groups:
         template_data:
           array_length: 5
           fail_fast: false
+  - runs:
+      # Using a different config as in the benchmark with an additional estimated cycles
+      - args:
+          [
+            "--callgrind-limits",
+            "ir=5.0, estimatedcycles=0.0",
+            "--cachegrind-limits",
+            "estimatedcycles=0.0",
+          ]
+        expected:
+          stdout: expected_stdout.1
+          stderr: expected_stderr.empty
+          exit_code: 0
+        template_data:
+          array_length: 4
+          fail_fast: false
+      - args:
+          [
+            "--callgrind-limits",
+            "ir=5.0, estimatedcycles=0.0",
+            "--cachegrind-limits",
+            "estimatedcycles=0.0",
+          ]
+        expected:
+          stdout: expected_stdout.args
+          stderr: expected_stderr.args
+          exit_code: 3
+        template_data:
+          array_length: 5
+          fail_fast: false
+      - args: ["--regression-fail-fast"]
+        expected:
+          stdout: expected_stdout.args.fail-fast
+          stderr: expected_stderr.fail-fast
+          exit_code: 3
+        template_data:
+          array_length: 7
+          fail_fast: false

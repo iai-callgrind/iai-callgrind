@@ -8,38 +8,20 @@ use indexmap::{indexset, IndexSet};
 
 use super::args::NoCapture;
 use super::bin_bench::BinBench;
-use super::common::{BenchmarkSummaries, Config, ModulePath};
+use super::common::{Baselines, BenchmarkSummaries, Config, ModulePath};
 use super::lib_bench::LibBench;
 use super::meta::Metadata;
-use super::summary::{Diffs, MetricsDiff, SegmentDetails, ToolMetricSummary, ToolRun};
-use super::tool::ValgrindTool;
-use crate::api::{self, CallgrindMetrics, DhatMetricKind, ErrorMetricKind, EventKind};
+use super::summary::{
+    Diffs, MetricsDiff, ProfileData, ProfileInfo, ToolMetricSummary, ToolRegression,
+};
+use crate::api::{
+    self, CachegrindMetric, CallgrindMetrics, DhatMetric, ErrorMetric, EventKind, ValgrindTool,
+};
+use crate::runner::summary::MetricKind;
 use crate::util::{
     make_relative, to_string_signed_short, to_string_unsigned_short, truncate_str_utf8,
     EitherOrBoth,
 };
-
-/// TODO: Remove and Replace with `output_format`
-/// The error metrics to format in the given order
-pub const ERROR_METRICS_DEFAULT: [ErrorMetricKind; 4] = [
-    ErrorMetricKind::Errors,
-    ErrorMetricKind::Contexts,
-    ErrorMetricKind::SuppressedErrors,
-    ErrorMetricKind::SuppressedContexts,
-];
-
-/// TODO: Remove and Replace with `output_format`
-/// The subset of dhat metrics to format in the given order
-pub const DHAT_DEFAULT: [DhatMetricKind; 8] = [
-    DhatMetricKind::TotalBytes,
-    DhatMetricKind::TotalBlocks,
-    DhatMetricKind::AtTGmaxBytes,
-    DhatMetricKind::AtTGmaxBlocks,
-    DhatMetricKind::AtTEndBytes,
-    DhatMetricKind::AtTEndBlocks,
-    DhatMetricKind::ReadsBytes,
-    DhatMetricKind::WritesBytes,
-];
 
 /// The string used to signal that a value is not available
 pub const NOT_AVAILABLE: &str = "N/A";
@@ -64,29 +46,37 @@ pub const MAX_WIDTH: usize = 2 + LEFT_WIDTH + 1 + METRIC_WIDTH + 2 * 11;
 pub trait Formatter {
     fn format_single(
         &mut self,
-        baselines: (Option<String>, Option<String>),
-        details: Option<&EitherOrBoth<SegmentDetails>>,
+        tool: ValgrindTool,
+        baselines: &Baselines,
+        info: Option<&EitherOrBoth<ProfileInfo>>,
         metrics_summary: &ToolMetricSummary,
+        is_default_tool: bool,
     ) -> Result<()>;
 
     fn format(
         &mut self,
+        tool: ValgrindTool,
         config: &Config,
-        baselines: (Option<String>, Option<String>),
-        tool_run: &ToolRun,
+        baselines: &Baselines,
+        data: &ProfileData,
+        is_default_tool: bool,
     ) -> Result<()>;
+
+    fn format_free_form(&mut self, line: &str) -> Result<()>;
 
     fn print(
         &mut self,
+        tool: ValgrindTool,
         config: &Config,
-        baselines: (Option<String>, Option<String>),
-        tool_run: &ToolRun,
+        baselines: &Baselines,
+        data: &ProfileData,
+        is_default_tool: bool,
     ) -> Result<()>
     where
         Self: std::fmt::Display,
     {
         if self.get_output_format().is_default() {
-            self.format(config, baselines, tool_run)?;
+            self.format(tool, config, baselines, data, is_default_tool)?;
             print!("{self}");
             self.clear();
         }
@@ -102,13 +92,12 @@ pub trait Formatter {
         function_name: &str,
         id: &str,
         details: Option<&str>,
-        metrics_summary: &ToolMetricSummary,
+        summaries: Vec<(ValgrindTool, ToolMetricSummary)>,
     ) -> Result<()>;
 }
 
 pub struct BinaryBenchmarkHeader {
     inner: Header,
-    has_tools_enabled: bool,
     output_format: OutputFormat,
 }
 
@@ -133,7 +122,6 @@ enum IndentKind {
 
 pub struct LibraryBenchmarkHeader {
     inner: Header,
-    has_tools_enabled: bool,
     output_format: OutputFormat,
 }
 
@@ -151,7 +139,12 @@ pub struct OutputFormat {
     pub truncate_description: Option<usize>,
     pub show_intermediate: bool,
     pub show_grid: bool,
-    pub event_kinds: IndexSet<EventKind>,
+    pub callgrind: IndexSet<EventKind>,
+    pub cachegrind: IndexSet<CachegrindMetric>,
+    pub dhat: IndexSet<DhatMetric>,
+    pub memcheck: IndexSet<ErrorMetric>,
+    pub helgrind: IndexSet<ErrorMetric>,
+    pub drd: IndexSet<ErrorMetric>,
 }
 
 #[derive(Debug, Clone)]
@@ -202,7 +195,6 @@ impl BinaryBenchmarkHeader {
                 Some(description),
                 &bin_bench.output_format,
             ),
-            has_tools_enabled: bin_bench.tools.has_tools_enabled(),
             output_format: bin_bench.output_format.clone(),
         }
     }
@@ -210,11 +202,6 @@ impl BinaryBenchmarkHeader {
     pub fn print(&self) {
         if self.output_format.kind == OutputFormatKind::Default {
             self.inner.print();
-            if self.has_tools_enabled {
-                let mut formatter = VerticalFormatter::new(self.output_format.clone());
-                formatter.format_tool_headline(ValgrindTool::Callgrind);
-                formatter.print_buffer();
-            }
         }
     }
 
@@ -358,7 +345,6 @@ impl LibraryBenchmarkHeader {
 
         Self {
             inner: header,
-            has_tools_enabled: lib_bench.tools.has_tools_enabled(),
             output_format: lib_bench.output_format.clone(),
         }
     }
@@ -366,11 +352,6 @@ impl LibraryBenchmarkHeader {
     pub fn print(&self) {
         if self.output_format.is_default() {
             self.inner.print();
-            if self.has_tools_enabled {
-                let mut formatter = VerticalFormatter::new(self.output_format.clone());
-                formatter.format_tool_headline(ValgrindTool::Callgrind);
-                formatter.print_buffer();
-            }
         }
     }
 
@@ -395,22 +376,12 @@ impl OutputFormat {
 
 impl From<api::OutputFormat> for OutputFormat {
     fn from(value: api::OutputFormat) -> Self {
-        let event_kinds = match value.callgrind_metrics {
-            None => IndexSet::from(CallgrindMetrics::Default),
-            Some(metrics) => {
-                let mut event_kinds = indexset! {};
-                for metric in metrics {
-                    event_kinds.extend(IndexSet::from(metric));
-                }
-                event_kinds
-            }
-        };
         Self {
             kind: OutputFormatKind::Default,
             truncate_description: value.truncate_description.unwrap_or(Some(50)),
             show_intermediate: value.show_intermediate.unwrap_or(false),
             show_grid: value.show_grid.unwrap_or(false),
-            event_kinds,
+            ..Default::default()
         }
     }
 }
@@ -422,7 +393,47 @@ impl Default for OutputFormat {
             truncate_description: Some(50),
             show_intermediate: false,
             show_grid: false,
-            event_kinds: IndexSet::from(CallgrindMetrics::Default),
+            callgrind: IndexSet::from(CallgrindMetrics::Default),
+            cachegrind: indexset![
+                CachegrindMetric::Ir,
+                CachegrindMetric::L1hits,
+                CachegrindMetric::LLhits,
+                CachegrindMetric::RamHits,
+                CachegrindMetric::TotalRW,
+                CachegrindMetric::EstimatedCycles,
+                CachegrindMetric::Bc,
+                CachegrindMetric::Bcm,
+                CachegrindMetric::Bi,
+                CachegrindMetric::Bim,
+            ],
+            dhat: indexset![
+                DhatMetric::TotalBytes,
+                DhatMetric::TotalBlocks,
+                DhatMetric::AtTGmaxBytes,
+                DhatMetric::AtTGmaxBlocks,
+                DhatMetric::AtTEndBytes,
+                DhatMetric::AtTEndBlocks,
+                DhatMetric::ReadsBytes,
+                DhatMetric::WritesBytes,
+            ],
+            memcheck: indexset![
+                ErrorMetric::Errors,
+                ErrorMetric::Contexts,
+                ErrorMetric::SuppressedErrors,
+                ErrorMetric::SuppressedContexts,
+            ],
+            helgrind: indexset![
+                ErrorMetric::Errors,
+                ErrorMetric::Contexts,
+                ErrorMetric::SuppressedErrors,
+                ErrorMetric::SuppressedContexts,
+            ],
+            drd: indexset![
+                ErrorMetric::Errors,
+                ErrorMetric::Contexts,
+                ErrorMetric::SuppressedErrors,
+                ErrorMetric::SuppressedContexts,
+            ],
         }
     }
 }
@@ -452,13 +463,13 @@ impl SummaryFormatter {
                         println!("  {}:", summary.module_path.green());
                     }
                     for regression in summary
-                        .callgrind_summary
+                        .profiles
                         .iter()
-                        .flat_map(|p| &p.callgrind_run.total.regressions)
+                        .flat_map(|t| &t.summaries.total.regressions)
                     {
                         println!(
                             "    {} ({} -> {}): {:>6}{} exceeds limit of {:>6}{}",
-                            regression.event_kind.to_string().bold(),
+                            regression.metric.to_string().bold(),
                             regression.old,
                             regression.new.to_string().bold(),
                             to_string_signed_short(regression.diff_pct)
@@ -684,13 +695,13 @@ impl VerticalFormatter {
     }
 
     /// Format the baseline
-    fn format_baseline(&mut self, baselines: (Option<String>, Option<String>)) {
+    fn format_baseline(&mut self, baselines: &Baselines) {
         match baselines {
             (None, None) => {}
             _ => {
                 self.write_field(
                     "Baselines:",
-                    &EitherOrBoth::try_from(baselines)
+                    &EitherOrBoth::try_from(baselines.clone())
                         .expect("At least on baseline should be present")
                         .as_ref()
                         .map(String::as_str),
@@ -731,8 +742,8 @@ impl VerticalFormatter {
         writeln!(self, "{} {}", "##".yellow(), "Total".bold()).unwrap();
     }
 
-    fn format_multiple_segment_header(&mut self, details: &EitherOrBoth<SegmentDetails>) {
-        fn fields(detail: &SegmentDetails) -> String {
+    fn format_multiple_segment_header(&mut self, details: &EitherOrBoth<ProfileInfo>) {
+        fn fields(detail: &ProfileInfo) -> String {
             let mut result = String::new();
             write!(result, "pid: {}", detail.pid).unwrap();
 
@@ -872,13 +883,19 @@ impl Write for VerticalFormatter {
 impl Formatter for VerticalFormatter {
     fn format_single(
         &mut self,
-        baselines: (Option<String>, Option<String>),
-        details: Option<&EitherOrBoth<SegmentDetails>>,
+        tool: ValgrindTool,
+        baselines: &Baselines,
+        info: Option<&EitherOrBoth<ProfileInfo>>,
         metrics_summary: &ToolMetricSummary,
+        is_default_tool: bool,
     ) -> Result<()> {
+        if is_default_tool {
+            self.format_baseline(baselines);
+        }
+
         match metrics_summary {
             ToolMetricSummary::None => {
-                if let Some(info) = details {
+                if let Some(info) = info {
                     if let Some(new) = info.left() {
                         if let Some(details) = &new.details {
                             self.format_details(details);
@@ -886,18 +903,27 @@ impl Formatter for VerticalFormatter {
                     }
                 }
             }
-            ToolMetricSummary::ErrorSummary(summary) => {
-                // TODO: USE output_format
+            ToolMetricSummary::ErrorTool(summary) => {
+                let format = match tool {
+                    ValgrindTool::Memcheck => &self.output_format.memcheck,
+                    ValgrindTool::Helgrind => &self.output_format.helgrind,
+                    ValgrindTool::DRD => &self.output_format.drd,
+                    _ => {
+                        unreachable!("{tool} should be an error metric tool");
+                    }
+                };
+
                 self.format_metrics(
-                    ERROR_METRICS_DEFAULT
+                    format
+                        .clone()
                         .iter()
                         .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
                 );
 
                 // We only check for `new` errors
-                if let Some(info) = details {
+                if let Some(info) = info {
                     if summary
-                        .diff_by_kind(&ErrorMetricKind::Errors)
+                        .diff_by_kind(&ErrorMetric::Errors)
                         .is_some_and(|e| e.metrics.left().is_some_and(|l| *l > 0))
                     {
                         if let Some(new) = info.left() {
@@ -908,16 +934,26 @@ impl Formatter for VerticalFormatter {
                     }
                 }
             }
-            ToolMetricSummary::DhatSummary(summary) => self.format_metrics(
-                DHAT_DEFAULT
+            ToolMetricSummary::Dhat(summary) => self.format_metrics(
+                self.output_format
+                    .dhat
+                    .clone()
                     .iter()
                     .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
             ),
-            ToolMetricSummary::CallgrindSummary(summary) => {
-                self.format_baseline(baselines);
+            ToolMetricSummary::Callgrind(summary) => {
                 self.format_metrics(
                     self.output_format
-                        .event_kinds
+                        .callgrind
+                        .clone()
+                        .iter()
+                        .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
+                );
+            }
+            ToolMetricSummary::Cachegrind(summary) => {
+                self.format_metrics(
+                    self.output_format
+                        .cachegrind
                         .clone()
                         .iter()
                         .filter_map(|e| summary.diff_by_kind(e).map(|d| (e, d))),
@@ -929,46 +965,58 @@ impl Formatter for VerticalFormatter {
 
     fn format(
         &mut self,
+        tool: ValgrindTool,
         config: &Config,
-        baselines: (Option<String>, Option<String>),
-        tool_run: &ToolRun,
+        baselines: &Baselines,
+        data: &ProfileData,
+        is_default_tool: bool,
     ) -> Result<()> {
-        if tool_run.has_multiple() && self.output_format.show_intermediate {
+        if data.has_multiple() && self.output_format.show_intermediate {
             let mut first = true;
-            for segment in &tool_run.segments {
-                self.format_multiple_segment_header(&segment.details);
-                self.format_command(config, &segment.details.as_ref().map(|i| &i.command));
+            for part in &data.parts {
+                self.format_multiple_segment_header(&part.details);
+                self.format_command(config, &part.details.as_ref().map(|i| &i.command));
 
                 if first {
                     self.format_single(
-                        baselines.clone(),
-                        Some(&segment.details),
-                        &segment.metrics_summary,
+                        tool,
+                        baselines,
+                        Some(&part.details),
+                        &part.metrics_summary,
+                        is_default_tool,
                     )?;
                     first = false;
                 } else {
                     self.format_single(
-                        (None, None),
-                        Some(&segment.details),
-                        &segment.metrics_summary,
+                        tool,
+                        &(None, None),
+                        Some(&part.details),
+                        &part.metrics_summary,
+                        is_default_tool,
                     )?;
                 }
             }
 
-            if tool_run.total.is_some() {
+            if data.total.is_some() {
                 self.format_tool_total_header();
-                self.format_single((None, None), None, &tool_run.total)?;
+                self.format_single(
+                    tool,
+                    &(None, None),
+                    None,
+                    &data.total.summary,
+                    is_default_tool,
+                )?;
             }
-        } else if tool_run.total.is_some() {
-            self.format_single(baselines, None, &tool_run.total)?;
-        } else if tool_run.total.is_none() && !tool_run.segments.is_empty() {
+        } else if data.total.is_some() {
+            self.format_single(tool, baselines, None, &data.total.summary, is_default_tool)?;
+        } else if data.total.is_none() && !data.parts.is_empty() {
             // Since there is no total, show_all is partly ignored, and we show all data in a little
             // bit more aggregated form without the multiple files headlines. This affects currently
             // the output of `Massif` and `BBV`.
-            for segment in &tool_run.segments {
-                self.format_command(config, &segment.details.as_ref().map(|i| &i.command));
+            for part in &data.parts {
+                self.format_command(config, &part.details.as_ref().map(|i| &i.command));
 
-                if let Some(new) = segment.details.left() {
+                if let Some(new) = part.details.left() {
                     if let Some(details) = &new.details {
                         self.format_details(details);
                     }
@@ -986,12 +1034,26 @@ impl Formatter for VerticalFormatter {
         function_name: &str,
         id: &str,
         details: Option<&str>,
-        metrics_summary: &ToolMetricSummary,
+        summaries: Vec<(ValgrindTool, ToolMetricSummary)>,
     ) -> Result<()> {
         if self.output_format.is_default() {
             ComparisonHeader::new(function_name, id, details, &self.output_format).print();
 
-            self.format_single((None, None), None, metrics_summary)?;
+            let is_multiple = summaries.len() > 1;
+            for (tool, summary) in summaries
+                .iter()
+                .filter(|(_, s)| *s != ToolMetricSummary::None)
+            {
+                if is_multiple || *tool != ValgrindTool::Callgrind {
+                    self.format_free_form(&format!(
+                        "{}{} {}\n",
+                        self.indent_sub_header,
+                        "-------".bright_black(),
+                        tool.to_string().to_uppercase()
+                    ))?;
+                }
+                self.format_single(*tool, &(None, None), None, summary, false)?;
+            }
             self.print_buffer();
         }
 
@@ -1004,6 +1066,11 @@ impl Formatter for VerticalFormatter {
 
     fn get_output_format(&self) -> &OutputFormat {
         &self.output_format
+    }
+
+    fn format_free_form(&mut self, line: &str) -> Result<()> {
+        self.buffer.push_str(line);
+        Ok(())
     }
 }
 
@@ -1018,11 +1085,11 @@ pub fn format_float(float: f64, unit: char) -> ColoredString {
                 .bold()
         }
     } else if float.is_sign_positive() {
-        format!("{signed_short:^+FLOAT_WIDTH$}{unit}")
+        format!("{signed_short:>+FLOAT_WIDTH$}{unit}")
             .bright_red()
             .bold()
     } else {
-        format!("{signed_short:^+FLOAT_WIDTH$}{unit}")
+        format!("{signed_short:>+FLOAT_WIDTH$}{unit}")
             .bright_green()
             .bold()
     }
@@ -1101,6 +1168,49 @@ fn truncate_description(description: &str, truncate_description: Option<usize>) 
         }
     } else {
         Cow::Borrowed(description)
+    }
+}
+
+pub fn print_regressions(regressions: &[ToolRegression]) {
+    for ToolRegression {
+        metric: kind,
+        new,
+        old,
+        diff_pct,
+        limit,
+    } in regressions
+    {
+        let string = match kind {
+            MetricKind::Callgrind(event_kind) => event_kind.to_string(),
+            MetricKind::Cachegrind(cachegrind_metric) => cachegrind_metric.to_string(),
+            MetricKind::Dhat(dhat_metric) => dhat_metric.to_string(),
+            MetricKind::ErrorMetric(error_metric) => error_metric.to_string(),
+            MetricKind::None => return,
+        };
+
+        if limit.is_sign_positive() {
+            eprintln!(
+                "Performance has {0}: {1} ({old} -> {2}) regressed by {3:>+6} (>{4:>+6})",
+                "regressed".bold().bright_red(),
+                string.bold(),
+                new.to_string().bold(),
+                format!("{}%", to_string_signed_short(*diff_pct))
+                    .bold()
+                    .bright_red(),
+                format!("{}%", to_string_signed_short(*limit)).bright_black()
+            );
+        } else {
+            eprintln!(
+                "Performance has {0}: {1} ({old} -> {2}) regressed by {3:>+6} (<{4:>+6})",
+                "regressed".bold().bright_red(),
+                string.bold(),
+                new.to_string().bold(),
+                format!("{}%", to_string_signed_short(*diff_pct))
+                    .bold()
+                    .bright_red(),
+                format!("{}%", to_string_signed_short(*limit)).bright_black()
+            );
+        }
     }
 }
 

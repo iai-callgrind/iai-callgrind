@@ -335,13 +335,7 @@ impl LibraryBenchmark {
     /// ```
     fn render_standalone(self, item_fn: &ItemFn) -> TokenStream {
         let ident = &item_fn.sig.ident;
-        let visibility: syn::Visibility = parse_quote! { pub(super) };
-        let new_item_fn = ItemFn {
-            attrs: vec![],
-            vis: visibility,
-            sig: item_fn.sig.clone(),
-            block: item_fn.block.clone(),
-        };
+        let new_item_fn = create_item_fn(item_fn);
 
         let config = self.config.render_as_code();
 
@@ -426,13 +420,7 @@ impl LibraryBenchmark {
     /// }
     /// ```
     fn render_benches(self, item_fn: &ItemFn) -> TokenStream {
-        let visibility: syn::Visibility = parse_quote! { pub(super) };
-        let new_item_fn = ItemFn {
-            attrs: vec![],
-            vis: visibility,
-            sig: item_fn.sig.clone(),
-            block: item_fn.block.clone(),
-        };
+        let new_item_fn = create_item_fn(item_fn);
 
         let mod_name = &item_fn.sig.ident;
         let callee = &item_fn.sig.ident;
@@ -548,6 +536,37 @@ impl Teardown {
         } else {
             tokens
         }
+    }
+}
+
+#[cfg(feature = "cachegrind")]
+fn create_item_fn(item_fn: &ItemFn) -> ItemFn {
+    let vis = parse_quote! { pub(super) };
+    let item_fn_block = item_fn.block.clone();
+    let block = parse_quote!(
+        {
+            iai_callgrind::client_requests::cachegrind::start_instrumentation();
+            let __r = #item_fn_block;
+            iai_callgrind::client_requests::cachegrind::stop_instrumentation();
+            __r
+        }
+    );
+    ItemFn {
+        attrs: vec![],
+        vis,
+        sig: item_fn.sig.clone(),
+        block,
+    }
+}
+
+#[cfg(not(feature = "cachegrind"))]
+fn create_item_fn(item_fn: &ItemFn) -> ItemFn {
+    let vis = parse_quote! { pub(super) };
+    ItemFn {
+        attrs: vec![],
+        vis,
+        sig: item_fn.sig.clone(),
+        block: item_fn.block.clone(),
     }
 }
 

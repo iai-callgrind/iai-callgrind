@@ -1,6 +1,6 @@
 use iai_callgrind::{
-    self, binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Pipe, Stdin,
-    Stdio, Tool, ValgrindTool,
+    self, binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Dhat, Pipe, Stdin,
+    Stdio,
 };
 
 const ECHO: &str = env!("CARGO_BIN_EXE_echo");
@@ -21,9 +21,9 @@ fn bench_echo() -> iai_callgrind::Command {
 
 #[binary_benchmark(
     setup = setup(),
-    config =
-        BinaryBenchmarkConfig::default()
-            .tool(Tool::new(ValgrindTool::DHAT)))]
+    config = BinaryBenchmarkConfig::default()
+        .tool(Dhat::default())
+)]
 fn bench_pipe() -> iai_callgrind::Command {
     iai_callgrind::Command::new(PIPE)
         .stdin(Stdin::Setup(Pipe::Stdout))

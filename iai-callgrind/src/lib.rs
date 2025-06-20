@@ -1,7 +1,10 @@
 //! Iai-Callgrind is a benchmarking framework/harness which primarily uses [Valgrind's
-//! Callgrind](https://valgrind.org/docs/manual/cl-manual.html) and the other Valgrind tools to
+//! Callgrind](https://valgrind.org/docs/manual/cl-manual.html) but also other Valgrind tools to
 //! provide extremely accurate and consistent measurements of Rust code, making it perfectly suited
-//! to run in environments like a CI.
+//! to run in environments like a CI. Despite its name it's possible to run cachegrind in addition
+//! to or instead of callgrind. The [online
+//! guide](https://iai-callgrind.github.io/iai-callgrind/latest/html/intro.html) contains all the
+//! details to start profiling with Iai-Callgrind.
 //!
 //! # Table of contents
 //! - [Characteristics](#characteristics)
@@ -321,23 +324,41 @@
 //!
 //! ## Valgrind Tools
 //!
-//! In addition to the default benchmarks, you can use the Iai-Callgrind framework to run other
-//! Valgrind profiling [`Tool`]s like `DHAT`, `Massif` and the experimental `BBV` but also
-//! `Memcheck`, `Helgrind` and `DRD` if you need to check memory and thread safety of benchmarked
-//! code. See also the [Valgrind User Manual](https://valgrind.org/docs/manual/manual.html) for
-//! details and command line arguments. The additional tools can be specified in
-//! [`LibraryBenchmarkConfig`], [`BinaryBenchmarkConfig`]. For example to run `DHAT` for
-//! all library benchmarks:
+//! In addition to the default tool, you can use the Iai-Callgrind framework to run other Valgrind
+//! profiling tools like `DHAT`, `Massif` and the experimental `BBV` but also `Memcheck`,
+//! `Helgrind` and `DRD` if you need to check memory and thread safety of benchmarked code. See also
+//! the [Valgrind User Manual](https://valgrind.org/docs/manual/manual.html) for details and command
+//! line arguments. The additional tools can be specified in [`LibraryBenchmarkConfig`],
+//! [`BinaryBenchmarkConfig`]. For example to run `DHAT` for all library benchmarks:
+//!
 //! ```rust
 //! # use iai_callgrind::{library_benchmark, library_benchmark_group};
-//! use iai_callgrind::{main, LibraryBenchmarkConfig, Tool, ValgrindTool};
+//! use iai_callgrind::{main, LibraryBenchmarkConfig, Dhat};
 //! # #[library_benchmark]
 //! # fn some_func() {}
 //! # library_benchmark_group!(name = some_group; benchmarks = some_func);
 //! # fn main() {
 //! main!(
 //!     config = LibraryBenchmarkConfig::default()
-//!                 .tool(Tool::new(ValgrindTool::DHAT));
+//!                 .tool(Dhat::default());
+//!     library_benchmark_groups = some_group
+//! );
+//! # }
+//! ```
+//!
+//! If you're just interested in for example DHAT metrics for one or more specific benchmarks you
+//! can change the default tool wherever a configuration can be specified. Here in `main!`:
+//!
+//! ```rust
+//! # use iai_callgrind::{library_benchmark, library_benchmark_group};
+//! use iai_callgrind::{main, LibraryBenchmarkConfig, ValgrindTool};
+//! # #[library_benchmark]
+//! # fn some_func() {}
+//! # library_benchmark_group!(name = some_group; benchmarks = some_func);
+//! # fn main() {
+//! main!(
+//!     config = LibraryBenchmarkConfig::default()
+//!                 .default_tool(ValgrindTool::DHAT);
 //!     library_benchmark_groups = some_group
 //! );
 //! # }
@@ -346,14 +367,13 @@
 //! ## Client requests
 //!
 //! `iai-callgrind` supports valgrind client requests. See the documentation of the
-//! [`client_requests`] module.
+//! [`client_requests`] module for all the details.
 //!
 //! ## Flamegraphs
 //!
 //! Flamegraphs are opt-in and can be created if you pass a [`FlamegraphConfig`] to the
-//! [`BinaryBenchmarkConfig::flamegraph`] or [`LibraryBenchmarkConfig::flamegraph`]. Callgrind
-//! flamegraphs are meant as a complement to valgrind's visualization tools `callgrind_annotate` and
-//! `kcachegrind`.
+//! [`Callgrind::flamegraph`]. Callgrind flamegraphs are meant as a complement to valgrind's
+//! visualization tools `callgrind_annotate` and `kcachegrind`.
 //!
 //! Callgrind flamegraphs show the inclusive costs for functions and a specific event type, much
 //! like `callgrind_annotate` does but in a nicer (and clickable) way. Especially, differential
@@ -408,7 +428,10 @@ pub use bin_bench::{
 #[cfg(feature = "default")]
 pub use bincode;
 #[cfg(feature = "default")]
-pub use common::{black_box, FlamegraphConfig, OutputFormat, RegressionConfig, Tool};
+pub use common::{
+    Bbv, Cachegrind, Callgrind, Dhat, Drd, FlamegraphConfig, Helgrind, Massif, Memcheck,
+    OutputFormat,
+};
 #[cfg(feature = "client_requests_defs")]
 pub use cty;
 #[cfg(feature = "default")]
@@ -417,8 +440,8 @@ pub use iai_callgrind_macros::{binary_benchmark, library_benchmark};
 // documentation in `__internal::mod` for more details.
 #[cfg(feature = "default")]
 pub use iai_callgrind_runner::api::{
-    CallgrindMetrics, DelayKind, Direction, EntryPoint, EventKind, FlamegraphKind, Pipe, Stdin,
-    Stdio, ValgrindTool,
+    CachegrindMetric, CallgrindMetrics, DelayKind, DhatMetric, Direction, EntryPoint, ErrorMetric,
+    EventKind, FlamegraphKind, Pipe, Stdin, Stdio, ValgrindTool,
 };
 #[cfg(feature = "default")]
 pub use lib_bench::LibraryBenchmarkConfig;

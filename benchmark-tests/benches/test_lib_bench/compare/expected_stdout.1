@@ -194,5 +194,91 @@ test_lib_bench_compare::bubble_sort_compare_no_id::bench_bubble_sort_no_id_2
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
+test_lib_bench_compare::bubble_sort_compare_with_dhat::bench_bubble_sort_dhat case_3:vec! [3, 2, 1]
+  ======= CALLGRIND ====================================================================
+  Instructions:                            |N/A                  (*********)
+  L1 Hits:                                 |N/A                  (*********)
+  L2 Hits:                                 |N/A                  (*********)
+  RAM Hits:                                |N/A                  (*********)
+  Total read+write:                        |N/A                  (*********)
+  Estimated Cycles:                        |N/A                  (*********)
+  ======= DHAT =========================================================================
+  Total bytes:                             |N/A                  (*********)
+  Total blocks:                            |N/A                  (*********)
+  At t-gmax bytes:                         |N/A                  (*********)
+  At t-gmax blocks:                        |N/A                  (*********)
+  At t-end bytes:                          |N/A                  (*********)
+  At t-end blocks:                         |N/A                  (*********)
+  Reads bytes:                             |N/A                  (*********)
+  Writes bytes:                            |N/A                  (*********)
+test_lib_bench_compare::bubble_sort_compare_with_dhat::bench_bubble_sort_dhat_other case_3:vec! [1, 2, 3]
+  ======= CALLGRIND ====================================================================
+  Instructions:                            |N/A                  (*********)
+  L1 Hits:                                 |N/A                  (*********)
+  L2 Hits:                                 |N/A                  (*********)
+  RAM Hits:                                |N/A                  (*********)
+  Total read+write:                        |N/A                  (*********)
+  Estimated Cycles:                        |N/A                  (*********)
+  ======= DHAT =========================================================================
+  Total bytes:                             |N/A                  (*********)
+  Total blocks:                            |N/A                  (*********)
+  At t-gmax bytes:                         |N/A                  (*********)
+  At t-gmax blocks:                        |N/A                  (*********)
+  At t-end bytes:                          |N/A                  (*********)
+  At t-end blocks:                         |N/A                  (*********)
+  Reads bytes:                             |N/A                  (*********)
+  Writes bytes:                            |N/A                  (*********)
+  Comparison with bench_bubble_sort_dhat case_3:vec! [3, 2, 1]
+  ------- CALLGRIND
+  Instructions:                            |                     (+       %) [+       x]
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (+       %) [+       x]
+  Estimated Cycles:                        |                     (         )
+  ------- DHAT
+  Total bytes:                             |                     (-       %) [-       x]
+  Total blocks:                            |                     (No change)
+  At t-gmax bytes:                         |                     (         )
+  At t-gmax blocks:                        |                     (         )
+  At t-end bytes:                          |                     (No change)
+  At t-end blocks:                         |                     (No change)
+  Reads bytes:                             |                     (No change)
+  Writes bytes:                            |                     (+       %) [+       x]
+test_lib_bench_compare::bubble_sort_compare_with_dhat::bench_bubble_sort_mixed_case case_3:vec! [2, 3, 1]
+  Instructions:                            |N/A                  (*********)
+  L1 Hits:                                 |N/A                  (*********)
+  L2 Hits:                                 |N/A                  (*********)
+  RAM Hits:                                |N/A                  (*********)
+  Total read+write:                        |N/A                  (*********)
+  Estimated Cycles:                        |N/A                  (*********)
+  Comparison with bench_bubble_sort_dhat case_3:vec! [3, 2, 1]
+  Instructions:                            |                     (+       %) [+       x]
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (+       %) [+       x]
+  Estimated Cycles:                        |                     (         )
+  Comparison with bench_bubble_sort_dhat_other case_3:vec! [1, 2, 3]
+  Instructions:                            |                     (-       %) [-       x]
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (-       %) [-       x]
+  Estimated Cycles:                        |                     (         )
+test_lib_bench_compare::bubble_sort_compare_with_dhat::bench_bubble_sort_mixed_case no_compare_multiple_0:vec! [2, 1]
+  Instructions:                            |N/A                  (*********)
+  L1 Hits:                                 |N/A                  (*********)
+  L2 Hits:                                 |N/A                  (*********)
+  RAM Hits:                                |N/A                  (*********)
+  Total read+write:                        |N/A                  (*********)
+  Estimated Cycles:                        |N/A                  (*********)
+test_lib_bench_compare::bubble_sort_compare_with_dhat::bench_bubble_sort_mixed_case no_compare_multiple_1:vec! [2, 4, 3, 1]
+  Instructions:                            |N/A                  (*********)
+  L1 Hits:                                 |N/A                  (*********)
+  L2 Hits:                                 |N/A                  (*********)
+  RAM Hits:                                |N/A                  (*********)
+  Total read+write:                        |N/A                  (*********)
+  Estimated Cycles:                        |N/A                  (*********)
 
-Iai-Callgrind result: Ok. 20 without regressions; 0 regressed; 20 benchmarks finished in <__SECONDS__>s
+Iai-Callgrind result: Ok. 25 without regressions; 0 regressed; 25 benchmarks finished in <__SECONDS__>s

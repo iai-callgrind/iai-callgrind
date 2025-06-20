@@ -1,19 +1,12 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use anyhow::{Context, Result};
-use itertools::Itertools;
 use lazy_static::lazy_static;
-use log::debug;
 use regex::Regex;
 
-use super::error_metric_parser::ErrorMetricLogfileParser;
-use super::generic_parser::GenericLogfileParser;
-use super::{ToolOutputPath, ValgrindTool};
+use super::parser::{Header, ParserOutput};
 use crate::error::Error;
-use crate::runner::dhat::logfile_parser::DhatLogfileParser;
-use crate::runner::summary::{
-    SegmentDetails, ToolMetricSummary, ToolMetrics, ToolRun, ToolRunSegment,
-};
+use crate::runner::summary::ToolMetricSummary;
 use crate::util::EitherOrBoth;
 
 // The different regex have to consider --time-stamp=yes
@@ -33,157 +26,10 @@ lazy_static! {
             .expect("Regex should compile");
 }
 
-pub trait LogfileParser {
-    fn parse_single(&self, path: PathBuf) -> Result<Logfile>;
-    fn parse(&self, output_path: &ToolOutputPath) -> Result<Vec<Logfile>> {
-        let log_path = output_path.to_log_output();
-        debug!("{}: Parsing log file '{}'", output_path.tool.id(), log_path);
-
-        let mut logfiles = vec![];
-        let Ok(paths) = log_path.real_paths() else {
-            return Ok(vec![]);
-        };
-
-        for path in paths {
-            let logfile = self.parse_single(path)?;
-            logfiles.push(logfile);
-        }
-
-        logfiles.sort_by_key(|x| x.header.pid);
-        Ok(logfiles)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Header {
-    pub command: String,
-    pub pid: i32,
-    pub parent_pid: Option<i32>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Logfile {
-    pub path: PathBuf,
-    pub header: Header,
-    pub details: Vec<String>,
-    pub metrics: ToolMetrics,
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct LogfileSummary {
-    pub logfile: EitherOrBoth<Logfile>,
+    pub logfile: EitherOrBoth<ParserOutput>,
     pub metrics_summary: ToolMetricSummary,
-}
-
-impl From<Logfile> for SegmentDetails {
-    fn from(value: Logfile) -> Self {
-        Self {
-            command: value.header.command,
-            pid: value.header.pid,
-            parent_pid: value.header.parent_pid,
-            details: (!value.details.is_empty()).then(|| value.details.join("\n")),
-            path: value.path,
-            part: None,
-            thread: None,
-        }
-    }
-}
-
-// Logfiles are separated per process but not per threads by any tool
-impl From<EitherOrBoth<Vec<Logfile>>> for ToolRun {
-    fn from(logfiles: EitherOrBoth<Vec<Logfile>>) -> Self {
-        let mut total: Option<ToolMetricSummary> = None;
-
-        let segments: Vec<ToolRunSegment> = match logfiles {
-            EitherOrBoth::Left(new) => new
-                .into_iter()
-                .map(|logfile| {
-                    let metrics_summary = ToolMetricSummary::from_new_metrics(&logfile.metrics);
-                    if let Some(entry) = total.as_mut() {
-                        entry.add_mut(&metrics_summary);
-                    } else {
-                        total = Some(metrics_summary.clone());
-                    }
-
-                    ToolRunSegment {
-                        details: EitherOrBoth::Left(logfile.into()),
-                        metrics_summary,
-                    }
-                })
-                .collect(),
-            EitherOrBoth::Right(old) => old
-                .into_iter()
-                .map(|logfile| {
-                    let metrics_summary = ToolMetricSummary::from_old_metrics(&logfile.metrics);
-                    if let Some(entry) = total.as_mut() {
-                        entry.add_mut(&metrics_summary);
-                    } else {
-                        total = Some(metrics_summary.clone());
-                    }
-
-                    ToolRunSegment {
-                        details: EitherOrBoth::Right(logfile.into()),
-                        metrics_summary,
-                    }
-                })
-                .collect(),
-            EitherOrBoth::Both(new, old) => new
-                .into_iter()
-                .zip_longest(old)
-                .map(|either_or_both| match either_or_both {
-                    itertools::EitherOrBoth::Both(new, old) => {
-                        let metrics_summary = ToolMetricSummary::try_from_new_and_old_metrics(
-                            &new.metrics,
-                            &old.metrics,
-                        )
-                        .expect("The cost kinds should match");
-
-                        if let Some(entry) = total.as_mut() {
-                            entry.add_mut(&metrics_summary);
-                        } else {
-                            total = Some(metrics_summary.clone());
-                        }
-
-                        ToolRunSegment {
-                            details: EitherOrBoth::Both(new.into(), old.into()),
-                            metrics_summary,
-                        }
-                    }
-                    itertools::EitherOrBoth::Left(new) => {
-                        let metrics_summary = ToolMetricSummary::from_new_metrics(&new.metrics);
-                        if let Some(entry) = total.as_mut() {
-                            entry.add_mut(&metrics_summary);
-                        } else {
-                            total = Some(metrics_summary.clone());
-                        }
-
-                        ToolRunSegment {
-                            details: EitherOrBoth::Left(new.into()),
-                            metrics_summary,
-                        }
-                    }
-                    itertools::EitherOrBoth::Right(old) => {
-                        let metrics_summary = ToolMetricSummary::from_old_metrics(&old.metrics);
-                        if let Some(entry) = total.as_mut() {
-                            entry.add_mut(&metrics_summary);
-                        } else {
-                            total = Some(metrics_summary.clone());
-                        }
-
-                        ToolRunSegment {
-                            details: EitherOrBoth::Right(old.into()),
-                            metrics_summary,
-                        }
-                    }
-                })
-                .collect(),
-        };
-
-        Self {
-            segments,
-            total: total.expect("A total should be present"),
-        }
-    }
 }
 
 pub fn extract_pid(line: &str) -> Result<i32> {
@@ -252,15 +98,33 @@ pub fn parse_header(path: &Path, mut lines: impl Iterator<Item = String>) -> Res
         })?,
         pid,
         parent_pid,
+        thread: None,
+        part: None,
+        desc: vec![],
     })
 }
 
-pub fn parser_factory(tool: ValgrindTool, root_dir: PathBuf) -> Box<dyn LogfileParser> {
-    match tool {
-        ValgrindTool::DHAT => Box::new(DhatLogfileParser { root_dir }),
-        ValgrindTool::Memcheck | ValgrindTool::DRD | ValgrindTool::Helgrind => {
-            Box::new(ErrorMetricLogfileParser { root_dir })
-        }
-        _ => Box::new(GenericLogfileParser { root_dir }),
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use super::*;
+
+    #[rstest]
+    #[case::equals_sign(
+        "==1746070== Cachegrind, a high-precision tracing profiler",
+        1_746_070_i32
+    )]
+    #[case::hyphen(
+        "--1746070-- warning: L3 cache found, using its data for the LL simulation.",
+        1_746_070_i32
+    )]
+    #[case::timestamp(
+        "==00:00:00:00.000 1811497== Callgrind, a call-graph generating cache profiler",
+        1_811_497_i32
+    )]
+    fn test_extract_pid(#[case] haystack: &str, #[case] expected: i32) {
+        let actual = extract_pid(haystack).unwrap();
+        assert_eq!(actual, expected);
     }
 }

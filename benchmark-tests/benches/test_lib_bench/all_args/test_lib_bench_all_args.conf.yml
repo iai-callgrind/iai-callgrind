@@ -10,18 +10,18 @@ groups:
     runs:
       - args: ["--nocapture"]
         expected:
-          zero_callgrind_metrics: true
+          zero_metrics: true
           stdout: expected_stdout.1a
           stderr: expected_stderr.1a
       - args: ["--nocapture"]
         expected:
-          zero_callgrind_metrics: true
+          zero_metrics: true
           stdout: expected_stdout.1b
           stderr: expected_stderr.1b
   - runs_on: "x86_64-unknown-freebsd"
     runs:
       - args: ["--nocapture"]
         expected:
-          zero_callgrind_metrics: true
+          zero_metrics: true
           stdout: expected_stdout.freebsd.1a
           stderr: expected_stderr.1a

@@ -1,0 +1,39 @@
+groups:
+  - runs:
+      - args: []
+        expected:
+          files: expected_files.1.yml
+          stdout: expected_stdout.1
+  - runs:
+      - args: []
+        expected:
+          files: expected_files.1.yml
+          stdout: expected_stdout.1
+      - args: []
+        cargo_args: ["--features", "cachegrind"]
+        expected:
+          files: expected_files.2b.yml
+          stdout: expected_stdout.2b
+  - runs:
+      - args: []
+        cargo_args: ["--features", "cachegrind"]
+        expected:
+          files: expected_files.3a.yml
+          stdout: expected_stdout.3a
+      - args: []
+        cargo_args: ["--features", "cachegrind"]
+        expected:
+          files: expected_files.3b.yml
+          stdout: expected_stdout.3b
+  - runs:
+      - args: []
+        cargo_args: ["--features", "cachegrind"]
+        expected:
+          files: expected_files.3a.yml
+          stdout: expected_stdout.3a
+      # TODO: The output does not match the expected_stdout.4b on freebsd
+      - args: []
+        runs_on: "!x86_64-unknown-freebsd"
+        expected:
+          files: expected_files.4b.yml
+          stdout: expected_stdout.4b

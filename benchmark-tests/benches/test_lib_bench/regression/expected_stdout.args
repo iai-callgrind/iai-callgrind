@@ -1,0 +1,32 @@
+test_bench_template::bench_group::bench_bubble_sort regress_callgrind:setup_worst_case_array(5)
+  Instructions:                            |                     (+       %) [+       x]
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (+       %) [+       x]
+  Estimated Cycles:                        |                     (         )
+test_bench_template::bench_group::bench_bubble_sort regress_cachegrind:setup_worst_case_array(5)
+  ======= CACHEGRIND ===================================================================
+  Instructions:                            |                     (+       %) [+       x]
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (+       %) [+       x]
+  Estimated Cycles:                        |                     (         )
+test_bench_template::bench_group::bench_bubble_sort should_not_run_after_regression:setup_worst_case_array(10)
+  Instructions:                            |                     (No change)
+  L1 Hits:                                 |                     (         )
+  L2 Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
+
+Regressions:
+
+  test_bench_template::bench_group::bench_bubble_sort regress_callgrind:
+    Callgrind: Instructions (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
+    Callgrind: Estimated Cycles (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
+  test_bench_template::bench_group::bench_bubble_sort regress_cachegrind:
+    Cachegrind: Estimated Cycles (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
+
+Iai-Callgrind result: Regressed. 1 without regressions; 2 regressed; 3 benchmarks finished in <__SECONDS__>s

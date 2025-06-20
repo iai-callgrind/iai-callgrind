@@ -1,4 +1,4 @@
-test_bench_template::bench_group::bench_bubble_sort regress_ir:(5) -> target/release/bubble-sort 5
+test_bench_template::bench_group::bench_bubble_sort regress_callgrind:(5) -> target/release/bubble-sort 5
   Instructions:                            |                     (+       %) [+       x]
   L1 Hits:                                 |                     (         )
   L2 Hits:                                 |                     (         )

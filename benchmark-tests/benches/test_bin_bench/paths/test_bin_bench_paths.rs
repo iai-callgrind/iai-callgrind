@@ -2,8 +2,8 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
 use iai_callgrind::{
-    binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Command, OutputFormat,
-    Sandbox, Stdio,
+    binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Callgrind, Command,
+    OutputFormat, Sandbox, Stdio,
 };
 
 fn create_script(path: &str) {
@@ -29,7 +29,8 @@ fn create_file() {
 #[bench::relative(
     args = ("./cat"),
     setup = create_script,
-    config = BinaryBenchmarkConfig::default().callgrind_args(["trace-children=yes"])
+    config = BinaryBenchmarkConfig::default()
+        .tool(Callgrind::with_args(["trace-children=yes"]))
 )]
 #[bench::absolute(
     args = ("/bin/cat"),
@@ -47,7 +48,7 @@ fn bench_paths(path: &str) -> Command {
 binary_benchmark_group!(name = my_group; benchmarks = bench_paths);
 main!(
     config = BinaryBenchmarkConfig::default()
-        .callgrind_args(["trace-children=no"])
+        .tool(Callgrind::with_args(["trace-children=no"]))
         .output_format(OutputFormat::default()
             .truncate_description(None)
         );

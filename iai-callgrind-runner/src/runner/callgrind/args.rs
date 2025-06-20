@@ -6,10 +6,9 @@ use std::str::FromStr;
 use anyhow::Result;
 use log::{log_enabled, warn};
 
-use crate::api::RawArgs;
+use crate::api::{RawArgs, ValgrindTool};
 use crate::error::Error;
-use crate::runner::tool;
-use crate::runner::tool::args::FairSched;
+use crate::runner::tool::args::{defaults, FairSched, ToolArgs};
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
 #[allow(clippy::struct_excessive_bools)]
@@ -138,28 +137,28 @@ impl Default for Args {
             // Set some reasonable cache sizes. The exact sizes matter less than having fixed sizes,
             // since otherwise callgrind would take them from the CPU and make benchmark runs
             // even more incomparable between machines.
-            i1: String::from("32768,8,64"),
-            d1: String::from("32768,8,64"),
-            ll: String::from("8388608,16,64"),
-            cache_sim: true,
-            compress_pos: false,
-            compress_strings: false,
-            combine_dumps: false,
+            i1: defaults::I1.into(),
+            d1: defaults::D1.into(),
+            ll: defaults::LL.into(),
+            cache_sim: defaults::CACHE_SIM,
+            compress_pos: defaults::COMPRESS_POS,
+            compress_strings: defaults::COMPRESS_STRINGS,
+            combine_dumps: defaults::COMBINE_DUMPS,
             verbose: log_enabled!(log::Level::Debug),
-            dump_line: true,
-            dump_instr: false,
+            dump_line: defaults::DUMP_LINE,
+            dump_instr: defaults::DUMP_INSTR,
             toggle_collect: VecDeque::default(),
             callgrind_out_file: Option::default(),
             log_arg: Option::default(),
             other: Vec::default(),
-            trace_children: true,
-            separate_threads: true,
-            fair_sched: FairSched::Try,
+            trace_children: defaults::TRACE_CHILDREN,
+            separate_threads: defaults::SEPARATE_THREADS,
+            fair_sched: defaults::FAIR_SCHED,
         }
     }
 }
 
-impl From<Args> for tool::args::ToolArgs {
+impl From<Args> for ToolArgs {
     fn from(mut value: Args) -> Self {
         let mut other = vec![
             format!("--I1={}", &value.i1),
@@ -189,12 +188,12 @@ impl From<Args> for tool::args::ToolArgs {
         other.append(&mut value.other);
 
         Self {
-            tool: tool::ValgrindTool::Callgrind,
+            tool: ValgrindTool::Callgrind,
             output_paths: value
                 .callgrind_out_file
                 .map_or_else(Vec::new, |o| vec![o.into()]),
             log_path: value.log_arg,
-            error_exitcode: "0".to_owned(),
+            error_exitcode: defaults::ERROR_EXIT_CODE_OTHER_TOOL.into(),
             verbose: value.verbose,
             trace_children: value.trace_children,
             fair_sched: value.fair_sched,

@@ -247,12 +247,32 @@ Number of primes found in the range 0 to 20000: 2262
   Command:             target/release/thread 2
   Details: <__DETAILS__>
   Comparison with bench_find_primes_multi_thread two:2
+  ------- CALLGRIND
   Instructions:                            |                     (-       %) [-       x]
   L1 Hits:                                 |                     (         )
   L2 Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (-       %) [-       x]
   Estimated Cycles:                        |                     (         )
+  ------- DHAT
+  Total bytes:                             |                     (-       %) [-       x]
+  Total blocks:                            |                     (-       %) [-       x]
+  At t-gmax bytes:                         |                     (         )
+  At t-gmax blocks:                        |                     (         )
+  At t-end bytes:                          |                     (No change)
+  At t-end blocks:                         |                     (No change)
+  Reads bytes:                             |                     (-       %) [-       x]
+  Writes bytes:                            |                     (-       %) [-       x]
+  ------- MEMCHECK
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ------- DRD
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
 test_lib_bench_threads::bench_group::bench_thread_in_subprocess three:3
   ======= CALLGRIND ====================================================================
 Number of primes found in the range 0 to 30000: 3245
@@ -384,12 +404,32 @@ Number of primes found in the range 0 to 30000: 3245
   Command:             target/release/thread 3
   Details: <__DETAILS__>
   Comparison with bench_find_primes_multi_thread three:3
+  ------- CALLGRIND
   Instructions:                            |                     (-       %) [-       x]
   L1 Hits:                                 |                     (         )
   L2 Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (-       %) [-       x]
   Estimated Cycles:                        |                     (         )
+  ------- DHAT
+  Total bytes:                             |                     (-       %) [-       x]
+  Total blocks:                            |                     (-       %) [-       x]
+  At t-gmax bytes:                         |                     (         )
+  At t-gmax blocks:                        |                     (         )
+  At t-end bytes:                          |                     (No change)
+  At t-end blocks:                         |                     (No change)
+  Reads bytes:                             |                     (-       %) [-       x]
+  Writes bytes:                            |                     (-       %) [-       x]
+  ------- MEMCHECK
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
+  ------- DRD
+  Errors:                                  |                     (No change)
+  Contexts:                                |                     (No change)
+  Suppressed Errors:                       |                     (         )
+  Suppressed Contexts:                     |                     (         )
 test_lib_bench_threads::bench_group::bench_thread_in_thread
   ======= CALLGRIND ====================================================================
 thread in thread: Number of primes found in the range 0 to 10000: 1229

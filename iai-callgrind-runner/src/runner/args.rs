@@ -7,7 +7,10 @@ use clap::{ArgAction, Parser};
 
 use super::format::OutputFormatKind;
 use super::summary::{BaselineName, SummaryFormat};
-use crate::api::{EventKind, RawArgs, RegressionConfig};
+use crate::api::{
+    CachegrindMetric, CachegrindRegressionConfig, CallgrindRegressionConfig, EventKind, RawArgs,
+    ToolRegressionConfig, ValgrindTool,
+};
 
 /// A filter for benchmarks
 ///
@@ -155,9 +158,77 @@ pub struct CommandLineArgs {
     #[arg(name = "BENCHNAME", num_args = 0..=1, env = "IAI_CALLGRIND_FILTER")]
     pub filter: Option<BenchmarkFilter>,
 
-    /// The raw arguments to pass through to Callgrind
+    /// The default tool used to run the benchmarks
     ///
-    /// List of command-line-arguments specified as if they were passed directly to valgrind.
+    /// The standard tool to run the benchmarks is callgrind but can be overridden with this
+    /// option. Any valgrind tool can be used:
+    ///   * callgrind
+    ///   * cachegrind
+    ///   * dhat
+    ///   * memcheck
+    ///   * helgrind
+    ///   * drd
+    ///   * massif
+    ///   * exp-bbv
+    ///
+    /// This argument matches the tool case-insensitive. Note that using cachegrind with this
+    /// option to benchmark library functions needs adjustments to the benchmarking functions
+    /// with client-requests to measure the counts correctly. If you want to switch permanently
+    /// to cachegrind, it is usually better to activate the `cachegrind` feature of
+    /// iai-callgrind in your Cargo.toml. However, setting a tool with this option overrides
+    /// cachegrind set with the iai-callgrind feature. See the guide for all details.
+    #[arg(
+        long = "default-tool",
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_DEFAULT_TOOL"
+    )]
+    pub default_tool: Option<ValgrindTool>,
+
+    /// A comma separated list of tools to run additionally to callgrind or another default tool
+    ///
+    /// The tools specified here take precedence over the tools in the benchmarks. The valgrind
+    /// tools which are allowed here are the same as the ones listed in the documentation of
+    /// --default-tool.
+    ///
+    /// Examples
+    ///   * --tools dhat
+    ///   * --tools memcheck,drd
+    #[arg(
+        long = "tools",
+        num_args = 1..,
+        value_delimiter = ',',
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_TOOLS"
+    )]
+    pub tools: Vec<ValgrindTool>,
+
+    /// The command-line arguments to pass through to all tools
+    ///
+    /// The core valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options> which are recognized
+    /// by all tools. More specific arguments for example set with --callgrind-args override the
+    /// arguments with the same name specified with this option.
+    ///
+    /// Examples:
+    ///   * --valgrind-args=--time-stamp=yes
+    ///   * --valgrind-args='--error-exitcode=202 --num-callers=50'
+    #[arg(
+        long = "valgrind-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_VALGRIND_ARGS"
+    )]
+    pub valgrind_args: Option<RawArgs>,
+
+    /// The command-line arguments to pass through to Callgrind
+    ///
+    /// <https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options> and the core valgrind
+    /// command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options>. Note that not all
+    /// command-line arguments are supported especially the ones which change output paths.
+    /// Unsupported arguments will be ignored printing a warning.
     ///
     /// Examples:
     ///   * --callgrind-args=--dump-instr=yes
@@ -170,6 +241,124 @@ pub struct CommandLineArgs {
         env = "IAI_CALLGRIND_CALLGRIND_ARGS"
     )]
     pub callgrind_args: Option<RawArgs>,
+
+    /// The command-line arguments to pass through to Cachegrind
+    ///
+    /// <https://valgrind.org/docs/manual/cg-manual.html#cg-manual.cgopts>. See also the description
+    /// for --callgrind-args for more details and restrictions.
+    ///
+    /// Examples:
+    ///   * --cachegrind-args=--intr-at-start=no
+    ///   * --cachegrind-args='--branch-sim=yes --instr-at-start=no'
+    #[arg(
+        long = "cachegrind-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_CACHEGRIND_ARGS"
+    )]
+    pub cachegrind_args: Option<RawArgs>,
+
+    /// The command-line arguments to pass through to DHAT
+    ///
+    /// <https://valgrind.org/docs/manual/dh-manual.html#dh-manual.options>. See also the description
+    /// for --callgrind-args for more details and restrictions.
+    ///
+    /// Examples:
+    ///   * --dhat-args=--mode=ad-hoc
+    #[arg(
+        long = "dhat-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_DHAT_ARGS"
+    )]
+    pub dhat_args: Option<RawArgs>,
+
+    /// The command-line arguments to pass through to Memcheck
+    ///
+    /// <https://valgrind.org/docs/manual/mc-manual.html#mc-manual.options>. See also the description
+    /// for --callgrind-args for more details and restrictions.
+    ///
+    /// Examples:
+    ///   * --memcheck-args=--leak-check=full
+    ///   * --memcheck-args='--leak-check=yes --show-leak-kinds=all'
+    #[arg(
+        long = "memcheck-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_MEMCHECK_ARGS"
+    )]
+    pub memcheck_args: Option<RawArgs>,
+
+    /// The command-line arguments to pass through to Helgrind
+    ///
+    /// <https://valgrind.org/docs/manual/hg-manual.html#hg-manual.options>. See also the description
+    /// for --callgrind-args for more details and restrictions.
+    ///
+    /// Examples:
+    ///   * --helgrind-args=--free-is-write=yes
+    ///   * --helgrind-args='--conflict-cache-size=100000 --free-is-write=yes'
+    #[arg(
+        long = "helgrind-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_HELGRIND_ARGS"
+    )]
+    pub helgrind_args: Option<RawArgs>,
+
+    /// The command-line arguments to pass through to DRD
+    ///
+    /// <https://valgrind.org/docs/manual/drd-manual.html#drd-manual.options>. See also the description
+    /// for --callgrind-args for more details and restrictions.
+    ///
+    /// Examples:
+    ///   * --drd-args=--exclusive-threshold=100
+    ///   * --drd-args='--exclusive-threshold=100 --free-is-write=yes'
+    #[arg(
+        long = "drd-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_DRD_ARGS"
+    )]
+    pub drd_args: Option<RawArgs>,
+
+    /// The command-line arguments to pass through to Massif
+    ///
+    /// <https://valgrind.org/docs/manual/ms-manual.html#ms-manual.options>. See also the description
+    /// for --callgrind-args for more details and restrictions.
+    ///
+    /// Examples:
+    ///   * --massif-args=--heap=no
+    ///   * --massif-args='--heap=no --threshold=2.0'
+    #[arg(
+        long = "massif-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_MASSIF_ARGS"
+    )]
+    pub massif_args: Option<RawArgs>,
+
+    /// The command-line arguments to pass through to the experimental BBV
+    ///
+    /// <https://valgrind.org/docs/manual/bbv-manual.html#bbv-manual.usage>. See also the description
+    /// for --callgrind-args for more details and restrictions.
+    ///
+    /// Examples:
+    ///   * --bbv-args=--interval-size=10000
+    ///   * --bbv-args='--interval-size=10000 --instr-count-only=yes'
+    #[arg(
+        long = "bbv-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_BBV_ARGS"
+    )]
+    pub bbv_args: Option<RawArgs>,
 
     /// Save a machine-readable summary of each benchmark run in json format next to the usual
     /// benchmark output
@@ -211,23 +400,36 @@ pub struct CommandLineArgs {
     /// If regressions are defined and one ore more regressions occurred during the benchmark run
     /// the program exits with error and exit code `3`.
     ///
-    /// Examples: --regression='ir=0.0' or --regression='ir=0, EstimatedCycles=10'
+    /// Examples: --callgrind-limits='ir=0.0' or --callgrind-limits='ir=0, EstimatedCycles=10'
     #[arg(
-        long = "regression",
+        long = "callgrind-limits",
         num_args = 1,
-        value_parser = parse_regression_config,
-        env = "IAI_CALLGRIND_REGRESSION",
+        value_parser = parse_callgrind_limits,
+        env = "IAI_CALLGRIND_CALLGRIND_LIMITS",
     )]
-    pub regression: Option<RegressionConfig>,
+    pub callgrind_limits: Option<ToolRegressionConfig>,
+
+    /// Set performance regression limits for specific cachegrind metrics
+    ///
+    /// This is a `,` separate list of CachegrindMetric=limit (key=value) pairs. See the
+    /// description of --callgrind-limits for the details and
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetric.html> for valid
+    /// metrics.
+    ///
+    /// Examples: --cachegrind-limits='ir=0.0' or --cachegrind-limits='ir=0, EstimatedCycles=10'
+    #[arg(
+        long = "cachegrind-limits",
+        num_args = 1,
+        value_parser = parse_cachegrind_limits,
+        env = "IAI_CALLGRIND_CACHEGRIND_LIMITS",
+    )]
+    pub cachegrind_limits: Option<ToolRegressionConfig>,
 
     /// If true, the first failed performance regression check fails the whole benchmark run
     ///
     /// Note that if --regression-fail-fast is set to true, no summary is printed.
-    ///
-    /// This option requires `--regression=...` or `IAI_CALLGRIND_REGRESSION=...` to be present.
     #[arg(
         long = "regression-fail-fast",
-        requires = "regression",
         default_missing_value = "true",
         num_args = 0..=1,
         require_equals = true,
@@ -399,14 +601,14 @@ fn parse_args(value: &str) -> Result<RawArgs, String> {
         .map(RawArgs::new)
 }
 
-fn parse_regression_config(value: &str) -> Result<RegressionConfig, String> {
+fn parse_callgrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
     let value = value.trim();
     if value.is_empty() {
         return Err("No limits found: At least one limit must be specified".to_owned());
     }
 
     let regression_config = if value.eq_ignore_ascii_case("default") {
-        RegressionConfig::default()
+        ToolRegressionConfig::Callgrind(CallgrindRegressionConfig::default())
     } else {
         let mut limits = vec![];
 
@@ -427,23 +629,50 @@ fn parse_regression_config(value: &str) -> Result<RegressionConfig, String> {
             }
         }
 
-        RegressionConfig {
+        ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
             limits,
             ..Default::default()
-        }
+        })
     };
 
     Ok(regression_config)
 }
 
-impl From<&CommandLineArgs> for Option<RegressionConfig> {
-    fn from(value: &CommandLineArgs) -> Self {
-        let mut config = value.regression.clone();
-        if let Some(config) = config.as_mut() {
-            config.fail_fast = value.regression_fail_fast;
-        }
-        config
+fn parse_cachegrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err("No limits found: At least one limit must be specified".to_owned());
     }
+
+    let regression_config = if value.eq_ignore_ascii_case("default") {
+        ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig::default())
+    } else {
+        let mut limits = vec![];
+
+        for split in value.split(',') {
+            let split = split.trim();
+
+            if let Some((key, value)) = split.split_once('=') {
+                let (key, value) = (key.trim(), value.trim());
+                let event_kind = CachegrindMetric::from_str_ignore_case(key)
+                    .ok_or_else(|| -> String { format!("Unknown event kind: '{key}'") })?;
+
+                let pct = value.parse::<f64>().map_err(|error| -> String {
+                    format!("Invalid percentage for '{key}': {error}")
+                })?;
+                limits.push((event_kind, pct));
+            } else {
+                return Err(format!("Invalid format of key/value pair: '{split}'"));
+            }
+        }
+
+        ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig {
+            limits,
+            ..Default::default()
+        })
+    };
+
+    Ok(regression_config)
 }
 
 fn parse_nocapture(value: &str) -> Result<NoCapture, String> {
@@ -497,12 +726,12 @@ mod tests {
         #[case] regression_var: &str,
         #[case] expected_limits: Vec<(EventKind, f64)>,
     ) {
-        let expected = RegressionConfig {
+        let expected = ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
             limits: expected_limits,
             fail_fast: None,
-        };
+        });
 
-        let actual = parse_regression_config(regression_var).unwrap();
+        let actual = parse_callgrind_limits(regression_var).unwrap();
         assert_eq!(actual, expected);
     }
 
@@ -522,7 +751,7 @@ mod tests {
         #[case] expected_reason: &str,
     ) {
         assert_eq!(
-            &parse_regression_config(regression_var).unwrap_err(),
+            &parse_callgrind_limits(regression_var).unwrap_err(),
             expected_reason,
         );
     }
@@ -666,6 +895,14 @@ mod tests {
         std::env::set_var("IAI_CALLGRIND_NOCAPTURE", "true");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(result.nocapture, NoCapture::True);
+    }
+
+    #[rstest]
+    #[case::single("drd", &[ValgrindTool::DRD])]
+    #[case::two("drd,callgrind", &[ValgrindTool::DRD, ValgrindTool::Callgrind])]
+    fn test_tools_cli(#[case] tools: &str, #[case] expected: &[ValgrindTool]) {
+        let actual = CommandLineArgs::parse_from([format!("--tools={tools}")]);
+        assert_eq!(actual.tools, expected);
     }
 
     #[rstest]
