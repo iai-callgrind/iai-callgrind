@@ -13,7 +13,7 @@ benchmark:
 # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
 use iai_callgrind::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
-    FlamegraphConfig
+    FlamegraphConfig, Callgrind
 };
 use std::hint::black_box;
 
@@ -27,7 +27,9 @@ library_benchmark_group!(name = my_group; benchmarks = bench_library);
 # fn main() {
 main!(
     config = LibraryBenchmarkConfig::default()
-        .flamegraph(FlamegraphConfig::default());
+        .tool(Callgrind::default()
+            .flamegraph(FlamegraphConfig::default())
+        );
     library_benchmark_groups = my_group
 );
 # }

@@ -61,7 +61,7 @@ works only reliably for functions which are not inlined by the compiler.
 # extern crate iai_callgrind;
 use iai_callgrind::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
-    EntryPoint
+    EntryPoint, Callgrind
 };
 use std::hint::black_box;
 
@@ -80,7 +80,9 @@ mod my_lib {
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .entry_point(EntryPoint::Custom("*::my_lib::bubble_sort".to_owned()))
+        .tool(Callgrind::default()
+            .entry_point(EntryPoint::Custom("*::my_lib::bubble_sort".to_owned()))
+        )
 )]
 #[bench::small(vec![3, 2, 1])]
 #[bench::bigger(vec![5, 4, 3, 2, 1])]

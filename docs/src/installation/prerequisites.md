@@ -1,7 +1,13 @@
 # Prerequisites
 
-In order to use Iai-Callgrind, you must have [Valgrind](https://www.valgrind.org) installed. This
-means that Iai-Callgrind cannot be used on platforms that are not supported by Valgrind.
+In order to use Iai-Callgrind, you must have
+[Valgrind](https://www.valgrind.org) installed. This means that
+Iai-Callgrind cannot be used on platforms that are not supported by Valgrind.
+
+The default benchmarking tool is `Callgrind` and is in most cases perfectly
+suited to do the job but if you want or need to use
+[`Cachegrind`](../cachegrind.md) instead of `Callgrind` you require valgrind
+version `>= 3.22` and client requests (see below).
 
 ## Debug Symbols
 

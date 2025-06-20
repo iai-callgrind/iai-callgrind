@@ -25,9 +25,9 @@ cycles, you can easily switch cache simulation off for example with:
 
 ```rust
 # extern crate iai_callgrind;
-use iai_callgrind::LibraryBenchmarkConfig;
+use iai_callgrind::{LibraryBenchmarkConfig, Callgrind};
 
-LibraryBenchmarkConfig::default().callgrind_args(["--cache-sim=no"]);
+LibraryBenchmarkConfig::default().tool(Callgrind::with_args(["--cache-sim=no"]));
 ```
 
 To switch off cache simulation for all benchmarks in the same file:
@@ -36,7 +36,8 @@ To switch off cache simulation for all benchmarks in the same file:
 # extern crate iai_callgrind;
 # mod my_lib { pub fn fibonacci(a: u64) -> u64 { a } }
 use iai_callgrind::{
-    main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig
+    main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
+    Callgrind
 };
 use std::hint::black_box;
 
@@ -49,7 +50,8 @@ library_benchmark_group!(name = fibonacci_group; benchmarks = bench_fibonacci);
 
 # fn main() {
 main!(
-    config = LibraryBenchmarkConfig::default().callgrind_args(["--cache-sim=no"]);
+    config = LibraryBenchmarkConfig::default()
+        .tool(Callgrind::with_args(["--cache-sim=no"]));
     library_benchmark_groups = fibonacci_group
 );
 # }

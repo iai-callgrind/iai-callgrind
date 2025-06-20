@@ -35,15 +35,15 @@ benchmarks in the same file in the `main!` macro:
 ```rust
 # extern crate iai_callgrind;
 # use iai_callgrind::{library_benchmark, library_benchmark_group};
-use iai_callgrind::{main, LibraryBenchmarkConfig, OutputFormat, CallgrindMetrics};
+use iai_callgrind::{main, LibraryBenchmarkConfig, OutputFormat, CallgrindMetrics, Callgrind};
 
 # #[library_benchmark] fn bench() {}
 # library_benchmark_group!(name = my_group; benchmarks = bench);
 # fn main() {
 main!(
     config = LibraryBenchmarkConfig::default()
-        .output_format(OutputFormat::default()
-            .callgrind([CallgrindMetrics::All])
+        .tool(Callgrind::default()
+            .format([CallgrindMetrics::All])
         );
     library_benchmark_groups = my_group
 );

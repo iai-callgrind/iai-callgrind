@@ -123,7 +123,7 @@ called. This behaviour can be remedied with `EntryPoint::None`:
 # extern crate iai_callgrind;
 use iai_callgrind::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
-    client_requests, EntryPoint
+    client_requests, EntryPoint, Callgrind
 };
 use std::hint::black_box;
 
@@ -147,8 +147,9 @@ pub mod my_lib {
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .callgrind_args(["--collect-at-start=no"])
-        .entry_point(EntryPoint::None)
+        .tool(Callgrind::with_args(["--collect-at-start=no"])
+            .entry_point(EntryPoint::None)
+        )
 )]
 #[bench::small(vec![3, 2, 1])]
 #[bench::bigger(vec![5, 4, 3, 2, 1])]

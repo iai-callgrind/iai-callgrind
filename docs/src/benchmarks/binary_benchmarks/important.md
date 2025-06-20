@@ -21,9 +21,9 @@ with
 
 ```rust
 # extern crate iai_callgrind;
-use iai_callgrind::BinaryBenchmarkConfig;
+use iai_callgrind::{BinaryBenchmarkConfig, Callgrind};
 
-BinaryBenchmarkConfig::default().callgrind_args(["--cache-sim=no"]);
+BinaryBenchmarkConfig::default().tool(Callgrind::with_args(["--cache-sim=no"]));
 ```
 
 To switch off cache simulation for all benchmarks in the same file:
@@ -32,7 +32,8 @@ To switch off cache simulation for all benchmarks in the same file:
 # extern crate iai_callgrind;
 # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
 use iai_callgrind::{
-    binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig
+    binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig,
+    Callgrind
 };
 
 #[binary_benchmark]
@@ -43,7 +44,8 @@ fn bench_binary() -> iai_callgrind::Command {
 binary_benchmark_group!(name = my_group; benchmarks = bench_binary);
 # fn main() {
 main!(
-    config = BinaryBenchmarkConfig::default().callgrind_args(["--cache-sim=no"]);
+    config = BinaryBenchmarkConfig::default()
+        .tool(Callgrind::with_args(["--cache-sim=no"]));
     binary_benchmark_groups = my_group
 );
 # }

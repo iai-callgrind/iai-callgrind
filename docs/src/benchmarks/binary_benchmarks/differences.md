@@ -4,8 +4,8 @@ In this section we're going through the differences to [library
 benchmarks](../library_benchmarks.md). This assumes that you already know how to
 set up library benchmarks, and it is recommended to learn the very basics about
 library benchmarks, starting with
-[Quickstart](../binary_benchmarks/quickstart.md), [Anatomy of a library
-benchmark](../library_benchmarks/anatomy.md) and [The macros in more
+[Quickstart](../binary_benchmarks/quickstart.md), [Structure of a library
+benchmark](../library_benchmarks/structure.md) and [The macros in more
 detail](../library_benchmarks/macros.md). Then come back to this section.
 
 ## Name changes
@@ -52,7 +52,7 @@ fn bench_binary(path: &str) -> iai_callgrind::Command {
     let path = PathBuf::from(path);
 
     // Here, if the `path` ends with `.txt` we want to see
-    // the `Stdout` output of the `Command` in the benchmark output. In all other 
+    // the `Stdout` output of the `Command` in the benchmark output. In all other
     // cases, the `Stdout` of the `Command` is redirected to a `File` with the
     // same name as the input `path` but with the extension `out`.
     let stdout = if path.extension().unwrap() == "txt" {

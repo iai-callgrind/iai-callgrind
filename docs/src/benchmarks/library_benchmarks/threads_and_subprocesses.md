@@ -183,13 +183,13 @@ easiest way and can be done like so:
 # mod my_lib { pub fn find_primes_multi_thread(_: usize) -> Vec<u64> { vec![] }}
 use iai_callgrind::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
-    EntryPoint
+    EntryPoint, Callgrind
 };
 use std::hint::black_box;
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .callgrind_args(["--toggle-collect=lib_bench_threads::my_lib::find_primes"])
+        .tool(Callgrind::with_args(["--toggle-collect=lib_bench_threads::my_lib::find_primes"]))
 )]
 #[bench::two_threads(2)]
 fn bench_threads(num_threads: usize) -> Vec<u64> {
@@ -306,14 +306,15 @@ off the `EntryPoint`:
 # mod my_lib { pub fn find_primes_multi_thread(_: usize) -> Vec<u64> { vec![] }}
 use iai_callgrind::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
-    EntryPoint
+    EntryPoint, Callgrind
 };
 use std::hint::black_box;
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .entry_point(EntryPoint::None)
-        .callgrind_args(["--collect-atstart=yes"])
+        .tool(Callgrind::with_args(["--collect-atstart=yes"])
+            .entry_point(EntryPoint::None)
+        )
 )]
 #[bench::two_threads(2)]
 fn bench_threads(num_threads: usize) -> Vec<u64> {
@@ -464,14 +465,15 @@ use the following:
 # mod my_lib { pub fn find_primes_multi_thread(_: usize) -> Vec<u64> { vec![] }}
 use iai_callgrind::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
-    EntryPoint
+    EntryPoint, Callgrind
 };
 use std::hint::black_box;
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .entry_point(EntryPoint::None)
-        .callgrind_args(["--collect-atstart=no"])
+        .tool(Callgrind::with_args(["--collect-atstart=no"])
+            .entry_point(EntryPoint::None)
+        )
 )]
 #[bench::two_threads(2)]
 fn bench_threads(num_threads: usize) -> Vec<u64> {
@@ -671,11 +673,11 @@ benchmark will just work:
 # use std::process::ExitStatus;
 # use iai_callgrind::{
 #    library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
-#    OutputFormat,
+#    OutputFormat, Callgrind
 # };
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .callgrind_args(["--toggle-collect=cat::main"])
+        .tool(Callgrind::with_args(["--toggle-collect=cat::main"]))
 )]
 #[bench::some(setup = create_file)]
 fn bench_subprocess(path: PathBuf) -> io::Result<ExitStatus> {
