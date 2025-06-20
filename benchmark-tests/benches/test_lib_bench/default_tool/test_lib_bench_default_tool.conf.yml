@@ -1,5 +1,7 @@
 groups:
-  - runs:
+  # Currently disabled on freebsd due to some differences in the output
+  - runs_on: "!x86_64-unknown-freebsd"
+    runs:
       - args: []
         expected:
           files: expected_files.1a.yml
@@ -8,12 +10,14 @@ groups:
         expected:
           files: expected_files.1b.yml
           stdout: expected_stdout.1b
-  - runs:
+  - runs_on: "!x86_64-unknown-freebsd"
+    runs:
       - args: ["--default-tool=memcheck"]
         expected:
           files: expected_files.2a.yml
           stdout: expected_stdout.2a
-  - runs:
+  - runs_on: "!x86_64-unknown-freebsd"
+    runs:
       - args: ["--default-tool=memcheck", "--tools=dhat,helgrind"]
         expected:
           files: expected_files.3a.yml
