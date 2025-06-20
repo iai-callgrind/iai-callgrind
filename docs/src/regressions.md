@@ -4,8 +4,8 @@
 
 With Iai-Callgrind you can define limits for each event kinds over which a
 performance regression can be assumed. Per default, Iai-Callgrind does not
-perform default regression checks, and you have to opt-in with a
-`RegressionConfig` at benchmark level with a `LibraryBenchmarkConfig` or
+perform default regression checks, and you have to opt-in with
+`Callgrind::limits` at benchmark level in a `LibraryBenchmarkConfig` or
 `BinaryBenchmarkConfig` or at a global level with [Command-line arguments or
 Environment variables](./cli_and_env/basics.md).
 
@@ -31,7 +31,7 @@ benchmarks of this file :
 # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
 use iai_callgrind::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
-    RegressionConfig, EventKind
+    Callgrind, EventKind
 };
 use std::hint::black_box;
 
@@ -46,9 +46,8 @@ library_benchmark_group!(name = my_group; benchmarks = bench_library);
 # fn main() {
 main!(
     config = LibraryBenchmarkConfig::default()
-        .regression(
-            RegressionConfig::default()
-                .limits([(EventKind::Ir, 5.0)])
+        .tool(Callgrind::default()
+            .limits([(EventKind::Ir, 5.0)])
         );
     library_benchmark_groups = my_group
 );
@@ -119,5 +118,5 @@ The ones known to the author of this humble guide are
   metrics and cycles.
 
 If you know of others, please feel free to
-[add](https://github.com/iai-callgrind/iai-callgrind/master/docs/src/regressions.md)
+[add](https://github.com/iai-callgrind/iai-callgrind/blob/5bec95ee37330954916ea29e7a7dc40ca62bc454/docs/src/regressions.md)
 them to this list.

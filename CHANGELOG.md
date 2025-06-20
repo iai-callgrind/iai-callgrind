@@ -23,6 +23,87 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+Support running cachegrind instead of callgrind or in addition to callgrind if
+required. The change also allowed a more flexible way to run benchmarks with any
+valgrind tool as default tool if wished so.
+
+### Added
+
+* ([#365](https://github.com/iai-callgrind/iai-callgrind/pull/365)): Adjustable
+  metrics in the terminal output of callgrind
+* ([#372](https://github.com/iai-callgrind/iai-callgrind/pull/372)): Support to
+  run cachegrind instead of callgrind or in addition to callgrind. The
+  `cachegrind` feature of iai-callgrind allows to switch between both tools in
+  the `Cargo.toml` in a more permanent way. But, it is also possible to change
+  the default tool to cachegrind (or any other valgrind tool) on the
+  command-line with `--default-tool` option. The
+  `LibraryBenchmarkConfig::default_tool` (`BinaryBenchmarkConfig::default_tool`)
+  can be used in the benchmarks to selectively change the default tool. To be
+  able to define cachegrind limits in the same way as `--callgrind-limits` to
+  detect regressions, the `--cachegrind-limits` options was added.
+* ([#372](https://github.com/iai-callgrind/iai-callgrind/pull/372)): In the same
+  way as `--callgrind-args` can be used on the command-line the following
+  options were added to pass arguments to any valgrind tool: `--valgrind-args`,
+  `--cachegrind-args`, `--dhat-args`, `--memcheck-args`, `--helgrind-args`,
+  `--drd-args`, `--massif-args`, `--bbv-args`
+* ([#372](https://github.com/iai-callgrind/iai-callgrind/pull/372)): Added the
+  command-line arguments `--tools` to run additional tools
+* ([#372](https://github.com/iai-callgrind/iai-callgrind/pull/372)): The new
+  structs `Callgrind`, `Cachegrind`, `DHAT`, `Memcheck`, `Helgrind`, `DRD`,
+  `Massif`, `BBV` replace the old more generic `Tool` to be able to specify tool
+  specific options. These structs can be passed to
+  `LibraryBenchmarkConfig::tool` and `BinaryBenchmarkConfig::tool`.
+* ([#372](https://github.com/iai-callgrind/iai-callgrind/pull/372)): Adjustable
+  metrics in the terminal output for all tools.
+
+### Changed
+
+* ([#372](https://github.com/iai-callgrind/iai-callgrind/pull/372)): The
+  command-line argument name `--regressions` changed to `--callgrind-limits`.
+  The `IAI_CALLGRIND_REGRESSIONS` environment variable changed to
+  `IAI_CALLGRIND_CALLGRIND_LIMITS`.
+* ([#372](https://github.com/iai-callgrind/iai-callgrind/pull/372)): The summary
+  summary json schema v3 `summary.v3.schema.json` was updated to v4
+  `summary.v4.schema.json`
+* ([#372](https://github.com/iai-callgrind/iai-callgrind/pull/372)): Ignore with
+  a warning the arguments `--xtree-memory`, `--xtree-memory-file`,
+  `--xtree-leak`, `--xtree-leak-file`
+* ([#372](https://github.com/iai-callgrind/iai-callgrind/pull/372)): A small
+  change in the regression summary at the end of the benchmark run: The tool is
+  now printed along with the detected regression: `Callgrind: Instructions (132
+  -> 195): +47.7273% exceeds limit of +0.00000%` instead of just `Instructions
+  (132 -> 195): +47.7273% exceeds limit of +0.00000%`
+* ([#372](https://github.com/iai-callgrind/iai-callgrind/pull/372)): The
+  comparison by id between benchmark functions now compares the metrics of all
+  tools and not just callgrind.
+
+### Removed
+
+* ([#372](https://github.com/iai-callgrind/iai-callgrind/pull/372)): The
+  following functions were removed `BinaryBenchmarkConfig::with_callgrind_args`,
+  `BinaryBenchmarkConfig::raw_callgrind_args`,
+  `BinaryBenchmarkConfig::callgrind_args` (now in `Callgrind::args`),
+  `BinaryBenchmarkConfig::flamegraph` (now in `Callgrind::flamegraph`),
+  `BinaryBenchmarkConfig::regression` (now in `Callgrind::regression`),
+  `BinaryBenchmarkConfig::entry_point` (now in `Callgrind::entry_point`)
+  `BinaryBenchmarkConfig::tools`,
+  `BinaryBenchmarkConfig::tools_override`,
+  `LibraryBenchmarkConfig::with_callgrind_args`,
+  `LibraryBenchmarkConfig::raw_callgrind_args`,
+  `LibraryBenchmarkConfig::callgrind_args`,
+  `LibraryBenchmarkConfig::with_raw_callgrind_args`,
+  `LibraryBenchmarkConfig::flamegraph`,
+  `LibraryBenchmarkConfig::regression`,
+  `LibraryBenchmarkConfig::entry_point`,
+  `LibraryBenchmarkConfig::tools`,
+  `LibraryBenchmarkConfig::tools_override`,
+* ([#372](https://github.com/iai-callgrind/iai-callgrind/pull/372)): The
+  `Tool` struct was removed and replaced by the more specific `Callgrind`,
+  `Cachegrind`, ... structs
+* ([#372](https://github.com/iai-callgrind/iai-callgrind/pull/372)): The
+  deprecated `black_box` function was removed. Use `std::hint::black_box`
+  instead.
+
 ## [0.14.2] - 2025-06-04
 
 ### Added

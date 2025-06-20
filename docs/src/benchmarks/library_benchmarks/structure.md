@@ -1,4 +1,4 @@
-# Anatomy of a library benchmark
+# Structure of a library benchmark
 
 We're reusing our example from the [Quickstart](./quickstart.md) section.
 

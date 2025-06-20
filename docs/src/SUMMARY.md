@@ -15,7 +15,7 @@
 - [Library Benchmarks](./benchmarks/library_benchmarks.md)
     - [Important default behaviour](./benchmarks/library_benchmarks/important.md)
     - [Quickstart](./benchmarks/library_benchmarks/quickstart.md)
-    - [Anatomy of a library benchmark](./benchmarks/library_benchmarks/anatomy.md)
+    - [Structure of a library benchmark](./benchmarks/library_benchmarks/structure.md)
     - [The macros in more detail](./benchmarks/library_benchmarks/macros.md)
     - [setup and teardown](./benchmarks/library_benchmarks/setup_and_teardown.md)
     - [Specify multiple benches at once](./benchmarks/library_benchmarks/multiple_benches.md)
@@ -39,6 +39,7 @@
     - [More examples needed?](./benchmarks/binary_benchmarks/examples.md)
 
 - [Performance Regressions](./regressions.md)
+- [Cachegrind](./cachegrind.md)
 - [Other Valgrind Tools](./tools.md)
 - [Valgrind Client Requests](./client_requests.md)
 - [Callgrind Flamegraphs](./flamegraphs.md)

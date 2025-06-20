@@ -2,9 +2,10 @@
 
 This is the guide for Iai-Callgrind, a benchmarking framework/harness which uses
 [Valgrind's Callgrind](https://valgrind.org/docs/manual/cl-manual.html) and
-other Valgrind tools like DHAT, Massif, ... to provide extremely accurate and
-consistent measurements of Rust code, making it perfectly suited to run in
-environments like a CI.
+other [Valgrind tools](./tools.md) like DHAT, Massif, ... and even
+[Cachegrind](./cachegrind.md) to provide extremely accurate and consistent
+measurements of Rust code, making it perfectly suited to run in environments
+like a CI.
 
 Iai_Callgrind is fully documented in this guide and in the api documentation at
 [docs.rs](https://docs.rs/iai-callgrind/latest/iai_callgrind/).
