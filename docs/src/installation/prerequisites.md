@@ -54,12 +54,11 @@ More details on the usage and requirements of Valgrind Client Requests in
 
 Iai-Callgrind is intentionally independent of a specific version of valgrind.
 However, Iai-Callgrind was only tested with versions of valgrind >= `3.20.0`. It
-is therefore highly recommended to use a recent version of valgrind. Bugs get
-fixed, the supported platforms are expanded ... Also, if you want or need to,
-[building valgrind from
+is therefore highly recommended to use a recent version of valgrind. Also, if
+you want or need to, [building valgrind from
 source](https://sourceware.org/git/?p=valgrind.git;a=blob;f=README;h=eabcc6ad88c8cab6dfe73cfaaaf5543023c2e941;hb=HEAD)
 is usually a straight-forward process. Just make sure the `valgrind` binary is
-in your `$PATH` so that Iai-callgrind can find it.
+in your `$PATH` so that Iai-Callgrind can find it.
 
 ### Installation of valgrind with your package manager
 

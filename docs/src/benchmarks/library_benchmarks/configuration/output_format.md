@@ -2,7 +2,7 @@
 
 # Output Format
 
-The Iai-callgrind output can be customized with [command-line
+The Iai-Callgrind output can be customized with [command-line
 arguments](../../../cli_and_env/output.md). But, the fine-grained terminal
 output format is adjusted in the benchmark itself. For example [truncating
 the description][`OutputFormat.truncate_description`], [showing a
@@ -29,8 +29,8 @@ Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regre
 The cache and ram hits, `Total read+write` and `Estimated Cycles` are actually
 not part of the original collected callgrind metrics but calculated from them.
 If you want to see the cache misses nonetheless, you can achieve this by
-specifying the [OutputFormat][`OutputFormat`] for example at top-level for all
-benchmarks in the same file in the `main!` macro:
+specifying the output format for example at top-level for all benchmarks in the
+same file in the `main!` macro:
 
 ```rust
 # extern crate iai_callgrind;
@@ -70,11 +70,13 @@ The Iai-Callgrind output will then show all cache metrics:
 
 Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49301s</code></pre>
 
-To take it further, the callgrind output format can be fully customized showing
-only the metrics you're interested in and in any order. This is described in
-full detail in the [docs][`OutputFormat.callgrind`].
+The callgrind output format can be fully customized showing only the metrics
+you're interested in and in any order. The docs of `Callgrind::format` and
+`CallgrindMetrics` show all the possibilities for `Callgrind`. The output format
+of the other valgrind tools can be customized in the same way. Just have a look
+at the docs for the respective format (`Dhat::format`, `DhatMetric`,
+`Cachegrind::format`, `CachegrindMetric`, ...)
 
 [`OutputFormat`]: https://docs.rs/iai-callgrind/0.14.2/iai_callgrind/struct.OutputFormat.html
-[`OutputFormat.callgrind`]: https://docs.rs/iai-callgrind/0.14.2/iai_callgrind/struct.OutputFormat.html#method.callgrind
 [`OutputFormat.show_grid`]: https://docs.rs/iai-callgrind/0.14.2/iai_callgrind/struct.OutputFormat.html#method.show_grid
 [`OutputFormat.truncate_description`]: https://docs.rs/iai-callgrind/0.14.2/iai_callgrind/struct.OutputFormat.html#method.truncate_description

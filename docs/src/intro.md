@@ -1,16 +1,16 @@
 # Introduction
 
 This is the guide for Iai-Callgrind, a benchmarking framework/harness which uses
-[Valgrind's Callgrind](https://valgrind.org/docs/manual/cl-manual.html) and
-other [Valgrind tools](./tools.md) like DHAT, Massif, ... and even
-[Cachegrind](./cachegrind.md) to provide extremely accurate and consistent
-measurements of Rust code, making it perfectly suited to run in environments
-like a CI.
+[Valgrind's Callgrind](https://valgrind.org/docs/manual/cl-manual.html) to
+provide extremely accurate and consistent measurements of Rust code, making it
+perfectly suited to run in environments like a CI. Iai-Callgrind is flexible and
+despite its name it's possible to run [Cachegrind](./cachegrind.md) or any other
+[Valgrind tool](./tools.md) like DHAT in addition to or instead of Callgrind.
 
-Iai_Callgrind is fully documented in this guide and in the api documentation at
+Iai-Callgrind is fully documented in this guide and in the api documentation at
 [docs.rs](https://docs.rs/iai-callgrind/latest/iai_callgrind/).
 
-Iai-Callgrind is
+Iai-Callgrind is also:
 
 - __Precise__: High-precision measurements of `Instruction` counts and many
   other metrics allow you to reliably detect very small optimizations and
@@ -58,12 +58,9 @@ Iai-Callgrind is not a good fit.
 
 ## Improving Iai-Callgrind
 
-No one's perfect!
-
-You want to share your experience with Iai-Callgrind and have a recipe that
-might be useful for others and fits into this guide? You have an idea for a new
-feature, are missing a functionality or have found a bug? We would love to here
-about it. You want to contribute and hack on Iai-Callgrind?
+You want to improve the guide? You have an idea for a new feature, are missing a
+functionality or have found a bug? We would love to here about it. You want to
+contribute and hack on Iai-Callgrind?
 
 Please don't hesitate to [open an
 issue](https://github.com/iai-callgrind/iai-callgrind/issues).

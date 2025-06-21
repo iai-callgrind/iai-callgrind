@@ -22,12 +22,13 @@ finally look like this:
 
 ```toml
 [dev-dependencies]
-iai-callgrind = { version = "0.14.2", features = ["client_requests", "cachegrind"] }
+iai-callgrind = { version = "0.14.2", features = ["cachegrind"] }
 ```
 
-Now, without having to do anything else, all benchmarks run with Cachegrind
-instead of Callgrind. However, this change has implications which are better
-understood by showing the second way.
+The `cachegrind` feature automatically activates the `client_requests` feature,
+and there's no need to specify it again. Now, without having to do anything
+else, all benchmarks run with Cachegrind instead of Callgrind. However, this
+change has implications which are better understood by showing the second way.
 
 ## The second way
 
@@ -107,9 +108,7 @@ start cachegrind with `--instr-at-start=no`. The consequence and a disadvantage
 of cachegrind is that the function body had to be altered a little bit. It's not
 much but running other tools tools like `Callgrind` on the same benchmark
 function like `Cachegrind` would show small differences because the client
-requests add `10` - `20` instructions to the function body. Also tools like
-`DHAT` if run in addition to cachegrind might show the client requests in their
-profile data.
+requests add `10` - `20` instructions to the function body.
 
 ## When to use Cachegrind
 

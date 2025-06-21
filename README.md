@@ -80,7 +80,7 @@ default settings so you can focus more on profiling and your code!
 
 ## How far are we?
 
-Iai-callgrind is in a mature development stage and is already [in
+Iai-Callgrind is in a mature development stage and is already [in
 use](https://github.com/iai-callgrind/iai-callgrind/network/dependents).
 Nevertheless, you may experience big changes between a minor version bump. With
 the release of `0.14.0`, almost all `callgrind` capabilities are implemented
