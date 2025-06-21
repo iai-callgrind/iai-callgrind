@@ -76,6 +76,8 @@ valgrind tool as default tool if wished so.
 * ([#372](https://github.com/iai-callgrind/iai-callgrind/pull/372)): The
   comparison by id between benchmark functions now compares the metrics of all
   tools and not just callgrind.
+* Update direct dependencies: `cc`, `syn`, `clap`, `cfg-if`, `bindgen`, `which`
+  and all transitive dependencies to their latest possible versions.
 
 ### Removed
 
