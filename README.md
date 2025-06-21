@@ -29,10 +29,10 @@
 </div>
 
 Iai-Callgrind is a benchmarking framework/harness which uses [Valgrind's
-Callgrind][Callgrind Manual] and other Valgrind tools like DHAT, Massif, ... to
-provide extremely accurate and consistent measurements of Rust code, making it
-perfectly suited to run in environments like a CI. Iai-Callgrind is integrated
-in [Bencher].
+Callgrind][Callgrind Manual] and other Valgrind tools like DHAT, Massif, ...
+including Cachegrind to provide extremely accurate and consistent measurements
+of Rust code, making it perfectly suited to run in environments like a CI.
+Iai-Callgrind is integrated in [Bencher].
 
 Iai-Callgrind is:
 
@@ -171,8 +171,6 @@ files.
 [Bencher]: https://bencher.dev/learn/benchmarking/rust/iai/
 
 [Guide]: https://iai-callgrind.github.io/iai-callgrind/
-
-[Guide Prerequisites]: https://iai-callgrind.github.io/iai-callgrind/latest/html/installation/prerequisites.html
 
 [kcachegrind]: https://kcachegrind.github.io/html/Home.html
 
