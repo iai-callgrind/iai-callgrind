@@ -132,6 +132,34 @@ same:
 }
 ```
 
+## Working on the guide
+
+The main documentation of Iai-Callgrind is in the [guide][Guide]. The source
+code lives in the `docs/src` subdirectory of this repo.
+
+To start working on the guide, ensure you have everything necessary installed
+with `just book-install`. After everything's installed, you need two terminal
+windows. In the first run `just book-watch` and in the second run `just
+book-serve-github`. The second command makes the rendered guide available at
+`http://localhost:4000/iai-callgrind` (this'll redirect you to the
+`index.html`). You can now start making changes to the source code and the
+changes are reflected after a second or two.
+
+Please run `just book-tests` from time to time if you make changes to rust
+codeblocks and especially before pushing to the pr.
+
+Have a look at the existing code blocks for examples. Every rust code block
+requires `# extern crate iai_callgrind;` as first line if you want to access the
+`iai_callgrind` api. Also, ensure to not actually run the benchmark harness with
+
+```rust
+#...
+
+# fn main() {
+main!(library_benchmark_groups = some_group);
+# }
+```
+
 ## Testing
 
 Patches have to include tests to verify (at a minimum) that the whole pipeline
@@ -194,3 +222,5 @@ on the test configuration, benchmarks are sometimes run multiple times.
 If there are any outstanding questions about contributing to iai-callgrind, they
 can be asked on the [iai-callgrind issue
 tracker](https://github.com/iai-callgrind/iai-callgrind/issues).
+
+[Guide]: https://iai-callgrind.github.io/iai-callgrind/
