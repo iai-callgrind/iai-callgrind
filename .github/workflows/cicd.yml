@@ -88,7 +88,7 @@ jobs:
         toolchain:
           - "1.74.1" # MSRV
           - stable
-          - nightly-2025-06-01
+          - nightly
         include:
           - toolchain: "1.74.1" # MSRV
             ui_tests: --features ui_tests
