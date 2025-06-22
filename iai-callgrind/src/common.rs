@@ -629,8 +629,7 @@ impl Callgrind {
     /// event counting as requested. This is most likely not what you intended. The event counting
     /// should start with `start_instrumentation`. To achieve this, you can set [`EntryPoint::None`]
     /// which removes the default toggle, but also `--collect-at-start=no`. So, you need to specify
-    /// `--collect-at-start=no` in [`LibraryBenchmarkConfig::callgrind_args`]. The example would
-    /// then look like this:
+    /// `--collect-at-start=no` in [`Callgrind::args`]. The example would then look like this:
     /// ```rust
     /// use std::hint::black_box;
     ///

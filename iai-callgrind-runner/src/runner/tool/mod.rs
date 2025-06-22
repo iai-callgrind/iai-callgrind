@@ -494,7 +494,7 @@ impl ToolConfig {
                         base_args,
                         &tool.raw_args,
                         &meta.args.valgrind_args.clone().unwrap_or_default(),
-                        &meta.args.memcheck_args.clone().unwrap_or_default(),
+                        &meta.args.massif_args.clone().unwrap_or_default(),
                     ],
                 )?,
                 ValgrindTool::BBV => ToolArgs::try_from_raw_args(
@@ -586,7 +586,7 @@ impl ToolConfig {
                     &[
                         base_args,
                         &meta.args.valgrind_args.clone().unwrap_or_default(),
-                        &meta.args.memcheck_args.clone().unwrap_or_default(),
+                        &meta.args.massif_args.clone().unwrap_or_default(),
                     ],
                 )?,
                 ValgrindTool::BBV => ToolArgs::try_from_raw_args(

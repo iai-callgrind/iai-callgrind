@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.15.0] - 2025-06-22
+
 Support running cachegrind instead of callgrind or in addition to callgrind if
 required. The change also allowed a more flexible way to run benchmarks with any
 valgrind tool as default tool if wished so.
@@ -76,6 +78,8 @@ valgrind tool as default tool if wished so.
 * ([#372](https://github.com/iai-callgrind/iai-callgrind/pull/372)): The
   comparison by id between benchmark functions now compares the metrics of all
   tools and not just callgrind.
+* Update direct dependencies: `cc`, `syn`, `clap`, `cfg-if`, `bindgen`, `which`
+  and all transitive dependencies to their latest possible versions.
 
 ### Removed
 

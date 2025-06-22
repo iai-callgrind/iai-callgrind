@@ -291,10 +291,20 @@ bench-test-all: build-runner
 full-bench-test bench:
     cargo run --package benchmark-tests --profile=bench --bin bench -- {{ bench }}
 
+# Run a single benchmark test with the `cargo bench` wrapper overwriting the output (Uses: 'cargo')
+[group('test')]
+full-bench-test-overwrite bench:
+    BENCH_OVERWRITE=yes cargo run --package benchmark-tests --profile=bench --bin bench -- {{ bench }}
+
 # Run all benchmark tests with the `cargo bench` wrapper verifying the output (Uses: 'cargo')
 [group('test')]
 full-bench-test-all:
     cargo run --package benchmark-tests --profile=bench --bin bench
+
+# Run all benchmark tests with the `cargo bench` wrapper overwriting the output (Uses: 'cargo')
+[group('test')]
+full-bench-test-all-overwrite:
+    BENCH_OVERWRITE=yes cargo run --package benchmark-tests --profile=bench --bin bench
 
 # Check minimal version requirements of dependencies. (Uses: 'cargo-minimal-versions')
 [group('dependencies')]
@@ -331,11 +341,6 @@ book-build: book-check-version
 [group('guide')]
 book-clean: book-check-version
     mdbook clean docs
-
-# Serve the book at localhost:3000 and reload on changes. Some links may be broken. Run `just book-serve-github` for a real world environment. (Uses: 'mdbook')
-[group('guide')]
-book-serve: book-check-version
-    mdbook serve docs
 
 # Watch for changes and rebuild the book on a change. (Uses: 'mdbook')
 [group('guide')]

@@ -29,10 +29,10 @@
 </div>
 
 Iai-Callgrind is a benchmarking framework/harness which uses [Valgrind's
-Callgrind][Callgrind Manual] and other Valgrind tools like DHAT, Massif, ... to
-provide extremely accurate and consistent measurements of Rust code, making it
-perfectly suited to run in environments like a CI. Iai-Callgrind is integrated
-in [Bencher].
+Callgrind][Callgrind Manual] and other Valgrind tools like DHAT, Massif, ...
+including Cachegrind to provide extremely accurate and consistent measurements
+of Rust code, making it perfectly suited to run in environments like a CI.
+Iai-Callgrind is integrated in [Bencher].
 
 Iai-Callgrind is:
 
@@ -80,7 +80,7 @@ default settings so you can focus more on profiling and your code!
 
 ## How far are we?
 
-Iai-callgrind is in a mature development stage and is already [in
+Iai-Callgrind is in a mature development stage and is already [in
 use](https://github.com/iai-callgrind/iai-callgrind/network/dependents).
 Nevertheless, you may experience big changes between a minor version bump. With
 the release of `0.14.0`, almost all `callgrind` capabilities are implemented
@@ -128,8 +128,8 @@ for inclusion in the work by you shall be dual licensed as in
 ### Related Projects
 
 - [Iai](https://github.com/bheisler/iai): The repository from which
-  Iai-Callgrind is forked. Iai uses Cachegrind instead of Callgrind under the
-  hood.
+  Iai-Callgrind was initially forked to use Callgrind instead of Cachegrind as
+  primary profiling tool. See [Comparison][Comparison.iai].
 - [Criterion-rs](https://github.com/bheisler/criterion.rs): A Statistics-driven
   benchmarking library for Rust. Wall-clock times based benchmarks.
 - [hyperfine](https://github.com/sharkdp/hyperfine): A command-line benchmarking
@@ -147,10 +147,10 @@ for inclusion in the work by you shall be dual licensed as in
 
 ### Credits
 
-Iai-Callgrind is forked from <https://github.com/bheisler/iai> and was
-originally written by Brook Heisler (@bheisler).
+Iai-Callgrind is forked from <https://github.com/bheisler/iai> and the original
+idea is from Brook Heisler (@bheisler).
 
-Iai-Callgrind wouldn't be possible without [Valgrind].
+Iai-Callgrind is powered by [Valgrind].
 
 ### License
 
@@ -172,7 +172,7 @@ files.
 
 [Guide]: https://iai-callgrind.github.io/iai-callgrind/
 
-[Guide Prerequisites]: https://iai-callgrind.github.io/iai-callgrind/latest/html/installation/prerequisites.html
+[Comparison.iai]: https://iai-callgrind.github.io/iai-callgrind/latest/html/comparison/iai.html
 
 [kcachegrind]: https://kcachegrind.github.io/html/Home.html
 

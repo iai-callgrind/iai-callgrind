@@ -1,10 +1,10 @@
 //! Iai-Callgrind is a benchmarking framework/harness which primarily uses [Valgrind's
-//! Callgrind](https://valgrind.org/docs/manual/cl-manual.html) but also other Valgrind tools to
-//! provide extremely accurate and consistent measurements of Rust code, making it perfectly suited
-//! to run in environments like a CI. Despite its name it's possible to run cachegrind in addition
-//! to or instead of callgrind. The [online
-//! guide](https://iai-callgrind.github.io/iai-callgrind/latest/html/intro.html) contains all the
-//! details to start profiling with Iai-Callgrind.
+//! Callgrind](https://valgrind.org/docs/manual/cl-manual.html) to provide extremely accurate and
+//! consistent measurements of Rust code, making it perfectly suited to run in environments like a
+//! CI. Iai-Callgrind is flexible and despite its name it's possible to run Cachegrind or any other
+//! Valgrind tool like DHAT in addition to or instead of Callgrind.
+//!
+//! The [online guide][Guide] contains all the details to start profiling with Iai-Callgrind.
 //!
 //! # Table of contents
 //! - [Characteristics](#characteristics)
@@ -22,6 +22,7 @@
 //! - [Flamegraphs](#flamegraphs)
 //!
 //! ## Characteristics
+//!
 //! - __Precision__: High-precision measurements allow you to reliably detect very small
 //!   optimizations of your code
 //! - __Consistency__: Iai-Callgrind can take accurate measurements even in virtualized CI
@@ -189,9 +190,8 @@
 //! configuration values like `envs` are additive and don't overwrite configuration values of higher
 //! levels.
 //!
-//! See also the docs of [`crate::library_benchmark_group`]. The
-//! [README](https://github.com/iai-callgrind/iai-callgrind) of this crate includes more explanations,
-//! common recipes and some examples.
+//! See also the docs of [`crate::library_benchmark_group`]. The [online guide][Guide] includes more
+//! explanations, common recipes and examples.
 //!
 //! ### Binary Benchmarks
 //!
@@ -318,18 +318,18 @@
 //! binary benchmarks can be also configured at a lower and last level in [`Command`] directly.
 //!
 //! For further details see the section about binary benchmarks of the [`crate::main`] docs the docs
-//! of [`crate::binary_benchmark_group`] and [`Command`]. Also, the
-//! [README](https://github.com/iai-callgrind/iai-callgrind) of this crate includes some
-//! introductory documentation with additional examples.
+//! of [`crate::binary_benchmark_group`] and [`Command`]. The [guide][Guide] of this crate includes
+//! a more thorough documentation with additional examples.
 //!
 //! ## Valgrind Tools
 //!
-//! In addition to the default tool, you can use the Iai-Callgrind framework to run other Valgrind
-//! profiling tools like `DHAT`, `Massif` and the experimental `BBV` but also `Memcheck`,
-//! `Helgrind` and `DRD` if you need to check memory and thread safety of benchmarked code. See also
-//! the [Valgrind User Manual](https://valgrind.org/docs/manual/manual.html) for details and command
-//! line arguments. The additional tools can be specified in [`LibraryBenchmarkConfig`],
-//! [`BinaryBenchmarkConfig`]. For example to run `DHAT` for all library benchmarks:
+//! In addition to or instead of the default Callgrind tool, you can use the Iai-Callgrind framework
+//! to run other Valgrind profiling tools like `DHAT`, `Massif`, the experimental `BBV` and even
+//! `Cachegrind`. But, also `Memcheck`, `Helgrind` and `DRD` if you need to check memory and thread
+//! safety of benchmarked code. See the [Valgrind User
+//! Manual](https://valgrind.org/docs/manual/manual.html) for details and command line arguments.
+//! The additional tools can be specified in [`LibraryBenchmarkConfig::tool`],
+//! [`BinaryBenchmarkConfig::tool`]. For example to run `DHAT` for all library benchmarks:
 //!
 //! ```rust
 //! # use iai_callgrind::{library_benchmark, library_benchmark_group};
@@ -382,6 +382,8 @@
 //!
 //! The produced flamegraph svg files are located next to the respective callgrind output file in
 //! the `target/iai` directory.
+//!
+//! [Guide]: https://iai-callgrind.github.io/iai-callgrind/latest/html/intro.html
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![doc(test(attr(warn(unused))))]
