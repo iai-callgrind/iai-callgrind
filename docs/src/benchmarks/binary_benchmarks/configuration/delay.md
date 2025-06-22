@@ -69,6 +69,6 @@ executed.
 Please see the library documentation for all possible [`DelayKind`]s and more
 details on the [`Delay`].
 
-[`DelayKind`]: https://docs.rs/iai-callgrind/0.14.2/iai_callgrind/enum.DelayKind.html
+[`DelayKind`]: https://docs.rs/iai-callgrind/0.15.0/iai_callgrind/enum.DelayKind.html
 
-[`Delay`]: https://docs.rs/iai-callgrind/0.14.2/iai_callgrind/struct.Delay.html
+[`Delay`]: https://docs.rs/iai-callgrind/0.15.0/iai_callgrind/struct.Delay.html

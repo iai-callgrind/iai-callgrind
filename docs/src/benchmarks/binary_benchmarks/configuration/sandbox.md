@@ -1,7 +1,7 @@
 # Sandbox
 
 The
-[`Sandbox`](https://docs.rs/iai-callgrind/0.14.2/iai_callgrind/struct.Sandbox.html)
+[`Sandbox`](https://docs.rs/iai-callgrind/0.15.0/iai_callgrind/struct.Sandbox.html)
 is a temporary directory which is created before the execution of the `setup`
 and deleted after the `teardown`. `setup`, the `Command` and `teardown` are
 executed inside this temporary directory. This simply describes the order of the
