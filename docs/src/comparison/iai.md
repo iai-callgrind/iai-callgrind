@@ -1,19 +1,33 @@
 # Comparison of Iai-Callgrind with Iai
 
-This is a comparison with [Iai](https://github.com/bheisler/iai), from which
-Iai-Callgrind is forked over a year ago.
+This is a comparison with [Iai](https://github.com/bheisler/iai). There is no
+known downside in using Iai-Callgrind instead of Iai. Although the original idea
+of Iai will always be remembered, Iai-Callgrind has surpassed Iai over the years
+in functionality, stability and flexibility.
 
 Iai-Callgrind Pros:
 
 * Iai-Callgrind is actively maintained.
 
-* The benchmark api of Iai-Callgrind is simple, intuitive and allows for a much
-  more concise and clearer structure of benchmarks.
+* The user interface and benchmarking api of Iai-Callgrind is simple, intuitive
+  and allows for a much more concise and clearer structure of benchmarks.
 
-* More stable metrics because the benchmark function is virtually encapsulated
-  by Callgrind and separates the benchmarked code from the surrounding code.
+* Iai-Callgrind excludes setup code from the metrics of interest natively. The
+  metrics are more stable because the benchmark function is virtually
+  encapsulated by Callgrind and separates the benchmarked code from the
+  surrounding code.
 
-* Iai-Callgrind excludes setup code from the metrics natively.
+* Full support for benchmarking
+  [multi-threaded/multi-process](../benchmarks/library_benchmarks/threads_and_subprocesses.md)
+  functions/binaries.
+
+* Can still run [Cachegrind](../cachegrind.md) but with a real one-shot
+  implementation using client requests instead of a calibration run.
+
+* Support of memory profiling with `DHAT` and `Massif`.
+
+* Running error checking [valgrind tools](../tools.md) is a few keystrokes away
+  if you really need them.
 
 * The Callgrind output files are much more focused on the benchmark function and
   the function under test than the Cachegrind output files that Iai produces.
@@ -27,22 +41,30 @@ Iai-Callgrind Pros:
   benchmarks by an independent binary. In contrast to the library of Iai which
   is compiled together with the benchmarks.
 
-* Iai-Callgrind has functionality in place that provides a more constant
-  environment, like the `Sandbox` and clearing environment variables.
+* Iai-Callgrind has functionality in place that provides a constant and
+  reproducible benchmarking environment, like the
+  [`Sandbox`](../benchmarks/binary_benchmarks/configuration/sandbox.md) and
+  clearing environment variables.
 
-* Supports running other Valgrind Tools, like DHAT, Massif etc.
+* Customizable output format to be able to show [all
+  Callgrind/Cachegrind/DHAT/...](../benchmarks/library_benchmarks/configuration/output_format.md)
+  metrics or only the set of metrics you're interested in.
 
-* Comparison of benchmark functions.
+* [Comparison by id](../benchmarks/library_benchmarks/compare_by_id.md) of
+  benchmark functions.
 
-* Iai-Callgrind can be configured to check for performance regressions.
+* Iai-Callgrind can be configured to check for [performance
+  regressions](../regressions.md).
 
-* A complete implementation of Valgrind Client Requests is available in
-  Iai-Callgrind itself.
+* Ships with a complete implementation of [Valgrind Client
+  Requests](../client_requests.md)
 
-* Comparison of benchmarks to baselines instead of only to `.old` files.
+* Comparison of benchmarks to [baselines](../cli_and_env/baselines.md) instead
+  of only to `.old` files.
 
-* Iai-Callgrind natively supports benchmarking binaries.
+* Natively supports [benchmarking binaries](../benchmarks/binary_benchmarks.md).
 
-* Iai-Callgrind can print machine-readable output in `.json` format.
+* Iai-Callgrind can print and/or save [machine-readable
+  output](../cli_and_env/output/machine_readable.md) in `.json` format.
 
-I don't see any downside in using Iai-Callgrind instead of Iai.
+* Fixed the wrong labeling of `L1 Accesses`, ... to `L1 Hits`, ...
