@@ -370,7 +370,7 @@ impl BenchmarkSummary {
         baselines: Baselines,
     ) -> Self {
         Self {
-            version: "3".to_owned(),
+            version: "4".to_owned(),
             kind,
             benchmark_file: make_absolute(&project_root, benchmark_file),
             benchmark_exe: make_absolute(&project_root, benchmark_exe),
