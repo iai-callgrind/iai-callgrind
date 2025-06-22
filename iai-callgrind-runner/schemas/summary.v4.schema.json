@@ -626,12 +626,32 @@
         {
           "type": "object",
           "properties": {
-            "ErrorMetric": {
+            "Memcheck": {
               "$ref": "#/definitions/ErrorMetric"
             }
           },
           "additionalProperties": false,
-          "required": ["ErrorMetric"]
+          "required": ["Memcheck"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Helgrind": {
+              "$ref": "#/definitions/ErrorMetric"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["Helgrind"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "DRD": {
+              "$ref": "#/definitions/ErrorMetric"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["DRD"]
         }
       ]
     },

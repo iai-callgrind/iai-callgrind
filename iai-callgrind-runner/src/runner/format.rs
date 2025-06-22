@@ -1181,11 +1181,13 @@ pub fn print_regressions(regressions: &[ToolRegression]) {
     } in regressions
     {
         let string = match kind {
+            MetricKind::None => continue,
             MetricKind::Callgrind(event_kind) => event_kind.to_string(),
             MetricKind::Cachegrind(cachegrind_metric) => cachegrind_metric.to_string(),
             MetricKind::Dhat(dhat_metric) => dhat_metric.to_string(),
-            MetricKind::ErrorMetric(error_metric) => error_metric.to_string(),
-            MetricKind::None => return,
+            MetricKind::Memcheck(error_metric)
+            | MetricKind::Helgrind(error_metric)
+            | MetricKind::DRD(error_metric) => error_metric.to_string(),
         };
 
         if limit.is_sign_positive() {

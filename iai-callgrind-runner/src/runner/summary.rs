@@ -152,7 +152,9 @@ pub enum MetricKind {
     Callgrind(EventKind),
     Cachegrind(CachegrindMetric),
     Dhat(DhatMetric),
-    ErrorMetric(ErrorMetric),
+    Memcheck(ErrorMetric),
+    Helgrind(ErrorMetric),
+    DRD(ErrorMetric),
 }
 
 /// The `MetricsDiff` describes the difference between a `new` and `old` metric as percentage and
@@ -508,7 +510,9 @@ impl Display for MetricKind {
             MetricKind::Callgrind(metric) => f.write_fmt(format_args!("Callgrind: {metric}")),
             MetricKind::Cachegrind(metric) => f.write_fmt(format_args!("Cachegrind: {metric}")),
             MetricKind::Dhat(metric) => f.write_fmt(format_args!("DHAT: {metric}")),
-            MetricKind::ErrorMetric(metric) => f.write_fmt(format_args!("Error: {metric}")),
+            MetricKind::Memcheck(metric) => f.write_fmt(format_args!("Memcheck: {metric}")),
+            MetricKind::Helgrind(metric) => f.write_fmt(format_args!("Helgrind: {metric}")),
+            MetricKind::DRD(metric) => f.write_fmt(format_args!("DRD: {metric}")),
         }
     }
 }
