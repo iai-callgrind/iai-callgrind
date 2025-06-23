@@ -29,6 +29,9 @@ const TEMPLATE_CONTENT: &str = r#"fn main() {
     panic!("should be replaced by a rendered template");
 }
 "#;
+const SCHEMA_PATH: &str = "iai-callgrind-runner/schemas";
+const SCHEMA_VERSION: &str = "4";
+
 static TEMPLATE_DATA: OnceCell<HashMap<String, minijinja::Value>> = OnceCell::new();
 
 // The regex patterns working on the `stdout` must not include the indentation. The indentation can
@@ -766,7 +769,8 @@ impl BenchmarkRunner {
             File::open(
                 self.metadata
                     .workspace_root
-                    .join("iai-callgrind-runner/schemas/summary.v3.schema.json"),
+                    .join(SCHEMA_PATH)
+                    .join(format!("summary.v{SCHEMA_VERSION}.schema.json")),
             )
             .unwrap(),
         )
@@ -870,6 +874,15 @@ impl ExpectedRun {
                     print_error(format!("{}: Validation error: {error}", summary.display()))
                 }
             }
+            let (_, value) = instance
+                .as_object()
+                .unwrap()
+                .get_key_value("version")
+                .unwrap();
+            assert_eq!(
+                value, SCHEMA_VERSION,
+                "summary json schema version mismatch"
+            );
         }
 
         assert!(
