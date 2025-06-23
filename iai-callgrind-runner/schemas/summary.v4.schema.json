@@ -1,11 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "BenchmarkSummary",
-  "description": "The `BenchmarkSummary` containing all the information of a single benchmark run\n\n This includes produced files, recorded callgrind events, performance regressions ...",
+  "description": "The `BenchmarkSummary` containing all the information of a single benchmark run\n\nThis includes produced files, recorded callgrind events, performance regressions ...",
   "type": "object",
   "properties": {
     "baselines": {
-      "description": "The baselines if any. An absent first baseline indicates that new output was produced. An\n absent second baseline indicates the usage of the usual \"*.old\" output.",
+      "description": "The baselines if any. An absent first baseline indicates that new output was produced. An\nabsent second baseline indicates the usage of the usual \"*.old\" output.",
       "type": "array",
       "items": [
         {
@@ -19,7 +19,7 @@
       "minItems": 2
     },
     "benchmark_exe": {
-      "description": "The path to the binary which is executed by valgrind. In case of a library benchmark this\n is the compiled benchmark file. In case of a binary benchmark this is the path to the\n command.",
+      "description": "The path to the binary which is executed by valgrind. In case of a library benchmark this\nis the compiled benchmark file. In case of a binary benchmark this is the path to the\ncommand.",
       "type": "string"
     },
     "benchmark_file": {
@@ -78,7 +78,7 @@
       ]
     },
     "version": {
-      "description": "The version of this format. Only backwards incompatible changes cause an increase of the\n version",
+      "description": "The version of this format. Only backwards incompatible changes cause an increase of the\nversion",
       "type": "string"
     }
   },
@@ -111,7 +111,7 @@
       ]
     },
     "CachegrindMetric": {
-      "description": "All metrics which cachegrind produces and additionally some derived events\n\n Depending on the options passed to Cachegrind, these are the events that Cachegrind can produce.\n See the [Cachegrind\n documentation](https://valgrind.org/docs/manual/cg-manual.html#cg-manual.cgopts) for details.",
+      "description": "All metrics which cachegrind produces and additionally some derived events\n\nDepending on the options passed to Cachegrind, these are the events that Cachegrind can produce.\nSee the [Cachegrind\ndocumentation](https://valgrind.org/docs/manual/cg-manual.html#cg-manual.cgopts) for details.",
       "oneOf": [
         {
           "description": "The default event. I cache reads (which equals the number of instructions executed)",
@@ -229,12 +229,12 @@
           "const": "AtTGmaxBlocks"
         },
         {
-          "description": "The amount of bytes at the end of the execution.\n\n This is the amount of bytes which were not explicitly freed.",
+          "description": "The amount of bytes at the end of the execution.\n\nThis is the amount of bytes which were not explicitly freed.",
           "type": "string",
           "const": "AtTEndBytes"
         },
         {
-          "description": "The amount of blocks at the end of the execution.\n\n This is the amount of heap blocks which were not explicitly freed.",
+          "description": "The amount of blocks at the end of the execution.\n\nThis is the amount of heap blocks which were not explicitly freed.",
           "type": "string",
           "const": "AtTEndBlocks"
         },
@@ -270,18 +270,18 @@
       "type": "object",
       "properties": {
         "diff_pct": {
-          "description": "The percentage of the difference between two `Metrics` serialized as string to preserve\n infinity values and avoid `null` in json",
+          "description": "The percentage of the difference between two `Metrics` serialized as string to preserve\ninfinity values and avoid `null` in json",
           "type": "string"
         },
         "factor": {
-          "description": "The factor of the difference between two `Metrics` serialized as string to preserve\n infinity values and void `null` in json",
+          "description": "The factor of the difference between two `Metrics` serialized as string to preserve\ninfinity values and void `null` in json",
           "type": "string"
         }
       },
       "required": ["diff_pct", "factor"]
     },
-    "EitherOrBoth_for_ProfileInfo": {
-      "description": "Either left or right or both can be present\n\n Most of the time, this enum is used to store (new, old) output, metrics, etc. Per convention\n left is `new` and right is `old`.",
+    "EitherOrBoth": {
+      "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, metrics, etc. Per convention\nleft is `new` and right is `old`.",
       "oneOf": [
         {
           "description": "The left or `new` value",
@@ -328,8 +328,8 @@
         }
       ]
     },
-    "EitherOrBoth_for_uint64": {
-      "description": "Either left or right or both can be present\n\n Most of the time, this enum is used to store (new, old) output, metrics, etc. Per convention\n left is `new` and right is `old`.",
+    "EitherOrBoth2": {
+      "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, metrics, etc. Per convention\nleft is `new` and right is `old`.",
       "oneOf": [
         {
           "description": "The left or `new` value",
@@ -385,7 +385,7 @@
       ]
     },
     "ErrorMetric": {
-      "description": "The error metrics from a tool which reports errors\n\n The tools which report only errors are `helgrind`, `drd` and `memcheck`. The order in which the\n variants are defined in this enum determines the order of the metrics in the benchmark terminal\n output.",
+      "description": "The error metrics from a tool which reports errors\n\nThe tools which report only errors are `helgrind`, `drd` and `memcheck`. The order in which the\nvariants are defined in this enum determines the order of the metrics in the benchmark terminal\noutput.",
       "oneOf": [
         {
           "description": "The amount of detected unsuppressed errors",
@@ -410,7 +410,7 @@
       ]
     },
     "EventKind": {
-      "description": "All `EventKind`s callgrind produces and additionally some derived events\n\n Depending on the options passed to Callgrind, these are the events that Callgrind can produce.\n See the [Callgrind\n documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.",
+      "description": "All `EventKind`s callgrind produces and additionally some derived events\n\nDepending on the options passed to Callgrind, these are the events that Callgrind can produce.\nSee the [Callgrind\ndocumentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.",
       "oneOf": [
         {
           "description": "The default event. I cache reads (which equals the number of instructions executed)",
@@ -560,7 +560,7 @@
       ]
     },
     "FlamegraphSummary": {
-      "description": "The callgrind `FlamegraphSummary` records all created paths for an [`EventKind`] specific\n flamegraph\n\n Either the `regular_path`, `old_path` or the `diff_path` are present. Never can all of them be\n absent.",
+      "description": "The callgrind `FlamegraphSummary` records all created paths for an [`EventKind`] specific\nflamegraph\n\nEither the `regular_path`, `old_path` or the `diff_path` are present. Never can all of them be\nabsent.",
       "type": "object",
       "properties": {
         "base_path": {
@@ -656,7 +656,7 @@
       ]
     },
     "MetricsDiff": {
-      "description": "The `MetricsDiff` describes the difference between a `new` and `old` metric as percentage and\n factor.\n\n Only if both metrics are present there is also a `Diffs` present. Otherwise, it just stores the\n `new` or `old` metric.",
+      "description": "The `MetricsDiff` describes the difference between a `new` and `old` metric as percentage and\nfactor.\n\nOnly if both metrics are present there is also a `Diffs` present. Otherwise, it just stores the\n`new` or `old` metric.",
       "type": "object",
       "properties": {
         "diffs": {
@@ -674,35 +674,35 @@
           "description": "Either the `new`, `old` or both metrics",
           "allOf": [
             {
-              "$ref": "#/definitions/EitherOrBoth_for_uint64"
+              "$ref": "#/definitions/EitherOrBoth2"
             }
           ]
         }
       },
       "required": ["metrics"]
     },
-    "MetricsSummary_for_CachegrindMetric": {
+    "MetricsSummary": {
       "description": "The `MetricsSummary` contains all differences between two tool run segments",
       "type": "object",
       "additionalProperties": {
         "$ref": "#/definitions/MetricsDiff"
       }
     },
-    "MetricsSummary_for_DhatMetric": {
+    "MetricsSummary2": {
       "description": "The `MetricsSummary` contains all differences between two tool run segments",
       "type": "object",
       "additionalProperties": {
         "$ref": "#/definitions/MetricsDiff"
       }
     },
-    "MetricsSummary_for_ErrorMetric": {
+    "MetricsSummary3": {
       "description": "The `MetricsSummary` contains all differences between two tool run segments",
       "type": "object",
       "additionalProperties": {
         "$ref": "#/definitions/MetricsDiff"
       }
     },
-    "MetricsSummary_for_EventKind": {
+    "MetricsSummary4": {
       "description": "The `MetricsSummary` contains all differences between two tool run segments",
       "type": "object",
       "additionalProperties": {
@@ -728,7 +728,7 @@
           }
         },
         "out_paths": {
-          "description": "The paths to the `*.out` files. Not all tools produce an output in addition to the log\n files",
+          "description": "The paths to the `*.out` files. Not all tools produce an output in addition to the log\nfiles",
           "type": "array",
           "items": {
             "type": "string"
@@ -754,7 +754,7 @@
       "required": ["tool", "log_paths", "out_paths", "flamegraphs", "summaries"]
     },
     "ProfileData": {
-      "description": "The `ToolRun` contains all information about a single tool run with possibly multiple segments\n\n The total is always present and summarizes all tool run segments. In the special case of a\n single tool run segment, the total equals the metrics of this segment.",
+      "description": "The `ToolRun` contains all information about a single tool run with possibly multiple segments\n\nThe total is always present and summarizes all tool run segments. In the special case of a\nsingle tool run segment, the total equals the metrics of this segment.",
       "type": "object",
       "properties": {
         "parts": {
@@ -817,14 +817,14 @@
       "required": ["command", "pid", "path"]
     },
     "ProfilePart": {
-      "description": "A single segment of a tool run and if present the comparison with the \"old\" segment\n\n A tool run can produce multiple segments, for example for each process and subprocess with\n (--trace-children).",
+      "description": "A single segment of a tool run and if present the comparison with the \"old\" segment\n\nA tool run can produce multiple segments, for example for each process and subprocess with\n(--trace-children).",
       "type": "object",
       "properties": {
         "details": {
           "description": "Details like command, pid, ppid, thread number etc. (see [`ProfileInfo`])",
           "allOf": [
             {
-              "$ref": "#/definitions/EitherOrBoth_for_ProfileInfo"
+              "$ref": "#/definitions/EitherOrBoth"
             }
           ]
         },
@@ -909,7 +909,7 @@
           "type": "object",
           "properties": {
             "ErrorTool": {
-              "$ref": "#/definitions/MetricsSummary_for_ErrorMetric"
+              "$ref": "#/definitions/MetricsSummary"
             }
           },
           "additionalProperties": false,
@@ -920,7 +920,7 @@
           "type": "object",
           "properties": {
             "Dhat": {
-              "$ref": "#/definitions/MetricsSummary_for_DhatMetric"
+              "$ref": "#/definitions/MetricsSummary2"
             }
           },
           "additionalProperties": false,
@@ -931,7 +931,7 @@
           "type": "object",
           "properties": {
             "Callgrind": {
-              "$ref": "#/definitions/MetricsSummary_for_EventKind"
+              "$ref": "#/definitions/MetricsSummary3"
             }
           },
           "additionalProperties": false,
@@ -942,7 +942,7 @@
           "type": "object",
           "properties": {
             "Cachegrind": {
-              "$ref": "#/definitions/MetricsSummary_for_CachegrindMetric"
+              "$ref": "#/definitions/MetricsSummary4"
             }
           },
           "additionalProperties": false,
@@ -954,11 +954,11 @@
       "type": "object",
       "properties": {
         "diff_pct": {
-          "description": "The difference between new and old in percent. Serialized as string to preserve infinity\n values and avoid null in json.",
+          "description": "The difference between new and old in percent. Serialized as string to preserve infinity\nvalues and avoid null in json.",
           "type": "string"
         },
         "limit": {
-          "description": "The value of the limit which was exceeded to cause a performance regression. Serialized as\n string to preserve infinity values and avoid null in json.",
+          "description": "The value of the limit which was exceeded to cause a performance regression. Serialized as\nstring to preserve infinity values and avoid null in json.",
           "type": "string"
         },
         "metric": {
@@ -980,7 +980,7 @@
       "required": ["metric", "new", "old", "diff_pct", "limit"]
     },
     "ValgrindTool": {
-      "description": "The valgrind tools which can be run\n\n Note the default changes from `Callgrind` to `Cachegrind` if the `cachegrind` feature is\n selected.",
+      "description": "The valgrind tools which can be run\n\nNote the default changes from `Callgrind` to `Cachegrind` if the `cachegrind` feature is\nselected.",
       "oneOf": [
         {
           "description": "[Callgrind: a call-graph generating cache and branch prediction profiler](https://valgrind.org/docs/manual/cl-manual.html)",
