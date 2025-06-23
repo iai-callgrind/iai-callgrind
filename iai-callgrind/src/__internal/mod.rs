@@ -4,6 +4,7 @@
 
 pub mod bin_bench;
 pub mod error;
+pub mod lib_bench;
 
 // The runner api is not used directly in order to decouple the user interface and
 // documentation from the internal usage.
