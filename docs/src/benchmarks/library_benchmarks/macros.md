@@ -3,7 +3,7 @@
 This section is a brief reference to all the macros available in library
 benchmarks. Feel free to come back here from other sections if you need a
 reference. For the complete documentation of each macro see the [api
-Documentation](https://docs.rs/iai-callgrind/0.15.0/iai_callgrind/).
+Documentation](https://docs.rs/iai-callgrind/0.15.1/iai_callgrind/).
 
 For the following examples it is assumed that there is a file `lib.rs` in a
 crate named `my_lib` with the following content:
@@ -51,7 +51,7 @@ main!(library_benchmark_groups = bubble_sort_group);
 The following parameters are accepted:
 
 - `config`: Takes a
-  [`LibraryBenchmarkConfig`](https://docs.rs/iai-callgrind/0.15.0/iai_callgrind/struct.LibraryBenchmarkConfig.html)
+  [`LibraryBenchmarkConfig`](https://docs.rs/iai-callgrind/0.15.1/iai_callgrind/struct.LibraryBenchmarkConfig.html)
 - `setup`: A global setup function which is applied to all following [`#[bench]`](#the-bench-attribute)
   and [`#[benches]`](#the-benches-attribute) attributes if not overwritten by a `setup` parameter of these
   attributes.
@@ -93,7 +93,7 @@ accepts the following parameters:
   benchmark function. The parentheses also need to be present if there is only a
   single argument (`#[bench::my_id(args = (10))]`).
 - `config`: Accepts a
-  [`LibraryBenchmarkConfig`](https://docs.rs/iai-callgrind/0.15.0/iai_callgrind/struct.LibraryBenchmarkConfig.html)
+  [`LibraryBenchmarkConfig`](https://docs.rs/iai-callgrind/0.15.1/iai_callgrind/struct.LibraryBenchmarkConfig.html)
 - `setup`: A function which takes the arguments specified in the `args`
   parameter and passes its return value to the benchmark function.
 - `teardown`: A function which takes the return value of the benchmark function.
@@ -176,7 +176,7 @@ order and separated by a semicolon):
 - __`name`__ (mandatory): A unique name used to identify the group for the
   `main!` macro
 - __`config`__ (optional): A
-  [`LibraryBenchmarkConfig`](https://docs.rs/iai-callgrind/0.15.0/iai_callgrind/struct.LibraryBenchmarkConfig.html)
+  [`LibraryBenchmarkConfig`](https://docs.rs/iai-callgrind/0.15.1/iai_callgrind/struct.LibraryBenchmarkConfig.html)
   which is applied to all benchmarks within the same group.
 - __`compare_by_id`__ (optional): The default is false. If true, all benches in
   the benchmark functions specified in the `benchmarks` parameter are compared
@@ -203,7 +203,7 @@ harness. It accepts the following top-level arguments in this order (separated
 by a semicolon):
 
 - __`config`__ (optional): Optionally specify a
-  [`LibraryBenchmarkConfig`](https://docs.rs/iai-callgrind/0.15.0/iai_callgrind/struct.LibraryBenchmarkConfig.html)
+  [`LibraryBenchmarkConfig`](https://docs.rs/iai-callgrind/0.15.1/iai_callgrind/struct.LibraryBenchmarkConfig.html)
 - __`setup`__ (optional): A setup function or any valid expression which is run
   before all benchmarks
 - __`teardown`__ (optional): A setup function or any valid expression which is

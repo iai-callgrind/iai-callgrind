@@ -1,5 +1,5 @@
 <!-- spell-checker:ignore serde dewert binstall jembishop kehl DaniPopes bytemuck hargut -->
-<!-- spell-checker:ignore ryanpeach hashbrown tgross35 gaetschwartz -->
+<!-- spell-checker:ignore ryanpeach hashbrown tgross35 gaetschwartz cfgs -->
 <!--
 Added for new features.
 Changed for changes in existing functionality.
@@ -22,6 +22,24 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.15.1] - 2025-06-23
+
+### Changed
+
+* chore(deps): Update schemars from `0.9` -> `1.0`. Update the
+  `summary.v4.schema.json` file to the new format.
+
+### Fixed
+
+* ([#382](https://github.com/iai-callgrind/iai-callgrind/pull/382)): The version
+  for the summary json schema submitted in the `summary.json` and in json output
+  was the old `3` instead of `4`.
+* ([#383](https://github.com/iai-callgrind/iai-callgrind/issues/383)): The
+  cachegrind feature check for library benchmarks happened at compile time of
+  the user instead of iai-callgrind's. The `cachegrind` feature did not work
+  (for library benchmarks) and rust versions above `1.80` produce a compilation
+  warning due to `unexpected-cfgs`.
 
 ## [0.15.0] - 2025-06-22
 
