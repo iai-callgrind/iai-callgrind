@@ -26,6 +26,8 @@ use crate::util::{factor_diff, make_absolute, percentage_diff, EitherOrBoth};
 
 pub type RegressionMetrics<T> = (T, u64, u64, f64, f64);
 
+pub const SCHEMA_VERSION: &str = "4";
+
 /// A `Baseline` depending on the [`BaselineKind`] which points to the corresponding path
 ///
 /// This baseline is used for comparisons with the new output of valgrind tools.
@@ -370,7 +372,7 @@ impl BenchmarkSummary {
         baselines: Baselines,
     ) -> Self {
         Self {
-            version: "4".to_owned(),
+            version: SCHEMA_VERSION.to_owned(),
             kind,
             benchmark_file: make_absolute(&project_root, benchmark_file),
             benchmark_exe: make_absolute(&project_root, benchmark_exe),
