@@ -388,56 +388,22 @@ macro_rules! main {
                 config = Some($config.into());
             )?
 
-            let mut internal_benchmark_groups = if cfg!(feature = "cachegrind") {
-                $crate::__internal::InternalLibraryBenchmarkGroups {
-                    config: config.unwrap_or_default(),
-                    groups: Vec::default(),
-                    command_line_args: this_args.collect(),
-                    has_setup: __run_setup(false),
-                    has_teardown: __run_teardown(false),
-                    default_tool: $crate::ValgrindTool::Cachegrind
-                }
-            } else {
-                $crate::__internal::InternalLibraryBenchmarkGroups {
-                    config: config.unwrap_or_default(),
-                    groups: Vec::default(),
-                    command_line_args: this_args.collect(),
-                    has_setup: __run_setup(false),
-                    has_teardown: __run_teardown(false),
-                    default_tool: $crate::ValgrindTool::Callgrind
-                }
-            };
+            let mut groups_builder = $crate::__internal::lib_bench::GroupsBuilder::new(
+                config, this_args.collect(), __run_setup(false), __run_teardown(false),
+            );
 
             $(
-                let mut internal_group = $crate::__internal::InternalLibraryBenchmarkGroup {
-                    id: stringify!($group).to_owned(),
-                    config: $group::__get_config(),
-                    compare_by_id: $group::__compare_by_id(),
-                    library_benchmarks: vec![],
-                    has_setup: $group::__run_setup(false),
-                    has_teardown: $group::__run_teardown(false),
-                };
-                for (function_name, get_config, macro_lib_benches) in $group::__BENCHES {
-                    let mut benches = $crate::__internal::InternalLibraryBenchmarkBenches {
-                        benches: vec![],
-                        config: get_config()
-                    };
-                    for macro_lib_bench in macro_lib_benches.iter() {
-                        let bench = $crate::__internal::InternalLibraryBenchmarkBench {
-                            id: macro_lib_bench.id_display.map(|i| i.to_string()),
-                            args: macro_lib_bench.args_display.map(|i| i.to_string()),
-                            function_name: function_name.to_string(),
-                            config: macro_lib_bench.config.map(|f| f()),
-                        };
-                        benches.benches.push(bench);
-                    }
-                    internal_group.library_benchmarks.push(benches);
-                }
-
-                internal_benchmark_groups.groups.push(internal_group);
+                groups_builder.add_group(
+                    stringify!($group).to_owned(),
+                    $group::__get_config(),
+                    $group::__compare_by_id(),
+                    $group::__run_setup(false),
+                    $group::__run_teardown(false),
+                    $group::__BENCHES
+                );
             )+
 
-            let encoded = $crate::bincode::serialize(&internal_benchmark_groups)
+            let encoded = $crate::bincode::serialize(&groups_builder.build())
                 .expect("Encoded benchmark");
 
             if let Err(errors) = runner.exec(encoded) {
