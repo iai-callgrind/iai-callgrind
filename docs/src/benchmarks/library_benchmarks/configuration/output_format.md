@@ -77,6 +77,6 @@ of the other valgrind tools can be customized in the same way. Just have a look
 at the docs for the respective format (`Dhat::format`, `DhatMetric`,
 `Cachegrind::format`, `CachegrindMetric`, ...)
 
-[`OutputFormat`]: https://docs.rs/iai-callgrind/0.15.0/iai_callgrind/struct.OutputFormat.html
-[`OutputFormat.show_grid`]: https://docs.rs/iai-callgrind/0.15.0/iai_callgrind/struct.OutputFormat.html#method.show_grid
-[`OutputFormat.truncate_description`]: https://docs.rs/iai-callgrind/0.15.0/iai_callgrind/struct.OutputFormat.html#method.truncate_description
+[`OutputFormat`]: https://docs.rs/iai-callgrind/0.15.1/iai_callgrind/struct.OutputFormat.html
+[`OutputFormat.show_grid`]: https://docs.rs/iai-callgrind/0.15.1/iai_callgrind/struct.OutputFormat.html#method.show_grid
+[`OutputFormat.truncate_description`]: https://docs.rs/iai-callgrind/0.15.1/iai_callgrind/struct.OutputFormat.html#method.truncate_description
