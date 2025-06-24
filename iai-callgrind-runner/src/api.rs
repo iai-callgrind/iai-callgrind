@@ -81,6 +81,7 @@ pub struct BinaryBenchmarkGroups {
     pub default_tool: ValgrindTool,
 }
 
+// TODO: CachegrindMetrics like CallgrindMetrics
 /// All metrics which cachegrind produces and additionally some derived events
 ///
 /// Depending on the options passed to Cachegrind, these are the events that Cachegrind can produce.
@@ -108,6 +109,12 @@ pub enum CachegrindMetric {
     DLmr,
     /// LL cache data write misses (--cache-sim=yes)
     DLmw,
+    /// TODO: DOCS
+    I1MissRate,
+    D1MissRate,
+    LLiMissRate,
+    LLdMissRate,
+    LLMissRate,
     /// Derived event showing the L1 hits (--cache-sim=yes)
     L1hits,
     /// Derived event showing the LL hits (--cache-sim=yes)
@@ -118,6 +125,10 @@ pub enum CachegrindMetric {
     TotalRW,
     /// Derived event showing estimated CPU cycles (--cache-sim=yes)
     EstimatedCycles,
+    /// TODO: DOCS
+    L1HitRate,
+    LLHitRate,
+    RamHitRate,
     /// Conditional branches executed (--branch-sim=yes)
     Bc,
     /// Conditional branches mispredicted (--branch-sim=yes)
@@ -187,6 +198,9 @@ pub enum CallgrindMetrics {
     /// ```
     CacheMisses,
 
+    /// TODO: DOCS
+    CacheMissRates,
+
     /// `CacheHits` are iai-callgrind specific and calculated from the metrics produced by
     /// `--cache-sim=yes` in this order:
     ///
@@ -204,6 +218,10 @@ pub enum CallgrindMetrics {
     /// ```
     CacheHits,
 
+    /// TODO: DOCS
+    CacheHitRates,
+
+    // TODO: UPDATE DOCS
     /// All metrics produced by `--cache-sim=yes` including the iai-callgrind specific metrics
     /// [`EventKind::L1hits`], [`EventKind::LLhits`], [`EventKind::RamHits`],
     /// [`EventKind::TotalRW`] and [`EventKind::EstimatedCycles`] in this order:
@@ -475,6 +493,12 @@ pub enum EventKind {
     DLmr,
     /// LL cache data write misses (--cache-sim=yes)
     DLmw,
+    /// TODO: DOCS
+    I1MissRate,
+    D1MissRate,
+    LLiMissRate,
+    LLdMissRate,
+    LLMissRate,
     /// Derived event showing the L1 hits (--cache-sim=yes)
     L1hits,
     /// Derived event showing the LL hits (--cache-sim=yes)
@@ -485,6 +509,10 @@ pub enum EventKind {
     TotalRW,
     /// Derived event showing estimated CPU cycles (--cache-sim=yes)
     EstimatedCycles,
+    /// TODO: DOCS
+    L1HitRate,
+    LLHitRate,
+    RamHitRate,
     /// The number of system calls done (--collect-systime=yes)
     SysCount,
     /// The elapsed time spent in system calls (--collect-systime=yes)
@@ -808,14 +836,24 @@ impl CachegrindMetric {
     /// * [`CachegrindMetric::RamHits`]
     /// * [`CachegrindMetric::TotalRW`]
     /// * [`CachegrindMetric::EstimatedCycles`]
+    ///
+    /// TODO: UPDATE DOCS
     pub fn is_derived(&self) -> bool {
         matches!(
             self,
-            CachegrindMetric::L1hits
-                | CachegrindMetric::LLhits
-                | CachegrindMetric::RamHits
-                | CachegrindMetric::TotalRW
-                | CachegrindMetric::EstimatedCycles
+            Self::L1hits
+                | Self::LLhits
+                | Self::RamHits
+                | Self::TotalRW
+                | Self::EstimatedCycles
+                | Self::I1MissRate
+                | Self::D1MissRate
+                | Self::LLiMissRate
+                | Self::LLdMissRate
+                | Self::LLMissRate
+                | Self::L1HitRate
+                | Self::LLHitRate
+                | Self::RamHitRate
         )
     }
 
@@ -839,6 +877,14 @@ impl CachegrindMetric {
             "ramhits" => Some(Self::RamHits),
             "totalrw" => Some(Self::TotalRW),
             "estimatedcycles" => Some(Self::EstimatedCycles),
+            "i1missrate" => Some(Self::I1MissRate),
+            "d1missrate" => Some(Self::D1MissRate),
+            "llimissrate" => Some(Self::LLiMissRate),
+            "lldmissrate" => Some(Self::LLdMissRate),
+            "llmissrate" => Some(Self::LLMissRate),
+            "l1hitrate" => Some(Self::L1HitRate),
+            "llhitrate" => Some(Self::LLHitRate),
+            "ramhitrate" => Some(Self::RamHitRate),
             _ => None,
         }
     }
@@ -851,13 +897,21 @@ impl CachegrindMetric {
 impl Display for CachegrindMetric {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Ir => f.write_str("Instructions"),
-            Self::L1hits => f.write_str("L1 Hits"),
-            Self::LLhits => f.write_str("L2 Hits"),
-            Self::RamHits => f.write_str("RAM Hits"),
-            Self::TotalRW => f.write_str("Total read+write"),
-            Self::EstimatedCycles => f.write_str("Estimated Cycles"),
-            _ => f.write_fmt(format_args!("{self:?}")),
+            key @ (Self::Ir
+            | Self::L1hits
+            | Self::LLhits
+            | Self::RamHits
+            | Self::TotalRW
+            | Self::EstimatedCycles
+            | Self::I1MissRate
+            | Self::D1MissRate
+            | Self::LLiMissRate
+            | Self::LLdMissRate
+            | Self::LLMissRate
+            | Self::L1HitRate
+            | Self::LLHitRate
+            | Self::RamHitRate) => write!(f, "{}", EventKind::from(*key)),
+            _ => write!(f, "{self:?}"),
         }
     }
 }
@@ -886,6 +940,14 @@ impl TryFrom<&str> for CachegrindMetric {
             "RamHits" => Self::RamHits,
             "TotalRW" => Self::TotalRW,
             "EstimatedCycles" => Self::EstimatedCycles,
+            "I1MissRate" => Self::I1MissRate,
+            "D1MissRate" => Self::D1MissRate,
+            "LLiMissRate" => Self::LLiMissRate,
+            "LLdMissRate" => Self::LLdMissRate,
+            "LLMissRate" => Self::LLMissRate,
+            "L1HitRate" => Self::L1HitRate,
+            "LLHitRate" => Self::LLHitRate,
+            "RamHitRate" => Self::RamHitRate,
             unknown => return Err(anyhow!("Unknown event type: {unknown}")),
         };
 
@@ -914,6 +976,14 @@ impl From<CachegrindMetric> for EventKind {
             CachegrindMetric::Bcm => Self::Bcm,
             CachegrindMetric::Bi => Self::Bi,
             CachegrindMetric::Bim => Self::Bim,
+            CachegrindMetric::I1MissRate => Self::I1MissRate,
+            CachegrindMetric::D1MissRate => Self::D1MissRate,
+            CachegrindMetric::LLiMissRate => Self::LLiMissRate,
+            CachegrindMetric::LLdMissRate => Self::LLdMissRate,
+            CachegrindMetric::LLMissRate => Self::LLMissRate,
+            CachegrindMetric::L1HitRate => Self::L1HitRate,
+            CachegrindMetric::LLHitRate => Self::LLHitRate,
+            CachegrindMetric::RamHitRate => Self::RamHitRate,
         }
     }
 }
@@ -986,14 +1056,24 @@ impl EventKind {
     /// * [`EventKind::RamHits`]
     /// * [`EventKind::TotalRW`]
     /// * [`EventKind::EstimatedCycles`]
+    ///
+    /// TODO: UPDATE DOCS
     pub fn is_derived(&self) -> bool {
         matches!(
             self,
-            EventKind::L1hits
-                | EventKind::LLhits
-                | EventKind::RamHits
-                | EventKind::TotalRW
-                | EventKind::EstimatedCycles
+            Self::L1hits
+                | Self::LLhits
+                | Self::RamHits
+                | Self::TotalRW
+                | Self::EstimatedCycles
+                | Self::I1MissRate
+                | Self::D1MissRate
+                | Self::LLiMissRate
+                | Self::LLdMissRate
+                | Self::LLMissRate
+                | Self::L1HitRate
+                | Self::LLHitRate
+                | Self::RamHitRate
         )
     }
 
@@ -1003,10 +1083,10 @@ impl EventKind {
             "dr" => Some(Self::Dr),
             "dw" => Some(Self::Dw),
             "i1mr" => Some(Self::I1mr),
-            "ilmr" => Some(Self::ILmr),
             "d1mr" => Some(Self::D1mr),
-            "dlmr" => Some(Self::DLmr),
             "d1mw" => Some(Self::D1mw),
+            "ilmr" => Some(Self::ILmr),
+            "dlmr" => Some(Self::DLmr),
             "dlmw" => Some(Self::DLmw),
             "syscount" => Some(Self::SysCount),
             "systime" => Some(Self::SysTime),
@@ -1028,6 +1108,14 @@ impl EventKind {
             "ramhits" => Some(Self::RamHits),
             "totalrw" => Some(Self::TotalRW),
             "estimatedcycles" => Some(Self::EstimatedCycles),
+            "i1missrate" => Some(Self::I1MissRate),
+            "d1missrate" => Some(Self::D1MissRate),
+            "llimissrate" => Some(Self::LLiMissRate),
+            "lldmissrate" => Some(Self::LLdMissRate),
+            "llmissrate" => Some(Self::LLMissRate),
+            "l1hitrate" => Some(Self::L1HitRate),
+            "llhitrate" => Some(Self::LLHitRate),
+            "ramhitrate" => Some(Self::RamHitRate),
             _ => None,
         }
     }
@@ -1040,17 +1128,29 @@ impl EventKind {
 impl Display for EventKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            EventKind::Ir => f.write_str("Instructions"),
-            EventKind::L1hits => f.write_str("L1 Hits"),
-            EventKind::LLhits => f.write_str("L2 Hits"),
-            EventKind::RamHits => f.write_str("RAM Hits"),
-            EventKind::TotalRW => f.write_str("Total read+write"),
-            EventKind::EstimatedCycles => f.write_str("Estimated Cycles"),
-            _ => f.write_fmt(format_args!("{self:?}")),
+            Self::Ir => f.write_str("Instructions"),
+            Self::L1hits => f.write_str("L1 Hits"),
+            Self::LLhits => f.write_str("L2 Hits"),
+            Self::RamHits => f.write_str("RAM Hits"),
+            Self::TotalRW => f.write_str("Total read+write"),
+            Self::EstimatedCycles => f.write_str("Estimated Cycles"),
+            Self::I1MissRate => f.write_str("I1 Miss Rate"),
+            Self::D1MissRate => f.write_str("D1 Miss Rate"),
+            Self::LLiMissRate => f.write_str("LLi Miss Rate"),
+            Self::LLdMissRate => f.write_str("LLd Miss Rate"),
+            Self::LLMissRate => f.write_str("LL Miss Rate"),
+            Self::L1HitRate => f.write_str("L1 Hit Rate"),
+            Self::LLHitRate => f.write_str("LL Hit Rate"),
+            Self::RamHitRate => f.write_str("Ram Hit Rate"),
+            _ => write!(f, "{self:?}"),
         }
     }
 }
 
+/// The event kinds as string as they appear in the callgrind output files
+///
+/// The derived events are here for completeness but don't appear in callgrind output files
+/// directly.
 #[cfg(feature = "runner")]
 impl TryFrom<&str> for EventKind {
     type Error = anyhow::Error;
@@ -1086,6 +1186,14 @@ impl TryFrom<&str> for EventKind {
             "RamHits" => Self::RamHits,
             "TotalRW" => Self::TotalRW,
             "EstimatedCycles" => Self::EstimatedCycles,
+            "I1MissRate" => Self::I1MissRate,
+            "D1MissRate" => Self::D1MissRate,
+            "LLiMissRate" => Self::LLiMissRate,
+            "LLdMissRate" => Self::LLdMissRate,
+            "LLMissRate" => Self::LLMissRate,
+            "L1HitRate" => Self::L1HitRate,
+            "LLHitRate" => Self::LLHitRate,
+            "RamHitRate" => Self::RamHitRate,
             unknown => return Err(anyhow!("Unknown event type: {unknown}")),
         };
 
@@ -1169,14 +1277,31 @@ impl From<CallgrindMetrics> for IndexSet<EventKind> {
                 EventKind::DLmr,
                 EventKind::DLmw,
             ]),
+            CallgrindMetrics::CacheMissRates => event_kinds.extend([
+                EventKind::I1MissRate,
+                EventKind::LLiMissRate,
+                EventKind::D1MissRate,
+                EventKind::LLdMissRate,
+                EventKind::LLMissRate,
+            ]),
             CallgrindMetrics::CacheHits => {
                 event_kinds.extend([EventKind::L1hits, EventKind::LLhits, EventKind::RamHits]);
+            }
+            CallgrindMetrics::CacheHitRates => {
+                event_kinds.extend([
+                    EventKind::L1HitRate,
+                    EventKind::LLHitRate,
+                    EventKind::RamHitRate,
+                ]);
             }
             CallgrindMetrics::CacheSim => {
                 event_kinds.extend([EventKind::Dr, EventKind::Dw]);
                 event_kinds.extend(Self::from(CallgrindMetrics::CacheMisses));
+                event_kinds.extend(Self::from(CallgrindMetrics::CacheMissRates));
                 event_kinds.extend(Self::from(CallgrindMetrics::CacheHits));
-                event_kinds.extend([EventKind::TotalRW, EventKind::EstimatedCycles]);
+                event_kinds.insert(EventKind::TotalRW);
+                event_kinds.extend(Self::from(CallgrindMetrics::CacheHitRates));
+                event_kinds.insert(EventKind::EstimatedCycles);
             }
             CallgrindMetrics::CacheUse => event_kinds.extend([
                 EventKind::AcCost1,
@@ -1765,5 +1890,23 @@ mod tests {
         base.update(&other);
 
         assert_eq!(base, expected);
+    }
+
+    #[test]
+    fn test_event_kind_from_str_ignore_case() {
+        for event_kind in EventKind::iter() {
+            let string = format!("{event_kind:?}");
+            let actual = EventKind::from_str_ignore_case(&string);
+            assert_eq!(actual.unwrap(), event_kind);
+        }
+    }
+
+    #[test]
+    fn test_cachegrind_metric_from_str_ignore_case() {
+        for metric in CachegrindMetric::iter() {
+            let string = format!("{metric:?}");
+            let actual = CachegrindMetric::from_str_ignore_case(&string);
+            assert_eq!(actual.unwrap(), metric);
+        }
     }
 }

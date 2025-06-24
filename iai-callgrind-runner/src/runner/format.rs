@@ -11,6 +11,7 @@ use super::bin_bench::BinBench;
 use super::common::{Baselines, BenchmarkSummaries, Config, ModulePath};
 use super::lib_bench::LibBench;
 use super::meta::Metadata;
+use super::metrics::Metric;
 use super::summary::{
     Diffs, MetricsDiff, ProfileData, ProfileInfo, ToolMetricSummary, ToolRegression,
 };
@@ -623,7 +624,7 @@ impl VerticalFormatter {
         }
     }
 
-    fn write_metric(&mut self, field: &str, metrics: &EitherOrBoth<&u64>, diffs: Option<Diffs>) {
+    fn write_metric(&mut self, field: &str, metrics: &EitherOrBoth<&Metric>, diffs: Option<Diffs>) {
         match metrics {
             EitherOrBoth::Left(new) => {
                 let right = format!(
@@ -924,7 +925,7 @@ impl Formatter for VerticalFormatter {
                 if let Some(info) = info {
                     if summary
                         .diff_by_kind(&ErrorMetric::Errors)
-                        .is_some_and(|e| e.metrics.left().is_some_and(|l| *l > 0))
+                        .is_some_and(|e| e.metrics.left().is_some_and(|l| *l > Metric::Int(0)))
                     {
                         if let Some(new) = info.left() {
                             if let Some(details) = new.details.as_ref() {
@@ -1429,10 +1430,10 @@ mod tests {
 
         let costs = match old {
             Some(old) => EitherOrBoth::Both(
-                Metrics(indexmap! {event_kind => new}),
-                Metrics(indexmap! {event_kind => old}),
+                Metrics(indexmap! {event_kind => Metric::Int(new)}),
+                Metrics(indexmap! {event_kind => Metric::Int(old)}),
             ),
-            None => EitherOrBoth::Left(Metrics(indexmap! {event_kind => new})),
+            None => EitherOrBoth::Left(Metrics(indexmap! {event_kind => Metric::Int(new)})),
         };
         let metrics_summary = MetricsSummary::new(costs);
         let mut formatter = VerticalFormatter::new(OutputFormat::default());

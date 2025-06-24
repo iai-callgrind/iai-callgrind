@@ -2,6 +2,7 @@ use std::fs::File;
 use std::path::Path;
 
 use anyhow::{anyhow, Result};
+use iai_callgrind_runner::runner::metrics::Metric;
 use iai_callgrind_runner::runner::summary::{BenchmarkSummary, ToolMetricSummary};
 use iai_callgrind_runner::util::EitherOrBoth;
 
@@ -40,26 +41,26 @@ impl Summary {
                         match metrics_summary.extract_costs() {
                             EitherOrBoth::Left(new_costs) => {
                                 assert!(
-                                    !new_costs.0.iter().all(|(_, c)| *c == 0),
+                                    !new_costs.0.iter().all(|(_, c)| *c == Metric::Int(0)),
                                     "All *new* costs for dhat were zero for '{}'",
                                     self.get_name()
                                 );
                             }
                             EitherOrBoth::Right(old_costs) => {
                                 assert!(
-                                    !old_costs.0.iter().all(|(_, c)| *c == 0),
+                                    !old_costs.0.iter().all(|(_, c)| *c == Metric::Int(0)),
                                     "All *old* costs for dhat were zero for '{}'",
                                     self.get_name()
                                 );
                             }
                             EitherOrBoth::Both(new_costs, old_costs) => {
                                 assert!(
-                                    !new_costs.0.iter().all(|(_, c)| *c == 0),
+                                    !new_costs.0.iter().all(|(_, c)| *c == Metric::Int(0)),
                                     "All *new* costs for dhat were zero for '{}'",
                                     self.get_name()
                                 );
                                 assert!(
-                                    !old_costs.0.iter().all(|(_, c)| *c == 0),
+                                    !old_costs.0.iter().all(|(_, c)| *c == Metric::Int(0)),
                                     "All *old* costs for dhat were zero for '{}'",
                                     self.get_name()
                                 );
@@ -70,26 +71,26 @@ impl Summary {
                         match metrics_summary.extract_costs() {
                             EitherOrBoth::Left(new_costs) => {
                                 assert!(
-                                    !new_costs.0.iter().all(|(_, c)| *c == 0),
+                                    !new_costs.0.iter().all(|(_, c)| *c == Metric::Int(0)),
                                     "All *new* costs for callgrind were zero for '{}'",
                                     self.get_name()
                                 );
                             }
                             EitherOrBoth::Right(old_costs) => {
                                 assert!(
-                                    !old_costs.0.iter().all(|(_, c)| *c == 0),
+                                    !old_costs.0.iter().all(|(_, c)| *c == Metric::Int(0)),
                                     "All *old* costs for callgrind were zero for '{}'",
                                     self.get_name()
                                 );
                             }
                             EitherOrBoth::Both(new_costs, old_costs) => {
                                 assert!(
-                                    !new_costs.0.iter().all(|(_, c)| *c == 0),
+                                    !new_costs.0.iter().all(|(_, c)| *c == Metric::Int(0)),
                                     "All *new* costs for callgrind were zero for '{}'",
                                     self.get_name()
                                 );
                                 assert!(
-                                    !old_costs.0.iter().all(|(_, c)| *c == 0),
+                                    !old_costs.0.iter().all(|(_, c)| *c == Metric::Int(0)),
                                     "All *old* costs for callgrind were zero for '{}'",
                                     self.get_name()
                                 );
@@ -100,26 +101,26 @@ impl Summary {
                         match metrics_summary.extract_costs() {
                             EitherOrBoth::Left(new_costs) => {
                                 assert!(
-                                    !new_costs.0.iter().all(|(_, c)| *c == 0),
+                                    !new_costs.0.iter().all(|(_, c)| *c == Metric::Int(0)),
                                     "All *new* costs for cachegrind were zero for '{}'",
                                     self.get_name()
                                 );
                             }
                             EitherOrBoth::Right(old_costs) => {
                                 assert!(
-                                    !old_costs.0.iter().all(|(_, c)| *c == 0),
+                                    !old_costs.0.iter().all(|(_, c)| *c == Metric::Int(0)),
                                     "All *old* costs for cachegrind were zero for '{}'",
                                     self.get_name()
                                 );
                             }
                             EitherOrBoth::Both(new_costs, old_costs) => {
                                 assert!(
-                                    !new_costs.0.iter().all(|(_, c)| *c == 0),
+                                    !new_costs.0.iter().all(|(_, c)| *c == Metric::Int(0)),
                                     "All *new* costs for cachegrind were zero for '{}'",
                                     self.get_name()
                                 );
                                 assert!(
-                                    !old_costs.0.iter().all(|(_, c)| *c == 0),
+                                    !old_costs.0.iter().all(|(_, c)| *c == Metric::Int(0)),
                                     "All *old* costs for cachegrind were zero for '{}'",
                                     self.get_name()
                                 );

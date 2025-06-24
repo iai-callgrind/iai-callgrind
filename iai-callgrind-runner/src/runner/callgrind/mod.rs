@@ -11,6 +11,7 @@ use std::path::PathBuf;
 use parser::CallgrindProperties;
 
 use self::model::Metrics;
+use super::metrics::Metric;
 use super::summary::{MetricKind, MetricsSummary, ToolRegression};
 use super::tool::RegressionConfig;
 use crate::api::{self, EventKind};
@@ -30,24 +31,32 @@ pub struct Summaries {
 
 #[derive(Clone, Debug)]
 pub struct CacheSummary {
-    pub l1_hits: u64,
-    pub l3_hits: u64,
-    pub ram_hits: u64,
-    pub total_memory_rw: u64,
-    pub cycles: u64,
+    pub l1_hits: Metric,
+    pub l3_hits: Metric,
+    pub ram_hits: Metric,
+    pub total_memory_rw: Metric,
+    pub cycles: Metric,
+    pub i1_miss_rate: Metric,
+    pub d1_miss_rate: Metric,
+    pub ll_miss_rate: Metric,
+    pub lli_miss_rate: Metric,
+    pub lld_miss_rate: Metric,
+    pub l1_hit_rate: Metric,
+    pub l3_hit_rate: Metric,
+    pub ram_hit_rate: Metric,
 }
 
 #[derive(Debug, Clone)]
 pub struct CyclesEstimator {
-    instructions: u64,
-    total_data_cache_reads: u64,
-    total_data_cache_writes: u64,
-    l1_instructions_cache_read_misses: u64,
-    l1_data_cache_read_misses: u64,
-    l1_data_cache_write_misses: u64,
-    l3_instructions_cache_read_misses: u64,
-    l3_data_cache_read_misses: u64,
-    l3_data_cache_write_misses: u64,
+    instructions: Metric,
+    total_data_cache_reads: Metric,
+    total_data_cache_writes: Metric,
+    l1_instructions_cache_read_misses: Metric,
+    l1_data_cache_read_misses: Metric,
+    l1_data_cache_write_misses: Metric,
+    l3_instructions_cache_read_misses: Metric,
+    l3_data_cache_read_misses: Metric,
+    l3_data_cache_write_misses: Metric,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -79,15 +88,15 @@ impl TryFrom<&Metrics> for CacheSummary {
 
 impl CyclesEstimator {
     pub fn new(
-        instructions: u64,
-        total_data_cache_reads: u64,
-        total_data_cache_writes: u64,
-        l1_instructions_cache_read_misses: u64,
-        l1_data_cache_read_misses: u64,
-        l1_data_cache_write_misses: u64,
-        l3_instructions_cache_read_misses: u64,
-        l3_data_cache_read_misses: u64,
-        l3_data_cache_write_misses: u64,
+        instructions: Metric,
+        total_data_cache_reads: Metric,
+        total_data_cache_writes: Metric,
+        l1_instructions_cache_read_misses: Metric,
+        l1_data_cache_read_misses: Metric,
+        l1_data_cache_write_misses: Metric,
+        l3_instructions_cache_read_misses: Metric,
+        l3_data_cache_read_misses: Metric,
+        l3_data_cache_write_misses: Metric,
     ) -> Self {
         Self {
             instructions,
@@ -102,6 +111,7 @@ impl CyclesEstimator {
         }
     }
 
+    #[allow(clippy::similar_names)]
     pub fn calculate(&self) -> CacheSummary {
         let ram_hits = self.l3_instructions_cache_read_misses
             + self.l3_data_cache_read_misses
@@ -111,12 +121,27 @@ impl CyclesEstimator {
         let l3_accesses = l1_miss;
         let l3_hits = l3_accesses - ram_hits;
 
-        let total_memory_rw =
-            self.instructions + self.total_data_cache_reads + self.total_data_cache_writes;
+        let d_refs = self.total_data_cache_reads + self.total_data_cache_writes;
+
+        let total_memory_rw = self.instructions + d_refs;
         let l1_hits = total_memory_rw - ram_hits - l3_hits;
 
         // Uses Itamar Turner-Trauring's formula from https://pythonspeed.com/articles/consistent-benchmarking-in-ci/
-        let cycles = l1_hits + (5 * l3_hits) + (35 * ram_hits);
+        let cycles = l1_hits + (l3_hits * 5) + (ram_hits * 35);
+
+        let l1_hit_rate = l1_hits / total_memory_rw * 100;
+        let l3_hit_rate = l3_hits / total_memory_rw * 100;
+        let ram_hit_rate = ram_hits / total_memory_rw * 100;
+
+        let i1_miss_rate = self.l1_instructions_cache_read_misses / self.instructions * 100;
+        let lli_miss_rate = self.l3_instructions_cache_read_misses / self.instructions * 100;
+
+        let d1_miss_rate = l1_data_accesses / d_refs * 100;
+
+        let lld_miss_rate =
+            (self.l3_data_cache_read_misses + self.l3_data_cache_write_misses) / d_refs * 100;
+
+        let ll_miss_rate = ram_hits / (self.instructions + d_refs) * 100;
 
         CacheSummary {
             l1_hits,
@@ -124,6 +149,14 @@ impl CyclesEstimator {
             ram_hits,
             total_memory_rw,
             cycles,
+            i1_miss_rate,
+            d1_miss_rate,
+            ll_miss_rate,
+            lli_miss_rate,
+            lld_miss_rate,
+            l1_hit_rate,
+            l3_hit_rate,
+            ram_hit_rate,
         }
     }
 }
@@ -179,19 +212,20 @@ mod tests {
     use EventKind::*;
 
     use super::*;
+    use crate::runner::metrics::Metric;
     use crate::runner::summary::MetricKind;
 
     fn cachesim_costs(costs: [u64; 9]) -> Metrics {
         Metrics::with_metric_kinds([
-            (Ir, costs[0]),
-            (Dr, costs[1]),
-            (Dw, costs[2]),
-            (I1mr, costs[3]),
-            (D1mr, costs[4]),
-            (D1mw, costs[5]),
-            (ILmr, costs[6]),
-            (DLmr, costs[7]),
-            (DLmw, costs[8]),
+            (Ir, Metric::Int(costs[0])),
+            (Dr, Metric::Int(costs[1])),
+            (Dw, Metric::Int(costs[2])),
+            (I1mr, Metric::Int(costs[3])),
+            (D1mr, Metric::Int(costs[4])),
+            (D1mw, Metric::Int(costs[5])),
+            (ILmr, Metric::Int(costs[6])),
+            (DLmr, Metric::Int(costs[7])),
+            (DLmw, Metric::Int(costs[8])),
         ])
     }
 
@@ -277,8 +311,8 @@ mod tests {
             .iter()
             .map(|(e, n, o, d, l)| ToolRegression {
                 metric: MetricKind::Callgrind(*e),
-                new: *n,
-                old: *o,
+                new: (*n).into(),
+                old: (*o).into(),
                 diff_pct: *d,
                 limit: *l,
             })

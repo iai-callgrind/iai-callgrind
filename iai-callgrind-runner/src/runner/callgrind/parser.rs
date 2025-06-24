@@ -45,7 +45,7 @@ pub trait CallgrindParser {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct CallgrindProperties {
     pub metrics_prototype: Metrics,
     pub positions_prototype: Positions,

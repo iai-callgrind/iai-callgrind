@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use super::CacheSummary;
 use crate::api::EventKind;
-use crate::runner::metrics::Summarize;
+use crate::runner::metrics::{Metric, Summarize};
 
 pub type Metrics = crate::runner::metrics::Metrics<EventKind>;
 
@@ -55,6 +55,14 @@ impl Metrics {
             ram_hits,
             total_memory_rw,
             cycles,
+            i1_miss_rate,
+            d1_miss_rate,
+            ll_miss_rate,
+            lli_miss_rate,
+            lld_miss_rate,
+            l1_hit_rate,
+            l3_hit_rate,
+            ram_hit_rate,
         } = (&*self).try_into()?;
 
         self.insert(EventKind::L1hits, l1_hits);
@@ -62,6 +70,14 @@ impl Metrics {
         self.insert(EventKind::RamHits, ram_hits);
         self.insert(EventKind::TotalRW, total_memory_rw);
         self.insert(EventKind::EstimatedCycles, cycles);
+        self.insert(EventKind::I1MissRate, i1_miss_rate);
+        self.insert(EventKind::D1MissRate, d1_miss_rate);
+        self.insert(EventKind::LLiMissRate, lli_miss_rate);
+        self.insert(EventKind::LLdMissRate, lld_miss_rate);
+        self.insert(EventKind::LLMissRate, ll_miss_rate);
+        self.insert(EventKind::L1HitRate, l1_hit_rate);
+        self.insert(EventKind::LLHitRate, l3_hit_rate);
+        self.insert(EventKind::RamHitRate, ram_hit_rate);
 
         Ok(())
     }
@@ -84,7 +100,7 @@ impl Metrics {
 
 impl Default for Metrics {
     fn default() -> Self {
-        Self(indexmap! {EventKind::Ir => 0})
+        Self(indexmap! {EventKind::Ir => Metric::Int(0)})
     }
 }
 

@@ -17,14 +17,14 @@ use serde::{Deserialize, Serialize};
 
 use super::common::{Baselines, ModulePath};
 use super::format::{Formatter, OutputFormat, OutputFormatKind, VerticalFormatter};
-use super::metrics::Metrics;
+use super::metrics::{Metric, Metrics};
 use super::tool::parser::ParserOutput;
 use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, ValgrindTool};
 use crate::error::Error;
 use crate::runner::metrics::Summarize;
 use crate::util::{factor_diff, make_absolute, percentage_diff, EitherOrBoth};
 
-pub type RegressionMetrics<T> = (T, u64, u64, f64, f64);
+pub type RegressionMetrics<T> = (T, Metric, Metric, f64, f64);
 
 pub const SCHEMA_VERSION: &str = "4";
 
@@ -168,7 +168,7 @@ pub enum MetricKind {
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct MetricsDiff {
     /// Either the `new`, `old` or both metrics
-    pub metrics: EitherOrBoth<u64>,
+    pub metrics: EitherOrBoth<Metric>,
     /// If both metrics are present there is also a `Diffs` present
     pub diffs: Option<Diffs>,
 }
@@ -317,9 +317,9 @@ pub enum ToolMetricSummary {
 pub struct ToolRegression {
     pub metric: MetricKind,
     /// The value of the new benchmark run
-    pub new: u64,
+    pub new: Metric,
     /// The value of the old benchmark run
-    pub old: u64,
+    pub old: Metric,
     /// The difference between new and old in percent. Serialized as string to preserve infinity
     /// values and avoid null in json.
     #[serde(with = "crate::serde::float_64")]
@@ -485,7 +485,7 @@ impl BenchmarkSummary {
 }
 
 impl Diffs {
-    pub fn new(new: u64, old: u64) -> Self {
+    pub fn new(new: Metric, old: Metric) -> Self {
         Self {
             diff_pct: percentage_diff(new, old),
             factor: factor_diff(new, old),
@@ -520,7 +520,7 @@ impl Display for MetricKind {
 }
 
 impl MetricsDiff {
-    pub fn new(metrics: EitherOrBoth<u64>) -> Self {
+    pub fn new(metrics: EitherOrBoth<Metric>) -> Self {
         if let EitherOrBoth::Both(new, old) = metrics {
             Self {
                 metrics,
@@ -538,28 +538,25 @@ impl MetricsDiff {
     pub fn add(&self, other: &Self) -> Self {
         match (&self.metrics, &other.metrics) {
             (EitherOrBoth::Left(new), EitherOrBoth::Left(other_new)) => {
-                Self::new(EitherOrBoth::Left(new.saturating_add(*other_new)))
+                Self::new(EitherOrBoth::Left(*new + *other_new))
             }
             (EitherOrBoth::Right(old), EitherOrBoth::Left(new))
             | (EitherOrBoth::Left(new), EitherOrBoth::Right(old)) => {
                 Self::new(EitherOrBoth::Both(*new, *old))
             }
             (EitherOrBoth::Right(old), EitherOrBoth::Right(other_old)) => {
-                Self::new(EitherOrBoth::Right(old.saturating_add(*other_old)))
+                Self::new(EitherOrBoth::Right(*old + *other_old))
             }
             (EitherOrBoth::Both(new, old), EitherOrBoth::Left(other_new))
             | (EitherOrBoth::Left(new), EitherOrBoth::Both(other_new, old)) => {
-                Self::new(EitherOrBoth::Both(new.saturating_add(*other_new), *old))
+                Self::new(EitherOrBoth::Both(*new + *other_new, *old))
             }
             (EitherOrBoth::Both(new, old), EitherOrBoth::Right(other_old))
             | (EitherOrBoth::Right(old), EitherOrBoth::Both(new, other_old)) => {
-                Self::new(EitherOrBoth::Both(*new, old.saturating_add(*other_old)))
+                Self::new(EitherOrBoth::Both(*new, *old + *other_old))
             }
             (EitherOrBoth::Both(new, old), EitherOrBoth::Both(other_new, other_old)) => {
-                Self::new(EitherOrBoth::Both(
-                    new.saturating_add(*other_new),
-                    old.saturating_add(*other_old),
-                ))
+                Self::new(EitherOrBoth::Both(*new + *other_new, *old + *other_old))
             }
         }
     }
@@ -910,7 +907,7 @@ impl ProfilePart {
             ToolMetricSummary::ErrorTool(metrics) => metrics
                 .diff_by_kind(&ErrorMetric::Errors)
                 .is_some_and(|e| match e.metrics {
-                    EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _) => new > 0,
+                    EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _) => new > Metric::Int(0),
                     EitherOrBoth::Right(_) => false,
                 }),
         }
@@ -1206,7 +1203,7 @@ mod tests {
 
     use super::*;
 
-    fn expected_metrics_diff<D>(metrics: EitherOrBoth<u64>, diffs: D) -> MetricsDiff
+    fn expected_metrics_diff<D>(metrics: EitherOrBoth<Metric>, diffs: D) -> MetricsDiff
     where
         D: Into<Option<(f64, f64)>>,
     {
@@ -1245,9 +1242,10 @@ mod tests {
         )
     }
 
-    fn metrics_summary_fixture<T>(kinds: &[(EitherOrBoth<u64>, T)]) -> MetricsSummary<EventKind>
+    fn metrics_summary_fixture<T, U>(kinds: U) -> MetricsSummary<EventKind>
     where
         T: Into<Option<(f64, f64)>> + Clone,
+        U: IntoIterator<Item = (EitherOrBoth<Metric>, T)>,
     {
         // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
         let event_kinds = [
@@ -1269,7 +1267,7 @@ mod tests {
 
         let map: IndexMap<EventKind, MetricsDiff> = event_kinds
             .iter()
-            .zip(kinds.iter())
+            .zip(kinds)
             .map(|(e, (m, d))| (*e, expected_metrics_diff(m.clone(), d.clone())))
             .collect();
 
@@ -1315,8 +1313,8 @@ mod tests {
     where
         T: Into<Option<(f64, f64)>>,
     {
-        let expected = expected_metrics_diff(metrics.clone(), expected_diffs);
-        let actual = MetricsDiff::new(metrics);
+        let expected = expected_metrics_diff(metrics.clone().map(Metric::Int), expected_diffs);
+        let actual = MetricsDiff::new(metrics.map(Metric::Int));
 
         assert_eq!(actual, expected);
     }
@@ -1394,9 +1392,9 @@ mod tests {
         #[case] other_metric: EitherOrBoth<u64>,
         #[case] expected: EitherOrBoth<u64>,
     ) {
-        let new_diff = MetricsDiff::new(metric);
-        let old_diff = MetricsDiff::new(other_metric);
-        let expected = MetricsDiff::new(expected);
+        let new_diff = MetricsDiff::new(metric.map(Metric::Int));
+        let old_diff = MetricsDiff::new(other_metric.map(Metric::Int));
+        let expected = MetricsDiff::new(expected.map(Metric::Int));
 
         assert_eq!(new_diff.add(&old_diff), expected);
         assert_eq!(old_diff.add(&new_diff), expected);
@@ -1491,7 +1489,11 @@ mod tests {
     ) where
         V: Into<Option<(f64, f64)>> + Clone,
     {
-        let expected_metrics_summary = metrics_summary_fixture(expected);
+        let expected_metrics_summary = metrics_summary_fixture(
+            expected
+                .iter()
+                .map(|(e, v)| (e.clone().map(Metric::Int), v.clone())),
+        );
         let actual = match (
             (!new_metrics.is_empty()).then_some(new_metrics),
             (!old_metrics.is_empty()).then_some(old_metrics),

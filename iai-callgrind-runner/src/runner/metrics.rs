@@ -1,24 +1,180 @@
+#![allow(clippy::cast_precision_loss)]
+
 use std::borrow::Cow;
+use std::cmp::Ordering;
 use std::fmt::Display;
 use std::hash::Hash;
+use std::ops::{Add, AddAssign, Div, Mul, Sub};
+use std::str::FromStr;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use indexmap::map::Iter;
 use indexmap::{IndexMap, IndexSet};
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::util::to_string_unsigned_short;
+// TODO: Move other related structures like MetricsDiff etc. into this module
+
 pub trait Summarize: Hash + Eq + Clone {
     fn summarize(_: &mut Cow<Metrics<Self>>) {}
+}
+
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum Metric {
+    Int(u64),
+    Float(f64),
 }
 
 /// The `Metrics` backed by an [`indexmap::IndexMap`]
 ///
 /// The insertion order is preserved.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct Metrics<K: Hash + Eq>(pub IndexMap<K, u64>);
+pub struct Metrics<K: Hash + Eq>(pub IndexMap<K, Metric>);
+
+impl Add for Metric {
+    type Output = Metric;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Metric::Int(a), Metric::Int(b)) => Self::Int(a.saturating_add(b)),
+            (Metric::Int(a), Metric::Float(b)) => Self::Float((a as f64) + b),
+            (Metric::Float(a), Metric::Int(b)) => Self::Float((b as f64) + a),
+            (Metric::Float(a), Metric::Float(b)) => Self::Float(a + b),
+        }
+    }
+}
+
+impl AddAssign for Metric {
+    fn add_assign(&mut self, rhs: Self) {
+        let metric = match (&self, rhs) {
+            (Metric::Int(a), Metric::Int(b)) => Metric::Int(a.saturating_add(b)),
+            (Metric::Int(a), Metric::Float(b)) => {
+                let c = (*a as f64) + b;
+                Metric::Float(c)
+            }
+            (Metric::Float(a), Metric::Int(b)) => Metric::Float(a + b as f64),
+            (Metric::Float(a), Metric::Float(b)) => Metric::Float(a + b),
+        };
+
+        *self = metric;
+    }
+}
+
+impl Display for Metric {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Metric::Int(a) => f.pad(&format!("{a}")),
+            Metric::Float(a) => f.pad(&to_string_unsigned_short(*a)),
+        }
+    }
+}
+
+impl Div for Metric {
+    type Output = Metric;
+
+    // TODO: test and check result for division by 0 etc.
+    fn div(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Metric::Int(a), Metric::Int(b)) => Metric::Float((a as f64) / (b as f64)),
+            (Metric::Int(a), Metric::Float(b)) => Metric::Float((a as f64) / b),
+            (Metric::Float(a), Metric::Int(b)) => Metric::Float(a / (b as f64)),
+            (Metric::Float(a), Metric::Float(b)) => Metric::Float(a / b),
+        }
+    }
+}
+
+impl Eq for Metric {}
+
+impl From<u64> for Metric {
+    fn from(value: u64) -> Self {
+        Metric::Int(value)
+    }
+}
+
+impl From<f64> for Metric {
+    fn from(value: f64) -> Self {
+        Metric::Float(value)
+    }
+}
+
+impl From<Metric> for f64 {
+    fn from(value: Metric) -> Self {
+        match value {
+            Metric::Int(a) => a as f64,
+            Metric::Float(a) => a,
+        }
+    }
+}
+
+impl FromStr for Metric {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s.parse::<u64>() {
+            Ok(a) => Ok(Metric::Int(a)),
+            Err(_) => match s.parse::<f64>() {
+                Ok(a) => Ok(Metric::Float(a)),
+                Err(error) => Err(anyhow!("Invalid metric: {error}")),
+            },
+        }
+    }
+}
+
+impl Mul<u64> for Metric {
+    type Output = Metric;
+
+    fn mul(self, rhs: u64) -> Self::Output {
+        match self {
+            Metric::Int(a) => Metric::Int(a.saturating_mul(rhs)),
+            Metric::Float(a) => Metric::Float(a * (rhs as f64)),
+        }
+    }
+}
+
+impl Ord for Metric {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Self::Int(a), Self::Int(b)) => a.cmp(b),
+            (Self::Int(a), Self::Float(b)) => (*a as f64).total_cmp(b),
+            (Self::Float(a), Self::Int(b)) => a.total_cmp(&(*b as f64)),
+            (Self::Float(a), Self::Float(b)) => a.total_cmp(b),
+        }
+    }
+}
+
+impl PartialEq for Metric {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Int(a), Self::Int(b)) => a == b,
+            (Self::Int(a), Self::Float(b)) => (*a as f64).total_cmp(b) == Ordering::Equal,
+            (Self::Float(a), Self::Int(b)) => a.total_cmp(&(*b as f64)) == Ordering::Equal,
+            (Self::Float(a), Self::Float(b)) => a.total_cmp(b) == Ordering::Equal,
+        }
+    }
+}
+
+impl PartialOrd for Metric {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Sub for Metric {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Metric::Int(a), Metric::Int(b)) => Metric::Int(a.saturating_sub(b)),
+            (Metric::Int(a), Metric::Float(b)) => Metric::Float((a as f64) - b),
+            (Metric::Float(a), Metric::Int(b)) => Metric::Float(a - (b as f64)),
+            (Metric::Float(a), Metric::Float(b)) => Metric::Float(a - b),
+        }
+    }
+}
 
 impl<K: Hash + Eq + Display + Clone> Metrics<K> {
     /// Return empty `Metrics`
@@ -27,11 +183,12 @@ impl<K: Hash + Eq + Display + Clone> Metrics<K> {
     }
 
     // The order matters. The index is derived from the insertion order
-    pub fn with_metric_kinds<T>(kinds: T) -> Self
+    pub fn with_metric_kinds<I, T>(kinds: T) -> Self
     where
-        T: IntoIterator<Item = (K, u64)>,
+        I: Into<Metric>,
+        T: IntoIterator<Item = (K, I)>,
     {
-        Self(kinds.into_iter().collect())
+        Self(kinds.into_iter().map(|(k, n)| (k, n.into())).collect())
     }
 
     /// Add metrics from an iterator over strings
@@ -51,10 +208,12 @@ impl<K: Hash + Eq + Display + Clone> Metrics<K> {
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
+        // TODO: try to parse as f64 too. Adjust error message
         for (this, other) in self.0.values_mut().zip(iter.into_iter()) {
             *this += other
                 .as_ref()
                 .parse::<u64>()
+                .map(Into::into)
                 .context("A metric must be an integer type")?;
         }
 
@@ -66,21 +225,21 @@ impl<K: Hash + Eq + Display + Clone> Metrics<K> {
     /// Do not use this method if both `Metrics` can differ in their keys order.
     pub fn add(&mut self, other: &Self) {
         for (this, other) in self.0.values_mut().zip(other.0.values()) {
-            *this += other;
+            *this += *other;
         }
     }
 
     /// Return the metric of the kind at index (of insertion order) if present
     ///
     /// This operation is O(1)
-    pub fn metric_by_index(&self, index: usize) -> Option<u64> {
+    pub fn metric_by_index(&self, index: usize) -> Option<Metric> {
         self.0.get_index(index).map(|(_, c)| *c)
     }
 
     /// Return the metric of the `kind` if present
     ///
     /// This operation is O(1)
-    pub fn metric_by_kind(&self, kind: &K) -> Option<u64> {
+    pub fn metric_by_kind(&self, kind: &K) -> Option<Metric> {
         self.0.get_key_value(kind).map(|(_, c)| *c)
     }
 
@@ -89,7 +248,7 @@ impl<K: Hash + Eq + Display + Clone> Metrics<K> {
     /// # Errors
     ///
     /// If the metric kind is not present
-    pub fn try_metric_by_kind(&self, kind: &K) -> Result<u64> {
+    pub fn try_metric_by_kind(&self, kind: &K) -> Result<Metric> {
         self.metric_by_kind(kind)
             .with_context(|| format!("Missing event type '{kind}"))
     }
@@ -109,7 +268,7 @@ impl<K: Hash + Eq + Display + Clone> Metrics<K> {
     }
 
     /// Return an iterator over the metrics in insertion order
-    pub fn iter(&self) -> Iter<'_, K, u64> {
+    pub fn iter(&self) -> Iter<'_, K, Metric> {
         self.0.iter()
     }
 
@@ -126,14 +285,14 @@ impl<K: Hash + Eq + Display + Clone> Metrics<K> {
     ///
     /// If no equivalent key existed in the map: the new key-value pair is inserted, last in order,
     /// and `None` is returned.
-    pub fn insert(&mut self, key: K, value: u64) -> Option<u64> {
+    pub fn insert(&mut self, key: K, value: Metric) -> Option<Metric> {
         self.0.insert(key, value)
     }
 
     /// Insert all metrics
     ///
     /// See also [`Metrics::insert`]
-    pub fn insert_all(&mut self, entries: &[(K, u64)]) {
+    pub fn insert_all(&mut self, entries: &[(K, Metric)]) {
         for (key, value) in entries {
             self.insert(key.clone(), *value);
         }
@@ -141,15 +300,17 @@ impl<K: Hash + Eq + Display + Clone> Metrics<K> {
 }
 
 impl<'a, K: Hash + Eq + Display + Clone> IntoIterator for &'a Metrics<K> {
-    type Item = (&'a K, &'a u64);
+    type Item = (&'a K, &'a Metric);
 
-    type IntoIter = Iter<'a, K, u64>;
+    type IntoIter = Iter<'a, K, Metric>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
 
+// TODO: When is this impl used
+// TODO: Metric::Int(0) or  Metric::Float(0.0)
 impl<I, K: Hash + Eq + From<I>> FromIterator<I> for Metrics<K> {
     fn from_iter<T>(iter: T) -> Self
     where
@@ -157,7 +318,7 @@ impl<I, K: Hash + Eq + From<I>> FromIterator<I> for Metrics<K> {
     {
         Self(
             iter.into_iter()
-                .map(|s| (K::from(s), 0))
+                .map(|s| (K::from(s), Metric::Int(0)))
                 .collect::<IndexMap<_, _>>(),
         )
     }
@@ -172,11 +333,17 @@ mod tests {
     use super::*;
     use crate::api::EventKind::{self, *};
 
+    // TODO: Add tests for all Metric::Int, Metric::Float, ... and AddAssign, Add, ...
     fn expected_metrics<T>(events: T) -> Metrics<EventKind>
     where
         T: IntoIterator<Item = (EventKind, u64)>,
     {
-        Metrics(IndexMap::from_iter(events))
+        Metrics(
+            events
+                .into_iter()
+                .map(|(k, n)| (k, n.into()))
+                .collect::<IndexMap<_, _>>(),
+        )
     }
 
     #[rstest]
