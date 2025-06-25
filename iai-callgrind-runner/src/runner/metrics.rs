@@ -21,6 +21,19 @@ pub trait Summarize: Hash + Eq + Clone {
     fn summarize(_: &mut Cow<Metrics<Self>>) {}
 }
 
+/// The metric measured by valgrind or derived from one or more other metrics
+///
+/// The valgrind metrics measured by any of its tools are `u64`. However, to be able to represent
+/// derived metrics like cache miss/hit rates it is inevitable to have a type which can store a
+/// `u64` or a `f64`. When doing math with metrics, the original type should be preserved as far as
+/// possible by using `u64` operations. A float metric should be a last resort.
+///
+/// Float operations with a `Metric` that stores a `u64` introduce a precision loss and are to be
+/// avoided. Especially comparison between a `u64` metric and `f64` metric are not exact because the
+/// `u64` has to be converted to a `f64`. Also, if adding/multiplying two `u64` metrics would result
+/// in an overflow the metric saturates at `u64::MAX`. This choice was made to preserve precision
+/// and the original type (instead of for example adding the two `u64` by converting both of them to
+/// `f64`).
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum Metric {
@@ -34,6 +47,19 @@ pub enum Metric {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Metrics<K: Hash + Eq>(pub IndexMap<K, Metric>);
+
+impl Metric {
+    /// Divide by `rhs` normally but if rhs is `0` the result is by convention `0.0`
+    ///
+    /// No difference is made between negative 0.0 and positive 0.0 os rhs value. The result is
+    /// always positive 0.0.
+    pub fn div0(self, rhs: Self) -> Self {
+        match (self, rhs) {
+            (_, Metric::Int(0) | Metric::Float(0.0f64)) => Metric::Float(0.0f64),
+            (a, b) => a / b,
+        }
+    }
+}
 
 impl Add for Metric {
     type Output = Metric;
@@ -50,17 +76,7 @@ impl Add for Metric {
 
 impl AddAssign for Metric {
     fn add_assign(&mut self, rhs: Self) {
-        let metric = match (&self, rhs) {
-            (Metric::Int(a), Metric::Int(b)) => Metric::Int(a.saturating_add(b)),
-            (Metric::Int(a), Metric::Float(b)) => {
-                let c = (*a as f64) + b;
-                Metric::Float(c)
-            }
-            (Metric::Float(a), Metric::Int(b)) => Metric::Float(a + b as f64),
-            (Metric::Float(a), Metric::Float(b)) => Metric::Float(a + b),
-        };
-
-        *self = metric;
+        *self = *self + rhs;
     }
 }
 
@@ -76,7 +92,6 @@ impl Display for Metric {
 impl Div for Metric {
     type Output = Metric;
 
-    // TODO: test and check result for division by 0 etc.
     fn div(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (Metric::Int(a), Metric::Int(b)) => Metric::Float((a as f64) / (b as f64)),
@@ -131,6 +146,17 @@ impl Mul<u64> for Metric {
         match self {
             Metric::Int(a) => Metric::Int(a.saturating_mul(rhs)),
             Metric::Float(a) => Metric::Float(a * (rhs as f64)),
+        }
+    }
+}
+
+impl Mul<Metric> for u64 {
+    type Output = Metric;
+
+    fn mul(self, rhs: Metric) -> Self::Output {
+        match rhs {
+            Metric::Int(b) => Metric::Int(self.saturating_mul(b)),
+            Metric::Float(b) => Metric::Float((self as f64) * b),
         }
     }
 }
@@ -326,6 +352,7 @@ impl<I, K: Hash + Eq + From<I>> FromIterator<I> for Metrics<K> {
 
 #[cfg(test)]
 mod tests {
+    use std::cmp::Ordering;
     use std::iter;
 
     use rstest::rstest;
@@ -380,5 +407,177 @@ mod tests {
         let mut metrics =
             Metrics::with_metric_kinds(event_kinds.iter().copied().zip(iter::repeat(0)));
         assert!(metrics.add_iter_str(to_add).is_err());
+    }
+
+    #[rstest]
+    #[case::all_zero_int(0, 0, 0.0f64)]
+    #[case::lhs_zero_int_one(0, 1, 0.0f64)]
+    #[case::lhs_zero_int_two(0, 2, 0.0f64)]
+    #[case::one_rhs_zero_int(1, 0, 0.0f64)]
+    #[case::two_rhs_zero_int(2, 0, 0.0f64)]
+    #[case::all_zero_float(0.0f64, 0.0f64, 0.0f64)]
+    #[case::lhs_zero_float_one(0.0f64, 1.0f64, 0.0f64)]
+    #[case::lhs_zero_float_two(0.0f64, 2.0f64, 0.0f64)]
+    #[case::lhs_zero_float_neg_two(0.0f64, -2.0f64, -0.0f64)]
+    #[case::one_rhs_zero_float(1.0f64, 0.0f64, 0.0f64)]
+    #[case::two_rhs_zero_float(2.0f64, 0.0f64, 0.0f64)]
+    #[case::one_neg_rhs_zero_float(1.0f64, -0.0f64, 0.0f64)]
+    #[case::one_one_int(1, 1, 1.0f64)]
+    #[case::two_one_int(2, 1, 2.0f64)]
+    #[case::one_two_int(1, 2, 0.5f64)]
+    #[case::one_float_one(1, 1.0f64, 1.0f64)]
+    #[case::float_one_int_one(1.0f64, 1, 1.0f64)]
+    #[case::float_one(1.0f64, 1.0f64, 1.0f64)]
+    #[case::one_float_two(1, 2.0f64, 0.5f64)]
+    #[case::float_one_int_two(1.0f64, 2, 0.5f64)]
+    #[case::float_one_two(1.0f64, 2.0f64, 0.5f64)]
+    fn test_metric_safe_div<L, R, E>(#[case] lhs: L, #[case] rhs: R, #[case] expected: E)
+    where
+        L: Into<Metric>,
+        R: Into<Metric>,
+        E: Into<Metric>,
+    {
+        let expected = expected.into();
+
+        let lhs = lhs.into();
+        let rhs = rhs.into();
+
+        assert_eq!(lhs.div0(rhs), expected);
+    }
+
+    #[rstest]
+    #[case::zero(0, 0, 0)]
+    #[case::one_zero(1, 0, 1)]
+    #[case::zero_one(0, 1, 1)]
+    #[case::u64_max(0, u64::MAX, u64::MAX)]
+    #[case::one_u64_max_saturates(1, u64::MAX, u64::MAX)]
+    #[case::one(1, 1, 2)]
+    #[case::two_one(2, 1, 3)]
+    #[case::one_two(1, 2, 3)]
+    #[case::float_one_int_zero(1.0f64, 0, 1.0f64)]
+    #[case::int_zero_float_one(0, 1.0f64, 1.0f64)]
+    #[case::float_zero(0.0f64, 0.0f64, 0.0f64)]
+    #[case::float_one(1.0f64, 1.0f64, 2.0f64)]
+    #[case::float_one_two(1.0f64, 2.0f64, 3.0f64)]
+    #[case::float_two_one(2.0f64, 1.0f64, 3.0f64)]
+    fn test_metric_add_and_add_assign<L, R, E>(#[case] lhs: L, #[case] rhs: R, #[case] expected: E)
+    where
+        L: Into<Metric>,
+        R: Into<Metric>,
+        E: Into<Metric>,
+    {
+        let expected = expected.into();
+
+        let mut lhs = lhs.into();
+        let rhs = rhs.into();
+
+        assert_eq!(lhs + rhs, expected);
+
+        lhs += rhs;
+        assert_eq!(lhs, expected);
+    }
+
+    #[rstest]
+    #[case::zero("0", 0)]
+    #[case::one("1", 1)]
+    #[case::u64_max(&format!("{}", u64::MAX), u64::MAX)]
+    #[case::one_below_u64_max(&format!("{}", u64::MAX - 1), u64::MAX - 1)]
+    #[case::zero_float("0.0", 0.0f64)]
+    #[case::one_float("1.0", 1.0f64)]
+    #[case::one_point("1.", 1.0f64)]
+    #[case::point_one(".1", 0.1f64)]
+    #[case::two_float("2.0", 2.0f64)]
+    #[case::neg_one_float("-1.0", -1.0f64)]
+    #[case::neg_two_float("-2.0", -2.0f64)]
+    #[case::inf("inf", f64::INFINITY)]
+    fn test_metric_from_str<E>(#[case] input: &str, #[case] expected: E)
+    where
+        E: Into<Metric>,
+    {
+        let expected = expected.into();
+        assert_eq!(input.parse::<Metric>().unwrap(), expected);
+    }
+
+    #[test]
+    fn test_metric_from_str_when_invalid_then_error() {
+        let err = "abc".parse::<Metric>().unwrap_err();
+        assert_eq!(
+            "Invalid metric: invalid float literal".to_owned(),
+            err.to_string()
+        );
+    }
+
+    #[rstest]
+    #[case::zero(0, 0, 0)]
+    #[case::zero_one(0, 1, 0)]
+    #[case::one(1, 1, 1)]
+    #[case::one_two(1, 2, 2)]
+    #[case::u64_max_one(u64::MAX, 1, u64::MAX)]
+    #[case::u64_max_two_saturates(u64::MAX, 2, u64::MAX)]
+    #[case::zero_float(0, 0.0f64, 0.0f64)]
+    #[case::zero_one_float(0, 1.0f64, 0.0f64)]
+    #[case::one_float(1, 1.0f64, 1.0f64)]
+    #[case::one_two_float(1, 2.0f64, 2.0f64)]
+    #[case::u64_max_two_float(u64::MAX, 2.0f64, 2.0f64 * (u64::MAX as f64))]
+    fn test_metric_mul_u64<B, E>(#[case] a: u64, #[case] b: B, #[case] expected: E)
+    where
+        B: Into<Metric>,
+        E: Into<Metric>,
+    {
+        let expected = expected.into();
+        let b = b.into();
+
+        assert_eq!(a * b, expected);
+        assert_eq!(b * a, expected);
+    }
+
+    #[rstest]
+    #[case::zero(0, 0, 0)]
+    #[case::one_zero(1, 0, 1)]
+    #[case::zero_one_saturates(0, 1, 0)]
+    #[case::u64_max_saturates(0, u64::MAX, 0)]
+    #[case::one_u64_max_saturates(1, u64::MAX, 0)]
+    #[case::u64_max_one(u64::MAX, 1, u64::MAX - 1)]
+    #[case::one(1, 1, 0)]
+    #[case::two_one(2, 1, 1)]
+    #[case::one_two(1, 2, 0)]
+    #[case::float_one_int_zero(1.0f64, 0, 1.0f64)]
+    #[case::int_zero_float_one(0, 1.0f64, -1.0f64)]
+    #[case::float_zero(0.0f64, 0.0f64, 0.0f64)]
+    #[case::float_one(1.0f64, 1.0f64, 0.0f64)]
+    #[case::float_one_two(1.0f64, 2.0f64, -1.0f64)]
+    #[case::float_two_one(2.0f64, 1.0f64, 1.0f64)]
+    fn test_metric_sub<L, R, E>(#[case] lhs: L, #[case] rhs: R, #[case] expected: E)
+    where
+        L: Into<Metric>,
+        R: Into<Metric>,
+        E: Into<Metric>,
+    {
+        let expected = expected.into();
+
+        let lhs = lhs.into();
+        let rhs = rhs.into();
+
+        assert_eq!(lhs - rhs, expected);
+    }
+
+    #[rstest]
+    #[case::zero(0, 0, Ordering::Equal)]
+    #[case::one_zero(1, 0, Ordering::Greater)]
+    #[case::zero_float(0.0f64, 0.0f64, Ordering::Equal)]
+    #[case::one_zero_float(1.0f64, 0.0f64, Ordering::Greater)]
+    #[case::one_int_zero_float(1, 0.0f64, Ordering::Greater)]
+    #[case::one_float_zero_int(1.0f64, 0, Ordering::Greater)]
+    #[case::some_number(220, 220.0f64, Ordering::Equal)]
+    fn test_metric_ordering<L, R>(#[case] lhs: L, #[case] rhs: R, #[case] expected: Ordering)
+    where
+        L: Into<Metric>,
+        R: Into<Metric>,
+    {
+        let lhs: Metric = lhs.into();
+        let rhs = rhs.into();
+
+        assert_eq!(lhs.cmp(&rhs), expected);
+        assert_eq!(rhs.cmp(&lhs), expected.reverse());
     }
 }

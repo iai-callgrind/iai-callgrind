@@ -81,7 +81,6 @@ pub struct BinaryBenchmarkGroups {
     pub default_tool: ValgrindTool,
 }
 
-// TODO: CachegrindMetrics like CallgrindMetrics
 /// All metrics which cachegrind produces and additionally some derived events
 ///
 /// Depending on the options passed to Cachegrind, these are the events that Cachegrind can produce.
@@ -109,11 +108,15 @@ pub enum CachegrindMetric {
     DLmr,
     /// LL cache data write misses (--cache-sim=yes)
     DLmw,
-    /// TODO: DOCS
+    /// I1 cache miss rate (--cache-sim=yes)
     I1MissRate,
+    /// D1 cache miss rate (--cache-sim=yes)
     D1MissRate,
+    /// LL/L2 instructions cache miss rate (--cache-sim=yes)
     LLiMissRate,
+    /// LL/L2 data cache miss rate (--cache-sim=yes)
     LLdMissRate,
+    /// LL/L2 cache miss rate (--cache-sim=yes)
     LLMissRate,
     /// Derived event showing the L1 hits (--cache-sim=yes)
     L1hits,
@@ -125,9 +128,11 @@ pub enum CachegrindMetric {
     TotalRW,
     /// Derived event showing estimated CPU cycles (--cache-sim=yes)
     EstimatedCycles,
-    /// TODO: DOCS
+    /// L1 cache hit rate (--cache-sim=yes)
     L1HitRate,
+    /// LL/L2 cache hit rate (--cache-sim=yes)
     LLHitRate,
+    /// RAM hit rate (--cache-sim=yes)
     RamHitRate,
     /// Conditional branches executed (--branch-sim=yes)
     Bc,
@@ -493,11 +498,15 @@ pub enum EventKind {
     DLmr,
     /// LL cache data write misses (--cache-sim=yes)
     DLmw,
-    /// TODO: DOCS
+    /// I1 cache miss rate (--cache-sim=yes)
     I1MissRate,
+    /// D1 cache miss rate (--cache-sim=yes)
     D1MissRate,
+    /// LL/L2 instructions cache miss rate (--cache-sim=yes)
     LLiMissRate,
+    /// LL/L2 data cache miss rate (--cache-sim=yes)
     LLdMissRate,
+    /// LL/L2 cache miss rate (--cache-sim=yes)
     LLMissRate,
     /// Derived event showing the L1 hits (--cache-sim=yes)
     L1hits,
@@ -509,9 +518,11 @@ pub enum EventKind {
     TotalRW,
     /// Derived event showing estimated CPU cycles (--cache-sim=yes)
     EstimatedCycles,
-    /// TODO: DOCS
+    /// L1 cache hit rate (--cache-sim=yes)
     L1HitRate,
+    /// LL/L2 cache hit rate (--cache-sim=yes)
     LLHitRate,
+    /// RAM hit rate (--cache-sim=yes)
     RamHitRate,
     /// The number of system calls done (--collect-systime=yes)
     SysCount,

@@ -7,6 +7,8 @@ use iai_callgrind::{
     LibraryBenchmarkConfig, Memcheck, OutputFormat, ValgrindTool,
 };
 
+// TODO: ADD TESTS for miss rates and hit rates
+
 // The --collect-systime=nsec option is not supported on freebsd and apple, so we use
 // --collect-systime=yes instead on these targets
 //
@@ -99,10 +101,22 @@ fn bench_without_format(_: &str) -> Vec<u64> {
             .format([CallgrindMetrics::CacheMisses])
         )
 )]
+#[bench::cache_miss_rates(config =
+    base_config()
+        .tool(Callgrind::default()
+            .format([CallgrindMetrics::CacheMissRates])
+        )
+)]
 #[bench::cache_hits(config =
     base_config()
         .tool(Callgrind::default()
             .format([CallgrindMetrics::CacheHits])
+        )
+)]
+#[bench::cache_hit_rates(config =
+    base_config()
+        .tool(Callgrind::default()
+            .format([CallgrindMetrics::CacheHitRates])
         )
 )]
 #[bench::cache_sim(config =
@@ -172,6 +186,40 @@ fn bench_with_custom_callgrind_format() -> Vec<i32> {
 }
 
 #[library_benchmark]
+#[bench::cachegrind_all(
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(ValgrindTool::Cachegrind)
+        .tool(Cachegrind::with_args(["branch-sim=yes"])
+            .format([
+                CachegrindMetric::Ir,
+                CachegrindMetric::Dr,
+                CachegrindMetric::Dw,
+                CachegrindMetric::I1mr,
+                CachegrindMetric::D1mr,
+                CachegrindMetric::D1mw,
+                CachegrindMetric::ILmr,
+                CachegrindMetric::DLmr,
+                CachegrindMetric::DLmw,
+                CachegrindMetric::I1MissRate,
+                CachegrindMetric::D1MissRate,
+                CachegrindMetric::LLiMissRate,
+                CachegrindMetric::LLdMissRate,
+                CachegrindMetric::LLMissRate,
+                CachegrindMetric::L1hits,
+                CachegrindMetric::LLhits,
+                CachegrindMetric::RamHits,
+                CachegrindMetric::TotalRW,
+                CachegrindMetric::EstimatedCycles,
+                CachegrindMetric::L1HitRate,
+                CachegrindMetric::LLHitRate,
+                CachegrindMetric::RamHitRate,
+                CachegrindMetric::Bc,
+                CachegrindMetric::Bcm,
+                CachegrindMetric::Bi,
+                CachegrindMetric::Bim,
+            ])
+        )
+)]
 #[bench::cachegrind(
     config = LibraryBenchmarkConfig::default()
         .default_tool(ValgrindTool::Cachegrind)
