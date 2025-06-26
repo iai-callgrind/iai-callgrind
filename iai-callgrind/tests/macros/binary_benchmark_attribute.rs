@@ -26,19 +26,19 @@ fn multiple_bench_with_config(id: &str) -> iai_callgrind::Command {
 
 fn my_setup() {
     let mut lock = CURRENT.lock().unwrap();
-    *lock = "my_setup".to_owned();
+    "my_setup".clone_into(&mut lock);
 }
 fn my_teardown() {
     let mut lock = CURRENT.lock().unwrap();
-    *lock = "my_teardown".to_owned();
+    "my_teardown".clone_into(&mut lock);
 }
 fn my_setup_overwrite() {
     let mut lock = CURRENT.lock().unwrap();
-    *lock = "my_setup_overwrite".to_owned();
+    "my_setup_overwrite".clone_into(&mut lock);
 }
 fn my_teardown_overwrite() {
     let mut lock = CURRENT.lock().unwrap();
-    *lock = "my_teardown_overwrite".to_owned();
+    "my_teardown_overwrite".clone_into(&mut lock);
 }
 
 #[binary_benchmark(setup = my_setup(), teardown = my_teardown())]
@@ -87,7 +87,7 @@ fn test_multiple_bench_with_config() {
     );
 
     assert_eq!(
-        benchmark.benches.get(1).unwrap(),
+        &benchmark.benches[1],
         &*Bench::new("case_2")
             .config(BinaryBenchmarkConfig::default().env("BENCH_IN_ATTRIBUTE_ENV", "2"))
             .command(
@@ -150,7 +150,7 @@ fn test_with_setup_and_teardown_overwrite() {
             .command(iai_callgrind::Command::new("/just_testing"))
     );
 
-    let bench = benchmark.benches.get(1).unwrap();
+    let bench = &benchmark.benches[1];
     bench.setup.unwrap()();
     assert_eq!(CURRENT.lock().unwrap().as_str(), "my_setup");
     bench.teardown.unwrap()();
@@ -164,7 +164,7 @@ fn test_with_setup_and_teardown_overwrite() {
             .command(iai_callgrind::Command::new("/just_testing"))
     );
 
-    let bench = benchmark.benches.get(2).unwrap();
+    let bench = &benchmark.benches[2];
     bench.setup.unwrap()();
     assert_eq!(CURRENT.lock().unwrap().as_str(), "my_setup_overwrite");
     bench.teardown.unwrap()();

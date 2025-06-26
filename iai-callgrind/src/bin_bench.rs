@@ -2286,6 +2286,7 @@ impl Command {
     ///     .arg("foo")
     ///     .build();
     /// ```
+    #[must_use]
     pub fn build(&mut self) -> Self {
         self.clone()
     }
@@ -2418,6 +2419,7 @@ impl Delay {
     ///         .poll(Duration::from_millis(150)),
     /// );
     /// ```
+    #[must_use]
     pub fn poll<T: Into<Duration>>(mut self, duration: T) -> Self {
         self.0.poll = Some(duration.into());
         self
@@ -2440,6 +2442,7 @@ impl Delay {
     ///         .timeout(Duration::from_secs(5)),
     /// );
     /// ```
+    #[must_use]
     pub fn timeout<T: Into<Duration>>(mut self, duration: T) -> Self {
         self.0.timeout = Some(duration.into());
         self
