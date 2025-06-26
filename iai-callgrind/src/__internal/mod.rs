@@ -67,6 +67,7 @@ impl ModulePath {
         Self(path.to_owned())
     }
 
+    #[must_use]
     pub fn join(&self, path: &str) -> Self {
         Self(format!("{}::{path}", self.0))
     }

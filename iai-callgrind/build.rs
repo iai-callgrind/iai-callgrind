@@ -1,5 +1,7 @@
 // spell-checker: ignore rustified iquote iquotevalgrind
 
+//! The build script
+
 #[cfg(feature = "client_requests_defs")]
 mod imp {
     use std::borrow::Cow;
@@ -63,7 +65,7 @@ mod imp {
                 .split(' ')
                 .nth(1)
                 .expect("The rust version should be present")
-                .to_string()
+                .to_owned()
         })
     }
 
@@ -113,14 +115,14 @@ mod imp {
         let mut builder = builder();
 
         for env in include_dirs(target) {
-            builder = builder.clang_arg(format!("-iquote{env}"))
+            builder = builder.clang_arg(format!("-iquote{env}"));
         }
 
         if let Ok(env) = std::env::var("IAI_CALLGRIND_CROSS_TARGET") {
             let path = PathBuf::from("/valgrind/target/valgrind")
                 .join(env)
                 .join("include");
-            builder = builder.clang_arg(format!("-iquote{}", path.display()))
+            builder = builder.clang_arg(format!("-iquote{}", path.display()));
         }
 
         if target.os == "freebsd" {

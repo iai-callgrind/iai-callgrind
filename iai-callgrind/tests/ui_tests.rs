@@ -1,3 +1,5 @@
+//! The ui tests
+
 #[cfg(feature = "ui_tests")]
 #[test]
 fn ui() {
@@ -32,10 +34,10 @@ fn ui() {
         .join("tests");
 
     let to_fixtures = to.join("fixtures");
-    if !to_fixtures.exists() {
-        std::fs::create_dir_all(&to).unwrap();
-    } else {
+    if to_fixtures.exists() {
         std::fs::remove_dir_all(&to_fixtures).unwrap();
+    } else {
+        std::fs::create_dir_all(&to).unwrap();
     }
     fs_extra::copy_items(&[from], &to, &CopyOptions::default()).unwrap();
 

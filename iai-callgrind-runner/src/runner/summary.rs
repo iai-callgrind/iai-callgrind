@@ -534,6 +534,7 @@ impl MetricsDiff {
         }
     }
 
+    #[must_use]
     pub fn add(&self, other: &Self) -> Self {
         match (&self.metrics, &other.metrics) {
             (EitherOrBoth::Left(new), EitherOrBoth::Left(other_new)) => {

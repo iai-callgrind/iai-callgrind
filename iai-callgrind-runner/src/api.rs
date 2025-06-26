@@ -748,6 +748,7 @@ pub enum ValgrindTool {
 }
 
 impl BinaryBenchmarkConfig {
+    #[must_use]
     pub fn update_from_all<'a, T>(mut self, others: T) -> Self
     where
         T: IntoIterator<Item = Option<&'a Self>>,
@@ -1093,6 +1094,7 @@ impl TryFrom<&str> for EventKind {
 }
 
 impl LibraryBenchmarkConfig {
+    #[must_use]
     pub fn update_from_all<'a, T>(mut self, others: T) -> Self
     where
         T: IntoIterator<Item = Option<&'a Self>>,

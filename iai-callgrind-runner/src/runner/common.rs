@@ -281,6 +281,7 @@ impl ModulePath {
         Self(path.to_owned())
     }
 
+    #[must_use]
     pub fn join(&self, path: &str) -> Self {
         let new = format!("{}::{path}", self.0);
         Self(new)

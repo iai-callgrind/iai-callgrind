@@ -71,3 +71,27 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 serial_test = { workspace = true }
 trybuild = { workspace = true }
+
+[lints.rust]
+missing_docs = "warn"
+
+[lints.clippy]
+pedantic = "warn"
+default_numeric_fallback = "warn"
+else_if_without_else = "warn"
+fn_to_numeric_cast_any = "warn"
+get_unwrap = "warn"
+if_then_some_else_none = "warn"
+mixed_read_write_in_expression = "warn"
+partial_pub_fields = "warn"
+rest_pat_in_fully_bound_structs = "warn"
+str_to_string = "warn"
+string_to_string = "warn"
+todo = "warn"
+try_err = "warn"
+undocumented_unsafe_blocks = "warn"
+unneeded_field_pattern = "warn"
+must_use_candidate = "allow"
+return_self_not_must_use = "allow"
+enum_glob_use = "allow"
+module_name_repetitions = "allow"
