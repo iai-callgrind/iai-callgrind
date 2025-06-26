@@ -275,19 +275,17 @@ impl<K: Hash + Eq + Display + Clone> Metrics<K> {
     ///
     /// # Errors
     ///
-    /// If one of the strings in the iterator is not parsable as u64
+    /// If one of the strings in the iterator is not parsable as u64 or f64
     pub fn add_iter_str<I, T>(&mut self, iter: T) -> Result<()>
     where
         I: AsRef<str>,
         T: IntoIterator<Item = I>,
     {
-        // TODO: try to parse as f64 too. Adjust error message
         for (this, other) in self.0.values_mut().zip(iter.into_iter()) {
             *this += other
                 .as_ref()
-                .parse::<u64>()
-                .map(Into::into)
-                .context("A metric must be an integer type")?;
+                .parse::<Metric>()
+                .context("A metric must be a valid number")?;
         }
 
         Ok(())
@@ -382,8 +380,6 @@ impl<'a, K: Hash + Eq + Display + Clone> IntoIterator for &'a Metrics<K> {
     }
 }
 
-// TODO: When is this impl used
-// TODO: Metric::Int(0) or  Metric::Float(0.0)
 impl<I, K: Hash + Eq + From<I>> FromIterator<I> for Metrics<K> {
     fn from_iter<T>(iter: T) -> Self
     where

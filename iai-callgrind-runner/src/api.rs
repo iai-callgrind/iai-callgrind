@@ -203,7 +203,23 @@ pub enum CallgrindMetrics {
     /// ```
     CacheMisses,
 
-    /// TODO: DOCS
+    /// The cache miss rates calculated from the [`CallgrindMetrics::CacheMisses`] produced by
+    /// `--cache-sim`:
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # }
+    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    ///
+    /// let metrics: Vec<CallgrindMetrics> = vec![
+    ///     EventKind::I1MissRate.into(),
+    ///     EventKind::D1MissRate.into(),
+    ///     EventKind::LLiMissRate.into(),
+    ///     EventKind::LLdMissRate.into(),
+    ///     EventKind::LLMissRate.into(),
+    /// ];
+    /// ```
     CacheMissRates,
 
     /// `CacheHits` are iai-callgrind specific and calculated from the metrics produced by
@@ -223,13 +239,25 @@ pub enum CallgrindMetrics {
     /// ```
     CacheHits,
 
-    /// TODO: DOCS
+    /// The cache hit rates calculated from the [`CallgrindMetrics::CacheHits`]:
+    ///
+    /// ```
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # }
+    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    ///
+    /// let metrics: Vec<CallgrindMetrics> = vec![
+    ///     EventKind::L1HitRate.into(),
+    ///     EventKind::LLHitRate.into(),
+    ///     EventKind::RamHitRate.into(),
+    /// ];
+    /// ```
     CacheHitRates,
 
-    // TODO: UPDATE DOCS
     /// All metrics produced by `--cache-sim=yes` including the iai-callgrind specific metrics
     /// [`EventKind::L1hits`], [`EventKind::LLhits`], [`EventKind::RamHits`],
-    /// [`EventKind::TotalRW`] and [`EventKind::EstimatedCycles`] in this order:
+    /// [`EventKind::TotalRW`], [`EventKind::EstimatedCycles`] and miss/hit rates in this order:
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
@@ -241,8 +269,10 @@ pub enum CallgrindMetrics {
     ///     EventKind::Dr.into(),
     ///     EventKind::Dw.into(),
     ///     CallgrindMetrics::CacheMisses,
+    ///     CallgrindMetrics::CacheMissRates,
     ///     CallgrindMetrics::CacheHits,
     ///     EventKind::TotalRW.into(),
+    ///     CallgrindMetrics::CacheHitRates,
     ///     EventKind::EstimatedCycles.into(),
     /// ];
     /// ```
@@ -847,8 +877,14 @@ impl CachegrindMetric {
     /// * [`CachegrindMetric::RamHits`]
     /// * [`CachegrindMetric::TotalRW`]
     /// * [`CachegrindMetric::EstimatedCycles`]
-    ///
-    /// TODO: UPDATE DOCS
+    /// * [`CachegrindMetric::I1MissRate`]
+    /// * [`CachegrindMetric::D1MissRate`]
+    /// * [`CachegrindMetric::LLiMissRate`]
+    /// * [`CachegrindMetric::LLdMissRate`]
+    /// * [`CachegrindMetric::LLMissRate`]
+    /// * [`CachegrindMetric::L1HitRate`]
+    /// * [`CachegrindMetric::LLHitRate`]
+    /// * [`CachegrindMetric::RamHitRate`]
     pub fn is_derived(&self) -> bool {
         matches!(
             self,
@@ -1067,8 +1103,14 @@ impl EventKind {
     /// * [`EventKind::RamHits`]
     /// * [`EventKind::TotalRW`]
     /// * [`EventKind::EstimatedCycles`]
-    ///
-    /// TODO: UPDATE DOCS
+    /// * [`EventKind::I1MissRate`]
+    /// * [`EventKind::D1MissRate`]
+    /// * [`EventKind::LLiMissRate`]
+    /// * [`EventKind::LLdMissRate`]
+    /// * [`EventKind::LLMissRate`]
+    /// * [`EventKind::L1HitRate`]
+    /// * [`EventKind::LLHitRate`]
+    /// * [`EventKind::RamHitRate`]
     pub fn is_derived(&self) -> bool {
         matches!(
             self,
