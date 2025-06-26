@@ -7,8 +7,6 @@ use iai_callgrind::{
     LibraryBenchmarkConfig, Memcheck, OutputFormat, ValgrindTool,
 };
 
-// TODO: ADD TESTS for miss rates and hit rates
-
 // The --collect-systime=nsec option is not supported on freebsd and apple, so we use
 // --collect-systime=yes instead on these targets
 //
