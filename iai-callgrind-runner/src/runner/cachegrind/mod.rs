@@ -1,4 +1,5 @@
-use super::summary::{MetricKind, MetricsSummary, ToolRegression};
+use super::metrics::{MetricKind, MetricsSummary};
+use super::summary::ToolRegression;
 use super::tool::RegressionConfig;
 use crate::api::{self, CachegrindMetric};
 

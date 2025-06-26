@@ -11,8 +11,8 @@ use std::path::PathBuf;
 use parser::CallgrindProperties;
 
 use self::model::Metrics;
-use super::metrics::Metric;
-use super::summary::{MetricKind, MetricsSummary, ToolRegression};
+use super::metrics::{Metric, MetricKind, MetricsSummary};
+use super::summary::ToolRegression;
 use super::tool::RegressionConfig;
 use crate::api::{self, EventKind};
 use crate::util::EitherOrBoth;
@@ -219,7 +219,6 @@ mod tests {
 
     use super::*;
     use crate::runner::metrics::Metric;
-    use crate::runner::summary::MetricKind;
 
     fn cachesim_costs(costs: [u64; 9]) -> Metrics {
         Metrics::with_metric_kinds([
