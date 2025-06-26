@@ -82,7 +82,7 @@ impl FromStr for Tool {
 
 impl Display for Tool {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(format!("{:?}", self).to_ascii_lowercase().as_str())
+        f.write_str(format!("{self:?}").to_ascii_lowercase().as_str())
     }
 }
 
@@ -312,7 +312,7 @@ fn main() {
 
         std::process::exit(code);
     } else {
-        eprintln!("{:?}", output);
+        eprintln!("{output:?}");
         std::process::exit(-1);
     }
 }
