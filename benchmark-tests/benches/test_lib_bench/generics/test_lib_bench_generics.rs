@@ -21,7 +21,7 @@ fn input_b() -> B {
 }
 
 fn run_format(input: impl std::fmt::Debug) -> usize {
-    format!("{:?}", input).len()
+    format!("{input:?}").len()
 }
 
 #[library_benchmark]

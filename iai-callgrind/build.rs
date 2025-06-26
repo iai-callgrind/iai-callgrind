@@ -33,7 +33,7 @@ mod imp {
 
     impl Display for Support {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            let support = format!("{:?}", self).to_lowercase();
+            let support = format!("{self:?}").to_lowercase();
             f.write_str(&support)
         }
     }
