@@ -225,6 +225,7 @@ impl ToolCommand {
         self
     }
 
+    #[allow(clippy::too_many_lines)]
     pub fn run(
         mut self,
         config: ToolConfig,
@@ -397,6 +398,7 @@ impl ToolConfig {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     pub fn from_tool(
         output_format: &mut OutputFormat,
         valgrind_tool: ValgrindTool,
@@ -1291,6 +1293,7 @@ impl ToolOutputPath {
         self.real_paths().is_ok_and(|p| p.len() > 1)
     }
 
+    #[must_use]
     pub fn to_base_path(&self) -> Self {
         Self {
             kind: match (&self.kind, &self.baseline_kind) {
@@ -1320,6 +1323,7 @@ impl ToolOutputPath {
     /// the [`ToolOutputPathKind`] will be converted and vice-versa. The "old" (base) type (a tool
     /// output converted with [`ToolOutputPath::to_base_path`]) will be converted to a new
     /// `ToolOutputPath`.
+    #[must_use]
     pub fn to_tool_output(&self, tool: ValgrindTool) -> Self {
         let kind = if tool.has_output_file() {
             match &self.kind {
@@ -1347,6 +1351,7 @@ impl ToolOutputPath {
     /// Convert this tool output to the according log output
     ///
     /// All tools have a log output even the ones which are out-file based.
+    #[must_use]
     pub fn to_log_output(&self) -> Self {
         Self {
             kind: match &self.kind {
@@ -1445,6 +1450,7 @@ impl ToolOutputPath {
         }
     }
 
+    #[must_use]
     pub fn with_modifiers<I, T>(&self, modifiers: T) -> Self
     where
         I: Into<String>,
@@ -1571,6 +1577,7 @@ impl ToolOutputPath {
     /// `callgrind`. The header is around 10-20 lines, so this method should be still sufficiently
     /// fast. Additionally, `callgrind` might change the naming scheme of its files, so using the
     /// headers makes us more independent of a specific valgrind/callgrind version.
+    #[allow(clippy::too_many_lines)]
     pub fn sanitize_callgrind(&self) -> Result<()> {
         // path, part
         type Grouped = (PathBuf, Option<u64>);
@@ -1800,6 +1807,7 @@ impl ToolOutputPath {
     // `exp-bbv.bench_thread_in_subprocess.548365.bb.out.2` ->
     // `exp-bbv.bench_thread_in_subprocess.548365.t2.bb.out`
     #[allow(clippy::case_sensitive_file_extension_comparisons)]
+    #[allow(clippy::too_many_lines)]
     pub fn sanitize_bbv(&self) -> Result<()> {
         // path, thread,
         type Grouped = (PathBuf, String);

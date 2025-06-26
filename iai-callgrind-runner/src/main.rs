@@ -44,6 +44,8 @@ fn main() {
             control::set_override(false);
         } else if var == "always" {
             control::set_override(true);
+        } else {
+            // do nothing
         }
     }
 

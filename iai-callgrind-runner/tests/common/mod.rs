@@ -36,9 +36,11 @@ impl Fixtures {
         T: AsRef<Path>,
     {
         let path = Fixtures::get_path().join(name);
-        if !path.exists() {
-            panic!("Fixtures path '{}' does not exist", path.display());
-        }
+        assert!(
+            path.exists(),
+            "Fixtures path '{}' does not exist",
+            path.display()
+        );
         path
     }
 
@@ -161,14 +163,14 @@ impl RunnerOutput {
 
 impl Version {
     pub fn new(version: &str) -> Self {
-        let (major, minor, patch) = match version
+        let [major, minor, patch] = version
             .split('.')
             .map(|s| s.parse::<u64>().unwrap())
             .collect::<Vec<u64>>()[..]
-        {
-            [major, minor, patch] => (major, minor, patch),
-            _ => panic!("Invalid version: '{version}'"),
+        else {
+            panic!("Invalid version: '{version}'");
         };
+
         Self {
             major,
             minor,

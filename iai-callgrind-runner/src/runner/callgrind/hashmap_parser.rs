@@ -127,6 +127,7 @@ impl TryFrom<CurrentId> for Id {
 impl CallgrindParser for HashMapParser {
     type Output = CallgrindMap;
 
+    #[allow(clippy::too_many_lines)]
     fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)> {
         let mut iter = BufReader::new(File::open(path)?)
             .lines()

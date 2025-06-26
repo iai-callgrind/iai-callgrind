@@ -27,8 +27,8 @@ fn expected_header(command: &str, pid: i32, parent_pid: Option<i32>, desc: Vec<S
     "errors_all_zero",
     expected_header(
         "/home/some/workspace/target/release/deps/test_lib_bench_some-4c5214398e2f5bd1",
-        1915454,
-        Some(1915177),
+        1_915_454,
+        Some(1_915_177_i32),
         vec![],
     )
 )]
@@ -38,8 +38,8 @@ fn expected_header(command: &str, pid: i32, parent_pid: Option<i32>, desc: Vec<S
     "with_errors",
     expected_header(
         "/home/some/workspace/target/release/deps/test_lib_bench_some-4c5214398e2f5bd1",
-        1915455,
-        Some(1915178),
+        1_915_455,
+        Some(1_915_178_i32),
         vec![],
     )
 )]
