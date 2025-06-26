@@ -17,7 +17,6 @@ use serde::{Deserialize, Serialize};
 use super::summary::Diffs;
 use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind};
 use crate::util::{to_string_unsigned_short, EitherOrBoth};
-// TODO: Move other related structures like MetricsDiff etc. into this module
 
 pub trait Summarize: Hash + Eq + Clone {
     fn summarize(_: &mut Cow<Metrics<Self>>) {}
@@ -599,7 +598,6 @@ mod tests {
     use crate::runner::summary::Diffs;
     use crate::util::EitherOrBoth;
 
-    // TODO: Add tests for all Metric::Int, Metric::Float, ... and AddAssign, Add, ...
     fn expected_metrics<T>(events: T) -> Metrics<EventKind>
     where
         T: IntoIterator<Item = (EventKind, u64)>,

@@ -268,7 +268,6 @@ pub fn to_string_unsigned_short(n: f64) -> String {
     to_string_signed_short(n)[1..].to_owned()
 }
 
-// TODO: MOVE TO metrics
 /// Calculate the difference between `new` and `old` as percentage
 pub fn percentage_diff(new: Metric, old: Metric) -> f64 {
     if new == old {
@@ -282,7 +281,6 @@ pub fn percentage_diff(new: Metric, old: Metric) -> f64 {
     diff * 100.0f64
 }
 
-// TODO: DOUBLE CHECK
 /// Calculate the difference between `new` and `old` as factor
 pub fn factor_diff(new: Metric, old: Metric) -> f64 {
     if new == old {
@@ -368,7 +366,6 @@ mod tests {
         assert_eq!(truncate_str_utf8(input, len), expected);
     }
 
-    // TODO: TEST WITH FLOATS
     #[rstest]
     #[case::zero(0, 0, 1f64)]
     #[case::infinity(1, 0, f64::INFINITY)]
