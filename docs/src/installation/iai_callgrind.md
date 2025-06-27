@@ -71,5 +71,5 @@ Or, speed up the overall installation time with `binstall` using the
 
 ```yaml
 - uses: taiki-e/install-action@cargo-binstall
-- run: cargo binstall iai-callgrind-runner@$(cargo pkgid iai-callgrind | cut -d@ -f2)
+- run: cargo binstall -y iai-callgrind-runner@$(cargo pkgid iai-callgrind | cut -d@ -f2)
 ```
