@@ -63,13 +63,7 @@ version it's best to automate this step in the CI. A job step in the github
 actions CI could look like this
 
 ```yaml
-- name: Install iai-callgrind-runner
-  run: |
-    version=$(cargo metadata --format-version=1 |\
-      jq '.packages[] | select(.name == "iai-callgrind").version' |\
-      tr -d '"'
-    )
-    cargo install iai-callgrind-runner --version $version
+- run: cargo install iai-callgrind-runner@$(cargo pkgid iai-callgrind | cut -d@ -f2)
 ```
 
 Or, speed up the overall installation time with `binstall` using the
@@ -77,11 +71,5 @@ Or, speed up the overall installation time with `binstall` using the
 
 ```yaml
 - uses: taiki-e/install-action@cargo-binstall
-- name: Install iai-callgrind-runner
-  run: |
-    version=$(cargo metadata --format-version=1 |\
-      jq '.packages[] | select(.name == "iai-callgrind").version' |\
-      tr -d '"'
-    )
-    cargo binstall --no-confirm iai-callgrind-runner --version $version
+- run: cargo binstall iai-callgrind-runner@$(cargo pkgid iai-callgrind | cut -d@ -f2)
 ```
