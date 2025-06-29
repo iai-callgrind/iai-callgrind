@@ -2,9 +2,9 @@ use std::hint::black_box;
 
 use benchmark_tests::{bubble_sort, setup_worst_case_array};
 use iai_callgrind::{
-    library_benchmark, library_benchmark_group, main, Cachegrind, CachegrindMetric, Callgrind,
-    CallgrindMetrics, Dhat, DhatMetric, Drd, EntryPoint, ErrorMetric, EventKind, Helgrind,
-    LibraryBenchmarkConfig, Memcheck, OutputFormat, ValgrindTool,
+    library_benchmark, library_benchmark_group, main, Cachegrind, CachegrindMetric,
+    CachegrindMetrics, Callgrind, CallgrindMetrics, Dhat, DhatMetric, Drd, EntryPoint, ErrorMetric,
+    EventKind, Helgrind, LibraryBenchmarkConfig, Memcheck, OutputFormat, ValgrindTool,
 };
 
 // The --collect-systime=nsec option is not supported on freebsd and apple, so we use
@@ -184,38 +184,44 @@ fn bench_with_custom_callgrind_format() -> Vec<i32> {
 }
 
 #[library_benchmark]
-#[bench::cachegrind_all(
+#[bench::cachegrind_all_shuffled(
     config = LibraryBenchmarkConfig::default()
         .default_tool(ValgrindTool::Cachegrind)
         .tool(Cachegrind::with_args(["branch-sim=yes"])
             .format([
                 CachegrindMetric::Ir,
-                CachegrindMetric::Dr,
-                CachegrindMetric::Dw,
-                CachegrindMetric::I1mr,
-                CachegrindMetric::D1mr,
-                CachegrindMetric::D1mw,
-                CachegrindMetric::ILmr,
-                CachegrindMetric::DLmr,
-                CachegrindMetric::DLmw,
                 CachegrindMetric::I1MissRate,
                 CachegrindMetric::D1MissRate,
                 CachegrindMetric::LLiMissRate,
                 CachegrindMetric::LLdMissRate,
                 CachegrindMetric::LLMissRate,
+                CachegrindMetric::Dr,
+                CachegrindMetric::Dw,
+                CachegrindMetric::D1mr,
+                CachegrindMetric::D1mw,
+                CachegrindMetric::ILmr,
+                CachegrindMetric::DLmr,
+                CachegrindMetric::DLmw,
+                CachegrindMetric::TotalRW,
                 CachegrindMetric::L1hits,
                 CachegrindMetric::LLhits,
                 CachegrindMetric::RamHits,
-                CachegrindMetric::TotalRW,
                 CachegrindMetric::EstimatedCycles,
-                CachegrindMetric::L1HitRate,
-                CachegrindMetric::LLHitRate,
-                CachegrindMetric::RamHitRate,
                 CachegrindMetric::Bc,
                 CachegrindMetric::Bcm,
                 CachegrindMetric::Bi,
                 CachegrindMetric::Bim,
+                CachegrindMetric::L1HitRate,
+                CachegrindMetric::LLHitRate,
+                CachegrindMetric::RamHitRate,
             ])
+        )
+)]
+#[bench::cachegrind_all_default_order(
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(ValgrindTool::Cachegrind)
+        .tool(Cachegrind::with_args(["branch-sim=yes"])
+            .format([CachegrindMetrics::All])
         )
 )]
 #[bench::cachegrind(

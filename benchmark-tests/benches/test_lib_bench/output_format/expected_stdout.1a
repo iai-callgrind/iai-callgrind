@@ -339,7 +339,36 @@ test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format 
 Hello world!
 - end of stdout/stderr
   Estimated Cycles:                        |N/A                  (*********)
-test_lib_bench_output_format::custom_format::bench_with_custom_format cachegrind_all
+test_lib_bench_output_format::custom_format::bench_with_custom_format cachegrind_all_shuffled
+  ======= CACHEGRIND ===================================================================
+Hello world!
+- end of stdout/stderr
+  Instructions:                            |N/A                  (*********)
+  I1 Miss Rate:                            |N/A                  (*********)
+  D1 Miss Rate:                            |N/A                  (*********)
+  LLi Miss Rate:                           |N/A                  (*********)
+  LLd Miss Rate:                           |N/A                  (*********)
+  LL Miss Rate:                            |N/A                  (*********)
+  Dr:                                      |N/A                  (*********)
+  Dw:                                      |N/A                  (*********)
+  D1mr:                                    |N/A                  (*********)
+  D1mw:                                    |N/A                  (*********)
+  ILmr:                                    |N/A                  (*********)
+  DLmr:                                    |N/A                  (*********)
+  DLmw:                                    |N/A                  (*********)
+  Total read+write:                        |N/A                  (*********)
+  L1 Hits:                                 |N/A                  (*********)
+  L2 Hits:                                 |N/A                  (*********)
+  RAM Hits:                                |N/A                  (*********)
+  Estimated Cycles:                        |N/A                  (*********)
+  Bc:                                      |N/A                  (*********)
+  Bcm:                                     |N/A                  (*********)
+  Bi:                                      |N/A                  (*********)
+  Bim:                                     |N/A                  (*********)
+  L1 Hit Rate:                             |N/A                  (*********)
+  LL Hit Rate:                             |N/A                  (*********)
+  Ram Hit Rate:                            |N/A                  (*********)
+test_lib_bench_output_format::custom_format::bench_with_custom_format cachegrind_all_default_order
   ======= CACHEGRIND ===================================================================
 Hello world!
 - end of stdout/stderr
@@ -353,18 +382,18 @@ Hello world!
   DLmr:                                    |N/A                  (*********)
   DLmw:                                    |N/A                  (*********)
   I1 Miss Rate:                            |N/A                  (*********)
-  D1 Miss Rate:                            |N/A                  (*********)
   LLi Miss Rate:                           |N/A                  (*********)
+  D1 Miss Rate:                            |N/A                  (*********)
   LLd Miss Rate:                           |N/A                  (*********)
   LL Miss Rate:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
   L2 Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
-  Total read+write:                        |N/A                  (*********)
-  Estimated Cycles:                        |N/A                  (*********)
   L1 Hit Rate:                             |N/A                  (*********)
   LL Hit Rate:                             |N/A                  (*********)
   Ram Hit Rate:                            |N/A                  (*********)
+  Total read+write:                        |N/A                  (*********)
+  Estimated Cycles:                        |N/A                  (*********)
   Bc:                                      |N/A                  (*********)
   Bcm:                                     |N/A                  (*********)
   Bi:                                      |N/A                  (*********)
@@ -400,4 +429,4 @@ Hello world!
   Errors:                                  |N/A                  (*********)
   Contexts:                                |N/A                  (*********)
 
-Iai-Callgrind result: Ok. 27 without regressions; 0 regressed; 27 benchmarks finished in <__SECONDS__>s
+Iai-Callgrind result: Ok. 28 without regressions; 0 regressed; 28 benchmarks finished in <__SECONDS__>s

@@ -110,10 +110,10 @@ pub enum CachegrindMetric {
     DLmw,
     /// I1 cache miss rate (--cache-sim=yes)
     I1MissRate,
-    /// D1 cache miss rate (--cache-sim=yes)
-    D1MissRate,
     /// LL/L2 instructions cache miss rate (--cache-sim=yes)
     LLiMissRate,
+    /// D1 cache miss rate (--cache-sim=yes)
+    D1MissRate,
     /// LL/L2 data cache miss rate (--cache-sim=yes)
     LLdMissRate,
     /// LL/L2 cache miss rate (--cache-sim=yes)
@@ -124,16 +124,16 @@ pub enum CachegrindMetric {
     LLhits,
     /// Derived event showing the RAM hits (--cache-sim=yes)
     RamHits,
-    /// Derived event showing the total amount of cache reads and writes (--cache-sim=yes)
-    TotalRW,
-    /// Derived event showing estimated CPU cycles (--cache-sim=yes)
-    EstimatedCycles,
     /// L1 cache hit rate (--cache-sim=yes)
     L1HitRate,
     /// LL/L2 cache hit rate (--cache-sim=yes)
     LLHitRate,
     /// RAM hit rate (--cache-sim=yes)
     RamHitRate,
+    /// Derived event showing the total amount of cache reads and writes (--cache-sim=yes)
+    TotalRW,
+    /// Derived event showing estimated CPU cycles (--cache-sim=yes)
+    EstimatedCycles,
     /// Conditional branches executed (--branch-sim=yes)
     Bc,
     /// Conditional branches mispredicted (--branch-sim=yes)
@@ -142,6 +142,185 @@ pub enum CachegrindMetric {
     Bi,
     /// Indirect branches mispredicted (--branch-sim=yes)
     Bim,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum CachegrindMetrics {
+    /// The default group contains all metrics except the [`CachegrindMetrics::CacheMisses`],
+    /// [`CachegrindMetrics::CacheMissRates`], [`CachegrindMetrics::CacheHitRates`] and
+    /// [`EventKind::Dr`], [`EventKind::Dw`]. More specifically, the following event kinds and
+    /// groups in this order:
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CachegrindMetrics, CachegrindMetric};
+    /// # }
+    /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
+    ///
+    /// let metrics: Vec<CachegrindMetrics> = vec![
+    ///     CachegrindMetric::Ir.into(),
+    ///     CachegrindMetrics::CacheHits,
+    ///     CachegrindMetric::TotalRW.into(),
+    ///     CachegrindMetric::EstimatedCycles.into(),
+    ///     CachegrindMetrics::BranchSim,
+    /// ];
+    /// ```
+    #[default]
+    Default,
+
+    /// The `CacheMisses` produced by `--cache-sim=yes` contain the following [`CachegrindMetric`]s
+    /// in this order:
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CachegrindMetric, CachegrindMetrics};
+    /// # }
+    /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
+    ///
+    /// let metrics: Vec<CachegrindMetrics> = vec![
+    ///     CachegrindMetric::I1mr.into(),
+    ///     CachegrindMetric::D1mr.into(),
+    ///     CachegrindMetric::D1mw.into(),
+    ///     CachegrindMetric::ILmr.into(),
+    ///     CachegrindMetric::DLmr.into(),
+    ///     CachegrindMetric::DLmw.into(),
+    /// ];
+    /// ```
+    CacheMisses,
+
+    /// The cache miss rates calculated from the [`CallgrindMetrics::CacheMisses`] produced by
+    /// `--cache-sim`:
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CachegrindMetric, CachegrindMetrics};
+    /// # }
+    /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
+    ///
+    /// let metrics: Vec<CachegrindMetrics> = vec![
+    ///     CachegrindMetric::I1MissRate.into(),
+    ///     CachegrindMetric::LLiMissRate.into(),
+    ///     CachegrindMetric::D1MissRate.into(),
+    ///     CachegrindMetric::LLdMissRate.into(),
+    ///     CachegrindMetric::LLMissRate.into(),
+    /// ];
+    /// ```
+    CacheMissRates,
+
+    /// `CacheHits` are iai-callgrind specific and calculated from the metrics produced by
+    /// `--cache-sim=yes` in this order:
+    ///
+    /// ```
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CachegrindMetric, CachegrindMetrics};
+    /// # }
+    /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
+    ///
+    /// let metrics: Vec<CachegrindMetrics> = vec![
+    ///     CachegrindMetric::L1hits.into(),
+    ///     CachegrindMetric::LLhits.into(),
+    ///     CachegrindMetric::RamHits.into(),
+    /// ];
+    /// ```
+    CacheHits,
+
+    /// The cache hit rates calculated from the [`CachegrindMetrics::CacheHits`]:
+    ///
+    /// ```
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CachegrindMetric, CachegrindMetrics};
+    /// # }
+    /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
+    ///
+    /// let metrics: Vec<CachegrindMetrics> = vec![
+    ///     CachegrindMetric::L1HitRate.into(),
+    ///     CachegrindMetric::LLHitRate.into(),
+    ///     CachegrindMetric::RamHitRate.into(),
+    /// ];
+    /// ```
+    CacheHitRates,
+
+    /// All metrics produced by `--cache-sim=yes` including the iai-callgrind specific metrics
+    /// [`CachegrindMetric::L1hits`], [`CachegrindMetric::LLhits`], [`CachegrindMetric::RamHits`],
+    /// [`CachegrindMetric::TotalRW`], [`CachegrindMetric::EstimatedCycles`],
+    /// [`CachegrindMetrics::CacheMissRates`] and [`CachegrindMetrics::CacheHitRates`] in this
+    /// order:
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CachegrindMetric, CachegrindMetrics};
+    /// # }
+    /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
+    ///
+    /// let metrics: Vec<CachegrindMetrics> = vec![
+    ///     CachegrindMetric::Dr.into(),
+    ///     CachegrindMetric::Dw.into(),
+    ///     CachegrindMetrics::CacheMisses,
+    ///     CachegrindMetrics::CacheMissRates,
+    ///     CachegrindMetrics::CacheHits,
+    ///     CachegrindMetrics::CacheHitRates,
+    ///     CachegrindMetric::TotalRW.into(),
+    ///     CachegrindMetric::EstimatedCycles.into(),
+    /// ];
+    /// ```
+    CacheSim,
+
+    /// The metrics produced by `--branch-sim=yes` in this order:
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CachegrindMetric, CachegrindMetrics};
+    /// # }
+    /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
+    ///
+    /// let metrics: Vec<CachegrindMetrics> = vec![
+    ///     CachegrindMetric::Bc.into(),
+    ///     CachegrindMetric::Bcm.into(),
+    ///     CachegrindMetric::Bi.into(),
+    ///     CachegrindMetric::Bim.into(),
+    /// ];
+    /// ```
+    BranchSim,
+
+    /// All possible [`CachegrindMetric`]s in this order:
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CachegrindMetric, CachegrindMetrics};
+    /// # }
+    /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
+    ///
+    /// let metrics: Vec<CachegrindMetrics> = vec![
+    ///     CachegrindMetric::Ir.into(),
+    ///     CachegrindMetrics::CacheSim,
+    ///     CachegrindMetrics::BranchSim,
+    /// ];
+    /// ```
+    All,
+
+    /// Selection of no [`CachegrindMetric`] at all
+    None,
+
+    /// Specify a single [`CachegrindMetric`].
+    ///
+    /// Note that [`CachegrindMetric`] implements the necessary traits to convert to the
+    /// `CachegrindMetrics::SingleEvent` variant.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{CachegrindMetric, CachegrindMetrics};
+    /// # }
+    /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
+    ///
+    /// assert_eq!(
+    ///     CachegrindMetrics::SingleEvent(CachegrindMetric::Ir),
+    ///     CachegrindMetric::Ir.into()
+    /// );
+    /// ```
+    SingleEvent(CachegrindMetric),
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -158,7 +337,8 @@ pub struct CachegrindRegressionConfig {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum CallgrindMetrics {
-    /// The default group contains all event kinds except the [`CallgrindMetrics::CacheMisses`] and
+    /// The default group contains all event kinds except the [`CallgrindMetrics::CacheMisses`],
+    /// [`CallgrindMetrics::CacheMissRates`], [`CallgrindMetrics::CacheHitRates`] and
     /// [`EventKind::Dr`], [`EventKind::Dw`]. More specifically, the following event kinds and
     /// groups in this order:
     ///
@@ -780,7 +960,7 @@ pub enum ToolFlamegraphConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ToolOutputFormat {
     Callgrind(Vec<CallgrindMetrics>),
-    Cachegrind(Vec<CachegrindMetric>),
+    Cachegrind(Vec<CachegrindMetrics>),
     DHAT(Vec<DhatMetric>),
     Memcheck(Vec<ErrorMetric>),
     Helgrind(Vec<ErrorMetric>),
@@ -999,6 +1179,80 @@ impl TryFrom<&str> for CachegrindMetric {
         };
 
         Ok(metric)
+    }
+}
+
+impl From<CachegrindMetric> for CachegrindMetrics {
+    fn from(value: CachegrindMetric) -> Self {
+        Self::SingleEvent(value)
+    }
+}
+
+#[cfg(feature = "runner")]
+impl From<CachegrindMetrics> for IndexSet<CachegrindMetric> {
+    fn from(value: CachegrindMetrics) -> Self {
+        let mut metrics = Self::new();
+        match value {
+            CachegrindMetrics::None => {}
+            CachegrindMetrics::All => metrics.extend(CachegrindMetric::iter()),
+            CachegrindMetrics::Default => {
+                metrics.insert(CachegrindMetric::Ir);
+                metrics.extend(Self::from(CachegrindMetrics::CacheHits));
+                metrics.extend([CachegrindMetric::TotalRW, CachegrindMetric::EstimatedCycles]);
+                metrics.extend(Self::from(CachegrindMetrics::BranchSim));
+            }
+            CachegrindMetrics::CacheMisses => metrics.extend([
+                CachegrindMetric::I1mr,
+                CachegrindMetric::D1mr,
+                CachegrindMetric::D1mw,
+                CachegrindMetric::ILmr,
+                CachegrindMetric::DLmr,
+                CachegrindMetric::DLmw,
+            ]),
+            CachegrindMetrics::CacheMissRates => metrics.extend([
+                CachegrindMetric::I1MissRate,
+                CachegrindMetric::LLiMissRate,
+                CachegrindMetric::D1MissRate,
+                CachegrindMetric::LLdMissRate,
+                CachegrindMetric::LLMissRate,
+            ]),
+            CachegrindMetrics::CacheHits => {
+                metrics.extend([
+                    CachegrindMetric::L1hits,
+                    CachegrindMetric::LLhits,
+                    CachegrindMetric::RamHits,
+                ]);
+            }
+            CachegrindMetrics::CacheHitRates => {
+                metrics.extend([
+                    CachegrindMetric::L1HitRate,
+                    CachegrindMetric::LLHitRate,
+                    CachegrindMetric::RamHitRate,
+                ]);
+            }
+            CachegrindMetrics::CacheSim => {
+                metrics.extend([CachegrindMetric::Dr, CachegrindMetric::Dw]);
+                metrics.extend(Self::from(CachegrindMetrics::CacheMisses));
+                metrics.extend(Self::from(CachegrindMetrics::CacheMissRates));
+                metrics.extend(Self::from(CachegrindMetrics::CacheHits));
+                metrics.extend(Self::from(CachegrindMetrics::CacheHitRates));
+                metrics.insert(CachegrindMetric::TotalRW);
+                metrics.insert(CachegrindMetric::EstimatedCycles);
+            }
+            CachegrindMetrics::BranchSim => {
+                metrics.extend([
+                    CachegrindMetric::Bc,
+                    CachegrindMetric::Bcm,
+                    CachegrindMetric::Bi,
+                    CachegrindMetric::Bim,
+                ]);
+            }
+            CachegrindMetrics::SingleEvent(metric) => {
+                metrics.insert(metric);
+            }
+        }
+
+        metrics
     }
 }
 
@@ -1740,7 +1994,7 @@ mod tests {
     use rstest::rstest;
 
     use super::EventKind::*;
-    use super::*;
+    use super::{CachegrindMetric as Cm, *};
 
     #[test]
     fn test_library_benchmark_config_update_from_all_when_default() {
@@ -1894,6 +2148,45 @@ mod tests {
         #[case] expected_metrics: IndexSet<EventKind>,
     ) {
         assert_eq!(IndexSet::from(callgrind_metrics), expected_metrics);
+    }
+
+    #[rstest]
+    #[case::none(CachegrindMetrics::None, indexset![])]
+    #[case::all(CachegrindMetrics::All, indexset![Cm::Ir, Cm::Dr, Cm::Dw, Cm::I1mr, Cm::D1mr,
+        Cm::D1mw, Cm::ILmr, Cm::DLmr, Cm::DLmw, Cm::I1MissRate, Cm::LLiMissRate, Cm::D1MissRate,
+        Cm::LLdMissRate, Cm::LLMissRate, Cm::L1hits, Cm::LLhits, Cm::RamHits, Cm::TotalRW,
+        Cm::L1HitRate, Cm::LLHitRate, Cm::RamHitRate, Cm::EstimatedCycles, Cm::Bc, Cm::Bcm, Cm::Bi,
+        Cm::Bim,
+    ])]
+    #[case::default(CachegrindMetrics::Default, indexset![Cm::Ir, Cm::L1hits, Cm::LLhits,
+        Cm::RamHits, Cm::TotalRW, Cm::EstimatedCycles, Cm::Bc, Cm::Bcm, Cm::Bi, Cm::Bim
+    ])]
+    #[case::cache_misses(CachegrindMetrics::CacheMisses, indexset![Cm::I1mr, Cm::D1mr, Cm::D1mw,
+        Cm::ILmr, Cm::DLmr, Cm::DLmw
+    ])]
+    #[case::cache_miss_rates(CachegrindMetrics::CacheMissRates, indexset![Cm::I1MissRate,
+        Cm::D1MissRate, Cm::LLMissRate, Cm::LLiMissRate, Cm::LLdMissRate
+    ])]
+    #[case::cache_hits(CachegrindMetrics::CacheHits, indexset![
+        Cm::L1hits, Cm::LLhits, Cm::RamHits
+    ])]
+    #[case::cache_hit_rates(CachegrindMetrics::CacheHitRates, indexset![
+        Cm::L1HitRate, Cm::LLHitRate, Cm::RamHitRate
+    ])]
+    #[case::cache_sim(CachegrindMetrics::CacheSim, indexset![Cm::Dr, Cm::Dw, Cm::I1mr, Cm::D1mr,
+        Cm::D1mw, Cm::ILmr, Cm::DLmr, Cm::DLmw, Cm::I1MissRate, Cm::LLiMissRate, Cm::D1MissRate,
+        Cm::LLdMissRate, Cm::LLMissRate, Cm::L1hits, Cm::LLhits, Cm::RamHits, Cm::TotalRW,
+        Cm::L1HitRate, Cm::LLHitRate, Cm::RamHitRate, Cm::EstimatedCycles
+    ])]
+    #[case::branch_sim(CachegrindMetrics::BranchSim, indexset![
+        Cm::Bc, Cm::Bcm, Cm::Bi, Cm::Bim
+    ])]
+    #[case::single_event(CachegrindMetrics::SingleEvent(Cm::Ir), indexset![Cm::Ir])]
+    fn test_cachegrind_metrics_into_index_set(
+        #[case] cachegrind_metrics: CachegrindMetrics,
+        #[case] expected_metrics: IndexSet<CachegrindMetric>,
+    ) {
+        assert_eq!(IndexSet::from(cachegrind_metrics), expected_metrics);
     }
 
     #[rstest]
