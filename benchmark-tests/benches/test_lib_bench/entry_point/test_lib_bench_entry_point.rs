@@ -6,6 +6,7 @@ use iai_callgrind::{
     FlamegraphConfig, LibraryBenchmarkConfig, ValgrindTool,
 };
 use iai_callgrind_runner::runner::callgrind::hashmap_parser::SourcePath;
+use iai_callgrind_runner::runner::metrics::Metric;
 use iai_callgrind_runner::runner::summary::{BenchmarkSummary, ToolMetricSummary};
 
 #[inline(never)]
@@ -63,7 +64,7 @@ fn assert_none() {
                 .metrics
                 .left()
                 .unwrap();
-            *new_ir > 400000
+            *new_ir > Metric::Int(400000)
         })
         .unwrap();
 }
@@ -86,7 +87,7 @@ fn assert_default() {
             .metrics
             .left()
             .unwrap();
-        *new_ir < 3000
+        *new_ir < Metric::Int(3000)
     };
 
     let assert = Assert::new(module_path!(), "my_group", "bench_lib", "default").unwrap();
@@ -131,7 +132,7 @@ fn assert_nested() {
             .metrics
             .left()
             .unwrap();
-        *new_ir < 3000
+        *new_ir < Metric::Int(3000)
     };
 
     let assert = Assert::new(module_path!(), "my_group", "bench_lib", "nested").unwrap();

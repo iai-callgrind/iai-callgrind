@@ -11,13 +11,11 @@ use super::bin_bench::BinBench;
 use super::common::{Baselines, BenchmarkSummaries, Config, ModulePath};
 use super::lib_bench::LibBench;
 use super::meta::Metadata;
-use super::summary::{
-    Diffs, MetricsDiff, ProfileData, ProfileInfo, ToolMetricSummary, ToolRegression,
-};
+use super::metrics::{Metric, MetricKind, MetricsDiff};
+use super::summary::{Diffs, ProfileData, ProfileInfo, ToolMetricSummary, ToolRegression};
 use crate::api::{
     self, CachegrindMetric, CallgrindMetrics, DhatMetric, ErrorMetric, EventKind, ValgrindTool,
 };
-use crate::runner::summary::MetricKind;
 use crate::util::{
     make_relative, to_string_signed_short, to_string_unsigned_short, truncate_str_utf8,
     EitherOrBoth,
@@ -623,7 +621,7 @@ impl VerticalFormatter {
         }
     }
 
-    fn write_metric(&mut self, field: &str, metrics: &EitherOrBoth<&u64>, diffs: Option<Diffs>) {
+    fn write_metric(&mut self, field: &str, metrics: &EitherOrBoth<&Metric>, diffs: Option<Diffs>) {
         match metrics {
             EitherOrBoth::Left(new) => {
                 let right = format!(
@@ -924,7 +922,7 @@ impl Formatter for VerticalFormatter {
                 if let Some(info) = info {
                     if summary
                         .diff_by_kind(&ErrorMetric::Errors)
-                        .is_some_and(|e| e.metrics.left().is_some_and(|l| *l > 0))
+                        .is_some_and(|e| e.metrics.left().is_some_and(|l| *l > Metric::Int(0)))
                     {
                         if let Some(new) = info.left() {
                             if let Some(details) = new.details.as_ref() {
@@ -1223,7 +1221,7 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
-    use crate::runner::metrics::Metrics;
+    use crate::runner::metrics::{Metrics, MetricsSummary};
 
     #[rstest]
     #[case::simple("some::module", Some("id"), Some("1, 2"), "some::module id:1, 2")]
@@ -1423,16 +1421,14 @@ mod tests {
         #[case] diff_pct: &str,
         #[case] diff_fact: Option<&str>,
     ) {
-        use crate::runner::summary::MetricsSummary;
-
         colored::control::set_override(false);
 
         let costs = match old {
             Some(old) => EitherOrBoth::Both(
-                Metrics(indexmap! {event_kind => new}),
-                Metrics(indexmap! {event_kind => old}),
+                Metrics(indexmap! {event_kind => Metric::Int(new)}),
+                Metrics(indexmap! {event_kind => Metric::Int(old)}),
             ),
-            None => EitherOrBoth::Left(Metrics(indexmap! {event_kind => new})),
+            None => EitherOrBoth::Left(Metrics(indexmap! {event_kind => Metric::Int(new)})),
         };
         let metrics_summary = MetricsSummary::new(costs);
         let mut formatter = VerticalFormatter::new(OutputFormat::default());

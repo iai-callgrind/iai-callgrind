@@ -40,7 +40,7 @@ static TEMPLATE_DATA: OnceCell<HashMap<String, minijinja::Value>> = OnceCell::ne
 lazy_static! {
     static ref NUMBERS_RE: Regex = Regex::new(
         r"(?x)
-            (?<desc>.+:\s*)(?<comp1>[0-9]+|N/A)\|(?<comp2>[0-9]+|N/A)
+            (?<desc>.+:\s*)(?<comp1>[0-9.]+|N/A)\|(?<comp2>[0-9.]+|N/A)
             (?<diff>
                 (?<diff_percent>(?<white1>\s*)(?<percent>\(.*\)))
                 (?<diff_factor>(?<white2>\s*)(?<factor>\[.*\]))?

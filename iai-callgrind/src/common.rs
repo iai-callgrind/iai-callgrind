@@ -6,8 +6,8 @@ use derive_more::AsRef;
 use iai_callgrind_macros::IntoInner;
 
 use super::{
-    CachegrindMetric, CallgrindMetrics, DhatMetric, Direction, ErrorMetric, EventKind,
-    FlamegraphKind, ValgrindTool, __internal,
+    CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, Direction, ErrorMetric,
+    EventKind, FlamegraphKind, ValgrindTool, __internal,
 };
 use crate::EntryPoint;
 
@@ -412,19 +412,20 @@ impl Cachegrind {
 
     /// Customize the format of the cachegrind output
     ///
-    /// See also [`Callgrind::format`] for more details and [`CachegrindMetric`] for valid metrics.
+    /// See also [`Callgrind::format`] for more details and [`crate::CachegrindMetrics`] for valid
+    /// metrics.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use iai_callgrind::{Cachegrind, CachegrindMetric};
+    /// use iai_callgrind::{Cachegrind, CachegrindMetric, CachegrindMetrics};
     ///
     /// let config =
-    ///     Cachegrind::default().format([CachegrindMetric::Ir, CachegrindMetric::EstimatedCycles]);
+    ///     Cachegrind::default().format([CachegrindMetric::Ir.into(), CachegrindMetrics::CacheSim]);
     /// ```
     pub fn format<I, T>(&mut self, cachegrind_metrics: T) -> &mut Self
     where
-        I: Into<CachegrindMetric>,
+        I: Into<CachegrindMetrics>,
         T: IntoIterator<Item = I>,
     {
         let format = self

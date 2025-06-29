@@ -14,7 +14,7 @@ use super::model::Metrics;
 use super::parser::{parse_header, CallgrindParser, CallgrindProperties, Sentinel};
 use crate::error::Error;
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CallgrindMap {
     pub map: HashMap<Id, Value>,
     pub sentinel: Option<Sentinel>,
@@ -60,7 +60,7 @@ pub enum SourcePath {
     Absolute(PathBuf),
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Value {
     pub metrics: Metrics,
 }

@@ -10,7 +10,7 @@ lazy_static! {
         Regex::new(r"(\\)([*]|[?])").expect("Regex should compile");
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct CachegrindProperties {
     pub metrics_prototype: Metrics,
     pub desc: Vec<String>,

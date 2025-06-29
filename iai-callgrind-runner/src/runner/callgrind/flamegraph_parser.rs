@@ -8,8 +8,9 @@ use log::debug;
 use super::hashmap_parser::{CallgrindMap, HashMapParser, SourcePath};
 use super::parser::{CallgrindParser, CallgrindProperties, Sentinel};
 use crate::api::EventKind;
+use crate::runner::metrics::Metric;
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct FlamegraphMap(CallgrindMap);
 
 #[derive(Debug)]
@@ -18,10 +19,10 @@ pub struct FlamegraphParser {
     sentinel: Option<Sentinel>,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 struct HeapElem {
     source: String,
-    cost: u64,
+    cost: Metric,
 }
 
 impl FlamegraphMap {

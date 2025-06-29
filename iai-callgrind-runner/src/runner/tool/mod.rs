@@ -40,10 +40,10 @@ use super::format::{
     print_no_capture_footer, print_regressions, Formatter, OutputFormat, VerticalFormatter,
 };
 use super::meta::Metadata;
-use super::metrics::Summarize;
+use super::metrics::{MetricsSummary, Summarize};
 use super::summary::{
-    BaselineKind, BaselineName, BenchmarkSummary, MetricsSummary, Profile, ProfileData,
-    ProfileTotal, RegressionMetrics, ToolMetricSummary, ToolRegression,
+    BaselineKind, BaselineName, BenchmarkSummary, Profile, ProfileData, ProfileTotal,
+    RegressionMetrics, ToolMetricSummary, ToolRegression,
 };
 use super::{cachegrind, callgrind, DEFAULT_TOGGLE};
 use crate::api::{
@@ -421,7 +421,11 @@ impl ToolConfig {
                             });
                     }
                     ToolOutputFormat::Cachegrind(metrics) => {
-                        output_format.cachegrind = metrics.into_iter().collect();
+                        output_format.cachegrind =
+                            metrics.into_iter().fold(IndexSet::new(), |mut acc, m| {
+                                acc.extend(IndexSet::from(m));
+                                acc
+                            });
                     }
                     ToolOutputFormat::DHAT(metrics) => {
                         output_format.dhat = metrics.into_iter().collect();

@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use which::which;
 
 use crate::error::Error;
+use crate::runner::metrics::Metric;
 
 // # Developer notes
 //
@@ -268,38 +269,34 @@ pub fn to_string_unsigned_short(n: f64) -> String {
 }
 
 /// Calculate the difference between `new` and `old` as percentage
-pub fn percentage_diff(new: u64, old: u64) -> f64 {
+pub fn percentage_diff(new: Metric, old: Metric) -> f64 {
     if new == old {
         return 0f64;
     }
 
-    #[allow(clippy::cast_precision_loss)]
-    let new = new as f64;
-    #[allow(clippy::cast_precision_loss)]
-    let old = old as f64;
+    let new: f64 = new.into();
+    let old: f64 = old.into();
 
     let diff = (new - old) / old;
     diff * 100.0f64
 }
 
 /// Calculate the difference between `new` and `old` as factor
-pub fn factor_diff(new: u64, old: u64) -> f64 {
+pub fn factor_diff(new: Metric, old: Metric) -> f64 {
     if new == old {
         return 1f64;
     }
 
-    #[allow(clippy::cast_precision_loss)]
-    let new_float = new as f64;
-    #[allow(clippy::cast_precision_loss)]
-    let old_float = old as f64;
+    let new_float: f64 = new.into();
+    let old_float: f64 = old.into();
 
     if new > old {
-        if old == 0 {
+        if old == Metric::Int(0) {
             f64::INFINITY
         } else {
             new_float / old_float
         }
-    } else if new == 0 {
+    } else if new == Metric::Int(0) {
         f64::NEG_INFINITY
     } else {
         (old_float / new_float).neg()
@@ -377,6 +374,6 @@ mod tests {
     #[case::factor_minus_two(1, 2, -2f64)]
     #[case::factor_two(2, 1, 2f64)]
     fn test_factor_diff_eq(#[case] a: u64, #[case] b: u64, #[case] expected: f64) {
-        assert_eq!(factor_diff(a, b), expected);
+        assert_eq!(factor_diff(Metric::Int(a), Metric::Int(b)), expected);
     }
 }

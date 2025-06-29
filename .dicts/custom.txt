@@ -103,6 +103,7 @@ gnuabi
 gnueabi
 gnueabihf
 grcov
+hitrate
 hljs
 hwpref
 ildmr
@@ -122,7 +123,11 @@ lcov
 libclang
 libtest
 linkcheck
+lldmissrate
+llhitrate
 llhits
+llimissrate
+llmissrate
 logfile
 logfiles
 malloclike
@@ -137,6 +142,7 @@ minijinja
 mips
 mipsel
 mispredicted
+missrate
 mmap
 msvc
 multibyte
@@ -168,6 +174,7 @@ proccontrol
 profraw
 pthread
 quickstart
+ramhitrate
 ramhits
 readlink
 realloc

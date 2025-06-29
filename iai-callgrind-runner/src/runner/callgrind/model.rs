@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use super::CacheSummary;
 use crate::api::EventKind;
-use crate::runner::metrics::Summarize;
+use crate::runner::metrics::{Metric, Summarize};
 
 pub type Metrics = crate::runner::metrics::Metrics<EventKind>;
 
@@ -55,6 +55,14 @@ impl Metrics {
             ram_hits,
             total_memory_rw,
             cycles,
+            i1_miss_rate,
+            d1_miss_rate,
+            ll_miss_rate,
+            lli_miss_rate,
+            lld_miss_rate,
+            l1_hit_rate,
+            l3_hit_rate,
+            ram_hit_rate,
         } = (&*self).try_into()?;
 
         self.insert(EventKind::L1hits, l1_hits);
@@ -62,6 +70,14 @@ impl Metrics {
         self.insert(EventKind::RamHits, ram_hits);
         self.insert(EventKind::TotalRW, total_memory_rw);
         self.insert(EventKind::EstimatedCycles, cycles);
+        self.insert(EventKind::I1MissRate, i1_miss_rate);
+        self.insert(EventKind::D1MissRate, d1_miss_rate);
+        self.insert(EventKind::LLiMissRate, lli_miss_rate);
+        self.insert(EventKind::LLdMissRate, lld_miss_rate);
+        self.insert(EventKind::LLMissRate, ll_miss_rate);
+        self.insert(EventKind::L1HitRate, l1_hit_rate);
+        self.insert(EventKind::LLHitRate, l3_hit_rate);
+        self.insert(EventKind::RamHitRate, ram_hit_rate);
 
         Ok(())
     }
@@ -84,7 +100,7 @@ impl Metrics {
 
 impl Default for Metrics {
     fn default() -> Self {
-        Self(indexmap! {EventKind::Ir => 0})
+        Self(indexmap! {EventKind::Ir => Metric::Int(0)})
     }
 }
 
@@ -155,5 +171,61 @@ where
             "line" => Self::Line,
             _ => panic!("Unknown positions type: '{value}"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Not testing here if the numbers make sense. Just if all metrics are present in the correct
+    // order
+    #[test]
+    fn test_metrics_make_summary_when_cache_sim() {
+        use EventKind::*;
+
+        let mut expected = Metrics::with_metric_kinds([
+            (Ir, 1),
+            (Dr, 2),
+            (Dw, 3),
+            (I1mr, 4),
+            (D1mr, 5),
+            (D1mw, 6),
+            (ILmr, 7),
+            (DLmr, 8),
+            (DLmw, 9),
+            (L1hits, 0),
+            (LLhits, 0),
+            (RamHits, 24),
+            (TotalRW, 6),
+            (EstimatedCycles, 840),
+        ]);
+
+        expected.insert_all(&[
+            (I1MissRate, Metric::Float(400.0f64)),
+            (D1MissRate, Metric::Float(220.000_000_000_000_03_f64)),
+            (LLiMissRate, Metric::Float(700.0f64)),
+            (LLdMissRate, Metric::Float(340.0f64)),
+            (LLMissRate, Metric::Float(400.0f64)),
+            (L1HitRate, Metric::Float(0.0f64)),
+            (LLHitRate, Metric::Float(0.0f64)),
+            (RamHitRate, Metric::Float(400.0f64)),
+        ]);
+
+        let mut metrics = Metrics::with_metric_kinds([
+            (Ir, 1),
+            (Dr, 2),
+            (Dw, 3),
+            (I1mr, 4),
+            (D1mr, 5),
+            (D1mw, 6),
+            (ILmr, 7),
+            (DLmr, 8),
+            (DLmw, 9),
+        ]);
+
+        metrics.make_summary().unwrap();
+
+        assert_eq!(metrics, expected);
     }
 }
