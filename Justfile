@@ -144,7 +144,7 @@ show-tips:
 # Check the availability of required and optional tools
 [group('init workspace')]
 install-checks:
-    #!/usr/bin/env sh
+    #!/usr/bin/env bash
     echo '################################################################################'
     echo '# CHECK AVAILABILITY OF REQUIRED AND OPTIONAL TOOLS                            #'
     echo '################################################################################'
