@@ -86,6 +86,7 @@ impl Metric {
     ///
     /// No difference is made between negative 0.0 and positive 0.0 os rhs value. The result is
     /// always positive 0.0.
+    #[must_use]
     pub fn div0(self, rhs: Self) -> Self {
         match (self, rhs) {
             (_, Metric::Int(0) | Metric::Float(0.0f64)) => Metric::Float(0.0f64),
@@ -408,6 +409,7 @@ impl MetricsDiff {
         }
     }
 
+    #[must_use]
     pub fn add(&self, other: &Self) -> Self {
         match (&self.metrics, &other.metrics) {
             (EitherOrBoth::Left(new), EitherOrBoth::Left(other_new)) => {
@@ -585,8 +587,9 @@ where
 #[cfg(test)]
 mod tests {
     use std::cmp::Ordering;
-    use std::iter;
+    use std::{f64, iter};
 
+    use pretty_assertions::assert_eq;
     use rstest::rstest;
 
     use super::*;
@@ -594,9 +597,10 @@ mod tests {
     use crate::runner::summary::Diffs;
     use crate::util::EitherOrBoth;
 
-    fn expected_metrics<T>(events: T) -> Metrics<EventKind>
+    fn expected_metrics<I, T>(events: T) -> Metrics<EventKind>
     where
-        T: IntoIterator<Item = (EventKind, u64)>,
+        I: Into<Metric>,
+        T: IntoIterator<Item = (EventKind, I)>,
     {
         Metrics(
             events
@@ -609,7 +613,11 @@ mod tests {
     #[rstest]
     #[case::single_zero(&[Ir], &["0"], expected_metrics([(Ir, 0)]))]
     #[case::single_one(&[Ir], &["1"], expected_metrics([(Ir, 1)]))]
+    #[case::single_float(&[Ir], &["1.0"], expected_metrics([(Ir, 1.0f64)]))]
     #[case::single_u64_max(&[Ir], &[u64::MAX.to_string()], expected_metrics([(Ir, u64::MAX)]))]
+    #[case::one_more_than_max_u64(&[Ir], &["18446744073709551616"],
+        expected_metrics([(Ir, 18_446_744_073_709_551_616.0_f64)])
+    )]
     #[case::more_values_than_kinds(&[Ir], &["1", "2"], expected_metrics([(Ir, 1)]))]
     #[case::more_kinds_than_values(&[Ir, I1mr], &["1"], expected_metrics([(Ir, 1), (I1mr, 0)]))]
     fn test_metrics_add_iter_str<I>(
@@ -627,10 +635,8 @@ mod tests {
     }
 
     #[rstest]
-    #[case::float(&[Ir], &["0.0"])]
     #[case::word(&[Ir], &["abc"])]
     #[case::empty(&[Ir], &[""])]
-    #[case::one_more_than_max_u64(&[Ir], &["18446744073709551616"])]
     fn test_metrics_add_iter_str_when_error<I>(
         #[case] event_kinds: &[EventKind],
         #[case] to_add: &[I],
@@ -843,6 +849,14 @@ mod tests {
             RamHits,
             TotalRW,
             EstimatedCycles,
+            I1MissRate,
+            D1MissRate,
+            LLiMissRate,
+            LLdMissRate,
+            LLMissRate,
+            L1HitRate,
+            LLHitRate,
+            RamHitRate,
         ];
 
         Metrics::with_metric_kinds(
@@ -874,6 +888,14 @@ mod tests {
             RamHits,
             TotalRW,
             EstimatedCycles,
+            I1MissRate,
+            D1MissRate,
+            LLiMissRate,
+            LLdMissRate,
+            LLMissRate,
+            L1HitRate,
+            LLHitRate,
+            RamHitRate,
         ];
 
         let map: IndexMap<EventKind, MetricsDiff> = event_kinds
@@ -1012,101 +1034,138 @@ mod tests {
     }
 
     #[rstest]
-    #[case::new_ir(&[0], &[], &[(EitherOrBoth::Left(0), None)])]
+    #[case::new_ir(&[0], &[], &[(EitherOrBoth::Left(Metric::Int(0)), None)])]
     #[case::new_is_summarized(&[10, 20, 30, 1, 2, 3, 4, 2, 0], &[],
         &[
-            (EitherOrBoth::Left(10), None),
-            (EitherOrBoth::Left(20), None),
-            (EitherOrBoth::Left(30), None),
-            (EitherOrBoth::Left(1), None),
-            (EitherOrBoth::Left(2), None),
-            (EitherOrBoth::Left(3), None),
-            (EitherOrBoth::Left(4), None),
-            (EitherOrBoth::Left(2), None),
-            (EitherOrBoth::Left(0), None),
-            (EitherOrBoth::Left(54), None),
-            (EitherOrBoth::Left(0), None),
-            (EitherOrBoth::Left(6), None),
-            (EitherOrBoth::Left(60), None),
-            (EitherOrBoth::Left(264), None),
+            (EitherOrBoth::Left(Metric::Int(10)), None),
+            (EitherOrBoth::Left(Metric::Int(20)), None),
+            (EitherOrBoth::Left(Metric::Int(30)), None),
+            (EitherOrBoth::Left(Metric::Int(1)), None),
+            (EitherOrBoth::Left(Metric::Int(2)), None),
+            (EitherOrBoth::Left(Metric::Int(3)), None),
+            (EitherOrBoth::Left(Metric::Int(4)), None),
+            (EitherOrBoth::Left(Metric::Int(2)), None),
+            (EitherOrBoth::Left(Metric::Int(0)), None),
+            (EitherOrBoth::Left(Metric::Int(54)), None),
+            (EitherOrBoth::Left(Metric::Int(0)), None),
+            (EitherOrBoth::Left(Metric::Int(6)), None),
+            (EitherOrBoth::Left(Metric::Int(60)), None),
+            (EitherOrBoth::Left(Metric::Int(264)), None),
+            (EitherOrBoth::Left(Metric::Float(10f64)), None),
+            (EitherOrBoth::Left(Metric::Float(10f64)), None),
+            (EitherOrBoth::Left(Metric::Float(40f64)), None),
+            (EitherOrBoth::Left(Metric::Float(4f64)), None),
+            (EitherOrBoth::Left(Metric::Float(10f64)), None),
+            (EitherOrBoth::Left(Metric::Float(90f64)), None),
+            (EitherOrBoth::Left(Metric::Float(0f64)), None),
+            (EitherOrBoth::Left(Metric::Float(10f64)), None),
         ]
     )]
-    #[case::old_ir(&[], &[0], &[(EitherOrBoth::Right(0), None)])]
+    #[case::old_ir(&[], &[0], &[(EitherOrBoth::Right(Metric::Int(0)), None)])]
     #[case::old_is_summarized(&[], &[5, 10, 15, 1, 2, 3, 4, 1, 0],
         &[
-            (EitherOrBoth::Right(5), None),
-            (EitherOrBoth::Right(10), None),
-            (EitherOrBoth::Right(15), None),
-            (EitherOrBoth::Right(1), None),
-            (EitherOrBoth::Right(2), None),
-            (EitherOrBoth::Right(3), None),
-            (EitherOrBoth::Right(4), None),
-            (EitherOrBoth::Right(1), None),
-            (EitherOrBoth::Right(0), None),
-            (EitherOrBoth::Right(24), None),
-            (EitherOrBoth::Right(1), None),
-            (EitherOrBoth::Right(5), None),
-            (EitherOrBoth::Right(30), None),
-            (EitherOrBoth::Right(204), None),
+            (EitherOrBoth::Right(Metric::Int(5)), None),
+            (EitherOrBoth::Right(Metric::Int(10)), None),
+            (EitherOrBoth::Right(Metric::Int(15)), None),
+            (EitherOrBoth::Right(Metric::Int(1)), None),
+            (EitherOrBoth::Right(Metric::Int(2)), None),
+            (EitherOrBoth::Right(Metric::Int(3)), None),
+            (EitherOrBoth::Right(Metric::Int(4)), None),
+            (EitherOrBoth::Right(Metric::Int(1)), None),
+            (EitherOrBoth::Right(Metric::Int(0)), None),
+            (EitherOrBoth::Right(Metric::Int(24)), None),
+            (EitherOrBoth::Right(Metric::Int(1)), None),
+            (EitherOrBoth::Right(Metric::Int(5)), None),
+            (EitherOrBoth::Right(Metric::Int(30)), None),
+            (EitherOrBoth::Right(Metric::Int(204)), None),
+            (EitherOrBoth::Right(Metric::Float(20f64)), None),
+            (EitherOrBoth::Right(Metric::Float(20f64)), None),
+            (EitherOrBoth::Right(Metric::Float(80f64)), None),
+            (EitherOrBoth::Right(Metric::Float(4f64)), None),
+            (EitherOrBoth::Right(Metric::Float(16.666_666_666_666_664_f64)), None),
+            (EitherOrBoth::Right(Metric::Float(80f64)), None),
+            (EitherOrBoth::Right(Metric::Float(3.333_333_333_333_333_5_f64)), None),
+            (EitherOrBoth::Right(Metric::Float(16.666_666_666_666_664_f64)), None),
         ]
     )]
-    #[case::new_and_old_ir_zero(&[0], &[0], &[(EitherOrBoth::Both(0, 0), (0f64, 1f64))])]
+    #[case::new_and_old_ir_zero(&[0], &[0], &[
+        (EitherOrBoth::Both(Metric::Int(0), Metric::Int(0)), (0f64, 1f64))
+    ])]
     #[case::new_and_old_summarized_when_equal(
         &[10, 20, 30, 1, 2, 3, 4, 2, 0],
         &[10, 20, 30, 1, 2, 3, 4, 2, 0],
         &[
-            (EitherOrBoth::Both(10, 10), (0f64, 1f64)),
-            (EitherOrBoth::Both(20, 20), (0f64, 1f64)),
-            (EitherOrBoth::Both(30, 30), (0f64, 1f64)),
-            (EitherOrBoth::Both(1, 1), (0f64, 1f64)),
-            (EitherOrBoth::Both(2, 2), (0f64, 1f64)),
-            (EitherOrBoth::Both(3, 3), (0f64, 1f64)),
-            (EitherOrBoth::Both(4, 4), (0f64, 1f64)),
-            (EitherOrBoth::Both(2, 2), (0f64, 1f64)),
-            (EitherOrBoth::Both(0, 0), (0f64, 1f64)),
-            (EitherOrBoth::Both(54, 54), (0f64, 1f64)),
-            (EitherOrBoth::Both(0, 0), (0f64, 1f64)),
-            (EitherOrBoth::Both(6, 6), (0f64, 1f64)),
-            (EitherOrBoth::Both(60, 60), (0f64, 1f64)),
-            (EitherOrBoth::Both(264, 264), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(10), Metric::Int(10)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(20), Metric::Int(20)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(30), Metric::Int(30)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(1), Metric::Int(1)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(2), Metric::Int(2)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(3), Metric::Int(3)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(4), Metric::Int(4)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(2), Metric::Int(2)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(0), Metric::Int(0)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(54), Metric::Int(54)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(0), Metric::Int(0)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(6), Metric::Int(6)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(60), Metric::Int(60)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(264), Metric::Int(264)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Float(10f64), Metric::Float(10f64)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Float(10f64), Metric::Float(10f64)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Float(40f64), Metric::Float(40f64)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Float(4f64), Metric::Float(4f64)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Float(10f64), Metric::Float(10f64)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Float(90f64), Metric::Float(90f64)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Float(0f64), Metric::Float(0f64)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Float(10f64), Metric::Float(10f64)), (0f64, 1f64)),
         ]
     )]
     #[case::new_and_old_summarized_when_not_equal(
         &[10, 20, 30, 1, 2, 3, 4, 2, 0],
         &[5, 10, 15, 1, 2, 3, 4, 1, 0],
         &[
-            (EitherOrBoth::Both(10, 5), (100f64, 2f64)),
-            (EitherOrBoth::Both(20, 10), (100f64, 2f64)),
-            (EitherOrBoth::Both(30, 15), (100f64, 2f64)),
-            (EitherOrBoth::Both(1, 1), (0f64, 1f64)),
-            (EitherOrBoth::Both(2, 2), (0f64, 1f64)),
-            (EitherOrBoth::Both(3, 3), (0f64, 1f64)),
-            (EitherOrBoth::Both(4, 4), (0f64, 1f64)),
-            (EitherOrBoth::Both(2, 1), (100f64, 2f64)),
-            (EitherOrBoth::Both(0, 0), (0f64, 1f64)),
-            (EitherOrBoth::Both(54, 24), (125f64, 2.25f64)),
-            (EitherOrBoth::Both(0, 1), (-100f64, f64::NEG_INFINITY)),
-            (EitherOrBoth::Both(6, 5), (20f64, 1.2f64)),
-            (EitherOrBoth::Both(60, 30), (100f64, 2f64)),
-            (EitherOrBoth::Both(264, 204),
+            (EitherOrBoth::Both(Metric::Int(10), Metric::Int(5)), (100f64, 2f64)),
+            (EitherOrBoth::Both(Metric::Int(20), Metric::Int(10)), (100f64, 2f64)),
+            (EitherOrBoth::Both(Metric::Int(30), Metric::Int(15)), (100f64, 2f64)),
+            (EitherOrBoth::Both(Metric::Int(1), Metric::Int(1)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(2), Metric::Int(2)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(3), Metric::Int(3)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(4), Metric::Int(4)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(2), Metric::Int(1)), (100f64, 2f64)),
+            (EitherOrBoth::Both(Metric::Int(0), Metric::Int(0)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Int(54), Metric::Int(24)), (125f64, 2.25f64)),
+            (EitherOrBoth::Both(Metric::Int(0), Metric::Int(1)), (-100f64, f64::NEG_INFINITY)),
+            (EitherOrBoth::Both(Metric::Int(6), Metric::Int(5)), (20f64, 1.2f64)),
+            (EitherOrBoth::Both(Metric::Int(60), Metric::Int(30)), (100f64, 2f64)),
+            (EitherOrBoth::Both(Metric::Int(264), Metric::Int(204)),
                 (29.411_764_705_882_355_f64, 1.294_117_647_058_823_6_f64)
+            ),
+            (EitherOrBoth::Both(Metric::Float(10f64), Metric::Float(20f64)), (-50f64, -2f64)),
+            (EitherOrBoth::Both(Metric::Float(10f64), Metric::Float(20f64)), (-50f64, -2f64)),
+            (EitherOrBoth::Both(Metric::Float(40f64), Metric::Float(80f64)), (-50f64, -2f64)),
+            (EitherOrBoth::Both(Metric::Float(4f64), Metric::Float(4f64)), (0f64, 1f64)),
+            (EitherOrBoth::Both(Metric::Float(10f64), Metric::Float(16.666_666_666_666_664_f64)),
+                (-39.999_999_999_999_99_f64, -1.666_666_666_666_666_5_f64)
+            ),
+            (EitherOrBoth::Both(Metric::Float(90f64), Metric::Float(80f64)), (12.5f64, 1.125f64)),
+            (EitherOrBoth::Both(Metric::Float(0f64), Metric::Float(3.333_333_333_333_333_5_f64)),
+                (-100f64, f64::NEG_INFINITY)
+            ),
+            (EitherOrBoth::Both(Metric::Float(10f64), Metric::Float(16.666_666_666_666_664_f64)),
+                (-39.999_999_999_999_99_f64, -1.666_666_666_666_666_5_f64)
             ),
         ]
     )]
     fn test_metrics_summary_new<V>(
         #[case] new_metrics: &[u64],
         #[case] old_metrics: &[u64],
-        #[case] expected: &[(EitherOrBoth<u64>, V)],
+        #[case] expected: &[(EitherOrBoth<Metric>, V)],
     ) where
         V: Into<Option<(f64, f64)>> + Clone,
     {
         use crate::util::EitherOrBoth;
 
-        let expected_metrics_summary = metrics_summary_fixture(
-            expected
-                .iter()
-                .map(|(e, v)| (e.clone().map(Metric::Int), v.clone())),
-        );
+        let expected_metrics_summary =
+            metrics_summary_fixture(expected.iter().map(|(e, v)| (e.clone(), v.clone())));
         let actual = match (
             (!new_metrics.is_empty()).then_some(new_metrics),
             (!old_metrics.is_empty()).then_some(old_metrics),

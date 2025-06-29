@@ -214,6 +214,7 @@ impl Default for CallgrindRegressionConfig {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
     use rstest::rstest;
     use EventKind::*;
 
@@ -358,6 +359,16 @@ mod tests {
         96.577_946_768_060_84_f64, // l1 hit rate
         0.543_183_052_688_756_1_f64, // ll hit rate
         2.878_870_179_250_407_4_f64] // ram hit rate
+    )]
+    #[case::round_floats([10, 20, 30, 1, 2, 3, 4, 2, 0], [54, 0, 6, 60, 264], [
+        10f64, // i1 miss rate
+        10f64,// d1 miss rate
+        10f64, // ll miss rate
+        40f64, // lli miss rate
+        4f64, // lld miss rate
+        90f64,// l1 hit rate
+        0f64, // ll hit rate
+        10f64] // ram hit rate
     )]
     fn test_cycles_estimator(
         #[case] data: [u64; 9],

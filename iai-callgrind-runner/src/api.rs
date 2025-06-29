@@ -1861,9 +1861,10 @@ mod tests {
 
     #[rstest]
     #[case::none(CallgrindMetrics::None, indexset![])]
-    #[case::all(CallgrindMetrics::All, indexset![Ir, Dr, Dw, I1mr, D1mr, D1mw, ILmr, DLmr, DLmw,
-        L1hits, LLhits, RamHits, TotalRW, EstimatedCycles, SysCount, SysTime, SysCpuTime, Ge, Bc,
-        Bcm, Bi, Bim, ILdmr, DLdmr, DLdmw, AcCost1, AcCost2, SpLoss1, SpLoss2]
+    #[case::all(CallgrindMetrics::All, indexset![Ir, Dr, Dw, I1mr, D1mr, D1mw, ILmr, DLmr,
+        DLmw, I1MissRate, LLiMissRate, D1MissRate, LLdMissRate, LLMissRate, L1hits, LLhits, RamHits,
+        TotalRW, L1HitRate, LLHitRate, RamHitRate, EstimatedCycles, SysCount, SysTime, SysCpuTime,
+        Ge, Bc, Bcm, Bi, Bim, ILdmr, DLdmr, DLdmw, AcCost1, AcCost2, SpLoss1, SpLoss2]
     )]
     #[case::default(CallgrindMetrics::Default, indexset![Ir, L1hits, LLhits, RamHits, TotalRW,
         EstimatedCycles, SysCount, SysTime, SysCpuTime, Ge, Bc,
@@ -1872,9 +1873,16 @@ mod tests {
     #[case::cache_misses(CallgrindMetrics::CacheMisses, indexset![I1mr, D1mr, D1mw, ILmr,
         DLmr, DLmw]
     )]
+    #[case::cache_miss_rates(CallgrindMetrics::CacheMissRates, indexset![I1MissRate,
+        D1MissRate, LLMissRate, LLiMissRate, LLdMissRate]
+    )]
     #[case::cache_hits(CallgrindMetrics::CacheHits, indexset![L1hits, LLhits, RamHits])]
-    #[case::cache_sim(CallgrindMetrics::CacheSim, indexset![Dr, Dw, I1mr, D1mr, D1mw, ILmr,
-        DLmr, DLmw, L1hits, LLhits, RamHits, TotalRW, EstimatedCycles]
+    #[case::cache_hit_rates(CallgrindMetrics::CacheHitRates, indexset![
+        L1HitRate, LLHitRate, RamHitRate
+    ])]
+    #[case::cache_sim(CallgrindMetrics::CacheSim, indexset![Dr, Dw, I1mr, D1mr, D1mw, ILmr, DLmr,
+        DLmw, I1MissRate, LLiMissRate, D1MissRate, LLdMissRate, LLMissRate, L1hits, LLhits, RamHits,
+        TotalRW, L1HitRate, LLHitRate, RamHitRate, EstimatedCycles]
     )]
     #[case::cache_use(CallgrindMetrics::CacheUse, indexset![AcCost1, AcCost2, SpLoss1, SpLoss2])]
     #[case::system_calls(CallgrindMetrics::SystemCalls, indexset![SysCount, SysTime, SysCpuTime])]
