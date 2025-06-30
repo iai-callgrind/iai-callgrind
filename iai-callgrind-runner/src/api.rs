@@ -710,10 +710,10 @@ pub enum EventKind {
     DLmw,
     /// I1 cache miss rate (--cache-sim=yes)
     I1MissRate,
-    /// D1 cache miss rate (--cache-sim=yes)
-    D1MissRate,
     /// LL/L2 instructions cache miss rate (--cache-sim=yes)
     LLiMissRate,
+    /// D1 cache miss rate (--cache-sim=yes)
+    D1MissRate,
     /// LL/L2 data cache miss rate (--cache-sim=yes)
     LLdMissRate,
     /// LL/L2 cache miss rate (--cache-sim=yes)
@@ -724,16 +724,16 @@ pub enum EventKind {
     LLhits,
     /// Derived event showing the RAM hits (--cache-sim=yes)
     RamHits,
-    /// Derived event showing the total amount of cache reads and writes (--cache-sim=yes)
-    TotalRW,
-    /// Derived event showing estimated CPU cycles (--cache-sim=yes)
-    EstimatedCycles,
     /// L1 cache hit rate (--cache-sim=yes)
     L1HitRate,
     /// LL/L2 cache hit rate (--cache-sim=yes)
     LLHitRate,
     /// RAM hit rate (--cache-sim=yes)
     RamHitRate,
+    /// Derived event showing the total amount of cache reads and writes (--cache-sim=yes)
+    TotalRW,
+    /// Derived event showing estimated CPU cycles (--cache-sim=yes)
+    EstimatedCycles,
     /// The number of system calls done (--collect-systime=yes)
     SysCount,
     /// The elapsed time spent in system calls (--collect-systime=yes)
@@ -1606,8 +1606,8 @@ impl From<CallgrindMetrics> for IndexSet<EventKind> {
                 event_kinds.extend(Self::from(CallgrindMetrics::CacheMisses));
                 event_kinds.extend(Self::from(CallgrindMetrics::CacheMissRates));
                 event_kinds.extend(Self::from(CallgrindMetrics::CacheHits));
-                event_kinds.insert(EventKind::TotalRW);
                 event_kinds.extend(Self::from(CallgrindMetrics::CacheHitRates));
+                event_kinds.insert(EventKind::TotalRW);
                 event_kinds.insert(EventKind::EstimatedCycles);
             }
             CallgrindMetrics::CacheUse => event_kinds.extend([
