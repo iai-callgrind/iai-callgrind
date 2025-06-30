@@ -1,7 +1,7 @@
 test_bench_template::bench_group::bench_bubble_sort regress_callgrind:setup_worst_case_array(5)
   Instructions:                            |                     (+       %) [+       x]
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (+       %) [+       x]
   Estimated Cycles:                        |                     (         )

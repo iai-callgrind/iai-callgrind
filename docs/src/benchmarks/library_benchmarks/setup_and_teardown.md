@@ -60,7 +60,7 @@ result in the benchmark output like below.
 <pre><code class="hljs"><span style="color:#0A0">my_benchmark::my_group::count_bytes_fast</span> <span style="color:#0AA">first</span><span style="color:#0AA">:</span><b><span style="color:#00A">open_file("path/to/file")</span></b>
   Instructions:     <b>        1630162</b>|N/A             (<span style="color:#555">*********</span>)
   L1 Hits:          <b>        2507933</b>|N/A             (<span style="color:#555">*********</span>)
-  L2 Hits:          <b>              2</b>|N/A             (<span style="color:#555">*********</span>)
+  LL Hits:          <b>              2</b>|N/A             (<span style="color:#555">*********</span>)
   RAM Hits:         <b>             11</b>|N/A             (<span style="color:#555">*********</span>)
   Total read+write: <b>        2507946</b>|N/A             (<span style="color:#555">*********</span>)
   Estimated Cycles: <b>        2508328</b>|N/A             (<span style="color:#555">*********</span>)
@@ -170,7 +170,7 @@ bytes read: 25078
 <span style="color:#A50">-</span> <span style="color:#A50">end of stdout/stderr</span>
   Instructions:     <b>        1630162</b>|N/A             (<span style="color:#555">*********</span>)
   L1 Hits:          <b>        2507931</b>|N/A             (<span style="color:#555">*********</span>)
-  L2 Hits:          <b>              2</b>|N/A             (<span style="color:#555">*********</span>)
+  LL Hits:          <b>              2</b>|N/A             (<span style="color:#555">*********</span>)
   RAM Hits:         <b>             13</b>|N/A             (<span style="color:#555">*********</span>)
   Total read+write: <b>        2507946</b>|N/A             (<span style="color:#555">*********</span>)
   Estimated Cycles: <b>        2508396</b>|N/A             (<span style="color:#555">*********</span>)

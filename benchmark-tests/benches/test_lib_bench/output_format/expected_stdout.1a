@@ -5,7 +5,7 @@ Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -27,7 +27,7 @@ Number of primes found in the range 0 to 30000: 3245
 | Command: <__COMMAND__>
 | Instructions:                            |N/A                  (*********)
 | L1 Hits:                                 |N/A                  (*********)
-| L2 Hits:                                 |N/A                  (*********)
+| LL Hits:                                 |N/A                  (*********)
 | RAM Hits:                                |N/A                  (*********)
 | Total read+write:                        |N/A                  (*********)
 | Estimated Cycles:                        |N/A                  (*********)
@@ -35,7 +35,7 @@ Number of primes found in the range 0 to 30000: 3245
 | Command: <__COMMAND__>
 | Instructions:                            |N/A                  (*********)
 | L1 Hits:                                 |N/A                  (*********)
-| L2 Hits:                                 |N/A                  (*********)
+| LL Hits:                                 |N/A                  (*********)
 | RAM Hits:                                |N/A                  (*********)
 | Total read+write:                        |N/A                  (*********)
 | Estimated Cycles:                        |N/A                  (*********)
@@ -43,7 +43,7 @@ Number of primes found in the range 0 to 30000: 3245
 | Command: <__COMMAND__>
 | Instructions:                            |N/A                  (*********)
 | L1 Hits:                                 |N/A                  (*********)
-| L2 Hits:                                 |N/A                  (*********)
+| LL Hits:                                 |N/A                  (*********)
 | RAM Hits:                                |N/A                  (*********)
 | Total read+write:                        |N/A                  (*********)
 | Estimated Cycles:                        |N/A                  (*********)
@@ -51,14 +51,14 @@ Number of primes found in the range 0 to 30000: 3245
 | Command: <__COMMAND__>
 | Instructions:                            |N/A                  (*********)
 | L1 Hits:                                 |N/A                  (*********)
-| L2 Hits:                                 |N/A                  (*********)
+| LL Hits:                                 |N/A                  (*********)
 | RAM Hits:                                |N/A                  (*********)
 | Total read+write:                        |N/A                  (*********)
 | Estimated Cycles:                        |N/A                  (*********)
 |-## Total
 | Instructions:                            |N/A                  (*********)
 | L1 Hits:                                 |N/A                  (*********)
-| L2 Hits:                                 |N/A                  (*********)
+| LL Hits:                                 |N/A                  (*********)
 | RAM Hits:                                |N/A                  (*********)
 | Total read+write:                        |N/A                  (*********)
 | Estimated Cycles:                        |N/A                  (*********)
@@ -75,7 +75,7 @@ Number of primes found in the range 0 to 30000: 3245
 |-------- CALLGRIND
 | Instructions:                            |                     (-       %) [-       x]
 | L1 Hits:                                 |                     (         )
-| L2 Hits:                                 |                     (         )
+| LL Hits:                                 |                     (         )
 | RAM Hits:                                |                     (         )
 | Total read+write:                        |                     (-       %) [-       x]
 | Estimated Cycles:                        |                     (         )
@@ -93,7 +93,7 @@ Hello world!
 - end of stdout/stderr
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -113,7 +113,7 @@ Hello world!
 - end of stdout/stderr
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -134,7 +134,7 @@ Hello world!
 - end of stdout/stderr
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -154,7 +154,7 @@ Hello world!
 - end of stdout/stderr
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -188,7 +188,7 @@ Hello world!
   LLd Miss Rate:                           |N/A                  (*********)
   LL Miss Rate:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   L1 Hit Rate:                             |N/A                  (*********)
   LL Hit Rate:                             |N/A                  (*********)
@@ -224,7 +224,7 @@ Hello world!
   LLd Miss Rate:                           |N/A                  (*********)
   LL Miss Rate:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   L1 Hit Rate:                             |N/A                  (*********)
   LL Hit Rate:                             |N/A                  (*********)
@@ -264,7 +264,7 @@ test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format 
 Hello world!
 - end of stdout/stderr
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format cache_hit_rates
 Hello world!
@@ -289,7 +289,7 @@ Hello world!
   LLd Miss Rate:                           |N/A                  (*********)
   LL Miss Rate:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   L1 Hit Rate:                             |N/A                  (*********)
   LL Hit Rate:                             |N/A                  (*********)
@@ -358,7 +358,7 @@ Hello world!
   DLmw:                                    |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
   Bc:                                      |N/A                  (*********)
@@ -387,7 +387,7 @@ Hello world!
   LLd Miss Rate:                           |N/A                  (*********)
   LL Miss Rate:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   L1 Hit Rate:                             |N/A                  (*********)
   LL Hit Rate:                             |N/A                  (*********)

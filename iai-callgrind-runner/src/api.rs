@@ -1437,7 +1437,7 @@ impl Display for EventKind {
         match self {
             Self::Ir => f.write_str("Instructions"),
             Self::L1hits => f.write_str("L1 Hits"),
-            Self::LLhits => f.write_str("L2 Hits"),
+            Self::LLhits => f.write_str("LL Hits"),
             Self::RamHits => f.write_str("RAM Hits"),
             Self::TotalRW => f.write_str("Total read+write"),
             Self::EstimatedCycles => f.write_str("Estimated Cycles"),

@@ -2,7 +2,7 @@ test_lib_bench_output_format::my_group::bench_without_format for_comparison:"A v
   ======= CALLGRIND ====================================================================
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -21,7 +21,7 @@ test_lib_bench_output_format::my_group::bench_with_format for_comparison:"Anothe
 | Command: <__COMMAND__>
 | Instructions:                            |N/A                  (*********)
 | L1 Hits:                                 |N/A                  (*********)
-| L2 Hits:                                 |N/A                  (*********)
+| LL Hits:                                 |N/A                  (*********)
 | RAM Hits:                                |N/A                  (*********)
 | Total read+write:                        |N/A                  (*********)
 | Estimated Cycles:                        |N/A                  (*********)
@@ -29,7 +29,7 @@ test_lib_bench_output_format::my_group::bench_with_format for_comparison:"Anothe
 | Command: <__COMMAND__>
 | Instructions:                            |N/A                  (*********)
 | L1 Hits:                                 |N/A                  (*********)
-| L2 Hits:                                 |N/A                  (*********)
+| LL Hits:                                 |N/A                  (*********)
 | RAM Hits:                                |N/A                  (*********)
 | Total read+write:                        |N/A                  (*********)
 | Estimated Cycles:                        |N/A                  (*********)
@@ -37,7 +37,7 @@ test_lib_bench_output_format::my_group::bench_with_format for_comparison:"Anothe
 | Command: <__COMMAND__>
 | Instructions:                            |N/A                  (*********)
 | L1 Hits:                                 |N/A                  (*********)
-| L2 Hits:                                 |N/A                  (*********)
+| LL Hits:                                 |N/A                  (*********)
 | RAM Hits:                                |N/A                  (*********)
 | Total read+write:                        |N/A                  (*********)
 | Estimated Cycles:                        |N/A                  (*********)
@@ -45,14 +45,14 @@ test_lib_bench_output_format::my_group::bench_with_format for_comparison:"Anothe
 | Command: <__COMMAND__>
 | Instructions:                            |N/A                  (*********)
 | L1 Hits:                                 |N/A                  (*********)
-| L2 Hits:                                 |N/A                  (*********)
+| LL Hits:                                 |N/A                  (*********)
 | RAM Hits:                                |N/A                  (*********)
 | Total read+write:                        |N/A                  (*********)
 | Estimated Cycles:                        |N/A                  (*********)
 |-## Total
 | Instructions:                            |N/A                  (*********)
 | L1 Hits:                                 |N/A                  (*********)
-| L2 Hits:                                 |N/A                  (*********)
+| LL Hits:                                 |N/A                  (*********)
 | RAM Hits:                                |N/A                  (*********)
 | Total read+write:                        |N/A                  (*********)
 | Estimated Cycles:                        |N/A                  (*********)
@@ -69,7 +69,7 @@ test_lib_bench_output_format::my_group::bench_with_format for_comparison:"Anothe
 |-------- CALLGRIND
 | Instructions:                            |                     (-       %) [-       x]
 | L1 Hits:                                 |                     (         )
-| L2 Hits:                                 |                     (         )
+| LL Hits:                                 |                     (         )
 | RAM Hits:                                |                     (         )
 | Total read+write:                        |                     (-       %) [-       x]
 | Estimated Cycles:                        |                     (         )
@@ -85,7 +85,7 @@ test_lib_bench_output_format::my_group::bench_with_format for_comparison:"Anothe
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format implicit_default_with_wb
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -103,7 +103,7 @@ test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format 
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format implicit_default_with_cacheuse
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -122,7 +122,7 @@ test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format 
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format explicit_default_with_wb
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -140,7 +140,7 @@ test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format 
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format explicit_default_with_cacheuse
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -172,7 +172,7 @@ test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format 
   LLd Miss Rate:                           |N/A                  (*********)
   LL Miss Rate:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   L1 Hit Rate:                             |N/A                  (*********)
   LL Hit Rate:                             |N/A                  (*********)
@@ -206,7 +206,7 @@ test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format 
   LLd Miss Rate:                           |N/A                  (*********)
   LL Miss Rate:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   L1 Hit Rate:                             |N/A                  (*********)
   LL Hit Rate:                             |N/A                  (*********)
@@ -240,7 +240,7 @@ test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format 
   LL Miss Rate:                            |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format cache_hits
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format cache_hit_rates
   L1 Hit Rate:                             |N/A                  (*********)
@@ -261,7 +261,7 @@ test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format 
   LLd Miss Rate:                           |N/A                  (*********)
   LL Miss Rate:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   L1 Hit Rate:                             |N/A                  (*********)
   LL Hit Rate:                             |N/A                  (*********)
@@ -312,7 +312,7 @@ test_lib_bench_output_format::custom_format::bench_with_custom_format cachegrind
   DLmw:                                    |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
   Bc:                                      |N/A                  (*********)
@@ -339,7 +339,7 @@ test_lib_bench_output_format::custom_format::bench_with_custom_format cachegrind
   LLd Miss Rate:                           |N/A                  (*********)
   LL Miss Rate:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   L1 Hit Rate:                             |N/A                  (*********)
   LL Hit Rate:                             |N/A                  (*********)

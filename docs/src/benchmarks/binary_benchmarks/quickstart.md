@@ -62,7 +62,7 @@ presents you with something like the following:
 <pre><code class="hljs"><span style="color:#0A0">binary_benchmark::my_group::bench_binary</span> <span style="color:#0AA">some_id</span><span style="color:#0AA">:</span><b><span style="color:#00A">("foo.txt") -> target/release/my-foo foo.txt</span></b>
   Instructions:     <b>         342129</b>|N/A             (<span style="color:#555">*********</span>)
   L1 Hits:          <b>         457370</b>|N/A             (<span style="color:#555">*********</span>)
-  L2 Hits:          <b>            734</b>|N/A             (<span style="color:#555">*********</span>)
+  LL Hits:          <b>            734</b>|N/A             (<span style="color:#555">*********</span>)
   RAM Hits:         <b>           4096</b>|N/A             (<span style="color:#555">*********</span>)
   Total read+write: <b>         462200</b>|N/A             (<span style="color:#555">*********</span>)
   Estimated Cycles: <b>         604400</b>|N/A             (<span style="color:#555">*********</span>)

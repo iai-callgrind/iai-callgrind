@@ -1,7 +1,7 @@
 test_lib_bench_default_tool::my_group::default_tool callgrind
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -9,7 +9,7 @@ test_lib_bench_default_tool::my_group::default_tool cachegrind
   ======= CACHEGRIND ===================================================================
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -173,7 +173,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_another_tool callgrind_
   ======= CALLGRIND ====================================================================
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -190,7 +190,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_another_tool cachegrind
   ======= CACHEGRIND ===================================================================
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -212,7 +212,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_another_tool dhat_and_c
   ======= CALLGRIND ====================================================================
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -225,7 +225,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_another_tool memcheck_a
   ======= CACHEGRIND ===================================================================
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
