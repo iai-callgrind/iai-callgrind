@@ -1448,7 +1448,7 @@ impl Display for EventKind {
             Self::LLMissRate => f.write_str("LL Miss Rate"),
             Self::L1HitRate => f.write_str("L1 Hit Rate"),
             Self::LLHitRate => f.write_str("LL Hit Rate"),
-            Self::RamHitRate => f.write_str("Ram Hit Rate"),
+            Self::RamHitRate => f.write_str("RAM Hit Rate"),
             _ => write!(f, "{self:?}"),
         }
     }

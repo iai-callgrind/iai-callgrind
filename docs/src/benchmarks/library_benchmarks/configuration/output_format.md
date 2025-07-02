@@ -73,7 +73,7 @@ The Iai-Callgrind output will then show all cache metrics:
 <span style="color:#555">  </span>RAM Hits:                               <b>3</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hit Rate:                      <b>99.8730</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>LL Hit Rate:                      <b>0.00000</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>Ram Hit Rate:                     <b>0.12701</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>RAM Hit Rate:                     <b>0.12701</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                    <b>2362</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                    <b>2464</b>|N/A                  (<span style="color:#555">*********</span>)
 
