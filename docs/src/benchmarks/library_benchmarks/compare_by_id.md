@@ -49,63 +49,63 @@ Here's the benchmark output of the above example to see what is happening:
 <pre><code class="hljs"><span style="color:#0A0">my_benchmark::bubble_sort_group::bubble_sort_best_case</span> <span style="color:#0AA">case_2</span><span style="color:#0AA">:</span><b><span style="color:#00A">vec! [1, 2]</span></b>
   Instructions:     <b>             63</b>|N/A             (<span style="color:#555">*********</span>)
   L1 Hits:          <b>             86</b>|N/A             (<span style="color:#555">*********</span>)
-  L2 Hits:          <b>              1</b>|N/A             (<span style="color:#555">*********</span>)
+  LL Hits:          <b>              1</b>|N/A             (<span style="color:#555">*********</span>)
   RAM Hits:         <b>              4</b>|N/A             (<span style="color:#555">*********</span>)
   Total read+write: <b>             91</b>|N/A             (<span style="color:#555">*********</span>)
   Estimated Cycles: <b>            231</b>|N/A             (<span style="color:#555">*********</span>)
 <span style="color:#0A0">my_benchmark::bubble_sort_group::bubble_sort_best_case</span> <span style="color:#0AA">multiple_0</span><span style="color:#0AA">:</span><b><span style="color:#00A">vec! [1, 2, 3]</span></b>
   Instructions:     <b>             94</b>|N/A             (<span style="color:#555">*********</span>)
   L1 Hits:          <b>            123</b>|N/A             (<span style="color:#555">*********</span>)
-  L2 Hits:          <b>              1</b>|N/A             (<span style="color:#555">*********</span>)
+  LL Hits:          <b>              1</b>|N/A             (<span style="color:#555">*********</span>)
   RAM Hits:         <b>              4</b>|N/A             (<span style="color:#555">*********</span>)
   Total read+write: <b>            128</b>|N/A             (<span style="color:#555">*********</span>)
   Estimated Cycles: <b>            268</b>|N/A             (<span style="color:#555">*********</span>)
 <span style="color:#0A0">my_benchmark::bubble_sort_group::bubble_sort_best_case</span> <span style="color:#0AA">multiple_1</span><span style="color:#0AA">:</span><b><span style="color:#00A">vec! [1, 2, 3, 4]</span></b>
   Instructions:     <b>            136</b>|N/A             (<span style="color:#555">*********</span>)
   L1 Hits:          <b>            174</b>|N/A             (<span style="color:#555">*********</span>)
-  L2 Hits:          <b>              1</b>|N/A             (<span style="color:#555">*********</span>)
+  LL Hits:          <b>              1</b>|N/A             (<span style="color:#555">*********</span>)
   RAM Hits:         <b>              4</b>|N/A             (<span style="color:#555">*********</span>)
   Total read+write: <b>            179</b>|N/A             (<span style="color:#555">*********</span>)
   Estimated Cycles: <b>            319</b>|N/A             (<span style="color:#555">*********</span>)
 <span style="color:#0A0">my_benchmark::bubble_sort_group::bubble_sort_worst_case</span> <span style="color:#0AA">case_2</span><span style="color:#0AA">:</span><b><span style="color:#00A">vec! [2, 1]</span></b>
   Instructions:     <b>             66</b>|N/A             (<span style="color:#555">*********</span>)
   L1 Hits:          <b>             91</b>|N/A             (<span style="color:#555">*********</span>)
-  L2 Hits:          <b>              1</b>|N/A             (<span style="color:#555">*********</span>)
+  LL Hits:          <b>              1</b>|N/A             (<span style="color:#555">*********</span>)
   RAM Hits:         <b>              4</b>|N/A             (<span style="color:#555">*********</span>)
   Total read+write: <b>             96</b>|N/A             (<span style="color:#555">*********</span>)
   Estimated Cycles: <b>            236</b>|N/A             (<span style="color:#555">*********</span>)
   <b><span style="color:#A50">Comparison with</span></b> <span style="color:#0A0">bubble_sort_best_case</span> <span style="color:#0AA">case_2</span>:<b><span style="color:#00A">vec! [1, 2]</span></b>
   Instructions:     <b>             63</b>|66              (<b><span style="color:#42c142">-4.54545%</span></b>) [<b><span style="color:#42c142">-1.04762x</span></b>]
   L1 Hits:          <b>             86</b>|91              (<b><span style="color:#42c142">-5.49451%</span></b>) [<b><span style="color:#42c142">-1.05814x</span></b>]
-  L2 Hits:          <b>              1</b>|1               (<span style="color:#555">No change</span>)
+  LL Hits:          <b>              1</b>|1               (<span style="color:#555">No change</span>)
   RAM Hits:         <b>              4</b>|4               (<span style="color:#555">No change</span>)
   Total read+write: <b>             91</b>|96              (<b><span style="color:#42c142">-5.20833%</span></b>) [<b><span style="color:#42c142">-1.05495x</span></b>]
   Estimated Cycles: <b>            231</b>|236             (<b><span style="color:#42c142">-2.11864%</span></b>) [<b><span style="color:#42c142">-1.02165x</span></b>]
 <span style="color:#0A0">my_benchmark::bubble_sort_group::bubble_sort_worst_case</span> <span style="color:#0AA">multiple_0</span><span style="color:#0AA">:</span><b><span style="color:#00A">vec! [3, 2, 1]</span></b>
   Instructions:     <b>            103</b>|N/A             (<span style="color:#555">*********</span>)
   L1 Hits:          <b>            138</b>|N/A             (<span style="color:#555">*********</span>)
-  L2 Hits:          <b>              1</b>|N/A             (<span style="color:#555">*********</span>)
+  LL Hits:          <b>              1</b>|N/A             (<span style="color:#555">*********</span>)
   RAM Hits:         <b>              4</b>|N/A             (<span style="color:#555">*********</span>)
   Total read+write: <b>            143</b>|N/A             (<span style="color:#555">*********</span>)
   Estimated Cycles: <b>            283</b>|N/A             (<span style="color:#555">*********</span>)
   <b><span style="color:#A50">Comparison with</span></b> <span style="color:#0A0">bubble_sort_best_case</span> <span style="color:#0AA">multiple_0</span>:<b><span style="color:#00A">vec! [1, 2, 3]</span></b>
   Instructions:     <b>             94</b>|103             (<b><span style="color:#42c142">-8.73786%</span></b>) [<b><span style="color:#42c142">-1.09574x</span></b>]
   L1 Hits:          <b>            123</b>|138             (<b><span style="color:#42c142">-10.8696%</span></b>) [<b><span style="color:#42c142">-1.12195x</span></b>]
-  L2 Hits:          <b>              1</b>|1               (<span style="color:#555">No change</span>)
+  LL Hits:          <b>              1</b>|1               (<span style="color:#555">No change</span>)
   RAM Hits:         <b>              4</b>|4               (<span style="color:#555">No change</span>)
   Total read+write: <b>            128</b>|143             (<b><span style="color:#42c142">-10.4895%</span></b>) [<b><span style="color:#42c142">-1.11719x</span></b>]
   Estimated Cycles: <b>            268</b>|283             (<b><span style="color:#42c142">-5.30035%</span></b>) [<b><span style="color:#42c142">-1.05597x</span></b>]
 <span style="color:#0A0">my_benchmark::bubble_sort_group::bubble_sort_worst_case</span> <span style="color:#0AA">multiple_1</span><span style="color:#0AA">:</span><b><span style="color:#00A">vec! [4, 3, 2, 1]</span></b>
   Instructions:     <b>            154</b>|N/A             (<span style="color:#555">*********</span>)
   L1 Hits:          <b>            204</b>|N/A             (<span style="color:#555">*********</span>)
-  L2 Hits:          <b>              1</b>|N/A             (<span style="color:#555">*********</span>)
+  LL Hits:          <b>              1</b>|N/A             (<span style="color:#555">*********</span>)
   RAM Hits:         <b>              4</b>|N/A             (<span style="color:#555">*********</span>)
   Total read+write: <b>            209</b>|N/A             (<span style="color:#555">*********</span>)
   Estimated Cycles: <b>            349</b>|N/A             (<span style="color:#555">*********</span>)
   <b><span style="color:#A50">Comparison with</span></b> <span style="color:#0A0">bubble_sort_best_case</span> <span style="color:#0AA">multiple_1</span>:<b><span style="color:#00A">vec! [1, 2, 3, 4]</span></b>
   Instructions:     <b>            136</b>|154             (<b><span style="color:#42c142">-11.6883%</span></b>) [<b><span style="color:#42c142">-1.13235x</span></b>]
   L1 Hits:          <b>            174</b>|204             (<b><span style="color:#42c142">-14.7059%</span></b>) [<b><span style="color:#42c142">-1.17241x</span></b>]
-  L2 Hits:          <b>              1</b>|1               (<span style="color:#555">No change</span>)
+  LL Hits:          <b>              1</b>|1               (<span style="color:#555">No change</span>)
   RAM Hits:         <b>              4</b>|4               (<span style="color:#555">No change</span>)
   Total read+write: <b>            179</b>|209             (<b><span style="color:#42c142">-14.3541%</span></b>) [<b><span style="color:#42c142">-1.16760x</span></b>]
   Estimated Cycles: <b>            319</b>|349             (<b><span style="color:#42c142">-8.59599%</span></b>) [<b><span style="color:#42c142">-1.09404x</span></b>]

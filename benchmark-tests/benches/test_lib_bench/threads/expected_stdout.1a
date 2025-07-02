@@ -6,7 +6,7 @@ Number of primes found in the range 0 to 20000: 2262
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -14,7 +14,7 @@ Number of primes found in the range 0 to 20000: 2262
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -22,14 +22,14 @@ Number of primes found in the range 0 to 20000: 2262
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
   ## Total
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -65,7 +65,7 @@ Number of primes found in the range 0 to 30000: 3245
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -73,7 +73,7 @@ Number of primes found in the range 0 to 30000: 3245
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -81,7 +81,7 @@ Number of primes found in the range 0 to 30000: 3245
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -89,14 +89,14 @@ Number of primes found in the range 0 to 30000: 3245
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
   ## Total
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -132,7 +132,7 @@ Number of primes found in the range 0 to 20000: 2262
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -140,7 +140,7 @@ Number of primes found in the range 0 to 20000: 2262
   Command:             target/release/thread 2
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -148,7 +148,7 @@ Number of primes found in the range 0 to 20000: 2262
   Command:             target/release/thread 2
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -156,14 +156,14 @@ Number of primes found in the range 0 to 20000: 2262
   Command:             target/release/thread 2
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
   ## Total
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -249,7 +249,7 @@ Number of primes found in the range 0 to 20000: 2262
   ------- CALLGRIND
   Instructions:                            |                     (-       %) [-       x]
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (-       %) [-       x]
   Estimated Cycles:                        |                     (         )
@@ -280,7 +280,7 @@ Number of primes found in the range 0 to 30000: 3245
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -288,7 +288,7 @@ Number of primes found in the range 0 to 30000: 3245
   Command:             target/release/thread 3
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -296,7 +296,7 @@ Number of primes found in the range 0 to 30000: 3245
   Command:             target/release/thread 3
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -304,7 +304,7 @@ Number of primes found in the range 0 to 30000: 3245
   Command:             target/release/thread 3
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -312,14 +312,14 @@ Number of primes found in the range 0 to 30000: 3245
   Command:             target/release/thread 3
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
   ## Total
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -405,7 +405,7 @@ Number of primes found in the range 0 to 30000: 3245
   ------- CALLGRIND
   Instructions:                            |                     (-       %) [-       x]
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (-       %) [-       x]
   Estimated Cycles:                        |                     (         )
@@ -436,7 +436,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -444,7 +444,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -452,14 +452,14 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
   ## Total
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -495,7 +495,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   Command: <__COMMAND__>
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -503,7 +503,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -511,7 +511,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -519,14 +519,14 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
   ## Total
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)

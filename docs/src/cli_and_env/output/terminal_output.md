@@ -68,7 +68,7 @@ Error output during teardown: 20
 <span style="color:#A50">-</span> <span style="color:#A50">end of stdout/stderr</span>
   Instructions:     <b>            851</b>|N/A             (<span style="color:#555">*********</span>)
   L1 Hits:          <b>           1193</b>|N/A             (<span style="color:#555">*********</span>)
-  L2 Hits:          <b>              5</b>|N/A             (<span style="color:#555">*********</span>)
+  LL Hits:          <b>              5</b>|N/A             (<span style="color:#555">*********</span>)
   RAM Hits:         <b>             66</b>|N/A             (<span style="color:#555">*********</span>)
   Total read+write: <b>           1264</b>|N/A             (<span style="color:#555">*********</span>)
   Estimated Cycles: <b>           3528</b>|N/A             (<span style="color:#555">*********</span>)

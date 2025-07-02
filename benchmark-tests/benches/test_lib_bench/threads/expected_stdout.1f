@@ -5,7 +5,7 @@ test_lib_bench_threads::bench_group::bench_find_primes_multi_thread two:2
   Baselines:                            foo|default
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -13,7 +13,7 @@ test_lib_bench_threads::bench_group::bench_find_primes_multi_thread two:2
   Command: <__COMMAND__>
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -21,14 +21,14 @@ test_lib_bench_threads::bench_group::bench_find_primes_multi_thread two:2
   Command: <__COMMAND__>
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
   ## Total
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -63,7 +63,7 @@ test_lib_bench_threads::bench_group::bench_find_primes_multi_thread three:3
   Baselines:                            foo|default
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -71,7 +71,7 @@ test_lib_bench_threads::bench_group::bench_find_primes_multi_thread three:3
   Command: <__COMMAND__>
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -79,7 +79,7 @@ test_lib_bench_threads::bench_group::bench_find_primes_multi_thread three:3
   Command: <__COMMAND__>
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -87,14 +87,14 @@ test_lib_bench_threads::bench_group::bench_find_primes_multi_thread three:3
   Command: <__COMMAND__>
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
   ## Total
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -129,7 +129,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess two:2
   Baselines:                            foo|default
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -137,7 +137,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess two:2
   Command:             target/release/thread 2
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -145,7 +145,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess two:2
   Command:             target/release/thread 2
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -153,14 +153,14 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess two:2
   Command:             target/release/thread 2
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
   ## Total
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -246,7 +246,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess two:2
   ------- CALLGRIND
   Instructions:                            |                     (-       %) [-       x]
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (-       %) [-       x]
   Estimated Cycles:                        |                     (         )
@@ -276,7 +276,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess three:3
   Baselines:                            foo|default
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -284,7 +284,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess three:3
   Command:             target/release/thread 3
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -292,7 +292,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess three:3
   Command:             target/release/thread 3
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -300,7 +300,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess three:3
   Command:             target/release/thread 3
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -308,14 +308,14 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess three:3
   Command:             target/release/thread 3
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
   ## Total
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -401,7 +401,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_subprocess three:3
   ------- CALLGRIND
   Instructions:                            |                     (-       %) [-       x]
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (-       %) [-       x]
   Estimated Cycles:                        |                     (         )
@@ -431,7 +431,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_thread
   Baselines:                            foo|default
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -439,7 +439,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_thread
   Command: <__COMMAND__>
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -447,14 +447,14 @@ test_lib_bench_threads::bench_group::bench_thread_in_thread
   Command: <__COMMAND__>
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
   ## Total
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -489,7 +489,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_thread_in_subprocess
   Baselines:                            foo|default
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -497,7 +497,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_thread_in_subprocess
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -505,7 +505,7 @@ test_lib_bench_threads::bench_group::bench_thread_in_thread_in_subprocess
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -513,14 +513,14 @@ test_lib_bench_threads::bench_group::bench_thread_in_thread_in_subprocess
   Command:             target/release/thread --thread-in-thread
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
   ## Total
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )

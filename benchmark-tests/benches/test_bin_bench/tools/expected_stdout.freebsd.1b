@@ -6,7 +6,7 @@ test_bin_bench_tools::bench_group::bench_subprocess trace_children:() -> target/
   Command:             target/release/subprocess <__ABS_PATH__>/sort
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -14,14 +14,14 @@ test_bin_bench_tools::bench_group::bench_subprocess trace_children:() -> target/
   Command:             target/release/sort
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
   ## Total
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -128,7 +128,7 @@ test_bin_bench_tools::bench_group::bench_subprocess no_trace_children:() -> targ
 - end of stdout/stderr
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )

@@ -2,7 +2,7 @@ test_lib_bench_cachegrind::my_group::bench_default_tool no_config:vec! [3, 2, 1]
   ======= CACHEGRIND ===================================================================
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -13,7 +13,7 @@ test_lib_bench_cachegrind::my_group::bench_default_tool callgrind_config:vec! [3
   ======= CACHEGRIND ===================================================================
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -23,14 +23,14 @@ test_lib_bench_cachegrind::my_group::test_config_overwrite default_config:setup_
   ======= CACHEGRIND ===================================================================
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
   ======= CALLGRIND ====================================================================
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -40,7 +40,7 @@ test_lib_bench_cachegrind::my_group::test_config_overwrite overwrite_default_cac
   ======= CALLGRIND ====================================================================
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -48,7 +48,7 @@ test_lib_bench_cachegrind::my_group::test_config_overwrite overwrite_default_cal
   ======= CACHEGRIND ===================================================================
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -61,7 +61,7 @@ test_lib_bench_cachegrind::my_group::manual_cachegrind_setup set_instr_at_start:
   ======= CACHEGRIND ===================================================================
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )

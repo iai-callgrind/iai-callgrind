@@ -65,7 +65,7 @@ Running the benchmark from above the first time results in the following output:
 <pre><code class="hljs"><span style="color:#0A0">lib_bench_regression::my_group::bench_library</span> <span style="color:#0AA">worst_case</span><span style="color:#0AA">:</span><b><span style="color:#00A">vec! [3, 2, 1]</span></b>
 <span style="color:#555">  </span>Instructions:                         <b>152</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                              <b>201</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                               <b>5</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                     <b>206</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                     <b>376</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -79,7 +79,7 @@ similar to this:
 <pre><code class="hljs"><span style="color:#0A0">lib_bench_regression::my_group::bench_library</span> <span style="color:#0AA">worst_case</span><span style="color:#0AA">:</span><b><span style="color:#00A">vec! [3, 2, 1]</span></b>
 <span style="color:#555">  </span>Instructions:                         <b>264</b>|152                  (<b><span style="color:#F55">+73.6842%</span></b>) [<b><span style="color:#F55">+1.73684x</span></b>]
 <span style="color:#555">  </span>L1 Hits:                              <b>341</b>|201                  (<b><span style="color:#F55">+69.6517%</span></b>) [<b><span style="color:#F55">+1.69652x</span></b>]
-<span style="color:#555">  </span>L2 Hits:                                <b>0</b>|0                    (<span style="color:#555">No change</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>0</b>|0                    (<span style="color:#555">No change</span>)
 <span style="color:#555">  </span>RAM Hits:                               <b>6</b>|5                    (<b><span style="color:#F55">+20.0000%</span></b>) [<b><span style="color:#F55">+1.20000x</span></b>]
 <span style="color:#555">  </span>Total read+write:                     <b>347</b>|206                  (<b><span style="color:#F55">+68.4466%</span></b>) [<b><span style="color:#F55">+1.68447x</span></b>]
 <span style="color:#555">  </span>Estimated Cycles:                     <b>551</b>|376                  (<b><span style="color:#F55">+46.5426%</span></b>) [<b><span style="color:#F55">+1.46543x</span></b>]

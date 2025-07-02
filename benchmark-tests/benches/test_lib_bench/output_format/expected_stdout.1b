@@ -5,7 +5,7 @@ Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -27,7 +27,7 @@ Number of primes found in the range 0 to 30000: 3245
 | Command: <__COMMAND__>
 | Instructions:                            |                     (No change)
 | L1 Hits:                                 |                     (         )
-| L2 Hits:                                 |                     (         )
+| LL Hits:                                 |                     (         )
 | RAM Hits:                                |                     (         )
 | Total read+write:                        |                     (No change)
 | Estimated Cycles:                        |                     (         )
@@ -35,7 +35,7 @@ Number of primes found in the range 0 to 30000: 3245
 | Command: <__COMMAND__>
 | Instructions:                            |                     (No change)
 | L1 Hits:                                 |                     (         )
-| L2 Hits:                                 |                     (         )
+| LL Hits:                                 |                     (         )
 | RAM Hits:                                |                     (         )
 | Total read+write:                        |                     (No change)
 | Estimated Cycles:                        |                     (         )
@@ -43,7 +43,7 @@ Number of primes found in the range 0 to 30000: 3245
 | Command: <__COMMAND__>
 | Instructions:                            |                     (No change)
 | L1 Hits:                                 |                     (         )
-| L2 Hits:                                 |                     (         )
+| LL Hits:                                 |                     (         )
 | RAM Hits:                                |                     (         )
 | Total read+write:                        |                     (No change)
 | Estimated Cycles:                        |                     (         )
@@ -51,14 +51,14 @@ Number of primes found in the range 0 to 30000: 3245
 | Command: <__COMMAND__>
 | Instructions:                            |                     (No change)
 | L1 Hits:                                 |                     (         )
-| L2 Hits:                                 |                     (         )
+| LL Hits:                                 |                     (         )
 | RAM Hits:                                |                     (         )
 | Total read+write:                        |                     (No change)
 | Estimated Cycles:                        |                     (         )
 |-## Total
 | Instructions:                            |                     (No change)
 | L1 Hits:                                 |                     (         )
-| L2 Hits:                                 |                     (         )
+| LL Hits:                                 |                     (         )
 | RAM Hits:                                |                     (         )
 | Total read+write:                        |                     (No change)
 | Estimated Cycles:                        |                     (         )
@@ -75,7 +75,7 @@ Number of primes found in the range 0 to 30000: 3245
 |-------- CALLGRIND
 | Instructions:                            |                     (-       %) [-       x]
 | L1 Hits:                                 |                     (         )
-| L2 Hits:                                 |                     (         )
+| LL Hits:                                 |                     (         )
 | RAM Hits:                                |                     (         )
 | Total read+write:                        |                     (-       %) [-       x]
 | Estimated Cycles:                        |                     (         )
@@ -93,7 +93,7 @@ Hello world!
 - end of stdout/stderr
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -113,7 +113,7 @@ Hello world!
 - end of stdout/stderr
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -134,7 +134,7 @@ Hello world!
 - end of stdout/stderr
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -154,7 +154,7 @@ Hello world!
 - end of stdout/stderr
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -183,18 +183,18 @@ Hello world!
   DLmr:                                    |                     (No change)
   DLmw:                                    |                     (No change)
   I1 Miss Rate:                            |                     (No change)
-  D1 Miss Rate:                            |                     (No change)
   LLi Miss Rate:                           |                     (No change)
+  D1 Miss Rate:                            |                     (No change)
   LLd Miss Rate:                           |                     (No change)
   LL Miss Rate:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (No change)
-  Estimated Cycles:                        |                     (         )
   L1 Hit Rate:                             |                     (No change)
   LL Hit Rate:                             |                     (No change)
-  Ram Hit Rate:                            |                     (No change)
+  RAM Hit Rate:                            |                     (No change)
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
   SysCount:                                |                     (No change)
   SysTime:                                 |                     (         )
   SysCpuTime:                              |                     (         )
@@ -219,18 +219,18 @@ Hello world!
   DLmr:                                    |                     (No change)
   DLmw:                                    |                     (No change)
   I1 Miss Rate:                            |                     (No change)
-  D1 Miss Rate:                            |                     (No change)
   LLi Miss Rate:                           |                     (No change)
+  D1 Miss Rate:                            |                     (No change)
   LLd Miss Rate:                           |                     (No change)
   LL Miss Rate:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (No change)
-  Estimated Cycles:                        |                     (         )
   L1 Hit Rate:                             |                     (No change)
   LL Hit Rate:                             |                     (No change)
-  Ram Hit Rate:                            |                     (No change)
+  RAM Hit Rate:                            |                     (No change)
+  Total read+write:                        |                     (No change)
+  Estimated Cycles:                        |                     (         )
   SysCount:                                |                     (No change)
   SysTime:                                 |                     (         )
   SysCpuTime:                              |                     (         )
@@ -264,14 +264,14 @@ test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format 
 Hello world!
 - end of stdout/stderr
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format cache_hit_rates
 Hello world!
 - end of stdout/stderr
   L1 Hit Rate:                             |                     (No change)
   LL Hit Rate:                             |                     (No change)
-  Ram Hit Rate:                            |                     (No change)
+  RAM Hit Rate:                            |                     (No change)
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format cache_sim
 Hello world!
 - end of stdout/stderr
@@ -289,12 +289,12 @@ Hello world!
   LLd Miss Rate:                           |                     (No change)
   LL Miss Rate:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
-  Total read+write:                        |                     (No change)
   L1 Hit Rate:                             |                     (No change)
   LL Hit Rate:                             |                     (No change)
-  Ram Hit Rate:                            |                     (No change)
+  RAM Hit Rate:                            |                     (No change)
+  Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
 test_lib_bench_output_format::custom_format::bench_with_custom_callgrind_format cache_use
 Hello world!
@@ -358,7 +358,7 @@ Hello world!
   DLmw:                                    |                     (No change)
   Total read+write:                        |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Estimated Cycles:                        |                     (         )
   Bc:                                      |                     (No change)
@@ -367,7 +367,7 @@ Hello world!
   Bim:                                     |                     (No change)
   L1 Hit Rate:                             |                     (No change)
   LL Hit Rate:                             |                     (No change)
-  Ram Hit Rate:                            |                     (No change)
+  RAM Hit Rate:                            |                     (No change)
 test_lib_bench_output_format::custom_format::bench_with_custom_format cachegrind_all_default_order
   ======= CACHEGRIND ===================================================================
 Hello world!
@@ -387,11 +387,11 @@ Hello world!
   LLd Miss Rate:                           |                     (No change)
   LL Miss Rate:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   L1 Hit Rate:                             |                     (No change)
   LL Hit Rate:                             |                     (No change)
-  Ram Hit Rate:                            |                     (No change)
+  RAM Hit Rate:                            |                     (No change)
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
   Bc:                                      |                     (No change)

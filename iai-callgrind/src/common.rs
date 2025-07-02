@@ -820,7 +820,7 @@ impl Callgrind {
     ///   DLmr:                                   3|3                    (No change)
     ///   DLmw:                                   0|0                    (No change)
     ///   L1 Hits:                             1775|1775                 (No change)
-    ///   L2 Hits:                               10|10                   (No change)
+    ///   LL Hits:                               10|10                   (No change)
     ///   RAM Hits:                              56|56                   (No change)
     ///   Total read+write:                    1841|1841                 (No change)
     ///   Estimated Cycles:                    3785|3785                 (No change)
@@ -1498,7 +1498,7 @@ impl OutputFormat {
     /// benchmark_file::group_name::function_name id:DESCRIPTION
     ///   Instructions:              352135|352135          (No change)
     ///   L1 Hits:                   470117|470117          (No change)
-    ///   L2 Hits:                      748|748             (No change)
+    ///   LL Hits:                      748|748             (No change)
     ///   RAM Hits:                    4112|4112            (No change)
     ///   Total read+write:          474977|474977          (No change)
     ///   Estimated Cycles:          617777|617777          (No change)
@@ -1587,7 +1587,7 @@ impl OutputFormat {
     ///   Command:            target/release/deps/my_benchmark-08fe8356975cd1af
     ///   Instructions:                     0|N/A             (*********)
     ///   L1 Hits:                          0|N/A             (*********)
-    ///   L2 Hits:                          0|N/A             (*********)
+    ///   LL Hits:                          0|N/A             (*********)
     ///   RAM Hits:                         0|N/A             (*********)
     ///   Total read+write:                 0|N/A             (*********)
     ///   Estimated Cycles:                 0|N/A             (*********)
@@ -1595,14 +1595,14 @@ impl OutputFormat {
     ///   Command:            target/release/deps/my_benchmark-08fe8356975cd1af
     ///   Instructions:                  3905|N/A             (*********)
     ///   L1 Hits:                       4992|N/A             (*********)
-    ///   L2 Hits:                          0|N/A             (*********)
+    ///   LL Hits:                          0|N/A             (*********)
     ///   RAM Hits:                       464|N/A             (*********)
     ///   Total read+write:              5456|N/A             (*********)
     ///   Estimated Cycles:             21232|N/A             (*********)
     ///   ## Total
     ///   Instructions:                  3905|N/A             (*********)
     ///   L1 Hits:                       4992|N/A             (*********)
-    ///   L2 Hits:                          0|N/A             (*********)
+    ///   LL Hits:                          0|N/A             (*********)
     ///   RAM Hits:                       464|N/A             (*********)
     ///   Total read+write:              5456|N/A             (*********)
     ///   Estimated Cycles:             21232|N/A             (*********)
@@ -1614,7 +1614,7 @@ impl OutputFormat {
     /// my_benchmark::some_group::bench_thread
     ///   Instructions:                  3905|N/A             (*********)
     ///   L1 Hits:                       4992|N/A             (*********)
-    ///   L2 Hits:                          0|N/A             (*********)
+    ///   LL Hits:                          0|N/A             (*********)
     ///   RAM Hits:                       464|N/A             (*********)
     ///   Total read+write:              5456|N/A             (*********)
     ///   Estimated Cycles:             21232|N/A             (*********)
@@ -1649,7 +1649,7 @@ impl OutputFormat {
     /// | Command:            target/release/deps/test_lib_bench_threads-b0b85adec9a45de1
     /// | Instructions:                       4697|4697                 (No change)
     /// | L1 Hits:                            6420|6420                 (No change)
-    /// | L2 Hits:                              17|17                   (No change)
+    /// | LL Hits:                              17|17                   (No change)
     /// | RAM Hits:                            202|202                  (No change)
     /// | Total read+write:                   6639|6639                 (No change)
     /// | Estimated Cycles:                  13575|13575                (No change)
@@ -1657,7 +1657,7 @@ impl OutputFormat {
     /// | Command:            target/release/thread 3
     /// | Instructions:                      35452|35452                (No change)
     /// | L1 Hits:                           77367|77367                (No change)
-    /// | L2 Hits:                             610|610                  (No change)
+    /// | LL Hits:                             610|610                  (No change)
     /// | RAM Hits:                            784|784                  (No change)
     /// | Total read+write:                  78761|78761                (No change)
     /// | Estimated Cycles:                 107857|107857               (No change)
@@ -1665,7 +1665,7 @@ impl OutputFormat {
     /// | Command:            target/release/thread 3
     /// | Instructions:                    2460507|2460507              (No change)
     /// | L1 Hits:                         2534939|2534939              (No change)
-    /// | L2 Hits:                              17|17                   (No change)
+    /// | LL Hits:                              17|17                   (No change)
     /// | RAM Hits:                            186|186                  (No change)
     /// | Total read+write:                2535142|2535142              (No change)
     /// | Estimated Cycles:                2541534|2541534              (No change)
@@ -1673,7 +1673,7 @@ impl OutputFormat {
     /// | Command:            target/release/thread 3
     /// | Instructions:                    3650414|3650414              (No change)
     /// | L1 Hits:                         3724275|3724275              (No change)
-    /// | L2 Hits:                              21|21                   (No change)
+    /// | LL Hits:                              21|21                   (No change)
     /// | RAM Hits:                            130|130                  (No change)
     /// | Total read+write:                3724426|3724426              (No change)
     /// | Estimated Cycles:                3728930|3728930              (No change)
@@ -1681,14 +1681,14 @@ impl OutputFormat {
     /// | Command:            target/release/thread 3
     /// | Instructions:                    4349846|4349846              (No change)
     /// | L1 Hits:                         4423438|4423438              (No change)
-    /// | L2 Hits:                              24|24                   (No change)
+    /// | LL Hits:                              24|24                   (No change)
     /// | RAM Hits:                            125|125                  (No change)
     /// | Total read+write:                4423587|4423587              (No change)
     /// | Estimated Cycles:                4427933|4427933              (No change)
     /// |-## Total
     /// | Instructions:                   10500916|10500916             (No change)
     /// | L1 Hits:                        10766439|10766439             (No change)
-    /// | L2 Hits:                             689|689                  (No change)
+    /// | LL Hits:                             689|689                  (No change)
     /// | RAM Hits:                           1427|1427                 (No change)
     /// | Total read+write:               10768555|10768555             (No change)
     /// | Estimated Cycles:               10819829|10819829             (No change)
@@ -1725,7 +1725,7 @@ impl OutputFormat {
     /// |-Comparison with bench_find_primes_multi_thread three:3
     /// | Instructions:                   10494117|10500916             (-0.06475%) [-1.00065x]
     /// | L1 Hits:                        10757259|10766439             (-0.08526%) [-1.00085x]
-    /// | L2 Hits:                             601|689                  (-12.7721%) [-1.14642x]
+    /// | LL Hits:                             601|689                  (-12.7721%) [-1.14642x]
     /// | RAM Hits:                           1189|1427                 (-16.6783%) [-1.20017x]
     /// | Total read+write:               10759049|10768555             (-0.08828%) [-1.00088x]
     /// | Estimated Cycles:               10801879|10819829             (-0.16590%) [-1.00166x]

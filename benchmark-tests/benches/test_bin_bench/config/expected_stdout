@@ -7,7 +7,7 @@ Found env: 'COMMAND_ENV' with value '5'
 - end of stdout/stderr
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -31,7 +31,7 @@ Found env: 'COMMAND_ENV' with value '5'
 - end of stdout/stderr
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)

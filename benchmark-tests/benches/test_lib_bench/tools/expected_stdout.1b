@@ -2,7 +2,7 @@ test_lib_bench_tools::bench_group::bench_bubble_sort_allocate
   ======= CALLGRIND ====================================================================
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -41,7 +41,7 @@ test_lib_bench_tools::bench_group::bench_subprocess trace_children
   Command: <__COMMAND__>
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -49,14 +49,14 @@ test_lib_bench_tools::bench_group::bench_subprocess trace_children
   Command:             target/release/sort
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
   ## Total
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -160,7 +160,7 @@ test_lib_bench_tools::bench_group::bench_subprocess no_trace_children
   ======= CALLGRIND ====================================================================
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -197,7 +197,7 @@ test_lib_bench_tools::bench_group::bench_bubble_sort empty:vec! []
   ======= CALLGRIND ====================================================================
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -234,7 +234,7 @@ test_lib_bench_tools::bench_group::bench_bubble_sort worst_case_4000:setup_worst
   ======= CALLGRIND ====================================================================
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
@@ -271,7 +271,7 @@ test_lib_bench_tools::bench_group::bad_memory
   ======= CALLGRIND ====================================================================
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
-  L2 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )

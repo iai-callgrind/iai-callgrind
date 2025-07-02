@@ -134,7 +134,7 @@ If the original output is
 test_bin_bench_foo::group::function id:() -> target/release/echo
   Instructions:                   1|N/A             (*********)
   L1 Hits:                        2|N/A             (*********)
-  L2 Hits:                        3|N/A             (*********)
+  LL Hits:                        3|N/A             (*********)
   RAM Hits:                       4|N/A             (*********)
   Total read+write:               5|N/A             (*********)
   Estimated Cycles:               6|N/A             (*********)
@@ -146,7 +146,7 @@ then the expected stdout is
 test_bin_bench_foo::group::function id:() -> target/release/echo
   Instructions:                    |N/A             (*********)
   L1 Hits:                         |N/A             (*********)
-  L2 Hits:                         |N/A             (*********)
+  LL Hits:                         |N/A             (*********)
   RAM Hits:                        |N/A             (*********)
   Total read+write:                |N/A             (*********)
   Estimated Cycles:                |N/A             (*********)
@@ -168,7 +168,7 @@ Cycles` change reports as seen below). Here the second run of the above benchmar
 test_bin_bench_foo::group::function id:() -> target/release/echo
   Instructions:                    |                (No change)
   L1 Hits:                         |                (No change)
-  L2 Hits:                         |                (         )
+  LL Hits:                         |                (         )
   RAM Hits:                        |                (         )
   Total read+write:                |                (No change)
   Estimated Cycles:                |                (         )

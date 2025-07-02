@@ -1,7 +1,7 @@
 test_lib_bench_default_tool::my_group::default_tool callgrind
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -9,7 +9,7 @@ test_lib_bench_default_tool::my_group::default_tool cachegrind
   ======= CACHEGRIND ===================================================================
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -173,7 +173,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_another_tool callgrind_
   ======= CALLGRIND ====================================================================
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -190,7 +190,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_another_tool cachegrind
   ======= CACHEGRIND ===================================================================
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -212,7 +212,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_another_tool dhat_and_c
   ======= CALLGRIND ====================================================================
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
@@ -225,7 +225,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_another_tool memcheck_a
   ======= CACHEGRIND ===================================================================
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
-  L2 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)

@@ -604,7 +604,7 @@ impl BenchmarkOutput {
                 };
                 write!(string, "{desc}{comp1}|{comp2}").unwrap();
 
-                // RAM Hits (and EstimatedCycles, L1, L2 Hits) events are unreliable across
+                // RAM Hits (and EstimatedCycles, L1, LL Hits) events are unreliable across
                 // different systems/toolchains and deviate by a few counts up or down. So to keep
                 // the output comparison more reliable we change this line from (for example)
                 //
@@ -624,7 +624,7 @@ impl BenchmarkOutput {
                 //   RAM Hits:                |N/A             (*********)
                 if desc.starts_with("RAM Hits")
                     || desc.starts_with("Estimated Cycles")
-                    || desc.starts_with("L2 Hits")
+                    || desc.starts_with("LL Hits")
                     || desc.starts_with("L1 Hits")
                     || desc.starts_with("SysTime")
                     || desc.starts_with("SysCpuTime")

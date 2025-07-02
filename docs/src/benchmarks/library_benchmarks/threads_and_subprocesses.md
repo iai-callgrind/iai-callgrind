@@ -140,7 +140,7 @@ terminal output:
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                       <b>27305</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                            <b>66353</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                              <b>341</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                              <b>341</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>539</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                   <b>67233</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>86923</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -148,7 +148,7 @@ terminal output:
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                           <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                               <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -156,14 +156,14 @@ terminal output:
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                           <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                               <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span><span style="color:#A50">##</span> <b>Total</b>
 <span style="color:#555">  </span>Instructions:                       <b>27305</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                            <b>66353</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                              <b>341</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                              <b>341</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>539</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                   <b>67233</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>86923</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -213,7 +213,7 @@ threads are still zero:
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                       <b>27372</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                            <b>66431</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                              <b>343</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                              <b>343</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>538</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                   <b>67312</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>86976</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -221,7 +221,7 @@ threads are still zero:
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                           <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                               <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -229,14 +229,14 @@ threads are still zero:
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                           <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                               <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span><span style="color:#A50">##</span> <b>Total</b>
 <span style="color:#555">  </span>Instructions:                       <b>27372</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                            <b>66431</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                              <b>343</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                              <b>343</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>538</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                   <b>67312</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>86976</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -262,7 +262,7 @@ Now, running the benchmark does show the desired metrics:
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                       <b>27372</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                            <b>66431</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                              <b>343</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                              <b>343</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>538</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                   <b>67312</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>86976</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -270,7 +270,7 @@ Now, running the benchmark does show the desired metrics:
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                     <b>2460503</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>2534938</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                               <b>12</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>12</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>186</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                 <b>2535136</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>2541508</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -278,14 +278,14 @@ Now, running the benchmark does show the desired metrics:
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                     <b>3650410</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>3724286</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                                <b>4</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>4</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>130</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                 <b>3724420</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>3728856</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span><span style="color:#A50">##</span> <b>Total</b>
 <span style="color:#555">  </span>Instructions:                     <b>6138285</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>6325655</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                              <b>359</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                              <b>359</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>854</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                 <b>6326868</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>6357340</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -335,7 +335,7 @@ from `27372` to `404425`):
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                      <b>404425</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                           <b>570186</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                             <b>1307</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                             <b>1307</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                            <b>4856</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                  <b>576349</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                  <b>746681</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -343,7 +343,7 @@ from `27372` to `404425`):
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                     <b>2466864</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>2543314</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                               <b>81</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>81</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>409</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                 <b>2543804</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>2558034</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -351,14 +351,14 @@ from `27372` to `404425`):
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                     <b>3656729</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>3732802</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                               <b>31</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>31</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>201</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                 <b>3733034</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>3739992</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span><span style="color:#A50">##</span> <b>Total</b>
 <span style="color:#555">  </span>Instructions:                     <b>6528018</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>6846302</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                             <b>1419</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                             <b>1419</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                            <b>5466</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                 <b>6853187</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>7044707</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -421,7 +421,7 @@ threads:
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                       <b>27305</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                            <b>66352</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                              <b>344</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                              <b>344</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>537</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                   <b>67233</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>86867</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -429,7 +429,7 @@ threads:
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                     <b>2460501</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>2534935</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                               <b>13</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>13</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>185</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                 <b>2535133</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>2541475</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -437,14 +437,14 @@ threads:
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                     <b>3650408</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>3724285</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                                <b>1</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>1</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>131</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                 <b>3724417</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>3728875</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span><span style="color:#A50">##</span> <b>Total</b>
 <span style="color:#555">  </span>Instructions:                     <b>6138214</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>6325572</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                              <b>358</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                              <b>358</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>853</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                 <b>6326783</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>6357217</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -494,7 +494,7 @@ Altogether, running the benchmark will show:
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                           <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                               <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -502,7 +502,7 @@ Altogether, running the benchmark will show:
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                     <b>2460501</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>2534935</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                               <b>11</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>11</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>187</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                 <b>2535133</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>2541535</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -510,14 +510,14 @@ Altogether, running the benchmark will show:
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_threads-b85159a94ccb3851</span></b>
 <span style="color:#555">  </span>Instructions:                     <b>3650408</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>3724282</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                                <b>4</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>4</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>131</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                 <b>3724417</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>3728887</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span><span style="color:#A50">##</span> <b>Total</b>
 <span style="color:#555">  </span>Instructions:                     <b>6110909</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                          <b>6259217</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                               <b>15</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>15</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>318</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                 <b>6259550</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>6270422</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -627,7 +627,7 @@ output:
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_subprocess-a1b2e1eac5125819</span></b>
 <span style="color:#555">  </span>Instructions:                        <b>4467</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                             <b>6102</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                               <b>17</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>17</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>186</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                    <b>6305</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>12697</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -635,14 +635,14 @@ output:
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/cat /tmp/foo.txt</span></b>
 <span style="color:#555">  </span>Instructions:                           <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                               <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                       <b>0</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span><span style="color:#A50">##</span> <b>Total</b>
 <span style="color:#555">  </span>Instructions:                        <b>4467</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                             <b>6102</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                               <b>17</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>17</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>186</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                    <b>6305</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>12697</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -696,7 +696,7 @@ producing the desired output
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_subprocess-a1b2e1eac5125819</span></b>
 <span style="color:#555">  </span>Instructions:                        <b>4475</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                             <b>6112</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                               <b>14</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>14</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>187</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                    <b>6313</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>12727</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -704,14 +704,14 @@ producing the desired output
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/cat /tmp/foo.txt</span></b>
 <span style="color:#555">  </span>Instructions:                        <b>4019</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                             <b>5575</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                               <b>12</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>12</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>167</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                    <b>5754</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>11480</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span><span style="color:#A50">##</span> <b>Total</b>
 <span style="color:#555">  </span>Instructions:                        <b>8494</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                            <b>11687</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                               <b>26</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>26</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>354</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                   <b>12067</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>24207</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -787,7 +787,7 @@ Now, running the benchmark shows
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/deps/lib_bench_subprocess-a1b2e1eac5125819</span></b>
 <span style="color:#555">  </span>Instructions:                        <b>4467</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                             <b>6102</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                               <b>17</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>17</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>186</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                    <b>6305</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>12697</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -795,14 +795,14 @@ Now, running the benchmark shows
 <span style="color:#555">  </span>Command:             <b><span style="color:#00A">target/release/cat /tmp/foo.txt</span></b>
 <span style="color:#555">  </span>Instructions:                        <b>2429</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                             <b>3406</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                                <b>8</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                                <b>8</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>138</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                    <b>3552</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                    <b>8276</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span><span style="color:#A50">##</span> <b>Total</b>
 <span style="color:#555">  </span>Instructions:                        <b>6896</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>L1 Hits:                             <b>9508</b>|N/A                  (<span style="color:#555">*********</span>)
-<span style="color:#555">  </span>L2 Hits:                               <b>25</b>|N/A                  (<span style="color:#555">*********</span>)
+<span style="color:#555">  </span>LL Hits:                               <b>25</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>RAM Hits:                             <b>324</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Total read+write:                    <b>9857</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>20973</b>|N/A                  (<span style="color:#555">*********</span>)

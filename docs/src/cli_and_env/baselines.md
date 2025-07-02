@@ -43,7 +43,7 @@ prints something like that with an additional line `Baselines` in the output.
   Baselines:        <b>           main</b>|main
   Instructions:     <b>            280</b>|N/A             (<span style="color:#555">*********</span>)
   L1 Hits:          <b>            374</b>|N/A             (<span style="color:#555">*********</span>)
-  L2 Hits:          <b>              1</b>|N/A             (<span style="color:#555">*********</span>)
+  LL Hits:          <b>              1</b>|N/A             (<span style="color:#555">*********</span>)
   RAM Hits:         <b>              6</b>|N/A             (<span style="color:#555">*********</span>)
   Total read+write: <b>            381</b>|N/A             (<span style="color:#555">*********</span>)
   Estimated Cycles: <b>            589</b>|N/A             (<span style="color:#555">*********</span>)
@@ -62,7 +62,7 @@ prints something like the following:
   Baselines:                       |main
   Instructions:     <b>            214</b>|280             (<b><span style="color:#42c142">-23.5714%</span></b>) [<b><span style="color:#42c142">-1.30841x</span></b>]
   L1 Hits:          <b>            287</b>|374             (<b><span style="color:#42c142">-23.2620%</span></b>) [<b><span style="color:#42c142">-1.30314x</span></b>]
-  L2 Hits:          <b>              1</b>|1               (<span style="color:#555">No change</span>)
+  LL Hits:          <b>              1</b>|1               (<span style="color:#555">No change</span>)
   RAM Hits:         <b>              6</b>|6               (<span style="color:#555">No change</span>)
   Total read+write: <b>            294</b>|381             (<b><span style="color:#42c142">-22.8346%</span></b>) [<b><span style="color:#42c142">-1.29592x</span></b>]
   Estimated Cycles: <b>            502</b>|589             (<b><span style="color:#42c142">-14.7708%</span></b>) [<b><span style="color:#42c142">-1.17331x</span></b>]
