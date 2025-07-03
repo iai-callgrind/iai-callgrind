@@ -22,7 +22,7 @@ use crate::util::{factor_diff, make_absolute, percentage_diff, EitherOrBoth};
 
 pub type RegressionMetrics<T> = (T, Metric, Metric, f64, f64);
 
-pub const SCHEMA_VERSION: &str = "4";
+pub const SCHEMA_VERSION: &str = "5";
 
 /// A `Baseline` depending on the [`BaselineKind`] which points to the corresponding path
 ///

@@ -30,7 +30,7 @@ const TEMPLATE_CONTENT: &str = r#"fn main() {
 }
 "#;
 const SCHEMA_PATH: &str = "iai-callgrind-runner/schemas";
-const SCHEMA_VERSION: &str = "4";
+const SCHEMA_VERSION: &str = "5";
 
 static TEMPLATE_DATA: OnceCell<HashMap<String, minijinja::Value>> = OnceCell::new();
 
