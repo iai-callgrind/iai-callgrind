@@ -119,4 +119,4 @@ Having found the pattern, you can eventually use `EntryPoint::Custom`.
 
 [Callgrind Arguments]: https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options
 
-[`EntryPoint`]: https://docs.rs/iai-callgrind/0.15.1/iai_callgrind/enum.EntryPoint.html
+[`EntryPoint`]: https://docs.rs/iai-callgrind/0.15.2/iai_callgrind/enum.EntryPoint.html

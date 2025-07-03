@@ -10,7 +10,7 @@ description = "Iai-Callgrind, a high-precision and consistent one-shot benchmark
 edition = "2021"
 
 [build]
-build-dir = "book/0.15.1"
+build-dir = "book/0.15.2"
 
 [output.html]
 git-repository-url = "https://github.com/iai-callgrind/iai-callgrind"

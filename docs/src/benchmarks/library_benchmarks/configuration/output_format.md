@@ -90,6 +90,6 @@ respective format (`Dhat::format`, `DhatMetric`, `Cachegrind::format`,
 [`Callgrind`]: https://docs.rs/iai-callgrind/latest/iai_callgrind/struct.Callgrind.html
 [`Callgrind.format`]: https://docs.rs/iai-callgrind/latest/iai_callgrind/struct.Callgrind.html#method.format
 [`CallgrindMetrics`]: https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CallgrindMetrics.html
-[`OutputFormat`]: https://docs.rs/iai-callgrind/0.15.1/iai_callgrind/struct.OutputFormat.html
-[`OutputFormat.show_grid`]: https://docs.rs/iai-callgrind/0.15.1/iai_callgrind/struct.OutputFormat.html#method.show_grid
-[`OutputFormat.truncate_description`]: https://docs.rs/iai-callgrind/0.15.1/iai_callgrind/struct.OutputFormat.html#method.truncate_description
+[`OutputFormat`]: https://docs.rs/iai-callgrind/0.15.2/iai_callgrind/struct.OutputFormat.html
+[`OutputFormat.show_grid`]: https://docs.rs/iai-callgrind/0.15.2/iai_callgrind/struct.OutputFormat.html#method.show_grid
+[`OutputFormat.truncate_description`]: https://docs.rs/iai-callgrind/0.15.2/iai_callgrind/struct.OutputFormat.html#method.truncate_description
