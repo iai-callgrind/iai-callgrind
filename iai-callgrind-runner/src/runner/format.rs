@@ -696,11 +696,15 @@ impl VerticalFormatter {
     fn format_baseline(&mut self, baselines: &Baselines) {
         match baselines {
             (None, None) => {}
+            (Some(left), Some(right)) if left == right => {
+                let right = format!("{right} (old)");
+                self.write_field("Baselines:", &EitherOrBoth::Both(left, &right), None, false);
+            }
             _ => {
                 self.write_field(
                     "Baselines:",
                     &EitherOrBoth::try_from(baselines.clone())
-                        .expect("At least on baseline should be present")
+                        .expect("At least one baseline should be present")
                         .as_ref()
                         .map(String::as_str),
                     None,

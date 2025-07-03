@@ -4,7 +4,7 @@ Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
   ## pid: <__PID__> thread: 1 part: 1      |pid: <__PID__> thread: 1 part: 1
   Command: <__COMMAND__>
-  Baselines:                            foo|foo
+  Baselines:                            foo|foo (old)
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
   LL Hits:                                 |                     (         )
@@ -64,7 +64,7 @@ Number of primes found in the range 0 to 30000: 3245
 - end of stdout/stderr
   ## pid: <__PID__> thread: 1 part: 1      |pid: <__PID__> thread: 1 part: 1
   Command: <__COMMAND__>
-  Baselines:                            foo|foo
+  Baselines:                            foo|foo (old)
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
   LL Hits:                                 |                     (         )
@@ -132,7 +132,7 @@ Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
   ## pid: <__PID__> thread: 1 part: 1      |pid: <__PID__> thread: 1 part: 1
   Command: <__COMMAND__>
-  Baselines:                            foo|foo
+  Baselines:                            foo|foo (old)
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
   LL Hits:                                 |                     (         )
@@ -281,7 +281,7 @@ Number of primes found in the range 0 to 30000: 3245
 - end of stdout/stderr
   ## pid: <__PID__> thread: 1 part: 1      |pid: <__PID__> thread: 1 part: 1
   Command: <__COMMAND__>
-  Baselines:                            foo|foo
+  Baselines:                            foo|foo (old)
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
   LL Hits:                                 |                     (         )
@@ -438,7 +438,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
 - end of stdout/stderr
   ## pid: <__PID__> thread: 1 part: 1      |pid: <__PID__> thread: 1 part: 1
   Command: <__COMMAND__>
-  Baselines:                            foo|foo
+  Baselines:                            foo|foo (old)
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
   LL Hits:                                 |                     (         )
@@ -498,7 +498,7 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
 - end of stdout/stderr
   ## pid: <__PID__> thread: 1 part: 1      |pid: <__PID__> thread: 1 part: 1
   Command: <__COMMAND__>
-  Baselines:                            foo|foo
+  Baselines:                            foo|foo (old)
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
   LL Hits:                                 |                     (         )
