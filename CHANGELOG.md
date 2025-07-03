@@ -23,6 +23,32 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.15.2] - 2025-07-03
+
+### Added
+
+* ([#387](https://github.com/iai-callgrind/iai-callgrind/pull/387)): Calculate
+  the cache miss rates (`I1 Miss Rate`, `LLi Miss Rate`, `D1 Miss Rate`, `LLd
+  Miss Rate`, `LL Miss Rate`) and hit rates (`L1 Hit Rate`, `LL Hit Rate`, `RAM
+  Hit Rate`). These new metrics are not part of the default output. Show them on
+  demand when configured in `Callgrind::format` and/or `Cachegrind::format`.
+
+### Changed
+
+* Bump `summary.v4.schema.json` to `summary.v5.schema.json`
+* Update direct dependencies: `schemars`, `indexmap` and transitive dependencies
+* ([#395](https://github.com/iai-callgrind/iai-callgrind/pull/395)): Rename `L2
+  Hits` to `LL Hits` to be closer to the original naming scheme in the callgrind
+  documentation. This also eliminates differences to the naming of other metrics
+  like `LLi Miss Rate`, ...
+* ([#396](https://github.com/iai-callgrind/iai-callgrind/pull/396)): Append
+  `(old)` in the terminal output of baselines with the same name to clarify
+  which is the new and the old run.
+
+### Fixed
+
+* Fix broken links in the documentation/guide
+
 ## [0.15.1] - 2025-06-23
 
 ### Changed
