@@ -17,14 +17,14 @@ keywords = ["iai", "benchmark", "callgrind", "valgrind"]
 license = "Apache-2.0 OR MIT"
 repository = "https://github.com/iai-callgrind/iai-callgrind"
 rust-version = "1.74.1"
-version = "0.15.1"
+version = "0.15.2"
 
 [workspace.dependencies]
 anyhow = { version = "1.0.46" }
 assert_cmd = { version = "2.0" }
 bincode = { version = "1" }
 bindgen = { version = ">=0.69, <0.73" }
-cargo_metadata = { version = "0.19.0" }
+cargo_metadata = { version = "0.19" }
 cc = { version = "1" }
 cfg-if = { version = "1" }
 clap = { version = "4", features = ["derive", "env"] }

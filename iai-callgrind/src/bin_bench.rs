@@ -69,7 +69,7 @@ pub struct BinaryBenchmarkGroup {
 
 /// [low level api](`crate::binary_benchmark_group`) only: This struct mirrors the `#[bench]` and
 /// `#[benches]` attribute of a [`crate::binary_benchmark`]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Bench {
     /// The [`BenchmarkId`] used to uniquely identify this benchmark within a [`BinaryBenchmark`]
     pub id: BenchmarkId,
@@ -133,7 +133,7 @@ pub struct Bench {
 /// );
 /// # fn main() {}
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct BinaryBenchmark {
     /// An id which has to be unique within the same [`BinaryBenchmarkGroup`]
     ///
@@ -659,6 +659,18 @@ impl From<&Bench> for Bench {
     }
 }
 
+impl PartialEq for Bench {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+            && self.commands == other.commands
+            && self.config == other.config
+            && (self.setup.is_some() && other.setup.is_some()
+                || self.setup.is_none() && other.setup.is_none())
+            && (self.teardown.is_some() && other.teardown.is_some()
+                || self.teardown.is_none() && other.teardown.is_none())
+    }
+}
+
 impl BenchmarkId {
     /// Convenience method to create a `BenchmarkId` with a parameter in the [low level
     /// api](crate::binary_benchmark_group)
@@ -1027,6 +1039,18 @@ impl From<&mut BinaryBenchmark> for BinaryBenchmark {
 impl From<&BinaryBenchmark> for BinaryBenchmark {
     fn from(value: &BinaryBenchmark) -> Self {
         value.clone()
+    }
+}
+
+impl PartialEq for BinaryBenchmark {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+            && self.config == other.config
+            && self.benches == other.benches
+            && (self.setup.is_some() && other.setup.is_some()
+                || self.setup.is_none() && other.setup.is_none())
+            && (self.teardown.is_some() && other.teardown.is_some()
+                || self.teardown.is_none() && other.teardown.is_none())
     }
 }
 

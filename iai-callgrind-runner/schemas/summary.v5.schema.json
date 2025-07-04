@@ -159,6 +159,31 @@
           "const": "DLmw"
         },
         {
+          "description": "I1 cache miss rate (--cache-sim=yes)",
+          "type": "string",
+          "const": "I1MissRate"
+        },
+        {
+          "description": "LL/L2 instructions cache miss rate (--cache-sim=yes)",
+          "type": "string",
+          "const": "LLiMissRate"
+        },
+        {
+          "description": "D1 cache miss rate (--cache-sim=yes)",
+          "type": "string",
+          "const": "D1MissRate"
+        },
+        {
+          "description": "LL/L2 data cache miss rate (--cache-sim=yes)",
+          "type": "string",
+          "const": "LLdMissRate"
+        },
+        {
+          "description": "LL/L2 cache miss rate (--cache-sim=yes)",
+          "type": "string",
+          "const": "LLMissRate"
+        },
+        {
           "description": "Derived event showing the L1 hits (--cache-sim=yes)",
           "type": "string",
           "const": "L1hits"
@@ -172,6 +197,21 @@
           "description": "Derived event showing the RAM hits (--cache-sim=yes)",
           "type": "string",
           "const": "RamHits"
+        },
+        {
+          "description": "L1 cache hit rate (--cache-sim=yes)",
+          "type": "string",
+          "const": "L1HitRate"
+        },
+        {
+          "description": "LL/L2 cache hit rate (--cache-sim=yes)",
+          "type": "string",
+          "const": "LLHitRate"
+        },
+        {
+          "description": "RAM hit rate (--cache-sim=yes)",
+          "type": "string",
+          "const": "RamHitRate"
         },
         {
           "description": "Derived event showing the total amount of cache reads and writes (--cache-sim=yes)",
@@ -336,9 +376,7 @@
           "type": "object",
           "properties": {
             "Left": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0
+              "$ref": "#/definitions/Metric"
             }
           },
           "additionalProperties": false,
@@ -349,9 +387,7 @@
           "type": "object",
           "properties": {
             "Right": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0
+              "$ref": "#/definitions/Metric"
             }
           },
           "additionalProperties": false,
@@ -365,14 +401,10 @@
               "type": "array",
               "items": [
                 {
-                  "type": "integer",
-                  "format": "uint64",
-                  "minimum": 0
+                  "$ref": "#/definitions/Metric"
                 },
                 {
-                  "type": "integer",
-                  "format": "uint64",
-                  "minimum": 0
+                  "$ref": "#/definitions/Metric"
                 }
               ],
               "maxItems": 2,
@@ -458,6 +490,31 @@
           "const": "DLmw"
         },
         {
+          "description": "I1 cache miss rate (--cache-sim=yes)",
+          "type": "string",
+          "const": "I1MissRate"
+        },
+        {
+          "description": "LL/L2 instructions cache miss rate (--cache-sim=yes)",
+          "type": "string",
+          "const": "LLiMissRate"
+        },
+        {
+          "description": "D1 cache miss rate (--cache-sim=yes)",
+          "type": "string",
+          "const": "D1MissRate"
+        },
+        {
+          "description": "LL/L2 data cache miss rate (--cache-sim=yes)",
+          "type": "string",
+          "const": "LLdMissRate"
+        },
+        {
+          "description": "LL/L2 cache miss rate (--cache-sim=yes)",
+          "type": "string",
+          "const": "LLMissRate"
+        },
+        {
           "description": "Derived event showing the L1 hits (--cache-sim=yes)",
           "type": "string",
           "const": "L1hits"
@@ -471,6 +528,21 @@
           "description": "Derived event showing the RAM hits (--cache-sim=yes)",
           "type": "string",
           "const": "RamHits"
+        },
+        {
+          "description": "L1 cache hit rate (--cache-sim=yes)",
+          "type": "string",
+          "const": "L1HitRate"
+        },
+        {
+          "description": "LL/L2 cache hit rate (--cache-sim=yes)",
+          "type": "string",
+          "const": "LLHitRate"
+        },
+        {
+          "description": "RAM hit rate (--cache-sim=yes)",
+          "type": "string",
+          "const": "RamHitRate"
         },
         {
           "description": "Derived event showing the total amount of cache reads and writes (--cache-sim=yes)",
@@ -585,6 +657,34 @@
         }
       },
       "required": ["event_kind"]
+    },
+    "Metric": {
+      "description": "The metric measured by valgrind or derived from one or more other metrics\n\nThe valgrind metrics measured by any of its tools are `u64`. However, to be able to represent\nderived metrics like cache miss/hit rates it is inevitable to have a type which can store a\n`u64` or a `f64`. When doing math with metrics, the original type should be preserved as far as\npossible by using `u64` operations. A float metric should be a last resort.\n\nFloat operations with a `Metric` that stores a `u64` introduce a precision loss and are to be\navoided. Especially comparison between a `u64` metric and `f64` metric are not exact because the\n`u64` has to be converted to a `f64`. Also, if adding/multiplying two `u64` metrics would result\nin an overflow the metric saturates at `u64::MAX`. This choice was made to preserve precision\nand the original type (instead of for example adding the two `u64` by converting both of them to\n`f64`).",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "Int": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "required": ["Int"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Float": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["Float"]
+        }
+      ]
     },
     "MetricKind": {
       "description": "The different metrics distinguished by tool and if it is an error checking tool as `ErrorMetric`",
@@ -966,15 +1066,19 @@
         },
         "new": {
           "description": "The value of the new benchmark run",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0
+          "allOf": [
+            {
+              "$ref": "#/definitions/Metric"
+            }
+          ]
         },
         "old": {
           "description": "The value of the old benchmark run",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0
+          "allOf": [
+            {
+              "$ref": "#/definitions/Metric"
+            }
+          ]
         }
       },
       "required": ["metric", "new", "old", "diff_pct", "limit"]

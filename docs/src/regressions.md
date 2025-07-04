@@ -57,7 +57,7 @@ main!(
 Now, if the comparison of the `Ir` events of the current `bench_library`
 benchmark run with the previous run results in an increase of over 5%, the
 benchmark fails. Please, also have a look at the [`api
-docs`](https://docs.rs/iai-callgrind/0.15.1/iai_callgrind/struct.Callgrind.html#method.limits)
+docs`](https://docs.rs/iai-callgrind/0.15.2/iai_callgrind/struct.Callgrind.html#method.limits)
 for further configuration options.
 
 Running the benchmark from above the first time results in the following output:

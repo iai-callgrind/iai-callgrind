@@ -14,7 +14,7 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
-iai-callgrind-runner = { path = "../iai-callgrind-runner", version = "=0.15.1", default-features = false, features = [
+iai-callgrind-runner = { path = "../iai-callgrind-runner", version = "=0.15.2", default-features = false, features = [
   "schema",
 ] }
 schemars = { workspace = true, features = ["indexmap2"] }

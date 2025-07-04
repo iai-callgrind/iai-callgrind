@@ -368,12 +368,24 @@ mod tests {
 
     #[rstest]
     #[case::zero(0, 0, 1f64)]
-    #[case::infinity(1, 0, f64::INFINITY)]
+    #[case::float_zero_int_zero(0, 0f64, 1f64)]
+    #[case::int_zero_float_zero(0f64, 0, 1f64)]
+    #[case::float_zero(0f64, 0f64, 1f64)]
+    #[case::infinity_int(1, 0, f64::INFINITY)]
+    #[case::infinity_div_int(1f64, 0, f64::INFINITY)]
+    #[case::infinity_float(1f64, 0f64, f64::INFINITY)]
+    #[case::infinity_float_mixed(1f64, 0, f64::INFINITY)]
+    #[case::infinity_div_float(1, 0f64, f64::INFINITY)]
     #[case::negative_infinity(0, 1, f64::NEG_INFINITY)]
+    #[case::negative_infinity_float(0f64, 1, f64::NEG_INFINITY)]
     #[case::factor_one(1, 1, 1f64)]
     #[case::factor_minus_two(1, 2, -2f64)]
     #[case::factor_two(2, 1, 2f64)]
-    fn test_factor_diff_eq(#[case] a: u64, #[case] b: u64, #[case] expected: f64) {
-        assert_eq!(factor_diff(Metric::Int(a), Metric::Int(b)), expected);
+    fn test_factor_diff_eq<L, R>(#[case] a: L, #[case] b: R, #[case] expected: f64)
+    where
+        L: Into<Metric>,
+        R: Into<Metric>,
+    {
+        assert_eq!(factor_diff(a.into(), b.into()), expected);
     }
 }

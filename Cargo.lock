@@ -228,9 +228,9 @@ dependencies = [
 
 [[package]]
 name = "bumpalo"
-version = "3.18.1"
+version = "3.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "793db76d6187cd04dff33004d8e6c9cc4e05cd330500379d2394209271b4aeee"
+checksum = "46c5e41b57b8bba42a04676d81cb89e9ee8e859a1a66f80a5a72e1cb76b34d43"
 
 [[package]]
 name = "bytemuck"
@@ -689,7 +689,7 @@ checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
 name = "iai-callgrind"
-version = "0.15.1"
+version = "0.15.2"
 dependencies = [
  "bincode",
  "bindgen",
@@ -727,7 +727,7 @@ dependencies = [
 
 [[package]]
 name = "iai-callgrind-runner"
-version = "0.15.1"
+version = "0.15.2"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1195,9 +1195,9 @@ dependencies = [
 
 [[package]]
 name = "psl"
-version = "2.1.122"
+version = "2.1.123"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98426d83dcbac622be1c1146e8763ccb4a2fe9bca707dd7446a842e186fa91aa"
+checksum = "19a87cc491d889736c81c11ad02d91628b7fd2078d66c4e1b3f6d348de8900f4"
 dependencies = [
  "psl-types",
 ]
@@ -1407,7 +1407,7 @@ dependencies = [
 
 [[package]]
 name = "schema-gen"
-version = "0.15.1"
+version = "0.15.2"
 dependencies = [
  "iai-callgrind-runner",
  "schemars",
