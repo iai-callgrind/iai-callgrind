@@ -13,7 +13,7 @@ pub struct Node {
 }
 
 impl Node {
-    fn prefix(&self) -> &[u64] {
+    pub fn prefix(&self) -> &[u64] {
         &self.prefix
     }
 
@@ -51,7 +51,7 @@ impl Node {
             Ordering::Less => {
                 if !self.is_root() {
                     other.prefix = other.prefix.split_off(self.prefix.len());
-                };
+                }
                 for node in &mut self.nodes {
                     if node.is_prefix(&other) || other.is_prefix(node) {
                         node.insert(other);

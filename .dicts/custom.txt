@@ -25,6 +25,7 @@ Ldmw
 Logfile
 MSRV
 Memcheck
+Minstr
 Mispred
 Mispredicts
 Nethercote
@@ -113,6 +114,7 @@ iname
 indexmap
 indexset
 inlines
+instrs
 itertools
 jcnd
 jitter
@@ -236,6 +238,7 @@ valico
 valist
 vbits
 vgdb
+vgpreload
 visualizable
 vulnaribility
 walkdir

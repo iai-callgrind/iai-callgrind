@@ -4,9 +4,9 @@ use std::path::Path;
 
 use anyhow::{anyhow, Result};
 
-use super::json_model::Dhat;
+use super::model::DhatData;
 
-pub fn parse_json(path: &Path) -> Result<Dhat> {
+pub fn parse_json(path: &Path) -> Result<DhatData> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     serde_json::from_reader(reader).map_err(|error| {
