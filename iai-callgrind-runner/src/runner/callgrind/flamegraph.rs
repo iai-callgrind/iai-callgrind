@@ -195,7 +195,7 @@ impl Flamegraph {
         )
     }
 
-    pub fn options(&self, event_kind: EventKind, subtitle: String) -> Options {
+    pub fn options(&self, event_kind: EventKind, subtitle: String) -> Options<'_> {
         let mut options = Options::default();
         options.negate_differentials = self.config.negate_differential;
         options.direction = self.config.direction;
@@ -628,7 +628,7 @@ impl FlamegraphGenerator for SaveBaselineFlamegraphGenerator {
     }
 }
 
-fn total_flamegraph_map_from_parsed(maps: &ParserOutput) -> Option<Cow<FlamegraphMap>> {
+fn total_flamegraph_map_from_parsed(maps: &ParserOutput) -> Option<Cow<'_, FlamegraphMap>> {
     match maps.len().cmp(&1) {
         Ordering::Less => None,
         Ordering::Equal => Some(Cow::Borrowed(&maps[0].2)),
