@@ -164,6 +164,7 @@ peaceiris
 peekable
 pids
 pipefail
+polonius
 posix
 postconditions
 powerset

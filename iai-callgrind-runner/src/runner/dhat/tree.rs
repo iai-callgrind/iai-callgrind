@@ -5,109 +5,103 @@
 
 use std::cmp::Ordering;
 
+use polonius_the_crab::{polonius, ForLt, PoloniusResult};
+
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Node {
     prefix: Vec<u64>,
-    nodes: Vec<Node>,
+    children: Vec<Node>,
     // data: Data,
 }
 
 impl Node {
-    pub fn prefix(&self) -> &[u64] {
-        &self.prefix
+    fn new(prefix: Vec<u64>, children: Vec<Node>) -> Self {
+        Self { prefix, children }
     }
 
-    fn new(prefix: Vec<u64>) -> Self {
+    fn with_prefix(prefix: Vec<u64>) -> Self {
         Self {
             prefix,
-            ..Default::default()
+            children: Vec::default(),
         }
     }
 
-    fn lookup(&self, other: &[u64]) -> Option<&Self> {
-        match self.prefix.len().cmp(&other.len()) {
-            Ordering::Less => {
-                let new = if self.is_root() {
-                    other
-                } else {
-                    other.split_at(self.prefix.len()).1
-                };
-                for node in &self.nodes {
-                    if new.starts_with(&node.prefix) || node.prefix.starts_with(new) {
-                        return node.lookup(new);
-                    }
-                }
-                None
-            }
-            Ordering::Equal => Some(self),
-            Ordering::Greater => None,
-        }
+    fn add_child(&mut self, node: Node) {
+        self.children.push(node);
     }
 
-    /// Insert a new `Node` which doesn't have sub-nodes and of which is known that is a prefix of
-    /// this `Node` or this `Node` is a prefix of the new `Node`.
-    fn insert(&mut self, mut other: Node) {
-        match self.prefix.len().cmp(&other.prefix.len()) {
-            Ordering::Less => {
-                if !self.is_root() {
-                    other.prefix = other.prefix.split_off(self.prefix.len());
-                }
-                for node in &mut self.nodes {
-                    if node.is_prefix(&other) || other.is_prefix(node) {
-                        node.insert(other);
-                        return;
-                    }
-                }
-                self.nodes.push(other);
-            }
-            Ordering::Equal => {
-                // do nothing, same node
-            }
-            // Insert [1, 2] in [1, 2, 3] -> [4],[5] => [1, 2] -> [3] -> [4],[5]
-            Ordering::Greater => {
-                // The `other` Node must be the new Node at this point which doesn't have sub-nodes
-                assert!(other.nodes.is_empty());
-                other.prefix = self.prefix.split_off(other.prefix.len());
-                other.nodes = std::mem::take(&mut self.nodes);
-
-                self.nodes.push(other);
-            }
-        }
+    fn find_child(&mut self, num: u64) -> Option<&mut Self> {
+        self.children
+            .iter_mut()
+            .find(|node| node.prefix.first().is_some_and(|a| *a == num))
     }
 
-    fn is_root(&self) -> bool {
-        self.prefix.is_empty()
+    fn split(&mut self, index: usize) {
+        let node = Node::new(
+            self.prefix.split_off(index),
+            std::mem::take(&mut self.children),
+        );
+        self.children.push(node);
     }
 
-    #[inline]
-    fn is_prefix(&self, other: &Node) -> bool {
-        other.prefix.starts_with(&self.prefix)
+    fn split_index(&self, other: &[u64]) -> Option<usize> {
+        let length = self.prefix.len().min(other.len());
+        (0..length).find(|&index| self.prefix[index] != other[index])
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Tree {
-    root: Node,
+    root: Box<Node>,
 }
 
 impl Tree {
-    pub fn insert(&mut self, node: Node) {
-        if node.prefix.is_empty() {
-            return;
+    pub fn insert(&mut self, prefix: &[u64]) {
+        let mut current = &mut *self.root;
+        let mut index = 0;
+
+        while index < prefix.len() {
+            let key = prefix[index];
+            let current_prefix = &prefix[index..];
+
+            match polonius::<_, _, ForLt!(&mut Node)>(current, |current| {
+                if let Some(child) = current.find_child(key) {
+                    PoloniusResult::Borrowing(child)
+                } else {
+                    PoloniusResult::Owned(())
+                }
+            }) {
+                PoloniusResult::Borrowing(child) => {
+                    if let Some(split_index) = child.split_index(current_prefix) {
+                        child.split(split_index);
+                        index += split_index;
+                    } else {
+                        match current_prefix.len().cmp(&child.prefix.len()) {
+                            Ordering::Less => {
+                                child.split(current_prefix.len());
+                                return;
+                            }
+                            Ordering::Greater => {
+                                index += child.prefix.len();
+                            }
+                            Ordering::Equal => {
+                                // do nothing
+                                return;
+                            }
+                        }
+                    }
+
+                    current = child;
+                }
+                PoloniusResult::Owned {
+                    input_borrow: current,
+                    ..
+                } => {
+                    current.add_child(Node::with_prefix(current_prefix.to_vec()));
+                    return;
+                }
+            }
         }
-        self.root.insert(node);
-    }
-
-    pub fn lookup_prefix(&self, prefix: &[u64]) -> Option<&Node> {
-        if prefix.is_empty() {
-            return None;
-        }
-
-        self.root.lookup(prefix)
-    }
-
-    pub fn insert_prefix(&mut self, prefix: Vec<u64>) {
-        self.insert(Node::new(prefix));
     }
 }
 
@@ -115,66 +109,106 @@ impl Tree {
 mod tests {
     use super::*;
 
+    fn tree_fixture() -> Tree {
+        Tree {
+            root: Box::new(Node::new(
+                vec![],
+                vec![Node::new(
+                    vec![1, 2, 3],
+                    vec![Node::new(vec![4, 5], vec![])],
+                )],
+            )),
+        }
+    }
+
     #[test]
-    fn dev() {
+    fn test_insert_empty() {
         let mut tree = Tree::default();
-        tree.insert(Node {
-            prefix: vec![],
-            ..Default::default()
-        });
-        assert!(tree.root.prefix.is_empty());
-        assert!(tree.root.nodes.is_empty());
+        tree.insert(&[]);
 
-        let mut tree = Tree::default();
-        tree.insert(Node {
-            prefix: vec![1],
-            ..Default::default()
-        });
-        tree.insert(Node {
-            prefix: vec![1, 2, 3],
-            ..Default::default()
-        });
-        tree.insert(Node {
-            prefix: vec![1, 2, 3, 4],
-            ..Default::default()
-        });
-        tree.insert(Node {
-            prefix: vec![1, 2, 3, 5],
-            ..Default::default()
-        });
-        tree.insert(Node {
-            prefix: vec![1, 2],
-            ..Default::default()
-        });
-        assert_eq!(
-            tree.lookup_prefix(&[1, 2, 3]).map(super::Node::prefix),
-            Some([3].as_slice())
-        );
-        // assert_eq!(tree.root.nodes.first().unwrap().prefix, vec![1, 2, 3]);
-        // tree.insert(vec![1, 2, 3, 4]);
-        // assert_eq!(
-        //     tree.root
-        //         .nodes
-        //         .first()
-        //         .unwrap()
-        //         .nodes
-        //         .first()
-        //         .unwrap()
-        //         .prefix,
-        //     vec![4]
-        // );
-        // tree.insert(vec![1, 2, 3, 4, 5]);
-        // tree.insert(vec![1, 2, 3, 5]);
-        // tree.insert(vec![2, 3, 4]);
-        // dbg!(&tree);
-        // assert!(false);
-        // assert_eq!(
-        //     root.nodes.first().unwrap().nodes.first().unwrap().prefix,
-        //     vec![4]
-        // );
+        assert_eq!(tree, Tree::default());
+    }
 
-        // let mut root = Node::default();
-        // root.insert(vec![1, 2, 3]);
-        // assert_eq!(root.nodes.first().unwrap().prefix, vec![1, 2, 3]);
+    #[test]
+    fn test_insert_full_shorter() {
+        let expected = Tree {
+            root: Box::new(Node::new(
+                vec![],
+                vec![Node::new(
+                    vec![1],
+                    vec![Node::new(vec![2, 3], vec![Node::new(vec![4, 5], vec![])])],
+                )],
+            )),
+        };
+
+        let mut tree = tree_fixture();
+        tree.insert(&[1]);
+
+        assert_eq!(tree, expected);
+    }
+
+    #[test]
+    fn test_insert_full_longer() {
+        let expected = Tree {
+            root: Box::new(Node::new(
+                vec![],
+                vec![Node::new(
+                    vec![1, 2, 3],
+                    vec![Node::new(vec![4, 5], vec![]), Node::new(vec![6], vec![])],
+                )],
+            )),
+        };
+
+        let mut tree = tree_fixture();
+        tree.insert(&[1, 2, 3, 6]);
+
+        assert_eq!(tree, expected);
+    }
+
+    #[test]
+    fn test_insert_mixed() {
+        let expected = Tree {
+            root: Box::new(Node::new(
+                vec![],
+                vec![Node::new(
+                    vec![1],
+                    vec![
+                        Node::new(vec![2, 3], vec![Node::new(vec![4, 5], vec![])]),
+                        Node::new(vec![6], vec![]),
+                    ],
+                )],
+            )),
+        };
+
+        let mut tree = tree_fixture();
+        tree.insert(&[1, 6]);
+
+        assert_eq!(tree, expected);
+    }
+
+    #[test]
+    fn test_insert_no_match() {
+        let expected = Tree {
+            root: Box::new(Node::new(
+                vec![],
+                vec![
+                    Node::new(vec![1, 2, 3], vec![Node::with_prefix(vec![4, 5])]),
+                    Node::with_prefix(vec![6]),
+                ],
+            )),
+        };
+
+        let mut tree = tree_fixture();
+        tree.insert(&[6]);
+
+        assert_eq!(tree, expected);
+    }
+
+    #[test]
+    fn test_insert_equal() {
+        let mut tree = tree_fixture();
+        tree.insert(&[1, 2, 3]);
+
+        assert_eq!(tree, tree_fixture());
     }
 }
