@@ -14,7 +14,8 @@ use super::meta::Metadata;
 use super::metrics::{Metric, MetricKind, MetricsDiff};
 use super::summary::{Diffs, ProfileData, ProfileInfo, ToolMetricSummary, ToolRegression};
 use crate::api::{
-    self, CachegrindMetric, CallgrindMetrics, DhatMetric, ErrorMetric, EventKind, ValgrindTool,
+    self, CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, ErrorMetric,
+    EventKind, ValgrindTool,
 };
 use crate::util::{
     make_relative, to_string_signed_short, to_string_unsigned_short, truncate_str_utf8,
@@ -392,18 +393,7 @@ impl Default for OutputFormat {
             show_intermediate: false,
             show_grid: false,
             callgrind: IndexSet::from(CallgrindMetrics::Default),
-            cachegrind: indexset![
-                CachegrindMetric::Ir,
-                CachegrindMetric::L1hits,
-                CachegrindMetric::LLhits,
-                CachegrindMetric::RamHits,
-                CachegrindMetric::TotalRW,
-                CachegrindMetric::EstimatedCycles,
-                CachegrindMetric::Bc,
-                CachegrindMetric::Bcm,
-                CachegrindMetric::Bi,
-                CachegrindMetric::Bim,
-            ],
+            cachegrind: IndexSet::from(CachegrindMetrics::Default),
             dhat: indexset![
                 DhatMetric::TotalBytes,
                 DhatMetric::TotalBlocks,
