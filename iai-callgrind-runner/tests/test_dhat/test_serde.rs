@@ -1,5 +1,5 @@
+use iai_callgrind_runner::runner::dhat::json_parser::parse;
 use iai_callgrind_runner::runner::dhat::model::{DhatData, Frame, ProgramPoint};
-use iai_callgrind_runner::runner::dhat::parser::parse_json;
 use pretty_assertions::assert_eq;
 
 use crate::common::Fixtures;
@@ -57,7 +57,7 @@ fn test_serde() {
             .unwrap(),
     );
 
-    let actual: DhatData = parse_json(&path).unwrap();
+    let actual: DhatData = parse(&path).unwrap();
 
     assert_eq!(actual, expected);
 }

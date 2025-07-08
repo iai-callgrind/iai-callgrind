@@ -7,6 +7,7 @@ use std::process::Command;
 
 use anyhow::{anyhow, Result};
 use log::{debug, log_enabled, trace, Level};
+use regex::Regex;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -325,6 +326,29 @@ where
     } else {
         base_dir.join(path)
     }
+}
+
+/// Convert a valgrind glob pattern into a [`Regex`]
+///
+/// A valgrind glob pattern is a simpler glob pattern usually used to match function calls for
+/// example in `--toggle-collect`, `--dump-before`, ... as described here
+/// <https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options>
+///
+/// In short, there are `*` and `?` which are converted into `.*` and `.?` respectively.
+pub fn glob_to_regex(input: &str) -> Result<Regex> {
+    let pattern = input.chars().fold(String::new(), |mut acc, c| {
+        if c == '*' {
+            acc.push_str(".*");
+        } else if c == '?' {
+            acc.push_str(".?");
+        } else {
+            acc.push(c);
+        }
+
+        acc
+    });
+
+    Regex::new(&pattern).map_err(Into::into)
 }
 
 #[cfg(test)]

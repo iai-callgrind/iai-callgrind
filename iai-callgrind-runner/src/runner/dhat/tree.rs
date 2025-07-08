@@ -1,9 +1,20 @@
 use std::cmp::Ordering;
 use std::ops::Add;
 
+use lazy_static::lazy_static;
 use polonius_the_crab::{polonius, ForLt, PoloniusResult};
+use regex::Regex;
 
-use super::model::ProgramPoint;
+use super::model::{DhatData, Frame, ProgramPoint};
+use crate::api::{DhatMetric, EntryPoint};
+use crate::runner::metrics::Metrics;
+use crate::runner::summary::ToolMetrics;
+use crate::runner::DEFAULT_TOGGLE_RE;
+use crate::util::glob_to_regex;
+
+lazy_static! {
+    static ref GLOB_TO_REGEX_RE: Regex = regex::Regex::new(r"([*])").expect("Regex should compile");
+}
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Data {
@@ -22,7 +33,7 @@ pub struct Data {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Node {
-    prefix: Vec<u64>,
+    prefix: Vec<usize>,
     children: Vec<Node>,
     data: Data,
 }
@@ -48,8 +59,8 @@ impl Data {
     }
 }
 
-impl From<ProgramPoint> for Data {
-    fn from(value: ProgramPoint) -> Self {
+impl From<&ProgramPoint> for Data {
+    fn from(value: &ProgramPoint) -> Self {
         Self {
             total_bytes: value.total_bytes,
             total_blocks: value.total_blocks,
@@ -67,7 +78,7 @@ impl From<ProgramPoint> for Data {
 }
 
 impl Node {
-    pub fn new(prefix: Vec<u64>, children: Vec<Node>, data: Data) -> Self {
+    pub fn new(prefix: Vec<usize>, children: Vec<Node>, data: Data) -> Self {
         Self {
             prefix,
             children,
@@ -75,7 +86,7 @@ impl Node {
         }
     }
 
-    pub fn with_prefix(prefix: Vec<u64>) -> Self {
+    pub fn with_prefix(prefix: Vec<usize>) -> Self {
         Self {
             prefix,
             children: Vec::default(),
@@ -83,12 +94,12 @@ impl Node {
         }
     }
 
-    fn add_child(&mut self, prefix: &[u64], data: &Data) {
+    fn add_child(&mut self, prefix: &[usize], data: &Data) {
         self.children
             .push(Node::new(prefix.to_vec(), vec![], data.clone()));
     }
 
-    fn find_child(&mut self, num: u64) -> Option<&mut Self> {
+    fn find_child(&mut self, num: usize) -> Option<&mut Self> {
         self.children
             .iter_mut()
             .find(|node| node.prefix.first().is_some_and(|a| *a == num))
@@ -105,7 +116,7 @@ impl Node {
         self.children.push(node);
     }
 
-    fn split_index(&self, other: &[u64]) -> Option<usize> {
+    fn split_index(&self, other: &[usize]) -> Option<usize> {
         let length = self.prefix.len().min(other.len());
         (0..length).find(|&index| self.prefix[index] != other[index])
     }
@@ -116,7 +127,78 @@ impl Node {
 }
 
 impl Tree {
-    pub fn insert(&mut self, prefix: &[u64], data: &Data) {
+    pub fn from_json(dhat_data: DhatData, entry_point: &EntryPoint, frames: &[&str]) -> Self {
+        let mut matchers = frames
+            .iter()
+            .filter_map(|f| glob_to_regex(f).ok())
+            .collect::<Vec<_>>();
+        let regex = match entry_point {
+            EntryPoint::None => None,
+            EntryPoint::Default => Regex::new(DEFAULT_TOGGLE_RE).ok(),
+            EntryPoint::Custom(custom) => glob_to_regex(custom).ok(),
+        };
+
+        if let Some(regex) = regex {
+            matchers.push(regex);
+        }
+
+        let mut frames = vec![];
+        for (index, frame) in dhat_data.frame_table.iter().enumerate() {
+            if let Frame::Leaf(_, func_name, _) = frame {
+                for matcher in &matchers {
+                    if matcher.is_match(func_name) {
+                        frames.push(index);
+                    }
+                }
+            }
+        }
+
+        let mut tree = Tree::default();
+        if frames.is_empty() {
+            for program_point in dhat_data.program_points {
+                let data = Data::from(&program_point);
+                tree.insert(&program_point.frames, &data);
+            }
+        } else {
+            for program_point in dhat_data.program_points {
+                if program_point.frames.iter().any(|f| frames.contains(f)) {
+                    let data = Data::from(&program_point);
+                    tree.insert(&program_point.frames, &data);
+                }
+            }
+        }
+
+        tree
+    }
+
+    pub fn metrics(&self) -> ToolMetrics {
+        // This is the same order as order of metrics in the log file output
+        let metrics = [
+            (DhatMetric::TotalBytes, Some(self.root.data.total_bytes)),
+            (DhatMetric::TotalBlocks, Some(self.root.data.total_blocks)),
+            (DhatMetric::AtTGmaxBytes, self.root.data.bytes_at_max),
+            (DhatMetric::AtTGmaxBlocks, self.root.data.blocks_at_max),
+            (DhatMetric::AtTEndBytes, self.root.data.bytes_at_end),
+            (DhatMetric::AtTEndBlocks, self.root.data.blocks_at_end),
+            (DhatMetric::ReadsBytes, self.root.data.blocks_read),
+            (DhatMetric::WritesBytes, self.root.data.blocks_write),
+            (
+                DhatMetric::TotalLifetimes,
+                #[allow(clippy::cast_possible_truncation)]
+                self.root.data.total_lifetimes.map(|a| a as u64),
+            ),
+            (DhatMetric::MaximumBytes, self.root.data.maximum_bytes),
+            (DhatMetric::MaximumBlocks, self.root.data.maximum_blocks),
+        ];
+
+        let mut tool_metrics = Metrics::empty();
+        for (key, value) in metrics.iter().filter_map(|(a, b)| b.map(|b| (a, b))) {
+            tool_metrics.insert(*key, value.into());
+        }
+        ToolMetrics::Dhat(tool_metrics)
+    }
+
+    pub fn insert(&mut self, prefix: &[usize], data: &Data) {
         let mut current = &mut *self.root;
         let mut index = 0;
 
@@ -167,6 +249,18 @@ impl Tree {
                 }
             }
         }
+    }
+}
+
+impl From<DhatData> for Tree {
+    fn from(value: DhatData) -> Self {
+        let mut tree = Tree::default();
+        for pps in value.program_points {
+            let data = Data::from(&pps);
+            tree.insert(&pps.frames, &data);
+        }
+
+        tree
     }
 }
 

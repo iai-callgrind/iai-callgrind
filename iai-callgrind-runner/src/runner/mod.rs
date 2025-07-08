@@ -37,6 +37,7 @@ pub mod envs {
 }
 
 pub const DEFAULT_TOGGLE: &str = "*::__iai_callgrind_wrapper_mod::*";
+pub const DEFAULT_TOGGLE_RE: &str = ".*::__iai_callgrind_wrapper_mod::.*";
 
 /// Execute post benchmark run actions like printing the summary line with regressions
 #[derive(Debug)]

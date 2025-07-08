@@ -35,7 +35,7 @@ use super::callgrind::flamegraph::{
 use super::callgrind::parser::{parse_header, Sentinel};
 use super::callgrind::CallgrindRegressionConfig;
 use super::common::{Assistant, Baselines, Config, ModulePath, Sandbox};
-use super::dhat::logfile_parser::DhatLogfileParser;
+use super::dhat::json_parser::JsonParser;
 use super::format::{
     print_no_capture_footer, print_regressions, Formatter, OutputFormat, VerticalFormatter,
 };
@@ -2165,10 +2165,15 @@ pub fn parser_factory(
         ValgrindTool::Cachegrind => Box::new(cachegrind::summary_parser::SummaryParser {
             output_path: output_path.clone(),
         }),
-        ValgrindTool::DHAT => Box::new(DhatLogfileParser {
-            output_path: output_path.to_log_output(),
-            root_dir,
-        }),
+        ValgrindTool::DHAT => {
+            // TODO: Use logfile parser if no entry point or frames
+            // TODO: Use real values
+            Box::new(JsonParser {
+                output_path: output_path.clone(),
+                entry_point: EntryPoint::Default,
+                func: "some::none::sense".to_owned(),
+            })
+        }
         ValgrindTool::Memcheck | ValgrindTool::DRD | ValgrindTool::Helgrind => {
             Box::new(ErrorMetricLogfileParser {
                 output_path: output_path.to_log_output(),
