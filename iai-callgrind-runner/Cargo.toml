@@ -89,6 +89,7 @@ which = { workspace = true, optional = true }
 [dev-dependencies]
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
+serde_test = { workspace = true }
 serde_yaml = { workspace = true }
 serial_test = { workspace = true }
 tempfile = { workspace = true }

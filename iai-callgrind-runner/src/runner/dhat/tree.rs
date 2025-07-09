@@ -1,9 +1,7 @@
 use std::cmp::Ordering;
 use std::ops::Add;
 
-use lazy_static::lazy_static;
 use polonius_the_crab::{polonius, ForLt, PoloniusResult};
-use regex::Regex;
 
 use super::model::{DhatData, Frame, ProgramPoint};
 use crate::api::{DhatMetric, EntryPoint};
@@ -12,8 +10,69 @@ use crate::runner::summary::ToolMetrics;
 use crate::runner::DEFAULT_TOGGLE;
 use crate::util::Glob;
 
-lazy_static! {
-    static ref GLOB_TO_REGEX_RE: Regex = regex::Regex::new(r"([*])").expect("Regex should compile");
+pub trait Tree {
+    fn from_json(dhat_data: DhatData, entry_point: &EntryPoint, frames: &[Glob]) -> Self
+    where
+        Self: std::marker::Sized + Default,
+    {
+        let mut globs = frames.iter().collect::<Vec<_>>();
+        let glob = match entry_point {
+            EntryPoint::None => None,
+            EntryPoint::Default => Some(DEFAULT_TOGGLE.into()),
+            EntryPoint::Custom(custom) => Some(custom.into()),
+        };
+
+        if let Some(glob) = &glob {
+            globs.push(glob);
+        }
+
+        let mut indices = vec![];
+        if !globs.is_empty() {
+            for (index, frame) in dhat_data.frame_table.iter().enumerate() {
+                if let Frame::Leaf(_, func_name, _) = frame {
+                    for glob in &globs {
+                        if glob.is_match(func_name) {
+                            indices.push(index);
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut tree = Self::default();
+        // This is the default behaviour
+        if *entry_point == EntryPoint::None && frames.is_empty() {
+            tree.insert_iter(dhat_data.program_points.into_iter());
+        // Indices can only be present if there is a match of the entry point or the frames
+        } else if !indices.is_empty() {
+            tree.insert_iter(
+                dhat_data
+                    .program_points
+                    .into_iter()
+                    .filter(|p| p.frames.iter().any(|f| indices.contains(f))),
+            );
+        } else {
+            // If there was an entry point or frames configured but didn't match any indices, do
+            // nothing
+            tree.set_root_data(Data::zero());
+        }
+
+        tree
+    }
+
+    fn metrics(&self) -> ToolMetrics {
+        self.get_root_data().metrics()
+    }
+
+    fn insert(&mut self, prefix: &[usize], data: &Data);
+    fn insert_iter(&mut self, iter: impl Iterator<Item = ProgramPoint>) {
+        for elem in iter {
+            let data = Data::from(&elem);
+            self.insert(&elem.frames, &data);
+        }
+    }
+    fn get_root_data(&self) -> &Data;
+    fn set_root_data(&mut self, data: Data);
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -38,8 +97,20 @@ pub struct Node {
     data: Data,
 }
 
+/// A full-fledged dhat prefix tree
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct Tree {
+pub struct DhatTree {
+    root: Box<Node>,
+}
+
+/// A [`Tree`] without any leafs. Useful if only the root data and metrics are of interest.
+///
+/// If you're just interested in the data of the root then it is more performant to use this tree
+/// instead of building a complete [`DhatTree`]. The dhat metrics of the root are the summarized
+/// metrics of all its children, so all this [`Tree`] does is summarizing the metrics without
+/// actually building the tree.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct RootTree {
     root: Box<Node>,
 }
 
@@ -72,6 +143,36 @@ impl Data {
         self.blocks_at_end = sum_options(self.blocks_at_end, other.blocks_at_end);
         self.blocks_read = sum_options(self.blocks_read, other.blocks_read);
         self.blocks_write = sum_options(self.blocks_write, other.blocks_write);
+    }
+
+    fn metrics(&self) -> ToolMetrics {
+        // This is the same order as order of metrics in the log file output
+        let metrics = [
+            (DhatMetric::TotalBytes, Some(self.total_bytes)),
+            (DhatMetric::TotalBlocks, Some(self.total_blocks)),
+            (DhatMetric::AtTGmaxBytes, self.bytes_at_max),
+            (DhatMetric::AtTGmaxBlocks, self.blocks_at_max),
+            (DhatMetric::AtTEndBytes, self.bytes_at_end),
+            (DhatMetric::AtTEndBlocks, self.blocks_at_end),
+            (DhatMetric::ReadsBytes, self.blocks_read),
+            (DhatMetric::WritesBytes, self.blocks_write),
+            (
+                DhatMetric::TotalLifetimes,
+                #[allow(clippy::cast_possible_truncation)]
+                self.total_lifetimes.map(|a| a as u64),
+            ),
+            (DhatMetric::MaximumBytes, self.maximum_bytes),
+            (DhatMetric::MaximumBlocks, self.maximum_blocks),
+        ];
+
+        let mut tool_metrics = Metrics::empty();
+        for (key, value) in metrics
+            .iter()
+            .filter_map(|(metric, value)| value.map(|value| (metric, value)))
+        {
+            tool_metrics.insert(*key, value.into());
+        }
+        ToolMetrics::Dhat(tool_metrics)
     }
 }
 
@@ -142,83 +243,8 @@ impl Node {
     }
 }
 
-impl Tree {
-    pub fn from_json(dhat_data: DhatData, entry_point: &EntryPoint, frames: &[Glob]) -> Self {
-        let mut globs = frames.iter().collect::<Vec<_>>();
-        let glob = match entry_point {
-            EntryPoint::None => None,
-            EntryPoint::Default => Some(DEFAULT_TOGGLE.into()),
-            EntryPoint::Custom(custom) => Some(custom.into()),
-        };
-
-        if let Some(glob) = &glob {
-            globs.push(glob);
-        }
-
-        let mut indices = vec![];
-        for (index, frame) in dhat_data.frame_table.iter().enumerate() {
-            if let Frame::Leaf(_, func_name, _) = frame {
-                for glob in &globs {
-                    if glob.is_match(func_name) {
-                        indices.push(index);
-                    }
-                }
-            }
-        }
-
-        // TODO: It is overkill to build a real tree just for the root data.
-        let mut tree = Tree::default();
-        // This is the default behaviour
-        if *entry_point == EntryPoint::None && frames.is_empty() {
-            for program_point in dhat_data.program_points {
-                let data = Data::from(&program_point);
-                tree.insert(&program_point.frames, &data);
-            }
-        // Indices can only be present if there is a match of the entry point or the frames
-        } else if !indices.is_empty() {
-            for program_point in dhat_data.program_points {
-                if program_point.frames.iter().any(|f| indices.contains(f)) {
-                    let data = Data::from(&program_point);
-                    tree.insert(&program_point.frames, &data);
-                }
-            }
-        } else {
-            // If there was an entry point or frames configured but didn't match any indices, do
-            // nothing
-            tree.root.data = Data::zero();
-        }
-
-        tree
-    }
-
-    pub fn metrics(&self) -> ToolMetrics {
-        // This is the same order as order of metrics in the log file output
-        let metrics = [
-            (DhatMetric::TotalBytes, Some(self.root.data.total_bytes)),
-            (DhatMetric::TotalBlocks, Some(self.root.data.total_blocks)),
-            (DhatMetric::AtTGmaxBytes, self.root.data.bytes_at_max),
-            (DhatMetric::AtTGmaxBlocks, self.root.data.blocks_at_max),
-            (DhatMetric::AtTEndBytes, self.root.data.bytes_at_end),
-            (DhatMetric::AtTEndBlocks, self.root.data.blocks_at_end),
-            (DhatMetric::ReadsBytes, self.root.data.blocks_read),
-            (DhatMetric::WritesBytes, self.root.data.blocks_write),
-            (
-                DhatMetric::TotalLifetimes,
-                #[allow(clippy::cast_possible_truncation)]
-                self.root.data.total_lifetimes.map(|a| a as u64),
-            ),
-            (DhatMetric::MaximumBytes, self.root.data.maximum_bytes),
-            (DhatMetric::MaximumBlocks, self.root.data.maximum_blocks),
-        ];
-
-        let mut tool_metrics = Metrics::empty();
-        for (key, value) in metrics.iter().filter_map(|(a, b)| b.map(|b| (a, b))) {
-            tool_metrics.insert(*key, value.into());
-        }
-        ToolMetrics::Dhat(tool_metrics)
-    }
-
-    pub fn insert(&mut self, prefix: &[usize], data: &Data) {
+impl Tree for DhatTree {
+    fn insert(&mut self, prefix: &[usize], data: &Data) {
         let mut current = &mut *self.root;
         let mut index = 0;
 
@@ -270,17 +296,39 @@ impl Tree {
             }
         }
     }
+
+    fn set_root_data(&mut self, data: Data) {
+        self.root.data = data;
+    }
+
+    fn get_root_data(&self) -> &Data {
+        &self.root.data
+    }
 }
 
-impl From<DhatData> for Tree {
+impl From<DhatData> for DhatTree {
     fn from(value: DhatData) -> Self {
-        let mut tree = Tree::default();
+        let mut tree = DhatTree::default();
         for pps in value.program_points {
             let data = Data::from(&pps);
             tree.insert(&pps.frames, &data);
         }
 
         tree
+    }
+}
+
+impl Tree for RootTree {
+    fn insert(&mut self, _prefix: &[usize], data: &Data) {
+        self.root.data.add(data);
+    }
+
+    fn set_root_data(&mut self, data: Data) {
+        self.root.data = data;
+    }
+
+    fn get_root_data(&self) -> &Data {
+        &self.root.data
     }
 }
 
@@ -299,8 +347,8 @@ mod tests {
 
     use super::*;
 
-    fn tree_fixture() -> Tree {
-        Tree {
+    fn tree_fixture() -> DhatTree {
+        DhatTree {
             root: Box::new(Node::new(
                 vec![],
                 vec![Node::new(
@@ -322,10 +370,10 @@ mod tests {
 
     #[test]
     fn test_insert_empty() {
-        let mut expected = Tree::default();
+        let mut expected = DhatTree::default();
         expected.root.data = data_fixture(1);
 
-        let mut tree = Tree::default();
+        let mut tree = DhatTree::default();
         tree.insert(&[], &data_fixture(1));
 
         assert_eq!(tree, expected);
@@ -333,7 +381,7 @@ mod tests {
 
     #[test]
     fn test_insert_full_shorter() {
-        let expected = Tree {
+        let expected = DhatTree {
             root: Box::new(Node::new(
                 vec![],
                 vec![Node::new(
@@ -357,7 +405,7 @@ mod tests {
 
     #[test]
     fn test_insert_full_longer() {
-        let expected = Tree {
+        let expected = DhatTree {
             root: Box::new(Node::new(
                 vec![],
                 vec![Node::new(
@@ -380,7 +428,7 @@ mod tests {
 
     #[test]
     fn test_insert_mixed() {
-        let expected = Tree {
+        let expected = DhatTree {
             root: Box::new(Node::new(
                 vec![],
                 vec![Node::new(
@@ -407,7 +455,7 @@ mod tests {
 
     #[test]
     fn test_insert_no_match() {
-        let expected = Tree {
+        let expected = DhatTree {
             root: Box::new(Node::new(
                 vec![],
                 vec![
@@ -430,7 +478,7 @@ mod tests {
 
     #[test]
     fn test_insert_equal() {
-        let expected = Tree {
+        let expected = DhatTree {
             root: Box::new(Node::new(
                 vec![],
                 vec![Node::new(

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Context, Result};
 
 use super::model::DhatData;
-use super::tree::Tree;
+use super::tree::{DhatTree, Tree};
 use crate::api::EntryPoint;
 use crate::runner::tool::parser::{Header, Parser, ParserOutput};
 use crate::runner::tool::{logfile_parser, ToolOutputPath};
@@ -51,6 +51,12 @@ impl Parser for JsonParser {
                 .lines()
                 .map(std::result::Result::unwrap);
             let header = logfile_parser::parse_header(&logfile, iter)?;
+
+            assert_eq!(
+                header.pid, dhat_data.pid,
+                "The pid of the json and log file should be equal"
+            );
+
             header.parent_pid
         } else {
             None
@@ -65,7 +71,7 @@ impl Parser for JsonParser {
             desc: vec![],
         };
 
-        let tree = Tree::from_json(dhat_data, &self.entry_point, &self.frames);
+        let tree = DhatTree::from_json(dhat_data, &self.entry_point, &self.frames);
 
         Ok(ParserOutput {
             path,
