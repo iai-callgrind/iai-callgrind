@@ -544,7 +544,6 @@ impl ToolConfig {
                     .map_or(ToolFlamegraphConfig::None, Into::into),
                 entry_point.or(tool.entry_point).unwrap_or(EntryPoint::None),
                 is_default,
-                // TODO: if default entry point in DHAT add the benchmark function name
                 &tool.frames.unwrap_or_default(),
             )
         } else {
@@ -634,8 +633,6 @@ impl ToolConfig {
                 flamegraph_config.map_or(ToolFlamegraphConfig::None, Into::into),
                 entry_point.unwrap_or(EntryPoint::None),
                 is_default,
-                // TODO: if entry_point is default there should be the additional function name if
-                // DHAT
                 &[],
             )
         }
@@ -643,9 +640,10 @@ impl ToolConfig {
 
     pub fn new_default_config(
         output_format: &mut OutputFormat,
+        module_path: &ModulePath,
         meta: &Metadata,
         default_tool: ValgrindTool,
-        tool: Option<Tool>,
+        mut tool: Option<Tool>,
         default_entry_point: EntryPoint,
         valgrind_args: &RawArgs,
         default_args: &HashMap<ValgrindTool, RawArgs>,
@@ -715,6 +713,27 @@ impl ToolConfig {
                     .as_ref()
                     .and_then(|t| t.entry_point.clone())
                     .unwrap_or(default_entry_point);
+
+                if let EntryPoint::Default = entry_point {
+                    let tool = tool.get_or_insert_with(|| Tool::new(ValgrindTool::DHAT));
+                    let frames = tool.frames.get_or_insert_with(Vec::new);
+
+                    // DHAT does not resolve function calls the same way as callgrind does. Somehow
+                    // the benchmark function matched by the `DEFAULT_TOGGLE` gets sometimes inlined
+                    // (although annotated with `#[inline(never)]`), so we need to fall back to the
+                    // next best thing which is the function that calls the benchmark function. At
+                    // this point the module path consists of `file::group::function`. The group in
+                    // the path is artificial and we need the real function path within the
+                    // benchmark file to create a matching glob pattern. That real path consists of
+                    // `file::function::id`. The `id`-function won't be matched literally but with a
+                    // wildcard to address the problem of functions with the same body being
+                    // condensed into a single function by the compiler. There is no way to know
+                    // which concrete `id`-function the compiler chose in the end, so we match it
+                    // with a wildcard.
+                    if let [first, _, last] = module_path.components()[..] {
+                        frames.push(format!("{first}::{last}::*"));
+                    }
+                }
 
                 // TODO: regression config
                 ToolConfig::from_tool(
@@ -812,9 +831,11 @@ impl ToolConfigs {
     /// # Errors
     ///
     /// This function will return an error if the configs cannot be created
+    #[expect(clippy::too_many_lines)]
     pub fn new(
         output_format: &mut OutputFormat,
         mut tools: Tools,
+        module_path: &ModulePath,
         meta: &Metadata,
         default_tool: ValgrindTool,
         default_entry_point: &EntryPoint,
@@ -824,6 +845,7 @@ impl ToolConfigs {
         let extracted_tool = tools.consume(default_tool);
         let default_tool_config = ToolConfig::new_default_config(
             output_format,
+            module_path,
             meta,
             default_tool,
             extracted_tool,
@@ -850,7 +872,7 @@ impl ToolConfigs {
         };
 
         let mut tool_configs = ToolConfigs(vec![default_tool_config]);
-        tool_configs.extend(meta_tools.into_iter().map(|tool| {
+        tool_configs.extend(meta_tools.into_iter().map(|mut tool| {
             let mut base_args = default_args.get(&tool.kind).cloned().unwrap_or_default();
             base_args.update(valgrind_args);
 
@@ -900,6 +922,15 @@ impl ToolConfigs {
                         .entry_point
                         .clone()
                         .unwrap_or(default_entry_point.clone());
+
+                    if let EntryPoint::Default = entry_point {
+                        let frames = tool.frames.get_or_insert_with(Vec::new);
+
+                        // See comment in `ToolConfig::new_default_config`
+                        if let [first, _, last] = module_path.components()[..] {
+                            frames.push(format!("{first}::{last}::*"));
+                        }
+                    }
 
                     ToolConfig::from_tool(
                         output_format,
