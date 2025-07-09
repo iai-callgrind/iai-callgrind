@@ -9,8 +9,8 @@ use super::model::{DhatData, Frame, ProgramPoint};
 use crate::api::{DhatMetric, EntryPoint};
 use crate::runner::metrics::Metrics;
 use crate::runner::summary::ToolMetrics;
-use crate::runner::DEFAULT_TOGGLE_RE;
-use crate::util::glob_to_regex;
+use crate::runner::DEFAULT_TOGGLE;
+use crate::util::Glob;
 
 lazy_static! {
     static ref GLOB_TO_REGEX_RE: Regex = regex::Regex::new(r"([*])").expect("Regex should compile");
@@ -143,23 +143,23 @@ impl Node {
 }
 
 impl Tree {
-    pub fn from_json(dhat_data: DhatData, entry_point: &EntryPoint, frames: &[Regex]) -> Self {
-        let mut matchers = frames.iter().collect::<Vec<_>>();
-        let regex = match entry_point {
+    pub fn from_json(dhat_data: DhatData, entry_point: &EntryPoint, frames: &[Glob]) -> Self {
+        let mut globs = frames.iter().collect::<Vec<_>>();
+        let glob = match entry_point {
             EntryPoint::None => None,
-            EntryPoint::Default => Regex::new(DEFAULT_TOGGLE_RE).ok(),
-            EntryPoint::Custom(custom) => glob_to_regex(custom).ok(),
+            EntryPoint::Default => Some(DEFAULT_TOGGLE.into()),
+            EntryPoint::Custom(custom) => Some(custom.into()),
         };
 
-        if let Some(regex) = &regex {
-            matchers.push(regex);
+        if let Some(glob) = &glob {
+            globs.push(glob);
         }
 
         let mut indices = vec![];
         for (index, frame) in dhat_data.frame_table.iter().enumerate() {
             if let Frame::Leaf(_, func_name, _) = frame {
-                for matcher in &matchers {
-                    if matcher.is_match(func_name) {
+                for glob in &globs {
+                    if glob.is_match(func_name) {
                         indices.push(index);
                     }
                 }

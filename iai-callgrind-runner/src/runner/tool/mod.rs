@@ -51,7 +51,7 @@ use crate::api::{
     self, EntryPoint, ExitWith, RawArgs, Stream, Tool, ToolOutputFormat, Tools, ValgrindTool,
 };
 use crate::error::Error;
-use crate::util::{self, glob_to_regex, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
+use crate::util::{self, resolve_binary_path, truncate_str_utf8, EitherOrBoth, Glob};
 
 lazy_static! {
     // This regex matches the original file name without the prefix as it is created by callgrind.
@@ -148,7 +148,7 @@ pub struct ToolConfig {
     pub regression_config: ToolRegressionConfig,
     pub flamegraph_config: ToolFlamegraphConfig,
     pub entry_point: EntryPoint,
-    pub frames: Vec<Regex>,
+    pub frames: Vec<Glob>,
 }
 
 #[derive(Debug, Clone)]
@@ -398,10 +398,7 @@ impl ToolConfig {
             flamegraph_config,
             entry_point,
             is_default,
-            frames: frames
-                .iter()
-                .map(|s| glob_to_regex(s))
-                .collect::<Result<Vec<_>>>()?,
+            frames: frames.iter().map(Into::into).collect(),
         })
     }
 

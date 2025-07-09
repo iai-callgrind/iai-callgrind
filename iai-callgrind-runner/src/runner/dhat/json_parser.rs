@@ -3,13 +3,13 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
-use regex::Regex;
 
 use super::model::DhatData;
 use super::tree::Tree;
 use crate::api::EntryPoint;
 use crate::runner::tool::parser::{Header, Parser, ParserOutput};
 use crate::runner::tool::{logfile_parser, ToolOutputPath};
+use crate::util::Glob;
 
 pub fn parse(path: &Path) -> Result<DhatData> {
     let file = File::open(path)?;
@@ -25,11 +25,11 @@ pub fn parse(path: &Path) -> Result<DhatData> {
 pub struct JsonParser {
     output_path: ToolOutputPath,
     entry_point: EntryPoint,
-    frames: Vec<Regex>,
+    frames: Vec<Glob>,
 }
 
 impl JsonParser {
-    pub fn new(output_path: ToolOutputPath, entry_point: EntryPoint, frames: Vec<Regex>) -> Self {
+    pub fn new(output_path: ToolOutputPath, entry_point: EntryPoint, frames: Vec<Glob>) -> Self {
         Self {
             output_path,
             entry_point,
