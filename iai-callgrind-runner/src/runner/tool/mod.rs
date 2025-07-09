@@ -36,6 +36,7 @@ use super::callgrind::parser::{parse_header, Sentinel};
 use super::callgrind::CallgrindRegressionConfig;
 use super::common::{Assistant, Baselines, Config, ModulePath, Sandbox};
 use super::dhat::json_parser::JsonParser;
+use super::dhat::logfile_parser::DhatLogfileParser;
 use super::format::{
     print_no_capture_footer, print_regressions, Formatter, OutputFormat, VerticalFormatter,
 };
@@ -50,7 +51,7 @@ use crate::api::{
     self, EntryPoint, ExitWith, RawArgs, Stream, Tool, ToolOutputFormat, Tools, ValgrindTool,
 };
 use crate::error::Error;
-use crate::util::{self, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
+use crate::util::{self, glob_to_regex, resolve_binary_path, truncate_str_utf8, EitherOrBoth};
 
 lazy_static! {
     // This regex matches the original file name without the prefix as it is created by callgrind.
@@ -137,7 +138,7 @@ pub struct RunOptions {
     pub delay: Option<Delay>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct ToolConfig {
     pub tool: ValgrindTool,
     pub is_enabled: bool,
@@ -147,9 +148,10 @@ pub struct ToolConfig {
     pub regression_config: ToolRegressionConfig,
     pub flamegraph_config: ToolFlamegraphConfig,
     pub entry_point: EntryPoint,
+    pub frames: Vec<Regex>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct ToolConfigs(pub Vec<ToolConfig>);
 
 pub struct ToolCommand {
@@ -382,11 +384,12 @@ impl ToolConfig {
         flamegraph_config: ToolFlamegraphConfig,
         entry_point: EntryPoint,
         is_default: bool,
-    ) -> Self
+        frames: &[String],
+    ) -> Result<Self>
     where
         T: Into<ToolArgs>,
     {
-        Self {
+        Ok(Self {
             tool,
             is_enabled,
             args: args.into(),
@@ -395,7 +398,11 @@ impl ToolConfig {
             flamegraph_config,
             entry_point,
             is_default,
-        }
+            frames: frames
+                .iter()
+                .map(|s| glob_to_regex(s))
+                .collect::<Result<Vec<_>>>()?,
+        })
     }
 
     #[allow(clippy::too_many_lines)]
@@ -529,7 +536,7 @@ impl ToolConfig {
                 }
             }
 
-            Ok(ToolConfig::new(
+            ToolConfig::new(
                 valgrind_tool,
                 is_default || tool.enable.unwrap_or(true),
                 args,
@@ -540,7 +547,9 @@ impl ToolConfig {
                     .map_or(ToolFlamegraphConfig::None, Into::into),
                 entry_point.or(tool.entry_point).unwrap_or(EntryPoint::None),
                 is_default,
-            ))
+                // TODO: if default entry point in DHAT add the benchmark function name
+                &tool.frames.unwrap_or_default(),
+            )
         } else {
             let args = match valgrind_tool {
                 ValgrindTool::Callgrind => callgrind::args::Args::try_from_raw_args(&[
@@ -618,7 +627,8 @@ impl ToolConfig {
                     ToolRegressionConfig::None => {}
                 }
             }
-            Ok(ToolConfig::new(
+
+            ToolConfig::new(
                 valgrind_tool,
                 true,
                 args,
@@ -627,7 +637,10 @@ impl ToolConfig {
                 flamegraph_config.map_or(ToolFlamegraphConfig::None, Into::into),
                 entry_point.unwrap_or(EntryPoint::None),
                 is_default,
-            ))
+                // TODO: if entry_point is default there should be the additional function name if
+                // DHAT
+                &[],
+            )
         }
     }
 
@@ -694,6 +707,31 @@ impl ToolConfig {
                     None, // The default entry point is currently just for callgrind
                 )
             }
+            ValgrindTool::DHAT => {
+                let mut base_args = default_args
+                    .get(&ValgrindTool::DHAT)
+                    .cloned()
+                    .unwrap_or_default();
+                base_args.update(valgrind_args);
+
+                let entry_point = tool
+                    .as_ref()
+                    .and_then(|t| t.entry_point.clone())
+                    .unwrap_or(default_entry_point);
+
+                // TODO: regression config
+                ToolConfig::from_tool(
+                    output_format,
+                    ValgrindTool::DHAT,
+                    tool,
+                    meta,
+                    &base_args,
+                    true,
+                    None,
+                    None,
+                    Some(entry_point), // The default entry point is currently just for callgrind
+                )
+            }
             valgrind_tool => {
                 let mut base_args = default_args
                     .get(&valgrind_tool)
@@ -722,7 +760,7 @@ impl ToolConfig {
         output_path: &ToolOutputPath,
         parsed_old: Option<Vec<ParserOutput>>,
     ) -> Result<Profile> {
-        let parser = parser_factory(self.tool, meta.project_root.clone(), output_path);
+        let parser = parser_factory(self, meta.project_root.clone(), output_path);
 
         let parsed_new = parser.parse()?;
         let parsed_old = if let Some(parsed_old) = parsed_old {
@@ -763,38 +801,6 @@ impl ToolConfig {
     }
 }
 
-impl TryFrom<api::Tool> for ToolConfig {
-    type Error = anyhow::Error;
-
-    fn try_from(value: api::Tool) -> std::result::Result<Self, Self::Error> {
-        let tool = value.kind;
-        let args = match tool {
-            ValgrindTool::Callgrind => {
-                callgrind::args::Args::try_from_raw_args(&[&value.raw_args])?.into()
-            }
-            ValgrindTool::Cachegrind => {
-                cachegrind::args::Args::try_from_raw_args(&[&value.raw_args])?.into()
-            }
-            _ => ToolArgs::try_from_raw_args(tool, &[&value.raw_args])?,
-        };
-
-        Ok(Self {
-            tool,
-            is_enabled: value.enable.unwrap_or(true),
-            args,
-            outfile_modifier: None,
-            regression_config: value
-                .regression_config
-                .map_or(ToolRegressionConfig::None, Into::into),
-            flamegraph_config: value
-                .flamegraph_config
-                .map_or(ToolFlamegraphConfig::None, Into::into),
-            entry_point: value.entry_point.unwrap_or(EntryPoint::None),
-            is_default: false,
-        })
-    }
-}
-
 impl ToolConfigs {
     /// Create new `ToolConfigs`
     ///
@@ -829,6 +835,9 @@ impl ToolConfigs {
             default_args,
         )?;
 
+        // The tool selection from the command line or env args overwrites the tool selection from
+        // the benchmark file. However, any tool configurations from the benchmark files are
+        // preserved.
         let meta_tools = if meta.args.tools.is_empty() {
             tools.0
         } else {
@@ -878,17 +887,33 @@ impl ToolConfigs {
                         Some(entry_point),
                     )
                 }
-                ValgrindTool::Cachegrind => {
+                ValgrindTool::Cachegrind => ToolConfig::from_tool(
+                    output_format,
+                    tool.kind,
+                    Some(tool),
+                    meta,
+                    &base_args,
+                    false,
+                    meta.args.cachegrind_limits.clone(),
+                    None,
+                    None,
+                ),
+                ValgrindTool::DHAT => {
+                    let entry_point = tool
+                        .entry_point
+                        .clone()
+                        .unwrap_or(default_entry_point.clone());
+
                     ToolConfig::from_tool(
                         output_format,
-                        ValgrindTool::Cachegrind,
+                        tool.kind,
                         Some(tool),
                         meta,
                         &base_args,
                         false,
-                        meta.args.cachegrind_limits.clone(),
                         None,
-                        None, // The default entry point is currently just for callgrind
+                        None,
+                        Some(entry_point),
                     )
                 }
                 _ => ToolConfig::from_tool(
@@ -900,7 +925,7 @@ impl ToolConfigs {
                     false,
                     None,
                     None,
-                    None, // The default entry point is currently just for callgrind
+                    None,
                 ),
             }
         }))?;
@@ -1054,7 +1079,8 @@ impl ToolConfigs {
 
             let output_path = output_path.to_tool_output(tool);
 
-            let parser = parser_factory(tool, config.meta.project_root.clone(), &output_path);
+            let parser =
+                parser_factory(tool_config, config.meta.project_root.clone(), &output_path);
             let parsed_old = parser.parse_base()?;
 
             let log_path = output_path.to_log_output();
@@ -2154,11 +2180,11 @@ pub fn check_exit(
 }
 
 pub fn parser_factory(
-    tool: ValgrindTool,
+    tool_config: &ToolConfig,
     root_dir: PathBuf,
     output_path: &ToolOutputPath,
 ) -> Box<dyn Parser> {
-    match tool {
+    match tool_config.tool {
         ValgrindTool::Callgrind => Box::new(callgrind::summary_parser::SummaryParser {
             output_path: output_path.clone(),
         }),
@@ -2166,13 +2192,18 @@ pub fn parser_factory(
             output_path: output_path.clone(),
         }),
         ValgrindTool::DHAT => {
-            // TODO: Use logfile parser if no entry point or frames
-            // TODO: Use real values
-            Box::new(JsonParser {
-                output_path: output_path.clone(),
-                entry_point: EntryPoint::Default,
-                func: "some::none::sense".to_owned(),
-            })
+            if tool_config.entry_point == EntryPoint::None && tool_config.frames.is_empty() {
+                Box::new(DhatLogfileParser::new(
+                    output_path.to_log_output(),
+                    root_dir,
+                ))
+            } else {
+                Box::new(JsonParser::new(
+                    output_path.clone(),
+                    tool_config.entry_point.clone(),
+                    tool_config.frames.clone(),
+                ))
+            }
         }
         ValgrindTool::Memcheck | ValgrindTool::DRD | ValgrindTool::Helgrind => {
             Box::new(ErrorMetricLogfileParser {

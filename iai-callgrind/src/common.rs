@@ -938,6 +938,24 @@ impl Dhat {
 
         self
     }
+
+    /// TODO: DOCS
+    pub fn entry_point(&mut self, entry_point: EntryPoint) -> &mut Self {
+        self.0.entry_point = Some(entry_point);
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn frames<I, T>(&mut self, frames: T) -> &mut Self
+    where
+        I: Into<String>,
+        T: IntoIterator<Item = I>,
+    {
+        let this = self.0.frames.get_or_insert_with(Vec::new);
+        this.extend(frames.into_iter().map(Into::into));
+
+        self
+    }
 }
 
 impl Default for Dhat {

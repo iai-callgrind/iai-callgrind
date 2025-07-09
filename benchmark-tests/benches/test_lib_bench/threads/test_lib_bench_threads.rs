@@ -12,6 +12,7 @@ use iai_callgrind::{
         .tool(Callgrind::with_args([
             "toggle-collect=*::find_primes"
         ]))
+        .tool(Dhat::default().frames(["*::find_primes"]))
 )]
 #[bench::two(2)]
 #[bench::three(3)]

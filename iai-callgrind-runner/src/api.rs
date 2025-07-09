@@ -942,6 +942,7 @@ pub struct Tool {
     pub flamegraph_config: Option<ToolFlamegraphConfig>,
     pub output_format: Option<ToolOutputFormat>,
     pub entry_point: Option<EntryPoint>,
+    pub frames: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1847,6 +1848,7 @@ impl Tool {
             flamegraph_config: None,
             output_format: None,
             entry_point: None,
+            frames: None,
         }
     }
 
@@ -1870,6 +1872,7 @@ impl Tool {
                 update_option(&self.flamegraph_config, &other.flamegraph_config);
             self.output_format = update_option(&self.output_format, &other.output_format);
             self.entry_point = update_option(&self.entry_point, &other.entry_point);
+            self.frames = update_option(&self.frames, &other.frames);
 
             self.raw_args.extend_ignore_flag(other.raw_args.0.iter());
         }
@@ -2025,6 +2028,7 @@ mod tests {
                 )),
                 entry_point: Some(EntryPoint::default()),
                 output_format: Some(ToolOutputFormat::None),
+                frames: Some(vec!["some::frame".to_owned()]),
             }]),
             tools_override: None,
             output_format: None,
@@ -2054,6 +2058,7 @@ mod tests {
                 )),
                 entry_point: Some(EntryPoint::default()),
                 output_format: Some(ToolOutputFormat::None),
+                frames: Some(vec!["some::frame".to_owned()]),
             }]),
             tools_override: Some(Tools(vec![])),
             output_format: Some(OutputFormat::default()),
@@ -2220,6 +2225,7 @@ mod tests {
             flamegraph_config: Some(ToolFlamegraphConfig::None),
             output_format: Some(ToolOutputFormat::None),
             entry_point: Some(EntryPoint::Default),
+            frames: Some(vec!["some::frame".to_owned()]),
         };
         let expected = other.clone();
         base.update(&other);
@@ -2238,6 +2244,7 @@ mod tests {
             flamegraph_config: Some(ToolFlamegraphConfig::None),
             output_format: Some(ToolOutputFormat::None),
             entry_point: Some(EntryPoint::Default),
+            frames: Some(vec!["some::frame".to_owned()]),
         };
 
         let expected = base.clone();

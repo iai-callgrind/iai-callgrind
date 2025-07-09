@@ -44,6 +44,22 @@ pub struct Tree {
 }
 
 impl Data {
+    fn zero() -> Self {
+        Self {
+            total_bytes: 0,
+            total_blocks: 0,
+            total_lifetimes: Some(0),
+            maximum_bytes: Some(0),
+            maximum_blocks: Some(0),
+            bytes_at_max: Some(0),
+            blocks_at_max: Some(0),
+            bytes_at_end: Some(0),
+            blocks_at_end: Some(0),
+            blocks_read: Some(0),
+            blocks_write: Some(0),
+        }
+    }
+
     fn add(&mut self, other: &Self) {
         self.total_bytes += other.total_bytes;
         self.total_blocks += other.total_blocks;
@@ -127,45 +143,49 @@ impl Node {
 }
 
 impl Tree {
-    pub fn from_json(dhat_data: DhatData, entry_point: &EntryPoint, frames: &[&str]) -> Self {
-        let mut matchers = frames
-            .iter()
-            .filter_map(|f| glob_to_regex(f).ok())
-            .collect::<Vec<_>>();
+    pub fn from_json(dhat_data: DhatData, entry_point: &EntryPoint, frames: &[Regex]) -> Self {
+        let mut matchers = frames.iter().collect::<Vec<_>>();
         let regex = match entry_point {
             EntryPoint::None => None,
             EntryPoint::Default => Regex::new(DEFAULT_TOGGLE_RE).ok(),
             EntryPoint::Custom(custom) => glob_to_regex(custom).ok(),
         };
 
-        if let Some(regex) = regex {
+        if let Some(regex) = &regex {
             matchers.push(regex);
         }
 
-        let mut frames = vec![];
+        let mut indices = vec![];
         for (index, frame) in dhat_data.frame_table.iter().enumerate() {
             if let Frame::Leaf(_, func_name, _) = frame {
                 for matcher in &matchers {
                     if matcher.is_match(func_name) {
-                        frames.push(index);
+                        indices.push(index);
                     }
                 }
             }
         }
 
+        // TODO: It is overkill to build a real tree just for the root data.
         let mut tree = Tree::default();
-        if frames.is_empty() {
+        // This is the default behaviour
+        if *entry_point == EntryPoint::None && frames.is_empty() {
             for program_point in dhat_data.program_points {
                 let data = Data::from(&program_point);
                 tree.insert(&program_point.frames, &data);
             }
-        } else {
+        // Indices can only be present if there is a match of the entry point or the frames
+        } else if !indices.is_empty() {
             for program_point in dhat_data.program_points {
-                if program_point.frames.iter().any(|f| frames.contains(f)) {
+                if program_point.frames.iter().any(|f| indices.contains(f)) {
                     let data = Data::from(&program_point);
                     tree.insert(&program_point.frames, &data);
                 }
             }
+        } else {
+            // If there was an entry point or frames configured but didn't match any indices, do
+            // nothing
+            tree.root.data = Data::zero();
         }
 
         tree

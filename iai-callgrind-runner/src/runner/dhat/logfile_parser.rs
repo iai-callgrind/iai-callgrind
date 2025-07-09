@@ -39,6 +39,13 @@ pub struct DhatLogfileParser {
 }
 
 impl DhatLogfileParser {
+    pub fn new(output_path: ToolOutputPath, root_dir: PathBuf) -> Self {
+        Self {
+            output_path,
+            root_dir,
+        }
+    }
+
     /// Parse a single line of the logfile
     ///
     /// A return value of `false` indicates parsing is complete.

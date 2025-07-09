@@ -3,6 +3,7 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
+use regex::Regex;
 
 use super::model::DhatData;
 use super::tree::Tree;
@@ -22,9 +23,19 @@ pub fn parse(path: &Path) -> Result<DhatData> {
 }
 
 pub struct JsonParser {
-    pub output_path: ToolOutputPath,
-    pub entry_point: EntryPoint,
-    pub func: String,
+    output_path: ToolOutputPath,
+    entry_point: EntryPoint,
+    frames: Vec<Regex>,
+}
+
+impl JsonParser {
+    pub fn new(output_path: ToolOutputPath, entry_point: EntryPoint, frames: Vec<Regex>) -> Self {
+        Self {
+            output_path,
+            entry_point,
+            frames,
+        }
+    }
 }
 
 impl Parser for JsonParser {
@@ -54,7 +65,7 @@ impl Parser for JsonParser {
             desc: vec![],
         };
 
-        let tree = Tree::from_json(dhat_data, &self.entry_point, &[&self.func]);
+        let tree = Tree::from_json(dhat_data, &self.entry_point, &self.frames);
 
         Ok(ParserOutput {
             path,
