@@ -77,17 +77,17 @@ pub trait Tree {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Data {
-    total_bytes: u64,
-    total_blocks: u64,
-    total_lifetimes: Option<u128>,
-    maximum_bytes: Option<u64>,
-    maximum_blocks: Option<u64>,
-    bytes_at_max: Option<u64>,
-    blocks_at_max: Option<u64>,
-    bytes_at_end: Option<u64>,
-    blocks_at_end: Option<u64>,
-    blocks_read: Option<u64>,
-    blocks_write: Option<u64>,
+    pub total_bytes: u64,
+    pub total_blocks: u64,
+    pub total_lifetimes: Option<u128>,
+    pub maximum_bytes: Option<u64>,
+    pub maximum_blocks: Option<u64>,
+    pub bytes_at_max: Option<u64>,
+    pub blocks_at_max: Option<u64>,
+    pub bytes_at_end: Option<u64>,
+    pub blocks_at_end: Option<u64>,
+    pub blocks_read: Option<u64>,
+    pub blocks_write: Option<u64>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -277,7 +277,6 @@ impl Tree for DhatTree {
                                 index += child.prefix.len();
                             }
                             Ordering::Equal => {
-                                // TODO: Is this a real possibility with DHAT? Add or not?
                                 child.add_data(data);
                                 return;
                             }
@@ -347,7 +346,7 @@ mod tests {
 
     use super::*;
 
-    fn tree_fixture() -> DhatTree {
+    fn dhat_tree_fixture() -> DhatTree {
         DhatTree {
             root: Box::new(Node::new(
                 vec![],
@@ -369,7 +368,7 @@ mod tests {
     }
 
     #[test]
-    fn test_insert_empty() {
+    fn test_dhat_tree_insert_empty() {
         let mut expected = DhatTree::default();
         expected.root.data = data_fixture(1);
 
@@ -380,7 +379,7 @@ mod tests {
     }
 
     #[test]
-    fn test_insert_full_shorter() {
+    fn test_dhat_tree_insert_full_shorter() {
         let expected = DhatTree {
             root: Box::new(Node::new(
                 vec![],
@@ -397,14 +396,14 @@ mod tests {
             )),
         };
 
-        let mut tree = tree_fixture();
+        let mut tree = dhat_tree_fixture();
         tree.insert(&[1], &data_fixture(1));
 
         assert_eq!(tree, expected);
     }
 
     #[test]
-    fn test_insert_full_longer() {
+    fn test_dhat_tree_insert_full_longer() {
         let expected = DhatTree {
             root: Box::new(Node::new(
                 vec![],
@@ -420,14 +419,14 @@ mod tests {
             )),
         };
 
-        let mut tree = tree_fixture();
+        let mut tree = dhat_tree_fixture();
         tree.insert(&[1, 2, 3, 6], &data_fixture(1));
 
         assert_eq!(tree, expected);
     }
 
     #[test]
-    fn test_insert_mixed() {
+    fn test_dhat_tree_insert_mixed() {
         let expected = DhatTree {
             root: Box::new(Node::new(
                 vec![],
@@ -447,14 +446,14 @@ mod tests {
             )),
         };
 
-        let mut tree = tree_fixture();
+        let mut tree = dhat_tree_fixture();
         tree.insert(&[1, 6], &data_fixture(1));
 
         assert_eq!(tree, expected);
     }
 
     #[test]
-    fn test_insert_no_match() {
+    fn test_dhat_tree_insert_no_match() {
         let expected = DhatTree {
             root: Box::new(Node::new(
                 vec![],
@@ -470,14 +469,14 @@ mod tests {
             )),
         };
 
-        let mut tree = tree_fixture();
+        let mut tree = dhat_tree_fixture();
         tree.insert(&[6], &data_fixture(1));
 
         assert_eq!(tree, expected);
     }
 
     #[test]
-    fn test_insert_equal() {
+    fn test_dhat_tree_insert_equal() {
         let expected = DhatTree {
             root: Box::new(Node::new(
                 vec![],
@@ -490,8 +489,33 @@ mod tests {
             )),
         };
 
-        let mut tree = tree_fixture();
+        let mut tree = dhat_tree_fixture();
         tree.insert(&[1, 2, 3], &data_fixture(1));
+
+        assert_eq!(tree, expected);
+    }
+
+    #[test]
+    fn test_root_tree_insert() {
+        let expected = RootTree {
+            root: Box::new(Node::new(vec![], vec![], data_fixture(1))),
+        };
+
+        let mut tree = RootTree::default();
+        tree.insert(&[1, 2, 3], &data_fixture(1));
+
+        assert_eq!(tree, expected);
+    }
+
+    #[test]
+    fn test_root_tree_insert_two() {
+        let expected = RootTree {
+            root: Box::new(Node::new(vec![], vec![], data_fixture(3))),
+        };
+
+        let mut tree = RootTree::default();
+        tree.insert(&[1, 2, 3], &data_fixture(1));
+        tree.insert(&[1], &data_fixture(2));
 
         assert_eq!(tree, expected);
     }
