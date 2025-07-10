@@ -281,6 +281,11 @@ path = "benches/test_lib_bench/default_tool/test_lib_bench_default_tool.rs"
 
 [[bench]]
 harness = false
+name = "test_lib_bench_dhat"
+path = "benches/test_lib_bench/dhat/test_lib_bench_dhat.rs"
+
+[[bench]]
+harness = false
 name = "lib_bench_threads"
 path = "benches/guide/lib_bench_threads.rs"
 

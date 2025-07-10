@@ -208,6 +208,7 @@ mod tests {
     #[case::zero_bytes_in_blocks("0 bytes in 0 blocks")]
     #[case::some_bytes("156362 bytes")]
     #[case::zero_bytes("0 bytes")]
+    #[case::zero_bytes("20 units in 1 events")]
     fn test_metrics_re_when_match(#[case] haystack: &str) {
         assert!(METRICS_RE.is_match(haystack));
     }
