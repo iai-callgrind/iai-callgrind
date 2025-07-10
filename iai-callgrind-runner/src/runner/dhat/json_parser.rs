@@ -71,6 +71,7 @@ impl Parser for JsonParser {
             desc: vec![],
         };
 
+        // TODO: Use RootTree for better performance
         let tree = DhatTree::from_json(dhat_data, &self.entry_point, &self.frames);
 
         Ok(ParserOutput {

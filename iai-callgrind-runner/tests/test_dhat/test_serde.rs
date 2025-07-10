@@ -1,5 +1,5 @@
 use iai_callgrind_runner::runner::dhat::json_parser::parse;
-use iai_callgrind_runner::runner::dhat::model::{DhatData, Frame, ProgramPoint};
+use iai_callgrind_runner::runner::dhat::model::{DhatData, Frame, Mode, ProgramPoint};
 use pretty_assertions::assert_eq;
 
 use crate::common::Fixtures;
@@ -7,7 +7,7 @@ use crate::common::Fixtures;
 fn dhat_data_fixture() -> DhatData {
     DhatData {
         dhat_file_version: 2,
-        mode: "heap".to_owned(),
+        mode: Mode::Heap,
         verb: "Allocated".to_owned(),
         has_block_lifetimes: true,
         has_block_accesses: true,

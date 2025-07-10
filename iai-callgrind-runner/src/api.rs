@@ -621,6 +621,10 @@ pub enum Direction {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum DhatMetric {
+    /// In ad-hoc mode, Total units measured over the entire execution
+    TotalUnits,
+    /// Total ad-hoc events over the entire execution
+    TotalEvents,
     /// Total bytes allocated over the entire execution
     TotalBytes,
     /// Total heap blocks allocated over the entire execution
@@ -1305,6 +1309,8 @@ impl Default for Direction {
 impl Display for DhatMetric {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            DhatMetric::TotalUnits => f.write_str("Total units"),
+            DhatMetric::TotalEvents => f.write_str("Total events"),
             DhatMetric::TotalBytes => f.write_str("Total bytes"),
             DhatMetric::TotalBlocks => f.write_str("Total blocks"),
             DhatMetric::AtTGmaxBytes => f.write_str("At t-gmax bytes"),

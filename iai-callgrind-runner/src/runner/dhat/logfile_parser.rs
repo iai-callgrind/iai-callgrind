@@ -20,9 +20,10 @@ use crate::runner::tool::ToolOutputPath;
 lazy_static! {
     static ref FIXUP_NUMBERS_RE: Regex =
         regex::Regex::new(r"([0-9]),([0-9])").expect("Regex should compile");
-    static ref METRICS_RE: Regex =
-        regex::Regex::new(r"^\s*(?<bytes>[0-9]+)\s*bytes(?:\s*in\s*(?<blocks>[0-9]+))?.*$")
-            .expect("Regex should compile");
+    static ref METRICS_RE: Regex = regex::Regex::new(
+        r"^\s*(?<bytes>[0-9]+)\s*(?<unit>bytes|units)(?:\s*in\s*(?<blocks>[0-9]+))?.*$"
+    )
+    .expect("Regex should compile");
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -81,13 +82,21 @@ impl DhatLogfileParser {
                 }
             }
             State::Fields => {
-                // The original metrics lines look like this:
+                // The original metrics lines look like this in heap mode:
                 //
                 // ==2960865== Total:     156,362 bytes in 78 blocks
                 // ==2960865== At t-gmax: 48,821 bytes in 13 blocks
                 // ==2960865== At t-end:  0 bytes in 0 blocks
                 // ==2960865== Reads:     119,827 bytes
                 // ==2960865== Writes:    136,997 bytes
+                //
+                // or in copy mode
+                //
+                // ==2960865== Total:     156,362 bytes in 78 blocks
+                //
+                // or in ad-hoc mode
+                //
+                // ==2960865== Total:     50 units in 2 events
                 //
                 // The prefix with the pid can be different but the `EXTRACT_FIELDS_RE` takes
                 // care of that.
@@ -105,26 +114,39 @@ impl DhatLogfileParser {
                             .name("blocks")
                             .and_then(|s| s.as_str().parse().ok());
 
+                        let unit = metrics_caps.name("unit").unwrap().as_str();
+
                         match key {
+                            "Total" if unit == "units" => {
+                                metrics.insert(DhatMetric::TotalUnits, num_bytes);
+                                metrics.insert(
+                                    DhatMetric::TotalEvents,
+                                    num_blocks
+                                        .ok_or_else(|| anyhow!("Error parsing total events"))?,
+                                );
+                            }
                             "Total" => {
                                 metrics.insert(DhatMetric::TotalBytes, num_bytes);
                                 metrics.insert(
                                     DhatMetric::TotalBlocks,
-                                    num_blocks.ok_or_else(|| anyhow!("Error parsing blocks"))?,
+                                    num_blocks
+                                        .ok_or_else(|| anyhow!("Error parsing total blocks"))?,
                                 );
                             }
                             "At t-gmax" => {
                                 metrics.insert(DhatMetric::AtTGmaxBytes, num_bytes);
                                 metrics.insert(
                                     DhatMetric::AtTGmaxBlocks,
-                                    num_blocks.ok_or_else(|| anyhow!("Error parsing blocks"))?,
+                                    num_blocks
+                                        .ok_or_else(|| anyhow!("Error parsing At t-gmax blocks"))?,
                                 );
                             }
                             "At t-end" => {
                                 metrics.insert(DhatMetric::AtTEndBytes, num_bytes);
                                 metrics.insert(
                                     DhatMetric::AtTEndBlocks,
-                                    num_blocks.ok_or_else(|| anyhow!("Error parsing blocks"))?,
+                                    num_blocks
+                                        .ok_or_else(|| anyhow!("Error parsing At t-end blocks"))?,
                                 );
                             }
                             "Reads" => {

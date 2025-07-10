@@ -1,0 +1,24 @@
+{"dhatFileVersion":2
+,"mode":"copy","verb":"Copied"
+,"bklt":false,"bkacc":false
+,"tu":"instrs","Mtu":"Minstr"
+,"cmd":"/some/path/bench-bb025b17fd65eb7d --iai-run my_group 1 0 test_dhat::my_group::dhat"
+,"pid":563349
+,"te":479214
+,"pps":
+ [{"tb":4763,"tbk":54
+  ,"fs":[1, 5]
+  }
+ ,{"tb":20,"tbk":1
+  ,"fs":[1, 2, 3, 4]
+  }
+ ]
+,"ftbl":
+ ["[root]"
+ ,"0x48D2121: memmove (in /usr/lib/valgrind/vgpreload_dhat-amd64-linux.so)"
+ ,"0x401151F: test_dhat::copy::__iai_callgrind_wrapper_mod::dhat (test_dhat.rs:65)"
+ ,"0x40116AE: test_dhat::copy::with_entry_point (test_dhat.rs:43)"
+ ,"0x401281B: test_dhat::main (macros.rs:481)"
+ ,"0x403C924: copy_nonoverlapping<u8> (mod.rs:3753)"
+ ]
+}

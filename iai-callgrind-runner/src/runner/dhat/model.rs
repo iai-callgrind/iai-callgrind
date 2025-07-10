@@ -18,7 +18,7 @@ lazy_static! {
 pub struct DhatData {
     #[serde(rename = "dhatFileVersion")]
     pub dhat_file_version: usize,
-    pub mode: String,
+    pub mode: Mode,
     pub verb: String,
     #[serde(rename = "bklt")]
     pub has_block_lifetimes: bool,
@@ -53,6 +53,14 @@ pub struct DhatData {
 pub enum Frame {
     Root,
     Leaf(String, String, String),
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum Mode {
+    #[default]
+    Heap,
+    AdHoc,
+    Copy,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -141,6 +149,38 @@ impl FromStr for Frame {
                     .to_owned(),
             ))
         }
+    }
+}
+
+impl Serialize for Mode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let string = match self {
+            Mode::Heap => "heap",
+            Mode::AdHoc => "ad-hoc",
+            Mode::Copy => "copy",
+        };
+
+        serializer.serialize_str(string)
+    }
+}
+
+impl<'de> Deserialize<'de> for Mode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let frame = String::deserialize(deserializer)?;
+        let mode = match frame.to_lowercase().as_str() {
+            "ad-hoc" => Mode::AdHoc,
+            "heap" => Mode::Heap,
+            "copy" => Mode::Copy,
+            _ => return Err(Error::custom("Invalid mode")),
+        };
+
+        Ok(mode)
     }
 }
 

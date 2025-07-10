@@ -70,14 +70,14 @@ fn copy(mut src: Vec<i32>) -> (Vec<i32>, Vec<i32>) {
         .tool(Dhat::with_args(["--mode=ad-hoc"])),
     setup = setup_worst_case_array
 )]
-// #[bench::without_entry_point(
-//     args = (5),
-//     config = LibraryBenchmarkConfig::default()
-//         .tool(Dhat::with_args(["--mode=ad-hoc"])
-//             .entry_point(EntryPoint::None)
-//         ),
-//     setup = setup_worst_case_array
-// )]
+#[bench::without_entry_point(
+    args = (5),
+    config = LibraryBenchmarkConfig::default()
+        .tool(Dhat::with_args(["--mode=ad-hoc"])
+            .entry_point(EntryPoint::None)
+        ),
+    setup = setup_worst_case_array
+)]
 fn ad_hoc(data: Vec<i32>) -> Vec<i32> {
     iai_callgrind::client_requests::dhat::ad_hoc_event(15);
     black_box(bubble_sort(data))

@@ -3,7 +3,7 @@ use std::ops::Add;
 
 use polonius_the_crab::{polonius, ForLt, PoloniusResult};
 
-use super::model::{DhatData, Frame, ProgramPoint};
+use super::model::{DhatData, Frame, Mode, ProgramPoint};
 use crate::api::{DhatMetric, EntryPoint};
 use crate::runner::metrics::Metrics;
 use crate::runner::summary::ToolMetrics;
@@ -40,6 +40,8 @@ pub trait Tree {
         }
 
         let mut tree = Self::default();
+        tree.set_mode(dhat_data.mode);
+
         // This is the default behaviour
         if *entry_point == EntryPoint::None && frames.is_empty() {
             tree.insert_iter(dhat_data.program_points.into_iter());
@@ -61,8 +63,11 @@ pub trait Tree {
     }
 
     fn metrics(&self) -> ToolMetrics {
-        self.get_root_data().metrics()
+        self.get_root_data().metrics(self.mode())
     }
+
+    fn mode(&self) -> Mode;
+    fn set_mode(&mut self, mode: Mode);
 
     fn insert(&mut self, prefix: &[usize], data: &Data);
     fn insert_iter(&mut self, iter: impl Iterator<Item = ProgramPoint>) {
@@ -100,6 +105,7 @@ pub struct Node {
 /// A full-fledged dhat prefix tree
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct DhatTree {
+    mode: Mode,
     root: Box<Node>,
 }
 
@@ -111,6 +117,7 @@ pub struct DhatTree {
 /// actually building the tree.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct RootTree {
+    mode: Mode,
     root: Box<Node>,
 }
 
@@ -145,25 +152,46 @@ impl Data {
         self.blocks_write = sum_options(self.blocks_write, other.blocks_write);
     }
 
-    fn metrics(&self) -> ToolMetrics {
+    fn metrics(&self, mode: Mode) -> ToolMetrics {
         // This is the same order as order of metrics in the log file output
-        let metrics = [
-            (DhatMetric::TotalBytes, Some(self.total_bytes)),
-            (DhatMetric::TotalBlocks, Some(self.total_blocks)),
-            (DhatMetric::AtTGmaxBytes, self.bytes_at_max),
-            (DhatMetric::AtTGmaxBlocks, self.blocks_at_max),
-            (DhatMetric::AtTEndBytes, self.bytes_at_end),
-            (DhatMetric::AtTEndBlocks, self.blocks_at_end),
-            (DhatMetric::ReadsBytes, self.blocks_read),
-            (DhatMetric::WritesBytes, self.blocks_write),
-            (
-                DhatMetric::TotalLifetimes,
-                #[allow(clippy::cast_possible_truncation)]
-                self.total_lifetimes.map(|a| a as u64),
-            ),
-            (DhatMetric::MaximumBytes, self.maximum_bytes),
-            (DhatMetric::MaximumBlocks, self.maximum_blocks),
-        ];
+        let metrics = match mode {
+            Mode::Heap | Mode::Copy => [
+                (DhatMetric::TotalBytes, Some(self.total_bytes)),
+                (DhatMetric::TotalBlocks, Some(self.total_blocks)),
+                // These should all be None in copy mode
+                (DhatMetric::AtTGmaxBytes, self.bytes_at_max),
+                (DhatMetric::AtTGmaxBlocks, self.blocks_at_max),
+                (DhatMetric::AtTEndBytes, self.bytes_at_end),
+                (DhatMetric::AtTEndBlocks, self.blocks_at_end),
+                (DhatMetric::ReadsBytes, self.blocks_read),
+                (DhatMetric::WritesBytes, self.blocks_write),
+                (
+                    DhatMetric::TotalLifetimes,
+                    #[allow(clippy::cast_possible_truncation)]
+                    self.total_lifetimes.map(|a| a as u64),
+                ),
+                (DhatMetric::MaximumBytes, self.maximum_bytes),
+                (DhatMetric::MaximumBlocks, self.maximum_blocks),
+            ],
+            Mode::AdHoc => [
+                (DhatMetric::TotalUnits, Some(self.total_bytes)),
+                (DhatMetric::TotalEvents, Some(self.total_blocks)),
+                // These should all be None in ad-hoc mode
+                (DhatMetric::AtTGmaxBytes, self.bytes_at_max),
+                (DhatMetric::AtTGmaxBlocks, self.blocks_at_max),
+                (DhatMetric::AtTEndBytes, self.bytes_at_end),
+                (DhatMetric::AtTEndBlocks, self.blocks_at_end),
+                (DhatMetric::ReadsBytes, self.blocks_read),
+                (DhatMetric::WritesBytes, self.blocks_write),
+                (
+                    DhatMetric::TotalLifetimes,
+                    #[allow(clippy::cast_possible_truncation)]
+                    self.total_lifetimes.map(|a| a as u64),
+                ),
+                (DhatMetric::MaximumBytes, self.maximum_bytes),
+                (DhatMetric::MaximumBlocks, self.maximum_blocks),
+            ],
+        };
 
         let mut tool_metrics = Metrics::empty();
         for (key, value) in metrics
@@ -303,6 +331,14 @@ impl Tree for DhatTree {
     fn get_root_data(&self) -> &Data {
         &self.root.data
     }
+
+    fn mode(&self) -> Mode {
+        self.mode
+    }
+
+    fn set_mode(&mut self, mode: Mode) {
+        self.mode = mode;
+    }
 }
 
 impl From<DhatData> for DhatTree {
@@ -329,6 +365,14 @@ impl Tree for RootTree {
     fn get_root_data(&self) -> &Data {
         &self.root.data
     }
+
+    fn mode(&self) -> Mode {
+        self.mode
+    }
+
+    fn set_mode(&mut self, mode: Mode) {
+        self.mode = mode;
+    }
 }
 
 fn sum_options<T: Add<Output = T>>(lhs: Option<T>, rhs: Option<T>) -> Option<T> {
@@ -348,6 +392,7 @@ mod tests {
 
     fn dhat_tree_fixture() -> DhatTree {
         DhatTree {
+            mode: Mode::Heap,
             root: Box::new(Node::new(
                 vec![],
                 vec![Node::new(
@@ -381,6 +426,7 @@ mod tests {
     #[test]
     fn test_dhat_tree_insert_full_shorter() {
         let expected = DhatTree {
+            mode: Mode::Heap,
             root: Box::new(Node::new(
                 vec![],
                 vec![Node::new(
@@ -405,6 +451,7 @@ mod tests {
     #[test]
     fn test_dhat_tree_insert_full_longer() {
         let expected = DhatTree {
+            mode: Mode::Heap,
             root: Box::new(Node::new(
                 vec![],
                 vec![Node::new(
@@ -428,6 +475,7 @@ mod tests {
     #[test]
     fn test_dhat_tree_insert_mixed() {
         let expected = DhatTree {
+            mode: Mode::Heap,
             root: Box::new(Node::new(
                 vec![],
                 vec![Node::new(
@@ -455,6 +503,7 @@ mod tests {
     #[test]
     fn test_dhat_tree_insert_no_match() {
         let expected = DhatTree {
+            mode: Mode::Heap,
             root: Box::new(Node::new(
                 vec![],
                 vec![
@@ -478,6 +527,7 @@ mod tests {
     #[test]
     fn test_dhat_tree_insert_equal() {
         let expected = DhatTree {
+            mode: Mode::Heap,
             root: Box::new(Node::new(
                 vec![],
                 vec![Node::new(
@@ -498,6 +548,7 @@ mod tests {
     #[test]
     fn test_root_tree_insert() {
         let expected = RootTree {
+            mode: Mode::Heap,
             root: Box::new(Node::new(vec![], vec![], data_fixture(1))),
         };
 
@@ -510,6 +561,7 @@ mod tests {
     #[test]
     fn test_root_tree_insert_two() {
         let expected = RootTree {
+            mode: Mode::Heap,
             root: Box::new(Node::new(vec![], vec![], data_fixture(3))),
         };
 
