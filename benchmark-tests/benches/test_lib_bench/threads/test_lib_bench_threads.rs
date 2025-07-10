@@ -26,6 +26,11 @@ fn bench_find_primes_multi_thread(num_threads: usize) -> Vec<u64> {
             "toggle-collect=thread::main",
             "toggle-collect=*::find_primes",
         ]))
+        .tool(Dhat::default()
+            .frames([
+                "thread::main",
+                "*::find_primes"
+        ]))
 )]
 #[bench::two(2)]
 #[bench::three(3)]
@@ -41,6 +46,9 @@ fn bench_thread_in_subprocess(num_threads: usize) {
         .tool(Callgrind::with_args(["--instr-atstart=no"])
             .entry_point(EntryPoint::None)
         )
+        .tool(Dhat::default()
+            .entry_point(EntryPoint::None)
+        )
 )]
 fn bench_thread_in_thread() -> Vec<u64> {
     iai_callgrind::client_requests::callgrind::start_instrumentation();
@@ -52,6 +60,9 @@ fn bench_thread_in_thread() -> Vec<u64> {
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::with_args(["instr-atstart=no"])
+            .entry_point(EntryPoint::None)
+        )
+        .tool(Dhat::default()
             .entry_point(EntryPoint::None)
         )
 )]
