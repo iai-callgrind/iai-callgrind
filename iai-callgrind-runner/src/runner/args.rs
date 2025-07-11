@@ -1,3 +1,4 @@
+// spell-checker: ignore totalbytes totalblocks
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::str::FromStr;
@@ -8,8 +9,8 @@ use clap::{ArgAction, Parser};
 use super::format::OutputFormatKind;
 use super::summary::{BaselineName, SummaryFormat};
 use crate::api::{
-    CachegrindMetric, CachegrindRegressionConfig, CallgrindRegressionConfig, EventKind, RawArgs,
-    ToolRegressionConfig, ValgrindTool,
+    CachegrindMetric, CachegrindRegressionConfig, CallgrindRegressionConfig, DhatMetric,
+    DhatRegressionConfig, EventKind, RawArgs, ToolRegressionConfig, ValgrindTool,
 };
 
 /// A filter for benchmarks
@@ -425,6 +426,21 @@ pub struct CommandLineArgs {
     )]
     pub cachegrind_limits: Option<ToolRegressionConfig>,
 
+    /// Set performance regression limits for specific dhat metrics
+    ///
+    /// This is a `,` separate list of DhatMetric=limit (key=value) pairs. See the description of
+    /// --callgrind-limits for the details and
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.DhatMetric.html> for valid metrics.
+    ///
+    /// Examples: --dhat-limits='totalbytes=0.0' or --dhat-limits='totalbytes=5.0, totalblocks=5.0'
+    #[arg(
+        long = "callgrind-limits",
+        num_args = 1,
+        value_parser = parse_dhat_limits,
+        env = "IAI_CALLGRIND_DHAT_LIMITS",
+    )]
+    pub dhat_limits: Option<ToolRegressionConfig>,
+
     /// If true, the first failed performance regression check fails the whole benchmark run
     ///
     /// Note that if --regression-fail-fast is set to true, no summary is printed.
@@ -638,6 +654,7 @@ fn parse_callgrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
     Ok(regression_config)
 }
 
+// TODO: Allow CachegrindMetrics instead of just CachegrindMetric
 fn parse_cachegrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
     let value = value.trim();
     if value.is_empty() {
@@ -667,6 +684,44 @@ fn parse_cachegrind_limits(value: &str) -> Result<ToolRegressionConfig, String> 
         }
 
         ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig {
+            limits,
+            ..Default::default()
+        })
+    };
+
+    Ok(regression_config)
+}
+
+// TODO: refactor and merge with parse_cachegrind_limits, ..
+fn parse_dhat_limits(value: &str) -> Result<ToolRegressionConfig, String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err("No limits found: At least one limit must be specified".to_owned());
+    }
+
+    let regression_config = if value.eq_ignore_ascii_case("default") {
+        ToolRegressionConfig::Dhat(DhatRegressionConfig::default())
+    } else {
+        let mut limits = vec![];
+
+        for split in value.split(',') {
+            let split = split.trim();
+
+            if let Some((key, value)) = split.split_once('=') {
+                let (key, value) = (key.trim(), value.trim());
+                let event_kind = DhatMetric::from_str_ignore_case(key)
+                    .ok_or_else(|| -> String { format!("Unknown event kind: '{key}'") })?;
+
+                let pct = value.parse::<f64>().map_err(|error| -> String {
+                    format!("Invalid percentage for '{key}': {error}")
+                })?;
+                limits.push((event_kind, pct));
+            } else {
+                return Err(format!("Invalid format of key/value pair: '{split}'"));
+            }
+        }
+
+        ToolRegressionConfig::Dhat(DhatRegressionConfig {
             limits,
             ..Default::default()
         })

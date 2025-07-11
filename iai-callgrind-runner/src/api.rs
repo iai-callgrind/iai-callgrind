@@ -1,4 +1,8 @@
 //! The api contains all elements which the `runner` can understand
+
+// spell-checker: ignore totalunits totalevents totalbytes totalblocks attgmaxbytes
+// spell-checker: ignore attgmaxblocks attendbytes attendblocks readsbytes writesbytes
+// spell-checker: ignore totallifetimes maximumbytes maximumblocks
 use std::ffi::OsString;
 use std::fmt::Display;
 #[cfg(feature = "runner")]
@@ -1311,6 +1315,29 @@ impl Default for DelayKind {
 impl Default for Direction {
     fn default() -> Self {
         Self::BottomToTop
+    }
+}
+
+impl DhatMetric {
+    pub fn from_str_ignore_case(value: &str) -> Option<Self> {
+        let metric = match value.to_lowercase().as_str() {
+            "totalunits" => Self::TotalUnits,
+            "totalevents" => Self::TotalEvents,
+            "totalbytes" => Self::TotalBytes,
+            "totalblocks" => Self::TotalBlocks,
+            "attgmaxbytes" => Self::AtTGmaxBytes,
+            "attgmaxblocks" => Self::AtTGmaxBlocks,
+            "attendbytes" => Self::AtTEndBytes,
+            "attendblocks" => Self::AtTEndBlocks,
+            "readsbytes" => Self::ReadsBytes,
+            "writesbytes" => Self::WritesBytes,
+            "totallifetimes" => Self::TotalLifetimes,
+            "maximumbytes" => Self::MaximumBytes,
+            "maximumblocks" => Self::MaximumBlocks,
+            _ => return None,
+        };
+
+        Some(metric)
     }
 }
 

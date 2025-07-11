@@ -699,7 +699,6 @@ impl ToolConfig {
                     }
                 }
 
-                // TODO: regression config
                 ToolConfig::from_tool(
                     output_format,
                     ValgrindTool::DHAT,
@@ -707,7 +706,7 @@ impl ToolConfig {
                     meta,
                     &base_args,
                     true,
-                    None,
+                    meta.args.dhat_limits.clone(),
                     None,
                     Some(entry_point), // The default entry point is currently just for callgrind
                 )
@@ -890,7 +889,7 @@ impl ToolConfigs {
                     if let EntryPoint::Default = entry_point {
                         let frames = tool.frames.get_or_insert_with(Vec::new);
 
-                        // See comment in `ToolConfig::new_default_config`
+                        // For details see comment in `ToolConfig::new_default_config`
                         if let [first, _, last] = module_path.components()[..] {
                             frames.push(format!("{first}::{last}::*"));
                         }
@@ -903,7 +902,7 @@ impl ToolConfigs {
                         meta,
                         &base_args,
                         false,
-                        None,
+                        meta.args.dhat_limits.clone(),
                         None,
                         Some(entry_point),
                     )
