@@ -122,6 +122,7 @@ jsonschema
 kcachegrind
 lateout
 lcov
+libc
 libclang
 libtest
 linkcheck
@@ -242,6 +243,7 @@ vbits
 vgdb
 vgpreload
 visualizable
+vtable
 vulnaribility
 walkdir
 worktree

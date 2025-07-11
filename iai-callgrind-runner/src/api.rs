@@ -663,7 +663,8 @@ pub enum EntryPoint {
     Default,
     /// A custom entry point. The argument allows the same glob patterns as the
     /// [`--toggle-collect`](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options)
-    /// argument of callgrind.
+    /// argument of callgrind. These are the wildcards `*` (match any amount of arbitrary
+    /// characters) and `?` (match a single arbitrary character)
     Custom(String),
 }
 

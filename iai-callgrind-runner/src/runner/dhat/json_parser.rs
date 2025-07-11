@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Context, Result};
 
 use super::model::DhatData;
-use super::tree::{DhatTree, Tree};
+use super::tree::{RootTree, Tree};
 use crate::api::EntryPoint;
 use crate::runner::tool::parser::{Header, Parser, ParserOutput};
 use crate::runner::tool::{logfile_parser, ToolOutputPath};
@@ -71,8 +71,7 @@ impl Parser for JsonParser {
             desc: vec![],
         };
 
-        // TODO: Use RootTree for better performance
-        let tree = DhatTree::from_json(dhat_data, &self.entry_point, &self.frames);
+        let tree = RootTree::from_json(dhat_data, &self.entry_point, &self.frames);
 
         Ok(ParserOutput {
             path,
