@@ -41,6 +41,12 @@ impl FromStr for BenchmarkFilter {
     }
 }
 
+/// A utility enum to parse the limits of cli args like `--callgrind-limits`
+enum Limits<T> {
+    Default,
+    Values(Vec<(T, f64)>),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NoCapture {
     True,
@@ -396,9 +402,10 @@ pub struct CommandLineArgs {
     /// positive or negative percentage. If positive, a performance regression check for this
     /// `EventKind` fails if the limit is exceeded. If negative, the regression check fails if the
     /// value comes below the limit. The `EventKind` is matched case-insensitive. For a list of
-    /// valid `EventKinds` see the docs: <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.EventKind.html>
+    /// valid `EventKinds` see the docs:
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.EventKind.html>
     ///
-    /// If regressions are defined and one ore more regressions occurred during the benchmark run
+    /// If regressions are defined and one ore more regressions occurred during the benchmark run,
     /// the program exits with error and exit code `3`.
     ///
     /// Examples: --callgrind-limits='ir=0.0' or --callgrind-limits='ir=0, EstimatedCycles=10'
@@ -434,7 +441,7 @@ pub struct CommandLineArgs {
     ///
     /// Examples: --dhat-limits='totalbytes=0.0' or --dhat-limits='totalbytes=5.0, totalblocks=5.0'
     #[arg(
-        long = "callgrind-limits",
+        long = "dhat-limits",
         num_args = 1,
         value_parser = parse_dhat_limits,
         env = "IAI_CALLGRIND_DHAT_LIMITS",
@@ -613,18 +620,21 @@ pub struct CommandLineArgs {
 /// This function parses a space separated list of raw argument strings into [`crate::api::RawArgs`]
 fn parse_args(value: &str) -> Result<RawArgs, String> {
     shlex::split(value)
-        .ok_or_else(|| "Failed to split callgrind args".to_owned())
+        .ok_or_else(|| "Failed to split args".to_owned())
         .map(RawArgs::new)
 }
 
-fn parse_callgrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
+fn parse_limits<T>(
+    value: &str,
+    parse_metric: fn(&str) -> Result<T, String>,
+) -> Result<Limits<T>, String> {
     let value = value.trim();
     if value.is_empty() {
         return Err("No limits found: At least one limit must be specified".to_owned());
     }
 
-    let regression_config = if value.eq_ignore_ascii_case("default") {
-        ToolRegressionConfig::Callgrind(CallgrindRegressionConfig::default())
+    let limits = if value.eq_ignore_ascii_case("default") {
+        Limits::Default
     } else {
         let mut limits = vec![];
 
@@ -633,101 +643,64 @@ fn parse_callgrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
 
             if let Some((key, value)) = split.split_once('=') {
                 let (key, value) = (key.trim(), value.trim());
-                let event_kind = EventKind::from_str_ignore_case(key)
-                    .ok_or_else(|| -> String { format!("Unknown event kind: '{key}'") })?;
-
                 let pct = value.parse::<f64>().map_err(|error| -> String {
                     format!("Invalid percentage for '{key}': {error}")
                 })?;
-                limits.push((event_kind, pct));
+                let metric_kind = parse_metric(key)?;
+                limits.push((metric_kind, pct));
             } else {
-                return Err(format!("Invalid format of key/value pair: '{split}'"));
+                return Err(format!("Invalid format of key=value pair: '{split}'"));
             }
         }
 
-        ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
-            limits,
-            ..Default::default()
-        })
+        Limits::Values(limits)
     };
 
-    Ok(regression_config)
+    Ok(limits)
+}
+
+// TODO: Allow CallgrindMetrics instead of just EventKind
+fn parse_callgrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
+    let config = match parse_limits(value, |key| {
+        EventKind::from_str_ignore_case(key)
+            .ok_or_else(|| -> String { format!("Unknown event kind: '{key}'") })
+    })? {
+        Limits::Default => ToolRegressionConfig::Callgrind(CallgrindRegressionConfig::default()),
+        Limits::Values(limits) => ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
+            limits,
+            ..Default::default()
+        }),
+    };
+    Ok(config)
 }
 
 // TODO: Allow CachegrindMetrics instead of just CachegrindMetric
 fn parse_cachegrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
-    let value = value.trim();
-    if value.is_empty() {
-        return Err("No limits found: At least one limit must be specified".to_owned());
-    }
-
-    let regression_config = if value.eq_ignore_ascii_case("default") {
-        ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig::default())
-    } else {
-        let mut limits = vec![];
-
-        for split in value.split(',') {
-            let split = split.trim();
-
-            if let Some((key, value)) = split.split_once('=') {
-                let (key, value) = (key.trim(), value.trim());
-                let event_kind = CachegrindMetric::from_str_ignore_case(key)
-                    .ok_or_else(|| -> String { format!("Unknown event kind: '{key}'") })?;
-
-                let pct = value.parse::<f64>().map_err(|error| -> String {
-                    format!("Invalid percentage for '{key}': {error}")
-                })?;
-                limits.push((event_kind, pct));
-            } else {
-                return Err(format!("Invalid format of key/value pair: '{split}'"));
-            }
-        }
-
-        ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig {
+    let config = match parse_limits(value, |key| {
+        CachegrindMetric::from_str_ignore_case(key)
+            .ok_or_else(|| -> String { format!("Unknown cachegrind metric: '{key}'") })
+    })? {
+        Limits::Default => ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig::default()),
+        Limits::Values(limits) => ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig {
             limits,
             ..Default::default()
-        })
+        }),
     };
-
-    Ok(regression_config)
+    Ok(config)
 }
 
-// TODO: refactor and merge with parse_cachegrind_limits, ..
 fn parse_dhat_limits(value: &str) -> Result<ToolRegressionConfig, String> {
-    let value = value.trim();
-    if value.is_empty() {
-        return Err("No limits found: At least one limit must be specified".to_owned());
-    }
-
-    let regression_config = if value.eq_ignore_ascii_case("default") {
-        ToolRegressionConfig::Dhat(DhatRegressionConfig::default())
-    } else {
-        let mut limits = vec![];
-
-        for split in value.split(',') {
-            let split = split.trim();
-
-            if let Some((key, value)) = split.split_once('=') {
-                let (key, value) = (key.trim(), value.trim());
-                let event_kind = DhatMetric::from_str_ignore_case(key)
-                    .ok_or_else(|| -> String { format!("Unknown event kind: '{key}'") })?;
-
-                let pct = value.parse::<f64>().map_err(|error| -> String {
-                    format!("Invalid percentage for '{key}': {error}")
-                })?;
-                limits.push((event_kind, pct));
-            } else {
-                return Err(format!("Invalid format of key/value pair: '{split}'"));
-            }
-        }
-
-        ToolRegressionConfig::Dhat(DhatRegressionConfig {
+    let config = match parse_limits(value, |key| {
+        DhatMetric::from_str_ignore_case(key)
+            .ok_or_else(|| -> String { format!("Unknown dhat metric: '{key}'") })
+    })? {
+        Limits::Default => ToolRegressionConfig::Dhat(DhatRegressionConfig::default()),
+        Limits::Values(limits) => ToolRegressionConfig::Dhat(DhatRegressionConfig {
             limits,
             ..Default::default()
-        })
+        }),
     };
-
-    Ok(regression_config)
+    Ok(config)
 }
 
 fn parse_nocapture(value: &str) -> Result<NoCapture, String> {
@@ -793,7 +766,7 @@ mod tests {
     #[rstest]
     #[case::regression_wrong_format_of_key_value_pair(
         "Ir:10",
-        "Invalid format of key/value pair: 'Ir:10'"
+        "Invalid format of key=value pair: 'Ir:10'"
     )]
     #[case::regression_unknown_event_kind("WRONG=10", "Unknown event kind: 'WRONG'")]
     #[case::regression_invalid_percentage(
