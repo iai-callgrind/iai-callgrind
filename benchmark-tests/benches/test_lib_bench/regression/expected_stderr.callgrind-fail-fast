@@ -1,6 +1,5 @@
 Performance has regressed: Instructions (<__NUM__> -> <__NUM__>) regressed by +<__PERCENT__>% (>+<__NUM__>%)
-Performance has regressed: Instructions (<__NUM__> -> <__NUM__>) regressed by +<__PERCENT__>% (>+<__NUM__>%)
-Performance has regressed: Total bytes (<__NUM__> -> <__NUM__>) regressed by +<__PERCENT__>% (>+<__NUM__>%)
+iai_callgrind_runner: Error: Performance has regressed. Fail-fast is set. Aborting ...
 error: bench failed, to rerun pass `-p benchmark-tests --bench test_bench_template`
 
 Caused by:

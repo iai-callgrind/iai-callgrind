@@ -13,6 +13,16 @@ test_bench_template::bench_group::bench_bubble_sort regress_cachegrind:setup_wor
   RAM Hits:                                |N/A                  (*********)
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
+test_bench_template::bench_group::bench_bubble_sort regress_dhat:setup_worst_case_array(4)
+  ======= DHAT =========================================================================
+  Total bytes:                             |N/A                  (*********)
+  Total blocks:                            |N/A                  (*********)
+  At t-gmax bytes:                         |N/A                  (*********)
+  At t-gmax blocks:                        |N/A                  (*********)
+  At t-end bytes:                          |N/A                  (*********)
+  At t-end blocks:                         |N/A                  (*********)
+  Reads bytes:                             |N/A                  (*********)
+  Writes bytes:                            |N/A                  (*********)
 test_bench_template::bench_group::bench_bubble_sort should_not_run_after_regression:setup_worst_case_array(10)
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
@@ -21,4 +31,4 @@ test_bench_template::bench_group::bench_bubble_sort should_not_run_after_regress
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
 
-Iai-Callgrind result: Ok. 3 without regressions; 0 regressed; 3 benchmarks finished in <__SECONDS__>s
+Iai-Callgrind result: Ok. 4 without regressions; 0 regressed; 4 benchmarks finished in <__SECONDS__>s
