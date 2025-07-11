@@ -1,7 +1,7 @@
 use crate::api::{self, DhatMetric};
 use crate::runner::metrics::{MetricKind, MetricsSummary};
 use crate::runner::summary::ToolRegression;
-use crate::runner::tool::RegressionConfig;
+use crate::runner::tool::regression::RegressionConfig;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DhatRegressionConfig {

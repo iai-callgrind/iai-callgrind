@@ -4,12 +4,12 @@ pub mod error_metric_parser;
 pub mod generic_parser;
 pub mod logfile_parser;
 pub mod parser;
+pub mod regression;
 
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fmt::{Display, Write as FmtWrite};
 use std::fs::{DirEntry, File};
-use std::hash::Hash;
 use std::io::{stderr, BufRead, BufReader, Write};
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
@@ -23,36 +23,34 @@ use lazy_static::lazy_static;
 use log::{debug, error, log_enabled};
 use parser::{Parser, ParserOutput};
 use regex::Regex;
+use regression::RegressionConfig;
 
 use self::args::ToolArgs;
 use super::args::NoCapture;
 use super::bin_bench::Delay;
-use super::cachegrind::CachegrindRegressionConfig;
+use super::cachegrind::regression::CachegrindRegressionConfig;
 use super::callgrind::flamegraph::{
     BaselineFlamegraphGenerator, Config as FlamegraphConfig, Flamegraph, FlamegraphGenerator,
     LoadBaselineFlamegraphGenerator, SaveBaselineFlamegraphGenerator,
 };
 use super::callgrind::parser::{parse_header, Sentinel};
-use super::callgrind::CallgrindRegressionConfig;
+use super::callgrind::regression::CallgrindRegressionConfig;
 use super::common::{Assistant, Baselines, Config, ModulePath, Sandbox};
 use super::dhat::json_parser::JsonParser;
 use super::dhat::logfile_parser::DhatLogfileParser;
 use super::dhat::regression::DhatRegressionConfig;
-use super::format::{
-    print_no_capture_footer, print_regressions, Formatter, OutputFormat, VerticalFormatter,
-};
+use super::format::{print_no_capture_footer, Formatter, OutputFormat, VerticalFormatter};
 use super::meta::Metadata;
-use super::metrics::{MetricsSummary, Summarize};
 use super::summary::{
     BaselineKind, BaselineName, BenchmarkSummary, Profile, ProfileData, ProfileTotal,
-    RegressionMetrics, ToolMetricSummary, ToolRegression,
+    ToolMetricSummary, ToolRegression,
 };
 use super::{cachegrind, callgrind, DEFAULT_TOGGLE};
 use crate::api::{
     self, EntryPoint, ExitWith, RawArgs, Stream, Tool, ToolOutputFormat, Tools, ValgrindTool,
 };
 use crate::error::Error;
-use crate::util::{self, resolve_binary_path, truncate_str_utf8, EitherOrBoth, Glob};
+use crate::util::{self, resolve_binary_path, truncate_str_utf8, Glob};
 
 lazy_static! {
     // This regex matches the original file name without the prefix as it is created by callgrind.
@@ -80,48 +78,6 @@ lazy_static! {
         r"^(?:[.](?<pid>[0-9]+))?(?:[.]t(?<tid>[0-9]+))?(?:[.]p(?<part>[0-9]+))?(?:[.](?<bbv>bb|pc))?(?:[.](?<type>out|log))(?:[.](?<base>old|base@[^.]+))?$"
     )
     .expect("Regex should compile");
-}
-
-pub trait RegressionConfig<T: Hash + Eq + Summarize + Display + Clone> {
-    fn check_and_print(&self, metrics_summary: &MetricsSummary<T>) -> Vec<ToolRegression> {
-        let regressions = self.check(metrics_summary);
-        print_regressions(&regressions);
-        regressions
-    }
-
-    // Check the `MetricsSummary` for regressions.
-    //
-    // The limits for event kinds which are not present in the `MetricsSummary` are ignored.
-    fn check(&self, metrics_summary: &MetricsSummary<T>) -> Vec<ToolRegression>;
-    fn check_regressions(&self, metrics_summary: &MetricsSummary<T>) -> Vec<RegressionMetrics<T>> {
-        let mut regressions = vec![];
-        for (metric, new_cost, old_cost, pct, limit) in
-            self.get_limits().iter().filter_map(|(kind, limit)| {
-                metrics_summary.diff_by_kind(kind).and_then(|d| {
-                    if let EitherOrBoth::Both(new, old) = d.metrics {
-                        // This unwrap is safe since the diffs are calculated if both costs are
-                        // present
-                        Some((kind, new, old, d.diffs.unwrap().diff_pct, limit))
-                    } else {
-                        None
-                    }
-                })
-            })
-        {
-            if limit.is_sign_positive() {
-                if pct > *limit {
-                    regressions.push((metric.clone(), new_cost, old_cost, pct, *limit));
-                }
-            } else if pct < *limit {
-                regressions.push((metric.clone(), new_cost, old_cost, pct, *limit));
-            } else {
-                // no regression
-            }
-        }
-        regressions
-    }
-
-    fn get_limits(&self) -> &[(T, f64)];
 }
 
 #[derive(Debug, Default, Clone)]
