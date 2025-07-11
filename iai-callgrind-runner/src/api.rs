@@ -653,6 +653,12 @@ pub enum DhatMetric {
     MaximumBlocks,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct DhatRegressionConfig {
+    pub limits: Vec<(DhatMetric, f64)>,
+    pub fail_fast: Option<bool>,
+}
+
 /// The `EntryPoint` of a library benchmark
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub enum EntryPoint {
@@ -954,6 +960,7 @@ pub struct Tool {
 pub enum ToolRegressionConfig {
     Callgrind(CallgrindRegressionConfig),
     Cachegrind(CachegrindRegressionConfig),
+    Dhat(DhatRegressionConfig),
     None,
 }
 

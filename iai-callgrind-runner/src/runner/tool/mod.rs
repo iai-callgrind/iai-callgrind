@@ -37,6 +37,7 @@ use super::callgrind::CallgrindRegressionConfig;
 use super::common::{Assistant, Baselines, Config, ModulePath, Sandbox};
 use super::dhat::json_parser::JsonParser;
 use super::dhat::logfile_parser::DhatLogfileParser;
+use super::dhat::regression::DhatRegressionConfig;
 use super::format::{
     print_no_capture_footer, print_regressions, Formatter, OutputFormat, VerticalFormatter,
 };
@@ -196,6 +197,7 @@ pub enum ToolOutputPathKind {
 pub enum ToolRegressionConfig {
     Callgrind(CallgrindRegressionConfig),
     Cachegrind(CachegrindRegressionConfig),
+    Dhat(DhatRegressionConfig),
     None,
 }
 
@@ -529,6 +531,9 @@ impl ToolConfig {
                     ToolRegressionConfig::Cachegrind(cachegrind_regression_config) => {
                         cachegrind_regression_config.fail_fast = fail_fast;
                     }
+                    ToolRegressionConfig::Dhat(dhat_regression_config) => {
+                        dhat_regression_config.fail_fast = fail_fast;
+                    }
                     ToolRegressionConfig::None => {}
                 }
             }
@@ -619,6 +624,9 @@ impl ToolConfig {
                     }
                     ToolRegressionConfig::Cachegrind(cachegrind_regression_config) => {
                         cachegrind_regression_config.fail_fast = fail_fast;
+                    }
+                    ToolRegressionConfig::Dhat(dhat_regression_config) => {
+                        dhat_regression_config.fail_fast = fail_fast;
                     }
                     ToolRegressionConfig::None => {}
                 }
@@ -1016,6 +1024,10 @@ impl ToolConfigs {
                 ToolRegressionConfig::Cachegrind(cachegrind_regression_config),
                 ToolMetricSummary::Cachegrind(metrics_summary),
             ) => cachegrind_regression_config.check_and_print(metrics_summary),
+            (
+                ToolRegressionConfig::Dhat(dhat_regression_config),
+                ToolMetricSummary::Dhat(metrics_summary),
+            ) => dhat_regression_config.check_and_print(metrics_summary),
             (ToolRegressionConfig::None, _) => vec![],
             _ => {
                 panic!("The summary type should match the regression config")
@@ -2106,6 +2118,7 @@ impl ToolRegressionConfig {
         match self {
             ToolRegressionConfig::Callgrind(regression_config) => regression_config.fail_fast,
             ToolRegressionConfig::Cachegrind(regression_config) => regression_config.fail_fast,
+            ToolRegressionConfig::Dhat(regression_config) => regression_config.fail_fast,
             ToolRegressionConfig::None => false,
         }
     }
@@ -2119,6 +2132,9 @@ impl From<api::ToolRegressionConfig> for ToolRegressionConfig {
             }
             api::ToolRegressionConfig::Cachegrind(regression_config) => {
                 Self::Cachegrind(regression_config.into())
+            }
+            api::ToolRegressionConfig::Dhat(regression_config) => {
+                Self::Dhat(regression_config.into())
             }
             api::ToolRegressionConfig::None => Self::None,
         }
