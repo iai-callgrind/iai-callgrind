@@ -1142,7 +1142,7 @@ impl Dhat {
     ///
     /// A performance regression check consists of a [`DhatMetric`] and a percentage over which a
     /// regression is assumed. If the percentage is negative, then a regression is assumed to be
-    /// below this limit.
+    /// below this limit. Performance regressions are regarded as error and fail the benchmark run.
     ///
     /// # Examples
     ///
@@ -1171,9 +1171,16 @@ impl Dhat {
         self
     }
 
-    /// TODO: DOCS
+    /// Set hard limits over which a performance regression can be assumed
+    ///
+    /// In contrast to [`Dhat::soft_limits`], hard limits restrict a [`DhatMetric`] in absolute
+    /// numbers instead of a percentage. A hard limit only affects the `new` benchmark run (on the
+    /// left side).
     ///
     /// # Examples
+    ///
+    /// If benchmarks configured like below allocate more than a total of `10_000` bytes, a
+    /// performance regression occurs failing the benchmark run.
     ///
     /// ```
     /// use iai_callgrind::{Dhat, DhatMetric};
