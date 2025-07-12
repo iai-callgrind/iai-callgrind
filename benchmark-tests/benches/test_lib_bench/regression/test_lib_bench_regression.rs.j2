@@ -12,7 +12,7 @@ use iai_callgrind::{
     setup = setup_worst_case_array,
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()
-            .limits([(EventKind::Ir, 0.0)]).fail_fast({{ callgrind_fail_fast }})
+            .soft_limits([(EventKind::Ir, 0.0)]).fail_fast({{ callgrind_fail_fast }})
         )
 )]
 #[bench::regress_cachegrind(
@@ -39,6 +39,14 @@ fn bench_bubble_sort_soft_limits(array: Vec<i32>) -> Vec<i32> {
 }
 
 #[library_benchmark]
+#[bench::regress_callgrind(
+    args = [{{ callgrind_array_length }}],
+    setup = setup_worst_case_array,
+    config = LibraryBenchmarkConfig::default()
+        .tool(Callgrind::default()
+            .hard_limits([(EventKind::Ir, 200)]).fail_fast({{ callgrind_fail_fast }})
+        )
+)]
 #[bench::regress_dhat(
     args = [{{ dhat_array_length }}],
     setup = setup_worst_case_array,

@@ -667,7 +667,7 @@ fn parse_callgrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
     })? {
         Limits::Default => ToolRegressionConfig::Callgrind(CallgrindRegressionConfig::default()),
         Limits::Values(limits) => ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
-            limits,
+            soft_limits: limits,
             ..Default::default()
         }),
     };
@@ -755,7 +755,8 @@ mod tests {
         #[case] expected_limits: Vec<(EventKind, f64)>,
     ) {
         let expected = ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
-            limits: expected_limits,
+            soft_limits: expected_limits,
+            hard_limits: Vec::default(),
             fail_fast: None,
         });
 

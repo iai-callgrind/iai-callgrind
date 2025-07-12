@@ -1,11 +1,12 @@
 use crate::api::{self, EventKind};
-use crate::runner::metrics::{MetricKind, MetricsSummary};
+use crate::runner::metrics::{Metric, MetricKind, MetricsSummary};
 use crate::runner::summary::ToolRegression;
 use crate::runner::tool::regression::RegressionConfig;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallgrindRegressionConfig {
-    pub limits: Vec<(EventKind, f64)>,
+    pub soft_limits: Vec<(EventKind, f64)>,
+    pub hard_limits: Vec<(EventKind, Metric)>,
     pub fail_fast: bool,
 }
 
@@ -21,24 +22,31 @@ impl RegressionConfig<EventKind> for CallgrindRegressionConfig {
     }
 
     fn get_soft_limits(&self) -> &[(EventKind, f64)] {
-        &self.limits
+        &self.soft_limits
     }
 
-    fn get_hard_limits(&self) -> &[(EventKind, crate::runner::metrics::Metric)] {
-        // TODO: Hard limits for Callgrind
-        &[]
+    fn get_hard_limits(&self) -> &[(EventKind, Metric)] {
+        &self.hard_limits
     }
 }
 
 impl From<api::CallgrindRegressionConfig> for CallgrindRegressionConfig {
     fn from(value: api::CallgrindRegressionConfig) -> Self {
-        let api::CallgrindRegressionConfig { limits, fail_fast } = value;
+        let api::CallgrindRegressionConfig {
+            soft_limits,
+            hard_limits,
+            fail_fast,
+        } = value;
         CallgrindRegressionConfig {
-            limits: if limits.is_empty() {
+            soft_limits: if soft_limits.is_empty() && hard_limits.is_empty() {
                 vec![(EventKind::Ir, 10f64)]
             } else {
-                limits
+                soft_limits
             },
+            hard_limits: hard_limits
+                .into_iter()
+                .map(|(m, l)| (m, l.into()))
+                .collect(),
             fail_fast: fail_fast.unwrap_or(false),
         }
     }
@@ -47,7 +55,8 @@ impl From<api::CallgrindRegressionConfig> for CallgrindRegressionConfig {
 impl Default for CallgrindRegressionConfig {
     fn default() -> Self {
         Self {
-            limits: vec![(EventKind::Ir, 10f64)],
+            soft_limits: vec![(EventKind::Ir, 10f64)],
+            hard_limits: Vec::default(),
             fail_fast: Default::default(),
         }
     }
@@ -142,13 +151,13 @@ mod tests {
         vec![(EstimatedCycles, 410, 205, 100f64, 0f64)]
     )]
     fn test_regression_check_when_soft_and_old_is_some(
-        #[case] limits: Vec<(EventKind, f64)>,
+        #[case] soft_limits: Vec<(EventKind, f64)>,
         #[case] new: [u64; 9],
         #[case] old: [u64; 9],
         #[case] expected: Vec<(EventKind, u64, u64, f64, f64)>,
     ) {
         let regression = CallgrindRegressionConfig {
-            limits,
+            soft_limits,
             ..Default::default()
         };
 

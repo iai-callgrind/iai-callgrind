@@ -15,6 +15,6 @@ library_benchmark_group!(name = my_group; benchmarks = bench_library);
 
 main!(
     config = LibraryBenchmarkConfig::default()
-        .tool(Callgrind::default().limits([(EventKind::Ir, 5.0)]));
+        .tool(Callgrind::default().soft_limits([(EventKind::Ir, 5.0)]));
     library_benchmark_groups = my_group
 );

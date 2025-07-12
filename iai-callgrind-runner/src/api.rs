@@ -574,7 +574,8 @@ pub enum CallgrindMetrics {
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CallgrindRegressionConfig {
-    pub limits: Vec<(EventKind, f64)>,
+    pub soft_limits: Vec<(EventKind, f64)>,
+    pub hard_limits: Vec<(EventKind, Metric)>,
     pub fail_fast: Option<bool>,
 }
 

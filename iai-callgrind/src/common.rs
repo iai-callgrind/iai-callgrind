@@ -675,18 +675,67 @@ impl Callgrind {
     ///
     /// let config = Callgrind::default().limits([(EventKind::Ir, 5f64)]);
     /// ```
+    #[deprecated = "Please use Callgrind::soft_limits instead"]
     pub fn limits<T>(&mut self, limits: T) -> &mut Self
+    where
+        T: IntoIterator<Item = (EventKind, f64)>,
+    {
+        self.soft_limits(limits)
+    }
+
+    /// Configure the limits percentages over/below which a performance regression can be assumed
+    ///
+    /// A performance regression check consists of an [`EventKind`] and a percentage over which a
+    /// regression is assumed. If the percentage is negative, then a regression is assumed to be
+    /// below this limit.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::{Callgrind, EventKind};
+    ///
+    /// let config = Callgrind::default().limits([(EventKind::Ir, 5f64)]);
+    /// ```
+    pub fn soft_limits<T>(&mut self, limits: T) -> &mut Self
     where
         T: IntoIterator<Item = (EventKind, f64)>,
     {
         if let Some(__internal::InternalToolRegressionConfig::Callgrind(config)) =
             &mut self.0.regression_config
         {
-            config.limits.extend(limits);
+            config.soft_limits.extend(limits);
         } else {
             self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Callgrind(
                 __internal::InternalCallgrindRegressionConfig {
-                    limits: limits.into_iter().collect(),
+                    soft_limits: limits.into_iter().collect(),
+                    hard_limits: Vec::default(),
+                    fail_fast: None,
+                },
+            ));
+        }
+        self
+    }
+
+    /// TODO: DOCS
+    pub fn hard_limits<I, T>(&mut self, hard_limits: T) -> &mut Self
+    where
+        I: Into<__internal::InternalMetric>,
+        T: IntoIterator<Item = (EventKind, I)>,
+    {
+        if let Some(__internal::InternalToolRegressionConfig::Callgrind(config)) =
+            &mut self.0.regression_config
+        {
+            config
+                .hard_limits
+                .extend(hard_limits.into_iter().map(|(m, l)| (m, l.into())));
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Callgrind(
+                __internal::InternalCallgrindRegressionConfig {
+                    soft_limits: Vec::default(),
+                    hard_limits: hard_limits
+                        .into_iter()
+                        .map(|(m, l)| (m, l.into()))
+                        .collect(),
                     fail_fast: None,
                 },
             ));
@@ -714,7 +763,8 @@ impl Callgrind {
         } else {
             self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Callgrind(
                 __internal::InternalCallgrindRegressionConfig {
-                    limits: vec![],
+                    soft_limits: Vec::default(),
+                    hard_limits: Vec::default(),
                     fail_fast: Some(value),
                 },
             ));

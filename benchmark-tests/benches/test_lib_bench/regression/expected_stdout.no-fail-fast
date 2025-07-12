@@ -30,6 +30,13 @@ test_bench_template::bench_group::bench_bubble_sort_soft_limits should_not_run_a
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
+test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_callgrind:setup_worst_case_array(100)
+  Instructions:                            |                     (+       %) [+       x]
+  L1 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (+       %) [+       x]
+  Estimated Cycles:                        |                     (         )
 test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_dhat:setup_worst_case_array(5)
   ======= DHAT =========================================================================
   Total bytes:                             |                     (+       %) [+       x]
@@ -56,7 +63,9 @@ Regressions:
     Cachegrind: Instructions (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
   test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_dhat:
     DHAT: Total bytes (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
+  test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_callgrind:
+    Callgrind: Instructions (70021): 70021 exceeds limit of 200 by 69821
   test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_dhat:
     DHAT: Total bytes (20): 20 exceeds limit of 16 by 4
 
-Iai-Callgrind result: Regressed. 2 without regressions; 4 regressed; 6 benchmarks finished in <__SECONDS__>s
+Iai-Callgrind result: Regressed. 2 without regressions; 5 regressed; 7 benchmarks finished in <__SECONDS__>s

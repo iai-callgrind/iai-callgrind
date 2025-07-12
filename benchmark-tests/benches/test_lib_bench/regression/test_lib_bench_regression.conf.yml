@@ -97,9 +97,9 @@ groups:
       - args:
           [
             "--callgrind-limits",
-            "estimatedcycles=0.0",
-            "--cachegrind-limits",
             "totalrw=0.0",
+            "--cachegrind-limits",
+            "estimatedcycles=0.0",
             "--dhat-limits",
             "readsbytes=0.0",
           ]

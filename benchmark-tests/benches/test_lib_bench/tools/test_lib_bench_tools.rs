@@ -91,7 +91,7 @@ library_benchmark_group!(
 main!(
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()
-            .limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
+            .soft_limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
         )
         .tool(Dhat::with_args(["--time-stamp=yes"]))
         .tool(Massif::default())

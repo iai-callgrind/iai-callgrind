@@ -147,7 +147,7 @@ library_benchmark_group!(
     name = bubble_sort;
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()
-            .limits([(EventKind::Ir, 10.0)]).fail_fast(false)
+            .soft_limits([(EventKind::Ir, 10.0)]).fail_fast(false)
         );
     benchmarks =
         bench_bubble_sort_empty,
@@ -198,7 +198,7 @@ library_benchmark_group!(
 main!(
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()
-            .limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
+            .soft_limits([(EventKind::Ir, 5.0), (EventKind::EstimatedCycles, 10.0)])
         )
         .tool(Dhat::default());
     library_benchmark_groups = bubble_sort, fibonacci);
