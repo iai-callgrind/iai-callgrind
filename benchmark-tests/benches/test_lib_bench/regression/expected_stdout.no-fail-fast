@@ -64,8 +64,8 @@ Regressions:
   test_bench_template::bench_group::bench_bubble_sort_soft_limits regress_dhat:
     DHAT: Total bytes (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
   test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_callgrind:
-    Callgrind: Instructions (70021): 70021 exceeds limit of 200 by 69821
+    Callgrind: Instructions (<__NUM__>): <__NUM__> exceeds limit of <__LIMIT__> by <__DIFF__>
   test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_dhat:
-    DHAT: Total bytes (20): 20 exceeds limit of 16 by 4
+    DHAT: Total bytes (<__NUM__>): <__NUM__> exceeds limit of <__LIMIT__> by <__DIFF__>
 
 Iai-Callgrind result: Regressed. 2 without regressions; 5 regressed; 7 benchmarks finished in <__SECONDS__>s

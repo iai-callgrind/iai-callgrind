@@ -53,13 +53,20 @@ lazy_static! {
             .expect("Regex should compile");
     // Performance has regressed: Instructions (133 -> 196) regressed by +47.3684% (>+0.00000%)
     // $1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__NUM__>$9
-    static ref REGRESSION_RE: Regex =
+    static ref REGRESSION_SOFT_RE: Regex =
         Regex::new(r"^(Performance has regressed:\s*[^0-9]+\()([0-9]+)(\s*->\s*)([0-9]+)(\)\s*regressed\s*by\s*[+-])([0-9.]+)(%\s*\([><][+-])([0-9.]+)(%\)\s*)$")
+            .expect("Regex should compile");
+    static ref REGRESSION_HARD_RE: Regex =
+        Regex::new(r"^(Performance has regressed:\s*[^0-9]+\()([0-9]+)(\)\s*exceeds limit by\s*)([0-9.]+)(\s*\([><])([0-9.]+)(\)\s*)$")
             .expect("Regex should compile");
     // Instructions (357182 -> 357704): +0.14614% exceeds limit of +0.00000%
     // $1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__PERCENT__>$9
-    static ref SUMMARY_REGRESSION_RE: Regex =
+    static ref SUMMARY_REGRESSION_SOFT_RE: Regex =
         Regex::new(r"^(\s*[^0-9]+\()([0-9]+)(\s*->\s*)([0-9]+)(\):\s*[+-])([0-9.]+)(%\s*exceeds limit of [+-])([0-9.]+)(%\s*)$")
+            .expect("Regex should compile");
+    // Callgrind: Instructions (70021): 70021 exceeds limit of 200 by 69821
+    static ref SUMMARY_REGRESSION_HARD_RE: Regex =
+        Regex::new(r"^(\s*[^0-9]+\()([0-9]+)(\):\s*)([0-9.]+)(\s*exceeds limit of\s*)([0-9.]+)(\s*by\s*)([0-9.]+)(\s*)$")
             .expect("Regex should compile");
     // Command: target/release/deps/test_lib_bench_threads-c2a88f916ff580f9
     static ref COMMAND_RE: Regex =
@@ -533,8 +540,9 @@ impl BenchmarkOutput {
                 continue;
             }
             let line = PROCESS_DID_NOT_EXIT_SUCCESSFULLY_RE.replace(&line, "$1<__PATH__>$3");
-            let line =
-                REGRESSION_RE.replace(&line, "$1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__NUM__>$9");
+            let line = REGRESSION_SOFT_RE
+                .replace(&line, "$1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__NUM__>$9");
+            let line = REGRESSION_HARD_RE.replace(&line, "$1<__NUM__>$3<__DIFF__>$5<__LIMIT__>$7");
             writeln!(result, "{line}").unwrap();
         }
         result
@@ -717,10 +725,14 @@ impl BenchmarkOutput {
                         format!("{caps_1} {caps_3}")
                     }
                 });
-                let line = SUMMARY_REGRESSION_RE.replace_all(
+                let line = SUMMARY_REGRESSION_SOFT_RE.replace_all(
                     &line,
                     "$1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__PERCENT__>$9",
                 );
+
+                let line = SUMMARY_REGRESSION_HARD_RE
+                    .replace_all(&line, "$1<__NUM__>$3<__NUM__>$5<__LIMIT__>$7<__DIFF__>$9");
+
                 let line = SUMMARY_LINE_RE.replace_all(&line, "$1<__SECONDS__>$3");
                 writeln!(result, "{indent}{line}").unwrap();
             }
@@ -1117,7 +1129,7 @@ mod tests {
     )]
     fn test_regression_re(#[case] haystack: &str, #[case] replaced: &str) {
         assert_eq!(
-            REGRESSION_RE.replace(
+            REGRESSION_SOFT_RE.replace(
                 haystack,
                 "$1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__NUM__>$9"
             ),
