@@ -794,7 +794,7 @@ impl ToolConfigs {
     /// # Errors
     ///
     /// This function will return an error if the configs cannot be created
-    #[expect(clippy::too_many_lines)]
+    #[allow(clippy::too_many_lines)]
     pub fn new(
         output_format: &mut OutputFormat,
         mut tools: Tools,

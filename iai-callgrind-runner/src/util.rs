@@ -134,7 +134,7 @@ impl Glob {
     /// is hard to explain. Repos like <https://crates.io/crates/glob-match> are great and their
     /// algorithm is based on the same algorithm used here. However such crates allow more globs
     /// than required.
-    #[expect(clippy::similar_names)]
+    #[allow(clippy::similar_names)]
     pub fn is_match(&self, haystack: &str) -> bool {
         let mut p_idx = 0;
         let mut h_idx = 0;
