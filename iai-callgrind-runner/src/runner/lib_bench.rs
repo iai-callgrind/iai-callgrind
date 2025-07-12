@@ -337,6 +337,7 @@ impl LibBench {
         let tool_configs = ToolConfigs::new(
             &mut output_format,
             config.tools,
+            &module_path,
             meta,
             default_tool,
             &EntryPoint::Default,

@@ -1,0 +1,25 @@
+{"dhatFileVersion":2
+,"mode":"heap","verb":"Allocated"
+,"bklt":true,"bkacc":true
+,"tu":"instrs","Mtu":"Minstr"
+,"tuth":500
+,"cmd":"/some/path/bench-bb025b17fd65eb7d --iai-run my_group 0 2 file::group::function"
+,"pid":2
+,"te":500000
+,"tg":160000
+,"pps":
+ [{"tb":1024,"tbk":1
+  ,"tl":160000
+  ,"mb":1024,"mbk":1
+  ,"gb":1024,"gbk":1
+  ,"eb":0,"ebk":0
+  ,"rb":9456,"wb":5093
+  ,"acc":[20,-751,15,-245,12,-27,12]
+  ,"fs":[1,2]
+  }
+ ]
+,"ftbl":
+ ["[root]"
+ ,"0x48C67A8: malloc (in /usr/lib/valgrind/vgpreload_dhat-amd64-linux.so)"
+ ]
+}

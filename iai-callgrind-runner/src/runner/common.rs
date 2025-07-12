@@ -302,6 +302,10 @@ impl ModulePath {
             .rsplit_once("::")
             .map(|(prefix, _)| ModulePath::new(prefix))
     }
+
+    pub fn components(&self) -> Vec<&str> {
+        self.0.split("::").collect()
+    }
 }
 
 impl Display for ModulePath {

@@ -395,6 +395,8 @@ impl Default for OutputFormat {
             callgrind: IndexSet::from(CallgrindMetrics::Default),
             cachegrind: IndexSet::from(CachegrindMetrics::Default),
             dhat: indexset![
+                DhatMetric::TotalUnits,
+                DhatMetric::TotalEvents,
                 DhatMetric::TotalBytes,
                 DhatMetric::TotalBlocks,
                 DhatMetric::AtTGmaxBytes,

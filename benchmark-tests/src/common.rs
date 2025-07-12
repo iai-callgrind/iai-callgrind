@@ -25,7 +25,6 @@ impl Summary {
         }
     }
 
-    // the upcoming cachegrind, dhat
     #[track_caller]
     pub fn assert_costs_not_all_zero(&self) {
         for profile in self.0.profiles.iter() {

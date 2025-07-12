@@ -124,8 +124,7 @@ fn bench_fibonacci_with_config() -> u64 {
 // non-collection like configuration values (like `RegressionConfig`) are overridden.
 //
 // Completely overriding previous definitions of valgrind tools instead of appending them with
-// `LibraryBenchmarkConfig::tool` or `LibraryBenchmarkConfig::tools` can be achieved with
-// `LibraryBenchmarkConfig::tool_override` or `LibraryBenchmarkConfig::tools_override`.
+// `LibraryBenchmarkConfig::tool` or can be achieved with `LibraryBenchmarkConfig::tool_override`.
 #[library_benchmark]
 #[bench::fib_with_config(
     args = (3, 4),
@@ -142,12 +141,14 @@ fn bench_fibonacci_with_config_at_bench_level(first: u64, second: u64) -> u64 {
 //
 // It's also possible to specify a `LibraryBenchmarkConfig` valid for all benchmarks of this
 // `library_benchmark_group`. We configure the regression checks to fail the whole benchmark run as
-// soon as a performance regression happens. This'll overwrite the `RegressionConfig` of the
+// soon as a performance regression happens. This'll overwrite `limits` and `fail_fast` of the
 // configuration of the `main!` macro.
 library_benchmark_group!(
     name = bubble_sort;
     config = LibraryBenchmarkConfig::default()
-        .tool(Callgrind::default().limits([(EventKind::Ir, 10.0)]).fail_fast(false));
+        .tool(Callgrind::default()
+            .limits([(EventKind::Ir, 10.0)]).fail_fast(false)
+        );
     benchmarks =
         bench_bubble_sort_empty,
         bench_bubble_sort,
@@ -155,15 +156,18 @@ library_benchmark_group!(
         bench_bubble_sort_with_multiple_parameters
 );
 
-// In our example file here, we could have put `bench_fibonacci` into the same group as the bubble
-// sort benchmarks and using a separate group merely serves as an example for having multiple
-// groups.
+// In our example file here, we could have put the fibonacci benchmarks into the same group as the
+// bubble sort benchmarks. But, using a separate group allows us to specify different configurations
+// for the benchmarks in this group. Since there are no heap allocations in the fibonacci function,
+// we decided to switch DHAT off for all benchmarks in this group.
 //
-// However, having separate groups can help organizing your benchmarks. The different groups are
-// shown separately in the output of the callgrind run and the output files of a callgrind run are
-// put in separate folders for each group.
+// Additionally, having separate groups can help organizing your benchmarks. The different groups
+// are shown separately in the output of the callgrind run and the output files of a callgrind run
+// are put in separate folders for each group.
 library_benchmark_group!(
     name = fibonacci;
+    config = LibraryBenchmarkConfig::default()
+        .tool(Dhat::default().enable(false));
     benchmarks =
         bench_fibonacci_sum,
         bench_fibonacci_with_config,
@@ -183,14 +187,14 @@ library_benchmark_group!(
 // (the experimental) BBV, Memcheck, Helgrind or DRD. Below we specify to run DHAT in addition to
 // callgrind for all benchmarks (if not specified otherwise and/or overridden in a lower-level
 // configuration). It's also possible to change the default tool to something else than callgrind
-// for example if you're just interested in running Dhat with
-// `LibraryBenchmarkConfig::default_tool`. Running cachegrind instead of callgrind is also possible
-// but requires additional steps. This is best described in the guide:
+// with `LibraryBenchmarkConfig::default_tool`for example if you're just interested in running DHAT.
+// Running cachegrind instead of callgrind is also possible but requires additional steps. This is
+// best described in the guide:
 // https://iai-callgrind.github.io/iai-callgrind/latest/html/index.html. You can also find a lot of
 // other Iai-Callgrind feature descriptions there.
 //
-// The output files of the profiling tools (DHAT, Massif,
-// BBV) can be found next to the output files of the callgrind runs in `target/iai/...`.
+// The output files of the profiling tools (DHAT, Massif, BBV) can be found next to the output files
+// of the callgrind runs in `target/iai/...`.
 main!(
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()

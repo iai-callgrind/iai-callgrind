@@ -41,6 +41,7 @@ pub const DEFAULT_TOGGLE: &str = "*::__iai_callgrind_wrapper_mod::*";
 /// Execute post benchmark run actions like printing the summary line with regressions
 #[derive(Debug)]
 struct PostRun {
+    // TODO: Refactor: No Option
     benchmark_summaries: Option<BenchmarkSummaries>,
     nosummary: bool,
     output_format_kind: OutputFormatKind,

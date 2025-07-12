@@ -76,8 +76,6 @@ data:
       files:
         - callgrind.bench_fibonacci_sum.fib_30_plus_fib_20.log
         - callgrind.bench_fibonacci_sum.fib_30_plus_fib_20.out
-        - dhat.bench_fibonacci_sum.fib_30_plus_fib_20.log
-        - dhat.bench_fibonacci_sum.fib_30_plus_fib_20.out
         - summary.json
   - group: fibonacci
     function: bench_fibonacci_sum
@@ -86,8 +84,6 @@ data:
       files:
         - callgrind.bench_fibonacci_sum.fib_5_plus_fib_10.log
         - callgrind.bench_fibonacci_sum.fib_5_plus_fib_10.out
-        - dhat.bench_fibonacci_sum.fib_5_plus_fib_10.log
-        - dhat.bench_fibonacci_sum.fib_5_plus_fib_10.out
         - summary.json
   - group: fibonacci
     function: bench_fibonacci_with_config
@@ -96,8 +92,6 @@ data:
       files:
         - callgrind.bench_fibonacci_with_config.log
         - callgrind.bench_fibonacci_with_config.out
-        - dhat.bench_fibonacci_with_config.log
-        - dhat.bench_fibonacci_with_config.out
         - summary.json
   - group: fibonacci
     function: bench_fibonacci_with_config_at_bench_level

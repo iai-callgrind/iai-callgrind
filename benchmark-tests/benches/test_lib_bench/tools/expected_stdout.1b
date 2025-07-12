@@ -201,15 +201,6 @@ test_lib_bench_tools::bench_group::bench_bubble_sort empty:vec! []
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (No change)
   Estimated Cycles:                        |                     (         )
-  ======= DHAT =========================================================================
-  Total bytes:                             |                     (No change)
-  Total blocks:                            |                     (No change)
-  At t-gmax bytes:                         |                     (         )
-  At t-gmax blocks:                        |                     (         )
-  At t-end bytes:                          |                     (No change)
-  At t-end blocks:                         |                     (No change)
-  Reads bytes:                             |                     (No change)
-  Writes bytes:                            |                     (No change)
   ======= MASSIF =======================================================================
   Command: <__COMMAND__>
   ======= EXP-BBV ======================================================================

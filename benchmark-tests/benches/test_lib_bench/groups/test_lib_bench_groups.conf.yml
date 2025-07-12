@@ -2,4 +2,5 @@ groups:
   - runs:
       - args: []
         expected:
+          zero_metrics: true
           files: expected_files.1.yml

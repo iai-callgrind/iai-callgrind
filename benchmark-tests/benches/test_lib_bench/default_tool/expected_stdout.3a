@@ -189,7 +189,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config callgrind
   Reads bytes:                             |N/A                  (*********)
   Writes bytes:                            |N/A                  (*********)
   ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
+  Command:             target/release/echo Print something with 'echo'
   Total bytes:                             |N/A                  (*********)
   Total blocks:                            |N/A                  (*********)
   At t-gmax bytes:                         |N/A                  (*********)
@@ -256,7 +256,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config cachegrind
   Reads bytes:                             |N/A                  (*********)
   Writes bytes:                            |N/A                  (*********)
   ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
+  Command:             target/release/echo Print something with 'echo'
   Total bytes:                             |N/A                  (*********)
   Total blocks:                            |N/A                  (*********)
   At t-gmax bytes:                         |N/A                  (*********)
@@ -323,7 +323,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config dhat
   Reads bytes:                             |N/A                  (*********)
   Writes bytes:                            |N/A                  (*********)
   ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
+  Command:             target/release/echo Print something with 'echo'
   Total bytes:                             |N/A                  (*********)
   Total blocks:                            |N/A                  (*********)
   At t-gmax bytes:                         |N/A                  (*********)
@@ -390,7 +390,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config memcheck
   Reads bytes:                             |N/A                  (*********)
   Writes bytes:                            |N/A                  (*********)
   ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
+  Command:             target/release/echo Print something with 'echo'
   Total bytes:                             |N/A                  (*********)
   Total blocks:                            |N/A                  (*********)
   At t-gmax bytes:                         |N/A                  (*********)
@@ -457,7 +457,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config helgrind
   Reads bytes:                             |N/A                  (*********)
   Writes bytes:                            |N/A                  (*********)
   ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
+  Command:             target/release/echo Print something with 'echo'
   Total bytes:                             |N/A                  (*********)
   Total blocks:                            |N/A                  (*********)
   At t-gmax bytes:                         |N/A                  (*********)
@@ -524,7 +524,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config drd
   Reads bytes:                             |N/A                  (*********)
   Writes bytes:                            |N/A                  (*********)
   ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
+  Command:             target/release/echo Print something with 'echo'
   Total bytes:                             |N/A                  (*********)
   Total blocks:                            |N/A                  (*********)
   At t-gmax bytes:                         |N/A                  (*********)
@@ -591,7 +591,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config massif
   Reads bytes:                             |N/A                  (*********)
   Writes bytes:                            |N/A                  (*********)
   ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
+  Command:             target/release/echo Print something with 'echo'
   Total bytes:                             |N/A                  (*********)
   Total blocks:                            |N/A                  (*********)
   At t-gmax bytes:                         |N/A                  (*********)
@@ -658,7 +658,7 @@ test_lib_bench_default_tool::my_group::default_tool_with_config bbv
   Reads bytes:                             |N/A                  (*********)
   Writes bytes:                            |N/A                  (*********)
   ## pid: <__PID__> ppid: <__PID__>        |N/A
-  Command:             target/release/echo Print\ something\ with\ 'echo'
+  Command:             target/release/echo Print something with 'echo'
   Total bytes:                             |N/A                  (*********)
   Total blocks:                            |N/A                  (*********)
   At t-gmax bytes:                         |N/A                  (*********)

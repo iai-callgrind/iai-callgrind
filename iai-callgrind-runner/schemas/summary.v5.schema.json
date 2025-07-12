@@ -249,6 +249,16 @@
       "description": "The metrics collected by DHAT",
       "oneOf": [
         {
+          "description": "In ad-hoc mode, Total units measured over the entire execution",
+          "type": "string",
+          "const": "TotalUnits"
+        },
+        {
+          "description": "Total ad-hoc events over the entire execution",
+          "type": "string",
+          "const": "TotalEvents"
+        },
+        {
           "description": "Total bytes allocated over the entire execution",
           "type": "string",
           "const": "TotalBytes"
