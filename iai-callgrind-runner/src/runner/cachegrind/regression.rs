@@ -13,18 +13,17 @@ impl RegressionConfig<CachegrindMetric> for CachegrindRegressionConfig {
     fn check(&self, metrics_summary: &MetricsSummary<CachegrindMetric>) -> Vec<ToolRegression> {
         self.check_regressions(metrics_summary)
             .into_iter()
-            .map(|(metric, new, old, diff_pct, limit)| ToolRegression {
-                metric: MetricKind::Cachegrind(metric),
-                new,
-                old,
-                diff_pct,
-                limit,
-            })
+            .map(|r| ToolRegression::with(MetricKind::Cachegrind, r))
             .collect()
     }
 
-    fn get_limits(&self) -> &[(CachegrindMetric, f64)] {
+    fn get_soft_limits(&self) -> &[(CachegrindMetric, f64)] {
         &self.limits
+    }
+
+    fn get_hard_limits(&self) -> &[(CachegrindMetric, crate::runner::metrics::Metric)] {
+        // TODO: Hard limits for Cachegrind
+        &[]
     }
 }
 

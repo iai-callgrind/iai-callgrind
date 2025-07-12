@@ -457,18 +457,41 @@ impl SummaryFormatter {
                         .iter()
                         .flat_map(|t| &t.summaries.total.regressions)
                     {
-                        println!(
-                            "    {} ({} -> {}): {:>6}{} exceeds limit of {:>6}{}",
-                            regression.metric.to_string().bold(),
-                            regression.old,
-                            regression.new.to_string().bold(),
-                            to_string_signed_short(regression.diff_pct)
-                                .bright_red()
-                                .bold(),
-                            "%".bright_red().bold(),
-                            to_string_signed_short(regression.limit).bright_black(),
-                            "%".bright_black()
-                        );
+                        // TODO: TEST
+                        match regression {
+                            ToolRegression::Soft {
+                                metric,
+                                new,
+                                old,
+                                diff_pct,
+                                limit,
+                            } => {
+                                println!(
+                                    "    {} ({} -> {}): {:>6}{} exceeds limit of {:>6}{}",
+                                    metric.to_string().bold(),
+                                    old,
+                                    new.to_string().bold(),
+                                    to_string_signed_short(*diff_pct).bright_red().bold(),
+                                    "%".bright_red().bold(),
+                                    to_string_signed_short(*limit).bright_black(),
+                                    "%".bright_black()
+                                );
+                            }
+                            ToolRegression::Hard {
+                                metric,
+                                new,
+                                diff,
+                                limit,
+                            } => {
+                                println!(
+                                    "    {}: {:>6} exceeds limit of {} by {}",
+                                    metric.to_string().bold(),
+                                    new.to_string().bold(),
+                                    limit.to_string().bright_black(),
+                                    diff.to_string().bright_red().bold()
+                                );
+                            }
+                        }
                     }
 
                     num_regressed += 1;
@@ -1166,46 +1189,74 @@ fn truncate_description(description: &str, truncate_description: Option<usize>) 
 }
 
 pub fn print_regressions(regressions: &[ToolRegression]) {
-    for ToolRegression {
-        metric: kind,
-        new,
-        old,
-        diff_pct,
-        limit,
-    } in regressions
-    {
-        let string = match kind {
-            MetricKind::None => continue,
-            MetricKind::Callgrind(event_kind) => event_kind.to_string(),
-            MetricKind::Cachegrind(cachegrind_metric) => cachegrind_metric.to_string(),
-            MetricKind::Dhat(dhat_metric) => dhat_metric.to_string(),
-            MetricKind::Memcheck(error_metric)
-            | MetricKind::Helgrind(error_metric)
-            | MetricKind::DRD(error_metric) => error_metric.to_string(),
-        };
+    for regression in regressions {
+        match regression {
+            ToolRegression::Soft {
+                metric,
+                new,
+                old,
+                diff_pct,
+                limit,
+            } => {
+                let metric_name = match metric {
+                    MetricKind::None => continue,
+                    MetricKind::Callgrind(event_kind) => event_kind.to_string(),
+                    MetricKind::Cachegrind(cachegrind_metric) => cachegrind_metric.to_string(),
+                    MetricKind::Dhat(dhat_metric) => dhat_metric.to_string(),
+                    MetricKind::Memcheck(error_metric)
+                    | MetricKind::Helgrind(error_metric)
+                    | MetricKind::DRD(error_metric) => error_metric.to_string(),
+                };
 
-        if limit.is_sign_positive() {
-            eprintln!(
-                "Performance has {0}: {1} ({old} -> {2}) regressed by {3:>+6} (>{4:>+6})",
-                "regressed".bold().bright_red(),
-                string.bold(),
-                new.to_string().bold(),
-                format!("{}%", to_string_signed_short(*diff_pct))
-                    .bold()
-                    .bright_red(),
-                format!("{}%", to_string_signed_short(*limit)).bright_black()
-            );
-        } else {
-            eprintln!(
-                "Performance has {0}: {1} ({old} -> {2}) regressed by {3:>+6} (<{4:>+6})",
-                "regressed".bold().bright_red(),
-                string.bold(),
-                new.to_string().bold(),
-                format!("{}%", to_string_signed_short(*diff_pct))
-                    .bold()
-                    .bright_red(),
-                format!("{}%", to_string_signed_short(*limit)).bright_black()
-            );
+                if limit.is_sign_positive() {
+                    eprintln!(
+                        "Performance has {0}: {1} ({old} -> {2}) regressed by {3:>+6} (>{4:>+6})",
+                        "regressed".bold().bright_red(),
+                        metric_name.bold(),
+                        new.to_string().bold(),
+                        format!("{}%", to_string_signed_short(*diff_pct))
+                            .bold()
+                            .bright_red(),
+                        format!("{}%", to_string_signed_short(*limit)).bright_black()
+                    );
+                } else {
+                    eprintln!(
+                        "Performance has {0}: {1} ({old} -> {2}) regressed by {3:>+6} (<{4:>+6})",
+                        "regressed".bold().bright_red(),
+                        metric_name.bold(),
+                        new.to_string().bold(),
+                        format!("{}%", to_string_signed_short(*diff_pct))
+                            .bold()
+                            .bright_red(),
+                        format!("{}%", to_string_signed_short(*limit)).bright_black()
+                    );
+                }
+            }
+            ToolRegression::Hard {
+                metric,
+                new,
+                diff,
+                limit,
+            } => {
+                let metric_name = match metric {
+                    MetricKind::None => continue,
+                    MetricKind::Callgrind(event_kind) => event_kind.to_string(),
+                    MetricKind::Cachegrind(cachegrind_metric) => cachegrind_metric.to_string(),
+                    MetricKind::Dhat(dhat_metric) => dhat_metric.to_string(),
+                    MetricKind::Memcheck(error_metric)
+                    | MetricKind::Helgrind(error_metric)
+                    | MetricKind::DRD(error_metric) => error_metric.to_string(),
+                };
+
+                eprintln!(
+                    "Performance has {0}: {1} ({2}) exceeds limit by {3:>+6} (>{4:>+6})",
+                    "regressed".bold().bright_red(),
+                    metric_name.bold(),
+                    new.to_string().bold(),
+                    diff.to_string().bold().bright_red(),
+                    limit.to_string().bright_black(),
+                );
+            }
         }
     }
 }

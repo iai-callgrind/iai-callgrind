@@ -10,24 +10,23 @@ pub struct CallgrindRegressionConfig {
 }
 
 impl RegressionConfig<EventKind> for CallgrindRegressionConfig {
-    // Check the `MetricsSummary` for regressions.
-    //
-    // The limits for event kinds which are not present in the `MetricsSummary` are ignored.
+    /// Check the `MetricsSummary` for regressions.
+    ///
+    /// The limits for event kinds which are not present in the `MetricsSummary` are ignored.
     fn check(&self, metrics_summary: &MetricsSummary) -> Vec<ToolRegression> {
         self.check_regressions(metrics_summary)
             .into_iter()
-            .map(|(metric, new, old, diff_pct, limit)| ToolRegression {
-                metric: MetricKind::Callgrind(metric),
-                new,
-                old,
-                diff_pct,
-                limit,
-            })
+            .map(|regressions| ToolRegression::with(MetricKind::Callgrind, regressions))
             .collect()
     }
 
-    fn get_limits(&self) -> &[(EventKind, f64)] {
+    fn get_soft_limits(&self) -> &[(EventKind, f64)] {
         &self.limits
+    }
+
+    fn get_hard_limits(&self) -> &[(EventKind, crate::runner::metrics::Metric)] {
+        // TODO: Hard limits for Callgrind
+        &[]
     }
 }
 
@@ -142,7 +141,7 @@ mod tests {
         [48, 12, 9, 3, 0, 1, 3, 0, 1],
         vec![(EstimatedCycles, 410, 205, 100f64, 0f64)]
     )]
-    fn test_regression_check_when_old_is_some(
+    fn test_regression_check_when_soft_and_old_is_some(
         #[case] limits: Vec<(EventKind, f64)>,
         #[case] new: [u64; 9],
         #[case] old: [u64; 9],
@@ -158,7 +157,7 @@ mod tests {
         let summary = MetricsSummary::new(EitherOrBoth::Both(new, old));
         let expected = expected
             .iter()
-            .map(|(e, n, o, d, l)| ToolRegression {
+            .map(|(e, n, o, d, l)| ToolRegression::Soft {
                 metric: MetricKind::Callgrind(*e),
                 new: (*n).into(),
                 old: (*o).into(),
