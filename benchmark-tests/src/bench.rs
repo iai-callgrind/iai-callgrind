@@ -309,7 +309,14 @@ impl Benchmark {
         self.run_bench(cargo_args, args, capture)
     }
 
-    pub fn run(&self, group: &GroupConfig, meta: &Metadata, schema: &ScopedSchema<'_>) {
+    pub fn run(
+        &self,
+        num_groups: usize,
+        group_index: usize,
+        group: &GroupConfig,
+        meta: &Metadata,
+        schema: &ScopedSchema<'_>,
+    ) {
         if !group.runs_on.as_ref().map_or(true, |(is_target, target)| {
             if *is_target {
                 target == env!("IC_BUILD_TRIPLE")
@@ -346,8 +353,9 @@ impl Benchmark {
 
             for tries in 0..=max_tries {
                 print_info(format!(
-                    "Running {}: ({}/{})",
+                    "Running {}: Group: ({}/{num_groups}), Run: ({}/{})",
                     &self.name,
+                    group_index + 1,
                     index + 1,
                     num_runs
                 ));
@@ -781,8 +789,9 @@ impl BenchmarkRunner {
         build_iai_callgrind_runner();
 
         for bench in &self.metadata.benchmarks {
-            for group in &bench.config.groups {
-                bench.run(group, &self.metadata, &compiled);
+            let num_groups = bench.config.groups.len();
+            for (index, group) in bench.config.groups.iter().enumerate() {
+                bench.run(num_groups, index, group, &self.metadata, &compiled);
             }
         }
 
