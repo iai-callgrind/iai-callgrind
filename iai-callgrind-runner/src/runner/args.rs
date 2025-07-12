@@ -695,8 +695,8 @@ fn parse_dhat_limits(value: &str) -> Result<ToolRegressionConfig, String> {
             .ok_or_else(|| -> String { format!("Unknown dhat metric: '{key}'") })
     })? {
         Limits::Default => ToolRegressionConfig::Dhat(DhatRegressionConfig::default()),
-        Limits::Values(limits) => ToolRegressionConfig::Dhat(DhatRegressionConfig {
-            limits,
+        Limits::Values(soft_limits) => ToolRegressionConfig::Dhat(DhatRegressionConfig {
+            soft_limits,
             ..Default::default()
         }),
     };

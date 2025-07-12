@@ -457,7 +457,6 @@ impl SummaryFormatter {
                         .iter()
                         .flat_map(|t| &t.summaries.total.regressions)
                     {
-                        // TODO: TEST
                         match regression {
                             ToolRegression::Soft {
                                 metric,
@@ -467,8 +466,7 @@ impl SummaryFormatter {
                                 limit,
                             } => {
                                 println!(
-                                    "    {} ({} -> {}): {:>6}{} exceeds limit of {:>6}{}",
-                                    metric.to_string().bold(),
+                                    "    {metric} ({} -> {}): {:>6}{} exceeds limit of {:>6}{}",
                                     old,
                                     new.to_string().bold(),
                                     to_string_signed_short(*diff_pct).bright_red().bold(),
@@ -484,8 +482,7 @@ impl SummaryFormatter {
                                 limit,
                             } => {
                                 println!(
-                                    "    {}: {:>6} exceeds limit of {} by {}",
-                                    metric.to_string().bold(),
+                                    "    {metric} ({0}): {0} exceeds limit of {1} by {2}",
                                     new.to_string().bold(),
                                     limit.to_string().bright_black(),
                                     diff.to_string().bright_red().bold()
@@ -1212,7 +1209,7 @@ pub fn print_regressions(regressions: &[ToolRegression]) {
                     eprintln!(
                         "Performance has {0}: {1} ({old} -> {2}) regressed by {3:>+6} (>{4:>+6})",
                         "regressed".bold().bright_red(),
-                        metric_name.bold(),
+                        metric_name,
                         new.to_string().bold(),
                         format!("{}%", to_string_signed_short(*diff_pct))
                             .bold()
@@ -1223,7 +1220,7 @@ pub fn print_regressions(regressions: &[ToolRegression]) {
                     eprintln!(
                         "Performance has {0}: {1} ({old} -> {2}) regressed by {3:>+6} (<{4:>+6})",
                         "regressed".bold().bright_red(),
-                        metric_name.bold(),
+                        metric_name,
                         new.to_string().bold(),
                         format!("{}%", to_string_signed_short(*diff_pct))
                             .bold()
@@ -1249,9 +1246,9 @@ pub fn print_regressions(regressions: &[ToolRegression]) {
                 };
 
                 eprintln!(
-                    "Performance has {0}: {1} ({2}) exceeds limit by {3:>+6} (>{4:>+6})",
+                    "Performance has {0}: {1} ({2}) exceeds limit by {3} (>{4})",
                     "regressed".bold().bright_red(),
-                    metric_name.bold(),
+                    metric_name,
                     new.to_string().bold(),
                     diff.to_string().bold().bright_red(),
                     limit.to_string().bright_black(),

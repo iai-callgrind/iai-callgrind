@@ -1149,20 +1149,56 @@ impl Dhat {
     /// ```
     /// use iai_callgrind::{Dhat, DhatMetric};
     ///
-    /// let config = Dhat::default().limits([(DhatMetric::TotalBytes, 5f64)]);
+    /// let config = Dhat::default().soft_limits([(DhatMetric::TotalBytes, 5f64)]);
     /// ```
-    pub fn limits<T>(&mut self, limits: T) -> &mut Self
+    pub fn soft_limits<T>(&mut self, soft_limits: T) -> &mut Self
     where
         T: IntoIterator<Item = (DhatMetric, f64)>,
     {
         if let Some(__internal::InternalToolRegressionConfig::Dhat(config)) =
             &mut self.0.regression_config
         {
-            config.limits.extend(limits);
+            config.soft_limits.extend(soft_limits);
         } else {
             self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Dhat(
                 __internal::InternalDhatRegressionConfig {
-                    limits: limits.into_iter().collect(),
+                    soft_limits: soft_limits.into_iter().collect(),
+                    hard_limits: Vec::default(),
+                    fail_fast: None,
+                },
+            ));
+        }
+        self
+    }
+
+    /// TODO: DOCS
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::{Dhat, DhatMetric};
+    ///
+    /// let config = Dhat::default().hard_limits([(DhatMetric::TotalBytes, 10_000)]);
+    /// ```
+    pub fn hard_limits<I, T>(&mut self, hard_limits: T) -> &mut Self
+    where
+        I: Into<__internal::InternalMetric>,
+        T: IntoIterator<Item = (DhatMetric, I)>,
+    {
+        if let Some(__internal::InternalToolRegressionConfig::Dhat(config)) =
+            &mut self.0.regression_config
+        {
+            config
+                .hard_limits
+                .extend(hard_limits.into_iter().map(|(m, l)| (m, l.into())));
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Dhat(
+                __internal::InternalDhatRegressionConfig {
+                    soft_limits: Vec::default(),
+                    hard_limits: hard_limits
+                        .into_iter()
+                        .map(|(m, l)| (m, l.into()))
+                        .collect(),
                     fail_fast: None,
                 },
             ));
@@ -1190,7 +1226,8 @@ impl Dhat {
         } else {
             self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Dhat(
                 __internal::InternalDhatRegressionConfig {
-                    limits: vec![],
+                    soft_limits: Vec::default(),
+                    hard_limits: Vec::default(),
                     fail_fast: Some(value),
                 },
             ));

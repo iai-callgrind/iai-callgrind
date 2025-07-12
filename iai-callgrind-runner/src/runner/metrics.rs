@@ -15,7 +15,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::summary::Diffs;
-use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind};
+use crate::api::{self, CachegrindMetric, DhatMetric, ErrorMetric, EventKind};
 use crate::util::{to_string_unsigned_short, EitherOrBoth};
 
 pub trait Summarize: Hash + Eq + Clone {
@@ -155,6 +155,15 @@ impl From<Metric> for f64 {
         match value {
             Metric::Int(a) => a as f64,
             Metric::Float(a) => a,
+        }
+    }
+}
+
+impl From<api::Metric> for Metric {
+    fn from(value: api::Metric) -> Self {
+        match value {
+            api::Metric::Int(a) => Self::Int(a),
+            api::Metric::Float(f) => Self::Float(f),
         }
     }
 }

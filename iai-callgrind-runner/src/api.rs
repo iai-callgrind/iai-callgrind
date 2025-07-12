@@ -659,7 +659,8 @@ pub enum DhatMetric {
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct DhatRegressionConfig {
-    pub limits: Vec<(DhatMetric, f64)>,
+    pub soft_limits: Vec<(DhatMetric, f64)>,
+    pub hard_limits: Vec<(DhatMetric, Metric)>,
     pub fail_fast: Option<bool>,
 }
 
@@ -868,6 +869,13 @@ pub struct LibraryBenchmarkGroups {
     pub has_setup: bool,
     pub has_teardown: bool,
     pub default_tool: ValgrindTool,
+}
+
+/// Used internally to be able to define hard limits for integer and float metrics alike
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum Metric {
+    Int(u64),
+    Float(f64),
 }
 
 /// The configuration values for the output format
@@ -1677,6 +1685,18 @@ impl From<CallgrindMetrics> for IndexSet<EventKind> {
         }
 
         event_kinds
+    }
+}
+
+impl From<f64> for Metric {
+    fn from(value: f64) -> Self {
+        Self::Float(value)
+    }
+}
+
+impl From<u64> for Metric {
+    fn from(value: u64) -> Self {
+        Self::Int(value)
     }
 }
 

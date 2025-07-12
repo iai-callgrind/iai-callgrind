@@ -29,14 +29,21 @@ impl RegressionConfig<DhatMetric> for DhatRegressionConfig {
 
 impl From<api::DhatRegressionConfig> for DhatRegressionConfig {
     fn from(value: api::DhatRegressionConfig) -> Self {
-        let api::DhatRegressionConfig { limits, fail_fast } = value;
+        let api::DhatRegressionConfig {
+            soft_limits,
+            hard_limits,
+            fail_fast,
+        } = value;
         DhatRegressionConfig {
-            soft_limits: if limits.is_empty() {
+            soft_limits: if soft_limits.is_empty() && hard_limits.is_empty() {
                 vec![(DhatMetric::TotalBytes, 10f64)]
             } else {
-                limits
+                soft_limits
             },
-            hard_limits: Vec::default(),
+            hard_limits: hard_limits
+                .into_iter()
+                .map(|(m, l)| (m, l.into()))
+                .collect(),
             fail_fast: fail_fast.unwrap_or(false),
         }
     }
