@@ -1111,7 +1111,9 @@ impl Dhat {
     /// include the interesting ones:
     ///
     /// ```rust
-    /// Dhat::default().frames(["benchmark_tests::find_primes"])
+    /// use iai_callgrind::Dhat;
+    ///
+    /// Dhat::default().frames(["benchmark_tests::find_primes"]);
     /// ```
     pub fn frames<I, T>(&mut self, frames: T) -> &mut Self
     where
