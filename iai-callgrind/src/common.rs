@@ -940,43 +940,54 @@ impl Dhat {
 
     /// Set or unset the entry point for DHAT
     ///
-    /// The basic principal of this [`EntryPoint`] is almost the same as for
-    /// [`Callgrind::entry_point`] and for additional details see there. However, there are subtle
-    /// differences and the calculation of the final metrics shown in the DHAT output can only be
-    /// done on a best-effort basis.
+    /// The basic concept of this [`EntryPoint`] is almost the same as for
+    /// [`Callgrind::entry_point`] and for additional details see there. For library benchmarks the
+    /// default entry point is [`EntryPoint::Default`] and for binary benchmarks it's
+    /// [`EntryPoint::None`].
+    ///
+    /// Note that the default entry point tries to match the benchmark function, so it doesn't make
+    /// much sense to use [`EntryPoint::Default`] in binary benchmarks. The result of an incorrect
+    /// entry point is usually that all metrics are `0`, which is an indicator that something has
+    /// gone wrong.
     ///
     /// # Details
     ///
-    /// As opposed to callgrind, the default entry point [`EntryPoint::Default`] is applied after
-    /// the benchmark run based on the output files because DHAT does not have a command line
-    /// argument like `--toggle-collect`. The DHAT output files however, can't be used to reliably
-    /// exclude the `setup` and `teardown` of the benchmark function. So, allocations and
-    /// deallocations in the `setup` and `teardown` function are always included in the final
-    /// metrics. But on the good side, all other (de-)allocations in the benchmark file (around
-    /// `2000` - `2500` bytes) to prepare the benchmark run are not included what at least
-    /// stabilizes the metrics and focus the metrics on the benchmark function.
+    /// There are subtle differences to the entry point in callgrind and the calculation of the
+    /// final metrics shown in the DHAT output can only be done on a best-effort basis. As opposed
+    /// to callgrind, the default entry point [`EntryPoint::Default`] is applied after the benchmark
+    /// run based on the output files because DHAT does not have a command line argument like
+    /// `--toggle-collect`. The DHAT output files however, can't be used to reliably exclude the
+    /// `setup` and `teardown` of the benchmark function. As a consequence, allocations and
+    /// deallocations in the `setup` and `teardown` function are included in the final metrics. All
+    /// other (de-)allocations in the benchmark file (around `2000` - `2500` bytes) to prepare the
+    /// benchmark run are not included what stabilizes the metrics enough to be able to specify
+    /// limits with [`Dhat::limits`] for regression checks and focus the metrics on the benchmark
+    /// function.
     ///
     /// Since there is no `--toggle-collect` argument, it's possible to define additional `frames`
-    /// (the DHAT equivalent of callgrind toggles) in the [`Dhat::frames`] method.
+    /// (the Iai-Callgrind specific DHAT equivalent of callgrind toggles) in the [`Dhat::frames`]
+    /// method.
     ///
     /// The [`EntryPoint::Default`] matches the benchmark function and a [`EntryPoint::Custom`] is
     /// convenience for specifying [`EntryPoint::None`] and a frame in [`Dhat::frames`].
     ///
     /// # Examples
     ///
-    /// Specifying no entry point is the same as specifying [`EntryPoint::Default`]
+    /// Specifying no entry point in library benchmarks is the same as specifying
+    /// [`EntryPoint::Default`]. It is used here nonetheless for demonstration purposes:
     ///
     /// ```rust
     /// # mod my_lib { pub fn to_be_benchmarked() -> Vec<i32> { vec![0] } }
     /// use iai_callgrind::{
-    ///     main, LibraryBenchmarkConfig, library_benchmark, library_benchmark_group, Dhat
+    ///     main, LibraryBenchmarkConfig, library_benchmark, library_benchmark_group, Dhat,
+    ///     EntryPoint
     /// };
     /// use std::hint::black_box;
     /// use my_lib::to_be_benchmarked;
     ///
     /// #[library_benchmark(
     ///     config = LibraryBenchmarkConfig::default()
-    ///         .tool(Dhat::default())
+    ///         .tool(Dhat::default().entry_point(EntryPoint::Default))
     /// )]
     /// fn some_bench() -> Vec<i32> { // <-- DEFAULT ENTRY POINT
     ///     black_box(to_be_benchmarked())
@@ -1026,13 +1037,14 @@ impl Dhat {
 
     /// Add one or multiple `frames` which will be included in the benchmark metrics
     ///
-    /// `Frames` are special to iai-callgrind and the DHAT equivalent to callgrind toggles
-    /// (`--toggle-collect`) and like the command-like argument this method accepts simple glob
-    /// patterns with `*` and `?` wildcards. Sometimes the [`Dhat::entry_point`] is not enough and
-    /// it is required to specify additional frames. This is especially true in
-    /// multi-threaded/multi-process applications. Like in callgrind, each thread/subprocess in
-    /// DHAT is treated as a separate unit and thus requires `frames` in addition to the default
-    /// entry point to include the interesting ones in the measurements.
+    /// `Frames` are special to Iai-Callgrind and the DHAT equivalent to callgrind toggles
+    /// (`--toggle-collect`) and like `--toggle-collect` this method accepts simple glob patterns
+    /// with `*` and `?` wildcards. A `Frame` describes an entry in the call stack (See the
+    /// example). Sometimes the [`Dhat::entry_point`] is not enough and it is required to specify
+    /// additional frames. This is especially true in multi-threaded/multi-process applications.
+    /// Like in callgrind, each thread/subprocess in DHAT is treated as a separate unit and thus
+    /// requires `frames` in addition to the default entry point to include the interesting ones in
+    /// the measurements.
     ///
     /// # Example
     ///
@@ -1108,7 +1120,7 @@ impl Dhat {
     /// As can be seen, the call stack of the program point `PP 1.1.1/12` does not include a main
     /// function, benchmark function, and so forth because a thread is a completely separate unit.
     /// This enables us to exclude uninteresting threads by simply not specifying them here and
-    /// include the interesting ones:
+    /// include the interesting ones for example with:
     ///
     /// ```rust
     /// use iai_callgrind::Dhat;
