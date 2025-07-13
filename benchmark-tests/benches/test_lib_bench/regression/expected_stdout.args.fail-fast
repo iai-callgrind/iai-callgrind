@@ -1,4 +1,4 @@
-test_bench_template::bench_group::bench_bubble_sort regress_callgrind:setup_worst_case_array(6)
+test_bench_template::bench_group::bench_bubble_sort regress_callgrind:setup_worst_case_array(200)
   Instructions:                            |                     (+       %) [+       x]
   L1 Hits:                                 |                     (         )
   LL Hits:                                 |                     (         )

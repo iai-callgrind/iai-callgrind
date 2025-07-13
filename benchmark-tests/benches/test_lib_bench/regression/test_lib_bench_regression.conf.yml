@@ -21,7 +21,7 @@ groups:
           stderr: expected_stderr.callgrind-fail-fast
           exit_code: 3
         template_data:
-          callgrind_array_length: 5
+          callgrind_array_length: 100
           callgrind_fail_fast: true
           cachegrind_array_length: 4
           cachegrind_fail_fast: false
@@ -34,9 +34,9 @@ groups:
           stderr: expected_stderr.cachegrind-fail-fast
           exit_code: 3
         template_data:
-          callgrind_array_length: 5
+          callgrind_array_length: 4
           callgrind_fail_fast: false
-          cachegrind_array_length: 5
+          cachegrind_array_length: 500
           cachegrind_fail_fast: true
           dhat_array_length: 4
           dhat_fail_fast: false
@@ -47,9 +47,9 @@ groups:
           stderr: expected_stderr.dhat-fail-fast
           exit_code: 3
         template_data:
-          callgrind_array_length: 5
+          callgrind_array_length: 4
           callgrind_fail_fast: false
-          cachegrind_array_length: 5
+          cachegrind_array_length: 4
           cachegrind_fail_fast: false
           dhat_array_length: 5
           dhat_fail_fast: true
@@ -73,9 +73,9 @@ groups:
           stderr: expected_stderr.no-fail-fast
           exit_code: 3
         template_data:
-          callgrind_array_length: 5
+          callgrind_array_length: 100
           callgrind_fail_fast: false
-          cachegrind_array_length: 5
+          cachegrind_array_length: 500
           cachegrind_fail_fast: false
           dhat_array_length: 5
           dhat_fail_fast: false
@@ -108,9 +108,9 @@ groups:
           stderr: expected_stderr.args
           exit_code: 3
         template_data:
-          callgrind_array_length: 5
+          callgrind_array_length: 100
           callgrind_fail_fast: false
-          cachegrind_array_length: 5
+          cachegrind_array_length: 500
           cachegrind_fail_fast: false
           dhat_array_length: 5
           dhat_fail_fast: false
@@ -120,9 +120,9 @@ groups:
           stderr: expected_stderr.callgrind-fail-fast
           exit_code: 3
         template_data:
-          callgrind_array_length: 6
+          callgrind_array_length: 200
           callgrind_fail_fast: false
-          cachegrind_array_length: 6
+          cachegrind_array_length: 1000
           cachegrind_fail_fast: false
           dhat_array_length: 6
           dhat_fail_fast: false
