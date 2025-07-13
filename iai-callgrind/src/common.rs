@@ -442,27 +442,76 @@ impl Cachegrind {
 
     /// Configure the limits percentages over/below which a performance regression can be assumed
     ///
-    /// See also [`Callgrind::limits`].
+    /// DEPRECATED: Please use [`Cachegrind::soft_limits`] instead.
+    #[deprecated = "Please use Cachegrind::soft_limits instead"]
+    pub fn limits<T>(&mut self, limits: T) -> &mut Self
+    where
+        T: IntoIterator<Item = (CachegrindMetric, f64)>,
+    {
+        self.soft_limits(limits)
+    }
+
+    /// Configure the limits percentages over/below which a performance regression can be assumed
+    ///
+    /// Same as [`Callgrind::soft_limits`] but for [`CachegrindMetric`].
     ///
     /// # Examples
     ///
     /// ```
     /// use iai_callgrind::{Cachegrind, CachegrindMetric};
     ///
-    /// let config = Cachegrind::default().limits([(CachegrindMetric::Ir, 5f64)]);
+    /// let config = Cachegrind::default().soft_limits([(CachegrindMetric::Ir, 5f64)]);
     /// ```
-    pub fn limits<T>(&mut self, limits: T) -> &mut Self
+    pub fn soft_limits<T>(&mut self, limits: T) -> &mut Self
     where
         T: IntoIterator<Item = (CachegrindMetric, f64)>,
     {
         if let Some(__internal::InternalToolRegressionConfig::Cachegrind(config)) =
             &mut self.0.regression_config
         {
-            config.limits.extend(limits);
+            config.soft_limits.extend(limits);
         } else {
             self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Cachegrind(
                 __internal::InternalCachegrindRegressionConfig {
-                    limits: limits.into_iter().collect(),
+                    soft_limits: limits.into_iter().collect(),
+                    hard_limits: Vec::default(),
+                    fail_fast: None,
+                },
+            ));
+        }
+        self
+    }
+
+    /// Set hard limits above which a performance regression can be assumed
+    ///
+    /// Same as [`Callgrind::hard_limits`] but for [`CachegrindMetric`]s.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::{Cachegrind, CachegrindMetric};
+    ///
+    /// let config = Cachegrind::default().hard_limits([(CachegrindMetric::Ir, 10_000)]);
+    /// ```
+    pub fn hard_limits<I, T>(&mut self, hard_limits: T) -> &mut Self
+    where
+        I: Into<__internal::InternalMetric>,
+        T: IntoIterator<Item = (CachegrindMetric, I)>,
+    {
+        if let Some(__internal::InternalToolRegressionConfig::Cachegrind(config)) =
+            &mut self.0.regression_config
+        {
+            config
+                .hard_limits
+                .extend(hard_limits.into_iter().map(|(m, l)| (m, l.into())));
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Cachegrind(
+                __internal::InternalCachegrindRegressionConfig {
+                    soft_limits: Vec::default(),
+                    hard_limits: hard_limits
+                        .into_iter()
+                        .map(|(m, l)| (m, l.into()))
+                        .collect(),
                     fail_fast: None,
                 },
             ));
@@ -490,7 +539,8 @@ impl Cachegrind {
         } else {
             self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Cachegrind(
                 __internal::InternalCachegrindRegressionConfig {
-                    limits: vec![],
+                    soft_limits: Vec::default(),
+                    hard_limits: Vec::default(),
                     fail_fast: Some(value),
                 },
             ));
@@ -664,17 +714,7 @@ impl Callgrind {
 
     /// Configure the limits percentages over/below which a performance regression can be assumed
     ///
-    /// A performance regression check consists of an [`EventKind`] and a percentage over which a
-    /// regression is assumed. If the percentage is negative, then a regression is assumed to be
-    /// below this limit.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use iai_callgrind::{Callgrind, EventKind};
-    ///
-    /// let config = Callgrind::default().limits([(EventKind::Ir, 5f64)]);
-    /// ```
+    /// DEPRECATED: Use [`Callgrind::soft_limits`] instead.
     #[deprecated = "Please use Callgrind::soft_limits instead"]
     pub fn limits<T>(&mut self, limits: T) -> &mut Self
     where
@@ -685,9 +725,8 @@ impl Callgrind {
 
     /// Configure the limits percentages over/below which a performance regression can be assumed
     ///
-    /// A performance regression check consists of an [`EventKind`] and a percentage over which a
-    /// regression is assumed. If the percentage is negative, then a regression is assumed to be
-    /// below this limit.
+    /// A limit consists of an [`EventKind`] and a percentage over which a regression is assumed. If
+    /// the limit is negative, then a regression is assumed to be below this limit.
     ///
     /// # Examples
     ///
@@ -695,6 +734,16 @@ impl Callgrind {
     /// use iai_callgrind::{Callgrind, EventKind};
     ///
     /// let config = Callgrind::default().limits([(EventKind::Ir, 5f64)]);
+    /// ```
+    ///
+    /// # Details
+    ///
+    /// The percentage which can be found in the iai-callgrind output and can be limited with a soft
+    /// limit is calculated from the difference between the `new` (left side) and `old` (right side)
+    /// run as follows:
+    ///
+    /// ```
+    /// difference percentage = (new - old) / old * 100
     /// ```
     pub fn soft_limits<T>(&mut self, limits: T) -> &mut Self
     where
@@ -716,7 +765,21 @@ impl Callgrind {
         self
     }
 
-    /// TODO: DOCS
+    /// Set hard limits above which a performance regression can be assumed
+    ///
+    /// In contrast to [`Callgrind::soft_limits`], hard limits restrict an [`EventKind`] in absolute
+    /// numbers instead of a percentage. A hard limit only affects the `new` benchmark run.
+    ///
+    /// # Examples
+    ///
+    /// If in a benchmark configured like below, there are more than `10_000` instruction fetches, a
+    /// performance regression is registered failing the benchmark run.
+    ///
+    /// ```
+    /// use iai_callgrind::{Callgrind, CallgrindMetric};
+    ///
+    /// let config = Callgrind::default().hard_limits([(EventKind::Ir, 10_000)]);
+    /// ```
     pub fn hard_limits<I, T>(&mut self, hard_limits: T) -> &mut Self
     where
         I: Into<__internal::InternalMetric>,
@@ -1190,9 +1253,8 @@ impl Dhat {
 
     /// Configure the limits percentages over/below which a performance regression can be assumed
     ///
-    /// A performance regression check consists of a [`DhatMetric`] and a percentage over which a
-    /// regression is assumed. If the percentage is negative, then a regression is assumed to be
-    /// below this limit. Performance regressions are regarded as error and fail the benchmark run.
+    /// Same as [`Callgrind::soft_limits`] but for [`DhatMetric`]s. Note that in contrast to
+    /// callgrind, allocations in `setup` and and `teardown` are included in the benchmark metrics.
     ///
     /// # Examples
     ///
@@ -1221,16 +1283,15 @@ impl Dhat {
         self
     }
 
-    /// Set hard limits over which a performance regression can be assumed
+    /// Set hard limits above which a performance regression can be assumed
     ///
-    /// In contrast to [`Dhat::soft_limits`], hard limits restrict a [`DhatMetric`] in absolute
-    /// numbers instead of a percentage. A hard limit only affects the `new` benchmark run (on the
-    /// left side).
+    /// Same as [`Callgrind::hard_limits`] but for [`DhatMetric`]s. Note that in contrast to
+    /// callgrind allocations in `setup` and and `teardown` are included in the benchmark metrics.
     ///
     /// # Examples
     ///
-    /// If benchmarks configured like below allocate more than a total of `10_000` bytes, a
-    /// performance regression occurs failing the benchmark run.
+    /// If in a benchmark configured like below, there are more than a total of `10_000` bytes
+    /// allocated, a performance regression is registered failing the benchmark run.
     ///
     /// ```
     /// use iai_callgrind::{Dhat, DhatMetric};

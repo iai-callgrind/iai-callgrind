@@ -329,7 +329,8 @@ pub enum CachegrindMetrics {
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CachegrindRegressionConfig {
-    pub limits: Vec<(CachegrindMetric, f64)>,
+    pub soft_limits: Vec<(CachegrindMetric, f64)>,
+    pub hard_limits: Vec<(CachegrindMetric, Metric)>,
     pub fail_fast: Option<bool>,
 }
 

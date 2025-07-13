@@ -14,7 +14,7 @@ impl RegressionConfig<DhatMetric> for DhatRegressionConfig {
     fn check(&self, metrics_summary: &MetricsSummary<DhatMetric>) -> Vec<ToolRegression> {
         self.check_regressions(metrics_summary)
             .into_iter()
-            .map(|r| ToolRegression::with(MetricKind::Dhat, r))
+            .map(|regressions| ToolRegression::with(MetricKind::Dhat, regressions))
             .collect()
     }
 

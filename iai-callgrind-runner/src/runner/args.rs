@@ -682,7 +682,7 @@ fn parse_cachegrind_limits(value: &str) -> Result<ToolRegressionConfig, String> 
     })? {
         Limits::Default => ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig::default()),
         Limits::Values(limits) => ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig {
-            limits,
+            soft_limits: limits,
             ..Default::default()
         }),
     };
