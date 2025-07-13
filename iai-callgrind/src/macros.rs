@@ -436,6 +436,11 @@ macro_rules! main {
             __has_teardown
         }
 
+        /// Keep the logic to run the benchmark function within the main function to avoid heap
+        /// allocations in functions other than main which are part of the benchmarking framework.
+        /// DHAT needs a fallback (matched with `file::*::*`) to the benchmark function (matched
+        /// with `*::__iai_callgrind_wrapper_mod::*`) since the benchmark function is sometimes
+        /// inlined even if annotated with `#[inline(never)]`.
         fn main() {
             let mut args_iter = std::hint::black_box(std::env::args()).skip(1);
             if args_iter

@@ -227,6 +227,7 @@ impl BinBench {
             &mut output_format,
             config.tools,
             &module_path,
+            binary_benchmark_bench.id.as_ref(),
             meta,
             default_tool,
             &EntryPoint::None,

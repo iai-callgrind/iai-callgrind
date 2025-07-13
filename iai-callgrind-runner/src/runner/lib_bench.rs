@@ -338,6 +338,7 @@ impl LibBench {
             &mut output_format,
             config.tools,
             &module_path,
+            library_benchmark_bench.id.as_ref(),
             meta,
             default_tool,
             &EntryPoint::Default,

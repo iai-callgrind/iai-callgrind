@@ -291,6 +291,13 @@ impl ModulePath {
         &self.0
     }
 
+    pub fn first(&self) -> Option<ModulePath> {
+        self.0
+            .split_once("::")
+            .map(|(first, _)| ModulePath::new(first))
+            .or_else(|| (!self.0.is_empty()).then_some(self.clone()))
+    }
+
     pub fn last(&self) -> Option<ModulePath> {
         self.0
             .rsplit_once("::")
@@ -395,5 +402,24 @@ impl Sandbox {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use super::*;
+
+    #[rstest]
+    #[case::empty("", None)]
+    #[case::single("first", Some("first"))]
+    #[case::two("first::second", Some("first"))]
+    #[case::three("first::second::third", Some("first"))]
+    fn test_module_path_first(#[case] module_path: &str, #[case] expected: Option<&str>) {
+        let expected = expected.map(ModulePath::new);
+        let actual = ModulePath::new(module_path).first();
+
+        assert_eq!(actual, expected);
     }
 }

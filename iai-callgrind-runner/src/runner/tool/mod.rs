@@ -602,9 +602,11 @@ impl ToolConfig {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     pub fn new_default_config(
         output_format: &mut OutputFormat,
         module_path: &ModulePath,
+        id: Option<&String>,
         meta: &Metadata,
         default_tool: ValgrindTool,
         mut tool: Option<Tool>,
@@ -689,13 +691,15 @@ impl ToolConfig {
                     // this point the module path consists of `file::group::function`. The group in
                     // the path is artificial and we need the real function path within the
                     // benchmark file to create a matching glob pattern. That real path consists of
-                    // `file::function::id`. The `id`-function won't be matched literally but with a
+                    // `file::module::id`. The `id`-function won't be matched literally but with a
                     // wildcard to address the problem of functions with the same body being
-                    // condensed into a single function by the compiler. There is no way to know
-                    // which concrete `id`-function the compiler chose in the end, so we match it
-                    // with a wildcard.
+                    // condensed into a single function by the compiler. Since in rare cases that
+                    // can happen across modules the `module` is matched with a glob, too.
                     if let [first, _, last] = module_path.components()[..] {
                         frames.push(format!("{first}::{last}::*"));
+                        if let Some(id) = id {
+                            frames.push(format!("{first}::*::{id}"));
+                        }
                     }
                 }
 
@@ -799,6 +803,7 @@ impl ToolConfigs {
         output_format: &mut OutputFormat,
         mut tools: Tools,
         module_path: &ModulePath,
+        id: Option<&String>,
         meta: &Metadata,
         default_tool: ValgrindTool,
         default_entry_point: &EntryPoint,
@@ -809,6 +814,7 @@ impl ToolConfigs {
         let default_tool_config = ToolConfig::new_default_config(
             output_format,
             module_path,
+            id,
             meta,
             default_tool,
             extracted_tool,
@@ -889,9 +895,12 @@ impl ToolConfigs {
                     if let EntryPoint::Default = entry_point {
                         let frames = tool.frames.get_or_insert_with(Vec::new);
 
-                        // For details see comment in `ToolConfig::new_default_config`
+                        // For the details see comment in `ToolConfig::new_default_config`
                         if let [first, _, last] = module_path.components()[..] {
                             frames.push(format!("{first}::{last}::*"));
+                            if let Some(id) = id {
+                                frames.push(format!("{first}::*::{id}"));
+                            }
                         }
                     }
 
