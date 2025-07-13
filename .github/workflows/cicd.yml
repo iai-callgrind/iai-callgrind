@@ -222,6 +222,7 @@ jobs:
           envs: "IAI_CALLGRIND_VALGRIND_INCLUDE IAI_CALLGRIND_VALGRIND_PATH"
           usesh: true
           sync: rsync
+          # copyback: `false` reduces run time by some minutes
           copyback: false
           prepare: |
             pkg install -y valgrind curl llvm18 just npm-node22
@@ -229,6 +230,13 @@ jobs:
           run: |
             ./scripts/freebsd_print_info.sh
             ./scripts/freebsd_build_and_test.sh
+      # Set `copyback` to `true` and enable for debugging.
+      # - name: Upload target/iai
+      #   if: ${{ always() }}
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: freebsd-target-iai
+      #     path: target/iai
 
   docs:
     needs: [base, client_requests]
