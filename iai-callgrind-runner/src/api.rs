@@ -25,8 +25,10 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "runner")]
 use strum::{EnumIter, IntoEnumIterator};
 
+use crate::runner;
 #[cfg(feature = "runner")]
 use crate::runner::metrics::Summarize;
+use crate::runner::metrics::TypeChecker;
 
 /// The model for the `#[binary_benchmark]` attribute or the equivalent from the low level api
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -880,6 +882,16 @@ pub enum Metric {
     Float(f64),
 }
 
+#[cfg(feature = "runner")]
+impl From<runner::metrics::Metric> for Metric {
+    fn from(value: runner::metrics::Metric) -> Self {
+        match value {
+            runner::metrics::Metric::Int(a) => Self::Int(a),
+            runner::metrics::Metric::Float(b) => Self::Float(b),
+        }
+    }
+}
+
 /// The configuration values for the output format
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct OutputFormat {
@@ -1316,6 +1328,40 @@ impl From<CachegrindMetric> for EventKind {
     }
 }
 
+#[cfg(feature = "runner")]
+impl TypeChecker for CachegrindMetric {
+    fn verify_type(&self, metric: runner::metrics::Metric) -> bool {
+        match self {
+            CachegrindMetric::Ir
+            | CachegrindMetric::Dr
+            | CachegrindMetric::Dw
+            | CachegrindMetric::I1mr
+            | CachegrindMetric::D1mr
+            | CachegrindMetric::D1mw
+            | CachegrindMetric::ILmr
+            | CachegrindMetric::DLmr
+            | CachegrindMetric::DLmw
+            | CachegrindMetric::L1hits
+            | CachegrindMetric::LLhits
+            | CachegrindMetric::RamHits
+            | CachegrindMetric::TotalRW
+            | CachegrindMetric::EstimatedCycles
+            | CachegrindMetric::Bc
+            | CachegrindMetric::Bcm
+            | CachegrindMetric::Bi
+            | CachegrindMetric::Bim => metric.is_int(),
+            CachegrindMetric::I1MissRate
+            | CachegrindMetric::LLiMissRate
+            | CachegrindMetric::D1MissRate
+            | CachegrindMetric::LLdMissRate
+            | CachegrindMetric::LLMissRate
+            | CachegrindMetric::L1HitRate
+            | CachegrindMetric::LLHitRate
+            | CachegrindMetric::RamHitRate => metric.is_float(),
+        }
+    }
+}
+
 impl Default for DelayKind {
     fn default() -> Self {
         Self::DurationElapse(Duration::from_secs(60))
@@ -1373,6 +1419,12 @@ impl Display for DhatMetric {
 
 #[cfg(feature = "runner")]
 impl Summarize for DhatMetric {}
+
+impl TypeChecker for DhatMetric {
+    fn verify_type(&self, metric: runner::metrics::Metric) -> bool {
+        metric.is_int()
+    }
+}
 
 impl<T> From<T> for EntryPoint
 where
@@ -1557,6 +1609,51 @@ impl TryFrom<&str> for EventKind {
         };
 
         Ok(metric)
+    }
+}
+
+#[cfg(feature = "runner")]
+impl TypeChecker for EventKind {
+    fn verify_type(&self, metric: runner::metrics::Metric) -> bool {
+        match self {
+            EventKind::Ir
+            | EventKind::Dr
+            | EventKind::Dw
+            | EventKind::I1mr
+            | EventKind::D1mr
+            | EventKind::D1mw
+            | EventKind::ILmr
+            | EventKind::DLmr
+            | EventKind::DLmw
+            | EventKind::L1hits
+            | EventKind::LLhits
+            | EventKind::RamHits
+            | EventKind::TotalRW
+            | EventKind::EstimatedCycles
+            | EventKind::SysCount
+            | EventKind::SysTime
+            | EventKind::SysCpuTime
+            | EventKind::Ge
+            | EventKind::Bc
+            | EventKind::Bcm
+            | EventKind::Bi
+            | EventKind::Bim
+            | EventKind::ILdmr
+            | EventKind::DLdmr
+            | EventKind::DLdmw
+            | EventKind::AcCost1
+            | EventKind::AcCost2
+            | EventKind::SpLoss1
+            | EventKind::SpLoss2 => metric.is_int(),
+            EventKind::I1MissRate
+            | EventKind::LLiMissRate
+            | EventKind::D1MissRate
+            | EventKind::LLdMissRate
+            | EventKind::LLMissRate
+            | EventKind::L1HitRate
+            | EventKind::LLHitRate
+            | EventKind::RamHitRate => metric.is_float(),
+        }
     }
 }
 

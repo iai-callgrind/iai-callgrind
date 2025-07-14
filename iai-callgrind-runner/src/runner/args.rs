@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::fmt::Display;
+use std::hash::Hash;
 // spell-checker: ignore totalbytes totalblocks
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -7,6 +10,7 @@ use clap::builder::BoolishValueParser;
 use clap::{ArgAction, Parser};
 
 use super::format::OutputFormatKind;
+use super::metrics::{Metric, TypeChecker};
 use super::summary::{BaselineName, SummaryFormat};
 use crate::api::{
     CachegrindMetric, CachegrindRegressionConfig, CallgrindRegressionConfig, DhatMetric,
@@ -44,7 +48,7 @@ impl FromStr for BenchmarkFilter {
 /// A utility enum to parse the limits of cli args like `--callgrind-limits`
 enum Limits<T> {
     Default,
-    Values(Vec<(T, f64)>),
+    Values(HashMap<T, f64>, HashMap<T, Metric>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -624,9 +628,9 @@ fn parse_args(value: &str) -> Result<RawArgs, String> {
         .map(RawArgs::new)
 }
 
-fn parse_limits<T>(
+fn parse_limits<T: Eq + Hash>(
     value: &str,
-    parse_metric: fn(&str) -> Result<T, String>,
+    parse_metric: fn(&str, Option<Metric>) -> Result<T, String>,
 ) -> Result<Limits<T>, String> {
     let value = value.trim();
     if value.is_empty() {
@@ -636,69 +640,123 @@ fn parse_limits<T>(
     let limits = if value.eq_ignore_ascii_case("default") {
         Limits::Default
     } else {
-        let mut limits = vec![];
+        let mut soft_limits = HashMap::new();
+        let mut hard_limits = HashMap::new();
 
-        for split in value.split(',') {
-            let split = split.trim();
+        for item in value.split(',') {
+            let item = item.trim();
 
-            if let Some((key, value)) = split.split_once('=') {
+            if let Some((key, value)) = item.split_once('=') {
                 let (key, value) = (key.trim(), value.trim());
-                let pct = value.parse::<f64>().map_err(|error| -> String {
-                    format!("Invalid percentage for '{key}': {error}")
-                })?;
-                let metric_kind = parse_metric(key)?;
-                limits.push((metric_kind, pct));
+                for split in value.split('|') {
+                    let split = split.trim();
+
+                    if let Some(prefix) = split.strip_suffix('%') {
+                        let pct = prefix.parse::<f64>().map_err(|error| -> String {
+                            format!("Invalid soft limit for '{key}': {error}")
+                        })?;
+                        let metric_kind = parse_metric(key, None)?;
+                        soft_limits.insert(metric_kind, pct);
+                    } else {
+                        let metric = split.parse::<Metric>().map_err(|error| -> String {
+                            format!("Invalid hard limit for '{key}': {error}")
+                        })?;
+                        let metric_kind = parse_metric(key, Some(metric))?;
+                        hard_limits.insert(metric_kind, metric);
+                    }
+                }
             } else {
-                return Err(format!("Invalid format of key=value pair: '{split}'"));
+                return Err(format!("Invalid format of key=value pair: '{item}'"));
             }
         }
 
-        Limits::Values(limits)
+        Limits::Values(soft_limits, hard_limits)
     };
 
     Ok(limits)
 }
 
+fn verify_metric<T: Display + TypeChecker>(
+    metric_kind: T,
+    metric: Option<Metric>,
+) -> Result<T, String> {
+    if let Some(metric) = metric {
+        if !metric_kind.verify_type(metric) {
+            let expected = match metric {
+                Metric::Int(_) => "float (e.g. '10.0')",
+                Metric::Float(_) => "integer (e.g. '10')",
+            };
+            return Err(format!(
+                "Invalid hard limit for '{metric_kind}': Expected a {expected}. If you wanted \
+                 this value to be a soft limit use the '%' suffix (e.g. '4.0%' or '4%')"
+            ));
+        }
+    }
+
+    Ok(metric_kind)
+}
+
 // TODO: Allow CallgrindMetrics instead of just EventKind
 fn parse_callgrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
-    let config = match parse_limits(value, |key| {
+    let config = match parse_limits(value, |key, metric| {
         EventKind::from_str_ignore_case(key)
             .ok_or_else(|| -> String { format!("Unknown event kind: '{key}'") })
+            .and_then(|metric_kind| verify_metric(metric_kind, metric))
     })? {
         Limits::Default => ToolRegressionConfig::Callgrind(CallgrindRegressionConfig::default()),
-        Limits::Values(limits) => ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
-            soft_limits: limits,
-            ..Default::default()
-        }),
+        Limits::Values(soft_limits, hard_limits) => {
+            ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
+                soft_limits: soft_limits.into_iter().collect(),
+                hard_limits: hard_limits
+                    .into_iter()
+                    .map(|(e, m)| (e, m.into()))
+                    .collect(),
+                ..Default::default()
+            })
+        }
     };
     Ok(config)
 }
 
 // TODO: Allow CachegrindMetrics instead of just CachegrindMetric
 fn parse_cachegrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
-    let config = match parse_limits(value, |key| {
+    let config = match parse_limits(value, |key, metric| {
         CachegrindMetric::from_str_ignore_case(key)
             .ok_or_else(|| -> String { format!("Unknown cachegrind metric: '{key}'") })
+            .and_then(|metric_kind| verify_metric(metric_kind, metric))
     })? {
         Limits::Default => ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig::default()),
-        Limits::Values(limits) => ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig {
-            soft_limits: limits,
-            ..Default::default()
-        }),
+        Limits::Values(soft_limits, hard_limits) => {
+            ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig {
+                soft_limits: soft_limits.into_iter().collect(),
+                hard_limits: hard_limits
+                    .into_iter()
+                    .map(|(e, m)| (e, m.into()))
+                    .collect(),
+                ..Default::default()
+            })
+        }
     };
     Ok(config)
 }
 
 fn parse_dhat_limits(value: &str) -> Result<ToolRegressionConfig, String> {
-    let config = match parse_limits(value, |key| {
+    let config = match parse_limits(value, |key, metric| {
         DhatMetric::from_str_ignore_case(key)
             .ok_or_else(|| -> String { format!("Unknown dhat metric: '{key}'") })
+            .and_then(|metric_kind| verify_metric(metric_kind, metric))
     })? {
         Limits::Default => ToolRegressionConfig::Dhat(DhatRegressionConfig::default()),
-        Limits::Values(soft_limits) => ToolRegressionConfig::Dhat(DhatRegressionConfig {
-            soft_limits,
-            ..Default::default()
-        }),
+        Limits::Values(soft_limits, hard_limits) => {
+            ToolRegressionConfig::Dhat(DhatRegressionConfig {
+                soft_limits: soft_limits.into_iter().collect(),
+                hard_limits: hard_limits
+                    .into_iter()
+                    .map(|(e, m)| (e, m.into()))
+                    .collect(),
+                ..Default::default()
+            })
+        }
     };
     Ok(config)
 }

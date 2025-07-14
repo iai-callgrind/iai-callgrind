@@ -22,6 +22,11 @@ pub trait Summarize: Hash + Eq + Clone {
     fn summarize(_: &mut Cow<Metrics<Self>>) {}
 }
 
+pub trait TypeChecker {
+    /// Return true if the `Metric` has the expected metric type
+    fn verify_type(&self, metric: Metric) -> bool;
+}
+
 /// The metric measured by valgrind or derived from one or more other metrics
 ///
 /// The valgrind metrics measured by any of its tools are `u64`. However, to be able to represent
@@ -91,6 +96,20 @@ impl Metric {
         match (self, rhs) {
             (_, Metric::Int(0) | Metric::Float(0.0f64)) => Metric::Float(0.0f64),
             (a, b) => a / b,
+        }
+    }
+
+    pub fn is_int(&self) -> bool {
+        match self {
+            Metric::Int(_) => true,
+            Metric::Float(_) => false,
+        }
+    }
+
+    pub fn is_float(&self) -> bool {
+        match self {
+            Metric::Int(_) => false,
+            Metric::Float(_) => true,
         }
     }
 }
