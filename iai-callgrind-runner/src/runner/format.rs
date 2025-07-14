@@ -394,6 +394,7 @@ impl Default for OutputFormat {
             show_grid: false,
             callgrind: IndexSet::from(CallgrindMetrics::Default),
             cachegrind: IndexSet::from(CachegrindMetrics::Default),
+            // TODO: Use DhatMetrics::Default. Why is MaximumBytes not included in defaults?
             dhat: indexset![
                 DhatMetric::TotalUnits,
                 DhatMetric::TotalEvents,

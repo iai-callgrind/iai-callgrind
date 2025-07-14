@@ -1,20 +1,23 @@
+//! spell-checker: ignore totalbytes totalblocks writeback writebackbehaviour
+
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::hash::Hash;
-// spell-checker: ignore totalbytes totalblocks
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::str::FromStr;
 
 use clap::builder::BoolishValueParser;
 use clap::{ArgAction, Parser};
+use indexmap::IndexSet;
 
 use super::format::OutputFormatKind;
 use super::metrics::{Metric, TypeChecker};
 use super::summary::{BaselineName, SummaryFormat};
 use crate::api::{
-    CachegrindMetric, CachegrindRegressionConfig, CallgrindRegressionConfig, DhatMetric,
-    DhatRegressionConfig, EventKind, RawArgs, ToolRegressionConfig, ValgrindTool,
+    CachegrindMetric, CachegrindMetrics, CachegrindRegressionConfig, CallgrindMetrics,
+    CallgrindRegressionConfig, DhatMetric, DhatMetrics, DhatRegressionConfig, EventKind, RawArgs,
+    ToolRegressionConfig, ValgrindTool,
 };
 
 /// A filter for benchmarks
@@ -45,12 +48,6 @@ impl FromStr for BenchmarkFilter {
     }
 }
 
-/// A utility enum to parse the limits of cli args like `--callgrind-limits`
-enum Limits<T> {
-    Default,
-    Values(HashMap<T, f64>, HashMap<T, Metric>),
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NoCapture {
     True,
@@ -58,6 +55,10 @@ pub enum NoCapture {
     Stderr,
     Stdout,
 }
+
+// Utility types intended to be used during the parsing of the command-line arguments
+type Limits<T> = (HashMap<T, f64>, HashMap<T, Metric>);
+type ParsedMetrics<T> = Result<Vec<(T, Option<Metric>)>, String>;
 
 impl NoCapture {
     pub fn apply(self, command: &mut Command) {
@@ -73,6 +74,7 @@ impl NoCapture {
     }
 }
 
+// TODO: callgrind_format, dhat_format, etc.
 /// The command line arguments the user provided after `--` when running cargo bench
 ///
 /// These arguments are not the command line arguments passed to `iai-callgrind-runner`. We collect
@@ -400,35 +402,89 @@ pub struct CommandLineArgs {
     )]
     pub allow_aslr: Option<bool>,
 
+    #[allow(clippy::doc_markdown)]
     /// Set performance regression limits for specific `EventKinds`
     ///
-    /// This is a `,` separate list of EventKind=limit (key=value) pairs with the limit being a
-    /// positive or negative percentage. If positive, a performance regression check for this
-    /// `EventKind` fails if the limit is exceeded. If negative, the regression check fails if the
-    /// value comes below the limit. The `EventKind` is matched case-insensitive. For a list of
-    /// valid `EventKinds` see the docs:
-    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.EventKind.html>
+    /// This is a `,` separate list of CallgrindMetrics=limit (key=value) pairs with the limit
+    /// being a soft limit if the number suffixed with a `%` or a hard limit if it is a bare
+    /// number. A soft limit matches the percentage difference between the new (left) and old
+    /// (right) run as shown in the terminal output. A hard limit caps the simple metric value
+    /// of the `new` run. It is possible to specify hard and soft limits in one go with the `|`
+    /// operator (e.g. `ir=10%|10000`).
     ///
-    /// If regressions are defined and one ore more regressions occurred during the benchmark run,
-    /// the program exits with error and exit code `3`.
+    /// See the docs of `CallgrindMetrics`
+    /// (<https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CallgrindMetrics.html>) and
+    /// `EventKind` <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.EventKind.html> for a
+    /// list of allowed keys. The format spec and group names in full detail:
     ///
-    /// Examples: --callgrind-limits='ir=0.0' or --callgrind-limits='ir=0, EstimatedCycles=10'
+    /// arg        ::= pair ("," pair)*
+    /// pair       ::= key "=" value ("|" value)*
+    /// key        ::= group | event         ; matched case-insensitive
+    /// group      ::= "@" ( "default"
+    ///                    | "all"
+    ///                    | ("cachemisses" | "misses" | "ms")
+    ///                    | ("cachemissrates" | "missrates" | "mr")
+    ///                    | ("cachehits" | "hits" | "hs")
+    ///                    | ("cachehitrates" | "hitrates" | "hr")
+    ///                    | ("cachesim" | "cs")
+    ///                    | ("cacheuse" | "cu")
+    ///                    | ("systemcalls" | "syscalls" | "sc")
+    ///                    | ("branchsim" | "bs")
+    ///                    | ("writebackbehaviour" | "writeback" | "wb")
+    ///                    )
+    /// event      ::= EventKind
+    /// value      ::= soft_limit | hard_limit
+    /// soft_limit ::= (integer | float) "%" ; can be negative
+    /// hard_limit ::= (integer | float)     ; float is only allowed for EventKinds which are
+    ///                                      ; float like `L1HitRate` but not `L1Hits`
+    ///
+    /// with:
+    ///   * `EventKind` being the exact name (case insensitive) as in the docs
+    ///   * `integer` is a `u64` and `float` is a `f64`
+    ///
+    /// Groups with a long name have their allowed abbreviations placed in the same parentheses.
+    /// Multiple specifications of the same `EventKind` overwrite the previous one until the last
+    /// one wins. This is useful for example to specify a limit for all event kinds and then
+    /// overwrite the limit for a specific event kind: `@all=10%,ir=5%`
+    ///
+    /// A performance regression check for an `EventKind` fails if the limit is exceeded. If limits
+    /// are defined and one or more regressions have occurred during the benchmark run, the whole
+    /// benchmark is considered to have failed and the program exits with error and exit code `3`.
+    ///
+    /// Examples: --callgrind-limits='ir=5.0%' or --callgrind-limits='ir=10000,EstimatedCycles=10%'
     #[arg(
         long = "callgrind-limits",
         num_args = 1,
+        verbatim_doc_comment,
         value_parser = parse_callgrind_limits,
         env = "IAI_CALLGRIND_CALLGRIND_LIMITS",
     )]
     pub callgrind_limits: Option<ToolRegressionConfig>,
 
+    #[allow(clippy::doc_markdown)]
     /// Set performance regression limits for specific cachegrind metrics
     ///
-    /// This is a `,` separate list of CachegrindMetric=limit (key=value) pairs. See the
+    /// This is a `,` separate list of CachegrindMetrics=limit (key=value) pairs. See the
     /// description of --callgrind-limits for the details and
-    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetric.html> for valid
-    /// metrics.
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetrics.html>
+    /// respectively <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetric.html>
+    /// for valid metrics.
     ///
-    /// Examples: --cachegrind-limits='ir=0.0' or --cachegrind-limits='ir=0, EstimatedCycles=10'
+    /// Replace group and event in the format spec in `--callgrind-limits` with the following:
+    ///
+    /// group      ::= "@" ( "default"
+    ///                    | "all"
+    ///                    | ("cachemisses" | "misses" | "ms")
+    ///                    | ("cachemissrates" | "missrates" | "mr")
+    ///                    | ("cachehits" | "hits" | "hs")
+    ///                    | ("cachehitrates" | "hitrates" | "hr")
+    ///                    | ("cachesim" | "cs")
+    ///                    | ("branchsim" | "bs")
+    ///                    )
+    /// event      ::= CachegrindMetric
+    ///
+    /// Examples: --cachegrind-limits='ir=0.0%' or
+    ///    --cachegrind-limits='ir=10000,EstimatedCycles=10%'
     #[arg(
         long = "cachegrind-limits",
         num_args = 1,
@@ -437,13 +493,21 @@ pub struct CommandLineArgs {
     )]
     pub cachegrind_limits: Option<ToolRegressionConfig>,
 
+    #[allow(clippy::doc_markdown)]
     /// Set performance regression limits for specific dhat metrics
     ///
-    /// This is a `,` separate list of DhatMetric=limit (key=value) pairs. See the description of
+    /// This is a `,` separate list of DhatMetrics=limit (key=value) pairs. See the description of
     /// --callgrind-limits for the details and
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.DhatMetrics.html> respectively
     /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.DhatMetric.html> for valid metrics.
     ///
-    /// Examples: --dhat-limits='totalbytes=0.0' or --dhat-limits='totalbytes=5.0, totalblocks=5.0'
+    /// Replace group and event in the format spec in `--callgrind-limits` with the following:
+    ///
+    /// group      ::= "@" ( "default" | "all" )
+    /// event      ::= DhatMetric
+    ///
+    /// Examples: --dhat-limits='totalbytes=0.0%' or
+    ///   --dhat-limits='totalbytes=5000, totalblocks=5%'
     #[arg(
         long = "dhat-limits",
         num_args = 1,
@@ -584,6 +648,7 @@ pub struct CommandLineArgs {
     )]
     pub nocapture: NoCapture,
 
+    // TODO: Fix this? Do not require `=` equals.
     /// Print a list of all benchmarks. With this argument no benchmarks are executed.
     ///
     /// The output format is intended to be the same as the output format of the libtest harness.
@@ -630,134 +695,147 @@ fn parse_args(value: &str) -> Result<RawArgs, String> {
 
 fn parse_limits<T: Eq + Hash>(
     value: &str,
-    parse_metric: fn(&str, Option<Metric>) -> Result<T, String>,
+    parse_metrics: fn(&str, Option<Metric>) -> ParsedMetrics<T>,
 ) -> Result<Limits<T>, String> {
     let value = value.trim();
     if value.is_empty() {
-        return Err("No limits found: At least one limit must be specified".to_owned());
+        return Err("No limits found: At least one limit must be present".to_owned());
     }
 
-    let limits = if value.eq_ignore_ascii_case("default") {
-        Limits::Default
-    } else {
-        let mut soft_limits = HashMap::new();
-        let mut hard_limits = HashMap::new();
+    let mut soft_limits = HashMap::new();
+    let mut hard_limits = HashMap::new();
 
-        for item in value.split(',') {
-            let item = item.trim();
+    for item in value.split(',') {
+        let item = item.trim();
 
-            if let Some((key, value)) = item.split_once('=') {
-                let (key, value) = (key.trim(), value.trim());
-                for split in value.split('|') {
-                    let split = split.trim();
+        if let Some((key, value)) = item.split_once('=') {
+            let (key, value) = (key.trim(), value.trim());
+            for split in value.split('|') {
+                let split = split.trim();
 
-                    if let Some(prefix) = split.strip_suffix('%') {
-                        let pct = prefix.parse::<f64>().map_err(|error| -> String {
-                            format!("Invalid soft limit for '{key}': {error}")
-                        })?;
-                        let metric_kind = parse_metric(key, None)?;
+                if let Some(prefix) = split.strip_suffix('%') {
+                    let pct = prefix.parse::<f64>().map_err(|error| -> String {
+                        format!("Invalid soft limit for '{key}': {error}")
+                    })?;
+                    let metric_kinds = parse_metrics(key, None)?;
+                    for (metric_kind, _) in metric_kinds {
                         soft_limits.insert(metric_kind, pct);
-                    } else {
-                        let metric = split.parse::<Metric>().map_err(|error| -> String {
-                            format!("Invalid hard limit for '{key}': {error}")
-                        })?;
-                        let metric_kind = parse_metric(key, Some(metric))?;
-                        hard_limits.insert(metric_kind, metric);
+                    }
+                } else {
+                    let metric = split.parse::<Metric>().map_err(|error| -> String {
+                        format!("Invalid hard limit for '{key}': {error}")
+                    })?;
+                    let metric_kinds = parse_metrics(key, Some(metric))?;
+                    for (metric_kind, new_metric) in metric_kinds {
+                        if let Some(new_metric) = new_metric {
+                            hard_limits.insert(metric_kind, new_metric);
+                        } else {
+                            hard_limits.insert(metric_kind, metric);
+                        }
                     }
                 }
-            } else {
-                return Err(format!("Invalid format of key=value pair: '{item}'"));
             }
+        } else {
+            return Err(format!("Invalid format of key=value pair: '{item}'"));
         }
+    }
 
-        Limits::Values(soft_limits, hard_limits)
-    };
-
-    Ok(limits)
+    Ok((soft_limits, hard_limits))
 }
 
-fn verify_metric<T: Display + TypeChecker>(
+// Convert the `metric` if it is present
+//
+// Used for example for hard limits to convert u64 values to f64 values if required.
+fn convert_metric<T: Display + TypeChecker>(
     metric_kind: T,
     metric: Option<Metric>,
-) -> Result<T, String> {
+) -> Result<(T, Option<Metric>), String> {
     if let Some(metric) = metric {
         if !metric_kind.verify_type(metric) {
-            let expected = match metric {
-                Metric::Int(_) => "float (e.g. '10.0')",
-                Metric::Float(_) => "integer (e.g. '10')",
-            };
+            if let Metric::Int(a) = metric {
+                // Convert u64 to f64 metrics if necessary. f64 metrics are percentages with a value
+                // range of 0.0 to 100.0. Converting u64 to f64 within this range happens without
+                // loss of precision.
+                #[allow(clippy::cast_precision_loss)]
+                return Ok((metric_kind, Some(Metric::Float(a as f64))));
+            }
+
             return Err(format!(
-                "Invalid hard limit for '{metric_kind}': Expected a {expected}. If you wanted \
-                 this value to be a soft limit use the '%' suffix (e.g. '4.0%' or '4%')"
+                "Invalid hard limit for '{metric_kind}': Expected an integer (e.g. '10'). If you \
+                 wanted this value to be a soft limit use the '%' suffix (e.g. '4.0%' or '4%')"
             ));
         }
     }
 
-    Ok(metric_kind)
+    Ok((metric_kind, None))
 }
 
-// TODO: Allow CallgrindMetrics instead of just EventKind
 fn parse_callgrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
-    let config = match parse_limits(value, |key, metric| {
-        EventKind::from_str_ignore_case(key)
-            .ok_or_else(|| -> String { format!("Unknown event kind: '{key}'") })
-            .and_then(|metric_kind| verify_metric(metric_kind, metric))
-    })? {
-        Limits::Default => ToolRegressionConfig::Callgrind(CallgrindRegressionConfig::default()),
-        Limits::Values(soft_limits, hard_limits) => {
-            ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
-                soft_limits: soft_limits.into_iter().collect(),
-                hard_limits: hard_limits
-                    .into_iter()
-                    .map(|(e, m)| (e, m.into()))
-                    .collect(),
-                ..Default::default()
-            })
-        }
-    };
+    let (soft_limits, hard_limits) = parse_limits(value, |key, metric| {
+        let metrics = key
+            .parse::<CallgrindMetrics>()
+            .map_err(|error| error.to_string())?;
+        IndexSet::from(metrics)
+            .into_iter()
+            .map(|event_kind| convert_metric(event_kind, metric))
+            .collect::<ParsedMetrics<EventKind>>()
+    })?;
+
+    let config = ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
+        soft_limits: soft_limits.into_iter().collect(),
+        hard_limits: hard_limits
+            .into_iter()
+            .map(|(e, m)| (e, m.into()))
+            .collect(),
+        ..Default::default()
+    });
+
     Ok(config)
 }
 
-// TODO: Allow CachegrindMetrics instead of just CachegrindMetric
 fn parse_cachegrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
-    let config = match parse_limits(value, |key, metric| {
-        CachegrindMetric::from_str_ignore_case(key)
-            .ok_or_else(|| -> String { format!("Unknown cachegrind metric: '{key}'") })
-            .and_then(|metric_kind| verify_metric(metric_kind, metric))
-    })? {
-        Limits::Default => ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig::default()),
-        Limits::Values(soft_limits, hard_limits) => {
-            ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig {
-                soft_limits: soft_limits.into_iter().collect(),
-                hard_limits: hard_limits
-                    .into_iter()
-                    .map(|(e, m)| (e, m.into()))
-                    .collect(),
-                ..Default::default()
-            })
-        }
-    };
+    let (soft_limits, hard_limits) = parse_limits(value, |key, metric| {
+        let metrics = key
+            .parse::<CachegrindMetrics>()
+            .map_err(|error| error.to_string())?;
+        IndexSet::from(metrics)
+            .into_iter()
+            .map(|metric_kind| convert_metric(metric_kind, metric))
+            .collect::<ParsedMetrics<CachegrindMetric>>()
+    })?;
+
+    let config = ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig {
+        soft_limits: soft_limits.into_iter().collect(),
+        hard_limits: hard_limits
+            .into_iter()
+            .map(|(e, m)| (e, m.into()))
+            .collect(),
+        ..Default::default()
+    });
+
     Ok(config)
 }
 
 fn parse_dhat_limits(value: &str) -> Result<ToolRegressionConfig, String> {
-    let config = match parse_limits(value, |key, metric| {
-        DhatMetric::from_str_ignore_case(key)
-            .ok_or_else(|| -> String { format!("Unknown dhat metric: '{key}'") })
-            .and_then(|metric_kind| verify_metric(metric_kind, metric))
-    })? {
-        Limits::Default => ToolRegressionConfig::Dhat(DhatRegressionConfig::default()),
-        Limits::Values(soft_limits, hard_limits) => {
-            ToolRegressionConfig::Dhat(DhatRegressionConfig {
-                soft_limits: soft_limits.into_iter().collect(),
-                hard_limits: hard_limits
-                    .into_iter()
-                    .map(|(e, m)| (e, m.into()))
-                    .collect(),
-                ..Default::default()
-            })
-        }
-    };
+    let (soft_limits, hard_limits) = parse_limits(value, |key, metric| {
+        let metrics = key
+            .parse::<DhatMetrics>()
+            .map_err(|error| error.to_string())?;
+        IndexSet::from(metrics)
+            .into_iter()
+            .map(|metric_kind| convert_metric(metric_kind, metric))
+            .collect::<ParsedMetrics<DhatMetric>>()
+    })?;
+
+    let config = ToolRegressionConfig::Dhat(DhatRegressionConfig {
+        soft_limits: soft_limits.into_iter().collect(),
+        hard_limits: hard_limits
+            .into_iter()
+            .map(|(e, m)| (e, m.into()))
+            .collect(),
+        ..Default::default()
+    });
+
     Ok(config)
 }
 
@@ -786,6 +864,7 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
+    use crate::api;
     use crate::api::EventKind::*;
     use crate::api::RawArgs;
 
@@ -802,24 +881,72 @@ mod tests {
     }
 
     #[rstest]
-    #[case::regression_default("default", vec![])]
-    #[case::regression_default_case_insensitive("DefAulT", vec![])]
-    #[case::regression_only("Ir=10", vec![(Ir, 10f64)])]
-    #[case::regression_case_insensitive("EstIMATedCycles=10", vec![(EstimatedCycles, 10f64)])]
-    #[case::multiple_regression("Ir=10,EstimatedCycles=5", vec![(Ir, 10f64), (EstimatedCycles, 5f64)])]
-    #[case::multiple_regression_with_whitespace("Ir= 10 ,  EstimatedCycles = 5", vec![(Ir, 10f64), (EstimatedCycles, 5f64)])]
-    fn test_parse_regression_config(
+    #[case::single_soft("Ir=10%", vec![(Ir, 10f64)], vec![])]
+    #[case::single_hard("Ir=20", vec![], vec![(Ir, 20.into())])]
+    #[case::soft_and_hard("Ir=20|10%", vec![(Ir, 10f64)], vec![(Ir, 20.into())])]
+    #[case::soft_and_hard_separated("Ir=20, Ir=10%", vec![(Ir, 10f64)], vec![(Ir, 20.into())])]
+    #[case::soft_overwrite("Ir=20%, Ir=10%", vec![(Ir, 10f64)], vec![])]
+    #[case::hard_overwrite("Ir=20, Ir=10", vec![], vec![(Ir, 10.into())])]
+    #[case::group_wb_soft("@wb=10%", vec![(ILdmr, 10f64), (DLdmr, 10f64), (DLdmw, 10f64)], vec![])]
+    #[case::group_writeback_soft(
+        "@writeback=10%",
+        vec![(ILdmr, 10f64), (DLdmr, 10f64), (DLdmw, 10f64)],
+        vec![]
+    )]
+    #[case::group_writebackbehaviour_soft(
+        "@writebackbehaviour=10%",
+        vec![(ILdmr, 10f64), (DLdmr, 10f64), (DLdmw, 10f64)],
+        vec![]
+    )]
+    #[case::group_hr_hard_int(
+        "@hr=10",
+        vec![],
+        vec![(L1HitRate, 10f64.into()), (LLHitRate, 10f64.into()), (RamHitRate, 10f64.into())]
+    )]
+    #[case::group_hr_hard_float(
+        "@hr=10.0",
+        vec![],
+        vec![(L1HitRate, 10f64.into()), (LLHitRate, 10f64.into()), (RamHitRate, 10f64.into())]
+    )]
+    #[case::case_insensitive(
+        "EstIMATedCycles=10%",
+        vec![(EstimatedCycles, 10f64)],
+        vec![]
+    )]
+    #[case::multiple_soft(
+        "Ir=10%,EstimatedCycles=5%",
+        vec![(Ir, 10f64), (EstimatedCycles, 5f64)],
+        vec![]
+    )]
+    #[case::multiple_hard(
+        "Ir=20,EstimatedCycles=50",
+        vec![],
+        vec![(Ir, 20.into()), (EstimatedCycles, 50.into())]
+    )]
+    #[case::with_whitespace(
+        "Ir= 10% , EstimatedCycles = 5%",
+        vec![(Ir, 10f64), (EstimatedCycles, 5f64)],
+        vec![]
+    )]
+    fn test_parse_callgrind_limits(
         #[case] regression_var: &str,
-        #[case] expected_limits: Vec<(EventKind, f64)>,
+        #[case] expected_soft_limits: Vec<(EventKind, f64)>,
+        #[case] expected_hard_limits: Vec<(EventKind, api::Metric)>,
     ) {
-        let expected = ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
-            soft_limits: expected_limits,
-            hard_limits: Vec::default(),
-            fail_fast: None,
-        });
+        if let ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
+            mut soft_limits,
+            mut hard_limits,
+            ..
+        }) = parse_callgrind_limits(regression_var).unwrap()
+        {
+            soft_limits.sort_by(|(a, _), (b, _)| a.cmp(b));
+            hard_limits.sort_by(|(a, _), (b, _)| a.cmp(b));
 
-        let actual = parse_callgrind_limits(regression_var).unwrap();
-        assert_eq!(actual, expected);
+            assert_eq!(soft_limits, expected_soft_limits);
+            assert_eq!(hard_limits, expected_hard_limits);
+        } else {
+            panic!("Wrong regression config");
+        }
     }
 
     #[rstest]
@@ -828,12 +955,18 @@ mod tests {
         "Invalid format of key=value pair: 'Ir:10'"
     )]
     #[case::regression_unknown_event_kind("WRONG=10", "Unknown event kind: 'WRONG'")]
+    #[case::float_instead_of_integer(
+        "Ir=10.0",
+        "Invalid hard limit for 'Instructions': Expected an integer (e.g. '10'). If you wanted \
+         this value to be a soft limit use the '%' suffix (e.g. '4.0%' or '4%')"
+    )]
     #[case::regression_invalid_percentage(
         "Ir=10.0.0",
-        "Invalid percentage for 'Ir': invalid float literal"
+        "Invalid hard limit for 'Ir': Invalid metric: invalid float literal"
     )]
-    #[case::regression_empty_limits("", "No limits found: At least one limit must be specified")]
-    fn test_try_regression_config_from_env_then_error(
+    #[case::invalid_soft_limit("Ir=abc%", "Invalid soft limit for 'Ir': invalid float literal")]
+    #[case::regression_empty_limits("", "No limits found: At least one limit must be present")]
+    fn test_parse_callgrind_limits_then_error(
         #[case] regression_var: &str,
         #[case] expected_reason: &str,
     ) {

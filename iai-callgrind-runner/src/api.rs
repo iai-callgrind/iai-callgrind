@@ -1,8 +1,5 @@
 //! The api contains all elements which the `runner` can understand
 
-// spell-checker: ignore totalunits totalevents totalbytes totalblocks attgmaxbytes
-// spell-checker: ignore attgmaxblocks attendbytes attendblocks readsbytes writesbytes
-// spell-checker: ignore totallifetimes maximumbytes maximumblocks
 use std::ffi::OsString;
 use std::fmt::Display;
 #[cfg(feature = "runner")]
@@ -18,6 +15,8 @@ use std::time::Duration;
 #[cfg(feature = "runner")]
 use anyhow::anyhow;
 #[cfg(feature = "runner")]
+use indexmap::indexset;
+#[cfg(feature = "runner")]
 use indexmap::IndexSet;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
@@ -25,9 +24,11 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "runner")]
 use strum::{EnumIter, IntoEnumIterator};
 
+#[cfg(feature = "runner")]
 use crate::runner;
 #[cfg(feature = "runner")]
 use crate::runner::metrics::Summarize;
+#[cfg(feature = "runner")]
 use crate::runner::metrics::TypeChecker;
 
 /// The model for the `#[binary_benchmark]` attribute or the equivalent from the low level api
@@ -628,6 +629,7 @@ pub enum Direction {
 /// The metrics collected by DHAT
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[cfg_attr(feature = "runner", derive(EnumIter))]
 pub enum DhatMetric {
     /// In ad-hoc mode, Total units measured over the entire execution
     TotalUnits,
@@ -659,6 +661,14 @@ pub enum DhatMetric {
     MaximumBytes,
     /// The maximum amount of heap blocks
     MaximumBlocks,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+pub enum DhatMetrics {
+    #[default]
+    Default,
+    All,
+    SingleMetric(DhatMetric),
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -706,7 +716,7 @@ pub enum ErrorMetric {
 /// Depending on the options passed to Callgrind, these are the events that Callgrind can produce.
 /// See the [Callgrind
 /// documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 #[cfg_attr(feature = "runner", derive(EnumIter))]
 pub enum EventKind {
@@ -1420,9 +1430,39 @@ impl Display for DhatMetric {
 #[cfg(feature = "runner")]
 impl Summarize for DhatMetric {}
 
+#[cfg(feature = "runner")]
 impl TypeChecker for DhatMetric {
     fn verify_type(&self, metric: runner::metrics::Metric) -> bool {
         metric.is_int()
+    }
+}
+
+#[cfg(feature = "runner")]
+impl From<DhatMetrics> for IndexSet<DhatMetric> {
+    fn from(value: DhatMetrics) -> Self {
+        match value {
+            DhatMetrics::All | DhatMetrics::Default => DhatMetric::iter().collect(),
+            DhatMetrics::SingleMetric(dhat_metric) => indexset! { dhat_metric },
+        }
+    }
+}
+
+#[cfg(feature = "runner")]
+impl FromStr for DhatMetrics {
+    type Err = anyhow::Error;
+
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let lower = string.to_lowercase();
+        match lower.as_str().strip_prefix('@') {
+            Some(suffix) => match suffix {
+                "default" | "def" => Ok(Self::Default),
+                "all" => Ok(Self::All),
+                _ => Err(anyhow!("Invalid dhat metrics group: '{string}")),
+            },
+            None => DhatMetric::from_str_ignore_case(&lower)
+                .ok_or_else(|| anyhow!("Unknown dhat metric: '{string}'"))
+                .map(Self::SingleMetric),
+        }
     }
 }
 
