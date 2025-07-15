@@ -1,11 +1,11 @@
-test_bench_template::bench_group::bench_bubble_sort regress_callgrind:setup_worst_case_array(5)
+test_bench_template::bench_group::bench_bubble_sort regress_callgrind:setup_worst_case_array(100)
   Instructions:                            |                     (+       %) [+       x]
   L1 Hits:                                 |                     (         )
   LL Hits:                                 |                     (         )
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (+       %) [+       x]
   Estimated Cycles:                        |                     (         )
-test_bench_template::bench_group::bench_bubble_sort regress_cachegrind:setup_worst_case_array(5)
+test_bench_template::bench_group::bench_bubble_sort regress_cachegrind:setup_worst_case_array(500)
   ======= CACHEGRIND ===================================================================
   Instructions:                            |                     (+       %) [+       x]
   L1 Hits:                                 |                     (         )
@@ -13,6 +13,16 @@ test_bench_template::bench_group::bench_bubble_sort regress_cachegrind:setup_wor
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (+       %) [+       x]
   Estimated Cycles:                        |                     (         )
+test_bench_template::bench_group::bench_bubble_sort regress_dhat:setup_worst_case_array(5)
+  ======= DHAT =========================================================================
+  Total bytes:                             |                     (+       %) [+       x]
+  Total blocks:                            |                     (No change)
+  At t-gmax bytes:                         |                     (         )
+  At t-gmax blocks:                        |                     (         )
+  At t-end bytes:                          |                     (No change)
+  At t-end blocks:                         |                     (No change)
+  Reads bytes:                             |                     (+       %) [+       x]
+  Writes bytes:                            |                     (+       %) [+       x]
 test_bench_template::bench_group::bench_bubble_sort should_not_run_after_regression:setup_worst_case_array(10)
   Instructions:                            |                     (No change)
   L1 Hits:                                 |                     (         )
@@ -24,9 +34,10 @@ test_bench_template::bench_group::bench_bubble_sort should_not_run_after_regress
 Regressions:
 
   test_bench_template::bench_group::bench_bubble_sort regress_callgrind:
-    Callgrind: Instructions (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
     Callgrind: Estimated Cycles (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
   test_bench_template::bench_group::bench_bubble_sort regress_cachegrind:
-    Cachegrind: Estimated Cycles (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
+    Cachegrind: Total read+write (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
+  test_bench_template::bench_group::bench_bubble_sort regress_dhat:
+    DHAT: Reads bytes (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
 
-Iai-Callgrind result: Regressed. 1 without regressions; 2 regressed; 3 benchmarks finished in <__SECONDS__>s
+Iai-Callgrind result: Regressed. 1 without regressions; 3 regressed; 4 benchmarks finished in <__SECONDS__>s

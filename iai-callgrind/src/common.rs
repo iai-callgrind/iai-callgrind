@@ -623,7 +623,6 @@ impl Callgrind {
     /// main!(library_benchmark_groups = some_group);
     /// # }
     /// ```
-    /// 
     /// In the example above [`EntryPoint::Default`] is active, so the counting of events starts
     /// when the `some_bench` function is entered. In `to_be_benchmarked`, the client request
     /// `start_instrumentation` does effectively nothing and `stop_instrumentation` will stop the
@@ -936,6 +935,266 @@ impl Dhat {
             items.extend(kinds.into_iter().map(Into::into));
         }
 
+        self
+    }
+
+    /// Set or unset the entry point for DHAT
+    ///
+    /// The basic concept of this [`EntryPoint`] is almost the same as for
+    /// [`Callgrind::entry_point`] and for additional details see there. For library benchmarks the
+    /// default entry point is [`EntryPoint::Default`] and for binary benchmarks it's
+    /// [`EntryPoint::None`].
+    ///
+    /// Note that the default entry point tries to match the benchmark function, so it doesn't make
+    /// much sense to use [`EntryPoint::Default`] in binary benchmarks. The result of an incorrect
+    /// entry point is usually that all metrics are `0`, which is an indicator that something has
+    /// gone wrong.
+    ///
+    /// # Details
+    ///
+    /// There are subtle differences to the entry point in callgrind and the calculation of the
+    /// final metrics shown in the DHAT output can only be done on a best-effort basis. As opposed
+    /// to callgrind, the default entry point [`EntryPoint::Default`] is applied after the benchmark
+    /// run based on the output files because DHAT does not have a command line argument like
+    /// `--toggle-collect`. The DHAT output files however, can't be used to reliably exclude the
+    /// `setup` and `teardown` of the benchmark function. As a consequence, allocations and
+    /// deallocations in the `setup` and `teardown` function are included in the final metrics. All
+    /// other (de-)allocations in the benchmark file (around `2000` - `2500` bytes) to prepare the
+    /// benchmark run are not included what stabilizes the metrics enough to be able to specify
+    /// limits with [`Dhat::limits`] for regression checks and focus the metrics on the benchmark
+    /// function.
+    ///
+    /// Since there is no `--toggle-collect` argument, it's possible to define additional `frames`
+    /// (the Iai-Callgrind specific DHAT equivalent of callgrind toggles) in the [`Dhat::frames`]
+    /// method.
+    ///
+    /// The [`EntryPoint::Default`] matches the benchmark function and a [`EntryPoint::Custom`] is
+    /// convenience for specifying [`EntryPoint::None`] and a frame in [`Dhat::frames`].
+    ///
+    /// # Examples
+    ///
+    /// Specifying no entry point in library benchmarks is the same as specifying
+    /// [`EntryPoint::Default`]. It is used here nonetheless for demonstration purposes:
+    ///
+    /// ```rust
+    /// # mod my_lib { pub fn to_be_benchmarked() -> Vec<i32> { vec![0] } }
+    /// use iai_callgrind::{
+    ///     main, LibraryBenchmarkConfig, library_benchmark, library_benchmark_group, Dhat,
+    ///     EntryPoint
+    /// };
+    /// use std::hint::black_box;
+    /// use my_lib::to_be_benchmarked;
+    ///
+    /// #[library_benchmark(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .tool(Dhat::default().entry_point(EntryPoint::Default))
+    /// )]
+    /// fn some_bench() -> Vec<i32> { // <-- DEFAULT ENTRY POINT
+    ///     black_box(to_be_benchmarked())
+    /// }
+    ///
+    /// library_benchmark_group!(name = some_group; benchmarks = some_bench);
+    /// # fn main() {
+    /// main!(library_benchmark_groups = some_group);
+    /// # }
+    /// ```
+    ///
+    /// You most likely want to disable the entry point with [`EntryPoint::None`] if you're using
+    /// DHAT ad-hoc profiling.
+    #[cfg_attr(not(feature = "client_requests_defs"), doc = "```rust,ignore")]
+    #[cfg_attr(feature = "client_requests_defs", doc = "```rust")]
+    /// use iai_callgrind::{
+    ///     main, LibraryBenchmarkConfig, library_benchmark, library_benchmark_group,
+    ///     EntryPoint, Dhat
+    /// };
+    /// use std::hint::black_box;
+    ///
+    /// fn to_be_benchmarked() -> Vec<i32> {
+    ///     iai_callgrind::client_requests::dhat::ad_hoc_event(20);
+    ///     // allocations worth a weight of `20`
+    /// #   vec![1, 2, 3, 4, 5]
+    /// }
+    ///
+    /// #[library_benchmark(
+    ///     config = LibraryBenchmarkConfig::default()
+    ///         .tool(Dhat::with_args(["--mode=ad-hoc"])
+    ///             .entry_point(EntryPoint::None)
+    ///         )
+    /// )]
+    /// fn some_bench() -> Vec<i32> {
+    ///     black_box(to_be_benchmarked())
+    /// }
+    ///
+    /// library_benchmark_group!(name = some_group; benchmarks = some_bench);
+    /// # fn main() {
+    /// main!(library_benchmark_groups = some_group);
+    /// # }
+    /// ```
+    pub fn entry_point(&mut self, entry_point: EntryPoint) -> &mut Self {
+        self.0.entry_point = Some(entry_point);
+        self
+    }
+
+    /// Add one or multiple `frames` which will be included in the benchmark metrics
+    ///
+    /// `Frames` are special to Iai-Callgrind and the DHAT equivalent to callgrind toggles
+    /// (`--toggle-collect`) and like `--toggle-collect` this method accepts simple glob patterns
+    /// with `*` and `?` wildcards. A `Frame` describes an entry in the call stack (See the
+    /// example). Sometimes the [`Dhat::entry_point`] is not enough and it is required to specify
+    /// additional frames. This is especially true in multi-threaded/multi-process applications.
+    /// Like in callgrind, each thread/subprocess in DHAT is treated as a separate unit and thus
+    /// requires `frames` in addition to the default entry point to include the interesting ones in
+    /// the measurements.
+    ///
+    /// # Example
+    ///
+    /// To demonstrate a general workflow, below is a sanitized example output of `dh_view.html` of
+    /// a benchmark of a multi-threaded program. Most of the program points, including the default
+    /// entry point, are not shown here to safe some space. The spawned thread
+    /// (`std::sys::pal::unix::thread::Thread::new::thread_start`) with the function call
+    /// `benchmark_tests::find_primes` is the interesting one.
+    ///
+    /// ```text
+    /// ▼ PP 1/1 (3 children) {
+    ///     Total:     156,372 bytes (100%, 14,948.32/Minstr) in 76 blocks (100%, 7.27/Minstr), avg size 2,057.53 bytes, avg lifetime 2,907,942.57 instrs (27.8% of program duration)
+    ///     At t-gmax: 52,351 bytes (100%) in 20 blocks (100%), avg size 2,617.55 bytes
+    ///     At t-end:  0 bytes (0%) in 0 blocks (0%), avg size 0 bytes
+    ///     Reads:     117,583 bytes (100%, 11,240.3/Minstr), 0.75/byte
+    ///     Writes:    135,680 bytes (100%, 12,970.28/Minstr), 0.87/byte
+    ///     Allocated at {
+    ///       #0: [root]
+    ///     }
+    ///   }
+    ///   ├─▼ PP 1.1/3 (12 children) {
+    ///   │     Total:     154,468 bytes (98.78%, 14,766.31/Minstr) in 57 blocks (75%, 5.45/Minstr), avg size 2,709.96 bytes, avg lifetime 2,937,398.7 instrs (28.08% of program duration)
+    ///   │     At t-gmax: 51,375 bytes (98.14%) in 15 blocks (75%), avg size 3,425 bytes
+    ///   │     At t-end:  0 bytes (0%) in 0 blocks (0%), avg size 0 bytes
+    ///   │     Reads:     116,367 bytes (98.97%, 11,124.06/Minstr), 0.75/byte
+    ///   │     Writes:    134,872 bytes (99.4%, 12,893.03/Minstr), 0.87/byte
+    ///   │     Allocated at {
+    ///   │       #1: 0x48CC7A8: malloc (in /usr/lib/valgrind/vgpreload_dhat-amd64-linux.so)
+    ///   │     }
+    ///   │   }
+    ///   │   ├── PP 1.1.1/12 {
+    ///   │   │     Total:     81,824 bytes (52.33%, 7,821.93/Minstr) in 29 blocks (38.16%, 2.77/Minstr), avg size 2,821.52 bytes, avg lifetime 785,423.83 instrs (7.51% of program duration)
+    ///   │   │     Max:       40,960 bytes in 3 blocks, avg size 13,653.33 bytes
+    ///   │   │     At t-gmax: 40,960 bytes (78.24%) in 3 blocks (15%), avg size 13,653.33 bytes
+    ///   │   │     At t-end:  0 bytes (0%) in 0 blocks (0%), avg size 0 bytes
+    ///   │   │     Reads:     66,824 bytes (56.83%, 6,388.01/Minstr), 0.82/byte
+    ///   │   │     Writes:    66,824 bytes (49.25%, 6,388.01/Minstr), 0.82/byte
+    ///   │   │     Allocated at {
+    ///   │   │       ^1: 0x48CC7A8: malloc (in /usr/lib/valgrind/vgpreload_dhat-amd64-linux.so)
+    ///   │   │       #2: 0x40197C7: UnknownInlinedFun (alloc.rs:93)
+    ///   │   │       #3: 0x40197C7: UnknownInlinedFun (alloc.rs:188)
+    ///   │   │       #4: 0x40197C7: UnknownInlinedFun (alloc.rs:249)
+    ///   │   │       #5: 0x40197C7: UnknownInlinedFun (mod.rs:476)
+    ///   │   │       #6: 0x40197C7: with_capacity_in<alloc::alloc::Global> (mod.rs:422)
+    ///   │   │       #7: 0x40197C7: with_capacity_in<u64, alloc::alloc::Global> (mod.rs:190)
+    ///   │   │       #8: 0x40197C7: with_capacity_in<u64, alloc::alloc::Global> (mod.rs:815)
+    ///   │   │       #9: 0x40197C7: with_capacity<u64> (mod.rs:495)
+    ///   │   │       #10: 0x40197C7: from_iter<u64, core::iter::adapters::filter::Filter<core::ops::range::RangeInclusive<u64>, benchmark_tests::find_primes::{closure_env#0}>> (spec_from_iter_nested.rs:31)
+    ///   │   │       #11: 0x40197C7: <alloc::vec::Vec<T> as alloc::vec::spec_from_iter::SpecFromIter<T,I>>::from_iter (spec_from_iter.rs:34)
+    ///   │   │       #12: 0x4016B97: from_iter<u64, core::iter::adapters::filter::Filter<core::ops::range::RangeInclusive<u64>, benchmark_tests::find_primes::{closure_env#0}>> (mod.rs:3438)
+    ///   │   │       #13: 0x4016B97: collect<core::iter::adapters::filter::Filter<core::ops::range::RangeInclusive<u64>, benchmark_tests::find_primes::{closure_env#0}>, alloc::vec::Vec<u64, alloc::alloc::Global>> (iterator.rs:2001)
+    ///   │   │       #14: 0x4016B97: benchmark_tests::find_primes (lib.rs:25)
+    ///   │   │       #15: 0x4019DA0: {closure#0} (lib.rs:32)
+    ///   │   │       #16: 0x4019DA0: std::sys::backtrace::__rust_begin_short_backtrace (backtrace.rs:152)
+    ///   │   │       #17: 0x4018BB4: {closure#0}<benchmark_tests::find_primes_multi_thread::{closure_env#0}, alloc::vec::Vec<u64, alloc::alloc::Global>> (mod.rs:559)
+    ///   │   │       #18: 0x4018BB4: call_once<alloc::vec::Vec<u64, alloc::alloc::Global>, std::thread::{impl#0}::spawn_unchecked_::{closure#1}::{closure_env#0}<benchmark_tests::find_primes_multi_thread::{closure_env#0}, alloc::vec::Vec<u64, alloc::alloc::Global>>> (unwind_safe.rs:272)
+    ///   │   │       #19: 0x4018BB4: do_call<core::panic::unwind_safe::AssertUnwindSafe<std::thread::{impl#0}::spawn_unchecked_::{closure#1}::{closure_env#0}<benchmark_tests::find_primes_multi_thread::{closure_env#0}, alloc::vec::Vec<u64, alloc::alloc::Global>>>, alloc::vec::Vec<u64, alloc::alloc::Global>> (panicking.rs:589)
+    ///   │   │       #20: 0x4018BB4: try<alloc::vec::Vec<u64, alloc::alloc::Global>, core::panic::unwind_safe::AssertUnwindSafe<std::thread::{impl#0}::spawn_unchecked_::{closure#1}::{closure_env#0}<benchmark_tests::find_primes_multi_thread::{closure_env#0}, alloc::vec::Vec<u64, alloc::alloc::Global>>>> (panicking.rs:552)
+    ///   │   │       #21: 0x4018BB4: catch_unwind<core::panic::unwind_safe::AssertUnwindSafe<std::thread::{impl#0}::spawn_unchecked_::{closure#1}::{closure_env#0}<benchmark_tests::find_primes_multi_thread::{closure_env#0}, alloc::vec::Vec<u64, alloc::alloc::Global>>>, alloc::vec::Vec<u64, alloc::alloc::Global>> (panic.rs:359)
+    ///   │   │       #22: 0x4018BB4: {closure#1}<benchmark_tests::find_primes_multi_thread::{closure_env#0}, alloc::vec::Vec<u64, alloc::alloc::Global>> (mod.rs:557)
+    ///   │   │       #23: 0x4018BB4: core::ops::function::FnOnce::call_once{{vtable.shim}} (function.rs:250)
+    ///   │   │       #24: 0x404A2BA: call_once<(), dyn core::ops::function::FnOnce<(), Output=()>, alloc::alloc::Global> (boxed.rs:1966)
+    ///   │   │       #25: 0x404A2BA: call_once<(), alloc::boxed::Box<dyn core::ops::function::FnOnce<(), Output=()>, alloc::alloc::Global>, alloc::alloc::Global> (boxed.rs:1966)
+    ///   │   │       #26: 0x404A2BA: std::sys::pal::unix::thread::Thread::new::thread_start (thread.rs:97)
+    ///   │   │       #27: 0x49C27EA: ??? (in /usr/lib/libc.so.6)
+    ///   │   │       #28: 0x4A45FB3: clone (in /usr/lib/libc.so.6)
+    ///   │   │     }
+    ///   │   │   }
+    ///
+    ///   ...
+    /// ```
+    ///
+    /// As can be seen, the call stack of the program point `PP 1.1.1/12` does not include a main
+    /// function, benchmark function, and so forth because a thread is a completely separate unit.
+    /// This enables us to exclude uninteresting threads by simply not specifying them here and
+    /// include the interesting ones for example with:
+    ///
+    /// ```rust
+    /// use iai_callgrind::Dhat;
+    ///
+    /// Dhat::default().frames(["benchmark_tests::find_primes"]);
+    /// ```
+    pub fn frames<I, T>(&mut self, frames: T) -> &mut Self
+    where
+        I: Into<String>,
+        T: IntoIterator<Item = I>,
+    {
+        let this = self.0.frames.get_or_insert_with(Vec::new);
+        this.extend(frames.into_iter().map(Into::into));
+
+        self
+    }
+
+    /// Configure the limits percentages over/below which a performance regression can be assumed
+    ///
+    /// A performance regression check consists of a [`DhatMetric`] and a percentage over which a
+    /// regression is assumed. If the percentage is negative, then a regression is assumed to be
+    /// below this limit.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::{Dhat, DhatMetric};
+    ///
+    /// let config = Dhat::default().limits([(DhatMetric::TotalBytes, 5f64)]);
+    /// ```
+    pub fn limits<T>(&mut self, limits: T) -> &mut Self
+    where
+        T: IntoIterator<Item = (DhatMetric, f64)>,
+    {
+        if let Some(__internal::InternalToolRegressionConfig::Dhat(config)) =
+            &mut self.0.regression_config
+        {
+            config.limits.extend(limits);
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Dhat(
+                __internal::InternalDhatRegressionConfig {
+                    limits: limits.into_iter().collect(),
+                    fail_fast: None,
+                },
+            ));
+        }
+        self
+    }
+
+    /// If set to true, then the benchmarks fail on the first encountered regression
+    ///
+    /// The default is `false` and the whole benchmark run fails with a regression error after all
+    /// benchmarks have been run.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iai_callgrind::Dhat;
+    ///
+    /// let config = Dhat::default().fail_fast(true);
+    /// ```
+    pub fn fail_fast(&mut self, value: bool) -> &mut Self {
+        if let Some(__internal::InternalToolRegressionConfig::Dhat(config)) =
+            &mut self.0.regression_config
+        {
+            config.fail_fast = Some(value);
+        } else {
+            self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Dhat(
+                __internal::InternalDhatRegressionConfig {
+                    limits: vec![],
+                    fail_fast: Some(value),
+                },
+            ));
+        }
         self
     }
 }

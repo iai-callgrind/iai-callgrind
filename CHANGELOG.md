@@ -23,6 +23,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+* `Dhat::entry_point`, `Dhat::frames`
+* Possibility to specify dhat regression limits with `Dhat::limits`,
+  `Dhat::fail_fast` and cli arg `--dhat-limits`
+* New dhat metrics `TotalUnits` and `TotalEvents` for `ad-hoc` mode
+
+### Changed
+
+* Breaking!: Default entry point for dhat is now the benchmark function
+
+### Fixed
+
+* Parsing log file in dhat mode `ad-hoc`.
+* Error message from `Failed to split callgrind args` to `Failed to split args`
+  when parsing of --cachegrind-args, --dhat-args, ... failed
+* Error message from `Invalid format of key/value pair: '{split}'` to `Invalid
+  format of key=value pair: '{split}'`
+
 ## [0.15.2] - 2025-07-03
 
 ### Added

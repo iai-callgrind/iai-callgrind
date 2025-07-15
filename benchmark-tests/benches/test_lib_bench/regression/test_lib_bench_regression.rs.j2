@@ -3,25 +3,34 @@ use std::hint::black_box;
 use benchmark_tests::{bubble_sort, setup_worst_case_array};
 use iai_callgrind::{
     library_benchmark, library_benchmark_group, main, EventKind, LibraryBenchmarkConfig,
-    Callgrind, ValgrindTool, Cachegrind, CachegrindMetric
+    Callgrind, ValgrindTool, Cachegrind, CachegrindMetric, Dhat, DhatMetric
 };
 
 #[library_benchmark]
 #[bench::regress_callgrind(
-    args = [{{ array_length }}],
+    args = [{{ callgrind_array_length }}],
     setup = setup_worst_case_array,
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()
-            .limits([(EventKind::Ir, 0.0)]).fail_fast({{ fail_fast }})
+            .limits([(EventKind::Ir, 0.0)]).fail_fast({{ callgrind_fail_fast }})
         )
 )]
 #[bench::regress_cachegrind(
-    args = [{{ array_length }}],
+    args = [{{ cachegrind_array_length }}],
     setup = setup_worst_case_array,
     config = LibraryBenchmarkConfig::default()
         .default_tool(ValgrindTool::Cachegrind)
         .tool(Cachegrind::default()
-            .limits([(CachegrindMetric::Ir, 0.0)]).fail_fast({{ fail_fast }})
+            .limits([(CachegrindMetric::Ir, 0.0)]).fail_fast({{ cachegrind_fail_fast }})
+        )
+)]
+#[bench::regress_dhat(
+    args = [{{ dhat_array_length }}],
+    setup = setup_worst_case_array,
+    config = LibraryBenchmarkConfig::default()
+        .default_tool(ValgrindTool::DHAT)
+        .tool(Dhat::default()
+            .limits([(DhatMetric::TotalBytes, 0.0)]).fail_fast({{ dhat_fail_fast }})
         )
 )]
 #[bench::should_not_run_after_regression(setup_worst_case_array(10))]

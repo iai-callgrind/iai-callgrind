@@ -62,7 +62,9 @@ fn default_tool() -> u64 {
 #[bench::dhat(
     config = LibraryBenchmarkConfig::default()
         .default_tool(ValgrindTool::DHAT)
-        .tool(Dhat::with_args(["trace-children=yes"]))
+        .tool(Dhat::with_args(["trace-children=yes"])
+            .frames(["*echo::main"])
+        )
 )]
 #[bench::memcheck(
     config = LibraryBenchmarkConfig::default()

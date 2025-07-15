@@ -20,5 +20,6 @@ groups:
     runs:
       - args: ["--default-tool=memcheck", "--tools=dhat,helgrind"]
         expected:
+          zero_metrics: true
           files: expected_files.3a.yml
           stdout: expected_stdout.3a

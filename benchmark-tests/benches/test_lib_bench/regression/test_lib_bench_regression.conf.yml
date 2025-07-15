@@ -1,3 +1,4 @@
+# spell-checker: ignore readsbytes
 template: test_lib_bench_regression.rs.j2
 groups:
   - runs:
@@ -7,16 +8,52 @@ groups:
           stderr: expected_stderr.empty
           exit_code: 0
         template_data:
-          array_length: 4
-          fail_fast: true
+          callgrind_array_length: 4
+          callgrind_fail_fast: true
+          cachegrind_array_length: 4
+          cachegrind_fail_fast: false
+          dhat_array_length: 4
+          dhat_fail_fast: false
+      # regress callgrind fail fast
       - args: []
         expected:
-          stdout: expected_stdout.fail-fast
-          stderr: expected_stderr.fail-fast
+          stdout: expected_stdout.callgrind-fail-fast
+          stderr: expected_stderr.callgrind-fail-fast
           exit_code: 3
         template_data:
-          array_length: 5
-          fail_fast: true
+          callgrind_array_length: 100
+          callgrind_fail_fast: true
+          cachegrind_array_length: 4
+          cachegrind_fail_fast: false
+          dhat_array_length: 4
+          dhat_fail_fast: false
+      # regress cachegrind fail fast
+      - args: []
+        expected:
+          stdout: expected_stdout.cachegrind-fail-fast
+          stderr: expected_stderr.cachegrind-fail-fast
+          exit_code: 3
+        template_data:
+          callgrind_array_length: 4
+          callgrind_fail_fast: false
+          cachegrind_array_length: 500
+          cachegrind_fail_fast: true
+          dhat_array_length: 4
+          dhat_fail_fast: false
+      # regress dhat fail fast
+      - args: []
+        expected:
+          stdout: expected_stdout.dhat-fail-fast
+          stderr: expected_stderr.dhat-fail-fast
+          exit_code: 3
+        template_data:
+          callgrind_array_length: 4
+          callgrind_fail_fast: false
+          cachegrind_array_length: 4
+          cachegrind_fail_fast: false
+          dhat_array_length: 5
+          dhat_fail_fast: true
+  # regress all without fail fast
   - runs:
       - args: []
         expected:
@@ -24,51 +61,68 @@ groups:
           stderr: expected_stderr.empty
           exit_code: 0
         template_data:
-          array_length: 4
-          fail_fast: false
+          callgrind_array_length: 4
+          callgrind_fail_fast: false
+          cachegrind_array_length: 4
+          cachegrind_fail_fast: false
+          dhat_array_length: 4
+          dhat_fail_fast: false
       - args: []
         expected:
           stdout: expected_stdout.no-fail-fast
           stderr: expected_stderr.no-fail-fast
           exit_code: 3
         template_data:
-          array_length: 5
-          fail_fast: false
+          callgrind_array_length: 100
+          callgrind_fail_fast: false
+          cachegrind_array_length: 500
+          cachegrind_fail_fast: false
+          dhat_array_length: 5
+          dhat_fail_fast: false
+  # regress all with limits set per command-line arguments
   - runs:
-      # Using a different config as in the benchmark with an additional estimated cycles
-      - args:
-          [
-            "--callgrind-limits",
-            "ir=5.0, estimatedcycles=0.0",
-            "--cachegrind-limits",
-            "estimatedcycles=0.0",
-          ]
+      - args: []
         expected:
           stdout: expected_stdout.1
           stderr: expected_stderr.empty
           exit_code: 0
         template_data:
-          array_length: 4
-          fail_fast: false
+          callgrind_array_length: 4
+          callgrind_fail_fast: false
+          cachegrind_array_length: 4
+          cachegrind_fail_fast: false
+          dhat_array_length: 4
+          dhat_fail_fast: false
+      # Using a different config as in the benchmark with an additional estimated cycles
       - args:
           [
             "--callgrind-limits",
-            "ir=5.0, estimatedcycles=0.0",
-            "--cachegrind-limits",
             "estimatedcycles=0.0",
+            "--cachegrind-limits",
+            "totalrw=0.0",
+            "--dhat-limits",
+            "readsbytes=0.0",
           ]
         expected:
           stdout: expected_stdout.args
           stderr: expected_stderr.args
           exit_code: 3
         template_data:
-          array_length: 5
-          fail_fast: false
+          callgrind_array_length: 100
+          callgrind_fail_fast: false
+          cachegrind_array_length: 500
+          cachegrind_fail_fast: false
+          dhat_array_length: 5
+          dhat_fail_fast: false
       - args: ["--regression-fail-fast"]
         expected:
           stdout: expected_stdout.args.fail-fast
-          stderr: expected_stderr.fail-fast
+          stderr: expected_stderr.callgrind-fail-fast
           exit_code: 3
         template_data:
-          array_length: 7
-          fail_fast: false
+          callgrind_array_length: 200
+          callgrind_fail_fast: false
+          cachegrind_array_length: 1000
+          cachegrind_fail_fast: false
+          dhat_array_length: 6
+          dhat_fail_fast: false

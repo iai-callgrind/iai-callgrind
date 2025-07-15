@@ -1,0 +1,9 @@
+groups:
+  - runs:
+      - args: []
+        expected:
+          stdout: expected_stdout.1
+  - runs:
+      - args: []
+        expected:
+          stdout: expected_stdout.2

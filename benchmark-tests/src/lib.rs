@@ -132,7 +132,7 @@ pub fn bubble_sort(mut array: Vec<i32>) -> Vec<i32> {
 }
 
 pub fn bubble_sort_allocate(start: i32, sum: usize) -> i32 {
-    let to_sort = allocate_array_reverse(start);
+    let to_sort = setup_worst_case_array(start);
     let sorted = bubble_sort(to_sort);
     sorted.iter().take(sum).sum()
 }
@@ -160,14 +160,6 @@ pub fn print_env(args: &[&str]) {
             }
         };
         println!("{key}={value}");
-    }
-}
-
-pub fn allocate_array_reverse(start: i32) -> Vec<i32> {
-    if start.is_negative() {
-        (start..0).rev().collect()
-    } else {
-        (0..start).rev().collect()
     }
 }
 

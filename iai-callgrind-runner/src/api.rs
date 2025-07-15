@@ -1,4 +1,8 @@
 //! The api contains all elements which the `runner` can understand
+
+// spell-checker: ignore totalunits totalevents totalbytes totalblocks attgmaxbytes
+// spell-checker: ignore attgmaxblocks attendbytes attendblocks readsbytes writesbytes
+// spell-checker: ignore totallifetimes maximumbytes maximumblocks
 use std::ffi::OsString;
 use std::fmt::Display;
 #[cfg(feature = "runner")]
@@ -621,6 +625,10 @@ pub enum Direction {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum DhatMetric {
+    /// In ad-hoc mode, Total units measured over the entire execution
+    TotalUnits,
+    /// Total ad-hoc events over the entire execution
+    TotalEvents,
     /// Total bytes allocated over the entire execution
     TotalBytes,
     /// Total heap blocks allocated over the entire execution
@@ -649,6 +657,12 @@ pub enum DhatMetric {
     MaximumBlocks,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct DhatRegressionConfig {
+    pub limits: Vec<(DhatMetric, f64)>,
+    pub fail_fast: Option<bool>,
+}
+
 /// The `EntryPoint` of a library benchmark
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub enum EntryPoint {
@@ -659,7 +673,8 @@ pub enum EntryPoint {
     Default,
     /// A custom entry point. The argument allows the same glob patterns as the
     /// [`--toggle-collect`](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options)
-    /// argument of callgrind.
+    /// argument of callgrind. These are the wildcards `*` (match any amount of arbitrary
+    /// characters) and `?` (match a single arbitrary character)
     Custom(String),
 }
 
@@ -942,12 +957,14 @@ pub struct Tool {
     pub flamegraph_config: Option<ToolFlamegraphConfig>,
     pub output_format: Option<ToolOutputFormat>,
     pub entry_point: Option<EntryPoint>,
+    pub frames: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ToolRegressionConfig {
     Callgrind(CallgrindRegressionConfig),
     Cachegrind(CachegrindRegressionConfig),
+    Dhat(DhatRegressionConfig),
     None,
 }
 
@@ -1301,9 +1318,34 @@ impl Default for Direction {
     }
 }
 
+impl DhatMetric {
+    pub fn from_str_ignore_case(value: &str) -> Option<Self> {
+        let metric = match value.to_lowercase().as_str() {
+            "totalunits" => Self::TotalUnits,
+            "totalevents" => Self::TotalEvents,
+            "totalbytes" => Self::TotalBytes,
+            "totalblocks" => Self::TotalBlocks,
+            "attgmaxbytes" => Self::AtTGmaxBytes,
+            "attgmaxblocks" => Self::AtTGmaxBlocks,
+            "attendbytes" => Self::AtTEndBytes,
+            "attendblocks" => Self::AtTEndBlocks,
+            "readsbytes" => Self::ReadsBytes,
+            "writesbytes" => Self::WritesBytes,
+            "totallifetimes" => Self::TotalLifetimes,
+            "maximumbytes" => Self::MaximumBytes,
+            "maximumblocks" => Self::MaximumBlocks,
+            _ => return None,
+        };
+
+        Some(metric)
+    }
+}
+
 impl Display for DhatMetric {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            DhatMetric::TotalUnits => f.write_str("Total units"),
+            DhatMetric::TotalEvents => f.write_str("Total events"),
             DhatMetric::TotalBytes => f.write_str("Total bytes"),
             DhatMetric::TotalBlocks => f.write_str("Total blocks"),
             DhatMetric::AtTGmaxBytes => f.write_str("At t-gmax bytes"),
@@ -1847,6 +1889,7 @@ impl Tool {
             flamegraph_config: None,
             output_format: None,
             entry_point: None,
+            frames: None,
         }
     }
 
@@ -1870,6 +1913,7 @@ impl Tool {
                 update_option(&self.flamegraph_config, &other.flamegraph_config);
             self.output_format = update_option(&self.output_format, &other.output_format);
             self.entry_point = update_option(&self.entry_point, &other.entry_point);
+            self.frames = update_option(&self.frames, &other.frames);
 
             self.raw_args.extend_ignore_flag(other.raw_args.0.iter());
         }
@@ -2025,6 +2069,7 @@ mod tests {
                 )),
                 entry_point: Some(EntryPoint::default()),
                 output_format: Some(ToolOutputFormat::None),
+                frames: Some(vec!["some::frame".to_owned()]),
             }]),
             tools_override: None,
             output_format: None,
@@ -2054,6 +2099,7 @@ mod tests {
                 )),
                 entry_point: Some(EntryPoint::default()),
                 output_format: Some(ToolOutputFormat::None),
+                frames: Some(vec!["some::frame".to_owned()]),
             }]),
             tools_override: Some(Tools(vec![])),
             output_format: Some(OutputFormat::default()),
@@ -2220,6 +2266,7 @@ mod tests {
             flamegraph_config: Some(ToolFlamegraphConfig::None),
             output_format: Some(ToolOutputFormat::None),
             entry_point: Some(EntryPoint::Default),
+            frames: Some(vec!["some::frame".to_owned()]),
         };
         let expected = other.clone();
         base.update(&other);
@@ -2238,6 +2285,7 @@ mod tests {
             flamegraph_config: Some(ToolFlamegraphConfig::None),
             output_format: Some(ToolOutputFormat::None),
             entry_point: Some(EntryPoint::Default),
+            frames: Some(vec!["some::frame".to_owned()]),
         };
 
         let expected = base.clone();

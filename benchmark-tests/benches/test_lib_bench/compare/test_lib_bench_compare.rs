@@ -93,5 +93,5 @@ main!(
     bubble_sort_compare_two,
     bubble_sort_compare_three,
     bubble_sort_compare_no_id,
-    bubble_sort_compare_with_dhat
+    bubble_sort_compare_with_dhat,
 );

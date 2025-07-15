@@ -25,7 +25,11 @@ fn setup_worst_case_array(start: i32) -> Vec<i32> {
 }
 
 #[library_benchmark]
-#[bench::empty(vec![])]
+#[bench::empty(
+    args = (vec![]),
+    config = LibraryBenchmarkConfig::default()
+        .tool(Dhat::default().enable(false))
+)]
 #[bench::worst_case_4000(setup_worst_case_array(4000))]
 fn bench_bubble_sort(array: Vec<i32>) -> Vec<i32> {
     black_box(bubble_sort(array))
@@ -41,6 +45,7 @@ fn bench_bubble_sort_allocate() -> i32 {
     args = (),
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::with_args(["--toggle-collect=sort::main"]))
+        .tool(Dhat::default().frames(["sort::main"]))
         .output_format(OutputFormat::default()
             .show_intermediate(true)
         )
