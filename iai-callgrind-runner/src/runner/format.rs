@@ -14,8 +14,8 @@ use super::meta::Metadata;
 use super::metrics::{Metric, MetricKind, MetricsDiff};
 use super::summary::{Diffs, ProfileData, ProfileInfo, ToolMetricSummary, ToolRegression};
 use crate::api::{
-    self, CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, ErrorMetric,
-    EventKind, ValgrindTool,
+    self, CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics,
+    ErrorMetric, EventKind, ValgrindTool,
 };
 use crate::util::{
     make_relative, to_string_signed_short, to_string_unsigned_short, truncate_str_utf8,
@@ -394,19 +394,7 @@ impl Default for OutputFormat {
             show_grid: false,
             callgrind: IndexSet::from(CallgrindMetrics::Default),
             cachegrind: IndexSet::from(CachegrindMetrics::Default),
-            // TODO: Use DhatMetrics::Default. Why is MaximumBytes not included in defaults?
-            dhat: indexset![
-                DhatMetric::TotalUnits,
-                DhatMetric::TotalEvents,
-                DhatMetric::TotalBytes,
-                DhatMetric::TotalBlocks,
-                DhatMetric::AtTGmaxBytes,
-                DhatMetric::AtTGmaxBlocks,
-                DhatMetric::AtTEndBytes,
-                DhatMetric::AtTEndBlocks,
-                DhatMetric::ReadsBytes,
-                DhatMetric::WritesBytes,
-            ],
+            dhat: IndexSet::from(DhatMetrics::Default),
             memcheck: indexset![
                 ErrorMetric::Errors,
                 ErrorMetric::Contexts,

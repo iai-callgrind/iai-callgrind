@@ -1349,7 +1349,6 @@ impl FromStr for CachegrindMetrics {
         let lower = string.to_lowercase();
         match lower.as_str().strip_prefix('@') {
             Some(suffix) => match suffix {
-                //  TODO: keep default or delete
                 "default" | "def" => Ok(Self::Default),
                 "all" => Ok(Self::All),
                 "cachemisses" | "misses" | "ms" => Ok(Self::CacheMisses),
@@ -1458,7 +1457,6 @@ impl FromStr for CallgrindMetrics {
         let lower = string.to_lowercase();
         match lower.as_str().strip_prefix('@') {
             Some(suffix) => match suffix {
-                //  TODO: keep default or delete
                 "default" | "def" => Ok(Self::Default),
                 "all" => Ok(Self::All),
                 "cachemisses" | "misses" | "ms" => Ok(Self::CacheMisses),
@@ -1549,8 +1547,20 @@ impl TypeChecker for DhatMetric {
 #[cfg(feature = "runner")]
 impl From<DhatMetrics> for IndexSet<DhatMetric> {
     fn from(value: DhatMetrics) -> Self {
+        use DhatMetric::*;
         match value {
-            DhatMetrics::All | DhatMetrics::Default => DhatMetric::iter().collect(),
+            DhatMetrics::All => DhatMetric::iter().collect(),
+            DhatMetrics::Default => indexset! {
+            TotalUnits,
+            TotalEvents,
+            TotalBytes,
+            TotalBlocks,
+            AtTGmaxBytes,
+            AtTGmaxBlocks,
+            AtTEndBytes,
+            AtTEndBlocks,
+            ReadsBytes,
+            WritesBytes },
             DhatMetrics::SingleMetric(dhat_metric) => indexset! { dhat_metric },
         }
     }
