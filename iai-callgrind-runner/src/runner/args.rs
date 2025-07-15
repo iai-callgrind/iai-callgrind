@@ -407,10 +407,8 @@ pub struct CommandLineArgs {
     ///
     /// This is a `,` separate list of CallgrindMetrics=limit (key=value) pairs with the limit
     /// being a soft limit if the number suffixed with a `%` or a hard limit if it is a bare
-    /// number. A soft limit matches the percentage difference between the new (left) and old
-    /// (right) run as shown in the terminal output. A hard limit caps the simple metric value
-    /// of the `new` run. It is possible to specify hard and soft limits in one go with the `|`
-    /// operator (e.g. `ir=10%|10000`).
+    /// number. It is possible to specify hard and soft limits in one go with the `|` operator
+    /// (e.g. `ir=10%|10000`).
     ///
     /// See the docs of `CallgrindMetrics`
     /// (<https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CallgrindMetrics.html>) and
@@ -504,7 +502,21 @@ pub struct CommandLineArgs {
     /// Replace group and event in the format spec in `--callgrind-limits` with the following:
     ///
     /// group      ::= "@" ( "default" | "all" )
-    /// event      ::= DhatMetric
+    /// event      ::=   ( "totalunits" | "tun" )
+    ///                | ( "totalevents" | "tev" )
+    ///                | ( "totalbytes" | "tb" )
+    ///                | ( "totalblocks" | "tbk" )
+    ///                | ( "attgmaxbytes" | "gb" )
+    ///                | ( "attgmaxblocks" | "gbk" )
+    ///                | ( "attendbytes" | "eb" )
+    ///                | ( "attendblocks" | "ebk" )
+    ///                | ( "readsbytes" | "rb" )
+    ///                | ( "writesbytes" | "wb" )
+    ///                | ( "totallifetimes" | "tl" )
+    ///                | ( "maximumbytes" | "mb" )
+    ///                | ( "maximumblocks" | "mbk" )
+    ///
+    /// Events with a long name have their allowed abbreviations placed in the same parentheses.
     ///
     /// Examples: --dhat-limits='totalbytes=0.0%' or
     ///   --dhat-limits='totalbytes=5000, totalblocks=5%'
