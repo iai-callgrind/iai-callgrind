@@ -1193,7 +1193,7 @@ impl FromStr for CachegrindMetric {
             "l1hitrate" => Self::L1HitRate,
             "llhitrate" => Self::LLHitRate,
             "ramhitrate" => Self::RamHitRate,
-            _ => return Err(anyhow!("Unknown cachegrind metric: {string}")),
+            _ => return Err(anyhow!("Unknown cachegrind metric: '{string}'")),
         };
 
         Ok(metric)
@@ -1359,7 +1359,8 @@ impl FromStr for CachegrindMetrics {
                 "branchsim" | "bs" => Ok(Self::BranchSim),
                 _ => Err(anyhow!("Invalid cachegrind metric group: '{string}")),
             },
-            None => CachegrindMetric::from_str(&lower).map(Self::SingleEvent),
+            // Use `string` instead of `lower` for the correct error message
+            None => CachegrindMetric::from_str(string).map(Self::SingleEvent),
         }
     }
 }
@@ -1470,7 +1471,9 @@ impl FromStr for CallgrindMetrics {
                 "writebackbehaviour" | "writeback" | "wb" => Ok(Self::WriteBackBehaviour),
                 _ => Err(anyhow!("Invalid event group: '{string}")),
             },
-            None => EventKind::from_str(&lower).map(Self::SingleEvent),
+            // Keep the `string` instead of the more efficient `lower` to produce the correct error
+            // message in `EventKind::from_str`
+            None => EventKind::from_str(string).map(Self::SingleEvent),
         }
     }
 }
@@ -1527,7 +1530,7 @@ impl FromStr for DhatMetric {
             "totallifetimes" | "tl" => Self::TotalLifetimes,
             "maximumbytes" | "mb" => Self::MaximumBytes,
             "maximumblocks" | "mbk" => Self::MaximumBlocks,
-            _ => return Err(anyhow!("Unknown dhat metric: {string}")),
+            _ => return Err(anyhow!("Unknown dhat metric: '{string}'")),
         };
 
         Ok(metric)
@@ -1578,7 +1581,8 @@ impl FromStr for DhatMetrics {
                 "all" => Ok(Self::All),
                 _ => Err(anyhow!("Invalid dhat metrics group: '{string}")),
             },
-            None => DhatMetric::from_str(&lower).map(Self::SingleMetric),
+            // Use `string` instead of `lower` for the correct error message
+            None => DhatMetric::from_str(string).map(Self::SingleMetric),
         }
     }
 }
@@ -1716,7 +1720,7 @@ impl FromStr for EventKind {
             "l1hitrate" => Self::L1HitRate,
             "llhitrate" => Self::LLHitRate,
             "ramhitrate" => Self::RamHitRate,
-            _ => return Err(anyhow!("Unknown event kind: {string}")),
+            _ => return Err(anyhow!("Unknown event kind: '{string}'")),
         };
 
         Ok(event_kind)
