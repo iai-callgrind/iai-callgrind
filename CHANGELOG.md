@@ -29,10 +29,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * Possibility to specify dhat regression limits with `Dhat::limits`,
   `Dhat::fail_fast` and cli arg `--dhat-limits`
 * New dhat metrics `TotalUnits` and `TotalEvents` for `ad-hoc` mode
+* ([#407](https://github.com/iai-callgrind/iai-callgrind/pull/407)): Add
+  possibility to specify hard limits in addition to soft limits. This breaks the
+  parsing of the `--callgrind-limits`, ... arguments. To disambiguate between
+  hard and soft limits the soft limits have to be suffixed with a `%`.
 
 ### Changed
 
 * Breaking!: Default entry point for dhat is now the benchmark function
+* ([#407](https://github.com/iai-callgrind/iai-callgrind/pull/407)): Make the
+  expanded benchmark function module public with `pub mod` instead of just
+  `mod`.
+* ([#407](https://github.com/iai-callgrind/iai-callgrind/pull/407)): Update
+  summary json schema.
+
+### Deprecated
+
+* ([#407](https://github.com/iai-callgrind/iai-callgrind/pull/407)): The methods
+  `Callgrind::limits` and `Cachegrind::limits` to specify soft limits are now
+  deprecated. Use `Callgrind::soft_limits`, `Cachegrind::soft_limits` instead
+  for soft limits or `Callgrind::hard_limits`, `Cachegrind::hard_limits` for
+  hard limits.
 
 ### Fixed
 
