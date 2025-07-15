@@ -37,6 +37,14 @@ test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_callgrin
   RAM Hits:                                |                     (         )
   Total read+write:                        |                     (+       %) [+       x]
   Estimated Cycles:                        |                     (         )
+test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_cachegrind:setup_worst_case_array(500)
+  ======= CACHEGRIND ===================================================================
+  Instructions:                            |                     (+       %) [+       x]
+  L1 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (+       %) [+       x]
+  Estimated Cycles:                        |                     (         )
 test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_dhat:setup_worst_case_array(5)
   ======= DHAT =========================================================================
   Total bytes:                             |                     (+       %) [+       x]
@@ -65,7 +73,9 @@ Regressions:
     DHAT: Total bytes (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
   test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_callgrind:
     Callgrind: Instructions (<__NUM__>): <__NUM__> exceeds limit of <__LIMIT__> by <__DIFF__>
+  test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_cachegrind:
+    Cachegrind: Instructions (<__NUM__>): <__NUM__> exceeds limit of <__LIMIT__> by <__DIFF__>
   test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_dhat:
     DHAT: Total bytes (<__NUM__>): <__NUM__> exceeds limit of <__LIMIT__> by <__DIFF__>
 
-Iai-Callgrind result: Regressed. 2 without regressions; 5 regressed; 7 benchmarks finished in <__SECONDS__>s
+Iai-Callgrind result: Regressed. 2 without regressions; 6 regressed; 8 benchmarks finished in <__SECONDS__>s

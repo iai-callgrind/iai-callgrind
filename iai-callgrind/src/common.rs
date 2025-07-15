@@ -742,7 +742,7 @@ impl Callgrind {
     /// limit is calculated from the difference between the `new` (left side) and `old` (right side)
     /// run as follows:
     ///
-    /// ```
+    /// ```text
     /// difference percentage = (new - old) / old * 100
     /// ```
     pub fn soft_limits<T>(&mut self, limits: T) -> &mut Self
@@ -776,7 +776,7 @@ impl Callgrind {
     /// performance regression is registered failing the benchmark run.
     ///
     /// ```
-    /// use iai_callgrind::{Callgrind, CallgrindMetric};
+    /// use iai_callgrind::{Callgrind, EventKind};
     ///
     /// let config = Callgrind::default().hard_limits([(EventKind::Ir, 10_000)]);
     /// ```

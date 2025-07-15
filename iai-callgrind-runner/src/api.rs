@@ -1237,6 +1237,73 @@ impl From<CachegrindMetric> for CachegrindMetrics {
     }
 }
 
+impl From<CachegrindMetric> for EventKind {
+    fn from(value: CachegrindMetric) -> Self {
+        match value {
+            CachegrindMetric::Ir => Self::Ir,
+            CachegrindMetric::Dr => Self::Dr,
+            CachegrindMetric::Dw => Self::Dw,
+            CachegrindMetric::I1mr => Self::I1mr,
+            CachegrindMetric::D1mr => Self::D1mr,
+            CachegrindMetric::D1mw => Self::D1mw,
+            CachegrindMetric::ILmr => Self::ILmr,
+            CachegrindMetric::DLmr => Self::DLmr,
+            CachegrindMetric::DLmw => Self::DLmw,
+            CachegrindMetric::L1hits => Self::L1hits,
+            CachegrindMetric::LLhits => Self::LLhits,
+            CachegrindMetric::RamHits => Self::RamHits,
+            CachegrindMetric::TotalRW => Self::TotalRW,
+            CachegrindMetric::EstimatedCycles => Self::EstimatedCycles,
+            CachegrindMetric::Bc => Self::Bc,
+            CachegrindMetric::Bcm => Self::Bcm,
+            CachegrindMetric::Bi => Self::Bi,
+            CachegrindMetric::Bim => Self::Bim,
+            CachegrindMetric::I1MissRate => Self::I1MissRate,
+            CachegrindMetric::D1MissRate => Self::D1MissRate,
+            CachegrindMetric::LLiMissRate => Self::LLiMissRate,
+            CachegrindMetric::LLdMissRate => Self::LLdMissRate,
+            CachegrindMetric::LLMissRate => Self::LLMissRate,
+            CachegrindMetric::L1HitRate => Self::L1HitRate,
+            CachegrindMetric::LLHitRate => Self::LLHitRate,
+            CachegrindMetric::RamHitRate => Self::RamHitRate,
+        }
+    }
+}
+
+#[cfg(feature = "runner")]
+impl TypeChecker for CachegrindMetric {
+    fn verify_type(&self, metric: runner::metrics::Metric) -> bool {
+        match self {
+            CachegrindMetric::Ir
+            | CachegrindMetric::Dr
+            | CachegrindMetric::Dw
+            | CachegrindMetric::I1mr
+            | CachegrindMetric::D1mr
+            | CachegrindMetric::D1mw
+            | CachegrindMetric::ILmr
+            | CachegrindMetric::DLmr
+            | CachegrindMetric::DLmw
+            | CachegrindMetric::L1hits
+            | CachegrindMetric::LLhits
+            | CachegrindMetric::RamHits
+            | CachegrindMetric::TotalRW
+            | CachegrindMetric::EstimatedCycles
+            | CachegrindMetric::Bc
+            | CachegrindMetric::Bcm
+            | CachegrindMetric::Bi
+            | CachegrindMetric::Bim => metric.is_int(),
+            CachegrindMetric::I1MissRate
+            | CachegrindMetric::LLiMissRate
+            | CachegrindMetric::D1MissRate
+            | CachegrindMetric::LLdMissRate
+            | CachegrindMetric::LLMissRate
+            | CachegrindMetric::L1HitRate
+            | CachegrindMetric::LLHitRate
+            | CachegrindMetric::RamHitRate => metric.is_float(),
+        }
+    }
+}
+
 #[cfg(feature = "runner")]
 impl From<CachegrindMetrics> for IndexSet<CachegrindMetric> {
     fn from(value: CachegrindMetrics) -> Self {
@@ -1305,69 +1372,142 @@ impl From<CachegrindMetrics> for IndexSet<CachegrindMetric> {
     }
 }
 
-impl From<CachegrindMetric> for EventKind {
-    fn from(value: CachegrindMetric) -> Self {
-        match value {
-            CachegrindMetric::Ir => Self::Ir,
-            CachegrindMetric::Dr => Self::Dr,
-            CachegrindMetric::Dw => Self::Dw,
-            CachegrindMetric::I1mr => Self::I1mr,
-            CachegrindMetric::D1mr => Self::D1mr,
-            CachegrindMetric::D1mw => Self::D1mw,
-            CachegrindMetric::ILmr => Self::ILmr,
-            CachegrindMetric::DLmr => Self::DLmr,
-            CachegrindMetric::DLmw => Self::DLmw,
-            CachegrindMetric::L1hits => Self::L1hits,
-            CachegrindMetric::LLhits => Self::LLhits,
-            CachegrindMetric::RamHits => Self::RamHits,
-            CachegrindMetric::TotalRW => Self::TotalRW,
-            CachegrindMetric::EstimatedCycles => Self::EstimatedCycles,
-            CachegrindMetric::Bc => Self::Bc,
-            CachegrindMetric::Bcm => Self::Bcm,
-            CachegrindMetric::Bi => Self::Bi,
-            CachegrindMetric::Bim => Self::Bim,
-            CachegrindMetric::I1MissRate => Self::I1MissRate,
-            CachegrindMetric::D1MissRate => Self::D1MissRate,
-            CachegrindMetric::LLiMissRate => Self::LLiMissRate,
-            CachegrindMetric::LLdMissRate => Self::LLdMissRate,
-            CachegrindMetric::LLMissRate => Self::LLMissRate,
-            CachegrindMetric::L1HitRate => Self::L1HitRate,
-            CachegrindMetric::LLHitRate => Self::LLHitRate,
-            CachegrindMetric::RamHitRate => Self::RamHitRate,
+#[cfg(feature = "runner")]
+impl FromStr for CachegrindMetrics {
+    type Err = anyhow::Error;
+
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let lower = string.to_lowercase();
+        match lower.as_str().strip_prefix('@') {
+            Some(suffix) => match suffix {
+                //  TODO: keep default or delete
+                "default" | "def" => Ok(Self::Default),
+                "all" => Ok(Self::All),
+                "cachemisses" | "misses" | "ms" => Ok(Self::CacheMisses),
+                "cachemissrates" | "missrates" | "mr" => Ok(Self::CacheMissRates),
+                "cachehits" | "hits" | "hs" => Ok(Self::CacheHits),
+                "cachehitrates" | "hitrates" | "hr" => Ok(Self::CacheHitRates),
+                "cachesim" | "cs" => Ok(Self::CacheSim),
+                "branchsim" | "bs" => Ok(Self::BranchSim),
+                _ => Err(anyhow!("Invalid cachegrind metric group: '{string}")),
+            },
+            None => CachegrindMetric::from_str_ignore_case(&lower)
+                .ok_or_else(|| anyhow!("Unknown cachegrind metric: '{string}'"))
+                .map(Self::SingleEvent),
         }
     }
 }
 
+impl From<EventKind> for CallgrindMetrics {
+    fn from(value: EventKind) -> Self {
+        Self::SingleEvent(value)
+    }
+}
+
 #[cfg(feature = "runner")]
-impl TypeChecker for CachegrindMetric {
-    fn verify_type(&self, metric: runner::metrics::Metric) -> bool {
-        match self {
-            CachegrindMetric::Ir
-            | CachegrindMetric::Dr
-            | CachegrindMetric::Dw
-            | CachegrindMetric::I1mr
-            | CachegrindMetric::D1mr
-            | CachegrindMetric::D1mw
-            | CachegrindMetric::ILmr
-            | CachegrindMetric::DLmr
-            | CachegrindMetric::DLmw
-            | CachegrindMetric::L1hits
-            | CachegrindMetric::LLhits
-            | CachegrindMetric::RamHits
-            | CachegrindMetric::TotalRW
-            | CachegrindMetric::EstimatedCycles
-            | CachegrindMetric::Bc
-            | CachegrindMetric::Bcm
-            | CachegrindMetric::Bi
-            | CachegrindMetric::Bim => metric.is_int(),
-            CachegrindMetric::I1MissRate
-            | CachegrindMetric::LLiMissRate
-            | CachegrindMetric::D1MissRate
-            | CachegrindMetric::LLdMissRate
-            | CachegrindMetric::LLMissRate
-            | CachegrindMetric::L1HitRate
-            | CachegrindMetric::LLHitRate
-            | CachegrindMetric::RamHitRate => metric.is_float(),
+impl From<CallgrindMetrics> for IndexSet<EventKind> {
+    fn from(value: CallgrindMetrics) -> Self {
+        let mut event_kinds = Self::new();
+        match value {
+            CallgrindMetrics::None => {}
+            CallgrindMetrics::All => event_kinds.extend(EventKind::iter()),
+            CallgrindMetrics::Default => {
+                event_kinds.insert(EventKind::Ir);
+                event_kinds.extend(Self::from(CallgrindMetrics::CacheHits));
+                event_kinds.extend([EventKind::TotalRW, EventKind::EstimatedCycles]);
+                event_kinds.extend(Self::from(CallgrindMetrics::SystemCalls));
+                event_kinds.insert(EventKind::Ge);
+                event_kinds.extend(Self::from(CallgrindMetrics::BranchSim));
+                event_kinds.extend(Self::from(CallgrindMetrics::WriteBackBehaviour));
+                event_kinds.extend(Self::from(CallgrindMetrics::CacheUse));
+            }
+            CallgrindMetrics::CacheMisses => event_kinds.extend([
+                EventKind::I1mr,
+                EventKind::D1mr,
+                EventKind::D1mw,
+                EventKind::ILmr,
+                EventKind::DLmr,
+                EventKind::DLmw,
+            ]),
+            CallgrindMetrics::CacheMissRates => event_kinds.extend([
+                EventKind::I1MissRate,
+                EventKind::LLiMissRate,
+                EventKind::D1MissRate,
+                EventKind::LLdMissRate,
+                EventKind::LLMissRate,
+            ]),
+            CallgrindMetrics::CacheHits => {
+                event_kinds.extend([EventKind::L1hits, EventKind::LLhits, EventKind::RamHits]);
+            }
+            CallgrindMetrics::CacheHitRates => {
+                event_kinds.extend([
+                    EventKind::L1HitRate,
+                    EventKind::LLHitRate,
+                    EventKind::RamHitRate,
+                ]);
+            }
+            CallgrindMetrics::CacheSim => {
+                event_kinds.extend([EventKind::Dr, EventKind::Dw]);
+                event_kinds.extend(Self::from(CallgrindMetrics::CacheMisses));
+                event_kinds.extend(Self::from(CallgrindMetrics::CacheMissRates));
+                event_kinds.extend(Self::from(CallgrindMetrics::CacheHits));
+                event_kinds.extend(Self::from(CallgrindMetrics::CacheHitRates));
+                event_kinds.insert(EventKind::TotalRW);
+                event_kinds.insert(EventKind::EstimatedCycles);
+            }
+            CallgrindMetrics::CacheUse => event_kinds.extend([
+                EventKind::AcCost1,
+                EventKind::AcCost2,
+                EventKind::SpLoss1,
+                EventKind::SpLoss2,
+            ]),
+            CallgrindMetrics::SystemCalls => {
+                event_kinds.extend([
+                    EventKind::SysCount,
+                    EventKind::SysTime,
+                    EventKind::SysCpuTime,
+                ]);
+            }
+            CallgrindMetrics::BranchSim => {
+                event_kinds.extend([EventKind::Bc, EventKind::Bcm, EventKind::Bi, EventKind::Bim]);
+            }
+            CallgrindMetrics::WriteBackBehaviour => {
+                event_kinds.extend([EventKind::ILdmr, EventKind::DLdmr, EventKind::DLdmw]);
+            }
+            CallgrindMetrics::SingleEvent(event_kind) => {
+                event_kinds.insert(event_kind);
+            }
+        }
+
+        event_kinds
+    }
+}
+
+#[cfg(feature = "runner")]
+impl FromStr for CallgrindMetrics {
+    type Err = anyhow::Error;
+
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let lower = string.to_lowercase();
+        match lower.as_str().strip_prefix('@') {
+            Some(suffix) => match suffix {
+                //  TODO: keep default or delete
+                "default" | "def" => Ok(Self::Default),
+                "all" => Ok(Self::All),
+                "cachemisses" | "misses" | "ms" => Ok(Self::CacheMisses),
+                "cachemissrates" | "missrates" | "mr" => Ok(Self::CacheMissRates),
+                "cachehits" | "hits" | "hs" => Ok(Self::CacheHits),
+                "cachehitrates" | "hitrates" | "hr" => Ok(Self::CacheHitRates),
+                "cachesim" | "cs" => Ok(Self::CacheSim),
+                "cacheuse" | "cu" => Ok(Self::CacheUse),
+                "systemcalls" | "syscalls" | "sc" => Ok(Self::SystemCalls),
+                "branchsim" | "bs" => Ok(Self::BranchSim),
+                "writebackbehaviour" | "writeback" | "wb" => Ok(Self::WriteBackBehaviour),
+                _ => Err(anyhow!("Invalid event group: '{string}")),
+            },
+            None => EventKind::from_str_ignore_case(&lower)
+                .ok_or_else(|| anyhow!("Unknown event kind: '{string}'"))
+                .map(Self::SingleEvent),
         }
     }
 }
@@ -1739,91 +1879,6 @@ impl LibraryBenchmarkConfig {
             .iter()
             .filter_map(|(key, option)| option.as_ref().map(|value| (key.clone(), value.clone())))
             .collect()
-    }
-}
-
-impl From<EventKind> for CallgrindMetrics {
-    fn from(value: EventKind) -> Self {
-        Self::SingleEvent(value)
-    }
-}
-
-#[cfg(feature = "runner")]
-impl From<CallgrindMetrics> for IndexSet<EventKind> {
-    fn from(value: CallgrindMetrics) -> Self {
-        let mut event_kinds = Self::new();
-        match value {
-            CallgrindMetrics::None => {}
-            CallgrindMetrics::All => event_kinds.extend(EventKind::iter()),
-            CallgrindMetrics::Default => {
-                event_kinds.insert(EventKind::Ir);
-                event_kinds.extend(Self::from(CallgrindMetrics::CacheHits));
-                event_kinds.extend([EventKind::TotalRW, EventKind::EstimatedCycles]);
-                event_kinds.extend(Self::from(CallgrindMetrics::SystemCalls));
-                event_kinds.insert(EventKind::Ge);
-                event_kinds.extend(Self::from(CallgrindMetrics::BranchSim));
-                event_kinds.extend(Self::from(CallgrindMetrics::WriteBackBehaviour));
-                event_kinds.extend(Self::from(CallgrindMetrics::CacheUse));
-            }
-            CallgrindMetrics::CacheMisses => event_kinds.extend([
-                EventKind::I1mr,
-                EventKind::D1mr,
-                EventKind::D1mw,
-                EventKind::ILmr,
-                EventKind::DLmr,
-                EventKind::DLmw,
-            ]),
-            CallgrindMetrics::CacheMissRates => event_kinds.extend([
-                EventKind::I1MissRate,
-                EventKind::LLiMissRate,
-                EventKind::D1MissRate,
-                EventKind::LLdMissRate,
-                EventKind::LLMissRate,
-            ]),
-            CallgrindMetrics::CacheHits => {
-                event_kinds.extend([EventKind::L1hits, EventKind::LLhits, EventKind::RamHits]);
-            }
-            CallgrindMetrics::CacheHitRates => {
-                event_kinds.extend([
-                    EventKind::L1HitRate,
-                    EventKind::LLHitRate,
-                    EventKind::RamHitRate,
-                ]);
-            }
-            CallgrindMetrics::CacheSim => {
-                event_kinds.extend([EventKind::Dr, EventKind::Dw]);
-                event_kinds.extend(Self::from(CallgrindMetrics::CacheMisses));
-                event_kinds.extend(Self::from(CallgrindMetrics::CacheMissRates));
-                event_kinds.extend(Self::from(CallgrindMetrics::CacheHits));
-                event_kinds.extend(Self::from(CallgrindMetrics::CacheHitRates));
-                event_kinds.insert(EventKind::TotalRW);
-                event_kinds.insert(EventKind::EstimatedCycles);
-            }
-            CallgrindMetrics::CacheUse => event_kinds.extend([
-                EventKind::AcCost1,
-                EventKind::AcCost2,
-                EventKind::SpLoss1,
-                EventKind::SpLoss2,
-            ]),
-            CallgrindMetrics::SystemCalls => {
-                event_kinds.extend([
-                    EventKind::SysCount,
-                    EventKind::SysTime,
-                    EventKind::SysCpuTime,
-                ]);
-            }
-            CallgrindMetrics::BranchSim => {
-                event_kinds.extend([EventKind::Bc, EventKind::Bcm, EventKind::Bi, EventKind::Bim]);
-            }
-            CallgrindMetrics::WriteBackBehaviour => {
-                event_kinds.extend([EventKind::ILdmr, EventKind::DLdmr, EventKind::DLdmw]);
-            }
-            CallgrindMetrics::SingleEvent(event_kind) => {
-                event_kinds.insert(event_kind);
-            }
-        }
-
-        event_kinds
     }
 }
 
