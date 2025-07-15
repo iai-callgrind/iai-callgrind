@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use anyhow::{anyhow, Context, Result};
 use lazy_static::lazy_static;
@@ -278,7 +279,7 @@ pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<Callgrind
                 metrics_prototype = Some(
                     events
                         .split_ascii_whitespace()
-                        .map(EventKind::try_from)
+                        .map(EventKind::from_str)
                         .collect::<Result<Metrics>>()?,
                 );
                 break;

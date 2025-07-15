@@ -1133,38 +1133,6 @@ impl CachegrindMetric {
         )
     }
 
-    pub fn from_str_ignore_case(value: &str) -> Option<Self> {
-        match value.to_lowercase().as_str() {
-            "ir" => Some(Self::Ir),
-            "dr" => Some(Self::Dr),
-            "dw" => Some(Self::Dw),
-            "i1mr" => Some(Self::I1mr),
-            "ilmr" => Some(Self::ILmr),
-            "d1mr" => Some(Self::D1mr),
-            "dlmr" => Some(Self::DLmr),
-            "d1mw" => Some(Self::D1mw),
-            "dlmw" => Some(Self::DLmw),
-            "bc" => Some(Self::Bc),
-            "bcm" => Some(Self::Bcm),
-            "bi" => Some(Self::Bi),
-            "bim" => Some(Self::Bim),
-            "l1hits" => Some(Self::L1hits),
-            "llhits" => Some(Self::LLhits),
-            "ramhits" => Some(Self::RamHits),
-            "totalrw" => Some(Self::TotalRW),
-            "estimatedcycles" => Some(Self::EstimatedCycles),
-            "i1missrate" => Some(Self::I1MissRate),
-            "d1missrate" => Some(Self::D1MissRate),
-            "llimissrate" => Some(Self::LLiMissRate),
-            "lldmissrate" => Some(Self::LLdMissRate),
-            "llmissrate" => Some(Self::LLMissRate),
-            "l1hitrate" => Some(Self::L1HitRate),
-            "llhitrate" => Some(Self::LLHitRate),
-            "ramhitrate" => Some(Self::RamHitRate),
-            _ => None,
-        }
-    }
-
     pub fn to_name(&self) -> String {
         format!("{:?}", *self)
     }
@@ -1193,38 +1161,39 @@ impl Display for CachegrindMetric {
 }
 
 #[cfg(feature = "runner")]
-impl TryFrom<&str> for CachegrindMetric {
-    type Error = anyhow::Error;
+impl FromStr for CachegrindMetric {
+    type Err = anyhow::Error;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let metric = match value {
-            "Ir" => Self::Ir,
-            "Dr" => Self::Dr,
-            "Dw" => Self::Dw,
-            "I1mr" => Self::I1mr,
-            "ILmr" => Self::ILmr,
-            "D1mr" => Self::D1mr,
-            "DLmr" => Self::DLmr,
-            "D1mw" => Self::D1mw,
-            "DLmw" => Self::DLmw,
-            "Bc" => Self::Bc,
-            "Bcm" => Self::Bcm,
-            "Bi" => Self::Bi,
-            "Bim" => Self::Bim,
-            "L1hits" => Self::L1hits,
-            "LLhits" => Self::LLhits,
-            "RamHits" => Self::RamHits,
-            "TotalRW" => Self::TotalRW,
-            "EstimatedCycles" => Self::EstimatedCycles,
-            "I1MissRate" => Self::I1MissRate,
-            "D1MissRate" => Self::D1MissRate,
-            "LLiMissRate" => Self::LLiMissRate,
-            "LLdMissRate" => Self::LLdMissRate,
-            "LLMissRate" => Self::LLMissRate,
-            "L1HitRate" => Self::L1HitRate,
-            "LLHitRate" => Self::LLHitRate,
-            "RamHitRate" => Self::RamHitRate,
-            unknown => return Err(anyhow!("Unknown event type: {unknown}")),
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let lower = string.to_lowercase();
+        let metric = match lower.as_str() {
+            "instructions" | "ir" => Self::Ir,
+            "dr" => Self::Dr,
+            "dw" => Self::Dw,
+            "i1mr" => Self::I1mr,
+            "ilmr" => Self::ILmr,
+            "d1mr" => Self::D1mr,
+            "dlmr" => Self::DLmr,
+            "d1mw" => Self::D1mw,
+            "dlmw" => Self::DLmw,
+            "bc" => Self::Bc,
+            "bcm" => Self::Bcm,
+            "bi" => Self::Bi,
+            "bim" => Self::Bim,
+            "l1hits" => Self::L1hits,
+            "llhits" => Self::LLhits,
+            "ramhits" => Self::RamHits,
+            "totalrw" => Self::TotalRW,
+            "estimatedcycles" => Self::EstimatedCycles,
+            "i1missrate" => Self::I1MissRate,
+            "d1missrate" => Self::D1MissRate,
+            "llimissrate" => Self::LLiMissRate,
+            "lldmissrate" => Self::LLdMissRate,
+            "llmissrate" => Self::LLMissRate,
+            "l1hitrate" => Self::L1HitRate,
+            "llhitrate" => Self::LLHitRate,
+            "ramhitrate" => Self::RamHitRate,
+            _ => return Err(anyhow!("Unknown cachegrind metric: {string}")),
         };
 
         Ok(metric)
@@ -1391,9 +1360,7 @@ impl FromStr for CachegrindMetrics {
                 "branchsim" | "bs" => Ok(Self::BranchSim),
                 _ => Err(anyhow!("Invalid cachegrind metric group: '{string}")),
             },
-            None => CachegrindMetric::from_str_ignore_case(&lower)
-                .ok_or_else(|| anyhow!("Unknown cachegrind metric: '{string}'"))
-                .map(Self::SingleEvent),
+            None => CachegrindMetric::from_str(&lower).map(Self::SingleEvent),
         }
     }
 }
@@ -1505,9 +1472,7 @@ impl FromStr for CallgrindMetrics {
                 "writebackbehaviour" | "writeback" | "wb" => Ok(Self::WriteBackBehaviour),
                 _ => Err(anyhow!("Invalid event group: '{string}")),
             },
-            None => EventKind::from_str_ignore_case(&lower)
-                .ok_or_else(|| anyhow!("Unknown event kind: '{string}'"))
-                .map(Self::SingleEvent),
+            None => EventKind::from_str(&lower).map(Self::SingleEvent),
         }
     }
 }
@@ -1521,29 +1486,6 @@ impl Default for DelayKind {
 impl Default for Direction {
     fn default() -> Self {
         Self::BottomToTop
-    }
-}
-
-impl DhatMetric {
-    pub fn from_str_ignore_case(value: &str) -> Option<Self> {
-        let metric = match value.to_lowercase().as_str() {
-            "totalunits" => Self::TotalUnits,
-            "totalevents" => Self::TotalEvents,
-            "totalbytes" => Self::TotalBytes,
-            "totalblocks" => Self::TotalBlocks,
-            "attgmaxbytes" => Self::AtTGmaxBytes,
-            "attgmaxblocks" => Self::AtTGmaxBlocks,
-            "attendbytes" => Self::AtTEndBytes,
-            "attendblocks" => Self::AtTEndBlocks,
-            "readsbytes" => Self::ReadsBytes,
-            "writesbytes" => Self::WritesBytes,
-            "totallifetimes" => Self::TotalLifetimes,
-            "maximumbytes" => Self::MaximumBytes,
-            "maximumblocks" => Self::MaximumBlocks,
-            _ => return None,
-        };
-
-        Some(metric)
     }
 }
 
@@ -1564,6 +1506,33 @@ impl Display for DhatMetric {
             DhatMetric::MaximumBytes => f.write_str("Maximum bytes"),
             DhatMetric::MaximumBlocks => f.write_str("Maximum blocks"),
         }
+    }
+}
+
+#[cfg(feature = "runner")]
+impl FromStr for DhatMetric {
+    type Err = anyhow::Error;
+
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let lower = string.to_lowercase();
+        let metric = match lower.as_str() {
+            "totalunits" | "tun" => Self::TotalUnits,
+            "totalevents" | "tev" => Self::TotalEvents,
+            "totalbytes" | "tb" => Self::TotalBytes,
+            "totalblocks" | "tbk" => Self::TotalBlocks,
+            "attgmaxbytes" | "gb" => Self::AtTGmaxBytes,
+            "attgmaxblocks" | "gbk" => Self::AtTGmaxBlocks,
+            "attendbytes" | "eb" => Self::AtTEndBytes,
+            "attendblocks" | "ebk" => Self::AtTEndBlocks,
+            "readsbytes" | "rb" => Self::ReadsBytes,
+            "writesbytes" | "wb" => Self::WritesBytes,
+            "totallifetimes" | "tl" => Self::TotalLifetimes,
+            "maximumbytes" | "mb" => Self::MaximumBytes,
+            "maximumblocks" | "mbk" => Self::MaximumBlocks,
+            _ => return Err(anyhow!("Unknown dhat metric: {string}")),
+        };
+
+        Ok(metric)
     }
 }
 
@@ -1599,9 +1568,7 @@ impl FromStr for DhatMetrics {
                 "all" => Ok(Self::All),
                 _ => Err(anyhow!("Invalid dhat metrics group: '{string}")),
             },
-            None => DhatMetric::from_str_ignore_case(&lower)
-                .ok_or_else(|| anyhow!("Unknown dhat metric: '{string}'"))
-                .map(Self::SingleMetric),
+            None => DhatMetric::from_str(&lower).map(Self::SingleMetric),
         }
     }
 }
@@ -1668,49 +1635,6 @@ impl EventKind {
         )
     }
 
-    pub fn from_str_ignore_case(value: &str) -> Option<Self> {
-        match value.to_lowercase().as_str() {
-            "ir" => Some(Self::Ir),
-            "dr" => Some(Self::Dr),
-            "dw" => Some(Self::Dw),
-            "i1mr" => Some(Self::I1mr),
-            "d1mr" => Some(Self::D1mr),
-            "d1mw" => Some(Self::D1mw),
-            "ilmr" => Some(Self::ILmr),
-            "dlmr" => Some(Self::DLmr),
-            "dlmw" => Some(Self::DLmw),
-            "syscount" => Some(Self::SysCount),
-            "systime" => Some(Self::SysTime),
-            "syscputime" => Some(Self::SysCpuTime),
-            "ge" => Some(Self::Ge),
-            "bc" => Some(Self::Bc),
-            "bcm" => Some(Self::Bcm),
-            "bi" => Some(Self::Bi),
-            "bim" => Some(Self::Bim),
-            "ildmr" => Some(Self::ILdmr),
-            "dldmr" => Some(Self::DLdmr),
-            "dldmw" => Some(Self::DLdmw),
-            "accost1" => Some(Self::AcCost1),
-            "accost2" => Some(Self::AcCost2),
-            "sploss1" => Some(Self::SpLoss1),
-            "sploss2" => Some(Self::SpLoss2),
-            "l1hits" => Some(Self::L1hits),
-            "llhits" => Some(Self::LLhits),
-            "ramhits" => Some(Self::RamHits),
-            "totalrw" => Some(Self::TotalRW),
-            "estimatedcycles" => Some(Self::EstimatedCycles),
-            "i1missrate" => Some(Self::I1MissRate),
-            "d1missrate" => Some(Self::D1MissRate),
-            "llimissrate" => Some(Self::LLiMissRate),
-            "lldmissrate" => Some(Self::LLdMissRate),
-            "llmissrate" => Some(Self::LLMissRate),
-            "l1hitrate" => Some(Self::L1HitRate),
-            "llhitrate" => Some(Self::LLHitRate),
-            "ramhitrate" => Some(Self::RamHitRate),
-            _ => None,
-        }
-    }
-
     pub fn to_name(&self) -> String {
         format!("{:?}", *self)
     }
@@ -1738,57 +1662,54 @@ impl Display for EventKind {
     }
 }
 
-/// The event kinds as string as they appear in the callgrind output files
-///
-/// The derived events are here for completeness but don't appear in callgrind output files
-/// directly.
 #[cfg(feature = "runner")]
-impl TryFrom<&str> for EventKind {
-    type Error = anyhow::Error;
+impl FromStr for EventKind {
+    type Err = anyhow::Error;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let metric = match value {
-            "Ir" => Self::Ir,
-            "Dr" => Self::Dr,
-            "Dw" => Self::Dw,
-            "I1mr" => Self::I1mr,
-            "ILmr" => Self::ILmr,
-            "D1mr" => Self::D1mr,
-            "DLmr" => Self::DLmr,
-            "D1mw" => Self::D1mw,
-            "DLmw" => Self::DLmw,
-            "sysCount" => Self::SysCount,
-            "sysTime" => Self::SysTime,
-            "sysCpuTime" => Self::SysCpuTime,
-            "Ge" => Self::Ge,
-            "Bc" => Self::Bc,
-            "Bcm" => Self::Bcm,
-            "Bi" => Self::Bi,
-            "Bim" => Self::Bim,
-            "ILdmr" => Self::ILdmr,
-            "DLdmr" => Self::DLdmr,
-            "DLdmw" => Self::DLdmw,
-            "AcCost1" => Self::AcCost1,
-            "AcCost2" => Self::AcCost2,
-            "SpLoss1" => Self::SpLoss1,
-            "SpLoss2" => Self::SpLoss2,
-            "L1hits" => Self::L1hits,
-            "LLhits" => Self::LLhits,
-            "RamHits" => Self::RamHits,
-            "TotalRW" => Self::TotalRW,
-            "EstimatedCycles" => Self::EstimatedCycles,
-            "I1MissRate" => Self::I1MissRate,
-            "D1MissRate" => Self::D1MissRate,
-            "LLiMissRate" => Self::LLiMissRate,
-            "LLdMissRate" => Self::LLdMissRate,
-            "LLMissRate" => Self::LLMissRate,
-            "L1HitRate" => Self::L1HitRate,
-            "LLHitRate" => Self::LLHitRate,
-            "RamHitRate" => Self::RamHitRate,
-            unknown => return Err(anyhow!("Unknown event type: {unknown}")),
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let lower = string.to_lowercase();
+        let event_kind = match lower.as_str() {
+            "instructions" | "ir" => Self::Ir,
+            "dr" => Self::Dr,
+            "dw" => Self::Dw,
+            "i1mr" => Self::I1mr,
+            "d1mr" => Self::D1mr,
+            "d1mw" => Self::D1mw,
+            "ilmr" => Self::ILmr,
+            "dlmr" => Self::DLmr,
+            "dlmw" => Self::DLmw,
+            "syscount" => Self::SysCount,
+            "systime" => Self::SysTime,
+            "syscputime" => Self::SysCpuTime,
+            "ge" => Self::Ge,
+            "bc" => Self::Bc,
+            "bcm" => Self::Bcm,
+            "bi" => Self::Bi,
+            "bim" => Self::Bim,
+            "ildmr" => Self::ILdmr,
+            "dldmr" => Self::DLdmr,
+            "dldmw" => Self::DLdmw,
+            "accost1" => Self::AcCost1,
+            "accost2" => Self::AcCost2,
+            "sploss1" => Self::SpLoss1,
+            "sploss2" => Self::SpLoss2,
+            "l1hits" => Self::L1hits,
+            "llhits" => Self::LLhits,
+            "ramhits" => Self::RamHits,
+            "totalrw" => Self::TotalRW,
+            "estimatedcycles" => Self::EstimatedCycles,
+            "i1missrate" => Self::I1MissRate,
+            "d1missrate" => Self::D1MissRate,
+            "llimissrate" => Self::LLiMissRate,
+            "lldmissrate" => Self::LLdMissRate,
+            "llmissrate" => Self::LLMissRate,
+            "l1hitrate" => Self::L1HitRate,
+            "llhitrate" => Self::LLHitRate,
+            "ramhitrate" => Self::RamHitRate,
+            _ => return Err(anyhow!("Unknown event kind: {string}")),
         };
 
-        Ok(metric)
+        Ok(event_kind)
     }
 }
 
@@ -2512,7 +2433,7 @@ mod tests {
     fn test_event_kind_from_str_ignore_case() {
         for event_kind in EventKind::iter() {
             let string = format!("{event_kind:?}");
-            let actual = EventKind::from_str_ignore_case(&string);
+            let actual = EventKind::from_str(&string);
             assert_eq!(actual.unwrap(), event_kind);
         }
     }
@@ -2521,7 +2442,7 @@ mod tests {
     fn test_cachegrind_metric_from_str_ignore_case() {
         for metric in CachegrindMetric::iter() {
             let string = format!("{metric:?}");
-            let actual = CachegrindMetric::from_str_ignore_case(&string);
+            let actual = CachegrindMetric::from_str(&string);
             assert_eq!(actual.unwrap(), metric);
         }
     }
