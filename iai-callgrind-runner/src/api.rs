@@ -665,9 +665,60 @@ pub enum DhatMetric {
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub enum DhatMetrics {
+    /// The default group in this order
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{DhatMetrics, DhatMetric};
+    /// # }
+    /// use iai_callgrind::{DhatMetric, DhatMetrics};
+    ///
+    /// let metrics: Vec<DhatMetrics> = vec![
+    ///     DhatMetric::TotalUnits.into(),
+    ///     DhatMetric::TotalEvents.into(),
+    ///     DhatMetric::TotalBytes.into(),
+    ///     DhatMetric::TotalBlocks.into(),
+    ///     DhatMetric::AtTGmaxBytes.into(),
+    ///     DhatMetric::AtTGmaxBlocks.into(),
+    ///     DhatMetric::AtTEndBytes.into(),
+    ///     DhatMetric::AtTEndBlocks.into(),
+    ///     DhatMetric::ReadsBytes.into(),
+    ///     DhatMetric::WritesBytes.into(),
+    /// ];
+    /// ```
     #[default]
     Default,
+
+    /// All [`DhatMetric`]s in this order
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{DhatMetrics, DhatMetric};
+    /// # }
+    /// use iai_callgrind::{DhatMetric, DhatMetrics};
+    ///
+    /// let metrics: Vec<DhatMetrics> = vec![
+    ///     DhatMetrics::Default,
+    ///     DhatMetric::TotalLifetimes.into(),
+    ///     DhatMetric::MaximumBytes.into(),
+    ///     DhatMetric::MaximumBlocks.into(),
+    /// ];
+    /// ```
     All,
+
+    /// A single [`DhatMetric`]
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{DhatMetrics, DhatMetric};
+    /// # }
+    /// use iai_callgrind::{DhatMetric, DhatMetrics};
+    ///
+    /// assert_eq!(
+    ///     DhatMetrics::SingleMetric(DhatMetric::TotalBytes),
+    ///     DhatMetric::TotalBytes.into()
+    /// );
+    /// ```
     SingleMetric(DhatMetric),
 }
 
@@ -678,10 +729,10 @@ pub struct DhatRegressionConfig {
     pub fail_fast: Option<bool>,
 }
 
-/// The `EntryPoint` of a library benchmark
+/// The `EntryPoint` of a benchmark
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub enum EntryPoint {
-    /// Disable the entry point and default toggle entirely
+    /// Disable the entry point
     None,
     /// The default entry point is the benchmark function
     #[default]
@@ -1566,6 +1617,12 @@ impl From<DhatMetrics> for IndexSet<DhatMetric> {
             WritesBytes },
             DhatMetrics::SingleMetric(dhat_metric) => indexset! { dhat_metric },
         }
+    }
+}
+
+impl From<DhatMetric> for DhatMetrics {
+    fn from(value: DhatMetric) -> Self {
+        Self::SingleMetric(value)
     }
 }
 
