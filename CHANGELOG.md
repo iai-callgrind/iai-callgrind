@@ -23,25 +23,96 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+This release includes major and breaking changes.
+
+__Breaking__:
+
+* DHAT is now considered to be fully integrated into Iai-Callgrind and the
+  default entry point in library benchmarks for DHAT is set to the benchmark
+  function similar to callgrind. This changes the metrics of the DHAT output.
+
+In contrast to callgrind, the DHAT default entry point *includes* any
+(de-)allocations in `setup` and/or `teardown` code in order to be able to detect
+the DHAT metrics of the benchmark itself. The inclusion of `setup`/`teardown`
+metrics is a limitation of DHAT and what is possible to reliably extract from
+the output files. Nevertheless, this change allows the metrics to be centered on
+the benchmark function excluding the heap operations of Iai-Callgrind needed to
+setup the benchmark (allocations fluctuating between 2000 - 2500 bytes). More
+importantly, the DHAT metrics are stabilized. This clears the way for setting
+regression limits in the same fashion as it is possible for callgrind.
+Additionally, it is possible to specify additional frames/functions to be
+included/excluded from the DHAT metrics similar to what `--toggle-collect` does
+for callgrind.
+
+__Breaking__:
+
+* Note that in DHAT library benchmarks of multi-threaded/multi-process
+  functions, the threads/subprocesses are not included in the metrics anymore.
+  This is exactly equivalent to the situation in callgrind benchmarks of
+  multi-threaded/multi-process functions and can be solved in the same way with
+  additional `Dhat::frames`.
+
+Also coming with this release: The distinction between soft and hard limits.
+Soft limits are now what was before just "the limits" and describe limits for the
+percentage difference between the "new" and "old" run. Hard limits cap the
+metrics of the "new" run in absolute numbers.
+
+__Breaking__:
+
+* This changes the way command-line arguments like `--callgrind-limits`,
+  `--dhat-limits`, ... are parsed and to be able to disambiguate between soft
+  and hard limits, soft limits have to be suffixed with a `%`.
+
+Soft limit before: `--callgrind-limits='ir=0.0'`<br>
+After:  `--callgrind-limits='ir=0.0%'` or  `--callgrind-limits='ir=0%'`
+
+Hard limits are bare numbers: `--callgrind-limits='ir=10000'`.
+
+Also new: It's possible to specify soft or hard limits for whole groups like
+`--callgrind-limits='@all=5%'`.
+
 ### Added
 
-* `Dhat::entry_point`, `Dhat::frames`
-* Possibility to specify dhat regression limits with `Dhat::limits`,
-  `Dhat::fail_fast` and cli arg `--dhat-limits`
-* New dhat metrics `TotalUnits` and `TotalEvents` for `ad-hoc` mode
-* ([#407](https://github.com/iai-callgrind/iai-callgrind/pull/407)): Add
+* ([#406](https://github.com/iai-callgrind/iai-callgrind/pull/406)): Added the
+  method `Dhat::entry_point` to be able to change the default entry point
+  similar to `Callgrind::entry_point` and `Dhat::frames` to be able to specify
+  additional functions in a similar way to `--toggle-collect` of callgrind.
+* ([#406](https://github.com/iai-callgrind/iai-callgrind/pull/406)): Possibility
+  to specify dhat regression limits with the `Dhat` struct and with the
+  command-line argument `--dhat-limits` or environment variable
+  `IAI_CALLGRIND_DHAT_LIMITS`.
+* ([#406](https://github.com/iai-callgrind/iai-callgrind/pull/406)): New dhat
+  metrics `DhatMetric::TotalUnits` and `DhatMetric::TotalEvents` for dhat
+  `ad-hoc` mode. They are part of the default output format of dhat.
+* ([#407](https://github.com/iai-callgrind/iai-callgrind/pull/407))!: Add
   possibility to specify hard limits in addition to soft limits. This breaks the
   parsing of the `--callgrind-limits`, ... arguments. To disambiguate between
-  hard and soft limits the soft limits have to be suffixed with a `%`.
+  hard and soft limits the soft limits have to be suffixed with a `%`. New
+  methods `Callgrind::soft_limits`, `Callgrind::hard_limits`,
+  `Cachegrind::soft_limits`, `Cachegrind::hard_limits`, `Dhat::soft_limits`,
+  `Dhat::hard_limits`.
+* ([#407](https://github.com/iai-callgrind/iai-callgrind/pull/407)): Add soft or
+  hard limits for whole groups like in `--callgrind-limits='@all=5%'`. The
+  `--help` message for `--callgrind-limits`, ... shows all possible groups.
 
 ### Changed
 
-* Breaking!: Default entry point for dhat is now the benchmark function
+* ([#406](https://github.com/iai-callgrind/iai-callgrind/pull/406))!: In library
+  benchmarks, the default entry point for dhat is now the benchmark function
+  `EntryPoint::Default`. As opposed to callgrind benchmarks, this includes the
+  (de-)allocations/metrics of a `setup` and/or `teardown` function. For binary
+  benchmarks nothing has changed and the default entry point is set to none with
+  `EntryPoint::None`.
+* ([#406](https://github.com/iai-callgrind/iai-callgrind/pull/406)): Improved
+  error message: Changed `Invalid format of key/value pair: '{split}'` to
+  `Invalid format of key=value pair: '{split}'`.
 * ([#407](https://github.com/iai-callgrind/iai-callgrind/pull/407)): Make the
   expanded benchmark function module public with `pub mod` instead of just
-  `mod`.
+  `mod`. This allows putting benchmark functions into modules and adding them
+  into groups outside of this module.
 * ([#407](https://github.com/iai-callgrind/iai-callgrind/pull/407)): Update
-  summary json schema.
+  summary json schema v5.
+* Update direct dependencies: `inferno`, `cc`, `clap`
 
 ### Deprecated
 
@@ -53,11 +124,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
-* Parsing log file in dhat mode `ad-hoc`.
-* Error message from `Failed to split callgrind args` to `Failed to split args`
-  when parsing of --cachegrind-args, --dhat-args, ... failed
-* Error message from `Invalid format of key/value pair: '{split}'` to `Invalid
-  format of key=value pair: '{split}'`
+* ([#406](https://github.com/iai-callgrind/iai-callgrind/pull/406)): Running
+  dhat in `ad-hoc` mode exited with error due to a failed assertion. Parsing the
+  log file in ad-hoc mode now succeeds.
+* ([#406](https://github.com/iai-callgrind/iai-callgrind/pull/406)): Wrong error
+  message `Failed to split callgrind args` when parsing of `--cachegrind-args`,
+  `--dhat-args`, ... It's changed to `Failed to split args`.
 
 ## [0.15.2] - 2025-07-03
 
