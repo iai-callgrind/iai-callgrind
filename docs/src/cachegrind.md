@@ -1,4 +1,4 @@
-# Cachegrind
+# Cachegrind: a high-precision tracing profiler
 
 ## Prerequisites
 

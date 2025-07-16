@@ -1,6 +1,8 @@
 <!-- markdownlint-disable MD041 MD033 -->
 
-# Performance Regressions
+<!-- TODO: Update to soft limits and hard limits -->
+
+# Detecting Performance Regressions
 
 With Iai-Callgrind you can define limits for each event kinds over which a
 performance regression can be assumed. Per default, Iai-Callgrind does not

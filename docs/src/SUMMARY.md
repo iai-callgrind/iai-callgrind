@@ -38,8 +38,9 @@
     - [Low-level api](./benchmarks/binary_benchmarks/low_level.md)
     - [More examples needed?](./benchmarks/binary_benchmarks/examples.md)
 
-- [Performance Regressions](./regressions.md)
+- [Detecting Performance Regressions](./regressions.md)
 - [Cachegrind](./cachegrind.md)
+- [Heap profiling with DHAT](./dhat.md)
 - [Other Valgrind Tools](./tools.md)
 - [Valgrind Client Requests](./client_requests.md)
 - [Callgrind Flamegraphs](./flamegraphs.md)

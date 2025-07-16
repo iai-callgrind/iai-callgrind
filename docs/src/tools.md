@@ -1,13 +1,14 @@
 # Other Valgrind Tools
 
-In addition to the default benchmarks, you can use the Iai-Callgrind framework
-to run other Valgrind profiling tools like `DHAT`, `Massif` and the
-experimental `BBV` but also `Memcheck`, `Helgrind` and `DRD` if you need to
-check memory and thread safety of benchmarked code. See also the [Valgrind User
+In addition to or instead of the default tool `Callgrind`, you can use the
+Iai-Callgrind framework to run other Valgrind profiling tools like
+[`DHAT`](./dhat.md), `Massif` and the experimental `BBV` but also `Memcheck`,
+`Helgrind` and `DRD` if you need to check memory and thread safety of
+benchmarked code. See also the [Valgrind User
 Manual](https://valgrind.org/docs/manual/manual.html) for more details and
 command line arguments. The additional tools can be specified in a
-`LibraryBenchmarkConfig` or `BinaryBenchmarkConfig`. For example to run `DHAT`
-for all library benchmarks in addition to `Callgrind`:
+`LibraryBenchmarkConfig` or `BinaryBenchmarkConfig`. For example to run
+[`DHAT`](./dhat.md) for all library benchmarks in addition to `Callgrind`:
 
 ```rust
 # extern crate iai_callgrind;
@@ -48,9 +49,10 @@ Memcheck::with_args(["--error-exitcode=0"]);
 
 which would restore the default of `0` from valgrind.
 
-## Changing the default tool and the additional tools
+## Changing the default tool and/or additional tools on the command-line
 
 Any valgrind tool can be chosen as default tool for example to check for memory
-leaks in highly performant but unsafe or ffi functions on the fly with
-`--default-tool=memcheck`. If you want to run one or more tools in addition to
-the default tool, you can use `--tools=dhat,massif`.
+leaks in unsafe or ffi functions on the fly with `--default-tool=memcheck` (or
+by setting the environment variable `IAI_CALLGRIND_DEFAULT_TOOL=memcheck`. If
+you want to run one or more tools in addition to the default tool, you can use
+`--tools=dhat,massif` (or `IAI_CALLGRIND_TOOLS=dhat,massif`)

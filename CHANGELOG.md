@@ -23,7 +23,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-This release includes major and breaking changes.
+This release includes breaking changes especially for DHAT explained in more
+detail below.
 
 __Breaking__:
 
