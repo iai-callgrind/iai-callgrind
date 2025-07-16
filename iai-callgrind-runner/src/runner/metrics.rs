@@ -15,11 +15,16 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::summary::Diffs;
-use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind};
+use crate::api::{self, CachegrindMetric, DhatMetric, ErrorMetric, EventKind};
 use crate::util::{to_string_unsigned_short, EitherOrBoth};
 
 pub trait Summarize: Hash + Eq + Clone {
     fn summarize(_: &mut Cow<Metrics<Self>>) {}
+}
+
+pub trait TypeChecker {
+    /// Return true if the `Metric` has the expected metric type
+    fn verify_type(&self, metric: Metric) -> bool;
 }
 
 /// The metric measured by valgrind or derived from one or more other metrics
@@ -93,6 +98,20 @@ impl Metric {
             (a, b) => a / b,
         }
     }
+
+    pub fn is_int(&self) -> bool {
+        match self {
+            Metric::Int(_) => true,
+            Metric::Float(_) => false,
+        }
+    }
+
+    pub fn is_float(&self) -> bool {
+        match self {
+            Metric::Int(_) => false,
+            Metric::Float(_) => true,
+        }
+    }
 }
 
 impl Add for Metric {
@@ -155,6 +174,15 @@ impl From<Metric> for f64 {
         match value {
             Metric::Int(a) => a as f64,
             Metric::Float(a) => a,
+        }
+    }
+}
+
+impl From<api::Metric> for Metric {
+    fn from(value: api::Metric) -> Self {
+        match value {
+            api::Metric::Int(a) => Self::Int(a),
+            api::Metric::Float(f) => Self::Float(f),
         }
     }
 }

@@ -38,7 +38,7 @@ library_benchmark_group!(
 main!(
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()
-            .limits([(EventKind::Ir, 10.0)])
+            .soft_limits([(EventKind::Ir, 10.0)])
             .flamegraph(FlamegraphConfig::default())
         );
     library_benchmark_groups = bench_cache_sim);

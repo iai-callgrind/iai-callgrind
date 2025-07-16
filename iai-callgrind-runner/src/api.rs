@@ -1,8 +1,5 @@
 //! The api contains all elements which the `runner` can understand
 
-// spell-checker: ignore totalunits totalevents totalbytes totalblocks attgmaxbytes
-// spell-checker: ignore attgmaxblocks attendbytes attendblocks readsbytes writesbytes
-// spell-checker: ignore totallifetimes maximumbytes maximumblocks
 use std::ffi::OsString;
 use std::fmt::Display;
 #[cfg(feature = "runner")]
@@ -18,6 +15,8 @@ use std::time::Duration;
 #[cfg(feature = "runner")]
 use anyhow::anyhow;
 #[cfg(feature = "runner")]
+use indexmap::indexset;
+#[cfg(feature = "runner")]
 use indexmap::IndexSet;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
@@ -26,7 +25,11 @@ use serde::{Deserialize, Serialize};
 use strum::{EnumIter, IntoEnumIterator};
 
 #[cfg(feature = "runner")]
+use crate::runner;
+#[cfg(feature = "runner")]
 use crate::runner::metrics::Summarize;
+#[cfg(feature = "runner")]
+use crate::runner::metrics::TypeChecker;
 
 /// The model for the `#[binary_benchmark]` attribute or the equivalent from the low level api
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -329,7 +332,8 @@ pub enum CachegrindMetrics {
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CachegrindRegressionConfig {
-    pub limits: Vec<(CachegrindMetric, f64)>,
+    pub soft_limits: Vec<(CachegrindMetric, f64)>,
+    pub hard_limits: Vec<(CachegrindMetric, Metric)>,
     pub fail_fast: Option<bool>,
 }
 
@@ -574,7 +578,8 @@ pub enum CallgrindMetrics {
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CallgrindRegressionConfig {
-    pub limits: Vec<(EventKind, f64)>,
+    pub soft_limits: Vec<(EventKind, f64)>,
+    pub hard_limits: Vec<(EventKind, Metric)>,
     pub fail_fast: Option<bool>,
 }
 
@@ -624,6 +629,7 @@ pub enum Direction {
 /// The metrics collected by DHAT
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[cfg_attr(feature = "runner", derive(EnumIter))]
 pub enum DhatMetric {
     /// In ad-hoc mode, Total units measured over the entire execution
     TotalUnits,
@@ -657,16 +663,76 @@ pub enum DhatMetric {
     MaximumBlocks,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+pub enum DhatMetrics {
+    /// The default group in this order
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{DhatMetrics, DhatMetric};
+    /// # }
+    /// use iai_callgrind::{DhatMetric, DhatMetrics};
+    ///
+    /// let metrics: Vec<DhatMetrics> = vec![
+    ///     DhatMetric::TotalUnits.into(),
+    ///     DhatMetric::TotalEvents.into(),
+    ///     DhatMetric::TotalBytes.into(),
+    ///     DhatMetric::TotalBlocks.into(),
+    ///     DhatMetric::AtTGmaxBytes.into(),
+    ///     DhatMetric::AtTGmaxBlocks.into(),
+    ///     DhatMetric::AtTEndBytes.into(),
+    ///     DhatMetric::AtTEndBlocks.into(),
+    ///     DhatMetric::ReadsBytes.into(),
+    ///     DhatMetric::WritesBytes.into(),
+    /// ];
+    /// ```
+    #[default]
+    Default,
+
+    /// All [`DhatMetric`]s in this order
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{DhatMetrics, DhatMetric};
+    /// # }
+    /// use iai_callgrind::{DhatMetric, DhatMetrics};
+    ///
+    /// let metrics: Vec<DhatMetrics> = vec![
+    ///     DhatMetrics::Default,
+    ///     DhatMetric::TotalLifetimes.into(),
+    ///     DhatMetric::MaximumBytes.into(),
+    ///     DhatMetric::MaximumBlocks.into(),
+    /// ];
+    /// ```
+    All,
+
+    /// A single [`DhatMetric`]
+    ///
+    /// ```rust
+    /// # pub mod iai_callgrind {
+    /// # pub use iai_callgrind_runner::api::{DhatMetrics, DhatMetric};
+    /// # }
+    /// use iai_callgrind::{DhatMetric, DhatMetrics};
+    ///
+    /// assert_eq!(
+    ///     DhatMetrics::SingleMetric(DhatMetric::TotalBytes),
+    ///     DhatMetric::TotalBytes.into()
+    /// );
+    /// ```
+    SingleMetric(DhatMetric),
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct DhatRegressionConfig {
-    pub limits: Vec<(DhatMetric, f64)>,
+    pub soft_limits: Vec<(DhatMetric, f64)>,
+    pub hard_limits: Vec<(DhatMetric, Metric)>,
     pub fail_fast: Option<bool>,
 }
 
-/// The `EntryPoint` of a library benchmark
+/// The `EntryPoint` of a benchmark
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub enum EntryPoint {
-    /// Disable the entry point and default toggle entirely
+    /// Disable the entry point
     None,
     /// The default entry point is the benchmark function
     #[default]
@@ -701,7 +767,7 @@ pub enum ErrorMetric {
 /// Depending on the options passed to Callgrind, these are the events that Callgrind can produce.
 /// See the [Callgrind
 /// documentation](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options) for details.
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 #[cfg_attr(feature = "runner", derive(EnumIter))]
 pub enum EventKind {
@@ -868,6 +934,23 @@ pub struct LibraryBenchmarkGroups {
     pub has_setup: bool,
     pub has_teardown: bool,
     pub default_tool: ValgrindTool,
+}
+
+/// Used internally to be able to define hard limits for integer and float metrics alike
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum Metric {
+    Int(u64),
+    Float(f64),
+}
+
+#[cfg(feature = "runner")]
+impl From<runner::metrics::Metric> for Metric {
+    fn from(value: runner::metrics::Metric) -> Self {
+        match value {
+            runner::metrics::Metric::Int(a) => Self::Int(a),
+            runner::metrics::Metric::Float(b) => Self::Float(b),
+        }
+    }
 }
 
 /// The configuration values for the output format
@@ -1101,38 +1184,6 @@ impl CachegrindMetric {
         )
     }
 
-    pub fn from_str_ignore_case(value: &str) -> Option<Self> {
-        match value.to_lowercase().as_str() {
-            "ir" => Some(Self::Ir),
-            "dr" => Some(Self::Dr),
-            "dw" => Some(Self::Dw),
-            "i1mr" => Some(Self::I1mr),
-            "ilmr" => Some(Self::ILmr),
-            "d1mr" => Some(Self::D1mr),
-            "dlmr" => Some(Self::DLmr),
-            "d1mw" => Some(Self::D1mw),
-            "dlmw" => Some(Self::DLmw),
-            "bc" => Some(Self::Bc),
-            "bcm" => Some(Self::Bcm),
-            "bi" => Some(Self::Bi),
-            "bim" => Some(Self::Bim),
-            "l1hits" => Some(Self::L1hits),
-            "llhits" => Some(Self::LLhits),
-            "ramhits" => Some(Self::RamHits),
-            "totalrw" => Some(Self::TotalRW),
-            "estimatedcycles" => Some(Self::EstimatedCycles),
-            "i1missrate" => Some(Self::I1MissRate),
-            "d1missrate" => Some(Self::D1MissRate),
-            "llimissrate" => Some(Self::LLiMissRate),
-            "lldmissrate" => Some(Self::LLdMissRate),
-            "llmissrate" => Some(Self::LLMissRate),
-            "l1hitrate" => Some(Self::L1HitRate),
-            "llhitrate" => Some(Self::LLHitRate),
-            "ramhitrate" => Some(Self::RamHitRate),
-            _ => None,
-        }
-    }
-
     pub fn to_name(&self) -> String {
         format!("{:?}", *self)
     }
@@ -1161,38 +1212,39 @@ impl Display for CachegrindMetric {
 }
 
 #[cfg(feature = "runner")]
-impl TryFrom<&str> for CachegrindMetric {
-    type Error = anyhow::Error;
+impl FromStr for CachegrindMetric {
+    type Err = anyhow::Error;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let metric = match value {
-            "Ir" => Self::Ir,
-            "Dr" => Self::Dr,
-            "Dw" => Self::Dw,
-            "I1mr" => Self::I1mr,
-            "ILmr" => Self::ILmr,
-            "D1mr" => Self::D1mr,
-            "DLmr" => Self::DLmr,
-            "D1mw" => Self::D1mw,
-            "DLmw" => Self::DLmw,
-            "Bc" => Self::Bc,
-            "Bcm" => Self::Bcm,
-            "Bi" => Self::Bi,
-            "Bim" => Self::Bim,
-            "L1hits" => Self::L1hits,
-            "LLhits" => Self::LLhits,
-            "RamHits" => Self::RamHits,
-            "TotalRW" => Self::TotalRW,
-            "EstimatedCycles" => Self::EstimatedCycles,
-            "I1MissRate" => Self::I1MissRate,
-            "D1MissRate" => Self::D1MissRate,
-            "LLiMissRate" => Self::LLiMissRate,
-            "LLdMissRate" => Self::LLdMissRate,
-            "LLMissRate" => Self::LLMissRate,
-            "L1HitRate" => Self::L1HitRate,
-            "LLHitRate" => Self::LLHitRate,
-            "RamHitRate" => Self::RamHitRate,
-            unknown => return Err(anyhow!("Unknown event type: {unknown}")),
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let lower = string.to_lowercase();
+        let metric = match lower.as_str() {
+            "instructions" | "ir" => Self::Ir,
+            "dr" => Self::Dr,
+            "dw" => Self::Dw,
+            "i1mr" => Self::I1mr,
+            "ilmr" => Self::ILmr,
+            "d1mr" => Self::D1mr,
+            "dlmr" => Self::DLmr,
+            "d1mw" => Self::D1mw,
+            "dlmw" => Self::DLmw,
+            "bc" => Self::Bc,
+            "bcm" => Self::Bcm,
+            "bi" => Self::Bi,
+            "bim" => Self::Bim,
+            "l1hits" => Self::L1hits,
+            "llhits" => Self::LLhits,
+            "ramhits" => Self::RamHits,
+            "totalrw" => Self::TotalRW,
+            "estimatedcycles" => Self::EstimatedCycles,
+            "i1missrate" => Self::I1MissRate,
+            "d1missrate" => Self::D1MissRate,
+            "llimissrate" => Self::LLiMissRate,
+            "lldmissrate" => Self::LLdMissRate,
+            "llmissrate" => Self::LLMissRate,
+            "l1hitrate" => Self::L1HitRate,
+            "llhitrate" => Self::LLHitRate,
+            "ramhitrate" => Self::RamHitRate,
+            _ => return Err(anyhow!("Unknown cachegrind metric: '{string}'")),
         };
 
         Ok(metric)
@@ -1202,6 +1254,73 @@ impl TryFrom<&str> for CachegrindMetric {
 impl From<CachegrindMetric> for CachegrindMetrics {
     fn from(value: CachegrindMetric) -> Self {
         Self::SingleEvent(value)
+    }
+}
+
+impl From<CachegrindMetric> for EventKind {
+    fn from(value: CachegrindMetric) -> Self {
+        match value {
+            CachegrindMetric::Ir => Self::Ir,
+            CachegrindMetric::Dr => Self::Dr,
+            CachegrindMetric::Dw => Self::Dw,
+            CachegrindMetric::I1mr => Self::I1mr,
+            CachegrindMetric::D1mr => Self::D1mr,
+            CachegrindMetric::D1mw => Self::D1mw,
+            CachegrindMetric::ILmr => Self::ILmr,
+            CachegrindMetric::DLmr => Self::DLmr,
+            CachegrindMetric::DLmw => Self::DLmw,
+            CachegrindMetric::L1hits => Self::L1hits,
+            CachegrindMetric::LLhits => Self::LLhits,
+            CachegrindMetric::RamHits => Self::RamHits,
+            CachegrindMetric::TotalRW => Self::TotalRW,
+            CachegrindMetric::EstimatedCycles => Self::EstimatedCycles,
+            CachegrindMetric::Bc => Self::Bc,
+            CachegrindMetric::Bcm => Self::Bcm,
+            CachegrindMetric::Bi => Self::Bi,
+            CachegrindMetric::Bim => Self::Bim,
+            CachegrindMetric::I1MissRate => Self::I1MissRate,
+            CachegrindMetric::D1MissRate => Self::D1MissRate,
+            CachegrindMetric::LLiMissRate => Self::LLiMissRate,
+            CachegrindMetric::LLdMissRate => Self::LLdMissRate,
+            CachegrindMetric::LLMissRate => Self::LLMissRate,
+            CachegrindMetric::L1HitRate => Self::L1HitRate,
+            CachegrindMetric::LLHitRate => Self::LLHitRate,
+            CachegrindMetric::RamHitRate => Self::RamHitRate,
+        }
+    }
+}
+
+#[cfg(feature = "runner")]
+impl TypeChecker for CachegrindMetric {
+    fn verify_type(&self, metric: runner::metrics::Metric) -> bool {
+        match self {
+            CachegrindMetric::Ir
+            | CachegrindMetric::Dr
+            | CachegrindMetric::Dw
+            | CachegrindMetric::I1mr
+            | CachegrindMetric::D1mr
+            | CachegrindMetric::D1mw
+            | CachegrindMetric::ILmr
+            | CachegrindMetric::DLmr
+            | CachegrindMetric::DLmw
+            | CachegrindMetric::L1hits
+            | CachegrindMetric::LLhits
+            | CachegrindMetric::RamHits
+            | CachegrindMetric::TotalRW
+            | CachegrindMetric::EstimatedCycles
+            | CachegrindMetric::Bc
+            | CachegrindMetric::Bcm
+            | CachegrindMetric::Bi
+            | CachegrindMetric::Bim => metric.is_int(),
+            CachegrindMetric::I1MissRate
+            | CachegrindMetric::LLiMissRate
+            | CachegrindMetric::D1MissRate
+            | CachegrindMetric::LLdMissRate
+            | CachegrindMetric::LLMissRate
+            | CachegrindMetric::L1HitRate
+            | CachegrindMetric::LLHitRate
+            | CachegrindMetric::RamHitRate => metric.is_float(),
+        }
     }
 }
 
@@ -1273,325 +1392,27 @@ impl From<CachegrindMetrics> for IndexSet<CachegrindMetric> {
     }
 }
 
-impl From<CachegrindMetric> for EventKind {
-    fn from(value: CachegrindMetric) -> Self {
-        match value {
-            CachegrindMetric::Ir => Self::Ir,
-            CachegrindMetric::Dr => Self::Dr,
-            CachegrindMetric::Dw => Self::Dw,
-            CachegrindMetric::I1mr => Self::I1mr,
-            CachegrindMetric::D1mr => Self::D1mr,
-            CachegrindMetric::D1mw => Self::D1mw,
-            CachegrindMetric::ILmr => Self::ILmr,
-            CachegrindMetric::DLmr => Self::DLmr,
-            CachegrindMetric::DLmw => Self::DLmw,
-            CachegrindMetric::L1hits => Self::L1hits,
-            CachegrindMetric::LLhits => Self::LLhits,
-            CachegrindMetric::RamHits => Self::RamHits,
-            CachegrindMetric::TotalRW => Self::TotalRW,
-            CachegrindMetric::EstimatedCycles => Self::EstimatedCycles,
-            CachegrindMetric::Bc => Self::Bc,
-            CachegrindMetric::Bcm => Self::Bcm,
-            CachegrindMetric::Bi => Self::Bi,
-            CachegrindMetric::Bim => Self::Bim,
-            CachegrindMetric::I1MissRate => Self::I1MissRate,
-            CachegrindMetric::D1MissRate => Self::D1MissRate,
-            CachegrindMetric::LLiMissRate => Self::LLiMissRate,
-            CachegrindMetric::LLdMissRate => Self::LLdMissRate,
-            CachegrindMetric::LLMissRate => Self::LLMissRate,
-            CachegrindMetric::L1HitRate => Self::L1HitRate,
-            CachegrindMetric::LLHitRate => Self::LLHitRate,
-            CachegrindMetric::RamHitRate => Self::RamHitRate,
-        }
-    }
-}
-
-impl Default for DelayKind {
-    fn default() -> Self {
-        Self::DurationElapse(Duration::from_secs(60))
-    }
-}
-
-impl Default for Direction {
-    fn default() -> Self {
-        Self::BottomToTop
-    }
-}
-
-impl DhatMetric {
-    pub fn from_str_ignore_case(value: &str) -> Option<Self> {
-        let metric = match value.to_lowercase().as_str() {
-            "totalunits" => Self::TotalUnits,
-            "totalevents" => Self::TotalEvents,
-            "totalbytes" => Self::TotalBytes,
-            "totalblocks" => Self::TotalBlocks,
-            "attgmaxbytes" => Self::AtTGmaxBytes,
-            "attgmaxblocks" => Self::AtTGmaxBlocks,
-            "attendbytes" => Self::AtTEndBytes,
-            "attendblocks" => Self::AtTEndBlocks,
-            "readsbytes" => Self::ReadsBytes,
-            "writesbytes" => Self::WritesBytes,
-            "totallifetimes" => Self::TotalLifetimes,
-            "maximumbytes" => Self::MaximumBytes,
-            "maximumblocks" => Self::MaximumBlocks,
-            _ => return None,
-        };
-
-        Some(metric)
-    }
-}
-
-impl Display for DhatMetric {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DhatMetric::TotalUnits => f.write_str("Total units"),
-            DhatMetric::TotalEvents => f.write_str("Total events"),
-            DhatMetric::TotalBytes => f.write_str("Total bytes"),
-            DhatMetric::TotalBlocks => f.write_str("Total blocks"),
-            DhatMetric::AtTGmaxBytes => f.write_str("At t-gmax bytes"),
-            DhatMetric::AtTGmaxBlocks => f.write_str("At t-gmax blocks"),
-            DhatMetric::AtTEndBytes => f.write_str("At t-end bytes"),
-            DhatMetric::AtTEndBlocks => f.write_str("At t-end blocks"),
-            DhatMetric::ReadsBytes => f.write_str("Reads bytes"),
-            DhatMetric::WritesBytes => f.write_str("Writes bytes"),
-            DhatMetric::TotalLifetimes => f.write_str("Total lifetimes"),
-            DhatMetric::MaximumBytes => f.write_str("Maximum bytes"),
-            DhatMetric::MaximumBlocks => f.write_str("Maximum blocks"),
-        }
-    }
-}
-
 #[cfg(feature = "runner")]
-impl Summarize for DhatMetric {}
+impl FromStr for CachegrindMetrics {
+    type Err = anyhow::Error;
 
-impl<T> From<T> for EntryPoint
-where
-    T: Into<String>,
-{
-    fn from(value: T) -> Self {
-        EntryPoint::Custom(value.into())
-    }
-}
-
-#[cfg(feature = "runner")]
-impl Summarize for ErrorMetric {}
-
-impl Display for ErrorMetric {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ErrorMetric::Errors => f.write_str("Errors"),
-            ErrorMetric::Contexts => f.write_str("Contexts"),
-            ErrorMetric::SuppressedErrors => f.write_str("Suppressed Errors"),
-            ErrorMetric::SuppressedContexts => f.write_str("Suppressed Contexts"),
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let lower = string.to_lowercase();
+        match lower.as_str().strip_prefix('@') {
+            Some(suffix) => match suffix {
+                "default" | "def" => Ok(Self::Default),
+                "all" => Ok(Self::All),
+                "cachemisses" | "misses" | "ms" => Ok(Self::CacheMisses),
+                "cachemissrates" | "missrates" | "mr" => Ok(Self::CacheMissRates),
+                "cachehits" | "hits" | "hs" => Ok(Self::CacheHits),
+                "cachehitrates" | "hitrates" | "hr" => Ok(Self::CacheHitRates),
+                "cachesim" | "cs" => Ok(Self::CacheSim),
+                "branchsim" | "bs" => Ok(Self::BranchSim),
+                _ => Err(anyhow!("Invalid cachegrind metric group: '{string}")),
+            },
+            // Use `string` instead of `lower` for the correct error message
+            None => CachegrindMetric::from_str(string).map(Self::SingleEvent),
         }
-    }
-}
-
-impl EventKind {
-    /// Return true if this `EventKind` is a derived event
-    ///
-    /// Derived events are calculated from Callgrind's native event types. See also
-    /// [`crate::runner::callgrind::model::Metrics::make_summary`]. Currently all derived events
-    /// are:
-    ///
-    /// * [`EventKind::L1hits`]
-    /// * [`EventKind::LLhits`]
-    /// * [`EventKind::RamHits`]
-    /// * [`EventKind::TotalRW`]
-    /// * [`EventKind::EstimatedCycles`]
-    /// * [`EventKind::I1MissRate`]
-    /// * [`EventKind::D1MissRate`]
-    /// * [`EventKind::LLiMissRate`]
-    /// * [`EventKind::LLdMissRate`]
-    /// * [`EventKind::LLMissRate`]
-    /// * [`EventKind::L1HitRate`]
-    /// * [`EventKind::LLHitRate`]
-    /// * [`EventKind::RamHitRate`]
-    pub fn is_derived(&self) -> bool {
-        matches!(
-            self,
-            Self::L1hits
-                | Self::LLhits
-                | Self::RamHits
-                | Self::TotalRW
-                | Self::EstimatedCycles
-                | Self::I1MissRate
-                | Self::D1MissRate
-                | Self::LLiMissRate
-                | Self::LLdMissRate
-                | Self::LLMissRate
-                | Self::L1HitRate
-                | Self::LLHitRate
-                | Self::RamHitRate
-        )
-    }
-
-    pub fn from_str_ignore_case(value: &str) -> Option<Self> {
-        match value.to_lowercase().as_str() {
-            "ir" => Some(Self::Ir),
-            "dr" => Some(Self::Dr),
-            "dw" => Some(Self::Dw),
-            "i1mr" => Some(Self::I1mr),
-            "d1mr" => Some(Self::D1mr),
-            "d1mw" => Some(Self::D1mw),
-            "ilmr" => Some(Self::ILmr),
-            "dlmr" => Some(Self::DLmr),
-            "dlmw" => Some(Self::DLmw),
-            "syscount" => Some(Self::SysCount),
-            "systime" => Some(Self::SysTime),
-            "syscputime" => Some(Self::SysCpuTime),
-            "ge" => Some(Self::Ge),
-            "bc" => Some(Self::Bc),
-            "bcm" => Some(Self::Bcm),
-            "bi" => Some(Self::Bi),
-            "bim" => Some(Self::Bim),
-            "ildmr" => Some(Self::ILdmr),
-            "dldmr" => Some(Self::DLdmr),
-            "dldmw" => Some(Self::DLdmw),
-            "accost1" => Some(Self::AcCost1),
-            "accost2" => Some(Self::AcCost2),
-            "sploss1" => Some(Self::SpLoss1),
-            "sploss2" => Some(Self::SpLoss2),
-            "l1hits" => Some(Self::L1hits),
-            "llhits" => Some(Self::LLhits),
-            "ramhits" => Some(Self::RamHits),
-            "totalrw" => Some(Self::TotalRW),
-            "estimatedcycles" => Some(Self::EstimatedCycles),
-            "i1missrate" => Some(Self::I1MissRate),
-            "d1missrate" => Some(Self::D1MissRate),
-            "llimissrate" => Some(Self::LLiMissRate),
-            "lldmissrate" => Some(Self::LLdMissRate),
-            "llmissrate" => Some(Self::LLMissRate),
-            "l1hitrate" => Some(Self::L1HitRate),
-            "llhitrate" => Some(Self::LLHitRate),
-            "ramhitrate" => Some(Self::RamHitRate),
-            _ => None,
-        }
-    }
-
-    pub fn to_name(&self) -> String {
-        format!("{:?}", *self)
-    }
-}
-
-impl Display for EventKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Ir => f.write_str("Instructions"),
-            Self::L1hits => f.write_str("L1 Hits"),
-            Self::LLhits => f.write_str("LL Hits"),
-            Self::RamHits => f.write_str("RAM Hits"),
-            Self::TotalRW => f.write_str("Total read+write"),
-            Self::EstimatedCycles => f.write_str("Estimated Cycles"),
-            Self::I1MissRate => f.write_str("I1 Miss Rate"),
-            Self::D1MissRate => f.write_str("D1 Miss Rate"),
-            Self::LLiMissRate => f.write_str("LLi Miss Rate"),
-            Self::LLdMissRate => f.write_str("LLd Miss Rate"),
-            Self::LLMissRate => f.write_str("LL Miss Rate"),
-            Self::L1HitRate => f.write_str("L1 Hit Rate"),
-            Self::LLHitRate => f.write_str("LL Hit Rate"),
-            Self::RamHitRate => f.write_str("RAM Hit Rate"),
-            _ => write!(f, "{self:?}"),
-        }
-    }
-}
-
-/// The event kinds as string as they appear in the callgrind output files
-///
-/// The derived events are here for completeness but don't appear in callgrind output files
-/// directly.
-#[cfg(feature = "runner")]
-impl TryFrom<&str> for EventKind {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let metric = match value {
-            "Ir" => Self::Ir,
-            "Dr" => Self::Dr,
-            "Dw" => Self::Dw,
-            "I1mr" => Self::I1mr,
-            "ILmr" => Self::ILmr,
-            "D1mr" => Self::D1mr,
-            "DLmr" => Self::DLmr,
-            "D1mw" => Self::D1mw,
-            "DLmw" => Self::DLmw,
-            "sysCount" => Self::SysCount,
-            "sysTime" => Self::SysTime,
-            "sysCpuTime" => Self::SysCpuTime,
-            "Ge" => Self::Ge,
-            "Bc" => Self::Bc,
-            "Bcm" => Self::Bcm,
-            "Bi" => Self::Bi,
-            "Bim" => Self::Bim,
-            "ILdmr" => Self::ILdmr,
-            "DLdmr" => Self::DLdmr,
-            "DLdmw" => Self::DLdmw,
-            "AcCost1" => Self::AcCost1,
-            "AcCost2" => Self::AcCost2,
-            "SpLoss1" => Self::SpLoss1,
-            "SpLoss2" => Self::SpLoss2,
-            "L1hits" => Self::L1hits,
-            "LLhits" => Self::LLhits,
-            "RamHits" => Self::RamHits,
-            "TotalRW" => Self::TotalRW,
-            "EstimatedCycles" => Self::EstimatedCycles,
-            "I1MissRate" => Self::I1MissRate,
-            "D1MissRate" => Self::D1MissRate,
-            "LLiMissRate" => Self::LLiMissRate,
-            "LLdMissRate" => Self::LLdMissRate,
-            "LLMissRate" => Self::LLMissRate,
-            "L1HitRate" => Self::L1HitRate,
-            "LLHitRate" => Self::LLHitRate,
-            "RamHitRate" => Self::RamHitRate,
-            unknown => return Err(anyhow!("Unknown event type: {unknown}")),
-        };
-
-        Ok(metric)
-    }
-}
-
-impl LibraryBenchmarkConfig {
-    #[must_use]
-    pub fn update_from_all<'a, T>(mut self, others: T) -> Self
-    where
-        T: IntoIterator<Item = Option<&'a Self>>,
-    {
-        for other in others.into_iter().flatten() {
-            self.default_tool = update_option(&self.default_tool, &other.default_tool);
-            self.env_clear = update_option(&self.env_clear, &other.env_clear);
-
-            self.valgrind_args
-                .extend_ignore_flag(other.valgrind_args.0.iter());
-
-            self.envs.extend_from_slice(&other.envs);
-            if let Some(other_tools) = &other.tools_override {
-                self.tools = other_tools.clone();
-            } else if !other.tools.is_empty() {
-                self.tools.update_from_other(&other.tools);
-            } else {
-                // do nothing
-            }
-
-            self.output_format = update_option(&self.output_format, &other.output_format);
-        }
-        self
-    }
-
-    pub fn resolve_envs(&self) -> Vec<(OsString, OsString)> {
-        self.envs
-            .iter()
-            .filter_map(|(key, value)| match value {
-                Some(value) => Some((key.clone(), value.clone())),
-                None => std::env::var_os(key).map(|value| (key.clone(), value)),
-            })
-            .collect()
-    }
-
-    pub fn collect_envs(&self) -> Vec<(OsString, OsString)> {
-        self.envs
-            .iter()
-            .filter_map(|(key, option)| option.as_ref().map(|value| (key.clone(), value.clone())))
-            .collect()
     }
 }
 
@@ -1677,6 +1498,391 @@ impl From<CallgrindMetrics> for IndexSet<EventKind> {
         }
 
         event_kinds
+    }
+}
+
+#[cfg(feature = "runner")]
+impl FromStr for CallgrindMetrics {
+    type Err = anyhow::Error;
+
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let lower = string.to_lowercase();
+        match lower.as_str().strip_prefix('@') {
+            Some(suffix) => match suffix {
+                "default" | "def" => Ok(Self::Default),
+                "all" => Ok(Self::All),
+                "cachemisses" | "misses" | "ms" => Ok(Self::CacheMisses),
+                "cachemissrates" | "missrates" | "mr" => Ok(Self::CacheMissRates),
+                "cachehits" | "hits" | "hs" => Ok(Self::CacheHits),
+                "cachehitrates" | "hitrates" | "hr" => Ok(Self::CacheHitRates),
+                "cachesim" | "cs" => Ok(Self::CacheSim),
+                "cacheuse" | "cu" => Ok(Self::CacheUse),
+                "systemcalls" | "syscalls" | "sc" => Ok(Self::SystemCalls),
+                "branchsim" | "bs" => Ok(Self::BranchSim),
+                "writebackbehaviour" | "writeback" | "wb" => Ok(Self::WriteBackBehaviour),
+                _ => Err(anyhow!("Invalid event group: '{string}")),
+            },
+            // Keep the `string` instead of the more efficient `lower` to produce the correct error
+            // message in `EventKind::from_str`
+            None => EventKind::from_str(string).map(Self::SingleEvent),
+        }
+    }
+}
+
+impl Default for DelayKind {
+    fn default() -> Self {
+        Self::DurationElapse(Duration::from_secs(60))
+    }
+}
+
+impl Default for Direction {
+    fn default() -> Self {
+        Self::BottomToTop
+    }
+}
+
+impl Display for DhatMetric {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DhatMetric::TotalUnits => f.write_str("Total units"),
+            DhatMetric::TotalEvents => f.write_str("Total events"),
+            DhatMetric::TotalBytes => f.write_str("Total bytes"),
+            DhatMetric::TotalBlocks => f.write_str("Total blocks"),
+            DhatMetric::AtTGmaxBytes => f.write_str("At t-gmax bytes"),
+            DhatMetric::AtTGmaxBlocks => f.write_str("At t-gmax blocks"),
+            DhatMetric::AtTEndBytes => f.write_str("At t-end bytes"),
+            DhatMetric::AtTEndBlocks => f.write_str("At t-end blocks"),
+            DhatMetric::ReadsBytes => f.write_str("Reads bytes"),
+            DhatMetric::WritesBytes => f.write_str("Writes bytes"),
+            DhatMetric::TotalLifetimes => f.write_str("Total lifetimes"),
+            DhatMetric::MaximumBytes => f.write_str("Maximum bytes"),
+            DhatMetric::MaximumBlocks => f.write_str("Maximum blocks"),
+        }
+    }
+}
+
+#[cfg(feature = "runner")]
+impl FromStr for DhatMetric {
+    type Err = anyhow::Error;
+
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let lower = string.to_lowercase();
+        let metric = match lower.as_str() {
+            "totalunits" | "tun" => Self::TotalUnits,
+            "totalevents" | "tev" => Self::TotalEvents,
+            "totalbytes" | "tb" => Self::TotalBytes,
+            "totalblocks" | "tbk" => Self::TotalBlocks,
+            "attgmaxbytes" | "gb" => Self::AtTGmaxBytes,
+            "attgmaxblocks" | "gbk" => Self::AtTGmaxBlocks,
+            "attendbytes" | "eb" => Self::AtTEndBytes,
+            "attendblocks" | "ebk" => Self::AtTEndBlocks,
+            "readsbytes" | "rb" => Self::ReadsBytes,
+            "writesbytes" | "wb" => Self::WritesBytes,
+            "totallifetimes" | "tl" => Self::TotalLifetimes,
+            "maximumbytes" | "mb" => Self::MaximumBytes,
+            "maximumblocks" | "mbk" => Self::MaximumBlocks,
+            _ => return Err(anyhow!("Unknown dhat metric: '{string}'")),
+        };
+
+        Ok(metric)
+    }
+}
+
+#[cfg(feature = "runner")]
+impl Summarize for DhatMetric {}
+
+#[cfg(feature = "runner")]
+impl TypeChecker for DhatMetric {
+    fn verify_type(&self, metric: runner::metrics::Metric) -> bool {
+        metric.is_int()
+    }
+}
+
+#[cfg(feature = "runner")]
+impl From<DhatMetrics> for IndexSet<DhatMetric> {
+    fn from(value: DhatMetrics) -> Self {
+        use DhatMetric::*;
+        match value {
+            DhatMetrics::All => DhatMetric::iter().collect(),
+            DhatMetrics::Default => indexset! {
+            TotalUnits,
+            TotalEvents,
+            TotalBytes,
+            TotalBlocks,
+            AtTGmaxBytes,
+            AtTGmaxBlocks,
+            AtTEndBytes,
+            AtTEndBlocks,
+            ReadsBytes,
+            WritesBytes },
+            DhatMetrics::SingleMetric(dhat_metric) => indexset! { dhat_metric },
+        }
+    }
+}
+
+impl From<DhatMetric> for DhatMetrics {
+    fn from(value: DhatMetric) -> Self {
+        Self::SingleMetric(value)
+    }
+}
+
+#[cfg(feature = "runner")]
+impl FromStr for DhatMetrics {
+    type Err = anyhow::Error;
+
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let lower = string.to_lowercase();
+        match lower.as_str().strip_prefix('@') {
+            Some(suffix) => match suffix {
+                "default" | "def" => Ok(Self::Default),
+                "all" => Ok(Self::All),
+                _ => Err(anyhow!("Invalid dhat metrics group: '{string}")),
+            },
+            // Use `string` instead of `lower` for the correct error message
+            None => DhatMetric::from_str(string).map(Self::SingleMetric),
+        }
+    }
+}
+
+impl<T> From<T> for EntryPoint
+where
+    T: Into<String>,
+{
+    fn from(value: T) -> Self {
+        EntryPoint::Custom(value.into())
+    }
+}
+
+#[cfg(feature = "runner")]
+impl Summarize for ErrorMetric {}
+
+impl Display for ErrorMetric {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ErrorMetric::Errors => f.write_str("Errors"),
+            ErrorMetric::Contexts => f.write_str("Contexts"),
+            ErrorMetric::SuppressedErrors => f.write_str("Suppressed Errors"),
+            ErrorMetric::SuppressedContexts => f.write_str("Suppressed Contexts"),
+        }
+    }
+}
+
+impl EventKind {
+    /// Return true if this `EventKind` is a derived event
+    ///
+    /// Derived events are calculated from Callgrind's native event types. See also
+    /// [`crate::runner::callgrind::model::Metrics::make_summary`]. Currently all derived events
+    /// are:
+    ///
+    /// * [`EventKind::L1hits`]
+    /// * [`EventKind::LLhits`]
+    /// * [`EventKind::RamHits`]
+    /// * [`EventKind::TotalRW`]
+    /// * [`EventKind::EstimatedCycles`]
+    /// * [`EventKind::I1MissRate`]
+    /// * [`EventKind::D1MissRate`]
+    /// * [`EventKind::LLiMissRate`]
+    /// * [`EventKind::LLdMissRate`]
+    /// * [`EventKind::LLMissRate`]
+    /// * [`EventKind::L1HitRate`]
+    /// * [`EventKind::LLHitRate`]
+    /// * [`EventKind::RamHitRate`]
+    pub fn is_derived(&self) -> bool {
+        matches!(
+            self,
+            Self::L1hits
+                | Self::LLhits
+                | Self::RamHits
+                | Self::TotalRW
+                | Self::EstimatedCycles
+                | Self::I1MissRate
+                | Self::D1MissRate
+                | Self::LLiMissRate
+                | Self::LLdMissRate
+                | Self::LLMissRate
+                | Self::L1HitRate
+                | Self::LLHitRate
+                | Self::RamHitRate
+        )
+    }
+
+    pub fn to_name(&self) -> String {
+        format!("{:?}", *self)
+    }
+}
+
+impl Display for EventKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ir => f.write_str("Instructions"),
+            Self::L1hits => f.write_str("L1 Hits"),
+            Self::LLhits => f.write_str("LL Hits"),
+            Self::RamHits => f.write_str("RAM Hits"),
+            Self::TotalRW => f.write_str("Total read+write"),
+            Self::EstimatedCycles => f.write_str("Estimated Cycles"),
+            Self::I1MissRate => f.write_str("I1 Miss Rate"),
+            Self::D1MissRate => f.write_str("D1 Miss Rate"),
+            Self::LLiMissRate => f.write_str("LLi Miss Rate"),
+            Self::LLdMissRate => f.write_str("LLd Miss Rate"),
+            Self::LLMissRate => f.write_str("LL Miss Rate"),
+            Self::L1HitRate => f.write_str("L1 Hit Rate"),
+            Self::LLHitRate => f.write_str("LL Hit Rate"),
+            Self::RamHitRate => f.write_str("RAM Hit Rate"),
+            _ => write!(f, "{self:?}"),
+        }
+    }
+}
+
+#[cfg(feature = "runner")]
+impl FromStr for EventKind {
+    type Err = anyhow::Error;
+
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let lower = string.to_lowercase();
+        let event_kind = match lower.as_str() {
+            "instructions" | "ir" => Self::Ir,
+            "dr" => Self::Dr,
+            "dw" => Self::Dw,
+            "i1mr" => Self::I1mr,
+            "d1mr" => Self::D1mr,
+            "d1mw" => Self::D1mw,
+            "ilmr" => Self::ILmr,
+            "dlmr" => Self::DLmr,
+            "dlmw" => Self::DLmw,
+            "syscount" => Self::SysCount,
+            "systime" => Self::SysTime,
+            "syscputime" => Self::SysCpuTime,
+            "ge" => Self::Ge,
+            "bc" => Self::Bc,
+            "bcm" => Self::Bcm,
+            "bi" => Self::Bi,
+            "bim" => Self::Bim,
+            "ildmr" => Self::ILdmr,
+            "dldmr" => Self::DLdmr,
+            "dldmw" => Self::DLdmw,
+            "accost1" => Self::AcCost1,
+            "accost2" => Self::AcCost2,
+            "sploss1" => Self::SpLoss1,
+            "sploss2" => Self::SpLoss2,
+            "l1hits" => Self::L1hits,
+            "llhits" => Self::LLhits,
+            "ramhits" => Self::RamHits,
+            "totalrw" => Self::TotalRW,
+            "estimatedcycles" => Self::EstimatedCycles,
+            "i1missrate" => Self::I1MissRate,
+            "d1missrate" => Self::D1MissRate,
+            "llimissrate" => Self::LLiMissRate,
+            "lldmissrate" => Self::LLdMissRate,
+            "llmissrate" => Self::LLMissRate,
+            "l1hitrate" => Self::L1HitRate,
+            "llhitrate" => Self::LLHitRate,
+            "ramhitrate" => Self::RamHitRate,
+            _ => return Err(anyhow!("Unknown event kind: '{string}'")),
+        };
+
+        Ok(event_kind)
+    }
+}
+
+#[cfg(feature = "runner")]
+impl TypeChecker for EventKind {
+    fn verify_type(&self, metric: runner::metrics::Metric) -> bool {
+        match self {
+            EventKind::Ir
+            | EventKind::Dr
+            | EventKind::Dw
+            | EventKind::I1mr
+            | EventKind::D1mr
+            | EventKind::D1mw
+            | EventKind::ILmr
+            | EventKind::DLmr
+            | EventKind::DLmw
+            | EventKind::L1hits
+            | EventKind::LLhits
+            | EventKind::RamHits
+            | EventKind::TotalRW
+            | EventKind::EstimatedCycles
+            | EventKind::SysCount
+            | EventKind::SysTime
+            | EventKind::SysCpuTime
+            | EventKind::Ge
+            | EventKind::Bc
+            | EventKind::Bcm
+            | EventKind::Bi
+            | EventKind::Bim
+            | EventKind::ILdmr
+            | EventKind::DLdmr
+            | EventKind::DLdmw
+            | EventKind::AcCost1
+            | EventKind::AcCost2
+            | EventKind::SpLoss1
+            | EventKind::SpLoss2 => metric.is_int(),
+            EventKind::I1MissRate
+            | EventKind::LLiMissRate
+            | EventKind::D1MissRate
+            | EventKind::LLdMissRate
+            | EventKind::LLMissRate
+            | EventKind::L1HitRate
+            | EventKind::LLHitRate
+            | EventKind::RamHitRate => metric.is_float(),
+        }
+    }
+}
+
+impl LibraryBenchmarkConfig {
+    #[must_use]
+    pub fn update_from_all<'a, T>(mut self, others: T) -> Self
+    where
+        T: IntoIterator<Item = Option<&'a Self>>,
+    {
+        for other in others.into_iter().flatten() {
+            self.default_tool = update_option(&self.default_tool, &other.default_tool);
+            self.env_clear = update_option(&self.env_clear, &other.env_clear);
+
+            self.valgrind_args
+                .extend_ignore_flag(other.valgrind_args.0.iter());
+
+            self.envs.extend_from_slice(&other.envs);
+            if let Some(other_tools) = &other.tools_override {
+                self.tools = other_tools.clone();
+            } else if !other.tools.is_empty() {
+                self.tools.update_from_other(&other.tools);
+            } else {
+                // do nothing
+            }
+
+            self.output_format = update_option(&self.output_format, &other.output_format);
+        }
+        self
+    }
+
+    pub fn resolve_envs(&self) -> Vec<(OsString, OsString)> {
+        self.envs
+            .iter()
+            .filter_map(|(key, value)| match value {
+                Some(value) => Some((key.clone(), value.clone())),
+                None => std::env::var_os(key).map(|value| (key.clone(), value)),
+            })
+            .collect()
+    }
+
+    pub fn collect_envs(&self) -> Vec<(OsString, OsString)> {
+        self.envs
+            .iter()
+            .filter_map(|(key, option)| option.as_ref().map(|value| (key.clone(), value.clone())))
+            .collect()
+    }
+}
+
+impl From<f64> for Metric {
+    fn from(value: f64) -> Self {
+        Self::Float(value)
+    }
+}
+
+impl From<u64> for Metric {
+    fn from(value: u64) -> Self {
+        Self::Int(value)
     }
 }
 
@@ -2298,7 +2504,7 @@ mod tests {
     fn test_event_kind_from_str_ignore_case() {
         for event_kind in EventKind::iter() {
             let string = format!("{event_kind:?}");
-            let actual = EventKind::from_str_ignore_case(&string);
+            let actual = EventKind::from_str(&string);
             assert_eq!(actual.unwrap(), event_kind);
         }
     }
@@ -2307,7 +2513,7 @@ mod tests {
     fn test_cachegrind_metric_from_str_ignore_case() {
         for metric in CachegrindMetric::iter() {
             let string = format!("{metric:?}");
-            let actual = CachegrindMetric::from_str_ignore_case(&string);
+            let actual = CachegrindMetric::from_str(&string);
             assert_eq!(actual.unwrap(), metric);
         }
     }

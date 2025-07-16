@@ -97,11 +97,11 @@ groups:
       - args:
           [
             "--callgrind-limits",
-            "estimatedcycles=0.0",
+            "totalrw=0.0%",
             "--cachegrind-limits",
-            "totalrw=0.0",
+            "estimatedcycles=0%",
             "--dhat-limits",
-            "readsbytes=0.0",
+            "readsbytes=0%,totalbytes=16",
           ]
         expected:
           stdout: expected_stdout.args

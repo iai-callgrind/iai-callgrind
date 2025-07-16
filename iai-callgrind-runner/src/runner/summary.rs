@@ -16,11 +16,10 @@ use super::common::{Baselines, ModulePath};
 use super::format::{Formatter, OutputFormat, OutputFormatKind, VerticalFormatter};
 use super::metrics::{Metric, MetricKind, Metrics, MetricsSummary};
 use super::tool::parser::ParserOutput;
+use super::tool::regression::RegressionMetrics;
 use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, ValgrindTool};
 use crate::error::Error;
 use crate::util::{factor_diff, make_absolute, percentage_diff, EitherOrBoth};
-
-pub type RegressionMetrics<T> = (T, Metric, Metric, f64, f64);
 
 pub const SCHEMA_VERSION: &str = "5";
 
@@ -275,25 +274,57 @@ pub enum ToolMetricSummary {
     Cachegrind(MetricsSummary<CachegrindMetric>),
 }
 
-// The regression of a specific `MetricKind`
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct ToolRegression {
-    pub metric: MetricKind,
-    /// The value of the new benchmark run
-    pub new: Metric,
-    /// The value of the old benchmark run
-    pub old: Metric,
-    /// The difference between new and old in percent. Serialized as string to preserve infinity
-    /// values and avoid null in json.
-    #[serde(with = "crate::serde::float_64")]
-    #[cfg_attr(feature = "schema", schemars(with = "String"))]
-    pub diff_pct: f64,
-    /// The value of the limit which was exceeded to cause a performance regression. Serialized as
-    /// string to preserve infinity values and avoid null in json.
-    #[serde(with = "crate::serde::float_64")]
-    #[cfg_attr(feature = "schema", schemars(with = "String"))]
-    pub limit: f64,
+pub enum ToolRegression {
+    Soft {
+        /// The metric kind per tool
+        metric: MetricKind,
+        /// The value of the new benchmark run
+        new: Metric,
+        /// The value of the old benchmark run
+        old: Metric,
+        /// The difference between new and old in percent. Serialized as string to preserve
+        /// infinity values and avoid null in json.
+        #[serde(with = "crate::serde::float_64")]
+        #[cfg_attr(feature = "schema", schemars(with = "String"))]
+        diff_pct: f64,
+        /// The value of the limit which was exceeded to cause a performance regression. Serialized
+        /// as string to preserve infinity values and avoid null in json.
+        #[serde(with = "crate::serde::float_64")]
+        #[cfg_attr(feature = "schema", schemars(with = "String"))]
+        limit: f64,
+    },
+    Hard {
+        /// The metric kind per tool
+        metric: MetricKind,
+        /// The value of the benchmark run
+        new: Metric,
+        /// The difference between new and the limit
+        diff: Metric,
+        /// The limit
+        limit: Metric,
+    },
+}
+
+impl ToolRegression {
+    pub fn with<T>(apply: fn(T) -> MetricKind, regressions: RegressionMetrics<T>) -> Self {
+        match regressions {
+            RegressionMetrics::Soft(metric, new, old, diff_pct, limit) => ToolRegression::Soft {
+                metric: apply(metric),
+                new,
+                old,
+                diff_pct,
+                limit,
+            },
+            RegressionMetrics::Hard(metric, new, diff, limit) => ToolRegression::Hard {
+                metric: apply(metric),
+                new,
+                diff,
+                limit,
+            },
+        }
+    }
 }
 
 impl Display for BaselineName {

@@ -365,7 +365,7 @@ impl BinaryBenchmark {
         let teardown_member = self.teardown.render_as_member(None);
 
         quote! {
-            mod #ident {
+            pub mod #ident {
                 use super::*;
 
                 #[inline(never)]
@@ -408,7 +408,7 @@ impl BinaryBenchmark {
 
         let config = self.config.render_as_code();
         quote! {
-            mod #mod_name {
+            pub mod #mod_name {
                 use super::*;
 
                 #[inline(never)]

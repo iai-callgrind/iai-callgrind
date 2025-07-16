@@ -8,7 +8,7 @@ use iai_callgrind::{
     args = [{{ array_length }}],
     config = BinaryBenchmarkConfig::default()
         .tool(Callgrind::default()
-            .limits([(EventKind::Ir, 0.0)]).fail_fast({{ fail_fast }})
+            .soft_limits([(EventKind::Ir, 0.0)]).fail_fast({{ fail_fast }})
         )
 )]
 #[bench::regress_cachegrind(
@@ -16,7 +16,7 @@ use iai_callgrind::{
     config = BinaryBenchmarkConfig::default()
         .default_tool(ValgrindTool::Cachegrind)
         .tool(Cachegrind::default()
-            .limits([(CachegrindMetric::Ir, 0.0)]).fail_fast({{ fail_fast }})
+            .soft_limits([(CachegrindMetric::Ir, 0.0)]).fail_fast({{ fail_fast }})
         )
 )]
 #[bench::should_not_run_after_regression(10)]

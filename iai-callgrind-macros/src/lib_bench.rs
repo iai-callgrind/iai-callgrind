@@ -344,7 +344,7 @@ impl LibraryBenchmark {
 
         let call = self.teardown.render_as_code(call);
         quote! {
-            mod #ident {
+            pub mod #ident {
                 use super::*;
 
                 mod __iai_callgrind_wrapper_mod {
@@ -433,7 +433,7 @@ impl LibraryBenchmark {
 
         let config = self.config.render_as_code();
         quote! {
-            mod #mod_name {
+            pub mod #mod_name {
                 use super::*;
 
                 mod __iai_callgrind_wrapper_mod {
@@ -669,7 +669,7 @@ mod tests {
             ));
         }
         parse_quote!(
-            mod #callee {
+            pub mod #callee {
                 use super::*;
 
                 mod __iai_callgrind_wrapper_mod {

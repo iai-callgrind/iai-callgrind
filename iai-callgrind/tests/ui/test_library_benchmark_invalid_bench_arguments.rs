@@ -40,18 +40,4 @@ fn bench5(my: u8) -> String {
     my
 }
 
-#[library_benchmark]
-pub fn bench6() {}
-
-#[library_benchmark]
-#[bench::id()]
-pub fn bench7() {}
-
-fn main() {
-    // check that bench5 isn't public
-    bench5::bench5();
-    // check that bench6 isn't public anymore
-    bench6::bench6();
-    // check that bench7 isn't public anymore
-    bench7::bench7();
-}
+fn main() {}

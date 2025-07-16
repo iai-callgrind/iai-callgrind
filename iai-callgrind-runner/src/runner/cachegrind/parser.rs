@@ -61,7 +61,7 @@ pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<Cachegrin
                 metrics_prototype = Some(
                     events
                         .split_ascii_whitespace()
-                        .map(TryFrom::try_from)
+                        .map(str::parse)
                         .collect::<Result<Metrics>>()?,
                 );
                 break;
