@@ -381,11 +381,12 @@ book-bump old_version new_version:
 [group('chore')]
 bump config part:
     #!/usr/bin/env -S sh -e
-    current_version=$(bump-my-version show-bump --config-file ".bumpversion/{{ config }}.toml" --ascii | grep -Eo '^[0-9]+\.[0-9]+\.[0-9]+')
-    new_version=$(bump-my-version show-bump --config-file ".bumpversion/{{ config }}.toml" --ascii | grep -Po '(?<={{ part }} - )[0-9]+\.[0-9]+\.[0-9]+')
+    current_version=$(bump-my-version show-bump --config-file ".bumpversion/{{ config }}.toml" --ascii | grep -Eo '^[0-9]+(\.[0-9]+\.[0-9]+)?')
+    new_version=$(bump-my-version show-bump --config-file ".bumpversion/{{ config }}.toml" --ascii | grep -Po '(?<={{ part }} - )[0-9]+(\.[0-9]+\.[0-9]+)?')
 
     bump-my-version bump --no-commit --config-file ".bumpversion/{{ config }}.toml" {{ part }}
     if [[ "{{config}}" = "version" ]]; then
+        echo "Bump book from '${current_version}' to '${new_version}'"
         just book-bump "$current_version" "$new_version"
     fi
     # We also need the changed version in Cargo.lock. Building iai-callgrind
