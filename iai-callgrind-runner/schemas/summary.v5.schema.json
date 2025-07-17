@@ -249,16 +249,6 @@
       "description": "The metrics collected by DHAT",
       "oneOf": [
         {
-          "description": "In ad-hoc mode, Total units measured over the entire execution",
-          "type": "string",
-          "const": "TotalUnits"
-        },
-        {
-          "description": "Total ad-hoc events over the entire execution",
-          "type": "string",
-          "const": "TotalEvents"
-        },
-        {
           "description": "Total bytes allocated over the entire execution",
           "type": "string",
           "const": "TotalBytes"
@@ -1061,98 +1051,37 @@
       ]
     },
     "ToolRegression": {
-      "oneOf": [
-        {
-          "type": "object",
-          "properties": {
-            "Soft": {
-              "type": "object",
-              "properties": {
-                "diff_pct": {
-                  "description": "The difference between new and old in percent. Serialized as string to preserve\ninfinity values and avoid null in json.",
-                  "type": "string"
-                },
-                "limit": {
-                  "description": "The value of the limit which was exceeded to cause a performance regression. Serialized\nas string to preserve infinity values and avoid null in json.",
-                  "type": "string"
-                },
-                "metric": {
-                  "description": "The metric kind per tool",
-                  "allOf": [
-                    {
-                      "$ref": "#/definitions/MetricKind"
-                    }
-                  ]
-                },
-                "new": {
-                  "description": "The value of the new benchmark run",
-                  "allOf": [
-                    {
-                      "$ref": "#/definitions/Metric"
-                    }
-                  ]
-                },
-                "old": {
-                  "description": "The value of the old benchmark run",
-                  "allOf": [
-                    {
-                      "$ref": "#/definitions/Metric"
-                    }
-                  ]
-                }
-              },
-              "required": ["metric", "new", "old", "diff_pct", "limit"]
-            }
-          },
-          "additionalProperties": false,
-          "required": ["Soft"]
+      "type": "object",
+      "properties": {
+        "diff_pct": {
+          "description": "The difference between new and old in percent. Serialized as string to preserve infinity\nvalues and avoid null in json.",
+          "type": "string"
         },
-        {
-          "type": "object",
-          "properties": {
-            "Hard": {
-              "type": "object",
-              "properties": {
-                "diff": {
-                  "description": "The difference between new and the limit",
-                  "allOf": [
-                    {
-                      "$ref": "#/definitions/Metric"
-                    }
-                  ]
-                },
-                "limit": {
-                  "description": "The limit",
-                  "allOf": [
-                    {
-                      "$ref": "#/definitions/Metric"
-                    }
-                  ]
-                },
-                "metric": {
-                  "description": "The metric kind per tool",
-                  "allOf": [
-                    {
-                      "$ref": "#/definitions/MetricKind"
-                    }
-                  ]
-                },
-                "new": {
-                  "description": "The value of the benchmark run",
-                  "allOf": [
-                    {
-                      "$ref": "#/definitions/Metric"
-                    }
-                  ]
-                }
-              },
-              "required": ["metric", "new", "diff", "limit"]
+        "limit": {
+          "description": "The value of the limit which was exceeded to cause a performance regression. Serialized as\nstring to preserve infinity values and avoid null in json.",
+          "type": "string"
+        },
+        "metric": {
+          "$ref": "#/definitions/MetricKind"
+        },
+        "new": {
+          "description": "The value of the new benchmark run",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Metric"
             }
-          },
-          "additionalProperties": false,
-          "required": ["Hard"]
+          ]
+        },
+        "old": {
+          "description": "The value of the old benchmark run",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Metric"
+            }
+          ]
         }
-      ]
+      },
+      "required": ["metric", "new", "old", "diff_pct", "limit"]
     },
     "ValgrindTool": {
       "description": "The valgrind tools which can be run\n\nNote the default changes from `Callgrind` to `Cachegrind` if the `cachegrind` feature is\nselected.",
