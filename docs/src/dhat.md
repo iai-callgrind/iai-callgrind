@@ -2,14 +2,32 @@
 
 # DHAT: a dynamic heap analysis tool
 
-## Intro
+## Intro to DHAT
 
-DHAT a is tool for examining how programs use their heap allocations. It tracks
-allocated blocks, and inspects memory accesses to show information about these
-blocks such as sizes, lifetimes, numbers of reads and writes, and read and write
-patterns.
+To fully understand DHAT please read the [Valgrind docs][Dhat] of DHAT. Here's
+just a short summary and quote from the docs:
 
-## Default entry point
+> DHAT is primarily a tool for examining how programs use their heap
+> allocations. It tracks the allocated blocks, and inspects every memory access
+> to find which block, if any, it is to. It presents, on a program point basis,
+> information about these blocks such as sizes, lifetimes, numbers of reads and
+> writes, and read and write patterns.
+
+The rest of this chapter is dedicated to how DHAT is integrated into
+Iai-Callgrind.
+
+## The DHAT modes
+
+Iai-Callgrind supports all three modes `heap` (the default), `copy` and `ad-hoc`
+which can be changed on the [command-line](./cli_and_env/basics.md) with
+`--dhat-args=--mode=ad-hoc` or in the benchmark itself with `Dhat::args`. Note
+that `ad-hoc` mode requires [client requests](./client_requests.md) which have
+prerequisites. If running the benchmarks in `ad-hoc` mode, it is highly
+recommended to turn off the `EntryPoint` with `EntryPoint::None` (See next
+section). However, DHAT is normally run in `heap` mode and it is assumed that
+this is the mode used in the next sections.
+
+## The default entry point
 
 The DHAT default entry point `EntryPoint::Default` in library benchmarks behaves
 similar to [`Callgrind's
@@ -20,14 +38,16 @@ But, if necessary, the entry point can be turned off or customized in
 `Dhat::entry_point`.
 
 In contrast to callgrind's entry point, the DHAT default entry point *includes*
-the metrics of the `setup` and/or `teardown` function. This is a limitation of
-DHAT and what is possible to reliably extract from the output files. Callgrind
-has a command-line flag `--toggle-collect` to toggle collection on and off. DHAT
-doesn't have such an option, and the sanitization of metrics can only be
-realized afterwards based on the DHAT output files. However, this works well
-enough to stabilize the metrics so they exclude the metrics of Iai-Callgrind
-allocations (around 2000 - 2500 bytes) in the `main` function needed to setup
-the benchmark.
+the metrics of [`setup` and/or `teardown`
+code](./benchmarks/library_benchmarks/setup_and_teardown.md) or anything
+specified in the `args` parameter of the `#[bench]` or `#[benches]` attribute.
+This is a limitation of DHAT and what is possible to reliably extract from the
+output files. Callgrind has a command-line flag `--toggle-collect` to toggle
+collection on and off. DHAT doesn't have such an option, and the sanitization of
+metrics can only be realized afterwards based on the DHAT output files. However,
+this works well enough to stabilize the metrics so they exclude the metrics of
+Iai-Callgrind allocations (around 2000 - 2500 bytes) in the `main` function
+needed to setup the benchmark.
 
 Note that setting an entry point or `Dhat::frames` does not alter the dhat
 output files in any way.
@@ -35,7 +55,7 @@ output files in any way.
 ## Usage on the command-line
 
 Running DHAT instead of or in addition to Callgrind is pretty straight-forward
-and not different to any other tool:
+and not different to any [other tool](./tools.md):
 
 Either use [command-line arguments or environment
 variables](./cli_and_env/basics.md): `--default-tool=dhat` or
@@ -99,9 +119,10 @@ Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regre
 
 Analyzing the DHAT data, there are a total of `12 bytes` of allocations (The
 vector: `3 * sizeof(i32)` bytes = `3 * 4` bytes) in `1` block during the setup
-of the benchmark. That's also `12` bytes of writes. So, it's clear that's `24`
-bytes of reads and `24` bytes of writes in the `bubble_sort` function. Also,
-there are no (de-)allocations of heap memory in `bubble_sort` itself.
+of the benchmark. That's also `12` bytes of writes to fill the vector with the
+values. That makes `24` bytes of reads and `24` bytes of writes in the
+`bubble_sort` function. Also, there are no (de-)allocations of heap memory in
+`bubble_sort` itself.
 
 ## Soft limits and hard limits
 
@@ -281,10 +302,10 @@ Times {
 
 The missing metrics of the thread are caused by the default entry point which
 only includes the program points with the benchmark function in their call
-stack. But, looking closely at the program point `PP 1.1.1/12`, there's no frame
-(function call) of the benchmark function `bench_library`, not even a `main`
-function. As mentioned earlier, that's because the thread is completely
-separated by DHAT.
+stack. But, looking closely at the program point `PP 1.1.1/12` and the call
+stack, there's no frame (function call) of the benchmark function
+`bench_library` or a `main` function. As mentioned earlier, this is because the
+thread is completely separated by DHAT.
 
 There are multiple ways to go on depending on what we want to measure. To show
 two different approaches, at first, I'll go with measuring the benchmark
@@ -394,3 +415,5 @@ these are the same metrics:
   │   │     Reads:     26,184 bytes (57.08%, 9,228.46/Minstr), 0.8/byte
   │   │     Writes:    26,184 bytes (54.23%, 9,228.46/Minstr), 0.8/byte
 ```
+
+[Dhat]: https://valgrind.org/docs/manual/dh-manual.html

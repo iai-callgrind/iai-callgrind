@@ -3,7 +3,10 @@
 The [`EntryPoint`] can be set to `EntryPoint::None` which disables
 the entry point, `EntryPoint::Default` which uses the benchmark function as
 entry point or `EntryPoint::Custom` which will be discussed in more detail in
-this chapter.
+this chapter. This section is dedicated to the entry point of `Callgrind`.
+[`Dhat`](../../dhat.md) uses an entry point, too and although both are
+interpreted very similar there are differences which are fully described in the
+[`Dhat`](../../dhat.md) chapter.
 
 To understand custom entry points let's take a small detour into how
 [`Callgrind`][Callgrind] and Iai-Callgrind work under the hood.

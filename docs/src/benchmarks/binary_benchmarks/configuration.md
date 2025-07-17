@@ -6,5 +6,6 @@ benchmarks with the name changing from `LibraryBenchmarkConfig` to
 [there](../library_benchmarks/configuration.md) for the basics. However, Binary
 benchmarks have some additional configuration possibilities:
 
+* [Delay the Command](./configuration/delay.md)
 * [Sandbox](./configuration/sandbox.md)
 * [Configure the exit code of the Command](./configuration/exit_code.md).
