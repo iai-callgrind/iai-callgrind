@@ -402,54 +402,45 @@ pub struct CommandLineArgs {
     )]
     pub allow_aslr: Option<bool>,
 
+    #[rustfmt::skip]
     #[allow(clippy::doc_markdown)]
     /// Set performance regression limits for specific `EventKinds`
     ///
-    /// This is a `,` separate list of CallgrindMetrics=limit (key=value) pairs with the limit
-    /// being a soft limit if the number suffixed with a `%` or a hard limit if it is a bare
-    /// number. It is possible to specify hard and soft limits in one go with the `|` operator
-    /// (e.g. `ir=10%|10000`).
+    /// This is a `,` separate list of EventKind=limit or CallgrindMetrics=limit (key=value) pairs
+    /// with the limit being a soft limit if the number suffixed with a `%` or a hard limit if it
+    /// is a bare number. It is possible to specify hard and soft limits in one go with the `|`
+    /// operator (e.g. `ir=10%|10000`). Groups (CallgrindMetrics) are prefixed with `@`. List of
+    /// allowed groups and events with their abbreviations:
     ///
-    /// See the docs of `CallgrindMetrics`
+    /// group ::= "@" ( "default"
+    ///               | "all"
+    ///               | ("cachemisses" | "misses" | "ms")
+    ///               | ("cachemissrates" | "missrates" | "mr")
+    ///               | ("cachehits" | "hits" | "hs")
+    ///               | ("cachehitrates" | "hitrates" | "hr")
+    ///               | ("cachesim" | "cs")
+    ///               | ("cacheuse" | "cu")
+    ///               | ("systemcalls" | "syscalls" | "sc")
+    ///               | ("branchsim" | "bs")
+    ///               | ("writebackbehaviour" | "writeback" | "wb")
+    ///               )
+    /// event ::= EventKind
+    ///
+    /// See the guide (https://iai-callgrind.github.io/iai-callgrind/latest/html/regressions.html)
+    /// for more details, the docs of `CallgrindMetrics`
     /// (<https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CallgrindMetrics.html>) and
     /// `EventKind` <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.EventKind.html> for a
-    /// list of allowed keys. The format spec and group names in full detail:
+    /// list of metrics and groups with their members.
     ///
-    /// arg        ::= pair ("," pair)*
-    /// pair       ::= key "=" value ("|" value)*
-    /// key        ::= group | event         ; matched case-insensitive
-    /// group      ::= "@" ( "default"
-    ///                    | "all"
-    ///                    | ("cachemisses" | "misses" | "ms")
-    ///                    | ("cachemissrates" | "missrates" | "mr")
-    ///                    | ("cachehits" | "hits" | "hs")
-    ///                    | ("cachehitrates" | "hitrates" | "hr")
-    ///                    | ("cachesim" | "cs")
-    ///                    | ("cacheuse" | "cu")
-    ///                    | ("systemcalls" | "syscalls" | "sc")
-    ///                    | ("branchsim" | "bs")
-    ///                    | ("writebackbehaviour" | "writeback" | "wb")
-    ///                    )
-    /// event      ::= EventKind
-    /// value      ::= soft_limit | hard_limit
-    /// soft_limit ::= (integer | float) "%" ; can be negative
-    /// hard_limit ::= (integer | float)     ; float is only allowed for EventKinds which are
-    ///                                      ; float like `L1HitRate` but not `L1Hits`
+    /// A performance regression check for an `EventKind` fails if the limit is exceeded. If
+    /// limits are defined and one or more regressions have occurred during the benchmark run,
+    /// the whole benchmark is considered to have failed and the program exits with error and
+    /// exit code `3`.
     ///
-    /// with:
-    ///   * `EventKind` being the exact name (case insensitive) as in the docs
-    ///   * `integer` is a `u64` and `float` is a `f64`
-    ///
-    /// Groups with a long name have their allowed abbreviations placed in the same parentheses.
-    /// Multiple specifications of the same `EventKind` overwrite the previous one until the last
-    /// one wins. This is useful for example to specify a limit for all event kinds and then
-    /// overwrite the limit for a specific event kind: `@all=10%,ir=5%`
-    ///
-    /// A performance regression check for an `EventKind` fails if the limit is exceeded. If limits
-    /// are defined and one or more regressions have occurred during the benchmark run, the whole
-    /// benchmark is considered to have failed and the program exits with error and exit code `3`.
-    ///
-    /// Examples: --callgrind-limits='ir=5.0%' or --callgrind-limits='ir=10000,EstimatedCycles=10%'
+    /// Examples:
+    /// * --callgrind-limits='ir=5.0%'
+    /// * --callgrind-limits='ir=10000,EstimatedCycles=10%'
+    /// * --callgrind-limits='@all=10%,ir=5%|10000'
     #[arg(
         long = "callgrind-limits",
         num_args = 1,
@@ -459,33 +450,39 @@ pub struct CommandLineArgs {
     )]
     pub callgrind_limits: Option<ToolRegressionConfig>,
 
+    #[rustfmt::skip]
     #[allow(clippy::doc_markdown)]
     /// Set performance regression limits for specific cachegrind metrics
     ///
-    /// This is a `,` separate list of CachegrindMetrics=limit (key=value) pairs. See the
-    /// description of --callgrind-limits for the details and
+    /// This is a `,` separate list of CachegrindMetric=limit or CachegrindMetrics=limit
+    /// (key=value) pairs. See the description of --callgrind-limits for the details and
     /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetrics.html>
     /// respectively <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetric.html>
-    /// for valid metrics.
+    /// for valid metrics and group members.
     ///
-    /// Replace group and event in the format spec in `--callgrind-limits` with the following:
+    /// See the the guide
+    /// (https://iai-callgrind.github.io/iai-callgrind/latest/html/regressions.html) for all
+    /// details or replace the format spec in `--callgrind-limits` or with the following:
     ///
-    /// group      ::= "@" ( "default"
-    ///                    | "all"
-    ///                    | ("cachemisses" | "misses" | "ms")
-    ///                    | ("cachemissrates" | "missrates" | "mr")
-    ///                    | ("cachehits" | "hits" | "hs")
-    ///                    | ("cachehitrates" | "hitrates" | "hr")
-    ///                    | ("cachesim" | "cs")
-    ///                    | ("branchsim" | "bs")
-    ///                    )
-    /// event      ::= CachegrindMetric
+    /// group ::= "@" ( "default"
+    ///               | "all"
+    ///               | ("cachemisses" | "misses" | "ms")
+    ///               | ("cachemissrates" | "missrates" | "mr")
+    ///               | ("cachehits" | "hits" | "hs")
+    ///               | ("cachehitrates" | "hitrates" | "hr")
+    ///               | ("cachesim" | "cs")
+    ///               | ("branchsim" | "bs")
+    ///               )
+    /// event ::= CachegrindMetric
     ///
-    /// Examples: --cachegrind-limits='ir=0.0%' or
-    ///    --cachegrind-limits='ir=10000,EstimatedCycles=10%'
+    /// Examples:
+    /// * --cachegrind-limits='ir=0.0%'
+    /// * --cachegrind-limits='ir=10000,EstimatedCycles=10%'
+    /// * --cachegrind-limits='@all=10%,ir=10000,EstimatedCycles=10%'
     #[arg(
         long = "cachegrind-limits",
         num_args = 1,
+        verbatim_doc_comment,
         value_parser = parse_cachegrind_limits,
         env = "IAI_CALLGRIND_CACHEGRIND_LIMITS",
     )]
@@ -494,35 +491,41 @@ pub struct CommandLineArgs {
     #[allow(clippy::doc_markdown)]
     /// Set performance regression limits for specific dhat metrics
     ///
-    /// This is a `,` separate list of DhatMetrics=limit (key=value) pairs. See the description of
-    /// --callgrind-limits for the details and
+    /// This is a `,` separate list of DhatMetrics=limit or DhatMetric=limit (key=value) pairs. See
+    /// the description of --callgrind-limits for the details and
     /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.DhatMetrics.html> respectively
-    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.DhatMetric.html> for valid metrics.
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.DhatMetric.html> for valid
+    /// metrics and group members.
     ///
-    /// Replace group and event in the format spec in `--callgrind-limits` with the following:
+    /// See the the guide
+    /// (https://iai-callgrind.github.io/iai-callgrind/latest/html/regressions.html) for all
+    /// details or replace the format spec in `--callgrind-limits` or with the following:
     ///
-    /// group      ::= "@" ( "default" | "all" )
-    /// event      ::=   ( "totalunits" | "tun" )
-    ///                | ( "totalevents" | "tev" )
-    ///                | ( "totalbytes" | "tb" )
-    ///                | ( "totalblocks" | "tbk" )
-    ///                | ( "attgmaxbytes" | "gb" )
-    ///                | ( "attgmaxblocks" | "gbk" )
-    ///                | ( "attendbytes" | "eb" )
-    ///                | ( "attendblocks" | "ebk" )
-    ///                | ( "readsbytes" | "rb" )
-    ///                | ( "writesbytes" | "wb" )
-    ///                | ( "totallifetimes" | "tl" )
-    ///                | ( "maximumbytes" | "mb" )
-    ///                | ( "maximumblocks" | "mbk" )
+    /// group ::= "@" ( "default" | "all" )
+    /// event ::=   ( "totalunits" | "tun" )
+    ///           | ( "totalevents" | "tev" )
+    ///           | ( "totalbytes" | "tb" )
+    ///           | ( "totalblocks" | "tbk" )
+    ///           | ( "attgmaxbytes" | "gb" )
+    ///           | ( "attgmaxblocks" | "gbk" )
+    ///           | ( "attendbytes" | "eb" )
+    ///           | ( "attendblocks" | "ebk" )
+    ///           | ( "readsbytes" | "rb" )
+    ///           | ( "writesbytes" | "wb" )
+    ///           | ( "totallifetimes" | "tl" )
+    ///           | ( "maximumbytes" | "mb" )
+    ///           | ( "maximumblocks" | "mbk" )
     ///
-    /// Events with a long name have their allowed abbreviations placed in the same parentheses.
+    /// `events` with a long name have their allowed abbreviations placed in the same parentheses.
     ///
-    /// Examples: --dhat-limits='totalbytes=0.0%' or
-    ///   --dhat-limits='totalbytes=5000, totalblocks=5%'
+    /// Examples:
+    /// * --dhat-limits='totalbytes=0.0%'
+    /// * --dhat-limits='totalbytes=10000,totalblocks=5%'
+    /// * --dhat-limits='@all=10%,totalbytes=5000,totalblocks=5%'
     #[arg(
         long = "dhat-limits",
         num_args = 1,
+        verbatim_doc_comment,
         value_parser = parse_dhat_limits,
         env = "IAI_CALLGRIND_DHAT_LIMITS",
     )]

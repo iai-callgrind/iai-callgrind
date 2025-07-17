@@ -223,31 +223,113 @@ Options:
       --callgrind-limits <CALLGRIND_LIMITS>
           Set performance regression limits for specific `EventKinds`
 
-          This is a `,` separate list of EventKind=limit (key=value) pairs with the limit being a
-          positive or negative percentage. If positive, a performance regression check for this
-          `EventKind` fails if the limit is exceeded. If negative, the regression check fails if the
-          value comes below the limit. The `EventKind` is matched case-insensitive. For a list of
-          valid `EventKinds` see the docs:
-          <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.EventKind.html>
+          This is a `,` separate list of EventKind=limit or CallgrindMetrics=limit (key=value) pairs
+          with the limit being a soft limit if the number suffixed with a `%` or a hard limit if it
+          is a bare number. It is possible to specify hard and soft limits in one go with the `|`
+          operator (e.g. `ir=10%|10000`). Groups (CallgrindMetrics) are prefixed with `@`. List of
+          allowed groups and events with their abbreviations:
 
-          If regressions are defined and one ore more regressions occurred during the benchmark run
-          the program exits with error and exit code `3`.
+          group ::= "@" ( "default"
+                        | "all"
+                        | ("cachemisses" | "misses" | "ms")
+                        | ("cachemissrates" | "missrates" | "mr")
+                        | ("cachehits" | "hits" | "hs")
+                        | ("cachehitrates" | "hitrates" | "hr")
+                        | ("cachesim" | "cs")
+                        | ("cacheuse" | "cu")
+                        | ("systemcalls" | "syscalls" | "sc")
+                        | ("branchsim" | "bs")
+                        | ("writebackbehaviour" | "writeback" | "wb")
+                        )
+          event ::= EventKind
 
-          Examples: --callgrind-limits='ir=0.0' or --callgrind-limits='ir=0, EstimatedCycles=10'
+          See the guide (https://iai-callgrind.github.io/iai-callgrind/latest/html/regressions.html)
+          for more details, the docs of `CallgrindMetrics`
+          (<https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CallgrindMetrics.html>) and
+          `EventKind` <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.EventKind.html> for a
+          list of metrics and groups with their members.
+
+          A performance regression check for an `EventKind` fails if the limit is exceeded. If
+          limits are defined and one or more regressions have occurred during the benchmark run,
+          the whole benchmark is considered to have failed and the program exits with error and
+          exit code `3`.
+
+          Examples:
+          * --callgrind-limits='ir=5.0%'
+          * --callgrind-limits='ir=10000,EstimatedCycles=10%'
+          * --callgrind-limits='@all=10%,ir=5%|10000'
 
           [env: IAI_CALLGRIND_CALLGRIND_LIMITS=]
 
       --cachegrind-limits <CACHEGRIND_LIMITS>
           Set performance regression limits for specific cachegrind metrics
 
-          This is a `,` separate list of CachegrindMetric=limit (key=value) pairs. See the
-          description of --callgrind-limits for the details and
-          <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetric.html> for valid
-          metrics.
+          This is a `,` separate list of CachegrindMetric=limit or CachegrindMetrics=limit
+          (key=value) pairs. See the description of --callgrind-limits for the details and
+          <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetrics.html>
+          respectively
+          <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetric.html>
+          for valid metrics and group members.
 
-          Examples: --cachegrind-limits='ir=0.0' or --cachegrind-limits='ir=0, EstimatedCycles=10'
+          See the the guide
+          (https://iai-callgrind.github.io/iai-callgrind/latest/html/regressions.html) for all
+          details or replace the format spec in `--callgrind-limits` or with the following:
+
+          group ::= "@" ( "default"
+                        | "all"
+                        | ("cachemisses" | "misses" | "ms")
+                        | ("cachemissrates" | "missrates" | "mr")
+                        | ("cachehits" | "hits" | "hs")
+                        | ("cachehitrates" | "hitrates" | "hr")
+                        | ("cachesim" | "cs")
+                        | ("branchsim" | "bs")
+                        )
+          event ::= CachegrindMetric
+
+          Examples:
+          * --cachegrind-limits='ir=0.0%'
+          * --cachegrind-limits='ir=10000,EstimatedCycles=10%'
+          * --cachegrind-limits='@all=10%,ir=10000,EstimatedCycles=10%'
 
           [env: IAI_CALLGRIND_CACHEGRIND_LIMITS=]
+
+      --dhat-limits <DHAT_LIMITS>
+          Set performance regression limits for specific dhat metrics
+
+          This is a `,` separate list of DhatMetrics=limit or DhatMetric=limit (key=value) pairs.
+          See
+          the description of --callgrind-limits for the details and
+          <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.DhatMetrics.html> respectively
+          <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.DhatMetric.html> for valid
+          metrics and group members.
+
+          See the the guide
+          (https://iai-callgrind.github.io/iai-callgrind/latest/html/regressions.html) for all
+          details or replace the format spec in `--callgrind-limits` or with the following:
+
+          group ::= "@" ( "default" | "all" )
+          event ::=   ( "totalunits" | "tun" )
+                    | ( "totalevents" | "tev" )
+                    | ( "totalbytes" | "tb" )
+                    | ( "totalblocks" | "tbk" )
+                    | ( "attgmaxbytes" | "gb" )
+                    | ( "attgmaxblocks" | "gbk" )
+                    | ( "attendbytes" | "eb" )
+                    | ( "attendblocks" | "ebk" )
+                    | ( "readsbytes" | "rb" )
+                    | ( "writesbytes" | "wb" )
+                    | ( "totallifetimes" | "tl" )
+                    | ( "maximumbytes" | "mb" )
+                    | ( "maximumblocks" | "mbk" )
+
+          `events` with a long name have their allowed abbreviations placed in the same parentheses.
+
+          Examples:
+          * --dhat-limits='totalbytes=0.0%'
+          * --dhat-limits='totalbytes=10000,totalblocks=5%'
+          * --dhat-limits='@all=10%,totalbytes=5000,totalblocks=5%'
+
+          [env: IAI_CALLGRIND_DHAT_LIMITS=]
 
       --regression-fail-fast[=<REGRESSION_FAIL_FAST>]
           If true, the first failed performance regression check fails the whole benchmark run

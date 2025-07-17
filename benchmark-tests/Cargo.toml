@@ -298,3 +298,13 @@ path = "benches/guide/lib_bench_subprocess.rs"
 harness = false
 name = "lib_bench_regression"
 path = "benches/guide/lib_bench_regression.rs"
+
+[[bench]]
+harness = false
+name = "lib_bench_dhat"
+path = "benches/guide/lib_bench_dhat.rs"
+
+[[bench]]
+harness = false
+name = "lib_bench_find_primes"
+path = "benches/guide/lib_bench_find_primes.rs"
