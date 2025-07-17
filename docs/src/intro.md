@@ -8,7 +8,7 @@ despite its name it's possible to run [Cachegrind](./cachegrind.md) or any other
 [Valgrind tool](./tools.md) like DHAT in addition to or instead of Callgrind.
 
 Iai-Callgrind is fully documented in this guide and in the api documentation at
-[docs.rs](https://docs.rs/iai-callgrind/latest/iai_callgrind/).
+[docs.rs](https://docs.rs/iai-callgrind/0.15.2/iai_callgrind/).
 
 Iai-Callgrind is also:
 
