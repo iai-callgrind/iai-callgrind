@@ -698,7 +698,7 @@ dependencies = [
 
 [[package]]
 name = "iai-callgrind"
-version = "0.15.2"
+version = "0.16.0"
 dependencies = [
  "bincode",
  "bindgen",
@@ -736,7 +736,7 @@ dependencies = [
 
 [[package]]
 name = "iai-callgrind-runner"
-version = "0.15.2"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1434,7 +1434,7 @@ dependencies = [
 
 [[package]]
 name = "schema-gen"
-version = "0.15.2"
+version = "0.16.0"
 dependencies = [
  "iai-callgrind-runner",
  "schemars",
