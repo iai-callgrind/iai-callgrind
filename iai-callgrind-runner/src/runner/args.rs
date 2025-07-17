@@ -74,7 +74,6 @@ impl NoCapture {
     }
 }
 
-// TODO: callgrind_format, dhat_format, etc.
 /// The command line arguments the user provided after `--` when running cargo bench
 ///
 /// These arguments are not the command line arguments passed to `iai-callgrind-runner`. We collect
@@ -663,7 +662,6 @@ pub struct CommandLineArgs {
     )]
     pub nocapture: NoCapture,
 
-    // TODO: Fix this? Do not require `=` equals.
     /// Print a list of all benchmarks. With this argument no benchmarks are executed.
     ///
     /// The output format is intended to be the same as the output format of the libtest harness.
