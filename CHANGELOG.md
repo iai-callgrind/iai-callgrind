@@ -111,8 +111,8 @@ Also new: It's possible to specify soft or hard limits for whole groups like
   expanded benchmark function module public with `pub mod` instead of just
   `mod`. This allows putting benchmark functions into modules and adding them
   into groups outside of this module.
-* ([#407](https://github.com/iai-callgrind/iai-callgrind/pull/407)): Update
-  summary json schema v5.
+* ([#407](https://github.com/iai-callgrind/iai-callgrind/pull/407)):
+  Bump summary.v5.schema.json -> summary.v6.schema.json
 * Update direct dependencies: `inferno`, `cc`, `clap`
 
 ### Deprecated
@@ -144,7 +144,7 @@ Also new: It's possible to specify soft or hard limits for whole groups like
 
 ### Changed
 
-* Bump `summary.v4.schema.json` to `summary.v5.schema.json`
+* Bump summary.v4.schema.json -> summary.v5.schema.json
 * Update direct dependencies: `schemars`, `indexmap` and transitive dependencies
 * ([#395](https://github.com/iai-callgrind/iai-callgrind/pull/395)): Rename `L2
   Hits` to `LL Hits` to be closer to the original naming scheme in the callgrind
@@ -217,9 +217,8 @@ valgrind tool as default tool if wished so.
   command-line argument name `--regressions` changed to `--callgrind-limits`.
   The `IAI_CALLGRIND_REGRESSIONS` environment variable changed to
   `IAI_CALLGRIND_CALLGRIND_LIMITS`.
-* ([#372](https://github.com/iai-callgrind/iai-callgrind/pull/372)): The summary
-  summary json schema v3 `summary.v3.schema.json` was updated to v4
-  `summary.v4.schema.json`
+* ([#372](https://github.com/iai-callgrind/iai-callgrind/pull/372)):
+  Bump summary.v3.schema.json -> summary.v4.schema.json
 * ([#372](https://github.com/iai-callgrind/iai-callgrind/pull/372)): Ignore with
   a warning the arguments `--xtree-memory`, `--xtree-memory-file`,
   `--xtree-leak`, `--xtree-leak-file`
@@ -410,8 +409,7 @@ If not stated otherwise the changes below were introduced in
 * In the presence of multiple processes the DHAT metrics are now summarized and
   shown in a total in the same way as the metrics of callgrind and the other
   tools.
-* Bump the summary json schema to v3 in
-  `iai-callgrind-runner/schemas/summary.v3.schema.json`
+* Bump summary.v2.schema.json -> summary.v3.schema.json
 * Various prs: Update locked direct dependencies:
     * `anyhow` -> 1.0.89
     * `cc` -> 1.1.25
@@ -897,9 +895,8 @@ to `EventKind::Ir` so, if you're updating from a previous version of
   default `EventKind` for `RegressionConfig` and `FlamegraphConfig` changed from
   `EventKind::EstimatedCycles` to `EventKind::Ir`.
 * Updated locked dependencies to their most recent version
-* Due to backwards incompatible changes to the summary schema the schema version
-  was updated v1 -> v2. The current schema file is stored in
-  `iai-callgrind-runner/schemas/summary.v2.schema.json`
+* Bump summary.v1.schema.json -> summary.v2.schema.json: The current schema file
+  is stored in `iai-callgrind-runner/schemas/summary.v2.schema.json`
 
 ### Fixed
 
