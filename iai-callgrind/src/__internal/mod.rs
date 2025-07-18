@@ -32,9 +32,9 @@ pub use iai_callgrind_runner::api::{
     LibraryBenchmarkBench as InternalLibraryBenchmarkBench,
     LibraryBenchmarkConfig as InternalLibraryBenchmarkConfig,
     LibraryBenchmarkGroup as InternalLibraryBenchmarkGroup,
-    LibraryBenchmarkGroups as InternalLibraryBenchmarkGroups, Metric as InternalMetric,
-    OutputFormat as InternalOutputFormat, RawArgs as InternalRawArgs, Sandbox as InternalSandbox,
-    Tool as InternalTool, ToolFlamegraphConfig as InternalToolFlamegraphConfig,
+    LibraryBenchmarkGroups as InternalLibraryBenchmarkGroups, OutputFormat as InternalOutputFormat,
+    RawArgs as InternalRawArgs, Sandbox as InternalSandbox, Tool as InternalTool,
+    ToolFlamegraphConfig as InternalToolFlamegraphConfig,
     ToolOutputFormat as InternalToolOutputFormat,
     ToolRegressionConfig as InternalToolRegressionConfig, Tools as InternalTools,
 };

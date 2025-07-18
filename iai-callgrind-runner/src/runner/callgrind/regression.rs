@@ -1,3 +1,5 @@
+use indexmap::{IndexMap, IndexSet};
+
 use crate::api::{self, EventKind};
 use crate::runner::metrics::{Metric, MetricKind, MetricsSummary};
 use crate::runner::summary::ToolRegression;
@@ -30,25 +32,50 @@ impl RegressionConfig<EventKind> for CallgrindRegressionConfig {
     }
 }
 
-impl From<api::CallgrindRegressionConfig> for CallgrindRegressionConfig {
-    fn from(value: api::CallgrindRegressionConfig) -> Self {
+impl TryFrom<api::CallgrindRegressionConfig> for CallgrindRegressionConfig {
+    type Error = String;
+
+    fn try_from(value: api::CallgrindRegressionConfig) -> Result<Self, Self::Error> {
         let api::CallgrindRegressionConfig {
             soft_limits,
             hard_limits,
             fail_fast,
         } = value;
-        CallgrindRegressionConfig {
-            soft_limits: if soft_limits.is_empty() && hard_limits.is_empty() {
-                vec![(EventKind::Ir, 10f64)]
-            } else {
-                soft_limits
-            },
-            hard_limits: hard_limits
+
+        let (soft_limits, hard_limits) = if soft_limits.is_empty() && hard_limits.is_empty() {
+            (IndexMap::from([(EventKind::Ir, 10f64)]), IndexMap::new())
+        } else {
+            let hard_limits = hard_limits
                 .into_iter()
-                .map(|(m, l)| (m, l.into()))
-                .collect(),
+                .flat_map(|(dhat_metrics, metric)| {
+                    IndexSet::from(dhat_metrics)
+                        .into_iter()
+                        .map(move |metric_kind| {
+                            Metric::from(metric)
+                                .try_convert(metric_kind)
+                                .ok_or_else(|| {
+                                    format!(
+                                        "Invalid hard limit for {metric_kind}: Expected a \
+                                         'Metric::Int'"
+                                    )
+                                })
+                        })
+                })
+                .collect::<Result<IndexMap<EventKind, Metric>, String>>()?;
+
+            let soft_limits = soft_limits
+                .into_iter()
+                .flat_map(|(m, l)| IndexSet::from(m).into_iter().map(move |e| (e, l)))
+                .collect::<IndexMap<_, _>>();
+
+            (soft_limits, hard_limits)
+        };
+
+        Ok(CallgrindRegressionConfig {
+            soft_limits: soft_limits.into_iter().collect(),
+            hard_limits: hard_limits.into_iter().collect(),
             fail_fast: fail_fast.unwrap_or(false),
-        }
+        })
     }
 }
 

@@ -369,6 +369,7 @@ impl ToolConfig {
         base_args: &RawArgs,
         is_default: bool,
         regression_config: Option<api::ToolRegressionConfig>,
+        // TODO: DELETE
         flamegraph_config: Option<api::ToolFlamegraphConfig>,
         entry_point: Option<EntryPoint>,
     ) -> Result<Self> {
@@ -478,7 +479,8 @@ impl ToolConfig {
 
             let mut regression_config = regression_config
                 .or(tool.regression_config)
-                .map_or(ToolRegressionConfig::None, Into::into);
+                .map_or_else(|| Ok(ToolRegressionConfig::None), TryInto::try_into)
+                .map_err(|string| anyhow!("Invalid limit for {valgrind_tool}: {string}"))?;
             if let Some(fail_fast) = meta.args.regression_fail_fast {
                 match &mut regression_config {
                     ToolRegressionConfig::Callgrind(callgrind_regression_config) => {
@@ -571,8 +573,9 @@ impl ToolConfig {
                 )?,
             };
 
-            let mut regression_config =
-                regression_config.map_or(ToolRegressionConfig::None, Into::into);
+            let mut regression_config = regression_config
+                .map_or_else(|| Ok(ToolRegressionConfig::None), TryInto::try_into)
+                .map_err(|string| anyhow!("Invalid limit for {valgrind_tool}: {string}"))?;
             if let Some(fail_fast) = meta.args.regression_fail_fast {
                 match &mut regression_config {
                     ToolRegressionConfig::Callgrind(callgrind_regression_config) => {
@@ -2088,19 +2091,21 @@ impl ToolRegressionConfig {
     }
 }
 
-impl From<api::ToolRegressionConfig> for ToolRegressionConfig {
-    fn from(value: api::ToolRegressionConfig) -> Self {
+impl TryFrom<api::ToolRegressionConfig> for ToolRegressionConfig {
+    type Error = String;
+
+    fn try_from(value: api::ToolRegressionConfig) -> std::result::Result<Self, Self::Error> {
         match value {
             api::ToolRegressionConfig::Callgrind(regression_config) => {
-                Self::Callgrind(regression_config.into())
+                regression_config.try_into().map(Self::Callgrind)
             }
             api::ToolRegressionConfig::Cachegrind(regression_config) => {
-                Self::Cachegrind(regression_config.into())
+                regression_config.try_into().map(Self::Cachegrind)
             }
             api::ToolRegressionConfig::Dhat(regression_config) => {
-                Self::Dhat(regression_config.into())
+                regression_config.try_into().map(Self::Dhat)
             }
-            api::ToolRegressionConfig::None => Self::None,
+            api::ToolRegressionConfig::None => Ok(Self::None),
         }
     }
 }

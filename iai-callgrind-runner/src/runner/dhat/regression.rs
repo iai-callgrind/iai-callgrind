@@ -1,3 +1,5 @@
+use indexmap::{IndexMap, IndexSet};
+
 use crate::api::{self, DhatMetric};
 use crate::runner::metrics::{Metric, MetricKind, MetricsSummary};
 use crate::runner::summary::ToolRegression;
@@ -27,25 +29,52 @@ impl RegressionConfig<DhatMetric> for DhatRegressionConfig {
     }
 }
 
-impl From<api::DhatRegressionConfig> for DhatRegressionConfig {
-    fn from(value: api::DhatRegressionConfig) -> Self {
+impl TryFrom<api::DhatRegressionConfig> for DhatRegressionConfig {
+    type Error = String;
+
+    fn try_from(value: api::DhatRegressionConfig) -> std::result::Result<Self, Self::Error> {
         let api::DhatRegressionConfig {
             soft_limits,
             hard_limits,
             fail_fast,
         } = value;
-        DhatRegressionConfig {
-            soft_limits: if soft_limits.is_empty() && hard_limits.is_empty() {
-                vec![(DhatMetric::TotalBytes, 10f64)]
-            } else {
-                soft_limits
-            },
-            hard_limits: hard_limits
+
+        let (soft_limits, hard_limits) = if soft_limits.is_empty() && hard_limits.is_empty() {
+            (
+                IndexMap::from([(DhatMetric::TotalBytes, 10f64)]),
+                IndexMap::new(),
+            )
+        } else {
+            let hard_limits = hard_limits
                 .into_iter()
-                .map(|(m, l)| (m, l.into()))
-                .collect(),
+                .flat_map(|(dhat_metrics, metric)| {
+                    IndexSet::from(dhat_metrics)
+                        .into_iter()
+                        .map(move |metric_kind| {
+                            Metric::from(metric)
+                                .try_convert(metric_kind)
+                                .ok_or_else(|| {
+                                    format!(
+                                        "Invalid hard limit for {metric_kind}: Expected a \
+                                         'Metric::Int'"
+                                    )
+                                })
+                        })
+                })
+                .collect::<Result<IndexMap<DhatMetric, Metric>, String>>()?;
+
+            let soft_limits = soft_limits
+                .into_iter()
+                .flat_map(|(m, l)| IndexSet::from(m).into_iter().map(move |e| (e, l)))
+                .collect::<IndexMap<_, _>>();
+
+            (soft_limits, hard_limits)
+        };
+        Ok(DhatRegressionConfig {
+            soft_limits: soft_limits.into_iter().collect(),
+            hard_limits: hard_limits.into_iter().collect(),
             fail_fast: fail_fast.unwrap_or(false),
-        }
+        })
     }
 }
 
