@@ -113,7 +113,11 @@ Also new: It's possible to specify soft or hard limits for whole groups like
   into groups outside of this module.
 * ([#407](https://github.com/iai-callgrind/iai-callgrind/pull/407)): Update
   summary json schema v5.
-* Update direct dependencies: `inferno`, `cc`, `clap`
+* ([#410](https://github.com/iai-callgrind/iai-callgrind/pull/410)): Allow
+  specifying `CallgrindMetrics` groups for `Callgrind::soft_limits`,
+  `Callgrind::hard_limits`. Same for `Cachegrind` with `CachegrindMetrics` and
+  for `Dhat` with `DhatMetrics`.
+* Update direct dependencies: `inferno`, `cc`, `clap`, `serde_json`
 
 ### Deprecated
 
