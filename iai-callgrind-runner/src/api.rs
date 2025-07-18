@@ -1291,7 +1291,7 @@ impl From<CachegrindMetric> for EventKind {
 
 #[cfg(feature = "runner")]
 impl TypeChecker for CachegrindMetric {
-    fn verify_type(&self, metric: runner::metrics::Metric) -> bool {
+    fn is_int(&self) -> bool {
         match self {
             CachegrindMetric::Ir
             | CachegrindMetric::Dr
@@ -1310,7 +1310,7 @@ impl TypeChecker for CachegrindMetric {
             | CachegrindMetric::Bc
             | CachegrindMetric::Bcm
             | CachegrindMetric::Bi
-            | CachegrindMetric::Bim => metric.is_int(),
+            | CachegrindMetric::Bim => true,
             CachegrindMetric::I1MissRate
             | CachegrindMetric::LLiMissRate
             | CachegrindMetric::D1MissRate
@@ -1318,8 +1318,12 @@ impl TypeChecker for CachegrindMetric {
             | CachegrindMetric::LLMissRate
             | CachegrindMetric::L1HitRate
             | CachegrindMetric::LLHitRate
-            | CachegrindMetric::RamHitRate => metric.is_float(),
+            | CachegrindMetric::RamHitRate => false,
         }
+    }
+
+    fn is_float(&self) -> bool {
+        !self.is_int()
     }
 }
 
@@ -1592,8 +1596,12 @@ impl Summarize for DhatMetric {}
 
 #[cfg(feature = "runner")]
 impl TypeChecker for DhatMetric {
-    fn verify_type(&self, metric: runner::metrics::Metric) -> bool {
-        metric.is_int()
+    fn is_int(&self) -> bool {
+        true
+    }
+
+    fn is_float(&self) -> bool {
+        false
     }
 }
 
@@ -1785,7 +1793,7 @@ impl FromStr for EventKind {
 
 #[cfg(feature = "runner")]
 impl TypeChecker for EventKind {
-    fn verify_type(&self, metric: runner::metrics::Metric) -> bool {
+    fn is_int(&self) -> bool {
         match self {
             EventKind::Ir
             | EventKind::Dr
@@ -1815,7 +1823,7 @@ impl TypeChecker for EventKind {
             | EventKind::AcCost1
             | EventKind::AcCost2
             | EventKind::SpLoss1
-            | EventKind::SpLoss2 => metric.is_int(),
+            | EventKind::SpLoss2 => true,
             EventKind::I1MissRate
             | EventKind::LLiMissRate
             | EventKind::D1MissRate
@@ -1823,8 +1831,12 @@ impl TypeChecker for EventKind {
             | EventKind::LLMissRate
             | EventKind::L1HitRate
             | EventKind::LLHitRate
-            | EventKind::RamHitRate => metric.is_float(),
+            | EventKind::RamHitRate => false,
         }
+    }
+
+    fn is_float(&self) -> bool {
+        !self.is_int()
     }
 }
 

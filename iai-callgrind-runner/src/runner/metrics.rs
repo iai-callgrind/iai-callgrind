@@ -24,7 +24,11 @@ pub trait Summarize: Hash + Eq + Clone {
 
 pub trait TypeChecker {
     /// Return true if the `Metric` has the expected metric type
-    fn verify_type(&self, metric: Metric) -> bool;
+    fn verify_metric(&self, metric: Metric) -> bool {
+        (self.is_int() && metric.is_int()) || (self.is_float() && metric.is_float())
+    }
+    fn is_int(&self) -> bool;
+    fn is_float(&self) -> bool;
 }
 
 /// The metric measured by valgrind or derived from one or more other metrics
@@ -114,7 +118,7 @@ impl Metric {
     }
 
     pub fn try_convert<T: Display + TypeChecker>(&self, metric_kind: T) -> Option<(T, Self)> {
-        if metric_kind.verify_type(*self) {
+        if metric_kind.verify_metric(*self) {
             Some((metric_kind, *self))
         } else if let Metric::Int(a) = self {
             // Convert u64 to f64 metrics if necessary. f64 metrics are percentages with a value
