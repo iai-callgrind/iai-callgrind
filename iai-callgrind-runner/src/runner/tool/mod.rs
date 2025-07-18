@@ -368,7 +368,7 @@ impl ToolConfig {
         meta: &Metadata,
         base_args: &RawArgs,
         is_default: bool,
-        regression_config: Option<api::ToolRegressionConfig>,
+        regression_config: Option<ToolRegressionConfig>,
         // TODO: DELETE
         flamegraph_config: Option<api::ToolFlamegraphConfig>,
         entry_point: Option<EntryPoint>,
@@ -478,9 +478,11 @@ impl ToolConfig {
             };
 
             let mut regression_config = regression_config
-                .or(tool.regression_config)
-                .map_or_else(|| Ok(ToolRegressionConfig::None), TryInto::try_into)
-                .map_err(|string| anyhow!("Invalid limit for {valgrind_tool}: {string}"))?;
+                .map(Ok)
+                .or_else(|| tool.regression_config.map(TryInto::try_into))
+                .transpose()
+                .map_err(|error| anyhow!("Invalid limits for {valgrind_tool}: {error}"))?
+                .unwrap_or(ToolRegressionConfig::None);
             if let Some(fail_fast) = meta.args.regression_fail_fast {
                 match &mut regression_config {
                     ToolRegressionConfig::Callgrind(callgrind_regression_config) => {
@@ -573,9 +575,7 @@ impl ToolConfig {
                 )?,
             };
 
-            let mut regression_config = regression_config
-                .map_or_else(|| Ok(ToolRegressionConfig::None), TryInto::try_into)
-                .map_err(|string| anyhow!("Invalid limit for {valgrind_tool}: {string}"))?;
+            let mut regression_config = regression_config.unwrap_or(ToolRegressionConfig::None);
             if let Some(fail_fast) = meta.args.regression_fail_fast {
                 match &mut regression_config {
                     ToolRegressionConfig::Callgrind(callgrind_regression_config) => {

@@ -10,13 +10,16 @@ use clap::builder::BoolishValueParser;
 use clap::{ArgAction, Parser};
 use indexmap::{IndexMap, IndexSet};
 
+use super::cachegrind::regression::CachegrindRegressionConfig;
+use super::callgrind::regression::CallgrindRegressionConfig;
+use super::dhat::regression::DhatRegressionConfig;
 use super::format::OutputFormatKind;
 use super::metrics::{Metric, TypeChecker};
 use super::summary::{BaselineName, SummaryFormat};
+use super::tool::ToolRegressionConfig;
 use crate::api::{
-    CachegrindMetric, CachegrindMetrics, CachegrindRegressionConfig, CallgrindMetrics,
-    CallgrindRegressionConfig, DhatMetric, DhatMetrics, DhatRegressionConfig, EventKind, RawArgs,
-    ToolRegressionConfig, ValgrindTool,
+    CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics, EventKind,
+    RawArgs, ValgrindTool,
 };
 
 /// A filter for benchmarks
@@ -778,6 +781,13 @@ fn convert_metric<T: Display + TypeChecker + Copy>(
     }
 }
 
+/// Parse the callgrind limits from the command-line
+///
+/// This method (and the other `parse_dhat_limits`, ...) parses soft and hard limits in one go. The
+/// format is described in the --help message above in [`CommandLineArgs`].
+///
+/// In order to avoid back and forth conversions between `api::ToolRegressionConfig` and
+/// `tool::ToolRegressionConfig` we parse the `tool::ToolRegressionConfig` directly.
 fn parse_callgrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
     let (soft_limits, hard_limits) = parse_limits(value, |key, metric| {
         let metrics = key
@@ -790,20 +800,15 @@ fn parse_callgrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
     })?;
 
     let config = ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
-        soft_limits: soft_limits
-            .into_iter()
-            .map(|(e, l)| (e.into(), l))
-            .collect(),
-        hard_limits: hard_limits
-            .into_iter()
-            .map(|(e, m)| (e.into(), m.into()))
-            .collect(),
+        soft_limits: soft_limits.into_iter().collect(),
+        hard_limits: hard_limits.into_iter().collect(),
         ..Default::default()
     });
 
     Ok(config)
 }
 
+/// Same as `parse_callgrind_limits` but for cachegrind
 fn parse_cachegrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
     let (soft_limits, hard_limits) = parse_limits(value, |key, metric| {
         let metrics = key
@@ -816,20 +821,15 @@ fn parse_cachegrind_limits(value: &str) -> Result<ToolRegressionConfig, String> 
     })?;
 
     let config = ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig {
-        soft_limits: soft_limits
-            .into_iter()
-            .map(|(e, l)| (e.into(), l))
-            .collect(),
-        hard_limits: hard_limits
-            .into_iter()
-            .map(|(e, m)| (e.into(), m.into()))
-            .collect(),
+        soft_limits: soft_limits.into_iter().collect(),
+        hard_limits: hard_limits.into_iter().collect(),
         ..Default::default()
     });
 
     Ok(config)
 }
 
+/// Same as `parse_callgrind_limits` but for dhat
 fn parse_dhat_limits(value: &str) -> Result<ToolRegressionConfig, String> {
     let (soft_limits, hard_limits) = parse_limits(value, |key, metric| {
         let metrics = key
@@ -842,14 +842,8 @@ fn parse_dhat_limits(value: &str) -> Result<ToolRegressionConfig, String> {
     })?;
 
     let config = ToolRegressionConfig::Dhat(DhatRegressionConfig {
-        soft_limits: soft_limits
-            .into_iter()
-            .map(|(e, l)| (e.into(), l))
-            .collect(),
-        hard_limits: hard_limits
-            .into_iter()
-            .map(|(e, m)| (e.into(), m.into()))
-            .collect(),
+        soft_limits: soft_limits.into_iter().collect(),
+        hard_limits: hard_limits.into_iter().collect(),
         ..Default::default()
     });
 
@@ -881,7 +875,6 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
-    use crate::api;
     use crate::api::EventKind::*;
     use crate::api::RawArgs;
 
@@ -948,7 +941,7 @@ mod tests {
     fn test_parse_callgrind_limits(
         #[case] regression_var: &str,
         #[case] expected_soft_limits: Vec<(EventKind, f64)>,
-        #[case] expected_hard_limits: Vec<(EventKind, api::Limit)>,
+        #[case] expected_hard_limits: Vec<(EventKind, Metric)>,
     ) {
         if let ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
             soft_limits,
@@ -956,16 +949,6 @@ mod tests {
             ..
         }) = parse_callgrind_limits(regression_var).unwrap()
         {
-            let soft_limits: Vec<(EventKind, f64)> = soft_limits
-                .into_iter()
-                .flat_map(|(m, l)| IndexSet::from(m).into_iter().map(move |e| (e, l)))
-                .collect();
-
-            let hard_limits: Vec<(EventKind, api::Limit)> = hard_limits
-                .into_iter()
-                .flat_map(|(m, l)| IndexSet::from(m).into_iter().map(move |e| (e, l)))
-                .collect();
-
             assert_eq!(soft_limits, expected_soft_limits);
             assert_eq!(hard_limits, expected_hard_limits);
         } else {
