@@ -959,6 +959,7 @@ pub struct OutputFormat {
     pub truncate_description: Option<Option<usize>>,
     pub show_intermediate: Option<bool>,
     pub show_grid: Option<bool>,
+    pub tolerance: Option<f64>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
