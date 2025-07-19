@@ -16,6 +16,7 @@ use crate::api::{
     EntryPoint, LibraryBenchmarkBench, LibraryBenchmarkConfig, LibraryBenchmarkGroups, RawArgs,
     ValgrindTool,
 };
+use crate::error::Error;
 use crate::runner::format;
 
 mod defaults {
@@ -344,7 +345,14 @@ impl LibBench {
             &EntryPoint::Default,
             &config.valgrind_args,
             &default_args,
-        )?;
+        )
+        .map_err(|error| {
+            Error::ConfigurationError(
+                module_path.clone(),
+                library_benchmark_bench.id.clone(),
+                error.to_string(),
+            )
+        })?;
 
         Ok(Self {
             group_index,

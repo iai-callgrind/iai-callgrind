@@ -21,7 +21,7 @@ use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, ValgrindT
 use crate::error::Error;
 use crate::util::{factor_diff, make_absolute, percentage_diff, EitherOrBoth};
 
-pub const SCHEMA_VERSION: &str = "5";
+pub const SCHEMA_VERSION: &str = "6";
 
 /// A `Baseline` depending on the [`BaselineKind`] which points to the corresponding path
 ///

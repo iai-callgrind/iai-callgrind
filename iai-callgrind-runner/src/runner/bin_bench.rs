@@ -19,6 +19,7 @@ use crate::api::{
     self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind,
     EntryPoint, Stdin, ValgrindTool,
 };
+use crate::error::Error;
 use crate::runner::format;
 
 mod defaults {
@@ -180,6 +181,7 @@ impl Benchmark for BaselineBenchmark {
 }
 
 impl BinBench {
+    #[allow(clippy::too_many_lines)]
     fn new(
         meta: &Metadata,
         group: &Group,
@@ -208,7 +210,13 @@ impl BinBench {
             ..
         } = binary_benchmark_bench.command;
 
-        let command = Command::new(&module_path, path, args)?;
+        let command = Command::new(&module_path, path, args).map_err(|error| {
+            Error::ConfigurationError(
+                module_path.clone(),
+                binary_benchmark_bench.id.clone(),
+                error.to_string(),
+            )
+        })?;
 
         let mut assistant_envs = config.collect_envs();
         assistant_envs.push((
@@ -233,7 +241,14 @@ impl BinBench {
             &EntryPoint::None,
             &config.valgrind_args,
             &HashMap::default(),
-        )?;
+        )
+        .map_err(|error| {
+            Error::ConfigurationError(
+                module_path.clone(),
+                binary_benchmark_bench.id.clone(),
+                error.to_string(),
+            )
+        })?;
 
         let setup = binary_benchmark_bench
             .has_setup

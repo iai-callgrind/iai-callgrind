@@ -107,7 +107,7 @@ pub struct ComparisonHeader {
     pub indent: String,
 }
 
-struct Header {
+pub struct Header {
     module_path: String,
     id: Option<String>,
     description: Option<String>,
@@ -278,6 +278,17 @@ impl Header {
             module_path: module_path.to_string(),
             id: id.into(),
             description: truncated,
+        }
+    }
+
+    pub fn without_description<T>(module_path: &ModulePath, id: T) -> Self
+    where
+        T: Into<Option<String>>,
+    {
+        Self {
+            module_path: module_path.to_string(),
+            id: id.into(),
+            description: None,
         }
     }
 

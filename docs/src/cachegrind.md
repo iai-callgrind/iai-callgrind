@@ -11,7 +11,7 @@ feature
 
 ```toml
 [dev-dependencies]
-iai-callgrind = { version = "0.15.2", features = ["client_requests"] }
+iai-callgrind = { version = "0.16.0", features = ["client_requests"] }
 ```
 
 ## The cachegrind feature
@@ -22,7 +22,7 @@ finally look like this:
 
 ```toml
 [dev-dependencies]
-iai-callgrind = { version = "0.15.2", features = ["cachegrind"] }
+iai-callgrind = { version = "0.16.0", features = ["cachegrind"] }
 ```
 
 The `cachegrind` feature automatically activates the `client_requests` feature,

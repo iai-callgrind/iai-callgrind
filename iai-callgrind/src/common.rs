@@ -6,8 +6,8 @@ use derive_more::AsRef;
 use iai_callgrind_macros::IntoInner;
 
 use super::{
-    CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, Direction, ErrorMetric,
-    EventKind, FlamegraphKind, ValgrindTool, __internal,
+    CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics, Direction,
+    ErrorMetric, EventKind, FlamegraphKind, Limit, ValgrindTool, __internal,
 };
 use crate::EntryPoint;
 
@@ -451,7 +451,7 @@ impl Cachegrind {
         self.soft_limits(limits)
     }
 
-    /// Configure the limits percentages over/below which a performance regression can be assumed
+    /// Configure the soft limits over/below which a performance regression can be assumed
     ///
     /// Same as [`Callgrind::soft_limits`] but for [`CachegrindMetric`].
     ///
@@ -462,18 +462,32 @@ impl Cachegrind {
     ///
     /// let config = Cachegrind::default().soft_limits([(CachegrindMetric::Ir, 5f64)]);
     /// ```
-    pub fn soft_limits<T>(&mut self, limits: T) -> &mut Self
+    ///
+    /// or for a group of metrics but with a special value for `Ir`:
+    ///
+    /// ```
+    /// use iai_callgrind::{Cachegrind, CachegrindMetric, CachegrindMetrics};
+    ///
+    /// let config = Cachegrind::default().soft_limits([
+    ///     (CachegrindMetrics::All, 10f64),
+    ///     (CachegrindMetric::Ir.into(), 5f64),
+    /// ]);
+    /// ```
+    pub fn soft_limits<K, T>(&mut self, soft_limits: T) -> &mut Self
     where
-        T: IntoIterator<Item = (CachegrindMetric, f64)>,
+        K: Into<CachegrindMetrics>,
+        T: IntoIterator<Item = (K, f64)>,
     {
+        let iter = soft_limits.into_iter().map(|(k, l)| (k.into(), l));
+
         if let Some(__internal::InternalToolRegressionConfig::Cachegrind(config)) =
             &mut self.0.regression_config
         {
-            config.soft_limits.extend(limits);
+            config.soft_limits.extend(iter);
         } else {
             self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Cachegrind(
                 __internal::InternalCachegrindRegressionConfig {
-                    soft_limits: limits.into_iter().collect(),
+                    soft_limits: iter.collect(),
                     hard_limits: Vec::default(),
                     fail_fast: None,
                 },
@@ -484,7 +498,7 @@ impl Cachegrind {
 
     /// Set hard limits above which a performance regression can be assumed
     ///
-    /// Same as [`Callgrind::hard_limits`] but for [`CachegrindMetric`]s.
+    /// Same as [`Callgrind::hard_limits`] but for [`CachegrindMetrics`].
     ///
     /// # Examples
     ///
@@ -493,25 +507,34 @@ impl Cachegrind {
     ///
     /// let config = Cachegrind::default().hard_limits([(CachegrindMetric::Ir, 10_000)]);
     /// ```
-    pub fn hard_limits<I, T>(&mut self, hard_limits: T) -> &mut Self
+    ///
+    /// or for a group of metrics but with a special value for `Ir`:
+    ///
+    /// ```
+    /// use iai_callgrind::{Cachegrind, CachegrindMetric, CachegrindMetrics};
+    ///
+    /// let config = Cachegrind::default().hard_limits([
+    ///     (CachegrindMetrics::Default, 10_000),
+    ///     (CachegrindMetric::Ir.into(), 5_000),
+    /// ]);
+    /// ```
+    pub fn hard_limits<K, L, T>(&mut self, hard_limits: T) -> &mut Self
     where
-        I: Into<__internal::InternalMetric>,
-        T: IntoIterator<Item = (CachegrindMetric, I)>,
+        K: Into<CachegrindMetrics>,
+        L: Into<Limit>,
+        T: IntoIterator<Item = (K, L)>,
     {
+        let iter = hard_limits.into_iter().map(|(k, l)| (k.into(), l.into()));
+
         if let Some(__internal::InternalToolRegressionConfig::Cachegrind(config)) =
             &mut self.0.regression_config
         {
-            config
-                .hard_limits
-                .extend(hard_limits.into_iter().map(|(m, l)| (m, l.into())));
+            config.hard_limits.extend(iter);
         } else {
             self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Cachegrind(
                 __internal::InternalCachegrindRegressionConfig {
                     soft_limits: Vec::default(),
-                    hard_limits: hard_limits
-                        .into_iter()
-                        .map(|(m, l)| (m, l.into()))
-                        .collect(),
+                    hard_limits: iter.collect(),
                     fail_fast: None,
                 },
             ));
@@ -723,40 +746,42 @@ impl Callgrind {
         self.soft_limits(limits)
     }
 
-    /// Configure the limits percentages over/below which a performance regression can be assumed
+    /// Configure the soft limits over/below which a performance regression can be assumed
     ///
-    /// A limit consists of an [`EventKind`] and a percentage over which a regression is assumed. If
-    /// the limit is negative, then a regression is assumed to be below this limit.
+    /// A soft limit consists of an [`EventKind`] and a percentage over which a regression is
+    /// assumed. If the limit is negative, then a regression is assumed to be below this limit.
     ///
     /// # Examples
     ///
     /// ```
     /// use iai_callgrind::{Callgrind, EventKind};
     ///
-    /// let config = Callgrind::default().limits([(EventKind::Ir, 5f64)]);
+    /// let config = Callgrind::default().soft_limits([(EventKind::Ir, 5f64)]);
     /// ```
     ///
-    /// # Details
+    /// or for a whole group of metrics but a special value for `Ir`:
     ///
-    /// The percentage which can be found in the iai-callgrind output and can be limited with a soft
-    /// limit is calculated from the difference between the `new` (left side) and `old` (right side)
-    /// run as follows:
-    ///
-    /// ```text
-    /// difference percentage = (new - old) / old * 100
     /// ```
-    pub fn soft_limits<T>(&mut self, limits: T) -> &mut Self
+    /// use iai_callgrind::{Callgrind, CallgrindMetrics, EventKind};
+    ///
+    /// let config = Callgrind::default()
+    ///     .soft_limits([(CallgrindMetrics::All, 10f64), (EventKind::Ir.into(), 5f64)]);
+    /// ```
+    pub fn soft_limits<K, T>(&mut self, soft_limits: T) -> &mut Self
     where
-        T: IntoIterator<Item = (EventKind, f64)>,
+        K: Into<CallgrindMetrics>,
+        T: IntoIterator<Item = (K, f64)>,
     {
+        let iter = soft_limits.into_iter().map(|(k, l)| (k.into(), l));
+
         if let Some(__internal::InternalToolRegressionConfig::Callgrind(config)) =
             &mut self.0.regression_config
         {
-            config.soft_limits.extend(limits);
+            config.soft_limits.extend(iter);
         } else {
             self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Callgrind(
                 __internal::InternalCallgrindRegressionConfig {
-                    soft_limits: limits.into_iter().collect(),
+                    soft_limits: iter.collect(),
                     hard_limits: Vec::default(),
                     fail_fast: None,
                 },
@@ -770,6 +795,30 @@ impl Callgrind {
     /// In contrast to [`Callgrind::soft_limits`], hard limits restrict an [`EventKind`] in absolute
     /// numbers instead of a percentage. A hard limit only affects the `new` benchmark run.
     ///
+    /// # Errors
+    ///
+    /// Specifying limits with [`Limit::Float`] for metric groups which contain mixed metrics of
+    /// [`Limit::Float`] and [`Limit::Int`] type is an error because [`Limit::Float`] can't be
+    /// converted to [`Limit::Int`]. Use [`Limit::Int`] instead and overwrite the float metrics of
+    /// this group with [`Limit::Float`] if required.
+    ///
+    /// ```
+    /// use iai_callgrind::{Callgrind, CallgrindMetrics, Limit};
+    ///
+    /// // This is an error
+    /// let config = Callgrind::default().hard_limits([(CallgrindMetrics::All, 10_000.0)]);
+    ///
+    /// // This is ok
+    /// let config = Callgrind::default().hard_limits([(CallgrindMetrics::All, 10_000)]);
+    ///
+    /// // Overwriting metrics is fine too
+    /// let config = Callgrind::default().hard_limits([
+    ///     (CallgrindMetrics::All, Limit::Int(10_000)),
+    ///     (CallgrindMetrics::CacheMissRates, Limit::Float(5f64)),
+    ///     (CallgrindMetrics::CacheHitRates, Limit::Float(100f64)),
+    /// ]);
+    /// ```
+    ///
     /// # Examples
     ///
     /// If in a benchmark configured like below, there are more than `10_000` instruction fetches, a
@@ -780,25 +829,34 @@ impl Callgrind {
     ///
     /// let config = Callgrind::default().hard_limits([(EventKind::Ir, 10_000)]);
     /// ```
-    pub fn hard_limits<I, T>(&mut self, hard_limits: T) -> &mut Self
+    ///
+    /// or for a group of metrics but with a special value for `Ir`:
+    ///
+    /// ```
+    /// use iai_callgrind::{Callgrind, CallgrindMetrics, EventKind};
+    ///
+    /// let config = Callgrind::default().hard_limits([
+    ///     (CallgrindMetrics::Default, 10_000),
+    ///     (EventKind::Ir.into(), 5_000),
+    /// ]);
+    /// ```
+    pub fn hard_limits<K, L, T>(&mut self, hard_limits: T) -> &mut Self
     where
-        I: Into<__internal::InternalMetric>,
-        T: IntoIterator<Item = (EventKind, I)>,
+        K: Into<CallgrindMetrics>,
+        L: Into<Limit>,
+        T: IntoIterator<Item = (K, L)>,
     {
+        let iter = hard_limits.into_iter().map(|(k, l)| (k.into(), l.into()));
+
         if let Some(__internal::InternalToolRegressionConfig::Callgrind(config)) =
             &mut self.0.regression_config
         {
-            config
-                .hard_limits
-                .extend(hard_limits.into_iter().map(|(m, l)| (m, l.into())));
+            config.hard_limits.extend(iter);
         } else {
             self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Callgrind(
                 __internal::InternalCallgrindRegressionConfig {
                     soft_limits: Vec::default(),
-                    hard_limits: hard_limits
-                        .into_iter()
-                        .map(|(m, l)| (m, l.into()))
-                        .collect(),
+                    hard_limits: iter.collect(),
                     fail_fast: None,
                 },
             ));
@@ -1253,8 +1311,7 @@ impl Dhat {
 
     /// Configure the limits percentages over/below which a performance regression can be assumed
     ///
-    /// Same as [`Callgrind::soft_limits`] but for [`DhatMetric`]s. Note that in contrast to
-    /// callgrind, allocations in `setup` and and `teardown` are included in the benchmark metrics.
+    /// Same as [`Callgrind::soft_limits`] but for [`DhatMetric`]s.
     ///
     /// # Examples
     ///
@@ -1263,18 +1320,21 @@ impl Dhat {
     ///
     /// let config = Dhat::default().soft_limits([(DhatMetric::TotalBytes, 5f64)]);
     /// ```
-    pub fn soft_limits<T>(&mut self, soft_limits: T) -> &mut Self
+    pub fn soft_limits<K, T>(&mut self, soft_limits: T) -> &mut Self
     where
-        T: IntoIterator<Item = (DhatMetric, f64)>,
+        K: Into<DhatMetrics>,
+        T: IntoIterator<Item = (K, f64)>,
     {
+        let iter = soft_limits.into_iter().map(|(k, l)| (k.into(), l));
+
         if let Some(__internal::InternalToolRegressionConfig::Dhat(config)) =
             &mut self.0.regression_config
         {
-            config.soft_limits.extend(soft_limits);
+            config.soft_limits.extend(iter);
         } else {
             self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Dhat(
                 __internal::InternalDhatRegressionConfig {
-                    soft_limits: soft_limits.into_iter().collect(),
+                    soft_limits: iter.collect(),
                     hard_limits: Vec::default(),
                     fail_fast: None,
                 },
@@ -1285,8 +1345,7 @@ impl Dhat {
 
     /// Set hard limits above which a performance regression can be assumed
     ///
-    /// Same as [`Callgrind::hard_limits`] but for [`DhatMetric`]s. Note that in contrast to
-    /// callgrind allocations in `setup` and and `teardown` are included in the benchmark metrics.
+    /// Same as [`Callgrind::hard_limits`] but for [`DhatMetric`]s.
     ///
     /// # Examples
     ///
@@ -1298,25 +1357,34 @@ impl Dhat {
     ///
     /// let config = Dhat::default().hard_limits([(DhatMetric::TotalBytes, 10_000)]);
     /// ```
-    pub fn hard_limits<I, T>(&mut self, hard_limits: T) -> &mut Self
+    ///
+    /// or for a group of metrics but with a special value for `TotalBytes`:
+    ///
+    /// ```
+    /// use iai_callgrind::{Dhat, DhatMetric, DhatMetrics};
+    ///
+    /// let config = Dhat::default().hard_limits([
+    ///     (DhatMetrics::Default, 10_000),
+    ///     (DhatMetric::TotalBytes.into(), 5_000),
+    /// ]);
+    /// ```
+    pub fn hard_limits<K, L, T>(&mut self, hard_limits: T) -> &mut Self
     where
-        I: Into<__internal::InternalMetric>,
-        T: IntoIterator<Item = (DhatMetric, I)>,
+        K: Into<DhatMetrics>,
+        L: Into<Limit>,
+        T: IntoIterator<Item = (K, L)>,
     {
+        let iter = hard_limits.into_iter().map(|(k, l)| (k.into(), l.into()));
+
         if let Some(__internal::InternalToolRegressionConfig::Dhat(config)) =
             &mut self.0.regression_config
         {
-            config
-                .hard_limits
-                .extend(hard_limits.into_iter().map(|(m, l)| (m, l.into())));
+            config.hard_limits.extend(iter);
         } else {
             self.0.regression_config = Some(__internal::InternalToolRegressionConfig::Dhat(
                 __internal::InternalDhatRegressionConfig {
                     soft_limits: Vec::default(),
-                    hard_limits: hard_limits
-                        .into_iter()
-                        .map(|(m, l)| (m, l.into()))
-                        .collect(),
+                    hard_limits: iter.collect(),
                     fail_fast: None,
                 },
             ));

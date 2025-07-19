@@ -1,3 +1,5 @@
+use indexmap::{IndexMap, IndexSet};
+
 use crate::api::{self, EventKind};
 use crate::runner::metrics::{Metric, MetricKind, MetricsSummary};
 use crate::runner::summary::ToolRegression;
@@ -30,25 +32,51 @@ impl RegressionConfig<EventKind> for CallgrindRegressionConfig {
     }
 }
 
-impl From<api::CallgrindRegressionConfig> for CallgrindRegressionConfig {
-    fn from(value: api::CallgrindRegressionConfig) -> Self {
+impl TryFrom<api::CallgrindRegressionConfig> for CallgrindRegressionConfig {
+    type Error = String;
+
+    fn try_from(value: api::CallgrindRegressionConfig) -> Result<Self, Self::Error> {
         let api::CallgrindRegressionConfig {
             soft_limits,
             hard_limits,
             fail_fast,
         } = value;
-        CallgrindRegressionConfig {
-            soft_limits: if soft_limits.is_empty() && hard_limits.is_empty() {
-                vec![(EventKind::Ir, 10f64)]
-            } else {
-                soft_limits
-            },
-            hard_limits: hard_limits
+
+        let (soft_limits, hard_limits) = if soft_limits.is_empty() && hard_limits.is_empty() {
+            (IndexMap::from([(EventKind::Ir, 10f64)]), IndexMap::new())
+        } else {
+            let hard_limits = hard_limits
                 .into_iter()
-                .map(|(m, l)| (m, l.into()))
-                .collect(),
+                .flat_map(|(callgrind_metrics, metric)| {
+                    IndexSet::from(callgrind_metrics)
+                        .into_iter()
+                        .map(move |metric_kind| {
+                            Metric::from(metric)
+                                .try_convert(metric_kind)
+                                .ok_or_else(|| {
+                                    format!(
+                                        "Invalid hard limit for \
+                                         '{metric_kind:?}/{callgrind_metrics:?}': Expected a \
+                                         'Int' but found '{metric:?}'"
+                                    )
+                                })
+                        })
+                })
+                .collect::<Result<IndexMap<EventKind, Metric>, String>>()?;
+
+            let soft_limits = soft_limits
+                .into_iter()
+                .flat_map(|(m, l)| IndexSet::from(m).into_iter().map(move |e| (e, l)))
+                .collect::<IndexMap<_, _>>();
+
+            (soft_limits, hard_limits)
+        };
+
+        Ok(CallgrindRegressionConfig {
+            soft_limits: soft_limits.into_iter().collect(),
+            hard_limits: hard_limits.into_iter().collect(),
             fail_fast: fail_fast.unwrap_or(false),
-        }
+        })
     }
 }
 
@@ -68,8 +96,9 @@ mod tests {
     use EventKind::*;
 
     use super::*;
+    use crate::api::{CallgrindMetrics, Limit};
     use crate::runner::callgrind::model::Metrics;
-    use crate::runner::metrics::Metric;
+    use crate::runner::metrics::{Metric, TypeChecker};
     use crate::util::EitherOrBoth;
 
     fn cachesim_costs(costs: [u64; 9]) -> Metrics {
@@ -176,5 +205,132 @@ mod tests {
             .collect::<Vec<ToolRegression>>();
 
         assert_eq!(regression.check(&summary), expected);
+    }
+
+    #[rstest]
+    #[case::empty_then_default(Vec::<(EventKind, f64)>::new(), vec![(EventKind::Ir, 10f64)])]
+    #[case::single(vec![(Ir, 0f64)], vec![(Ir, 0f64)])]
+    #[case::two(vec![(Ir, 0f64), (Dr, 10f64)], vec![(Ir, 0f64), (Dr, 10f64)])]
+    #[case::duplicate(vec![(Ir, 0f64), (Ir, 10f64)], vec![(Ir, 10f64)])]
+    #[case::group(
+        vec![(CallgrindMetrics::WriteBackBehaviour, 10f64)],
+        vec![(ILdmr, 10f64), (DLdmr, 10f64), (DLdmw, 10f64)],
+    )]
+    #[case::group_overwrite_keeps_order(
+        vec![(CallgrindMetrics::WriteBackBehaviour, 10f64), (ILdmr.into(), 20f64)],
+        vec![(ILdmr, 20f64), (DLdmr, 10f64), (DLdmw, 10f64)],
+    )]
+    fn test_try_from_regression_config_for_soft_limits<T>(
+        #[case] soft_limits: Vec<(T, f64)>,
+        #[case] expected_soft_limits: Vec<(EventKind, f64)>,
+    ) where
+        T: Into<CallgrindMetrics>,
+    {
+        let expected = CallgrindRegressionConfig {
+            soft_limits: expected_soft_limits,
+            hard_limits: Vec::default(),
+            fail_fast: false,
+        };
+        let api_regression_config = api::CallgrindRegressionConfig {
+            soft_limits: soft_limits
+                .into_iter()
+                .map(|(m, l)| (m.into(), l))
+                .collect(),
+            hard_limits: Vec::default(),
+            fail_fast: Option::default(),
+        };
+
+        assert_eq!(
+            CallgrindRegressionConfig::try_from(api_regression_config).unwrap(),
+            expected
+        );
+    }
+
+    #[rstest]
+    #[case::empty_then_default(Vec::<(EventKind, f64)>::new(), Vec::<(EventKind, f64)>::new())]
+    #[case::single(vec![(Ir, 0)], vec![(Ir, 0)])]
+    #[case::single_convert(vec![(L1HitRate, 1)], vec![(L1HitRate, 1f64)])]
+    #[case::two(vec![(Ir, 0), (Dr, 2)], vec![(Ir, 0), (Dr, 2)])]
+    #[case::duplicate_overwrite( vec![(Ir, 0), (Ir, 20)], vec![(Ir, 20)])]
+    #[case::integer_group(
+        vec![(CallgrindMetrics::WriteBackBehaviour, 10)],
+        vec![(ILdmr, 10), (DLdmr, 10), (DLdmw, 10)],
+    )]
+    #[case::float_group(
+        vec![(CallgrindMetrics::CacheHitRates, 10f64)],
+        vec![(L1HitRate, 10f64), (LLHitRate, 10f64), (RamHitRate, 10f64)],
+    )]
+    #[case::float_group_convert(
+        vec![(CallgrindMetrics::CacheHitRates, 10)],
+        vec![(L1HitRate, 10f64), (LLHitRate, 10f64), (RamHitRate, 10f64)],
+    )]
+    #[case::mixed_group(
+        vec![(CallgrindMetrics::CacheSim, 10)],
+        IndexSet::from(CallgrindMetrics::CacheSim)
+            .into_iter()
+            .map(|m| {
+                if m.is_int() {
+                    (m, Metric::Int(10))
+                } else {
+                    (m, Metric::Float(10.0))
+                }
+           }).collect()
+    )]
+    #[case::group_overwrite_keeps_order(
+        vec![(CallgrindMetrics::WriteBackBehaviour, 10), (ILdmr.into(), 20)],
+        vec![(ILdmr, 20), (DLdmr, 10), (DLdmw, 10)],
+    )]
+    fn test_try_from_regression_config_for_hard_limits<T, U, V>(
+        #[case] hard_limits: Vec<(T, U)>,
+        #[case] expected_hard_limits: Vec<(EventKind, V)>,
+    ) where
+        T: Into<CallgrindMetrics>,
+        U: Into<Limit>,
+        V: Into<Metric>,
+    {
+        let expected = CallgrindRegressionConfig {
+            soft_limits: if hard_limits.is_empty() {
+                vec![(EventKind::Ir, 10f64)]
+            } else {
+                Vec::default()
+            },
+            hard_limits: expected_hard_limits
+                .into_iter()
+                .map(|(m, l)| (m, l.into()))
+                .collect::<Vec<(EventKind, Metric)>>(),
+            fail_fast: false,
+        };
+        let api_regression_config = api::CallgrindRegressionConfig {
+            soft_limits: Vec::default(),
+            hard_limits: hard_limits
+                .into_iter()
+                .map(|(m, l)| (m.into(), l.into()))
+                .collect(),
+            fail_fast: Option::default(),
+        };
+
+        assert_eq!(
+            CallgrindRegressionConfig::try_from(api_regression_config).unwrap(),
+            expected
+        );
+    }
+
+    #[test]
+    fn test_try_from_regression_config_for_hard_limits_then_error() {
+        let api_regression_config = api::CallgrindRegressionConfig {
+            soft_limits: Vec::default(),
+            hard_limits: vec![(EventKind::Ir.into(), Limit::Float(10f64))],
+            fail_fast: Option::default(),
+        };
+
+        assert!(CallgrindRegressionConfig::try_from(api_regression_config).is_err());
+
+        let api_regression_config = api::CallgrindRegressionConfig {
+            soft_limits: Vec::default(),
+            hard_limits: vec![(CallgrindMetrics::All, Limit::Float(10f64))],
+            fail_fast: Option::default(),
+        };
+
+        assert!(CallgrindRegressionConfig::try_from(api_regression_config).is_err());
     }
 }
