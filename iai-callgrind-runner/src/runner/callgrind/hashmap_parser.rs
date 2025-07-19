@@ -133,7 +133,7 @@ impl CallgrindParser for HashMapParser {
             .lines()
             .map(Result::unwrap);
         let config = parse_header(&mut iter)
-            .map_err(|error| Error::ParseError((path.to_owned(), error.to_string())))?;
+            .map_err(|error| Error::ParseError(path.to_owned(), error.to_string()))?;
 
         let mut current_id = CurrentId::default();
         let mut cfn_record = None;

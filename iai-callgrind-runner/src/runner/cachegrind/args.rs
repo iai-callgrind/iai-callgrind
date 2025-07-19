@@ -44,12 +44,12 @@ impl Args {
                 Some(("--LL", value)) => value.clone_into(&mut self.ll),
                 Some((key @ "--cache-sim", value)) => {
                     self.cache_sim = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
+                        Error::InvalidBoolArgument(key.to_owned(), value.to_owned())
                     })?;
                 }
                 Some((key @ "--trace-children", value)) => {
                     self.trace_children = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
+                        Error::InvalidBoolArgument(key.to_owned(), value.to_owned())
                     })?;
                 }
                 Some(("--fair-sched", value)) => {

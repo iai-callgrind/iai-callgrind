@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.16.0] - 2025-07-20
+
 This release includes breaking changes especially for DHAT explained in more
 detail below.
 
@@ -113,7 +115,14 @@ Also new: It's possible to specify soft or hard limits for whole groups like
   into groups outside of this module.
 * ([#407](https://github.com/iai-callgrind/iai-callgrind/pull/407)):
   Bump summary.v5.schema.json -> summary.v6.schema.json
-* Update direct dependencies: `inferno`, `cc`, `clap`
+* ([#410](https://github.com/iai-callgrind/iai-callgrind/pull/410)): Allow
+  specifying `CallgrindMetrics` groups for `Callgrind::soft_limits`,
+  `Callgrind::hard_limits`. Same for `Cachegrind` with `CachegrindMetrics` and
+  for `Dhat` with `DhatMetrics`.
+* ([#410](https://github.com/iai-callgrind/iai-callgrind/pull/410)): Improve
+  error message in the runner in case of misconfigurations in the ui. The error
+  message now also shows the exact benchmark case where the error happens.
+* Update direct dependencies: `inferno`, `cc`, `clap`, `serde_json`
 
 ### Deprecated
 

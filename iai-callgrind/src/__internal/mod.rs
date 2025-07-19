@@ -32,9 +32,9 @@ pub use iai_callgrind_runner::api::{
     LibraryBenchmarkBench as InternalLibraryBenchmarkBench,
     LibraryBenchmarkConfig as InternalLibraryBenchmarkConfig,
     LibraryBenchmarkGroup as InternalLibraryBenchmarkGroup,
-    LibraryBenchmarkGroups as InternalLibraryBenchmarkGroups, Metric as InternalMetric,
-    OutputFormat as InternalOutputFormat, RawArgs as InternalRawArgs, Sandbox as InternalSandbox,
-    Tool as InternalTool, ToolFlamegraphConfig as InternalToolFlamegraphConfig,
+    LibraryBenchmarkGroups as InternalLibraryBenchmarkGroups, OutputFormat as InternalOutputFormat,
+    RawArgs as InternalRawArgs, Sandbox as InternalSandbox, Tool as InternalTool,
+    ToolFlamegraphConfig as InternalToolFlamegraphConfig,
     ToolOutputFormat as InternalToolOutputFormat,
     ToolRegressionConfig as InternalToolRegressionConfig, Tools as InternalTools,
 };
@@ -100,7 +100,7 @@ impl Runner {
         module_path: &str,
         bench_bin: String,
     ) -> Self {
-        const LIBRARY_VERSION: &str = "0.15.2";
+        const LIBRARY_VERSION: &str = "0.16.0";
 
         let mut cmd = std::process::Command::new(exe.unwrap_or("iai-callgrind-runner"));
         cmd.arg(LIBRARY_VERSION);

@@ -313,12 +313,12 @@ impl ToolCommand {
             debug!("Waiting for setup child process");
             let status = child.wait().expect("Setup child process should have run");
             if !status.success() {
-                return Err(Error::ProcessError((
+                return Err(Error::ProcessError(
                     module_path.join("setup").to_string(),
                     None,
                     status,
                     None,
-                ))
+                )
                 .into());
             }
         }
@@ -368,8 +368,7 @@ impl ToolConfig {
         meta: &Metadata,
         base_args: &RawArgs,
         is_default: bool,
-        regression_config: Option<api::ToolRegressionConfig>,
-        flamegraph_config: Option<api::ToolFlamegraphConfig>,
+        regression_config: Option<ToolRegressionConfig>,
         entry_point: Option<EntryPoint>,
     ) -> Result<Self> {
         if let Some(tool) = tool {
@@ -477,8 +476,11 @@ impl ToolConfig {
             };
 
             let mut regression_config = regression_config
-                .or(tool.regression_config)
-                .map_or(ToolRegressionConfig::None, Into::into);
+                .map(Ok)
+                .or_else(|| tool.regression_config.map(TryInto::try_into))
+                .transpose()
+                .map_err(|error| anyhow!("Invalid limits for {valgrind_tool}: {error}"))?
+                .unwrap_or(ToolRegressionConfig::None);
             if let Some(fail_fast) = meta.args.regression_fail_fast {
                 match &mut regression_config {
                     ToolRegressionConfig::Callgrind(callgrind_regression_config) => {
@@ -500,8 +502,7 @@ impl ToolConfig {
                 args,
                 None,
                 regression_config,
-                flamegraph_config
-                    .or(tool.flamegraph_config)
+                tool.flamegraph_config
                     .map_or(ToolFlamegraphConfig::None, Into::into),
                 entry_point.or(tool.entry_point).unwrap_or(EntryPoint::None),
                 is_default,
@@ -571,8 +572,7 @@ impl ToolConfig {
                 )?,
             };
 
-            let mut regression_config =
-                regression_config.map_or(ToolRegressionConfig::None, Into::into);
+            let mut regression_config = regression_config.unwrap_or(ToolRegressionConfig::None);
             if let Some(fail_fast) = meta.args.regression_fail_fast {
                 match &mut regression_config {
                     ToolRegressionConfig::Callgrind(callgrind_regression_config) => {
@@ -594,7 +594,7 @@ impl ToolConfig {
                 args,
                 None,
                 regression_config,
-                flamegraph_config.map_or(ToolFlamegraphConfig::None, Into::into),
+                ToolFlamegraphConfig::None,
                 entry_point.unwrap_or(EntryPoint::None),
                 is_default,
                 &[],
@@ -645,7 +645,6 @@ impl ToolConfig {
                     &base_args,
                     true,
                     meta.args.callgrind_limits.clone(),
-                    None,
                     Some(entry_point),
                 )
             }
@@ -664,7 +663,6 @@ impl ToolConfig {
                     &base_args,
                     true,
                     meta.args.cachegrind_limits.clone(),
-                    None,
                     None, // The default entry point is currently just for callgrind
                 )
             }
@@ -711,8 +709,7 @@ impl ToolConfig {
                     &base_args,
                     true,
                     meta.args.dhat_limits.clone(),
-                    None,
-                    Some(entry_point), // The default entry point is currently just for callgrind
+                    Some(entry_point),
                 )
             }
             valgrind_tool => {
@@ -731,7 +728,6 @@ impl ToolConfig {
                     true,
                     None,
                     None,
-                    None, // The default entry point is currently just for callgrind
                 )
             }
         }
@@ -871,7 +867,6 @@ impl ToolConfigs {
                         &base_args,
                         false,
                         meta.args.callgrind_limits.clone(),
-                        None,
                         Some(entry_point),
                     )
                 }
@@ -883,7 +878,6 @@ impl ToolConfigs {
                     &base_args,
                     false,
                     meta.args.cachegrind_limits.clone(),
-                    None,
                     None,
                 ),
                 ValgrindTool::DHAT => {
@@ -912,7 +906,6 @@ impl ToolConfigs {
                         &base_args,
                         false,
                         meta.args.dhat_limits.clone(),
-                        None,
                         Some(entry_point),
                     )
                 }
@@ -923,7 +916,6 @@ impl ToolConfigs {
                     meta,
                     &base_args,
                     false,
-                    None,
                     None,
                     None,
                 ),
@@ -2088,19 +2080,21 @@ impl ToolRegressionConfig {
     }
 }
 
-impl From<api::ToolRegressionConfig> for ToolRegressionConfig {
-    fn from(value: api::ToolRegressionConfig) -> Self {
+impl TryFrom<api::ToolRegressionConfig> for ToolRegressionConfig {
+    type Error = String;
+
+    fn try_from(value: api::ToolRegressionConfig) -> std::result::Result<Self, Self::Error> {
         match value {
             api::ToolRegressionConfig::Callgrind(regression_config) => {
-                Self::Callgrind(regression_config.into())
+                regression_config.try_into().map(Self::Callgrind)
             }
             api::ToolRegressionConfig::Cachegrind(regression_config) => {
-                Self::Cachegrind(regression_config.into())
+                regression_config.try_into().map(Self::Cachegrind)
             }
             api::ToolRegressionConfig::Dhat(regression_config) => {
-                Self::Dhat(regression_config.into())
+                regression_config.try_into().map(Self::Dhat)
             }
-            api::ToolRegressionConfig::None => Self::None,
+            api::ToolRegressionConfig::None => Ok(Self::None),
         }
     }
 }
@@ -2135,7 +2129,7 @@ pub fn check_exit(
 ) -> Result<Option<Output>> {
     let Some(status_code) = status.code() else {
         return Err(
-            Error::ProcessError((tool.id(), output, status, Some(output_path.clone()))).into(),
+            Error::ProcessError(tool.id(), output, status, Some(output_path.clone())).into(),
         );
     };
 
@@ -2148,7 +2142,7 @@ pub fn check_exit(
                 executable.display(),
                 code
             );
-            Err(Error::ProcessError((tool.id(), output, status, Some(output_path.clone()))).into())
+            Err(Error::ProcessError(tool.id(), output, status, Some(output_path.clone())).into())
         }
         (0i32, Some(ExitWith::Failure)) => {
             error!(
@@ -2156,7 +2150,7 @@ pub fn check_exit(
                 tool.id(),
                 executable.display(),
             );
-            Err(Error::ProcessError((tool.id(), output, status, Some(output_path.clone()))).into())
+            Err(Error::ProcessError(tool.id(), output, status, Some(output_path.clone())).into())
         }
         (_, Some(ExitWith::Failure)) => Ok(output),
         (code, Some(ExitWith::Success)) => {
@@ -2166,7 +2160,7 @@ pub fn check_exit(
                 executable.display(),
                 code
             );
-            Err(Error::ProcessError((tool.id(), output, status, Some(output_path.clone()))).into())
+            Err(Error::ProcessError(tool.id(), output, status, Some(output_path.clone())).into())
         }
         (actual_code, Some(ExitWith::Code(expected_code))) if actual_code == *expected_code => {
             Ok(output)
@@ -2179,11 +2173,9 @@ pub fn check_exit(
                 expected_code,
                 actual_code
             );
-            Err(Error::ProcessError((tool.id(), output, status, Some(output_path.clone()))).into())
+            Err(Error::ProcessError(tool.id(), output, status, Some(output_path.clone())).into())
         }
-        _ => {
-            Err(Error::ProcessError((tool.id(), output, status, Some(output_path.clone()))).into())
-        }
+        _ => Err(Error::ProcessError(tool.id(), output, status, Some(output_path.clone())).into()),
     }
 }
 

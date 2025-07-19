@@ -53,7 +53,7 @@ impl Args {
                 Some(("--LL", value)) => value.clone_into(&mut self.ll),
                 Some((key @ "--cache-sim", value)) => {
                     self.cache_sim = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
+                        Error::InvalidBoolArgument(key.to_owned(), value.to_owned())
                     })?;
                 }
                 Some(("--toggle-collect", value)) => {
@@ -61,22 +61,22 @@ impl Args {
                 }
                 Some((key @ "--dump-instr", value)) => {
                     self.dump_instr = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
+                        Error::InvalidBoolArgument(key.to_owned(), value.to_owned())
                     })?;
                 }
                 Some((key @ "--dump-line", value)) => {
                     self.dump_line = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
+                        Error::InvalidBoolArgument(key.to_owned(), value.to_owned())
                     })?;
                 }
                 Some((key @ "--trace-children", value)) => {
                     self.trace_children = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
+                        Error::InvalidBoolArgument(key.to_owned(), value.to_owned())
                     })?;
                 }
                 Some((key @ "--separate-threads", value)) => {
                     self.separate_threads = yesno_to_bool(value).ok_or_else(|| {
-                        Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
+                        Error::InvalidBoolArgument(key.to_owned(), value.to_owned())
                     })?;
                 }
                 Some(("--fair-sched", value)) => {

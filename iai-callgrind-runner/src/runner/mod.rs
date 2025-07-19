@@ -41,8 +41,7 @@ pub const DEFAULT_TOGGLE: &str = "*::__iai_callgrind_wrapper_mod::*";
 /// Execute post benchmark run actions like printing the summary line with regressions
 #[derive(Debug)]
 struct PostRun {
-    // TODO: Refactor: No Option
-    benchmark_summaries: Option<BenchmarkSummaries>,
+    benchmark_summaries: BenchmarkSummaries,
     nosummary: bool,
     output_format_kind: OutputFormatKind,
 }
@@ -65,18 +64,16 @@ struct RunnerArgsIterator(ArgsOs);
 
 impl PostRun {
     /// Create a new `PostRun`
-    fn new(nosummary: bool, output_format_kind: OutputFormatKind) -> Self {
+    fn new(
+        nosummary: bool,
+        output_format_kind: OutputFormatKind,
+        benchmark_summaries: BenchmarkSummaries,
+    ) -> Self {
         Self {
-            benchmark_summaries: None,
+            benchmark_summaries,
             nosummary,
             output_format_kind,
         }
-    }
-
-    /// Builder method to add the [`BenchmarkSummaries`] and return `Self`
-    fn summaries(mut self, benchmark_summaries: BenchmarkSummaries) -> Self {
-        self.benchmark_summaries = Some(benchmark_summaries);
-        self
     }
 
     /// Print the summary returning [`Error::RegressionError`] if regressions were present
@@ -84,12 +81,10 @@ impl PostRun {
     /// The summary is not printed if `nosummary` is true or the [`OutputFormatKind`] is not the
     /// default format (i.e. JSON).
     fn execute(self) -> Result<()> {
-        let summaries = self
-            .benchmark_summaries
-            .expect("The benchmark summaries should be available");
+        self.benchmark_summaries
+            .print(self.nosummary, self.output_format_kind);
 
-        summaries.print(self.nosummary, self.output_format_kind);
-        if summaries.is_regressed() {
+        if self.benchmark_summaries.is_regressed() {
             Err(Error::RegressionError(false).into())
         } else {
             Ok(())
@@ -269,7 +264,7 @@ pub fn run() -> Result<()> {
             }
 
             lib_bench::run(benchmark_groups, config)
-                .map(|s| PostRun::new(nosummary, output_format).summaries(s))?
+                .map(|summaries| PostRun::new(nosummary, output_format, summaries))?
         }
         BenchmarkKind::BinaryBenchmark => {
             let benchmark_groups: BinaryBenchmarkGroups = receive_benchmark(num_bytes)?;
@@ -308,7 +303,7 @@ pub fn run() -> Result<()> {
             }
 
             bin_bench::run(benchmark_groups, config)
-                .map(|s| PostRun::new(nosummary, output_format).summaries(s))?
+                .map(|summaries| PostRun::new(nosummary, output_format, summaries))?
         }
     };
 

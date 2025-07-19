@@ -9,6 +9,6 @@ open and closed issues in the issue board, maybe you can already find a solution
 to your problem there.
 
 The api documentation can be found on
-[docs.rs](https://docs.rs/iai-callgrind/latest/iai_callgrind/) but you might
+[docs.rs](https://docs.rs/iai-callgrind/0.16.0/iai_callgrind/) but you might
 also want to check out the `Troubleshooting` section in the sidebar of this
 guide.

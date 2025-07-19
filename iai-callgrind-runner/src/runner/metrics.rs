@@ -24,7 +24,11 @@ pub trait Summarize: Hash + Eq + Clone {
 
 pub trait TypeChecker {
     /// Return true if the `Metric` has the expected metric type
-    fn verify_type(&self, metric: Metric) -> bool;
+    fn verify_metric(&self, metric: Metric) -> bool {
+        (self.is_int() && metric.is_int()) || (self.is_float() && metric.is_float())
+    }
+    fn is_int(&self) -> bool;
+    fn is_float(&self) -> bool;
 }
 
 /// The metric measured by valgrind or derived from one or more other metrics
@@ -112,6 +116,19 @@ impl Metric {
             Metric::Float(_) => true,
         }
     }
+
+    pub fn try_convert<T: Display + TypeChecker>(&self, metric_kind: T) -> Option<(T, Self)> {
+        if metric_kind.verify_metric(*self) {
+            Some((metric_kind, *self))
+        } else if let Metric::Int(a) = self {
+            // Convert u64 to f64 metrics if necessary. f64 metrics are percentages with a value
+            // range of 0.0 to 100.0. Converting u64 to f64 within this range happens without
+            // loss of precision.
+            Some((metric_kind, Metric::Float(*a as f64)))
+        } else {
+            None
+        }
+    }
 }
 
 impl Add for Metric {
@@ -178,11 +195,11 @@ impl From<Metric> for f64 {
     }
 }
 
-impl From<api::Metric> for Metric {
-    fn from(value: api::Metric) -> Self {
+impl From<api::Limit> for Metric {
+    fn from(value: api::Limit) -> Self {
         match value {
-            api::Metric::Int(a) => Self::Int(a),
-            api::Metric::Float(f) => Self::Float(f),
+            api::Limit::Int(a) => Self::Int(a),
+            api::Limit::Float(f) => Self::Float(f),
         }
     }
 }
