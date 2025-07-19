@@ -369,8 +369,6 @@ impl ToolConfig {
         base_args: &RawArgs,
         is_default: bool,
         regression_config: Option<ToolRegressionConfig>,
-        // TODO: DELETE
-        flamegraph_config: Option<api::ToolFlamegraphConfig>,
         entry_point: Option<EntryPoint>,
     ) -> Result<Self> {
         if let Some(tool) = tool {
@@ -504,8 +502,7 @@ impl ToolConfig {
                 args,
                 None,
                 regression_config,
-                flamegraph_config
-                    .or(tool.flamegraph_config)
+                tool.flamegraph_config
                     .map_or(ToolFlamegraphConfig::None, Into::into),
                 entry_point.or(tool.entry_point).unwrap_or(EntryPoint::None),
                 is_default,
@@ -597,7 +594,7 @@ impl ToolConfig {
                 args,
                 None,
                 regression_config,
-                flamegraph_config.map_or(ToolFlamegraphConfig::None, Into::into),
+                ToolFlamegraphConfig::None,
                 entry_point.unwrap_or(EntryPoint::None),
                 is_default,
                 &[],
@@ -648,7 +645,6 @@ impl ToolConfig {
                     &base_args,
                     true,
                     meta.args.callgrind_limits.clone(),
-                    None,
                     Some(entry_point),
                 )
             }
@@ -667,7 +663,6 @@ impl ToolConfig {
                     &base_args,
                     true,
                     meta.args.cachegrind_limits.clone(),
-                    None,
                     None, // The default entry point is currently just for callgrind
                 )
             }
@@ -714,8 +709,7 @@ impl ToolConfig {
                     &base_args,
                     true,
                     meta.args.dhat_limits.clone(),
-                    None,
-                    Some(entry_point), // The default entry point is currently just for callgrind
+                    Some(entry_point),
                 )
             }
             valgrind_tool => {
@@ -734,7 +728,6 @@ impl ToolConfig {
                     true,
                     None,
                     None,
-                    None, // The default entry point is currently just for callgrind
                 )
             }
         }
@@ -874,7 +867,6 @@ impl ToolConfigs {
                         &base_args,
                         false,
                         meta.args.callgrind_limits.clone(),
-                        None,
                         Some(entry_point),
                     )
                 }
@@ -886,7 +878,6 @@ impl ToolConfigs {
                     &base_args,
                     false,
                     meta.args.cachegrind_limits.clone(),
-                    None,
                     None,
                 ),
                 ValgrindTool::DHAT => {
@@ -915,7 +906,6 @@ impl ToolConfigs {
                         &base_args,
                         false,
                         meta.args.dhat_limits.clone(),
-                        None,
                         Some(entry_point),
                     )
                 }
@@ -926,7 +916,6 @@ impl ToolConfigs {
                     meta,
                     &base_args,
                     false,
-                    None,
                     None,
                     None,
                 ),
