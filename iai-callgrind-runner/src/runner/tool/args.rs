@@ -136,7 +136,7 @@ impl ToolArgs {
                     }
                     Some((key @ "--trace-children", value)) => {
                         tool_args.trace_children = yesno_to_bool(value).ok_or_else(|| {
-                            Error::InvalidBoolArgument((key.to_owned(), value.to_owned()))
+                            Error::InvalidBoolArgument(key.to_owned(), value.to_owned())
                         })?;
                     }
                     Some(("--fair-sched", value)) => {

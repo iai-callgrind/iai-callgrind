@@ -12,7 +12,6 @@ use crate::runner::format::Header;
 use crate::runner::tool::ToolOutputPath;
 use crate::util::write_all_to_stderr;
 
-// TODO: Refactor: Don't use unnecessary tuples
 /// The iai-callgrind error
 #[derive(Debug, PartialEq, Clone)]
 pub enum Error {
@@ -20,11 +19,11 @@ pub enum Error {
     VersionMismatch(version_compare::Cmp, String, String),
     LaunchError(PathBuf, String),
     /// (`process_name`, [`Output`], [`ExitStatus`], [`ToolOutputPath`])
-    ProcessError((String, Option<Output>, ExitStatus, Option<ToolOutputPath>)),
-    InvalidBoolArgument((String, String)),
-    ParseError((PathBuf, String)),
+    ProcessError(String, Option<Output>, ExitStatus, Option<ToolOutputPath>),
+    InvalidBoolArgument(String, String),
+    ParseError(PathBuf, String),
     RegressionError(bool),
-    EnvironmentVariableError((String, String)),
+    EnvironmentVariableError(String, String),
     SandboxError(String),
     BenchmarkError(ValgrindTool, ModulePath, String),
     IgnoredArgument(String),
@@ -72,7 +71,7 @@ impl Display for Error {
             Self::LaunchError(exec, message) => {
                 write!(f, "Error launching '{}': {message}", exec.display())
             }
-            Self::ProcessError((process, output, status, output_path)) => {
+            Self::ProcessError(process, output, status, output_path) => {
                 if let Some(output_path) = output_path {
                     output_path
                         .dump_log(log::Level::Error, &mut stderr())
@@ -93,13 +92,13 @@ impl Display for Error {
                     write!(f, "Error running '{process}': Terminated abnormally")
                 }
             }
-            Self::InvalidBoolArgument((option, value)) => {
+            Self::InvalidBoolArgument(option, value) => {
                 write!(
                     f,
                     "Invalid argument for {option}: '{value}'. Valid values are 'yes' or 'no'"
                 )
             }
-            Self::ParseError((path, message)) => {
+            Self::ParseError(path, message) => {
                 write!(f, "Error parsing file '{}': {message}", path.display())
             }
             Self::RegressionError(is_fatal) => {
@@ -112,7 +111,7 @@ impl Display for Error {
                     write!(f, "Performance has regressed.",)
                 }
             }
-            Self::EnvironmentVariableError((var, reason)) => {
+            Self::EnvironmentVariableError(var, reason) => {
                 write!(f, "Failed parsing environment variable {var}: {reason}")
             }
             Self::SandboxError(message) => {

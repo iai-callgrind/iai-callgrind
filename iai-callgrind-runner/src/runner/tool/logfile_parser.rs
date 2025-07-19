@@ -52,7 +52,7 @@ pub fn parse_header(path: &Path, mut lines: impl Iterator<Item = String>) -> Res
     let (pid, next) = if let Some(next) = next {
         (extract_pid(&next)?, next)
     } else {
-        return Err(Error::ParseError((path.to_owned(), "Empty file".to_owned())).into());
+        return Err(Error::ParseError(path.to_owned(), "Empty file".to_owned()).into());
     };
 
     let mut parent_pid = None;

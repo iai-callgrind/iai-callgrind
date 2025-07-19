@@ -56,7 +56,7 @@ impl CallgrindParser for SummaryParser {
             .map(Result::unwrap);
 
         let properties = parse_header(&mut iter)
-            .map_err(|error| Error::ParseError((path.to_owned(), error.to_string())))?;
+            .map_err(|error| Error::ParseError(path.to_owned(), error.to_string()))?;
 
         let mut metrics = None;
         for line in iter {
@@ -85,10 +85,10 @@ impl CallgrindParser for SummaryParser {
         if let Some(metrics) = metrics {
             Ok((properties, metrics))
         } else {
-            Err(Error::ParseError((
+            Err(Error::ParseError(
                 path.to_owned(),
                 "No summary or totals line found".to_owned(),
-            ))
+            )
             .into())
         }
     }

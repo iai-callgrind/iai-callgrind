@@ -181,12 +181,12 @@ impl Assistant {
                             Ok(output)
                         } else {
                             let status = output.status;
-                            Err(Error::ProcessError((
+                            Err(Error::ProcessError(
                                 module_path.join(&id).to_string(),
                                 Some(output),
                                 status,
                                 None,
-                            )))
+                            ))
                         }
                     })?;
 
@@ -210,12 +210,12 @@ impl Assistant {
                         if status.success() {
                             Ok(())
                         } else {
-                            Err(Error::ProcessError((
+                            Err(Error::ProcessError(
                                 format!("{module_path}::{id}"),
                                 None,
                                 status,
                                 None,
-                            )))
+                            ))
                         }
                     })?;
             }

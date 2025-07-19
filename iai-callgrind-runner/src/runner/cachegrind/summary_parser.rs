@@ -38,7 +38,7 @@ impl Parser for SummaryParser {
             .map(Result::unwrap);
 
         let properties = parse_header(&mut iter)
-            .map_err(|error| Error::ParseError((path.clone(), error.to_string())))?;
+            .map_err(|error| Error::ParseError(path.clone(), error.to_string()))?;
 
         let mut metrics = None;
         for line in iter {
@@ -82,7 +82,7 @@ impl Parser for SummaryParser {
                 metrics: ToolMetrics::Cachegrind(metrics),
             })
         } else {
-            Err(Error::ParseError((path.clone(), "No summary line found".to_owned())).into())
+            Err(Error::ParseError(path.clone(), "No summary line found".to_owned()).into())
         }
     }
 
