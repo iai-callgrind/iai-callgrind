@@ -75,7 +75,7 @@ quickly and reliably detect performance regressions and optimizations even in
 noisy environments with a precision that is impossible to achieve with
 wall-clock time based benchmarks. At the same time, we want to abstract the
 complicated parts and repetitive tasks away and provide an easy to use and
-intuitive api. Iai-Callgrind tries to stay out of your way and apply sensible
+intuitive api. Iai-Callgrind tries to stay out of your way and applies sensible
 default settings so you can focus more on profiling and your code!
 
 ## How far are we?
@@ -83,13 +83,15 @@ default settings so you can focus more on profiling and your code!
 Iai-Callgrind is in a mature development stage and is already [in
 use](https://github.com/iai-callgrind/iai-callgrind/network/dependents).
 Nevertheless, you may experience big changes between a minor version bump. With
-the release of `0.14.0`, almost all `callgrind` capabilities are implemented
-including benchmarking of multi-threaded and multi-process applications.
-Profiling of heap usage with `DHAT` or `massif` is possible, but can be further
-improved. Creating callgrind flamegraphs for multi-process/multi-threaded
-benchmarks is considered to be in an experimental state. Please read our
-[Vision](./VISION.md) to learn more about the ideas and the direction the future
-path might take.
+the release of `0.14.0`, almost all `Callgrind` capabilities are implemented
+including benchmarking of multi-threaded and multi-process applications. Using
+`Cachegrind` instead of or in addition to `Callgrind` is possible since
+`0.15.0`. Profiling of heap usage with `DHAT` is fully integrated since
+`0.16.0`. Profiling with `Massif` is possible, but doesn't show useful metrics
+in the terminal output and can be further improved. Creating callgrind
+flamegraphs for multi-process/multi-threaded benchmarks is considered to be in
+an experimental state. Please read our [Vision](./VISION.md) to learn more about
+the ideas and the direction the future path might take.
 
 ## When not to use Iai-Callgrind
 
