@@ -1,6 +1,52 @@
 # spell-checker: ignore readsbytes
+# TODO: Use default filter for template data
 template: test_lib_bench_regression.rs.j2
 groups:
+  # Provoke an error when parsing hard limits
+  - runs:
+      # callgrind
+      - args: []
+        expected:
+          stdout: expected_stdout.empty
+          stderr: expected_stderr.callgrind-hard-limit
+          exit_code: 1
+        template_data:
+          callgrind_hard_limit: 200.0
+          callgrind_array_length: 4
+          callgrind_fail_fast: false
+          cachegrind_array_length: 4
+          cachegrind_fail_fast: false
+          dhat_array_length: 4
+          dhat_fail_fast: false
+      # cachegrind
+      - args: []
+        expected:
+          stdout: expected_stdout.empty
+          stderr: expected_stderr.cachegrind-hard-limit
+          exit_code: 1
+        template_data:
+          callgrind_array_length: 4
+          callgrind_fail_fast: false
+          cachegrind_hard_limit: Limit::Float(500000.0)
+          cachegrind_array_length: 4
+          cachegrind_fail_fast: false
+          dhat_array_length: 4
+          dhat_fail_fast: false
+      # dhat
+      - args: []
+        expected:
+          stdout: expected_stdout.empty
+          stderr: expected_stderr.dhat-hard-limit
+          exit_code: 1
+        template_data:
+          callgrind_array_length: 4
+          callgrind_fail_fast: false
+          cachegrind_array_length: 4
+          cachegrind_fail_fast: false
+          dhat_hard_limit: 5.0
+          dhat_array_length: 4
+          dhat_fail_fast: false
+  # regress all with fail-fast
   - runs:
       - args: []
         expected:

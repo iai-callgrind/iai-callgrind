@@ -55,8 +55,9 @@ impl TryFrom<api::DhatRegressionConfig> for DhatRegressionConfig {
                                 .try_convert(metric_kind)
                                 .ok_or_else(|| {
                                     format!(
-                                        "Invalid hard limit for {metric_kind}: Expected a \
-                                         'Metric::Int'"
+                                        "Invalid hard limit for \
+                                         '{metric_kind:?}/{dhat_metrics:?}': Expected a 'Int' but \
+                                         found '{metric:?}'"
                                     )
                                 })
                         })

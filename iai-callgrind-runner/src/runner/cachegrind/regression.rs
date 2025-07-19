@@ -47,16 +47,17 @@ impl TryFrom<api::CachegrindRegressionConfig> for CachegrindRegressionConfig {
         } else {
             let hard_limits = hard_limits
                 .into_iter()
-                .flat_map(|(dhat_metrics, metric)| {
-                    IndexSet::from(dhat_metrics)
+                .flat_map(|(cachegrind_metrics, metric)| {
+                    IndexSet::from(cachegrind_metrics)
                         .into_iter()
                         .map(move |metric_kind| {
                             Metric::from(metric)
                                 .try_convert(metric_kind)
                                 .ok_or_else(|| {
                                     format!(
-                                        "Invalid hard limit for {metric_kind}: Expected a \
-                                         'Metric::Int'"
+                                        "Invalid hard limit for \
+                                         '{metric_kind:?}/{cachegrind_metrics:?}': Expected a \
+                                         'Int' but found '{metric:?}'"
                                     )
                                 })
                         })

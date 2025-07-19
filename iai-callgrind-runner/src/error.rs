@@ -8,9 +8,11 @@ use version_compare::Cmp;
 
 use crate::api::ValgrindTool;
 use crate::runner::common::ModulePath;
+use crate::runner::format::Header;
 use crate::runner::tool::ToolOutputPath;
 use crate::util::write_all_to_stderr;
 
+// TODO: Refactor: Don't use unnecessary tuples
 /// The iai-callgrind error
 #[derive(Debug, PartialEq, Clone)]
 pub enum Error {
@@ -26,6 +28,7 @@ pub enum Error {
     SandboxError(String),
     BenchmarkError(ValgrindTool, ModulePath, String),
     IgnoredArgument(String),
+    ConfigurationError(ModulePath, Option<String>, String),
 }
 
 impl std::error::Error for Error {}
@@ -123,6 +126,10 @@ impl Display for Error {
                     f,
                     "{arg} is ignored and iai-callgrind benchmarks are not executed"
                 )
+            }
+            Self::ConfigurationError(module_path, id, message) => {
+                let header = Header::without_description(module_path, id.clone());
+                write!(f, "Misconfiguration in: {header}\nCaused by:\n  {message}",)
             }
         }
     }
