@@ -16,7 +16,7 @@ use super::dhat::regression::DhatRegressionConfig;
 use super::format::OutputFormatKind;
 use super::metrics::{Metric, TypeChecker};
 use super::summary::{BaselineName, SummaryFormat};
-use super::tool::ToolRegressionConfig;
+use super::tool::regression::ToolRegressionConfig;
 use crate::api::{
     CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics, EventKind,
     RawArgs, ValgrindTool,

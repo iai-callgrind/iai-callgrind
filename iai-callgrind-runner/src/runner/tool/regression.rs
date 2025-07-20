@@ -1,6 +1,10 @@
 use std::fmt::Display;
 use std::hash::Hash;
 
+use crate::api;
+use crate::runner::cachegrind::regression::CachegrindRegressionConfig;
+use crate::runner::callgrind::regression::CallgrindRegressionConfig;
+use crate::runner::dhat::regression::DhatRegressionConfig;
 use crate::runner::format::print_regressions;
 use crate::runner::metrics::{Metric, MetricsSummary, Summarize};
 use crate::runner::summary::ToolRegression;
@@ -11,6 +15,14 @@ use crate::util::EitherOrBoth;
 pub enum RegressionMetrics<T> {
     Soft(T, Metric, Metric, f64, f64),
     Hard(T, Metric, Metric, Metric),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ToolRegressionConfig {
+    Callgrind(CallgrindRegressionConfig),
+    Cachegrind(CachegrindRegressionConfig),
+    Dhat(DhatRegressionConfig),
+    None,
 }
 
 pub trait RegressionConfig<T: Hash + Eq + Summarize + Display + Clone> {
@@ -83,4 +95,34 @@ pub trait RegressionConfig<T: Hash + Eq + Summarize + Display + Clone> {
 
     fn get_soft_limits(&self) -> &[(T, f64)];
     fn get_hard_limits(&self) -> &[(T, Metric)];
+}
+
+impl ToolRegressionConfig {
+    pub fn is_fail_fast(&self) -> bool {
+        match self {
+            ToolRegressionConfig::Callgrind(regression_config) => regression_config.fail_fast,
+            ToolRegressionConfig::Cachegrind(regression_config) => regression_config.fail_fast,
+            ToolRegressionConfig::Dhat(regression_config) => regression_config.fail_fast,
+            ToolRegressionConfig::None => false,
+        }
+    }
+}
+
+impl TryFrom<api::ToolRegressionConfig> for ToolRegressionConfig {
+    type Error = String;
+
+    fn try_from(value: api::ToolRegressionConfig) -> std::result::Result<Self, Self::Error> {
+        match value {
+            api::ToolRegressionConfig::Callgrind(regression_config) => {
+                regression_config.try_into().map(Self::Callgrind)
+            }
+            api::ToolRegressionConfig::Cachegrind(regression_config) => {
+                regression_config.try_into().map(Self::Cachegrind)
+            }
+            api::ToolRegressionConfig::Dhat(regression_config) => {
+                regression_config.try_into().map(Self::Dhat)
+            }
+            api::ToolRegressionConfig::None => Ok(Self::None),
+        }
+    }
 }
