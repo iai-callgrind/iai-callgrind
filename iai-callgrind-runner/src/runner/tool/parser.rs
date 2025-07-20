@@ -7,7 +7,7 @@ use log::debug;
 use super::config::ToolConfig;
 use super::error_metric_parser::ErrorMetricLogfileParser;
 use super::generic_parser::GenericLogfileParser;
-use super::ToolOutputPath;
+use super::path::ToolOutputPath;
 use crate::api::{EntryPoint, ValgrindTool};
 use crate::runner::dhat::json_parser::JsonParser;
 use crate::runner::dhat::logfile_parser::DhatLogfileParser;

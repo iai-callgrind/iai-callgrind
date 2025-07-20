@@ -6,8 +6,7 @@ use anyhow::{anyhow, Result};
 use log::warn;
 
 use super::path::ToolOutputPath;
-use super::ValgrindTool;
-use crate::api::RawArgs;
+use crate::api::{RawArgs, ValgrindTool};
 use crate::error::Error;
 use crate::util::{bool_to_yesno, yesno_to_bool};
 

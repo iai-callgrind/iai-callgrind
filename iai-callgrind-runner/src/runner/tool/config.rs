@@ -10,7 +10,7 @@ use super::args::ToolArgs;
 use super::parser::{parser_factory, ParserOutput};
 use super::path::ToolOutputPath;
 use super::regression::{RegressionConfig, ToolRegressionConfig};
-use super::{RunOptions, ToolCommand};
+use super::run::{RunOptions, ToolCommand};
 use crate::api::{self, EntryPoint, RawArgs, Tool, ToolOutputFormat, Tools, ValgrindTool};
 use crate::runner::args::NoCapture;
 use crate::runner::callgrind::flamegraph::{
