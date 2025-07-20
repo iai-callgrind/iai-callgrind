@@ -7,10 +7,10 @@ use anyhow::{anyhow, Result};
 use indexmap::IndexSet;
 
 use super::args::ToolArgs;
-use super::parser::ParserOutput;
+use super::parser::{parser_factory, ParserOutput};
 use super::path::ToolOutputPath;
 use super::regression::{RegressionConfig, ToolRegressionConfig};
-use super::{parser_factory, RunOptions, ToolCommand, DEFAULT_TOGGLE};
+use super::{RunOptions, ToolCommand};
 use crate::api::{self, EntryPoint, RawArgs, Tool, ToolOutputFormat, Tools, ValgrindTool};
 use crate::runner::args::NoCapture;
 use crate::runner::callgrind::flamegraph::{
@@ -25,7 +25,7 @@ use crate::runner::summary::{
     BaselineKind, BaselineName, BenchmarkSummary, Profile, ProfileData, ProfileTotal,
     ToolMetricSummary, ToolRegression,
 };
-use crate::runner::{cachegrind, callgrind};
+use crate::runner::{cachegrind, callgrind, DEFAULT_TOGGLE};
 use crate::util::Glob;
 
 #[derive(Debug, Clone)]

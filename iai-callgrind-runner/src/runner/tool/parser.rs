@@ -4,8 +4,15 @@ use std::path::PathBuf;
 use anyhow::Result;
 use log::debug;
 
+use super::config::ToolConfig;
+use super::error_metric_parser::ErrorMetricLogfileParser;
+use super::generic_parser::GenericLogfileParser;
 use super::ToolOutputPath;
+use crate::api::{EntryPoint, ValgrindTool};
+use crate::runner::dhat::json_parser::JsonParser;
+use crate::runner::dhat::logfile_parser::DhatLogfileParser;
 use crate::runner::summary::ToolMetrics;
+use crate::runner::{cachegrind, callgrind};
 
 pub trait Parser {
     fn parse_single(&self, path: PathBuf) -> Result<ParserOutput>;
@@ -72,5 +79,44 @@ impl ParserOutput {
                 .cmp(&other.header.thread)
                 .then_with(|| self.header.part.cmp(&other.header.part))
         })
+    }
+}
+
+pub fn parser_factory(
+    tool_config: &ToolConfig,
+    root_dir: PathBuf,
+    output_path: &ToolOutputPath,
+) -> Box<dyn Parser> {
+    match tool_config.tool {
+        ValgrindTool::Callgrind => Box::new(callgrind::summary_parser::SummaryParser {
+            output_path: output_path.clone(),
+        }),
+        ValgrindTool::Cachegrind => Box::new(cachegrind::summary_parser::SummaryParser {
+            output_path: output_path.clone(),
+        }),
+        ValgrindTool::DHAT => {
+            if tool_config.entry_point == EntryPoint::None && tool_config.frames.is_empty() {
+                Box::new(DhatLogfileParser::new(
+                    output_path.to_log_output(),
+                    root_dir,
+                ))
+            } else {
+                Box::new(JsonParser::new(
+                    output_path.clone(),
+                    tool_config.entry_point.clone(),
+                    tool_config.frames.clone(),
+                ))
+            }
+        }
+        ValgrindTool::Memcheck | ValgrindTool::DRD | ValgrindTool::Helgrind => {
+            Box::new(ErrorMetricLogfileParser {
+                output_path: output_path.to_log_output(),
+                root_dir,
+            })
+        }
+        _ => Box::new(GenericLogfileParser {
+            output_path: output_path.to_log_output(),
+            root_dir,
+        }),
     }
 }

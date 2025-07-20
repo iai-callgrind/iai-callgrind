@@ -14,20 +14,14 @@ use std::process::{Child, Command, ExitStatus, Output};
 
 use anyhow::Result;
 use config::ToolConfig;
-use error_metric_parser::ErrorMetricLogfileParser;
-use generic_parser::GenericLogfileParser;
 use log::{debug, error, log_enabled};
-use parser::Parser;
 use path::ToolOutputPath;
 
 use super::args::NoCapture;
 use super::bin_bench::Delay;
 use super::common::{Assistant, ModulePath};
-use super::dhat::json_parser::JsonParser;
-use super::dhat::logfile_parser::DhatLogfileParser;
 use super::meta::Metadata;
-use super::{cachegrind, callgrind, DEFAULT_TOGGLE};
-use crate::api::{self, EntryPoint, ExitWith, Stream, ValgrindTool};
+use crate::api::{self, ExitWith, Stream, ValgrindTool};
 use crate::error::Error;
 use crate::util::{self, resolve_binary_path};
 
@@ -307,44 +301,5 @@ pub fn check_exit(
             Err(Error::ProcessError(tool.id(), output, status, Some(output_path.clone())).into())
         }
         _ => Err(Error::ProcessError(tool.id(), output, status, Some(output_path.clone())).into()),
-    }
-}
-
-pub fn parser_factory(
-    tool_config: &ToolConfig,
-    root_dir: PathBuf,
-    output_path: &ToolOutputPath,
-) -> Box<dyn Parser> {
-    match tool_config.tool {
-        ValgrindTool::Callgrind => Box::new(callgrind::summary_parser::SummaryParser {
-            output_path: output_path.clone(),
-        }),
-        ValgrindTool::Cachegrind => Box::new(cachegrind::summary_parser::SummaryParser {
-            output_path: output_path.clone(),
-        }),
-        ValgrindTool::DHAT => {
-            if tool_config.entry_point == EntryPoint::None && tool_config.frames.is_empty() {
-                Box::new(DhatLogfileParser::new(
-                    output_path.to_log_output(),
-                    root_dir,
-                ))
-            } else {
-                Box::new(JsonParser::new(
-                    output_path.clone(),
-                    tool_config.entry_point.clone(),
-                    tool_config.frames.clone(),
-                ))
-            }
-        }
-        ValgrindTool::Memcheck | ValgrindTool::DRD | ValgrindTool::Helgrind => {
-            Box::new(ErrorMetricLogfileParser {
-                output_path: output_path.to_log_output(),
-                root_dir,
-            })
-        }
-        _ => Box::new(GenericLogfileParser {
-            output_path: output_path.to_log_output(),
-            root_dir,
-        }),
     }
 }
