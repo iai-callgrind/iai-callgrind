@@ -4486,10 +4486,18 @@ library_benchmark_group!(name = my_group; benchmarks = bench_bubble_sort);
 <div style="break-before: page; page-break-before: always;"></div><h1 id="machine-readable-output"><a class="header" href="#machine-readable-output">Machine-readable output</a></h1>
 <p>With <code>--output-format=default|json|pretty-json</code> (env:
 <code>IAI_CALLGRIND_OUTPUT_FORMAT</code>) you can change the terminal output format to the
-machine-readable json format. The json schema fully describing the json output
-is stored in
-<a href="https://github.com/iai-callgrind/iai-callgrind/blob/main/iai-callgrind-runner/schemas/summary.v2.schema.json">summary.v2.schema.json</a>.
-Each line of json output (if not <code>pretty-json</code>) is a summary of a single
+machine-readable json format. The json schemas fully describing the json output
+are stored here:</p>
+<div class="table-wrapper"><table><thead><tr><th>Iai-Callgrind version</th><th>Schema version</th></tr></thead><tbody>
+<tr><td>&gt;=0.9.0,&lt;0.11.0</td><td><a href="https://github.com/iai-callgrind/iai-callgrind/blob/main/iai-callgrind-runner/schemas/summary.v1.schema.json">summary.v1.schema.json</a></td></tr>
+<tr><td>&gt;=0.11.0,&lt;0.14.0</td><td><a href="https://github.com/iai-callgrind/iai-callgrind/blob/main/iai-callgrind-runner/schemas/summary.v2.schema.json">summary.v2.schema.json</a></td></tr>
+<tr><td>&gt;=0.14.0,&lt;0.15.0</td><td><a href="https://github.com/iai-callgrind/iai-callgrind/blob/main/iai-callgrind-runner/schemas/summary.v3.schema.json">summary.v3.schema.json</a></td></tr>
+<tr><td>&gt;=0.15.0,&lt;0.15.2</td><td><a href="https://github.com/iai-callgrind/iai-callgrind/blob/main/iai-callgrind-runner/schemas/summary.v4.schema.json">summary.v4.schema.json</a></td></tr>
+<tr><td>&gt;=0.15.2,&lt;0.16.0</td><td><a href="https://github.com/iai-callgrind/iai-callgrind/blob/main/iai-callgrind-runner/schemas/summary.v5.schema.json">summary.v5.schema.json</a></td></tr>
+<tr><td>&gt;=0.16.0</td><td><a href="https://github.com/iai-callgrind/iai-callgrind/blob/main/iai-callgrind-runner/schemas/summary.v6.schema.json">summary.v6.schema.json</a></td></tr>
+</tbody></table>
+</div>
+<p>Each line of json output (if not <code>pretty-json</code>) is a summary of a single
 benchmark, and you may want to combine all benchmarks in an array. You can do so
 for example with <code>jq</code></p>
 <p><code>cargo bench -- --output-format=json | jq -s</code></p>
