@@ -14,7 +14,7 @@ use crate::runner::tool::logfile_parser::{
     parse_header, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
 };
 use crate::runner::tool::parser::{Parser, ParserOutput};
-use crate::runner::tool::ToolOutputPath;
+use crate::runner::tool::path::ToolOutputPath;
 
 // The different regex have to consider --time-stamp=yes
 lazy_static! {

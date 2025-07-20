@@ -13,7 +13,7 @@ use super::model::{Metrics, Positions};
 use crate::api::EventKind;
 use crate::runner::summary::ProfileInfo;
 use crate::runner::tool::parser::ParserOutput;
-use crate::runner::tool::ToolOutputPath;
+use crate::runner::tool::path::ToolOutputPath;
 use crate::runner::DEFAULT_TOGGLE;
 
 lazy_static! {

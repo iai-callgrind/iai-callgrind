@@ -15,7 +15,8 @@ use super::format::{BinaryBenchmarkHeader, OutputFormat};
 use super::meta::Metadata;
 use super::summary::{BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput};
 use super::tool::config::ToolConfigs;
-use super::tool::{RunOptions, ToolOutputPath, ToolOutputPathKind};
+use super::tool::path::{ToolOutputPath, ToolOutputPathKind};
+use super::tool::RunOptions;
 use crate::api::{
     self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind,
     EntryPoint, Stdin, ValgrindTool,

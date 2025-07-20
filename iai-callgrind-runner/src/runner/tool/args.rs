@@ -5,7 +5,8 @@ use std::str::FromStr;
 use anyhow::{anyhow, Result};
 use log::warn;
 
-use super::{ToolOutputPath, ValgrindTool};
+use super::path::ToolOutputPath;
+use super::ValgrindTool;
 use crate::api::RawArgs;
 use crate::error::Error;
 use crate::util::{bool_to_yesno, yesno_to_bool};

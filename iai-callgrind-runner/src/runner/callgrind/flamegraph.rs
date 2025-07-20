@@ -11,7 +11,7 @@ use super::flamegraph_parser::{FlamegraphMap, FlamegraphParser};
 use super::parser::{CallgrindParser, CallgrindProperties, Sentinel};
 use crate::api::{self, EventKind, FlamegraphKind};
 use crate::runner::summary::{BaselineKind, BaselineName, FlamegraphSummaries, FlamegraphSummary};
-use crate::runner::tool::{ToolOutputPath, ToolOutputPathKind};
+use crate::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
 
 type ParserOutput = Vec<(PathBuf, CallgrindProperties, FlamegraphMap)>;
 

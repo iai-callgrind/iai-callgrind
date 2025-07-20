@@ -8,8 +8,9 @@ use indexmap::IndexSet;
 
 use super::args::ToolArgs;
 use super::parser::ParserOutput;
+use super::path::ToolOutputPath;
 use super::regression::{RegressionConfig, ToolRegressionConfig};
-use super::{parser_factory, RunOptions, ToolCommand, ToolOutputPath, DEFAULT_TOGGLE};
+use super::{parser_factory, RunOptions, ToolCommand, DEFAULT_TOGGLE};
 use crate::api::{self, EntryPoint, RawArgs, Tool, ToolOutputFormat, Tools, ValgrindTool};
 use crate::runner::args::NoCapture;
 use crate::runner::callgrind::flamegraph::{

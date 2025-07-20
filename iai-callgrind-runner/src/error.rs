@@ -9,7 +9,7 @@ use version_compare::Cmp;
 use crate::api::ValgrindTool;
 use crate::runner::common::ModulePath;
 use crate::runner::format::Header;
-use crate::runner::tool::ToolOutputPath;
+use crate::runner::tool::path::ToolOutputPath;
 use crate::util::write_all_to_stderr;
 
 /// The iai-callgrind error

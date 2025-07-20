@@ -6,7 +6,7 @@ use iai_callgrind_runner::runner::callgrind::hashmap_parser::{CallgrindMap, Hash
 use iai_callgrind_runner::runner::callgrind::parser::CallgrindParser;
 use iai_callgrind_runner::runner::common::ModulePath;
 use iai_callgrind_runner::runner::summary::{BaselineKind, BenchmarkSummary};
-use iai_callgrind_runner::runner::tool::{self, ToolOutputPath};
+use iai_callgrind_runner::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
 
 use crate::common::Summary;
 
@@ -103,7 +103,7 @@ impl Assert {
 
         let maps = parser
             .parse(&ToolOutputPath::new(
-                tool::ToolOutputPathKind::Out,
+                ToolOutputPathKind::Out,
                 ValgrindTool::Callgrind,
                 &BaselineKind::Old,
                 &self.target_dir,

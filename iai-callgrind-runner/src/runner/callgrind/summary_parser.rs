@@ -10,7 +10,7 @@ use super::parser::{parse_header, CallgrindParser, CallgrindProperties};
 use crate::error::Error;
 use crate::runner::summary::ToolMetrics::Callgrind;
 use crate::runner::tool::parser::{Header, Parser, ParserOutput};
-use crate::runner::tool::ToolOutputPath;
+use crate::runner::tool::path::ToolOutputPath;
 
 /// Parse the `total:` line in the callgrind output or `summary:` if total is not present
 ///

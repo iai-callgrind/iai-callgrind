@@ -7,8 +7,9 @@ use anyhow::{anyhow, Context, Result};
 use super::model::DhatData;
 use super::tree::{RootTree, Tree};
 use crate::api::EntryPoint;
+use crate::runner::tool::logfile_parser;
 use crate::runner::tool::parser::{Header, Parser, ParserOutput};
-use crate::runner::tool::{logfile_parser, ToolOutputPath};
+use crate::runner::tool::path::ToolOutputPath;
 use crate::util::Glob;
 
 pub fn parse(path: &Path) -> Result<DhatData> {

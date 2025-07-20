@@ -9,7 +9,7 @@ use regex::Regex;
 
 use super::logfile_parser::{parse_header, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE};
 use super::parser::{Parser, ParserOutput};
-use super::ToolOutputPath;
+use super::path::ToolOutputPath;
 use crate::api::ErrorMetric;
 use crate::runner::metrics::Metrics;
 use crate::runner::summary::ToolMetrics;
