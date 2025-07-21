@@ -328,7 +328,7 @@ mod tests {
             fail_fast: Option::default(),
         };
 
-        assert!(CallgrindRegressionConfig::try_from(api_regression_config).is_err());
+        CallgrindRegressionConfig::try_from(api_regression_config).unwrap_err();
 
         let api_regression_config = api::CallgrindRegressionConfig {
             soft_limits: Vec::default(),
@@ -336,6 +336,6 @@ mod tests {
             fail_fast: Option::default(),
         };
 
-        assert!(CallgrindRegressionConfig::try_from(api_regression_config).is_err());
+        CallgrindRegressionConfig::try_from(api_regression_config).unwrap_err();
     }
 }

@@ -1106,7 +1106,7 @@ mod tests {
     #[test]
     fn test_home_cli_when_no_value_then_error() {
         let result = CommandLineArgs::try_parse_from(["--home=".to_owned()]);
-        assert!(result.is_err());
+        result.unwrap_err();
     }
 
     #[rstest]
@@ -1192,6 +1192,6 @@ mod tests {
             CommandLineArgs::try_parse_from(&[format!("{arg}={value}")])
         };
 
-        assert!(result.is_ok());
+        result.unwrap();
     }
 }
