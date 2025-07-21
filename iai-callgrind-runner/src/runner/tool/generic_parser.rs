@@ -1,3 +1,5 @@
+//! The module containing a generic logfile parser
+
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -15,8 +17,11 @@ enum State {
     Body,
 }
 
+/// A generic logfile parser
 pub struct GenericLogfileParser {
+    /// The [`ToolOutputPath`] of this logfile
     pub output_path: ToolOutputPath,
+    /// The path to the root/project directory used to make paths relative
     pub root_dir: PathBuf,
 }
 

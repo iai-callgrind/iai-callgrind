@@ -1,3 +1,4 @@
+//! The module containing the callgrind summary/total parser
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
@@ -31,10 +32,12 @@ use crate::runner::tool::path::ToolOutputPath;
 /// self costs. It may be larger as the cost lines may not represent all cost of the program run.
 #[derive(Debug)]
 pub struct SummaryParser {
+    /// The [`ToolOutputPath`]
     pub output_path: ToolOutputPath,
 }
 
 impl SummaryParser {
+    /// Create a new `SummaryParser`
     pub fn new(output_path: &ToolOutputPath) -> Self {
         Self {
             output_path: output_path.clone(),

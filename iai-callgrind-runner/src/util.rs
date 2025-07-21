@@ -73,6 +73,7 @@ impl<T> EitherOrBoth<T> {
         }
     }
 
+    /// Converts from `&EitherOrBoth<T>` to `EitherOrBoth<&T>`
     pub fn as_ref(&self) -> EitherOrBoth<&T> {
         match self {
             Self::Left(left) => EitherOrBoth::Left(left),

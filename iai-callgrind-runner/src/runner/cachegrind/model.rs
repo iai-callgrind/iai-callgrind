@@ -1,3 +1,4 @@
+//! This module includes all the structs to model the cachegrind output
 use std::borrow::Cow;
 
 use anyhow::Result;
@@ -7,6 +8,7 @@ use crate::api::CachegrindMetric;
 use crate::runner::callgrind::{CacheSummary, CyclesEstimator};
 use crate::runner::metrics::{Metric, Summarize};
 
+/// The cachegrind specific `Metrics`
 pub type Metrics = crate::runner::metrics::Metrics<CachegrindMetric>;
 
 impl Default for Metrics {

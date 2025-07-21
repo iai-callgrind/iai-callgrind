@@ -1,3 +1,5 @@
+//! The module containing the [`Metadata`] and [`Cmd`]
+
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -11,19 +13,24 @@ use super::args::CommandLineArgs;
 use super::envs;
 use crate::util::resolve_binary_path;
 
+/// The basic commands (like valgrind) to be executed with default arguments
 #[derive(Debug, Clone)]
 pub struct Cmd {
+    /// The path to the executable
     pub bin: PathBuf,
+    /// The arguments for the executable
     pub args: Vec<OsString>,
 }
 
-/// `Metadata` contains all information that needs to be collected from cargo
+/// `Metadata` contains all information that needs to be collected from cargo and the environment
 ///
-/// More specifically, `Metadata` contains global constants, environment variables and command line
-/// arguments.
+/// More specifically, `Metadata` contains global constants, environment variables and command-line
+/// arguments, the basic valgrind [`Cmd`], ...
 #[derive(Debug, Clone)]
 pub struct Metadata {
+    /// A string describing the architecture of the CPU that is currently in use (e.g. "x86")
     pub arch: String,
+    /// The path to the project top-level directory
     pub project_root: PathBuf,
     /// The absolute path of the `HOME` (per default `$WORKSPACE_ROOT/target/iai`). Plus, if
     /// configured, the target of the host like `x86_64-linux-unknown-gnu`. The final component is
@@ -33,13 +40,18 @@ pub struct Metadata {
     /// * `/home/my/workspace/my-project/target/iai/my-project` or
     /// * `/home/my/workspace/my-project/target/iai/x86_64-linux-unknown-gnu/my-project`
     pub target_dir: PathBuf,
+    /// The valgrind [`Cmd`]
     pub valgrind: Cmd,
+    /// The valgrind wrapper [`Cmd`]
     pub valgrind_wrapper: Option<Cmd>,
+    /// The command-line arguments parsed from the arguments to `cargo bench -- ARGS` as ARGS
     pub args: CommandLineArgs,
+    /// The name of the benchmark to run (might be different to the name of the file)
     pub bench_name: String,
 }
 
 impl Metadata {
+    /// Create a `new` Metadata
     pub fn new(
         raw_command_line_args: &[String],
         package_name: &str,

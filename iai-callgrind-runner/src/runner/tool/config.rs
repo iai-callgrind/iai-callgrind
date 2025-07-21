@@ -1,3 +1,5 @@
+//! The module containing the [`ToolConfig`] and other related elements
+
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::io::stderr;
@@ -28,29 +30,45 @@ use crate::runner::summary::{
 use crate::runner::{cachegrind, callgrind, DEFAULT_TOGGLE};
 use crate::util::Glob;
 
+/// The [`ToolConfig`] containing the basic configuration values to run the benchmark for this tool
 #[derive(Debug, Clone)]
 pub struct ToolConfig {
+    /// The [`ValgrindTool`]
     pub tool: ValgrindTool,
+    /// If true, this tool is enabled for this benchmark
     pub is_enabled: bool,
+    /// If true, this tool is the default tool for the benchmark run
     pub is_default: bool,
+    /// The arguments to pass to the valgrind executable
     pub args: ToolArgs,
+    // TODO: refactor: Can this be eliminated
+    /// A optional output file modifier
     pub outfile_modifier: Option<String>,
+    /// The tool specific regression check configuration
     pub regression_config: ToolRegressionConfig,
+    /// The tool specific flamegraph configuration
     pub flamegraph_config: ToolFlamegraphConfig,
+    /// The [`EntryPoint`] of this tool
     pub entry_point: EntryPoint,
+    /// The [`Glob`] patterns used to matched a function in the call stack of a program point
     pub frames: Vec<Glob>,
 }
 
+/// Multiple [`ToolConfig`]s
 #[derive(Debug, Clone)]
 pub struct ToolConfigs(pub Vec<ToolConfig>);
 
+/// The tool specific flamegraph configuration
 #[derive(Debug, Clone, PartialEq)]
 pub enum ToolFlamegraphConfig {
+    /// The callgrind configuration
     Callgrind(FlamegraphConfig),
+    /// If there is no configuration
     None,
 }
 
 impl ToolConfig {
+    /// Create a new `ToolConfig`
     pub fn new<T>(
         tool: ValgrindTool,
         is_enabled: bool,
@@ -78,6 +96,7 @@ impl ToolConfig {
         })
     }
 
+    /// Create a new `ToolConfig` from the given parameters
     #[allow(clippy::too_many_lines)]
     pub fn from_tool(
         output_format: &mut OutputFormat,
@@ -320,6 +339,7 @@ impl ToolConfig {
         }
     }
 
+    /// Create a new default tool configuration
     #[allow(clippy::too_many_lines)]
     pub fn new_default_config(
         output_format: &mut OutputFormat,
@@ -451,6 +471,7 @@ impl ToolConfig {
         }
     }
 
+    /// Parse the [`Profile`] from profile data or log files
     pub fn parse(
         &self,
         meta: &Metadata,
@@ -643,6 +664,7 @@ impl ToolConfigs {
         Ok(tool_configs)
     }
 
+    /// Return true if there are any [`Tool`]s enabled
     pub fn has_tools_enabled(&self) -> bool {
         self.0.iter().any(|t| t.is_enabled)
     }
@@ -652,6 +674,7 @@ impl ToolConfigs {
         self.0.len() > 1 && self.0.iter().filter(|f| f.is_enabled).count() > 1
     }
 
+    /// Return all [`ToolOutputPath`]s of all enabled tools
     pub fn output_paths(&self, output_path: &ToolOutputPath) -> Vec<ToolOutputPath> {
         self.0
             .iter()
@@ -660,6 +683,7 @@ impl ToolConfigs {
             .collect()
     }
 
+    /// Extend this collection of tools with the contents of an iterator
     pub fn extend(&mut self, iter: impl Iterator<Item = Result<ToolConfig>>) -> Result<()> {
         for a in iter {
             self.0.push(a?);
@@ -709,6 +733,7 @@ impl ToolConfigs {
         }
     }
 
+    /// Run a benchmark when --load-baseline was given
     pub fn run_loaded_vs_base(
         &self,
         title: &str,
@@ -762,6 +787,7 @@ impl ToolConfigs {
         Ok(benchmark_summary)
     }
 
+    /// Run a benchmark with this configuration if not --load-baseline was given
     pub fn run(
         &self,
         title: &str,

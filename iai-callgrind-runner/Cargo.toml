@@ -99,7 +99,7 @@ name = "iai-callgrind-runner"
 path = "src/main.rs"
 
 [lints.rust]
-missing_docs = "allow"
+missing_docs = "warn"
 
 [lints.clippy]
 pedantic = "warn"

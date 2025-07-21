@@ -1,3 +1,5 @@
+//! This module contains elements which are common to library and binary benchmarks
+
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::path::PathBuf;
@@ -21,6 +23,7 @@ mod defaults {
     pub const SANDBOX_ENABLED: bool = false;
 }
 
+/// An `Assistant` corresponds to the `setup` or `teardown` functions in the UI
 #[derive(Debug, Clone)]
 pub struct Assistant {
     kind: AssistantKind,
@@ -31,12 +34,16 @@ pub struct Assistant {
     run_parallel: bool,
 }
 
+/// the [`Assistant`] kind
 #[derive(Debug, Clone)]
 pub enum AssistantKind {
+    /// The `setup` function
     Setup,
+    /// The `teardown` function
     Teardown,
 }
 
+/// The `Baselines` type
 pub type Baselines = (Option<String>, Option<String>);
 
 /// Contains benchmark summaries of (binary, library) benchmark runs and their execution time
@@ -50,18 +57,28 @@ pub struct BenchmarkSummaries {
     pub total_time: Option<Duration>,
 }
 
+/// The `Config` contains all the information extracted from the UI invocation of the runner
 #[derive(Debug)]
 pub struct Config {
+    /// The package directory of the package in which `iai-callgrind` (not the runner) is used
     pub package_dir: PathBuf,
+    /// The path to the benchmark file which contains the benchmark harness
     pub bench_file: PathBuf,
+    /// The module path of the benchmark file
     pub module_path: ModulePath,
+    /// The path to the compiled binary with the benchmark harness
     pub bench_bin: PathBuf,
+    /// The [`Metadata`]
     pub meta: Metadata,
 }
 
+/// A helper struct similar to a file path but for module paths with the `::` delimiter
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModulePath(String);
 
+/// The `Sandbox` in which benchmarks should be runs
+///
+/// As soon as the `Sandbox` is dropped the temporary directory is deleted.
 #[derive(Debug)]
 pub struct Sandbox {
     current_dir: PathBuf,
@@ -226,6 +243,7 @@ impl Assistant {
 }
 
 impl AssistantKind {
+    /// Return the assistant kind `id` as string
     pub fn id(&self) -> String {
         match self {
             AssistantKind::Setup => "setup",
@@ -277,20 +295,27 @@ impl BenchmarkSummaries {
 }
 
 impl ModulePath {
+    /// Create a new `ModulePath`
+    ///
+    /// There is no validity check if the path contains valid characters or not and the path is
+    /// created as is.
     pub fn new(path: &str) -> Self {
         Self(path.to_owned())
     }
 
+    /// Join this module path with another string (unchecked)
     #[must_use]
     pub fn join(&self, path: &str) -> Self {
         let new = format!("{}::{path}", self.0);
         Self(new)
     }
 
+    /// Return the module path as string
     pub fn as_str(&self) -> &str {
         &self.0
     }
 
+    /// Return the first segment of the module path if any
     pub fn first(&self) -> Option<ModulePath> {
         self.0
             .split_once("::")
@@ -298,18 +323,21 @@ impl ModulePath {
             .or_else(|| (!self.0.is_empty()).then_some(self.clone()))
     }
 
+    /// Return the last segment of the module path if any
     pub fn last(&self) -> Option<ModulePath> {
         self.0
             .rsplit_once("::")
             .map(|(_, last)| ModulePath::new(last))
     }
 
+    /// Return the parent module path if present
     pub fn parent(&self) -> Option<ModulePath> {
         self.0
             .rsplit_once("::")
             .map(|(prefix, _)| ModulePath::new(prefix))
     }
 
+    /// Return a vector which contains all segments of the module path without the delimiter
     pub fn components(&self) -> Vec<&str> {
         self.0.split("::").collect()
     }
@@ -334,6 +362,11 @@ impl From<&ModulePath> for String {
 }
 
 impl Sandbox {
+    /// Setup the `Sandbox` if enabled
+    ///
+    /// If enabled, create a temporary directory which has a standardized length. Then copy fixtures
+    /// into the temporary directory. Finally, set the current directory to this temporary
+    /// directory.
     pub fn setup(inner: &api::Sandbox, meta: &Metadata) -> Result<Self> {
         let enabled = inner.enabled.unwrap_or(defaults::SANDBOX_ENABLED);
         let follow_symlinks = inner
@@ -385,6 +418,7 @@ impl Sandbox {
         })
     }
 
+    /// Reset the current directory and delete the temporary directory if present
     pub fn reset(self) -> Result<()> {
         if let Some(temp_dir) = self.temp_dir {
             std::env::set_current_dir(&self.current_dir).map_err(|error| {

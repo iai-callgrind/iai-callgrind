@@ -1,3 +1,5 @@
+//! The module containing the command line arguments for cachegrind
+
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -10,6 +12,7 @@ use crate::error::Error;
 use crate::runner::tool::args::{defaults, FairSched, ToolArgs};
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
+/// The command-line arguments
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone)]
 pub struct Args {
@@ -26,12 +29,14 @@ pub struct Args {
 }
 
 impl Args {
+    /// Try to create new `Args` from multiple [`RawArgs`]
     pub fn try_from_raw_args(args: &[&RawArgs]) -> Result<Self> {
         let mut default = Self::default();
         default.try_update(args.iter().flat_map(|s| &s.0))?;
         Ok(default)
     }
 
+    /// Try to update these `Args` from the contents of an iterator
     pub fn try_update<'a, T: Iterator<Item = &'a String>>(&mut self, args: T) -> Result<()> {
         for arg in args {
             match arg

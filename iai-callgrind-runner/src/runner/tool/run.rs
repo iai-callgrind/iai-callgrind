@@ -1,3 +1,5 @@
+//! The module responsible for the actual run of the benchmark
+
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output};
@@ -15,33 +17,50 @@ use crate::runner::common::{Assistant, ModulePath};
 use crate::runner::meta::Metadata;
 use crate::util::{self, resolve_binary_path};
 
+/// The run options for the [`ToolCommand`]
 #[derive(Debug, Default, Clone)]
 pub struct RunOptions {
+    /// If true, clear the environment variables
     pub env_clear: bool,
+    /// Set the current directory of the [`ToolCommand`]
     pub current_dir: Option<PathBuf>,
+    /// Configuration of the expected exit code/signal
     pub exit_with: Option<ExitWith>,
+    /// The environment variables to pass into the [`ToolCommand`]
     pub envs: Vec<(OsString, OsString)>,
+    /// The `stdin`
     pub stdin: Option<api::Stdin>,
+    /// The `stdout`
     pub stdout: Option<api::Stdio>,
+    /// The `stderr`
     pub stderr: Option<api::Stdio>,
+    /// The `setup` assistant to run if present
     pub setup: Option<Assistant>,
+    /// The `teardown` assistant to run if present
     pub teardown: Option<Assistant>,
+    /// If present, execute the [`ToolCommand`] in a [`api::Sandbox`]
     pub sandbox: Option<api::Sandbox>,
+    /// The optional [`Delay`] to apply to the command
     pub delay: Option<Delay>,
 }
 
+/// The final command to execute
 pub struct ToolCommand {
     tool: ValgrindTool,
     nocapture: NoCapture,
     command: Command,
 }
 
+/// The tool specific [`Output`] of the [`ToolCommand`]
 pub struct ToolOutput {
+    /// The valgrind tool
     pub tool: ValgrindTool,
+    /// The output if present
     pub output: Option<Output>,
 }
 
 impl ToolCommand {
+    /// Create new `ToolCommand`
     pub fn new(tool: ValgrindTool, meta: &Metadata, nocapture: NoCapture) -> Self {
         Self {
             tool,
@@ -50,6 +69,13 @@ impl ToolCommand {
         }
     }
 
+    /// Clear the environment variables
+    ///
+    /// The `LD_PRELOAD` and `LD_LIBRARY_PATH` variables are skipped. If they are set there's
+    /// usually a good reason for it.
+    ///
+    /// If the tool is `Memcheck`: In order to be able run `Memcheck` without errors, the `PATH`,
+    /// `HOME` and `DEBUGINFOD_URLS` variables are skipped.
     pub fn env_clear(&mut self) -> &mut Self {
         debug!("{}: Clearing environment variables", self.tool.id());
         for (key, _) in std::env::vars() {
@@ -69,6 +95,7 @@ impl ToolCommand {
         self
     }
 
+    /// Run the `ToolCommand`
     #[allow(clippy::too_many_lines)]
     pub fn run(
         mut self,
@@ -217,6 +244,7 @@ impl ToolCommand {
 }
 
 impl ToolOutput {
+    /// Dump the tool output if the [`log::Level`] matches
     pub fn dump_log(&self, log_level: log::Level) {
         if let Some(output) = &self.output {
             if log_enabled!(log_level) {
@@ -234,6 +262,7 @@ impl ToolOutput {
     }
 }
 
+/// Check the exit code of the [`ToolCommand`] and verify it matches the expected [`ExitWith`]
 pub fn check_exit(
     tool: ValgrindTool,
     executable: &Path,

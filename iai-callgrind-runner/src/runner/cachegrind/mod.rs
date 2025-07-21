@@ -1,3 +1,5 @@
+//! The main module of cachegrind
+
 pub mod args;
 pub mod model;
 pub mod parser;

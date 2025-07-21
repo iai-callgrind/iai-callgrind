@@ -1,3 +1,5 @@
+//! The main runner module
+
 pub mod args;
 pub mod bin_bench;
 pub mod cachegrind;
@@ -27,15 +29,25 @@ use self::summary::BenchmarkKind;
 use crate::api::{BinaryBenchmarkGroups, LibraryBenchmarkGroups};
 use crate::error::Error;
 
+/// Names of environment variables which are used in different places
+///
+/// The variables here are not part of the parsed environment variables of `clap` in
+/// [`crate::runner::args::CommandLineArgs`]
 pub mod envs {
+    /// The environment variable to set the color (same syntax as `CARGO_TERM_COLOR`)
     pub const IAI_CALLGRIND_COLOR: &str = "IAI_CALLGRIND_COLOR";
+    /// Set the logging output of Iai-Callgrind
     pub const IAI_CALLGRIND_LOG: &str = "IAI_CALLGRIND_LOG";
 
+    /// The name of the package
     pub const CARGO_PKG_NAME: &str = "CARGO_PKG_NAME";
+    /// Location of where to place all generated artifacts
     pub const CARGO_TARGET_DIR: &str = "CARGO_TARGET_DIR";
+    /// The default color mode
     pub const CARGO_TERM_COLOR: &str = "CARGO_TERM_COLOR";
 }
 
+/// The default toggle/frame used by the [`crate::api::EntryPoint::Default`]
 pub const DEFAULT_TOGGLE: &str = "*::__iai_callgrind_wrapper_mod::*";
 
 /// Execute post benchmark run actions like printing the summary line with regressions
@@ -215,6 +227,7 @@ where
     bincode::deserialize(&encoded).with_context(|| "Failed to decode configuration")
 }
 
+/// Run this benchmark
 pub fn run() -> Result<()> {
     let RunnerArgs {
         bench_kind,

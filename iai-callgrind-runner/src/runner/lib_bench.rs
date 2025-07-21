@@ -51,15 +51,28 @@ struct Groups(Vec<Group>);
 /// It needs an implementation of `Benchmark` to be run.
 #[derive(Debug)]
 pub struct LibBench {
+    /// The index of the group in the benchmark harness
     pub group_index: usize,
+    /// The index of the benchmark in the benchmark harness
     pub bench_index: usize,
+    /// The id of the benchmark as in `#[bench::id]`
     pub id: Option<String>,
+    /// The name of the annotated function
     pub function_name: String,
+    /// The arguments of `args` attribute as a single string
     pub args: Option<String>,
+    /// The [`RunOptions`]
     pub run_options: RunOptions,
+    /// The tool configurations for this benchmark run
     pub tools: ToolConfigs,
+    /// The [`ModulePath`].
+    ///
+    /// This is an artificial path for display purposes and does not reflect the real module path
+    /// of the benchmark in the benchmark file
     pub module_path: ModulePath,
+    /// The [`OutputFormat`]
     pub output_format: OutputFormat,
+    /// The default [`ValgrindTool`]. If not changed it is `Callgrind`.
     pub default_tool: ValgrindTool,
 }
 

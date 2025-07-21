@@ -32,59 +32,98 @@ use crate::runner::metrics::Summarize;
 use crate::runner::metrics::TypeChecker;
 
 /// The model for the `#[binary_benchmark]` attribute or the equivalent from the low level api
+///
+/// For internal use only
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BinaryBenchmark {
+    /// The configuration at `#[binary_benchmark]` level
     pub config: Option<BinaryBenchmarkConfig>,
+    /// The extracted binary benchmarks
     pub benches: Vec<BinaryBenchmarkBench>,
 }
 
 /// The model for the `#[bench]` attribute or the low level equivalent
+///
+/// For internal use only
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BinaryBenchmarkBench {
+    /// The `id` of the benchmark as in `#[bench::id]`
     pub id: Option<String>,
+    /// The name of the annotated function
     pub function_name: String,
+    /// The arguments to the function
     pub args: Option<String>,
+    /// The returned [`Command`]
     pub command: Command,
+    /// The configuration at `#[bench]` or `#[benches]` level
     pub config: Option<BinaryBenchmarkConfig>,
+    /// True if there is a `setup` function
     pub has_setup: bool,
+    /// True if there is a `teardown` function
     pub has_teardown: bool,
 }
 
+/// The model for the configuration in binary benchmarks
+///
+/// This is the configuration which is built from the configuration of the UI and for internal use
+/// only.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct BinaryBenchmarkConfig {
+    /// True if the environment variables should be cleared
     pub env_clear: Option<bool>,
+    /// If some, set the the working directory of the benchmarked binary to this path
     pub current_dir: Option<PathBuf>,
+    /// The [`ExitWith`] to set the expected exit code/signal of the benchmarked binary
     pub exit_with: Option<ExitWith>,
+    /// The arguments to pass to all tools
     pub valgrind_args: RawArgs,
+    /// The environment variables to set or pass through to the binary
     pub envs: Vec<(OsString, Option<OsString>)>,
+    /// The valgrind tools to run in addition to the default tool
     pub tools: Tools,
+    /// The tool override at this configuration level
     pub tools_override: Option<Tools>,
+    /// Run the benchmarked binary in a [`Sandbox`] or not
     pub sandbox: Option<Sandbox>,
+    /// Run the `setup` function parallel to the benchmarked binary
     pub setup_parallel: Option<bool>,
+    /// The configuration of the output format
     pub output_format: Option<OutputFormat>,
+    /// The valgrind tool to run instead of the default callgrind
     pub default_tool: Option<ValgrindTool>,
 }
 
 /// The model for the `binary_benchmark_group` macro
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BinaryBenchmarkGroup {
+    /// The name or id of the `binary_benchmark_group!`
     pub id: String,
+    /// The configuration at this level
     pub config: Option<BinaryBenchmarkConfig>,
+    /// True if there is a `setup` function
     pub has_setup: bool,
+    /// True if there is a `teardown` function
     pub has_teardown: bool,
+    /// The actual data and the benchmarks of this group
     pub binary_benchmarks: Vec<BinaryBenchmark>,
+    /// If true compare the benchmarks in this group
     pub compare_by_id: Option<bool>,
 }
 
 /// The model for the main! macro
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BinaryBenchmarkGroups {
+    /// The configuration of this level
     pub config: BinaryBenchmarkConfig,
+    /// All groups of this benchmark
     pub groups: Vec<BinaryBenchmarkGroup>,
     /// The command line arguments as we receive them from `cargo bench`
     pub command_line_args: Vec<String>,
+    /// True if there is a `setup` function
     pub has_setup: bool,
+    /// True if there is a `teardown` function
     pub has_teardown: bool,
+    /// The default tool changed by the `cachegrind` feature
     pub default_tool: ValgrindTool,
 }
 
@@ -151,6 +190,9 @@ pub enum CachegrindMetric {
     Bim,
 }
 
+/// A collection of groups of [`CachegrindMetric`]s
+///
+/// The members of each group are fully documented in the docs of each variant of this enum
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum CachegrindMetrics {
@@ -330,10 +372,14 @@ pub enum CachegrindMetrics {
     SingleEvent(CachegrindMetric),
 }
 
+/// The model for the regression check configuration of Cachegrind
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CachegrindRegressionConfig {
+    /// The soft limits
     pub soft_limits: Vec<(CachegrindMetrics, f64)>,
+    /// The hard limits
     pub hard_limits: Vec<(CachegrindMetrics, Limit)>,
+    /// True if the benchmarks should fail on the first occurrence of a regression
     pub fail_fast: Option<bool>,
 }
 
@@ -576,28 +622,44 @@ pub enum CallgrindMetrics {
     SingleEvent(EventKind),
 }
 
+/// The model for the regression check configuration of Callgrind
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CallgrindRegressionConfig {
+    /// The soft limits
     pub soft_limits: Vec<(CallgrindMetrics, f64)>,
+    /// The hard limits
     pub hard_limits: Vec<(CallgrindMetrics, Limit)>,
+    /// True if the benchmarks should fail on the first occurrence of a regression
     pub fail_fast: Option<bool>,
 }
 
+/// The model for the command returned by the binary benchmark function
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Command {
+    /// The path to the executable
     pub path: PathBuf,
+    /// The arguments for the executable
     pub args: Vec<OsString>,
+    /// The command's stdin
     pub stdin: Option<Stdin>,
+    /// The command's stdout
     pub stdout: Option<Stdio>,
+    /// The command's stderr
     pub stderr: Option<Stdio>,
+    /// The configuration at this level
     pub config: BinaryBenchmarkConfig,
+    /// If present the command is delayed as configured in [`Delay`]
     pub delay: Option<Delay>,
 }
 
+/// The delay of the [`Command`]
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Delay {
+    /// The polling time to check the delay condition
     pub poll: Option<Duration>,
+    /// The timeout for the delay
     pub timeout: Option<Duration>,
+    /// The kind of delay
     pub kind: DelayKind,
 }
 
@@ -663,6 +725,9 @@ pub enum DhatMetric {
     MaximumBlocks,
 }
 
+/// A collection of groups of [`DhatMetric`]s
+///
+/// The members of each group are fully documented in the docs of each variant of this enum
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub enum DhatMetrics {
     /// The default group in this order
@@ -722,10 +787,14 @@ pub enum DhatMetrics {
     SingleMetric(DhatMetric),
 }
 
+/// The model for the regression check configuration of DHAT
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct DhatRegressionConfig {
+    /// The soft limits
     pub soft_limits: Vec<(DhatMetrics, f64)>,
+    /// The hard limits
     pub hard_limits: Vec<(DhatMetrics, Limit)>,
+    /// True if the benchmarks should fail on the first occurrence of a regression
     pub fail_fast: Option<bool>,
 }
 
@@ -847,28 +916,45 @@ pub enum EventKind {
     SpLoss2,
 }
 
+/// Set the expected exit status of a benchmarked binary
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExitWith {
+    /// Exit with success is similar to `ExitCode(0)`
     Success,
+    /// Exit with failure is similar to setting the `ExitCode` to something different from `0`
+    /// without having to rely on a specific exit code
     Failure,
+    /// The exact `ExitCode` of the benchmark run
     Code(i32),
 }
 
+/// The fixtures to copy into the [`Sandbox`]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Fixtures {
+    /// The path to the fixtures
     pub path: PathBuf,
+    /// If true, follow symlinks
     pub follow_symlinks: bool,
 }
 
+/// The model for the configuration of flamegraphs
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct FlamegraphConfig {
+    /// The flamegraph kind
     pub kind: Option<FlamegraphKind>,
+    /// If true, negate a differential flamegraph
     pub negate_differential: Option<bool>,
+    /// If true, normalize a differential flamegraph
     pub normalize_differential: Option<bool>,
+    /// The event kinds for which a flamegraph should be generated
     pub event_kinds: Option<Vec<EventKind>>,
+    /// The direction of the flamegraph. Top to bottom or vice versa
     pub direction: Option<Direction>,
+    /// The title to use for the flamegraphs
     pub title: Option<String>,
+    /// The subtitle to use for the flamegraphs
     pub subtitle: Option<String>,
+    /// The minimum width which should be displayed
     pub min_width: Option<f64>,
 }
 
@@ -889,50 +975,81 @@ pub enum FlamegraphKind {
 /// The model for the `#[library_benchmark]` attribute
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmark {
+    /// The configuration at this level
     pub config: Option<LibraryBenchmarkConfig>,
+    /// The extracted benchmarks of the annotated function
     pub benches: Vec<LibraryBenchmarkBench>,
 }
 
+// TODO: Sort fields like in BinaryBenchmarkBench or vice versa
 /// The model for the `#[bench]` attribute in a `#[library_benchmark]`
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmarkBench {
+    /// The id of the attribute as in `#[bench::id]`
     pub id: Option<String>,
+    /// The name of the function
     pub function_name: String,
+    /// The arguments for the function
     pub args: Option<String>,
+    /// The configuration at this level
     pub config: Option<LibraryBenchmarkConfig>,
 }
 
+// TODO: Sort fields like in BinaryBenchmarkConfig or vice versa
+/// The model for the configuration in library benchmarks
+///
+/// This is the configuration which is built from the configuration of the UI and for internal use
+/// only.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmarkConfig {
+    /// True if the environment variables should be cleared
     pub env_clear: Option<bool>,
+    /// The arguments to pass to all tools
     pub valgrind_args: RawArgs,
+    /// The environment variables to set or pass through to the binary
     pub envs: Vec<(OsString, Option<OsString>)>,
+    /// The valgrind tools to run in addition to the default tool
     pub tools: Tools,
+    /// The tool override at this configuration level
     pub tools_override: Option<Tools>,
+    /// The configuration of the output format
     pub output_format: Option<OutputFormat>,
+    /// The valgrind tool to run instead of the default callgrind
     pub default_tool: Option<ValgrindTool>,
 }
 
+// TODO: Sort fields like in BinaryBenchmarkGroup or vice versa
 /// The model for the `library_benchmark_group` macro
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmarkGroup {
+    /// The name or id of the `library_benchmark_group!`
     pub id: String,
+    /// The configuration at this level
     pub config: Option<LibraryBenchmarkConfig>,
+    /// If true compare the benchmarks in this group
     pub compare_by_id: Option<bool>,
+    /// The actual data and the benchmarks of this group
     pub library_benchmarks: Vec<LibraryBenchmark>,
+    /// True if there is a `setup` function
     pub has_setup: bool,
+    /// True if there is a `teardown` function
     pub has_teardown: bool,
 }
 
 /// The model for the `main` macro
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LibraryBenchmarkGroups {
+    /// The configuration of this level
     pub config: LibraryBenchmarkConfig,
+    /// All groups of this benchmark
     pub groups: Vec<LibraryBenchmarkGroup>,
     /// The command line args as we receive them from `cargo bench`
     pub command_line_args: Vec<String>,
+    /// True if there is a `setup` function
     pub has_setup: bool,
+    /// True if there is a `teardown` function
     pub has_teardown: bool,
+    /// The default tool changed by the `cachegrind` feature
     pub default_tool: ValgrindTool,
 }
 
@@ -955,18 +1072,26 @@ pub enum Limit {
 /// The configuration values for the output format
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct OutputFormat {
+    /// If set, truncate the description
     pub truncate_description: Option<Option<usize>>,
+    /// Show intermediate results, for example in benchmarks for multi-threaded applications
     pub show_intermediate: Option<bool>,
+    /// Show a grid instead of spaces in the terminal output
     pub show_grid: Option<bool>,
 }
 
+/// The raw arguments to pass to a valgrind tool
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RawArgs(pub Vec<String>);
 
+/// The sandbox to run the benchmarks in
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Sandbox {
+    /// If this sandbox is enabled or not
     pub enabled: Option<bool>,
+    /// The fixtures to copy into the sandbox
     pub fixtures: Vec<PathBuf>,
+    /// If true follow symlinks when copying the fixtures
     pub follow_symlinks: Option<bool>,
 }
 
@@ -1029,44 +1154,71 @@ pub enum Stdin {
     Pipe,
 }
 
+/// The tool configuration
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Tool {
+    /// The valgrind tool this configuration is for
     pub kind: ValgrindTool,
+    /// If true the tool is run. Ignored for the default tool which always runs
     pub enable: Option<bool>,
+    /// The arguments to pass to the tool
     pub raw_args: RawArgs,
+    /// If true show the logging output of Valgrind (not Iai-Callgrind)
     pub show_log: Option<bool>,
+    /// The configuration for regression checks of tools which perform regression checks
     pub regression_config: Option<ToolRegressionConfig>,
+    /// The configuration for flamegraphs
     pub flamegraph_config: Option<ToolFlamegraphConfig>,
+    /// The configuration of the output format
     pub output_format: Option<ToolOutputFormat>,
+    /// The entry point for the tool
     pub entry_point: Option<EntryPoint>,
+    /// Any frames in the call stack which should be considered in addition to the entry point
     pub frames: Option<Vec<String>>,
 }
 
+/// The tool specific regression check configuration
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ToolRegressionConfig {
+    /// The callgrind configuration
     Callgrind(CallgrindRegressionConfig),
+    /// The cachegrind configuration
     Cachegrind(CachegrindRegressionConfig),
+    /// The dhat configuration
     Dhat(DhatRegressionConfig),
+    /// The option for tools which don't perform regression checks
     None,
 }
 
+/// The tool specific flamegraph configuration
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ToolFlamegraphConfig {
+    /// The callgrind configuration
     Callgrind(FlamegraphConfig),
+    /// The option for tools which can't create flamegraphs
     None,
 }
 
+/// The tool specific metrics to show in the terminal output
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ToolOutputFormat {
+    /// The Callgrind configuration
     Callgrind(Vec<CallgrindMetrics>),
+    /// The Cachegrind configuration
     Cachegrind(Vec<CachegrindMetrics>),
+    /// The DHAT configuration
     DHAT(Vec<DhatMetric>),
+    /// The Memcheck configuration
     Memcheck(Vec<ErrorMetric>),
+    /// The Helgrind configuration
     Helgrind(Vec<ErrorMetric>),
+    /// The DRD configuration
     DRD(Vec<ErrorMetric>),
+    /// If there is no configuration
     None,
 }
 
+/// The configurations of all tools to run in addition to the default tool
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Tools(pub Vec<Tool>);
 
@@ -1096,6 +1248,7 @@ pub enum ValgrindTool {
 }
 
 impl BinaryBenchmarkConfig {
+    /// Update this configuration with all other configurations in the given order
     #[must_use]
     pub fn update_from_all<'a, T>(mut self, others: T) -> Self
     where
@@ -1127,6 +1280,10 @@ impl BinaryBenchmarkConfig {
         self
     }
 
+    /// Resolve the environment variables and create key, value pairs out of them
+    ///
+    /// This is done especially for pass-through environment variables which have a `None` value at
+    /// first.
     pub fn resolve_envs(&self) -> Vec<(OsString, OsString)> {
         self.envs
             .iter()
@@ -1137,6 +1294,9 @@ impl BinaryBenchmarkConfig {
             .collect()
     }
 
+    /// Collect all environment variables which don't have a `None` value
+    ///
+    /// Pass-through variables have a `None` value.
     pub fn collect_envs(&self) -> Vec<(OsString, OsString)> {
         self.envs
             .iter()
@@ -1183,6 +1343,7 @@ impl CachegrindMetric {
         )
     }
 
+    /// Return the name of the metric which is the exact name of the enum variant
     pub fn to_name(&self) -> String {
         format!("{:?}", *self)
     }
@@ -1713,6 +1874,7 @@ impl EventKind {
         )
     }
 
+    /// Return the name of the metric which is the exact name of the enum variant
     pub fn to_name(&self) -> String {
         format!("{:?}", *self)
     }
@@ -1841,6 +2003,7 @@ impl TypeChecker for EventKind {
 }
 
 impl LibraryBenchmarkConfig {
+    /// Update this configuration with all other configurations in the given order
     #[must_use]
     pub fn update_from_all<'a, T>(mut self, others: T) -> Self
     where
@@ -1867,6 +2030,9 @@ impl LibraryBenchmarkConfig {
         self
     }
 
+    /// Resolve the environment variables and create key, value pairs out of them
+    ///
+    /// Same as [`BinaryBenchmarkConfig::resolve_envs`]
     pub fn resolve_envs(&self) -> Vec<(OsString, OsString)> {
         self.envs
             .iter()
@@ -1877,6 +2043,9 @@ impl LibraryBenchmarkConfig {
             .collect()
     }
 
+    /// Collect all environment variables which don't have a `None` value
+    ///
+    /// Same as [`BinaryBenchmarkConfig::collect_envs`]
     pub fn collect_envs(&self) -> Vec<(OsString, OsString)> {
         self.envs
             .iter()
@@ -1908,6 +2077,7 @@ impl From<u64> for Limit {
 }
 
 impl RawArgs {
+    /// Create new arguments for a valgrind tool
     pub fn new<I, T>(args: T) -> Self
     where
         I: Into<String>,
@@ -1916,6 +2086,7 @@ impl RawArgs {
         Self(args.into_iter().map(Into::into).collect())
     }
 
+    /// Extend the arguments with the contents of an iterator
     pub fn extend_ignore_flag<I, T>(&mut self, args: T)
     where
         I: AsRef<str>,
@@ -1935,6 +2106,7 @@ impl RawArgs {
         );
     }
 
+    /// TODO: Refactor delete
     pub fn from_command_line_args(args: Vec<String>) -> Self {
         let mut this = Self(Vec::default());
         if !args.is_empty() {
@@ -1952,14 +2124,17 @@ impl RawArgs {
         this
     }
 
+    /// Return true if there are no tool arguments
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
+    /// Append the arguments of another `RawArgs`
     pub fn update(&mut self, other: &Self) {
         self.extend_ignore_flag(other.0.iter());
     }
 
+    /// Prepend the arguments of another `RawArgs`
     pub fn prepend(&mut self, other: &Self) {
         if !other.is_empty() {
             let mut other = other.clone();
@@ -2106,6 +2281,7 @@ impl From<&Path> for Stdio {
 }
 
 impl Tool {
+    /// Create a new `Tool` configuration
     pub fn new(kind: ValgrindTool) -> Self {
         Self {
             kind,
@@ -2120,6 +2296,7 @@ impl Tool {
         }
     }
 
+    /// Create a new `Tool` configuration with the given command-line `args`
     pub fn with_args<I, T>(kind: ValgrindTool, args: T) -> Self
     where
         I: AsRef<str>,
@@ -2130,6 +2307,7 @@ impl Tool {
         this
     }
 
+    /// Update this tool configuration with another configuration
     pub fn update(&mut self, other: &Self) {
         if self.kind == other.kind {
             self.enable = update_option(&self.enable, &other.enable);
@@ -2208,6 +2386,7 @@ impl ValgrindTool {
         }
     }
 
+    /// Return true if this tool has output files in addition to log files
     pub fn has_output_file(&self) -> bool {
         matches!(
             self,
@@ -2254,6 +2433,7 @@ impl FromStr for ValgrindTool {
     }
 }
 
+/// Update the value of an [`Option`]
 pub fn update_option<T: Clone>(first: &Option<T>, other: &Option<T>) -> Option<T> {
     other.clone().or_else(|| first.clone())
 }

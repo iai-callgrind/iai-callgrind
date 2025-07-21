@@ -1,3 +1,5 @@
+//! A hashmap parser for callgrind output files
+
 use std::cmp::Ordering;
 use std::collections::hash_map::Iter;
 use std::collections::HashMap;
@@ -14,10 +16,14 @@ use super::model::Metrics;
 use super::parser::{parse_header, CallgrindParser, CallgrindProperties, Sentinel};
 use crate::error::Error;
 
+/// The `CallgrindMap`
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CallgrindMap {
+    /// The actual data containing the mapping between the [`Id`] and the [`Value`]
     pub map: HashMap<Id, Value>,
+    /// The optional [`Sentinel`]
     pub sentinel: Option<Sentinel>,
+    /// The key which contained the [`Sentinel`]
     pub sentinel_key: Option<Id>,
 }
 
@@ -38,46 +44,63 @@ struct CurrentId {
 
 /// Parse a callgrind outfile into a `HashMap`
 ///
-/// This parser is a based on `callgrind_annotate` and how `it` summarizes the inclusive costs.
+/// This parser is a based on `callgrind_annotate` and how it summarizes the inclusive costs.
 #[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HashMapParser {
+    /// Look for this [`Sentinel`] in the output files
     pub sentinel: Option<Sentinel>,
+    /// The project root directory required to make paths relative
     pub project_root: PathBuf,
 }
 
+/// The unique `Id` identifying a function uniquely
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Id {
+    /// The object the function is found in
     pub obj: Option<SourcePath>,
+    /// the file the function is found in
     pub file: Option<SourcePath>,
+    /// The function
     pub func: String,
 }
 
+/// The possible paths found in the output file
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum SourcePath {
+    /// The unknown path found as `???` in the output file
     Unknown,
+    /// A rust path, starting with `/rustc`
     Rust(PathBuf),
+    /// A relative path, not starting with a `/`
     Relative(PathBuf),
+    /// A absolute path, starting with a `/`
     Absolute(PathBuf),
 }
 
+/// The `Value` to be associated with an [`Id`]
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Value {
+    /// The callgrind `Metrics` of this `Value`
     pub metrics: Metrics,
 }
 
 impl CallgrindMap {
+    /// Return true if this map is empty
     pub fn is_empty(&self) -> bool {
         self.map.is_empty()
     }
 
+    /// Return an iterator over this map
     pub fn iter(&self) -> Iter<'_, Id, Value> {
         self.map.iter()
     }
 
+    /// The the key, value pair with the given [`Id`]
     pub fn get_key_value(&self, k: &Id) -> Option<(&Id, &Value)> {
         self.map.get_key_value(k)
     }
 
+    /// Sum this map up with another map
     pub fn add_mut(&mut self, other: &Self) {
         for (other_key, other_value) in &other.map {
             if let Some(value) = self.map.get_mut(other_key) {

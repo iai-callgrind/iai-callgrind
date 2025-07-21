@@ -1,3 +1,5 @@
+//! The summary of a benchmark run
+
 use std::fmt::{Debug, Display};
 use std::fs::File;
 use std::io::stdout;
@@ -21,6 +23,7 @@ use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, ValgrindT
 use crate::error::Error;
 use crate::util::{factor_diff, make_absolute, percentage_diff, EitherOrBoth};
 
+/// The version of the summary json schema
 pub const SCHEMA_VERSION: &str = "6";
 
 /// A `Baseline` depending on the [`BaselineKind`] which points to the corresponding path
@@ -45,6 +48,7 @@ pub enum BaselineKind {
     Name(BaselineName),
 }
 
+/// The name of the baseline
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct BaselineName(String);
@@ -208,7 +212,9 @@ pub struct ProfilePart {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ProfileTotal {
+    /// The summary of metrics of the tool
     pub summary: ToolMetricSummary,
+    /// The detected regressions if any
     pub regressions: Vec<ToolRegression>,
 }
 
@@ -274,9 +280,11 @@ pub enum ToolMetricSummary {
     Cachegrind(MetricsSummary<CachegrindMetric>),
 }
 
+/// A detected performance regression depending on the limit either `Soft` or `Hard`
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ToolRegression {
+    /// A performance regression triggered by a soft limit
     Soft {
         /// The metric kind per tool
         metric: MetricKind,
@@ -295,6 +303,7 @@ pub enum ToolRegression {
         #[cfg_attr(feature = "schema", schemars(with = "String"))]
         limit: f64,
     },
+    /// A performance regression triggered by a hard limit
     Hard {
         /// The metric kind per tool
         metric: MetricKind,
@@ -308,6 +317,7 @@ pub enum ToolRegression {
 }
 
 impl ToolRegression {
+    /// Create a new `ToolRegression`
     pub fn with<T>(apply: fn(T) -> MetricKind, regressions: RegressionMetrics<T>) -> Self {
         match regressions {
             RegressionMetrics::Soft(metric, new, old, diff_pct, limit) => ToolRegression::Soft {
@@ -383,6 +393,7 @@ impl BenchmarkSummary {
         }
     }
 
+    /// If the summary is json output, print it and eventually safe it, if configured to do so
     pub fn print_and_save(&self, output_format: &OutputFormatKind) -> Result<()> {
         let value = match (output_format, &self.summary_output) {
             (OutputFormatKind::Default, None) => return Ok(()),
@@ -445,6 +456,7 @@ impl BenchmarkSummary {
         self.profiles.is_regressed()
     }
 
+    /// Compare this summary with another and print the result of the comparison
     pub fn compare_and_print(
         &self,
         id: &str,
@@ -480,6 +492,7 @@ impl BenchmarkSummary {
 }
 
 impl Diffs {
+    /// Create a new `Diffs` calculating the percentage and factor from the `new` and `old` metrics
     pub fn new(new: Metric, old: Metric) -> Self {
         Self {
             diff_pct: percentage_diff(new, old),
@@ -501,20 +514,24 @@ impl FlamegraphSummary {
 }
 
 impl Profile {
+    /// Return true if one of the summaries has regressed
     pub fn is_regressed(&self) -> bool {
         self.summaries.is_regressed()
     }
 }
 
 impl ProfileData {
+    /// Return true if the profile data is empty
     pub fn is_empty(&self) -> bool {
         self.parts.is_empty()
     }
 
+    /// Return true if the total and only the total has regressed
     pub fn is_regressed(&self) -> bool {
         self.total.is_regressed()
     }
 
+    /// Return true if there are multiple parts
     pub fn has_multiple(&self) -> bool {
         self.parts.len() > 1
     }
@@ -689,6 +706,7 @@ impl From<ParserOutput> for ProfileInfo {
 }
 
 impl ProfilePart {
+    /// Return true if an error checking valgrind tool (like `Memcheck`) has errors detected
     pub fn new_has_errors(&self) -> bool {
         match &self.metrics_summary {
             ToolMetricSummary::None
@@ -704,6 +722,7 @@ impl ProfilePart {
         }
     }
 
+    /// Create a new part from `new` parser output
     pub fn from_new(new: ParserOutput) -> Self {
         let metrics_summary = ToolMetricSummary::from_new_metrics(&new.metrics);
         Self {
@@ -712,6 +731,7 @@ impl ProfilePart {
         }
     }
 
+    /// Create a new part from `old` parser output
     pub fn from_old(old: ParserOutput) -> Self {
         let metrics_summary = ToolMetricSummary::from_old_metrics(&old.metrics);
         Self {
@@ -738,32 +758,39 @@ impl ProfilePart {
 }
 
 impl ProfileTotal {
+    /// Return true if there are any regressions
     pub fn is_regressed(&self) -> bool {
         !self.regressions.is_empty()
     }
 
+    /// Return true if there is a summary
     pub fn is_some(&self) -> bool {
         self.summary.is_some()
     }
 
+    /// Return true if there is no summary
     pub fn is_none(&self) -> bool {
         self.summary.is_none()
     }
 }
 
 impl Profiles {
+    /// Create a new collection of [`Profile`]s
     pub fn new(values: Vec<Profile>) -> Self {
         Self(values)
     }
 
+    /// Return an iterator over the contained [`Profile`]s
     pub fn iter(&self) -> impl Iterator<Item = &Profile> {
         self.0.iter()
     }
 
+    /// Add a new [`Profile`] to this collection
     pub fn push(&mut self, summary: Profile) {
         self.0.push(summary);
     }
 
+    /// Return true if any [`Profile`] has regressed
     pub fn is_regressed(&self) -> bool {
         self.iter().any(Profile::is_regressed)
     }
@@ -812,6 +839,7 @@ impl SummaryOutput {
 }
 
 impl ToolMetricSummary {
+    /// Sum up another summary metrics to these metrics
     pub fn add_mut(&mut self, other: &Self) {
         match (self, other) {
             (ToolMetricSummary::ErrorTool(this), ToolMetricSummary::ErrorTool(other)) => {
@@ -830,6 +858,7 @@ impl ToolMetricSummary {
         }
     }
 
+    /// Create a new summary from `new` [`ToolMetrics`]
     pub fn from_new_metrics(metrics: &ToolMetrics) -> Self {
         match metrics {
             ToolMetrics::None => ToolMetricSummary::None,
@@ -847,6 +876,8 @@ impl ToolMetricSummary {
             )),
         }
     }
+
+    /// Create a new summary from `old` [`ToolMetrics`]
     pub fn from_old_metrics(metrics: &ToolMetrics) -> Self {
         match metrics {
             ToolMetrics::None => ToolMetricSummary::None,
@@ -865,6 +896,8 @@ impl ToolMetricSummary {
         }
     }
 
+    /// Create a new summary from `new` and `old` [`ToolMetrics`]
+    ///
     /// Return the `ToolMetricSummary` if the `MetricsKind` are the same kind, else return with
     /// error
     pub fn try_from_new_and_old_metrics(
@@ -897,6 +930,7 @@ impl ToolMetricSummary {
         }
     }
 
+    /// Create a new summary from this summary and another [`ToolMetricSummary`]
     pub fn from_self_and_other(this: &Self, other: &Self) -> Option<Self> {
         match (this, other) {
             (ToolMetricSummary::None, ToolMetricSummary::None) => Some(ToolMetricSummary::None),
@@ -977,10 +1011,12 @@ impl ToolMetricSummary {
         }
     }
 
+    /// Return true if this summary has metrics
     pub fn is_some(&self) -> bool {
         !self.is_none()
     }
 
+    /// Return true if this summary doesn't have metrics (currently massif, bbv)
     pub fn is_none(&self) -> bool {
         matches!(self, Self::None)
     }

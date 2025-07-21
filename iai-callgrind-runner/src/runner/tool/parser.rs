@@ -1,3 +1,5 @@
+//! The parser module
+
 use std::cmp::Ordering;
 use std::path::PathBuf;
 
@@ -14,7 +16,9 @@ use crate::runner::dhat::logfile_parser::DhatLogfileParser;
 use crate::runner::summary::ToolMetrics;
 use crate::runner::{cachegrind, callgrind};
 
+/// Needs to be implemented by a parser to be able to be used in the [`parser_factory`]
 pub trait Parser {
+    /// Parse a single file
     fn parse_single(&self, path: PathBuf) -> Result<ParserOutput>;
     /// Return a sorted vector of parser results
     fn parse_with(&self, output_path: &ToolOutputPath) -> Result<Vec<ParserOutput>> {
@@ -36,32 +40,47 @@ pub trait Parser {
         Ok(parser_results)
     }
 
+    /// Parse all files of the stored [`ToolOutputPath`]
     fn parse(&self) -> Result<Vec<ParserOutput>> {
         self.parse_with(self.get_output_path())
     }
 
+    /// Parse all "old" or "base" files of the [`ToolOutputPath`]
     fn parse_base(&self) -> Result<Vec<ParserOutput>> {
         self.parse_with(&self.get_output_path().to_base_path())
     }
 
+    /// Return the [`ToolOutputPath`]
     fn get_output_path(&self) -> &ToolOutputPath;
 }
 
+/// The combined header of output and log files
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Header {
+    /// The path to the executed command with command-line arguments
     pub command: String,
+    /// The pid of the profile
     pub pid: i32,
+    /// The parent pid of the profile
     pub parent_pid: Option<i32>,
+    /// The thread number (currently only Callgrind)
     pub thread: Option<usize>,
+    /// The part number (currently only Callgrind)
     pub part: Option<u64>,
+    /// Some output files contain a description (desc:) field
     pub desc: Vec<String>,
 }
 
+/// The output of a [`Parser`]
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParserOutput {
+    /// The path to the profile or logfile which was parsed
     pub path: PathBuf,
+    /// The [`Header`] containing some basic information about the profile
     pub header: Header,
+    /// Details about the profile run if present. A vector separated by lines
     pub details: Vec<String>,
+    /// The extracted metrics from a profile or logfile
     pub metrics: ToolMetrics,
 }
 
@@ -82,6 +101,7 @@ impl ParserOutput {
     }
 }
 
+/// Return an appropriate parser for a tool
 pub fn parser_factory(
     tool_config: &ToolConfig,
     root_dir: PathBuf,

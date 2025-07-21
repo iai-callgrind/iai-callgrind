@@ -1,3 +1,5 @@
+//! The module containing the basic elements for parsing log files
+
 use std::path::Path;
 
 use anyhow::{Context, Result};
@@ -9,29 +11,38 @@ use crate::error::Error;
 use crate::runner::summary::ToolMetricSummary;
 use crate::util::EitherOrBoth;
 
-// The different regex have to consider --time-stamp=yes
+// The different regex have to consider --time-stamp=yes which adds a timestamp into the prefix
 lazy_static! {
+    /// Regex to extract `key: value` based lines
     pub static ref EXTRACT_FIELDS_RE: Regex = regex::Regex::new(
         r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--)\s*(?<key>.*?)\s*:\s*(?<value>.*)\s*$"
     )
     .expect("Regex should compile");
+    /// The regex matching an empty line which contains just the prefix
     pub static ref EMPTY_LINE_RE: Regex =
         regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--)\s*$")
             .expect("Regex should compile");
+    /// A regex to strip the prefix
     pub static ref STRIP_PREFIX_RE: Regex =
         regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?[0-9]+(==|--) (?<rest>.*)$")
             .expect("Regex should compile");
+    /// Regex to extract the pid from the prefix
     static ref EXTRACT_PID_RE: Regex =
         regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?(?<pid>[0-9]+)(==|--).*")
             .expect("Regex should compile");
 }
 
+// TODO: refactor: rename to just Logfile? delete!
+/// This struct contains all the information of the new and "old" logfile
 #[derive(Debug, Clone, PartialEq)]
 pub struct LogfileSummary {
+    /// The [`ParserOutput`] of the logfiles
     pub logfile: EitherOrBoth<ParserOutput>,
+    /// The [`ToolMetricSummary`] of the logfiles
     pub metrics_summary: ToolMetricSummary,
 }
 
+/// Utility function to extract the pid from a `line` of a logfile
 pub fn extract_pid(line: &str) -> Result<i32> {
     EXTRACT_PID_RE
         .captures(line.trim())

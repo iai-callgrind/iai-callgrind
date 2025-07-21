@@ -1,3 +1,4 @@
+//! Module containing the parser for callgrind flamegraphs
 use std::collections::BinaryHeap;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
@@ -10,9 +11,11 @@ use super::parser::{CallgrindParser, CallgrindProperties, Sentinel};
 use crate::api::EventKind;
 use crate::runner::metrics::Metric;
 
+/// The `FlamegraphMap` based on a [`CallgrindMap`]
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct FlamegraphMap(CallgrindMap);
 
+/// The parser for flamegraphs
 #[derive(Debug)]
 pub struct FlamegraphParser {
     project_root: PathBuf,
@@ -26,10 +29,12 @@ struct HeapElem {
 }
 
 impl FlamegraphMap {
+    /// Return true if this map is empty
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
+    /// Calculate the cache summary for each entry in the map in-place
     pub fn make_summary(&mut self) -> Result<()> {
         let mut iter = self.0.map.values_mut().peekable();
         if let Some(value) = iter.peek() {
@@ -47,6 +52,7 @@ impl FlamegraphMap {
         Ok(())
     }
 
+    /// Sum this map with another map
     pub fn add(&mut self, other: &Self) {
         for (other_id, other_value) in &other.0 {
             // The performance of HashMap::entry is worse than the following method because we have
@@ -59,11 +65,11 @@ impl FlamegraphMap {
         }
     }
 
-    // Convert to stacks string format for this `EventType`
-    //
-    // # Errors
-    //
-    // If the event type was not present in the stacks
+    /// Convert to stacks string format for this `EventType`
+    ///
+    /// # Errors
+    ///
+    /// If the event type was not present in the stacks
     pub fn to_stack_format(&self, event_kind: &EventKind) -> Result<Vec<String>> {
         if self.0.map.is_empty() {
             return Ok(vec![]);
@@ -166,6 +172,7 @@ impl FlamegraphMap {
 }
 
 impl FlamegraphParser {
+    /// Create a new `FlamegraphParser`
     pub fn new<P>(sentinel: Option<&Sentinel>, project_root: P) -> Self
     where
         P: Into<PathBuf>,

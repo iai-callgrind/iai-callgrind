@@ -1,3 +1,4 @@
+//! Module containing the callgrind flamegraph elements
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fs::File;
@@ -15,32 +16,48 @@ use crate::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
 
 type ParserOutput = Vec<(PathBuf, CallgrindProperties, FlamegraphMap)>;
 
+/// The generator for flamegraphs when not run with --load-baseline or --save-baseline
 #[derive(Debug)]
 pub struct BaselineFlamegraphGenerator {
+    /// The [`BaselineKind`]
     pub baseline_kind: BaselineKind,
 }
 
+/// The main configuration for a flamegraph
 #[derive(Debug, Clone, PartialEq)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Config {
+    /// The [`FlamegraphKind`]
     pub kind: FlamegraphKind,
+    /// If true, negate a differential flamegraph
     pub negate_differential: bool,
+    /// If true, normalize a differential flamegraph
     pub normalize_differential: bool,
+    /// The event kinds for which a flamegraph should be generated
     pub event_kinds: Vec<EventKind>,
+    /// The direction of the flamegraph. Top to bottom or vice versa
     pub direction: Direction,
+    /// The title to use for the flamegraphs
     pub title: Option<String>,
+    /// The subtitle to use for the flamegraphs
     pub subtitle: Option<String>,
+    /// The minimum width which should be displayed
     pub min_width: f64,
 }
 
+/// The generated callgrind `Flamegraph`
 #[derive(Debug, Clone)]
 pub struct Flamegraph {
+    /// The [`Config`]
     pub config: Config,
 }
 
+/// The generator for flamegraphs when run with --load-baseline
 #[derive(Debug)]
 pub struct LoadBaselineFlamegraphGenerator {
+    /// The loaded baseline with [`BaselineName`]
     pub loaded_baseline: BaselineName,
+    /// The baseline to compare with
     pub baseline: BaselineName,
 }
 
@@ -64,12 +81,16 @@ enum OutputPathKind {
     DiffBases(String, String),
 }
 
+/// The generator for flamegraphs when run with --save-baseline
 #[derive(Debug)]
 pub struct SaveBaselineFlamegraphGenerator {
+    /// The baseline with [`BaselineName`]
     pub baseline: BaselineName,
 }
 
+/// The trait a flamegraph generator needs to implement
 pub trait FlamegraphGenerator {
+    /// Create a new flamegraph generator
     fn create(
         &self,
         flamegraph: &Flamegraph,
@@ -173,6 +194,7 @@ impl FlamegraphGenerator for BaselineFlamegraphGenerator {
 }
 
 impl Flamegraph {
+    /// Create a new `Flamegraph`
     pub fn new(heading: String, mut config: Config) -> Self {
         if config.title.is_none() {
             config.title = Some(heading);
@@ -181,6 +203,7 @@ impl Flamegraph {
         Self { config }
     }
 
+    /// Return true if this flamegraph is a differential flamegraph
     pub fn is_differential(&self) -> bool {
         matches!(
             self.config.kind,
@@ -188,6 +211,7 @@ impl Flamegraph {
         )
     }
 
+    /// Return true if this flamegraph is a regular flamegraph
     pub fn is_regular(&self) -> bool {
         matches!(
             self.config.kind,
@@ -195,6 +219,7 @@ impl Flamegraph {
         )
     }
 
+    /// Return the [`Options`] of this flamegraph
     pub fn options(&self, event_kind: EventKind, subtitle: String) -> Options<'_> {
         let mut options = Options::default();
         options.negate_differentials = self.config.negate_differential;
@@ -217,6 +242,7 @@ impl Flamegraph {
         options
     }
 
+    /// Return the [`inferno::differential::Options`] for a differential flamegraph
     pub fn differential_options(&self) -> Option<inferno::differential::Options> {
         self.is_differential()
             .then(|| inferno::differential::Options {
@@ -225,6 +251,7 @@ impl Flamegraph {
             })
     }
 
+    /// Parse the flamegraph
     pub fn parse<P>(
         &self,
         tool_output_path: &ToolOutputPath,

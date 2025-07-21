@@ -11,24 +11,33 @@ use super::CacheSummary;
 use crate::api::EventKind;
 use crate::runner::metrics::{Metric, Summarize};
 
+/// The callgrind specific `Metrics`
 pub type Metrics = crate::runner::metrics::Metrics<EventKind>;
 
+/// The call relationship among functions
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Calls {
+    /// The call count
     amount: u64,
+    /// The target [`Positions`]
     positions: Positions,
 }
 
+/// The [`Positions`] type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PositionType {
+    /// The address of an instruction
     Instr,
+    /// The line number
     Line,
 }
 
+/// The positions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Positions(IndexMap<PositionType, u64>);
 
 impl Calls {
+    /// Create new `Calls` struct
     pub fn from<I>(mut iter: impl Iterator<Item = I>, mut positions: Positions) -> Self
     where
         I: AsRef<str>,
@@ -113,6 +122,7 @@ impl Summarize for EventKind {
 }
 
 impl Positions {
+    /// Set the positions from the contents of an iterator
     pub fn set_iter_str<I, T>(&mut self, iter: T)
     where
         I: AsRef<str>,
@@ -128,10 +138,12 @@ impl Positions {
         }
     }
 
+    /// Return the length of the positions
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
+    /// Return true if positions is empty
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }

@@ -1,3 +1,5 @@
+//! Module containing the dhat trees
+
 use std::cmp::Ordering;
 use std::ops::Add;
 
@@ -10,7 +12,9 @@ use crate::runner::summary::ToolMetrics;
 use crate::runner::DEFAULT_TOGGLE;
 use crate::util::Glob;
 
+/// The trait to be implemented for a dhat prefix tree
 pub trait Tree {
+    /// Create a new `Tree` from the given parameters
     fn from_json(dhat_data: DhatData, entry_point: &EntryPoint, frames: &[Glob]) -> Self
     where
         Self: std::marker::Sized + Default,
@@ -62,39 +66,59 @@ pub trait Tree {
         tree
     }
 
+    /// Return the metrics of the root node
     fn metrics(&self) -> ToolMetrics {
         self.get_root_data().metrics(self.mode())
     }
 
+    /// Return the dhat invocation [`Mode`]
     fn mode(&self) -> Mode;
+    /// Set the dhat invocation [`Mode`]
     fn set_mode(&mut self, mode: Mode);
 
+    /// Insert a prefix with the given [`Data`] into this [`Tree`]
     fn insert(&mut self, prefix: &[usize], data: &Data);
+    /// Insert all [`ProgramPoint`]s into this [`Tree`]
     fn insert_iter(&mut self, iter: impl Iterator<Item = ProgramPoint>) {
         for elem in iter {
             let data = Data::from(&elem);
             self.insert(&elem.frames, &data);
         }
     }
+    /// Return the [`Data`] of the root
     fn get_root_data(&self) -> &Data;
+    /// Set the [`Data`] of the root
     fn set_root_data(&mut self, data: Data);
 }
 
+/// The [`Data`] of each [`Node`]
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Data {
+    /// The total bytes
     pub total_bytes: u64,
+    /// The total blocks
     pub total_blocks: u64,
+    /// Total lifetimes of all blocks allocated
     pub total_lifetimes: Option<u128>,
+    /// The maximum bytes
     pub maximum_bytes: Option<u64>,
+    /// The maximum blocks
     pub maximum_blocks: Option<u64>,
+    /// The bytes at t-gmax
     pub bytes_at_max: Option<u64>,
+    /// The blocks at t-gmax
     pub blocks_at_max: Option<u64>,
+    /// The bytes at t-end
     pub bytes_at_end: Option<u64>,
+    /// The blocks at t-end
     pub blocks_at_end: Option<u64>,
+    /// The reads of blocks
     pub blocks_read: Option<u64>,
+    /// The writes of blocks
     pub blocks_write: Option<u64>,
 }
 
+/// The [`Node`] in a [`Tree`]
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Node {
     prefix: Vec<usize>,
@@ -103,6 +127,12 @@ pub struct Node {
 }
 
 /// A full-fledged dhat prefix tree
+///
+/// # Developers
+///
+/// This tree is currently not used but it is fully functional. However, only `insert` is
+/// implemented to be able to build the tree but it may be needed to add methods like `remove`,
+/// `lookup`, etc.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct DhatTree {
     mode: Mode,
@@ -223,6 +253,7 @@ impl From<&ProgramPoint> for Data {
 }
 
 impl Node {
+    /// Create a new `Node`
     pub fn new(prefix: Vec<usize>, children: Vec<Node>, data: Data) -> Self {
         Self {
             prefix,
@@ -231,6 +262,7 @@ impl Node {
         }
     }
 
+    /// Create a new default `Node` with the given prefix
     pub fn with_prefix(prefix: Vec<usize>) -> Self {
         Self {
             prefix,
@@ -272,6 +304,9 @@ impl Node {
 }
 
 impl Tree for DhatTree {
+    /// Insert a prefix with the given [`Data`] into this tree
+    ///
+    /// The rust borrow checker without the polonius crate below would give a false positive.
     fn insert(&mut self, prefix: &[usize], data: &Data) {
         let mut current = &mut *self.root;
         let mut index = 0;

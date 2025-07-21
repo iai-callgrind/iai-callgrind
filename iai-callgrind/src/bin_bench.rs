@@ -274,6 +274,7 @@ pub struct Command(__internal::InternalCommand);
 #[derive(Debug, Default, Clone, PartialEq, IntoInner, AsRef)]
 pub struct Delay(__internal::InternalDelay);
 
+// TODO: Refactor: Use api::ExitWith directly
 /// Set the expected exit status of a binary benchmark
 ///
 /// Per default, the benchmarked binary is expected to succeed, but if a benchmark is expected to

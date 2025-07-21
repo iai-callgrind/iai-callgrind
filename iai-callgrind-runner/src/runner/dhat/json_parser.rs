@@ -1,3 +1,5 @@
+//! Module containing the json parser for dhat output files
+
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
@@ -12,6 +14,8 @@ use crate::runner::tool::parser::{Header, Parser, ParserOutput};
 use crate::runner::tool::path::ToolOutputPath;
 use crate::util::Glob;
 
+// TODO: refactor: sort
+/// Parse the dhat output file at `path` into [`DhatData`]
 pub fn parse(path: &Path) -> Result<DhatData> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
@@ -23,6 +27,7 @@ pub fn parse(path: &Path) -> Result<DhatData> {
     })
 }
 
+/// The dhat output file json parser
 pub struct JsonParser {
     output_path: ToolOutputPath,
     entry_point: EntryPoint,
@@ -30,6 +35,7 @@ pub struct JsonParser {
 }
 
 impl JsonParser {
+    /// Create a new `JsonParser`
     pub fn new(output_path: ToolOutputPath, entry_point: EntryPoint, frames: Vec<Glob>) -> Self {
         Self {
             output_path,

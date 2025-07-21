@@ -10,6 +10,7 @@ use serde::{Deserializer, Serializer};
 pub mod float_64 {
     use super::{Deserializer, FromStr, Serializer, Visitor};
 
+    /// Serialize `f64` into a `String`
     pub fn serialize<S>(input: &f64, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -41,6 +42,7 @@ pub mod float_64 {
         }
     }
 
+    /// Deserialize a `String` into a `f64`
     pub fn deserialize<'de, D>(deserializer: D) -> Result<f64, D::Error>
     where
         D: Deserializer<'de>,

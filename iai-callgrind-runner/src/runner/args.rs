@@ -1,4 +1,5 @@
-//! spell-checker: ignore totalbytes totalblocks writeback writebackbehaviour
+// spell-checker: ignore totalbytes totalblocks writeback writebackbehaviour
+//! The command-line arguments of cargo bench as in ARGS of `cargo bench -- ARGS`
 
 use std::fmt::Display;
 use std::hash::Hash;
@@ -50,19 +51,25 @@ impl FromStr for BenchmarkFilter {
     }
 }
 
+/// The `NoCapture` options for the command-line argument --nocapture
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NoCapture {
+    /// Don't capture any output
     True,
+    /// Capture all output
     False,
+    /// Don't capture `stderr`
     Stderr,
+    /// Don't capture `stdout`
     Stdout,
 }
 
-// Utility types intended to be used during the parsing of the command-line arguments
+// Utility for complex types intended to be used during the parsing of the command-line arguments
 type Limits<T> = (IndexMap<T, f64>, IndexMap<T, Metric>);
 type ParsedMetrics<T> = Result<Vec<(T, Option<Metric>)>, String>;
 
 impl NoCapture {
+    /// Apply the `NoCapture` option to the [`Command`]
     pub fn apply(self, command: &mut Command) {
         match self {
             NoCapture::True | NoCapture::False => {}

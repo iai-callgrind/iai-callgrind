@@ -1,3 +1,5 @@
+//! The main integration tests module
+
 #[cfg(feature = "default")]
 mod common;
 #[cfg(feature = "default")]

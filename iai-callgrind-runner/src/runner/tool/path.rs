@@ -1,3 +1,5 @@
+//! The module containing the [`ToolOutputPath`] and other related elements
+
 use std::collections::HashMap;
 use std::fmt::{Display, Write as FmtWrite};
 use std::fs::{DirEntry, File};
@@ -44,24 +46,37 @@ lazy_static! {
     .expect("Regex should compile");
 }
 
+/// The tool specific output path(s)
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolOutputPath {
+    /// The [`ToolOutputPathKind`]
     pub kind: ToolOutputPathKind,
+    /// The tool
     pub tool: ValgrindTool,
+    /// The [`BaselineKind`]
     pub baseline_kind: BaselineKind,
     /// The final directory of all the output files
     pub dir: PathBuf,
+    /// The name of this output path
     pub name: String,
+    /// The modifiers which are prepended to the extension
     pub modifiers: Vec<String>,
 }
 
+/// The different output path kinds
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ToolOutputPathKind {
+    /// The output path for `*.out` files
     Out,
+    /// The output path for `*.out.old` files
     OldOut,
+    /// The output path for `*.log` files
     Log,
+    /// The output path for `*.log.old` files
     OldLog,
+    /// The output path for baseline `log` files
     BaseLog(String),
+    /// The output path for baseline `out` files
     Base(String),
 }
 
@@ -126,6 +141,7 @@ impl ToolOutputPath {
         Ok(output)
     }
 
+    /// Initialize the directory in which the files are stored
     pub fn init(&self) -> Result<()> {
         std::fs::create_dir_all(&self.dir).with_context(|| {
             format!(
@@ -135,6 +151,7 @@ impl ToolOutputPath {
         })
     }
 
+    /// Remove the files of this output path
     pub fn clear(&self) -> Result<()> {
         for entry in self.real_paths()? {
             std::fs::remove_file(&entry).with_context(|| {
@@ -144,6 +161,7 @@ impl ToolOutputPath {
         Ok(())
     }
 
+    /// Remove the old or base files and rename the present files to "old" files
     pub fn shift(&self) -> Result<()> {
         match self.baseline_kind {
             BaselineKind::Old => {
@@ -167,14 +185,17 @@ impl ToolOutputPath {
         }
     }
 
+    /// Return true if a real file of this output path exists
     pub fn exists(&self) -> bool {
         self.real_paths().is_ok_and(|p| !p.is_empty())
     }
 
+    /// Return true if there are multiple real files of this output path
     pub fn is_multiple(&self) -> bool {
         self.real_paths().is_ok_and(|p| p.len() > 1)
     }
 
+    /// Convert this output path to a base output path
     #[must_use]
     pub fn to_base_path(&self) -> Self {
         Self {
@@ -199,7 +220,7 @@ impl ToolOutputPath {
         }
     }
 
-    /// Convert this tool output to the output of another tool
+    /// Convert this tool output path to the output of another tool output path
     ///
     /// A tool with no `*.out` file is log-file based. If the other tool is a out-file based tool
     /// the [`ToolOutputPathKind`] will be converted and vice-versa. The "old" (base) type (a tool
@@ -281,6 +302,7 @@ impl ToolOutputPath {
         None
     }
 
+    /// If the [`log::Level`] matches dump the content of all output files into the `writer`
     pub fn dump_log(&self, log_level: log::Level, writer: &mut impl Write) -> Result<()> {
         if log_enabled!(log_level) {
             for path in self.real_paths()? {
@@ -332,6 +354,7 @@ impl ToolOutputPath {
         }
     }
 
+    /// Create new `ToolOutputPath` with `modifiers`
     #[must_use]
     pub fn with_modifiers<I, T>(&self, modifiers: T) -> Self
     where
@@ -348,11 +371,11 @@ impl ToolOutputPath {
         }
     }
 
-    // Return the unexpanded path usable as input for `--callgrind-out-file`, ...
-    //
-    // The path returned by this method does not necessarily have to exist and can include modifiers
-    // like `%p`. Use [`Self::real_paths`] to get the real and existing (possibly multiple) paths to
-    // the output files of the respective tool.
+    /// Return the unexpanded path usable as input for `--callgrind-out-file`, ...
+    ///
+    /// The path returned by this method does not necessarily have to exist and can include
+    /// modifiers like `%p`. Use [`Self::real_paths`] to get the real and existing (possibly
+    /// multiple) paths to the output files of the respective tool.
     pub fn to_path(&self) -> PathBuf {
         self.dir.join(format!(
             "{}.{}.{}",
@@ -418,6 +441,7 @@ impl ToolOutputPath {
         Ok(paths)
     }
 
+    /// Return the real paths with their respective modifiers if present
     pub fn real_paths_with_modifier(&self) -> Result<Vec<(PathBuf, Option<String>)>> {
         let mut paths = vec![];
         for entry in self.walk_dir()? {
@@ -674,20 +698,20 @@ impl ToolOutputPath {
         Ok(())
     }
 
-    // Sanitize bbv file names
-    //
-    // The original output files of bb have a `.<number>` suffix if there are multiple threads. We
-    // need the threads as `t<number>` in the modifier part of the final file names.
-    //
-    // For example: (orig -> sanitized)
-    //
-    // If there are multiple threads, the bb output file name doesn't include the first thread:
-    //
-    // `exp-bbv.bench_thread_in_subprocess.548365.bb.out` ->
-    // `exp-bbv.bench_thread_in_subprocess.548365.t1.bb.out`
-    //
-    // `exp-bbv.bench_thread_in_subprocess.548365.bb.out.2` ->
-    // `exp-bbv.bench_thread_in_subprocess.548365.t2.bb.out`
+    /// Sanitize bbv file names
+    ///
+    /// The original output files of bb have a `.<number>` suffix if there are multiple threads. We
+    /// need the threads as `t<number>` in the modifier part of the final file names.
+    ///
+    /// For example: (orig -> sanitized)
+    ///
+    /// If there are multiple threads, the bb output file name doesn't include the first thread:
+    ///
+    /// `exp-bbv.bench_thread_in_subprocess.548365.bb.out` ->
+    /// `exp-bbv.bench_thread_in_subprocess.548365.t1.bb.out`
+    ///
+    /// `exp-bbv.bench_thread_in_subprocess.548365.bb.out.2` ->
+    /// `exp-bbv.bench_thread_in_subprocess.548365.t2.bb.out`
     #[allow(clippy::case_sensitive_file_extension_comparisons)]
     #[allow(clippy::too_many_lines)]
     pub fn sanitize_bbv(&self) -> Result<()> {

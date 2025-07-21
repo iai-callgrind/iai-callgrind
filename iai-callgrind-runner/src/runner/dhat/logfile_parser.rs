@@ -1,3 +1,5 @@
+//! Module containing the dhat log file parser
+
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -34,12 +36,16 @@ enum State {
     Footer,
 }
 
+/// The dhat logfile parser
 pub struct DhatLogfileParser {
+    /// The [`ToolOutputPath`]
     pub output_path: ToolOutputPath,
+    /// The path to the root/project directory used to make paths relative
     pub root_dir: PathBuf,
 }
 
 impl DhatLogfileParser {
+    /// Create a new `DhatLogfileParser`
     pub fn new(output_path: ToolOutputPath, root_dir: PathBuf) -> Self {
         Self {
             output_path,

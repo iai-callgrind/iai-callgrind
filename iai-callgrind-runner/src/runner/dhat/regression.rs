@@ -1,3 +1,4 @@
+//! Module containing the dhat specific regression check configuration
 use indexmap::{IndexMap, IndexSet};
 
 use crate::api::{self, DhatMetric};
@@ -5,10 +6,14 @@ use crate::runner::metrics::{Metric, MetricKind, MetricsSummary};
 use crate::runner::summary::ToolRegression;
 use crate::runner::tool::regression::RegressionConfig;
 
+/// The dhat regression check configuration
 #[derive(Debug, Clone, PartialEq)]
 pub struct DhatRegressionConfig {
+    /// The soft limits
     pub soft_limits: Vec<(DhatMetric, f64)>,
+    /// The hard limits
     pub hard_limits: Vec<(DhatMetric, Metric)>,
+    /// True if benchmarks should fail on first encountered failed regression check
     pub fail_fast: bool,
 }
 

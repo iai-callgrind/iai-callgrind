@@ -1,3 +1,5 @@
+//! The main module for callgrind related elements
+
 pub mod args;
 pub mod flamegraph;
 pub mod flamegraph_parser;
@@ -16,35 +18,56 @@ use super::metrics::{Metric, MetricsSummary};
 use crate::api::EventKind;
 use crate::util::EitherOrBoth;
 
+/// TODO: refactor: delete
 #[derive(Debug, Clone)]
 pub struct Summary {
+    /// The details of the outputs
     pub details: EitherOrBoth<(PathBuf, CallgrindProperties)>,
+    /// TODO: delete
     pub metrics_summary: MetricsSummary,
 }
 
+/// TODO: refactor: delete
 #[derive(Debug, Clone)]
 pub struct Summaries {
+    /// TODO: refactor: delete
     pub summaries: Vec<Summary>,
+    /// TODO: refactor: delete
     pub total: MetricsSummary,
 }
 
+/// The derived metrics of the cache metrics
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CacheSummary {
+    /// The L1 Hits
     pub l1_hits: Metric,
+    /// The last-level Hits
     pub l3_hits: Metric,
+    /// The RAM Hits
     pub ram_hits: Metric,
+    /// The total cache reads and writes
     pub total_memory_rw: Metric,
+    /// The estimated cycles
     pub cycles: Metric,
+    /// The L1 instruction fetch miss rate
     pub i1_miss_rate: Metric,
+    /// The L1 data miss rate
     pub d1_miss_rate: Metric,
+    /// The last-level miss rate
     pub ll_miss_rate: Metric,
+    /// The last-level instruction fetch miss rate
     pub lli_miss_rate: Metric,
+    /// The last-level data miss rate
     pub lld_miss_rate: Metric,
+    /// The L1 hit rate
     pub l1_hit_rate: Metric,
+    /// The last-level hit rate
     pub l3_hit_rate: Metric,
+    /// The RAM hit rate
     pub ram_hit_rate: Metric,
 }
 
+/// The calculator for the estimated cycles and other derived metrics
 #[derive(Debug, Clone)]
 pub struct CyclesEstimator {
     instructions: Metric,
@@ -80,6 +103,7 @@ impl TryFrom<&Metrics> for CacheSummary {
 }
 
 impl CyclesEstimator {
+    /// Create a new `CyclesEstimator`
     pub fn new(
         instructions: Metric,
         total_data_cache_reads: Metric,
@@ -104,6 +128,7 @@ impl CyclesEstimator {
         }
     }
 
+    /// Calculate the `CacheSummary` from the native metrics
     #[allow(clippy::similar_names)]
     pub fn calculate(&self) -> CacheSummary {
         let ram_hits = self.l3_instructions_cache_read_misses

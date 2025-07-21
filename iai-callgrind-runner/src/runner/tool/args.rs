@@ -1,3 +1,5 @@
+//! The module containing all elements for [`ToolArgs`]
+
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::str::FromStr;
@@ -10,9 +12,12 @@ use crate::api::{RawArgs, ValgrindTool};
 use crate::error::Error;
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
+/// Module containing the Iai-Callgrind defaults for the command line arguments of all tools
+#[allow(missing_docs)]
 pub mod defaults {
     use super::FairSched;
 
+    ////////////////////////////////////////////////////
     // Shared defaults between cachegrind and callgrind
     // Set some reasonable cache sizes. The exact sizes matter less than having fixed sizes, since
     // otherwise callgrind would take them from the CPU and make benchmark runs even more
@@ -21,7 +26,9 @@ pub mod defaults {
     pub const D1: &str = "32768,8,64";
     pub const LL: &str = "8388608,16,64";
     pub const CACHE_SIM: bool = true;
+    ////////////////////////////////////////////////////
 
+    ////////////////////////////////////////////////////
     // Defaults specific to callgrind
     pub const COMPRESS_POS: bool = false;
     pub const COMPRESS_STRINGS: bool = false;
@@ -29,33 +36,51 @@ pub mod defaults {
     pub const DUMP_LINE: bool = true;
     pub const DUMP_INSTR: bool = false;
     pub const SEPARATE_THREADS: bool = true;
+    ////////////////////////////////////////////////////
 
+    ////////////////////////////////////////////////////
     // Shared defaults between error emitting tools like Memcheck
     pub const ERROR_EXIT_CODE_ERROR_TOOL: &str = "201";
     pub const ERROR_EXIT_CODE_OTHER_TOOL: &str = "0";
+    ////////////////////////////////////////////////////
 
+    ////////////////////////////////////////////////////
     // Shared defaults between all tools
     pub const TRACE_CHILDREN: bool = true;
     pub const FAIR_SCHED: FairSched = FairSched::Try;
     pub const VERBOSE: bool = false;
+    ////////////////////////////////////////////////////
 }
 
+/// The possible values of the --fair-sched cli arg
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FairSched {
+    /// Corresponds to `yes`
     Yes,
+    /// Corresponds to `no`
     No,
+    /// Corresponds to `try`
     Try,
 }
 
+/// The arguments to pass to the valgrind tool
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolArgs {
+    /// The [`ValgrindTool`]
     pub tool: ValgrindTool,
+    /// The output paths argument like --callgrind-out-file, ...
     pub output_paths: Vec<OsString>,
+    /// The logfile paths argument --log-file
     pub log_path: Option<OsString>,
+    /// The error exit code for error checking tools like `Memcheck`
     pub error_exitcode: String,
+    /// If --verbose is set to true of false
     pub verbose: bool,
+    /// The --trace-children argument
     pub trace_children: bool,
+    /// The --fair-sched argument
     pub fair_sched: FairSched,
+    /// All other arguments
     pub other: Vec<String>,
 }
 
@@ -86,6 +111,7 @@ impl FromStr for FairSched {
 }
 
 impl ToolArgs {
+    /// Try to create a new `ToolArgs` from multiple `RawArgs`
     pub fn try_from_raw_args(tool: ValgrindTool, raw_args: &[&RawArgs]) -> Result<Self> {
         let mut tool_args = Self {
             tool,
@@ -164,6 +190,7 @@ impl ToolArgs {
     }
 
     // TODO: memcheck: --xtree-leak-file=<filename> [default: xtleak.kcg.%p]
+    /// Set the output file argument depending on the tool of this `ToolArgs`
     pub fn set_output_arg<T>(&mut self, output_path: &ToolOutputPath, modifier: Option<T>)
     where
         T: AsRef<str>,
@@ -250,6 +277,7 @@ impl ToolArgs {
         }
     }
 
+    /// Set the logfile argument
     pub fn set_log_arg<T>(&mut self, output_path: &ToolOutputPath, modifier: Option<T>)
     where
         T: AsRef<str>,
@@ -268,6 +296,7 @@ impl ToolArgs {
         self.log_path = Some(arg);
     }
 
+    /// Convert into a vector of arguments usable as input for [`std::process::Command::args`]
     pub fn to_vec(&self) -> Vec<OsString> {
         let mut vec: Vec<OsString> = vec![];
 

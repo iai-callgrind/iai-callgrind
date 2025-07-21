@@ -1,3 +1,4 @@
+//! The module containing the cachegrind summary parser
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -24,6 +25,7 @@ use crate::runner::tool::path::ToolOutputPath;
 /// terminal output.
 #[derive(Debug)]
 pub struct SummaryParser {
+    /// The [`ToolOutputPath`]
     pub output_path: ToolOutputPath,
 }
 

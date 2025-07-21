@@ -1,3 +1,5 @@
+//! The module responsible for running a binary benchmark
+
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::io::ErrorKind::WouldBlock;
@@ -38,34 +40,50 @@ struct BaselineBenchmark {
     baseline_kind: BaselineKind,
 }
 
+/// A `BinBench` represents a single benchmark under the `#[binary_benchmark]` macro
 #[derive(Debug)]
 pub struct BinBench {
+    /// The id of the benchmark as in `#[bench::id]`
     pub id: Option<String>,
+    /// The arguments of `args` attribute as a single string
     pub args: Option<String>,
+    /// The name of the annotated function
     pub function_name: String,
+    /// The [`Command`] to execute under valgrind
     pub command: Command,
+    /// The [`RunOptions`]
     pub run_options: RunOptions,
+    /// The tool configurations for this benchmark run
     pub tools: ToolConfigs,
+    /// The [`ModulePath`].
     pub module_path: ModulePath,
+    /// The [`OutputFormat`]
     pub output_format: OutputFormat,
+    /// The default [`ValgrindTool`]. If not changed it is `Callgrind`.
     pub default_tool: ValgrindTool,
 }
 
-/// The Command we derive from the `api::Command`
+/// The Command derived from the `api::Command`
 ///
 /// If the path is relative we convert it to an absolute path relative to the workspace root.
 /// `stdin`, `stdout`, `stderr` of the `api::Command` are part of the `RunOptions` and not part of
 /// this `Command`
 #[derive(Debug, Clone)]
 pub struct Command {
+    /// The path to the executable
     pub path: PathBuf,
+    /// The arguments to pass to the executable
     pub args: Vec<OsString>,
 }
 
+/// The `Delay` which should be applied to the [`Command`]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Delay {
+    /// The polling time to check the delay condition
     pub poll: Duration,
+    /// The timeout for the delay
     pub timeout: Duration,
+    /// The kind of delay
     pub kind: DelayKind,
 }
 
@@ -402,6 +420,7 @@ impl From<api::Delay> for Delay {
 }
 
 impl Delay {
+    /// Create a new `Delay`
     pub fn new(poll: Duration, timeout: Duration, kind: DelayKind) -> Self {
         Self {
             poll,
@@ -410,6 +429,7 @@ impl Delay {
         }
     }
 
+    /// Apply the `Delay`
     pub fn run(&self) -> Result<()> {
         if let DelayKind::DurationElapse(_) = self.kind {
             self.exec_delay_fn()
@@ -821,6 +841,7 @@ impl Benchmark for SaveBaselineBenchmark {
     }
 }
 
+/// The top-level method which should be used to initiate running all benchmarks
 pub fn run(benchmark_groups: BinaryBenchmarkGroups, config: Config) -> Result<BenchmarkSummaries> {
     let runner = Runner::new(benchmark_groups, config)?;
 

@@ -1,3 +1,5 @@
+//! The module containing all elements and logic around the [`Metrics`], [`MetricsDiff`], ...
+
 #![allow(clippy::cast_precision_loss)]
 
 use std::borrow::Cow;
@@ -18,16 +20,21 @@ use super::summary::Diffs;
 use crate::api::{self, CachegrindMetric, DhatMetric, ErrorMetric, EventKind};
 use crate::util::{to_string_unsigned_short, EitherOrBoth};
 
+/// Trait for tools which summarize and calculate derived metrics
 pub trait Summarize: Hash + Eq + Clone {
+    /// Calculate the derived metrics if any
     fn summarize(_: &mut Cow<Metrics<Self>>) {}
 }
 
+/// Trait for checking the [`Metric`] type of a metric kind (like [`api::EventKind`])
 pub trait TypeChecker {
     /// Return true if the `Metric` has the expected metric type
     fn verify_metric(&self, metric: Metric) -> bool {
         (self.is_int() && metric.is_int()) || (self.is_float() && metric.is_float())
     }
+    /// Return true if the metric kind is a [`Metric::Int`]
     fn is_int(&self) -> bool;
+    /// Return true if the metric kind is a [`Metric::Float`]
     fn is_float(&self) -> bool;
 }
 
@@ -47,7 +54,9 @@ pub trait TypeChecker {
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum Metric {
+    /// An integer `Metric`
     Int(u64),
+    /// A float `Metric`
     Float(f64),
 }
 
@@ -55,12 +64,19 @@ pub enum Metric {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum MetricKind {
+    /// The `None` kind if there are no metrics for a tool
     None,
+    /// The Callgrind metric kind
     Callgrind(EventKind),
+    /// The Cachegrind metric kind
     Cachegrind(CachegrindMetric),
+    /// The DHAT metric kind
     Dhat(DhatMetric),
+    /// The Memcheck metric kind
     Memcheck(ErrorMetric),
+    /// The Helgrind metric kind
     Helgrind(ErrorMetric),
+    /// The DRD metric kind
     DRD(ErrorMetric),
 }
 
@@ -103,6 +119,7 @@ impl Metric {
         }
     }
 
+    /// Return true if this `Metric` is [`Metric::Int`]
     pub fn is_int(&self) -> bool {
         match self {
             Metric::Int(_) => true,
@@ -110,6 +127,7 @@ impl Metric {
         }
     }
 
+    /// Return true if this `Metric` is [`Metric::Float`]
     pub fn is_float(&self) -> bool {
         match self {
             Metric::Int(_) => false,
@@ -117,13 +135,16 @@ impl Metric {
         }
     }
 
+    /// If needed and possible convert this metric to the other [`Metric`] returning the result
+    ///
+    /// A metric is converted if the expected type of the `metric_kind` is [`Metric::Float`] but the
+    /// given metric was [`Metric::Int`]. The metrics of float type are usually percentages with a
+    /// value range of `0.0` to `100.0`. Converting `u64` to `f64` within this range happens without
+    /// precision loss.
     pub fn try_convert<T: Display + TypeChecker>(&self, metric_kind: T) -> Option<(T, Self)> {
         if metric_kind.verify_metric(*self) {
             Some((metric_kind, *self))
         } else if let Metric::Int(a) = self {
-            // Convert u64 to f64 metrics if necessary. f64 metrics are percentages with a value
-            // range of 0.0 to 100.0. Converting u64 to f64 within this range happens without
-            // loss of precision.
             Some((metric_kind, Metric::Float(*a as f64)))
         } else {
             None
@@ -301,7 +322,7 @@ impl<K: Hash + Eq + Display + Clone> Metrics<K> {
         Metrics(IndexMap::new())
     }
 
-    // The order matters. The index is derived from the insertion order
+    /// The order matters. The index is derived from the insertion order
     pub fn with_metric_kinds<I, T>(kinds: T) -> Self
     where
         I: Into<Metric>,
@@ -370,6 +391,7 @@ impl<K: Hash + Eq + Display + Clone> Metrics<K> {
             .with_context(|| format!("Missing event type '{kind}"))
     }
 
+    /// Return the contained metric kinds
     pub fn metric_kinds(&self) -> Vec<K> {
         self.0.iter().map(|(k, _)| k.clone()).collect()
     }
@@ -440,6 +462,7 @@ impl<I, K: Hash + Eq + From<I>> FromIterator<I> for Metrics<K> {
 }
 
 impl MetricsDiff {
+    /// Create a new `MetricsDiff` from a [`Metric`]
     pub fn new(metrics: EitherOrBoth<Metric>) -> Self {
         if let EitherOrBoth::Both(new, old) = metrics {
             Self {
@@ -454,6 +477,7 @@ impl MetricsDiff {
         }
     }
 
+    /// Sum this metrics diff with another [`MetricsDiff`]
     #[must_use]
     pub fn add(&self, other: &Self) -> Self {
         match (&self.metrics, &other.metrics) {
@@ -565,10 +589,14 @@ where
         self.0.get(metric_kind)
     }
 
+    /// Return an iterator over all [`MetricsDiff`]s
     pub fn all_diffs(&self) -> impl Iterator<Item = (&K, &MetricsDiff)> {
         self.0.iter()
     }
 
+    /// Extract the [`Metrics`] from this summary
+    ///
+    /// This is the exact reverse operation to [`MetricsSummary::new`]
     pub fn extract_costs(&self) -> EitherOrBoth<Metrics<K>> {
         let mut new_metrics: Metrics<K> = Metrics::empty();
         let mut old_metrics: Metrics<K> = Metrics::empty();
@@ -597,6 +625,10 @@ where
         }
     }
 
+    /// Sum up another `MetricsSummary` with this one
+    ///
+    /// If a [`MetricsDiff`] is not present in this summary but in the other, it is added to this
+    /// summary.
     pub fn add(&mut self, other: &Self) {
         let other_keys = other.0.keys().cloned().collect::<IndexSet<_>>();
         let keys = self.0.keys().cloned().collect::<IndexSet<_>>();

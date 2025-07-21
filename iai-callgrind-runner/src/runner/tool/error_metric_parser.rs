@@ -1,3 +1,5 @@
+//! Module containing the [`ErrorMetricLogfileParser`] for error checking tools like `Memcheck`
+
 // spell-checker:ignore suppr ctxts
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -27,8 +29,11 @@ enum State {
     Body,
 }
 
+/// The logfile parser for error metrics
 pub struct ErrorMetricLogfileParser {
+    /// The [`ToolOutputPath`]
     pub output_path: ToolOutputPath,
+    /// The path to the root/project directory used to make paths relative
     pub root_dir: PathBuf,
 }
 

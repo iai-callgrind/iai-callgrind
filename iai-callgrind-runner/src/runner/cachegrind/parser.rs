@@ -1,3 +1,4 @@
+//! Module containing the basic cachegrind parser elements
 use anyhow::{anyhow, Result};
 use lazy_static::lazy_static;
 use log::trace;
@@ -5,15 +6,20 @@ use regex::Regex;
 
 use super::model::Metrics;
 
+// TODO: refactor: delete
 lazy_static! {
     static ref GLOB_TO_REGEX_RE: Regex =
         Regex::new(r"(\\)([*]|[?])").expect("Regex should compile");
 }
 
+/// The properties and header data of a cachegrind output file
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct CachegrindProperties {
+    /// The prototype for all metrics in this file
     pub metrics_prototype: Metrics,
+    /// The `desc:` fields
     pub desc: Vec<String>,
+    /// The executed command with command-line arguments
     pub cmd: String,
 }
 

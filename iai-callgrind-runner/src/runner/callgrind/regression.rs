@@ -1,3 +1,4 @@
+//! Module containing the callgrind specific regression check configuration
 use indexmap::{IndexMap, IndexSet};
 
 use crate::api::{self, EventKind};
@@ -5,10 +6,14 @@ use crate::runner::metrics::{Metric, MetricKind, MetricsSummary};
 use crate::runner::summary::ToolRegression;
 use crate::runner::tool::regression::RegressionConfig;
 
+/// The callgrind regression check configuration
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallgrindRegressionConfig {
+    /// The soft limits
     pub soft_limits: Vec<(EventKind, f64)>,
+    /// The hard limits
     pub hard_limits: Vec<(EventKind, Metric)>,
+    /// True if benchmarks should fail on first encountered failed regression check
     pub fail_fast: bool,
 }
 

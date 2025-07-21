@@ -1,3 +1,4 @@
+//! Module containing the basic callgrind parser elements
 use std::cmp::Ordering;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
@@ -21,10 +22,14 @@ lazy_static! {
         Regex::new(r"(\\)([*]|[?])").expect("Regex should compile");
 }
 
+/// A callgrind specific parser trait
 pub trait CallgrindParser {
+    /// The output of the parser
     type Output;
 
+    /// Parse a single callgrind output file
     fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)>;
+    /// Parse all callgrind output files of this [`ToolOutputPath`]
     fn parse(
         &self,
         output: &ToolOutputPath,
@@ -46,18 +51,34 @@ pub trait CallgrindParser {
     }
 }
 
+/// The properties and header data of a callgrind output file
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct CallgrindProperties {
+    /// The prototype for all metrics in this file
     pub metrics_prototype: Metrics,
+    /// The prototype for all positions in this file
     pub positions_prototype: Positions,
+    /// The pid
     pub pid: Option<i32>,
+    /// The thread
     pub thread: Option<usize>,
+    /// The part number
     pub part: Option<u64>,
+    /// The `desc:` fields
     pub desc: Vec<String>,
+    /// The executed command with command-line arguments
     pub cmd: Option<String>,
+    /// The "creator" of this output file
     pub creator: Option<String>,
 }
 
+/// The `Sentinel` function to search for in the haystack
+///
+/// # Developer notes
+///
+/// Refactor: This struct was named `Sentinel` but the usage changed and it would better be named
+/// `Needle` since it is used to seek for a specific function in the haystack of functions of the
+/// output file.
 #[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Sentinel(#[serde(with = "serde_regex")] Regex);
@@ -75,6 +96,7 @@ impl CallgrindProperties {
         })
     }
 
+    /// Convert into ``ProfileInfo``
     pub fn into_info(self, path: &Path) -> ProfileInfo {
         ProfileInfo {
             command: self.cmd.expect("A command should be present"),
@@ -155,10 +177,12 @@ impl Sentinel {
         Self::new(replaced)
     }
 
+    /// Create a new `Sentinel` from this module path
     pub fn from_path(module: &str, function: &str) -> Self {
         Self::new(format!("{module}::{function}")).expect("Regex should compile")
     }
 
+    /// Create a new `Sentinel` from the segments of a module path
     pub fn from_segments<I, T>(segments: T) -> Self
     where
         I: AsRef<str>,
@@ -176,6 +200,7 @@ impl Sentinel {
         Self::new(joined).expect("Regex should compile")
     }
 
+    /// Return true if this `Sentinel` matches the function in the `haystack`
     pub fn matches(&self, haystack: &str) -> bool {
         self.0.is_match(haystack)
     }
