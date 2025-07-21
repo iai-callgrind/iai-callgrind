@@ -416,7 +416,7 @@ impl ToolConfig {
                     .and_then(|t| t.entry_point.clone())
                     .unwrap_or(default_entry_point);
 
-                if let EntryPoint::Default = entry_point {
+                if entry_point == EntryPoint::Default {
                     let tool = tool.get_or_insert_with(|| Tool::new(ValgrindTool::DHAT));
                     let frames = tool.frames.get_or_insert_with(Vec::new);
 
@@ -625,7 +625,7 @@ impl ToolConfigs {
                         .clone()
                         .unwrap_or(default_entry_point.clone());
 
-                    if let EntryPoint::Default = entry_point {
+                    if entry_point == EntryPoint::Default {
                         let frames = tool.frames.get_or_insert_with(Vec::new);
 
                         // For the details see comment in `ToolConfig::new_default_config`
