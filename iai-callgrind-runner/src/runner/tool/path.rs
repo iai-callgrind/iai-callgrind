@@ -46,23 +46,6 @@ lazy_static! {
     .expect("Regex should compile");
 }
 
-/// The tool specific output path(s)
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ToolOutputPath {
-    /// The [`ToolOutputPathKind`]
-    pub kind: ToolOutputPathKind,
-    /// The tool
-    pub tool: ValgrindTool,
-    /// The [`BaselineKind`]
-    pub baseline_kind: BaselineKind,
-    /// The final directory of all the output files
-    pub dir: PathBuf,
-    /// The name of this output path
-    pub name: String,
-    /// The modifiers which are prepended to the extension
-    pub modifiers: Vec<String>,
-}
-
 /// The different output path kinds
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ToolOutputPathKind {
@@ -78,6 +61,23 @@ pub enum ToolOutputPathKind {
     BaseLog(String),
     /// The output path for baseline `out` files
     Base(String),
+}
+
+/// The tool specific output path(s)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToolOutputPath {
+    /// The [`BaselineKind`]
+    pub baseline_kind: BaselineKind,
+    /// The final directory of all the output files
+    pub dir: PathBuf,
+    /// The [`ToolOutputPathKind`]
+    pub kind: ToolOutputPathKind,
+    /// The modifiers which are prepended to the extension
+    pub modifiers: Vec<String>,
+    /// The name of this output path
+    pub name: String,
+    /// The tool
+    pub tool: ValgrindTool,
 }
 
 impl ToolOutputPath {
@@ -1087,6 +1087,24 @@ mod tests {
     }
 
     #[test]
+    fn test_tool_output_path_log_path_of_when_log_then_same() {
+        let output_path = ToolOutputPath::new(
+            ToolOutputPathKind::Log,
+            ValgrindTool::Callgrind,
+            &BaselineKind::Old,
+            &PathBuf::from("/root"),
+            &ModulePath::new("hello::world"),
+            "bench_thread_in_subprocess.two",
+        );
+        let path = PathBuf::from(
+            "/root/hello/world/bench_thread_in_subprocess.two/callgrind.\
+             bench_thread_in_subprocess.two.log",
+        );
+
+        assert_eq!(output_path.log_path_of(&path), Some(path));
+    }
+
+    #[test]
     fn test_tool_output_path_log_path_of_when_not_in_dir_then_none() {
         let output_path = ToolOutputPath::new(
             ToolOutputPathKind::Out,
@@ -1103,23 +1121,5 @@ mod tests {
                  bench_thread_in_subprocess.two.out"
             ))
             .is_none());
-    }
-
-    #[test]
-    fn test_tool_output_path_log_path_of_when_log_then_same() {
-        let output_path = ToolOutputPath::new(
-            ToolOutputPathKind::Log,
-            ValgrindTool::Callgrind,
-            &BaselineKind::Old,
-            &PathBuf::from("/root"),
-            &ModulePath::new("hello::world"),
-            "bench_thread_in_subprocess.two",
-        );
-        let path = PathBuf::from(
-            "/root/hello/world/bench_thread_in_subprocess.two/callgrind.\
-             bench_thread_in_subprocess.two.log",
-        );
-
-        assert_eq!(output_path.log_path_of(&path), Some(path));
     }
 }

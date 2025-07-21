@@ -35,6 +35,11 @@ pub enum ToolRegressionConfig {
 
 /// The trait which needs to be implemented in a tool specific regression check configuration
 pub trait RegressionConfig<T: Hash + Eq + Summarize + Display + Clone> {
+    /// Check the `MetricsSummary` for regressions.
+    ///
+    /// The limits for event kinds which are not present in the `MetricsSummary` are ignored.
+    fn check(&self, metrics_summary: &MetricsSummary<T>) -> Vec<ToolRegression>;
+
     /// Check for regressions and print them if present
     fn check_and_print(&self, metrics_summary: &MetricsSummary<T>) -> Vec<ToolRegression> {
         let regressions = self.check(metrics_summary);
@@ -42,10 +47,6 @@ pub trait RegressionConfig<T: Hash + Eq + Summarize + Display + Clone> {
         regressions
     }
 
-    /// Check the `MetricsSummary` for regressions.
-    ///
-    /// The limits for event kinds which are not present in the `MetricsSummary` are ignored.
-    fn check(&self, metrics_summary: &MetricsSummary<T>) -> Vec<ToolRegression>;
     /// Check for regressions and return the [`RegressionMetrics`]
     fn check_regressions(&self, metrics_summary: &MetricsSummary<T>) -> Vec<RegressionMetrics<T>> {
         let mut regressions = vec![];
@@ -104,10 +105,11 @@ pub trait RegressionConfig<T: Hash + Eq + Summarize + Display + Clone> {
         regressions
     }
 
-    /// Return the soft limits
-    fn get_soft_limits(&self) -> &[(T, f64)];
     /// Return the hard limits
     fn get_hard_limits(&self) -> &[(T, Metric)];
+
+    /// Return the soft limits
+    fn get_soft_limits(&self) -> &[(T, f64)];
 }
 
 impl ToolRegressionConfig {

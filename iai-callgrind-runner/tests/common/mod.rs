@@ -17,8 +17,8 @@ pub const FIXTURES_ROOT: &str = "tests/fixtures";
 pub struct Fixtures;
 
 pub struct Runner {
-    path: OsString,
     args: Vec<OsString>,
+    path: OsString,
 }
 
 pub struct RunnerOutput(Output);
@@ -31,6 +31,15 @@ pub struct Version {
 }
 
 impl Fixtures {
+    pub fn get_path() -> PathBuf {
+        let root = get_project_root();
+        if root.ends_with("iai-callgrind-runner") {
+            root.join(FIXTURES_ROOT)
+        } else {
+            root.join("iai-callgrind-runner").join(FIXTURES_ROOT)
+        }
+    }
+
     pub fn get_path_of<T>(name: T) -> PathBuf
     where
         T: AsRef<Path>,
@@ -42,15 +51,6 @@ impl Fixtures {
             path.display()
         );
         path
-    }
-
-    pub fn get_path() -> PathBuf {
-        let root = get_project_root();
-        if root.ends_with("iai-callgrind-runner") {
-            root.join(FIXTURES_ROOT)
-        } else {
-            root.join("iai-callgrind-runner").join(FIXTURES_ROOT)
-        }
     }
 
     pub fn get_tool_output_path(
@@ -78,6 +78,15 @@ impl Fixtures {
         serde_yaml::from_reader::<File, T>(file)
     }
 
+    pub fn load_stacks<T>(path: T) -> Vec<String>
+    where
+        T: AsRef<Path>,
+    {
+        let path = Fixtures::get_path_of(path);
+        let reader = BufReader::new(File::open(path).unwrap());
+        reader.lines().map(std::result::Result::unwrap).collect()
+    }
+
     #[allow(unused)]
     pub fn save_serialized<T, N>(name: N, value: &T) -> Result<(), serde_yaml::Error>
     where
@@ -87,21 +96,20 @@ impl Fixtures {
         let file = File::create(Fixtures::get_path_of(name)).unwrap();
         serde_yaml::to_writer(file, value)
     }
-
-    pub fn load_stacks<T>(path: T) -> Vec<String>
-    where
-        T: AsRef<Path>,
-    {
-        let path = Fixtures::get_path_of(path);
-        let reader = BufReader::new(File::open(path).unwrap());
-        reader.lines().map(std::result::Result::unwrap).collect()
-    }
 }
 
 impl Runner {
     pub fn new() -> Self {
         let path = OsString::from(env!("CARGO_BIN_EXE_iai-callgrind-runner"));
         Self { path, args: vec![] }
+    }
+
+    pub fn args(&mut self, args: &[&str]) -> &mut Self {
+        for arg in args {
+            self.args.push(OsString::from(arg));
+        }
+
+        self
     }
 
     pub fn run(&self) -> RunnerOutput {
@@ -111,14 +119,6 @@ impl Runner {
             .output()
             .map(RunnerOutput)
             .unwrap()
-    }
-
-    pub fn args(&mut self, args: &[&str]) -> &mut Self {
-        for arg in args {
-            self.args.push(OsString::from(arg));
-        }
-
-        self
     }
 }
 
@@ -219,8 +219,15 @@ impl Display for Version {
     }
 }
 
-pub fn get_runner_version() -> Version {
-    Version::new(env!("CARGO_PKG_VERSION"))
+#[track_caller]
+pub fn assert_parse_error<T>(file: &Path, result: Result<T>, message: &str)
+where
+    T: std::cmp::PartialEq + std::fmt::Debug,
+{
+    assert_eq!(
+        result.unwrap_err().to_string(),
+        format!("Error parsing file '{}': {message}", file.display())
+    );
 }
 
 pub fn get_project_root() -> PathBuf {
@@ -232,13 +239,6 @@ pub fn get_project_root() -> PathBuf {
     meta.workspace_root.into_std_path_buf()
 }
 
-#[track_caller]
-pub fn assert_parse_error<T>(file: &Path, result: Result<T>, message: &str)
-where
-    T: std::cmp::PartialEq + std::fmt::Debug,
-{
-    assert_eq!(
-        result.unwrap_err().to_string(),
-        format!("Error parsing file '{}': {message}", file.display())
-    );
+pub fn get_runner_version() -> Version {
+    Version::new(env!("CARGO_PKG_VERSION"))
 }

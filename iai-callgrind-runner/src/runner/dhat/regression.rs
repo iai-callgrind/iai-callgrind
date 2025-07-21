@@ -9,12 +9,22 @@ use crate::runner::tool::regression::RegressionConfig;
 /// The dhat regression check configuration
 #[derive(Debug, Clone, PartialEq)]
 pub struct DhatRegressionConfig {
-    /// The soft limits
-    pub soft_limits: Vec<(DhatMetric, f64)>,
-    /// The hard limits
-    pub hard_limits: Vec<(DhatMetric, Metric)>,
     /// True if benchmarks should fail on first encountered failed regression check
     pub fail_fast: bool,
+    /// The hard limits
+    pub hard_limits: Vec<(DhatMetric, Metric)>,
+    /// The soft limits
+    pub soft_limits: Vec<(DhatMetric, f64)>,
+}
+
+impl Default for DhatRegressionConfig {
+    fn default() -> Self {
+        Self {
+            soft_limits: vec![(DhatMetric::TotalBytes, 10f64)],
+            hard_limits: Vec::default(),
+            fail_fast: Default::default(),
+        }
+    }
 }
 
 impl RegressionConfig<DhatMetric> for DhatRegressionConfig {
@@ -81,16 +91,6 @@ impl TryFrom<api::DhatRegressionConfig> for DhatRegressionConfig {
             hard_limits: hard_limits.into_iter().collect(),
             fail_fast: fail_fast.unwrap_or(false),
         })
-    }
-}
-
-impl Default for DhatRegressionConfig {
-    fn default() -> Self {
-        Self {
-            soft_limits: vec![(DhatMetric::TotalBytes, 10f64)],
-            hard_limits: Vec::default(),
-            fail_fast: Default::default(),
-        }
     }
 }
 

@@ -17,18 +17,35 @@ use crate::util::write_all_to_stderr;
 /// The main Iai-Callgrind error type
 #[derive(Debug, PartialEq, Clone)]
 pub enum Error {
+    /// A error during setup of a benchmark.
+    ///
+    /// `BenchmarkError(ValgrindTool, ModulePath, message)`
+    BenchmarkError(ValgrindTool, ModulePath, String),
+    /// An error within the UI configuration structs but transpiring in the runner
+    ///
+    /// `ConfigurationError(ModulePath, benchmark_id, message)`
+    ConfigurationError(ModulePath, Option<String>, String),
+    /// TODO: redundant ???
+    /// If parsing an environment variable failed
+    EnvironmentVariableError(String, String),
+    /// TODO: redundant ???
+    IgnoredArgument(String),
     /// An error during the initialization of the runner
     ///
     /// `InitError(message)`
     InitError(String),
-    /// A version mismatch between the runner and the UI
+    /// An invalid command-line argument value when only `yes` or `no` is allowed
     ///
-    /// `VersionMismatch(Cmp, runner_version, library_version)`
-    VersionMismatch(version_compare::Cmp, String, String),
+    /// `InvalidBoolArgument(option_name, value)`
+    InvalidBoolArgument(String, String),
     /// The error when trying to start an external [`std::process::Command`] fails
     ///
     /// `LaunchError(executable_path, message)`
     LaunchError(PathBuf, String),
+    /// The generic error when parsing of a tools log- or output file fails
+    ///
+    /// `ParseError(file_path, message)`
+    ParseError(PathBuf, String),
     /// The error after a successful launch of an external [`std::process::Command`]
     ///
     /// ```text
@@ -40,39 +57,20 @@ pub enum Error {
     /// )
     /// ```
     ProcessError(String, Option<Output>, ExitStatus, Option<ToolOutputPath>),
-    /// An invalid command-line argument value when only `yes` or `no` is allowed
-    ///
-    /// `InvalidBoolArgument(option_name, value)`
-    InvalidBoolArgument(String, String),
-    /// The generic error when parsing of a tools log- or output file fails
-    ///
-    /// `ParseError(file_path, message)`
-    ParseError(PathBuf, String),
     /// If a regression check fails a `RegressionError` is issued
     ///
     /// `RegressionError(is_fatal)`, `is_fatal` needs to be true if the error should lead to an
     /// immediate exit of the runner
     RegressionError(bool),
-    /// TODO: redundant ???
-    /// If parsing an environment variable failed
-    EnvironmentVariableError(String, String),
     /// The error when setting up the [`crate::runner::common::Sandbox`] fails
     ///
     /// `SandboxError(message)`
     SandboxError(String),
-    /// A error during setup of a benchmark.
+    /// A version mismatch between the runner and the UI
     ///
-    /// `BenchmarkError(ValgrindTool, ModulePath, message)`
-    BenchmarkError(ValgrindTool, ModulePath, String),
-    /// TODO: redundant ???
-    IgnoredArgument(String),
-    /// An error within the UI configuration structs but transpiring in the runner
-    ///
-    /// `ConfigurationError(ModulePath, benchmark_id, message)`
-    ConfigurationError(ModulePath, Option<String>, String),
+    /// `VersionMismatch(Cmp, runner_version, library_version)`
+    VersionMismatch(version_compare::Cmp, String, String),
 }
-
-impl std::error::Error for Error {}
 
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -175,3 +173,5 @@ impl Display for Error {
         }
     }
 }
+
+impl std::error::Error for Error {}

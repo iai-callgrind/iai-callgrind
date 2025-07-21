@@ -16,10 +16,10 @@ use crate::util::resolve_binary_path;
 /// The basic commands (like valgrind) to be executed with default arguments
 #[derive(Debug, Clone)]
 pub struct Cmd {
-    /// The path to the executable
-    pub bin: PathBuf,
     /// The arguments for the executable
     pub args: Vec<OsString>,
+    /// The path to the executable
+    pub bin: PathBuf,
 }
 
 /// `Metadata` contains all information that needs to be collected from cargo and the environment
@@ -30,6 +30,10 @@ pub struct Cmd {
 pub struct Metadata {
     /// A string describing the architecture of the CPU that is currently in use (e.g. "x86")
     pub arch: String,
+    /// The command-line arguments parsed from the arguments to `cargo bench -- ARGS` as ARGS
+    pub args: CommandLineArgs,
+    /// The name of the benchmark to run (might be different to the name of the file)
+    pub bench_name: String,
     /// The path to the project top-level directory
     pub project_root: PathBuf,
     /// The absolute path of the `HOME` (per default `$WORKSPACE_ROOT/target/iai`). Plus, if
@@ -44,10 +48,24 @@ pub struct Metadata {
     pub valgrind: Cmd,
     /// The valgrind wrapper [`Cmd`]
     pub valgrind_wrapper: Option<Cmd>,
-    /// The command-line arguments parsed from the arguments to `cargo bench -- ARGS` as ARGS
-    pub args: CommandLineArgs,
-    /// The name of the benchmark to run (might be different to the name of the file)
-    pub bench_name: String,
+}
+
+impl From<&Metadata> for Command {
+    fn from(meta: &Metadata) -> Self {
+        meta.valgrind_wrapper.as_ref().map_or_else(
+            || {
+                let meta_cmd = &meta.valgrind;
+                let mut cmd = Command::new(&meta_cmd.bin);
+                cmd.args(&meta_cmd.args);
+                cmd
+            },
+            |meta_cmd| {
+                let mut cmd = Command::new(&meta_cmd.bin);
+                cmd.args(&meta_cmd.args);
+                cmd
+            },
+        )
+    }
 }
 
 impl Metadata {
@@ -162,23 +180,5 @@ impl Metadata {
             args,
             bench_name,
         })
-    }
-}
-
-impl From<&Metadata> for Command {
-    fn from(meta: &Metadata) -> Self {
-        meta.valgrind_wrapper.as_ref().map_or_else(
-            || {
-                let meta_cmd = &meta.valgrind;
-                let mut cmd = Command::new(&meta_cmd.bin);
-                cmd.args(&meta_cmd.args);
-                cmd
-            },
-            |meta_cmd| {
-                let mut cmd = Command::new(&meta_cmd.bin);
-                cmd.args(&meta_cmd.args);
-                cmd
-            },
-        )
     }
 }

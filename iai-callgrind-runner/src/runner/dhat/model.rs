@@ -15,8 +15,30 @@ lazy_static! {
     .expect("Regex should compile");
 }
 
+/// A [`Frame`] in the [`DhatData::frame_table`]
+#[derive(Debug, Clone, PartialEq)]
+pub enum Frame {
+    /// The root frame
+    Root,
+    /// All other frames than the root are leafs
+    Leaf(String, String, String),
+}
+
+/// The dhat invocation mode
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum Mode {
+    /// --mode=heap
+    #[default]
+    Heap,
+    /// --mode=ad-hoc
+    AdHoc,
+    /// --mode=copy
+    Copy,
+}
+
 /// The top-level data extracted from dhat json output
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[allow(clippy::arbitrary_source_item_ordering)]
 pub struct DhatData {
     /// Version number of the format
     #[serde(rename = "dhatFileVersion")]
@@ -88,29 +110,9 @@ pub struct DhatData {
     pub frame_table: Vec<Frame>,
 }
 
-/// A [`Frame`] in the [`DhatData::frame_table`]
-#[derive(Debug, Clone, PartialEq)]
-pub enum Frame {
-    /// The root frame
-    Root,
-    /// All other frames than the root are leafs
-    Leaf(String, String, String),
-}
-
-/// The dhat invocation mode
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub enum Mode {
-    /// --mode=heap
-    #[default]
-    Heap,
-    /// --mode=ad-hoc
-    AdHoc,
-    /// --mode=copy
-    Copy,
-}
-
 /// A `ProgramPoint`
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[allow(clippy::arbitrary_source_item_ordering)]
 pub struct ProgramPoint {
     /// Total bytes
     #[serde(rename = "tb")]
@@ -187,26 +189,6 @@ pub struct ProgramPoint {
     pub frames: Vec<usize>,
 }
 
-impl From<(&str, &str, &str)> for Frame {
-    fn from((addr, func, loc): (&str, &str, &str)) -> Self {
-        Self::Leaf(addr.to_owned(), func.to_owned(), loc.to_owned())
-    }
-}
-
-impl Serialize for Frame {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let string = match self {
-            Frame::Root => "[root]".to_owned(),
-            Frame::Leaf(addr, func, loc) => format!("{addr}: {func} ({loc})"),
-        };
-
-        serializer.serialize_str(&string)
-    }
-}
-
 impl<'de> Deserialize<'de> for Frame {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -214,6 +196,12 @@ impl<'de> Deserialize<'de> for Frame {
     {
         let frame = String::deserialize(deserializer)?;
         Frame::from_str(&frame).map_err(Error::custom)
+    }
+}
+
+impl From<(&str, &str, &str)> for Frame {
+    fn from((addr, func, loc): (&str, &str, &str)) -> Self {
+        Self::Leaf(addr.to_owned(), func.to_owned(), loc.to_owned())
     }
 }
 
@@ -246,18 +234,17 @@ impl FromStr for Frame {
     }
 }
 
-impl Serialize for Mode {
+impl Serialize for Frame {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         let string = match self {
-            Mode::Heap => "heap",
-            Mode::AdHoc => "ad-hoc",
-            Mode::Copy => "copy",
+            Frame::Root => "[root]".to_owned(),
+            Frame::Leaf(addr, func, loc) => format!("{addr}: {func} ({loc})"),
         };
 
-        serializer.serialize_str(string)
+        serializer.serialize_str(&string)
     }
 }
 
@@ -278,19 +265,27 @@ impl<'de> Deserialize<'de> for Mode {
     }
 }
 
+impl Serialize for Mode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let string = match self {
+            Mode::Heap => "heap",
+            Mode::AdHoc => "ad-hoc",
+            Mode::Copy => "copy",
+        };
+
+        serializer.serialize_str(string)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use rstest::rstest;
     use serde_test::{assert_tokens, Token};
 
     use super::*;
-
-    #[test]
-    fn test_frame_from_str_when_root() {
-        let expected = Frame::Root;
-        let actual = "[root]".parse::<Frame>().unwrap();
-        assert_eq!(actual, expected);
-    }
 
     #[rstest]
     #[case::short_addr("0x1234: malloc (in /usr/lib/some.so)", ("0x1234", "malloc", "in /usr/lib/some.so"))]
@@ -304,17 +299,24 @@ mod tests {
     }
 
     #[test]
-    fn test_frame_de_and_serialize_root() {
-        let frame = Frame::Root;
-        assert_tokens(&frame, &[Token::Str("[root]")]);
-    }
-
-    #[test]
     fn test_frame_de_and_serialize_frame() {
         let frame = Frame::from(("0x1234", "malloc", "in /usr/lib/some.so"));
         assert_tokens(
             &frame,
             &[Token::Str("0x1234: malloc (in /usr/lib/some.so)")],
         );
+    }
+
+    #[test]
+    fn test_frame_de_and_serialize_root() {
+        let frame = Frame::Root;
+        assert_tokens(&frame, &[Token::Str("[root]")]);
+    }
+
+    #[test]
+    fn test_frame_from_str_when_root() {
+        let expected = Frame::Root;
+        let actual = "[root]".parse::<Frame>().unwrap();
+        assert_eq!(actual, expected);
     }
 }

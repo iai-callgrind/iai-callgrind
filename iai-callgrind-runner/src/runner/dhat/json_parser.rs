@@ -14,33 +14,20 @@ use crate::runner::tool::parser::{Header, Parser, ParserOutput};
 use crate::runner::tool::path::ToolOutputPath;
 use crate::util::Glob;
 
-// TODO: refactor: sort
-/// Parse the dhat output file at `path` into [`DhatData`]
-pub fn parse(path: &Path) -> Result<DhatData> {
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-    serde_json::from_reader(reader).map_err(|error| {
-        anyhow!(
-            "Error parsing dhat output file '{}': {error}",
-            path.display()
-        )
-    })
-}
-
 /// The dhat output file json parser
 pub struct JsonParser {
-    output_path: ToolOutputPath,
     entry_point: EntryPoint,
     frames: Vec<Glob>,
+    output_path: ToolOutputPath,
 }
 
 impl JsonParser {
     /// Create a new `JsonParser`
     pub fn new(output_path: ToolOutputPath, entry_point: EntryPoint, frames: Vec<Glob>) -> Self {
         Self {
-            output_path,
             entry_point,
             frames,
+            output_path,
         }
     }
 }
@@ -91,4 +78,17 @@ impl Parser for JsonParser {
     fn get_output_path(&self) -> &ToolOutputPath {
         &self.output_path
     }
+}
+
+// TODO: refactor: sort
+/// Parse the dhat output file at `path` into [`DhatData`]
+pub fn parse(path: &Path) -> Result<DhatData> {
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    serde_json::from_reader(reader).map_err(|error| {
+        anyhow!(
+            "Error parsing dhat output file '{}': {error}",
+            path.display()
+        )
+    })
 }

@@ -31,102 +31,6 @@ use crate::runner::metrics::Summarize;
 #[cfg(feature = "runner")]
 use crate::runner::metrics::TypeChecker;
 
-/// The model for the `#[binary_benchmark]` attribute or the equivalent from the low level api
-///
-/// For internal use only
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct BinaryBenchmark {
-    /// The configuration at `#[binary_benchmark]` level
-    pub config: Option<BinaryBenchmarkConfig>,
-    /// The extracted binary benchmarks
-    pub benches: Vec<BinaryBenchmarkBench>,
-}
-
-/// The model for the `#[bench]` attribute or the low level equivalent
-///
-/// For internal use only
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct BinaryBenchmarkBench {
-    /// The `id` of the benchmark as in `#[bench::id]`
-    pub id: Option<String>,
-    /// The name of the annotated function
-    pub function_name: String,
-    /// The arguments to the function
-    pub args: Option<String>,
-    /// The returned [`Command`]
-    pub command: Command,
-    /// The configuration at `#[bench]` or `#[benches]` level
-    pub config: Option<BinaryBenchmarkConfig>,
-    /// True if there is a `setup` function
-    pub has_setup: bool,
-    /// True if there is a `teardown` function
-    pub has_teardown: bool,
-}
-
-/// The model for the configuration in binary benchmarks
-///
-/// This is the configuration which is built from the configuration of the UI and for internal use
-/// only.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct BinaryBenchmarkConfig {
-    /// True if the environment variables should be cleared
-    pub env_clear: Option<bool>,
-    /// If some, set the the working directory of the benchmarked binary to this path
-    pub current_dir: Option<PathBuf>,
-    /// The [`ExitWith`] to set the expected exit code/signal of the benchmarked binary
-    pub exit_with: Option<ExitWith>,
-    /// The arguments to pass to all tools
-    pub valgrind_args: RawArgs,
-    /// The environment variables to set or pass through to the binary
-    pub envs: Vec<(OsString, Option<OsString>)>,
-    /// The valgrind tools to run in addition to the default tool
-    pub tools: Tools,
-    /// The tool override at this configuration level
-    pub tools_override: Option<Tools>,
-    /// Run the benchmarked binary in a [`Sandbox`] or not
-    pub sandbox: Option<Sandbox>,
-    /// Run the `setup` function parallel to the benchmarked binary
-    pub setup_parallel: Option<bool>,
-    /// The configuration of the output format
-    pub output_format: Option<OutputFormat>,
-    /// The valgrind tool to run instead of the default callgrind
-    pub default_tool: Option<ValgrindTool>,
-}
-
-/// The model for the `binary_benchmark_group` macro
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct BinaryBenchmarkGroup {
-    /// The name or id of the `binary_benchmark_group!`
-    pub id: String,
-    /// The configuration at this level
-    pub config: Option<BinaryBenchmarkConfig>,
-    /// True if there is a `setup` function
-    pub has_setup: bool,
-    /// True if there is a `teardown` function
-    pub has_teardown: bool,
-    /// The actual data and the benchmarks of this group
-    pub binary_benchmarks: Vec<BinaryBenchmark>,
-    /// If true compare the benchmarks in this group
-    pub compare_by_id: Option<bool>,
-}
-
-/// The model for the main! macro
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BinaryBenchmarkGroups {
-    /// The configuration of this level
-    pub config: BinaryBenchmarkConfig,
-    /// All groups of this benchmark
-    pub groups: Vec<BinaryBenchmarkGroup>,
-    /// The command line arguments as we receive them from `cargo bench`
-    pub command_line_args: Vec<String>,
-    /// True if there is a `setup` function
-    pub has_setup: bool,
-    /// True if there is a `teardown` function
-    pub has_teardown: bool,
-    /// The default tool changed by the `cachegrind` feature
-    pub default_tool: ValgrindTool,
-}
-
 /// All metrics which cachegrind produces and additionally some derived events
 ///
 /// Depending on the options passed to Cachegrind, these are the events that Cachegrind can produce.
@@ -372,17 +276,6 @@ pub enum CachegrindMetrics {
     SingleEvent(CachegrindMetric),
 }
 
-/// The model for the regression check configuration of Cachegrind
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct CachegrindRegressionConfig {
-    /// The soft limits
-    pub soft_limits: Vec<(CachegrindMetrics, f64)>,
-    /// The hard limits
-    pub hard_limits: Vec<(CachegrindMetrics, Limit)>,
-    /// True if the benchmarks should fail on the first occurrence of a regression
-    pub fail_fast: Option<bool>,
-}
-
 /// A collection of groups of [`EventKind`]s
 ///
 /// `Callgrind` supports a large amount of metrics and their collection can be enabled with various
@@ -622,47 +515,6 @@ pub enum CallgrindMetrics {
     SingleEvent(EventKind),
 }
 
-/// The model for the regression check configuration of Callgrind
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct CallgrindRegressionConfig {
-    /// The soft limits
-    pub soft_limits: Vec<(CallgrindMetrics, f64)>,
-    /// The hard limits
-    pub hard_limits: Vec<(CallgrindMetrics, Limit)>,
-    /// True if the benchmarks should fail on the first occurrence of a regression
-    pub fail_fast: Option<bool>,
-}
-
-/// The model for the command returned by the binary benchmark function
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct Command {
-    /// The path to the executable
-    pub path: PathBuf,
-    /// The arguments for the executable
-    pub args: Vec<OsString>,
-    /// The command's stdin
-    pub stdin: Option<Stdin>,
-    /// The command's stdout
-    pub stdout: Option<Stdio>,
-    /// The command's stderr
-    pub stderr: Option<Stdio>,
-    /// The configuration at this level
-    pub config: BinaryBenchmarkConfig,
-    /// If present the command is delayed as configured in [`Delay`]
-    pub delay: Option<Delay>,
-}
-
-/// The delay of the [`Command`]
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Delay {
-    /// The polling time to check the delay condition
-    pub poll: Option<Duration>,
-    /// The timeout for the delay
-    pub timeout: Option<Duration>,
-    /// The kind of delay
-    pub kind: DelayKind,
-}
-
 /// The kind of `Delay`
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -675,17 +527,6 @@ pub enum DelayKind {
     UdpResponse(SocketAddr, Vec<u8>),
     /// Delay the `Command` until the specified path exists
     PathExists(PathBuf),
-}
-
-/// The `Direction` in which the flamegraph should grow.
-///
-/// The default is `TopToBottom`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Direction {
-    /// Grow from top to bottom with the highest event costs at the top
-    TopToBottom,
-    /// Grow from bottom to top with the highest event costs at the bottom
-    BottomToTop,
 }
 
 /// The metrics collected by DHAT
@@ -787,15 +628,15 @@ pub enum DhatMetrics {
     SingleMetric(DhatMetric),
 }
 
-/// The model for the regression check configuration of DHAT
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct DhatRegressionConfig {
-    /// The soft limits
-    pub soft_limits: Vec<(DhatMetrics, f64)>,
-    /// The hard limits
-    pub hard_limits: Vec<(DhatMetrics, Limit)>,
-    /// True if the benchmarks should fail on the first occurrence of a regression
-    pub fail_fast: Option<bool>,
+/// The `Direction` in which the flamegraph should grow.
+///
+/// The default is `TopToBottom`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Direction {
+    /// Grow from top to bottom with the highest event costs at the top
+    TopToBottom,
+    /// Grow from bottom to top with the highest event costs at the bottom
+    BottomToTop,
 }
 
 /// The `EntryPoint` of a benchmark
@@ -928,36 +769,6 @@ pub enum ExitWith {
     Code(i32),
 }
 
-/// The fixtures to copy into the [`Sandbox`]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Fixtures {
-    /// The path to the fixtures
-    pub path: PathBuf,
-    /// If true, follow symlinks
-    pub follow_symlinks: bool,
-}
-
-/// The model for the configuration of flamegraphs
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-pub struct FlamegraphConfig {
-    /// The flamegraph kind
-    pub kind: Option<FlamegraphKind>,
-    /// If true, negate a differential flamegraph
-    pub negate_differential: Option<bool>,
-    /// If true, normalize a differential flamegraph
-    pub normalize_differential: Option<bool>,
-    /// The event kinds for which a flamegraph should be generated
-    pub event_kinds: Option<Vec<EventKind>>,
-    /// The direction of the flamegraph. Top to bottom or vice versa
-    pub direction: Option<Direction>,
-    /// The title to use for the flamegraphs
-    pub title: Option<String>,
-    /// The subtitle to use for the flamegraphs
-    pub subtitle: Option<String>,
-    /// The minimum width which should be displayed
-    pub min_width: Option<f64>,
-}
-
 /// The kind of `Flamegraph` which is going to be constructed
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FlamegraphKind {
@@ -970,87 +781,6 @@ pub enum FlamegraphKind {
     All,
     /// Do not produce any flamegraphs
     None,
-}
-
-/// The model for the `#[library_benchmark]` attribute
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct LibraryBenchmark {
-    /// The configuration at this level
-    pub config: Option<LibraryBenchmarkConfig>,
-    /// The extracted benchmarks of the annotated function
-    pub benches: Vec<LibraryBenchmarkBench>,
-}
-
-// TODO: Sort fields like in BinaryBenchmarkBench or vice versa
-/// The model for the `#[bench]` attribute in a `#[library_benchmark]`
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct LibraryBenchmarkBench {
-    /// The id of the attribute as in `#[bench::id]`
-    pub id: Option<String>,
-    /// The name of the function
-    pub function_name: String,
-    /// The arguments for the function
-    pub args: Option<String>,
-    /// The configuration at this level
-    pub config: Option<LibraryBenchmarkConfig>,
-}
-
-// TODO: Sort fields like in BinaryBenchmarkConfig or vice versa
-/// The model for the configuration in library benchmarks
-///
-/// This is the configuration which is built from the configuration of the UI and for internal use
-/// only.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct LibraryBenchmarkConfig {
-    /// True if the environment variables should be cleared
-    pub env_clear: Option<bool>,
-    /// The arguments to pass to all tools
-    pub valgrind_args: RawArgs,
-    /// The environment variables to set or pass through to the binary
-    pub envs: Vec<(OsString, Option<OsString>)>,
-    /// The valgrind tools to run in addition to the default tool
-    pub tools: Tools,
-    /// The tool override at this configuration level
-    pub tools_override: Option<Tools>,
-    /// The configuration of the output format
-    pub output_format: Option<OutputFormat>,
-    /// The valgrind tool to run instead of the default callgrind
-    pub default_tool: Option<ValgrindTool>,
-}
-
-// TODO: Sort fields like in BinaryBenchmarkGroup or vice versa
-/// The model for the `library_benchmark_group` macro
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct LibraryBenchmarkGroup {
-    /// The name or id of the `library_benchmark_group!`
-    pub id: String,
-    /// The configuration at this level
-    pub config: Option<LibraryBenchmarkConfig>,
-    /// If true compare the benchmarks in this group
-    pub compare_by_id: Option<bool>,
-    /// The actual data and the benchmarks of this group
-    pub library_benchmarks: Vec<LibraryBenchmark>,
-    /// True if there is a `setup` function
-    pub has_setup: bool,
-    /// True if there is a `teardown` function
-    pub has_teardown: bool,
-}
-
-/// The model for the `main` macro
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct LibraryBenchmarkGroups {
-    /// The configuration of this level
-    pub config: LibraryBenchmarkConfig,
-    /// All groups of this benchmark
-    pub groups: Vec<LibraryBenchmarkGroup>,
-    /// The command line args as we receive them from `cargo bench`
-    pub command_line_args: Vec<String>,
-    /// True if there is a `setup` function
-    pub has_setup: bool,
-    /// True if there is a `teardown` function
-    pub has_teardown: bool,
-    /// The default tool changed by the `cachegrind` feature
-    pub default_tool: ValgrindTool,
 }
 
 /// A `Limit` which can be either an integer or a float
@@ -1069,32 +799,6 @@ pub enum Limit {
     Float(f64),
 }
 
-/// The configuration values for the output format
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct OutputFormat {
-    /// If set, truncate the description
-    pub truncate_description: Option<Option<usize>>,
-    /// Show intermediate results, for example in benchmarks for multi-threaded applications
-    pub show_intermediate: Option<bool>,
-    /// Show a grid instead of spaces in the terminal output
-    pub show_grid: Option<bool>,
-}
-
-/// The raw arguments to pass to a valgrind tool
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RawArgs(pub Vec<String>);
-
-/// The sandbox to run the benchmarks in
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Sandbox {
-    /// If this sandbox is enabled or not
-    pub enabled: Option<bool>,
-    /// The fixtures to copy into the sandbox
-    pub fixtures: Vec<PathBuf>,
-    /// If true follow symlinks when copying the fixtures
-    pub follow_symlinks: Option<bool>,
-}
-
 /// Configure the `Stream` which should be used as pipe in [`Stdin::Setup`]
 ///
 /// The default is [`Pipe::Stdout`]
@@ -1105,33 +809,6 @@ pub enum Pipe {
     Stdout,
     /// The `Stderr` error `Stream`
     Stderr,
-}
-
-/// We use this enum only internally in the benchmark runner
-#[cfg(feature = "runner")]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Stream {
-    Stdin,
-    Stdout,
-    Stderr,
-}
-
-/// Configure the `Stdio` of `Stdin`, `Stdout` and `Stderr`
-///
-/// Describes what to do with a standard I/O stream for the [`Command`] when passed to the stdin,
-/// stdout, and stderr methods of [`Command`].
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Stdio {
-    /// The [`Command`]'s `Stream` inherits from the benchmark runner.
-    #[default]
-    Inherit,
-    /// This stream will be ignored. This is the equivalent of attaching the stream to `/dev/null`
-    Null,
-    /// Redirect the content of a file into this `Stream`. This is equivalent to a redirection in a
-    /// shell for example for the `Stdout` of `my-command`: `my-command > some_file`
-    File(PathBuf),
-    /// A new pipe should be arranged to connect the benchmark runner and the [`Command`]
-    Pipe,
 }
 
 /// This is a special `Stdio` for the stdin method of [`Command`]
@@ -1154,40 +831,31 @@ pub enum Stdin {
     Pipe,
 }
 
-/// The tool configuration
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Tool {
-    /// The valgrind tool this configuration is for
-    pub kind: ValgrindTool,
-    /// If true the tool is run. Ignored for the default tool which always runs
-    pub enable: Option<bool>,
-    /// The arguments to pass to the tool
-    pub raw_args: RawArgs,
-    /// If true show the logging output of Valgrind (not Iai-Callgrind)
-    pub show_log: Option<bool>,
-    /// The configuration for regression checks of tools which perform regression checks
-    pub regression_config: Option<ToolRegressionConfig>,
-    /// The configuration for flamegraphs
-    pub flamegraph_config: Option<ToolFlamegraphConfig>,
-    /// The configuration of the output format
-    pub output_format: Option<ToolOutputFormat>,
-    /// The entry point for the tool
-    pub entry_point: Option<EntryPoint>,
-    /// Any frames in the call stack which should be considered in addition to the entry point
-    pub frames: Option<Vec<String>>,
+/// Configure the `Stdio` of `Stdin`, `Stdout` and `Stderr`
+///
+/// Describes what to do with a standard I/O stream for the [`Command`] when passed to the stdin,
+/// stdout, and stderr methods of [`Command`].
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Stdio {
+    /// The [`Command`]'s `Stream` inherits from the benchmark runner.
+    #[default]
+    Inherit,
+    /// This stream will be ignored. This is the equivalent of attaching the stream to `/dev/null`
+    Null,
+    /// Redirect the content of a file into this `Stream`. This is equivalent to a redirection in a
+    /// shell for example for the `Stdout` of `my-command`: `my-command > some_file`
+    File(PathBuf),
+    /// A new pipe should be arranged to connect the benchmark runner and the [`Command`]
+    Pipe,
 }
 
-/// The tool specific regression check configuration
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum ToolRegressionConfig {
-    /// The callgrind configuration
-    Callgrind(CallgrindRegressionConfig),
-    /// The cachegrind configuration
-    Cachegrind(CachegrindRegressionConfig),
-    /// The dhat configuration
-    Dhat(DhatRegressionConfig),
-    /// The option for tools which don't perform regression checks
-    None,
+/// We use this enum only internally in the benchmark runner
+#[cfg(feature = "runner")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Stream {
+    Stdin,
+    Stderr,
+    Stdout,
 }
 
 /// The tool specific flamegraph configuration
@@ -1218,9 +886,18 @@ pub enum ToolOutputFormat {
     None,
 }
 
-/// The configurations of all tools to run in addition to the default tool
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct Tools(pub Vec<Tool>);
+/// The tool specific regression check configuration
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ToolRegressionConfig {
+    /// The cachegrind configuration
+    Cachegrind(CachegrindRegressionConfig),
+    /// The callgrind configuration
+    Callgrind(CallgrindRegressionConfig),
+    /// The dhat configuration
+    Dhat(DhatRegressionConfig),
+    /// The option for tools which don't perform regression checks
+    None,
+}
 
 /// The valgrind tools which can be run
 ///
@@ -1246,6 +923,326 @@ pub enum ValgrindTool {
     /// [BBV: an experimental basic block vector generation tool](https://valgrind.org/docs/manual/bbv-manual.html)
     BBV,
 }
+
+/// The model for the `#[binary_benchmark]` attribute or the equivalent from the low level api
+///
+/// For internal use only
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BinaryBenchmark {
+    /// The extracted binary benchmarks
+    pub benches: Vec<BinaryBenchmarkBench>,
+    /// The configuration at `#[binary_benchmark]` level
+    pub config: Option<BinaryBenchmarkConfig>,
+}
+
+/// The model for the `#[bench]` attribute or the low level equivalent
+///
+/// For internal use only
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BinaryBenchmarkBench {
+    /// The arguments to the function
+    pub args: Option<String>,
+    /// The returned [`Command`]
+    pub command: Command,
+    /// The configuration at `#[bench]` or `#[benches]` level
+    pub config: Option<BinaryBenchmarkConfig>,
+    /// The name of the annotated function
+    pub function_name: String,
+    /// True if there is a `setup` function
+    pub has_setup: bool,
+    /// True if there is a `teardown` function
+    pub has_teardown: bool,
+    /// The `id` of the benchmark as in `#[bench::id]`
+    pub id: Option<String>,
+}
+
+/// The model for the configuration in binary benchmarks
+///
+/// This is the configuration which is built from the configuration of the UI and for internal use
+/// only.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct BinaryBenchmarkConfig {
+    /// If some, set the the working directory of the benchmarked binary to this path
+    pub current_dir: Option<PathBuf>,
+    /// The valgrind tool to run instead of the default callgrind
+    pub default_tool: Option<ValgrindTool>,
+    /// True if the environment variables should be cleared
+    pub env_clear: Option<bool>,
+    /// The environment variables to set or pass through to the binary
+    pub envs: Vec<(OsString, Option<OsString>)>,
+    /// The [`ExitWith`] to set the expected exit code/signal of the benchmarked binary
+    pub exit_with: Option<ExitWith>,
+    /// The configuration of the output format
+    pub output_format: Option<OutputFormat>,
+    /// Run the benchmarked binary in a [`Sandbox`] or not
+    pub sandbox: Option<Sandbox>,
+    /// Run the `setup` function parallel to the benchmarked binary
+    pub setup_parallel: Option<bool>,
+    /// The valgrind tools to run in addition to the default tool
+    pub tools: Tools,
+    /// The tool override at this configuration level
+    pub tools_override: Option<Tools>,
+    /// The arguments to pass to all tools
+    pub valgrind_args: RawArgs,
+}
+
+/// The model for the `binary_benchmark_group` macro
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct BinaryBenchmarkGroup {
+    /// The actual data and the benchmarks of this group
+    pub binary_benchmarks: Vec<BinaryBenchmark>,
+    /// If true compare the benchmarks in this group
+    pub compare_by_id: Option<bool>,
+    /// The configuration at this level
+    pub config: Option<BinaryBenchmarkConfig>,
+    /// True if there is a `setup` function
+    pub has_setup: bool,
+    /// True if there is a `teardown` function
+    pub has_teardown: bool,
+    /// The name or id of the `binary_benchmark_group!`
+    pub id: String,
+}
+
+/// The model for the main! macro
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BinaryBenchmarkGroups {
+    /// The command line arguments as we receive them from `cargo bench`
+    pub command_line_args: Vec<String>,
+    /// The configuration of this level
+    pub config: BinaryBenchmarkConfig,
+    /// The default tool changed by the `cachegrind` feature
+    pub default_tool: ValgrindTool,
+    /// All groups of this benchmark
+    pub groups: Vec<BinaryBenchmarkGroup>,
+    /// True if there is a `setup` function
+    pub has_setup: bool,
+    /// True if there is a `teardown` function
+    pub has_teardown: bool,
+}
+
+/// The model for the regression check configuration of Cachegrind
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct CachegrindRegressionConfig {
+    /// True if the benchmarks should fail on the first occurrence of a regression
+    pub fail_fast: Option<bool>,
+    /// The hard limits
+    pub hard_limits: Vec<(CachegrindMetrics, Limit)>,
+    /// The soft limits
+    pub soft_limits: Vec<(CachegrindMetrics, f64)>,
+}
+
+/// The model for the regression check configuration of Callgrind
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct CallgrindRegressionConfig {
+    /// True if the benchmarks should fail on the first occurrence of a regression
+    pub fail_fast: Option<bool>,
+    /// The hard limits
+    pub hard_limits: Vec<(CallgrindMetrics, Limit)>,
+    /// The soft limits
+    pub soft_limits: Vec<(CallgrindMetrics, f64)>,
+}
+
+/// The model for the command returned by the binary benchmark function
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Command {
+    /// The arguments for the executable
+    pub args: Vec<OsString>,
+    /// The configuration at this level
+    pub config: BinaryBenchmarkConfig,
+    /// If present the command is delayed as configured in [`Delay`]
+    pub delay: Option<Delay>,
+    /// The path to the executable
+    pub path: PathBuf,
+    /// The command's stderr
+    pub stderr: Option<Stdio>,
+    /// The command's stdin
+    pub stdin: Option<Stdin>,
+    /// The command's stdout
+    pub stdout: Option<Stdio>,
+}
+
+/// The delay of the [`Command`]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Delay {
+    /// The kind of delay
+    pub kind: DelayKind,
+    /// The polling time to check the delay condition
+    pub poll: Option<Duration>,
+    /// The timeout for the delay
+    pub timeout: Option<Duration>,
+}
+
+/// The model for the regression check configuration of DHAT
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct DhatRegressionConfig {
+    /// True if the benchmarks should fail on the first occurrence of a regression
+    pub fail_fast: Option<bool>,
+    /// The hard limits
+    pub hard_limits: Vec<(DhatMetrics, Limit)>,
+    /// The soft limits
+    pub soft_limits: Vec<(DhatMetrics, f64)>,
+}
+
+/// The fixtures to copy into the [`Sandbox`]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Fixtures {
+    /// If true, follow symlinks
+    pub follow_symlinks: bool,
+    /// The path to the fixtures
+    pub path: PathBuf,
+}
+
+/// The model for the configuration of flamegraphs
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct FlamegraphConfig {
+    /// The direction of the flamegraph. Top to bottom or vice versa
+    pub direction: Option<Direction>,
+    /// The event kinds for which a flamegraph should be generated
+    pub event_kinds: Option<Vec<EventKind>>,
+    /// The flamegraph kind
+    pub kind: Option<FlamegraphKind>,
+    /// The minimum width which should be displayed
+    pub min_width: Option<f64>,
+    /// If true, negate a differential flamegraph
+    pub negate_differential: Option<bool>,
+    /// If true, normalize a differential flamegraph
+    pub normalize_differential: Option<bool>,
+    /// The subtitle to use for the flamegraphs
+    pub subtitle: Option<String>,
+    /// The title to use for the flamegraphs
+    pub title: Option<String>,
+}
+
+/// The model for the `#[library_benchmark]` attribute
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct LibraryBenchmark {
+    /// The extracted benchmarks of the annotated function
+    pub benches: Vec<LibraryBenchmarkBench>,
+    /// The configuration at this level
+    pub config: Option<LibraryBenchmarkConfig>,
+}
+
+/// The model for the `#[bench]` attribute in a `#[library_benchmark]`
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct LibraryBenchmarkBench {
+    /// The arguments for the function
+    pub args: Option<String>,
+    /// The configuration at this level
+    pub config: Option<LibraryBenchmarkConfig>,
+    /// The name of the function
+    pub function_name: String,
+    /// The id of the attribute as in `#[bench::id]`
+    pub id: Option<String>,
+}
+
+/// The model for the configuration in library benchmarks
+///
+/// This is the configuration which is built from the configuration of the UI and for internal use
+/// only.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct LibraryBenchmarkConfig {
+    /// The valgrind tool to run instead of the default callgrind
+    pub default_tool: Option<ValgrindTool>,
+    /// True if the environment variables should be cleared
+    pub env_clear: Option<bool>,
+    /// The environment variables to set or pass through to the binary
+    pub envs: Vec<(OsString, Option<OsString>)>,
+    /// The configuration of the output format
+    pub output_format: Option<OutputFormat>,
+    /// The valgrind tools to run in addition to the default tool
+    pub tools: Tools,
+    /// The tool override at this configuration level
+    pub tools_override: Option<Tools>,
+    /// The arguments to pass to all tools
+    pub valgrind_args: RawArgs,
+}
+
+/// The model for the `library_benchmark_group` macro
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct LibraryBenchmarkGroup {
+    /// If true compare the benchmarks in this group
+    pub compare_by_id: Option<bool>,
+    /// The configuration at this level
+    pub config: Option<LibraryBenchmarkConfig>,
+    /// True if there is a `setup` function
+    pub has_setup: bool,
+    /// True if there is a `teardown` function
+    pub has_teardown: bool,
+    /// The name or id of the `library_benchmark_group!`
+    pub id: String,
+    /// The actual data and the benchmarks of this group
+    pub library_benchmarks: Vec<LibraryBenchmark>,
+}
+
+/// The model for the `main` macro
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LibraryBenchmarkGroups {
+    /// The command line args as we receive them from `cargo bench`
+    pub command_line_args: Vec<String>,
+    /// The configuration of this level
+    pub config: LibraryBenchmarkConfig,
+    /// The default tool changed by the `cachegrind` feature
+    pub default_tool: ValgrindTool,
+    /// All groups of this benchmark
+    pub groups: Vec<LibraryBenchmarkGroup>,
+    /// True if there is a `setup` function
+    pub has_setup: bool,
+    /// True if there is a `teardown` function
+    pub has_teardown: bool,
+}
+
+/// The configuration values for the output format
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct OutputFormat {
+    /// Show a grid instead of spaces in the terminal output
+    pub show_grid: Option<bool>,
+    /// Show intermediate results, for example in benchmarks for multi-threaded applications
+    pub show_intermediate: Option<bool>,
+    /// If set, truncate the description
+    pub truncate_description: Option<Option<usize>>,
+}
+
+/// The raw arguments to pass to a valgrind tool
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RawArgs(pub Vec<String>);
+
+/// The sandbox to run the benchmarks in
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Sandbox {
+    /// If this sandbox is enabled or not
+    pub enabled: Option<bool>,
+    /// The fixtures to copy into the sandbox
+    pub fixtures: Vec<PathBuf>,
+    /// If true follow symlinks when copying the fixtures
+    pub follow_symlinks: Option<bool>,
+}
+
+/// The tool configuration
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Tool {
+    /// If true the tool is run. Ignored for the default tool which always runs
+    pub enable: Option<bool>,
+    /// The entry point for the tool
+    pub entry_point: Option<EntryPoint>,
+    /// The configuration for flamegraphs
+    pub flamegraph_config: Option<ToolFlamegraphConfig>,
+    /// Any frames in the call stack which should be considered in addition to the entry point
+    pub frames: Option<Vec<String>>,
+    /// The valgrind tool this configuration is for
+    pub kind: ValgrindTool,
+    /// The configuration of the output format
+    pub output_format: Option<ToolOutputFormat>,
+    /// The arguments to pass to the tool
+    pub raw_args: RawArgs,
+    /// The configuration for regression checks of tools which perform regression checks
+    pub regression_config: Option<ToolRegressionConfig>,
+    /// If true show the logging output of Valgrind (not Iai-Callgrind)
+    pub show_log: Option<bool>,
+}
+
+/// The configurations of all tools to run in addition to the default tool
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Tools(pub Vec<Tool>);
 
 impl BinaryBenchmarkConfig {
     /// Update this configuration with all other configurations in the given order
@@ -1411,45 +1408,6 @@ impl FromStr for CachegrindMetric {
     }
 }
 
-impl From<CachegrindMetric> for CachegrindMetrics {
-    fn from(value: CachegrindMetric) -> Self {
-        Self::SingleEvent(value)
-    }
-}
-
-impl From<CachegrindMetric> for EventKind {
-    fn from(value: CachegrindMetric) -> Self {
-        match value {
-            CachegrindMetric::Ir => Self::Ir,
-            CachegrindMetric::Dr => Self::Dr,
-            CachegrindMetric::Dw => Self::Dw,
-            CachegrindMetric::I1mr => Self::I1mr,
-            CachegrindMetric::D1mr => Self::D1mr,
-            CachegrindMetric::D1mw => Self::D1mw,
-            CachegrindMetric::ILmr => Self::ILmr,
-            CachegrindMetric::DLmr => Self::DLmr,
-            CachegrindMetric::DLmw => Self::DLmw,
-            CachegrindMetric::L1hits => Self::L1hits,
-            CachegrindMetric::LLhits => Self::LLhits,
-            CachegrindMetric::RamHits => Self::RamHits,
-            CachegrindMetric::TotalRW => Self::TotalRW,
-            CachegrindMetric::EstimatedCycles => Self::EstimatedCycles,
-            CachegrindMetric::Bc => Self::Bc,
-            CachegrindMetric::Bcm => Self::Bcm,
-            CachegrindMetric::Bi => Self::Bi,
-            CachegrindMetric::Bim => Self::Bim,
-            CachegrindMetric::I1MissRate => Self::I1MissRate,
-            CachegrindMetric::D1MissRate => Self::D1MissRate,
-            CachegrindMetric::LLiMissRate => Self::LLiMissRate,
-            CachegrindMetric::LLdMissRate => Self::LLdMissRate,
-            CachegrindMetric::LLMissRate => Self::LLMissRate,
-            CachegrindMetric::L1HitRate => Self::L1HitRate,
-            CachegrindMetric::LLHitRate => Self::LLHitRate,
-            CachegrindMetric::RamHitRate => Self::RamHitRate,
-        }
-    }
-}
-
 #[cfg(feature = "runner")]
 impl TypeChecker for CachegrindMetric {
     fn is_int(&self) -> bool {
@@ -1488,71 +1446,9 @@ impl TypeChecker for CachegrindMetric {
     }
 }
 
-#[cfg(feature = "runner")]
-impl From<CachegrindMetrics> for IndexSet<CachegrindMetric> {
-    fn from(value: CachegrindMetrics) -> Self {
-        let mut metrics = Self::new();
-        match value {
-            CachegrindMetrics::None => {}
-            CachegrindMetrics::All => metrics.extend(CachegrindMetric::iter()),
-            CachegrindMetrics::Default => {
-                metrics.insert(CachegrindMetric::Ir);
-                metrics.extend(Self::from(CachegrindMetrics::CacheHits));
-                metrics.extend([CachegrindMetric::TotalRW, CachegrindMetric::EstimatedCycles]);
-                metrics.extend(Self::from(CachegrindMetrics::BranchSim));
-            }
-            CachegrindMetrics::CacheMisses => metrics.extend([
-                CachegrindMetric::I1mr,
-                CachegrindMetric::D1mr,
-                CachegrindMetric::D1mw,
-                CachegrindMetric::ILmr,
-                CachegrindMetric::DLmr,
-                CachegrindMetric::DLmw,
-            ]),
-            CachegrindMetrics::CacheMissRates => metrics.extend([
-                CachegrindMetric::I1MissRate,
-                CachegrindMetric::LLiMissRate,
-                CachegrindMetric::D1MissRate,
-                CachegrindMetric::LLdMissRate,
-                CachegrindMetric::LLMissRate,
-            ]),
-            CachegrindMetrics::CacheHits => {
-                metrics.extend([
-                    CachegrindMetric::L1hits,
-                    CachegrindMetric::LLhits,
-                    CachegrindMetric::RamHits,
-                ]);
-            }
-            CachegrindMetrics::CacheHitRates => {
-                metrics.extend([
-                    CachegrindMetric::L1HitRate,
-                    CachegrindMetric::LLHitRate,
-                    CachegrindMetric::RamHitRate,
-                ]);
-            }
-            CachegrindMetrics::CacheSim => {
-                metrics.extend([CachegrindMetric::Dr, CachegrindMetric::Dw]);
-                metrics.extend(Self::from(CachegrindMetrics::CacheMisses));
-                metrics.extend(Self::from(CachegrindMetrics::CacheMissRates));
-                metrics.extend(Self::from(CachegrindMetrics::CacheHits));
-                metrics.extend(Self::from(CachegrindMetrics::CacheHitRates));
-                metrics.insert(CachegrindMetric::TotalRW);
-                metrics.insert(CachegrindMetric::EstimatedCycles);
-            }
-            CachegrindMetrics::BranchSim => {
-                metrics.extend([
-                    CachegrindMetric::Bc,
-                    CachegrindMetric::Bcm,
-                    CachegrindMetric::Bi,
-                    CachegrindMetric::Bim,
-                ]);
-            }
-            CachegrindMetrics::SingleEvent(metric) => {
-                metrics.insert(metric);
-            }
-        }
-
-        metrics
+impl From<CachegrindMetric> for CachegrindMetrics {
+    fn from(value: CachegrindMetric) -> Self {
+        Self::SingleEvent(value)
     }
 }
 
@@ -1587,85 +1483,6 @@ impl From<EventKind> for CallgrindMetrics {
 }
 
 #[cfg(feature = "runner")]
-impl From<CallgrindMetrics> for IndexSet<EventKind> {
-    fn from(value: CallgrindMetrics) -> Self {
-        let mut event_kinds = Self::new();
-        match value {
-            CallgrindMetrics::None => {}
-            CallgrindMetrics::All => event_kinds.extend(EventKind::iter()),
-            CallgrindMetrics::Default => {
-                event_kinds.insert(EventKind::Ir);
-                event_kinds.extend(Self::from(CallgrindMetrics::CacheHits));
-                event_kinds.extend([EventKind::TotalRW, EventKind::EstimatedCycles]);
-                event_kinds.extend(Self::from(CallgrindMetrics::SystemCalls));
-                event_kinds.insert(EventKind::Ge);
-                event_kinds.extend(Self::from(CallgrindMetrics::BranchSim));
-                event_kinds.extend(Self::from(CallgrindMetrics::WriteBackBehaviour));
-                event_kinds.extend(Self::from(CallgrindMetrics::CacheUse));
-            }
-            CallgrindMetrics::CacheMisses => event_kinds.extend([
-                EventKind::I1mr,
-                EventKind::D1mr,
-                EventKind::D1mw,
-                EventKind::ILmr,
-                EventKind::DLmr,
-                EventKind::DLmw,
-            ]),
-            CallgrindMetrics::CacheMissRates => event_kinds.extend([
-                EventKind::I1MissRate,
-                EventKind::LLiMissRate,
-                EventKind::D1MissRate,
-                EventKind::LLdMissRate,
-                EventKind::LLMissRate,
-            ]),
-            CallgrindMetrics::CacheHits => {
-                event_kinds.extend([EventKind::L1hits, EventKind::LLhits, EventKind::RamHits]);
-            }
-            CallgrindMetrics::CacheHitRates => {
-                event_kinds.extend([
-                    EventKind::L1HitRate,
-                    EventKind::LLHitRate,
-                    EventKind::RamHitRate,
-                ]);
-            }
-            CallgrindMetrics::CacheSim => {
-                event_kinds.extend([EventKind::Dr, EventKind::Dw]);
-                event_kinds.extend(Self::from(CallgrindMetrics::CacheMisses));
-                event_kinds.extend(Self::from(CallgrindMetrics::CacheMissRates));
-                event_kinds.extend(Self::from(CallgrindMetrics::CacheHits));
-                event_kinds.extend(Self::from(CallgrindMetrics::CacheHitRates));
-                event_kinds.insert(EventKind::TotalRW);
-                event_kinds.insert(EventKind::EstimatedCycles);
-            }
-            CallgrindMetrics::CacheUse => event_kinds.extend([
-                EventKind::AcCost1,
-                EventKind::AcCost2,
-                EventKind::SpLoss1,
-                EventKind::SpLoss2,
-            ]),
-            CallgrindMetrics::SystemCalls => {
-                event_kinds.extend([
-                    EventKind::SysCount,
-                    EventKind::SysTime,
-                    EventKind::SysCpuTime,
-                ]);
-            }
-            CallgrindMetrics::BranchSim => {
-                event_kinds.extend([EventKind::Bc, EventKind::Bcm, EventKind::Bi, EventKind::Bim]);
-            }
-            CallgrindMetrics::WriteBackBehaviour => {
-                event_kinds.extend([EventKind::ILdmr, EventKind::DLdmr, EventKind::DLdmw]);
-            }
-            CallgrindMetrics::SingleEvent(event_kind) => {
-                event_kinds.insert(event_kind);
-            }
-        }
-
-        event_kinds
-    }
-}
-
-#[cfg(feature = "runner")]
 impl FromStr for CallgrindMetrics {
     type Err = anyhow::Error;
 
@@ -1696,12 +1513,6 @@ impl FromStr for CallgrindMetrics {
 impl Default for DelayKind {
     fn default() -> Self {
         Self::DurationElapse(Duration::from_secs(60))
-    }
-}
-
-impl Default for Direction {
-    fn default() -> Self {
-        Self::BottomToTop
     }
 }
 
@@ -1766,28 +1577,6 @@ impl TypeChecker for DhatMetric {
     }
 }
 
-#[cfg(feature = "runner")]
-impl From<DhatMetrics> for IndexSet<DhatMetric> {
-    fn from(value: DhatMetrics) -> Self {
-        use DhatMetric::*;
-        match value {
-            DhatMetrics::All => DhatMetric::iter().collect(),
-            DhatMetrics::Default => indexset! {
-            TotalUnits,
-            TotalEvents,
-            TotalBytes,
-            TotalBlocks,
-            AtTGmaxBytes,
-            AtTGmaxBlocks,
-            AtTEndBytes,
-            AtTEndBlocks,
-            ReadsBytes,
-            WritesBytes },
-            DhatMetrics::SingleMetric(dhat_metric) => indexset! { dhat_metric },
-        }
-    }
-}
-
 impl From<DhatMetric> for DhatMetrics {
     fn from(value: DhatMetric) -> Self {
         Self::SingleMetric(value)
@@ -1812,6 +1601,12 @@ impl FromStr for DhatMetrics {
     }
 }
 
+impl Default for Direction {
+    fn default() -> Self {
+        Self::BottomToTop
+    }
+}
+
 impl<T> From<T> for EntryPoint
 where
     T: Into<String>,
@@ -1820,9 +1615,6 @@ where
         EntryPoint::Custom(value.into())
     }
 }
-
-#[cfg(feature = "runner")]
-impl Summarize for ErrorMetric {}
 
 impl Display for ErrorMetric {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1834,6 +1626,9 @@ impl Display for ErrorMetric {
         }
     }
 }
+
+#[cfg(feature = "runner")]
+impl Summarize for ErrorMetric {}
 
 impl EventKind {
     /// Return true if this `EventKind` is a derived event
@@ -1898,6 +1693,39 @@ impl Display for EventKind {
             Self::LLHitRate => f.write_str("LL Hit Rate"),
             Self::RamHitRate => f.write_str("RAM Hit Rate"),
             _ => write!(f, "{self:?}"),
+        }
+    }
+}
+
+impl From<CachegrindMetric> for EventKind {
+    fn from(value: CachegrindMetric) -> Self {
+        match value {
+            CachegrindMetric::Ir => Self::Ir,
+            CachegrindMetric::Dr => Self::Dr,
+            CachegrindMetric::Dw => Self::Dw,
+            CachegrindMetric::I1mr => Self::I1mr,
+            CachegrindMetric::D1mr => Self::D1mr,
+            CachegrindMetric::D1mw => Self::D1mw,
+            CachegrindMetric::ILmr => Self::ILmr,
+            CachegrindMetric::DLmr => Self::DLmr,
+            CachegrindMetric::DLmw => Self::DLmw,
+            CachegrindMetric::L1hits => Self::L1hits,
+            CachegrindMetric::LLhits => Self::LLhits,
+            CachegrindMetric::RamHits => Self::RamHits,
+            CachegrindMetric::TotalRW => Self::TotalRW,
+            CachegrindMetric::EstimatedCycles => Self::EstimatedCycles,
+            CachegrindMetric::Bc => Self::Bc,
+            CachegrindMetric::Bcm => Self::Bcm,
+            CachegrindMetric::Bi => Self::Bi,
+            CachegrindMetric::Bim => Self::Bim,
+            CachegrindMetric::I1MissRate => Self::I1MissRate,
+            CachegrindMetric::D1MissRate => Self::D1MissRate,
+            CachegrindMetric::LLiMissRate => Self::LLiMissRate,
+            CachegrindMetric::LLdMissRate => Self::LLdMissRate,
+            CachegrindMetric::LLMissRate => Self::LLMissRate,
+            CachegrindMetric::L1HitRate => Self::L1HitRate,
+            CachegrindMetric::LLHitRate => Self::LLHitRate,
+            CachegrindMetric::RamHitRate => Self::RamHitRate,
         }
     }
 }
@@ -1999,6 +1827,175 @@ impl TypeChecker for EventKind {
 
     fn is_float(&self) -> bool {
         !self.is_int()
+    }
+}
+
+#[cfg(feature = "runner")]
+impl From<CachegrindMetrics> for IndexSet<CachegrindMetric> {
+    fn from(value: CachegrindMetrics) -> Self {
+        let mut metrics = Self::new();
+        match value {
+            CachegrindMetrics::None => {}
+            CachegrindMetrics::All => metrics.extend(CachegrindMetric::iter()),
+            CachegrindMetrics::Default => {
+                metrics.insert(CachegrindMetric::Ir);
+                metrics.extend(Self::from(CachegrindMetrics::CacheHits));
+                metrics.extend([CachegrindMetric::TotalRW, CachegrindMetric::EstimatedCycles]);
+                metrics.extend(Self::from(CachegrindMetrics::BranchSim));
+            }
+            CachegrindMetrics::CacheMisses => metrics.extend([
+                CachegrindMetric::I1mr,
+                CachegrindMetric::D1mr,
+                CachegrindMetric::D1mw,
+                CachegrindMetric::ILmr,
+                CachegrindMetric::DLmr,
+                CachegrindMetric::DLmw,
+            ]),
+            CachegrindMetrics::CacheMissRates => metrics.extend([
+                CachegrindMetric::I1MissRate,
+                CachegrindMetric::LLiMissRate,
+                CachegrindMetric::D1MissRate,
+                CachegrindMetric::LLdMissRate,
+                CachegrindMetric::LLMissRate,
+            ]),
+            CachegrindMetrics::CacheHits => {
+                metrics.extend([
+                    CachegrindMetric::L1hits,
+                    CachegrindMetric::LLhits,
+                    CachegrindMetric::RamHits,
+                ]);
+            }
+            CachegrindMetrics::CacheHitRates => {
+                metrics.extend([
+                    CachegrindMetric::L1HitRate,
+                    CachegrindMetric::LLHitRate,
+                    CachegrindMetric::RamHitRate,
+                ]);
+            }
+            CachegrindMetrics::CacheSim => {
+                metrics.extend([CachegrindMetric::Dr, CachegrindMetric::Dw]);
+                metrics.extend(Self::from(CachegrindMetrics::CacheMisses));
+                metrics.extend(Self::from(CachegrindMetrics::CacheMissRates));
+                metrics.extend(Self::from(CachegrindMetrics::CacheHits));
+                metrics.extend(Self::from(CachegrindMetrics::CacheHitRates));
+                metrics.insert(CachegrindMetric::TotalRW);
+                metrics.insert(CachegrindMetric::EstimatedCycles);
+            }
+            CachegrindMetrics::BranchSim => {
+                metrics.extend([
+                    CachegrindMetric::Bc,
+                    CachegrindMetric::Bcm,
+                    CachegrindMetric::Bi,
+                    CachegrindMetric::Bim,
+                ]);
+            }
+            CachegrindMetrics::SingleEvent(metric) => {
+                metrics.insert(metric);
+            }
+        }
+
+        metrics
+    }
+}
+
+#[cfg(feature = "runner")]
+impl From<DhatMetrics> for IndexSet<DhatMetric> {
+    fn from(value: DhatMetrics) -> Self {
+        use DhatMetric::*;
+        match value {
+            DhatMetrics::All => DhatMetric::iter().collect(),
+            DhatMetrics::Default => indexset! {
+            TotalUnits,
+            TotalEvents,
+            TotalBytes,
+            TotalBlocks,
+            AtTGmaxBytes,
+            AtTGmaxBlocks,
+            AtTEndBytes,
+            AtTEndBlocks,
+            ReadsBytes,
+            WritesBytes },
+            DhatMetrics::SingleMetric(dhat_metric) => indexset! { dhat_metric },
+        }
+    }
+}
+
+#[cfg(feature = "runner")]
+impl From<CallgrindMetrics> for IndexSet<EventKind> {
+    fn from(value: CallgrindMetrics) -> Self {
+        let mut event_kinds = Self::new();
+        match value {
+            CallgrindMetrics::None => {}
+            CallgrindMetrics::All => event_kinds.extend(EventKind::iter()),
+            CallgrindMetrics::Default => {
+                event_kinds.insert(EventKind::Ir);
+                event_kinds.extend(Self::from(CallgrindMetrics::CacheHits));
+                event_kinds.extend([EventKind::TotalRW, EventKind::EstimatedCycles]);
+                event_kinds.extend(Self::from(CallgrindMetrics::SystemCalls));
+                event_kinds.insert(EventKind::Ge);
+                event_kinds.extend(Self::from(CallgrindMetrics::BranchSim));
+                event_kinds.extend(Self::from(CallgrindMetrics::WriteBackBehaviour));
+                event_kinds.extend(Self::from(CallgrindMetrics::CacheUse));
+            }
+            CallgrindMetrics::CacheMisses => event_kinds.extend([
+                EventKind::I1mr,
+                EventKind::D1mr,
+                EventKind::D1mw,
+                EventKind::ILmr,
+                EventKind::DLmr,
+                EventKind::DLmw,
+            ]),
+            CallgrindMetrics::CacheMissRates => event_kinds.extend([
+                EventKind::I1MissRate,
+                EventKind::LLiMissRate,
+                EventKind::D1MissRate,
+                EventKind::LLdMissRate,
+                EventKind::LLMissRate,
+            ]),
+            CallgrindMetrics::CacheHits => {
+                event_kinds.extend([EventKind::L1hits, EventKind::LLhits, EventKind::RamHits]);
+            }
+            CallgrindMetrics::CacheHitRates => {
+                event_kinds.extend([
+                    EventKind::L1HitRate,
+                    EventKind::LLHitRate,
+                    EventKind::RamHitRate,
+                ]);
+            }
+            CallgrindMetrics::CacheSim => {
+                event_kinds.extend([EventKind::Dr, EventKind::Dw]);
+                event_kinds.extend(Self::from(CallgrindMetrics::CacheMisses));
+                event_kinds.extend(Self::from(CallgrindMetrics::CacheMissRates));
+                event_kinds.extend(Self::from(CallgrindMetrics::CacheHits));
+                event_kinds.extend(Self::from(CallgrindMetrics::CacheHitRates));
+                event_kinds.insert(EventKind::TotalRW);
+                event_kinds.insert(EventKind::EstimatedCycles);
+            }
+            CallgrindMetrics::CacheUse => event_kinds.extend([
+                EventKind::AcCost1,
+                EventKind::AcCost2,
+                EventKind::SpLoss1,
+                EventKind::SpLoss2,
+            ]),
+            CallgrindMetrics::SystemCalls => {
+                event_kinds.extend([
+                    EventKind::SysCount,
+                    EventKind::SysTime,
+                    EventKind::SysCpuTime,
+                ]);
+            }
+            CallgrindMetrics::BranchSim => {
+                event_kinds.extend([EventKind::Bc, EventKind::Bcm, EventKind::Bi, EventKind::Bim]);
+            }
+            CallgrindMetrics::WriteBackBehaviour => {
+                event_kinds.extend([EventKind::ILdmr, EventKind::DLdmr, EventKind::DLdmw]);
+            }
+            CallgrindMetrics::SingleEvent(event_kind) => {
+                event_kinds.insert(event_kind);
+            }
+        }
+
+        event_kinds
     }
 }
 
@@ -2280,6 +2277,13 @@ impl From<&Path> for Stdio {
     }
 }
 
+#[cfg(feature = "runner")]
+impl Display for Stream {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("{self:?}").to_lowercase())
+    }
+}
+
 impl Tool {
     /// Create a new `Tool` configuration
     pub fn new(kind: ValgrindTool) -> Self {
@@ -2322,13 +2326,6 @@ impl Tool {
 
             self.raw_args.extend_ignore_flag(other.raw_args.0.iter());
         }
-    }
-}
-
-#[cfg(feature = "runner")]
-impl Display for Stream {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("{self:?}").to_lowercase())
     }
 }
 
@@ -2406,6 +2403,15 @@ impl Display for ValgrindTool {
 }
 
 #[cfg(feature = "runner")]
+impl FromStr for ValgrindTool {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::try_from(s.to_lowercase().as_str())
+    }
+}
+
+#[cfg(feature = "runner")]
 impl TryFrom<&str> for ValgrindTool {
     type Error = anyhow::Error;
 
@@ -2424,15 +2430,6 @@ impl TryFrom<&str> for ValgrindTool {
     }
 }
 
-#[cfg(feature = "runner")]
-impl FromStr for ValgrindTool {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::try_from(s.to_lowercase().as_str())
-    }
-}
-
 /// Update the value of an [`Option`]
 pub fn update_option<T: Clone>(first: &Option<T>, other: &Option<T>) -> Option<T> {
     other.clone().or_else(|| first.clone())
@@ -2446,6 +2443,24 @@ mod tests {
 
     use super::EventKind::*;
     use super::{CachegrindMetric as Cm, *};
+
+    #[test]
+    fn test_cachegrind_metric_from_str_ignore_case() {
+        for metric in CachegrindMetric::iter() {
+            let string = format!("{metric:?}");
+            let actual = CachegrindMetric::from_str(&string);
+            assert_eq!(actual.unwrap(), metric);
+        }
+    }
+
+    #[test]
+    fn test_event_kind_from_str_ignore_case() {
+        for event_kind in EventKind::iter() {
+            let string = format!("{event_kind:?}");
+            let actual = EventKind::from_str(&string);
+            assert_eq!(actual.unwrap(), event_kind);
+        }
+    }
 
     #[test]
     fn test_library_benchmark_config_update_from_all_when_default() {
@@ -2699,23 +2714,5 @@ mod tests {
         base.update(&other);
 
         assert_eq!(base, expected);
-    }
-
-    #[test]
-    fn test_event_kind_from_str_ignore_case() {
-        for event_kind in EventKind::iter() {
-            let string = format!("{event_kind:?}");
-            let actual = EventKind::from_str(&string);
-            assert_eq!(actual.unwrap(), event_kind);
-        }
-    }
-
-    #[test]
-    fn test_cachegrind_metric_from_str_ignore_case() {
-        for metric in CachegrindMetric::iter() {
-            let string = format!("{metric:?}");
-            let actual = CachegrindMetric::from_str(&string);
-            assert_eq!(actual.unwrap(), metric);
-        }
     }
 }

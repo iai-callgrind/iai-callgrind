@@ -9,12 +9,22 @@ use crate::runner::tool::regression::RegressionConfig;
 /// The callgrind regression check configuration
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallgrindRegressionConfig {
-    /// The soft limits
-    pub soft_limits: Vec<(EventKind, f64)>,
-    /// The hard limits
-    pub hard_limits: Vec<(EventKind, Metric)>,
     /// True if benchmarks should fail on first encountered failed regression check
     pub fail_fast: bool,
+    /// The hard limits
+    pub hard_limits: Vec<(EventKind, Metric)>,
+    /// The soft limits
+    pub soft_limits: Vec<(EventKind, f64)>,
+}
+
+impl Default for CallgrindRegressionConfig {
+    fn default() -> Self {
+        Self {
+            soft_limits: vec![(EventKind::Ir, 10f64)],
+            hard_limits: Vec::default(),
+            fail_fast: Default::default(),
+        }
+    }
 }
 
 impl RegressionConfig<EventKind> for CallgrindRegressionConfig {
@@ -82,16 +92,6 @@ impl TryFrom<api::CallgrindRegressionConfig> for CallgrindRegressionConfig {
             hard_limits: hard_limits.into_iter().collect(),
             fail_fast: fail_fast.unwrap_or(false),
         })
-    }
-}
-
-impl Default for CallgrindRegressionConfig {
-    fn default() -> Self {
-        Self {
-            soft_limits: vec![(EventKind::Ir, 10f64)],
-            hard_limits: Vec::default(),
-            fail_fast: Default::default(),
-        }
     }
 }
 

@@ -1,22 +1,12 @@
 //! Custom `serde` serializer and deserializer implementations
 
-use std::str::FromStr;
-
-use serde::de::Visitor;
-use serde::{Deserializer, Serializer};
-
 /// To prevent serializing f64 values inf, -inf, NaN into a null value, serialize f64 as string.
 /// That way the reverse operation retains the original value.
 pub mod float_64 {
-    use super::{Deserializer, FromStr, Serializer, Visitor};
+    use std::str::FromStr;
 
-    /// Serialize `f64` into a `String`
-    pub fn serialize<S>(input: &f64, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&input.to_string())
-    }
+    use serde::de::Visitor;
+    use serde::{Deserializer, Serializer};
 
     struct FieldVisitor;
 
@@ -49,6 +39,14 @@ pub mod float_64 {
     {
         deserializer.deserialize_any(FieldVisitor)
     }
+
+    /// Serialize `f64` into a `String`
+    pub fn serialize<S>(input: &f64, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&input.to_string())
+    }
 }
 
 #[cfg(test)]
@@ -77,11 +75,6 @@ mod tests {
         assert_round_trip_eq(value, expected);
     }
 
-    #[test]
-    fn test_serde_f64_nan() {
-        assert!(round_trip(f64::NAN, "NaN").is_nan());
-    }
-
     #[track_caller]
     fn assert_round_trip_eq(value: f64, expected: &str) {
         assert_eq!(value, round_trip(value, expected));
@@ -94,5 +87,10 @@ mod tests {
         serde_json::from_str::<ValueFixture>(&serialized)
             .unwrap()
             .value
+    }
+
+    #[test]
+    fn test_serde_f64_nan() {
+        assert!(round_trip(f64::NAN, "NaN").is_nan());
     }
 }

@@ -22,13 +22,43 @@ lazy_static! {
         Regex::new(r"(\\)([*]|[?])").expect("Regex should compile");
 }
 
+/// The properties and header data of a callgrind output file
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct CallgrindProperties {
+    /// The executed command with command-line arguments
+    pub cmd: Option<String>,
+    /// The "creator" of this output file
+    pub creator: Option<String>,
+    /// The `desc:` fields
+    pub desc: Vec<String>,
+    /// The prototype for all metrics in this file
+    pub metrics_prototype: Metrics,
+    /// The part number
+    pub part: Option<u64>,
+    /// The pid
+    pub pid: Option<i32>,
+    /// The prototype for all positions in this file
+    pub positions_prototype: Positions,
+    /// The thread
+    pub thread: Option<usize>,
+}
+
+/// The `Sentinel` function to search for in the haystack
+///
+/// # Developer notes
+///
+/// Refactor: This struct was named `Sentinel` but the usage changed and it would better be named
+/// `Needle` since it is used to seek for a specific function in the haystack of functions of the
+/// output file.
+#[allow(clippy::unsafe_derive_deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Sentinel(#[serde(with = "serde_regex")] Regex);
+
 /// A callgrind specific parser trait
 pub trait CallgrindParser {
     /// The output of the parser
     type Output;
 
-    /// Parse a single callgrind output file
-    fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)>;
     /// Parse all callgrind output files of this [`ToolOutputPath`]
     fn parse(
         &self,
@@ -49,39 +79,10 @@ pub trait CallgrindParser {
 
         Ok(results)
     }
-}
 
-/// The properties and header data of a callgrind output file
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct CallgrindProperties {
-    /// The prototype for all metrics in this file
-    pub metrics_prototype: Metrics,
-    /// The prototype for all positions in this file
-    pub positions_prototype: Positions,
-    /// The pid
-    pub pid: Option<i32>,
-    /// The thread
-    pub thread: Option<usize>,
-    /// The part number
-    pub part: Option<u64>,
-    /// The `desc:` fields
-    pub desc: Vec<String>,
-    /// The executed command with command-line arguments
-    pub cmd: Option<String>,
-    /// The "creator" of this output file
-    pub creator: Option<String>,
+    /// Parse a single callgrind output file
+    fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)>;
 }
-
-/// The `Sentinel` function to search for in the haystack
-///
-/// # Developer notes
-///
-/// Refactor: This struct was named `Sentinel` but the usage changed and it would better be named
-/// `Needle` since it is used to seek for a specific function in the haystack of functions of the
-/// output file.
-#[allow(clippy::unsafe_derive_deserialize)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Sentinel(#[serde(with = "serde_regex")] Regex);
 
 impl CallgrindProperties {
     /// Compare by target ids `pid`, `part` and `thread`
@@ -226,15 +227,15 @@ impl Display for Sentinel {
 
 impl Eq for Sentinel {}
 
-impl From<Sentinel> for String {
-    fn from(value: Sentinel) -> Self {
-        value.0.as_str().to_owned()
-    }
-}
-
 impl PartialEq for Sentinel {
     fn eq(&self, other: &Self) -> bool {
         self.0.as_str() == other.0.as_str()
+    }
+}
+
+impl From<Sentinel> for String {
+    fn from(value: Sentinel) -> Self {
+        value.0.as_str().to_owned()
     }
 }
 

@@ -27,31 +27,6 @@ fn test_library_version_newer_than_runner_version(#[case] part: &str) {
         .assert_stdout_is_empty();
 }
 
-#[test]
-fn test_library_version_older_than_runner_version() {
-    let runner_version = common::get_runner_version();
-    let library_version = {
-        let mut library_version = runner_version.clone();
-        // just to be sure we decrement at least one part because decrement saturates at 0
-        library_version.decrement("major");
-        library_version.decrement("minor");
-        library_version.decrement("patch");
-        library_version
-    };
-
-    let expected_stderr = format!(
-        "iai_callgrind_runner: Error: iai-callgrind-runner ({runner_version}) is newer than \
-         iai-callgrind ({library_version}). Please update iai-callgrind to '{runner_version}' in \
-         your Cargo.toml file\n"
-    );
-
-    common::Runner::new()
-        .args(&[&library_version.to_string()])
-        .run()
-        .assert_stderr_bytes(expected_stderr.as_bytes())
-        .assert_stdout_is_empty();
-}
-
 // We still error out here because we don't supply the rest of the necessary arguments
 #[test]
 fn test_library_version_equals_runner_version() {
@@ -84,6 +59,31 @@ fn test_library_version_not_submitted() {
 
     common::Runner::new()
         .args(&["no version"])
+        .run()
+        .assert_stderr_bytes(expected_stderr.as_bytes())
+        .assert_stdout_is_empty();
+}
+
+#[test]
+fn test_library_version_older_than_runner_version() {
+    let runner_version = common::get_runner_version();
+    let library_version = {
+        let mut library_version = runner_version.clone();
+        // just to be sure we decrement at least one part because decrement saturates at 0
+        library_version.decrement("major");
+        library_version.decrement("minor");
+        library_version.decrement("patch");
+        library_version
+    };
+
+    let expected_stderr = format!(
+        "iai_callgrind_runner: Error: iai-callgrind-runner ({runner_version}) is newer than \
+         iai-callgrind ({library_version}). Please update iai-callgrind to '{runner_version}' in \
+         your Cargo.toml file\n"
+    );
+
+    common::Runner::new()
+        .args(&[&library_version.to_string()])
         .run()
         .assert_stderr_bytes(expected_stderr.as_bytes())
         .assert_stdout_is_empty();

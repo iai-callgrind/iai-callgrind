@@ -16,6 +16,19 @@ use super::model::Metrics;
 use super::parser::{parse_header, CallgrindParser, CallgrindProperties, Sentinel};
 use crate::error::Error;
 
+/// The possible paths found in the output file
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Serialize, Deserialize)]
+pub enum SourcePath {
+    /// The unknown path found as `???` in the output file
+    Unknown,
+    /// A rust path, starting with `/rustc`
+    Rust(PathBuf),
+    /// A relative path, not starting with a `/`
+    Relative(PathBuf),
+    /// A absolute path, starting with a `/`
+    Absolute(PathBuf),
+}
+
 /// The `CallgrindMap`
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CallgrindMap {
@@ -29,17 +42,17 @@ pub struct CallgrindMap {
 
 #[derive(Debug, Default)]
 struct CfnRecord {
-    obj: Option<SourcePath>,
+    calls: u64,
     file: Option<SourcePath>,
     id: Option<Id>,
-    calls: u64,
+    obj: Option<SourcePath>,
 }
 
 #[derive(Debug, Default, Clone)]
 struct CurrentId {
-    obj: Option<SourcePath>,
     file: Option<SourcePath>,
     func: Option<String>,
+    obj: Option<SourcePath>,
 }
 
 /// Parse a callgrind outfile into a `HashMap`
@@ -47,34 +60,21 @@ struct CurrentId {
 /// This parser is a based on `callgrind_annotate` and how it summarizes the inclusive costs.
 #[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HashMapParser {
-    /// Look for this [`Sentinel`] in the output files
-    pub sentinel: Option<Sentinel>,
     /// The project root directory required to make paths relative
     pub project_root: PathBuf,
+    /// Look for this [`Sentinel`] in the output files
+    pub sentinel: Option<Sentinel>,
 }
 
 /// The unique `Id` identifying a function uniquely
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Id {
-    /// The object the function is found in
-    pub obj: Option<SourcePath>,
     /// the file the function is found in
     pub file: Option<SourcePath>,
     /// The function
     pub func: String,
-}
-
-/// The possible paths found in the output file
-#[derive(Debug, Hash, PartialEq, Eq, Clone, Serialize, Deserialize)]
-pub enum SourcePath {
-    /// The unknown path found as `???` in the output file
-    Unknown,
-    /// A rust path, starting with `/rustc`
-    Rust(PathBuf),
-    /// A relative path, not starting with a `/`
-    Relative(PathBuf),
-    /// A absolute path, starting with a `/`
-    Absolute(PathBuf),
+    /// The object the function is found in
+    pub obj: Option<SourcePath>,
 }
 
 /// The `Value` to be associated with an [`Id`]
@@ -128,21 +128,6 @@ impl From<Id> for CurrentId {
             obj: value.obj,
             file: value.file,
             func: Some(value.func),
-        }
-    }
-}
-
-impl TryFrom<CurrentId> for Id {
-    type Error = String;
-
-    fn try_from(value: CurrentId) -> std::result::Result<Self, Self::Error> {
-        match value.func {
-            Some(func) => Ok(Id {
-                obj: value.obj,
-                file: value.file,
-                func,
-            }),
-            None => Err("Missing function".to_owned()),
         }
     }
 }
@@ -287,6 +272,20 @@ impl CallgrindParser for HashMapParser {
     }
 }
 
+impl TryFrom<CurrentId> for Id {
+    type Error = String;
+
+    fn try_from(value: CurrentId) -> std::result::Result<Self, Self::Error> {
+        match value.func {
+            Some(func) => Ok(Id {
+                obj: value.obj,
+                file: value.file,
+                func,
+            }),
+            None => Err("Missing function".to_owned()),
+        }
+    }
+}
 impl Ord for SourcePath {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {

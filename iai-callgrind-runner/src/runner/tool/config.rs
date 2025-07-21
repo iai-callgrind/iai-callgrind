@@ -30,34 +30,6 @@ use crate::runner::summary::{
 use crate::runner::{cachegrind, callgrind, DEFAULT_TOGGLE};
 use crate::util::Glob;
 
-/// The [`ToolConfig`] containing the basic configuration values to run the benchmark for this tool
-#[derive(Debug, Clone)]
-pub struct ToolConfig {
-    /// The [`ValgrindTool`]
-    pub tool: ValgrindTool,
-    /// If true, this tool is enabled for this benchmark
-    pub is_enabled: bool,
-    /// If true, this tool is the default tool for the benchmark run
-    pub is_default: bool,
-    /// The arguments to pass to the valgrind executable
-    pub args: ToolArgs,
-    // TODO: refactor: Can this be eliminated
-    /// A optional output file modifier
-    pub outfile_modifier: Option<String>,
-    /// The tool specific regression check configuration
-    pub regression_config: ToolRegressionConfig,
-    /// The tool specific flamegraph configuration
-    pub flamegraph_config: ToolFlamegraphConfig,
-    /// The [`EntryPoint`] of this tool
-    pub entry_point: EntryPoint,
-    /// The [`Glob`] patterns used to matched a function in the call stack of a program point
-    pub frames: Vec<Glob>,
-}
-
-/// Multiple [`ToolConfig`]s
-#[derive(Debug, Clone)]
-pub struct ToolConfigs(pub Vec<ToolConfig>);
-
 /// The tool specific flamegraph configuration
 #[derive(Debug, Clone, PartialEq)]
 pub enum ToolFlamegraphConfig {
@@ -66,6 +38,34 @@ pub enum ToolFlamegraphConfig {
     /// If there is no configuration
     None,
 }
+
+/// The [`ToolConfig`] containing the basic configuration values to run the benchmark for this tool
+#[derive(Debug, Clone)]
+pub struct ToolConfig {
+    /// The arguments to pass to the valgrind executable
+    pub args: ToolArgs,
+    /// The [`EntryPoint`] of this tool
+    pub entry_point: EntryPoint,
+    /// The tool specific flamegraph configuration
+    pub flamegraph_config: ToolFlamegraphConfig,
+    /// The [`Glob`] patterns used to matched a function in the call stack of a program point
+    pub frames: Vec<Glob>,
+    /// If true, this tool is the default tool for the benchmark run
+    pub is_default: bool,
+    /// If true, this tool is enabled for this benchmark
+    pub is_enabled: bool,
+    // TODO: refactor: Can this be eliminated
+    /// A optional output file modifier
+    pub outfile_modifier: Option<String>,
+    /// The tool specific regression check configuration
+    pub regression_config: ToolRegressionConfig,
+    /// The [`ValgrindTool`]
+    pub tool: ValgrindTool,
+}
+
+/// Multiple [`ToolConfig`]s
+#[derive(Debug, Clone)]
+pub struct ToolConfigs(pub Vec<ToolConfig>);
 
 impl ToolConfig {
     /// Create a new `ToolConfig`

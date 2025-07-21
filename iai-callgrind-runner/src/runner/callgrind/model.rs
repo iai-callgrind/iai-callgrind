@@ -14,15 +14,6 @@ use crate::runner::metrics::{Metric, Summarize};
 /// The callgrind specific `Metrics`
 pub type Metrics = crate::runner::metrics::Metrics<EventKind>;
 
-/// The call relationship among functions
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Calls {
-    /// The call count
-    amount: u64,
-    /// The target [`Positions`]
-    positions: Positions,
-}
-
 /// The [`Positions`] type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PositionType {
@@ -30,6 +21,15 @@ pub enum PositionType {
     Instr,
     /// The line number
     Line,
+}
+
+/// The call relationship among functions
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Calls {
+    /// The call count
+    amount: u64,
+    /// The target [`Positions`]
+    positions: Positions,
 }
 
 /// The positions
@@ -45,6 +45,14 @@ impl Calls {
         let amount = iter.next().unwrap().as_ref().parse().unwrap();
         positions.set_iter_str(iter);
         Self { amount, positions }
+    }
+}
+
+impl Summarize for EventKind {
+    fn summarize(costs: &mut Cow<Metrics>) {
+        if !costs.is_summarized() {
+            let _ = costs.to_mut().make_summary();
+        }
     }
 }
 
@@ -113,10 +121,17 @@ impl Default for Metrics {
     }
 }
 
-impl Summarize for EventKind {
-    fn summarize(costs: &mut Cow<Metrics>) {
-        if !costs.is_summarized() {
-            let _ = costs.to_mut().make_summary();
+impl<T> From<T> for PositionType
+where
+    T: AsRef<str>,
+{
+    fn from(value: T) -> Self {
+        let value = value.as_ref();
+        // "addr" is taken from the callgrind_annotate script although not officially documented
+        match value.to_lowercase().as_str() {
+            "instr" | "addr" => Self::Instr,
+            "line" => Self::Line,
+            _ => panic!("Unknown positions type: '{value}"),
         }
     }
 }
@@ -168,21 +183,6 @@ where
                 .map(|p| (PositionType::from(p), 0))
                 .collect::<IndexMap<_, _>>(),
         )
-    }
-}
-
-impl<T> From<T> for PositionType
-where
-    T: AsRef<str>,
-{
-    fn from(value: T) -> Self {
-        let value = value.as_ref();
-        // "addr" is taken from the callgrind_annotate script although not officially documented
-        match value.to_lowercase().as_str() {
-            "instr" | "addr" => Self::Instr,
-            "line" => Self::Line,
-            _ => panic!("Unknown positions type: '{value}"),
-        }
     }
 }
 

@@ -15,12 +15,12 @@ lazy_static! {
 /// The properties and header data of a cachegrind output file
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct CachegrindProperties {
-    /// The prototype for all metrics in this file
-    pub metrics_prototype: Metrics,
-    /// The `desc:` fields
-    pub desc: Vec<String>,
     /// The executed command with command-line arguments
     pub cmd: String,
+    /// The `desc:` fields
+    pub desc: Vec<String>,
+    /// The prototype for all metrics in this file
+    pub metrics_prototype: Metrics,
 }
 
 /// Parse the output file header of a cachegrind out file

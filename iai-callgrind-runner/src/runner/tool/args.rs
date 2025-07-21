@@ -1,19 +1,8 @@
 //! The module containing all elements for [`ToolArgs`]
 
-use std::ffi::OsString;
-use std::fmt::Display;
-use std::str::FromStr;
-
-use anyhow::{anyhow, Result};
-use log::warn;
-
-use super::path::ToolOutputPath;
-use crate::api::{RawArgs, ValgrindTool};
-use crate::error::Error;
-use crate::util::{bool_to_yesno, yesno_to_bool};
-
 /// Module containing the Iai-Callgrind defaults for the command line arguments of all tools
 #[allow(missing_docs)]
+#[allow(clippy::arbitrary_source_item_ordering)]
 pub mod defaults {
     use super::FairSched;
 
@@ -52,6 +41,18 @@ pub mod defaults {
     ////////////////////////////////////////////////////
 }
 
+use std::ffi::OsString;
+use std::fmt::Display;
+use std::str::FromStr;
+
+use anyhow::{anyhow, Result};
+use log::warn;
+
+use super::path::ToolOutputPath;
+use crate::api::{RawArgs, ValgrindTool};
+use crate::error::Error;
+use crate::util::{bool_to_yesno, yesno_to_bool};
+
 /// The possible values of the --fair-sched cli arg
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FairSched {
@@ -66,22 +67,22 @@ pub enum FairSched {
 /// The arguments to pass to the valgrind tool
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolArgs {
-    /// The [`ValgrindTool`]
-    pub tool: ValgrindTool,
-    /// The output paths argument like --callgrind-out-file, ...
-    pub output_paths: Vec<OsString>,
-    /// The logfile paths argument --log-file
-    pub log_path: Option<OsString>,
     /// The error exit code for error checking tools like `Memcheck`
     pub error_exitcode: String,
-    /// If --verbose is set to true of false
-    pub verbose: bool,
-    /// The --trace-children argument
-    pub trace_children: bool,
     /// The --fair-sched argument
     pub fair_sched: FairSched,
+    /// The logfile paths argument --log-file
+    pub log_path: Option<OsString>,
     /// All other arguments
     pub other: Vec<String>,
+    /// The output paths argument like --callgrind-out-file, ...
+    pub output_paths: Vec<OsString>,
+    /// The [`ValgrindTool`]
+    pub tool: ValgrindTool,
+    /// The --trace-children argument
+    pub trace_children: bool,
+    /// If --verbose is set to true of false
+    pub verbose: bool,
 }
 
 impl Display for FairSched {

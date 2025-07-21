@@ -7,26 +7,6 @@ use iai_callgrind_runner::error::Error;
 use iai_callgrind_runner::runner::envs;
 use log::{error, warn};
 
-/// Print warnings for deprecated usages of environment variables
-fn print_warnings() {
-    if std::env::var("IAI_ALLOW_ASLR").is_ok() {
-        warn!("The IAI_ALLOW_ASLR environment variable changed to IAI_CALLGRIND_ALLOW_ASLR");
-    }
-
-    if std::env::var("RUST_LOG").is_ok() {
-        warn!(
-            "The RUST_LOG environment variable to set the log level changed to IAI_CALLGRIND_LOG"
-        );
-    }
-
-    if std::env::var("IAI_CALLGRIND_REGRESSION").is_ok() {
-        warn!(
-            "The IAI_CALLGRIND_REGRESSION environment variable changed to \
-             IAI_CALLGRIND_CALLGRIND_LIMITS"
-        );
-    }
-}
-
 /// The main function of the `iai-callgrind-runner` binary
 ///
 /// We initialize the logging interface and configure the usage of colors as early as possible here.
@@ -96,5 +76,25 @@ fn main() {
                 std::process::exit(1)
             }
         },
+    }
+}
+
+/// Print warnings for deprecated usages of environment variables
+fn print_warnings() {
+    if std::env::var("IAI_ALLOW_ASLR").is_ok() {
+        warn!("The IAI_ALLOW_ASLR environment variable changed to IAI_CALLGRIND_ALLOW_ASLR");
+    }
+
+    if std::env::var("RUST_LOG").is_ok() {
+        warn!(
+            "The RUST_LOG environment variable to set the log level changed to IAI_CALLGRIND_LOG"
+        );
+    }
+
+    if std::env::var("IAI_CALLGRIND_REGRESSION").is_ok() {
+        warn!(
+            "The IAI_CALLGRIND_REGRESSION environment variable changed to \
+             IAI_CALLGRIND_CALLGRIND_LIMITS"
+        );
     }
 }

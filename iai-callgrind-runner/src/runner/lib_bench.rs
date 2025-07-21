@@ -1,6 +1,11 @@
 //! The `lib_bench` module
 //!
 //! This module runs all the library benchmarks
+
+mod defaults {
+    pub const COMPARE_BY_ID: bool = false;
+}
+
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::time::Instant;
@@ -21,10 +26,6 @@ use crate::api::{
 use crate::error::Error;
 use crate::runner::format;
 
-mod defaults {
-    pub const COMPARE_BY_ID: bool = false;
-}
-
 /// Implements [`Benchmark`] to run a [`LibBench`] and compare against an earlier [`BenchmarkKind`]
 #[derive(Debug)]
 struct BaselineBenchmark {
@@ -34,10 +35,10 @@ struct BaselineBenchmark {
 // A `Group` is the organizational unit and counterpart of the `library_benchmark_group!` macro
 #[derive(Debug)]
 struct Group {
-    name: String,
     benches: Vec<LibBench>,
     compare_by_id: bool,
     module_path: ModulePath,
+    name: String,
     setup: Option<Assistant>,
     teardown: Option<Assistant>,
 }
@@ -51,20 +52,18 @@ struct Groups(Vec<Group>);
 /// It needs an implementation of `Benchmark` to be run.
 #[derive(Debug)]
 pub struct LibBench {
-    /// The index of the group in the benchmark harness
-    pub group_index: usize,
-    /// The index of the benchmark in the benchmark harness
-    pub bench_index: usize,
-    /// The id of the benchmark as in `#[bench::id]`
-    pub id: Option<String>,
-    /// The name of the annotated function
-    pub function_name: String,
     /// The arguments of `args` attribute as a single string
     pub args: Option<String>,
-    /// The [`RunOptions`]
-    pub run_options: RunOptions,
-    /// The tool configurations for this benchmark run
-    pub tools: ToolConfigs,
+    /// The index of the benchmark in the benchmark harness
+    pub bench_index: usize,
+    /// The default [`ValgrindTool`]. If not changed it is `Callgrind`.
+    pub default_tool: ValgrindTool,
+    /// The name of the annotated function
+    pub function_name: String,
+    /// The index of the group in the benchmark harness
+    pub group_index: usize,
+    /// The id of the benchmark as in `#[bench::id]`
+    pub id: Option<String>,
     /// The [`ModulePath`].
     ///
     /// This is an artificial path for display purposes and does not reflect the real module path
@@ -72,8 +71,10 @@ pub struct LibBench {
     pub module_path: ModulePath,
     /// The [`OutputFormat`]
     pub output_format: OutputFormat,
-    /// The default [`ValgrindTool`]. If not changed it is `Callgrind`.
-    pub default_tool: ValgrindTool,
+    /// The [`RunOptions`]
+    pub run_options: RunOptions,
+    /// The tool configurations for this benchmark run
+    pub tools: ToolConfigs,
 }
 
 /// Implements [`Benchmark`] to load a [`LibBench`] baseline run and compare against another
@@ -82,16 +83,16 @@ pub struct LibBench {
 /// This benchmark runner does not run valgrind or execute anything.
 #[derive(Debug)]
 struct LoadBaselineBenchmark {
-    loaded_baseline: BaselineName,
     baseline: BaselineName,
+    loaded_baseline: BaselineName,
 }
 
 /// Create and run [`Groups`] with an implementation of [`Benchmark`]
 #[derive(Debug)]
 struct Runner {
+    benchmark: Box<dyn Benchmark>,
     config: Config,
     groups: Groups,
-    benchmark: Box<dyn Benchmark>,
     setup: Option<Assistant>,
     teardown: Option<Assistant>,
 }
@@ -108,8 +109,8 @@ struct SaveBaselineBenchmark {
 /// Despite having the same name, this trait differs from `bin_bench::Benchmark` and is
 /// designed to run a `LibBench` only.
 trait Benchmark: std::fmt::Debug {
-    fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath;
     fn baselines(&self) -> Baselines;
+    fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath;
     fn run(&self, lib_bench: &LibBench, config: &Config, group: &Group)
         -> Result<BenchmarkSummary>;
 }
@@ -549,9 +550,9 @@ impl Runner {
             };
 
         Ok(Self {
+            benchmark,
             config,
             groups,
-            benchmark,
             setup,
             teardown,
         })
@@ -634,17 +635,6 @@ impl Benchmark for SaveBaselineBenchmark {
     }
 }
 
-/// The top-level method which should be used to initiate running all benchmarks
-pub fn run(benchmark_groups: LibraryBenchmarkGroups, config: Config) -> Result<BenchmarkSummaries> {
-    let runner = Runner::new(benchmark_groups, config)?;
-
-    let start = Instant::now();
-    let mut summaries = runner.run()?;
-    summaries.elapsed(start);
-
-    Ok(summaries)
-}
-
 /// Print a list of all benchmarks with a short summary
 pub fn list(benchmark_groups: LibraryBenchmarkGroups, config: &Config) -> Result<()> {
     let groups =
@@ -661,4 +651,15 @@ pub fn list(benchmark_groups: LibraryBenchmarkGroups, config: &Config) -> Result
     format::print_benchmark_list_summary(sum);
 
     Ok(())
+}
+
+/// The top-level method which should be used to initiate running all benchmarks
+pub fn run(benchmark_groups: LibraryBenchmarkGroups, config: Config) -> Result<BenchmarkSummaries> {
+    let runner = Runner::new(benchmark_groups, config)?;
+
+    let start = Instant::now();
+    let mut summaries = runner.run()?;
+    summaries.elapsed(start);
+
+    Ok(summaries)
 }

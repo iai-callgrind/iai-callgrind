@@ -142,19 +142,19 @@ mod tests {
 
     #[derive(Debug, PartialEq, Eq, Clone)]
     struct ErrorsFixture {
-        errors: u64,
         ctxs: u64,
-        suppr_errors: u64,
+        errors: u64,
         suppr_ctxs: u64,
+        suppr_errors: u64,
     }
 
     impl ErrorsFixture {
         fn new(errors: u64, ctxs: u64, suppr_errors: u64, suppr_ctxs: u64) -> Self {
             Self {
-                errors,
                 ctxs,
-                suppr_errors,
+                errors,
                 suppr_ctxs,
+                suppr_errors,
             }
         }
 
@@ -185,10 +185,10 @@ mod tests {
                 .unwrap();
 
             Self {
-                errors,
                 ctxs,
-                suppr_errors,
+                errors,
                 suppr_ctxs,
+                suppr_errors,
             }
         }
     }

@@ -24,8 +24,8 @@ pub struct FlamegraphParser {
 
 #[derive(Debug, PartialEq, Eq)]
 struct HeapElem {
-    source: String,
     cost: Metric,
+    source: String,
 }
 
 impl FlamegraphMap {
@@ -131,7 +131,7 @@ impl FlamegraphMap {
                 }
             }
 
-            heap.push(HeapElem { source, cost });
+            heap.push(HeapElem { cost, source });
         }
 
         let mut stacks: Vec<String> = vec![];

@@ -6,6 +6,25 @@ pub mod cachegrind;
 pub mod callgrind;
 pub mod common;
 pub mod dhat;
+
+/// Names of environment variables which are used in different places
+///
+/// The variables here are not part of the parsed environment variables of `clap` in
+/// [`crate::runner::args::CommandLineArgs`]
+pub mod envs {
+    /// The name of the package
+    pub const CARGO_PKG_NAME: &str = "CARGO_PKG_NAME";
+    /// Location of where to place all generated artifacts
+    pub const CARGO_TARGET_DIR: &str = "CARGO_TARGET_DIR";
+    /// The default color mode
+    pub const CARGO_TERM_COLOR: &str = "CARGO_TERM_COLOR";
+
+    /// The environment variable to set the color (same syntax as `CARGO_TERM_COLOR`)
+    pub const IAI_CALLGRIND_COLOR: &str = "IAI_CALLGRIND_COLOR";
+    /// Set the logging output of Iai-Callgrind
+    pub const IAI_CALLGRIND_LOG: &str = "IAI_CALLGRIND_LOG";
+}
+
 pub mod format;
 pub mod lib_bench;
 pub mod meta;
@@ -29,24 +48,6 @@ use self::summary::BenchmarkKind;
 use crate::api::{BinaryBenchmarkGroups, LibraryBenchmarkGroups};
 use crate::error::Error;
 
-/// Names of environment variables which are used in different places
-///
-/// The variables here are not part of the parsed environment variables of `clap` in
-/// [`crate::runner::args::CommandLineArgs`]
-pub mod envs {
-    /// The environment variable to set the color (same syntax as `CARGO_TERM_COLOR`)
-    pub const IAI_CALLGRIND_COLOR: &str = "IAI_CALLGRIND_COLOR";
-    /// Set the logging output of Iai-Callgrind
-    pub const IAI_CALLGRIND_LOG: &str = "IAI_CALLGRIND_LOG";
-
-    /// The name of the package
-    pub const CARGO_PKG_NAME: &str = "CARGO_PKG_NAME";
-    /// Location of where to place all generated artifacts
-    pub const CARGO_TARGET_DIR: &str = "CARGO_TARGET_DIR";
-    /// The default color mode
-    pub const CARGO_TERM_COLOR: &str = "CARGO_TERM_COLOR";
-}
-
 /// The default toggle/frame used by the [`crate::api::EntryPoint::Default`]
 pub const DEFAULT_TOGGLE: &str = "*::__iai_callgrind_wrapper_mod::*";
 
@@ -63,13 +64,13 @@ struct PostRun {
 /// These are not the user arguments of the `cargo bench ... -- ARGS` command.
 #[derive(Debug)]
 struct RunnerArgs {
+    bench_bin: PathBuf,
+    bench_file: PathBuf,
     bench_kind: BenchmarkKind,
+    module: String,
+    num_bytes: usize,
     package_dir: PathBuf,
     package_name: String,
-    bench_file: PathBuf,
-    module: String,
-    bench_bin: PathBuf,
-    num_bytes: usize,
 }
 
 struct RunnerArgsIterator(ArgsOs);
@@ -136,13 +137,13 @@ impl RunnerArgs {
             .map_err(|_| Error::InitError("Failed to parse number of bytes".to_owned()))?;
 
         Ok(Self {
+            bench_bin,
+            bench_file,
             bench_kind,
+            module,
+            num_bytes,
             package_dir,
             package_name,
-            bench_file,
-            module,
-            bench_bin,
-            num_bytes,
         })
     }
 }

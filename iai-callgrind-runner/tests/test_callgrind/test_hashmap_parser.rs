@@ -8,34 +8,6 @@ use rstest::rstest;
 use crate::common::{assert_parse_error, Fixtures};
 
 #[test]
-fn test_when_version_mismatch_then_should_return_error() {
-    let parser = HashMapParser::default();
-    let output = Fixtures::get_tool_output_path(
-        "callgrind.out",
-        ValgrindTool::Callgrind,
-        ToolOutputPathKind::Out,
-        "invalid.version_too_high",
-    );
-    assert_parse_error(
-        &output.to_path(),
-        parser.parse(&output),
-        "Version mismatch: Requires callgrind format version '1' but was '2'",
-    );
-}
-
-#[test]
-fn test_when_empty_file_then_should_return_error() {
-    let parser = HashMapParser::default();
-    let output = Fixtures::get_tool_output_path(
-        "callgrind.out",
-        ValgrindTool::Callgrind,
-        ToolOutputPathKind::Out,
-        "empty",
-    );
-    assert_parse_error(&output.to_path(), parser.parse(&output), "Empty file");
-}
-
-#[test]
 fn test_valid_just_main() {
     let parser = HashMapParser::default();
     let output = Fixtures::get_tool_output_path(
@@ -51,6 +23,34 @@ fn test_valid_just_main() {
 
     assert_eq!(actual_map.len(), 1);
     assert_eq!(actual_map[0].2, expected_map);
+}
+
+#[test]
+fn test_when_empty_file_then_should_return_error() {
+    let parser = HashMapParser::default();
+    let output = Fixtures::get_tool_output_path(
+        "callgrind.out",
+        ValgrindTool::Callgrind,
+        ToolOutputPathKind::Out,
+        "empty",
+    );
+    assert_parse_error(&output.to_path(), parser.parse(&output), "Empty file");
+}
+
+#[test]
+fn test_when_version_mismatch_then_should_return_error() {
+    let parser = HashMapParser::default();
+    let output = Fixtures::get_tool_output_path(
+        "callgrind.out",
+        ValgrindTool::Callgrind,
+        ToolOutputPathKind::Out,
+        "invalid.version_too_high",
+    );
+    assert_parse_error(
+        &output.to_path(),
+        parser.parse(&output),
+        "Version mismatch: Requires callgrind format version '1' but was '2'",
+    );
 }
 
 #[rstest]

@@ -16,16 +16,16 @@ use crate::util::{bool_to_yesno, yesno_to_bool};
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone)]
 pub struct Args {
-    i1: String,
-    d1: String,
-    ll: String,
     cache_sim: bool,
-    other: Vec<String>,
-    verbose: bool,
     cachegrind_out_file: Option<PathBuf>,
-    log_arg: Option<OsString>,
-    trace_children: bool,
+    d1: String,
     fair_sched: FairSched,
+    i1: String,
+    ll: String,
+    log_arg: Option<OsString>,
+    other: Vec<String>,
+    trace_children: bool,
+    verbose: bool,
 }
 
 impl Args {

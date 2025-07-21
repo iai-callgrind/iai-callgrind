@@ -1,5 +1,10 @@
 //! This module contains elements which are common to library and binary benchmarks
 
+mod defaults {
+    pub const SANDBOX_ENABLED: bool = false;
+    pub const SANDBOX_FIXTURES_FOLLOW_SYMLINKS: bool = false;
+}
+
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::path::PathBuf;
@@ -18,21 +23,8 @@ use crate::api::{self, Pipe};
 use crate::error::Error;
 use crate::util::{copy_directory, make_absolute, write_all_to_stderr};
 
-mod defaults {
-    pub const SANDBOX_FIXTURES_FOLLOW_SYMLINKS: bool = false;
-    pub const SANDBOX_ENABLED: bool = false;
-}
-
-/// An `Assistant` corresponds to the `setup` or `teardown` functions in the UI
-#[derive(Debug, Clone)]
-pub struct Assistant {
-    kind: AssistantKind,
-    group_name: Option<String>,
-    indices: Option<(usize, usize)>,
-    pipe: Option<Pipe>,
-    envs: Vec<(OsString, OsString)>,
-    run_parallel: bool,
-}
+/// The `Baselines` type
+pub type Baselines = (Option<String>, Option<String>);
 
 /// the [`Assistant`] kind
 #[derive(Debug, Clone)]
@@ -43,9 +35,16 @@ pub enum AssistantKind {
     Teardown,
 }
 
-/// The `Baselines` type
-pub type Baselines = (Option<String>, Option<String>);
-
+/// An `Assistant` corresponds to the `setup` or `teardown` functions in the UI
+#[derive(Debug, Clone)]
+pub struct Assistant {
+    envs: Vec<(OsString, OsString)>,
+    group_name: Option<String>,
+    indices: Option<(usize, usize)>,
+    kind: AssistantKind,
+    pipe: Option<Pipe>,
+    run_parallel: bool,
+}
 /// Contains benchmark summaries of (binary, library) benchmark runs and their execution time
 ///
 /// Used to print a final summary after all benchmarks.
@@ -60,16 +59,16 @@ pub struct BenchmarkSummaries {
 /// The `Config` contains all the information extracted from the UI invocation of the runner
 #[derive(Debug)]
 pub struct Config {
-    /// The package directory of the package in which `iai-callgrind` (not the runner) is used
-    pub package_dir: PathBuf,
-    /// The path to the benchmark file which contains the benchmark harness
-    pub bench_file: PathBuf,
-    /// The module path of the benchmark file
-    pub module_path: ModulePath,
     /// The path to the compiled binary with the benchmark harness
     pub bench_bin: PathBuf,
+    /// The path to the benchmark file which contains the benchmark harness
+    pub bench_file: PathBuf,
     /// The [`Metadata`]
     pub meta: Metadata,
+    /// The module path of the benchmark file
+    pub module_path: ModulePath,
+    /// The package directory of the package in which `iai-callgrind` (not the runner) is used
+    pub package_dir: PathBuf,
 }
 
 /// A helper struct similar to a file path but for module paths with the `::` delimiter
@@ -349,18 +348,6 @@ impl Display for ModulePath {
     }
 }
 
-impl From<ModulePath> for String {
-    fn from(value: ModulePath) -> Self {
-        value.to_string()
-    }
-}
-
-impl From<&ModulePath> for String {
-    fn from(value: &ModulePath) -> Self {
-        value.to_string()
-    }
-}
-
 impl Sandbox {
     /// Setup the `Sandbox` if enabled
     ///
@@ -436,6 +423,12 @@ impl Sandbox {
         }
 
         Ok(())
+    }
+}
+
+impl From<ModulePath> for String {
+    fn from(value: ModulePath) -> Self {
+        value.to_string()
     }
 }
 

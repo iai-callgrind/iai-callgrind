@@ -20,24 +20,6 @@ use super::summary::Diffs;
 use crate::api::{self, CachegrindMetric, DhatMetric, ErrorMetric, EventKind};
 use crate::util::{to_string_unsigned_short, EitherOrBoth};
 
-/// Trait for tools which summarize and calculate derived metrics
-pub trait Summarize: Hash + Eq + Clone {
-    /// Calculate the derived metrics if any
-    fn summarize(_: &mut Cow<Metrics<Self>>) {}
-}
-
-/// Trait for checking the [`Metric`] type of a metric kind (like [`api::EventKind`])
-pub trait TypeChecker {
-    /// Return true if the `Metric` has the expected metric type
-    fn verify_metric(&self, metric: Metric) -> bool {
-        (self.is_int() && metric.is_int()) || (self.is_float() && metric.is_float())
-    }
-    /// Return true if the metric kind is a [`Metric::Int`]
-    fn is_int(&self) -> bool;
-    /// Return true if the metric kind is a [`Metric::Float`]
-    fn is_float(&self) -> bool;
-}
-
 /// The metric measured by valgrind or derived from one or more other metrics
 ///
 /// The valgrind metrics measured by any of its tools are `u64`. However, to be able to represent
@@ -95,16 +77,34 @@ pub struct Metrics<K: Hash + Eq>(pub IndexMap<K, Metric>);
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct MetricsDiff {
-    /// Either the `new`, `old` or both metrics
-    pub metrics: EitherOrBoth<Metric>,
     /// If both metrics are present there is also a `Diffs` present
     pub diffs: Option<Diffs>,
+    /// Either the `new`, `old` or both metrics
+    pub metrics: EitherOrBoth<Metric>,
 }
 
 /// The `MetricsSummary` contains all differences between two tool run segments
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct MetricsSummary<K: Hash + Eq = EventKind>(IndexMap<K, MetricsDiff>);
+
+/// Trait for tools which summarize and calculate derived metrics
+pub trait Summarize: Hash + Eq + Clone {
+    /// Calculate the derived metrics if any
+    fn summarize(_: &mut Cow<Metrics<Self>>) {}
+}
+
+/// Trait for checking the [`Metric`] type of a metric kind (like [`api::EventKind`])
+pub trait TypeChecker {
+    /// Return true if the metric kind is a [`Metric::Float`]
+    fn is_float(&self) -> bool;
+    /// Return true if the metric kind is a [`Metric::Int`]
+    fn is_int(&self) -> bool;
+    /// Return true if the `Metric` has the expected metric type
+    fn verify_metric(&self, metric: Metric) -> bool {
+        (self.is_int() && metric.is_int()) || (self.is_float() && metric.is_float())
+    }
+}
 
 impl Metric {
     /// Divide by `rhs` normally but if rhs is `0` the result is by convention `0.0`
@@ -207,15 +207,6 @@ impl From<f64> for Metric {
     }
 }
 
-impl From<Metric> for f64 {
-    fn from(value: Metric) -> Self {
-        match value {
-            Metric::Int(a) => a as f64,
-            Metric::Float(a) => a,
-        }
-    }
-}
-
 impl From<api::Limit> for Metric {
     fn from(value: api::Limit) -> Self {
         match value {
@@ -246,17 +237,6 @@ impl Mul<u64> for Metric {
         match self {
             Metric::Int(a) => Metric::Int(a.saturating_mul(rhs)),
             Metric::Float(a) => Metric::Float(a * (rhs as f64)),
-        }
-    }
-}
-
-impl Mul<Metric> for u64 {
-    type Output = Metric;
-
-    fn mul(self, rhs: Metric) -> Self::Output {
-        match rhs {
-            Metric::Int(b) => Metric::Int(self.saturating_mul(b)),
-            Metric::Float(b) => Metric::Float((self as f64) * b),
         }
     }
 }
@@ -661,6 +641,26 @@ where
     }
 }
 
+impl From<Metric> for f64 {
+    fn from(value: Metric) -> Self {
+        match value {
+            Metric::Int(a) => a as f64,
+            Metric::Float(a) => a,
+        }
+    }
+}
+
+impl Mul<Metric> for u64 {
+    type Output = Metric;
+
+    fn mul(self, rhs: Metric) -> Self::Output {
+        match rhs {
+            Metric::Int(b) => Metric::Int(self.saturating_mul(b)),
+            Metric::Float(b) => Metric::Float((self as f64) * b),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::cmp::Ordering;
@@ -685,6 +685,93 @@ mod tests {
                 .map(|(k, n)| (k, n.into()))
                 .collect::<IndexMap<_, _>>(),
         )
+    }
+
+    fn expected_metrics_diff<D>(metrics: EitherOrBoth<Metric>, diffs: D) -> MetricsDiff
+    where
+        D: Into<Option<(f64, f64)>>,
+    {
+        MetricsDiff {
+            metrics,
+            diffs: diffs
+                .into()
+                .map(|(diff_pct, factor)| Diffs { diff_pct, factor }),
+        }
+    }
+
+    fn metrics_fixture(metrics: &[u64]) -> Metrics<EventKind> {
+        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
+        let event_kinds = [
+            Ir,
+            Dr,
+            Dw,
+            I1mr,
+            D1mr,
+            D1mw,
+            ILmr,
+            DLmr,
+            DLmw,
+            L1hits,
+            LLhits,
+            RamHits,
+            TotalRW,
+            EstimatedCycles,
+            I1MissRate,
+            D1MissRate,
+            LLiMissRate,
+            LLdMissRate,
+            LLMissRate,
+            L1HitRate,
+            LLHitRate,
+            RamHitRate,
+        ];
+
+        Metrics::with_metric_kinds(
+            event_kinds
+                .iter()
+                .zip(metrics.iter())
+                .map(|(e, v)| (*e, *v)),
+        )
+    }
+
+    fn metrics_summary_fixture<T, U>(kinds: U) -> MetricsSummary<EventKind>
+    where
+        T: Into<Option<(f64, f64)>> + Clone,
+        U: IntoIterator<Item = (EitherOrBoth<Metric>, T)>,
+    {
+        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
+        let event_kinds = [
+            Ir,
+            Dr,
+            Dw,
+            I1mr,
+            D1mr,
+            D1mw,
+            ILmr,
+            DLmr,
+            DLmw,
+            L1hits,
+            LLhits,
+            RamHits,
+            TotalRW,
+            EstimatedCycles,
+            I1MissRate,
+            D1MissRate,
+            LLiMissRate,
+            LLdMissRate,
+            LLMissRate,
+            L1HitRate,
+            LLHitRate,
+            RamHitRate,
+        ];
+
+        let map: IndexMap<EventKind, MetricsDiff> = event_kinds
+            .iter()
+            .zip(kinds)
+            .map(|(e, (m, d))| (*e, expected_metrics_diff(m.clone(), d.clone())))
+            .collect();
+
+        MetricsSummary(map)
     }
 
     #[rstest]
@@ -895,93 +982,6 @@ mod tests {
 
         assert_eq!(lhs.cmp(&rhs), expected);
         assert_eq!(rhs.cmp(&lhs), expected.reverse());
-    }
-
-    fn expected_metrics_diff<D>(metrics: EitherOrBoth<Metric>, diffs: D) -> MetricsDiff
-    where
-        D: Into<Option<(f64, f64)>>,
-    {
-        MetricsDiff {
-            metrics,
-            diffs: diffs
-                .into()
-                .map(|(diff_pct, factor)| Diffs { diff_pct, factor }),
-        }
-    }
-
-    fn metrics_fixture(metrics: &[u64]) -> Metrics<EventKind> {
-        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
-        let event_kinds = [
-            Ir,
-            Dr,
-            Dw,
-            I1mr,
-            D1mr,
-            D1mw,
-            ILmr,
-            DLmr,
-            DLmw,
-            L1hits,
-            LLhits,
-            RamHits,
-            TotalRW,
-            EstimatedCycles,
-            I1MissRate,
-            D1MissRate,
-            LLiMissRate,
-            LLdMissRate,
-            LLMissRate,
-            L1HitRate,
-            LLHitRate,
-            RamHitRate,
-        ];
-
-        Metrics::with_metric_kinds(
-            event_kinds
-                .iter()
-                .zip(metrics.iter())
-                .map(|(e, v)| (*e, *v)),
-        )
-    }
-
-    fn metrics_summary_fixture<T, U>(kinds: U) -> MetricsSummary<EventKind>
-    where
-        T: Into<Option<(f64, f64)>> + Clone,
-        U: IntoIterator<Item = (EitherOrBoth<Metric>, T)>,
-    {
-        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
-        let event_kinds = [
-            Ir,
-            Dr,
-            Dw,
-            I1mr,
-            D1mr,
-            D1mw,
-            ILmr,
-            DLmr,
-            DLmw,
-            L1hits,
-            LLhits,
-            RamHits,
-            TotalRW,
-            EstimatedCycles,
-            I1MissRate,
-            D1MissRate,
-            LLiMissRate,
-            LLdMissRate,
-            LLMissRate,
-            L1HitRate,
-            LLHitRate,
-            RamHitRate,
-        ];
-
-        let map: IndexMap<EventKind, MetricsDiff> = event_kinds
-            .iter()
-            .zip(kinds)
-            .map(|(e, (m, d))| (*e, expected_metrics_diff(m.clone(), d.clone())))
-            .collect();
-
-        MetricsSummary(map)
     }
 
     #[rstest]

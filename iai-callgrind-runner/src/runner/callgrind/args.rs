@@ -16,24 +16,24 @@ use crate::util::{bool_to_yesno, yesno_to_bool};
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone)]
 pub struct Args {
-    i1: String,
-    d1: String,
-    ll: String,
     cache_sim: bool,
-    other: Vec<String>,
-    toggle_collect: VecDeque<String>,
-    compress_strings: bool,
-    compress_pos: bool,
-    verbose: bool,
-    dump_instr: bool,
-    dump_line: bool,
+    callgrind_out_file: Option<PathBuf>,
     /// --combine-dumps is currently not supported by the callgrind parsers, so we print a warning
     combine_dumps: bool,
-    callgrind_out_file: Option<PathBuf>,
-    log_arg: Option<OsString>,
-    trace_children: bool,
-    separate_threads: bool,
+    compress_pos: bool,
+    compress_strings: bool,
+    d1: String,
+    dump_instr: bool,
+    dump_line: bool,
     fair_sched: FairSched,
+    i1: String,
+    ll: String,
+    log_arg: Option<OsString>,
+    other: Vec<String>,
+    separate_threads: bool,
+    toggle_collect: VecDeque<String>,
+    trace_children: bool,
+    verbose: bool,
 }
 
 impl Args {

@@ -20,43 +20,43 @@ use crate::util::{self, resolve_binary_path};
 /// The run options for the [`ToolCommand`]
 #[derive(Debug, Default, Clone)]
 pub struct RunOptions {
-    /// If true, clear the environment variables
-    pub env_clear: bool,
     /// Set the current directory of the [`ToolCommand`]
     pub current_dir: Option<PathBuf>,
-    /// Configuration of the expected exit code/signal
-    pub exit_with: Option<ExitWith>,
+    /// The optional [`Delay`] to apply to the command
+    pub delay: Option<Delay>,
+    /// If true, clear the environment variables
+    pub env_clear: bool,
     /// The environment variables to pass into the [`ToolCommand`]
     pub envs: Vec<(OsString, OsString)>,
+    /// Configuration of the expected exit code/signal
+    pub exit_with: Option<ExitWith>,
+    /// If present, execute the [`ToolCommand`] in a [`api::Sandbox`]
+    pub sandbox: Option<api::Sandbox>,
+    /// The `setup` assistant to run if present
+    pub setup: Option<Assistant>,
+    /// The `stderr`
+    pub stderr: Option<api::Stdio>,
     /// The `stdin`
     pub stdin: Option<api::Stdin>,
     /// The `stdout`
     pub stdout: Option<api::Stdio>,
-    /// The `stderr`
-    pub stderr: Option<api::Stdio>,
-    /// The `setup` assistant to run if present
-    pub setup: Option<Assistant>,
     /// The `teardown` assistant to run if present
     pub teardown: Option<Assistant>,
-    /// If present, execute the [`ToolCommand`] in a [`api::Sandbox`]
-    pub sandbox: Option<api::Sandbox>,
-    /// The optional [`Delay`] to apply to the command
-    pub delay: Option<Delay>,
 }
 
 /// The final command to execute
 pub struct ToolCommand {
-    tool: ValgrindTool,
-    nocapture: NoCapture,
     command: Command,
+    nocapture: NoCapture,
+    tool: ValgrindTool,
 }
 
 /// The tool specific [`Output`] of the [`ToolCommand`]
 pub struct ToolOutput {
-    /// The valgrind tool
-    pub tool: ValgrindTool,
     /// The output if present
     pub output: Option<Output>,
+    /// The valgrind tool
+    pub tool: ValgrindTool,
 }
 
 impl ToolCommand {
