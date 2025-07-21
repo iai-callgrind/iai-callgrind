@@ -1035,7 +1035,7 @@ mod tests {
     fn test_delay_udp_response() {
         let addr = "127.0.0.1:34000".parse::<SocketAddr>().unwrap();
 
-        thread::spawn(move || {
+        thread::spawn(move || -> ! {
             let server = UdpSocket::bind(addr).unwrap();
             server
                 .set_read_timeout(Some(Duration::from_millis(100)))
