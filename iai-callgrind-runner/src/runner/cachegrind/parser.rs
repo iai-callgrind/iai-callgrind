@@ -41,7 +41,10 @@ pub struct CachegrindProperties {
 /// count        ::= num
 /// ```
 /// Parse the callgrind output files header
-pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<CachegrindProperties> {
+pub fn parse_header<I>(iter: &mut I) -> Result<CachegrindProperties>
+where
+    I: Iterator<Item = String>,
+{
     let mut metrics_prototype: Option<Metrics> = None;
     let mut desc: Vec<String> = vec![];
     let mut cmd: Option<String> = None;

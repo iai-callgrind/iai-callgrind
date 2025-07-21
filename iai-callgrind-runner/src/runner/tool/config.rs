@@ -684,7 +684,10 @@ impl ToolConfigs {
     }
 
     /// Extend this collection of tools with the contents of an iterator
-    pub fn extend(&mut self, iter: impl Iterator<Item = Result<ToolConfig>>) -> Result<()> {
+    pub fn extend<I>(&mut self, iter: I) -> Result<()>
+    where
+        I: Iterator<Item = Result<ToolConfig>>,
+    {
         for a in iter {
             self.0.push(a?);
         }

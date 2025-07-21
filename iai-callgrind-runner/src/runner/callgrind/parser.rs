@@ -241,7 +241,10 @@ impl From<Sentinel> for String {
 }
 
 /// Parse the callgrind output files header
-pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<CallgrindProperties> {
+pub fn parse_header<I>(iter: &mut I) -> Result<CallgrindProperties>
+where
+    I: Iterator<Item = String>,
+{
     if !iter
         .by_ref()
         .find(|l| !l.trim().is_empty())

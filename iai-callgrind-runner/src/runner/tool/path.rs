@@ -303,7 +303,10 @@ impl ToolOutputPath {
     }
 
     /// If the [`log::Level`] matches dump the content of all output files into the `writer`
-    pub fn dump_log(&self, log_level: log::Level, writer: &mut impl Write) -> Result<()> {
+    pub fn dump_log<W>(&self, log_level: log::Level, writer: &mut W) -> Result<()>
+    where
+        W: Write,
+    {
         if log_enabled!(log_level) {
             for path in self.real_paths()? {
                 log::log!(

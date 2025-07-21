@@ -39,9 +39,10 @@ pub struct Positions(pub IndexMap<PositionType, u64>);
 
 impl Calls {
     /// Create new `Calls` struct
-    pub fn from<I>(mut iter: impl Iterator<Item = I>, mut positions: Positions) -> Self
+    pub fn from<I, T>(mut iter: T, mut positions: Positions) -> Self
     where
         I: AsRef<str>,
+        T: Iterator<Item = I>,
     {
         let amount = iter.next().unwrap().as_ref().parse().unwrap();
         positions.set_iter_str(iter);
@@ -137,7 +138,10 @@ impl FromStr for PositionType {
 
 impl Positions {
     /// Create a new `Positions` from the content of an iterator
-    pub fn try_from_iter_str<'a>(iter: impl Iterator<Item = &'a str>) -> Result<Self> {
+    pub fn try_from_iter_str<'a, I>(iter: I) -> Result<Self>
+    where
+        I: Iterator<Item = &'a str>,
+    {
         iter.map(|s| s.parse::<PositionType>().map(|p| (p, 0)))
             .collect::<Result<IndexMap<_, _>>>()
             .map(Positions)

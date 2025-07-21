@@ -57,7 +57,10 @@ pub fn extract_pid(line: &str) -> Result<i32> {
 /// Parse the logfile header
 ///
 /// The logfile header is the same for all tools
-pub fn parse_header(path: &Path, mut lines: impl Iterator<Item = String>) -> Result<Header> {
+pub fn parse_header<I>(path: &Path, mut lines: I) -> Result<Header>
+where
+    I: Iterator<Item = String>,
+{
     let next = lines.next();
 
     let (pid, next) = if let Some(next) = next {
