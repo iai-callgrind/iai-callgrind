@@ -2,8 +2,9 @@
 
 use std::borrow::Cow;
 use std::hash::Hash;
+use std::str::FromStr;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use indexmap::{indexmap, IndexMap};
 use serde::{Deserialize, Serialize};
 
@@ -34,7 +35,7 @@ pub struct Calls {
 
 /// The positions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Positions(IndexMap<PositionType, u64>);
+pub struct Positions(pub IndexMap<PositionType, u64>);
 
 impl Calls {
     /// Create new `Calls` struct
@@ -121,22 +122,27 @@ impl Default for Metrics {
     }
 }
 
-impl<T> From<T> for PositionType
-where
-    T: AsRef<str>,
-{
-    fn from(value: T) -> Self {
-        let value = value.as_ref();
+impl FromStr for PositionType {
+    type Err = anyhow::Error;
+
+    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
         // "addr" is taken from the callgrind_annotate script although not officially documented
         match value.to_lowercase().as_str() {
-            "instr" | "addr" => Self::Instr,
-            "line" => Self::Line,
-            _ => panic!("Unknown positions type: '{value}"),
+            "instr" | "addr" => Ok(Self::Instr),
+            "line" => Ok(Self::Line),
+            _ => Err(anyhow!("Unknown positions type: '{value}")),
         }
     }
 }
 
 impl Positions {
+    /// Create a new `Positions` from the content of an iterator
+    pub fn try_from_iter_str<'a>(iter: impl Iterator<Item = &'a str>) -> Result<Self> {
+        iter.map(|s| s.parse::<PositionType>().map(|p| (p, 0)))
+            .collect::<Result<IndexMap<_, _>>>()
+            .map(Positions)
+    }
+
     /// Set the positions from the contents of an iterator
     pub fn set_iter_str<I, T>(&mut self, iter: T)
     where
@@ -167,22 +173,6 @@ impl Positions {
 impl Default for Positions {
     fn default() -> Self {
         Self(indexmap! {PositionType::Line => 0})
-    }
-}
-
-impl<I> FromIterator<I> for Positions
-where
-    I: AsRef<str>,
-{
-    fn from_iter<T>(iter: T) -> Self
-    where
-        T: IntoIterator<Item = I>,
-    {
-        Self(
-            iter.into_iter()
-                .map(|p| (PositionType::from(p), 0))
-                .collect::<IndexMap<_, _>>(),
-        )
     }
 }
 
