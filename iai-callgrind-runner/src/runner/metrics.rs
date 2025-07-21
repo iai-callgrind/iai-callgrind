@@ -780,7 +780,8 @@ mod tests {
     #[case::single_float(&[Ir], &["1.0"], expected_metrics([(Ir, 1.0f64)]))]
     #[case::single_u64_max(&[Ir], &[u64::MAX.to_string()], expected_metrics([(Ir, u64::MAX)]))]
     #[case::one_more_than_max_u64(&[Ir], &["18446744073709551616"],
-        expected_metrics([(Ir, 18_446_744_073_709_551_616.0_f64)])
+        // This float has the correct value to represent the value above
+        expected_metrics([(Ir, 18_446_744_073_709_552_000_f64)])
     )]
     #[case::more_values_than_kinds(&[Ir], &["1", "2"], expected_metrics([(Ir, 1)]))]
     #[case::more_kinds_than_values(&[Ir, I1mr], &["1"], expected_metrics([(Ir, 1), (I1mr, 0)]))]
