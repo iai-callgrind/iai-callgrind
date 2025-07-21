@@ -34,7 +34,7 @@ pub struct Header {
 }
 
 /// The output of a [`Parser`]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParserOutput {
     /// Details about the profile run if present. A vector separated by lines
     pub details: Vec<String>,

@@ -30,7 +30,7 @@ pub enum SourcePath {
 }
 
 /// The `CallgrindMap`
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CallgrindMap {
     /// The actual data containing the mapping between the [`Id`] and the [`Value`]
     pub map: HashMap<Id, Value>,
@@ -78,7 +78,7 @@ pub struct Id {
 }
 
 /// The `Value` to be associated with an [`Id`]
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Value {
     /// The callgrind `Metrics` of this `Value`
     pub metrics: Metrics,

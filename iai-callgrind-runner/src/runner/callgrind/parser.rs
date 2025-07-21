@@ -17,13 +17,14 @@ use crate::runner::tool::parser::ParserOutput;
 use crate::runner::tool::path::ToolOutputPath;
 use crate::runner::DEFAULT_TOGGLE;
 
+// TODO:: Refactor Cleanup
 lazy_static! {
     static ref GLOB_TO_REGEX_RE: Regex =
         Regex::new(r"(\\)([*]|[?])").expect("Regex should compile");
 }
 
 /// The properties and header data of a callgrind output file
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CallgrindProperties {
     /// The executed command with command-line arguments
     pub cmd: Option<String>,

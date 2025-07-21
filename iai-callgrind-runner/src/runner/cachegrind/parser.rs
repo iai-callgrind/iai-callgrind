@@ -13,7 +13,7 @@ lazy_static! {
 }
 
 /// The properties and header data of a cachegrind output file
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CachegrindProperties {
     /// The executed command with command-line arguments
     pub cmd: String,

@@ -16,7 +16,7 @@ lazy_static! {
 }
 
 /// A [`Frame`] in the [`DhatData::frame_table`]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Frame {
     /// The root frame
     Root,
@@ -37,7 +37,7 @@ pub enum Mode {
 }
 
 /// The top-level data extracted from dhat json output
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[allow(clippy::arbitrary_source_item_ordering)]
 pub struct DhatData {
     /// Version number of the format
@@ -111,7 +111,7 @@ pub struct DhatData {
 }
 
 /// A `ProgramPoint`
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[allow(clippy::arbitrary_source_item_ordering)]
 pub struct ProgramPoint {
     /// Total bytes

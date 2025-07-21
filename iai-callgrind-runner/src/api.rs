@@ -569,7 +569,7 @@ pub enum DhatMetric {
 /// A collection of groups of [`DhatMetric`]s
 ///
 /// The members of each group are fully documented in the docs of each variant of this enum
-#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DhatMetrics {
     /// The default group in this order
     ///
@@ -640,7 +640,7 @@ pub enum Direction {
 }
 
 /// The `EntryPoint` of a benchmark
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EntryPoint {
     /// Disable the entry point
     None,
@@ -1062,7 +1062,7 @@ pub struct Command {
 }
 
 /// The delay of the [`Command`]
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Delay {
     /// The kind of delay
     pub kind: DelayKind,
@@ -1192,7 +1192,7 @@ pub struct LibraryBenchmarkGroups {
 }
 
 /// The configuration values for the output format
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OutputFormat {
     /// Show a grid instead of spaces in the terminal output
     pub show_grid: Option<bool>,

@@ -43,7 +43,7 @@ pub enum Metric {
 }
 
 /// The different metrics distinguished by tool and if it is an error checking tool as `ErrorMetric`
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum MetricKind {
     /// The `None` kind if there are no metrics for a tool
@@ -65,7 +65,7 @@ pub enum MetricKind {
 /// The `Metrics` backed by an [`indexmap::IndexMap`]
 ///
 /// The insertion order is preserved.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Metrics<K: Hash + Eq>(pub IndexMap<K, Metric>);
 

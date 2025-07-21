@@ -37,7 +37,7 @@ pub enum BaselineKind {
 }
 
 /// The `BenchmarkKind`, differentiating between library and binary benchmarks
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum BenchmarkKind {
     /// A library benchmark
@@ -76,7 +76,7 @@ pub enum ToolMetricSummary {
 /// The metrics distinguished per tool class
 ///
 /// The tool classes are: dhat, error metrics from memcheck, drd, helgrind and callgrind
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum ToolMetrics {
     /// If there were no metrics extracted from a tool (currently massif, bbv)
@@ -131,7 +131,7 @@ pub enum ToolRegression {
 /// A `Baseline` depending on the [`BaselineKind`] which points to the corresponding path
 ///
 /// This baseline is used for comparisons with the new output of valgrind tools.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Baseline {
     /// The kind of the `Baseline`
@@ -258,7 +258,7 @@ pub struct ProfileData {
 }
 
 /// Some additional and necessary information about the tool run segment
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, AsRef)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, AsRef)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ProfileInfo {
     /// The executed command extracted from Valgrind output
@@ -307,7 +307,7 @@ pub struct ProfileTotal {
 pub struct Profiles(Vec<Profile>);
 
 /// Manage the summary output file with this `SummaryOutput`
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct SummaryOutput {
     /// The [`SummaryFormat`]

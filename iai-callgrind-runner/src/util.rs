@@ -27,7 +27,7 @@ use crate::runner::metrics::Metric;
 ///
 /// Most of the time, this enum is used to store (new, old) output, metrics, etc. Per convention
 /// left is `new` and right is `old`.
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, Eq)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum EitherOrBoth<T> {
     /// Both values (`new` and `old`) are present

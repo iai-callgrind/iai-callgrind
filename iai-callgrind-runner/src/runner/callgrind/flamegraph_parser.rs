@@ -12,7 +12,7 @@ use crate::api::EventKind;
 use crate::runner::metrics::Metric;
 
 /// The `FlamegraphMap` based on a [`CallgrindMap`]
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FlamegraphMap(CallgrindMap);
 
 /// The parser for flamegraphs
