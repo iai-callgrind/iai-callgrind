@@ -40,7 +40,6 @@ runner = [
   "dep:sanitize-filename",
   "dep:serde",
   "dep:serde_json",
-  "dep:serde_regex",
   "dep:shlex",
   "dep:strum",
   "dep:tempfile",
@@ -79,7 +78,6 @@ sanitize-filename = { workspace = true, optional = true }
 schemars = { workspace = true, optional = true, features = ["indexmap2"] }
 serde = { workspace = true, features = ["derive"], optional = true }
 serde_json = { workspace = true, optional = true }
-serde_regex = { workspace = true, optional = true }
 shlex = { workspace = true, optional = true }
 strum = { workspace = true, optional = true, features = ["derive"] }
 tempfile = { workspace = true, optional = true }

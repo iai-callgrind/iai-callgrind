@@ -759,7 +759,6 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "serde_regex",
  "serde_test",
  "serde_yaml",
  "serial_test",
@@ -1528,16 +1527,6 @@ dependencies = [
  "itoa",
  "memchr",
  "ryu",
- "serde",
-]
-
-[[package]]
-name = "serde_regex"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8136f1a4ea815d7eac4101cfd0b16dc0cb5e1fe1b8609dfd728058656b7badf"
-dependencies = [
- "regex",
  "serde",
 ]
 
