@@ -88,9 +88,9 @@ pub struct ToolArgs {
 impl Display for FairSched {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let string = match self {
-            FairSched::Yes => "yes",
-            FairSched::No => "no",
-            FairSched::Try => "try",
+            Self::Yes => "yes",
+            Self::No => "no",
+            Self::Try => "try",
         };
         write!(f, "{string}")
     }
@@ -101,9 +101,9 @@ impl FromStr for FairSched {
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s {
-            "no" => Ok(FairSched::No),
-            "yes" => Ok(FairSched::Yes),
-            "try" => Ok(FairSched::Try),
+            "no" => Ok(Self::No),
+            "yes" => Ok(Self::Yes),
+            "try" => Ok(Self::Try),
             _ => Err(anyhow!(
                 "Invalid argument for --fair-sched. Valid arguments are: 'yes', 'no', 'try'"
             )),

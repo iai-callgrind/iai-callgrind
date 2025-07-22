@@ -821,16 +821,16 @@ impl ToolMetricSummary {
     /// Sum up another summary metrics to these metrics
     pub fn add_mut(&mut self, other: &Self) {
         match (self, other) {
-            (ToolMetricSummary::ErrorTool(this), ToolMetricSummary::ErrorTool(other)) => {
+            (Self::ErrorTool(this), Self::ErrorTool(other)) => {
                 this.add(other);
             }
-            (ToolMetricSummary::Dhat(this), ToolMetricSummary::Dhat(other)) => {
+            (Self::Dhat(this), Self::Dhat(other)) => {
                 this.add(other);
             }
-            (ToolMetricSummary::Callgrind(this), ToolMetricSummary::Callgrind(other)) => {
+            (Self::Callgrind(this), Self::Callgrind(other)) => {
                 this.add(other);
             }
-            (ToolMetricSummary::Cachegrind(this), ToolMetricSummary::Cachegrind(other)) => {
+            (Self::Cachegrind(this), Self::Cachegrind(other)) => {
                 this.add(other);
             }
             _ => {}
@@ -840,38 +840,38 @@ impl ToolMetricSummary {
     /// Create a new summary from `new` [`ToolMetrics`]
     pub fn from_new_metrics(metrics: &ToolMetrics) -> Self {
         match metrics {
-            ToolMetrics::None => ToolMetricSummary::None,
+            ToolMetrics::None => Self::None,
             ToolMetrics::Dhat(metrics) => {
-                ToolMetricSummary::Dhat(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
+                Self::Dhat(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
             }
-            ToolMetrics::ErrorTool(metrics) => ToolMetricSummary::ErrorTool(MetricsSummary::new(
-                EitherOrBoth::Left(metrics.clone()),
-            )),
-            ToolMetrics::Callgrind(metrics) => ToolMetricSummary::Callgrind(MetricsSummary::new(
-                EitherOrBoth::Left(metrics.clone()),
-            )),
-            ToolMetrics::Cachegrind(metrics) => ToolMetricSummary::Cachegrind(MetricsSummary::new(
-                EitherOrBoth::Left(metrics.clone()),
-            )),
+            ToolMetrics::ErrorTool(metrics) => {
+                Self::ErrorTool(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
+            }
+            ToolMetrics::Callgrind(metrics) => {
+                Self::Callgrind(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
+            }
+            ToolMetrics::Cachegrind(metrics) => {
+                Self::Cachegrind(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
+            }
         }
     }
 
     /// Create a new summary from `old` [`ToolMetrics`]
     pub fn from_old_metrics(metrics: &ToolMetrics) -> Self {
         match metrics {
-            ToolMetrics::None => ToolMetricSummary::None,
+            ToolMetrics::None => Self::None,
             ToolMetrics::Dhat(metrics) => {
-                ToolMetricSummary::Dhat(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
+                Self::Dhat(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
             }
-            ToolMetrics::ErrorTool(metrics) => ToolMetricSummary::ErrorTool(MetricsSummary::new(
-                EitherOrBoth::Right(metrics.clone()),
-            )),
-            ToolMetrics::Callgrind(metrics) => ToolMetricSummary::Callgrind(MetricsSummary::new(
-                EitherOrBoth::Right(metrics.clone()),
-            )),
-            ToolMetrics::Cachegrind(metrics) => ToolMetricSummary::Cachegrind(MetricsSummary::new(
-                EitherOrBoth::Right(metrics.clone()),
-            )),
+            ToolMetrics::ErrorTool(metrics) => {
+                Self::ErrorTool(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
+            }
+            ToolMetrics::Callgrind(metrics) => {
+                Self::Callgrind(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
+            }
+            ToolMetrics::Cachegrind(metrics) => {
+                Self::Cachegrind(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
+            }
         }
     }
 
@@ -884,26 +884,27 @@ impl ToolMetricSummary {
         old_metrics: &ToolMetrics,
     ) -> Result<Self> {
         match (new_metrics, old_metrics) {
-            (ToolMetrics::None, ToolMetrics::None) => Ok(ToolMetricSummary::None),
-            (ToolMetrics::Dhat(new_metrics), ToolMetrics::Dhat(old_metrics)) => {
-                Ok(ToolMetricSummary::Dhat(MetricsSummary::new(
-                    EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone()),
-                )))
-            }
+            (ToolMetrics::None, ToolMetrics::None) => Ok(Self::None),
+            (ToolMetrics::Dhat(new_metrics), ToolMetrics::Dhat(old_metrics)) => Ok(Self::Dhat(
+                MetricsSummary::new(EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone())),
+            )),
             (ToolMetrics::ErrorTool(new_metrics), ToolMetrics::ErrorTool(old_metrics)) => {
-                Ok(ToolMetricSummary::ErrorTool(MetricsSummary::new(
-                    EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone()),
-                )))
+                Ok(Self::ErrorTool(MetricsSummary::new(EitherOrBoth::Both(
+                    new_metrics.clone(),
+                    old_metrics.clone(),
+                ))))
             }
             (ToolMetrics::Callgrind(new_metrics), ToolMetrics::Callgrind(old_metrics)) => {
-                Ok(ToolMetricSummary::Callgrind(MetricsSummary::new(
-                    EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone()),
-                )))
+                Ok(Self::Callgrind(MetricsSummary::new(EitherOrBoth::Both(
+                    new_metrics.clone(),
+                    old_metrics.clone(),
+                ))))
             }
             (ToolMetrics::Cachegrind(new_metrics), ToolMetrics::Cachegrind(old_metrics)) => {
-                Ok(ToolMetricSummary::Cachegrind(MetricsSummary::new(
-                    EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone()),
-                )))
+                Ok(Self::Cachegrind(MetricsSummary::new(EitherOrBoth::Both(
+                    new_metrics.clone(),
+                    old_metrics.clone(),
+                ))))
             }
             _ => Err(anyhow!("Cannot create summary from incompatible costs")),
         }
@@ -912,11 +913,8 @@ impl ToolMetricSummary {
     /// Create a new summary from this summary and another [`ToolMetricSummary`]
     pub fn from_self_and_other(this: &Self, other: &Self) -> Option<Self> {
         match (this, other) {
-            (ToolMetricSummary::None, ToolMetricSummary::None) => Some(ToolMetricSummary::None),
-            (
-                ToolMetricSummary::Callgrind(metrics),
-                ToolMetricSummary::Callgrind(other_metrics),
-            ) => {
+            (Self::None, Self::None) => Some(Self::None),
+            (Self::Callgrind(metrics), Self::Callgrind(other_metrics)) => {
                 let costs = metrics.extract_costs();
                 let other_costs = other_metrics.extract_costs();
 
@@ -925,17 +923,14 @@ impl ToolMetricSummary {
                     EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
                 ) = (costs, other_costs)
                 {
-                    Some(ToolMetricSummary::Callgrind(MetricsSummary::new(
-                        EitherOrBoth::Both(new, other_new),
-                    )))
+                    Some(Self::Callgrind(MetricsSummary::new(EitherOrBoth::Both(
+                        new, other_new,
+                    ))))
                 } else {
                     None
                 }
             }
-            (
-                ToolMetricSummary::ErrorTool(metrics),
-                ToolMetricSummary::ErrorTool(other_metrics),
-            ) => {
+            (Self::ErrorTool(metrics), Self::ErrorTool(other_metrics)) => {
                 let costs = metrics.extract_costs();
                 let other_costs = other_metrics.extract_costs();
 
@@ -944,14 +939,14 @@ impl ToolMetricSummary {
                     EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
                 ) = (costs, other_costs)
                 {
-                    Some(ToolMetricSummary::ErrorTool(MetricsSummary::new(
-                        EitherOrBoth::Both(new, other_new),
-                    )))
+                    Some(Self::ErrorTool(MetricsSummary::new(EitherOrBoth::Both(
+                        new, other_new,
+                    ))))
                 } else {
                     None
                 }
             }
-            (ToolMetricSummary::Dhat(metrics), ToolMetricSummary::Dhat(other_metrics)) => {
+            (Self::Dhat(metrics), Self::Dhat(other_metrics)) => {
                 let costs = metrics.extract_costs();
                 let other_costs = other_metrics.extract_costs();
 
@@ -960,17 +955,14 @@ impl ToolMetricSummary {
                     EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
                 ) = (costs, other_costs)
                 {
-                    Some(ToolMetricSummary::Dhat(MetricsSummary::new(
-                        EitherOrBoth::Both(new, other_new),
-                    )))
+                    Some(Self::Dhat(MetricsSummary::new(EitherOrBoth::Both(
+                        new, other_new,
+                    ))))
                 } else {
                     None
                 }
             }
-            (
-                ToolMetricSummary::Cachegrind(metrics),
-                ToolMetricSummary::Cachegrind(other_metrics),
-            ) => {
+            (Self::Cachegrind(metrics), Self::Cachegrind(other_metrics)) => {
                 let costs = metrics.extract_costs();
                 let other_costs = other_metrics.extract_costs();
 
@@ -979,9 +971,9 @@ impl ToolMetricSummary {
                     EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
                 ) = (costs, other_costs)
                 {
-                    Some(ToolMetricSummary::Cachegrind(MetricsSummary::new(
-                        EitherOrBoth::Both(new, other_new),
-                    )))
+                    Some(Self::Cachegrind(MetricsSummary::new(EitherOrBoth::Both(
+                        new, other_new,
+                    ))))
                 } else {
                     None
                 }
@@ -1005,14 +997,14 @@ impl ToolRegression {
     /// Create a new `ToolRegression`
     pub fn with<T>(apply: fn(T) -> MetricKind, regressions: RegressionMetrics<T>) -> Self {
         match regressions {
-            RegressionMetrics::Soft(metric, new, old, diff_pct, limit) => ToolRegression::Soft {
+            RegressionMetrics::Soft(metric, new, old, diff_pct, limit) => Self::Soft {
                 metric: apply(metric),
                 new,
                 old,
                 diff_pct,
                 limit,
             },
-            RegressionMetrics::Hard(metric, new, diff, limit) => ToolRegression::Hard {
+            RegressionMetrics::Hard(metric, new, diff, limit) => Self::Hard {
                 metric: apply(metric),
                 new,
                 diff,

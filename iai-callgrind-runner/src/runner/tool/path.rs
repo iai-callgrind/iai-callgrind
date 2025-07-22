@@ -23,25 +23,25 @@ lazy_static! {
     // The baseline <name> (base@<name>) can only consist of ascii and underscore characters.
     // Flamegraph files are ignored by this regex
     static ref CALLGRIND_ORIG_FILENAME_RE: Regex = Regex::new(
-        r"^(?<type>[.](out|log))(?<base>[.](old|base@[^.-]+))?(?<pid>[.][#][0-9]+)?(?<part>[.][0-9]+)?(?<thread>-[0-9]+)?$"
+        "^(?<type>[.](out|log))(?<base>[.](old|base@[^.-]+))?(?<pid>[.][#][0-9]+)?(?<part>[.][0-9]+)?(?<thread>-[0-9]+)?$"
     )
     .expect("Regex should compile");
 
     /// This regex matches the original file name without the prefix as it is created by bbv
     static ref BBV_ORIG_FILENAME_RE: Regex = Regex::new(
-        r"^(?<type>[.](?:out|log))(?<base>[.](old|base@[^.]+))?(?<bbv_type>[.](?:bb|pc))?(?<pid>[.][#][0-9]+)?(?<thread>[.][0-9]+)?$"
+        "^(?<type>[.](?:out|log))(?<base>[.](old|base@[^.]+))?(?<bbv_type>[.](?:bb|pc))?(?<pid>[.][#][0-9]+)?(?<thread>[.][0-9]+)?$"
     )
     .expect("Regex should compile");
 
     /// This regex matches the original file name without the prefix as it is created by all tools
     /// other than callgrind and bbv.
     static ref GENERIC_ORIG_FILENAME_RE: Regex = Regex::new(
-        r"^(?<type>[.](?:out|log))(?<base>[.](old|base@[^.]+))?(?<pid>[.][#][0-9]+)?$"
+        "^(?<type>[.](?:out|log))(?<base>[.](old|base@[^.]+))?(?<pid>[.][#][0-9]+)?$"
     )
     .expect("Regex should compile");
 
     static ref REAL_FILENAME_RE: Regex = Regex::new(
-        r"^(?:[.](?<pid>[0-9]+))?(?:[.]t(?<tid>[0-9]+))?(?:[.]p(?<part>[0-9]+))?(?:[.](?<bbv>bb|pc))?(?:[.](?<type>out|log))(?:[.](?<base>old|base@[^.]+))?$"
+        "^(?:[.](?<pid>[0-9]+))?(?:[.]t(?<tid>[0-9]+))?(?:[.]p(?<part>[0-9]+))?(?:[.](?<bbv>bb|pc))?(?:[.](?<type>out|log))(?:[.](?<base>old|base@[^.]+))?$"
     )
     .expect("Regex should compile");
 }

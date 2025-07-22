@@ -245,8 +245,8 @@ impl AssistantKind {
     /// Return the assistant kind `id` as string
     pub fn id(&self) -> String {
         match self {
-            AssistantKind::Setup => "setup",
-            AssistantKind::Teardown => "teardown",
+            Self::Setup => "setup",
+            Self::Teardown => "teardown",
         }
         .to_owned()
     }
@@ -315,25 +315,23 @@ impl ModulePath {
     }
 
     /// Return the first segment of the module path if any
-    pub fn first(&self) -> Option<ModulePath> {
+    pub fn first(&self) -> Option<Self> {
         self.0
             .split_once("::")
-            .map(|(first, _)| ModulePath::new(first))
+            .map(|(first, _)| Self::new(first))
             .or_else(|| (!self.0.is_empty()).then_some(self.clone()))
     }
 
     /// Return the last segment of the module path if any
-    pub fn last(&self) -> Option<ModulePath> {
-        self.0
-            .rsplit_once("::")
-            .map(|(_, last)| ModulePath::new(last))
+    pub fn last(&self) -> Option<Self> {
+        self.0.rsplit_once("::").map(|(_, last)| Self::new(last))
     }
 
     /// Return the parent module path if present
-    pub fn parent(&self) -> Option<ModulePath> {
+    pub fn parent(&self) -> Option<Self> {
         self.0
             .rsplit_once("::")
-            .map(|(prefix, _)| ModulePath::new(prefix))
+            .map(|(prefix, _)| Self::new(prefix))
     }
 
     /// Return a vector which contains all segments of the module path without the delimiter

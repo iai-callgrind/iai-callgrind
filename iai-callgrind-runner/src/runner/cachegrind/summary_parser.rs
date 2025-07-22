@@ -85,7 +85,7 @@ impl Parser for SummaryParser {
                 metrics: ToolMetrics::Cachegrind(metrics),
             })
         } else {
-            Err(Error::ParseError(path.clone(), "No summary line found".to_owned()).into())
+            Err(Error::ParseError(path, "No summary line found".to_owned()).into())
         }
     }
 

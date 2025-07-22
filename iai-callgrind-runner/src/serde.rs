@@ -17,11 +17,11 @@ pub mod float_64 {
             formatter.write_str("a string with a f64 value")
         }
 
-        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
         where
             E: serde::de::Error,
         {
-            f64::from_str(value).map_err(|error| serde::de::Error::custom(error.to_string()))
+            f64::from_str(v).map_err(|error| serde::de::Error::custom(error.to_string()))
         }
 
         fn visit_string<E>(self, v: String) -> Result<Self::Value, E>

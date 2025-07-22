@@ -17,8 +17,8 @@ fn main() {
     // Configure the colored crate to respect IAI_CALLGRIND_COLOR and CARGO_TERM_COLOR
     let iai_callgrind_color = std::env::var(envs::IAI_CALLGRIND_COLOR).ok();
     if let Some(var) = iai_callgrind_color
-        .as_ref()
-        .or(std::env::var(envs::CARGO_TERM_COLOR).ok().as_ref())
+        .clone()
+        .or_else(|| std::env::var(envs::CARGO_TERM_COLOR).ok())
     {
         if var == "never" {
             control::set_override(false);
@@ -44,7 +44,7 @@ fn main() {
             "{}: {:<5}: {}",
             record
                 .module_path()
-                .unwrap_or(record.module_path_static().unwrap_or("???")),
+                .unwrap_or_else(|| record.module_path_static().unwrap_or("???")),
             match record.level() {
                 log::Level::Error => "Error".red().bold(),
                 log::Level::Warn => "Warn".yellow().bold(),

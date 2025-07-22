@@ -116,10 +116,10 @@ impl ToolRegressionConfig {
     /// Return true if the configuration has fail fast set to true
     pub fn is_fail_fast(&self) -> bool {
         match self {
-            ToolRegressionConfig::Callgrind(regression_config) => regression_config.fail_fast,
-            ToolRegressionConfig::Cachegrind(regression_config) => regression_config.fail_fast,
-            ToolRegressionConfig::Dhat(regression_config) => regression_config.fail_fast,
-            ToolRegressionConfig::None => false,
+            Self::Callgrind(regression_config) => regression_config.fail_fast,
+            Self::Cachegrind(regression_config) => regression_config.fail_fast,
+            Self::Dhat(regression_config) => regression_config.fail_fast,
+            Self::None => false,
         }
     }
 }

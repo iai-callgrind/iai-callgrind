@@ -187,8 +187,8 @@ impl From<api::FlamegraphConfig> for Config {
 impl From<api::Direction> for Direction {
     fn from(value: api::Direction) -> Self {
         match value {
-            api::Direction::TopToBottom => Direction::Inverted,
-            api::Direction::BottomToTop => Direction::Straight,
+            api::Direction::TopToBottom => Self::Inverted,
+            api::Direction::BottomToTop => Self::Straight,
         }
     }
 }
@@ -303,7 +303,7 @@ impl Flamegraph {
             .context("Failed creating a differential flamegraph")?;
 
         let diff_output_path = output_path.to_diff_path();
-        Flamegraph::write(
+        Self::write(
             &diff_output_path,
             options,
             String::from_utf8_lossy(result.get_ref()).lines(),

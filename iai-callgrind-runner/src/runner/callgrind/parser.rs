@@ -114,7 +114,7 @@ impl CallgrindProperties {
 
 impl From<ParserOutput> for CallgrindProperties {
     fn from(value: ParserOutput) -> Self {
-        CallgrindProperties {
+        Self {
             metrics_prototype: Metrics::default(),
             positions_prototype: Positions::default(),
             pid: Some(value.header.pid),
@@ -208,8 +208,8 @@ impl Sentinel {
     }
 }
 
-impl AsRef<Sentinel> for Sentinel {
-    fn as_ref(&self) -> &Sentinel {
+impl AsRef<Self> for Sentinel {
+    fn as_ref(&self) -> &Self {
         self
     }
 }
@@ -248,7 +248,7 @@ where
     if !iter
         .by_ref()
         .find(|l| !l.trim().is_empty())
-        .ok_or(anyhow!("Empty file"))?
+        .ok_or_else(|| anyhow!("Empty file"))?
         .contains("callgrind format")
     {
         warn!("Missing file format specifier. Assuming callgrind format.");
@@ -344,7 +344,7 @@ mod tests {
 
     #[rstest]
     #[case::simple("foo", "^foo$")]
-    #[case::glob(r"?*", r"^?*$")] // Does not interpret glob patterns
+    #[case::glob("?*", "^?*$")] // Does not interpret glob patterns
     fn test_sentinel_new(#[case] input: &str, #[case] expected: &str) {
         let expected_sentinel = Sentinel(Regex::new(expected).unwrap());
         let sentinel = Sentinel::new(input).unwrap();

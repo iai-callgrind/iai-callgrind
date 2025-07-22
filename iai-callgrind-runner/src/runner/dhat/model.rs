@@ -195,7 +195,7 @@ impl<'de> Deserialize<'de> for Frame {
         D: Deserializer<'de>,
     {
         let frame = String::deserialize(deserializer)?;
-        Frame::from_str(&frame).map_err(Error::custom)
+        Self::from_str(&frame).map_err(Error::custom)
     }
 }
 
@@ -214,9 +214,9 @@ impl FromStr for Frame {
             .ok_or_else(|| "invalid frame format".to_owned())?;
 
         if caps.name("root").is_some() {
-            Ok(Frame::Root)
+            Ok(Self::Root)
         } else {
-            Ok(Frame::Leaf(
+            Ok(Self::Leaf(
                 caps.name("addr")
                     .expect("An address should be present")
                     .as_str()
@@ -240,8 +240,8 @@ impl Serialize for Frame {
         S: Serializer,
     {
         let string = match self {
-            Frame::Root => "[root]".to_owned(),
-            Frame::Leaf(addr, func, loc) => format!("{addr}: {func} ({loc})"),
+            Self::Root => "[root]".to_owned(),
+            Self::Leaf(addr, func, loc) => format!("{addr}: {func} ({loc})"),
         };
 
         serializer.serialize_str(&string)
@@ -255,9 +255,9 @@ impl<'de> Deserialize<'de> for Mode {
     {
         let frame = String::deserialize(deserializer)?;
         let mode = match frame.to_lowercase().as_str() {
-            "ad-hoc" => Mode::AdHoc,
-            "heap" => Mode::Heap,
-            "copy" => Mode::Copy,
+            "ad-hoc" => Self::AdHoc,
+            "heap" => Self::Heap,
+            "copy" => Self::Copy,
             _ => return Err(Error::custom("Invalid mode")),
         };
 
@@ -271,9 +271,9 @@ impl Serialize for Mode {
         S: Serializer,
     {
         let string = match self {
-            Mode::Heap => "heap",
-            Mode::AdHoc => "ad-hoc",
-            Mode::Copy => "copy",
+            Self::Heap => "heap",
+            Self::AdHoc => "ad-hoc",
+            Self::Copy => "copy",
         };
 
         serializer.serialize_str(string)

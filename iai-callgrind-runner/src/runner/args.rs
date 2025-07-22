@@ -690,7 +690,7 @@ impl FromStr for BenchmarkFilter {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(BenchmarkFilter::Name(s.to_owned()))
+        Ok(Self::Name(s.to_owned()))
     }
 }
 
@@ -698,11 +698,11 @@ impl NoCapture {
     /// Apply the `NoCapture` option to the [`Command`]
     pub fn apply(self, command: &mut Command) {
         match self {
-            NoCapture::True | NoCapture::False => {}
-            NoCapture::Stderr => {
+            Self::True | Self::False => {}
+            Self::Stderr => {
                 command.stdout(Stdio::null()).stderr(Stdio::inherit());
             }
-            NoCapture::Stdout => {
+            Self::Stdout => {
                 command.stdout(Stdio::inherit()).stderr(Stdio::null());
             }
         }
@@ -863,7 +863,7 @@ fn parse_nocapture(value: &str) -> Result<NoCapture, String> {
     const TRUE_LITERALS: [&str; 6] = ["y", "yes", "t", "true", "on", "1"];
     const FALSE_LITERALS: [&str; 6] = ["n", "no", "f", "false", "off", "0"];
 
-    let lowercase: String = value.to_lowercase();
+    let lowercase = value.to_lowercase();
 
     if TRUE_LITERALS.contains(&lowercase.as_str()) {
         Ok(NoCapture::True)

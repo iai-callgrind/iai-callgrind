@@ -113,9 +113,7 @@ impl Display for Error {
             }
             Self::ProcessError(process, output, status, output_path) => {
                 if let Some(output_path) = output_path {
-                    output_path
-                        .dump_log(log::Level::Error, &mut stderr())
-                        .expect("Printing error output should succeed");
+                    let _ = output_path.dump_log(log::Level::Error, &mut stderr());
                 }
                 if let Some(output) = output {
                     write_all_to_stderr(&output.stderr);

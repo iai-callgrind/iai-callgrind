@@ -87,7 +87,7 @@ impl TryFrom<api::CachegrindRegressionConfig> for CachegrindRegressionConfig {
             (soft_limits, hard_limits)
         };
 
-        Ok(CachegrindRegressionConfig {
+        Ok(Self {
             soft_limits: soft_limits.into_iter().collect(),
             hard_limits: hard_limits.into_iter().collect(),
             fail_fast: fail_fast.unwrap_or(false),

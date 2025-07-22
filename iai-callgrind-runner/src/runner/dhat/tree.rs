@@ -258,7 +258,7 @@ impl From<&ProgramPoint> for Data {
 
 impl From<DhatData> for DhatTree {
     fn from(value: DhatData) -> Self {
-        let mut tree = DhatTree::default();
+        let mut tree = Self::default();
         for pps in value.program_points {
             let data = Data::from(&pps);
             tree.insert(&pps.frames, &data);
@@ -343,7 +343,7 @@ impl Tree for DhatTree {
 
 impl Node {
     /// Create a new `Node`
-    pub fn new(prefix: Vec<usize>, children: Vec<Node>, data: Data) -> Self {
+    pub fn new(prefix: Vec<usize>, children: Vec<Self>, data: Data) -> Self {
         Self {
             children,
             data,
@@ -362,7 +362,7 @@ impl Node {
 
     fn add_child(&mut self, prefix: &[usize], data: &Data) {
         self.children
-            .push(Node::new(prefix.to_vec(), vec![], data.clone()));
+            .push(Self::new(prefix.to_vec(), vec![], data.clone()));
     }
 
     fn find_child(&mut self, num: usize) -> Option<&mut Self> {
@@ -372,7 +372,7 @@ impl Node {
     }
 
     fn split(&mut self, index: usize, data: &Data) {
-        let node = Node::new(
+        let node = Self::new(
             self.prefix.split_off(index),
             std::mem::take(&mut self.children),
             self.data.clone(),

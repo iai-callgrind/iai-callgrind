@@ -156,14 +156,14 @@ impl RunnerArgsIterator {
     fn next(&mut self) -> Result<OsString> {
         self.0
             .next()
-            .ok_or(Error::InitError("Unexpected number of arguments".to_owned()).into())
+            .ok_or_else(|| Error::InitError("Unexpected number of arguments".to_owned()).into())
     }
 
     fn next_string(&mut self) -> Result<String> {
         self.next()?
             .to_str()
             .map(ToOwned::to_owned)
-            .ok_or(Error::InitError("Invalid utf-8 string".to_owned()).into())
+            .ok_or_else(|| Error::InitError("Invalid utf-8 string".to_owned()).into())
     }
 
     fn next_path(&mut self) -> Result<PathBuf> {

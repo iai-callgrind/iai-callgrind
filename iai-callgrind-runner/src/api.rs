@@ -1284,9 +1284,11 @@ impl BinaryBenchmarkConfig {
     pub fn resolve_envs(&self) -> Vec<(OsString, OsString)> {
         self.envs
             .iter()
-            .filter_map(|(key, value)| match value {
-                Some(value) => Some((key.clone(), value.clone())),
-                None => std::env::var_os(key).map(|value| (key.clone(), value)),
+            .filter_map(|(key, value)| {
+                value.as_ref().map_or_else(
+                    || std::env::var_os(key).map(|value| (key.clone(), value)),
+                    |value| Some((key.clone(), value.clone())),
+                )
             })
             .collect()
     }
@@ -1412,32 +1414,32 @@ impl FromStr for CachegrindMetric {
 impl TypeChecker for CachegrindMetric {
     fn is_int(&self) -> bool {
         match self {
-            CachegrindMetric::Ir
-            | CachegrindMetric::Dr
-            | CachegrindMetric::Dw
-            | CachegrindMetric::I1mr
-            | CachegrindMetric::D1mr
-            | CachegrindMetric::D1mw
-            | CachegrindMetric::ILmr
-            | CachegrindMetric::DLmr
-            | CachegrindMetric::DLmw
-            | CachegrindMetric::L1hits
-            | CachegrindMetric::LLhits
-            | CachegrindMetric::RamHits
-            | CachegrindMetric::TotalRW
-            | CachegrindMetric::EstimatedCycles
-            | CachegrindMetric::Bc
-            | CachegrindMetric::Bcm
-            | CachegrindMetric::Bi
-            | CachegrindMetric::Bim => true,
-            CachegrindMetric::I1MissRate
-            | CachegrindMetric::LLiMissRate
-            | CachegrindMetric::D1MissRate
-            | CachegrindMetric::LLdMissRate
-            | CachegrindMetric::LLMissRate
-            | CachegrindMetric::L1HitRate
-            | CachegrindMetric::LLHitRate
-            | CachegrindMetric::RamHitRate => false,
+            Self::Ir
+            | Self::Dr
+            | Self::Dw
+            | Self::I1mr
+            | Self::D1mr
+            | Self::D1mw
+            | Self::ILmr
+            | Self::DLmr
+            | Self::DLmw
+            | Self::L1hits
+            | Self::LLhits
+            | Self::RamHits
+            | Self::TotalRW
+            | Self::EstimatedCycles
+            | Self::Bc
+            | Self::Bcm
+            | Self::Bi
+            | Self::Bim => true,
+            Self::I1MissRate
+            | Self::LLiMissRate
+            | Self::D1MissRate
+            | Self::LLdMissRate
+            | Self::LLMissRate
+            | Self::L1HitRate
+            | Self::LLHitRate
+            | Self::RamHitRate => false,
         }
     }
 
@@ -1519,19 +1521,19 @@ impl Default for DelayKind {
 impl Display for DhatMetric {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DhatMetric::TotalUnits => f.write_str("Total units"),
-            DhatMetric::TotalEvents => f.write_str("Total events"),
-            DhatMetric::TotalBytes => f.write_str("Total bytes"),
-            DhatMetric::TotalBlocks => f.write_str("Total blocks"),
-            DhatMetric::AtTGmaxBytes => f.write_str("At t-gmax bytes"),
-            DhatMetric::AtTGmaxBlocks => f.write_str("At t-gmax blocks"),
-            DhatMetric::AtTEndBytes => f.write_str("At t-end bytes"),
-            DhatMetric::AtTEndBlocks => f.write_str("At t-end blocks"),
-            DhatMetric::ReadsBytes => f.write_str("Reads bytes"),
-            DhatMetric::WritesBytes => f.write_str("Writes bytes"),
-            DhatMetric::TotalLifetimes => f.write_str("Total lifetimes"),
-            DhatMetric::MaximumBytes => f.write_str("Maximum bytes"),
-            DhatMetric::MaximumBlocks => f.write_str("Maximum blocks"),
+            Self::TotalUnits => f.write_str("Total units"),
+            Self::TotalEvents => f.write_str("Total events"),
+            Self::TotalBytes => f.write_str("Total bytes"),
+            Self::TotalBlocks => f.write_str("Total blocks"),
+            Self::AtTGmaxBytes => f.write_str("At t-gmax bytes"),
+            Self::AtTGmaxBlocks => f.write_str("At t-gmax blocks"),
+            Self::AtTEndBytes => f.write_str("At t-end bytes"),
+            Self::AtTEndBlocks => f.write_str("At t-end blocks"),
+            Self::ReadsBytes => f.write_str("Reads bytes"),
+            Self::WritesBytes => f.write_str("Writes bytes"),
+            Self::TotalLifetimes => f.write_str("Total lifetimes"),
+            Self::MaximumBytes => f.write_str("Maximum bytes"),
+            Self::MaximumBlocks => f.write_str("Maximum blocks"),
         }
     }
 }
@@ -1612,17 +1614,17 @@ where
     T: Into<String>,
 {
     fn from(value: T) -> Self {
-        EntryPoint::Custom(value.into())
+        Self::Custom(value.into())
     }
 }
 
 impl Display for ErrorMetric {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ErrorMetric::Errors => f.write_str("Errors"),
-            ErrorMetric::Contexts => f.write_str("Contexts"),
-            ErrorMetric::SuppressedErrors => f.write_str("Suppressed Errors"),
-            ErrorMetric::SuppressedContexts => f.write_str("Suppressed Contexts"),
+            Self::Errors => f.write_str("Errors"),
+            Self::Contexts => f.write_str("Contexts"),
+            Self::SuppressedErrors => f.write_str("Suppressed Errors"),
+            Self::SuppressedContexts => f.write_str("Suppressed Contexts"),
         }
     }
 }
@@ -1785,43 +1787,43 @@ impl FromStr for EventKind {
 impl TypeChecker for EventKind {
     fn is_int(&self) -> bool {
         match self {
-            EventKind::Ir
-            | EventKind::Dr
-            | EventKind::Dw
-            | EventKind::I1mr
-            | EventKind::D1mr
-            | EventKind::D1mw
-            | EventKind::ILmr
-            | EventKind::DLmr
-            | EventKind::DLmw
-            | EventKind::L1hits
-            | EventKind::LLhits
-            | EventKind::RamHits
-            | EventKind::TotalRW
-            | EventKind::EstimatedCycles
-            | EventKind::SysCount
-            | EventKind::SysTime
-            | EventKind::SysCpuTime
-            | EventKind::Ge
-            | EventKind::Bc
-            | EventKind::Bcm
-            | EventKind::Bi
-            | EventKind::Bim
-            | EventKind::ILdmr
-            | EventKind::DLdmr
-            | EventKind::DLdmw
-            | EventKind::AcCost1
-            | EventKind::AcCost2
-            | EventKind::SpLoss1
-            | EventKind::SpLoss2 => true,
-            EventKind::I1MissRate
-            | EventKind::LLiMissRate
-            | EventKind::D1MissRate
-            | EventKind::LLdMissRate
-            | EventKind::LLMissRate
-            | EventKind::L1HitRate
-            | EventKind::LLHitRate
-            | EventKind::RamHitRate => false,
+            Self::Ir
+            | Self::Dr
+            | Self::Dw
+            | Self::I1mr
+            | Self::D1mr
+            | Self::D1mw
+            | Self::ILmr
+            | Self::DLmr
+            | Self::DLmw
+            | Self::L1hits
+            | Self::LLhits
+            | Self::RamHits
+            | Self::TotalRW
+            | Self::EstimatedCycles
+            | Self::SysCount
+            | Self::SysTime
+            | Self::SysCpuTime
+            | Self::Ge
+            | Self::Bc
+            | Self::Bcm
+            | Self::Bi
+            | Self::Bim
+            | Self::ILdmr
+            | Self::DLdmr
+            | Self::DLdmw
+            | Self::AcCost1
+            | Self::AcCost2
+            | Self::SpLoss1
+            | Self::SpLoss2 => true,
+            Self::I1MissRate
+            | Self::LLiMissRate
+            | Self::D1MissRate
+            | Self::LLdMissRate
+            | Self::LLMissRate
+            | Self::L1HitRate
+            | Self::LLHitRate
+            | Self::RamHitRate => false,
         }
     }
 
@@ -2179,7 +2181,7 @@ impl Stdin {
                 );
                 Ok(())
             }
-            (Self::Setup(_) | Stdin::Pipe, _) => Stdio::Pipe.apply(command, stream),
+            (Self::Setup(_) | Self::Pipe, _) => Stdio::Pipe.apply(command, stream),
             (Self::Inherit, _) => Stdio::Inherit.apply(command, stream),
             (Self::Null, _) => Stdio::Null.apply(command, stream),
             (Self::File(path), _) => Stdio::File(path.clone()).apply(command, stream),
@@ -2190,10 +2192,10 @@ impl Stdin {
 impl From<Stdio> for Stdin {
     fn from(value: Stdio) -> Self {
         match value {
-            Stdio::Inherit => Stdin::Inherit,
-            Stdio::Null => Stdin::Null,
-            Stdio::File(file) => Stdin::File(file),
-            Stdio::Pipe => Stdin::Pipe,
+            Stdio::Inherit => Self::Inherit,
+            Stdio::Null => Self::Null,
+            Stdio::File(file) => Self::File(file),
+            Stdio::Pipe => Self::Pipe,
         }
     }
 }
@@ -2220,10 +2222,10 @@ impl Stdio {
     #[cfg(feature = "runner")]
     pub(crate) fn apply(&self, command: &mut StdCommand, stream: Stream) -> Result<(), String> {
         let stdio = match self {
-            Stdio::Pipe => StdStdio::piped(),
-            Stdio::Inherit => StdStdio::inherit(),
-            Stdio::Null => StdStdio::null(),
-            Stdio::File(path) => match stream {
+            Self::Pipe => StdStdio::piped(),
+            Self::Inherit => StdStdio::inherit(),
+            Self::Null => StdStdio::null(),
+            Self::File(path) => match stream {
                 Stream::Stdin => StdStdio::from(File::open(path).map_err(|error| {
                     format!(
                         "Failed to open file '{}' in read mode for {stream}: {error}",
@@ -2253,8 +2255,8 @@ impl Stdio {
     #[cfg(feature = "runner")]
     pub(crate) fn is_pipe(&self) -> bool {
         match self {
-            Stdio::Inherit => false,
-            Stdio::Null | Stdio::File(_) | Stdio::Pipe => true,
+            Self::Inherit => false,
+            Self::Null | Self::File(_) | Self::Pipe => true,
         }
     }
 }
@@ -2355,7 +2357,7 @@ impl Tools {
     }
 
     /// Update `Tools` with another `Tools`
-    pub fn update_from_other(&mut self, tools: &Tools) {
+    pub fn update_from_other(&mut self, tools: &Self) {
         self.update_all(tools.0.iter().cloned());
     }
 
@@ -2372,14 +2374,14 @@ impl ValgrindTool {
     /// Return the id used by the `valgrind --tool` option
     pub fn id(&self) -> String {
         match self {
-            ValgrindTool::DHAT => "dhat".to_owned(),
-            ValgrindTool::Callgrind => "callgrind".to_owned(),
-            ValgrindTool::Memcheck => "memcheck".to_owned(),
-            ValgrindTool::Helgrind => "helgrind".to_owned(),
-            ValgrindTool::DRD => "drd".to_owned(),
-            ValgrindTool::Massif => "massif".to_owned(),
-            ValgrindTool::BBV => "exp-bbv".to_owned(),
-            ValgrindTool::Cachegrind => "cachegrind".to_owned(),
+            Self::DHAT => "dhat".to_owned(),
+            Self::Callgrind => "callgrind".to_owned(),
+            Self::Memcheck => "memcheck".to_owned(),
+            Self::Helgrind => "helgrind".to_owned(),
+            Self::DRD => "drd".to_owned(),
+            Self::Massif => "massif".to_owned(),
+            Self::BBV => "exp-bbv".to_owned(),
+            Self::Cachegrind => "cachegrind".to_owned(),
         }
     }
 
@@ -2387,11 +2389,7 @@ impl ValgrindTool {
     pub fn has_output_file(&self) -> bool {
         matches!(
             self,
-            ValgrindTool::Callgrind
-                | ValgrindTool::DHAT
-                | ValgrindTool::BBV
-                | ValgrindTool::Massif
-                | ValgrindTool::Cachegrind
+            Self::Callgrind | Self::DHAT | Self::BBV | Self::Massif | Self::Cachegrind
         )
     }
 }
@@ -2417,14 +2415,14 @@ impl TryFrom<&str> for ValgrindTool {
 
     fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
         match value {
-            "callgrind" => Ok(ValgrindTool::Callgrind),
-            "cachegrind" => Ok(ValgrindTool::Cachegrind),
-            "dhat" => Ok(ValgrindTool::DHAT),
-            "memcheck" => Ok(ValgrindTool::Memcheck),
-            "helgrind" => Ok(ValgrindTool::Helgrind),
-            "drd" => Ok(ValgrindTool::DRD),
-            "massif" => Ok(ValgrindTool::Massif),
-            "exp-bbv" => Ok(ValgrindTool::BBV),
+            "callgrind" => Ok(Self::Callgrind),
+            "cachegrind" => Ok(Self::Cachegrind),
+            "dhat" => Ok(Self::DHAT),
+            "memcheck" => Ok(Self::Memcheck),
+            "helgrind" => Ok(Self::Helgrind),
+            "drd" => Ok(Self::DRD),
+            "massif" => Ok(Self::Massif),
+            "exp-bbv" => Ok(Self::BBV),
             v => Err(anyhow!("Unknown tool '{}'", v)),
         }
     }

@@ -49,16 +49,16 @@ impl<T> EitherOrBoth<T> {
     /// Try to return the left (`new`) value
     pub fn left(&self) -> Option<&T> {
         match self {
-            EitherOrBoth::Right(_) => None,
-            EitherOrBoth::Both(left, _) | EitherOrBoth::Left(left) => Some(left),
+            Self::Right(_) => None,
+            Self::Both(left, _) | Self::Left(left) => Some(left),
         }
     }
 
     /// Try to return the right (`old`) value
     pub fn right(&self) -> Option<&T> {
         match self {
-            EitherOrBoth::Left(_) => None,
-            EitherOrBoth::Right(right) | EitherOrBoth::Both(_, right) => Some(right),
+            Self::Left(_) => None,
+            Self::Right(right) | Self::Both(_, right) => Some(right),
         }
     }
 

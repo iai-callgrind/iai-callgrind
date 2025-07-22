@@ -18,7 +18,8 @@ use crate::runner::summary::ToolMetrics;
 
 lazy_static! {
     static ref EXTRACT_ERROR_SUMMARY_RE: Regex = regex::Regex::new(
-        r"^[^0-9]*(?<errs>[0-9]+)[^0-9]*(?<ctxs>[0-9]+)[^0-9]*(?<s_errs>[0-9]+)[^0-9]*(?<s_ctxs>[0-9]+).*$"
+        "^[^0-9]*(?<errs>[0-9]+)[^0-9]*(?<ctxs>[0-9]+)[^0-9]*(?<s_errs>[0-9]+)[^0-9]*(?\
+         <s_ctxs>[0-9]+).*$"
     )
     .expect("Regex should compile");
 }

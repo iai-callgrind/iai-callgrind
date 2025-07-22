@@ -233,7 +233,7 @@ impl ToolConfig {
                 }
             }
 
-            ToolConfig::new(
+            Self::new(
                 valgrind_tool,
                 is_default || tool.enable.unwrap_or(true),
                 args,
@@ -325,7 +325,7 @@ impl ToolConfig {
                 }
             }
 
-            ToolConfig::new(
+            Self::new(
                 valgrind_tool,
                 true,
                 args,
@@ -375,7 +375,7 @@ impl ToolConfig {
                     }
                 }
 
-                ToolConfig::from_tool(
+                Self::from_tool(
                     output_format,
                     default_tool,
                     tool,
@@ -393,7 +393,7 @@ impl ToolConfig {
                     .unwrap_or_default();
                 base_args.update(valgrind_args);
 
-                ToolConfig::from_tool(
+                Self::from_tool(
                     output_format,
                     ValgrindTool::Cachegrind,
                     tool,
@@ -439,7 +439,7 @@ impl ToolConfig {
                     }
                 }
 
-                ToolConfig::from_tool(
+                Self::from_tool(
                     output_format,
                     ValgrindTool::DHAT,
                     tool,
@@ -457,7 +457,7 @@ impl ToolConfig {
                     .unwrap_or_default();
                 base_args.update(valgrind_args);
 
-                ToolConfig::from_tool(
+                Self::from_tool(
                     output_format,
                     valgrind_tool,
                     tool,
@@ -575,7 +575,7 @@ impl ToolConfigs {
             meta_tools
         };
 
-        let mut tool_configs = ToolConfigs(vec![default_tool_config]);
+        let mut tool_configs = Self(vec![default_tool_config]);
         tool_configs.extend(meta_tools.into_iter().map(|mut tool| {
             let mut base_args = default_args.get(&tool.kind).cloned().unwrap_or_default();
             base_args.update(valgrind_args);
@@ -585,7 +585,7 @@ impl ToolConfigs {
                     let entry_point = tool
                         .entry_point
                         .clone()
-                        .unwrap_or(default_entry_point.clone());
+                        .unwrap_or_else(|| default_entry_point.clone());
 
                     match &entry_point {
                         EntryPoint::None => {}
@@ -623,7 +623,7 @@ impl ToolConfigs {
                     let entry_point = tool
                         .entry_point
                         .clone()
-                        .unwrap_or(default_entry_point.clone());
+                        .unwrap_or_else(|| default_entry_point.clone());
 
                     if entry_point == EntryPoint::Default {
                         let frames = tool.frames.get_or_insert_with(Vec::new);
@@ -941,8 +941,8 @@ impl ToolConfigs {
 impl From<Option<FlamegraphConfig>> for ToolFlamegraphConfig {
     fn from(value: Option<FlamegraphConfig>) -> Self {
         match value {
-            Some(config) => ToolFlamegraphConfig::Callgrind(config),
-            None => ToolFlamegraphConfig::None,
+            Some(config) => Self::Callgrind(config),
+            None => Self::None,
         }
     }
 }

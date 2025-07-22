@@ -124,7 +124,7 @@ impl<'a> IntoIterator for &'a CallgrindMap {
 
 impl From<Id> for CurrentId {
     fn from(value: Id) -> Self {
-        CurrentId {
+        Self {
             obj: value.obj,
             file: value.file,
             func: Some(value.func),
@@ -208,9 +208,9 @@ impl CallgrindParser for HashMapParser {
                 Some(("cfn", cfn)) => {
                     let record = cfn_record.get_or_insert(CfnRecord::default());
                     record.id = Some(Id {
-                        obj: record.obj.take().or(current_id.obj.clone()),
+                        obj: record.obj.take().or_else(|| current_id.obj.clone()),
                         func: cfn.to_owned(),
-                        file: record.file.take().or(current_id.file.clone()),
+                        file: record.file.take().or_else(|| current_id.file.clone()),
                     });
                 }
                 Some(("calls", calls)) => {
@@ -277,7 +277,7 @@ impl TryFrom<CurrentId> for Id {
 
     fn try_from(value: CurrentId) -> std::result::Result<Self, Self::Error> {
         match value.func {
-            Some(func) => Ok(Id {
+            Some(func) => Ok(Self {
                 obj: value.obj,
                 file: value.file,
                 func,
@@ -289,14 +289,12 @@ impl TryFrom<CurrentId> for Id {
 impl Ord for SourcePath {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
-            (SourcePath::Unknown, SourcePath::Unknown) => Ordering::Equal,
-            (SourcePath::Unknown, _) => Ordering::Less,
-            (_, SourcePath::Unknown) => Ordering::Greater,
+            (Self::Unknown, Self::Unknown) => Ordering::Equal,
+            (Self::Unknown, _) => Ordering::Less,
+            (_, Self::Unknown) => Ordering::Greater,
             (
-                SourcePath::Rust(path) | SourcePath::Relative(path) | SourcePath::Absolute(path),
-                SourcePath::Rust(other_path)
-                | SourcePath::Relative(other_path)
-                | SourcePath::Absolute(other_path),
+                Self::Rust(path) | Self::Relative(path) | Self::Absolute(path),
+                Self::Rust(other_path) | Self::Relative(other_path) | Self::Absolute(other_path),
             ) => path.cmp(other_path),
         }
     }

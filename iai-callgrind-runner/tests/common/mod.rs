@@ -44,7 +44,7 @@ impl Fixtures {
     where
         T: AsRef<Path>,
     {
-        let path = Fixtures::get_path().join(name);
+        let path = Self::get_path().join(name);
         assert!(
             path.exists(),
             "Fixtures path '{}' does not exist",
@@ -63,7 +63,7 @@ impl Fixtures {
             kind,
             tool,
             baseline_kind: BaselineKind::Old,
-            dir: Fixtures::get_path().join(dir),
+            dir: Self::get_path().join(dir),
             name: name.to_owned(),
             modifiers: vec![],
         }
@@ -74,7 +74,7 @@ impl Fixtures {
         T: for<'de> Deserialize<'de>,
         N: AsRef<Path>,
     {
-        let file = File::open(Fixtures::get_path_of(name)).unwrap();
+        let file = File::open(Self::get_path_of(name)).unwrap();
         serde_yaml::from_reader::<File, T>(file)
     }
 
@@ -82,7 +82,7 @@ impl Fixtures {
     where
         T: AsRef<Path>,
     {
-        let path = Fixtures::get_path_of(path);
+        let path = Self::get_path_of(path);
         let reader = BufReader::new(File::open(path).unwrap());
         reader.lines().map(std::result::Result::unwrap).collect()
     }
@@ -93,7 +93,7 @@ impl Fixtures {
         T: Serialize,
         N: AsRef<Path>,
     {
-        let file = File::create(Fixtures::get_path_of(name)).unwrap();
+        let file = File::create(Self::get_path_of(name)).unwrap();
         serde_yaml::to_writer(file, value)
     }
 }

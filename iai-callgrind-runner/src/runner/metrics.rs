@@ -114,7 +114,7 @@ impl Metric {
     #[must_use]
     pub fn div0(self, rhs: Self) -> Self {
         match (self, rhs) {
-            (_, Metric::Int(0) | Metric::Float(0.0f64)) => Metric::Float(0.0f64),
+            (_, Self::Int(0) | Self::Float(0.0f64)) => Self::Float(0.0f64),
             (a, b) => a / b,
         }
     }
@@ -122,16 +122,16 @@ impl Metric {
     /// Return true if this `Metric` is [`Metric::Int`]
     pub fn is_int(&self) -> bool {
         match self {
-            Metric::Int(_) => true,
-            Metric::Float(_) => false,
+            Self::Int(_) => true,
+            Self::Float(_) => false,
         }
     }
 
     /// Return true if this `Metric` is [`Metric::Float`]
     pub fn is_float(&self) -> bool {
         match self {
-            Metric::Int(_) => false,
-            Metric::Float(_) => true,
+            Self::Int(_) => false,
+            Self::Float(_) => true,
         }
     }
 
@@ -144,8 +144,8 @@ impl Metric {
     pub fn try_convert<T: Display + TypeChecker>(&self, metric_kind: T) -> Option<(T, Self)> {
         if metric_kind.verify_metric(*self) {
             Some((metric_kind, *self))
-        } else if let Metric::Int(a) = self {
-            Some((metric_kind, Metric::Float(*a as f64)))
+        } else if let Self::Int(a) = self {
+            Some((metric_kind, Self::Float(*a as f64)))
         } else {
             None
         }
@@ -153,14 +153,14 @@ impl Metric {
 }
 
 impl Add for Metric {
-    type Output = Metric;
+    type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            (Metric::Int(a), Metric::Int(b)) => Self::Int(a.saturating_add(b)),
-            (Metric::Int(a), Metric::Float(b)) => Self::Float((a as f64) + b),
-            (Metric::Float(a), Metric::Int(b)) => Self::Float((b as f64) + a),
-            (Metric::Float(a), Metric::Float(b)) => Self::Float(a + b),
+            (Self::Int(a), Self::Int(b)) => Self::Int(a.saturating_add(b)),
+            (Self::Int(a), Self::Float(b)) => Self::Float((a as f64) + b),
+            (Self::Float(a), Self::Int(b)) => Self::Float((b as f64) + a),
+            (Self::Float(a), Self::Float(b)) => Self::Float(a + b),
         }
     }
 }
@@ -174,21 +174,21 @@ impl AddAssign for Metric {
 impl Display for Metric {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Metric::Int(a) => f.pad(&format!("{a}")),
-            Metric::Float(a) => f.pad(&to_string_unsigned_short(*a)),
+            Self::Int(a) => f.pad(&format!("{a}")),
+            Self::Float(a) => f.pad(&to_string_unsigned_short(*a)),
         }
     }
 }
 
 impl Div for Metric {
-    type Output = Metric;
+    type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            (Metric::Int(a), Metric::Int(b)) => Metric::Float((a as f64) / (b as f64)),
-            (Metric::Int(a), Metric::Float(b)) => Metric::Float((a as f64) / b),
-            (Metric::Float(a), Metric::Int(b)) => Metric::Float(a / (b as f64)),
-            (Metric::Float(a), Metric::Float(b)) => Metric::Float(a / b),
+            (Self::Int(a), Self::Int(b)) => Self::Float((a as f64) / (b as f64)),
+            (Self::Int(a), Self::Float(b)) => Self::Float((a as f64) / b),
+            (Self::Float(a), Self::Int(b)) => Self::Float(a / (b as f64)),
+            (Self::Float(a), Self::Float(b)) => Self::Float(a / b),
         }
     }
 }
@@ -197,13 +197,13 @@ impl Eq for Metric {}
 
 impl From<u64> for Metric {
     fn from(value: u64) -> Self {
-        Metric::Int(value)
+        Self::Int(value)
     }
 }
 
 impl From<f64> for Metric {
     fn from(value: f64) -> Self {
-        Metric::Float(value)
+        Self::Float(value)
     }
 }
 
@@ -221,9 +221,9 @@ impl FromStr for Metric {
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s.parse::<u64>() {
-            Ok(a) => Ok(Metric::Int(a)),
+            Ok(a) => Ok(Self::Int(a)),
             Err(_) => match s.parse::<f64>() {
-                Ok(a) => Ok(Metric::Float(a)),
+                Ok(a) => Ok(Self::Float(a)),
                 Err(error) => Err(anyhow!("Invalid metric: {error}")),
             },
         }
@@ -231,12 +231,12 @@ impl FromStr for Metric {
 }
 
 impl Mul<u64> for Metric {
-    type Output = Metric;
+    type Output = Self;
 
     fn mul(self, rhs: u64) -> Self::Output {
         match self {
-            Metric::Int(a) => Metric::Int(a.saturating_mul(rhs)),
-            Metric::Float(a) => Metric::Float(a * (rhs as f64)),
+            Self::Int(a) => Self::Int(a.saturating_mul(rhs)),
+            Self::Float(a) => Self::Float(a * (rhs as f64)),
         }
     }
 }
@@ -274,10 +274,10 @@ impl Sub for Metric {
 
     fn sub(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            (Metric::Int(a), Metric::Int(b)) => Metric::Int(a.saturating_sub(b)),
-            (Metric::Int(a), Metric::Float(b)) => Metric::Float((a as f64) - b),
-            (Metric::Float(a), Metric::Int(b)) => Metric::Float(a - (b as f64)),
-            (Metric::Float(a), Metric::Float(b)) => Metric::Float(a - b),
+            (Self::Int(a), Self::Int(b)) => Self::Int(a.saturating_sub(b)),
+            (Self::Int(a), Self::Float(b)) => Self::Float((a as f64) - b),
+            (Self::Float(a), Self::Int(b)) => Self::Float(a - (b as f64)),
+            (Self::Float(a), Self::Float(b)) => Self::Float(a - b),
         }
     }
 }
@@ -285,13 +285,13 @@ impl Sub for Metric {
 impl Display for MetricKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MetricKind::None => Ok(()),
-            MetricKind::Callgrind(metric) => f.write_fmt(format_args!("Callgrind: {metric}")),
-            MetricKind::Cachegrind(metric) => f.write_fmt(format_args!("Cachegrind: {metric}")),
-            MetricKind::Dhat(metric) => f.write_fmt(format_args!("DHAT: {metric}")),
-            MetricKind::Memcheck(metric) => f.write_fmt(format_args!("Memcheck: {metric}")),
-            MetricKind::Helgrind(metric) => f.write_fmt(format_args!("Helgrind: {metric}")),
-            MetricKind::DRD(metric) => f.write_fmt(format_args!("DRD: {metric}")),
+            Self::None => Ok(()),
+            Self::Callgrind(metric) => f.write_fmt(format_args!("Callgrind: {metric}")),
+            Self::Cachegrind(metric) => f.write_fmt(format_args!("Cachegrind: {metric}")),
+            Self::Dhat(metric) => f.write_fmt(format_args!("DHAT: {metric}")),
+            Self::Memcheck(metric) => f.write_fmt(format_args!("Memcheck: {metric}")),
+            Self::Helgrind(metric) => f.write_fmt(format_args!("Helgrind: {metric}")),
+            Self::DRD(metric) => f.write_fmt(format_args!("DRD: {metric}")),
         }
     }
 }
@@ -299,7 +299,7 @@ impl Display for MetricKind {
 impl<K: Hash + Eq + Display + Clone> Metrics<K> {
     /// Return empty `Metrics`
     pub fn empty() -> Self {
-        Metrics(IndexMap::new())
+        Self(IndexMap::new())
     }
 
     /// The order matters. The index is derived from the insertion order
@@ -644,7 +644,7 @@ where
 impl From<Metric> for f64 {
     fn from(value: Metric) -> Self {
         match value {
-            Metric::Int(a) => a as f64,
+            Metric::Int(a) => a as Self,
             Metric::Float(a) => a,
         }
     }
@@ -768,7 +768,7 @@ mod tests {
         let map: IndexMap<EventKind, MetricsDiff> = event_kinds
             .iter()
             .zip(kinds)
-            .map(|(e, (m, d))| (*e, expected_metrics_diff(m.clone(), d.clone())))
+            .map(|(e, (m, d))| (*e, expected_metrics_diff(m, d)))
             .collect();
 
         MetricsSummary(map)

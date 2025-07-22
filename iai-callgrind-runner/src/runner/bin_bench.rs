@@ -306,7 +306,7 @@ impl BinBench {
             run_options: RunOptions {
                 env_clear: config.env_clear.unwrap_or(defaults::ENV_CLEAR),
                 envs: command_envs,
-                stdin: stdin.clone().or(Some(defaults::STDIN)),
+                stdin: stdin.or(Some(defaults::STDIN)),
                 stdout,
                 stderr,
                 exit_with: config.exit_with,

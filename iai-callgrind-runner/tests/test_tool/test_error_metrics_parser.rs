@@ -32,7 +32,7 @@ fn test_drd_error_metric_parser(#[case] fixture: &str, #[case] expected: [u64; 4
         Fixtures::get_tool_output_path("drd", ValgrindTool::DRD, ToolOutputPathKind::Log, fixture);
 
     let parser = ErrorMetricLogfileParser {
-        output_path: drd_output_path.clone(),
+        output_path: drd_output_path,
         root_dir: PathBuf::from("/does/not/matter"),
     };
 
@@ -100,7 +100,7 @@ fn test_memcheck_error_metric_parser(#[case] fixture: &str, #[case] expected: [u
     );
 
     let parser = ErrorMetricLogfileParser {
-        output_path: memcheck_output_path.clone(),
+        output_path: memcheck_output_path,
         root_dir: PathBuf::from("/does/not/matter"),
     };
 
@@ -134,7 +134,7 @@ fn test_memcheck_error_metric_parser_when_multiple_pids() {
     );
 
     let parser = ErrorMetricLogfileParser {
-        output_path: memcheck_output_path.clone(),
+        output_path: memcheck_output_path,
         root_dir: PathBuf::from("/does/not/matter"),
     };
 

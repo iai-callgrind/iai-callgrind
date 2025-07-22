@@ -55,12 +55,12 @@ impl From<&Metadata> for Command {
         meta.valgrind_wrapper.as_ref().map_or_else(
             || {
                 let meta_cmd = &meta.valgrind;
-                let mut cmd = Command::new(&meta_cmd.bin);
+                let mut cmd = Self::new(&meta_cmd.bin);
                 cmd.args(&meta_cmd.args);
                 cmd
             },
             |meta_cmd| {
-                let mut cmd = Command::new(&meta_cmd.bin);
+                let mut cmd = Self::new(&meta_cmd.bin);
                 cmd.args(&meta_cmd.args);
                 cmd
             },
