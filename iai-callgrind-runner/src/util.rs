@@ -42,7 +42,7 @@ pub enum EitherOrBoth<T> {
 ///
 /// Match patterns as they are accepted by `valgrind` command line arguments such as
 /// `--toggle-collect` (<https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options>)
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Glob(String);
 
 impl<T> EitherOrBoth<T> {
@@ -180,6 +180,11 @@ impl Glob {
             return false;
         }
         true
+    }
+
+    /// Return the glob as string reference
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 }
 
