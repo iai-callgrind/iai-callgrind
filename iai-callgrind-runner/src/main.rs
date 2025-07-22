@@ -60,22 +60,17 @@ fn main() {
     print_warnings();
     match iai_callgrind_runner::runner::run() {
         Ok(()) => {}
-        Err(error) => match error.downcast_ref::<Error>() {
-            Some(Error::IgnoredArgument(_)) => {
-                warn!("{error}");
-                std::process::exit(0)
-            }
-            Some(Error::RegressionError(is_fatal)) => {
+        Err(error) => {
+            if let Some(Error::RegressionError(is_fatal)) = error.downcast_ref::<Error>() {
                 if *is_fatal {
                     error!("{error}");
                 }
                 std::process::exit(3)
-            }
-            _ => {
+            } else {
                 error!("{error}");
                 std::process::exit(1)
             }
-        },
+        }
     }
 }
 

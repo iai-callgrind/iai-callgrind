@@ -139,8 +139,8 @@ impl ToolCommand {
         }
 
         let mut tool_args = config.args;
-        tool_args.set_output_arg(output_path, config.outfile_modifier.as_ref());
-        tool_args.set_log_arg(output_path, config.outfile_modifier.as_ref());
+        tool_args.set_output_arg(output_path, Option::<&str>::None);
+        tool_args.set_log_arg(output_path, Option::<&str>::None);
 
         let executable = resolve_binary_path(executable)?;
         let args = tool_args.to_vec();

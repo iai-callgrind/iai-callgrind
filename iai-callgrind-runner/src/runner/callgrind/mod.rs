@@ -9,14 +9,9 @@ pub mod parser;
 pub mod regression;
 pub mod summary_parser;
 
-use std::path::PathBuf;
-
-use parser::CallgrindProperties;
-
 use self::model::Metrics;
-use super::metrics::{Metric, MetricsSummary};
+use super::metrics::Metric;
 use crate::api::EventKind;
-use crate::util::EitherOrBoth;
 
 /// The derived metrics of the cache metrics
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -61,24 +56,6 @@ pub struct CyclesEstimator {
     l3_instructions_cache_read_misses: Metric,
     total_data_cache_reads: Metric,
     total_data_cache_writes: Metric,
-}
-
-/// TODO: refactor: delete
-#[derive(Debug, Clone)]
-pub struct Summaries {
-    /// TODO: refactor: delete
-    pub summaries: Vec<Summary>,
-    /// TODO: refactor: delete
-    pub total: MetricsSummary,
-}
-
-/// TODO: refactor: delete
-#[derive(Debug, Clone)]
-pub struct Summary {
-    /// The details of the outputs
-    pub details: EitherOrBoth<(PathBuf, CallgrindProperties)>,
-    /// TODO: delete
-    pub metrics_summary: MetricsSummary,
 }
 
 impl TryFrom<&Metrics> for CacheSummary {

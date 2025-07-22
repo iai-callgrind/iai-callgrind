@@ -54,9 +54,6 @@ pub struct ToolConfig {
     pub is_default: bool,
     /// If true, this tool is enabled for this benchmark
     pub is_enabled: bool,
-    // TODO: refactor: Can this be eliminated
-    /// A optional output file modifier
-    pub outfile_modifier: Option<String>,
     /// The tool specific regression check configuration
     pub regression_config: ToolRegressionConfig,
     /// The [`ValgrindTool`]
@@ -73,7 +70,6 @@ impl ToolConfig {
         tool: ValgrindTool,
         is_enabled: bool,
         args: T,
-        modifier: Option<String>,
         regression_config: ToolRegressionConfig,
         flamegraph_config: ToolFlamegraphConfig,
         entry_point: EntryPoint,
@@ -87,7 +83,6 @@ impl ToolConfig {
             tool,
             is_enabled,
             args: args.into(),
-            outfile_modifier: modifier,
             regression_config,
             flamegraph_config,
             entry_point,
@@ -237,7 +232,6 @@ impl ToolConfig {
                 valgrind_tool,
                 is_default || tool.enable.unwrap_or(true),
                 args,
-                None,
                 regression_config,
                 tool.flamegraph_config
                     .map_or(ToolFlamegraphConfig::None, Into::into),
@@ -329,7 +323,6 @@ impl ToolConfig {
                 valgrind_tool,
                 true,
                 args,
-                None,
                 regression_config,
                 ToolFlamegraphConfig::None,
                 entry_point.unwrap_or(EntryPoint::None),

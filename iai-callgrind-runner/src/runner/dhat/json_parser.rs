@@ -80,7 +80,6 @@ impl Parser for JsonParser {
     }
 }
 
-// TODO: refactor: sort
 /// Parse the dhat output file at `path` into [`DhatData`]
 pub fn parse(path: &Path) -> Result<DhatData> {
     let file = File::open(path)?;

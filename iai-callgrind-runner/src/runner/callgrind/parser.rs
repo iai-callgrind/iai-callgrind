@@ -17,7 +17,7 @@ use crate::runner::tool::parser::ParserOutput;
 use crate::runner::tool::path::ToolOutputPath;
 use crate::runner::DEFAULT_TOGGLE;
 
-// TODO:: Refactor Cleanup
+// TODO:: Refactor use Glob instead
 lazy_static! {
     static ref GLOB_TO_REGEX_RE: Regex =
         Regex::new(r"(\\)([*]|[?])").expect("Regex should compile");

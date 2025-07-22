@@ -25,11 +25,6 @@ pub enum Error {
     ///
     /// `ConfigurationError(ModulePath, benchmark_id, message)`
     ConfigurationError(ModulePath, Option<String>, String),
-    /// TODO: redundant ???
-    /// If parsing an environment variable failed
-    EnvironmentVariableError(String, String),
-    /// TODO: redundant ???
-    IgnoredArgument(String),
     /// An error during the initialization of the runner
     ///
     /// `InitError(message)`
@@ -149,20 +144,11 @@ impl Display for Error {
                     write!(f, "Performance has regressed.",)
                 }
             }
-            Self::EnvironmentVariableError(var, reason) => {
-                write!(f, "Failed parsing environment variable {var}: {reason}")
-            }
             Self::SandboxError(message) => {
                 write!(f, "Error in sandbox: {message}")
             }
             Self::BenchmarkError(tool, module_path, message) => {
                 write!(f, "Error in {tool} benchmark {module_path}: {message}")
-            }
-            Self::IgnoredArgument(arg) => {
-                write!(
-                    f,
-                    "{arg} is ignored and iai-callgrind benchmarks are not executed"
-                )
             }
             Self::ConfigurationError(module_path, id, message) => {
                 let header = Header::without_description(module_path, id.clone());

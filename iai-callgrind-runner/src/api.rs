@@ -2105,24 +2105,6 @@ impl RawArgs {
         );
     }
 
-    /// TODO: Refactor delete
-    pub fn from_command_line_args(args: Vec<String>) -> Self {
-        let mut this = Self(Vec::default());
-        if !args.is_empty() {
-            let mut iter = args.into_iter();
-            // This unwrap is safe. We just checked that `args` is not empty.
-            let mut last = iter.next().unwrap();
-            for elem in iter {
-                this.0.push(last);
-                last = elem;
-            }
-            if last.as_str() != "--bench" {
-                this.0.push(last);
-            }
-        }
-        this
-    }
-
     /// Return true if there are no tool arguments
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()

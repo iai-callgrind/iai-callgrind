@@ -6,10 +6,8 @@ use anyhow::{Context, Result};
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use super::parser::{Header, ParserOutput};
+use super::parser::Header;
 use crate::error::Error;
-use crate::runner::summary::ToolMetricSummary;
-use crate::util::EitherOrBoth;
 
 // The different regex have to consider --time-stamp=yes which adds a timestamp into the prefix
 lazy_static! {
@@ -30,16 +28,6 @@ lazy_static! {
     static ref EXTRACT_PID_RE: Regex =
         regex::Regex::new(r"^\s*(==|--)([0-9:.]+\s+)?(?<pid>[0-9]+)(==|--).*")
             .expect("Regex should compile");
-}
-
-// TODO: refactor: rename to just Logfile? delete!
-/// This struct contains all the information of the new and "old" logfile
-#[derive(Debug, Clone, PartialEq)]
-pub struct LogfileSummary {
-    /// The [`ParserOutput`] of the logfiles
-    pub logfile: EitherOrBoth<ParserOutput>,
-    /// The [`ToolMetricSummary`] of the logfiles
-    pub metrics_summary: ToolMetricSummary,
 }
 
 /// Utility function to extract the pid from a `line` of a logfile
