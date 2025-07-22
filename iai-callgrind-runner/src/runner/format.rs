@@ -19,7 +19,7 @@ use super::metrics::{Metric, MetricKind, MetricsDiff};
 use super::summary::{Diffs, ProfileData, ProfileInfo, ToolMetricSummary, ToolRegression};
 use crate::api::{
     self, CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics,
-    ErrorMetric, EventKind, ValgrindTool,
+    ErrorMetric, EventKind, Tool, ToolOutputFormat, ValgrindTool,
 };
 use crate::util::{
     make_relative, to_string_signed_short, to_string_unsigned_short, truncate_str_utf8,
@@ -441,6 +441,41 @@ impl OutputFormat {
     /// Return true if the `OutputFormat` is json
     pub fn is_json(&self) -> bool {
         self.kind == OutputFormatKind::Json || self.kind == OutputFormatKind::PrettyJson
+    }
+
+    /// Update the output format from the [`Tool`] if present
+    pub fn update(&mut self, tool: Option<&Tool>) {
+        if let Some(tool) = tool {
+            if let Some(format) = &tool.output_format {
+                match format {
+                    ToolOutputFormat::Callgrind(metrics) => {
+                        self.callgrind = metrics.iter().fold(IndexSet::new(), |mut acc, m| {
+                            acc.extend(IndexSet::from(*m));
+                            acc
+                        });
+                    }
+                    ToolOutputFormat::Cachegrind(metrics) => {
+                        self.cachegrind = metrics.iter().fold(IndexSet::new(), |mut acc, m| {
+                            acc.extend(IndexSet::from(*m));
+                            acc
+                        });
+                    }
+                    ToolOutputFormat::DHAT(metrics) => {
+                        self.dhat = metrics.iter().copied().collect();
+                    }
+                    ToolOutputFormat::Memcheck(metrics) => {
+                        self.memcheck = metrics.iter().copied().collect();
+                    }
+                    ToolOutputFormat::Helgrind(metrics) => {
+                        self.helgrind = metrics.iter().copied().collect();
+                    }
+                    ToolOutputFormat::DRD(metrics) => {
+                        self.drd = metrics.iter().copied().collect();
+                    }
+                    ToolOutputFormat::None => {}
+                }
+            }
+        }
     }
 }
 
