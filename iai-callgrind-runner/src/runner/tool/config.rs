@@ -576,6 +576,7 @@ impl ToolConfigs {
     }
 
     /// Run a benchmark with this configuration if not --load-baseline was given
+    #[allow(clippy::too_many_lines)]
     pub fn run(
         &self,
         title: &str,
@@ -616,6 +617,12 @@ impl ToolConfigs {
             if save_baseline {
                 output_path.clear()?;
                 log_path.clear()?;
+                if let Some(path) = output_path.to_xtree_output() {
+                    path.clear()?;
+                }
+                if let Some(path) = output_path.to_xleak_output() {
+                    path.clear()?;
+                }
             }
 
             // We're implicitly applying the default here: In the absence of a user provided sandbox

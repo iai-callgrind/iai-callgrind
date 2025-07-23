@@ -95,6 +95,10 @@ path = "src/helper/subprocess.rs"
 name = "bubble-sort"
 path = "src/helper/bubble-sort.rs"
 
+[[bin]]
+name = "leak-memory"
+path = "src/helper/leak-memory.rs"
+
 [[bench]]
 harness = false
 name = "test_bench_template"
@@ -283,6 +287,11 @@ path = "benches/test_lib_bench/default_tool/test_lib_bench_default_tool.rs"
 harness = false
 name = "test_lib_bench_dhat"
 path = "benches/test_lib_bench/dhat/test_lib_bench_dhat.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_xtree"
+path = "benches/test_lib_bench/xtree/test_lib_bench_xtree.rs"
 
 [[bench]]
 harness = false

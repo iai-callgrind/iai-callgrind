@@ -22,12 +22,16 @@ lazy_static! {
     // This regex matches the original file name without the prefix as it is created by callgrind.
     // The baseline <name> (base@<name>) can only consist of ascii and underscore characters.
     // Flamegraph files are ignored by this regex
+    //
+    // Note callgrind doesn't support xtree, xleak files
     static ref CALLGRIND_ORIG_FILENAME_RE: Regex = Regex::new(
         "^(?<type>[.](out|log))(?<base>[.](old|base@[^.-]+))?(?<pid>[.][#][0-9]+)?(?<part>[.][0-9]+)?(?<thread>-[0-9]+)?$"
     )
     .expect("Regex should compile");
 
     /// This regex matches the original file name without the prefix as it is created by bbv
+    ///
+    /// Note bbv doesn't support xtree, xleak files
     static ref BBV_ORIG_FILENAME_RE: Regex = Regex::new(
         "^(?<type>[.](?:out|log))(?<base>[.](old|base@[^.]+))?(?<bbv_type>[.](?:bb|pc))?(?<pid>[.][#][0-9]+)?(?<thread>[.][0-9]+)?$"
     )
@@ -36,12 +40,12 @@ lazy_static! {
     /// This regex matches the original file name without the prefix as it is created by all tools
     /// other than callgrind and bbv.
     static ref GENERIC_ORIG_FILENAME_RE: Regex = Regex::new(
-        "^(?<type>[.](?:out|log))(?<base>[.](old|base@[^.]+))?(?<pid>[.][#][0-9]+)?$"
+        "^(?<type>[.](?:out|log|xtree|xleak))(?<base>[.](old|base@[^.]+))?(?<pid>[.][#][0-9]+)?$"
     )
     .expect("Regex should compile");
 
     static ref REAL_FILENAME_RE: Regex = Regex::new(
-        "^(?:[.](?<pid>[0-9]+))?(?:[.]t(?<tid>[0-9]+))?(?:[.]p(?<part>[0-9]+))?(?:[.](?<bbv>bb|pc))?(?:[.](?<type>out|log))(?:[.](?<base>old|base@[^.]+))?$"
+        "^(?:[.](?<pid>[0-9]+))?(?:[.]t(?<tid>[0-9]+))?(?:[.]p(?<part>[0-9]+))?(?:[.](?<bbv>bb|pc))?(?:[.](?<type>out|log|xtree|xleak))(?:[.](?<base>old|base@[^.]+))?$"
     )
     .expect("Regex should compile");
 }
@@ -61,6 +65,18 @@ pub enum ToolOutputPathKind {
     BaseLog(String),
     /// The output path for baseline `out` files
     Base(String),
+    /// The output path for `*.xtree` files
+    Xtree,
+    /// The output path for `*.xtree.old` files
+    OldXtree,
+    /// The output for baseline `xtree` files
+    BaseXtree(String),
+    /// The output path for `*.xleak` files
+    Xleak,
+    /// The output path for `*.xleak.old` files
+    OldXleak,
+    /// The output for baseline `xleak` files
+    BaseXleak(String),
 }
 
 /// The tool specific output path(s)
@@ -210,6 +226,16 @@ impl ToolOutputPath {
                     ToolOutputPathKind::Log | ToolOutputPathKind::BaseLog(_),
                     BaselineKind::Name(name),
                 ) => ToolOutputPathKind::BaseLog(name.to_string()),
+                (ToolOutputPathKind::Xtree, BaselineKind::Old) => ToolOutputPathKind::OldXtree,
+                (
+                    ToolOutputPathKind::Xtree | ToolOutputPathKind::BaseXtree(_),
+                    BaselineKind::Name(name),
+                ) => ToolOutputPathKind::BaseXtree(name.to_string()),
+                (ToolOutputPathKind::Xleak, BaselineKind::Old) => ToolOutputPathKind::OldXleak,
+                (
+                    ToolOutputPathKind::Xleak | ToolOutputPathKind::BaseXleak(_),
+                    BaselineKind::Name(name),
+                ) => ToolOutputPathKind::BaseXleak(name.to_string()),
                 (kind, _) => kind.clone(),
             },
             tool: self.tool,
@@ -230,14 +256,28 @@ impl ToolOutputPath {
     pub fn to_tool_output(&self, tool: ValgrindTool) -> Self {
         let kind = if tool.has_output_file() {
             match &self.kind {
-                ToolOutputPathKind::Log | ToolOutputPathKind::OldLog => ToolOutputPathKind::Out,
-                ToolOutputPathKind::BaseLog(name) => ToolOutputPathKind::Base(name.clone()),
+                ToolOutputPathKind::Log
+                | ToolOutputPathKind::OldLog
+                | ToolOutputPathKind::Xtree
+                | ToolOutputPathKind::OldXtree
+                | ToolOutputPathKind::Xleak
+                | ToolOutputPathKind::OldXleak => ToolOutputPathKind::Out,
+                ToolOutputPathKind::BaseLog(name)
+                | ToolOutputPathKind::BaseXtree(name)
+                | ToolOutputPathKind::BaseXleak(name) => ToolOutputPathKind::Base(name.clone()),
                 kind => kind.clone(),
             }
         } else {
             match &self.kind {
-                ToolOutputPathKind::Out | ToolOutputPathKind::OldOut => ToolOutputPathKind::Log,
-                ToolOutputPathKind::Base(name) => ToolOutputPathKind::BaseLog(name.clone()),
+                ToolOutputPathKind::Out
+                | ToolOutputPathKind::OldOut
+                | ToolOutputPathKind::Xtree
+                | ToolOutputPathKind::OldXtree
+                | ToolOutputPathKind::Xleak
+                | ToolOutputPathKind::OldXleak => ToolOutputPathKind::Log,
+                ToolOutputPathKind::Base(name)
+                | ToolOutputPathKind::BaseXtree(name)
+                | ToolOutputPathKind::BaseXleak(name) => ToolOutputPathKind::BaseLog(name.clone()),
                 kind => kind.clone(),
             }
         };
@@ -258,8 +298,15 @@ impl ToolOutputPath {
     pub fn to_log_output(&self) -> Self {
         Self {
             kind: match &self.kind {
-                ToolOutputPathKind::Out | ToolOutputPathKind::OldOut => ToolOutputPathKind::Log,
-                ToolOutputPathKind::Base(name) => ToolOutputPathKind::BaseLog(name.clone()),
+                ToolOutputPathKind::Out
+                | ToolOutputPathKind::OldOut
+                | ToolOutputPathKind::Xleak
+                | ToolOutputPathKind::OldXleak
+                | ToolOutputPathKind::Xtree
+                | ToolOutputPathKind::OldXtree => ToolOutputPathKind::Log,
+                ToolOutputPathKind::Base(name)
+                | ToolOutputPathKind::BaseXtree(name)
+                | ToolOutputPathKind::BaseXleak(name) => ToolOutputPathKind::BaseLog(name.clone()),
                 kind => kind.clone(),
             },
             tool: self.tool,
@@ -268,6 +315,62 @@ impl ToolOutputPath {
             dir: self.dir.clone(),
             modifiers: self.modifiers.clone(),
         }
+    }
+
+    /// If possible, convert this tool output to the according xtree output
+    ///
+    /// Not all tools support xtree output files
+    #[must_use]
+    pub fn to_xtree_output(&self) -> Option<Self> {
+        self.tool.has_xtree_file().then(|| Self {
+            kind: match &self.kind {
+                ToolOutputPathKind::Out
+                | ToolOutputPathKind::OldOut
+                | ToolOutputPathKind::Xleak
+                | ToolOutputPathKind::OldXleak
+                | ToolOutputPathKind::Log
+                | ToolOutputPathKind::OldLog => ToolOutputPathKind::Xtree,
+                ToolOutputPathKind::Base(name)
+                | ToolOutputPathKind::BaseLog(name)
+                | ToolOutputPathKind::BaseXleak(name) => {
+                    ToolOutputPathKind::BaseXtree(name.clone())
+                }
+                kind => kind.clone(),
+            },
+            tool: self.tool,
+            baseline_kind: self.baseline_kind.clone(),
+            name: self.name.clone(),
+            dir: self.dir.clone(),
+            modifiers: self.modifiers.clone(),
+        })
+    }
+
+    /// If possible, convert this tool output to the according xleak output
+    ///
+    /// Not all tools support xleak output files
+    #[must_use]
+    pub fn to_xleak_output(&self) -> Option<Self> {
+        self.tool.has_xleak_file().then(|| Self {
+            kind: match &self.kind {
+                ToolOutputPathKind::Out
+                | ToolOutputPathKind::OldOut
+                | ToolOutputPathKind::Xtree
+                | ToolOutputPathKind::OldXtree
+                | ToolOutputPathKind::Log
+                | ToolOutputPathKind::OldLog => ToolOutputPathKind::Xleak,
+                ToolOutputPathKind::Base(name)
+                | ToolOutputPathKind::BaseLog(name)
+                | ToolOutputPathKind::BaseXtree(name) => {
+                    ToolOutputPathKind::BaseXleak(name.clone())
+                }
+                kind => kind.clone(),
+            },
+            tool: self.tool,
+            baseline_kind: self.baseline_kind.clone(),
+            name: self.name.clone(),
+            dir: self.dir.clone(),
+            modifiers: self.modifiers.clone(),
+        })
     }
 
     /// Return the path to the log file for the given `path`
@@ -279,7 +382,7 @@ impl ToolOutputPath {
             let caps = REAL_FILENAME_RE.captures(suffix)?;
             if let Some(kind) = caps.name("type") {
                 match kind.as_str() {
-                    "out" => {
+                    "out" | "xtree" | "xleak" => {
                         let mut string = self.prefix();
                         for s in [
                             caps.name("pid").map(|c| format!(".{}", c.as_str())),
@@ -353,6 +456,26 @@ impl ToolOutputPath {
             (ToolOutputPathKind::Base(name), true) => format!("out.base@{name}"),
             (ToolOutputPathKind::Base(name), false) => {
                 format!("out.base@{name}.{}", self.modifiers.join("."))
+            }
+            (ToolOutputPathKind::Xtree, true) => "xtree".to_owned(),
+            (ToolOutputPathKind::Xtree, false) => format!("xtree.{}", self.modifiers.join(".")),
+            (ToolOutputPathKind::OldXtree, true) => "xtree.old".to_owned(),
+            (ToolOutputPathKind::OldXtree, false) => {
+                format!("xtree.old.{}", self.modifiers.join("."))
+            }
+            (ToolOutputPathKind::BaseXtree(name), true) => format!("xtree.base@{name}"),
+            (ToolOutputPathKind::BaseXtree(name), false) => {
+                format!("xtree.base@{name}.{}", self.modifiers.join("."))
+            }
+            (ToolOutputPathKind::Xleak, true) => "xleak".to_owned(),
+            (ToolOutputPathKind::Xleak, false) => format!("xleak.{}", self.modifiers.join(".")),
+            (ToolOutputPathKind::OldXleak, true) => "xleak.old".to_owned(),
+            (ToolOutputPathKind::OldXleak, false) => {
+                format!("xleak.old.{}", self.modifiers.join("."))
+            }
+            (ToolOutputPathKind::BaseXleak(name), true) => format!("xleak.base@{name}"),
+            (ToolOutputPathKind::BaseXleak(name), false) => {
+                format!("xleak.base@{name}.{}", self.modifiers.join("."))
             }
         }
     }
@@ -434,6 +557,16 @@ impl ToolOutputPath {
                     ToolOutputPathKind::Base(name) => {
                         suffix.ends_with(format!(".out.base@{name}").as_str())
                     }
+                    ToolOutputPathKind::Xtree => suffix.ends_with(".xtree"),
+                    ToolOutputPathKind::OldXtree => suffix.ends_with(".xtree.old"),
+                    ToolOutputPathKind::BaseXtree(name) => {
+                        suffix.ends_with(format!(".xtree.base@{name}").as_str())
+                    }
+                    ToolOutputPathKind::Xleak => suffix.ends_with(".xleak"),
+                    ToolOutputPathKind::OldXleak => suffix.ends_with(".xleak.old"),
+                    ToolOutputPathKind::BaseXleak(name) => {
+                        suffix.ends_with(format!(".xleak.base@{name}").as_str())
+                    }
                 };
 
                 if is_match {
@@ -463,6 +596,16 @@ impl ToolOutputPath {
                     }
                     ToolOutputPathKind::Base(name) => {
                         suffix.strip_suffix(format!(".out.base@{name}").as_str())
+                    }
+                    ToolOutputPathKind::Xtree => suffix.strip_suffix(".xtree"),
+                    ToolOutputPathKind::OldXtree => suffix.strip_suffix(".xtree.old"),
+                    ToolOutputPathKind::BaseXtree(name) => {
+                        suffix.strip_suffix(format!(".xtree.base@{name}").as_str())
+                    }
+                    ToolOutputPathKind::Xleak => suffix.strip_suffix(".xleak"),
+                    ToolOutputPathKind::OldXleak => suffix.strip_suffix(".xleak.old"),
+                    ToolOutputPathKind::BaseXleak(name) => {
+                        suffix.strip_suffix(format!(".xleak.base@{name}").as_str())
                     }
                 };
 
@@ -857,7 +1000,7 @@ impl ToolOutputPath {
         // key: base => vec: path, pid
         type Group = HashMap<Option<String>, Vec<(PathBuf, Option<String>)>>;
 
-        // key: .(out|log)
+        // key: .(out|log|xtree|xleak)
         let mut groups: HashMap<String, Group> = HashMap::new();
         for entry in self.walk_dir()? {
             let file_name = entry.file_name();
@@ -1008,6 +1151,10 @@ mod tests {
     #[case::pid_bb_out(".123.bb.out", vec![("pid", "123"), ("bbv", "bb"), ("type", "out")])]
     #[case::pid_thread_bb_out(".123.t1.bb.out", vec![("pid", "123"), ("tid", "1"), ("bbv", "bb"), ("type", "out")])]
     #[case::log(".log", vec![("type", "log")])]
+    #[case::xtree(".xtree", vec![("type", "xtree")])]
+    #[case::xtree_old(".xtree.old", vec![("type", "xtree"), ("base", "old")])]
+    #[case::xleak(".xleak", vec![("type", "xleak")])]
+    #[case::xleak_old(".xleak.old", vec![("type", "xleak"), ("base", "old")])]
     fn test_real_file_name_regex(#[case] haystack: &str, #[case] expected: Vec<(&str, &str)>) {
         assert!(REAL_FILENAME_RE.is_match(haystack));
 
@@ -1067,6 +1214,36 @@ mod tests {
         ValgrindTool::BBV,
         "exp-bbv.bench_thread_in_subprocess.two.123.t1.bb.out",
         "exp-bbv.bench_thread_in_subprocess.two.123.log"
+    )]
+    #[case::xtree(
+        ValgrindTool::Memcheck,
+        "memcheck.bench_thread_in_subprocess.two.xtree",
+        "memcheck.bench_thread_in_subprocess.two.log"
+    )]
+    #[case::xtree_old(
+        ValgrindTool::Memcheck,
+        "memcheck.bench_thread_in_subprocess.two.xtree.old",
+        "memcheck.bench_thread_in_subprocess.two.log.old"
+    )]
+    #[case::xtree_pid(
+        ValgrindTool::Memcheck,
+        "memcheck.bench_thread_in_subprocess.two.123.xtree",
+        "memcheck.bench_thread_in_subprocess.two.123.log"
+    )]
+    #[case::xleak(
+        ValgrindTool::Memcheck,
+        "memcheck.bench_thread_in_subprocess.two.xleak",
+        "memcheck.bench_thread_in_subprocess.two.log"
+    )]
+    #[case::xleak_old(
+        ValgrindTool::Memcheck,
+        "memcheck.bench_thread_in_subprocess.two.xleak.old",
+        "memcheck.bench_thread_in_subprocess.two.log.old"
+    )]
+    #[case::xleak_pid(
+        ValgrindTool::Memcheck,
+        "memcheck.bench_thread_in_subprocess.two.123.xleak",
+        "memcheck.bench_thread_in_subprocess.two.123.log"
     )]
     fn test_tool_output_path_log_path_of(
         #[case] tool: ValgrindTool,

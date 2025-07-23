@@ -173,6 +173,12 @@ impl Benchmark for BaselineBenchmark {
             if path.kind == ToolOutputPathKind::Out {
                 path.to_log_output().shift()?;
             }
+            if let Some(path) = path.to_xtree_output() {
+                path.shift()?;
+            }
+            if let Some(path) = path.to_xleak_output() {
+                path.shift()?;
+            }
         }
 
         let benchmark_summary = bin_bench.create_benchmark_summary(

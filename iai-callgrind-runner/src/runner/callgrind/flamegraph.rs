@@ -389,11 +389,18 @@ impl OutputPath {
     pub fn new(tool_output_path: &ToolOutputPath, event_kind: EventKind) -> Self {
         Self {
             kind: match &tool_output_path.kind {
-                ToolOutputPathKind::Out | ToolOutputPathKind::Log => OutputPathKind::Regular,
-                ToolOutputPathKind::OldOut | ToolOutputPathKind::OldLog => OutputPathKind::Old,
-                ToolOutputPathKind::BaseLog(name) | ToolOutputPathKind::Base(name) => {
-                    OutputPathKind::Base(name.clone())
-                }
+                ToolOutputPathKind::Out
+                | ToolOutputPathKind::Log
+                | ToolOutputPathKind::Xtree
+                | ToolOutputPathKind::Xleak => OutputPathKind::Regular,
+                ToolOutputPathKind::OldOut
+                | ToolOutputPathKind::OldLog
+                | ToolOutputPathKind::OldXtree
+                | ToolOutputPathKind::OldXleak => OutputPathKind::Old,
+                ToolOutputPathKind::BaseLog(name)
+                | ToolOutputPathKind::Base(name)
+                | ToolOutputPathKind::BaseXtree(name)
+                | ToolOutputPathKind::BaseXleak(name) => OutputPathKind::Base(name.clone()),
             },
             event_kind,
             baseline_kind: tool_output_path.baseline_kind.clone(),
