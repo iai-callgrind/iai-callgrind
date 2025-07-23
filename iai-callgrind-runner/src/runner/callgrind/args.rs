@@ -45,11 +45,8 @@ impl Args {
     /// Try to update these `Args` from the contents of an iterator
     pub fn try_update<'a, T: Iterator<Item = &'a String>>(&mut self, args: T) -> Result<()> {
         for arg in args {
-            match arg
-                .trim()
-                .split_once('=')
-                .map(|(k, v)| (k.trim(), v.trim()))
-            {
+            let arg = arg.trim();
+            match arg.split_once('=').map(|(k, v)| (k.trim(), v.trim())) {
                 Some(("--I1", value)) => value.clone_into(&mut self.i1),
                 Some(("--D1", value)) => value.clone_into(&mut self.d1),
                 Some(("--LL", value)) => value.clone_into(&mut self.ll),
@@ -94,15 +91,11 @@ impl Args {
                     "Ignoring callgrind argument '{arg}': Output/Log files of tools are managed \
                      by Iai-Callgrind",
                 ),
-                Some(_) => self.other.push(arg.clone()),
-                None if arg == "-v" || arg == "--verbose" => self.verbose = true,
+                None if matches!(arg, "-v" | "--verbose") => self.verbose = true,
                 None if is_ignored_argument(arg) => {
                     warn!("Ignoring callgrind argument: '{arg}'");
                 }
-                None if arg.starts_with('-') => self.other.push(arg.clone()),
-                // ignore positional arguments for now. It might be a filtering argument for cargo
-                // bench
-                None => {}
+                None | Some(_) => self.other.push(arg.to_owned()),
             }
         }
         Ok(())

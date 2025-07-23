@@ -136,16 +136,8 @@ impl ToolArgs {
 
         for args in raw_args {
             for arg in &args.0 {
-                match arg
-                    .trim()
-                    .split_once('=')
-                    .map(|(k, v)| (k.trim(), v.trim()))
-                {
-                    Some((arg, _)) if is_ignored_outfile_argument(arg) => warn!(
-                        "Ignoring {} argument '{arg}': Output/Log files of tools are managed by \
-                         Iai-Callgrind",
-                        tool.id()
-                    ),
+                let arg = arg.trim();
+                match arg.split_once('=').map(|(k, v)| (k.trim(), v.trim())) {
                     Some(("--error-exitcode", value)) => {
                         value.clone_into(&mut tool_args.error_exitcode);
                     }
@@ -157,10 +149,15 @@ impl ToolArgs {
                     Some(("--fair-sched", value)) => {
                         tool_args.fair_sched = FairSched::from_str(value)?;
                     }
+                    Some((arg, _)) if is_ignored_outfile_argument(arg) => warn!(
+                        "Ignoring {} argument '{arg}': Output/Log files of tools are managed by \
+                         Iai-Callgrind",
+                        tool.id()
+                    ),
+                    None if matches!(arg, "-v" | "--verbose") => tool_args.verbose = true,
                     None if is_ignored_argument(arg) => {
                         warn!("Ignoring {} argument '{arg}'", tool.id());
                     }
-                    None if matches!(arg.as_str(), "--verbose") => tool_args.verbose = true,
                     None | Some(_) => tool_args.other.push(arg.to_owned()),
                 }
             }
