@@ -1,0 +1,6 @@
+iai_callgrind_runner::runner::callgrind::args: Warn : Ignoring unsupported callgrind argument: '--compress-strings=yes'
+iai_callgrind_runner::runner::callgrind::args: Warn : Ignoring unsupported callgrind argument: '--compress-pos=yes'
+iai_callgrind_runner::runner::callgrind::args: Warn : Ignoring unsupported callgrind argument: '--combine-dumps=yes'
+iai_callgrind_runner::runner::callgrind::args: Warn : Ignoring unsupported callgrind argument: '--compress-strings=no'
+iai_callgrind_runner::runner::callgrind::args: Warn : Ignoring unsupported callgrind argument: '--compress-pos=no'
+iai_callgrind_runner::runner::callgrind::args: Warn : Ignoring unsupported callgrind argument: '--combine-dumps=no'
