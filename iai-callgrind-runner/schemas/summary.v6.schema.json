@@ -83,16 +83,16 @@
     }
   },
   "required": [
-    "version",
-    "kind",
-    "project_root",
-    "package_dir",
-    "benchmark_file",
-    "benchmark_exe",
-    "function_name",
-    "module_path",
     "baselines",
-    "profiles"
+    "benchmark_exe",
+    "benchmark_file",
+    "function_name",
+    "kind",
+    "module_path",
+    "package_dir",
+    "profiles",
+    "project_root",
+    "version"
   ],
   "definitions": {
     "BenchmarkKind": {
@@ -334,6 +334,27 @@
       "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, metrics, etc. Per convention\nleft is `new` and right is `old`.",
       "oneOf": [
         {
+          "description": "Both values (`new` and `old`) are present",
+          "type": "object",
+          "properties": {
+            "Both": {
+              "type": "array",
+              "items": [
+                {
+                  "$ref": "#/definitions/ProfileInfo"
+                },
+                {
+                  "$ref": "#/definitions/ProfileInfo"
+                }
+              ],
+              "maxItems": 2,
+              "minItems": 2
+            }
+          },
+          "additionalProperties": false,
+          "required": ["Both"]
+        },
+        {
           "description": "The left or `new` value",
           "type": "object",
           "properties": {
@@ -354,27 +375,6 @@
           },
           "additionalProperties": false,
           "required": ["Right"]
-        },
-        {
-          "description": "Both values (`new` and `old`) are present",
-          "type": "object",
-          "properties": {
-            "Both": {
-              "type": "array",
-              "items": [
-                {
-                  "$ref": "#/definitions/ProfileInfo"
-                },
-                {
-                  "$ref": "#/definitions/ProfileInfo"
-                }
-              ],
-              "maxItems": 2,
-              "minItems": 2
-            }
-          },
-          "additionalProperties": false,
-          "required": ["Both"]
         }
       ]
     },
@@ -382,6 +382,27 @@
       "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, metrics, etc. Per convention\nleft is `new` and right is `old`.",
       "oneOf": [
         {
+          "description": "Both values (`new` and `old`) are present",
+          "type": "object",
+          "properties": {
+            "Both": {
+              "type": "array",
+              "items": [
+                {
+                  "$ref": "#/definitions/Metric"
+                },
+                {
+                  "$ref": "#/definitions/Metric"
+                }
+              ],
+              "maxItems": 2,
+              "minItems": 2
+            }
+          },
+          "additionalProperties": false,
+          "required": ["Both"]
+        },
+        {
           "description": "The left or `new` value",
           "type": "object",
           "properties": {
@@ -402,27 +423,6 @@
           },
           "additionalProperties": false,
           "required": ["Right"]
-        },
-        {
-          "description": "Both values (`new` and `old`) are present",
-          "type": "object",
-          "properties": {
-            "Both": {
-              "type": "array",
-              "items": [
-                {
-                  "$ref": "#/definitions/Metric"
-                },
-                {
-                  "$ref": "#/definitions/Metric"
-                }
-              ],
-              "maxItems": 2,
-              "minItems": 2
-            }
-          },
-          "additionalProperties": false,
-          "required": ["Both"]
         }
       ]
     },
@@ -672,6 +672,7 @@
       "description": "The metric measured by valgrind or derived from one or more other metrics\n\nThe valgrind metrics measured by any of its tools are `u64`. However, to be able to represent\nderived metrics like cache miss/hit rates it is inevitable to have a type which can store a\n`u64` or a `f64`. When doing math with metrics, the original type should be preserved as far as\npossible by using `u64` operations. A float metric should be a last resort.\n\nFloat operations with a `Metric` that stores a `u64` introduce a precision loss and are to be\navoided. Especially comparison between a `u64` metric and `f64` metric are not exact because the\n`u64` has to be converted to a `f64`. Also, if adding/multiplying two `u64` metrics would result\nin an overflow the metric saturates at `u64::MAX`. This choice was made to preserve precision\nand the original type (instead of for example adding the two `u64` by converting both of them to\n`f64`).",
       "oneOf": [
         {
+          "description": "An integer `Metric`",
           "type": "object",
           "properties": {
             "Int": {
@@ -684,6 +685,7 @@
           "required": ["Int"]
         },
         {
+          "description": "A float `Metric`",
           "type": "object",
           "properties": {
             "Float": {
@@ -700,10 +702,12 @@
       "description": "The different metrics distinguished by tool and if it is an error checking tool as `ErrorMetric`",
       "oneOf": [
         {
+          "description": "The `None` kind if there are no metrics for a tool",
           "type": "string",
-          "enum": ["None"]
+          "const": "None"
         },
         {
+          "description": "The Callgrind metric kind",
           "type": "object",
           "properties": {
             "Callgrind": {
@@ -714,6 +718,7 @@
           "required": ["Callgrind"]
         },
         {
+          "description": "The Cachegrind metric kind",
           "type": "object",
           "properties": {
             "Cachegrind": {
@@ -724,6 +729,7 @@
           "required": ["Cachegrind"]
         },
         {
+          "description": "The DHAT metric kind",
           "type": "object",
           "properties": {
             "Dhat": {
@@ -734,6 +740,7 @@
           "required": ["Dhat"]
         },
         {
+          "description": "The Memcheck metric kind",
           "type": "object",
           "properties": {
             "Memcheck": {
@@ -744,6 +751,7 @@
           "required": ["Memcheck"]
         },
         {
+          "description": "The Helgrind metric kind",
           "type": "object",
           "properties": {
             "Helgrind": {
@@ -754,6 +762,7 @@
           "required": ["Helgrind"]
         },
         {
+          "description": "The DRD metric kind",
           "type": "object",
           "properties": {
             "DRD": {
@@ -861,7 +870,7 @@
           ]
         }
       },
-      "required": ["tool", "log_paths", "out_paths", "flamegraphs", "summaries"]
+      "required": ["flamegraphs", "log_paths", "out_paths", "summaries", "tool"]
     },
     "ProfileData": {
       "description": "The `ToolRun` contains all information about a single tool run with possibly multiple segments\n\nThe total is always present and summarizes all tool run segments. In the special case of a\nsingle tool run segment, the total equals the metrics of this segment.",
@@ -924,7 +933,7 @@
           "minimum": 0
         }
       },
-      "required": ["command", "pid", "path"]
+      "required": ["command", "path", "pid"]
     },
     "ProfilePart": {
       "description": "A single segment of a tool run and if present the comparison with the \"old\" segment\n\nA tool run can produce multiple segments, for example for each process and subprocess with\n(--trace-children).",
@@ -954,16 +963,22 @@
       "type": "object",
       "properties": {
         "regressions": {
+          "description": "The detected regressions if any",
           "type": "array",
           "items": {
             "$ref": "#/definitions/ToolRegression"
           }
         },
         "summary": {
-          "$ref": "#/definitions/ToolMetricSummary"
+          "description": "The summary of metrics of the tool",
+          "allOf": [
+            {
+              "$ref": "#/definitions/ToolMetricSummary"
+            }
+          ]
         }
       },
-      "required": ["summary", "regressions"]
+      "required": ["regressions", "summary"]
     },
     "Profiles": {
       "description": "The collection of all generated [`Profile`]s",
@@ -1061,8 +1076,10 @@
       ]
     },
     "ToolRegression": {
+      "description": "A detected performance regression depending on the limit either `Soft` or `Hard`",
       "oneOf": [
         {
+          "description": "A performance regression triggered by a soft limit",
           "type": "object",
           "properties": {
             "Soft": {
@@ -1108,6 +1125,7 @@
           "required": ["Soft"]
         },
         {
+          "description": "A performance regression triggered by a hard limit",
           "type": "object",
           "properties": {
             "Hard": {
