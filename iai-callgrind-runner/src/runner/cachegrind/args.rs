@@ -99,6 +99,8 @@ impl From<Args> for ToolArgs {
             tool: ValgrindTool::Cachegrind,
             output_paths: Vec::default(),
             log_path: Option::default(),
+            xtree_path: Option::default(),
+            xleak_path: Option::default(),
             error_exitcode: defaults::ERROR_EXIT_CODE_OTHER_TOOL.into(),
             verbose: value.verbose,
             trace_children: value.trace_children,

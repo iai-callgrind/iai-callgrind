@@ -83,6 +83,10 @@ pub struct ToolArgs {
     pub trace_children: bool,
     /// If --verbose is set to true of false
     pub verbose: bool,
+    /// The xtree paths argument --xtree-leak-file
+    pub xleak_path: Option<OsString>,
+    /// The xtree paths argument --xtree-memory-file
+    pub xtree_path: Option<OsString>,
 }
 
 impl Display for FairSched {
