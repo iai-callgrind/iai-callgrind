@@ -2158,7 +2158,7 @@ impl OutputFormat {
     /// ```rust
     /// use iai_callgrind::OutputFormat;
     ///
-    /// let output_format = OutputFormat::default().set_tolerance(1.5);
+    /// let output_format = OutputFormat::default().tolerance(1.5);
     /// ```
     ///
     /// Below is the output of a Iai-Callgrind run with a set tolerance. For the benchmark
@@ -2166,49 +2166,15 @@ impl OutputFormat {
     /// subprocesses.
     ///
     /// ```text
-    /// test_lib_bench_output_format::my_group::bench_with_format for_comparison:"Another very long string to see if the truncation is disabled with the formatting option"
-    /// |======== CALLGRIND ====================================================================
-    /// |-## pid: 201353 thread: 1 part: 1         |pid: 198413 thread: 1 part: 1
-    /// | Command:             target/release/deps/test_lib_bench_output_format-1513f8a9fcfa7efb
-    /// | Instructions:                       35329|35489                (Within tolerance margin)
-    /// | L1 Hits:                            77504|77697                (Within tolerance margin)
-    /// | LL Hits:                              619|621                  (Within tolerance margin)
-    /// | RAM Hits:                             767|770                  (Within tolerance margin)
-    /// | Total read+write:                   78890|79088                (Within tolerance margin)
-    /// | Estimated Cycles:                  107444|107752               (Within tolerance margin)
-    /// |-## pid: 201353 thread: 2 part: 1         |pid: 198413 thread: 2 part: 1
-    /// | Command:             target/release/deps/test_lib_bench_output_format-1513f8a9fcfa7efb
-    /// | Instructions:                     2344256|2344256              (No change)
-    /// | L1 Hits:                          2399920|2399916              (Within tolerance margin)
-    /// | LL Hits:                                8|10                   (-20.0000%) [-1.25000x]
-    /// | RAM Hits:                             188|190                  (-1.05263%) [-1.01064x]
-    /// | Total read+write:                 2400116|2400116              (No change)
-    /// | Estimated Cycles:                 2406540|2406616              (Within tolerance margin)
-    /// |-## pid: 201353 thread: 3 part: 1         |pid: 198413 thread: 3 part: 1
-    /// | Command:             target/release/deps/test_lib_bench_output_format-1513f8a9fcfa7efb
-    /// | Instructions:                     3467927|3467927              (No change)
-    /// | L1 Hits:                          3522843|3522835              (Within tolerance margin)
-    /// | LL Hits:                                4|12                   (-66.6667%) [-3.00000x]
-    /// | RAM Hits:                             131|131                  (No change)
-    /// | Total read+write:                 3522978|3522978              (No change)
-    /// | Estimated Cycles:                 3527448|3527480              (Within tolerance margin)
-    /// |-## pid: 201353 thread: 4 part: 1         |pid: 198413 thread: 4 part: 1
-    /// | Command:             target/release/deps/test_lib_bench_output_format-1513f8a9fcfa7efb
-    /// | Instructions:                     4128464|4128464              (No change)
-    /// | L1 Hits:                          4183070|4183069              (Within tolerance margin)
-    /// | LL Hits:                               10|11                   (-9.09091%) [-1.10000x]
-    /// | RAM Hits:                             125|125                  (No change)
-    /// | Total read+write:                 4183205|4183205              (No change)
-    /// | Estimated Cycles:                 4187495|4187499              (Within tolerance margin)
-    /// |-## Total
-    /// | Instructions:                     9975976|9976136              (Within tolerance margin)
-    /// | L1 Hits:                         10183337|10183517             (Within tolerance margin)
+    /// my_benchmark::some_group::bench_thread
+    /// | Instructions:                     9975976|9976136              (Tolerance)
+    /// | L1 Hits:                         10183337|10183517             (Tolerance)
     /// | LL Hits:                              641|654                  (-1.98777%) [-1.02028x]
-    /// | RAM Hits:                            1211|1216                 (Within tolerance margin)
-    /// | Total read+write:                10185189|10185387             (Within tolerance margin)
-    /// | Estimated Cycles:                10228927|10229347             (Within tolerance margin)
+    /// | RAM Hits:                            1211|1216                 (Tolerance)
+    /// | Total read+write:                10185189|10185387             (Tolerance)
+    /// | Estimated Cycles:                10228927|10229347             (Tolerance)
     /// ```
-    pub fn set_tolerance(&mut self, value: f64) -> &mut Self {
+    pub fn tolerance(&mut self, value: f64) -> &mut Self {
         self.0.tolerance = Some(value);
         self
     }

@@ -26,7 +26,7 @@ use crate::util::{
 pub const NOT_AVAILABLE: &str = "N/A";
 pub const UNKNOWN: &str = "*********";
 pub const NO_CHANGE: &str = "No change";
-pub const WITHIN_TOLERANCE: &str = "Within tolerance margin";
+pub const WITHIN_TOLERANCE: &str = "Tolerance";
 
 pub const METRIC_WIDTH: usize = 20;
 pub const FIELD_WIDTH: usize = 21;
@@ -664,29 +664,23 @@ impl VerticalFormatter {
                     false,
                 );
             }
+            EitherOrBoth::Both(new, old)
+                if self.output_format.tolerance.is_some_and(|tolerance| {
+                    diffs.map(|diffs| diffs.diff_pct).unwrap_or_default().abs() <= tolerance
+                }) =>
+            {
+                let right = format!(
+                    "{old:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
+                    WITHIN_TOLERANCE.bright_black()
+                );
+                self.write_field(
+                    field,
+                    &EitherOrBoth::Both(&new.to_string(), &right),
+                    None,
+                    false,
+                );
+            }
             EitherOrBoth::Both(new, old) => {
-                if let Some(tolerance) = self.output_format.tolerance {
-                    let diff = MetricsDiff::new(EitherOrBoth::Both(**new, **old));
-                    if diff
-                        .diffs
-                        .map(|diffs| diffs.diff_pct)
-                        .unwrap_or_default()
-                        .abs()
-                        <= tolerance
-                    {
-                        let right = format!(
-                            "{old:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
-                            WITHIN_TOLERANCE.bright_black()
-                        );
-                        self.write_field(
-                            field,
-                            &EitherOrBoth::Both(&new.to_string(), &right),
-                            None,
-                            false,
-                        );
-                        return;
-                    }
-                }
                 let diffs = diffs.expect(
                     "If there are new metrics and old metrics there should be a difference present",
                 );
@@ -1511,18 +1505,12 @@ mod tests {
     #[case::old_costs_u64_max(EventKind::Ir, u64::MAX / 10, Some(u64::MAX), "-90.0000%", Some("-10.0000x"))]
     #[case::all_costs_u64_max(EventKind::Ir, u64::MAX, Some(u64::MAX), "No change", None)]
     #[case::no_change_when_not_0(EventKind::Ir, 1000, Some(1000), "No change", None)]
-    #[case::neg_change_when_within_tolerance(
-        EventKind::Ir,
-        2000,
-        Some(3000),
-        "Within tolerance margin",
-        None
-    )]
+    #[case::neg_change_when_within_tolerance(EventKind::Ir, 2000, Some(3000), "Tolerance", None)]
     #[case::positive_change_when_within_tolerance(
         EventKind::Ir,
         3000,
         Some(2000),
-        "Within tolerance margin",
+        "Tolerance",
         None
     )]
     #[case::pos_inf(EventKind::Ir, 2000, Some(0), "+++inf+++", Some("+++inf+++"))]
