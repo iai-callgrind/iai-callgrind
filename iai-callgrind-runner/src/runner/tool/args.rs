@@ -141,23 +141,11 @@ impl ToolArgs {
                     .split_once('=')
                     .map(|(k, v)| (k.trim(), v.trim()))
                 {
-                    Some(("--tool", _)) => warn!("Ignoring {} argument '{arg}'", tool.id()),
-                    Some((
-                        "--dhat-out-file" | "--massif-out-file" | "--bb-out-file" | "--pc-out-file"
-                        | "--log-file" | "--log-fd" | "--log-socket" | "--xml" | "--xml-file"
-                        | "--xml-fd" | "--xml-socket" | "--xml-user-comment",
-                        _,
-                    )) => warn!(
+                    Some((arg, _)) if is_ignored_outfile_argument(arg) => warn!(
                         "Ignoring {} argument '{arg}': Output/Log files of tools are managed by \
                          Iai-Callgrind",
                         tool.id()
                     ),
-                    Some(("--xtree-memory" | "--xtree-leak-file" | "xtree-memory-file", _)) => {
-                        warn!(
-                            "Ignoring {} argument '{arg}': Currently unsupported",
-                            tool.id()
-                        );
-                    }
                     Some(("--error-exitcode", value)) => {
                         value.clone_into(&mut tool_args.error_exitcode);
                     }
@@ -169,16 +157,7 @@ impl ToolArgs {
                     Some(("--fair-sched", value)) => {
                         tool_args.fair_sched = FairSched::from_str(value)?;
                     }
-                    None if matches!(
-                        arg.as_str(),
-                        "-h" | "--help"
-                            | "--help-dyn-options"
-                            | "--help-debug"
-                            | "--version"
-                            | "-q"
-                            | "--quiet"
-                    ) =>
-                    {
+                    None if is_ignored_argument(arg) => {
                         warn!("Ignoring {} argument '{arg}'", tool.id());
                     }
                     None if matches!(arg.as_str(), "--verbose") => tool_args.verbose = true,
@@ -317,4 +296,41 @@ impl ToolArgs {
 
         vec
     }
+}
+
+/// Return true if this is an ignored argument related to output or logfiles
+pub fn is_ignored_outfile_argument(arg: &str) -> bool {
+    matches!(
+        arg,
+        "--dhat-out-file"
+            | "--massif-out-file"
+            | "--callgrind-out-file"
+            | "--cachegrind-out-file"
+            | "--bb-out-file"
+            | "--pc-out-file"
+            | "--log-file"
+            | "--log-fd"
+            | "--log-socket"
+            | "--xml"
+            | "--xml-file"
+            | "--xml-fd"
+            | "--xml-socket"
+            | "--xml-user-comment"
+            | "--xtree-leak-file"
+            | "--xtree-memory-file"
+    )
+}
+
+/// Return true if this is a generic ignored argument
+pub fn is_ignored_argument(arg: &str) -> bool {
+    matches!(
+        arg,
+        "-h" | "--help"
+            | "--help-dyn-options"
+            | "--help-debug"
+            | "--version"
+            | "-q"
+            | "--quiet"
+            | "--tool"
+    )
 }

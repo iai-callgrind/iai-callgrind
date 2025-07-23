@@ -1,7 +1,5 @@
 //! The module containing the command line arguments for cachegrind
 
-use std::ffi::OsString;
-use std::path::PathBuf;
 use std::str::FromStr;
 
 use anyhow::Result;
@@ -9,7 +7,9 @@ use log::{log_enabled, warn};
 
 use crate::api::{RawArgs, ValgrindTool};
 use crate::error::Error;
-use crate::runner::tool::args::{defaults, FairSched, ToolArgs};
+use crate::runner::tool::args::{
+    defaults, is_ignored_argument, is_ignored_outfile_argument, FairSched, ToolArgs,
+};
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
 /// The command-line arguments
@@ -17,12 +17,10 @@ use crate::util::{bool_to_yesno, yesno_to_bool};
 #[derive(Debug, Clone)]
 pub struct Args {
     cache_sim: bool,
-    cachegrind_out_file: Option<PathBuf>,
     d1: String,
     fair_sched: FairSched,
     i1: String,
     ll: String,
-    log_arg: Option<OsString>,
     other: Vec<String>,
     trace_children: bool,
     verbose: bool,
@@ -60,33 +58,13 @@ impl Args {
                 Some(("--fair-sched", value)) => {
                     self.fair_sched = FairSched::from_str(value)?;
                 }
-                Some((
-                    key @ ("--cachegrind-out-file"
-                    | "--log-file"
-                    | "--log-fd"
-                    | "--log-socket"
-                    | "--xml"
-                    | "--xml-file"
-                    | "--xml-fd"
-                    | "--xml-socket"
-                    | "--xml-user-comment"
-                    | "--tool"),
-                    value,
-                )) => {
-                    warn!("Ignoring cachegrind argument: '{key}={value}'");
-                }
+                Some((arg, _)) if is_ignored_outfile_argument(arg) => warn!(
+                    "Ignoring cachegrind argument '{arg}': Output/Log files of tools are managed \
+                     by Iai-Callgrind",
+                ),
                 Some(_) => self.other.push(arg.clone()),
                 None if arg == "-v" || arg == "--verbose" => self.verbose = true,
-                None if matches!(
-                    arg.trim(),
-                    "-h" | "--help"
-                        | "--help-dyn-options"
-                        | "--help-debug"
-                        | "--version"
-                        | "-q"
-                        | "--quiet"
-                ) =>
-                {
+                None if is_ignored_argument(arg) => {
                     warn!("Ignoring cachegrind argument: '{arg}'");
                 }
                 None if arg.starts_with('-') => self.other.push(arg.clone()),
@@ -107,8 +85,6 @@ impl Default for Args {
             ll: defaults::LL.into(),
             cache_sim: defaults::CACHE_SIM,
             verbose: log_enabled!(log::Level::Debug),
-            cachegrind_out_file: Option::default(),
-            log_arg: Option::default(),
             other: Vec::default(),
             trace_children: defaults::TRACE_CHILDREN,
             fair_sched: defaults::FAIR_SCHED,
@@ -128,10 +104,8 @@ impl From<Args> for ToolArgs {
 
         Self {
             tool: ValgrindTool::Cachegrind,
-            output_paths: value
-                .cachegrind_out_file
-                .map_or_else(Vec::new, |o| vec![o.into()]),
-            log_path: value.log_arg,
+            output_paths: Vec::default(),
+            log_path: Option::default(),
             error_exitcode: defaults::ERROR_EXIT_CODE_OTHER_TOOL.into(),
             verbose: value.verbose,
             trace_children: value.trace_children,

@@ -1,7 +1,5 @@
 //! The module containing the command line arguments for callgrind
 use std::collections::VecDeque;
-use std::ffi::OsString;
-use std::path::PathBuf;
 use std::str::FromStr;
 
 use anyhow::Result;
@@ -9,7 +7,9 @@ use log::{log_enabled, warn};
 
 use crate::api::{RawArgs, ValgrindTool};
 use crate::error::Error;
-use crate::runner::tool::args::{defaults, FairSched, ToolArgs};
+use crate::runner::tool::args::{
+    defaults, is_ignored_argument, is_ignored_outfile_argument, FairSched, ToolArgs,
+};
 use crate::util::{bool_to_yesno, yesno_to_bool};
 
 /// The command-line arguments
@@ -17,7 +17,6 @@ use crate::util::{bool_to_yesno, yesno_to_bool};
 #[derive(Debug, Clone)]
 pub struct Args {
     cache_sim: bool,
-    callgrind_out_file: Option<PathBuf>,
     /// --combine-dumps is currently not supported by the callgrind parsers, so we print a warning
     combine_dumps: bool,
     compress_pos: bool,
@@ -28,7 +27,6 @@ pub struct Args {
     fair_sched: FairSched,
     i1: String,
     ll: String,
-    log_arg: Option<OsString>,
     other: Vec<String>,
     separate_threads: bool,
     toggle_collect: VecDeque<String>,
@@ -87,35 +85,18 @@ impl Args {
                     self.fair_sched = FairSched::from_str(value)?;
                 }
                 Some((
-                    key @ ("--combine-dumps"
-                    | "--callgrind-out-file"
-                    | "--compress-strings"
-                    | "--compress-pos"
-                    | "--log-file"
-                    | "--log-fd"
-                    | "--log-socket"
-                    | "--xml"
-                    | "--xml-file"
-                    | "--xml-fd"
-                    | "--xml-socket"
-                    | "--xml-user-comment"
-                    | "--tool"),
+                    key @ ("--combine-dumps" | "--compress-strings" | "--compress-pos"),
                     value,
                 )) => {
-                    warn!("Ignoring callgrind argument: '{key}={value}'");
+                    warn!("Ignoring unsupported callgrind argument: '{key}={value}'");
                 }
+                Some((arg, _)) if is_ignored_outfile_argument(arg) => warn!(
+                    "Ignoring callgrind argument '{arg}': Output/Log files of tools are managed \
+                     by Iai-Callgrind",
+                ),
                 Some(_) => self.other.push(arg.clone()),
                 None if arg == "-v" || arg == "--verbose" => self.verbose = true,
-                None if matches!(
-                    arg.trim(),
-                    "-h" | "--help"
-                        | "--help-dyn-options"
-                        | "--help-debug"
-                        | "--version"
-                        | "-q"
-                        | "--quiet"
-                ) =>
-                {
+                None if is_ignored_argument(arg) => {
                     warn!("Ignoring callgrind argument: '{arg}'");
                 }
                 None if arg.starts_with('-') => self.other.push(arg.clone()),
@@ -152,8 +133,6 @@ impl Default for Args {
             dump_line: defaults::DUMP_LINE,
             dump_instr: defaults::DUMP_INSTR,
             toggle_collect: VecDeque::default(),
-            callgrind_out_file: Option::default(),
-            log_arg: Option::default(),
             other: Vec::default(),
             trace_children: defaults::TRACE_CHILDREN,
             separate_threads: defaults::SEPARATE_THREADS,
@@ -193,10 +172,8 @@ impl From<Args> for ToolArgs {
 
         Self {
             tool: ValgrindTool::Callgrind,
-            output_paths: value
-                .callgrind_out_file
-                .map_or_else(Vec::new, |o| vec![o.into()]),
-            log_path: value.log_arg,
+            output_paths: Vec::default(),
+            log_path: Option::default(),
             error_exitcode: defaults::ERROR_EXIT_CODE_OTHER_TOOL.into(),
             verbose: value.verbose,
             trace_children: value.trace_children,
