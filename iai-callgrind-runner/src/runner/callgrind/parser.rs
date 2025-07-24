@@ -1,30 +1,59 @@
+//! Module containing the basic callgrind parser elements
 use std::cmp::Ordering;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use anyhow::{anyhow, Context, Result};
-use lazy_static::lazy_static;
+use anyhow::{anyhow, Result};
 use log::{trace, warn};
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use super::model::{Metrics, Positions};
 use crate::api::EventKind;
 use crate::runner::summary::ProfileInfo;
 use crate::runner::tool::parser::ParserOutput;
-use crate::runner::tool::ToolOutputPath;
+use crate::runner::tool::path::ToolOutputPath;
 use crate::runner::DEFAULT_TOGGLE;
+use crate::util::Glob;
 
-lazy_static! {
-    static ref GLOB_TO_REGEX_RE: Regex =
-        Regex::new(r"(\\)([*]|[?])").expect("Regex should compile");
+/// The properties and header data of a callgrind output file
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct CallgrindProperties {
+    /// The executed command with command-line arguments
+    pub cmd: Option<String>,
+    /// The "creator" of this output file
+    pub creator: Option<String>,
+    /// The `desc:` fields
+    pub desc: Vec<String>,
+    /// The prototype for all metrics in this file
+    pub metrics_prototype: Metrics,
+    /// The part number
+    pub part: Option<u64>,
+    /// The pid
+    pub pid: Option<i32>,
+    /// The prototype for all positions in this file
+    pub positions_prototype: Positions,
+    /// The thread
+    pub thread: Option<usize>,
 }
 
+/// The `Sentinel` function to search for in the haystack
+///
+/// # Developer notes
+///
+/// Refactor: This struct was named `Sentinel` but the usage changed and it would better be named
+/// `Needle` since it is used to seek for a specific function in the haystack of functions of the
+/// output file.
+#[allow(clippy::unsafe_derive_deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Sentinel(Glob);
+
+/// A callgrind specific parser trait
 pub trait CallgrindParser {
+    /// The output of the parser
     type Output;
 
-    fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)>;
+    /// Parse all callgrind output files of this [`ToolOutputPath`]
     fn parse(
         &self,
         output: &ToolOutputPath,
@@ -44,23 +73,10 @@ pub trait CallgrindParser {
 
         Ok(results)
     }
-}
 
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct CallgrindProperties {
-    pub metrics_prototype: Metrics,
-    pub positions_prototype: Positions,
-    pub pid: Option<i32>,
-    pub thread: Option<usize>,
-    pub part: Option<u64>,
-    pub desc: Vec<String>,
-    pub cmd: Option<String>,
-    pub creator: Option<String>,
+    /// Parse a single callgrind output file
+    fn parse_single(&self, path: &Path) -> Result<(CallgrindProperties, Self::Output)>;
 }
-
-#[allow(clippy::unsafe_derive_deserialize)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Sentinel(#[serde(with = "serde_regex")] Regex);
 
 impl CallgrindProperties {
     /// Compare by target ids `pid`, `part` and `thread`
@@ -75,6 +91,7 @@ impl CallgrindProperties {
         })
     }
 
+    /// Convert into ``ProfileInfo``
     pub fn into_info(self, path: &Path) -> ProfileInfo {
         ProfileInfo {
             command: self.cmd.expect("A command should be present"),
@@ -90,7 +107,7 @@ impl CallgrindProperties {
 
 impl From<ParserOutput> for CallgrindProperties {
     fn from(value: ParserOutput) -> Self {
-        CallgrindProperties {
+        Self {
             metrics_prototype: Metrics::default(),
             positions_prototype: Positions::default(),
             pid: Some(value.header.pid),
@@ -106,59 +123,29 @@ impl From<ParserOutput> for CallgrindProperties {
 impl Sentinel {
     /// Create a new Sentinel
     ///
-    /// The value is converted to a regex internally which matches from line start to line end.
-    ///
-    /// Do not use this method if the input is a glob pattern or cannot be trusted! Use
-    /// [`Sentinel::from_glob`] instead.
+    /// The input value is converted to a [`Glob`]
     ///
     /// # Examples
     ///
     /// ```rust
     /// use iai_callgrind_runner::runner::callgrind::parser::Sentinel;
     ///
-    /// let sentinel = Sentinel::new("main").unwrap();
-    /// assert_eq!(sentinel.to_string(), String::from("^main$"));
+    /// let _ = Sentinel::new("main");
+    /// let _ = Sentinel::new("main::*");
     /// ```
-    pub fn new<T>(value: T) -> Result<Self>
+    pub fn new<T>(value: T) -> Self
     where
-        T: AsRef<str>,
+        T: Into<Glob>,
     {
-        Regex::new(&format!("^{}$", value.as_ref()))
-            .map(Self)
-            .with_context(|| "Invalid sentinel")
+        Self(value.into())
     }
 
-    /// Create a new Sentinel from a glob pattern
-    ///
-    /// Any `*` is replaced with `.*` and `?` with `.?` because we need the glob as regex
-    /// internally. A Character will be [escaped](https://docs.rs/regex/latest/regex/fn.escape.html)
-    /// if it is a regex meta character so this method produces a safe regular expression.
-    /// Additionally, the glob matches from the start to end of the string
-    ///
-    /// The glob pattern is defined in more detail
-    /// [here](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.optionshttps://valgrind.org/docs/manual/cl-manual.html#cl-manual.options)
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use iai_callgrind_runner::runner::callgrind::parser::Sentinel;
-    ///
-    /// let sentinel = Sentinel::from_glob("*::main").unwrap();
-    /// assert_eq!(sentinel.to_string(), String::from("^.*::main$"));
-    /// ```
-    pub fn from_glob<T>(glob: T) -> Result<Self>
-    where
-        T: AsRef<str>,
-    {
-        let escaped = regex::escape(glob.as_ref());
-        let replaced = GLOB_TO_REGEX_RE.replace_all(&escaped, ".$2");
-        Self::new(replaced)
-    }
-
+    /// Create a new `Sentinel` from this module path
     pub fn from_path(module: &str, function: &str) -> Self {
-        Self::new(format!("{module}::{function}")).expect("Regex should compile")
+        Self::new(format!("{module}::{function}"))
     }
 
+    /// Create a new `Sentinel` from the segments of a module path
     pub fn from_segments<I, T>(segments: T) -> Self
     where
         I: AsRef<str>,
@@ -173,23 +160,24 @@ impl Sentinel {
         } else {
             String::new()
         };
-        Self::new(joined).expect("Regex should compile")
+        Self::new(joined)
     }
 
+    /// Return true if this `Sentinel` matches the function in the `haystack`
     pub fn matches(&self, haystack: &str) -> bool {
         self.0.is_match(haystack)
     }
 }
 
-impl AsRef<Sentinel> for Sentinel {
-    fn as_ref(&self) -> &Sentinel {
+impl AsRef<Self> for Sentinel {
+    fn as_ref(&self) -> &Self {
         self
     }
 }
 
 impl Default for Sentinel {
     fn default() -> Self {
-        Self::from_glob(DEFAULT_TOGGLE).expect("Default toggle should compile as regex")
+        Self::new(DEFAULT_TOGGLE)
     }
 }
 
@@ -201,24 +189,27 @@ impl Display for Sentinel {
 
 impl Eq for Sentinel {}
 
-impl From<Sentinel> for String {
-    fn from(value: Sentinel) -> Self {
-        value.0.as_str().to_owned()
-    }
-}
-
 impl PartialEq for Sentinel {
     fn eq(&self, other: &Self) -> bool {
         self.0.as_str() == other.0.as_str()
     }
 }
 
+impl From<Sentinel> for String {
+    fn from(value: Sentinel) -> Self {
+        value.0.as_str().to_owned()
+    }
+}
+
 /// Parse the callgrind output files header
-pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<CallgrindProperties> {
+pub fn parse_header<I>(iter: &mut I) -> Result<CallgrindProperties>
+where
+    I: Iterator<Item = String>,
+{
     if !iter
         .by_ref()
         .find(|l| !l.trim().is_empty())
-        .ok_or(anyhow!("Empty file"))?
+        .ok_or_else(|| anyhow!("Empty file"))?
         .contains("callgrind format")
     {
         warn!("Missing file format specifier. Assuming callgrind format.");
@@ -269,7 +260,9 @@ pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<Callgrind
             }
             Some(("positions", positions)) => {
                 trace!("Using positions '{positions}' from line: '{line}'");
-                positions_prototype = Some(positions.split_ascii_whitespace().collect());
+                positions_prototype = Some(Positions::try_from_iter_str(
+                    positions.split_ascii_whitespace(),
+                )?);
             }
             // The events line is the last line in the header which is mandatory (according to
             // the source code of callgrind_annotate). The summary line is usually the last line,
@@ -305,40 +298,9 @@ pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<Callgrind
 
 #[cfg(test)]
 mod tests {
-    use pretty_assertions::assert_eq;
     use rstest::rstest;
 
     use super::*;
-
-    #[rstest]
-    #[case::simple("foo", "^foo$")]
-    #[case::glob(r"?*", r"^?*$")] // Does not interpret glob patterns
-    fn test_sentinel_new(#[case] input: &str, #[case] expected: &str) {
-        let expected_sentinel = Sentinel(Regex::new(expected).unwrap());
-        let sentinel = Sentinel::new(input).unwrap();
-
-        assert_eq!(sentinel, expected_sentinel);
-    }
-
-    #[rstest]
-    #[case::simple("foo", "^foo$")]
-    #[case::only_star("*", "^.*$")]
-    #[case::with_star_in_the_middle("f*oo", "^f.*oo$")]
-    #[case::star_at_start("*foo", "^.*foo$")]
-    #[case::star_at_end("foo*", "^foo.*$")]
-    #[case::two_stars("f**o", "^f.*.*o$")]
-    #[case::only_question_mark("?", "^.?$")]
-    #[case::with_question_mark("f?o", "^f.?o$")]
-    #[case::two_question_marks("f??o", "^f.?.?o$")]
-    #[case::question_mark_at_start("?foo", "^.?foo$")]
-    #[case::question_mark_at_end("foo?", "^foo.?$")]
-    #[case::mixed("f*o?o", "^f.*o.?o$")]
-    fn test_sentinel_from_glob(#[case] input: &str, #[case] expected: &str) {
-        let expected_sentinel = Sentinel(Regex::new(expected).unwrap());
-        let sentinel = Sentinel::from_glob(input).unwrap();
-
-        assert_eq!(sentinel, expected_sentinel);
-    }
 
     /// These are some non-exhaustive real world examples which a sentinel should be able to match
     #[rstest]
@@ -369,6 +331,6 @@ mod tests {
     )]
     #[case::hex("0x*", "0x00000000000083f0")]
     fn test_sentinel_from_glob_matches(#[case] input: &str, #[case] haystack: &str) {
-        assert!(Sentinel::from_glob(input).unwrap().matches(haystack));
+        assert!(Sentinel::new(input).matches(haystack));
     }
 }

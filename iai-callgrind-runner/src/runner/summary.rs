@@ -1,3 +1,5 @@
+//! The summary of a benchmark run
+
 use std::fmt::{Debug, Display};
 use std::fs::File;
 use std::io::stdout;
@@ -21,19 +23,8 @@ use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, ValgrindT
 use crate::error::Error;
 use crate::util::{factor_diff, make_absolute, percentage_diff, EitherOrBoth};
 
+/// The version of the summary json schema
 pub const SCHEMA_VERSION: &str = "6";
-
-/// A `Baseline` depending on the [`BaselineKind`] which points to the corresponding path
-///
-/// This baseline is used for comparisons with the new output of valgrind tools.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct Baseline {
-    /// The kind of the `Baseline`
-    pub kind: BaselineKind,
-    /// The path to the file which is used to compare against the new output
-    pub path: PathBuf,
-}
 
 /// The `BaselineKind` describing the baseline
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -45,12 +36,8 @@ pub enum BaselineKind {
     Name(BaselineName),
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub struct BaselineName(String);
-
 /// The `BenchmarkKind`, differentiating between library and binary benchmarks
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum BenchmarkKind {
     /// A library benchmark
@@ -59,42 +46,141 @@ pub enum BenchmarkKind {
     BinaryBenchmark,
 }
 
+/// The format (json, ...) in which the summary file should be saved or printed
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum SummaryFormat {
+    /// The format in a space optimal json representation without newlines
+    Json,
+    /// The format in pretty printed json
+    PrettyJson,
+}
+
+/// The `ToolMetricSummary` contains the `MetricsSummary` distinguished by tool and metric kinds
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum ToolMetricSummary {
+    /// If there are no metrics extracted (currently massif, bbv)
+    #[default]
+    None,
+    /// The error summary of tools which reports errors (memcheck, helgrind, drd)
+    ErrorTool(MetricsSummary<ErrorMetric>),
+    /// The dhat summary
+    Dhat(MetricsSummary<DhatMetric>),
+    /// The callgrind summary
+    Callgrind(MetricsSummary<EventKind>),
+    /// The cachegrind summary
+    Cachegrind(MetricsSummary<CachegrindMetric>),
+}
+
+/// The metrics distinguished per tool class
+///
+/// The tool classes are: dhat, error metrics from memcheck, drd, helgrind and callgrind
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum ToolMetrics {
+    /// If there were no metrics extracted from a tool (currently massif, bbv)
+    #[default]
+    None,
+    /// The metrics of a dhat benchmark
+    Dhat(Metrics<DhatMetric>),
+    /// The metrics of a tool run which reports errors (memcheck, helgrind, drd)
+    ErrorTool(Metrics<ErrorMetric>),
+    /// The metrics of a callgrind benchmark
+    Callgrind(Metrics<EventKind>),
+    /// The metrics of a cachegrind benchmark
+    Cachegrind(Metrics<CachegrindMetric>),
+}
+
+/// A detected performance regression depending on the limit either `Soft` or `Hard`
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub enum ToolRegression {
+    /// A performance regression triggered by a soft limit
+    Soft {
+        /// The metric kind per tool
+        metric: MetricKind,
+        /// The value of the new benchmark run
+        new: Metric,
+        /// The value of the old benchmark run
+        old: Metric,
+        /// The difference between new and old in percent. Serialized as string to preserve
+        /// infinity values and avoid null in json.
+        #[serde(with = "crate::serde::float_64")]
+        #[cfg_attr(feature = "schema", schemars(with = "String"))]
+        diff_pct: f64,
+        /// The value of the limit which was exceeded to cause a performance regression. Serialized
+        /// as string to preserve infinity values and avoid null in json.
+        #[serde(with = "crate::serde::float_64")]
+        #[cfg_attr(feature = "schema", schemars(with = "String"))]
+        limit: f64,
+    },
+    /// A performance regression triggered by a hard limit
+    Hard {
+        /// The metric kind per tool
+        metric: MetricKind,
+        /// The value of the benchmark run
+        new: Metric,
+        /// The difference between new and the limit
+        diff: Metric,
+        /// The limit
+        limit: Metric,
+    },
+}
+
+/// A `Baseline` depending on the [`BaselineKind`] which points to the corresponding path
+///
+/// This baseline is used for comparisons with the new output of valgrind tools.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct Baseline {
+    /// The kind of the `Baseline`
+    pub kind: BaselineKind,
+    /// The path to the file which is used to compare against the new output
+    pub path: PathBuf,
+}
+
+/// The name of the baseline
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+pub struct BaselineName(String);
+
 /// The `BenchmarkSummary` containing all the information of a single benchmark run
 ///
 /// This includes produced files, recorded callgrind events, performance regressions ...
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct BenchmarkSummary {
-    /// The version of this format. Only backwards incompatible changes cause an increase of the
-    /// version
-    pub version: String,
-    /// Whether this summary describes a library or binary benchmark
-    pub kind: BenchmarkKind,
-    /// The destination and kind of the summary file
-    pub summary_output: Option<SummaryOutput>,
-    /// The project's root directory
-    pub project_root: PathBuf,
-    /// The directory of the package
-    pub package_dir: PathBuf,
-    /// The path to the benchmark file
-    pub benchmark_file: PathBuf,
+    /// The baselines if any. An absent first baseline indicates that new output was produced. An
+    /// absent second baseline indicates the usage of the usual "*.old" output.
+    pub baselines: (Option<String>, Option<String>),
     /// The path to the binary which is executed by valgrind. In case of a library benchmark this
     /// is the compiled benchmark file. In case of a binary benchmark this is the path to the
     /// command.
     pub benchmark_exe: PathBuf,
-    /// The name of the function under test
-    pub function_name: String,
-    /// The rust path in the form `bench_file::group::bench`
-    pub module_path: String,
-    /// The user provided id of this benchmark
-    pub id: Option<String>,
+    /// The path to the benchmark file
+    pub benchmark_file: PathBuf,
     /// More details describing this benchmark run
     pub details: Option<String>,
-    /// The baselines if any. An absent first baseline indicates that new output was produced. An
-    /// absent second baseline indicates the usage of the usual "*.old" output.
-    pub baselines: (Option<String>, Option<String>),
+    /// The name of the function under test
+    pub function_name: String,
+    /// The user provided id of this benchmark
+    pub id: Option<String>,
+    /// Whether this summary describes a library or binary benchmark
+    pub kind: BenchmarkKind,
+    /// The rust path in the form `bench_file::group::bench`
+    pub module_path: String,
+    /// The directory of the package
+    pub package_dir: PathBuf,
     /// The summary of other valgrind tool runs
     pub profiles: Profiles,
+    /// The project's root directory
+    pub project_root: PathBuf,
+    /// The destination and kind of the summary file
+    pub summary_output: Option<SummaryOutput>,
+    /// The version of this format. Only backwards incompatible changes cause an increase of the
+    /// version
+    pub version: String,
 }
 
 /// The differences between two `Metrics` as percentage and factor
@@ -131,31 +217,31 @@ pub struct FlamegraphSummaries {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct FlamegraphSummary {
-    /// The `EventKind` of the flamegraph
-    pub event_kind: EventKind,
-    /// If present, the path to the file of the regular (non-differential) flamegraph
-    pub regular_path: Option<PathBuf>,
     /// If present, the path to the file of the old regular (non-differential) flamegraph
     pub base_path: Option<PathBuf>,
     /// If present, the path to the file of the differential flamegraph
     pub diff_path: Option<PathBuf>,
+    /// The `EventKind` of the flamegraph
+    pub event_kind: EventKind,
+    /// If present, the path to the file of the regular (non-differential) flamegraph
+    pub regular_path: Option<PathBuf>,
 }
 
 /// The `ToolSummary` containing all information about a valgrind tool run
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Profile {
-    /// The Valgrind tool like `DHAT`, `Memcheck` etc.
-    pub tool: ValgrindTool,
+    /// Details and information about the created flamegraphs if any
+    pub flamegraphs: Vec<FlamegraphSummary>,
     /// The paths to the `*.log` files. All tools produce at least one log file
     pub log_paths: Vec<PathBuf>,
     /// The paths to the `*.out` files. Not all tools produce an output in addition to the log
     /// files
     pub out_paths: Vec<PathBuf>,
-    /// Details and information about the created flamegraphs if any
-    pub flamegraphs: Vec<FlamegraphSummary>,
     /// The metrics and details about the tool run
     pub summaries: ProfileData,
+    /// The Valgrind tool like `DHAT`, `Memcheck` etc.
+    pub tool: ValgrindTool,
 }
 
 /// The `ToolRun` contains all information about a single tool run with possibly multiple segments
@@ -172,21 +258,21 @@ pub struct ProfileData {
 }
 
 /// Some additional and necessary information about the tool run segment
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, AsRef)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, AsRef)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ProfileInfo {
     /// The executed command extracted from Valgrind output
     pub command: String,
-    /// The pid of this process
-    pub pid: i32,
-    /// The parent pid of this process
-    pub parent_pid: Option<i32>,
     /// More details for example from the logging output of the tool run
     pub details: Option<String>,
-    /// The path to the file from the tool run
-    pub path: PathBuf,
+    /// The parent pid of this process
+    pub parent_pid: Option<i32>,
     /// The part of this tool run (only callgrind)
     pub part: Option<u64>,
+    /// The path to the file from the tool run
+    pub path: PathBuf,
+    /// The pid of this process
+    pub pid: i32,
     /// The thread of this tool run (only callgrind)
     pub thread: Option<usize>,
 }
@@ -208,8 +294,10 @@ pub struct ProfilePart {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct ProfileTotal {
-    pub summary: ToolMetricSummary,
+    /// The detected regressions if any
     pub regressions: Vec<ToolRegression>,
+    /// The summary of metrics of the tool
+    pub summary: ToolMetricSummary,
 }
 
 /// The collection of all generated [`Profile`]s
@@ -218,113 +306,14 @@ pub struct ProfileTotal {
 #[derive(Default)]
 pub struct Profiles(Vec<Profile>);
 
-/// The format (json, ...) in which the summary file should be saved or printed
-#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub enum SummaryFormat {
-    /// The format in a space optimal json representation without newlines
-    Json,
-    /// The format in pretty printed json
-    PrettyJson,
-}
-
 /// Manage the summary output file with this `SummaryOutput`
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct SummaryOutput {
     /// The [`SummaryFormat`]
     format: SummaryFormat,
     /// The path to the destination file of this summary
     path: PathBuf,
-}
-
-/// The metrics distinguished per tool class
-///
-/// The tool classes are: dhat, error metrics from memcheck, drd, helgrind and callgrind
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub enum ToolMetrics {
-    /// If there were no metrics extracted from a tool (currently massif, bbv)
-    #[default]
-    None,
-    /// The metrics of a dhat benchmark
-    Dhat(Metrics<DhatMetric>),
-    /// The metrics of a tool run which reports errors (memcheck, helgrind, drd)
-    ErrorTool(Metrics<ErrorMetric>),
-    /// The metrics of a callgrind benchmark
-    Callgrind(Metrics<EventKind>),
-    /// The metrics of a cachegrind benchmark
-    Cachegrind(Metrics<CachegrindMetric>),
-}
-
-/// The `ToolMetricSummary` contains the `MetricsSummary` distinguished by tool and metric kinds
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub enum ToolMetricSummary {
-    /// If there are no metrics extracted (currently massif, bbv)
-    #[default]
-    None,
-    /// The error summary of tools which reports errors (memcheck, helgrind, drd)
-    ErrorTool(MetricsSummary<ErrorMetric>),
-    /// The dhat summary
-    Dhat(MetricsSummary<DhatMetric>),
-    /// The callgrind summary
-    Callgrind(MetricsSummary<EventKind>),
-    /// The cachegrind summary
-    Cachegrind(MetricsSummary<CachegrindMetric>),
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub enum ToolRegression {
-    Soft {
-        /// The metric kind per tool
-        metric: MetricKind,
-        /// The value of the new benchmark run
-        new: Metric,
-        /// The value of the old benchmark run
-        old: Metric,
-        /// The difference between new and old in percent. Serialized as string to preserve
-        /// infinity values and avoid null in json.
-        #[serde(with = "crate::serde::float_64")]
-        #[cfg_attr(feature = "schema", schemars(with = "String"))]
-        diff_pct: f64,
-        /// The value of the limit which was exceeded to cause a performance regression. Serialized
-        /// as string to preserve infinity values and avoid null in json.
-        #[serde(with = "crate::serde::float_64")]
-        #[cfg_attr(feature = "schema", schemars(with = "String"))]
-        limit: f64,
-    },
-    Hard {
-        /// The metric kind per tool
-        metric: MetricKind,
-        /// The value of the benchmark run
-        new: Metric,
-        /// The difference between new and the limit
-        diff: Metric,
-        /// The limit
-        limit: Metric,
-    },
-}
-
-impl ToolRegression {
-    pub fn with<T>(apply: fn(T) -> MetricKind, regressions: RegressionMetrics<T>) -> Self {
-        match regressions {
-            RegressionMetrics::Soft(metric, new, old, diff_pct, limit) => ToolRegression::Soft {
-                metric: apply(metric),
-                new,
-                old,
-                diff_pct,
-                limit,
-            },
-            RegressionMetrics::Hard(metric, new, diff, limit) => ToolRegression::Hard {
-                metric: apply(metric),
-                new,
-                diff,
-                limit,
-            },
-        }
-    }
 }
 
 impl Display for BaselineName {
@@ -383,6 +372,7 @@ impl BenchmarkSummary {
         }
     }
 
+    /// If the summary is json output, print it and eventually safe it, if configured to do so
     pub fn print_and_save(&self, output_format: &OutputFormatKind) -> Result<()> {
         let value = match (output_format, &self.summary_output) {
             (OutputFormatKind::Default, None) => return Ok(()),
@@ -445,6 +435,7 @@ impl BenchmarkSummary {
         self.profiles.is_regressed()
     }
 
+    /// Compare this summary with another and print the result of the comparison
     pub fn compare_and_print(
         &self,
         id: &str,
@@ -480,6 +471,7 @@ impl BenchmarkSummary {
 }
 
 impl Diffs {
+    /// Create a new `Diffs` calculating the percentage and factor from the `new` and `old` metrics
     pub fn new(new: Metric, old: Metric) -> Self {
         Self {
             diff_pct: percentage_diff(new, old),
@@ -501,20 +493,24 @@ impl FlamegraphSummary {
 }
 
 impl Profile {
+    /// Return true if one of the summaries has regressed
     pub fn is_regressed(&self) -> bool {
         self.summaries.is_regressed()
     }
 }
 
 impl ProfileData {
+    /// Return true if the profile data is empty
     pub fn is_empty(&self) -> bool {
         self.parts.is_empty()
     }
 
+    /// Return true if the total and only the total has regressed
     pub fn is_regressed(&self) -> bool {
         self.total.is_regressed()
     }
 
+    /// Return true if there are multiple parts
     pub fn has_multiple(&self) -> bool {
         self.parts.len() > 1
     }
@@ -689,6 +685,7 @@ impl From<ParserOutput> for ProfileInfo {
 }
 
 impl ProfilePart {
+    /// Return true if an error checking valgrind tool (like `Memcheck`) has errors detected
     pub fn new_has_errors(&self) -> bool {
         match &self.metrics_summary {
             ToolMetricSummary::None
@@ -704,6 +701,7 @@ impl ProfilePart {
         }
     }
 
+    /// Create a new part from `new` parser output
     pub fn from_new(new: ParserOutput) -> Self {
         let metrics_summary = ToolMetricSummary::from_new_metrics(&new.metrics);
         Self {
@@ -712,6 +710,7 @@ impl ProfilePart {
         }
     }
 
+    /// Create a new part from `old` parser output
     pub fn from_old(old: ParserOutput) -> Self {
         let metrics_summary = ToolMetricSummary::from_old_metrics(&old.metrics);
         Self {
@@ -738,32 +737,39 @@ impl ProfilePart {
 }
 
 impl ProfileTotal {
+    /// Return true if there are any regressions
     pub fn is_regressed(&self) -> bool {
         !self.regressions.is_empty()
     }
 
+    /// Return true if there is a summary
     pub fn is_some(&self) -> bool {
         self.summary.is_some()
     }
 
+    /// Return true if there is no summary
     pub fn is_none(&self) -> bool {
         self.summary.is_none()
     }
 }
 
 impl Profiles {
+    /// Create a new collection of [`Profile`]s
     pub fn new(values: Vec<Profile>) -> Self {
         Self(values)
     }
 
+    /// Return an iterator over the contained [`Profile`]s
     pub fn iter(&self) -> impl Iterator<Item = &Profile> {
         self.0.iter()
     }
 
+    /// Add a new [`Profile`] to this collection
     pub fn push(&mut self, summary: Profile) {
         self.0.push(summary);
     }
 
+    /// Return true if any [`Profile`] has regressed
     pub fn is_regressed(&self) -> bool {
         self.iter().any(Profile::is_regressed)
     }
@@ -812,59 +818,65 @@ impl SummaryOutput {
 }
 
 impl ToolMetricSummary {
+    /// Sum up another summary metrics to these metrics
     pub fn add_mut(&mut self, other: &Self) {
         match (self, other) {
-            (ToolMetricSummary::ErrorTool(this), ToolMetricSummary::ErrorTool(other)) => {
+            (Self::ErrorTool(this), Self::ErrorTool(other)) => {
                 this.add(other);
             }
-            (ToolMetricSummary::Dhat(this), ToolMetricSummary::Dhat(other)) => {
+            (Self::Dhat(this), Self::Dhat(other)) => {
                 this.add(other);
             }
-            (ToolMetricSummary::Callgrind(this), ToolMetricSummary::Callgrind(other)) => {
+            (Self::Callgrind(this), Self::Callgrind(other)) => {
                 this.add(other);
             }
-            (ToolMetricSummary::Cachegrind(this), ToolMetricSummary::Cachegrind(other)) => {
+            (Self::Cachegrind(this), Self::Cachegrind(other)) => {
                 this.add(other);
             }
             _ => {}
         }
     }
 
+    /// Create a new summary from `new` [`ToolMetrics`]
     pub fn from_new_metrics(metrics: &ToolMetrics) -> Self {
         match metrics {
-            ToolMetrics::None => ToolMetricSummary::None,
+            ToolMetrics::None => Self::None,
             ToolMetrics::Dhat(metrics) => {
-                ToolMetricSummary::Dhat(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
+                Self::Dhat(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
             }
-            ToolMetrics::ErrorTool(metrics) => ToolMetricSummary::ErrorTool(MetricsSummary::new(
-                EitherOrBoth::Left(metrics.clone()),
-            )),
-            ToolMetrics::Callgrind(metrics) => ToolMetricSummary::Callgrind(MetricsSummary::new(
-                EitherOrBoth::Left(metrics.clone()),
-            )),
-            ToolMetrics::Cachegrind(metrics) => ToolMetricSummary::Cachegrind(MetricsSummary::new(
-                EitherOrBoth::Left(metrics.clone()),
-            )),
-        }
-    }
-    pub fn from_old_metrics(metrics: &ToolMetrics) -> Self {
-        match metrics {
-            ToolMetrics::None => ToolMetricSummary::None,
-            ToolMetrics::Dhat(metrics) => {
-                ToolMetricSummary::Dhat(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
+            ToolMetrics::ErrorTool(metrics) => {
+                Self::ErrorTool(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
             }
-            ToolMetrics::ErrorTool(metrics) => ToolMetricSummary::ErrorTool(MetricsSummary::new(
-                EitherOrBoth::Right(metrics.clone()),
-            )),
-            ToolMetrics::Callgrind(metrics) => ToolMetricSummary::Callgrind(MetricsSummary::new(
-                EitherOrBoth::Right(metrics.clone()),
-            )),
-            ToolMetrics::Cachegrind(metrics) => ToolMetricSummary::Cachegrind(MetricsSummary::new(
-                EitherOrBoth::Right(metrics.clone()),
-            )),
+            ToolMetrics::Callgrind(metrics) => {
+                Self::Callgrind(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
+            }
+            ToolMetrics::Cachegrind(metrics) => {
+                Self::Cachegrind(MetricsSummary::new(EitherOrBoth::Left(metrics.clone())))
+            }
         }
     }
 
+    /// Create a new summary from `old` [`ToolMetrics`]
+    pub fn from_old_metrics(metrics: &ToolMetrics) -> Self {
+        match metrics {
+            ToolMetrics::None => Self::None,
+            ToolMetrics::Dhat(metrics) => {
+                Self::Dhat(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
+            }
+            ToolMetrics::ErrorTool(metrics) => {
+                Self::ErrorTool(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
+            }
+            ToolMetrics::Callgrind(metrics) => {
+                Self::Callgrind(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
+            }
+            ToolMetrics::Cachegrind(metrics) => {
+                Self::Cachegrind(MetricsSummary::new(EitherOrBoth::Right(metrics.clone())))
+            }
+        }
+    }
+
+    /// Create a new summary from `new` and `old` [`ToolMetrics`]
+    ///
     /// Return the `ToolMetricSummary` if the `MetricsKind` are the same kind, else return with
     /// error
     pub fn try_from_new_and_old_metrics(
@@ -872,38 +884,37 @@ impl ToolMetricSummary {
         old_metrics: &ToolMetrics,
     ) -> Result<Self> {
         match (new_metrics, old_metrics) {
-            (ToolMetrics::None, ToolMetrics::None) => Ok(ToolMetricSummary::None),
-            (ToolMetrics::Dhat(new_metrics), ToolMetrics::Dhat(old_metrics)) => {
-                Ok(ToolMetricSummary::Dhat(MetricsSummary::new(
-                    EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone()),
-                )))
-            }
+            (ToolMetrics::None, ToolMetrics::None) => Ok(Self::None),
+            (ToolMetrics::Dhat(new_metrics), ToolMetrics::Dhat(old_metrics)) => Ok(Self::Dhat(
+                MetricsSummary::new(EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone())),
+            )),
             (ToolMetrics::ErrorTool(new_metrics), ToolMetrics::ErrorTool(old_metrics)) => {
-                Ok(ToolMetricSummary::ErrorTool(MetricsSummary::new(
-                    EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone()),
-                )))
+                Ok(Self::ErrorTool(MetricsSummary::new(EitherOrBoth::Both(
+                    new_metrics.clone(),
+                    old_metrics.clone(),
+                ))))
             }
             (ToolMetrics::Callgrind(new_metrics), ToolMetrics::Callgrind(old_metrics)) => {
-                Ok(ToolMetricSummary::Callgrind(MetricsSummary::new(
-                    EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone()),
-                )))
+                Ok(Self::Callgrind(MetricsSummary::new(EitherOrBoth::Both(
+                    new_metrics.clone(),
+                    old_metrics.clone(),
+                ))))
             }
             (ToolMetrics::Cachegrind(new_metrics), ToolMetrics::Cachegrind(old_metrics)) => {
-                Ok(ToolMetricSummary::Cachegrind(MetricsSummary::new(
-                    EitherOrBoth::Both(new_metrics.clone(), old_metrics.clone()),
-                )))
+                Ok(Self::Cachegrind(MetricsSummary::new(EitherOrBoth::Both(
+                    new_metrics.clone(),
+                    old_metrics.clone(),
+                ))))
             }
             _ => Err(anyhow!("Cannot create summary from incompatible costs")),
         }
     }
 
+    /// Create a new summary from this summary and another [`ToolMetricSummary`]
     pub fn from_self_and_other(this: &Self, other: &Self) -> Option<Self> {
         match (this, other) {
-            (ToolMetricSummary::None, ToolMetricSummary::None) => Some(ToolMetricSummary::None),
-            (
-                ToolMetricSummary::Callgrind(metrics),
-                ToolMetricSummary::Callgrind(other_metrics),
-            ) => {
+            (Self::None, Self::None) => Some(Self::None),
+            (Self::Callgrind(metrics), Self::Callgrind(other_metrics)) => {
                 let costs = metrics.extract_costs();
                 let other_costs = other_metrics.extract_costs();
 
@@ -912,17 +923,14 @@ impl ToolMetricSummary {
                     EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
                 ) = (costs, other_costs)
                 {
-                    Some(ToolMetricSummary::Callgrind(MetricsSummary::new(
-                        EitherOrBoth::Both(new, other_new),
-                    )))
+                    Some(Self::Callgrind(MetricsSummary::new(EitherOrBoth::Both(
+                        new, other_new,
+                    ))))
                 } else {
                     None
                 }
             }
-            (
-                ToolMetricSummary::ErrorTool(metrics),
-                ToolMetricSummary::ErrorTool(other_metrics),
-            ) => {
+            (Self::ErrorTool(metrics), Self::ErrorTool(other_metrics)) => {
                 let costs = metrics.extract_costs();
                 let other_costs = other_metrics.extract_costs();
 
@@ -931,14 +939,14 @@ impl ToolMetricSummary {
                     EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
                 ) = (costs, other_costs)
                 {
-                    Some(ToolMetricSummary::ErrorTool(MetricsSummary::new(
-                        EitherOrBoth::Both(new, other_new),
-                    )))
+                    Some(Self::ErrorTool(MetricsSummary::new(EitherOrBoth::Both(
+                        new, other_new,
+                    ))))
                 } else {
                     None
                 }
             }
-            (ToolMetricSummary::Dhat(metrics), ToolMetricSummary::Dhat(other_metrics)) => {
+            (Self::Dhat(metrics), Self::Dhat(other_metrics)) => {
                 let costs = metrics.extract_costs();
                 let other_costs = other_metrics.extract_costs();
 
@@ -947,17 +955,14 @@ impl ToolMetricSummary {
                     EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
                 ) = (costs, other_costs)
                 {
-                    Some(ToolMetricSummary::Dhat(MetricsSummary::new(
-                        EitherOrBoth::Both(new, other_new),
-                    )))
+                    Some(Self::Dhat(MetricsSummary::new(EitherOrBoth::Both(
+                        new, other_new,
+                    ))))
                 } else {
                     None
                 }
             }
-            (
-                ToolMetricSummary::Cachegrind(metrics),
-                ToolMetricSummary::Cachegrind(other_metrics),
-            ) => {
+            (Self::Cachegrind(metrics), Self::Cachegrind(other_metrics)) => {
                 let costs = metrics.extract_costs();
                 let other_costs = other_metrics.extract_costs();
 
@@ -966,9 +971,9 @@ impl ToolMetricSummary {
                     EitherOrBoth::Left(other_new) | EitherOrBoth::Both(other_new, _),
                 ) = (costs, other_costs)
                 {
-                    Some(ToolMetricSummary::Cachegrind(MetricsSummary::new(
-                        EitherOrBoth::Both(new, other_new),
-                    )))
+                    Some(Self::Cachegrind(MetricsSummary::new(EitherOrBoth::Both(
+                        new, other_new,
+                    ))))
                 } else {
                     None
                 }
@@ -977,11 +982,34 @@ impl ToolMetricSummary {
         }
     }
 
+    /// Return true if this summary has metrics
     pub fn is_some(&self) -> bool {
         !self.is_none()
     }
 
+    /// Return true if this summary doesn't have metrics (currently massif, bbv)
     pub fn is_none(&self) -> bool {
         matches!(self, Self::None)
+    }
+}
+
+impl ToolRegression {
+    /// Create a new `ToolRegression`
+    pub fn with<T>(apply: fn(T) -> MetricKind, regressions: RegressionMetrics<T>) -> Self {
+        match regressions {
+            RegressionMetrics::Soft(metric, new, old, diff_pct, limit) => Self::Soft {
+                metric: apply(metric),
+                new,
+                old,
+                diff_pct,
+                limit,
+            },
+            RegressionMetrics::Hard(metric, new, diff, limit) => Self::Hard {
+                metric: apply(metric),
+                new,
+                diff,
+                limit,
+            },
+        }
     }
 }

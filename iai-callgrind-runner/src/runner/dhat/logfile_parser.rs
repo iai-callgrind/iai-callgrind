@@ -1,3 +1,5 @@
+//! Module containing the dhat log file parser
+
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -14,12 +16,12 @@ use crate::runner::tool::logfile_parser::{
     parse_header, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE,
 };
 use crate::runner::tool::parser::{Parser, ParserOutput};
-use crate::runner::tool::ToolOutputPath;
+use crate::runner::tool::path::ToolOutputPath;
 
 // The different regex have to consider --time-stamp=yes
 lazy_static! {
     static ref FIXUP_NUMBERS_RE: Regex =
-        regex::Regex::new(r"([0-9]),([0-9])").expect("Regex should compile");
+        regex::Regex::new("([0-9]),([0-9])").expect("Regex should compile");
     static ref METRICS_RE: Regex = regex::Regex::new(
         r"^\s*(?<bytes>[0-9]+)\s*(?<unit>bytes|units)(?:\s*in\s*(?<blocks>[0-9]+))?.*$"
     )
@@ -34,12 +36,16 @@ enum State {
     Footer,
 }
 
+/// The dhat logfile parser
 pub struct DhatLogfileParser {
+    /// The [`ToolOutputPath`]
     pub output_path: ToolOutputPath,
+    /// The path to the root/project directory used to make paths relative
     pub root_dir: PathBuf,
 }
 
 impl DhatLogfileParser {
+    /// Create a new `DhatLogfileParser`
     pub fn new(output_path: ToolOutputPath, root_dir: PathBuf) -> Self {
         Self {
             output_path,
@@ -69,7 +75,7 @@ impl DhatLogfileParser {
                     // Total: ... is the first line of the fields we're interested in
                     if key.to_ascii_lowercase().as_str() == "total" {
                         *state = State::Fields;
-                        return DhatLogfileParser::parse_line(line, state, metrics, details);
+                        return Self::parse_line(line, state, metrics, details);
                     }
                 }
 
@@ -192,7 +198,7 @@ impl Parser for DhatLogfileParser {
 
         let mut state = State::HeaderSpace;
         for line in iter {
-            if !DhatLogfileParser::parse_line(&line, &mut state, &mut metrics, &mut details)? {
+            if !Self::parse_line(&line, &mut state, &mut metrics, &mut details)? {
                 break;
             }
         }

@@ -1,3 +1,4 @@
+//! The module containing the cachegrind summary parser
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -8,8 +9,9 @@ use log::{debug, trace};
 use super::parser::parse_header;
 use crate::error::Error;
 use crate::runner::summary::ToolMetrics;
+use crate::runner::tool::logfile_parser;
 use crate::runner::tool::parser::{Header, Parser, ParserOutput};
-use crate::runner::tool::{logfile_parser, ToolOutputPath};
+use crate::runner::tool::path::ToolOutputPath;
 
 /// Parse the `summary:` line in the cachegrind output file
 ///
@@ -23,6 +25,7 @@ use crate::runner::tool::{logfile_parser, ToolOutputPath};
 /// terminal output.
 #[derive(Debug)]
 pub struct SummaryParser {
+    /// The [`ToolOutputPath`]
     pub output_path: ToolOutputPath,
 }
 
@@ -82,7 +85,7 @@ impl Parser for SummaryParser {
                 metrics: ToolMetrics::Cachegrind(metrics),
             })
         } else {
-            Err(Error::ParseError(path.clone(), "No summary line found".to_owned()).into())
+            Err(Error::ParseError(path, "No summary line found".to_owned()).into())
         }
     }
 

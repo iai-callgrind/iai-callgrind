@@ -1,3 +1,10 @@
+//! This module contains elements which are common to library and binary benchmarks
+
+mod defaults {
+    pub const SANDBOX_ENABLED: bool = false;
+    pub const SANDBOX_FIXTURES_FOLLOW_SYMLINKS: bool = false;
+}
+
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::path::PathBuf;
@@ -16,29 +23,28 @@ use crate::api::{self, Pipe};
 use crate::error::Error;
 use crate::util::{copy_directory, make_absolute, write_all_to_stderr};
 
-mod defaults {
-    pub const SANDBOX_FIXTURES_FOLLOW_SYMLINKS: bool = false;
-    pub const SANDBOX_ENABLED: bool = false;
-}
+/// The `Baselines` type
+pub type Baselines = (Option<String>, Option<String>);
 
-#[derive(Debug, Clone)]
-pub struct Assistant {
-    kind: AssistantKind,
-    group_name: Option<String>,
-    indices: Option<(usize, usize)>,
-    pipe: Option<Pipe>,
-    envs: Vec<(OsString, OsString)>,
-    run_parallel: bool,
-}
-
+/// the [`Assistant`] kind
 #[derive(Debug, Clone)]
 pub enum AssistantKind {
+    /// The `setup` function
     Setup,
+    /// The `teardown` function
     Teardown,
 }
 
-pub type Baselines = (Option<String>, Option<String>);
-
+/// An `Assistant` corresponds to the `setup` or `teardown` functions in the UI
+#[derive(Debug, Clone)]
+pub struct Assistant {
+    envs: Vec<(OsString, OsString)>,
+    group_name: Option<String>,
+    indices: Option<(usize, usize)>,
+    kind: AssistantKind,
+    pipe: Option<Pipe>,
+    run_parallel: bool,
+}
 /// Contains benchmark summaries of (binary, library) benchmark runs and their execution time
 ///
 /// Used to print a final summary after all benchmarks.
@@ -50,18 +56,28 @@ pub struct BenchmarkSummaries {
     pub total_time: Option<Duration>,
 }
 
+/// The `Config` contains all the information extracted from the UI invocation of the runner
 #[derive(Debug)]
 pub struct Config {
-    pub package_dir: PathBuf,
-    pub bench_file: PathBuf,
-    pub module_path: ModulePath,
+    /// The path to the compiled binary with the benchmark harness
     pub bench_bin: PathBuf,
+    /// The path to the benchmark file which contains the benchmark harness
+    pub bench_file: PathBuf,
+    /// The [`Metadata`]
     pub meta: Metadata,
+    /// The module path of the benchmark file
+    pub module_path: ModulePath,
+    /// The package directory of the package in which `iai-callgrind` (not the runner) is used
+    pub package_dir: PathBuf,
 }
 
+/// A helper struct similar to a file path but for module paths with the `::` delimiter
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ModulePath(String);
 
+/// The `Sandbox` in which benchmarks should be runs
+///
+/// As soon as the `Sandbox` is dropped the temporary directory is deleted.
 #[derive(Debug)]
 pub struct Sandbox {
     current_dir: PathBuf,
@@ -226,10 +242,11 @@ impl Assistant {
 }
 
 impl AssistantKind {
+    /// Return the assistant kind `id` as string
     pub fn id(&self) -> String {
         match self {
-            AssistantKind::Setup => "setup",
-            AssistantKind::Teardown => "teardown",
+            Self::Setup => "setup",
+            Self::Teardown => "teardown",
         }
         .to_owned()
     }
@@ -277,39 +294,47 @@ impl BenchmarkSummaries {
 }
 
 impl ModulePath {
+    /// Create a new `ModulePath`
+    ///
+    /// There is no validity check if the path contains valid characters or not and the path is
+    /// created as is.
     pub fn new(path: &str) -> Self {
         Self(path.to_owned())
     }
 
+    /// Join this module path with another string (unchecked)
     #[must_use]
     pub fn join(&self, path: &str) -> Self {
         let new = format!("{}::{path}", self.0);
         Self(new)
     }
 
+    /// Return the module path as string
     pub fn as_str(&self) -> &str {
         &self.0
     }
 
-    pub fn first(&self) -> Option<ModulePath> {
+    /// Return the first segment of the module path if any
+    pub fn first(&self) -> Option<Self> {
         self.0
             .split_once("::")
-            .map(|(first, _)| ModulePath::new(first))
+            .map(|(first, _)| Self::new(first))
             .or_else(|| (!self.0.is_empty()).then_some(self.clone()))
     }
 
-    pub fn last(&self) -> Option<ModulePath> {
-        self.0
-            .rsplit_once("::")
-            .map(|(_, last)| ModulePath::new(last))
+    /// Return the last segment of the module path if any
+    pub fn last(&self) -> Option<Self> {
+        self.0.rsplit_once("::").map(|(_, last)| Self::new(last))
     }
 
-    pub fn parent(&self) -> Option<ModulePath> {
+    /// Return the parent module path if present
+    pub fn parent(&self) -> Option<Self> {
         self.0
             .rsplit_once("::")
-            .map(|(prefix, _)| ModulePath::new(prefix))
+            .map(|(prefix, _)| Self::new(prefix))
     }
 
+    /// Return a vector which contains all segments of the module path without the delimiter
     pub fn components(&self) -> Vec<&str> {
         self.0.split("::").collect()
     }
@@ -321,19 +346,12 @@ impl Display for ModulePath {
     }
 }
 
-impl From<ModulePath> for String {
-    fn from(value: ModulePath) -> Self {
-        value.to_string()
-    }
-}
-
-impl From<&ModulePath> for String {
-    fn from(value: &ModulePath) -> Self {
-        value.to_string()
-    }
-}
-
 impl Sandbox {
+    /// Setup the `Sandbox` if enabled
+    ///
+    /// If enabled, create a temporary directory which has a standardized length. Then copy fixtures
+    /// into the temporary directory. Finally, set the current directory to this temporary
+    /// directory.
     pub fn setup(inner: &api::Sandbox, meta: &Metadata) -> Result<Self> {
         let enabled = inner.enabled.unwrap_or(defaults::SANDBOX_ENABLED);
         let follow_symlinks = inner
@@ -385,6 +403,7 @@ impl Sandbox {
         })
     }
 
+    /// Reset the current directory and delete the temporary directory if present
     pub fn reset(self) -> Result<()> {
         if let Some(temp_dir) = self.temp_dir {
             std::env::set_current_dir(&self.current_dir).map_err(|error| {
@@ -402,6 +421,12 @@ impl Sandbox {
         }
 
         Ok(())
+    }
+}
+
+impl From<ModulePath> for String {
+    fn from(value: ModulePath) -> Self {
+        value.to_string()
     }
 }
 

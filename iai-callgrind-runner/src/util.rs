@@ -1,5 +1,6 @@
-//! spell-checker: ignore axxxxxbcd
 //! This module provides common utility functions
+
+// spell-checker: ignore axxxxxbcd
 use std::ffi::OsStr;
 use std::io::{self, BufWriter, Write};
 use std::ops::Neg;
@@ -26,38 +27,38 @@ use crate::runner::metrics::Metric;
 ///
 /// Most of the time, this enum is used to store (new, old) output, metrics, etc. Per convention
 /// left is `new` and right is `old`.
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, Eq)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum EitherOrBoth<T> {
+    /// Both values (`new` and `old`) are present
+    Both(T, T),
     /// The left or `new` value
     Left(T),
     /// The right or `old` value
     Right(T),
-    /// Both values (`new` and `old`) are present
-    Both(T, T),
 }
 
 /// A simple glob pattern with allowed wildcard characters `*` and `?`
 ///
 /// Match patterns as they are accepted by `valgrind` command line arguments such as
 /// `--toggle-collect` (<https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options>)
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Glob(String);
 
 impl<T> EitherOrBoth<T> {
     /// Try to return the left (`new`) value
     pub fn left(&self) -> Option<&T> {
         match self {
-            EitherOrBoth::Right(_) => None,
-            EitherOrBoth::Both(left, _) | EitherOrBoth::Left(left) => Some(left),
+            Self::Right(_) => None,
+            Self::Both(left, _) | Self::Left(left) => Some(left),
         }
     }
 
     /// Try to return the right (`old`) value
     pub fn right(&self) -> Option<&T> {
         match self {
-            EitherOrBoth::Left(_) => None,
-            EitherOrBoth::Right(right) | EitherOrBoth::Both(_, right) => Some(right),
+            Self::Left(_) => None,
+            Self::Right(right) | Self::Both(_, right) => Some(right),
         }
     }
 
@@ -73,6 +74,7 @@ impl<T> EitherOrBoth<T> {
         }
     }
 
+    /// Converts from `&EitherOrBoth<T>` to `EitherOrBoth<&T>`
     pub fn as_ref(&self) -> EitherOrBoth<&T> {
         match self {
             Self::Left(left) => EitherOrBoth::Left(left),
@@ -179,6 +181,11 @@ impl Glob {
         }
         true
     }
+
+    /// Return the glob as string reference
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
 }
 
 impl<T> From<T> for Glob
@@ -196,75 +203,6 @@ pub fn bool_to_yesno(value: bool) -> String {
         "yes".to_owned()
     } else {
         "no".to_owned()
-    }
-}
-
-/// Convert a `yes` or `no` string to a boolean value
-///
-/// This method is the counterpart to [`bool_to_yesno`] and can fail if the string doesn't match
-/// exactly (case-sensitive).
-pub fn yesno_to_bool(value: &str) -> Option<bool> {
-    match value.trim() {
-        "yes" => Some(true),
-        "no" => Some(false),
-        _ => None,
-    }
-}
-
-/// Truncate a utf-8 [`std::str`] to a given `len`
-pub fn truncate_str_utf8(string: &str, len: usize) -> &str {
-    if let Some((pos, c)) = string
-        .char_indices()
-        .take_while(|(i, c)| i + c.len_utf8() <= len)
-        .last()
-    {
-        &string[..pos + c.len_utf8()]
-    } else {
-        &string[..0]
-    }
-}
-
-/// Trim a slice of `u8` from ascii whitespace
-pub fn trim(bytes: &[u8]) -> &[u8] {
-    let Some(from) = bytes.iter().position(|x| !x.is_ascii_whitespace()) else {
-        return &bytes[0..0];
-    };
-    let to = bytes
-        .iter()
-        .rposition(|x| !x.is_ascii_whitespace())
-        .unwrap();
-    &bytes[from..=to]
-}
-
-/// Dump all data to `stdout`
-pub fn write_all_to_stdout(bytes: &[u8]) {
-    if !bytes.is_empty() {
-        let stdout = io::stdout();
-        let stdout = stdout.lock();
-        let mut writer = BufWriter::new(stdout);
-        writer
-            .write_all(bytes)
-            .and_then(|()| writer.flush())
-            .unwrap();
-        if !bytes.last().is_some_and(|l| *l == b'\n') {
-            println!();
-        }
-    }
-}
-
-/// Dump all data to `stderr`
-pub fn write_all_to_stderr(bytes: &[u8]) {
-    if !bytes.is_empty() {
-        let stderr = io::stderr();
-        let stderr = stderr.lock();
-        let mut writer = BufWriter::new(stderr);
-        writer
-            .write_all(bytes)
-            .and_then(|()| writer.flush())
-            .unwrap();
-        if !bytes.last().is_some_and(|l| *l == b'\n') {
-            eprintln!();
-        }
     }
 }
 
@@ -320,6 +258,88 @@ pub fn copy_directory(source: &Path, dest: &Path, follow_symlinks: bool) -> Resu
     Ok(())
 }
 
+/// Calculate the difference between `new` and `old` as factor
+pub fn factor_diff(new: Metric, old: Metric) -> f64 {
+    if new == old {
+        return 1f64;
+    }
+
+    let new_float: f64 = new.into();
+    let old_float: f64 = old.into();
+
+    if new > old {
+        if old == Metric::Int(0) {
+            f64::INFINITY
+        } else {
+            new_float / old_float
+        }
+    } else if new == Metric::Int(0) {
+        f64::NEG_INFINITY
+    } else {
+        (old_float / new_float).neg()
+    }
+}
+
+/// Convert a valgrind glob pattern into a [`Regex`]
+///
+/// A valgrind glob pattern is a simpler glob pattern usually used to match function calls for
+/// example in `--toggle-collect`, `--dump-before`, ... as described here
+/// <https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options>
+///
+/// In short, there are `*` and `?` which are converted into `.*` and `.?` respectively.
+pub fn glob_to_regex(input: &str) -> Result<Regex> {
+    let pattern = input.chars().fold(String::new(), |mut acc, c| {
+        if c == '*' {
+            acc.push_str(".*");
+        } else if c == '?' {
+            acc.push_str(".?");
+        } else {
+            acc.push(c);
+        }
+
+        acc
+    });
+
+    Regex::new(&pattern).map_err(Into::into)
+}
+
+/// Make a `path` absolute with the `base_dir` as prefix
+pub fn make_absolute<B, T>(base_dir: B, path: T) -> PathBuf
+where
+    B: AsRef<Path>,
+    T: AsRef<Path>,
+{
+    let (base_dir, path) = (base_dir.as_ref(), path.as_ref());
+    if path.strip_prefix(base_dir).is_ok() {
+        path.to_owned()
+    } else {
+        base_dir.join(path)
+    }
+}
+
+/// Make a `path` relative to the `base_dir`
+pub fn make_relative<B, T>(base_dir: B, path: T) -> PathBuf
+where
+    B: AsRef<Path>,
+    T: AsRef<Path>,
+{
+    let (base_dir, path) = (base_dir.as_ref(), path.as_ref());
+    path.strip_prefix(base_dir).unwrap_or(path).to_owned()
+}
+
+/// Calculate the difference between `new` and `old` as percentage
+pub fn percentage_diff(new: Metric, old: Metric) -> f64 {
+    if new == old {
+        return 0f64;
+    }
+
+    let new: f64 = new.into();
+    let old: f64 = old.into();
+
+    let diff = (new - old) / old;
+    diff * 100.0f64
+}
+
 /// Try to resolve the absolute path of a binary from the `PATH` and relative paths
 ///
 /// If the binary is a name without path separators the PATH is tried, otherwise if not absolute
@@ -372,86 +392,73 @@ pub fn to_string_unsigned_short(n: f64) -> String {
     to_string_signed_short(n)[1..].to_owned()
 }
 
-/// Calculate the difference between `new` and `old` as percentage
-pub fn percentage_diff(new: Metric, old: Metric) -> f64 {
-    if new == old {
-        return 0f64;
-    }
-
-    let new: f64 = new.into();
-    let old: f64 = old.into();
-
-    let diff = (new - old) / old;
-    diff * 100.0f64
+/// Trim a slice of `u8` from ascii whitespace
+pub fn trim(bytes: &[u8]) -> &[u8] {
+    let Some(from) = bytes.iter().position(|x| !x.is_ascii_whitespace()) else {
+        return &bytes[0..0];
+    };
+    let to = bytes
+        .iter()
+        .rposition(|x| !x.is_ascii_whitespace())
+        .unwrap();
+    &bytes[from..=to]
 }
 
-/// Calculate the difference between `new` and `old` as factor
-pub fn factor_diff(new: Metric, old: Metric) -> f64 {
-    if new == old {
-        return 1f64;
-    }
-
-    let new_float: f64 = new.into();
-    let old_float: f64 = old.into();
-
-    if new > old {
-        if old == Metric::Int(0) {
-            f64::INFINITY
-        } else {
-            new_float / old_float
-        }
-    } else if new == Metric::Int(0) {
-        f64::NEG_INFINITY
+/// Truncate a utf-8 [`std::str`] to a given `len`
+pub fn truncate_str_utf8(string: &str, len: usize) -> &str {
+    if let Some((pos, c)) = string
+        .char_indices()
+        .take_while(|(i, c)| i + c.len_utf8() <= len)
+        .last()
+    {
+        &string[..pos + c.len_utf8()]
     } else {
-        (old_float / new_float).neg()
+        &string[..0]
     }
 }
 
-/// Make a `path` relative to the `base_dir`
-pub fn make_relative<B, T>(base_dir: B, path: T) -> PathBuf
-where
-    B: AsRef<Path>,
-    T: AsRef<Path>,
-{
-    let (base_dir, path) = (base_dir.as_ref(), path.as_ref());
-    path.strip_prefix(base_dir).unwrap_or(path).to_owned()
-}
-
-/// Make a `path` absolute with the `base_dir` as prefix
-pub fn make_absolute<B, T>(base_dir: B, path: T) -> PathBuf
-where
-    B: AsRef<Path>,
-    T: AsRef<Path>,
-{
-    let (base_dir, path) = (base_dir.as_ref(), path.as_ref());
-    if path.strip_prefix(base_dir).is_ok() {
-        path.to_owned()
-    } else {
-        base_dir.join(path)
-    }
-}
-
-/// Convert a valgrind glob pattern into a [`Regex`]
-///
-/// A valgrind glob pattern is a simpler glob pattern usually used to match function calls for
-/// example in `--toggle-collect`, `--dump-before`, ... as described here
-/// <https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options>
-///
-/// In short, there are `*` and `?` which are converted into `.*` and `.?` respectively.
-pub fn glob_to_regex(input: &str) -> Result<Regex> {
-    let pattern = input.chars().fold(String::new(), |mut acc, c| {
-        if c == '*' {
-            acc.push_str(".*");
-        } else if c == '?' {
-            acc.push_str(".?");
-        } else {
-            acc.push(c);
+/// Dump all data to `stderr`
+pub fn write_all_to_stderr(bytes: &[u8]) {
+    if !bytes.is_empty() {
+        let stderr = io::stderr();
+        let stderr = stderr.lock();
+        let mut writer = BufWriter::new(stderr);
+        writer
+            .write_all(bytes)
+            .and_then(|()| writer.flush())
+            .unwrap();
+        if !bytes.last().is_some_and(|l| *l == b'\n') {
+            eprintln!();
         }
+    }
+}
 
-        acc
-    });
+/// Dump all data to `stdout`
+pub fn write_all_to_stdout(bytes: &[u8]) {
+    if !bytes.is_empty() {
+        let stdout = io::stdout();
+        let stdout = stdout.lock();
+        let mut writer = BufWriter::new(stdout);
+        writer
+            .write_all(bytes)
+            .and_then(|()| writer.flush())
+            .unwrap();
+        if !bytes.last().is_some_and(|l| *l == b'\n') {
+            println!();
+        }
+    }
+}
 
-    Regex::new(&pattern).map_err(Into::into)
+/// Convert a `yes` or `no` string to a boolean value
+///
+/// This method is the counterpart to [`bool_to_yesno`] and can fail if the string doesn't match
+/// exactly (case-sensitive).
+pub fn yesno_to_bool(value: &str) -> Option<bool> {
+    match value.trim() {
+        "yes" => Some(true),
+        "no" => Some(false),
+        _ => None,
+    }
 }
 
 #[cfg(test)]

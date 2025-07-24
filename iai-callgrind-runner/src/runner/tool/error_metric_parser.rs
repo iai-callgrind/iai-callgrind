@@ -1,3 +1,5 @@
+//! Module containing the [`ErrorMetricLogfileParser`] for error checking tools like `Memcheck`
+
 // spell-checker:ignore suppr ctxts
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -9,14 +11,15 @@ use regex::Regex;
 
 use super::logfile_parser::{parse_header, EMPTY_LINE_RE, EXTRACT_FIELDS_RE, STRIP_PREFIX_RE};
 use super::parser::{Parser, ParserOutput};
-use super::ToolOutputPath;
+use super::path::ToolOutputPath;
 use crate::api::ErrorMetric;
 use crate::runner::metrics::Metrics;
 use crate::runner::summary::ToolMetrics;
 
 lazy_static! {
     static ref EXTRACT_ERROR_SUMMARY_RE: Regex = regex::Regex::new(
-        r"^[^0-9]*(?<errs>[0-9]+)[^0-9]*(?<ctxs>[0-9]+)[^0-9]*(?<s_errs>[0-9]+)[^0-9]*(?<s_ctxs>[0-9]+).*$"
+        "^[^0-9]*(?<errs>[0-9]+)[^0-9]*(?<ctxs>[0-9]+)[^0-9]*(?<s_errs>[0-9]+)[^0-9]*(?\
+         <s_ctxs>[0-9]+).*$"
     )
     .expect("Regex should compile");
 }
@@ -27,8 +30,11 @@ enum State {
     Body,
 }
 
+/// The logfile parser for error metrics
 pub struct ErrorMetricLogfileParser {
+    /// The [`ToolOutputPath`]
     pub output_path: ToolOutputPath,
+    /// The path to the root/project directory used to make paths relative
     pub root_dir: PathBuf,
 }
 
@@ -137,19 +143,19 @@ mod tests {
 
     #[derive(Debug, PartialEq, Eq, Clone)]
     struct ErrorsFixture {
-        errors: u64,
         ctxs: u64,
-        suppr_errors: u64,
+        errors: u64,
         suppr_ctxs: u64,
+        suppr_errors: u64,
     }
 
     impl ErrorsFixture {
         fn new(errors: u64, ctxs: u64, suppr_errors: u64, suppr_ctxs: u64) -> Self {
             Self {
-                errors,
                 ctxs,
-                suppr_errors,
+                errors,
                 suppr_ctxs,
+                suppr_errors,
             }
         }
 
@@ -180,10 +186,10 @@ mod tests {
                 .unwrap();
 
             Self {
-                errors,
                 ctxs,
-                suppr_errors,
+                errors,
                 suppr_ctxs,
+                suppr_errors,
             }
         }
     }

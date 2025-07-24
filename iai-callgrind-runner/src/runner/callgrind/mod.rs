@@ -1,3 +1,5 @@
+//! The main module for callgrind related elements
+
 pub mod args;
 pub mod flamegraph;
 pub mod flamegraph_parser;
@@ -7,55 +9,53 @@ pub mod parser;
 pub mod regression;
 pub mod summary_parser;
 
-use std::path::PathBuf;
-
-use parser::CallgrindProperties;
-
 use self::model::Metrics;
-use super::metrics::{Metric, MetricsSummary};
+use super::metrics::Metric;
 use crate::api::EventKind;
-use crate::util::EitherOrBoth;
 
-#[derive(Debug, Clone)]
-pub struct Summary {
-    pub details: EitherOrBoth<(PathBuf, CallgrindProperties)>,
-    pub metrics_summary: MetricsSummary,
-}
-
-#[derive(Debug, Clone)]
-pub struct Summaries {
-    pub summaries: Vec<Summary>,
-    pub total: MetricsSummary,
-}
-
+/// The derived metrics of the cache metrics
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CacheSummary {
-    pub l1_hits: Metric,
-    pub l3_hits: Metric,
-    pub ram_hits: Metric,
-    pub total_memory_rw: Metric,
+    /// The estimated cycles
     pub cycles: Metric,
-    pub i1_miss_rate: Metric,
+    /// The L1 data miss rate
     pub d1_miss_rate: Metric,
-    pub ll_miss_rate: Metric,
-    pub lli_miss_rate: Metric,
-    pub lld_miss_rate: Metric,
+    /// The L1 instruction fetch miss rate
+    pub i1_miss_rate: Metric,
+    /// The L1 hit rate
     pub l1_hit_rate: Metric,
+    /// The L1 Hits
+    pub l1_hits: Metric,
+    /// The last-level hit rate
     pub l3_hit_rate: Metric,
+    /// The last-level Hits
+    pub l3_hits: Metric,
+    /// The last-level miss rate
+    pub ll_miss_rate: Metric,
+    /// The last-level data miss rate
+    pub lld_miss_rate: Metric,
+    /// The last-level instruction fetch miss rate
+    pub lli_miss_rate: Metric,
+    /// The RAM hit rate
     pub ram_hit_rate: Metric,
+    /// The RAM Hits
+    pub ram_hits: Metric,
+    /// The total cache reads and writes
+    pub total_memory_rw: Metric,
 }
 
+/// The calculator for the estimated cycles and other derived metrics
 #[derive(Debug, Clone)]
 pub struct CyclesEstimator {
     instructions: Metric,
-    total_data_cache_reads: Metric,
-    total_data_cache_writes: Metric,
-    l1_instructions_cache_read_misses: Metric,
     l1_data_cache_read_misses: Metric,
     l1_data_cache_write_misses: Metric,
-    l3_instructions_cache_read_misses: Metric,
+    l1_instructions_cache_read_misses: Metric,
     l3_data_cache_read_misses: Metric,
     l3_data_cache_write_misses: Metric,
+    l3_instructions_cache_read_misses: Metric,
+    total_data_cache_reads: Metric,
+    total_data_cache_writes: Metric,
 }
 
 impl TryFrom<&Metrics> for CacheSummary {
@@ -80,6 +80,7 @@ impl TryFrom<&Metrics> for CacheSummary {
 }
 
 impl CyclesEstimator {
+    /// Create a new `CyclesEstimator`
     pub fn new(
         instructions: Metric,
         total_data_cache_reads: Metric,
@@ -93,17 +94,18 @@ impl CyclesEstimator {
     ) -> Self {
         Self {
             instructions,
-            total_data_cache_reads,
-            total_data_cache_writes,
-            l1_instructions_cache_read_misses,
             l1_data_cache_read_misses,
             l1_data_cache_write_misses,
-            l3_instructions_cache_read_misses,
+            l1_instructions_cache_read_misses,
             l3_data_cache_read_misses,
             l3_data_cache_write_misses,
+            l3_instructions_cache_read_misses,
+            total_data_cache_reads,
+            total_data_cache_writes,
         }
     }
 
+    /// Calculate the `CacheSummary` from the native metrics
     #[allow(clippy::similar_names)]
     pub fn calculate(&self) -> CacheSummary {
         let ram_hits = self.l3_instructions_cache_read_misses
@@ -143,19 +145,19 @@ impl CyclesEstimator {
         let ll_miss_rate = ram_hits.div0(total_memory_rw) * 100;
 
         CacheSummary {
+            cycles,
+            d1_miss_rate,
+            i1_miss_rate,
+            l1_hit_rate,
             l1_hits,
+            l3_hit_rate,
             l3_hits,
+            ll_miss_rate,
+            lld_miss_rate,
+            lli_miss_rate,
+            ram_hit_rate,
             ram_hits,
             total_memory_rw,
-            cycles,
-            i1_miss_rate,
-            d1_miss_rate,
-            ll_miss_rate,
-            lli_miss_rate,
-            lld_miss_rate,
-            l1_hit_rate,
-            l3_hit_rate,
-            ram_hit_rate,
         }
     }
 }

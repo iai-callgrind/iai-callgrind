@@ -1,3 +1,5 @@
+//! Module containing the dhat trees
+
 use std::cmp::Ordering;
 use std::ops::Add;
 
@@ -10,7 +12,69 @@ use crate::runner::summary::ToolMetrics;
 use crate::runner::DEFAULT_TOGGLE;
 use crate::util::Glob;
 
+/// The [`Data`] of each [`Node`]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct Data {
+    /// The blocks at t-end
+    pub blocks_at_end: Option<u64>,
+    /// The blocks at t-gmax
+    pub blocks_at_max: Option<u64>,
+    /// The reads of blocks
+    pub blocks_read: Option<u64>,
+    /// The writes of blocks
+    pub blocks_write: Option<u64>,
+    /// The bytes at t-end
+    pub bytes_at_end: Option<u64>,
+    /// The bytes at t-gmax
+    pub bytes_at_max: Option<u64>,
+    /// The maximum blocks
+    pub maximum_blocks: Option<u64>,
+    /// The maximum bytes
+    pub maximum_bytes: Option<u64>,
+    /// The total blocks
+    pub total_blocks: u64,
+    /// The total bytes
+    pub total_bytes: u64,
+    /// Total lifetimes of all blocks allocated
+    pub total_lifetimes: Option<u128>,
+}
+
+/// A full-fledged dhat prefix tree
+///
+/// # Developers
+///
+/// This tree is currently not used but it is fully functional. However, only `insert` is
+/// implemented to be able to build the tree but it may be needed to add methods like `remove`,
+/// `lookup`, etc.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct DhatTree {
+    mode: Mode,
+    root: Box<Node>,
+}
+
+/// The [`Node`] in a [`Tree`]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct Node {
+    children: Vec<Node>,
+    data: Data,
+    prefix: Vec<usize>,
+}
+
+/// A [`Tree`] without any leafs. Useful if only the root data and metrics are of interest.
+///
+/// If you're just interested in the data of the root then it is more performant to use this tree
+/// instead of building a complete [`DhatTree`]. The dhat metrics of the root are the summarized
+/// metrics of all its children, so all this [`Tree`] does is summarizing the metrics without
+/// actually building the tree.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct RootTree {
+    mode: Mode,
+    root: Box<Node>,
+}
+
+/// The trait to be implemented for a dhat prefix tree
 pub trait Tree {
+    /// Create a new `Tree` from the given parameters
     fn from_json(dhat_data: DhatData, entry_point: &EntryPoint, frames: &[Glob]) -> Self
     where
         Self: std::marker::Sized + Default,
@@ -62,63 +126,33 @@ pub trait Tree {
         tree
     }
 
-    fn metrics(&self) -> ToolMetrics {
-        self.get_root_data().metrics(self.mode())
-    }
+    /// Return the [`Data`] of the root
+    fn get_root_data(&self) -> &Data;
 
-    fn mode(&self) -> Mode;
-    fn set_mode(&mut self, mode: Mode);
-
+    /// Insert a prefix with the given [`Data`] into this [`Tree`]
     fn insert(&mut self, prefix: &[usize], data: &Data);
+
+    /// Insert all [`ProgramPoint`]s into this [`Tree`]
     fn insert_iter(&mut self, iter: impl Iterator<Item = ProgramPoint>) {
         for elem in iter {
             let data = Data::from(&elem);
             self.insert(&elem.frames, &data);
         }
     }
-    fn get_root_data(&self) -> &Data;
+
+    /// Return the metrics of the root node
+    fn metrics(&self) -> ToolMetrics {
+        self.get_root_data().metrics(self.mode())
+    }
+
+    /// Return the dhat invocation [`Mode`]
+    fn mode(&self) -> Mode;
+
+    /// Set the dhat invocation [`Mode`]
+    fn set_mode(&mut self, mode: Mode);
+
+    /// Set the [`Data`] of the root
     fn set_root_data(&mut self, data: Data);
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct Data {
-    pub total_bytes: u64,
-    pub total_blocks: u64,
-    pub total_lifetimes: Option<u128>,
-    pub maximum_bytes: Option<u64>,
-    pub maximum_blocks: Option<u64>,
-    pub bytes_at_max: Option<u64>,
-    pub blocks_at_max: Option<u64>,
-    pub bytes_at_end: Option<u64>,
-    pub blocks_at_end: Option<u64>,
-    pub blocks_read: Option<u64>,
-    pub blocks_write: Option<u64>,
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct Node {
-    prefix: Vec<usize>,
-    children: Vec<Node>,
-    data: Data,
-}
-
-/// A full-fledged dhat prefix tree
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct DhatTree {
-    mode: Mode,
-    root: Box<Node>,
-}
-
-/// A [`Tree`] without any leafs. Useful if only the root data and metrics are of interest.
-///
-/// If you're just interested in the data of the root then it is more performant to use this tree
-/// instead of building a complete [`DhatTree`]. The dhat metrics of the root are the summarized
-/// metrics of all its children, so all this [`Tree`] does is summarizing the metrics without
-/// actually building the tree.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct RootTree {
-    mode: Mode,
-    root: Box<Node>,
 }
 
 impl Data {
@@ -222,56 +256,22 @@ impl From<&ProgramPoint> for Data {
     }
 }
 
-impl Node {
-    pub fn new(prefix: Vec<usize>, children: Vec<Node>, data: Data) -> Self {
-        Self {
-            prefix,
-            children,
-            data,
+impl From<DhatData> for DhatTree {
+    fn from(value: DhatData) -> Self {
+        let mut tree = Self::default();
+        for pps in value.program_points {
+            let data = Data::from(&pps);
+            tree.insert(&pps.frames, &data);
         }
-    }
 
-    pub fn with_prefix(prefix: Vec<usize>) -> Self {
-        Self {
-            prefix,
-            children: Vec::default(),
-            data: Data::default(),
-        }
-    }
-
-    fn add_child(&mut self, prefix: &[usize], data: &Data) {
-        self.children
-            .push(Node::new(prefix.to_vec(), vec![], data.clone()));
-    }
-
-    fn find_child(&mut self, num: usize) -> Option<&mut Self> {
-        self.children
-            .iter_mut()
-            .find(|node| node.prefix.first().is_some_and(|a| *a == num))
-    }
-
-    fn split(&mut self, index: usize, data: &Data) {
-        let node = Node::new(
-            self.prefix.split_off(index),
-            std::mem::take(&mut self.children),
-            self.data.clone(),
-        );
-        self.add_data(data);
-
-        self.children.push(node);
-    }
-
-    fn split_index(&self, other: &[usize]) -> Option<usize> {
-        let length = self.prefix.len().min(other.len());
-        (0..length).find(|&index| self.prefix[index] != other[index])
-    }
-
-    fn add_data(&mut self, data: &Data) {
-        self.data.add(data);
+        tree
     }
 }
 
 impl Tree for DhatTree {
+    /// Insert a prefix with the given [`Data`] into this tree
+    ///
+    /// The rust borrow checker without the polonius crate below would give a false positive.
     fn insert(&mut self, prefix: &[usize], data: &Data) {
         let mut current = &mut *self.root;
         let mut index = 0;
@@ -341,15 +341,54 @@ impl Tree for DhatTree {
     }
 }
 
-impl From<DhatData> for DhatTree {
-    fn from(value: DhatData) -> Self {
-        let mut tree = DhatTree::default();
-        for pps in value.program_points {
-            let data = Data::from(&pps);
-            tree.insert(&pps.frames, &data);
+impl Node {
+    /// Create a new `Node`
+    pub fn new(prefix: Vec<usize>, children: Vec<Self>, data: Data) -> Self {
+        Self {
+            children,
+            data,
+            prefix,
         }
+    }
 
-        tree
+    /// Create a new default `Node` with the given prefix
+    pub fn with_prefix(prefix: Vec<usize>) -> Self {
+        Self {
+            prefix,
+            children: Vec::default(),
+            data: Data::default(),
+        }
+    }
+
+    fn add_child(&mut self, prefix: &[usize], data: &Data) {
+        self.children
+            .push(Self::new(prefix.to_vec(), vec![], data.clone()));
+    }
+
+    fn find_child(&mut self, num: usize) -> Option<&mut Self> {
+        self.children
+            .iter_mut()
+            .find(|node| node.prefix.first().is_some_and(|a| *a == num))
+    }
+
+    fn split(&mut self, index: usize, data: &Data) {
+        let node = Self::new(
+            self.prefix.split_off(index),
+            std::mem::take(&mut self.children),
+            self.data.clone(),
+        );
+        self.add_data(data);
+
+        self.children.push(node);
+    }
+
+    fn split_index(&self, other: &[usize]) -> Option<usize> {
+        let length = self.prefix.len().min(other.len());
+        (0..length).find(|&index| self.prefix[index] != other[index])
+    }
+
+    fn add_data(&mut self, data: &Data) {
+        self.data.add(data);
     }
 }
 
@@ -390,6 +429,13 @@ mod tests {
 
     use super::*;
 
+    fn data_fixture(num: u64) -> Data {
+        Data {
+            total_bytes: num,
+            ..Default::default()
+        }
+    }
+
     fn dhat_tree_fixture() -> DhatTree {
         DhatTree {
             mode: Mode::Heap,
@@ -405,13 +451,6 @@ mod tests {
         }
     }
 
-    fn data_fixture(num: u64) -> Data {
-        Data {
-            total_bytes: num,
-            ..Default::default()
-        }
-    }
-
     #[test]
     fn test_dhat_tree_insert_empty() {
         let mut expected = DhatTree::default();
@@ -419,6 +458,51 @@ mod tests {
 
         let mut tree = DhatTree::default();
         tree.insert(&[], &data_fixture(1));
+
+        assert_eq!(tree, expected);
+    }
+
+    #[test]
+    fn test_dhat_tree_insert_equal() {
+        let expected = DhatTree {
+            mode: Mode::Heap,
+            root: Box::new(Node::new(
+                vec![],
+                vec![Node::new(
+                    vec![1, 2, 3],
+                    vec![Node::new(vec![4, 5], vec![], data_fixture(1))],
+                    data_fixture(3),
+                )],
+                data_fixture(3),
+            )),
+        };
+
+        let mut tree = dhat_tree_fixture();
+        tree.insert(&[1, 2, 3], &data_fixture(1));
+
+        assert_eq!(tree, expected);
+    }
+
+    #[test]
+    fn test_dhat_tree_insert_full_longer() {
+        let expected = DhatTree {
+            mode: Mode::Heap,
+            root: Box::new(Node::new(
+                vec![],
+                vec![Node::new(
+                    vec![1, 2, 3],
+                    vec![
+                        Node::new(vec![4, 5], vec![], data_fixture(1)),
+                        Node::new(vec![6], vec![], data_fixture(1)),
+                    ],
+                    data_fixture(3),
+                )],
+                data_fixture(3),
+            )),
+        };
+
+        let mut tree = dhat_tree_fixture();
+        tree.insert(&[1, 2, 3, 6], &data_fixture(1));
 
         assert_eq!(tree, expected);
     }
@@ -444,30 +528,6 @@ mod tests {
 
         let mut tree = dhat_tree_fixture();
         tree.insert(&[1], &data_fixture(1));
-
-        assert_eq!(tree, expected);
-    }
-
-    #[test]
-    fn test_dhat_tree_insert_full_longer() {
-        let expected = DhatTree {
-            mode: Mode::Heap,
-            root: Box::new(Node::new(
-                vec![],
-                vec![Node::new(
-                    vec![1, 2, 3],
-                    vec![
-                        Node::new(vec![4, 5], vec![], data_fixture(1)),
-                        Node::new(vec![6], vec![], data_fixture(1)),
-                    ],
-                    data_fixture(3),
-                )],
-                data_fixture(3),
-            )),
-        };
-
-        let mut tree = dhat_tree_fixture();
-        tree.insert(&[1, 2, 3, 6], &data_fixture(1));
 
         assert_eq!(tree, expected);
     }
@@ -520,27 +580,6 @@ mod tests {
 
         let mut tree = dhat_tree_fixture();
         tree.insert(&[6], &data_fixture(1));
-
-        assert_eq!(tree, expected);
-    }
-
-    #[test]
-    fn test_dhat_tree_insert_equal() {
-        let expected = DhatTree {
-            mode: Mode::Heap,
-            root: Box::new(Node::new(
-                vec![],
-                vec![Node::new(
-                    vec![1, 2, 3],
-                    vec![Node::new(vec![4, 5], vec![], data_fixture(1))],
-                    data_fixture(3),
-                )],
-                data_fixture(3),
-            )),
-        };
-
-        let mut tree = dhat_tree_fixture();
-        tree.insert(&[1, 2, 3], &data_fixture(1));
 
         assert_eq!(tree, expected);
     }

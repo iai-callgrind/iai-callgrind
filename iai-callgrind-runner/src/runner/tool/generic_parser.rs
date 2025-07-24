@@ -1,3 +1,5 @@
+//! The module containing a generic logfile parser
+
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -6,7 +8,7 @@ use anyhow::{Context, Result};
 
 use super::logfile_parser::{parse_header, EMPTY_LINE_RE, STRIP_PREFIX_RE};
 use super::parser::{Parser, ParserOutput};
-use super::ToolOutputPath;
+use super::path::ToolOutputPath;
 use crate::runner::summary::ToolMetrics;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -15,8 +17,11 @@ enum State {
     Body,
 }
 
+/// A generic logfile parser
 pub struct GenericLogfileParser {
+    /// The [`ToolOutputPath`] of this logfile
     pub output_path: ToolOutputPath,
+    /// The path to the root/project directory used to make paths relative
     pub root_dir: PathBuf,
 }
 

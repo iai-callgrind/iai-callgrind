@@ -12,16 +12,16 @@ groups:
         expected:
           zero_metrics: true
           stdout: expected_stdout.1a
-          stderr: expected_stderr.1a
+          stderr: expected_stderr
       - args: ["--nocapture"]
         expected:
           zero_metrics: true
           stdout: expected_stdout.1b
-          stderr: expected_stderr.1b
+          stderr: expected_stderr
   - runs_on: "x86_64-unknown-freebsd"
     runs:
       - args: ["--nocapture"]
         expected:
           zero_metrics: true
           stdout: expected_stdout.freebsd.1a
-          stderr: expected_stderr.1a
+          stderr: expected_stderr

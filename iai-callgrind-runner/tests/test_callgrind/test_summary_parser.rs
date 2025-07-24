@@ -2,7 +2,7 @@ use iai_callgrind_runner::api::{EventKind, ValgrindTool};
 use iai_callgrind_runner::runner::callgrind::model::Metrics;
 use iai_callgrind_runner::runner::callgrind::parser::CallgrindParser;
 use iai_callgrind_runner::runner::callgrind::summary_parser::SummaryParser;
-use iai_callgrind_runner::runner::tool::ToolOutputPathKind;
+use iai_callgrind_runner::runner::tool::path::ToolOutputPathKind;
 use pretty_assertions::assert_eq;
 use rstest::rstest;
 
@@ -17,6 +17,7 @@ use crate::common::{assert_parse_error, Fixtures};
 #[case::summary_no_totals("summary_no_totals", [1, 2, 3, 4, 5, 6, 7, 8, 9])]
 fn test_summary_parser(#[case] fixture: &str, #[case] costs: [u64; 9]) {
     use iai_callgrind_runner::api::ValgrindTool;
+    use iai_callgrind_runner::runner::tool::path::ToolOutputPathKind;
 
     let expected_costs = Metrics::with_metric_kinds([
         (EventKind::Ir, costs[0]),

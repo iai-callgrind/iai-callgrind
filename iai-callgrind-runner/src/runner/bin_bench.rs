@@ -1,3 +1,14 @@
+//! The module responsible for running a binary benchmark
+
+mod defaults {
+    use crate::api::Stdin;
+
+    pub const COMPARE_BY_ID: bool = false;
+    pub const ENV_CLEAR: bool = true;
+    pub const STDIN: Stdin = Stdin::Pipe;
+    pub const WORKSPACE_ROOT_ENV: &str = "_WORKSPACE_ROOT";
+}
+
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::io::ErrorKind::WouldBlock;
@@ -14,7 +25,9 @@ use super::common::{Assistant, AssistantKind, Baselines, BenchmarkSummaries, Con
 use super::format::{BinaryBenchmarkHeader, OutputFormat};
 use super::meta::Metadata;
 use super::summary::{BaselineKind, BaselineName, BenchmarkKind, BenchmarkSummary, SummaryOutput};
-use super::tool::{RunOptions, ToolConfigs, ToolOutputPath, ToolOutputPathKind};
+use super::tool::config::ToolConfigs;
+use super::tool::path::{ToolOutputPath, ToolOutputPathKind};
+use super::tool::run::RunOptions;
 use crate::api::{
     self, BinaryBenchmarkBench, BinaryBenchmarkConfig, BinaryBenchmarkGroups, DelayKind,
     EntryPoint, Stdin, ValgrindTool,
@@ -22,64 +35,71 @@ use crate::api::{
 use crate::error::Error;
 use crate::runner::format;
 
-mod defaults {
-    use crate::api::Stdin;
-
-    pub const COMPARE_BY_ID: bool = false;
-    pub const ENV_CLEAR: bool = true;
-    pub const STDIN: Stdin = Stdin::Pipe;
-    pub const WORKSPACE_ROOT_ENV: &str = "_WORKSPACE_ROOT";
-}
-
 #[derive(Debug)]
 struct BaselineBenchmark {
     baseline_kind: BaselineKind,
 }
 
+/// A `BinBench` represents a single benchmark under the `#[binary_benchmark]` macro
 #[derive(Debug)]
 pub struct BinBench {
-    pub id: Option<String>,
+    /// The arguments of `args` attribute as a single string
     pub args: Option<String>,
-    pub function_name: String,
+    /// The [`Command`] to execute under valgrind
     pub command: Command,
-    pub run_options: RunOptions,
-    pub tools: ToolConfigs,
-    pub module_path: ModulePath,
-    pub output_format: OutputFormat,
+    /// The default [`ValgrindTool`]. If not changed it is `Callgrind`.
     pub default_tool: ValgrindTool,
+    /// The name of the annotated function
+    pub function_name: String,
+    /// The id of the benchmark as in `#[bench::id]`
+    pub id: Option<String>,
+    /// The [`ModulePath`].
+    pub module_path: ModulePath,
+    /// The [`OutputFormat`]
+    pub output_format: OutputFormat,
+    /// The [`RunOptions`]
+    pub run_options: RunOptions,
+    /// The tool configurations for this benchmark run
+    pub tools: ToolConfigs,
 }
 
-/// The Command we derive from the `api::Command`
+/// The Command derived from the `api::Command`
 ///
 /// If the path is relative we convert it to an absolute path relative to the workspace root.
 /// `stdin`, `stdout`, `stderr` of the `api::Command` are part of the `RunOptions` and not part of
 /// this `Command`
 #[derive(Debug, Clone)]
 pub struct Command {
-    pub path: PathBuf,
+    /// The arguments to pass to the executable
     pub args: Vec<OsString>,
+    /// The path to the executable
+    pub path: PathBuf,
 }
 
+/// The `Delay` which should be applied to the [`Command`]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Delay {
-    pub poll: Duration,
-    pub timeout: Duration,
+    /// The kind of delay
     pub kind: DelayKind,
+    /// The polling time to check the delay condition
+    pub poll: Duration,
+    /// The timeout for the delay
+    pub timeout: Duration,
 }
 
 #[derive(Debug)]
 struct Group {
+    benches: Vec<BinBench>,
+    compare_by_id: bool,
+    /// The module path so far which should be `file_name::group_name`
+    module_path: ModulePath,
     /// This name is the name from the `library_benchmark_group!` macro
     ///
     /// Due to the way we expand the `library_benchmark_group!` macro, we can safely assume that
     /// this name is unique.
     name: String,
-    /// The module path so far which should be `file_name::group_name`
-    module_path: ModulePath,
-    benches: Vec<BinBench>,
     setup: Option<Assistant>,
     teardown: Option<Assistant>,
-    compare_by_id: bool,
 }
 
 #[derive(Debug)]
@@ -87,15 +107,15 @@ struct Groups(Vec<Group>);
 
 #[derive(Debug)]
 struct LoadBaselineBenchmark {
-    loaded_baseline: BaselineName,
     baseline: BaselineName,
+    loaded_baseline: BaselineName,
 }
 
 #[derive(Debug)]
 struct Runner {
-    groups: Groups,
-    config: Config,
     benchmark: Box<dyn Benchmark>,
+    config: Config,
+    groups: Groups,
     setup: Option<Assistant>,
     teardown: Option<Assistant>,
 }
@@ -106,8 +126,8 @@ struct SaveBaselineBenchmark {
 }
 
 trait Benchmark: std::fmt::Debug {
-    fn output_path(&self, bin_bench: &BinBench, config: &Config, group: &Group) -> ToolOutputPath;
     fn baselines(&self) -> Baselines;
+    fn output_path(&self, bin_bench: &BinBench, config: &Config, group: &Group) -> ToolOutputPath;
     fn run(&self, bin_bench: &BinBench, config: &Config, group: &Group)
         -> Result<BenchmarkSummary>;
 }
@@ -286,7 +306,7 @@ impl BinBench {
             run_options: RunOptions {
                 env_clear: config.env_clear.unwrap_or(defaults::ENV_CLEAR),
                 envs: command_envs,
-                stdin: stdin.clone().or(Some(defaults::STDIN)),
+                stdin: stdin.or(Some(defaults::STDIN)),
                 stdout,
                 stderr,
                 exit_with: config.exit_with,
@@ -349,65 +369,21 @@ impl Command {
             return Err(anyhow!("{module_path}: Empty path in command",));
         }
 
-        Ok(Self { path, args })
-    }
-}
-
-impl From<api::Delay> for Delay {
-    fn from(value: api::Delay) -> Self {
-        let (poll, timeout) = if let DelayKind::DurationElapse(_) = value.kind {
-            if value.poll.is_some() {
-                warn!("Ignoring poll setting. Not supported for {:?}", value.kind);
-            }
-            if value.timeout.is_some() {
-                warn!(
-                    "Ignoring timeout setting. Not supported for {:?}",
-                    value.kind
-                );
-            }
-            (Duration::ZERO, Duration::ZERO)
-        } else {
-            let mut poll = value.poll.unwrap_or_else(|| Duration::from_millis(10));
-            let timeout = value.timeout.map_or_else(
-                || Duration::from_secs(600),
-                |t| {
-                    if t < Duration::from_millis(10) {
-                        warn!("The minimum timeout setting is 10ms");
-                        Duration::from_millis(10)
-                    } else {
-                        t
-                    }
-                },
-            );
-
-            if poll >= timeout {
-                warn!(
-                    "Poll duration is equal to or greater than the timeout duration ({poll:?} >= \
-                     {timeout:?})."
-                );
-                poll = timeout - Duration::from_millis(5);
-                warn!("Using poll duration {poll:?} instead");
-            }
-            (poll, timeout)
-        };
-
-        Self {
-            poll,
-            timeout,
-            kind: value.kind,
-        }
+        Ok(Self { args, path })
     }
 }
 
 impl Delay {
+    /// Create a new `Delay`
     pub fn new(poll: Duration, timeout: Duration, kind: DelayKind) -> Self {
         Self {
+            kind,
             poll,
             timeout,
-            kind,
         }
     }
 
+    /// Apply the `Delay`
     pub fn run(&self) -> Result<()> {
         if let DelayKind::DurationElapse(_) = self.kind {
             self.exec_delay_fn()
@@ -489,6 +465,52 @@ impl Delay {
         }
 
         Ok(())
+    }
+}
+
+impl From<api::Delay> for Delay {
+    fn from(value: api::Delay) -> Self {
+        let (poll, timeout) = if let DelayKind::DurationElapse(_) = value.kind {
+            if value.poll.is_some() {
+                warn!("Ignoring poll setting. Not supported for {:?}", value.kind);
+            }
+            if value.timeout.is_some() {
+                warn!(
+                    "Ignoring timeout setting. Not supported for {:?}",
+                    value.kind
+                );
+            }
+            (Duration::ZERO, Duration::ZERO)
+        } else {
+            let mut poll = value.poll.unwrap_or_else(|| Duration::from_millis(10));
+            let timeout = value.timeout.map_or_else(
+                || Duration::from_secs(600),
+                |t| {
+                    if t < Duration::from_millis(10) {
+                        warn!("The minimum timeout setting is 10ms");
+                        Duration::from_millis(10)
+                    } else {
+                        t
+                    }
+                },
+            );
+
+            if poll >= timeout {
+                warn!(
+                    "Poll duration is equal to or greater than the timeout duration ({poll:?} >= \
+                     {timeout:?})."
+                );
+                poll = timeout - Duration::from_millis(5);
+                warn!("Using poll duration {poll:?} instead");
+            }
+            (poll, timeout)
+        };
+
+        Self {
+            poll,
+            timeout,
+            kind: value.kind,
+        }
     }
 }
 
@@ -735,9 +757,9 @@ impl Runner {
             };
 
         Ok(Self {
-            groups,
-            config,
             benchmark,
+            config,
+            groups,
             setup,
             teardown,
         })
@@ -819,16 +841,6 @@ impl Benchmark for SaveBaselineBenchmark {
     }
 }
 
-pub fn run(benchmark_groups: BinaryBenchmarkGroups, config: Config) -> Result<BenchmarkSummaries> {
-    let runner = Runner::new(benchmark_groups, config)?;
-
-    let start = Instant::now();
-    let mut summaries = runner.run()?;
-    summaries.elapsed(start);
-
-    Ok(summaries)
-}
-
 /// Print a list of all benchmarks with a short summary
 pub fn list(benchmark_groups: BinaryBenchmarkGroups, config: &Config) -> Result<()> {
     let groups =
@@ -845,6 +857,17 @@ pub fn list(benchmark_groups: BinaryBenchmarkGroups, config: &Config) -> Result<
     format::print_benchmark_list_summary(sum);
 
     Ok(())
+}
+
+/// The top-level method which should be used to initiate running all benchmarks
+pub fn run(benchmark_groups: BinaryBenchmarkGroups, config: Config) -> Result<BenchmarkSummaries> {
+    let runner = Runner::new(benchmark_groups, config)?;
+
+    let start = Instant::now();
+    let mut summaries = runner.run()?;
+    summaries.elapsed(start);
+
+    Ok(summaries)
 }
 
 #[cfg(test)]
@@ -1012,7 +1035,7 @@ mod tests {
     fn test_delay_udp_response() {
         let addr = "127.0.0.1:34000".parse::<SocketAddr>().unwrap();
 
-        thread::spawn(move || {
+        thread::spawn(move || -> ! {
             let server = UdpSocket::bind(addr).unwrap();
             server
                 .set_read_timeout(Some(Duration::from_millis(100)))

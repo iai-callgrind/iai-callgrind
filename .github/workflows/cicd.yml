@@ -181,8 +181,11 @@ jobs:
           #   target: powerpc-unknown-linux-gnu
           # - os: ubuntu-latest
           #   target: powerpc64-unknown-linux-gnu
-          - os: ubuntu-latest
-            target: powerpc64le-unknown-linux-gnu
+
+          # FIX: Temporarily switch off: This is not an Iai-Callgrind issue
+          # Fails to fetch libc6 during build
+          # - os: ubuntu-latest
+          #   target: powerpc64le-unknown-linux-gnu
     runs-on: ${{ matrix.job.os }}
     steps:
       - uses: actions/checkout@v4

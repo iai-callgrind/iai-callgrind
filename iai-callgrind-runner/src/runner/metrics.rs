@@ -1,3 +1,5 @@
+//! The module containing all elements and logic around the [`Metrics`], [`MetricsDiff`], ...
+
 #![allow(clippy::cast_precision_loss)]
 
 use std::borrow::Cow;
@@ -18,19 +20,6 @@ use super::summary::Diffs;
 use crate::api::{self, CachegrindMetric, DhatMetric, ErrorMetric, EventKind};
 use crate::util::{to_string_unsigned_short, EitherOrBoth};
 
-pub trait Summarize: Hash + Eq + Clone {
-    fn summarize(_: &mut Cow<Metrics<Self>>) {}
-}
-
-pub trait TypeChecker {
-    /// Return true if the `Metric` has the expected metric type
-    fn verify_metric(&self, metric: Metric) -> bool {
-        (self.is_int() && metric.is_int()) || (self.is_float() && metric.is_float())
-    }
-    fn is_int(&self) -> bool;
-    fn is_float(&self) -> bool;
-}
-
 /// The metric measured by valgrind or derived from one or more other metrics
 ///
 /// The valgrind metrics measured by any of its tools are `u64`. However, to be able to represent
@@ -47,27 +36,36 @@ pub trait TypeChecker {
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum Metric {
+    /// An integer `Metric`
     Int(u64),
+    /// A float `Metric`
     Float(f64),
 }
 
 /// The different metrics distinguished by tool and if it is an error checking tool as `ErrorMetric`
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub enum MetricKind {
+    /// The `None` kind if there are no metrics for a tool
     None,
+    /// The Callgrind metric kind
     Callgrind(EventKind),
+    /// The Cachegrind metric kind
     Cachegrind(CachegrindMetric),
+    /// The DHAT metric kind
     Dhat(DhatMetric),
+    /// The Memcheck metric kind
     Memcheck(ErrorMetric),
+    /// The Helgrind metric kind
     Helgrind(ErrorMetric),
+    /// The DRD metric kind
     DRD(ErrorMetric),
 }
 
 /// The `Metrics` backed by an [`indexmap::IndexMap`]
 ///
 /// The insertion order is preserved.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct Metrics<K: Hash + Eq>(pub IndexMap<K, Metric>);
 
@@ -79,16 +77,34 @@ pub struct Metrics<K: Hash + Eq>(pub IndexMap<K, Metric>);
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct MetricsDiff {
-    /// Either the `new`, `old` or both metrics
-    pub metrics: EitherOrBoth<Metric>,
     /// If both metrics are present there is also a `Diffs` present
     pub diffs: Option<Diffs>,
+    /// Either the `new`, `old` or both metrics
+    pub metrics: EitherOrBoth<Metric>,
 }
 
 /// The `MetricsSummary` contains all differences between two tool run segments
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct MetricsSummary<K: Hash + Eq = EventKind>(IndexMap<K, MetricsDiff>);
+
+/// Trait for tools which summarize and calculate derived metrics
+pub trait Summarize: Hash + Eq + Clone {
+    /// Calculate the derived metrics if any
+    fn summarize(_: &mut Cow<Metrics<Self>>) {}
+}
+
+/// Trait for checking the [`Metric`] type of a metric kind (like [`api::EventKind`])
+pub trait TypeChecker {
+    /// Return true if the metric kind is a [`Metric::Float`]
+    fn is_float(&self) -> bool;
+    /// Return true if the metric kind is a [`Metric::Int`]
+    fn is_int(&self) -> bool;
+    /// Return true if the `Metric` has the expected metric type
+    fn verify_metric(&self, metric: Metric) -> bool {
+        (self.is_int() && metric.is_int()) || (self.is_float() && metric.is_float())
+    }
+}
 
 impl Metric {
     /// Divide by `rhs` normally but if rhs is `0` the result is by convention `0.0`
@@ -98,33 +114,38 @@ impl Metric {
     #[must_use]
     pub fn div0(self, rhs: Self) -> Self {
         match (self, rhs) {
-            (_, Metric::Int(0) | Metric::Float(0.0f64)) => Metric::Float(0.0f64),
+            (_, Self::Int(0) | Self::Float(0.0f64)) => Self::Float(0.0f64),
             (a, b) => a / b,
         }
     }
 
+    /// Return true if this `Metric` is [`Metric::Int`]
     pub fn is_int(&self) -> bool {
         match self {
-            Metric::Int(_) => true,
-            Metric::Float(_) => false,
+            Self::Int(_) => true,
+            Self::Float(_) => false,
         }
     }
 
+    /// Return true if this `Metric` is [`Metric::Float`]
     pub fn is_float(&self) -> bool {
         match self {
-            Metric::Int(_) => false,
-            Metric::Float(_) => true,
+            Self::Int(_) => false,
+            Self::Float(_) => true,
         }
     }
 
+    /// If needed and possible convert this metric to the other [`Metric`] returning the result
+    ///
+    /// A metric is converted if the expected type of the `metric_kind` is [`Metric::Float`] but the
+    /// given metric was [`Metric::Int`]. The metrics of float type are usually percentages with a
+    /// value range of `0.0` to `100.0`. Converting `u64` to `f64` within this range happens without
+    /// precision loss.
     pub fn try_convert<T: Display + TypeChecker>(&self, metric_kind: T) -> Option<(T, Self)> {
         if metric_kind.verify_metric(*self) {
             Some((metric_kind, *self))
-        } else if let Metric::Int(a) = self {
-            // Convert u64 to f64 metrics if necessary. f64 metrics are percentages with a value
-            // range of 0.0 to 100.0. Converting u64 to f64 within this range happens without
-            // loss of precision.
-            Some((metric_kind, Metric::Float(*a as f64)))
+        } else if let Self::Int(a) = self {
+            Some((metric_kind, Self::Float(*a as f64)))
         } else {
             None
         }
@@ -132,14 +153,14 @@ impl Metric {
 }
 
 impl Add for Metric {
-    type Output = Metric;
+    type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            (Metric::Int(a), Metric::Int(b)) => Self::Int(a.saturating_add(b)),
-            (Metric::Int(a), Metric::Float(b)) => Self::Float((a as f64) + b),
-            (Metric::Float(a), Metric::Int(b)) => Self::Float((b as f64) + a),
-            (Metric::Float(a), Metric::Float(b)) => Self::Float(a + b),
+            (Self::Int(a), Self::Int(b)) => Self::Int(a.saturating_add(b)),
+            (Self::Int(a), Self::Float(b)) => Self::Float((a as f64) + b),
+            (Self::Float(a), Self::Int(b)) => Self::Float((b as f64) + a),
+            (Self::Float(a), Self::Float(b)) => Self::Float(a + b),
         }
     }
 }
@@ -153,21 +174,21 @@ impl AddAssign for Metric {
 impl Display for Metric {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Metric::Int(a) => f.pad(&format!("{a}")),
-            Metric::Float(a) => f.pad(&to_string_unsigned_short(*a)),
+            Self::Int(a) => f.pad(&format!("{a}")),
+            Self::Float(a) => f.pad(&to_string_unsigned_short(*a)),
         }
     }
 }
 
 impl Div for Metric {
-    type Output = Metric;
+    type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            (Metric::Int(a), Metric::Int(b)) => Metric::Float((a as f64) / (b as f64)),
-            (Metric::Int(a), Metric::Float(b)) => Metric::Float((a as f64) / b),
-            (Metric::Float(a), Metric::Int(b)) => Metric::Float(a / (b as f64)),
-            (Metric::Float(a), Metric::Float(b)) => Metric::Float(a / b),
+            (Self::Int(a), Self::Int(b)) => Self::Float((a as f64) / (b as f64)),
+            (Self::Int(a), Self::Float(b)) => Self::Float((a as f64) / b),
+            (Self::Float(a), Self::Int(b)) => Self::Float(a / (b as f64)),
+            (Self::Float(a), Self::Float(b)) => Self::Float(a / b),
         }
     }
 }
@@ -176,22 +197,13 @@ impl Eq for Metric {}
 
 impl From<u64> for Metric {
     fn from(value: u64) -> Self {
-        Metric::Int(value)
+        Self::Int(value)
     }
 }
 
 impl From<f64> for Metric {
     fn from(value: f64) -> Self {
-        Metric::Float(value)
-    }
-}
-
-impl From<Metric> for f64 {
-    fn from(value: Metric) -> Self {
-        match value {
-            Metric::Int(a) => a as f64,
-            Metric::Float(a) => a,
-        }
+        Self::Float(value)
     }
 }
 
@@ -209,9 +221,9 @@ impl FromStr for Metric {
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s.parse::<u64>() {
-            Ok(a) => Ok(Metric::Int(a)),
+            Ok(a) => Ok(Self::Int(a)),
             Err(_) => match s.parse::<f64>() {
-                Ok(a) => Ok(Metric::Float(a)),
+                Ok(a) => Ok(Self::Float(a)),
                 Err(error) => Err(anyhow!("Invalid metric: {error}")),
             },
         }
@@ -219,23 +231,12 @@ impl FromStr for Metric {
 }
 
 impl Mul<u64> for Metric {
-    type Output = Metric;
+    type Output = Self;
 
     fn mul(self, rhs: u64) -> Self::Output {
         match self {
-            Metric::Int(a) => Metric::Int(a.saturating_mul(rhs)),
-            Metric::Float(a) => Metric::Float(a * (rhs as f64)),
-        }
-    }
-}
-
-impl Mul<Metric> for u64 {
-    type Output = Metric;
-
-    fn mul(self, rhs: Metric) -> Self::Output {
-        match rhs {
-            Metric::Int(b) => Metric::Int(self.saturating_mul(b)),
-            Metric::Float(b) => Metric::Float((self as f64) * b),
+            Self::Int(a) => Self::Int(a.saturating_mul(rhs)),
+            Self::Float(a) => Self::Float(a * (rhs as f64)),
         }
     }
 }
@@ -273,10 +274,10 @@ impl Sub for Metric {
 
     fn sub(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            (Metric::Int(a), Metric::Int(b)) => Metric::Int(a.saturating_sub(b)),
-            (Metric::Int(a), Metric::Float(b)) => Metric::Float((a as f64) - b),
-            (Metric::Float(a), Metric::Int(b)) => Metric::Float(a - (b as f64)),
-            (Metric::Float(a), Metric::Float(b)) => Metric::Float(a - b),
+            (Self::Int(a), Self::Int(b)) => Self::Int(a.saturating_sub(b)),
+            (Self::Int(a), Self::Float(b)) => Self::Float((a as f64) - b),
+            (Self::Float(a), Self::Int(b)) => Self::Float(a - (b as f64)),
+            (Self::Float(a), Self::Float(b)) => Self::Float(a - b),
         }
     }
 }
@@ -284,13 +285,13 @@ impl Sub for Metric {
 impl Display for MetricKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MetricKind::None => Ok(()),
-            MetricKind::Callgrind(metric) => f.write_fmt(format_args!("Callgrind: {metric}")),
-            MetricKind::Cachegrind(metric) => f.write_fmt(format_args!("Cachegrind: {metric}")),
-            MetricKind::Dhat(metric) => f.write_fmt(format_args!("DHAT: {metric}")),
-            MetricKind::Memcheck(metric) => f.write_fmt(format_args!("Memcheck: {metric}")),
-            MetricKind::Helgrind(metric) => f.write_fmt(format_args!("Helgrind: {metric}")),
-            MetricKind::DRD(metric) => f.write_fmt(format_args!("DRD: {metric}")),
+            Self::None => Ok(()),
+            Self::Callgrind(metric) => f.write_fmt(format_args!("Callgrind: {metric}")),
+            Self::Cachegrind(metric) => f.write_fmt(format_args!("Cachegrind: {metric}")),
+            Self::Dhat(metric) => f.write_fmt(format_args!("DHAT: {metric}")),
+            Self::Memcheck(metric) => f.write_fmt(format_args!("Memcheck: {metric}")),
+            Self::Helgrind(metric) => f.write_fmt(format_args!("Helgrind: {metric}")),
+            Self::DRD(metric) => f.write_fmt(format_args!("DRD: {metric}")),
         }
     }
 }
@@ -298,10 +299,10 @@ impl Display for MetricKind {
 impl<K: Hash + Eq + Display + Clone> Metrics<K> {
     /// Return empty `Metrics`
     pub fn empty() -> Self {
-        Metrics(IndexMap::new())
+        Self(IndexMap::new())
     }
 
-    // The order matters. The index is derived from the insertion order
+    /// The order matters. The index is derived from the insertion order
     pub fn with_metric_kinds<I, T>(kinds: T) -> Self
     where
         I: Into<Metric>,
@@ -370,6 +371,7 @@ impl<K: Hash + Eq + Display + Clone> Metrics<K> {
             .with_context(|| format!("Missing event type '{kind}"))
     }
 
+    /// Return the contained metric kinds
     pub fn metric_kinds(&self) -> Vec<K> {
         self.0.iter().map(|(k, _)| k.clone()).collect()
     }
@@ -440,6 +442,7 @@ impl<I, K: Hash + Eq + From<I>> FromIterator<I> for Metrics<K> {
 }
 
 impl MetricsDiff {
+    /// Create a new `MetricsDiff` from a [`Metric`]
     pub fn new(metrics: EitherOrBoth<Metric>) -> Self {
         if let EitherOrBoth::Both(new, old) = metrics {
             Self {
@@ -454,6 +457,7 @@ impl MetricsDiff {
         }
     }
 
+    /// Sum this metrics diff with another [`MetricsDiff`]
     #[must_use]
     pub fn add(&self, other: &Self) -> Self {
         match (&self.metrics, &other.metrics) {
@@ -565,10 +569,14 @@ where
         self.0.get(metric_kind)
     }
 
+    /// Return an iterator over all [`MetricsDiff`]s
     pub fn all_diffs(&self) -> impl Iterator<Item = (&K, &MetricsDiff)> {
         self.0.iter()
     }
 
+    /// Extract the [`Metrics`] from this summary
+    ///
+    /// This is the exact reverse operation to [`MetricsSummary::new`]
     pub fn extract_costs(&self) -> EitherOrBoth<Metrics<K>> {
         let mut new_metrics: Metrics<K> = Metrics::empty();
         let mut old_metrics: Metrics<K> = Metrics::empty();
@@ -597,6 +605,10 @@ where
         }
     }
 
+    /// Sum up another `MetricsSummary` with this one
+    ///
+    /// If a [`MetricsDiff`] is not present in this summary but in the other, it is added to this
+    /// summary.
     pub fn add(&mut self, other: &Self) {
         let other_keys = other.0.keys().cloned().collect::<IndexSet<_>>();
         let keys = self.0.keys().cloned().collect::<IndexSet<_>>();
@@ -629,6 +641,26 @@ where
     }
 }
 
+impl From<Metric> for f64 {
+    fn from(value: Metric) -> Self {
+        match value {
+            Metric::Int(a) => a as Self,
+            Metric::Float(a) => a,
+        }
+    }
+}
+
+impl Mul<Metric> for u64 {
+    type Output = Metric;
+
+    fn mul(self, rhs: Metric) -> Self::Output {
+        match rhs {
+            Metric::Int(b) => Metric::Int(self.saturating_mul(b)),
+            Metric::Float(b) => Metric::Float((self as f64) * b),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::cmp::Ordering;
@@ -655,13 +687,101 @@ mod tests {
         )
     }
 
+    fn expected_metrics_diff<D>(metrics: EitherOrBoth<Metric>, diffs: D) -> MetricsDiff
+    where
+        D: Into<Option<(f64, f64)>>,
+    {
+        MetricsDiff {
+            metrics,
+            diffs: diffs
+                .into()
+                .map(|(diff_pct, factor)| Diffs { diff_pct, factor }),
+        }
+    }
+
+    fn metrics_fixture(metrics: &[u64]) -> Metrics<EventKind> {
+        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
+        let event_kinds = [
+            Ir,
+            Dr,
+            Dw,
+            I1mr,
+            D1mr,
+            D1mw,
+            ILmr,
+            DLmr,
+            DLmw,
+            L1hits,
+            LLhits,
+            RamHits,
+            TotalRW,
+            EstimatedCycles,
+            I1MissRate,
+            D1MissRate,
+            LLiMissRate,
+            LLdMissRate,
+            LLMissRate,
+            L1HitRate,
+            LLHitRate,
+            RamHitRate,
+        ];
+
+        Metrics::with_metric_kinds(
+            event_kinds
+                .iter()
+                .zip(metrics.iter())
+                .map(|(e, v)| (*e, *v)),
+        )
+    }
+
+    fn metrics_summary_fixture<T, U>(kinds: U) -> MetricsSummary<EventKind>
+    where
+        T: Into<Option<(f64, f64)>> + Clone,
+        U: IntoIterator<Item = (EitherOrBoth<Metric>, T)>,
+    {
+        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
+        let event_kinds = [
+            Ir,
+            Dr,
+            Dw,
+            I1mr,
+            D1mr,
+            D1mw,
+            ILmr,
+            DLmr,
+            DLmw,
+            L1hits,
+            LLhits,
+            RamHits,
+            TotalRW,
+            EstimatedCycles,
+            I1MissRate,
+            D1MissRate,
+            LLiMissRate,
+            LLdMissRate,
+            LLMissRate,
+            L1HitRate,
+            LLHitRate,
+            RamHitRate,
+        ];
+
+        let map: IndexMap<EventKind, MetricsDiff> = event_kinds
+            .iter()
+            .zip(kinds)
+            .map(|(e, (m, d))| (*e, expected_metrics_diff(m, d)))
+            .collect();
+
+        MetricsSummary(map)
+    }
+
     #[rstest]
     #[case::single_zero(&[Ir], &["0"], expected_metrics([(Ir, 0)]))]
     #[case::single_one(&[Ir], &["1"], expected_metrics([(Ir, 1)]))]
     #[case::single_float(&[Ir], &["1.0"], expected_metrics([(Ir, 1.0f64)]))]
     #[case::single_u64_max(&[Ir], &[u64::MAX.to_string()], expected_metrics([(Ir, u64::MAX)]))]
     #[case::one_more_than_max_u64(&[Ir], &["18446744073709551616"],
-        expected_metrics([(Ir, 18_446_744_073_709_551_616.0_f64)])
+        // This float has the correct value to represent the value above
+        expected_metrics([(Ir, 18_446_744_073_709_552_000_f64)])
     )]
     #[case::more_values_than_kinds(&[Ir], &["1", "2"], expected_metrics([(Ir, 1)]))]
     #[case::more_kinds_than_values(&[Ir, I1mr], &["1"], expected_metrics([(Ir, 1), (I1mr, 0)]))]
@@ -863,93 +983,6 @@ mod tests {
 
         assert_eq!(lhs.cmp(&rhs), expected);
         assert_eq!(rhs.cmp(&lhs), expected.reverse());
-    }
-
-    fn expected_metrics_diff<D>(metrics: EitherOrBoth<Metric>, diffs: D) -> MetricsDiff
-    where
-        D: Into<Option<(f64, f64)>>,
-    {
-        MetricsDiff {
-            metrics,
-            diffs: diffs
-                .into()
-                .map(|(diff_pct, factor)| Diffs { diff_pct, factor }),
-        }
-    }
-
-    fn metrics_fixture(metrics: &[u64]) -> Metrics<EventKind> {
-        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
-        let event_kinds = [
-            Ir,
-            Dr,
-            Dw,
-            I1mr,
-            D1mr,
-            D1mw,
-            ILmr,
-            DLmr,
-            DLmw,
-            L1hits,
-            LLhits,
-            RamHits,
-            TotalRW,
-            EstimatedCycles,
-            I1MissRate,
-            D1MissRate,
-            LLiMissRate,
-            LLdMissRate,
-            LLMissRate,
-            L1HitRate,
-            LLHitRate,
-            RamHitRate,
-        ];
-
-        Metrics::with_metric_kinds(
-            event_kinds
-                .iter()
-                .zip(metrics.iter())
-                .map(|(e, v)| (*e, *v)),
-        )
-    }
-
-    fn metrics_summary_fixture<T, U>(kinds: U) -> MetricsSummary<EventKind>
-    where
-        T: Into<Option<(f64, f64)>> + Clone,
-        U: IntoIterator<Item = (EitherOrBoth<Metric>, T)>,
-    {
-        // events: Ir Dr Dw I1mr D1mr D1mw ILmr DLmr DLmw
-        let event_kinds = [
-            Ir,
-            Dr,
-            Dw,
-            I1mr,
-            D1mr,
-            D1mw,
-            ILmr,
-            DLmr,
-            DLmw,
-            L1hits,
-            LLhits,
-            RamHits,
-            TotalRW,
-            EstimatedCycles,
-            I1MissRate,
-            D1MissRate,
-            LLiMissRate,
-            LLdMissRate,
-            LLMissRate,
-            L1HitRate,
-            LLHitRate,
-            RamHitRate,
-        ];
-
-        let map: IndexMap<EventKind, MetricsDiff> = event_kinds
-            .iter()
-            .zip(kinds)
-            .map(|(e, (m, d))| (*e, expected_metrics_diff(m.clone(), d.clone())))
-            .collect();
-
-        MetricsSummary(map)
     }
 
     #[rstest]

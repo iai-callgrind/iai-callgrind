@@ -1,4 +1,5 @@
-//! spell-checker: ignore totalbytes totalblocks writeback writebackbehaviour
+// spell-checker: ignore totalbytes totalblocks writeback writebackbehaviour
+//! The command-line arguments of cargo bench as in ARGS of `cargo bench -- ARGS`
 
 use std::fmt::Display;
 use std::hash::Hash;
@@ -16,11 +17,15 @@ use super::dhat::regression::DhatRegressionConfig;
 use super::format::OutputFormatKind;
 use super::metrics::{Metric, TypeChecker};
 use super::summary::{BaselineName, SummaryFormat};
-use super::tool::ToolRegressionConfig;
+use super::tool::regression::ToolRegressionConfig;
 use crate::api::{
     CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics, EventKind,
     RawArgs, ValgrindTool,
 };
+
+// Utility for complex types intended to be used during the parsing of the command-line arguments
+type Limits<T> = (IndexMap<T, f64>, IndexMap<T, Metric>);
+type ParsedMetrics<T> = Result<Vec<(T, Option<Metric>)>, String>;
 
 /// A filter for benchmarks
 ///
@@ -34,48 +39,20 @@ pub enum BenchmarkFilter {
     Name(String),
 }
 
-impl BenchmarkFilter {
-    /// Return true if the haystack contains the filter
-    pub fn apply(&self, haystack: &str) -> bool {
-        let Self::Name(name) = self;
-        haystack.contains(name)
-    }
-}
-
-impl FromStr for BenchmarkFilter {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(BenchmarkFilter::Name(s.to_owned()))
-    }
-}
-
+/// The `NoCapture` options for the command-line argument --nocapture
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NoCapture {
+    /// Don't capture any output
     True,
+    /// Capture all output
     False,
+    /// Don't capture `stderr`
     Stderr,
+    /// Don't capture `stdout`
     Stdout,
 }
 
-// Utility types intended to be used during the parsing of the command-line arguments
-type Limits<T> = (IndexMap<T, f64>, IndexMap<T, Metric>);
-type ParsedMetrics<T> = Result<Vec<(T, Option<Metric>)>, String>;
-
-impl NoCapture {
-    pub fn apply(self, command: &mut Command) {
-        match self {
-            NoCapture::True | NoCapture::False => {}
-            NoCapture::Stderr => {
-                command.stdout(Stdio::null()).stderr(Stdio::inherit());
-            }
-            NoCapture::Stdout => {
-                command.stdout(Stdio::inherit()).stderr(Stdio::null());
-            }
-        }
-    }
-}
-
+#[allow(clippy::arbitrary_source_item_ordering)]
 /// The command line arguments the user provided after `--` when running cargo bench
 ///
 /// These arguments are not the command line arguments passed to `iai-callgrind-runner`. We collect
@@ -701,11 +678,134 @@ pub struct CommandLineArgs {
     pub nosummary: bool,
 }
 
+impl BenchmarkFilter {
+    /// Return true if the haystack contains the filter
+    pub fn apply(&self, haystack: &str) -> bool {
+        let Self::Name(name) = self;
+        haystack.contains(name)
+    }
+}
+
+impl FromStr for BenchmarkFilter {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::Name(s.to_owned()))
+    }
+}
+
+impl NoCapture {
+    /// Apply the `NoCapture` option to the [`Command`]
+    pub fn apply(self, command: &mut Command) {
+        match self {
+            Self::True | Self::False => {}
+            Self::Stderr => {
+                command.stdout(Stdio::null()).stderr(Stdio::inherit());
+            }
+            Self::Stdout => {
+                command.stdout(Stdio::inherit()).stderr(Stdio::null());
+            }
+        }
+    }
+}
+
+// Convert the `metric` if it is present
+//
+// Used for example for hard limits to convert u64 values to f64 values if required.
+fn convert_metric<T: Display + TypeChecker + Copy>(
+    metric_kind: T,
+    metric: Option<Metric>,
+) -> Result<(T, Option<Metric>), String> {
+    if let Some(metric) = metric {
+        metric
+            .try_convert(metric_kind)
+            .ok_or_else(|| {
+                format!(
+                    "Invalid hard limit for '{metric_kind}': Expected an integer (e.g. '10'). If \
+                     you wanted this value to be a soft limit use the '%' suffix (e.g. '4.0%' or \
+                     '4%')"
+                )
+            })
+            .map(|(t, m)| (t, Some(m)))
+    } else {
+        Ok((metric_kind, None))
+    }
+}
+
 /// This function parses a space separated list of raw argument strings into [`crate::api::RawArgs`]
 fn parse_args(value: &str) -> Result<RawArgs, String> {
     shlex::split(value)
         .ok_or_else(|| "Failed to split args".to_owned())
         .map(RawArgs::new)
+}
+
+/// Same as `parse_callgrind_limits` but for cachegrind
+fn parse_cachegrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
+    let (soft_limits, hard_limits) = parse_limits(value, |key, metric| {
+        let metrics = key
+            .parse::<CachegrindMetrics>()
+            .map_err(|error| error.to_string())?;
+        IndexSet::from(metrics)
+            .into_iter()
+            .map(|metric_kind| convert_metric(metric_kind, metric))
+            .collect::<ParsedMetrics<CachegrindMetric>>()
+    })?;
+
+    let config = ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig {
+        soft_limits: soft_limits.into_iter().collect(),
+        hard_limits: hard_limits.into_iter().collect(),
+        ..Default::default()
+    });
+
+    Ok(config)
+}
+
+/// Parse the callgrind limits from the command-line
+///
+/// This method (and the other `parse_dhat_limits`, ...) parses soft and hard limits in one go. The
+/// format is described in the --help message above in [`CommandLineArgs`].
+///
+/// In order to avoid back and forth conversions between `api::ToolRegressionConfig` and
+/// `tool::ToolRegressionConfig` we parse the `tool::ToolRegressionConfig` directly.
+fn parse_callgrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
+    let (soft_limits, hard_limits) = parse_limits(value, |key, metric| {
+        let metrics = key
+            .parse::<CallgrindMetrics>()
+            .map_err(|error| error.to_string())?;
+        IndexSet::from(metrics)
+            .into_iter()
+            .map(|event_kind| convert_metric(event_kind, metric))
+            .collect::<ParsedMetrics<EventKind>>()
+    })?;
+
+    let config = ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
+        soft_limits: soft_limits.into_iter().collect(),
+        hard_limits: hard_limits.into_iter().collect(),
+        ..Default::default()
+    });
+
+    Ok(config)
+}
+
+/// Same as `parse_callgrind_limits` but for dhat
+fn parse_dhat_limits(value: &str) -> Result<ToolRegressionConfig, String> {
+    let (soft_limits, hard_limits) = parse_limits(value, |key, metric| {
+        let metrics = key
+            .parse::<DhatMetrics>()
+            .map_err(|error| error.to_string())?;
+        IndexSet::from(metrics)
+            .into_iter()
+            .map(|metric_kind| convert_metric(metric_kind, metric))
+            .collect::<ParsedMetrics<DhatMetric>>()
+    })?;
+
+    let config = ToolRegressionConfig::Dhat(DhatRegressionConfig {
+        soft_limits: soft_limits.into_iter().collect(),
+        hard_limits: hard_limits.into_iter().collect(),
+        ..Default::default()
+    });
+
+    Ok(config)
 }
 
 fn parse_limits<T: Eq + Hash>(
@@ -758,104 +858,12 @@ fn parse_limits<T: Eq + Hash>(
     Ok((soft_limits, hard_limits))
 }
 
-// Convert the `metric` if it is present
-//
-// Used for example for hard limits to convert u64 values to f64 values if required.
-fn convert_metric<T: Display + TypeChecker + Copy>(
-    metric_kind: T,
-    metric: Option<Metric>,
-) -> Result<(T, Option<Metric>), String> {
-    if let Some(metric) = metric {
-        metric
-            .try_convert(metric_kind)
-            .ok_or_else(|| {
-                format!(
-                    "Invalid hard limit for '{metric_kind}': Expected an integer (e.g. '10'). If \
-                     you wanted this value to be a soft limit use the '%' suffix (e.g. '4.0%' or \
-                     '4%')"
-                )
-            })
-            .map(|(t, m)| (t, Some(m)))
-    } else {
-        Ok((metric_kind, None))
-    }
-}
-
-/// Parse the callgrind limits from the command-line
-///
-/// This method (and the other `parse_dhat_limits`, ...) parses soft and hard limits in one go. The
-/// format is described in the --help message above in [`CommandLineArgs`].
-///
-/// In order to avoid back and forth conversions between `api::ToolRegressionConfig` and
-/// `tool::ToolRegressionConfig` we parse the `tool::ToolRegressionConfig` directly.
-fn parse_callgrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
-    let (soft_limits, hard_limits) = parse_limits(value, |key, metric| {
-        let metrics = key
-            .parse::<CallgrindMetrics>()
-            .map_err(|error| error.to_string())?;
-        IndexSet::from(metrics)
-            .into_iter()
-            .map(|event_kind| convert_metric(event_kind, metric))
-            .collect::<ParsedMetrics<EventKind>>()
-    })?;
-
-    let config = ToolRegressionConfig::Callgrind(CallgrindRegressionConfig {
-        soft_limits: soft_limits.into_iter().collect(),
-        hard_limits: hard_limits.into_iter().collect(),
-        ..Default::default()
-    });
-
-    Ok(config)
-}
-
-/// Same as `parse_callgrind_limits` but for cachegrind
-fn parse_cachegrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
-    let (soft_limits, hard_limits) = parse_limits(value, |key, metric| {
-        let metrics = key
-            .parse::<CachegrindMetrics>()
-            .map_err(|error| error.to_string())?;
-        IndexSet::from(metrics)
-            .into_iter()
-            .map(|metric_kind| convert_metric(metric_kind, metric))
-            .collect::<ParsedMetrics<CachegrindMetric>>()
-    })?;
-
-    let config = ToolRegressionConfig::Cachegrind(CachegrindRegressionConfig {
-        soft_limits: soft_limits.into_iter().collect(),
-        hard_limits: hard_limits.into_iter().collect(),
-        ..Default::default()
-    });
-
-    Ok(config)
-}
-
-/// Same as `parse_callgrind_limits` but for dhat
-fn parse_dhat_limits(value: &str) -> Result<ToolRegressionConfig, String> {
-    let (soft_limits, hard_limits) = parse_limits(value, |key, metric| {
-        let metrics = key
-            .parse::<DhatMetrics>()
-            .map_err(|error| error.to_string())?;
-        IndexSet::from(metrics)
-            .into_iter()
-            .map(|metric_kind| convert_metric(metric_kind, metric))
-            .collect::<ParsedMetrics<DhatMetric>>()
-    })?;
-
-    let config = ToolRegressionConfig::Dhat(DhatRegressionConfig {
-        soft_limits: soft_limits.into_iter().collect(),
-        hard_limits: hard_limits.into_iter().collect(),
-        ..Default::default()
-    });
-
-    Ok(config)
-}
-
 fn parse_nocapture(value: &str) -> Result<NoCapture, String> {
     // Taken from clap source code
     const TRUE_LITERALS: [&str; 6] = ["y", "yes", "t", "true", "on", "1"];
     const FALSE_LITERALS: [&str; 6] = ["n", "no", "f", "false", "off", "0"];
 
-    let lowercase: String = value.to_lowercase();
+    let lowercase = value.to_lowercase();
 
     if TRUE_LITERALS.contains(&lowercase.as_str()) {
         Ok(NoCapture::True)
@@ -1098,7 +1106,7 @@ mod tests {
     #[test]
     fn test_home_cli_when_no_value_then_error() {
         let result = CommandLineArgs::try_parse_from(["--home=".to_owned()]);
-        assert!(result.is_err());
+        result.unwrap_err();
     }
 
     #[rstest]
@@ -1184,6 +1192,6 @@ mod tests {
             CommandLineArgs::try_parse_from(&[format!("{arg}={value}")])
         };
 
-        assert!(result.is_ok());
+        result.unwrap();
     }
 }

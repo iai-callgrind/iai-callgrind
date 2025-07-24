@@ -1,18 +1,12 @@
-use std::ffi::OsString;
-use std::fmt::Display;
-use std::str::FromStr;
+//! The module containing all elements for [`ToolArgs`]
 
-use anyhow::{anyhow, Result};
-use log::warn;
-
-use super::{ToolOutputPath, ValgrindTool};
-use crate::api::RawArgs;
-use crate::error::Error;
-use crate::util::{bool_to_yesno, yesno_to_bool};
-
+/// Module containing the Iai-Callgrind defaults for the command line arguments of all tools
+#[allow(missing_docs)]
+#[allow(clippy::arbitrary_source_item_ordering)]
 pub mod defaults {
     use super::FairSched;
 
+    ////////////////////////////////////////////////////
     // Shared defaults between cachegrind and callgrind
     // Set some reasonable cache sizes. The exact sizes matter less than having fixed sizes, since
     // otherwise callgrind would take them from the CPU and make benchmark runs even more
@@ -21,7 +15,9 @@ pub mod defaults {
     pub const D1: &str = "32768,8,64";
     pub const LL: &str = "8388608,16,64";
     pub const CACHE_SIM: bool = true;
+    ////////////////////////////////////////////////////
 
+    ////////////////////////////////////////////////////
     // Defaults specific to callgrind
     pub const COMPRESS_POS: bool = false;
     pub const COMPRESS_STRINGS: bool = false;
@@ -29,42 +25,72 @@ pub mod defaults {
     pub const DUMP_LINE: bool = true;
     pub const DUMP_INSTR: bool = false;
     pub const SEPARATE_THREADS: bool = true;
+    ////////////////////////////////////////////////////
 
+    ////////////////////////////////////////////////////
     // Shared defaults between error emitting tools like Memcheck
     pub const ERROR_EXIT_CODE_ERROR_TOOL: &str = "201";
     pub const ERROR_EXIT_CODE_OTHER_TOOL: &str = "0";
+    ////////////////////////////////////////////////////
 
+    ////////////////////////////////////////////////////
     // Shared defaults between all tools
     pub const TRACE_CHILDREN: bool = true;
     pub const FAIR_SCHED: FairSched = FairSched::Try;
     pub const VERBOSE: bool = false;
+    ////////////////////////////////////////////////////
 }
 
+use std::ffi::OsString;
+use std::fmt::Display;
+use std::str::FromStr;
+
+use anyhow::{anyhow, Result};
+use log::warn;
+
+use super::path::ToolOutputPath;
+use crate::api::{RawArgs, ValgrindTool};
+use crate::error::Error;
+use crate::util::{bool_to_yesno, yesno_to_bool};
+
+/// The possible values of the --fair-sched cli arg
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FairSched {
+    /// Corresponds to `yes`
     Yes,
+    /// Corresponds to `no`
     No,
+    /// Corresponds to `try`
     Try,
 }
 
+/// The arguments to pass to the valgrind tool
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolArgs {
-    pub tool: ValgrindTool,
-    pub output_paths: Vec<OsString>,
-    pub log_path: Option<OsString>,
+    /// The error exit code for error checking tools like `Memcheck`
     pub error_exitcode: String,
-    pub verbose: bool,
-    pub trace_children: bool,
+    /// The --fair-sched argument
     pub fair_sched: FairSched,
+    /// The logfile paths argument --log-file
+    pub log_path: Option<OsString>,
+    /// All other arguments
     pub other: Vec<String>,
+    /// The output paths argument like --callgrind-out-file, ...
+    pub output_paths: Vec<OsString>,
+    /// The [`ValgrindTool`]
+    pub tool: ValgrindTool,
+    /// The --trace-children argument
+    pub trace_children: bool,
+    /// If --verbose is set to true of false
+    pub verbose: bool,
 }
 
 impl Display for FairSched {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let string = match self {
-            FairSched::Yes => "yes",
-            FairSched::No => "no",
-            FairSched::Try => "try",
+            Self::Yes => "yes",
+            Self::No => "no",
+            Self::Try => "try",
         };
         write!(f, "{string}")
     }
@@ -75,9 +101,9 @@ impl FromStr for FairSched {
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s {
-            "no" => Ok(FairSched::No),
-            "yes" => Ok(FairSched::Yes),
-            "try" => Ok(FairSched::Try),
+            "no" => Ok(Self::No),
+            "yes" => Ok(Self::Yes),
+            "try" => Ok(Self::Try),
             _ => Err(anyhow!(
                 "Invalid argument for --fair-sched. Valid arguments are: 'yes', 'no', 'try'"
             )),
@@ -86,6 +112,7 @@ impl FromStr for FairSched {
 }
 
 impl ToolArgs {
+    /// Try to create a new `ToolArgs` from multiple `RawArgs`
     pub fn try_from_raw_args(tool: ValgrindTool, raw_args: &[&RawArgs]) -> Result<Self> {
         let mut tool_args = Self {
             tool,
@@ -109,28 +136,8 @@ impl ToolArgs {
 
         for args in raw_args {
             for arg in &args.0 {
-                match arg
-                    .trim()
-                    .split_once('=')
-                    .map(|(k, v)| (k.trim(), v.trim()))
-                {
-                    Some(("--tool", _)) => warn!("Ignoring {} argument '{arg}'", tool.id()),
-                    Some((
-                        "--dhat-out-file" | "--massif-out-file" | "--bb-out-file" | "--pc-out-file"
-                        | "--log-file" | "--log-fd" | "--log-socket" | "--xml" | "--xml-file"
-                        | "--xml-fd" | "--xml-socket" | "--xml-user-comment",
-                        _,
-                    )) => warn!(
-                        "Ignoring {} argument '{arg}': Output/Log files of tools are managed by \
-                         Iai-Callgrind",
-                        tool.id()
-                    ),
-                    Some(("--xtree-memory" | "--xtree-leak-file" | "xtree-memory-file", _)) => {
-                        warn!(
-                            "Ignoring {} argument '{arg}': Currently unsupported",
-                            tool.id()
-                        );
-                    }
+                let arg = arg.trim();
+                match arg.split_once('=').map(|(k, v)| (k.trim(), v.trim())) {
                     Some(("--error-exitcode", value)) => {
                         value.clone_into(&mut tool_args.error_exitcode);
                     }
@@ -142,19 +149,15 @@ impl ToolArgs {
                     Some(("--fair-sched", value)) => {
                         tool_args.fair_sched = FairSched::from_str(value)?;
                     }
-                    None if matches!(
-                        arg.as_str(),
-                        "-h" | "--help"
-                            | "--help-dyn-options"
-                            | "--help-debug"
-                            | "--version"
-                            | "-q"
-                            | "--quiet"
-                    ) =>
-                    {
+                    Some((arg, _)) if is_ignored_outfile_argument(arg) => warn!(
+                        "Ignoring {} argument '{arg}': Output/Log files of tools are managed by \
+                         Iai-Callgrind",
+                        tool.id()
+                    ),
+                    None if matches!(arg, "-v" | "--verbose") => tool_args.verbose = true,
+                    None if is_ignored_argument(arg) => {
                         warn!("Ignoring {} argument '{arg}'", tool.id());
                     }
-                    None if matches!(arg.as_str(), "--verbose") => tool_args.verbose = true,
                     None | Some(_) => tool_args.other.push(arg.to_owned()),
                 }
             }
@@ -164,6 +167,7 @@ impl ToolArgs {
     }
 
     // TODO: memcheck: --xtree-leak-file=<filename> [default: xtleak.kcg.%p]
+    /// Set the output file argument depending on the tool of this `ToolArgs`
     pub fn set_output_arg<T>(&mut self, output_path: &ToolOutputPath, modifier: Option<T>)
     where
         T: AsRef<str>,
@@ -250,6 +254,7 @@ impl ToolArgs {
         }
     }
 
+    /// Set the logfile argument
     pub fn set_log_arg<T>(&mut self, output_path: &ToolOutputPath, modifier: Option<T>)
     where
         T: AsRef<str>,
@@ -268,6 +273,7 @@ impl ToolArgs {
         self.log_path = Some(arg);
     }
 
+    /// Convert into a vector of arguments usable as input for [`std::process::Command::args`]
     pub fn to_vec(&self) -> Vec<OsString> {
         let mut vec: Vec<OsString> = vec![];
 
@@ -287,4 +293,41 @@ impl ToolArgs {
 
         vec
     }
+}
+
+/// Return true if this is an ignored argument related to output or logfiles
+pub fn is_ignored_outfile_argument(arg: &str) -> bool {
+    matches!(
+        arg,
+        "--dhat-out-file"
+            | "--massif-out-file"
+            | "--callgrind-out-file"
+            | "--cachegrind-out-file"
+            | "--bb-out-file"
+            | "--pc-out-file"
+            | "--log-file"
+            | "--log-fd"
+            | "--log-socket"
+            | "--xml"
+            | "--xml-file"
+            | "--xml-fd"
+            | "--xml-socket"
+            | "--xml-user-comment"
+            | "--xtree-leak-file"
+            | "--xtree-memory-file"
+    )
+}
+
+/// Return true if this is a generic ignored argument
+pub fn is_ignored_argument(arg: &str) -> bool {
+    matches!(
+        arg,
+        "-h" | "--help"
+            | "--help-dyn-options"
+            | "--help-debug"
+            | "--version"
+            | "-q"
+            | "--quiet"
+            | "--tool"
+    )
 }

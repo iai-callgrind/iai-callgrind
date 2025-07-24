@@ -2,8 +2,9 @@
 
 use std::borrow::Cow;
 use std::hash::Hash;
+use std::str::FromStr;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use indexmap::{indexmap, IndexMap};
 use serde::{Deserialize, Serialize};
 
@@ -11,31 +12,49 @@ use super::CacheSummary;
 use crate::api::EventKind;
 use crate::runner::metrics::{Metric, Summarize};
 
+/// The callgrind specific `Metrics`
 pub type Metrics = crate::runner::metrics::Metrics<EventKind>;
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Calls {
-    amount: u64,
-    positions: Positions,
-}
-
+/// The [`Positions`] type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PositionType {
+    /// The address of an instruction
     Instr,
+    /// The line number
     Line,
 }
 
+/// The call relationship among functions
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Calls {
+    /// The call count
+    amount: u64,
+    /// The target [`Positions`]
+    positions: Positions,
+}
+
+/// The positions
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Positions(IndexMap<PositionType, u64>);
+pub struct Positions(pub IndexMap<PositionType, u64>);
 
 impl Calls {
-    pub fn from<I>(mut iter: impl Iterator<Item = I>, mut positions: Positions) -> Self
+    /// Create new `Calls` struct
+    pub fn from<I, T>(mut iter: T, mut positions: Positions) -> Self
     where
         I: AsRef<str>,
+        T: Iterator<Item = I>,
     {
         let amount = iter.next().unwrap().as_ref().parse().unwrap();
         positions.set_iter_str(iter);
         Self { amount, positions }
+    }
+}
+
+impl Summarize for EventKind {
+    fn summarize(costs: &mut Cow<Metrics>) {
+        if !costs.is_summarized() {
+            let _ = costs.to_mut().make_summary();
+        }
     }
 }
 
@@ -104,15 +123,31 @@ impl Default for Metrics {
     }
 }
 
-impl Summarize for EventKind {
-    fn summarize(costs: &mut Cow<Metrics>) {
-        if !costs.is_summarized() {
-            let _ = costs.to_mut().make_summary();
+impl FromStr for PositionType {
+    type Err = anyhow::Error;
+
+    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
+        // "addr" is taken from the callgrind_annotate script although not officially documented
+        match value.to_lowercase().as_str() {
+            "instr" | "addr" => Ok(Self::Instr),
+            "line" => Ok(Self::Line),
+            _ => Err(anyhow!("Unknown positions type: '{value}")),
         }
     }
 }
 
 impl Positions {
+    /// Create a new `Positions` from the content of an iterator
+    pub fn try_from_iter_str<'a, I>(iter: I) -> Result<Self>
+    where
+        I: Iterator<Item = &'a str>,
+    {
+        iter.map(|s| s.parse::<PositionType>().map(|p| (p, 0)))
+            .collect::<Result<IndexMap<_, _>>>()
+            .map(Positions)
+    }
+
+    /// Set the positions from the contents of an iterator
     pub fn set_iter_str<I, T>(&mut self, iter: T)
     where
         I: AsRef<str>,
@@ -128,10 +163,12 @@ impl Positions {
         }
     }
 
+    /// Return the length of the positions
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
+    /// Return true if positions is empty
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -140,37 +177,6 @@ impl Positions {
 impl Default for Positions {
     fn default() -> Self {
         Self(indexmap! {PositionType::Line => 0})
-    }
-}
-
-impl<I> FromIterator<I> for Positions
-where
-    I: AsRef<str>,
-{
-    fn from_iter<T>(iter: T) -> Self
-    where
-        T: IntoIterator<Item = I>,
-    {
-        Self(
-            iter.into_iter()
-                .map(|p| (PositionType::from(p), 0))
-                .collect::<IndexMap<_, _>>(),
-        )
-    }
-}
-
-impl<T> From<T> for PositionType
-where
-    T: AsRef<str>,
-{
-    fn from(value: T) -> Self {
-        let value = value.as_ref();
-        // "addr" is taken from the callgrind_annotate script although not officially documented
-        match value.to_lowercase().as_str() {
-            "instr" | "addr" => Self::Instr,
-            "line" => Self::Line,
-            _ => panic!("Unknown positions type: '{value}"),
-        }
     }
 }
 

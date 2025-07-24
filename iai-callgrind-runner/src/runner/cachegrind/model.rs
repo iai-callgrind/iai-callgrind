@@ -1,3 +1,4 @@
+//! This module includes all the structs to model the cachegrind output
 use std::borrow::Cow;
 
 use anyhow::Result;
@@ -7,21 +8,8 @@ use crate::api::CachegrindMetric;
 use crate::runner::callgrind::{CacheSummary, CyclesEstimator};
 use crate::runner::metrics::{Metric, Summarize};
 
+/// The cachegrind specific `Metrics`
 pub type Metrics = crate::runner::metrics::Metrics<CachegrindMetric>;
-
-impl Default for Metrics {
-    fn default() -> Self {
-        Self(indexmap! {CachegrindMetric::Ir => Metric::Int(0)})
-    }
-}
-
-impl Summarize for CachegrindMetric {
-    fn summarize(costs: &mut Cow<Metrics>) {
-        if !costs.is_summarized() {
-            let _ = costs.to_mut().make_summary();
-        }
-    }
-}
 
 impl TryFrom<&Metrics> for CacheSummary {
     type Error = anyhow::Error;
@@ -41,6 +29,14 @@ impl TryFrom<&Metrics> for CacheSummary {
         );
 
         Ok(estimator.calculate())
+    }
+}
+
+impl Summarize for CachegrindMetric {
+    fn summarize(costs: &mut Cow<Metrics>) {
+        if !costs.is_summarized() {
+            let _ = costs.to_mut().make_summary();
+        }
     }
 }
 
@@ -101,6 +97,12 @@ impl Metrics {
     /// cache simulation (`--cache-sim=yes`) enabled.
     pub fn can_summarize(&self) -> bool {
         self.metric_by_kind(&CachegrindMetric::I1mr).is_some()
+    }
+}
+
+impl Default for Metrics {
+    fn default() -> Self {
+        Self(indexmap! {CachegrindMetric::Ir => Metric::Int(0)})
     }
 }
 

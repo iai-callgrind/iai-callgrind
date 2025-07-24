@@ -1,20 +1,18 @@
+//! Module containing the basic cachegrind parser elements
 use anyhow::{anyhow, Result};
-use lazy_static::lazy_static;
 use log::trace;
-use regex::Regex;
 
 use super::model::Metrics;
 
-lazy_static! {
-    static ref GLOB_TO_REGEX_RE: Regex =
-        Regex::new(r"(\\)([*]|[?])").expect("Regex should compile");
-}
-
-#[derive(Debug, Clone, PartialEq, Default)]
+/// The properties and header data of a cachegrind output file
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CachegrindProperties {
-    pub metrics_prototype: Metrics,
-    pub desc: Vec<String>,
+    /// The executed command with command-line arguments
     pub cmd: String,
+    /// The `desc:` fields
+    pub desc: Vec<String>,
+    /// The prototype for all metrics in this file
+    pub metrics_prototype: Metrics,
 }
 
 /// Parse the output file header of a cachegrind out file
@@ -35,7 +33,10 @@ pub struct CachegrindProperties {
 /// count        ::= num
 /// ```
 /// Parse the callgrind output files header
-pub fn parse_header(iter: &mut impl Iterator<Item = String>) -> Result<CachegrindProperties> {
+pub fn parse_header<I>(iter: &mut I) -> Result<CachegrindProperties>
+where
+    I: Iterator<Item = String>,
+{
     let mut metrics_prototype: Option<Metrics> = None;
     let mut desc: Vec<String> = vec![];
     let mut cmd: Option<String> = None;

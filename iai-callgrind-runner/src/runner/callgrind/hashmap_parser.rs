@@ -1,3 +1,5 @@
+//! A hashmap parser for callgrind output files
+
 use std::cmp::Ordering;
 use std::collections::hash_map::Iter;
 use std::collections::HashMap;
@@ -14,70 +16,91 @@ use super::model::Metrics;
 use super::parser::{parse_header, CallgrindParser, CallgrindProperties, Sentinel};
 use crate::error::Error;
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+/// The possible paths found in the output file
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Serialize, Deserialize)]
+pub enum SourcePath {
+    /// The unknown path found as `???` in the output file
+    Unknown,
+    /// A rust path, starting with `/rustc`
+    Rust(PathBuf),
+    /// A relative path, not starting with a `/`
+    Relative(PathBuf),
+    /// A absolute path, starting with a `/`
+    Absolute(PathBuf),
+}
+
+/// The `CallgrindMap`
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CallgrindMap {
+    /// The actual data containing the mapping between the [`Id`] and the [`Value`]
     pub map: HashMap<Id, Value>,
+    /// The optional [`Sentinel`]
     pub sentinel: Option<Sentinel>,
+    /// The key which contained the [`Sentinel`]
     pub sentinel_key: Option<Id>,
 }
 
 #[derive(Debug, Default)]
 struct CfnRecord {
-    obj: Option<SourcePath>,
+    calls: u64,
     file: Option<SourcePath>,
     id: Option<Id>,
-    calls: u64,
+    obj: Option<SourcePath>,
 }
 
 #[derive(Debug, Default, Clone)]
 struct CurrentId {
-    obj: Option<SourcePath>,
     file: Option<SourcePath>,
     func: Option<String>,
+    obj: Option<SourcePath>,
 }
 
 /// Parse a callgrind outfile into a `HashMap`
 ///
-/// This parser is a based on `callgrind_annotate` and how `it` summarizes the inclusive costs.
+/// This parser is a based on `callgrind_annotate` and how it summarizes the inclusive costs.
 #[derive(Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HashMapParser {
-    pub sentinel: Option<Sentinel>,
+    /// The project root directory required to make paths relative
     pub project_root: PathBuf,
+    /// Look for this [`Sentinel`] in the output files
+    pub sentinel: Option<Sentinel>,
 }
 
+/// The unique `Id` identifying a function uniquely
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Id {
-    pub obj: Option<SourcePath>,
+    /// the file the function is found in
     pub file: Option<SourcePath>,
+    /// The function
     pub func: String,
+    /// The object the function is found in
+    pub obj: Option<SourcePath>,
 }
 
-#[derive(Debug, Hash, PartialEq, Eq, Clone, Serialize, Deserialize)]
-pub enum SourcePath {
-    Unknown,
-    Rust(PathBuf),
-    Relative(PathBuf),
-    Absolute(PathBuf),
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+/// The `Value` to be associated with an [`Id`]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Value {
+    /// The callgrind `Metrics` of this `Value`
     pub metrics: Metrics,
 }
 
 impl CallgrindMap {
+    /// Return true if this map is empty
     pub fn is_empty(&self) -> bool {
         self.map.is_empty()
     }
 
+    /// Return an iterator over this map
     pub fn iter(&self) -> Iter<'_, Id, Value> {
         self.map.iter()
     }
 
+    /// The the key, value pair with the given [`Id`]
     pub fn get_key_value(&self, k: &Id) -> Option<(&Id, &Value)> {
         self.map.get_key_value(k)
     }
 
+    /// Sum this map up with another map
     pub fn add_mut(&mut self, other: &Self) {
         for (other_key, other_value) in &other.map {
             if let Some(value) = self.map.get_mut(other_key) {
@@ -101,25 +124,10 @@ impl<'a> IntoIterator for &'a CallgrindMap {
 
 impl From<Id> for CurrentId {
     fn from(value: Id) -> Self {
-        CurrentId {
+        Self {
             obj: value.obj,
             file: value.file,
             func: Some(value.func),
-        }
-    }
-}
-
-impl TryFrom<CurrentId> for Id {
-    type Error = String;
-
-    fn try_from(value: CurrentId) -> std::result::Result<Self, Self::Error> {
-        match value.func {
-            Some(func) => Ok(Id {
-                obj: value.obj,
-                file: value.file,
-                func,
-            }),
-            None => Err("Missing function".to_owned()),
         }
     }
 }
@@ -200,9 +208,9 @@ impl CallgrindParser for HashMapParser {
                 Some(("cfn", cfn)) => {
                     let record = cfn_record.get_or_insert(CfnRecord::default());
                     record.id = Some(Id {
-                        obj: record.obj.take().or(current_id.obj.clone()),
+                        obj: record.obj.take().or_else(|| current_id.obj.clone()),
                         func: cfn.to_owned(),
-                        file: record.file.take().or(current_id.file.clone()),
+                        file: record.file.take().or_else(|| current_id.file.clone()),
                     });
                 }
                 Some(("calls", calls)) => {
@@ -264,17 +272,29 @@ impl CallgrindParser for HashMapParser {
     }
 }
 
+impl TryFrom<CurrentId> for Id {
+    type Error = String;
+
+    fn try_from(value: CurrentId) -> std::result::Result<Self, Self::Error> {
+        match value.func {
+            Some(func) => Ok(Self {
+                obj: value.obj,
+                file: value.file,
+                func,
+            }),
+            None => Err("Missing function".to_owned()),
+        }
+    }
+}
 impl Ord for SourcePath {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
-            (SourcePath::Unknown, SourcePath::Unknown) => Ordering::Equal,
-            (SourcePath::Unknown, _) => Ordering::Less,
-            (_, SourcePath::Unknown) => Ordering::Greater,
+            (Self::Unknown, Self::Unknown) => Ordering::Equal,
+            (Self::Unknown, _) => Ordering::Less,
+            (_, Self::Unknown) => Ordering::Greater,
             (
-                SourcePath::Rust(path) | SourcePath::Relative(path) | SourcePath::Absolute(path),
-                SourcePath::Rust(other_path)
-                | SourcePath::Relative(other_path)
-                | SourcePath::Absolute(other_path),
+                Self::Rust(path) | Self::Relative(path) | Self::Absolute(path),
+                Self::Rust(other_path) | Self::Relative(other_path) | Self::Absolute(other_path),
             ) => path.cmp(other_path),
         }
     }

@@ -1,3 +1,7 @@
+//! The format of Iai-Callgrind terminal output
+//!
+//! All direct print statements should be part of this module and there should be no `println!` or
+//! similar statement in any other module of the runner.
 use std::borrow::Cow;
 use std::fmt::{Display, Write};
 use std::path::PathBuf;
@@ -15,43 +19,135 @@ use super::metrics::{Metric, MetricKind, MetricsDiff};
 use super::summary::{Diffs, ProfileData, ProfileInfo, ToolMetricSummary, ToolRegression};
 use crate::api::{
     self, CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics,
-    ErrorMetric, EventKind, ValgrindTool,
+    ErrorMetric, EventKind, Tool, ToolOutputFormat, ValgrindTool,
 };
 use crate::util::{
     make_relative, to_string_signed_short, to_string_unsigned_short, truncate_str_utf8,
     EitherOrBoth,
 };
 
-/// The string used to signal that a value is not available
-pub const NOT_AVAILABLE: &str = "N/A";
-pub const UNKNOWN: &str = "*********";
-pub const NO_CHANGE: &str = "No change";
-
-pub const METRIC_WIDTH: usize = 20;
-pub const FIELD_WIDTH: usize = 21;
-
-pub const LEFT_WIDTH: usize = METRIC_WIDTH + FIELD_WIDTH;
+/// The width in bytes of the difference (and factor)
 pub const DIFF_WIDTH: usize = 9;
-
+/// The width in bytes of the FIELD as in `  FIELD: METRIC | METRIC (DIFF_PCT) [FACTOR]`
+pub const FIELD_WIDTH: usize = 21;
 /// The `DIFF_WIDTH` - the length of the unit
 pub const FLOAT_WIDTH: usize = DIFF_WIDTH - 1;
-
+/// The width in bytes of the "left" side of the separator `|`
+pub const LEFT_WIDTH: usize = METRIC_WIDTH + FIELD_WIDTH;
 #[allow(clippy::doc_link_with_quotes)]
 /// The maximum line width
 ///
 /// indent + left + "|" + metric width + " " + "(" + percentage + ")" + " " + "[" + factor + "]"
 pub const MAX_WIDTH: usize = 2 + LEFT_WIDTH + 1 + METRIC_WIDTH + 2 * 11;
+/// The width in bytes of the metric
+pub const METRIC_WIDTH: usize = 20;
+/// The string used to signal that a value is not available
+pub const NOT_AVAILABLE: &str = "N/A";
+/// Used to indicate that there is no difference between the `new` and `old` metric
+pub const NO_CHANGE: &str = "No change";
+/// The string used in the difference when there is no difference to show
+pub const UNKNOWN: &str = "*********";
 
+enum IndentKind {
+    Normal,
+    ToolHeadline,
+    ToolSubHeadline,
+}
+
+/// The kind of the output format can be either json or the default terminal output
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum OutputFormatKind {
+    /// The default terminal output
+    #[default]
+    Default,
+    /// Json terminal output
+    Json,
+    /// Pretty json terminal output
+    PrettyJson,
+}
+
+/// The first line and header of a binary benchmark run
+///
+/// For example `module::path id: some args`
+pub struct BinaryBenchmarkHeader {
+    inner: Header,
+    output_format: OutputFormat,
+}
+
+/// The header of the comparison between two different benchmarks
+pub struct ComparisonHeader {
+    /// The details to print in addition or instead of the metrics
+    pub details: Option<String>,
+    /// The function name of the other benchmark
+    pub function_name: String,
+    /// The id of the other benchmark.
+    pub id: String,
+    /// The indentation depending on the output format with grid or without
+    pub indent: String,
+}
+
+/// The first line and header of a benchmark run
+pub struct Header {
+    description: Option<String>,
+    id: Option<String>,
+    module_path: String,
+}
+/// The first line and header of a library benchmark run
+///
+/// For example `module::path id: some args`
+pub struct LibraryBenchmarkHeader {
+    inner: Header,
+    output_format: OutputFormat,
+}
+
+/// The `OutputFormat` of the Iai-Callgrind terminal output
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OutputFormat {
+    /// The Cachegrind metrics to show
+    pub cachegrind: IndexSet<CachegrindMetric>,
+    /// The Callgrind metrics to show
+    pub callgrind: IndexSet<EventKind>,
+    /// The DHAT metrics to show
+    pub dhat: IndexSet<DhatMetric>,
+    /// The DRD error metrics to show
+    pub drd: IndexSet<ErrorMetric>,
+    /// The Helgrind error metrics to show
+    pub helgrind: IndexSet<ErrorMetric>,
+    /// The [`OutputFormatKind`]
+    pub kind: OutputFormatKind,
+    /// The Memcheck error metrics to show
+    pub memcheck: IndexSet<ErrorMetric>,
+    /// Show a grid instead of blank spaces
+    pub show_grid: bool,
+    /// Show intermediate metrics output or just the total
+    pub show_intermediate: bool,
+    /// If present truncate the description to this amount of bytes
+    pub truncate_description: Option<usize>,
+}
+
+/// The formatter of the benchmark summary printed after all benchmarks
+#[derive(Debug, Clone)]
+pub struct SummaryFormatter {
+    /// The [`OutputFormatKind`]
+    pub output_format_kind: OutputFormatKind,
+}
+
+/// The main implementation of the [`Formatter`] trait
+#[derive(Debug, Clone)]
+pub struct VerticalFormatter {
+    buffer: String,
+    indent: String,
+    indent_sub_header: String,
+    indent_tool_header: String,
+    output_format: OutputFormat,
+}
+
+/// The trait for the formatter of Iai-Callgrind terminal output and metrics
 pub trait Formatter {
-    fn format_single(
-        &mut self,
-        tool: ValgrindTool,
-        baselines: &Baselines,
-        info: Option<&EitherOrBoth<ProfileInfo>>,
-        metrics_summary: &ToolMetricSummary,
-        is_default_tool: bool,
-    ) -> Result<()>;
+    /// Clear the buffer
+    fn clear(&mut self);
 
+    /// Format the output the whole [`ProfileData`]
     fn format(
         &mut self,
         tool: ValgrindTool,
@@ -61,8 +157,24 @@ pub trait Formatter {
         is_default_tool: bool,
     ) -> Result<()>;
 
+    // TODO: Refactor rename to format_line
+    /// Format a line in free form as is
     fn format_free_form(&mut self, line: &str) -> Result<()>;
 
+    /// Format the output of a single [`ToolMetricSummary`] of a tool
+    fn format_single(
+        &mut self,
+        tool: ValgrindTool,
+        baselines: &Baselines,
+        info: Option<&EitherOrBoth<ProfileInfo>>,
+        metrics_summary: &ToolMetricSummary,
+        is_default_tool: bool,
+    ) -> Result<()>;
+
+    /// Return the [`OutputFormat`] of this formatter
+    fn get_output_format(&self) -> &OutputFormat;
+
+    /// Print the formatted output of the whole [`ProfileData`] if the output format is not json
     fn print(
         &mut self,
         tool: ValgrindTool,
@@ -82,10 +194,7 @@ pub trait Formatter {
         Ok(())
     }
 
-    fn get_output_format(&self) -> &OutputFormat;
-
-    fn clear(&mut self);
-
+    /// Print a comparison between two different benchmarks
     fn print_comparison(
         &mut self,
         function_name: &str,
@@ -95,72 +204,8 @@ pub trait Formatter {
     ) -> Result<()>;
 }
 
-pub struct BinaryBenchmarkHeader {
-    inner: Header,
-    output_format: OutputFormat,
-}
-
-pub struct ComparisonHeader {
-    pub function_name: String,
-    pub id: String,
-    pub details: Option<String>,
-    pub indent: String,
-}
-
-pub struct Header {
-    module_path: String,
-    id: Option<String>,
-    description: Option<String>,
-}
-
-enum IndentKind {
-    Normal,
-    ToolHeadline,
-    ToolSubHeadline,
-}
-
-pub struct LibraryBenchmarkHeader {
-    inner: Header,
-    output_format: OutputFormat,
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
-pub enum OutputFormatKind {
-    #[default]
-    Default,
-    Json,
-    PrettyJson,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OutputFormat {
-    pub kind: OutputFormatKind,
-    pub truncate_description: Option<usize>,
-    pub show_intermediate: bool,
-    pub show_grid: bool,
-    pub callgrind: IndexSet<EventKind>,
-    pub cachegrind: IndexSet<CachegrindMetric>,
-    pub dhat: IndexSet<DhatMetric>,
-    pub memcheck: IndexSet<ErrorMetric>,
-    pub helgrind: IndexSet<ErrorMetric>,
-    pub drd: IndexSet<ErrorMetric>,
-}
-
-#[derive(Debug, Clone)]
-pub struct SummaryFormatter {
-    pub output_format_kind: OutputFormatKind,
-}
-
-#[derive(Debug, Clone)]
-pub struct VerticalFormatter {
-    buffer: String,
-    indent: String,
-    indent_tool_header: String,
-    indent_sub_header: String,
-    output_format: OutputFormat,
-}
-
 impl BinaryBenchmarkHeader {
+    /// Create a new `BinaryBenchmarkHeader`
     pub fn new(meta: &Metadata, bin_bench: &BinBench) -> Self {
         let path = make_relative(&meta.project_root, &bin_bench.command.path);
 
@@ -198,22 +243,26 @@ impl BinaryBenchmarkHeader {
         }
     }
 
+    /// Print the header
     pub fn print(&self) {
         if self.output_format.kind == OutputFormatKind::Default {
             self.inner.print();
         }
     }
 
+    /// Convert the header to a flamegraph title
     pub fn to_title(&self) -> String {
         self.inner.to_title()
     }
 
+    /// Return the description part of the header
     pub fn description(&self) -> Option<String> {
         self.inner.description.clone()
     }
 }
 
 impl ComparisonHeader {
+    /// Create a new `ComparisonHeader`
     pub fn new<T, U, V>(
         function_name: T,
         id: U,
@@ -237,6 +286,7 @@ impl ComparisonHeader {
         }
     }
 
+    /// Print the header
     pub fn print(&self) {
         println!("{self}");
     }
@@ -262,6 +312,7 @@ impl Display for ComparisonHeader {
 }
 
 impl Header {
+    /// Create a new `Header`
     pub fn new<T>(
         module_path: &ModulePath,
         id: T,
@@ -281,6 +332,7 @@ impl Header {
         }
     }
 
+    /// Create a new `Header` with a description
     pub fn without_description<T>(module_path: &ModulePath, id: T) -> Self
     where
         T: Into<Option<String>>,
@@ -292,10 +344,12 @@ impl Header {
         }
     }
 
+    /// Print the header
     pub fn print(&self) {
         println!("{self}");
     }
 
+    /// Convert the header into a flamegraph title
     pub fn to_title(&self) -> String {
         let mut output = String::new();
 
@@ -345,6 +399,7 @@ impl Display for Header {
 }
 
 impl LibraryBenchmarkHeader {
+    /// Create a new `LibraryBenchmarkHeader`
     pub fn new(lib_bench: &LibBench) -> Self {
         let header = Header::new(
             &lib_bench.module_path,
@@ -359,39 +414,67 @@ impl LibraryBenchmarkHeader {
         }
     }
 
+    /// Print the header
     pub fn print(&self) {
         if self.output_format.is_default() {
             self.inner.print();
         }
     }
 
+    /// Convert the header into a flamegraph title
     pub fn to_title(&self) -> String {
         self.inner.to_title()
     }
 
+    /// Return the description part of the header if present
     pub fn description(&self) -> Option<String> {
         self.inner.description.clone()
     }
 }
 
 impl OutputFormat {
+    /// Return true if the `OutputFormat` is the default format
     pub fn is_default(&self) -> bool {
         self.kind == OutputFormatKind::Default
     }
 
+    /// Return true if the `OutputFormat` is json
     pub fn is_json(&self) -> bool {
         self.kind == OutputFormatKind::Json || self.kind == OutputFormatKind::PrettyJson
     }
-}
 
-impl From<api::OutputFormat> for OutputFormat {
-    fn from(value: api::OutputFormat) -> Self {
-        Self {
-            kind: OutputFormatKind::Default,
-            truncate_description: value.truncate_description.unwrap_or(Some(50)),
-            show_intermediate: value.show_intermediate.unwrap_or(false),
-            show_grid: value.show_grid.unwrap_or(false),
-            ..Default::default()
+    /// Update the output format from the [`Tool`] if present
+    pub fn update(&mut self, tool: Option<&Tool>) {
+        if let Some(tool) = tool {
+            if let Some(format) = &tool.output_format {
+                match format {
+                    ToolOutputFormat::Callgrind(metrics) => {
+                        self.callgrind = metrics.iter().fold(IndexSet::new(), |mut acc, m| {
+                            acc.extend(IndexSet::from(*m));
+                            acc
+                        });
+                    }
+                    ToolOutputFormat::Cachegrind(metrics) => {
+                        self.cachegrind = metrics.iter().fold(IndexSet::new(), |mut acc, m| {
+                            acc.extend(IndexSet::from(*m));
+                            acc
+                        });
+                    }
+                    ToolOutputFormat::DHAT(metrics) => {
+                        self.dhat = metrics.iter().copied().collect();
+                    }
+                    ToolOutputFormat::Memcheck(metrics) => {
+                        self.memcheck = metrics.iter().copied().collect();
+                    }
+                    ToolOutputFormat::Helgrind(metrics) => {
+                        self.helgrind = metrics.iter().copied().collect();
+                    }
+                    ToolOutputFormat::DRD(metrics) => {
+                        self.drd = metrics.iter().copied().collect();
+                    }
+                    ToolOutputFormat::None => {}
+                }
+            }
         }
     }
 }
@@ -428,11 +511,25 @@ impl Default for OutputFormat {
     }
 }
 
+impl From<api::OutputFormat> for OutputFormat {
+    fn from(value: api::OutputFormat) -> Self {
+        Self {
+            kind: OutputFormatKind::Default,
+            truncate_description: value.truncate_description.unwrap_or(Some(50)),
+            show_intermediate: value.show_intermediate.unwrap_or(false),
+            show_grid: value.show_grid.unwrap_or(false),
+            ..Default::default()
+        }
+    }
+}
+
 impl SummaryFormatter {
+    /// Create a new `SummaryFormatter`
     pub fn new(output_format_kind: OutputFormatKind) -> Self {
         Self { output_format_kind }
     }
 
+    /// Print the summary
     pub fn print(&self, summaries: &BenchmarkSummaries) {
         if self.output_format_kind == OutputFormatKind::Default {
             let total_benchmarks = summaries.num_benchmarks();
@@ -865,6 +962,7 @@ impl VerticalFormatter {
         );
     }
 
+    /// Format the tool headline shown for all tools
     pub fn format_tool_headline(&mut self, tool: ValgrindTool) {
         self.write_indent(&IndentKind::ToolHeadline);
 
@@ -884,13 +982,6 @@ impl VerticalFormatter {
 impl Display for VerticalFormatter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.buffer)
-    }
-}
-
-impl Write for VerticalFormatter {
-    fn write_str(&mut self, s: &str) -> std::fmt::Result {
-        self.buffer.push_str(s);
-        Ok(())
     }
 }
 
@@ -1088,6 +1179,14 @@ impl Formatter for VerticalFormatter {
     }
 }
 
+impl Write for VerticalFormatter {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        self.buffer.push_str(s);
+        Ok(())
+    }
+}
+
+/// Format a floating point number with `unit`
 pub fn format_float(float: f64, unit: char) -> ColoredString {
     let signed_short = to_string_signed_short(float);
     if float.is_infinite() {
@@ -1109,7 +1208,7 @@ pub fn format_float(float: f64, unit: char) -> ColoredString {
     }
 }
 
-// Return the formatted `String` if `NoCapture` is not `False`
+/// Return the formatted string if `NoCapture` is not `False`
 pub fn no_capture_footer(nocapture: NoCapture) -> Option<String> {
     match nocapture {
         NoCapture::True => Some(format!(
@@ -1123,6 +1222,27 @@ pub fn no_capture_footer(nocapture: NoCapture) -> Option<String> {
     }
 }
 
+/// Print the summary of the --list argument
+pub fn print_benchmark_list_summary(sum: u64) {
+    if sum != 0 {
+        println!();
+    }
+    println!("0 tests, {sum} benchmarks");
+}
+
+/// Print a single benchmark for the --list argument
+pub fn print_list_benchmark(module_path: &ModulePath, id: Option<&String>) {
+    match id {
+        Some(id) => {
+            println!("{module_path}::{id}: benchmark");
+        }
+        None => {
+            println!("{module_path}: benchmark");
+        }
+    }
+}
+
+/// Print the appropriate footer for the [`NoCapture`] option
 pub fn print_no_capture_footer(
     nocapture: NoCapture,
     stdout: Option<&api::Stdio>,
@@ -1154,37 +1274,7 @@ pub fn print_no_capture_footer(
     }
 }
 
-pub fn print_list_benchmark(module_path: &ModulePath, id: Option<&String>) {
-    match id {
-        Some(id) => {
-            println!("{module_path}::{id}: benchmark");
-        }
-        None => {
-            println!("{module_path}: benchmark");
-        }
-    }
-}
-
-pub fn print_benchmark_list_summary(sum: u64) {
-    if sum != 0 {
-        println!();
-    }
-    println!("0 tests, {sum} benchmarks");
-}
-
-fn truncate_description(description: &str, truncate_description: Option<usize>) -> Cow<'_, str> {
-    if let Some(num) = truncate_description {
-        let new_description = truncate_str_utf8(description, num);
-        if new_description.len() < description.len() {
-            Cow::Owned(format!("{new_description}..."))
-        } else {
-            Cow::Borrowed(description)
-        }
-    } else {
-        Cow::Borrowed(description)
-    }
-}
-
+/// Print detected regressions to `stderr`
 pub fn print_regressions(regressions: &[ToolRegression]) {
     for regression in regressions {
         match regression {
@@ -1255,6 +1345,19 @@ pub fn print_regressions(regressions: &[ToolRegression]) {
                 );
             }
         }
+    }
+}
+
+fn truncate_description(description: &str, truncate_description: Option<usize>) -> Cow<'_, str> {
+    if let Some(num) = truncate_description {
+        let new_description = truncate_str_utf8(description, num);
+        if new_description.len() < description.len() {
+            Cow::Owned(format!("{new_description}..."))
+        } else {
+            Cow::Borrowed(description)
+        }
+    } else {
+        Cow::Borrowed(description)
     }
 }
 
