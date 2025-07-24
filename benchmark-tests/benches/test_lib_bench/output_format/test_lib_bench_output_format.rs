@@ -43,6 +43,7 @@ pub fn base_config() -> LibraryBenchmarkConfig {
             .truncate_description(None)
             .show_intermediate(true)
             .show_grid(true)
+            .tolerance(1.0)
         )
 )]
 #[bench::for_comparison(

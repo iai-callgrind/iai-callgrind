@@ -2215,4 +2215,35 @@ impl OutputFormat {
         self.0.show_grid = Some(value);
         self
     }
+
+    /// Shows changes only when they are above tolerance.
+    ///
+    /// This option adds a tolerance level. Changes that their percentage representation is below
+    /// the given tolerance aren't marked as changes.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::OutputFormat;
+    ///
+    /// let output_format = OutputFormat::default().tolerance(1.5);
+    /// ```
+    ///
+    /// Below is the output of a Iai-Callgrind run with a set tolerance. For the benchmark
+    /// run below [`OutputFormat::show_intermediate`] was also active to show the threads and
+    /// subprocesses.
+    ///
+    /// ```text
+    /// my_benchmark::some_group::bench_thread
+    /// | Instructions:                     9975976|9976136              (Tolerance)
+    /// | L1 Hits:                         10183337|10183517             (Tolerance)
+    /// | LL Hits:                              641|654                  (-1.98777%) [-1.02028x]
+    /// | RAM Hits:                            1211|1216                 (Tolerance)
+    /// | Total read+write:                10185189|10185387             (Tolerance)
+    /// | Estimated Cycles:                10228927|10229347             (Tolerance)
+    /// ```
+    pub fn tolerance(&mut self, value: f64) -> &mut Self {
+        self.0.tolerance = Some(value);
+        self
+    }
 }

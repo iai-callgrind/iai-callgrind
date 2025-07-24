@@ -1192,12 +1192,14 @@ pub struct LibraryBenchmarkGroups {
 }
 
 /// The configuration values for the output format
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct OutputFormat {
     /// Show a grid instead of spaces in the terminal output
     pub show_grid: Option<bool>,
     /// Show intermediate results, for example in benchmarks for multi-threaded applications
     pub show_intermediate: Option<bool>,
+    /// Don't show differences within the tolerance margin
+    pub tolerance: Option<f64>,
     /// If set, truncate the description
     pub truncate_description: Option<Option<usize>>,
 }

@@ -47,6 +47,8 @@ pub const NOT_AVAILABLE: &str = "N/A";
 pub const NO_CHANGE: &str = "No change";
 /// The string used in the difference when there is no difference to show
 pub const UNKNOWN: &str = "*********";
+/// The string used to signal that the difference is in the tolerance margin
+pub const WITHIN_TOLERANCE: &str = "Tolerance";
 
 enum IndentKind {
     Normal,
@@ -101,7 +103,7 @@ pub struct LibraryBenchmarkHeader {
 }
 
 /// The `OutputFormat` of the Iai-Callgrind terminal output
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct OutputFormat {
     /// The Cachegrind metrics to show
     pub cachegrind: IndexSet<CachegrindMetric>,
@@ -121,6 +123,8 @@ pub struct OutputFormat {
     pub show_grid: bool,
     /// Show intermediate metrics output or just the total
     pub show_intermediate: bool,
+    /// Don't show differences within the tolerance margin
+    pub tolerance: Option<f64>,
     /// If present truncate the description to this amount of bytes
     pub truncate_description: Option<usize>,
 }
@@ -486,6 +490,7 @@ impl Default for OutputFormat {
             truncate_description: Some(50),
             show_intermediate: false,
             show_grid: false,
+            tolerance: None,
             callgrind: IndexSet::from(CallgrindMetrics::Default),
             cachegrind: IndexSet::from(CachegrindMetrics::Default),
             dhat: IndexSet::from(DhatMetrics::Default),
@@ -518,6 +523,7 @@ impl From<api::OutputFormat> for OutputFormat {
             truncate_description: value.truncate_description.unwrap_or(Some(50)),
             show_intermediate: value.show_intermediate.unwrap_or(false),
             show_grid: value.show_grid.unwrap_or(false),
+            tolerance: value.tolerance,
             ..Default::default()
         }
     }
@@ -760,6 +766,22 @@ impl VerticalFormatter {
                 let right = format!(
                     "{old:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
                     NO_CHANGE.bright_black()
+                );
+                self.write_field(
+                    field,
+                    &EitherOrBoth::Both(&new.to_string(), &right),
+                    None,
+                    false,
+                );
+            }
+            EitherOrBoth::Both(new, old)
+                if self.output_format.tolerance.is_some_and(|tolerance| {
+                    diffs.map(|diffs| diffs.diff_pct).unwrap_or_default().abs() <= tolerance
+                }) =>
+            {
+                let right = format!(
+                    "{old:<METRIC_WIDTH$} ({:^DIFF_WIDTH$})",
+                    WITHIN_TOLERANCE.bright_black()
                 );
                 self.write_field(
                     field,
@@ -1579,6 +1601,58 @@ mod tests {
         };
         let metrics_summary = MetricsSummary::new(costs);
         let mut formatter = VerticalFormatter::new(OutputFormat::default());
+        formatter.format_metrics(metrics_summary.all_diffs());
+
+        let expected = format!(
+            "  {:<21}{new:>METRIC_WIDTH$}|{:<METRIC_WIDTH$} ({diff_pct}){}\n",
+            format!("{event_kind}:"),
+            old.map_or(NOT_AVAILABLE.to_owned(), |o| o.to_string()),
+            diff_fact.map_or_else(String::new, |f| format!(" [{f}]"))
+        );
+
+        assert_eq!(formatter.buffer, expected);
+    }
+
+    #[rstest]
+    #[case::new_costs_0(EventKind::Ir, 0, None, "*********", None)]
+    #[case::old_costs_0(EventKind::Ir, 1, Some(0), "+++inf+++", Some("+++inf+++"))]
+    #[case::all_costs_0(EventKind::Ir, 0, Some(0), "No change", None)]
+    #[case::new_costs_u64_max(EventKind::Ir, u64::MAX, None, "*********", None)]
+    #[case::old_costs_u64_max(EventKind::Ir, u64::MAX / 10, Some(u64::MAX), "-90.0000%", Some("-10.0000x"))]
+    #[case::all_costs_u64_max(EventKind::Ir, u64::MAX, Some(u64::MAX), "No change", None)]
+    #[case::no_change_when_not_0(EventKind::Ir, 1000, Some(1000), "No change", None)]
+    #[case::neg_change_when_within_tolerance(EventKind::Ir, 2000, Some(3000), "Tolerance", None)]
+    #[case::positive_change_when_within_tolerance(
+        EventKind::Ir,
+        3000,
+        Some(2000),
+        "Tolerance",
+        None
+    )]
+    #[case::pos_inf(EventKind::Ir, 2000, Some(0), "+++inf+++", Some("+++inf+++"))]
+    #[case::neg_inf(EventKind::Ir, 0, Some(2000), "-100.000%", Some("---inf---"))]
+    fn test_format_vertical_when_tolerance_is_set(
+        #[case] event_kind: EventKind,
+        #[case] new: u64,
+        #[case] old: Option<u64>,
+        #[case] diff_pct: &str,
+        #[case] diff_fact: Option<&str>,
+    ) {
+        colored::control::set_override(false);
+
+        let costs = match old {
+            Some(old) => EitherOrBoth::Both(
+                Metrics(indexmap! {event_kind => Metric::Int(new)}),
+                Metrics(indexmap! {event_kind => Metric::Int(old)}),
+            ),
+            None => EitherOrBoth::Left(Metrics(indexmap! {event_kind => Metric::Int(new)})),
+        };
+        let metrics_summary = MetricsSummary::new(costs);
+        let output_format = OutputFormat {
+            tolerance: Some(50.0_f64),
+            ..Default::default()
+        };
+        let mut formatter = VerticalFormatter::new(output_format);
         formatter.format_metrics(metrics_summary.all_diffs());
 
         let expected = format!(
