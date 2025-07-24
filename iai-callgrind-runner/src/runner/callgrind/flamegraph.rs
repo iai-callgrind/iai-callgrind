@@ -398,7 +398,7 @@ impl OutputPath {
                 | ToolOutputPathKind::OldXtree
                 | ToolOutputPathKind::OldXleak => OutputPathKind::Old,
                 ToolOutputPathKind::BaseLog(name)
-                | ToolOutputPathKind::Base(name)
+                | ToolOutputPathKind::BaseOut(name)
                 | ToolOutputPathKind::BaseXtree(name)
                 | ToolOutputPathKind::BaseXleak(name) => OutputPathKind::Base(name.clone()),
             },

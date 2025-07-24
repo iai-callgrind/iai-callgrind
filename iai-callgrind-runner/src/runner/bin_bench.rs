@@ -663,7 +663,7 @@ impl Groups {
 impl Benchmark for LoadBaselineBenchmark {
     fn output_path(&self, bin_bench: &BinBench, config: &Config, group: &Group) -> ToolOutputPath {
         let kind = if bin_bench.default_tool.has_output_file() {
-            ToolOutputPathKind::Base(self.loaded_baseline.to_string())
+            ToolOutputPathKind::BaseOut(self.loaded_baseline.to_string())
         } else {
             ToolOutputPathKind::BaseLog(self.loaded_baseline.to_string())
         };
@@ -789,7 +789,7 @@ impl Runner {
 impl Benchmark for SaveBaselineBenchmark {
     fn output_path(&self, bin_bench: &BinBench, config: &Config, group: &Group) -> ToolOutputPath {
         let kind = if bin_bench.default_tool.has_output_file() {
-            ToolOutputPathKind::Base(self.baseline.to_string())
+            ToolOutputPathKind::BaseOut(self.baseline.to_string())
         } else {
             ToolOutputPathKind::BaseLog(self.baseline.to_string())
         };

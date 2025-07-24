@@ -57,14 +57,14 @@ pub enum ToolOutputPathKind {
     Out,
     /// The output path for `*.out.old` files
     OldOut,
+    /// The output path for baseline `out` files
+    BaseOut(String),
     /// The output path for `*.log` files
     Log,
     /// The output path for `*.log.old` files
     OldLog,
     /// The output path for baseline `log` files
     BaseLog(String),
-    /// The output path for baseline `out` files
-    Base(String),
     /// The output path for `*.xtree` files
     Xtree,
     /// The output path for `*.xtree.old` files
@@ -218,9 +218,9 @@ impl ToolOutputPath {
             kind: match (&self.kind, &self.baseline_kind) {
                 (ToolOutputPathKind::Out, BaselineKind::Old) => ToolOutputPathKind::OldOut,
                 (
-                    ToolOutputPathKind::Out | ToolOutputPathKind::Base(_),
+                    ToolOutputPathKind::Out | ToolOutputPathKind::BaseOut(_),
                     BaselineKind::Name(name),
-                ) => ToolOutputPathKind::Base(name.to_string()),
+                ) => ToolOutputPathKind::BaseOut(name.to_string()),
                 (ToolOutputPathKind::Log, BaselineKind::Old) => ToolOutputPathKind::OldLog,
                 (
                     ToolOutputPathKind::Log | ToolOutputPathKind::BaseLog(_),
@@ -264,7 +264,7 @@ impl ToolOutputPath {
                 | ToolOutputPathKind::OldXleak => ToolOutputPathKind::Out,
                 ToolOutputPathKind::BaseLog(name)
                 | ToolOutputPathKind::BaseXtree(name)
-                | ToolOutputPathKind::BaseXleak(name) => ToolOutputPathKind::Base(name.clone()),
+                | ToolOutputPathKind::BaseXleak(name) => ToolOutputPathKind::BaseOut(name.clone()),
                 kind => kind.clone(),
             }
         } else {
@@ -275,7 +275,7 @@ impl ToolOutputPath {
                 | ToolOutputPathKind::OldXtree
                 | ToolOutputPathKind::Xleak
                 | ToolOutputPathKind::OldXleak => ToolOutputPathKind::Log,
-                ToolOutputPathKind::Base(name)
+                ToolOutputPathKind::BaseOut(name)
                 | ToolOutputPathKind::BaseXtree(name)
                 | ToolOutputPathKind::BaseXleak(name) => ToolOutputPathKind::BaseLog(name.clone()),
                 kind => kind.clone(),
@@ -304,7 +304,7 @@ impl ToolOutputPath {
                 | ToolOutputPathKind::OldXleak
                 | ToolOutputPathKind::Xtree
                 | ToolOutputPathKind::OldXtree => ToolOutputPathKind::Log,
-                ToolOutputPathKind::Base(name)
+                ToolOutputPathKind::BaseOut(name)
                 | ToolOutputPathKind::BaseXtree(name)
                 | ToolOutputPathKind::BaseXleak(name) => ToolOutputPathKind::BaseLog(name.clone()),
                 kind => kind.clone(),
@@ -330,7 +330,7 @@ impl ToolOutputPath {
                 | ToolOutputPathKind::OldXleak
                 | ToolOutputPathKind::Log
                 | ToolOutputPathKind::OldLog => ToolOutputPathKind::Xtree,
-                ToolOutputPathKind::Base(name)
+                ToolOutputPathKind::BaseOut(name)
                 | ToolOutputPathKind::BaseLog(name)
                 | ToolOutputPathKind::BaseXleak(name) => {
                     ToolOutputPathKind::BaseXtree(name.clone())
@@ -358,7 +358,7 @@ impl ToolOutputPath {
                 | ToolOutputPathKind::OldXtree
                 | ToolOutputPathKind::Log
                 | ToolOutputPathKind::OldLog => ToolOutputPathKind::Xleak,
-                ToolOutputPathKind::Base(name)
+                ToolOutputPathKind::BaseOut(name)
                 | ToolOutputPathKind::BaseLog(name)
                 | ToolOutputPathKind::BaseXtree(name) => {
                     ToolOutputPathKind::BaseXleak(name.clone())
@@ -453,8 +453,8 @@ impl ToolOutputPath {
             (ToolOutputPathKind::BaseLog(name), false) => {
                 format!("log.base@{name}.{}", self.modifiers.join("."))
             }
-            (ToolOutputPathKind::Base(name), true) => format!("out.base@{name}"),
-            (ToolOutputPathKind::Base(name), false) => {
+            (ToolOutputPathKind::BaseOut(name), true) => format!("out.base@{name}"),
+            (ToolOutputPathKind::BaseOut(name), false) => {
                 format!("out.base@{name}.{}", self.modifiers.join("."))
             }
             (ToolOutputPathKind::Xtree, true) => "xtree".to_owned(),
@@ -554,7 +554,7 @@ impl ToolOutputPath {
                     ToolOutputPathKind::BaseLog(name) => {
                         suffix.ends_with(format!(".log.base@{name}").as_str())
                     }
-                    ToolOutputPathKind::Base(name) => {
+                    ToolOutputPathKind::BaseOut(name) => {
                         suffix.ends_with(format!(".out.base@{name}").as_str())
                     }
                     ToolOutputPathKind::Xtree => suffix.ends_with(".xtree"),
@@ -594,7 +594,7 @@ impl ToolOutputPath {
                     ToolOutputPathKind::BaseLog(name) => {
                         suffix.strip_suffix(format!(".log.base@{name}").as_str())
                     }
-                    ToolOutputPathKind::Base(name) => {
+                    ToolOutputPathKind::BaseOut(name) => {
                         suffix.strip_suffix(format!(".out.base@{name}").as_str())
                     }
                     ToolOutputPathKind::Xtree => suffix.strip_suffix(".xtree"),
