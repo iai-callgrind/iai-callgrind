@@ -11,13 +11,13 @@ use iai_callgrind::{
         .default_tool(ValgrindTool::Memcheck)
         .tool(Memcheck::with_args(["xtree-memory=full"]))
 )]
-#[bench::memcheck_xleak_when_no_leak(
+#[bench::memcheck_xleak(
     args = (5),
     config = LibraryBenchmarkConfig::default()
         .default_tool(ValgrindTool::Memcheck)
         .tool(Memcheck::with_args(["xtree-leak=yes"]))
 )]
-#[bench::memcheck_xtree_and_xleak_when_no_leak(
+#[bench::memcheck_xtree_and_xleak(
     args = (5),
     config = LibraryBenchmarkConfig::default()
         .default_tool(ValgrindTool::Memcheck)
@@ -35,7 +35,7 @@ use iai_callgrind::{
         .default_tool(ValgrindTool::Massif)
         .tool(Massif::with_args(["xtree-memory=full"]))
 )]
-fn bench_with_xtree(array: Vec<i32>) -> Vec<i32> {
+fn bench_with_xtree_no_leak(array: Vec<i32>) -> Vec<i32> {
     bubble_sort(array)
 }
 
@@ -44,44 +44,43 @@ fn bench_with_xtree(array: Vec<i32>) -> Vec<i32> {
     config = LibraryBenchmarkConfig::default()
         .default_tool(ValgrindTool::Memcheck)
         .tool(Memcheck::with_args([
-            "xtree-memory=full", "--error-exitcode=0"
+            "xtree-memory=full", "error-exitcode=0"
         ]))
 )]
 #[bench::xleak(
     config = LibraryBenchmarkConfig::default()
         .default_tool(ValgrindTool::Memcheck)
         .tool(Memcheck::with_args([
-            "xtree-leak=yes", "--error-exitcode=0"
+            "xtree-leak=yes", "error-exitcode=0"
         ]))
 )]
 #[bench::xtree_and_xleak(
     config = LibraryBenchmarkConfig::default()
         .default_tool(ValgrindTool::Memcheck)
         .tool(Memcheck::with_args([
-            "xtree-memory=full", "xtree-leak=yes", "--error-exitcode=0"
+            "xtree-memory=full", "xtree-leak=yes", "error-exitcode=0"
         ]))
 )]
 fn bench_with_memcheck_when_leak() {
-    leak_memory(100_000);
+    leak_memory(100);
 }
 
 #[library_benchmark]
 #[bench::memcheck_multi_process(
-    args = ("2"),
+    args = (10),
     config = LibraryBenchmarkConfig::default()
         .default_tool(ValgrindTool::Memcheck)
-        .tool(Memcheck::with_args(["xtree-memory=full", "xtree-leak=yes"]))
+        .tool(Memcheck::with_args(["xtree-memory=full", "xtree-leak=yes", "error-exitcode=0"]))
 )]
-fn bench_with_xtree_in_subprocess(num_threads: &str) -> std::io::Result<std::process::Output> {
-    subprocess(env!("CARGO_BIN_EXE_leak-memory"), [num_threads])
+fn bench_with_xtree_in_subprocess(end: usize) -> std::io::Result<std::process::Output> {
+    leak_memory(end);
+    subprocess(env!("CARGO_BIN_EXE_leak-memory"), [end.to_string()])
 }
 
 library_benchmark_group!(
     name = my_group;
-    config = LibraryBenchmarkConfig::default()
-       .valgrind_args(["enable-debuginfod=no"]);
     benchmarks =
-        bench_with_xtree,
+        bench_with_xtree_no_leak,
         bench_with_xtree_in_subprocess,
         bench_with_memcheck_when_leak
 );
