@@ -776,7 +776,11 @@ impl VerticalFormatter {
             }
             EitherOrBoth::Both(new, old)
                 if self.output_format.tolerance.is_some_and(|tolerance| {
-                    diffs.map(|diffs| diffs.diff_pct).unwrap_or_default().abs() <= tolerance
+                    diffs
+                        .map(|diffs| diffs.diff_pct)
+                        .expect("A difference should be present")
+                        .abs()
+                        <= tolerance.abs()
                 }) =>
             {
                 let right = format!(
@@ -1614,53 +1618,61 @@ mod tests {
     }
 
     #[rstest]
-    #[case::new_costs_0(EventKind::Ir, 0, None, "*********", None)]
-    #[case::old_costs_0(EventKind::Ir, 1, Some(0), "+++inf+++", Some("+++inf+++"))]
-    #[case::all_costs_0(EventKind::Ir, 0, Some(0), "No change", None)]
-    #[case::new_costs_u64_max(EventKind::Ir, u64::MAX, None, "*********", None)]
-    #[case::old_costs_u64_max(EventKind::Ir, u64::MAX / 10, Some(u64::MAX), "-90.0000%", Some("-10.0000x"))]
-    #[case::all_costs_u64_max(EventKind::Ir, u64::MAX, Some(u64::MAX), "No change", None)]
-    #[case::no_change_when_not_0(EventKind::Ir, 1000, Some(1000), "No change", None)]
-    #[case::neg_change_when_within_tolerance(EventKind::Ir, 2000, Some(3000), "Tolerance", None)]
-    #[case::positive_change_when_within_tolerance(
-        EventKind::Ir,
-        3000,
-        Some(2000),
+    #[case::no_change(2000, Some(2000), 50.0, "No change", None)]
+    #[case::new_costs_0_no_old(0, None, 50.0, "*********", None)]
+    #[case::old_costs_0(1, Some(0), 50.0, "+++inf+++", Some("+++inf+++"))]
+    #[case::all_costs_0(0, Some(0), 50.0, "No change", None)]
+    #[case::all_0(0, Some(0), 0.0, "No change", None)]
+    #[case::neg_change_when_tolerance_0(2000, Some(3000), 0.0, "-33.3333%", Some("-1.50000x"))]
+    #[case::pos_change_when_tolerance_0(2000, Some(1000), 0.0, "+100.000%", Some("+2.00000x"))]
+    #[case::neg_change_when_within_tolerance(2000, Some(3000), 50.0, "Tolerance", None)]
+    #[case::neg_change_when_within_tolerance_exact(
+        2000,
+        Some(3000),
+        1.0 / 3.0 * 100.0,
         "Tolerance",
         None
     )]
-    #[case::pos_inf(EventKind::Ir, 2000, Some(0), "+++inf+++", Some("+++inf+++"))]
-    #[case::neg_inf(EventKind::Ir, 0, Some(2000), "-100.000%", Some("---inf---"))]
+    #[case::pos_change_when_within_tolerance(3000, Some(2000), 50.0, "Tolerance", None)]
+    #[case::pos_change_when_neg_tolerance(3000, Some(2000), -50.0, "Tolerance", None)]
+    #[case::pos_change_when_tolerance_is_nan(
+        2000,
+        Some(1000),
+        f64::NAN,
+        "+100.000%",
+        Some("+2.00000x")
+    )]
     fn test_format_vertical_when_tolerance_is_set(
-        #[case] event_kind: EventKind,
         #[case] new: u64,
         #[case] old: Option<u64>,
+        #[case] tolerance: f64,
         #[case] diff_pct: &str,
         #[case] diff_fact: Option<&str>,
     ) {
         colored::control::set_override(false);
 
-        let costs = match old {
-            Some(old) => EitherOrBoth::Both(
-                Metrics(indexmap! {event_kind => Metric::Int(new)}),
-                Metrics(indexmap! {event_kind => Metric::Int(old)}),
-            ),
-            None => EitherOrBoth::Left(Metrics(indexmap! {event_kind => Metric::Int(new)})),
-        };
-        let metrics_summary = MetricsSummary::new(costs);
-        let output_format = OutputFormat {
-            tolerance: Some(50.0_f64),
-            ..Default::default()
-        };
-        let mut formatter = VerticalFormatter::new(output_format);
-        formatter.format_metrics(metrics_summary.all_diffs());
-
         let expected = format!(
-            "  {:<21}{new:>METRIC_WIDTH$}|{:<METRIC_WIDTH$} ({diff_pct}){}\n",
-            format!("{event_kind}:"),
+            "  {:<FIELD_WIDTH$}{new:>METRIC_WIDTH$}|{:<METRIC_WIDTH$} ({diff_pct}){}\n",
+            format!("{}:", EventKind::Ir),
             old.map_or(NOT_AVAILABLE.to_owned(), |o| o.to_string()),
             diff_fact.map_or_else(String::new, |f| format!(" [{f}]"))
         );
+
+        let output_format = OutputFormat {
+            tolerance: Some(tolerance),
+            ..Default::default()
+        };
+
+        let costs = match old {
+            Some(old) => EitherOrBoth::Both(
+                Metrics(indexmap! {EventKind::Ir => Metric::Int(new)}),
+                Metrics(indexmap! {EventKind::Ir => Metric::Int(old)}),
+            ),
+            None => EitherOrBoth::Left(Metrics(indexmap! {EventKind::Ir => Metric::Int(new)})),
+        };
+        let metrics_summary = MetricsSummary::new(costs);
+        let mut formatter = VerticalFormatter::new(output_format);
+        formatter.format_metrics(metrics_summary.all_diffs());
 
         assert_eq!(formatter.buffer, expected);
     }

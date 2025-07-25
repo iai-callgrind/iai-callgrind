@@ -370,3 +370,10 @@ test_lib_bench_output_format::custom_format::bench_with_custom_format drd
   ======= DRD ==========================================================================
   Errors:                                  |N/A                  (*********)
   Contexts:                                |N/A                  (*********)
+test_lib_bench_output_format::custom_format::bench_with_tolerance hashmap:make_hashmap(100_000)
+  Instructions:                            |N/A                  (*********)
+  L1 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
+  RAM Hits:                                |N/A                  (*********)
+  Total read+write:                        |N/A                  (*********)
+  Estimated Cycles:                        |N/A                  (*********)
