@@ -226,7 +226,9 @@ rwlocks
 sandboxing
 sched
 schemars
+sctx
 serde
+serr
 setarch
 shlex
 simd
@@ -240,6 +242,8 @@ struct
 structifying
 structs
 superblocks
+suppressedcontexts
+suppressederrors
 synchronisation
 syscalls
 syscount
