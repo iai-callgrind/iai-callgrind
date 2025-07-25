@@ -428,5 +428,13 @@ Hello world!
 - end of stdout/stderr
   Errors:                                  |                     (No change)
   Contexts:                                |                     (No change)
+test_lib_bench_output_format::custom_format::bench_with_tolerance hashmap:make_hashmap(100_000)
+- end of stdout/stderr
+  Instructions:                            |                     (Tolerance)
+  L1 Hits:                                 |                     (         )
+  LL Hits:                                 |                     (         )
+  RAM Hits:                                |                     (         )
+  Total read+write:                        |                     (Tolerance)
+  Estimated Cycles:                        |                     (         )
 
-Iai-Callgrind result: Ok. 28 without regressions; 0 regressed; 28 benchmarks finished in <__SECONDS__>s
+Iai-Callgrind result: Ok. 29 without regressions; 0 regressed; 29 benchmarks finished in <__SECONDS__>s

@@ -2215,4 +2215,33 @@ impl OutputFormat {
         self.0.show_grid = Some(value);
         self
     }
+
+    /// Shows changes only when they are above the `tolerance` level
+    ///
+    /// Changes whose percentage is below the specified tolerance are not marked as changes.
+    /// Negative tolerance values are converted to their absolute value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use iai_callgrind::OutputFormat;
+    ///
+    /// let output_format = OutputFormat::default().tolerance(1.5);
+    /// ```
+    ///
+    /// Below is the output of an Iai-Callgrind run with the tolerance set.
+    ///
+    /// ```text
+    /// my_benchmark::some_group::bench_with_tolerance_margin
+    ///   Instructions:                     9975976|9976136              (Tolerance)
+    ///   L1 Hits:                         10183337|10183517             (Tolerance)
+    ///   LL Hits:                              641|654                  (-1.98777%) [-1.02028x]
+    ///   RAM Hits:                            1211|1216                 (Tolerance)
+    ///   Total read+write:                10185189|10185387             (Tolerance)
+    ///   Estimated Cycles:                10228927|10229347             (Tolerance)
+    /// ```
+    pub fn tolerance(&mut self, value: f64) -> &mut Self {
+        self.0.tolerance = Some(value);
+        self
+    }
 }

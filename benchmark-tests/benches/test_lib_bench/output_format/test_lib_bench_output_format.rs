@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::hint::black_box;
 
 use benchmark_tests::{bubble_sort, setup_worst_case_array};
@@ -6,6 +7,13 @@ use iai_callgrind::{
     CachegrindMetrics, Callgrind, CallgrindMetrics, Dhat, DhatMetric, Drd, EntryPoint, ErrorMetric,
     EventKind, Helgrind, LibraryBenchmarkConfig, Memcheck, OutputFormat, ValgrindTool,
 };
+
+fn make_hashmap(num: usize) -> HashMap<String, usize> {
+    (0..num).fold(HashMap::new(), |mut acc, e| {
+        acc.insert(format!("element: {e}"), e);
+        acc
+    })
+}
 
 // The --collect-systime=nsec option is not supported on freebsd and apple, so we use
 // --collect-systime=yes instead on these targets
@@ -260,6 +268,22 @@ fn bench_with_custom_format() -> Vec<i32> {
     )))))
 }
 
+// Provoke a (very likely) change in the metrics and set tolerance high enough to make the
+// `Tolerance` visible
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .output_format(OutputFormat::default()
+            .tolerance(100.0)
+        )
+)]
+#[bench::hashmap(make_hashmap(100_000))]
+fn bench_with_tolerance(map: HashMap<String, usize>) -> Option<usize> {
+    black_box(
+        map.iter()
+            .find_map(|(key, value)| (key == "element: 12345").then_some(*value)),
+    )
+}
+
 library_benchmark_group!(
     name = my_group;
     config = LibraryBenchmarkConfig::default()
@@ -276,7 +300,7 @@ library_benchmark_group!(
 
 library_benchmark_group!(
     name = custom_format;
-    benchmarks = bench_with_custom_callgrind_format, bench_with_custom_format
+    benchmarks = bench_with_custom_callgrind_format, bench_with_custom_format, bench_with_tolerance
 );
 
 main!(library_benchmark_groups = my_group, custom_format);
