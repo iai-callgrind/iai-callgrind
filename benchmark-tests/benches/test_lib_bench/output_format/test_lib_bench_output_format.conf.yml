@@ -12,6 +12,19 @@ groups:
       - args: ["--nosummary"]
         expected:
           stdout: expected_stdout.no_summary
+  - runs_on: "!x86_64-unknown-freebsd"
+    runs:
+      - args:
+          [
+            "--callgrind-metrics=ir",
+            "--cachegrind-metrics=ir,totalrw",
+            "--dhat-metrics=totalbytes,totalunits",
+            "--memcheck-metrics=errors",
+            "--drd-metrics=contexts",
+            "--helgrind-metrics=serr",
+          ]
+        expected:
+          stdout: expected_stdout.cli-metrics
   - runs_on: "x86_64-unknown-freebsd"
     runs:
       - args: []
