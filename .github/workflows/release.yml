@@ -1,4 +1,4 @@
-# spell-checker: ignore androideabi taiki binutils
+# spell-checker: ignore androideabi taiki binutils riscv
 name: Release
 
 on:
@@ -37,8 +37,11 @@ jobs:
       - name: Get the release version from the tag
         if: ${{ ! inputs.tag }}
         run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
-      - name: Create release
-        run: gh release create $VERSION --draft --verify-tag --title $VERSION -F CHANGELOG.md
+      - name: Create release if it does not exist
+        run: |
+          if ! gh release view $VERSION &>/dev/null; then
+            gh release create $VERSION --draft --verify-tag --title $VERSION -F CHANGELOG.md
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     outputs:
@@ -60,6 +63,7 @@ jobs:
           - powerpc64-unknown-linux-gnu
           - powerpc64le-unknown-linux-gnu
           - s390x-unknown-linux-gnu
+          - riscv64gc-unknown-linux-gnu
           - aarch64-linux-android
           - i686-linux-android
           - armv7-linux-androideabi
