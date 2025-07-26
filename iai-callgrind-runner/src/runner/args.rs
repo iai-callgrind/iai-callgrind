@@ -684,35 +684,6 @@ pub struct CommandLineArgs {
     )]
     pub helgrind_metrics: Option<IndexSet<ErrorMetric>>,
 
-    /// Save a machine-readable summary of each benchmark run in json format next to the usual
-    /// benchmark output
-    #[arg(
-        long = "save-summary",
-        value_enum,
-        num_args = 0..=1,
-        require_equals = true,
-        default_missing_value = "json",
-        env = "IAI_CALLGRIND_SAVE_SUMMARY"
-    )]
-    pub save_summary: Option<SummaryFormat>,
-
-    /// Allow ASLR (Address Space Layout Randomization)
-    ///
-    /// If possible, ASLR is disabled on platforms that support it (linux, freebsd) because ASLR
-    /// could noise up the callgrind cache simulation results a bit. Setting this option to true
-    /// runs all benchmarks with ASLR enabled.
-    ///
-    /// See also <https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space>
-    #[arg(
-        long = "allow-aslr",
-        default_missing_value = "true",
-        num_args = 0..=1,
-        require_equals = true,
-        value_parser = BoolishValueParser::new(),
-        env = "IAI_CALLGRIND_ALLOW_ASLR",
-    )]
-    pub allow_aslr: Option<bool>,
-
     /// Compare against this baseline if present and then overwrite it
     #[arg(
         long = "save-baseline",
@@ -798,6 +769,28 @@ pub struct CommandLineArgs {
         env = "IAI_CALLGRIND_OUTPUT_FORMAT"
     )]
     pub output_format: OutputFormatKind,
+
+    #[rustfmt::skip]
+    /// Show changes only when they are above the `tolerance` level
+    ///
+    /// If no value is specified, the default value of `0.000_009_999_999_999_999_999` is based on
+    /// the number of decimal places of the percentages displayed in the terminal output in case of
+    /// differences.
+    ///
+    /// Negative tolerance values are converted to their absolute value.
+    ///
+    /// Examples:
+    /// * --tolerance (applies the default value)
+    /// * --tolerance=0.1 (set the tolerance level to `0.1`)
+    #[arg(
+        long = "tolerance",
+        default_missing_value = "0.000009999999999999999",
+        num_args = 0..=1,
+        require_equals = true,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_TOLERANCE"
+    )]
+    pub tolerance: Option<f64>,
 
     /// Separate iai-callgrind benchmark output files by target
     ///
@@ -1685,5 +1678,21 @@ mod tests {
             result.helgrind_metrics,
             Some(IndexSet::from([ErrorMetric::Errors]))
         );
+    }
+
+    #[rstest]
+    #[case::default("--tolerance", f64::from_bits(0.000_01f64.to_bits() - 1))]
+    #[case::some_value("--tolerance=1.0", 1.0)]
+    fn test_arg_tolerance(#[case] input: &str, #[case] expected: f64) {
+        let result = CommandLineArgs::try_parse_from([input]).unwrap();
+        assert_eq!(result.tolerance, Some(expected));
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_tolerance_when_env() {
+        std::env::set_var("IAI_CALLGRIND_TOLERANCE", "2.0");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(result.tolerance, Some(2.0));
     }
 }

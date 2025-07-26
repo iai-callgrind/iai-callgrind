@@ -502,6 +502,10 @@ impl OutputFormat {
         if let Some(metrics) = &meta.args.memcheck_metrics {
             self.memcheck.clone_from(metrics);
         }
+
+        if meta.args.tolerance.is_some() {
+            self.tolerance = meta.args.tolerance;
+        }
     }
 }
 
