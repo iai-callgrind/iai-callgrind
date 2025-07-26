@@ -1449,4 +1449,212 @@ mod tests {
 
         result.unwrap();
     }
+
+    #[rstest]
+    #[case::one("ir", indexset!{ Ir })]
+    #[case::one_with_spaces("  ir ", indexset!{ Ir })]
+    #[case::two("ir,i1mr", indexset!{ Ir, I1mr })]
+    #[case::two_with_spaces("ir,   i1mr", indexset!{ Ir, I1mr })]
+    #[case::group("@writebackbehaviour", indexset!{ ILdmr, DLdmr, DLdmw })]
+    #[case::group_abbreviation("@wb", indexset!{ ILdmr, DLdmr, DLdmw })]
+    #[case::group_and_single_then_no_change("@wb,ildmr", indexset!{ ILdmr, DLdmr, DLdmw })]
+    #[case::single_and_group_then_overwrite("dldmw,@wb", indexset!{ DLdmw, ILdmr, DLdmr })]
+    #[case::all("@all", CallgrindMetrics::All.into())]
+    fn test_parse_callgrind_metrics(#[case] input: &str, #[case] expected: IndexSet<EventKind>) {
+        assert_eq!(parse_callgrind_metrics(input).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case::empty("")]
+    #[case::event_kind_does_not_exist("doesnotexist")]
+    #[case::group_does_not_exist("@doesnotexist")]
+    #[case::wrong_delimiter("ir;dr")]
+    fn test_parse_callgrind_metrics_then_error(#[case] input: &str) {
+        parse_callgrind_metrics(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_callgrind_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--callgrind-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_callgrind_metrics_when_env() {
+        std::env::set_var("IAI_CALLGRIND_CALLGRIND_METRICS", "ir");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.callgrind_metrics,
+            Some(IndexSet::from([EventKind::Ir]))
+        );
+    }
+
+    // Just test the very basics. The details are tested in `test_parse_callgrind_metrics`
+    #[rstest]
+    #[case::one("ir", indexset!{ CachegrindMetric::Ir })]
+    #[case::all("@all", CachegrindMetrics::All.into())]
+    fn test_parse_cachegrind_metrics(
+        #[case] input: &str,
+        #[case] expected: IndexSet<CachegrindMetric>,
+    ) {
+        assert_eq!(parse_cachegrind_metrics(input).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case::event_kind_does_not_exist("doesnotexist")]
+    #[case::group_does_not_exist("@doesnotexist")]
+    fn test_parse_cachegrind_metrics_then_error(#[case] input: &str) {
+        parse_cachegrind_metrics(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_cachegrind_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--cachegrind-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_cachegrind_metrics_when_env() {
+        std::env::set_var("IAI_CALLGRIND_CACHEGRIND_METRICS", "ir");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.cachegrind_metrics,
+            Some(IndexSet::from([CachegrindMetric::Ir]))
+        );
+    }
+
+    #[rstest]
+    #[case::one("totalbytes", indexset!{ DhatMetric::TotalBytes })]
+    #[case::all("@all", DhatMetrics::All.into())]
+    fn test_parse_dhat_metrics(#[case] input: &str, #[case] expected: IndexSet<DhatMetric>) {
+        assert_eq!(parse_dhat_metrics(input).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case::event_kind_does_not_exist("doesnotexist")]
+    #[case::group_does_not_exist("@doesnotexist")]
+    fn test_parse_dhat_metrics_then_error(#[case] input: &str) {
+        parse_dhat_metrics(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_dhat_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--dhat-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_dhat_metrics_when_env() {
+        std::env::set_var("IAI_CALLGRIND_DHAT_METRICS", "totalbytes");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.dhat_metrics,
+            Some(IndexSet::from([DhatMetric::TotalBytes]))
+        );
+    }
+
+    #[rstest]
+    #[case::one("errors", indexset!{ ErrorMetric::Errors })]
+    #[case::all("@all", indexset! {
+        ErrorMetric::Errors,
+        ErrorMetric::Contexts,
+        ErrorMetric::SuppressedErrors,
+        ErrorMetric::SuppressedContexts
+    })]
+    fn test_parse_drd_metrics(#[case] input: &str, #[case] expected: IndexSet<ErrorMetric>) {
+        assert_eq!(parse_drd_metrics(input).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case::event_kind_does_not_exist("doesnotexist")]
+    #[case::group_does_not_exist("@doesnotexist")]
+    fn test_parse_drd_metrics_then_error(#[case] input: &str) {
+        parse_drd_metrics(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_drd_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--drd-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_drd_metrics_when_env() {
+        std::env::set_var("IAI_CALLGRIND_DRD_METRICS", "errors");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.drd_metrics,
+            Some(IndexSet::from([ErrorMetric::Errors]))
+        );
+    }
+
+    #[rstest]
+    #[case::one("errors", indexset!{ ErrorMetric::Errors })]
+    #[case::all("@all", indexset! {
+        ErrorMetric::Errors,
+        ErrorMetric::Contexts,
+        ErrorMetric::SuppressedErrors,
+        ErrorMetric::SuppressedContexts
+    })]
+    fn test_parse_memcheck_metrics(#[case] input: &str, #[case] expected: IndexSet<ErrorMetric>) {
+        assert_eq!(parse_memcheck_metrics(input).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case::event_kind_does_not_exist("doesnotexist")]
+    #[case::group_does_not_exist("@doesnotexist")]
+    fn test_parse_memcheck_metrics_then_error(#[case] input: &str) {
+        parse_memcheck_metrics(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_memcheck_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--memcheck-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_memcheck_metrics_when_env() {
+        std::env::set_var("IAI_CALLGRIND_MEMCHECK_METRICS", "errors");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.memcheck_metrics,
+            Some(IndexSet::from([ErrorMetric::Errors]))
+        );
+    }
+
+    #[rstest]
+    #[case::one("errors", indexset!{ ErrorMetric::Errors })]
+    #[case::all("@all", indexset! {
+        ErrorMetric::Errors,
+        ErrorMetric::Contexts,
+        ErrorMetric::SuppressedErrors,
+        ErrorMetric::SuppressedContexts
+    })]
+    fn test_parse_helgrind_metrics(#[case] input: &str, #[case] expected: IndexSet<ErrorMetric>) {
+        assert_eq!(parse_helgrind_metrics(input).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case::event_kind_does_not_exist("doesnotexist")]
+    #[case::group_does_not_exist("@doesnotexist")]
+    fn test_parse_helgrind_metrics_then_error(#[case] input: &str) {
+        parse_helgrind_metrics(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_helgrind_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--helgrind-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_helgrind_metrics_when_env() {
+        std::env::set_var("IAI_CALLGRIND_HELGRIND_METRICS", "errors");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.helgrind_metrics,
+            Some(IndexSet::from([ErrorMetric::Errors]))
+        );
+    }
 }
