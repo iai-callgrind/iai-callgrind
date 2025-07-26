@@ -446,6 +446,7 @@ impl ToolConfigs {
             .build()
         }))?;
 
+        output_format.update_from_meta(meta);
         Ok(tool_configs)
     }
 

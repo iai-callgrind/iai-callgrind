@@ -9,7 +9,8 @@ use std::str::FromStr;
 
 use clap::builder::BoolishValueParser;
 use clap::{ArgAction, Parser};
-use indexmap::{IndexMap, IndexSet};
+use indexmap::{indexset, IndexMap, IndexSet};
+use strum::IntoEnumIterator;
 
 use super::cachegrind::regression::CachegrindRegressionConfig;
 use super::callgrind::regression::CallgrindRegressionConfig;
@@ -19,8 +20,8 @@ use super::metrics::{Metric, TypeChecker};
 use super::summary::{BaselineName, SummaryFormat};
 use super::tool::regression::ToolRegressionConfig;
 use crate::api::{
-    CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics, EventKind,
-    RawArgs, ValgrindTool,
+    CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics, ErrorMetric,
+    EventKind, RawArgs, ValgrindTool,
 };
 
 // Utility for complex types intended to be used during the parsing of the command-line arguments
@@ -52,7 +53,6 @@ pub enum NoCapture {
     Stdout,
 }
 
-#[allow(clippy::arbitrary_source_item_ordering)]
 /// The command line arguments the user provided after `--` when running cargo bench
 ///
 /// These arguments are not the command line arguments passed to `iai-callgrind-runner`. We collect
@@ -77,64 +77,52 @@ instead of `true` and one of `n`, `no`, `f`, `false`, `off`, and `0` instead of
     long_about = None,
     no_binary_name = true,
     override_usage= "cargo bench ... [BENCHNAME] -- [OPTIONS]",
-    max_term_width = 100
+    max_term_width = 101
 )]
 pub struct CommandLineArgs {
     /// The following arguments are accepted by the rust libtest harness and ignored by us
     ///
     /// Further details in <https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments> or by
     /// running `cargo test -- --help`
-    #[arg(long = "include-ignored", hide = true, action = ArgAction::SetTrue, required = false)]
-    _include_ignored: bool,
-
-    #[arg(long = "ignored", hide = true, action = ArgAction::SetTrue, required = false)]
-    _ignored: bool,
-
-    #[arg(long = "force-run-in-process", hide = true, action = ArgAction::SetTrue, required = false)]
-    _force_run_in_process: bool,
-
-    #[arg(long = "exclude-should-panic", hide = true, action = ArgAction::SetTrue, required = false)]
-    _exclude_should_panic: bool,
-
-    #[arg(long = "test", hide = true, action = ArgAction::SetTrue, required = false)]
-    _test: bool,
-
     /// `--bench` also shows up as last argument set by `cargo bench` even if not explicitly given
     #[arg(long = "bench", hide = true, action = ArgAction::SetTrue, required = false)]
     _bench: bool,
 
-    #[arg(long = "logfile", hide = true, required = false, num_args = 0..)]
-    _logfile: Vec<String>,
+    #[arg(long = "color", hide = true, required = false, num_args = 0..)]
+    _color: Vec<String>,
 
-    #[arg(long = "test-threads", hide = true, required = false, num_args = 0..)]
-    _test_threads: Vec<String>,
-
-    #[arg(long = "skip", hide = true, required = false, num_args = 0..)]
-    _skip: Vec<String>,
-
-    #[arg(long = "quiet", short = 'q', hide = true, action = ArgAction::SetTrue, required = false)]
-    _quiet: bool,
+    #[arg(long = "ensure-time", hide = true, action = ArgAction::SetTrue, required = false)]
+    _ensure_time: bool,
 
     #[arg(long = "exact", hide = true, action = ArgAction::SetTrue, required = false)]
     _exact: bool,
 
-    #[arg(long = "color", hide = true, required = false, num_args = 0..)]
-    _color: Vec<String>,
+    #[arg(long = "exclude-should-panic", hide = true, action = ArgAction::SetTrue, required = false)]
+    _exclude_should_panic: bool,
+
+    #[arg(long = "force-run-in-process", hide = true, action = ArgAction::SetTrue, required = false)]
+    _force_run_in_process: bool,
 
     #[arg(long = "format", hide = true, required = false, num_args = 0..)]
     _format: Vec<String>,
 
-    #[arg(long = "show-output", hide = true, action = ArgAction::SetTrue, required = false)]
-    _show_output: bool,
+    #[arg(long = "ignored", hide = true, action = ArgAction::SetTrue, required = false)]
+    _ignored: bool,
 
-    #[arg(short = 'Z', hide = true, required = false, num_args = 0..)]
-    _unstable_options: Vec<String>,
+    #[arg(long = "include-ignored", hide = true, action = ArgAction::SetTrue, required = false)]
+    _include_ignored: bool,
+
+    #[arg(long = "logfile", hide = true, required = false, num_args = 0..)]
+    _logfile: Vec<String>,
+
+    #[arg(long = "quiet", short = 'q', hide = true, action = ArgAction::SetTrue, required = false)]
+    _quiet: bool,
 
     #[arg(long = "report-time", hide = true, action = ArgAction::SetTrue, required = false)]
     _report_time: bool,
 
-    #[arg(long = "ensure-time", hide = true, action = ArgAction::SetTrue, required = false)]
-    _ensure_time: bool,
+    #[arg(long = "show-output", hide = true, action = ArgAction::SetTrue, required = false)]
+    _show_output: bool,
 
     #[arg(long = "shuffle", hide = true, action = ArgAction::SetTrue, required = false)]
     _shuffle: bool,
@@ -143,76 +131,155 @@ pub struct CommandLineArgs {
     #[arg(long = "shuffle-seed", hide = true, required = false, num_args = 0..)]
     _shuffle_seed: Vec<String>,
 
-    /// If specified, only run benches containing this string in their names
-    ///
-    /// Note that a benchmark name might differ from the benchmark file name.
-    #[arg(name = "BENCHNAME", num_args = 0..=1, env = "IAI_CALLGRIND_FILTER")]
-    pub filter: Option<BenchmarkFilter>,
+    #[arg(long = "skip", hide = true, required = false, num_args = 0..)]
+    _skip: Vec<String>,
 
-    /// The default tool used to run the benchmarks
+    #[arg(long = "test", hide = true, action = ArgAction::SetTrue, required = false)]
+    _test: bool,
+
+    #[arg(long = "test-threads", hide = true, required = false, num_args = 0..)]
+    _test_threads: Vec<String>,
+
+    #[arg(short = 'Z', hide = true, required = false, num_args = 0..)]
+    _unstable_options: Vec<String>,
+
+    /// Allow ASLR (Address Space Layout Randomization)
     ///
-    /// The standard tool to run the benchmarks is callgrind but can be overridden with this
-    /// option. Any valgrind tool can be used:
-    ///   * callgrind
-    ///   * cachegrind
-    ///   * dhat
-    ///   * memcheck
-    ///   * helgrind
-    ///   * drd
-    ///   * massif
-    ///   * exp-bbv
+    /// If possible, ASLR is disabled on platforms that support it (linux, freebsd) because ASLR
+    /// could noise up the callgrind cache simulation results a bit. Setting this option to true
+    /// runs all benchmarks with ASLR enabled.
     ///
-    /// This argument matches the tool case-insensitive. Note that using cachegrind with this
-    /// option to benchmark library functions needs adjustments to the benchmarking functions
-    /// with client-requests to measure the counts correctly. If you want to switch permanently
-    /// to cachegrind, it is usually better to activate the `cachegrind` feature of
-    /// iai-callgrind in your Cargo.toml. However, setting a tool with this option overrides
-    /// cachegrind set with the iai-callgrind feature. See the guide for all details.
+    /// See also <https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space>
     #[arg(
-        long = "default-tool",
-        num_args = 1,
-        verbatim_doc_comment,
-        env = "IAI_CALLGRIND_DEFAULT_TOOL"
+        long = "allow-aslr",
+        default_missing_value = "true",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = BoolishValueParser::new(),
+        env = "IAI_CALLGRIND_ALLOW_ASLR",
+        display_order = 100
     )]
-    pub default_tool: Option<ValgrindTool>,
+    pub allow_aslr: Option<bool>,
 
-    /// A comma separated list of tools to run additionally to callgrind or another default tool
-    ///
-    /// The tools specified here take precedence over the tools in the benchmarks. The valgrind
-    /// tools which are allowed here are the same as the ones listed in the documentation of
-    /// --default-tool.
-    ///
-    /// Examples
-    ///   * --tools dhat
-    ///   * --tools memcheck,drd
+    /// Compare against this baseline if present but do not overwrite it
     #[arg(
-        long = "tools",
-        num_args = 1..,
-        value_delimiter = ',',
-        verbatim_doc_comment,
-        env = "IAI_CALLGRIND_TOOLS"
+        long = "baseline",
+        default_missing_value = "default",
+        num_args = 0..=1,
+        require_equals = true,
+        env = "IAI_CALLGRIND_BASELINE",
+        display_order = 200
     )]
-    pub tools: Vec<ValgrindTool>,
+    pub baseline: Option<BaselineName>,
 
-    /// The command-line arguments to pass through to all tools
+    #[rustfmt::skip]
+    /// The command-line arguments to pass through to the experimental BBV
     ///
-    /// The core valgrind command-line arguments
-    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options> which are recognized
-    /// by all tools. More specific arguments for example set with --callgrind-args override the
-    /// arguments with the same name specified with this option.
+    /// <https://valgrind.org/docs/manual/bbv-manual.html#bbv-manual.usage>. See also the
+    /// description for --callgrind-args for more details and restrictions.
     ///
     /// Examples:
-    ///   * --valgrind-args=--time-stamp=yes
-    ///   * --valgrind-args='--error-exitcode=202 --num-callers=50'
+    ///   * --bbv-args=--interval-size=10000
+    ///   * --bbv-args='--interval-size=10000 --instr-count-only=yes'
     #[arg(
-        long = "valgrind-args",
+        long = "bbv-args",
         value_parser = parse_args,
         num_args = 1,
         verbatim_doc_comment,
-        env = "IAI_CALLGRIND_VALGRIND_ARGS"
+        env = "IAI_CALLGRIND_BBV_ARGS",
+        display_order = 500
     )]
-    pub valgrind_args: Option<RawArgs>,
+    pub bbv_args: Option<RawArgs>,
 
+    #[rustfmt::skip]
+    /// The command-line arguments to pass through to Cachegrind
+    ///
+    /// <https://valgrind.org/docs/manual/cg-manual.html#cg-manual.cgopts>. See also the
+    /// description for --callgrind-args for more details and restrictions.
+    ///
+    /// Examples:
+    ///   * --cachegrind-args=--intr-at-start=no
+    ///   * --cachegrind-args='--branch-sim=yes --instr-at-start=no'
+    #[arg(
+        long = "cachegrind-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_CACHEGRIND_ARGS",
+        display_order = 500
+    )]
+    pub cachegrind_args: Option<RawArgs>,
+
+    #[rustfmt::skip]
+    #[allow(clippy::doc_markdown)]
+    /// Set performance regression limits for specific cachegrind metrics
+    ///
+    /// This is a `,` separate list of CachegrindMetric=limit or CachegrindMetrics=limit
+    /// (key=value) pairs. See the description of --callgrind-limits for the details and
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetrics.html>
+    /// respectively <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetric.html>
+    /// for valid metrics and group members.
+    ///
+    /// See the the guide
+    /// (https://iai-callgrind.github.io/iai-callgrind/latest/html/regressions.html) for all
+    /// details or replace the format spec in `--callgrind-limits` with the following:
+    ///
+    /// group ::= "@" ( "default"
+    ///               | "all"
+    ///               | ("cachemisses" | "misses" | "ms")
+    ///               | ("cachemissrates" | "missrates" | "mr")
+    ///               | ("cachehits" | "hits" | "hs")
+    ///               | ("cachehitrates" | "hitrates" | "hr")
+    ///               | ("cachesim" | "cs")
+    ///               | ("branchsim" | "bs")
+    ///               )
+    /// event ::= CachegrindMetric
+    ///
+    /// Examples:
+    /// * --cachegrind-limits='ir=0.0%'
+    /// * --cachegrind-limits='ir=10000,EstimatedCycles=10%'
+    /// * --cachegrind-limits='@all=10%,ir=10000,EstimatedCycles=10%'
+    #[arg(
+        long = "cachegrind-limits",
+        num_args = 1,
+        verbatim_doc_comment,
+        value_parser = parse_cachegrind_limits,
+        env = "IAI_CALLGRIND_CACHEGRIND_LIMITS",
+        display_order = 600
+    )]
+    pub cachegrind_limits: Option<ToolRegressionConfig>,
+
+    #[rustfmt::skip]
+    /// Define the cachegrind metrics and the order in which they are displayed
+    ///
+    /// This is a `,`-separated list of cachegrind metric groups and event kinds which are allowed
+    /// to appear in the terminal output of cachegrind.
+    ///
+    /// See `--callgrind-limits` for more details and
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetrics.html>
+    /// respectively
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetric.html> for valid
+    /// metrics and group members.
+    ///
+    /// The `group` names, their abbreviations if present and `event` kinds are exactly the same as
+    /// described in the `--cachegrind-limits` option.
+    ///
+    /// Examples:
+    /// * --cachegrind-metrics='ir' to show only `Instructions`
+    /// * --cachegrind-metrics='@all' to show all possible cachegrind metrics
+    /// * --cachegrind-metrics='@default,@mr' to show cache miss rates in addition to the defaults
+    #[arg(
+        long = "cachegrind-metrics",
+        num_args = 1..,
+        required = false,
+        verbatim_doc_comment,
+        value_parser = parse_cachegrind_metrics,
+        env = "IAI_CALLGRIND_CACHEGRIND_METRICS",
+        display_order = 700
+    )]
+    pub cachegrind_metrics: Option<IndexSet<CachegrindMetric>>,
+
+    #[rustfmt::skip]
     /// The command-line arguments to pass through to Callgrind
     ///
     /// <https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options> and the core valgrind
@@ -229,156 +296,10 @@ pub struct CommandLineArgs {
         value_parser = parse_args,
         num_args = 1,
         verbatim_doc_comment,
-        env = "IAI_CALLGRIND_CALLGRIND_ARGS"
+        env = "IAI_CALLGRIND_CALLGRIND_ARGS",
+        display_order = 500
     )]
     pub callgrind_args: Option<RawArgs>,
-
-    /// The command-line arguments to pass through to Cachegrind
-    ///
-    /// <https://valgrind.org/docs/manual/cg-manual.html#cg-manual.cgopts>. See also the description
-    /// for --callgrind-args for more details and restrictions.
-    ///
-    /// Examples:
-    ///   * --cachegrind-args=--intr-at-start=no
-    ///   * --cachegrind-args='--branch-sim=yes --instr-at-start=no'
-    #[arg(
-        long = "cachegrind-args",
-        value_parser = parse_args,
-        num_args = 1,
-        verbatim_doc_comment,
-        env = "IAI_CALLGRIND_CACHEGRIND_ARGS"
-    )]
-    pub cachegrind_args: Option<RawArgs>,
-
-    /// The command-line arguments to pass through to DHAT
-    ///
-    /// <https://valgrind.org/docs/manual/dh-manual.html#dh-manual.options>. See also the description
-    /// for --callgrind-args for more details and restrictions.
-    ///
-    /// Examples:
-    ///   * --dhat-args=--mode=ad-hoc
-    #[arg(
-        long = "dhat-args",
-        value_parser = parse_args,
-        num_args = 1,
-        verbatim_doc_comment,
-        env = "IAI_CALLGRIND_DHAT_ARGS"
-    )]
-    pub dhat_args: Option<RawArgs>,
-
-    /// The command-line arguments to pass through to Memcheck
-    ///
-    /// <https://valgrind.org/docs/manual/mc-manual.html#mc-manual.options>. See also the description
-    /// for --callgrind-args for more details and restrictions.
-    ///
-    /// Examples:
-    ///   * --memcheck-args=--leak-check=full
-    ///   * --memcheck-args='--leak-check=yes --show-leak-kinds=all'
-    #[arg(
-        long = "memcheck-args",
-        value_parser = parse_args,
-        num_args = 1,
-        verbatim_doc_comment,
-        env = "IAI_CALLGRIND_MEMCHECK_ARGS"
-    )]
-    pub memcheck_args: Option<RawArgs>,
-
-    /// The command-line arguments to pass through to Helgrind
-    ///
-    /// <https://valgrind.org/docs/manual/hg-manual.html#hg-manual.options>. See also the description
-    /// for --callgrind-args for more details and restrictions.
-    ///
-    /// Examples:
-    ///   * --helgrind-args=--free-is-write=yes
-    ///   * --helgrind-args='--conflict-cache-size=100000 --free-is-write=yes'
-    #[arg(
-        long = "helgrind-args",
-        value_parser = parse_args,
-        num_args = 1,
-        verbatim_doc_comment,
-        env = "IAI_CALLGRIND_HELGRIND_ARGS"
-    )]
-    pub helgrind_args: Option<RawArgs>,
-
-    /// The command-line arguments to pass through to DRD
-    ///
-    /// <https://valgrind.org/docs/manual/drd-manual.html#drd-manual.options>. See also the description
-    /// for --callgrind-args for more details and restrictions.
-    ///
-    /// Examples:
-    ///   * --drd-args=--exclusive-threshold=100
-    ///   * --drd-args='--exclusive-threshold=100 --free-is-write=yes'
-    #[arg(
-        long = "drd-args",
-        value_parser = parse_args,
-        num_args = 1,
-        verbatim_doc_comment,
-        env = "IAI_CALLGRIND_DRD_ARGS"
-    )]
-    pub drd_args: Option<RawArgs>,
-
-    /// The command-line arguments to pass through to Massif
-    ///
-    /// <https://valgrind.org/docs/manual/ms-manual.html#ms-manual.options>. See also the description
-    /// for --callgrind-args for more details and restrictions.
-    ///
-    /// Examples:
-    ///   * --massif-args=--heap=no
-    ///   * --massif-args='--heap=no --threshold=2.0'
-    #[arg(
-        long = "massif-args",
-        value_parser = parse_args,
-        num_args = 1,
-        verbatim_doc_comment,
-        env = "IAI_CALLGRIND_MASSIF_ARGS"
-    )]
-    pub massif_args: Option<RawArgs>,
-
-    /// The command-line arguments to pass through to the experimental BBV
-    ///
-    /// <https://valgrind.org/docs/manual/bbv-manual.html#bbv-manual.usage>. See also the description
-    /// for --callgrind-args for more details and restrictions.
-    ///
-    /// Examples:
-    ///   * --bbv-args=--interval-size=10000
-    ///   * --bbv-args='--interval-size=10000 --instr-count-only=yes'
-    #[arg(
-        long = "bbv-args",
-        value_parser = parse_args,
-        num_args = 1,
-        verbatim_doc_comment,
-        env = "IAI_CALLGRIND_BBV_ARGS"
-    )]
-    pub bbv_args: Option<RawArgs>,
-
-    /// Save a machine-readable summary of each benchmark run in json format next to the usual
-    /// benchmark output
-    #[arg(
-        long = "save-summary",
-        value_enum,
-        num_args = 0..=1,
-        require_equals = true,
-        default_missing_value = "json",
-        env = "IAI_CALLGRIND_SAVE_SUMMARY"
-    )]
-    pub save_summary: Option<SummaryFormat>,
-
-    /// Allow ASLR (Address Space Layout Randomization)
-    ///
-    /// If possible, ASLR is disabled on platforms that support it (linux, freebsd) because ASLR
-    /// could noise up the callgrind cache simulation results a bit. Setting this option to true
-    /// runs all benchmarks with ASLR enabled.
-    ///
-    /// See also <https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space>
-    #[arg(
-        long = "allow-aslr",
-        default_missing_value = "true",
-        num_args = 0..=1,
-        require_equals = true,
-        value_parser = BoolishValueParser::new(),
-        env = "IAI_CALLGRIND_ALLOW_ASLR",
-    )]
-    pub allow_aslr: Option<bool>,
 
     #[rustfmt::skip]
     #[allow(clippy::doc_markdown)]
@@ -425,59 +346,105 @@ pub struct CommandLineArgs {
         verbatim_doc_comment,
         value_parser = parse_callgrind_limits,
         env = "IAI_CALLGRIND_CALLGRIND_LIMITS",
+        display_order = 600
     )]
     pub callgrind_limits: Option<ToolRegressionConfig>,
 
     #[rustfmt::skip]
-    #[allow(clippy::doc_markdown)]
-    /// Set performance regression limits for specific cachegrind metrics
+    /// Define the callgrind metrics and the order in which they are displayed
     ///
-    /// This is a `,` separate list of CachegrindMetric=limit or CachegrindMetrics=limit
-    /// (key=value) pairs. See the description of --callgrind-limits for the details and
-    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetrics.html>
-    /// respectively <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetric.html>
-    /// for valid metrics and group members.
+    /// This is a `,`-separated list of callgrind metric groups and event kinds which are allowed
+    /// to appear in the terminal output of callgrind. Group names need to be prefixed with '@'.
+    /// The order matters and the callgrind metrics are shown in their insertion order of this
+    /// option. More precisely, in case of duplicate metrics, the first specified one wins.
     ///
-    /// See the the guide
-    /// (https://iai-callgrind.github.io/iai-callgrind/latest/html/regressions.html) for all
-    /// details or replace the format spec in `--callgrind-limits` or with the following:
+    /// The `group` names, their abbreviations if present and `event` kinds are exactly the same as
+    /// described in the `--callgrind-limits` option.
     ///
-    /// group ::= "@" ( "default"
-    ///               | "all"
-    ///               | ("cachemisses" | "misses" | "ms")
-    ///               | ("cachemissrates" | "missrates" | "mr")
-    ///               | ("cachehits" | "hits" | "hs")
-    ///               | ("cachehitrates" | "hitrates" | "hr")
-    ///               | ("cachesim" | "cs")
-    ///               | ("branchsim" | "bs")
-    ///               )
-    /// event ::= CachegrindMetric
+    /// For a list of valid metrics, groups and their members see the docs of `CallgrindMetrics`
+    /// (<https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CallgrindMetrics.html>) and
+    /// `EventKind` <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.EventKind.html>.
+    ///
+    /// Note that setting the metrics here does not imply that these metrics are actually
+    /// collected. This option just sets the order and appearance of metrics in case they are
+    /// collected. To activate the collection of specific metrics you need to use
+    /// `--callgrind-args`.
     ///
     /// Examples:
-    /// * --cachegrind-limits='ir=0.0%'
-    /// * --cachegrind-limits='ir=10000,EstimatedCycles=10%'
-    /// * --cachegrind-limits='@all=10%,ir=10000,EstimatedCycles=10%'
+    /// * --callgrind-metrics='ir' to show only `Instructions`
+    /// * --callgrind-metrics='@all' to show all possible callgrind metrics
+    /// * --callgrind-metrics='@default,@mr' to show cache miss rates in addition to the defaults
     #[arg(
-        long = "cachegrind-limits",
+        long = "callgrind-metrics",
+        num_args = 1..,
+        required = false,
+        verbatim_doc_comment,
+        value_parser = parse_callgrind_metrics,
+        env = "IAI_CALLGRIND_CALLGRIND_METRICS",
+        display_order = 700
+    )]
+    pub callgrind_metrics: Option<IndexSet<EventKind>>,
+
+    #[rustfmt::skip]
+    /// The default tool used to run the benchmarks
+    ///
+    /// The standard tool to run the benchmarks is callgrind but can be overridden with this
+    /// option. Any valgrind tool can be used:
+    ///   * callgrind
+    ///   * cachegrind
+    ///   * dhat
+    ///   * memcheck
+    ///   * helgrind
+    ///   * drd
+    ///   * massif
+    ///   * exp-bbv
+    ///
+    /// This argument matches the tool case-insensitive. Note that using cachegrind with this
+    /// option to benchmark library functions needs adjustments to the benchmarking functions with
+    /// client-requests to measure the counts correctly. If you want to switch permanently to
+    /// cachegrind, it is usually better to activate the `cachegrind` feature of iai-callgrind in
+    /// your Cargo.toml. However, setting a tool with this option overrides cachegrind set with the
+    /// iai-callgrind feature. See the guide for all details.
+    #[arg(
+        long = "default-tool",
         num_args = 1,
         verbatim_doc_comment,
-        value_parser = parse_cachegrind_limits,
-        env = "IAI_CALLGRIND_CACHEGRIND_LIMITS",
+        env = "IAI_CALLGRIND_DEFAULT_TOOL",
+        display_order = 50
     )]
-    pub cachegrind_limits: Option<ToolRegressionConfig>,
+    pub default_tool: Option<ValgrindTool>,
 
+    #[rustfmt::skip]
+    /// The command-line arguments to pass through to DHAT
+    ///
+    /// <https://valgrind.org/docs/manual/dh-manual.html#dh-manual.options>. See also the
+    /// description for --callgrind-args for more details and restrictions.
+    ///
+    /// Examples:
+    ///   * --dhat-args=--mode=ad-hoc
+    #[arg(
+        long = "dhat-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_DHAT_ARGS",
+        display_order = 500
+    )]
+    pub dhat_args: Option<RawArgs>,
+
+    #[rustfmt::skip]
     #[allow(clippy::doc_markdown)]
     /// Set performance regression limits for specific dhat metrics
     ///
     /// This is a `,` separate list of DhatMetrics=limit or DhatMetric=limit (key=value) pairs. See
     /// the description of --callgrind-limits for the details and
     /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.DhatMetrics.html> respectively
-    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.DhatMetric.html> for valid
-    /// metrics and group members.
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.DhatMetric.html> for valid metrics
+    /// and group members.
     ///
     /// See the the guide
     /// (https://iai-callgrind.github.io/iai-callgrind/latest/html/regressions.html) for all
-    /// details or replace the format spec in `--callgrind-limits` or with the following:
+    /// details or replace the format spec in `--callgrind-limits` with the following:
     ///
     /// group ::= "@" ( "default" | "all" )
     /// event ::=   ( "totalunits" | "tun" )
@@ -506,141 +473,151 @@ pub struct CommandLineArgs {
         verbatim_doc_comment,
         value_parser = parse_dhat_limits,
         env = "IAI_CALLGRIND_DHAT_LIMITS",
+        display_order = 600
     )]
     pub dhat_limits: Option<ToolRegressionConfig>,
 
-    /// If true, the first failed performance regression check fails the whole benchmark run
+    #[rustfmt::skip]
+    /// Define the dhat metrics and the order in which they are displayed
     ///
-    /// Note that if --regression-fail-fast is set to true, no summary is printed.
+    /// This is a `,`-separated list of dhat metric groups and event kinds which are allowed to
+    /// appear in the terminal output of dhat.
+    ///
+    /// See `--callgrind-metrics` for more details and
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.DhatMetrics.html> respectively
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.DhatMetric.html> for valid metrics
+    /// and group members.
+    ///
+    /// The `group` names, their abbreviations if present and `event` kinds are exactly the same as
+    /// described in the `--dhat-limits` option.
+    ///
+    /// Examples:
+    /// * --dhat-metrics='totalbytes' to show only `Total Bytes`
+    /// * --dhat-metrics='@all' to show all possible dhat metrics
+    /// * --dhat-metrics='@default,mb' to show maximum bytes in addition to the defaults
     #[arg(
-        long = "regression-fail-fast",
-        default_missing_value = "true",
-        num_args = 0..=1,
-        require_equals = true,
-        value_parser = BoolishValueParser::new(),
-        env = "IAI_CALLGRIND_REGRESSION_FAIL_FAST",
-    )]
-    pub regression_fail_fast: Option<bool>,
-
-    /// Compare against this baseline if present and then overwrite it
-    #[arg(
-        long = "save-baseline",
-        default_missing_value = "default",
-        num_args = 0..=1,
-        require_equals = true,
-        conflicts_with_all = &["baseline", "LOAD_BASELINE"],
-        env = "IAI_CALLGRIND_SAVE_BASELINE",
-    )]
-    pub save_baseline: Option<BaselineName>,
-
-    /// Compare against this baseline if present but do not overwrite it
-    #[arg(
-        long = "baseline",
-        default_missing_value = "default",
-        num_args = 0..=1,
-        require_equals = true,
-        env = "IAI_CALLGRIND_BASELINE"
-    )]
-    pub baseline: Option<BaselineName>,
-
-    /// Load this baseline as the new data set instead of creating a new one
-    #[clap(
-        id = "LOAD_BASELINE",
-        long = "load-baseline",
-        requires = "baseline",
-        num_args = 0..=1,
-        require_equals = true,
-        default_missing_value = "default",
-        env = "IAI_CALLGRIND_LOAD_BASELINE"
-    )]
-    pub load_baseline: Option<BaselineName>,
-
-    /// The terminal output format in default human-readable format or in machine-readable json
-    /// format
-    ///
-    /// # The JSON Output Format
-    ///
-    /// The json terminal output schema is the same as the schema with the `--save-summary`
-    /// argument when saving to a `summary.json` file. All other output than the json output goes
-    /// to stderr and only the summary output goes to stdout. When not printing pretty json, each
-    /// line is a dictionary summarizing a single benchmark. You can combine all lines
-    /// (benchmarks) into an array for example with `jq`
-    ///
-    /// `cargo bench -- --output-format=json | jq -s`
-    ///
-    /// which transforms `{...}\n{...}` into `[{...},{...}]`
-    #[arg(
-        long = "output-format",
-        value_enum,
+        long = "dhat-metrics",
+        num_args = 1..,
         required = false,
-        default_value = "default",
-        num_args = 1,
-        env = "IAI_CALLGRIND_OUTPUT_FORMAT"
+        verbatim_doc_comment,
+        value_parser = parse_dhat_metrics,
+        env = "IAI_CALLGRIND_DHAT_METRICS",
+        display_order = 700
     )]
-    pub output_format: OutputFormatKind,
+    pub dhat_metrics: Option<IndexSet<DhatMetric>>,
 
-    /// Separate iai-callgrind benchmark output files by target
+    #[rustfmt::skip]
+    /// The command-line arguments to pass through to DRD
     ///
-    /// The default output path for files created by iai-callgrind and valgrind during the
-    /// benchmark is
+    /// <https://valgrind.org/docs/manual/drd-manual.html#drd-manual.options>. See also the
+    /// description for --callgrind-args for more details and restrictions.
     ///
-    /// `target/iai/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`.
-    ///
-    /// This can be problematic if you're running the benchmarks not only for a
-    /// single target because you end up comparing the benchmark runs with the wrong targets.
-    /// Setting this option changes the default output path to
-    ///
-    /// `target/iai/$TARGET/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`
-    ///
-    /// Although not as comfortable and strict, you could achieve a separation by target also with
-    /// baselines and a combination of `--save-baseline=$TARGET` and `--baseline=$TARGET` if you
-    /// prefer having all files of a single $BENCH in the same directory.
+    /// Examples:
+    ///   * --drd-args=--exclusive-threshold=100
+    ///   * --drd-args='--exclusive-threshold=100 --free-is-write=yes'
     #[arg(
-        long = "separate-targets",
-        default_missing_value = "true",
-        default_value = "false",
-        num_args = 0..=1,
-        require_equals = true,
-        value_parser = BoolishValueParser::new(),
-        action = ArgAction::Set,
-        env = "IAI_CALLGRIND_SEPARATE_TARGETS",
+        long = "drd-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_DRD_ARGS",
+        display_order = 500
     )]
-    pub separate_targets: bool,
+    pub drd_args: Option<RawArgs>,
 
+    #[rustfmt::skip]
+    /// Define the drd error metrics and the order in which they are displayed
+    ///
+    /// This is a `,`-separated list of error metrics which are allowed to appear in the terminal
+    /// output of drd. The `group` and `event` are the same as for `--memcheck-metrics`.
+    ///
+    /// See `--callgrind-metrics` for more details and
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.ErrorMetric.html> for valid error
+    /// metrics.
+    ///
+    /// Since this is a very small set of metrics, there is only one `group`: `@all`
+    ///
+    /// Examples:
+    /// * --drd-metrics='errors' to show only `Errors`
+    /// * --drd-metrics='@all' to show all possible error metrics (the default)
+    /// * --drd-metrics='err,ctx' to show only errors and contexts
+    #[arg(
+        long = "drd-metrics",
+        num_args = 1..,
+        required = false,
+        verbatim_doc_comment,
+        value_parser = parse_drd_metrics,
+        env = "IAI_CALLGRIND_DRD_METRICS",
+        display_order = 700
+    )]
+    pub drd_metrics: Option<IndexSet<ErrorMetric>>,
+
+    #[rustfmt::skip]
+    /// If specified, only run benches containing this string in their names
+    ///
+    /// Note that a benchmark name might differ from the benchmark file name.
+    #[arg(name = "BENCHNAME", num_args = 0..=1, env = "IAI_CALLGRIND_FILTER")]
+    pub filter: Option<BenchmarkFilter>,
+
+    #[rustfmt::skip]
+    /// The command-line arguments to pass through to Helgrind
+    ///
+    /// <https://valgrind.org/docs/manual/hg-manual.html#hg-manual.options>. See also the
+    /// description for --callgrind-args for more details and restrictions.
+    ///
+    /// Examples:
+    ///   * --helgrind-args=--free-is-write=yes
+    ///   * --helgrind-args='--conflict-cache-size=100000 --free-is-write=yes'
+    #[arg(
+        long = "helgrind-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_HELGRIND_ARGS",
+        display_order = 500
+    )]
+    pub helgrind_args: Option<RawArgs>,
+
+    #[rustfmt::skip]
+    /// Define the helgrind error metrics and the order in which they are displayed
+    ///
+    /// This is a `,`-separated list of error metrics which are allowed to appear in the terminal
+    /// output of helgrind. The `group` and `event` are the same as for `--memcheck-metrics`.
+    ///
+    /// See `--callgrind-metrics` for more details and
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.ErrorMetric.html> for valid error
+    /// metrics.
+    ///
+    /// Examples:
+    /// * --helgrind-metrics='errors' to show only `Errors`
+    /// * --helgrind-metrics='@all' to show all possible error metrics (the default)
+    /// * --helgrind-metrics='err,ctx' to show only errors and contexts
+    #[arg(
+        long = "helgrind-metrics",
+        num_args = 1..,
+        required = false,
+        verbatim_doc_comment,
+        value_parser = parse_helgrind_metrics,
+        env = "IAI_CALLGRIND_HELGRIND_METRICS",
+        display_order = 700
+    )]
+    pub helgrind_metrics: Option<IndexSet<ErrorMetric>>,
+
+    #[rustfmt::skip]
     /// Specify the home directory of iai-callgrind benchmark output files
     ///
     /// All output files are per default stored under the `$PROJECT_ROOT/target/iai` directory.
-    /// This option lets you customize this home directory, and it will be created if it
-    /// doesn't exist.
-    #[arg(long = "home", num_args = 1, env = "IAI_CALLGRIND_HOME")]
+    /// This option lets you customize this home directory, and it will be created if it doesn't
+    /// exist.
+    #[arg(
+        long = "home",
+        num_args = 1,
+        env = "IAI_CALLGRIND_HOME",
+        display_order = 100
+    )]
     pub home: Option<PathBuf>,
 
-    /// Don't capture terminal output of benchmarks
-    ///
-    /// Possible values are one of [true, false, stdout, stderr].
-    ///
-    /// This option is currently restricted to the `callgrind` run of benchmarks. The output of
-    /// additional tool runs like DHAT, Memcheck, ... is still captured, to prevent showing the
-    /// same output of benchmarks multiple times. Use `IAI_CALLGRIND_LOG=info` to also show
-    /// captured and logged output.
-    ///
-    /// If no value is given, the default missing value is `true` and doesn't capture stdout and
-    /// stderr. Besides `true` or `false` you can specify the special values `stdout` or `stderr`.
-    /// If `--nocapture=stdout` is given, the output to `stdout` won't be captured and the output
-    /// to `stderr` will be discarded. Likewise, if `--nocapture=stderr` is specified, the
-    /// output to `stderr` won't be captured and the output to `stdout` will be discarded.
-    #[arg(
-        long = "nocapture",
-        required = false,
-        default_missing_value = "true",
-        default_value = "false",
-        num_args = 0..=1,
-        require_equals = true,
-        value_parser = parse_nocapture,
-        env = "IAI_CALLGRIND_NOCAPTURE"
-    )]
-    pub nocapture: NoCapture,
-
+    #[rustfmt::skip]
     /// Print a list of all benchmarks. With this argument no benchmarks are executed.
     ///
     /// The output format is intended to be the same as the output format of the libtest harness.
@@ -659,6 +636,120 @@ pub struct CommandLineArgs {
     )]
     pub list: bool,
 
+    #[rustfmt::skip]
+    /// Load this baseline as the new data set instead of creating a new one
+    #[clap(
+        id = "LOAD_BASELINE",
+        long = "load-baseline",
+        requires = "baseline",
+        num_args = 0..=1,
+        require_equals = true,
+        default_missing_value = "default",
+        env = "IAI_CALLGRIND_LOAD_BASELINE",
+        display_order = 200
+    )]
+    pub load_baseline: Option<BaselineName>,
+
+    #[rustfmt::skip]
+    /// The command-line arguments to pass through to Massif
+    ///
+    /// <https://valgrind.org/docs/manual/ms-manual.html#ms-manual.options>. See also the
+    /// description for --callgrind-args for more details and restrictions.
+    ///
+    /// Examples:
+    ///   * --massif-args=--heap=no
+    ///   * --massif-args='--heap=no --threshold=2.0'
+    #[arg(
+        long = "massif-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_MASSIF_ARGS",
+        display_order = 500
+    )]
+    pub massif_args: Option<RawArgs>,
+
+    #[rustfmt::skip]
+    /// The command-line arguments to pass through to Memcheck
+    ///
+    /// <https://valgrind.org/docs/manual/mc-manual.html#mc-manual.options>. See also the
+    /// description for --callgrind-args for more details and restrictions.
+    ///
+    /// Examples:
+    ///   * --memcheck-args=--leak-check=full
+    ///   * --memcheck-args='--leak-check=yes --show-leak-kinds=all'
+    #[arg(
+        long = "memcheck-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_MEMCHECK_ARGS",
+        display_order = 500
+    )]
+    pub memcheck_args: Option<RawArgs>,
+
+    #[rustfmt::skip]
+    /// Define the memcheck error metrics and the order in which they are displayed
+    ///
+    /// This is a `,`-separated list of error metrics which are allowed to appear in the terminal
+    /// output of memcheck.
+    ///
+    /// Since this is a very small set of metrics, there is only one `group`: `@all`
+    ///
+    /// group ::= "@all"
+    /// event ::=   ( "errors" | "err" )
+    ///           | ( "contexts" | "ctx" )
+    ///           | ( "suppressederrors" | "serr")
+    ///           | ( "suppressedcontexts" | "sctx" )
+    ///
+    /// See `--callgrind-metrics` for more details and
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.ErrorMetric.html> for valid
+    /// metrics.
+    ///
+    /// Examples:
+    /// * --memcheck-metrics='errors' to show only `Errors`
+    /// * --memcheck-metrics='@all' to show all possible error metrics (the default)
+    /// * --memcheck-metrics='err,ctx' to show only errors and contexts
+    #[arg(
+        long = "memcheck-metrics",
+        num_args = 1..,
+        required = false,
+        verbatim_doc_comment,
+        value_parser = parse_memcheck_metrics,
+        env = "IAI_CALLGRIND_MEMCHECK_METRICS",
+        display_order = 700
+    )]
+    pub memcheck_metrics: Option<IndexSet<ErrorMetric>>,
+
+    #[rustfmt::skip]
+    /// Don't capture terminal output of benchmarks
+    ///
+    /// Possible values are one of [true, false, stdout, stderr].
+    ///
+    /// This option is currently restricted to the `callgrind` run of benchmarks. The output of
+    /// additional tool runs like DHAT, Memcheck, ... is still captured, to prevent showing the
+    /// same output of benchmarks multiple times. Use `IAI_CALLGRIND_LOG=info` to also show
+    /// captured and logged output.
+    ///
+    /// If no value is given, the default missing value is `true` and doesn't capture stdout and
+    /// stderr. Besides `true` or `false` you can specify the special values `stdout` or `stderr`.
+    /// If `--nocapture=stdout` is given, the output to `stdout` won't be captured and the output
+    /// to `stderr` will be discarded. Likewise, if `--nocapture=stderr` is specified, the output
+    /// to `stderr` won't be captured and the output to `stdout` will be discarded.
+    #[arg(
+        long = "nocapture",
+        required = false,
+        default_missing_value = "true",
+        default_value = "false",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = parse_nocapture,
+        env = "IAI_CALLGRIND_NOCAPTURE",
+        display_order = 300
+    )]
+    pub nocapture: NoCapture,
+
+    #[rustfmt::skip]
     /// Suppress the summary showing regressions and execution time at the end of a benchmark run
     ///
     /// Note, that a summary is only printed if the `--output-format` is not JSON.
@@ -673,9 +764,172 @@ pub struct CommandLineArgs {
         require_equals = true,
         value_parser = BoolishValueParser::new(),
         action = ArgAction::Set,
-        env = "IAI_CALLGRIND_NOSUMMARY"
+        env = "IAI_CALLGRIND_NOSUMMARY",
+        display_order = 300
     )]
     pub nosummary: bool,
+
+    #[rustfmt::skip]
+    /// The terminal output format in default human-readable format or in machine-readable json
+    /// format
+    ///
+    /// # The JSON Output Format
+    ///
+    /// The json terminal output schema is the same as the schema with the `--save-summary`
+    /// argument when saving to a `summary.json` file. All other output than the json output goes
+    /// to stderr and only the summary output goes to stdout. When not printing pretty json, each
+    /// line is a dictionary summarizing a single benchmark. You can combine all lines (benchmarks)
+    /// into an array for example with `jq`
+    ///
+    /// `cargo bench -- --output-format=json | jq -s`
+    ///
+    /// which transforms `{...}\n{...}` into `[{...},{...}]`
+    #[arg(
+        long = "output-format",
+        value_enum,
+        required = false,
+        default_value = "default",
+        num_args = 1,
+        env = "IAI_CALLGRIND_OUTPUT_FORMAT",
+        display_order = 300
+    )]
+    pub output_format: OutputFormatKind,
+
+    #[rustfmt::skip]
+    /// If true, the first failed performance regression check fails the whole benchmark run
+    ///
+    /// Note that if --regression-fail-fast is set to true, no summary is printed.
+    #[arg(
+        long = "regression-fail-fast",
+        default_missing_value = "true",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = BoolishValueParser::new(),
+        env = "IAI_CALLGRIND_REGRESSION_FAIL_FAST",
+        display_order = 600
+    )]
+    pub regression_fail_fast: Option<bool>,
+
+    #[rustfmt::skip]
+    /// Compare against this baseline if present and then overwrite it
+    #[arg(
+        long = "save-baseline",
+        default_missing_value = "default",
+        num_args = 0..=1,
+        require_equals = true,
+        conflicts_with_all = &["baseline", "LOAD_BASELINE"],
+        env = "IAI_CALLGRIND_SAVE_BASELINE",
+        display_order = 200
+    )]
+    pub save_baseline: Option<BaselineName>,
+
+    #[rustfmt::skip]
+    /// Save a machine-readable summary of each benchmark run in json format next to the usual
+    /// benchmark output
+    #[arg(
+        long = "save-summary",
+        value_enum,
+        num_args = 0..=1,
+        require_equals = true,
+        default_missing_value = "json",
+        env = "IAI_CALLGRIND_SAVE_SUMMARY",
+        display_order = 300
+    )]
+    pub save_summary: Option<SummaryFormat>,
+
+    #[rustfmt::skip]
+    /// Separate iai-callgrind benchmark output files by target
+    ///
+    /// The default output path for files created by iai-callgrind and valgrind during the
+    /// benchmark is
+    ///
+    /// `target/iai/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`.
+    ///
+    /// This can be problematic if you're running the benchmarks not only for a single target
+    /// because you end up comparing the benchmark runs with the wrong targets. Setting this option
+    /// changes the default output path to
+    ///
+    /// `target/iai/$TARGET/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`
+    ///
+    /// Although not as comfortable and strict, you could achieve a separation by target also with
+    /// baselines and a combination of `--save-baseline=$TARGET` and `--baseline=$TARGET` if you
+    /// prefer having all files of a single $BENCH in the same directory.
+    #[arg(
+        long = "separate-targets",
+        default_missing_value = "true",
+        default_value = "false",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = BoolishValueParser::new(),
+        action = ArgAction::Set,
+        env = "IAI_CALLGRIND_SEPARATE_TARGETS",
+        display_order = 100
+    )]
+    pub separate_targets: bool,
+
+    #[rustfmt::skip]
+    /// Show changes only when they are above the `tolerance` level
+    ///
+    /// If no value is specified, the default value of `0.000_009_999_999_999_999_999` is based on
+    /// the number of decimal places of the percentages displayed in the terminal output in case of
+    /// differences.
+    ///
+    /// Negative tolerance values are converted to their absolute value.
+    ///
+    /// Examples:
+    /// * --tolerance (applies the default value)
+    /// * --tolerance=0.1 (set the tolerance level to `0.1`)
+    #[arg(
+        long = "tolerance",
+        default_missing_value = "0.000009999999999999999",
+        num_args = 0..=1,
+        require_equals = true,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_TOLERANCE",
+        display_order = 300
+    )]
+    pub tolerance: Option<f64>,
+
+    #[rustfmt::skip]
+    /// A comma separated list of tools to run additionally to callgrind or another default tool
+    ///
+    /// The tools specified here take precedence over the tools in the benchmarks. The valgrind
+    /// tools which are allowed here are the same as the ones listed in the documentation of
+    /// --default-tool.
+    ///
+    /// Examples
+    ///   * --tools dhat
+    ///   * --tools memcheck,drd
+    #[arg(
+        long = "tools",
+        num_args = 1..,
+        value_delimiter = ',',
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_TOOLS",
+        display_order = 50
+    )]
+    pub tools: Vec<ValgrindTool>,
+
+    #[rustfmt::skip]
+    /// The command-line arguments to pass through to all tools
+    ///
+    /// The core valgrind command-line arguments
+    /// <https://valgrind.org/docs/manual/manual-core.html#manual-core.options> which are
+    /// recognized by all tools. More specific arguments for example set with --callgrind-args
+    /// override the arguments with the same name specified with this option.
+    ///
+    /// Examples:
+    ///   * --valgrind-args=--time-stamp=yes
+    ///   * --valgrind-args='--error-exitcode=202 --num-callers=50'
+    #[arg(
+        long = "valgrind-args",
+        value_parser = parse_args,
+        num_args = 1,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_VALGRIND_ARGS",
+        display_order = 500
+    )]
+    pub valgrind_args: Option<RawArgs>,
 }
 
 impl BenchmarkFilter {
@@ -760,6 +1014,15 @@ fn parse_cachegrind_limits(value: &str) -> Result<ToolRegressionConfig, String> 
     Ok(config)
 }
 
+/// TODO: DOCS
+fn parse_cachegrind_metrics(value: &str) -> Result<IndexSet<CachegrindMetric>, String> {
+    parse_tool_metrics(value, |item| {
+        item.parse::<CachegrindMetrics>()
+            .map(IndexSet::from)
+            .map_err(|error| error.to_string())
+    })
+}
+
 /// Parse the callgrind limits from the command-line
 ///
 /// This method (and the other `parse_dhat_limits`, ...) parses soft and hard limits in one go. The
@@ -787,6 +1050,15 @@ fn parse_callgrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
     Ok(config)
 }
 
+/// TODO: DOCS
+fn parse_callgrind_metrics(value: &str) -> Result<IndexSet<EventKind>, String> {
+    parse_tool_metrics(value, |item| {
+        item.parse::<CallgrindMetrics>()
+            .map(IndexSet::from)
+            .map_err(|error| error.to_string())
+    })
+}
+
 /// Same as `parse_callgrind_limits` but for dhat
 fn parse_dhat_limits(value: &str) -> Result<ToolRegressionConfig, String> {
     let (soft_limits, hard_limits) = parse_limits(value, |key, metric| {
@@ -806,6 +1078,43 @@ fn parse_dhat_limits(value: &str) -> Result<ToolRegressionConfig, String> {
     });
 
     Ok(config)
+}
+
+/// TODO: DOCS
+fn parse_dhat_metrics(value: &str) -> Result<IndexSet<DhatMetric>, String> {
+    parse_tool_metrics(value, |item| {
+        item.parse::<DhatMetrics>()
+            .map(IndexSet::from)
+            .map_err(|error| error.to_string())
+    })
+}
+
+/// TODO: DOCS
+fn parse_drd_metrics(value: &str) -> Result<IndexSet<ErrorMetric>, String> {
+    parse_tool_metrics(value, parse_error_metrics)
+}
+
+fn parse_error_metrics(item: &str) -> Result<IndexSet<ErrorMetric>, String> {
+    if let Some(prefix) = item.strip_prefix('@') {
+        if prefix == "all" {
+            Ok(ErrorMetric::iter().fold(IndexSet::new(), |mut acc, elem| {
+                acc.insert(elem);
+                acc
+            }))
+        } else {
+            Err(format!("Invalid error metric group: '{item}"))
+        }
+    } else {
+        let metric = item
+            .parse::<ErrorMetric>()
+            .map_err(|error| error.to_string())?;
+        Ok(indexset! { metric })
+    }
+}
+
+/// TODO: DOCS
+fn parse_helgrind_metrics(value: &str) -> Result<IndexSet<ErrorMetric>, String> {
+    parse_tool_metrics(value, parse_error_metrics)
 }
 
 fn parse_limits<T: Eq + Hash>(
@@ -858,6 +1167,11 @@ fn parse_limits<T: Eq + Hash>(
     Ok((soft_limits, hard_limits))
 }
 
+/// TODO: DOCS
+fn parse_memcheck_metrics(value: &str) -> Result<IndexSet<ErrorMetric>, String> {
+    parse_tool_metrics(value, parse_error_metrics)
+}
+
 fn parse_nocapture(value: &str) -> Result<NoCapture, String> {
     // Taken from clap source code
     const TRUE_LITERALS: [&str; 6] = ["y", "yes", "t", "true", "on", "1"];
@@ -876,6 +1190,26 @@ fn parse_nocapture(value: &str) -> Result<NoCapture, String> {
     } else {
         Err(format!("Invalid value: {value}"))
     }
+}
+
+fn parse_tool_metrics<T: Eq + Hash>(
+    value: &str,
+    parse_metrics: fn(&str) -> Result<IndexSet<T>, String>,
+) -> Result<IndexSet<T>, String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err("No metric found: At least one metric must be present".to_owned());
+    }
+
+    let mut format = IndexSet::new();
+
+    for item in value.split(',') {
+        let item = item.trim();
+        let metrics = parse_metrics(item)?;
+        format.extend(metrics);
+    }
+
+    Ok(format)
 }
 
 #[cfg(test)]
@@ -1193,5 +1527,229 @@ mod tests {
         };
 
         result.unwrap();
+    }
+
+    #[rstest]
+    #[case::one("ir", indexset!{ Ir })]
+    #[case::one_with_spaces("  ir ", indexset!{ Ir })]
+    #[case::two("ir,i1mr", indexset!{ Ir, I1mr })]
+    #[case::two_with_spaces("ir,   i1mr", indexset!{ Ir, I1mr })]
+    #[case::group("@writebackbehaviour", indexset!{ ILdmr, DLdmr, DLdmw })]
+    #[case::group_abbreviation("@wb", indexset!{ ILdmr, DLdmr, DLdmw })]
+    #[case::group_and_single_then_no_change("@wb,ildmr", indexset!{ ILdmr, DLdmr, DLdmw })]
+    #[case::single_and_group_then_overwrite("dldmw,@wb", indexset!{ DLdmw, ILdmr, DLdmr })]
+    #[case::all("@all", CallgrindMetrics::All.into())]
+    fn test_parse_callgrind_metrics(#[case] input: &str, #[case] expected: IndexSet<EventKind>) {
+        assert_eq!(parse_callgrind_metrics(input).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case::empty("")]
+    #[case::event_kind_does_not_exist("doesnotexist")]
+    #[case::group_does_not_exist("@doesnotexist")]
+    #[case::wrong_delimiter("ir;dr")]
+    fn test_parse_callgrind_metrics_then_error(#[case] input: &str) {
+        parse_callgrind_metrics(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_callgrind_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--callgrind-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_callgrind_metrics_when_env() {
+        std::env::set_var("IAI_CALLGRIND_CALLGRIND_METRICS", "ir");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.callgrind_metrics,
+            Some(IndexSet::from([EventKind::Ir]))
+        );
+    }
+
+    // Just test the very basics. The details are tested in `test_parse_callgrind_metrics`
+    #[rstest]
+    #[case::one("ir", indexset!{ CachegrindMetric::Ir })]
+    #[case::all("@all", CachegrindMetrics::All.into())]
+    fn test_parse_cachegrind_metrics(
+        #[case] input: &str,
+        #[case] expected: IndexSet<CachegrindMetric>,
+    ) {
+        assert_eq!(parse_cachegrind_metrics(input).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case::event_kind_does_not_exist("doesnotexist")]
+    #[case::group_does_not_exist("@doesnotexist")]
+    fn test_parse_cachegrind_metrics_then_error(#[case] input: &str) {
+        parse_cachegrind_metrics(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_cachegrind_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--cachegrind-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_cachegrind_metrics_when_env() {
+        std::env::set_var("IAI_CALLGRIND_CACHEGRIND_METRICS", "ir");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.cachegrind_metrics,
+            Some(IndexSet::from([CachegrindMetric::Ir]))
+        );
+    }
+
+    #[rstest]
+    #[case::one("totalbytes", indexset!{ DhatMetric::TotalBytes })]
+    #[case::all("@all", DhatMetrics::All.into())]
+    fn test_parse_dhat_metrics(#[case] input: &str, #[case] expected: IndexSet<DhatMetric>) {
+        assert_eq!(parse_dhat_metrics(input).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case::event_kind_does_not_exist("doesnotexist")]
+    #[case::group_does_not_exist("@doesnotexist")]
+    fn test_parse_dhat_metrics_then_error(#[case] input: &str) {
+        parse_dhat_metrics(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_dhat_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--dhat-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_dhat_metrics_when_env() {
+        std::env::set_var("IAI_CALLGRIND_DHAT_METRICS", "totalbytes");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.dhat_metrics,
+            Some(IndexSet::from([DhatMetric::TotalBytes]))
+        );
+    }
+
+    #[rstest]
+    #[case::one("errors", indexset!{ ErrorMetric::Errors })]
+    #[case::all("@all", indexset! {
+        ErrorMetric::Errors,
+        ErrorMetric::Contexts,
+        ErrorMetric::SuppressedErrors,
+        ErrorMetric::SuppressedContexts
+    })]
+    fn test_parse_drd_metrics(#[case] input: &str, #[case] expected: IndexSet<ErrorMetric>) {
+        assert_eq!(parse_drd_metrics(input).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case::event_kind_does_not_exist("doesnotexist")]
+    #[case::group_does_not_exist("@doesnotexist")]
+    fn test_parse_drd_metrics_then_error(#[case] input: &str) {
+        parse_drd_metrics(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_drd_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--drd-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_drd_metrics_when_env() {
+        std::env::set_var("IAI_CALLGRIND_DRD_METRICS", "errors");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.drd_metrics,
+            Some(IndexSet::from([ErrorMetric::Errors]))
+        );
+    }
+
+    #[rstest]
+    #[case::one("errors", indexset!{ ErrorMetric::Errors })]
+    #[case::all("@all", indexset! {
+        ErrorMetric::Errors,
+        ErrorMetric::Contexts,
+        ErrorMetric::SuppressedErrors,
+        ErrorMetric::SuppressedContexts
+    })]
+    fn test_parse_memcheck_metrics(#[case] input: &str, #[case] expected: IndexSet<ErrorMetric>) {
+        assert_eq!(parse_memcheck_metrics(input).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case::event_kind_does_not_exist("doesnotexist")]
+    #[case::group_does_not_exist("@doesnotexist")]
+    fn test_parse_memcheck_metrics_then_error(#[case] input: &str) {
+        parse_memcheck_metrics(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_memcheck_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--memcheck-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_memcheck_metrics_when_env() {
+        std::env::set_var("IAI_CALLGRIND_MEMCHECK_METRICS", "errors");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.memcheck_metrics,
+            Some(IndexSet::from([ErrorMetric::Errors]))
+        );
+    }
+
+    #[rstest]
+    #[case::one("errors", indexset!{ ErrorMetric::Errors })]
+    #[case::all("@all", indexset! {
+        ErrorMetric::Errors,
+        ErrorMetric::Contexts,
+        ErrorMetric::SuppressedErrors,
+        ErrorMetric::SuppressedContexts
+    })]
+    fn test_parse_helgrind_metrics(#[case] input: &str, #[case] expected: IndexSet<ErrorMetric>) {
+        assert_eq!(parse_helgrind_metrics(input).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case::event_kind_does_not_exist("doesnotexist")]
+    #[case::group_does_not_exist("@doesnotexist")]
+    fn test_parse_helgrind_metrics_then_error(#[case] input: &str) {
+        parse_helgrind_metrics(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_helgrind_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--helgrind-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_helgrind_metrics_when_env() {
+        std::env::set_var("IAI_CALLGRIND_HELGRIND_METRICS", "errors");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.helgrind_metrics,
+            Some(IndexSet::from([ErrorMetric::Errors]))
+        );
+    }
+
+    #[rstest]
+    #[case::default("--tolerance", f64::from_bits(0.000_01f64.to_bits() - 1))]
+    #[case::some_value("--tolerance=1.0", 1.0)]
+    fn test_arg_tolerance(#[case] input: &str, #[case] expected: f64) {
+        let result = CommandLineArgs::try_parse_from([input]).unwrap();
+        assert_eq!(result.tolerance, Some(expected));
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_tolerance_when_env() {
+        std::env::set_var("IAI_CALLGRIND_TOLERANCE", "2.0");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(result.tolerance, Some(2.0));
     }
 }
