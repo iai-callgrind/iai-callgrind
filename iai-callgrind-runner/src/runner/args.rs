@@ -155,6 +155,24 @@ pub struct CommandLineArgs {
     #[arg(name = "BENCHNAME", num_args = 0..=1, env = "IAI_CALLGRIND_FILTER")]
     pub filter: Option<BenchmarkFilter>,
 
+    /// Print a list of all benchmarks. With this argument no benchmarks are executed.
+    ///
+    /// The output format is intended to be the same as the output format of the libtest harness.
+    /// However, future changes of the output format by cargo might not be incorporated into
+    /// iai-callgrind. As a consequence, it is not considered safe to rely on the output in
+    /// scripts.
+    #[arg(
+        long = "list",
+        default_missing_value = "true",
+        default_value = "false",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = BoolishValueParser::new(),
+        action = ArgAction::Set,
+        env = "IAI_CALLGRIND_LIST"
+    )]
+    pub list: bool,
+
     /// The default tool used to run the benchmarks
     ///
     /// The standard tool to run the benchmarks is callgrind but can be overridden with this
@@ -728,6 +746,35 @@ pub struct CommandLineArgs {
     )]
     pub load_baseline: Option<BaselineName>,
 
+    /// Allow ASLR (Address Space Layout Randomization)
+    ///
+    /// If possible, ASLR is disabled on platforms that support it (linux, freebsd) because ASLR
+    /// could noise up the callgrind cache simulation results a bit. Setting this option to true
+    /// runs all benchmarks with ASLR enabled.
+    ///
+    /// See also <https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space>
+    #[arg(
+        long = "allow-aslr",
+        default_missing_value = "true",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = BoolishValueParser::new(),
+        env = "IAI_CALLGRIND_ALLOW_ASLR",
+    )]
+    pub allow_aslr: Option<bool>,
+
+    /// Save a machine-readable summary of each benchmark run in json format next to the usual
+    /// benchmark output
+    #[arg(
+        long = "save-summary",
+        value_enum,
+        num_args = 0..=1,
+        require_equals = true,
+        default_missing_value = "json",
+        env = "IAI_CALLGRIND_SAVE_SUMMARY"
+    )]
+    pub save_summary: Option<SummaryFormat>,
+
     /// The terminal output format in default human-readable format or in machine-readable json
     /// format
     ///
@@ -813,24 +860,6 @@ pub struct CommandLineArgs {
         env = "IAI_CALLGRIND_NOCAPTURE"
     )]
     pub nocapture: NoCapture,
-
-    /// Print a list of all benchmarks. With this argument no benchmarks are executed.
-    ///
-    /// The output format is intended to be the same as the output format of the libtest harness.
-    /// However, future changes of the output format by cargo might not be incorporated into
-    /// iai-callgrind. As a consequence, it is not considered safe to rely on the output in
-    /// scripts.
-    #[arg(
-        long = "list",
-        default_missing_value = "true",
-        default_value = "false",
-        num_args = 0..=1,
-        require_equals = true,
-        value_parser = BoolishValueParser::new(),
-        action = ArgAction::Set,
-        env = "IAI_CALLGRIND_LIST"
-    )]
-    pub list: bool,
 
     /// Suppress the summary showing regressions and execution time at the end of a benchmark run
     ///
