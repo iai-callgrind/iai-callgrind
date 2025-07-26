@@ -141,6 +141,8 @@ impl ToolCommand {
         let mut tool_args = config.args;
         tool_args.set_output_arg(output_path, Option::<&str>::None);
         tool_args.set_log_arg(output_path, Option::<&str>::None);
+        tool_args.set_xtree_arg(output_path);
+        tool_args.set_xleak_arg(output_path);
 
         let executable = resolve_binary_path(executable)?;
         let args = tool_args.to_vec();

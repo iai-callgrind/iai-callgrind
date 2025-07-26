@@ -2376,6 +2376,16 @@ impl ValgrindTool {
             Self::Callgrind | Self::DHAT | Self::BBV | Self::Massif | Self::Cachegrind
         )
     }
+
+    /// Return true if this tool supports xtree memory files
+    pub fn has_xtree_file(&self) -> bool {
+        matches!(self, Self::Memcheck | Self::Massif | Self::Helgrind)
+    }
+
+    /// Return true if this tool supports xleak files
+    pub fn has_xleak_file(&self) -> bool {
+        *self == Self::Memcheck
+    }
 }
 
 impl Display for ValgrindTool {

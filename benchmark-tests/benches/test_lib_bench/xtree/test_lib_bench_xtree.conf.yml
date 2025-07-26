@@ -1,0 +1,37 @@
+groups:
+  # Do not run on nightly due to memcheck reporting possibly lost bytes. Might
+  # be this related to https://github.com/rust-lang/rust/issues/135608
+  - rust_version: "!=nightly"
+    runs:
+      - args: []
+        expected:
+          files: expected_files.1a.yml
+      - args: []
+        expected:
+          files: expected_files.1b.yml
+      - args: []
+        expected:
+          files: expected_files.1b.yml
+      - args: ["--save-baseline"]
+        expected:
+          files: expected_files.1c.yml
+      - args: []
+        expected:
+          files: expected_files.1c.yml
+  - rust_version: "!=nightly"
+    runs:
+      - args: ["--save-baseline"]
+        expected:
+          files: expected_files.2a.yml
+      - args: ["--save-baseline"]
+        expected:
+          files: expected_files.2a.yml
+      - args: ["--load-baseline", "--baseline"]
+        expected:
+          files: expected_files.2a.yml
+      - args: ["--save-baseline=other"]
+        expected:
+          files: expected_files.2d.yml
+      - args: ["--save-baseline=other"]
+        expected:
+          files: expected_files.2d.yml

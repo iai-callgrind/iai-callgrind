@@ -2,9 +2,15 @@ pub mod assert;
 pub mod common;
 pub mod serde;
 
+use std::cell::RefCell;
 use std::ffi::OsStr;
 use std::io;
 use std::process::Output;
+use std::rc::Rc;
+
+struct Left(Option<Rc<Right>>);
+#[allow(dead_code)]
+struct Right(Option<Rc<RefCell<Left>>>);
 
 pub fn is_prime(num: u64) -> bool {
     if num <= 1 {
@@ -170,4 +176,12 @@ where
     U: IntoIterator<Item = I>,
 {
     std::process::Command::new(exe).args(args).output()
+}
+
+pub fn leak_memory(num: usize) {
+    for _ in 0..num {
+        let left = Rc::new(RefCell::new(Left(None)));
+        let right = Rc::new(Right(Some(Rc::clone(&left))));
+        left.borrow_mut().0 = Some(Rc::clone(&right));
+    }
 }

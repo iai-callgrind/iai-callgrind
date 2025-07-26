@@ -280,6 +280,7 @@ writebackbehaviour
 writesbytes
 xchg
 xchgq
+xleak
 xtleak
 xtree
 yesno

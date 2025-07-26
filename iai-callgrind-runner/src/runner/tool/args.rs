@@ -83,6 +83,10 @@ pub struct ToolArgs {
     pub trace_children: bool,
     /// If --verbose is set to true of false
     pub verbose: bool,
+    /// The xtree paths argument --xtree-leak-file
+    pub xleak_path: Option<OsString>,
+    /// The xtree paths argument --xtree-memory-file
+    pub xtree_path: Option<OsString>,
 }
 
 impl Display for FairSched {
@@ -118,6 +122,8 @@ impl ToolArgs {
             tool,
             output_paths: Vec::default(),
             log_path: Option::default(),
+            xtree_path: Option::default(),
+            xleak_path: Option::default(),
             error_exitcode: match tool {
                 ValgrindTool::Memcheck | ValgrindTool::Helgrind | ValgrindTool::DRD => {
                     defaults::ERROR_EXIT_CODE_ERROR_TOOL.to_owned()
@@ -166,7 +172,6 @@ impl ToolArgs {
         Ok(tool_args)
     }
 
-    // TODO: memcheck: --xtree-leak-file=<filename> [default: xtleak.kcg.%p]
     /// Set the output file argument depending on the tool of this `ToolArgs`
     pub fn set_output_arg<T>(&mut self, output_path: &ToolOutputPath, modifier: Option<T>)
     where
@@ -273,6 +278,40 @@ impl ToolArgs {
         self.log_path = Some(arg);
     }
 
+    /// Set the xtree-memory-file argument for tools which support it
+    pub fn set_xtree_arg(&mut self, output_path: &ToolOutputPath) {
+        let xtree_output = if self.trace_children {
+            output_path
+                .to_xtree_output()
+                .map(|p| p.with_modifiers(["#%p"]))
+        } else {
+            output_path.to_xtree_output()
+        };
+
+        if let Some(output) = xtree_output {
+            let mut arg = OsString::from("--xtree-memory-file=");
+            arg.push(output.to_path());
+            self.xtree_path = Some(arg);
+        }
+    }
+
+    /// Set the xtree-leak-file argument for tools which support it
+    pub fn set_xleak_arg(&mut self, output_path: &ToolOutputPath) {
+        let xleak_output = if self.trace_children {
+            output_path
+                .to_xleak_output()
+                .map(|p| p.with_modifiers(["#%p"]))
+        } else {
+            output_path.to_xleak_output()
+        };
+
+        if let Some(output) = xleak_output {
+            let mut arg = OsString::from("--xtree-leak-file=");
+            arg.push(output.to_path());
+            self.xleak_path = Some(arg);
+        }
+    }
+
     /// Convert into a vector of arguments usable as input for [`std::process::Command::args`]
     pub fn to_vec(&self) -> Vec<OsString> {
         let mut vec: Vec<OsString> = vec![];
@@ -289,6 +328,12 @@ impl ToolArgs {
         vec.extend_from_slice(&self.output_paths);
         if let Some(log_arg) = self.log_path.as_ref() {
             vec.push(log_arg.clone());
+        }
+        if let Some(xtree_arg) = self.xtree_path.as_ref() {
+            vec.push(xtree_arg.clone());
+        }
+        if let Some(xleak_arg) = self.xleak_path.as_ref() {
+            vec.push(xleak_arg.clone());
         }
 
         vec

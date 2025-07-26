@@ -156,6 +156,12 @@ impl Benchmark for BaselineBenchmark {
             if path.kind == ToolOutputPathKind::Out {
                 path.to_log_output().shift()?;
             }
+            if let Some(path) = path.to_xtree_output() {
+                path.shift()?;
+            }
+            if let Some(path) = path.to_xleak_output() {
+                path.shift()?;
+            }
         }
 
         let benchmark_summary = lib_bench.create_benchmark_summary(
@@ -448,7 +454,7 @@ impl LibBench {
 impl Benchmark for LoadBaselineBenchmark {
     fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath {
         let kind = if lib_bench.default_tool.has_output_file() {
-            ToolOutputPathKind::Base(self.loaded_baseline.to_string())
+            ToolOutputPathKind::BaseOut(self.loaded_baseline.to_string())
         } else {
             ToolOutputPathKind::BaseLog(self.loaded_baseline.to_string())
         };
@@ -577,7 +583,7 @@ impl Runner {
 impl Benchmark for SaveBaselineBenchmark {
     fn output_path(&self, lib_bench: &LibBench, config: &Config, group: &Group) -> ToolOutputPath {
         let kind = if lib_bench.default_tool.has_output_file() {
-            ToolOutputPathKind::Base(self.baseline.to_string())
+            ToolOutputPathKind::BaseOut(self.baseline.to_string())
         } else {
             ToolOutputPathKind::BaseLog(self.baseline.to_string())
         };
