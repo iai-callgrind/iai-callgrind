@@ -25,6 +25,14 @@ groups:
           ]
         expected:
           stdout: expected_stdout.cli-metrics
+  - runs_on: "!x86_64-unknown-freebsd"
+    runs:
+      - args: ["--tolerance=50.0", "--nocapture"]
+        expected:
+          stdout: expected_stdout.cli-tolerance.1
+      - args: ["--tolerance=50.0", "--nocapture"]
+        expected:
+          stdout: expected_stdout.cli-tolerance.2
   - runs_on: "x86_64-unknown-freebsd"
     runs:
       - args: []
