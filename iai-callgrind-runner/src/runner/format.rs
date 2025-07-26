@@ -481,6 +481,28 @@ impl OutputFormat {
             }
         }
     }
+
+    /// Update the output format with data from command-line arguments in [`Metadata`]
+    pub fn update_from_meta(&mut self, meta: &Metadata) {
+        if let Some(metrics) = &meta.args.cachegrind_metrics {
+            self.cachegrind.clone_from(metrics);
+        }
+        if let Some(metrics) = &meta.args.callgrind_metrics {
+            self.callgrind.clone_from(metrics);
+        }
+        if let Some(metrics) = &meta.args.dhat_metrics {
+            self.dhat.clone_from(metrics);
+        }
+        if let Some(metrics) = &meta.args.drd_metrics {
+            self.drd.clone_from(metrics);
+        }
+        if let Some(metrics) = &meta.args.helgrind_metrics {
+            self.helgrind.clone_from(metrics);
+        }
+        if let Some(metrics) = &meta.args.memcheck_metrics {
+            self.memcheck.clone_from(metrics);
+        }
+    }
 }
 
 impl Default for OutputFormat {

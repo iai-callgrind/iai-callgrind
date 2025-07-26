@@ -9,7 +9,8 @@ use std::str::FromStr;
 
 use clap::builder::BoolishValueParser;
 use clap::{ArgAction, Parser};
-use indexmap::{IndexMap, IndexSet};
+use indexmap::{indexset, IndexMap, IndexSet};
+use strum::IntoEnumIterator;
 
 use super::cachegrind::regression::CachegrindRegressionConfig;
 use super::callgrind::regression::CallgrindRegressionConfig;
@@ -19,8 +20,8 @@ use super::metrics::{Metric, TypeChecker};
 use super::summary::{BaselineName, SummaryFormat};
 use super::tool::regression::ToolRegressionConfig;
 use crate::api::{
-    CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics, EventKind,
-    RawArgs, ValgrindTool,
+    CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics, ErrorMetric,
+    EventKind, RawArgs, ValgrindTool,
 };
 
 // Utility for complex types intended to be used during the parsing of the command-line arguments
@@ -52,13 +53,18 @@ pub enum NoCapture {
     Stdout,
 }
 
-#[allow(clippy::arbitrary_source_item_ordering)]
+// TODO: Sort with display order and then remove `clippy::arbitrary_source_item_ordering` from
+// allow
 /// The command line arguments the user provided after `--` when running cargo bench
 ///
 /// These arguments are not the command line arguments passed to `iai-callgrind-runner`. We collect
 /// the command line arguments in the `iai-callgrind::main!` macro without the binary as first
 /// argument, that's why `no_binary_name` is set to `true`.
-#[allow(clippy::partial_pub_fields, clippy::struct_excessive_bools)]
+#[allow(
+    clippy::partial_pub_fields,
+    clippy::struct_excessive_bools,
+    clippy::arbitrary_source_item_ordering
+)]
 #[derive(Parser, Debug, Clone)]
 #[command(
     author,
@@ -351,35 +357,6 @@ pub struct CommandLineArgs {
     )]
     pub bbv_args: Option<RawArgs>,
 
-    /// Save a machine-readable summary of each benchmark run in json format next to the usual
-    /// benchmark output
-    #[arg(
-        long = "save-summary",
-        value_enum,
-        num_args = 0..=1,
-        require_equals = true,
-        default_missing_value = "json",
-        env = "IAI_CALLGRIND_SAVE_SUMMARY"
-    )]
-    pub save_summary: Option<SummaryFormat>,
-
-    /// Allow ASLR (Address Space Layout Randomization)
-    ///
-    /// If possible, ASLR is disabled on platforms that support it (linux, freebsd) because ASLR
-    /// could noise up the callgrind cache simulation results a bit. Setting this option to true
-    /// runs all benchmarks with ASLR enabled.
-    ///
-    /// See also <https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space>
-    #[arg(
-        long = "allow-aslr",
-        default_missing_value = "true",
-        num_args = 0..=1,
-        require_equals = true,
-        value_parser = BoolishValueParser::new(),
-        env = "IAI_CALLGRIND_ALLOW_ASLR",
-    )]
-    pub allow_aslr: Option<bool>,
-
     #[rustfmt::skip]
     #[allow(clippy::doc_markdown)]
     /// Set performance regression limits for specific `EventKinds`
@@ -521,6 +498,202 @@ pub struct CommandLineArgs {
         env = "IAI_CALLGRIND_REGRESSION_FAIL_FAST",
     )]
     pub regression_fail_fast: Option<bool>,
+
+    /// Define the cachegrind metrics and the order in which they are displayed
+    ///
+    /// This is a `,`-separated list of cachegrind metric groups and event kinds which are allowed
+    /// to appear in the terminal output of cachegrind.
+    ///
+    /// See `--callgrind-limits` for more details and
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetrics.html>
+    /// respectively
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetric.html> for valid
+    /// metrics and group members.
+    ///
+    /// The `group` names, their abbreviations if present and `event` kinds are exactly the same as
+    /// described in the `--cachegrind-limits` option.
+    ///
+    /// Examples:
+    /// * --cachegrind-metrics='ir' to show only `Instructions`
+    /// * --cachegrind-metrics='@all' to show all possible cachegrind metrics
+    /// * --cachegrind-metrics='@default,@mr' to show cache miss rates in addition to the defaults
+    #[arg(
+        long = "cachegrind-metrics",
+        num_args = 1..,
+        required = false,
+        verbatim_doc_comment,
+        value_parser = parse_cachegrind_metrics,
+        env = "IAI_CALLGRIND_CACHEGRIND_METRICS",
+    )]
+    pub cachegrind_metrics: Option<IndexSet<CachegrindMetric>>,
+
+    /// Define the callgrind metrics and the order in which they are displayed
+    ///
+    /// This is a `,`-separated list of callgrind metric groups and event kinds which are allowed
+    /// to appear in the terminal output of callgrind. Group names need to be prefixed with '@'.
+    /// The order matters and the callgrind metrics are shown in their insertion order of this
+    /// option. More precisely, in case of duplicate metrics, the first inserted one wins.
+    ///
+    /// The `group` names, their abbreviations if present and `event` kinds are exactly the same as
+    /// described in the `--callgrind-limits` option.
+    ///
+    /// For a list of valid metrics, groups and their members see the docs of `CallgrindMetrics`
+    /// (<https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CallgrindMetrics.html>) and
+    /// `EventKind` <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.EventKind.html>.
+    ///
+    /// Note that setting the metrics here does not imply that these metrics are actually
+    /// collected. This option just sets the order and appearance of metrics in case they are
+    /// collected. To activate the collection of specific metrics you need to use
+    /// `--callgrind-args`.
+    ///
+    /// Examples:
+    /// * --callgrind-metrics='ir' to show only `Instructions`
+    /// * --callgrind-metrics='@all' to show all possible callgrind metrics
+    /// * --callgrind-metrics='@default,@mr' to show cache miss rates in addition to the defaults
+    #[arg(
+        long = "callgrind-metrics",
+        num_args = 1..,
+        required = false,
+        verbatim_doc_comment,
+        value_parser = parse_callgrind_metrics,
+        env = "IAI_CALLGRIND_CALLGRIND_METRICS",
+    )]
+    pub callgrind_metrics: Option<IndexSet<EventKind>>,
+
+    /// Define the dhat metrics and the order in which they are displayed
+    ///
+    /// This is a `,`-separated list of dhat metric groups and event kinds which are allowed to
+    /// appear in the terminal output of dhat.
+    ///
+    /// See `--callgrind-metrics` for more details and
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.DhatMetrics.html> respectively
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.DhatMetric.html> for valid metrics
+    /// and group members.
+    ///
+    /// The `group` names, their abbreviations if present and `event` kinds are exactly the same as
+    /// described in the `--dhat-limits` option.
+    ///
+    /// Examples:
+    /// * --dhat-metrics='totalbytes' to show only `Total Bytes`
+    /// * --dhat-metrics='@all' to show all possible dhat metrics
+    /// * --dhat-metrics='@default,mb' to show maximum bytes in addition to the defaults
+    #[arg(
+        long = "dhat-metrics",
+        num_args = 1..,
+        required = false,
+        verbatim_doc_comment,
+        value_parser = parse_dhat_metrics,
+        env = "IAI_CALLGRIND_DHAT_METRICS",
+    )]
+    pub dhat_metrics: Option<IndexSet<DhatMetric>>,
+
+    /// Define the memcheck error metrics and the order in which they are displayed
+    ///
+    /// This is a `,`-separated list of error metrics which are allowed to appear in the terminal
+    /// output of memcheck.
+    ///
+    /// Since this is a very small set of metrics, there is only one `group`: `@all`
+    ///
+    /// group ::= "@all"
+    /// event ::=   ( "errors" | "err" )
+    ///           | ( "contexts" | "ctx" )
+    ///           | ( "suppressederrors" | "serr")
+    ///           | ( "suppressedcontexts" | "sctx" )
+    ///
+    /// See `--callgrind-metrics` for more details and
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.ErrorMetric.html> for valid
+    /// metrics.
+    ///
+    /// Examples:
+    /// * --memcheck-metrics='errors' to show only `Errors`
+    /// * --memcheck-metrics='@all' to show all possible error metrics (the default)
+    /// * --memcheck-metrics='err,ctx' to show only errors and contexts
+    #[arg(
+        long = "memcheck-metrics",
+        num_args = 1..,
+        required = false,
+        verbatim_doc_comment,
+        value_parser = parse_memcheck_metrics,
+        env = "IAI_CALLGRIND_MEMCHECK_METRICS",
+    )]
+    pub memcheck_metrics: Option<IndexSet<ErrorMetric>>,
+
+    /// Define the drd error metrics and the order in which they are displayed
+    ///
+    /// This is a `,`-separated list of error metrics which are allowed to appear in the terminal
+    /// output of drd. The `group` and `event` are the same as for `--memcheck-metrics`.
+    ///
+    /// See `--callgrind-metrics` for more details and
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.ErrorMetric.html> for valid
+    /// error metrics.
+    ///
+    /// Since this is a very small set of metrics, there is only one `group`: `@all`
+    ///
+    /// Examples:
+    /// * --drd-metrics='errors' to show only `Errors`
+    /// * --drd-metrics='@all' to show all possible error metrics (the default)
+    /// * --drd-metrics='err,ctx' to show only errors and contexts
+    #[arg(
+        long = "drd-metrics",
+        num_args = 1..,
+        required = false,
+        verbatim_doc_comment,
+        value_parser = parse_drd_metrics,
+        env = "IAI_CALLGRIND_DRD_METRICS",
+    )]
+    pub drd_metrics: Option<IndexSet<ErrorMetric>>,
+
+    /// Define the helgrind error metrics and the order in which they are displayed
+    ///
+    /// This is a `,`-separated list of error metrics which are allowed to appear in the terminal
+    /// output of helgrind. The `group` and `event` are the same as for `--memcheck-metrics`.
+    ///
+    /// See `--callgrind-metrics` for more details and
+    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.ErrorMetric.html> for valid
+    /// error metrics.
+    ///
+    /// Examples:
+    /// * --helgrind-metrics='errors' to show only `Errors`
+    /// * --helgrind-metrics='@all' to show all possible error metrics (the default)
+    /// * --helgrind-metrics='err,ctx' to show only errors and contexts
+    #[arg(
+        long = "helgrind-metrics",
+        num_args = 1..,
+        required = false,
+        verbatim_doc_comment,
+        value_parser = parse_helgrind_metrics,
+        env = "IAI_CALLGRIND_HELGRIND_METRICS",
+    )]
+    pub helgrind_metrics: Option<IndexSet<ErrorMetric>>,
+
+    /// Save a machine-readable summary of each benchmark run in json format next to the usual
+    /// benchmark output
+    #[arg(
+        long = "save-summary",
+        value_enum,
+        num_args = 0..=1,
+        require_equals = true,
+        default_missing_value = "json",
+        env = "IAI_CALLGRIND_SAVE_SUMMARY"
+    )]
+    pub save_summary: Option<SummaryFormat>,
+
+    /// Allow ASLR (Address Space Layout Randomization)
+    ///
+    /// If possible, ASLR is disabled on platforms that support it (linux, freebsd) because ASLR
+    /// could noise up the callgrind cache simulation results a bit. Setting this option to true
+    /// runs all benchmarks with ASLR enabled.
+    ///
+    /// See also <https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space>
+    #[arg(
+        long = "allow-aslr",
+        default_missing_value = "true",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = BoolishValueParser::new(),
+        env = "IAI_CALLGRIND_ALLOW_ASLR",
+    )]
+    pub allow_aslr: Option<bool>,
 
     /// Compare against this baseline if present and then overwrite it
     #[arg(
@@ -760,6 +933,15 @@ fn parse_cachegrind_limits(value: &str) -> Result<ToolRegressionConfig, String> 
     Ok(config)
 }
 
+/// Parse the cachegrind metrics
+fn parse_cachegrind_metrics(value: &str) -> Result<IndexSet<CachegrindMetric>, String> {
+    parse_tool_metrics(value, |item| {
+        item.parse::<CachegrindMetrics>()
+            .map(IndexSet::from)
+            .map_err(|error| error.to_string())
+    })
+}
+
 /// Parse the callgrind limits from the command-line
 ///
 /// This method (and the other `parse_dhat_limits`, ...) parses soft and hard limits in one go. The
@@ -787,6 +969,15 @@ fn parse_callgrind_limits(value: &str) -> Result<ToolRegressionConfig, String> {
     Ok(config)
 }
 
+/// Parse the callgrind metrics
+fn parse_callgrind_metrics(value: &str) -> Result<IndexSet<EventKind>, String> {
+    parse_tool_metrics(value, |item| {
+        item.parse::<CallgrindMetrics>()
+            .map(IndexSet::from)
+            .map_err(|error| error.to_string())
+    })
+}
+
 /// Same as `parse_callgrind_limits` but for dhat
 fn parse_dhat_limits(value: &str) -> Result<ToolRegressionConfig, String> {
     let (soft_limits, hard_limits) = parse_limits(value, |key, metric| {
@@ -806,6 +997,43 @@ fn parse_dhat_limits(value: &str) -> Result<ToolRegressionConfig, String> {
     });
 
     Ok(config)
+}
+
+/// Parse the DHAT metrics
+fn parse_dhat_metrics(value: &str) -> Result<IndexSet<DhatMetric>, String> {
+    parse_tool_metrics(value, |item| {
+        item.parse::<DhatMetrics>()
+            .map(IndexSet::from)
+            .map_err(|error| error.to_string())
+    })
+}
+
+/// Parse the DRD metrics as error metrics
+fn parse_drd_metrics(value: &str) -> Result<IndexSet<ErrorMetric>, String> {
+    parse_tool_metrics(value, parse_error_metrics)
+}
+
+fn parse_error_metrics(item: &str) -> Result<IndexSet<ErrorMetric>, String> {
+    if let Some(prefix) = item.strip_prefix('@') {
+        if prefix == "all" {
+            Ok(ErrorMetric::iter().fold(IndexSet::new(), |mut acc, elem| {
+                acc.insert(elem);
+                acc
+            }))
+        } else {
+            Err(format!("Invalid error metric group: '{item}"))
+        }
+    } else {
+        let metric = item
+            .parse::<ErrorMetric>()
+            .map_err(|error| error.to_string())?;
+        Ok(indexset! { metric })
+    }
+}
+
+/// Parse the helgrind metrics as error metrics
+fn parse_helgrind_metrics(value: &str) -> Result<IndexSet<ErrorMetric>, String> {
+    parse_tool_metrics(value, parse_error_metrics)
 }
 
 fn parse_limits<T: Eq + Hash>(
@@ -858,6 +1086,12 @@ fn parse_limits<T: Eq + Hash>(
     Ok((soft_limits, hard_limits))
 }
 
+/// Parse the memcheck metrics as error metrics
+fn parse_memcheck_metrics(value: &str) -> Result<IndexSet<ErrorMetric>, String> {
+    parse_tool_metrics(value, parse_error_metrics)
+}
+
+/// Parse --nocapture
 fn parse_nocapture(value: &str) -> Result<NoCapture, String> {
     // Taken from clap source code
     const TRUE_LITERALS: [&str; 6] = ["y", "yes", "t", "true", "on", "1"];
@@ -876,6 +1110,27 @@ fn parse_nocapture(value: &str) -> Result<NoCapture, String> {
     } else {
         Err(format!("Invalid value: {value}"))
     }
+}
+
+/// Utility function to parse the --callgrind-metrics, ...
+fn parse_tool_metrics<T: Eq + Hash>(
+    value: &str,
+    parse_metrics: fn(&str) -> Result<IndexSet<T>, String>,
+) -> Result<IndexSet<T>, String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err("No metric found: At least one metric must be present".to_owned());
+    }
+
+    let mut format = IndexSet::new();
+
+    for item in value.split(',') {
+        let item = item.trim();
+        let metrics = parse_metrics(item)?;
+        format.extend(metrics);
+    }
+
+    Ok(format)
 }
 
 #[cfg(test)]
@@ -1193,5 +1448,213 @@ mod tests {
         };
 
         result.unwrap();
+    }
+
+    #[rstest]
+    #[case::one("ir", indexset!{ Ir })]
+    #[case::one_with_spaces("  ir ", indexset!{ Ir })]
+    #[case::two("ir,i1mr", indexset!{ Ir, I1mr })]
+    #[case::two_with_spaces("ir,   i1mr", indexset!{ Ir, I1mr })]
+    #[case::group("@writebackbehaviour", indexset!{ ILdmr, DLdmr, DLdmw })]
+    #[case::group_abbreviation("@wb", indexset!{ ILdmr, DLdmr, DLdmw })]
+    #[case::group_and_single_then_no_change("@wb,ildmr", indexset!{ ILdmr, DLdmr, DLdmw })]
+    #[case::single_and_group_then_overwrite("dldmw,@wb", indexset!{ DLdmw, ILdmr, DLdmr })]
+    #[case::all("@all", CallgrindMetrics::All.into())]
+    fn test_parse_callgrind_metrics(#[case] input: &str, #[case] expected: IndexSet<EventKind>) {
+        assert_eq!(parse_callgrind_metrics(input).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case::empty("")]
+    #[case::event_kind_does_not_exist("doesnotexist")]
+    #[case::group_does_not_exist("@doesnotexist")]
+    #[case::wrong_delimiter("ir;dr")]
+    fn test_parse_callgrind_metrics_then_error(#[case] input: &str) {
+        parse_callgrind_metrics(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_callgrind_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--callgrind-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_callgrind_metrics_when_env() {
+        std::env::set_var("IAI_CALLGRIND_CALLGRIND_METRICS", "ir");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.callgrind_metrics,
+            Some(IndexSet::from([EventKind::Ir]))
+        );
+    }
+
+    // Just test the very basics. The details are tested in `test_parse_callgrind_metrics`
+    #[rstest]
+    #[case::one("ir", indexset!{ CachegrindMetric::Ir })]
+    #[case::all("@all", CachegrindMetrics::All.into())]
+    fn test_parse_cachegrind_metrics(
+        #[case] input: &str,
+        #[case] expected: IndexSet<CachegrindMetric>,
+    ) {
+        assert_eq!(parse_cachegrind_metrics(input).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case::event_kind_does_not_exist("doesnotexist")]
+    #[case::group_does_not_exist("@doesnotexist")]
+    fn test_parse_cachegrind_metrics_then_error(#[case] input: &str) {
+        parse_cachegrind_metrics(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_cachegrind_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--cachegrind-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_cachegrind_metrics_when_env() {
+        std::env::set_var("IAI_CALLGRIND_CACHEGRIND_METRICS", "ir");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.cachegrind_metrics,
+            Some(IndexSet::from([CachegrindMetric::Ir]))
+        );
+    }
+
+    #[rstest]
+    #[case::one("totalbytes", indexset!{ DhatMetric::TotalBytes })]
+    #[case::all("@all", DhatMetrics::All.into())]
+    fn test_parse_dhat_metrics(#[case] input: &str, #[case] expected: IndexSet<DhatMetric>) {
+        assert_eq!(parse_dhat_metrics(input).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case::event_kind_does_not_exist("doesnotexist")]
+    #[case::group_does_not_exist("@doesnotexist")]
+    fn test_parse_dhat_metrics_then_error(#[case] input: &str) {
+        parse_dhat_metrics(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_dhat_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--dhat-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_dhat_metrics_when_env() {
+        std::env::set_var("IAI_CALLGRIND_DHAT_METRICS", "totalbytes");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.dhat_metrics,
+            Some(IndexSet::from([DhatMetric::TotalBytes]))
+        );
+    }
+
+    #[rstest]
+    #[case::one("errors", indexset!{ ErrorMetric::Errors })]
+    #[case::all("@all", indexset! {
+        ErrorMetric::Errors,
+        ErrorMetric::Contexts,
+        ErrorMetric::SuppressedErrors,
+        ErrorMetric::SuppressedContexts
+    })]
+    fn test_parse_drd_metrics(#[case] input: &str, #[case] expected: IndexSet<ErrorMetric>) {
+        assert_eq!(parse_drd_metrics(input).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case::event_kind_does_not_exist("doesnotexist")]
+    #[case::group_does_not_exist("@doesnotexist")]
+    fn test_parse_drd_metrics_then_error(#[case] input: &str) {
+        parse_drd_metrics(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_drd_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--drd-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_drd_metrics_when_env() {
+        std::env::set_var("IAI_CALLGRIND_DRD_METRICS", "errors");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.drd_metrics,
+            Some(IndexSet::from([ErrorMetric::Errors]))
+        );
+    }
+
+    #[rstest]
+    #[case::one("errors", indexset!{ ErrorMetric::Errors })]
+    #[case::all("@all", indexset! {
+        ErrorMetric::Errors,
+        ErrorMetric::Contexts,
+        ErrorMetric::SuppressedErrors,
+        ErrorMetric::SuppressedContexts
+    })]
+    fn test_parse_memcheck_metrics(#[case] input: &str, #[case] expected: IndexSet<ErrorMetric>) {
+        assert_eq!(parse_memcheck_metrics(input).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case::event_kind_does_not_exist("doesnotexist")]
+    #[case::group_does_not_exist("@doesnotexist")]
+    fn test_parse_memcheck_metrics_then_error(#[case] input: &str) {
+        parse_memcheck_metrics(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_memcheck_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--memcheck-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_memcheck_metrics_when_env() {
+        std::env::set_var("IAI_CALLGRIND_MEMCHECK_METRICS", "errors");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.memcheck_metrics,
+            Some(IndexSet::from([ErrorMetric::Errors]))
+        );
+    }
+
+    #[rstest]
+    #[case::one("errors", indexset!{ ErrorMetric::Errors })]
+    #[case::all("@all", indexset! {
+        ErrorMetric::Errors,
+        ErrorMetric::Contexts,
+        ErrorMetric::SuppressedErrors,
+        ErrorMetric::SuppressedContexts
+    })]
+    fn test_parse_helgrind_metrics(#[case] input: &str, #[case] expected: IndexSet<ErrorMetric>) {
+        assert_eq!(parse_helgrind_metrics(input).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case::event_kind_does_not_exist("doesnotexist")]
+    #[case::group_does_not_exist("@doesnotexist")]
+    fn test_parse_helgrind_metrics_then_error(#[case] input: &str) {
+        parse_helgrind_metrics(input).unwrap_err();
+    }
+
+    #[test]
+    fn test_arg_helgrind_metrics_when_empty_then_error() {
+        CommandLineArgs::try_parse_from(["--helgrind-metrics"]).unwrap_err();
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_helgrind_metrics_when_env() {
+        std::env::set_var("IAI_CALLGRIND_HELGRIND_METRICS", "errors");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(
+            result.helgrind_metrics,
+            Some(IndexSet::from([ErrorMetric::Errors]))
+        );
     }
 }
