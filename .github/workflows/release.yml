@@ -102,12 +102,34 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
           target: ${{ matrix.target }}
+      - name: Prepare
+        run: |
+          archive_dir="iai-callgrind-runner-${{ needs.release.outputs.version }}-${{ matrix.target }}"
+          archive_name="${archive_dir}.tar.gz"
+          archive_sum="${archive_name}.sha256"
+
+          echo "ARCHIVE_DIR=${archive_dir}" >> $GITHUB_ENV
+          echo "ARCHIVE_NAME=${archive_name}" >> $GITHUB_ENV
+          echo "ARCHIVE_SUM=${archive_sum}" >> $GITHUB_ENV
+      - name: Check
+        run: |
+          set -o pipefail
+
+          if gh release view ${{ needs.release.outputs.version }} --json assets | jq -e --arg name "${{ env.ARCHIVE_NAME }}" '.assets[] | select(.name == $name)'; then
+            echo "Check: archive '${{ env.ARCHIVE_NAME }}' already exists for this version '${{ needs.release.outputs.version }}'"
+            echo "CHECK=failure" >> $GITHUB_ENV
+          else
+            echo "CHECK=success" >> $GITHUB_ENV
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cleanup Cross.toml
+        if: env.CHECK == 'success'
         run: |
           [[ -e Cross.toml ]] && mv Cross.toml Cross.toml.old || true
       # https://developer.android.com/ndk/guides/other_build_systems
       - name: Use NDK and install cargo config
-        if: matrix.needs_ndk
+        if: env.CHECK == 'success' && matrix.needs_ndk
         run: |
           set -x
 
@@ -127,14 +149,18 @@ jobs:
           linker = "$linker"
           EOF
       - name: Update dependencies
+        if: env.CHECK == 'success'
         run: cargo update
       - name: Build iai-callgrind-runner
+        if: env.CHECK == 'success'
         run: ${{ matrix.cargo }} build -p iai-callgrind-runner --release --target ${{ matrix.target }}
       - name: Create archive
+        if: env.CHECK == 'success'
         run: |
-          archive_dir="iai-callgrind-runner-${{ needs.release.outputs.version }}-${{ matrix.target }}"
-          archive_name="${archive_dir}.tar.gz"
-          archive_sum="${archive_name}.sha256"
+          archive_dir="${{ env.ARCHIVE_DIR }}"
+          archive_name="${{ env.ARCHIVE_NAME }}"
+          archive_sum="${{ env.ARCHIVE_SUM }}"
+
           mkdir -p "${archive_dir}/doc"
           cp -v target/${{ matrix.target }}/release/iai-callgrind-runner "$archive_dir"
           cp -v README.md LICENSE-MIT LICENSE-APACHE "$archive_dir"
@@ -142,9 +168,8 @@ jobs:
           ls -laR "$archive_dir"
           tar czf "$archive_name" "$archive_dir"
           sha256sum "$archive_name" > "$archive_sum"
-          echo "ARCHIVE=${archive_name}" >> $GITHUB_ENV
-          echo "ARCHIVE_SUM=${archive_sum}" >> $GITHUB_ENV
       - name: Upload archive
-        run: gh release upload "${{ needs.release.outputs.version }}" "${{ env.ARCHIVE }}" "${{ env.ARCHIVE_SUM }}"
+        if: env.CHECK == 'success'
+        run: gh release upload "${{ needs.release.outputs.version }}" "${{ env.ARCHIVE_NAME }}" "${{ env.ARCHIVE_SUM }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
