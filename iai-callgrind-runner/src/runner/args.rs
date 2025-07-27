@@ -255,7 +255,7 @@ pub struct CommandLineArgs {
     /// This is a `,`-separated list of cachegrind metric groups and event kinds which are allowed
     /// to appear in the terminal output of cachegrind.
     ///
-    /// See `--callgrind-limits` for more details and
+    /// See `--callgrind-metrics` for more details and
     /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetrics.html>
     /// respectively
     /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CachegrindMetric.html> for valid
