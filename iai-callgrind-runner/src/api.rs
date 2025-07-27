@@ -661,6 +661,7 @@ pub enum EntryPoint {
 /// output.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[cfg_attr(feature = "runner", derive(EnumIter))]
 pub enum ErrorMetric {
     /// The amount of detected unsuppressed errors
     Errors,
@@ -1628,6 +1629,24 @@ impl Display for ErrorMetric {
             Self::SuppressedErrors => f.write_str("Suppressed Errors"),
             Self::SuppressedContexts => f.write_str("Suppressed Contexts"),
         }
+    }
+}
+
+#[cfg(feature = "runner")]
+impl FromStr for ErrorMetric {
+    type Err = anyhow::Error;
+
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let lower = string.to_lowercase();
+        let metric = match lower.as_str() {
+            "errors" | "err" => Self::Errors,
+            "contexts" | "ctx" => Self::Contexts,
+            "suppressederrors" | "serr" => Self::SuppressedErrors,
+            "suppressedcontexts" | "sctx" => Self::SuppressedContexts,
+            _ => return Err(anyhow!("Unknown error metric: '{string}'")),
+        };
+
+        Ok(metric)
     }
 }
 
