@@ -36,7 +36,7 @@ same file in the `main!` macro:
 ```rust
 # extern crate iai_callgrind;
 # use iai_callgrind::{library_benchmark, library_benchmark_group};
-use iai_callgrind::{main, LibraryBenchmarkConfig, OutputFormat, CallgrindMetrics, Callgrind};
+use iai_callgrind::{main, LibraryBenchmarkConfig, CallgrindMetrics, Callgrind};
 
 # #[library_benchmark] fn bench() {}
 # library_benchmark_group!(name = my_group; benchmarks = bench);
@@ -50,6 +50,9 @@ main!(
 );
 # }
 ```
+
+or by using the command-line argument `--callgrind-metrics=@all` or the
+environment variable `IAI_CALLGRIND_CALLGRIND_METRICS=@all`.
 
 The Iai-Callgrind output will then show all cache metrics:
 
@@ -85,7 +88,69 @@ you're interested in and in any order. The docs of
 possibilities for [`Callgrind`]. The output format of the other valgrind tools
 can be customized in the same way. More details can be found in the docs for the
 respective format (`Dhat::format`, `DhatMetric`, `Cachegrind::format`,
-`CachegrindMetric`, ...)
+`CachegrindMetric`, ...) and for their respective command-line arguments with
+`--help`.
+
+## Setting a tolerance margin for metric changes
+
+Not every benchmark is deterministic, for example when hash maps or sets are
+involved or even just by using `std::env::var` in the benchmarked code.
+Benchmarks which show variances in the output of the metrics can be configured
+to tolerate a specific margin in the benchmark output:
+
+```rust
+# extern crate iai_callgrind;
+use std::collections::HashMap;
+use std::hint::black_box;
+
+use iai_callgrind::{
+    library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig, OutputFormat,
+};
+
+fn make_hashmap(num: usize) -> HashMap<String, usize> {
+    (0..num).fold(HashMap::new(), |mut acc, e| {
+        acc.insert(format!("element: {e}"), e);
+        acc
+    })
+}
+
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .output_format(OutputFormat::default()
+            .tolerance(0.9)
+        )
+)]
+#[bench::tolerance(make_hashmap(100))]
+fn bench_hash_map(map: HashMap<String, usize>) -> Option<usize> {
+    black_box(
+        map.iter()
+            .find_map(|(key, value)| (key == "element: 12345").then_some(*value)),
+    )
+}
+
+library_benchmark_group!(name = my_group; benchmarks = bench_hash_map);
+# fn main() {
+main!(library_benchmark_groups = my_group);
+# }
+```
+
+or by using the command-line argument `--tolerance=0.9` (or
+`IAI_CALLGRIND_TOLERANCE=0.9`).
+
+The second or any following Iai-Callgrind run might then show something like
+that:
+
+<pre><code class="hljs"><span style="color:#0A0">lib_bench_tolerance::my_group::bench_hash_map</span> <span style="color:#0AA">tolerance</span><span style="color:#0AA">:</span><b><span style="color:#00A">make_hashmap(100)</span></b>
+<span style="color:#555">  </span>Instructions:                       <b>19787</b>|19623                (<span style="color:#555">Tolerance</span>)
+<span style="color:#555">  </span>L1 Hits:                            <b>26395</b>|26123                (<b><span style="color:#F55">+1.04123%</span></b>) [<b><span style="color:#F55">+1.01041x</span></b>]
+<span style="color:#555">  </span>LL Hits:                                <b>0</b>|0                    (<span style="color:#555">No change</span>)
+<span style="color:#555">  </span>RAM Hits:                              <b>22</b>|22                   (<span style="color:#555">No change</span>)
+<span style="color:#555">  </span>Total read+write:                   <b>26417</b>|26145                (<b><span style="color:#F55">+1.04035%</span></b>) [<b><span style="color:#F55">+1.01040x</span></b>]
+<span style="color:#555">  </span>Estimated Cycles:                   <b>27165</b>|26893                (<b><span style="color:#F55">+1.01142%</span></b>) [<b><span style="color:#F55">+1.01011x</span></b>]
+
+Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.15735s</code></pre>
+
+and `Instructions` displays `Tolerance` instead of a difference.
 
 [`Callgrind`]: https://docs.rs/iai-callgrind/0.16.0/iai_callgrind/struct.Callgrind.html
 [`Callgrind.format`]: https://docs.rs/iai-callgrind/0.16.0/iai_callgrind/struct.Callgrind.html#method.format

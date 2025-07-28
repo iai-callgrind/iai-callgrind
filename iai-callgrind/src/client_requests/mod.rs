@@ -101,6 +101,7 @@
 //! | `x86/windows+msvc`    | no  | TBD
 //! | `arm/linux`           | yes | -
 //! | `aarch64/linux`       | yes | -
+//! | `riscv64/linux`       | no  | TBD
 //! | `x86_64/windows+msvc` | no  | unsupported by valgrind
 //! | `s390x/linux`         | no  | unstable inline assembly
 //! | `mips32/linux`        | no  | unstable inline assembly

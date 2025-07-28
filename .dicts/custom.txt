@@ -208,6 +208,7 @@ redzone
 redzones
 reqs
 resizeinplace
+riscv
 rlib
 rlval
 rolq

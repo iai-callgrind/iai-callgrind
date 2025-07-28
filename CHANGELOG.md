@@ -1,5 +1,5 @@
 <!-- spell-checker:ignore serde dewert binstall jembishop kehl DaniPopes bytemuck hargut -->
-<!-- spell-checker:ignore ryanpeach hashbrown tgross35 gaetschwartz cfgs -->
+<!-- spell-checker:ignore ryanpeach hashbrown tgross35 gaetschwartz cfgs riscv nihohit -->
 <!--
 Added for new features.
 Changed for changes in existing functionality.
@@ -22,6 +22,55 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Added
+
+* ([#411](https://github.com/iai-callgrind/iai-callgrind/pull/411)): Add ability
+  to set report tolerance. Thanks to @nihohit
+* ([#419](https://github.com/iai-callgrind/iai-callgrind/pull/419)): Add support
+  for the valgrind command-line arguments `--xtree-memory` and memcheck's
+  `--xtree-leak`. The output files extension is `.xtree` for `--xtree-memory`
+  and `.xleak` for `--xtree-leak`.
+* ([#420](https://github.com/iai-callgrind/iai-callgrind/pull/420)): Add
+  command-line arguments `--callgrind-metrics` (env:
+  `IAI_CALLGRIND_CALLGRIND_METRICS`), `--cachegrind-metrics` (env:
+  `IAI_CALLGRIND_CACHEGRIND_METRICS`), `--dhat-metrics` (env:
+  `IAI_CALLGRIND_DHAT_METRICS`), `--drd-metrics` (env:
+  `IAI_CALLGRIND_DRD_METRICS`), `--memcheck-metrics` (env:
+  `IAI_CALLGRIND_MEMCHECK_METRICS`), `--helgrind-metrics` (env:
+  `IAI_CALLGRIND_HELGRIND_METRICS`) to be able to adjust the shown metrics and
+  their order in the terminal output of the respective tool.
+  and to be able to
+* ([#421](https://github.com/iai-callgrind/iai-callgrind/pull/421)): Add
+  `--tolerance` (env: `IAI_CALLGRIND_TOLERANCE`) to be able to adjust the
+  tolerance level on the command-line (in addition to #411).
+* (c9cbcf61): Build artifacts of the `iai-callgrind-runner` for the `riscv64`
+  target. The artifacts were added retroactively for all releases `>=v0.12.0`.
+* (52d71ad0): Add mapping of iai-callgrind-runner version to json schema
+  version to the guide.
+
+### Changed
+
+* ([#417](https://github.com/iai-callgrind/iai-callgrind/pull/417)):
+  backwards-compatible change of `summary.v6.schema.json`. The order and
+  documentation of items changes.
+* ([#422](https://github.com/iai-callgrind/iai-callgrind/pull/422)): Resort and
+  group the options in the `--help` output for Iai-Callgrind command-line
+  arguments.
+* Update direct dependencies: `strum`
+
+### Removed
+
+* ([#417](https://github.com/iai-callgrind/iai-callgrind/pull/417)): Unused
+  dependencies: `serde_regex`, `tokio`
+
+### Fixed
+
+* (52d71ad0): Removed the wrong link to schema version v2 in the
+  `machine-readable output` section of guide.
+* ([#417](https://github.com/iai-callgrind/iai-callgrind/pull/417)): `-v` in
+  arguments for tools other than cachegrind and callgrind was not parsed the
+  same way as `--verbose`
 
 ## [0.16.0] - 2025-07-20
 
