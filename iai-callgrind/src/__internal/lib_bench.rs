@@ -73,6 +73,10 @@ impl GroupsBuilder {
                     args: macro_lib_bench.args_display.map(ToString::to_string),
                     function_name: (*function_name).to_owned(),
                     config: macro_lib_bench.config.map(|f| f()),
+                    iter_count: match macro_lib_bench.func {
+                        super::InternalFunctionKind::Iter(func) => Some(func(None)),
+                        super::InternalFunctionKind::Default(_) => None,
+                    },
                 };
                 benches.benches.push(bench);
             }

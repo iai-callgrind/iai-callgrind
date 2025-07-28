@@ -1,16 +1,26 @@
 use std::ops::Deref;
 
 use derive_more::{Deref as DerefDerive, DerefMut as DerefMutDerive};
-use proc_macro2::TokenStream;
-use proc_macro_error2::abort;
-use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
+use proc_macro2::{Span, TokenStream};
+use proc_macro_error2::{abort, emit_error};
+use quote::{format_ident, quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::Parse;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::{parse2, parse_quote, Attribute, Ident, ItemFn, MetaNameValue, Token};
+use syn::{
+    parse2, parse_quote, Attribute, Expr, ExprPath, FnArg, Ident, ItemFn, MetaNameValue, Pat,
+    PatIdent, PatType, Signature, Token,
+};
 
 use crate::common::{self, format_ident, truncate_str_utf8, BenchesArgs, File};
 use crate::{defaults, CargoMetadata};
+
+// TODO: Docs
+#[derive(Debug)]
+enum BenchMode {
+    Iter(Iter),
+    Args(Args),
+}
 
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
 #[derive(Debug, Default, Clone, DerefDerive, DerefMutDerive)]
@@ -22,7 +32,7 @@ struct Args(common::Args);
 #[derive(Debug)]
 struct Bench {
     id: Ident,
-    args: Args,
+    mode: BenchMode,
     config: BenchConfig,
     setup: Setup,
     teardown: Teardown,
@@ -30,6 +40,12 @@ struct Bench {
 
 #[derive(Debug, Default, Clone, DerefDerive, DerefMutDerive)]
 struct BenchConfig(common::BenchConfig);
+
+#[derive(Debug, Clone, DerefDerive, DerefMutDerive)]
+struct Callee<'a>(&'a Signature);
+
+#[derive(Debug, Clone)]
+struct Iter(Expr);
 
 /// This is the counterpart to the `#[library_benchmark]` attribute.
 #[derive(Debug, Default)]
@@ -108,7 +124,7 @@ impl Bench {
 
         Ok(Bench {
             id,
-            args,
+            mode: BenchMode::Args(args),
             config,
             setup,
             teardown,
@@ -131,6 +147,7 @@ impl Bench {
         let mut teardown = Teardown::default();
         let mut args = BenchesArgs::default();
         let mut file = File::default();
+        let mut iter = common::Iter::default();
 
         if let Ok(pairs) =
             meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
@@ -146,10 +163,12 @@ impl Bench {
                     teardown.parse_pair(&pair);
                 } else if pair.path.is_ident("file") {
                     file.parse_pair(&pair)?;
+                } else if pair.path.is_ident("iter") {
+                    iter.parse_pair(&pair);
                 } else {
                     abort!(
                         pair, "Invalid argument: {}", pair.path.require_ident()?;
-                        help = "Valid arguments are: `args`, `file`, `config`, `setup`, `teardown`"
+                        help = "Valid arguments are: `args`, `file`, `iter`, `config`, `setup`, `teardown`"
                     );
                 }
             }
@@ -164,6 +183,7 @@ impl Bench {
             id,
             args,
             &file,
+            &iter,
             cargo_meta,
             setup.is_some(),
             expected_num_args,
@@ -171,7 +191,10 @@ impl Bench {
         .into_iter()
         .map(|b| Bench {
             id: b.id,
-            args: Args(b.args),
+            mode: match b.mode {
+                common::BenchMode::Iter(expr) => BenchMode::Iter(Iter(expr)),
+                common::BenchMode::Args(args) => BenchMode::Args(Args(args)),
+            },
             config: config.clone(),
             setup: setup.clone(),
             teardown: teardown.clone(),
@@ -181,23 +204,129 @@ impl Bench {
         Ok(benches)
     }
 
-    fn render_as_code(&self, callee: &Ident) -> TokenStream {
-        let id = &self.id;
-        let args = &self.args;
+    #[allow(clippy::too_many_lines)]
+    fn render_as_code(&self, callee: &Callee) -> TokenStream {
+        let bench_id = &self.id;
+        let elem_ident = format_ident!("__elem");
+        let run_func_id = format_ident("__run", Some(bench_id));
+        let callee_ident = &callee.ident;
 
-        let inner = self.setup.render_as_code(args);
-        let call = quote! { std::hint::black_box(__iai_callgrind_wrapper_mod::#callee(#inner)) };
+        let func = match &self.mode {
+            // TODO: Iter when there is a return type
+            BenchMode::Iter(iter) => {
+                let iter_span = iter.span();
+                let iter_expr = iter.expr();
 
-        let call = self.teardown.render_as_code(call);
+                let index_ident = Iter::index_ident();
+                let iter_ident = Iter::iter_ident();
 
-        let func = quote!(
-            #[inline(never)]
-            pub fn #id() {
-                let _ = #call;
+                let len = callee.len_inputs();
+                if len > 1 || len == 0 {
+                    emit_error!(
+                        iter_span, "`iter` supports only benchmark functions with exactly one argument";
+                        help = "If you need more than one argument you can use a tuple as input and
+                        \ndestruct it in the function signature. Example:
+                        \n
+                        \n#[benches::some_id(iter = vec![(1, 2)])]
+                        \nfn benchmark_function((first, second): (u64, u64)) -> usize { ... }"
+                    );
+                }
+
+                let bench_id_func = callee.to_caller_signature(&elem_ident, bench_id);
+
+                let (iter_count, iter_elem) = iter.render_as_code(&self.setup);
+                let call_bench_func = quote_spanned! { callee_ident.span() =>
+                        std::hint::black_box(
+                            __iai_callgrind_wrapper_mod::#callee_ident(#elem_ident)
+                        )
+                };
+
+                let call_bench_id = self
+                    .teardown
+                    .render_as_code(quote_spanned! { bench_id.span() => #bench_id(#elem_ident) });
+                let export_name = format!("__iai_callgrind__{callee_ident}::{run_func_id}");
+
+                quote!(
+                   #[inline(never)]
+                   #bench_id_func {
+                       #call_bench_func
+                   }
+                   #[inline(never)]
+                   #[unsafe(export_name = #export_name)]
+                   pub fn #run_func_id(#index_ident: Option<usize>) -> usize {
+                       let #iter_ident = #iter_expr;
+
+                       if let Some(#index_ident) = #index_ident {
+                           #[allow(clippy::useless_conversion)]
+                           let #elem_ident = #iter_elem;
+                           let _ = #call_bench_id;
+                           0
+                       } else {
+                           #[allow(clippy::useless_conversion)]
+                           #[allow(clippy::iter_count)]
+                           #iter_count
+                       }
+                   }
+                )
             }
-        );
+            BenchMode::Args(args) => {
+                let inner = self.setup.render_as_code(args);
+                let call_bench_id = if self.setup.is_some() {
+                    self.teardown.render_as_code(quote_spanned! {
+                        bench_id.span() => {
+                            let __setup = #inner;
+                            std::hint::black_box(#bench_id(__setup))
+                        }
+                    })
+                } else {
+                    self.teardown.render_as_code(
+                        quote_spanned! { bench_id.span() => std::hint::black_box(#bench_id(#inner))
+                        },
+                    )
+                };
 
-        let config = self.config.render_as_code(id);
+                let (call_bench_func, bench_id_func) = if self.setup.is_some() {
+                    let call_bench_func = quote_spanned! { callee_ident.span() =>
+                        std::hint::black_box(
+                            __iai_callgrind_wrapper_mod::#callee_ident(#elem_ident)
+                        )
+                    };
+                    let bench_id_func = callee.to_caller_signature(&elem_ident, bench_id);
+
+                    (call_bench_func, bench_id_func)
+                } else {
+                    match callee.input_ids_no_wildcards() {
+                        Ok(inputs) => {
+                            let call_bench_func = quote_spanned! { callee_ident.span() =>
+                                std::hint::black_box(
+                                    __iai_callgrind_wrapper_mod::#callee_ident(#(#inputs),*)
+                                )
+                            };
+                            let bench_id_func = callee.with_id(bench_id.clone());
+
+                            (call_bench_func, bench_id_func)
+                        }
+                        Err(message) => abort!(callee, "{}", message),
+                    }
+                };
+
+                let export_name = format!("__iai_callgrind__{callee_ident}::{run_func_id}");
+
+                quote!(
+                   #[inline(never)]
+                   #bench_id_func {
+                       #call_bench_func
+                   }
+                   #[inline(never)]
+                   #[unsafe(export_name = #export_name)]
+                   pub fn #run_func_id() {
+                       let _ = #call_bench_id;
+                   }
+                )
+            }
+        };
+
+        let config = self.config.render_as_code(bench_id);
         quote! {
             #config
             #func
@@ -207,15 +336,34 @@ impl Bench {
     fn render_as_member(&self) -> TokenStream {
         let id = &self.id;
         let id_display = self.id.to_string();
-        let args_string = self.setup.to_string(&self.args);
-        let args_display = truncate_str_utf8(&args_string, defaults::MAX_BYTES_ARGS);
         let config = self.config.render_as_member(id);
-        quote! {
-            iai_callgrind::__internal::InternalMacroLibBench {
-                id_display: Some(#id_display),
-                args_display: Some(#args_display),
-                func: #id,
-                config: #config
+        let run_id = format_ident("__run", Some(id));
+
+        match &self.mode {
+            BenchMode::Iter(iter) => {
+                // TODO: Better description than args for iterator
+                let args_string = self.setup.to_string_with_iter(&iter.0);
+                let args_display = truncate_str_utf8(&args_string, defaults::MAX_BYTES_ARGS);
+                quote! {
+                    iai_callgrind::__internal::InternalMacroLibBench {
+                        id_display: Some(#id_display),
+                        args_display: Some(#args_display),
+                        func: iai_callgrind::__internal::InternalFunctionKind::Iter(#run_id),
+                        config: #config
+                    }
+                }
+            }
+            BenchMode::Args(args) => {
+                let args_string = self.setup.to_string_with_args(args);
+                let args_display = truncate_str_utf8(&args_string, defaults::MAX_BYTES_ARGS);
+                quote! {
+                    iai_callgrind::__internal::InternalMacroLibBench {
+                        id_display: Some(#id_display),
+                        args_display: Some(#args_display),
+                        func: iai_callgrind::__internal::InternalFunctionKind::Default(#run_id),
+                        config: #config
+                    }
+                }
             }
         }
     }
@@ -243,6 +391,120 @@ impl BenchConfig {
         } else {
             quote! { None }
         }
+    }
+}
+
+impl Callee<'_> {
+    fn len_inputs(&self) -> usize {
+        self.0.inputs.len()
+    }
+
+    fn to_caller_signature(&self, elem_ident: &Ident, bench_id: &Ident) -> Signature {
+        let fn_arg = self.0.inputs.iter().next().and_then(|fn_arg| match fn_arg {
+            // TODO: emit error if &self, self, ...
+            syn::FnArg::Receiver(_) => None,
+            syn::FnArg::Typed(pat_type) => {
+                let pat_type = PatType {
+                    pat: Box::new(Pat::Ident(PatIdent {
+                        ident: elem_ident.clone(),
+                        attrs: vec![],
+                        by_ref: None,
+                        mutability: None,
+                        subpat: None,
+                    })),
+                    ..pat_type.clone()
+                };
+                Some(FnArg::Typed(pat_type))
+            }
+        });
+
+        Signature {
+            ident: bench_id.clone(),
+            inputs: fn_arg.map_or_else(Punctuated::new, |fn_arg| {
+                let mut punct = Punctuated::new();
+                punct.push_value(fn_arg);
+                punct
+            }),
+            ..self.0.clone()
+        }
+    }
+
+    fn with_id(&self, ident: Ident) -> Signature {
+        Signature {
+            ident,
+            ..self.0.clone()
+        }
+    }
+
+    fn input_ids_no_wildcards(&self) -> Result<Vec<Ident>, String> {
+        self.0
+            .inputs
+            .iter()
+            .map(|fn_arg| {
+                // TODO: Review error message
+                match fn_arg {
+                    FnArg::Receiver(_) => Err("Currently only functions not associated with an \
+                                               object are supported"
+                        .to_owned()),
+                    FnArg::Typed(pat_type) => match &*pat_type.pat {
+                        Pat::Ident(pat_ident) => Ok(pat_ident.ident.clone()),
+                        Pat::Wild(_) => Err("Wildcard patterns in the benchmark function \
+                                             signature are not supported because it is unclear \
+                                             if they attribute to the benchmark metrics or not"
+                            .to_owned()),
+                        _ => Err(
+                            "Unsupported pattern. If you think this is an error please open an \
+                             issue"
+                                .to_owned(),
+                        ),
+                    },
+                }
+            })
+            .collect::<Result<Vec<Ident>, String>>()
+    }
+}
+
+impl Iter {
+    fn iter_ident() -> Ident {
+        format_ident!("__iter")
+    }
+
+    fn index_ident() -> Ident {
+        format_ident!("__index")
+    }
+
+    fn span(&self) -> Span {
+        self.0.span()
+    }
+
+    fn expr(&self) -> &Expr {
+        &self.0
+    }
+
+    fn render_as_code(&self, setup: &Setup) -> (TokenStream, TokenStream) {
+        let iter_span = self.0.span();
+        let iter_ident = Self::iter_ident();
+        let index_ident = Self::index_ident();
+
+        let iter_count = quote_spanned! { iter_span => #iter_ident.into_iter().count() };
+        let iter_elem = if let Some(setup) = setup.expr() {
+            quote_spanned! { setup.span() =>
+            #iter_ident
+                .into_iter()
+                .nth(#index_ident)
+                .map(#setup)
+                .expect("The iterator index should be withing bounds")
+            }
+        } else {
+            quote_spanned! { iter_span =>
+                #iter_ident
+                    .into_iter()
+                    .nth(#index_ident)
+                    .expect("The iterator index should be within bounds")
+            }
+        };
+
+        (iter_count, iter_elem)
     }
 }
 
@@ -334,17 +596,64 @@ impl LibraryBenchmark {
     /// }
     /// ```
     fn render_standalone(self, item_fn: &ItemFn) -> TokenStream {
-        let ident = &item_fn.sig.ident;
         let new_item_fn = create_item_fn(item_fn);
+
+        let callee = Callee(&item_fn.sig);
+        let callee_ident = &callee.ident;
+
+        let elem_ident = format_ident!("__elem");
+        let wrapper_ident = format_ident!("wrapper");
+        let run_func_id = format_ident("__run", Some(&wrapper_ident));
 
         let config = self.config.render_as_code();
 
         let inner = self.setup.render_as_code(&Args::default());
-        let call = quote! { std::hint::black_box(__iai_callgrind_wrapper_mod::#ident(#inner)) };
+        let call_wrapper = if self.setup.is_some() {
+            self.teardown.render_as_code(quote_spanned! {
+                wrapper_ident.span() => {
+                    let __setup = #inner;
+                    std::hint::black_box(#wrapper_ident(__setup))
+                }
+            })
+        } else {
+            self.teardown.render_as_code(quote_spanned! {
+                wrapper_ident.span() =>
+                    std::hint::black_box(#wrapper_ident(#inner))
+            })
+        };
 
-        let call = self.teardown.render_as_code(call);
+        let (call_bench_func, wrapper_func) = if self.setup.is_some() {
+            let call_bench_func = quote_spanned! { callee_ident.span() =>
+                    std::hint::black_box(
+                        __iai_callgrind_wrapper_mod::#callee_ident(#elem_ident)
+                    )
+            };
+            let bench_id_func = callee.to_caller_signature(&elem_ident, &wrapper_ident);
+
+            (call_bench_func, bench_id_func)
+        } else {
+            match callee.input_ids_no_wildcards() {
+                Ok(inputs) => {
+                    let call_bench_func = quote_spanned! { callee_ident.span() =>
+                            std::hint::black_box(
+                                __iai_callgrind_wrapper_mod::#callee_ident(#(#inputs),*)
+                            )
+                    };
+                    let bench_id_func = callee.with_id(wrapper_ident.clone());
+
+                    (call_bench_func, bench_id_func)
+                }
+                Err(message) => abort!(callee, "{}", message),
+            }
+        };
+
+        let export_name = format!("__iai_callgrind__{callee_ident}::{run_func_id}");
+        let func = quote! {
+            iai_callgrind::__internal::InternalFunctionKind::Default(#run_func_id)
+        };
+
         quote! {
-            pub mod #ident {
+            pub mod #callee_ident {
                 use super::*;
 
                 mod __iai_callgrind_wrapper_mod {
@@ -358,17 +667,23 @@ impl LibraryBenchmark {
                     iai_callgrind::__internal::InternalMacroLibBench {
                         id_display: None,
                         args_display: None,
-                        func: wrapper,
+                        func: #func,
                         config: None
                     },
                 ];
 
                 #config
 
-                #[inline(never)]
-                pub fn wrapper() {
-                    let _ = #call;
-                }
+               #[inline(never)]
+               #wrapper_func {
+                   #call_bench_func
+               }
+
+               #[inline(never)]
+               #[unsafe(export_name = #export_name)]
+               pub fn #run_func_id() {
+                   let _ = #call_wrapper;
+               }
             }
         }
     }
@@ -423,11 +738,10 @@ impl LibraryBenchmark {
         let new_item_fn = create_item_fn(item_fn);
 
         let mod_name = &item_fn.sig.ident;
-        let callee = &item_fn.sig.ident;
         let mut funcs = TokenStream::new();
         let mut lib_benches = vec![];
         for bench in self.benches {
-            funcs.append_all(bench.render_as_code(callee));
+            funcs.append_all(bench.render_as_code(&Callee(&item_fn.sig)));
             lib_benches.push(bench.render_as_member());
         }
 
@@ -520,6 +834,14 @@ impl LibraryBenchmarkConfig {
 }
 
 impl Setup {
+    fn is_some(&self) -> bool {
+        self.0 .0.is_some()
+    }
+
+    fn expr(&self) -> Option<&ExprPath> {
+        self.0 .0.as_ref()
+    }
+
     fn render_as_code(&self, args: &Args) -> TokenStream {
         if let Some(setup) = &self.deref().0 {
             quote_spanned! { setup.span() => std::hint::black_box(#setup(#args)) }
@@ -532,7 +854,11 @@ impl Setup {
 impl Teardown {
     fn render_as_code(&self, tokens: TokenStream) -> TokenStream {
         if let Some(teardown) = &self.deref().0 {
-            quote_spanned! { teardown.span() => std::hint::black_box(#teardown(#tokens)) }
+            quote_spanned! { teardown.span() => {
+                    let __result = #tokens;
+                    std::hint::black_box(#teardown(__result))
+                }
+            }
         } else {
             tokens
         }

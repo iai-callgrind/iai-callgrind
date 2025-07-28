@@ -197,6 +197,7 @@ println
 proccontrol
 profraw
 pthread
+punct
 quickstart
 ramhitrate
 ramhits
@@ -242,6 +243,7 @@ stdlib
 struct
 structifying
 structs
+subpat
 superblocks
 suppressedcontexts
 suppressederrors

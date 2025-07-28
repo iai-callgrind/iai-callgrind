@@ -12,6 +12,13 @@ use syn::{parse2, parse_quote, Attribute, Expr, Ident, ItemFn, MetaNameValue, To
 use crate::common::{self, format_ident, truncate_str_utf8, BenchesArgs, File};
 use crate::{defaults, CargoMetadata};
 
+// TODO: SORT
+#[derive(Debug)]
+enum BenchMode {
+    Iter(Iter),
+    Args(Args),
+}
+
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
 #[derive(Debug, Default, Clone, DerefDerive, DerefMutDerive)]
 struct Args(common::Args);
@@ -22,7 +29,7 @@ struct Args(common::Args);
 #[derive(Debug)]
 struct Bench {
     id: Ident,
-    args: Args,
+    mode: BenchMode,
     config: BenchConfig,
     setup: Setup,
     teardown: Teardown,
@@ -49,6 +56,9 @@ struct BinaryBenchmark {
 /// struct with the same name.
 #[derive(Debug, Default, Clone, DerefDerive, DerefMutDerive)]
 struct BinaryBenchmarkConfig(common::BenchConfig);
+
+#[derive(Debug, Clone)]
+struct Iter(Expr);
 
 #[derive(Debug, Default, Clone)]
 struct Setup(Option<Expr>);
@@ -115,7 +125,7 @@ impl Bench {
 
         Ok(Bench {
             id,
-            args,
+            mode: BenchMode::Args(args),
             config,
             setup,
             teardown,
@@ -138,6 +148,7 @@ impl Bench {
         let mut teardown = Teardown::default();
         let mut args = BenchesArgs::default();
         let mut file = File::default();
+        let mut iter = common::Iter::default();
 
         if let Ok(pairs) =
             meta.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)
@@ -153,10 +164,13 @@ impl Bench {
                     teardown.parse_pair(&pair);
                 } else if pair.path.is_ident("file") {
                     file.parse_pair(&pair)?;
+                } else if pair.path.is_ident("iter") {
+                    // TODO: CONTINUE implementing iterator for binary benchmarks
+                    iter.parse_pair(&pair);
                 } else {
                     abort!(
                         pair, "Invalid argument: {}", pair.path.require_ident()?;
-                        help = "Valid arguments are: `args`, `file`, `config`, `setup`, `teardown`"
+                        help = "Valid arguments are: `args`, `file`, `iter`, `config`, `setup`, `teardown`"
                     );
                 }
             }
@@ -171,6 +185,7 @@ impl Bench {
             id,
             args,
             &file,
+            &iter,
             cargo_meta,
             setup.is_some(),
             expected_num_args,
@@ -178,7 +193,11 @@ impl Bench {
         .into_iter()
         .map(|b| Bench {
             id: b.id,
-            args: Args(b.args),
+            // TODO: Use From<common::BenchMode>
+            mode: match b.mode {
+                common::BenchMode::Iter(expr) => BenchMode::Iter(Iter(expr)),
+                common::BenchMode::Args(args) => BenchMode::Args(Args(args)),
+            },
             config: config.clone(),
             setup: setup.clone(),
             teardown: teardown.clone(),
@@ -190,43 +209,52 @@ impl Bench {
 
     fn render_as_code(&self, callee: &Ident) -> TokenStream {
         let id = &self.id;
-        let args = &self.args;
+        match &self.mode {
+            // TODO: IMPLEMENT
+            BenchMode::Iter(_) => todo!(),
+            BenchMode::Args(args) => {
+                let func = quote!(
+                    #[inline(never)]
+                    pub fn #id() -> iai_callgrind::Command {
+                        #callee(#args)
+                    }
+                );
 
-        let func = quote!(
-            #[inline(never)]
-            pub fn #id() -> iai_callgrind::Command {
-                #callee(#args)
+                let config = self.config.render_as_code(Some(id));
+                let setup = self.setup.render_as_code(Some(id), args);
+                let teardown = self.teardown.render_as_code(Some(id), args);
+
+                quote! {
+                    #config
+                    #setup
+                    #teardown
+                    #func
+                }
             }
-        );
-
-        let config = self.config.render_as_code(Some(id));
-        let setup = self.setup.render_as_code(Some(id), &self.args);
-        let teardown = self.teardown.render_as_code(Some(id), &self.args);
-
-        quote! {
-            #config
-            #setup
-            #teardown
-            #func
         }
     }
 
     fn render_as_member(&self) -> TokenStream {
-        let id = &self.id;
-        let id_display = self.id.to_string();
-        let args_string = self.args.to_string();
-        let args_display = truncate_str_utf8(&args_string, defaults::MAX_BYTES_ARGS);
-        let config = self.config.render_as_member(Some(id));
-        let setup = self.setup.render_as_member(Some(id));
-        let teardown = self.teardown.render_as_member(Some(id));
-        quote! {
-            iai_callgrind::__internal::InternalMacroBinBench {
-                id_display: Some(#id_display),
-                args_display: Some(#args_display),
-                func: #id,
-                config: #config,
-                setup: #setup,
-                teardown: #teardown,
+        match &self.mode {
+            BenchMode::Iter(_) => todo!(),
+            BenchMode::Args(args) => {
+                let id = &self.id;
+                let id_display = self.id.to_string();
+                let args_string = args.to_string();
+                let args_display = truncate_str_utf8(&args_string, defaults::MAX_BYTES_ARGS);
+                let config = self.config.render_as_member(Some(id));
+                let setup = self.setup.render_as_member(Some(id));
+                let teardown = self.teardown.render_as_member(Some(id));
+                quote! {
+                    iai_callgrind::__internal::InternalMacroBinBench {
+                        id_display: Some(#id_display),
+                        args_display: Some(#args_display),
+                        func: #id,
+                        config: #config,
+                        setup: #setup,
+                        teardown: #teardown,
+                    }
+                }
             }
         }
     }

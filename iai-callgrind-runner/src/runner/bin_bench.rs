@@ -1,4 +1,5 @@
 //! The module responsible for running a binary benchmark
+//! TODO: IMPLEMENT iter
 
 mod defaults {
     use crate::api::Stdin;
