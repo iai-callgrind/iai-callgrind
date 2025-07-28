@@ -1,6 +1,6 @@
 use std::hint::black_box;
 
-use benchmark_tests::{bubble_sort, setup_worst_case_array};
+use benchmark_tests::{bubble_sort, setup_best_case_array, setup_worst_case_array};
 use iai_callgrind::{
     library_benchmark, library_benchmark_group, main, Dhat, LibraryBenchmarkConfig,
 };
@@ -28,18 +28,18 @@ fn bench_bubble_sort_mixed_case(input: Vec<i32>) -> Vec<i32> {
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .tool(Dhat::default())
+        .tool(Dhat::default().frames(["*::setup_worst_case_array"]))
 )]
-#[bench::case_3(vec![3, 2, 1])]
+#[bench::case_3(setup_worst_case_array(3))]
 fn bench_bubble_sort_dhat(input: Vec<i32>) -> Vec<i32> {
     black_box(bubble_sort(input))
 }
 
 #[library_benchmark(
     config = LibraryBenchmarkConfig::default()
-        .tool(Dhat::default())
+        .tool(Dhat::default().frames(["*::setup_best_case_array"]))
 )]
-#[bench::case_3(vec![1, 2, 3])]
+#[bench::case_3(setup_best_case_array(3))]
 fn bench_bubble_sort_dhat_other(input: Vec<i32>) -> Vec<i32> {
     black_box(bubble_sort(input))
 }

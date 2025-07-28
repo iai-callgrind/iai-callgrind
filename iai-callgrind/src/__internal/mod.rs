@@ -39,12 +39,18 @@ pub use iai_callgrind_runner::api::{
     ToolRegressionConfig as InternalToolRegressionConfig, Tools as InternalTools,
 };
 
+#[derive(Debug, Clone)]
+pub enum InternalFunctionKind {
+    Iter(fn(Option<usize>) -> usize),
+    Default(fn()),
+}
+
 /// Used in iai-callgrind-macros to store the essential information about a library benchmark
 #[derive(Debug, Clone)]
 pub struct InternalMacroLibBench {
     pub id_display: Option<&'static str>,
     pub args_display: Option<&'static str>,
-    pub func: fn(),
+    pub func: InternalFunctionKind,
     pub config: Option<fn() -> InternalLibraryBenchmarkConfig>,
 }
 

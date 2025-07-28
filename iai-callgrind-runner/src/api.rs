@@ -1134,6 +1134,8 @@ pub struct LibraryBenchmarkBench {
     pub function_name: String,
     /// The id of the attribute as in `#[bench::id]`
     pub id: Option<String>,
+    /// TODO: DOCS, and implement the logic in the runner
+    pub iter_count: Option<usize>,
 }
 
 /// The model for the configuration in library benchmarks

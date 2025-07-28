@@ -483,7 +483,12 @@ macro_rules! main {
                                             .parse::<usize>()
                                             .expect("Expecting a valid bench index")
                                     );
-                                    $group::__run(group_index, bench_index);
+                                    let iter_index = std::hint::black_box(
+                                        args_iter
+                                            .next()
+                                            .and_then(|a| a.parse::<usize>().ok())
+                                    );
+                                    $group::__run(group_index, bench_index, iter_index);
                                 }
                             }
                         }
@@ -1233,8 +1238,15 @@ macro_rules! library_benchmark_group {
             }
 
             #[inline(never)]
-            pub fn __run(group_index: usize, bench_index: usize) {
-                (__BENCHES[group_index].2[bench_index].func)();
+            pub fn __run(group_index: usize, bench_index: usize, iter_index: Option<usize>) {
+                match __BENCHES[group_index].2[bench_index].func {
+                    $crate::__internal::InternalFunctionKind::Iter(func) => {
+                        (func)(iter_index);
+                    }
+                    $crate::__internal::InternalFunctionKind::Default(func) => {
+                        (func)();
+                    }
+                }
             }
         }
     };
