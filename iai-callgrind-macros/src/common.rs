@@ -7,62 +7,24 @@ use std::path::PathBuf;
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error2::{abort, emit_error};
 use quote::{format_ident, quote, quote_spanned, ToTokens, TokenStreamExt};
-use syn::parse::{Parse, ParseStream};
+use syn::parse::Parse;
 use syn::spanned::Spanned;
 use syn::{
-    parse2, parse_quote_spanned, Attribute, Expr, ExprArray, ExprPath, Ident, LitStr, MetaList,
-    MetaNameValue, Pat, PatType, ReturnType, Token,
+    parse2, parse_quote_spanned, Expr, ExprArray, ExprPath, Ident, LitStr, MetaList, MetaNameValue,
+    Token,
 };
 
 use crate::CargoMetadata;
 
-// TODO: CLEANUP
-#[allow(unused)]
-pub fn closure_arg(input: ParseStream) -> syn::Result<Pat> {
-    let attrs = input.call(Attribute::parse_outer)?;
-    let mut pat = Pat::parse_single(input)?;
-
-    if input.peek(Token![:]) {
-        Ok(Pat::Type(PatType {
-            attrs,
-            pat: Box::new(pat),
-            colon_token: input.parse()?,
-            ty: input.parse()?,
-        }))
-    } else {
-        match &mut pat {
-            Pat::Const(pat) => pat.attrs = attrs,
-            Pat::Ident(pat) => pat.attrs = attrs,
-            Pat::Lit(pat) => pat.attrs = attrs,
-            Pat::Macro(pat) => pat.attrs = attrs,
-            Pat::Or(pat) => pat.attrs = attrs,
-            Pat::Paren(pat) => pat.attrs = attrs,
-            Pat::Path(pat) => pat.attrs = attrs,
-            Pat::Range(pat) => pat.attrs = attrs,
-            Pat::Reference(pat) => pat.attrs = attrs,
-            Pat::Rest(pat) => pat.attrs = attrs,
-            Pat::Slice(pat) => pat.attrs = attrs,
-            Pat::Struct(pat) => pat.attrs = attrs,
-            Pat::Tuple(pat) => pat.attrs = attrs,
-            Pat::TupleStruct(pat) => pat.attrs = attrs,
-            Pat::Verbatim(_) => {}
-            Pat::Wild(pat) => pat.attrs = attrs,
-            _ => unreachable!(),
-        }
-        Ok(pat)
-    }
-}
-
-/// This struct reflects the `args` parameter of the `#[bench]` attribute
-#[derive(Debug, Default, Clone)]
-pub struct Args(Option<(Span, Vec<Expr>)>);
-
-// TODO: SORT
 #[derive(Debug, Clone)]
 pub enum BenchMode {
     Iter(Expr),
     Args(Args),
 }
+
+/// This struct reflects the `args` parameter of the `#[bench]` attribute
+#[derive(Debug, Default, Clone)]
+pub struct Args(Option<(Span, Vec<Expr>)>);
 
 #[derive(Debug, Clone)]
 pub struct Bench {
@@ -82,43 +44,8 @@ pub struct BenchesArgs(pub Option<Vec<Args>>);
 #[derive(Debug, Default, Clone)]
 pub struct File(pub Option<LitStr>);
 
-#[derive(Debug, Clone)]
-pub struct Iter {
-    pub expr: Option<Expr>,
-    pub ret_type: ReturnType,
-}
-
-// TODO: SORT
-impl Default for Iter {
-    fn default() -> Self {
-        Self {
-            expr: Option::default(),
-            ret_type: ReturnType::Default,
-        }
-    }
-}
-
-// TODO: SORT
-impl Iter {
-    pub fn parse_pair(&mut self, pair: &MetaNameValue) {
-        if self.expr.is_none() {
-            match &pair.value {
-                // TODO: Check for inputs |inputs| and return error for wrong syntax
-                // TODO: DOes this syntax block the usage of closures to yield an iterator
-                Expr::Closure(expr_closure) => {
-                    self.ret_type = expr_closure.output.clone();
-                    self.expr = Some(*expr_closure.body.clone());
-                }
-                value => self.expr = Some(value.clone()),
-            }
-        } else {
-            emit_error!(
-                pair, "Duplicate argument: `iter`";
-                help = "`iter` is allowed only once"
-            );
-        }
-    }
-}
+#[derive(Debug, Clone, Default)]
+pub struct Iter(pub Option<Expr>);
 
 /// The `setup` parameter
 #[derive(Debug, Default, Clone)]
@@ -275,7 +202,7 @@ impl Bench {
         expected_num_args: usize,
     ) -> Vec<Self> {
         let check_sum =
-            u8::from(file.0.is_some()) + u8::from(args.is_some()) + u8::from(iter.expr.is_some());
+            u8::from(file.is_some()) + u8::from(args.is_some()) + u8::from(iter.is_some());
 
         if check_sum >= 2 {
             abort!(
@@ -288,6 +215,7 @@ impl Bench {
                 mode: BenchMode::Args(Args::default()),
             }];
         // check_sum == 1
+        // TODO: refactor: Use a method file.literal()
         } else if let Some(literal) = &file.0 {
             if !(expected_num_args == 1 || has_setup) {
                 abort!(
@@ -314,7 +242,7 @@ impl Bench {
                 benches.push(Bench::new(id, BenchMode::Args(args)));
             }
             return benches;
-        } else if let Some(expr) = &iter.expr {
+        } else if let Some(expr) = iter.expr() {
             return vec![Bench::new(id.clone(), BenchMode::Iter(expr.clone()))];
         } else {
             return args
@@ -413,6 +341,10 @@ impl BenchConfig {
 }
 
 impl File {
+    pub fn is_some(&self) -> bool {
+        self.0.is_some()
+    }
+
     pub fn parse_pair(&mut self, pair: &MetaNameValue) -> syn::Result<()> {
         if self.0.is_none() {
             if let Expr::Lit(literal) = &pair.value {
@@ -472,6 +404,27 @@ impl File {
             }
         }
         lines
+    }
+}
+
+impl Iter {
+    pub fn is_some(&self) -> bool {
+        self.0.is_some()
+    }
+
+    pub fn expr(&self) -> Option<&Expr> {
+        self.0.as_ref()
+    }
+
+    pub fn parse_pair(&mut self, pair: &MetaNameValue) {
+        if self.0.is_none() {
+            self.0 = Some(pair.value.clone());
+        } else {
+            emit_error!(
+                pair, "Duplicate argument: `iter`";
+                help = "`iter` is allowed only once"
+            );
+        }
     }
 }
 

@@ -4,7 +4,7 @@ use std::ops::Deref;
 use derive_more::{Deref as DerefDerive, DerefMut as DerefMutDerive};
 use proc_macro2::TokenStream;
 use proc_macro_error2::abort;
-use quote::{quote, ToTokens, TokenStreamExt};
+use quote::{format_ident, quote, ToTokens, TokenStreamExt};
 use syn::parse::Parse;
 use syn::punctuated::Punctuated;
 use syn::{parse2, parse_quote, Attribute, Expr, Ident, ItemFn, MetaNameValue, Token};
@@ -12,7 +12,6 @@ use syn::{parse2, parse_quote, Attribute, Expr, Ident, ItemFn, MetaNameValue, To
 use crate::common::{self, format_ident, truncate_str_utf8, BenchesArgs, File};
 use crate::{defaults, CargoMetadata};
 
-// TODO: SORT
 #[derive(Debug)]
 enum BenchMode {
     Iter(Iter),
@@ -22,6 +21,9 @@ enum BenchMode {
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
 #[derive(Debug, Default, Clone, DerefDerive, DerefMutDerive)]
 struct Args(common::Args);
+
+#[derive(Debug)]
+struct AssistantRenderer;
 
 /// This is the counterpart for the `#[bench]` attribute
 ///
@@ -76,6 +78,70 @@ impl Display for Args {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let tokens = self.to_tokens_without_black_box().to_string();
         write!(f, "{tokens}")
+    }
+}
+
+impl AssistantRenderer {
+    fn render_as_code(assistant_id: &Ident, expr: Option<&Expr>, args: &Args) -> TokenStream {
+        if let Some(setup) = expr {
+            let call = if let Expr::Path(path) = &setup {
+                quote!(#path(#args))
+            } else {
+                quote!(#setup)
+            };
+            quote! {
+                pub fn #assistant_id() {
+                    #call;
+                }
+            }
+        } else {
+            TokenStream::new()
+        }
+    }
+
+    fn render_as_iter_code(assistant_id: &Ident, expr: Option<&Expr>, iter: &Iter) -> TokenStream {
+        match &expr {
+            Some(Expr::Path(path)) => {
+                let iter_expr = &iter.0;
+                let iter_index = format_ident!("__iter_index");
+                let iter_ident = format_ident!("__iter");
+                let elem_ident = format_ident!("__elem");
+                quote! {
+                    pub fn #assistant_id(#iter_index: Option<usize>) {
+                        let #iter_ident = #iter_expr;
+
+                        let #elem_ident = #iter_ident
+                            .into_iter()
+                            .nth(#iter_index.expect("The iterator index should be present"))
+                            .expect("The iterator index should be within bounds");
+
+                        #path(#elem_ident);
+                    }
+                }
+            }
+            Some(expr) => quote! {
+                pub fn #assistant_id() {
+                    #expr;
+                }
+            },
+            None => TokenStream::new(),
+        }
+    }
+
+    fn render_as_member(
+        assistant_id: &Ident,
+        expr: Option<&Expr>,
+        iter: Option<&Iter>,
+    ) -> TokenStream {
+        match expr {
+            Some(Expr::Path(_)) if iter.is_some() => quote! {
+                iai_callgrind::__internal::InternalBinAssistantKind::Iter(#assistant_id)
+            },
+            Some(_) => quote! {
+                iai_callgrind::__internal::InternalBinAssistantKind::Default(#assistant_id)
+            },
+            None => quote! { iai_callgrind::__internal::InternalBinAssistantKind::None },
+        }
     }
 }
 
@@ -165,7 +231,6 @@ impl Bench {
                 } else if pair.path.is_ident("file") {
                     file.parse_pair(&pair)?;
                 } else if pair.path.is_ident("iter") {
-                    // TODO: CONTINUE implementing iterator for binary benchmarks
                     iter.parse_pair(&pair);
                 } else {
                     abort!(
@@ -210,13 +275,34 @@ impl Bench {
     fn render_as_code(&self, callee: &Ident) -> TokenStream {
         let id = &self.id;
         match &self.mode {
-            // TODO: IMPLEMENT
-            BenchMode::Iter(_) => todo!(),
-            BenchMode::Args(args) => {
+            BenchMode::Iter(iter) => {
+                let iter_expr = &iter.0;
+
                 let func = quote!(
-                    #[inline(never)]
+                    pub fn #id() -> Vec<iai_callgrind::Command> {
+                        let __iter = #iter_expr;
+
+                        #[allow(clippy::useless_conversion)]
+                        __iter.into_iter().map(|__elem| #callee(__elem)).collect()
+                    }
+                );
+
+                let config = self.config.render_as_code(Some(id));
+                let setup = self.setup.render_as_iter_code(Some(id), iter);
+                let teardown = self.teardown.render_as_iter_code(Some(id), iter);
+
+                quote! {
+                    #config
+                    #setup
+                    #teardown
+                    #func
+                }
+            }
+            BenchMode::Args(args) => {
+                let args_tokens = args.to_tokens_without_black_box();
+                let func = quote!(
                     pub fn #id() -> iai_callgrind::Command {
-                        #callee(#args)
+                        #callee(#args_tokens)
                     }
                 );
 
@@ -235,21 +321,39 @@ impl Bench {
     }
 
     fn render_as_member(&self) -> TokenStream {
+        let id = &self.id;
+        let id_display = self.id.to_string();
+        let config = self.config.render_as_member(Some(id));
+
         match &self.mode {
-            BenchMode::Iter(_) => todo!(),
-            BenchMode::Args(args) => {
-                let id = &self.id;
-                let id_display = self.id.to_string();
-                let args_string = args.to_string();
+            BenchMode::Iter(iter) => {
+                let args_string = iter.to_string();
+                // TODO: Include setup in string
                 let args_display = truncate_str_utf8(&args_string, defaults::MAX_BYTES_ARGS);
-                let config = self.config.render_as_member(Some(id));
-                let setup = self.setup.render_as_member(Some(id));
-                let teardown = self.teardown.render_as_member(Some(id));
+                let setup = self.setup.render_as_member(Some(id), Some(iter));
+                let teardown = self.teardown.render_as_member(Some(id), Some(iter));
                 quote! {
                     iai_callgrind::__internal::InternalMacroBinBench {
                         id_display: Some(#id_display),
                         args_display: Some(#args_display),
-                        func: #id,
+                        func: iai_callgrind::__internal::InternalBinFunctionKind::Iter(#id),
+                        config: #config,
+                        setup: #setup,
+                        teardown: #teardown,
+                    }
+                }
+            }
+            BenchMode::Args(args) => {
+                let args_string = args.to_string();
+                // TODO: Include setup in string
+                let args_display = truncate_str_utf8(&args_string, defaults::MAX_BYTES_ARGS);
+                let setup = self.setup.render_as_member(Some(id), None);
+                let teardown = self.teardown.render_as_member(Some(id), None);
+                quote! {
+                    iai_callgrind::__internal::InternalMacroBinBench {
+                        id_display: Some(#id_display),
+                        args_display: Some(#args_display),
+                        func: iai_callgrind::__internal::InternalBinFunctionKind::Default(#id),
                         config: #config,
                         setup: #setup,
                         teardown: #teardown,
@@ -269,7 +373,6 @@ impl BenchConfig {
         if let Some(config) = &self.deref().0 {
             let ident = Self::ident(id);
             quote! {
-                #[inline(never)]
                 pub fn #ident() -> iai_callgrind::__internal::InternalBinaryBenchmarkConfig {
                     #config.into()
                 }
@@ -388,22 +491,21 @@ impl BinaryBenchmark {
 
         let config = self.config.render_as_code();
         let setup = self.setup.render_as_code(None, &Args::default());
-        let setup_member = self.setup.render_as_member(None);
+        let setup_member = self.setup.render_as_member(None, None);
         let teardown = self.teardown.render_as_code(None, &Args::default());
-        let teardown_member = self.teardown.render_as_member(None);
+        let teardown_member = self.teardown.render_as_member(None, None);
 
         quote! {
             pub mod #ident {
                 use super::*;
 
-                #[inline(never)]
                 #new_item_fn
 
                 pub const __BENCHES: &[iai_callgrind::__internal::InternalMacroBinBench]= &[
                     iai_callgrind::__internal::InternalMacroBinBench {
                         id_display: None,
                         args_display: None,
-                        func: #ident,
+                        func: iai_callgrind::__internal::InternalBinFunctionKind::Default(#ident),
                         setup: #setup_member,
                         teardown: #teardown_member,
                         config: None
@@ -439,7 +541,6 @@ impl BinaryBenchmark {
             pub mod #mod_name {
                 use super::*;
 
-                #[inline(never)]
                 #new_item_fn
 
                 pub const __BENCHES: &[iai_callgrind::__internal::InternalMacroBinBench] = &[
@@ -494,7 +595,6 @@ impl BinaryBenchmarkConfig {
     fn render_as_code(&self) -> TokenStream {
         if let Some(config) = &self.deref().0 {
             quote!(
-                #[inline(never)]
                 pub fn __get_config()
                     -> Option<iai_callgrind::__internal::InternalBinaryBenchmarkConfig>
                 {
@@ -503,7 +603,6 @@ impl BinaryBenchmarkConfig {
             )
         } else {
             quote!(
-                #[inline(never)]
                 pub fn __get_config(
                 ) -> Option<iai_callgrind::__internal::InternalBinaryBenchmarkConfig>
                 {
@@ -511,6 +610,12 @@ impl BinaryBenchmarkConfig {
                 }
             )
         }
+    }
+}
+
+impl Display for Iter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.to_token_stream())
     }
 }
 
@@ -542,31 +647,15 @@ impl Setup {
     }
 
     fn render_as_code(&self, id: Option<&Ident>, args: &Args) -> TokenStream {
-        if let Some(setup) = &self.0 {
-            let ident = Self::ident(id);
-            let call = if let Expr::Path(path) = &setup {
-                quote!(#path(#args))
-            } else {
-                quote!(#setup)
-            };
-            quote! {
-                #[inline(never)]
-                pub fn #ident() {
-                    #call;
-                }
-            }
-        } else {
-            TokenStream::new()
-        }
+        AssistantRenderer::render_as_code(&Self::ident(id), self.0.as_ref(), args)
     }
 
-    fn render_as_member(&self, id: Option<&Ident>) -> TokenStream {
-        if self.0.is_some() {
-            let ident = Self::ident(id);
-            quote! { Some(#ident) }
-        } else {
-            quote! { None }
-        }
+    fn render_as_iter_code(&self, id: Option<&Ident>, iter: &Iter) -> TokenStream {
+        AssistantRenderer::render_as_iter_code(&Self::ident(id), self.0.as_ref(), iter)
+    }
+
+    fn render_as_member(&self, id: Option<&Ident>, iter: Option<&Iter>) -> TokenStream {
+        AssistantRenderer::render_as_member(&Self::ident(id), self.0.as_ref(), iter)
     }
 }
 
@@ -594,31 +683,15 @@ impl Teardown {
     }
 
     fn render_as_code(&self, id: Option<&Ident>, args: &Args) -> TokenStream {
-        if let Some(teardown) = &self.0 {
-            let ident = Self::ident(id);
-            let call = if let Expr::Path(path) = &teardown {
-                quote!(#path(#args))
-            } else {
-                quote!(#teardown)
-            };
-            quote! {
-                #[inline(never)]
-                pub fn #ident() {
-                    #call;
-                }
-            }
-        } else {
-            TokenStream::new()
-        }
+        AssistantRenderer::render_as_code(&Self::ident(id), self.0.as_ref(), args)
     }
 
-    fn render_as_member(&self, id: Option<&Ident>) -> TokenStream {
-        if self.0.is_some() {
-            let ident = Self::ident(id);
-            quote! { Some(#ident) }
-        } else {
-            quote! { None }
-        }
+    fn render_as_iter_code(&self, id: Option<&Ident>, iter: &Iter) -> TokenStream {
+        AssistantRenderer::render_as_iter_code(&Self::ident(id), self.0.as_ref(), iter)
+    }
+
+    fn render_as_member(&self, id: Option<&Ident>, iter: Option<&Iter>) -> TokenStream {
+        AssistantRenderer::render_as_member(&Self::ident(id), self.0.as_ref(), iter)
     }
 }
 

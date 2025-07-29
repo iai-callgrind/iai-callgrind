@@ -29,11 +29,18 @@ fn teardown(num: u64) -> Result<u64, String> {
 #[benches::single(iter = vec![1, 2])]
 #[benches::with_setup(
     iter = vec![1, 2],
-    config = LibraryBenchmarkConfig::default().tool(Dhat::default().frames(["*::setup"])),
+    config = LibraryBenchmarkConfig::default()
+        .tool(Dhat::default()
+            .frames(["*::setup"])
+        ),
     setup = setup
 )]
 #[benches::with_teardown(iter = vec![1, 2], teardown = teardown)]
-#[benches::with_setup_and_teardown(iter = vec![1, 2], setup = setup, teardown = teardown)]
+#[benches::with_setup_and_teardown(
+    iter = vec![1, 2],
+    setup = setup,
+    teardown = teardown
+)]
 #[benches::option(iter = Some(1))]
 #[benches::range(iter = 1..=5)]
 #[benches::iter(iter = vec![1, 2].into_iter().map(|n| n + 10))]
@@ -50,12 +57,18 @@ fn allocate_in_setup(inputs: fn() -> Vec<i32>) -> Vec<i32> {
 #[library_benchmark]
 #[benches::with_setup(
     iter = vec![1, 2],
-    config = LibraryBenchmarkConfig::default().tool(Dhat::default().frames(["*::setup_worst_case_array"])),
+    config = LibraryBenchmarkConfig::default()
+        .tool(Dhat::default()
+            .frames(["*::setup_worst_case_array"])
+        ),
     setup = setup_worst_case_array
 )]
 #[benches::with_alloc_in_setup(
     iter = vec![|| vec![2, 1], || vec![1]],
-    config = LibraryBenchmarkConfig::default().tool(Dhat::default().frames(["*::allocate_in_setup"])),
+    config = LibraryBenchmarkConfig::default()
+        .tool(Dhat::default()
+            .frames(["*::allocate_in_setup"])
+        ),
     setup = allocate_in_setup
 )]
 fn bench_allocation(inputs: Vec<i32>) -> Vec<i32> {
@@ -71,5 +84,12 @@ where
     black_box(fibonacci(num.into()))
 }
 
-library_benchmark_group!(name = my_group; benchmarks = bench_allocation);
+library_benchmark_group!(
+    name = my_group;
+    benchmarks =
+        bench_me,
+        bench_single,
+        bench_allocation,
+        bench_generic
+);
 main!(library_benchmark_groups = my_group);

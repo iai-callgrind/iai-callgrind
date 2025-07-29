@@ -25,8 +25,9 @@ pub use iai_callgrind_runner::api::{
     BinaryBenchmarkGroups as InternalBinaryBenchmarkGroups,
     CachegrindRegressionConfig as InternalCachegrindRegressionConfig,
     CallgrindRegressionConfig as InternalCallgrindRegressionConfig, Command as InternalCommand,
-    Delay as InternalDelay, DhatRegressionConfig as InternalDhatRegressionConfig,
-    EntryPoint as InternalEntryPoint, ExitWith as InternalExitWith, Fixtures as InternalFixtures,
+    CommandKind as InternalCommandKind, Delay as InternalDelay,
+    DhatRegressionConfig as InternalDhatRegressionConfig, EntryPoint as InternalEntryPoint,
+    ExitWith as InternalExitWith, Fixtures as InternalFixtures,
     FlamegraphConfig as InternalFlamegraphConfig,
     LibraryBenchmark as InternalLibraryBenchmarkBenches,
     LibraryBenchmarkBench as InternalLibraryBenchmarkBench,
@@ -40,9 +41,28 @@ pub use iai_callgrind_runner::api::{
 };
 
 #[derive(Debug, Clone)]
-pub enum InternalFunctionKind {
+pub enum InternalLibFunctionKind {
     Iter(fn(Option<usize>) -> usize),
     Default(fn()),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum InternalBinAssistantKind {
+    Iter(fn(Option<usize>)),
+    Default(fn()),
+    None,
+}
+
+impl InternalBinAssistantKind {
+    pub fn is_some(&self) -> bool {
+        *self != Self::None
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum InternalBinFunctionKind {
+    Iter(fn() -> Vec<crate::Command>),
+    Default(fn() -> crate::Command),
 }
 
 /// Used in iai-callgrind-macros to store the essential information about a library benchmark
@@ -50,7 +70,7 @@ pub enum InternalFunctionKind {
 pub struct InternalMacroLibBench {
     pub id_display: Option<&'static str>,
     pub args_display: Option<&'static str>,
-    pub func: InternalFunctionKind,
+    pub func: InternalLibFunctionKind,
     pub config: Option<fn() -> InternalLibraryBenchmarkConfig>,
 }
 
@@ -59,9 +79,9 @@ pub struct InternalMacroLibBench {
 pub struct InternalMacroBinBench {
     pub id_display: Option<&'static str>,
     pub args_display: Option<&'static str>,
-    pub func: fn() -> crate::Command,
-    pub setup: Option<fn()>,
-    pub teardown: Option<fn()>,
+    pub func: InternalBinFunctionKind,
+    pub setup: InternalBinAssistantKind,
+    pub teardown: InternalBinAssistantKind,
     pub config: Option<fn() -> InternalBinaryBenchmarkConfig>,
 }
 

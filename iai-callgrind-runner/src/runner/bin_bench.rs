@@ -1,5 +1,4 @@
 //! The module responsible for running a binary benchmark
-//! TODO: IMPLEMENT iter
 
 mod defaults {
     use crate::api::Stdin;
@@ -215,9 +214,20 @@ impl BinBench {
         config: BinaryBenchmarkConfig,
         group_index: usize,
         bench_index: usize,
-        binary_benchmark_bench: BinaryBenchmarkBench,
+        iter_index: Option<usize>,
+        command: api::Command,
+        binary_benchmark_bench: &BinaryBenchmarkBench,
         default_tool: ValgrindTool,
     ) -> Result<Self> {
+        let id = if let Some(iter_index) = iter_index {
+            binary_benchmark_bench
+                .id
+                .as_ref()
+                .map(|id| format!("{id}_{iter_index}"))
+        } else {
+            binary_benchmark_bench.id.clone()
+        };
+
         let module_path = group
             .module_path
             .join(&binary_benchmark_bench.function_name);
@@ -235,14 +245,10 @@ impl BinBench {
             stderr,
             delay,
             ..
-        } = binary_benchmark_bench.command;
+        } = command;
 
         let command = Command::new(&module_path, path, args).map_err(|error| {
-            Error::ConfigurationError(
-                module_path.clone(),
-                binary_benchmark_bench.id.clone(),
-                error.to_string(),
-            )
+            Error::ConfigurationError(module_path.clone(), id.clone(), error.to_string())
         })?;
 
         let mut assistant_envs = config.collect_envs();
@@ -262,7 +268,7 @@ impl BinBench {
             &mut output_format,
             config.tools,
             &module_path,
-            binary_benchmark_bench.id.as_ref(),
+            id.as_ref(),
             meta,
             default_tool,
             &EntryPoint::None,
@@ -270,11 +276,7 @@ impl BinBench {
             &HashMap::default(),
         )
         .map_err(|error| {
-            Error::ConfigurationError(
-                module_path.clone(),
-                binary_benchmark_bench.id.clone(),
-                error.to_string(),
-            )
+            Error::ConfigurationError(module_path.clone(), id.clone(), error.to_string())
         })?;
 
         let setup = binary_benchmark_bench
@@ -282,7 +284,7 @@ impl BinBench {
             .then_some(Assistant::new_bench_assistant(
                 AssistantKind::Setup,
                 &group.name,
-                (group_index, bench_index),
+                (group_index, bench_index, iter_index),
                 stdin.as_ref().and_then(|s| {
                     if let Stdin::Setup(p) = s {
                         Some(*p)
@@ -299,16 +301,16 @@ impl BinBench {
                 .then_some(Assistant::new_bench_assistant(
                     AssistantKind::Teardown,
                     &group.name,
-                    (group_index, bench_index),
+                    (group_index, bench_index, iter_index),
                     None,
                     assistant_envs,
                     false,
                 ));
 
         Ok(Self {
-            id: binary_benchmark_bench.id,
-            args: binary_benchmark_bench.args,
-            function_name: binary_benchmark_bench.function_name,
+            id,
+            args: binary_benchmark_bench.args.clone(),
+            function_name: binary_benchmark_bench.function_name.clone(),
             tools: tool_configs,
             run_options: RunOptions {
                 env_clear: config.env_clear.unwrap_or(defaults::ENV_CLEAR),
@@ -610,22 +612,51 @@ impl Groups {
                 for (bench_index, binary_benchmark_bench) in
                     binary_benchmark_benches.benches.into_iter().enumerate()
                 {
-                    let config = group_config.clone().update_from_all([
-                        binary_benchmark_benches.config.as_ref(),
-                        binary_benchmark_bench.config.as_ref(),
-                        Some(&binary_benchmark_bench.command.config),
-                    ]);
+                    // TODO: Check clones
+                    match &binary_benchmark_bench.command {
+                        api::CommandKind::Default(command) => {
+                            let config = group_config.clone().update_from_all([
+                                binary_benchmark_benches.config.as_ref(),
+                                binary_benchmark_bench.config.as_ref(),
+                                Some(&command.config),
+                            ]);
 
-                    let bin_bench = BinBench::new(
-                        meta,
-                        &group,
-                        config,
-                        group_index,
-                        bench_index,
-                        binary_benchmark_bench,
-                        default_tool,
-                    )?;
-                    group.benches.push(bin_bench);
+                            let bin_bench = BinBench::new(
+                                meta,
+                                &group,
+                                config,
+                                group_index,
+                                bench_index,
+                                None,
+                                *command.clone(),
+                                &binary_benchmark_bench,
+                                default_tool,
+                            )?;
+                            group.benches.push(bin_bench);
+                        }
+                        api::CommandKind::Iter(commands) => {
+                            for (iter_index, command) in commands.iter().enumerate() {
+                                let config = group_config.clone().update_from_all([
+                                    binary_benchmark_benches.config.as_ref(),
+                                    binary_benchmark_bench.config.as_ref(),
+                                    Some(&command.config),
+                                ]);
+
+                                let bin_bench = BinBench::new(
+                                    meta,
+                                    &group,
+                                    config,
+                                    group_index,
+                                    bench_index,
+                                    Some(iter_index),
+                                    command.clone(),
+                                    &binary_benchmark_bench,
+                                    default_tool,
+                                )?;
+                                group.benches.push(bin_bench);
+                            }
+                        }
+                    }
                 }
             }
 

@@ -64,7 +64,7 @@ pub struct LibBench {
     pub group_index: usize,
     /// The id of the benchmark as in `#[bench::id]`
     pub id: Option<String>,
-    /// TODO: DOCS
+    /// The index of the element in the iterator of `#[benches::id(iter = ITERATOR)]` if present
     pub iter_index: Option<usize>,
     /// The [`ModulePath`].
     ///
