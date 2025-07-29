@@ -40,7 +40,7 @@ pub enum AssistantKind {
 pub struct Assistant {
     envs: Vec<(OsString, OsString)>,
     group_name: Option<String>,
-    indices: Option<(usize, usize)>,
+    indices: Option<(usize, usize, Option<usize>)>,
     kind: AssistantKind,
     pipe: Option<Pipe>,
     run_parallel: bool,
@@ -126,7 +126,7 @@ impl Assistant {
     pub fn new_bench_assistant(
         kind: AssistantKind,
         group_name: &str,
-        indices: (usize, usize),
+        indices: (usize, usize, Option<usize>),
         pipe: Option<Pipe>,
         envs: Vec<(OsString, OsString)>,
         run_parallel: bool,
@@ -162,8 +162,11 @@ impl Assistant {
 
         command.arg(&id);
 
-        if let Some((group_index, bench_index)) = &self.indices {
+        if let Some((group_index, bench_index, iter_index)) = &self.indices {
             command.args([group_index.to_string(), bench_index.to_string()]);
+            if let Some(iter_index) = iter_index {
+                command.arg(iter_index.to_string());
+            }
         }
 
         nocapture.apply(&mut command);

@@ -37,16 +37,27 @@ macro_rules! binary_benchmark_attribute {
             } else {
                 $crate::Bench::new(stringify!($name))
             };
-            let mut bench = bench.command((internal_bench.func)());
-            if let Some(setup) = internal_bench.setup {
-                bench.setup(setup);
+
+            match internal_bench.func {
+                $crate::__internal::InternalBinFunctionKind::Default(func) => {
+                    bench.command(func());
+                }
+                $crate::__internal::InternalBinFunctionKind::Iter(func) => {
+                    bench
+                        .commands
+                        .push($crate::__internal::InternalCommandKind::Iter(
+                            func().iter().map(Into::into).collect(),
+                        ));
+                }
             }
-            if let Some(teardown) = internal_bench.teardown {
-                bench.teardown(teardown);
-            }
+
+            bench.setup = internal_bench.setup;
+            bench.teardown = internal_bench.teardown;
+
             if let Some(config) = internal_bench.config {
                 bench.config(config());
             }
+
             binary_benchmark.bench(bench);
         }
         binary_benchmark
@@ -334,10 +345,21 @@ macro_rules! main {
                                             .expect("The bench index should be present")
                                             .parse::<usize>()
                                             .expect("The bench index should be a number");
+                                    let iter_index = args_iter
+                                        .next()
+                                        .and_then(|a| a.parse::<usize>().ok());
                                     if key == "setup" {
-                                        $group::__run_bench_setup(group_index, bench_index);
+                                        $group::__run_bench_setup(
+                                            group_index,
+                                            bench_index,
+                                            iter_index
+                                        );
                                     } else {
-                                        $group::__run_bench_teardown(group_index, bench_index);
+                                        $group::__run_bench_teardown(
+                                            group_index,
+                                            bench_index,
+                                            iter_index
+                                        );
                                     }
                                 }
                                 (name, _) => panic!("Invalid function '{}' in group '{}'", name, group)
@@ -873,16 +895,32 @@ macro_rules! binary_benchmark_group {
                 config
             }
 
-            pub fn __run_bench_setup(group_index: usize, bench_index: usize) {
-                if let Some(setup) = __BENCHES[group_index].2[bench_index].setup {
-                    setup();
-                };
+            pub fn __run_bench_setup(
+                group_index: usize, bench_index: usize, iter_index: Option<usize>
+            ) {
+                match __BENCHES[group_index].2[bench_index].setup {
+                    $crate::__internal::InternalBinAssistantKind::Iter(setup) =>
+                        setup(iter_index),
+                    $crate::__internal::InternalBinAssistantKind::Default(setup) =>
+                        setup(),
+                    $crate::__internal::InternalBinAssistantKind::None => {
+                        // TODO: panic?
+                    }
+                }
             }
 
-            pub fn __run_bench_teardown(group_index: usize, bench_index: usize) {
-                if let Some(teardown) = __BENCHES[group_index].2[bench_index].teardown {
-                    teardown();
-                };
+            pub fn __run_bench_teardown(
+                group_index: usize, bench_index: usize, iter_index: Option<usize>
+            ) {
+                match __BENCHES[group_index].2[bench_index].teardown {
+                    $crate::__internal::InternalBinAssistantKind::Iter(teardown) =>
+                        teardown(iter_index),
+                    $crate::__internal::InternalBinAssistantKind::Default(teardown) =>
+                        teardown(),
+                    $crate::__internal::InternalBinAssistantKind::None => {
+                        // TODO: panic?
+                    }
+                }
             }
 
             pub fn $name(_: &mut $crate::BinaryBenchmarkGroup) {}
@@ -1003,11 +1041,13 @@ macro_rules! binary_benchmark_group {
                 comp
             }
 
-            pub fn __run_bench_setup(group_index: usize, bench_index: usize) {
+            pub fn __run_bench_setup(
+                group_index: usize, bench_index: usize, iter_index: Option<usize>
+            ) {
                 let mut group = $crate::BinaryBenchmarkGroup::default();
                 $name(&mut group);
 
-                let bench = group
+                let binary_benchmark = group
                     .binary_benchmarks
                     .iter()
                     .nth(group_index)
@@ -1023,42 +1063,60 @@ macro_rules! binary_benchmark_group {
                 //
                 // We also need to take care of that there can be a global setup function
                 // `BinaryBenchmark::setup`, which can be overridden by a `Bench::setup`
-                if let Some(setup) = bench
+                match binary_benchmark
                         .benches
                         .iter()
                         .flat_map(|b| b.commands.iter().map(|c| (b.setup, c)))
                         .nth(bench_index)
                         .map(|(setup, _)| setup)
                         .expect("The bench index for setup should be present") {
-                    setup();
-                } else if let Some(setup) = bench.setup {
-                    setup();
-                } else {
-                    // This branch should be unreachable so we do nothing
+                    $crate::__internal::InternalBinAssistantKind::Default(setup) => {
+                        setup();
+                    }
+                    $crate::__internal::InternalBinAssistantKind::Iter(setup) => {
+                        setup(iter_index);
+                    }
+                    $crate::__internal::InternalBinAssistantKind::None => {
+                        if let Some(setup) = binary_benchmark.setup {
+                            setup();
+                        } else {
+                            // This branch should be unreachable so we do nothing
+                        }
+                    }
                 }
             }
 
-            pub fn __run_bench_teardown(group_index: usize, bench_index: usize) {
+            pub fn __run_bench_teardown(
+                group_index: usize, bench_index: usize, iter_index: Option<usize>
+            ) {
                 let mut group = $crate::BinaryBenchmarkGroup::default();
                 $name(&mut group);
 
-                let bench = group
+                let binary_benchmark = group
                     .binary_benchmarks
                     .iter()
                     .nth(group_index)
                     .expect("The group index for teardown should be present");
-                if let Some(teardown) = bench
+                match binary_benchmark
                         .benches
                         .iter()
                         .flat_map(|b| b.commands.iter().map(|c| (b.teardown, c)))
                         .nth(bench_index)
                         .map(|(teardown, _)| teardown)
                         .expect("The bench index for teardown should be present") {
-                    teardown();
-                } else if let Some(teardown) = bench.teardown {
-                    teardown();
-                } else {
-                    // This branch should be unreachable so we do nothing
+                    $crate::__internal::InternalBinAssistantKind::Default(teardown) => {
+                        teardown();
+                    }
+                    $crate::__internal::InternalBinAssistantKind::Iter(teardown) => {
+                        teardown(iter_index);
+                    }
+                    $crate::__internal::InternalBinAssistantKind::None => {
+                        if let Some(teardown) = binary_benchmark.teardown {
+                            teardown();
+                        } else {
+                            // This branch should be unreachable so we do nothing
+                        }
+                    }
                 }
             }
 
@@ -1240,10 +1298,10 @@ macro_rules! library_benchmark_group {
             #[inline(never)]
             pub fn __run(group_index: usize, bench_index: usize, iter_index: Option<usize>) {
                 match __BENCHES[group_index].2[bench_index].func {
-                    $crate::__internal::InternalFunctionKind::Iter(func) => {
+                    $crate::__internal::InternalLibFunctionKind::Iter(func) => {
                         (func)(iter_index);
                     }
-                    $crate::__internal::InternalFunctionKind::Default(func) => {
+                    $crate::__internal::InternalLibFunctionKind::Default(func) => {
                         (func)();
                     }
                 }

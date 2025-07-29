@@ -15,7 +15,7 @@ use syn::{
 use crate::common::{self, format_ident, truncate_str_utf8, BenchesArgs, File};
 use crate::{defaults, CargoMetadata};
 
-// TODO: Docs
+/// The benchmark mode for `iter` and any another option in the bench attributes
 #[derive(Debug)]
 enum BenchMode {
     Iter(Iter),
@@ -212,7 +212,6 @@ impl Bench {
         let callee_ident = &callee.ident;
 
         let func = match &self.mode {
-            // TODO: Iter when there is a return type
             BenchMode::Iter(iter) => {
                 let iter_span = iter.span();
                 let iter_expr = iter.expr();
@@ -348,7 +347,7 @@ impl Bench {
                     iai_callgrind::__internal::InternalMacroLibBench {
                         id_display: Some(#id_display),
                         args_display: Some(#args_display),
-                        func: iai_callgrind::__internal::InternalFunctionKind::Iter(#run_id),
+                        func: iai_callgrind::__internal::InternalLibFunctionKind::Iter(#run_id),
                         config: #config
                     }
                 }
@@ -360,7 +359,7 @@ impl Bench {
                     iai_callgrind::__internal::InternalMacroLibBench {
                         id_display: Some(#id_display),
                         args_display: Some(#args_display),
-                        func: iai_callgrind::__internal::InternalFunctionKind::Default(#run_id),
+                        func: iai_callgrind::__internal::InternalLibFunctionKind::Default(#run_id),
                         config: #config
                     }
                 }
@@ -441,7 +440,7 @@ impl Callee<'_> {
             .inputs
             .iter()
             .map(|fn_arg| {
-                // TODO: Review error message
+                // TODO: Review error messages
                 match fn_arg {
                     FnArg::Receiver(_) => Err("Currently only functions not associated with an \
                                                object are supported"
@@ -649,7 +648,7 @@ impl LibraryBenchmark {
 
         let export_name = format!("__iai_callgrind__{callee_ident}::{run_func_id}");
         let func = quote! {
-            iai_callgrind::__internal::InternalFunctionKind::Default(#run_func_id)
+            iai_callgrind::__internal::InternalLibFunctionKind::Default(#run_func_id)
         };
 
         quote! {
