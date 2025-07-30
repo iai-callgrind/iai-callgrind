@@ -116,3 +116,19 @@ build-args = { IAI_CALLGRIND_CROSS_TARGET = "powerpc64le-unknown-linux-gnu" }
 passthrough = [
   "BINDGEN_EXTRA_CLANG_ARGS_powerpc64le_unknown_linux_gnu='--verbose'",
 ]
+
+################
+# riscv64gc
+################
+[target.riscv64gc-unknown-linux-gnu]
+runner = "qemu-system"
+
+[target.riscv64gc-unknown-linux-gnu.dockerfile]
+file = "docker/Dockerfile"
+context = "docker"
+build-args = { IAI_CALLGRIND_CROSS_TARGET = "riscv64gc-unknown-linux-gnu" }
+
+[target.riscv64gc-unknown-linux-gnu.env]
+passthrough = [
+  "BINDGEN_EXTRA_CLANG_ARGS_riscv64gc_unknown_linux_gnu='--verbose'",
+]

@@ -101,9 +101,9 @@
 //! | `x86/windows+msvc`    | no  | TBD
 //! | `arm/linux`           | yes | -
 //! | `aarch64/linux`       | yes | -
-//! | `riscv64/linux`       | no  | TBD
+//! | `riscv64/linux`       | yes | -
 //! | `x86_64/windows+msvc` | no  | unsupported by valgrind
-//! | `s390x/linux`         | no  | unstable inline assembly
+//! | `s390x/linux`         | no  | needs MSRV 1.84.0
 //! | `mips32/linux`        | no  | unstable inline assembly
 //! | `mips64/linux`        | no  | unstable inline assembly
 //! | `powerpc/linux`       | no  | unstable inline assembly

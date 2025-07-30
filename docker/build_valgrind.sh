@@ -15,8 +15,9 @@ which "$CC" "$LD" "$AR"
 }
 
 case $IAI_CALLGRIND_CROSS_TARGET in
-*-*-*-*) ;;
-*-*-*) ;;
+riscv64gc-unknown-linux-gnu) HOST="riscv64-linux-gnu" ;;
+*-*-*-*) HOST="$IAI_CALLGRIND_CROSS_TARGET" ;;
+*-*-*) HOST="$IAI_CALLGRIND_CROSS_TARGET" ;;
 *)
   echo "Invalid target specification for IAI_CALLGRIND_CROSS_TARGET: '$IAI_CALLGRIND_CROSS_TARGET'" >&2
   exit 1
@@ -36,7 +37,7 @@ mkdir "$dest_dir"
 # supported as is for the --host variable. If the target is not supported by
 # valgrind, configure will exit with an error.
 ./configure --prefix="$target_dir" \
-  --host="$IAI_CALLGRIND_CROSS_TARGET"
+  --host="${HOST}"
 
 make -j4
 make -j4 install DESTDIR="$dest_dir"
