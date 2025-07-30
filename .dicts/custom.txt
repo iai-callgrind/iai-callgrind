@@ -276,6 +276,7 @@ vbits
 vgdb
 vgpreload
 visualizable
+vprefix
 vtable
 vulnaribility
 walkdir

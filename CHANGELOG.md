@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.16.1] - 2025-07-30
+
 ### Added
 
 * ([#411](https://github.com/iai-callgrind/iai-callgrind/pull/411)): Add ability
