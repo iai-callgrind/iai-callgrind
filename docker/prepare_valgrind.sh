@@ -2,7 +2,7 @@
 
 set -ex
 
-apt-get update && apt-get install --assume-yes --no-install-recommends wget
+apt-get update && apt-get install --assume-yes --no-install-recommends wget lbzip2
 
 cd
 

@@ -29,6 +29,7 @@ mod imp {
         Aarch64,
         X86,
         X86_64,
+        Riscv64,
         Native,
         No,
     }
@@ -204,6 +205,8 @@ mod imp {
             && (target.os == "freebsd" || (target.os == "linux" && target.env == "gnu"))
         {
             Some(Support::Aarch64)
+        } else if target.arch == "riscv64gc" && target.os == "linux" {
+            Some(Support::Riscv64)
         } else {
             let re = regex::Regex::new(
                 r"IC_IS_PLATFORM_SUPPORTED_BY_VALGRIND.*?=\s*(?<value>true|false)",
