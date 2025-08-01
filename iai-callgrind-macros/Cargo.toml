@@ -18,6 +18,9 @@ cachegrind = []
 [lib]
 proc-macro = true
 
+[build-dependencies]
+rustc_version = { workspace = true }
+
 [dependencies]
 derive_more = { workspace = true, default-features = false, features = [
   "deref",

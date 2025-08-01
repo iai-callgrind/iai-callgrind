@@ -242,6 +242,11 @@ impl Bench {
                     .teardown
                     .render_as_code(quote_spanned! { bench_id.span() => #bench_id(#elem_ident) });
                 let export_name = format!("__iai_callgrind__{callee_ident}::{run_func_id}");
+                let export = if cfg!(unsafe_keyword_needed) {
+                    quote!(#[unsafe(export_name = #export_name)])
+                } else {
+                    quote!(#[export_name = #export_name])
+                };
 
                 quote!(
                    #[inline(never)]
@@ -249,7 +254,7 @@ impl Bench {
                        #call_bench_func
                    }
                    #[inline(never)]
-                   #[unsafe(export_name = #export_name)]
+                   #export
                    pub fn #run_func_id(#index_ident: Option<usize>) -> usize {
                        let #iter_ident = #iter_expr;
 
@@ -309,13 +314,19 @@ impl Bench {
 
                 let export_name = format!("__iai_callgrind__{callee_ident}::{run_func_id}");
 
+                let export = if cfg!(unsafe_keyword_needed) {
+                    quote!(#[unsafe(export_name = #export_name)])
+                } else {
+                    quote!(#[export_name = #export_name])
+                };
+
                 quote!(
                    #[inline(never)]
                    #bench_id_func {
                        #call_bench_func
                    }
                    #[inline(never)]
-                   #[unsafe(export_name = #export_name)]
+                   #export
                    pub fn #run_func_id() {
                        let _ = #call_bench_id;
                    }
@@ -643,6 +654,11 @@ impl LibraryBenchmark {
         };
 
         let export_name = format!("__iai_callgrind__{callee_ident}::{run_func_id}");
+        let export = if cfg!(unsafe_keyword_needed) {
+            quote!(#[unsafe(export_name = #export_name)])
+        } else {
+            quote!(#[export_name = #export_name])
+        };
         let func = quote! {
             iai_callgrind::__internal::InternalLibFunctionKind::Default(#run_func_id)
         };
@@ -675,7 +691,7 @@ impl LibraryBenchmark {
                }
 
                #[inline(never)]
-               #[unsafe(export_name = #export_name)]
+               #export
                pub fn #run_func_id() {
                    let _ = #call_wrapper;
                }
