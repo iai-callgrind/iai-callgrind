@@ -11,6 +11,7 @@ use std::ffi::OsString;
 use std::time::Instant;
 
 use anyhow::Result;
+use log::warn;
 
 use super::common::{Assistant, AssistantKind, Baselines, BenchmarkSummaries, Config, ModulePath};
 use super::format::{LibraryBenchmarkHeader, OutputFormat};
@@ -20,8 +21,7 @@ use super::tool::config::ToolConfigs;
 use super::tool::path::{ToolOutputPath, ToolOutputPathKind};
 use super::tool::run::RunOptions;
 use crate::api::{
-    EntryPoint, LibraryBenchmarkBench, LibraryBenchmarkConfig, LibraryBenchmarkGroups, RawArgs,
-    ValgrindTool,
+    EntryPoint, LibraryBenchmarkConfig, LibraryBenchmarkGroups, RawArgs, ValgrindTool,
 };
 use crate::error::Error;
 use crate::runner::format;
@@ -52,12 +52,12 @@ struct Groups(Vec<Group>);
 /// It needs an implementation of `Benchmark` to be run.
 #[derive(Debug)]
 pub struct LibBench {
-    /// The arguments of `args` attribute as a single string
-    pub args: Option<String>,
     /// The index of the benchmark in the benchmark harness
     pub bench_index: usize,
     /// The default [`ValgrindTool`]. If not changed it is `Callgrind`.
     pub default_tool: ValgrindTool,
+    /// The arguments of `args` attribute as a single string
+    pub display: Option<String>,
     /// The name of the annotated function
     pub function_name: String,
     /// The index of the group in the benchmark harness
@@ -252,33 +252,48 @@ impl Groups {
                         library_benchmark_bench.config.as_ref(),
                     ]);
 
-                    // TODO: CHECK iter_count not zero ? Actually it's fine... but at least warning?
+                    let module_path = group
+                        .module_path
+                        .join(&library_benchmark_bench.function_name);
+
                     if let Some(iter_count) = library_benchmark_bench.iter_count {
-                        // TODO: Warning if iter_count is 1. Better use #[bench] instead
-                        for iter_index in 0..iter_count {
-                            // TODO: Move clones into ::new?
-                            let lib_bench = LibBench::new(
-                                meta,
-                                &group,
-                                config.clone(),
-                                group_index,
-                                bench_index,
-                                library_benchmark_bench.clone(),
-                                default_tool,
-                                Some(iter_index),
-                            )?;
-                            group.benches.push(lib_bench);
+                        match (iter_count, &library_benchmark_bench.id) {
+                            (0, Some(id)) => {
+                                warn!("The iterator of {module_path} with id '{id}' was empty.");
+                            }
+                            (0, None) => {
+                                warn!("The iterator of {module_path} was empty.");
+                            }
+                            _ => {
+                                for iter_index in 0..iter_count {
+                                    let lib_bench = LibBench::new(
+                                        library_benchmark_bench.id.clone(),
+                                        library_benchmark_bench.args.clone(),
+                                        module_path.clone(),
+                                        library_benchmark_bench.function_name.clone(),
+                                        meta,
+                                        config.clone(),
+                                        group_index,
+                                        bench_index,
+                                        Some(iter_index),
+                                        default_tool,
+                                    )?;
+                                    group.benches.push(lib_bench);
+                                }
+                            }
                         }
                     } else {
                         let lib_bench = LibBench::new(
+                            library_benchmark_bench.id,
+                            library_benchmark_bench.args,
+                            module_path,
+                            library_benchmark_bench.function_name,
                             meta,
-                            &group,
                             config,
                             group_index,
                             bench_index,
-                            library_benchmark_bench,
-                            default_tool,
                             None,
+                            default_tool,
                         )?;
                         group.benches.push(lib_bench);
                     }
@@ -342,27 +357,21 @@ impl Groups {
 
 impl LibBench {
     fn new(
+        id: Option<String>,
+        display: Option<String>,
+        module_path: ModulePath,
+        function_name: String,
         meta: &Metadata,
-        group: &Group,
         config: LibraryBenchmarkConfig,
         group_index: usize,
         bench_index: usize,
-        library_benchmark_bench: LibraryBenchmarkBench,
-        default_tool: ValgrindTool,
         iter_index: Option<usize>,
+        default_tool: ValgrindTool,
     ) -> Result<Self> {
-        let (id, description) = if let Some(iter_index) = iter_index {
-            let id = library_benchmark_bench
-                .id
-                .as_ref()
-                .map(|s| format!("{s}_{iter_index}"));
-            let description = library_benchmark_bench.args;
-            (id, description)
+        let id = if let Some(iter_index) = iter_index {
+            id.as_ref().map(|s| format!("{s}_{iter_index}"))
         } else {
-            (
-                library_benchmark_bench.id.clone(),
-                library_benchmark_bench.args,
-            )
+            id
         };
 
         let envs = config.resolve_envs();
@@ -384,10 +393,6 @@ impl LibBench {
             }
             config.default_tool.unwrap_or(default_tool)
         };
-
-        let module_path = group
-            .module_path
-            .join(&library_benchmark_bench.function_name);
 
         let mut output_format = config
             .output_format
@@ -414,8 +419,8 @@ impl LibBench {
             bench_index,
             iter_index,
             id,
-            function_name: library_benchmark_bench.function_name,
-            args: description,
+            function_name,
+            display,
             run_options: RunOptions {
                 env_clear: config.env_clear.unwrap_or(true),
                 envs,

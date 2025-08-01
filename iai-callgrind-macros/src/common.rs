@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error2::{abort, emit_error};
-use quote::{format_ident, quote, quote_spanned, ToTokens, TokenStreamExt};
+use quote::{format_ident, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::Parse;
 use syn::spanned::Spanned;
 use syn::{
@@ -206,7 +206,7 @@ impl Bench {
 
         if check_sum >= 2 {
             abort!(
-                file.0,
+                id,
                 "Only one parameter of `file`, `args` or `iter` can be present"
             );
         } else if check_sum == 0 {
@@ -215,8 +215,7 @@ impl Bench {
                 mode: BenchMode::Args(Args::default()),
             }];
         // check_sum == 1
-        // TODO: refactor: Use a method file.literal()
-        } else if let Some(literal) = &file.0 {
+        } else if let Some(literal) = file.literal() {
             if !(expected_num_args == 1 || has_setup) {
                 abort!(
                     literal,
@@ -243,6 +242,19 @@ impl Bench {
             }
             return benches;
         } else if let Some(expr) = iter.expr() {
+            if !(expected_num_args == 1 || has_setup) {
+                abort!(
+                    expr,
+                    "The benchmark function can only take exactly one argument if the iter parameter is present";
+                    help = "fn benchmark_function(arg: String) ...";
+                    note = "If you need more than one argument you can use a tuple as input and
+                    \ndestruct it in the function signature. Example:
+                    \n
+                    \n#[benches::some_id(iter = vec![(1, 2)])]
+                    \nfn benchmark_function((first, second): (u64, u64)) -> usize { ... }"
+                )
+            }
+
             return vec![Bench::new(id.clone(), BenchMode::Iter(expr.clone()))];
         } else {
             return args
@@ -341,6 +353,10 @@ impl BenchConfig {
 }
 
 impl File {
+    pub fn literal(&self) -> Option<&LitStr> {
+        self.0.as_ref()
+    }
+
     pub fn is_some(&self) -> bool {
         self.0.is_some()
     }
@@ -438,7 +454,7 @@ impl Setup {
                 abort!(
                     expr, "Invalid value for `setup`";
                     help = "The `setup` argument needs a path to an existing function
-                in a reachable scope";
+                    in a reachable scope";
                     note = "`setup = my_setup` or `setup = my::setup::function`"
                 );
             }
@@ -453,19 +469,18 @@ impl Setup {
     pub fn to_string_with_args(&self, args: &Args) -> String {
         let tokens = args.to_tokens_without_black_box();
         if let Some(setup) = self.0.as_ref() {
-            quote! { #setup(#tokens) }.to_string()
+            format!("{}({tokens})", setup.to_token_stream())
         } else {
             tokens.to_string()
         }
     }
 
-    pub fn to_string_with_iter(&self, expr: &Expr) -> String {
-        // TODO: What about the braces because of block
-        let tokens = expr.to_token_stream();
+    pub fn to_string_with_iter(&self, iter: &Expr) -> String {
+        let tokens = iter.to_token_stream();
         if let Some(setup) = self.0.as_ref() {
-            quote! { #setup(#tokens) }.to_string()
+            format!("{}(nth of {tokens})", setup.to_token_stream())
         } else {
-            tokens.to_string()
+            format!("nth of {tokens}")
         }
     }
 
@@ -487,7 +502,7 @@ impl Teardown {
                 abort!(
                     expr, "Invalid value for `teardown`";
                     help = "The `teardown` argument needs a path to an existing function
-                in a reachable scope";
+                    in a reachable scope";
                     note = "`teardown = my_teardown` or `teardown = my::teardown::function`"
                 );
             }

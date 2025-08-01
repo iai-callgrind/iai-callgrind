@@ -904,7 +904,7 @@ macro_rules! binary_benchmark_group {
                     $crate::__internal::InternalBinAssistantKind::Default(setup) =>
                         setup(),
                     $crate::__internal::InternalBinAssistantKind::None => {
-                        // TODO: panic?
+                        panic!("This function was called without a setup function being present")
                     }
                 }
             }
@@ -918,7 +918,7 @@ macro_rules! binary_benchmark_group {
                     $crate::__internal::InternalBinAssistantKind::Default(teardown) =>
                         teardown(),
                     $crate::__internal::InternalBinAssistantKind::None => {
-                        // TODO: panic?
+                        panic!("This function was called without a teardown function being present")
                     }
                 }
             }
