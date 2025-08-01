@@ -30,7 +30,7 @@ client_requests_defs = [
   "dep:bindgen",
   "dep:cc",
   "dep:regex",
-  "dep:version-compare",
+  "dep:rustc_version",
   "dep:strum",
 ]
 default = ["benchmark"]
@@ -44,7 +44,7 @@ bindgen = { workspace = true, optional = true }
 cc = { workspace = true, optional = true }
 regex = { workspace = true, optional = true }
 strum = { workspace = true, optional = true, features = ["derive"] }
-version-compare = { workspace = true, optional = true }
+rustc_version = { workspace = true, optional = true }
 
 [package.metadata.docs.rs]
 features = ["client_requests_defs"]
