@@ -6,6 +6,7 @@ use iai_callgrind::{
 };
 
 // TODO: TEST STANDALONE with and without setup and/or teardown
+// TODO: UI test with wild card `_` in function signature
 
 #[library_benchmark]
 #[benches::some_id(iter = vec![(1, 2), (2, 3)])]
@@ -13,8 +14,14 @@ fn bench_me((num, _): (usize, usize)) -> u64 {
     black_box(fibonacci(num as u64))
 }
 
+#[inline(never)]
 fn setup(num: u64) -> u64 {
     num + 1
+}
+
+#[inline(never)]
+fn allocate_in_setup(inputs: fn() -> Vec<i32>) -> Vec<i32> {
+    black_box(inputs())
 }
 
 fn teardown(num: u64) -> Result<u64, String> {
@@ -48,12 +55,6 @@ fn bench_single(num: u64) -> u64 {
     black_box(fibonacci(num))
 }
 
-#[inline(never)]
-fn allocate_in_setup(inputs: fn() -> Vec<i32>) -> Vec<i32> {
-    black_box(inputs())
-}
-
-// TODO: Test with wild card `_` in function signature
 #[library_benchmark]
 #[benches::with_setup(
     iter = vec![1, 2],

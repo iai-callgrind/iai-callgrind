@@ -1,8 +1,8 @@
 use std::ops::Deref;
 
 use derive_more::{Deref as DerefDerive, DerefMut as DerefMutDerive};
-use proc_macro2::{Span, TokenStream};
-use proc_macro_error2::{abort, emit_error};
+use proc_macro2::TokenStream;
+use proc_macro_error2::abort;
 use quote::{format_ident, quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::Parse;
 use syn::punctuated::Punctuated;
@@ -191,10 +191,7 @@ impl Bench {
         .into_iter()
         .map(|b| Bench {
             id: b.id,
-            mode: match b.mode {
-                common::BenchMode::Iter(expr) => BenchMode::Iter(Iter(expr)),
-                common::BenchMode::Args(args) => BenchMode::Args(Args(args)),
-            },
+            mode: b.mode.into(),
             config: config.clone(),
             setup: setup.clone(),
             teardown: teardown.clone(),
@@ -213,7 +210,6 @@ impl Bench {
 
         let func = match &self.mode {
             BenchMode::Iter(iter) => {
-                let iter_span = iter.span();
                 let iter_expr = iter.expr();
 
                 let index_ident = Iter::index_ident();
@@ -221,23 +217,25 @@ impl Bench {
 
                 let len = callee.len_inputs();
                 if len > 1 || len == 0 {
-                    emit_error!(
-                        iter_span, "`iter` supports only benchmark functions with exactly one argument";
-                        help = "If you need more than one argument you can use a tuple as input and
+                    abort!(
+                        iter_expr,
+                        "The benchmark function can only take exactly one argument if the iter parameter is present";
+                        help = "fn benchmark_function(arg: String) ...";
+                        note = "If you need more than one argument you can use a tuple as input and
                         \ndestruct it in the function signature. Example:
                         \n
                         \n#[benches::some_id(iter = vec![(1, 2)])]
                         \nfn benchmark_function((first, second): (u64, u64)) -> usize { ... }"
-                    );
+                    )
                 }
 
                 let bench_id_func = callee.to_caller_signature(&elem_ident, bench_id);
 
                 let (iter_count, iter_elem) = iter.render_as_code(&self.setup);
                 let call_bench_func = quote_spanned! { callee_ident.span() =>
-                        std::hint::black_box(
-                            __iai_callgrind_wrapper_mod::#callee_ident(#elem_ident)
-                        )
+                    std::hint::black_box(
+                        __iai_callgrind_wrapper_mod::#callee_ident(#elem_ident)
+                    )
                 };
 
                 let call_bench_id = self
@@ -340,7 +338,6 @@ impl Bench {
 
         match &self.mode {
             BenchMode::Iter(iter) => {
-                // TODO: Better description than args for iterator
                 let args_string = self.setup.to_string_with_iter(&iter.0);
                 let args_display = truncate_str_utf8(&args_string, defaults::MAX_BYTES_ARGS);
                 quote! {
@@ -393,6 +390,15 @@ impl BenchConfig {
     }
 }
 
+impl From<common::BenchMode> for BenchMode {
+    fn from(value: common::BenchMode) -> Self {
+        match value {
+            common::BenchMode::Iter(expr) => BenchMode::Iter(Iter(expr)),
+            common::BenchMode::Args(args) => BenchMode::Args(Args(args)),
+        }
+    }
+}
+
 impl Callee<'_> {
     fn len_inputs(&self) -> usize {
         self.0.inputs.len()
@@ -400,8 +406,9 @@ impl Callee<'_> {
 
     fn to_caller_signature(&self, elem_ident: &Ident, bench_id: &Ident) -> Signature {
         let fn_arg = self.0.inputs.iter().next().and_then(|fn_arg| match fn_arg {
-            // TODO: emit error if &self, self, ...
-            syn::FnArg::Receiver(_) => None,
+            syn::FnArg::Receiver(_) => {
+                abort!(fn_arg, "Methods with `self` are not allowed")
+            }
             syn::FnArg::Typed(pat_type) => {
                 let pat_type = PatType {
                     pat: Box::new(Pat::Ident(PatIdent {
@@ -439,25 +446,18 @@ impl Callee<'_> {
         self.0
             .inputs
             .iter()
-            .map(|fn_arg| {
-                // TODO: Review error messages
-                match fn_arg {
-                    FnArg::Receiver(_) => Err("Currently only functions not associated with an \
-                                               object are supported"
+            .map(|fn_arg| match fn_arg {
+                FnArg::Receiver(_) => Err("Methods with `self` are not allowed".to_owned()),
+                FnArg::Typed(pat_type) => match &*pat_type.pat {
+                    Pat::Ident(pat_ident) => Ok(pat_ident.ident.clone()),
+                    Pat::Wild(_) => Err("Wildcard patterns in the benchmark function signature \
+                                         are unsupported"
                         .to_owned()),
-                    FnArg::Typed(pat_type) => match &*pat_type.pat {
-                        Pat::Ident(pat_ident) => Ok(pat_ident.ident.clone()),
-                        Pat::Wild(_) => Err("Wildcard patterns in the benchmark function \
-                                             signature are not supported because it is unclear \
-                                             if they attribute to the benchmark metrics or not"
-                            .to_owned()),
-                        _ => Err(
-                            "Unsupported pattern. If you think this is an error please open an \
-                             issue"
-                                .to_owned(),
-                        ),
-                    },
-                }
+                    _ => Err(
+                        "Unsupported pattern. If you think this is an error please open an issue"
+                            .to_owned(),
+                    ),
+                },
             })
             .collect::<Result<Vec<Ident>, String>>()
     }
@@ -470,10 +470,6 @@ impl Iter {
 
     fn index_ident() -> Ident {
         format_ident!("__index")
-    }
-
-    fn span(&self) -> Span {
-        self.0.span()
     }
 
     fn expr(&self) -> &Expr {

@@ -258,11 +258,7 @@ impl Bench {
         .into_iter()
         .map(|b| Bench {
             id: b.id,
-            // TODO: Use From<common::BenchMode>
-            mode: match b.mode {
-                common::BenchMode::Iter(expr) => BenchMode::Iter(Iter(expr)),
-                common::BenchMode::Args(args) => BenchMode::Args(Args(args)),
-            },
+            mode: b.mode.into(),
             config: config.clone(),
             setup: setup.clone(),
             teardown: teardown.clone(),
@@ -327,8 +323,7 @@ impl Bench {
 
         match &self.mode {
             BenchMode::Iter(iter) => {
-                let args_string = iter.to_string();
-                // TODO: Include setup in string
+                let args_string = self.setup.to_string_with_iter(iter);
                 let args_display = truncate_str_utf8(&args_string, defaults::MAX_BYTES_ARGS);
                 let setup = self.setup.render_as_member(Some(id), Some(iter));
                 let teardown = self.teardown.render_as_member(Some(id), Some(iter));
@@ -344,8 +339,7 @@ impl Bench {
                 }
             }
             BenchMode::Args(args) => {
-                let args_string = args.to_string();
-                // TODO: Include setup in string
+                let args_string = self.setup.to_string_with_args(args);
                 let args_display = truncate_str_utf8(&args_string, defaults::MAX_BYTES_ARGS);
                 let setup = self.setup.render_as_member(Some(id), None);
                 let teardown = self.teardown.render_as_member(Some(id), None);
@@ -388,6 +382,15 @@ impl BenchConfig {
             quote! { Some(#ident) }
         } else {
             quote! { None }
+        }
+    }
+}
+
+impl From<common::BenchMode> for BenchMode {
+    fn from(value: common::BenchMode) -> Self {
+        match value {
+            common::BenchMode::Iter(expr) => Self::Iter(Iter(expr)),
+            common::BenchMode::Args(args) => Self::Args(Args(args)),
         }
     }
 }
@@ -643,6 +646,32 @@ impl Setup {
     pub fn update(&mut self, other: &Self) {
         if let (None, Some(other)) = (&self.0, &other.0) {
             self.0 = Some(other.clone());
+        }
+    }
+
+    pub fn to_string_with_args(&self, args: &Args) -> String {
+        match &self.0 {
+            Some(Expr::Path(setup)) => {
+                format!("{}({args})", setup.to_token_stream())
+            }
+            Some(expr) => {
+                format!("{}", expr.to_token_stream())
+            }
+            None => args.to_string(),
+        }
+    }
+
+    pub fn to_string_with_iter(&self, iter: &Iter) -> String {
+        match &self.0 {
+            Some(Expr::Path(setup)) => {
+                format!("{}(nth of {iter})", setup.to_token_stream())
+            }
+            Some(expr) => {
+                format!("{}", expr.to_token_stream())
+            }
+            None => {
+                format!("nth of {iter}")
+            }
         }
     }
 

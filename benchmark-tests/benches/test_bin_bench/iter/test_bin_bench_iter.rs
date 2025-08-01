@@ -85,4 +85,4 @@ binary_benchmark_group!(
     }
 );
 
-main!(binary_benchmark_groups = low_level);
+main!(binary_benchmark_groups = high_level, low_level);
