@@ -208,6 +208,13 @@ impl Bench {
         let run_func_id = format_ident("__run", Some(bench_id));
         let callee_ident = &callee.ident;
 
+        let export_name = format!("__iai_callgrind::{callee_ident}::{run_func_id}");
+        let export = if cfg!(unsafe_keyword_needed) {
+            quote!(#[unsafe(export_name = #export_name)])
+        } else {
+            quote!(#[export_name = #export_name])
+        };
+
         let func = match &self.mode {
             BenchMode::Iter(iter) => {
                 let iter_expr = iter.expr();
@@ -241,12 +248,6 @@ impl Bench {
                 let call_bench_id = self
                     .teardown
                     .render_as_code(quote_spanned! { bench_id.span() => #bench_id(#elem_ident) });
-                let export_name = format!("__iai_callgrind__{callee_ident}::{run_func_id}");
-                let export = if cfg!(unsafe_keyword_needed) {
-                    quote!(#[unsafe(export_name = #export_name)])
-                } else {
-                    quote!(#[export_name = #export_name])
-                };
 
                 quote!(
                    #[inline(never)]
@@ -310,14 +311,6 @@ impl Bench {
                         }
                         Err(message) => abort!(callee, "{}", message),
                     }
-                };
-
-                let export_name = format!("__iai_callgrind__{callee_ident}::{run_func_id}");
-
-                let export = if cfg!(unsafe_keyword_needed) {
-                    quote!(#[unsafe(export_name = #export_name)])
-                } else {
-                    quote!(#[export_name = #export_name])
                 };
 
                 quote!(
@@ -616,14 +609,14 @@ impl LibraryBenchmark {
         let inner = self.setup.render_as_code(&Args::default());
         let call_wrapper = if self.setup.is_some() {
             self.teardown.render_as_code(quote_spanned! {
-                wrapper_ident.span() => {
+                self.setup.expr().span() => {
                     let __setup = #inner;
                     std::hint::black_box(#wrapper_ident(__setup))
                 }
             })
         } else {
             self.teardown.render_as_code(quote_spanned! {
-                wrapper_ident.span() =>
+                inner.span() =>
                     std::hint::black_box(#wrapper_ident(#inner))
             })
         };
@@ -653,12 +646,13 @@ impl LibraryBenchmark {
             }
         };
 
-        let export_name = format!("__iai_callgrind__{callee_ident}::{run_func_id}");
+        let export_name = format!("__iai_callgrind::{callee_ident}::{run_func_id}");
         let export = if cfg!(unsafe_keyword_needed) {
             quote!(#[unsafe(export_name = #export_name)])
         } else {
             quote!(#[export_name = #export_name])
         };
+
         let func = quote! {
             iai_callgrind::__internal::InternalLibFunctionKind::Default(#run_func_id)
         };
@@ -857,7 +851,7 @@ impl Setup {
         if let Some(setup) = &self.deref().0 {
             quote_spanned! { setup.span() => std::hint::black_box(#setup(#args)) }
         } else {
-            quote! { #args }
+            quote_spanned! { args.span() => #args }
         }
     }
 }
