@@ -11,7 +11,7 @@ use syn::parse::Parse;
 use syn::spanned::Spanned;
 use syn::{
     parse2, parse_quote_spanned, Expr, ExprArray, ExprPath, Ident, LitStr, MetaList, MetaNameValue,
-    Token,
+    Pat, Token,
 };
 
 use crate::CargoMetadata;
@@ -545,5 +545,69 @@ pub fn truncate_str_utf8(string: &str, len: usize) -> &str {
         &string[..pos + c.len_utf8()]
     } else {
         &string[..0]
+    }
+}
+
+pub fn pattern_to_single_function_ident(
+    pat: &Pat,
+    elem_ident: &Ident,
+    index: usize,
+) -> Option<Pat> {
+    match pat {
+        Pat::Ident(pat_ident) => Some(Pat::Ident(syn::PatIdent {
+            attrs: pat_ident.attrs.clone(),
+            by_ref: None,
+            mutability: None,
+            ident: pat_ident.ident.clone(),
+            subpat: None,
+        })),
+        Pat::Paren(pat_paren) => {
+            pattern_to_single_function_ident(&pat_paren.pat, elem_ident, index)
+        }
+        Pat::Reference(pat_reference) => Some(Pat::Reference(syn::PatReference {
+            pat: Box::new(pattern_to_single_function_ident(
+                &pat_reference.pat,
+                elem_ident,
+                index,
+            )?),
+            ..pat_reference.clone()
+        })),
+        Pat::Slice(pat_slice) => Some(Pat::Ident(syn::PatIdent {
+            attrs: pat_slice.attrs.clone(),
+            by_ref: None,
+            mutability: None,
+            ident: format_ident!("{elem_ident}_{index}"),
+            subpat: None,
+        })),
+        Pat::Struct(pat_struct) => Some(Pat::Ident(syn::PatIdent {
+            attrs: pat_struct.attrs.clone(),
+            by_ref: None,
+            mutability: None,
+            ident: format_ident!("{elem_ident}_{index}"),
+            subpat: None,
+        })),
+        Pat::Tuple(pat_tuple) => Some(Pat::Ident(syn::PatIdent {
+            attrs: pat_tuple.attrs.clone(),
+            by_ref: None,
+            mutability: None,
+            ident: format_ident!("{elem_ident}_{index}"),
+            subpat: None,
+        })),
+        Pat::TupleStruct(pat_tuple_struct) => Some(Pat::Ident(syn::PatIdent {
+            attrs: pat_tuple_struct.attrs.clone(),
+            by_ref: None,
+            mutability: None,
+            ident: format_ident!("{elem_ident}_{index}"),
+            subpat: None,
+        })),
+        Pat::Wild(pat_wild) => Some(Pat::Ident(syn::PatIdent {
+            attrs: pat_wild.attrs.clone(),
+            by_ref: None,
+            mutability: None,
+            ident: format_ident!("{elem_ident}_{index}"),
+            subpat: None,
+        })),
+        Pat::Path(_) => Some(pat.clone()),
+        _ => None,
     }
 }

@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::ops::Deref;
 
 use derive_more::{Deref as DerefDerive, DerefMut as DerefMutDerive};
@@ -10,10 +9,12 @@ use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
     parse2, parse_quote, parse_quote_spanned, Attribute, Expr, ExprPath, FnArg, Ident, ItemFn,
-    MetaNameValue, Pat, PatIdent, PatType, Signature, Token,
+    MetaNameValue, Pat, PatType, Signature, Token,
 };
 
-use crate::common::{self, format_ident, truncate_str_utf8, BenchesArgs, File};
+use crate::common::{
+    self, format_ident, pattern_to_single_function_ident, truncate_str_utf8, BenchesArgs, File,
+};
 use crate::{defaults, CargoMetadata};
 
 /// The benchmark mode for `iter` and any another option in the bench attributes
@@ -208,13 +209,7 @@ impl Bench {
         let elem_ident = format_ident!("__elem");
         let run_func_id = format_ident("__run", Some(bench_id));
         let callee_ident = &callee.ident;
-
-        let export_name = format!("__iai_callgrind::{callee_ident}::{run_func_id}");
-        let export = if cfg!(unsafe_keyword_needed) {
-            quote!(#[unsafe(export_name = #export_name)])
-        } else {
-            quote!(#[export_name = #export_name])
-        };
+        let export = generate_export_name(callee, &run_func_id);
 
         let func = match &self.mode {
             BenchMode::Iter(iter) => {
@@ -237,12 +232,12 @@ impl Bench {
                     )
                 }
 
-                let bench_id_func = callee.to_caller_signature(&elem_ident, bench_id);
-
                 let (iter_count, iter_elem) = iter.render_as_code(&self.setup);
+
+                let (bench_id_func, pats) = callee.to_caller_signature(&elem_ident, bench_id);
                 let call_bench_func = quote_spanned! { callee_ident.span() =>
                     std::hint::black_box(
-                        __iai_callgrind_wrapper_mod::#callee_ident(#elem_ident)
+                        __iai_callgrind_wrapper_mod::#callee_ident(#(#pats),*)
                     )
                 };
 
@@ -291,29 +286,11 @@ impl Bench {
                     )
                 };
 
-                let (call_bench_func, bench_id_func) = if self.setup.is_some() {
-                    let call_bench_func = quote_spanned! { callee_ident.span() =>
+                let (bench_id_func, pats) = callee.to_caller_signature(&elem_ident, bench_id);
+                let call_bench_func = quote_spanned! { callee_ident.span() =>
                         std::hint::black_box(
-                            __iai_callgrind_wrapper_mod::#callee_ident(#elem_ident)
+                            __iai_callgrind_wrapper_mod::#callee_ident(#(#pats),*)
                         )
-                    };
-                    let bench_id_func = callee.to_caller_signature(&elem_ident, bench_id);
-
-                    (call_bench_func, bench_id_func)
-                } else {
-                    match callee.input_ids_no_wildcards() {
-                        Ok(inputs) => {
-                            let call_bench_func = quote_spanned! { callee_ident.span() =>
-                                std::hint::black_box(
-                                    __iai_callgrind_wrapper_mod::#callee_ident(#(#inputs),*)
-                                )
-                            };
-                            let bench_id_func = callee.with_id(bench_id.clone());
-
-                            (call_bench_func, bench_id_func)
-                        }
-                        Err(message) => abort!(callee, "{}", message),
-                    }
                 };
 
                 quote!(
@@ -412,63 +389,51 @@ impl Callee<'_> {
         self.0.inputs.len()
     }
 
-    fn to_caller_signature(&self, elem_ident: &Ident, bench_id: &Ident) -> Signature {
-        let fn_arg = self.0.inputs.iter().next().and_then(|fn_arg| match fn_arg {
-            syn::FnArg::Receiver(_) => {
-                abort!(fn_arg, "Methods with `self` are not allowed")
-            }
-            syn::FnArg::Typed(pat_type) => {
-                let pat_type = PatType {
-                    pat: Box::new(Pat::Ident(PatIdent {
-                        ident: elem_ident.clone(),
-                        attrs: vec![],
-                        by_ref: None,
-                        mutability: None,
-                        subpat: None,
-                    })),
-                    ..pat_type.clone()
-                };
-                Some(FnArg::Typed(pat_type))
-            }
-        });
-
-        Signature {
-            ident: bench_id.clone(),
-            inputs: fn_arg.map_or_else(Punctuated::new, |fn_arg| {
-                let mut punct = Punctuated::new();
-                punct.push_value(fn_arg);
-                punct
-            }),
-            ..self.0.clone()
-        }
-    }
-
-    fn with_id(&self, ident: Ident) -> Signature {
-        Signature {
-            ident,
-            ..self.0.clone()
-        }
-    }
-
-    fn input_ids_no_wildcards(&self) -> Result<Vec<Ident>, String> {
-        self.0
+    /// Convert to the function signature of the function calling the `Callee` (benchmark function)
+    ///
+    /// All elements with multiple inputs like tuples, structs, tuple structs, ... have a single
+    /// ident in the signature. The returned patterns contain the correctly named identifiers, so
+    /// they can be used as inputs for a function call to the `Callee` function.
+    fn to_caller_signature(&self, elem_ident: &Ident, bench_id: &Ident) -> (Signature, Vec<Pat>) {
+        let inputs = self
+            .0
             .inputs
             .iter()
-            .map(|fn_arg| match fn_arg {
-                FnArg::Receiver(_) => Err("Methods with `self` are not allowed".to_owned()),
-                FnArg::Typed(pat_type) => match &*pat_type.pat {
-                    Pat::Tuple(tuple) => Ok(tuple.elems.first().unwrap()),
-                    Pat::Ident(pat_ident) => Ok(pat_ident.ident.clone()),
-                    Pat::Wild(_) => Err("Wildcard patterns in the benchmark function signature \
-                                         are unsupported"
-                        .to_owned()),
-                    _ => Err(
-                        "Unsupported pattern. If you think this is an error please open an issue"
-                            .to_owned(),
-                    ),
-                },
+            .enumerate()
+            .map(|(index, fn_arg)| match fn_arg {
+                syn::FnArg::Receiver(_) => {
+                    abort!(fn_arg, "Methods with `self` are not allowed")
+                }
+                syn::FnArg::Typed(pat_type) => {
+                    match pattern_to_single_function_ident(&pat_type.pat, elem_ident, index) {
+                        Some(pat) => (
+                            pat.clone(),
+                            FnArg::Typed(PatType {
+                                pat: Box::new(pat),
+                                ..pat_type.clone()
+                            }),
+                        ),
+                        None => abort!(fn_arg, "Unsupported pattern in function signature"),
+                    }
+                }
             })
-            .collect::<Result<Vec<Ident>, String>>()
+            .fold(
+                (Vec::new(), Punctuated::new()),
+                |(mut vec, mut fn_args), (pat, fn_arg)| {
+                    vec.push(pat);
+                    fn_args.push(fn_arg);
+                    (vec, fn_args)
+                },
+            );
+
+        (
+            Signature {
+                ident: bench_id.clone(),
+                inputs: inputs.1,
+                ..self.0.clone()
+            },
+            inputs.0,
+        )
     }
 }
 
@@ -627,38 +592,14 @@ impl LibraryBenchmark {
             })
         };
 
-        let (call_bench_func, wrapper_func) = if self.setup.is_some() {
-            let call_bench_func = quote_spanned! { callee_ident.span() =>
-                    std::hint::black_box(
-                        __iai_callgrind_wrapper_mod::#callee_ident(#elem_ident)
-                    )
-            };
-            let bench_id_func = callee.to_caller_signature(&elem_ident, &wrapper_ident);
-
-            (call_bench_func, bench_id_func)
-        } else {
-            match callee.input_ids_no_wildcards() {
-                Ok(inputs) => {
-                    let call_bench_func = quote_spanned! { callee_ident.span() =>
-                            std::hint::black_box(
-                                __iai_callgrind_wrapper_mod::#callee_ident(#(#inputs),*)
-                            )
-                    };
-                    let bench_id_func = callee.with_id(wrapper_ident.clone());
-
-                    (call_bench_func, bench_id_func)
-                }
-                Err(message) => abort!(callee, "{}", message),
-            }
+        let (wrapper_func, pats) = callee.to_caller_signature(&elem_ident, &wrapper_ident);
+        let call_bench_func = quote_spanned! { callee_ident.span() =>
+                std::hint::black_box(
+                    __iai_callgrind_wrapper_mod::#callee_ident(#(#pats),*)
+                )
         };
 
-        let export_name = format!("__iai_callgrind::{callee_ident}::{run_func_id}");
-        let export = if cfg!(unsafe_keyword_needed) {
-            quote_spanned!(callee.span() => #[unsafe(export_name = #export_name)])
-        } else {
-            quote_spanned!(callee.span() => #[export_name = #export_name])
-        };
-
+        let export = generate_export_name(&callee, &run_func_id);
         let func = quote! {
             iai_callgrind::__internal::InternalLibFunctionKind::Default(#run_func_id)
         };
@@ -907,6 +848,15 @@ fn create_item_fn(item_fn: &ItemFn) -> ItemFn {
         vis,
         sig: item_fn.sig.clone(),
         block: item_fn.block.clone(),
+    }
+}
+
+fn generate_export_name(callee: &Callee, run_func_id: &Ident) -> TokenStream {
+    let export_name = format!("__iai_callgrind::{}::{run_func_id}", &callee.ident);
+    if cfg!(unsafe_keyword_needed) {
+        quote_spanned!(callee.span() => #[unsafe(export_name = #export_name)])
+    } else {
+        quote_spanned!(callee.span() => #[export_name = #export_name])
     }
 }
 

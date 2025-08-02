@@ -40,6 +40,8 @@ note: function defined here
    |
 28 | #[library_benchmark(setup = setup_string)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+29 | fn bench21(value: u64) {
+   |            ----------
    = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types

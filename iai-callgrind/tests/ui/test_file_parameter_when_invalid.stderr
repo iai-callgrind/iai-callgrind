@@ -163,6 +163,9 @@ note: function defined here
     |
 138 |     #[library_benchmark]
     |     ^^^^^^^^^^^^^^^^^^^^
+139 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/numbers.fix", setup = my_setup)]
+140 |     fn bench_library(value: String) -> u64 {
+    |                      -------------
     = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
