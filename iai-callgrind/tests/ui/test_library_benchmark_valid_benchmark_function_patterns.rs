@@ -1,5 +1,7 @@
+use iai_callgrind::library_benchmark;
+
 mod test_when_reference {
-    use iai_callgrind::library_benchmark;
+    use super::*;
 
     #[library_benchmark]
     #[bench::some(&32)]
@@ -9,7 +11,7 @@ mod test_when_reference {
 }
 
 mod test_when_reference_nested {
-    use iai_callgrind::library_benchmark;
+    use super::*;
 
     #[library_benchmark]
     #[bench::some(&[32, 42])]
@@ -19,17 +21,17 @@ mod test_when_reference_nested {
 }
 
 mod test_when_ident {
-    use iai_callgrind::library_benchmark;
+    use super::*;
 
     #[library_benchmark]
     #[bench::some(32)]
-    fn bench_2(num: usize) -> String {
+    fn bench_20(num: usize) -> String {
         num.to_string()
     }
 }
 
 mod test_when_slice {
-    use iai_callgrind::library_benchmark;
+    use super::*;
 
     #[library_benchmark]
     #[bench::some([1, 2])]
@@ -39,7 +41,7 @@ mod test_when_slice {
 }
 
 mod test_when_struct {
-    use iai_callgrind::library_benchmark;
+    use super::*;
 
     struct Point {
         x: u64,
@@ -54,7 +56,7 @@ mod test_when_struct {
 }
 
 mod test_when_tuple_struct {
-    use iai_callgrind::library_benchmark;
+    use super::*;
 
     struct Point(u64, u64);
 
@@ -66,7 +68,7 @@ mod test_when_tuple_struct {
 }
 
 mod test_when_tuple {
-    use iai_callgrind::library_benchmark;
+    use super::*;
 
     #[library_benchmark]
     #[bench::some((1, 2))]
@@ -76,7 +78,7 @@ mod test_when_tuple {
 }
 
 mod test_when_wild_card {
-    use iai_callgrind::library_benchmark;
+    use super::*;
 
     #[library_benchmark]
     #[bench::some(1)]
@@ -86,7 +88,7 @@ mod test_when_wild_card {
 }
 
 mod test_when_path {
-    use iai_callgrind::library_benchmark;
+    use super::*;
 
     #[library_benchmark]
     #[bench::some(|| 1)]
