@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::ops::Deref;
 
 use derive_more::{Deref as DerefDerive, DerefMut as DerefMutDerive};
@@ -8,8 +9,8 @@ use syn::parse::Parse;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
-    parse2, parse_quote, Attribute, Expr, ExprPath, FnArg, Ident, ItemFn, MetaNameValue, Pat,
-    PatIdent, PatType, Signature, Token,
+    parse2, parse_quote, parse_quote_spanned, Attribute, Expr, ExprPath, FnArg, Ident, ItemFn,
+    MetaNameValue, Pat, PatIdent, PatType, Signature, Token,
 };
 
 use crate::common::{self, format_ident, truncate_str_utf8, BenchesArgs, File};
@@ -262,6 +263,7 @@ impl Bench {
                        if let Some(#index_ident) = #index_ident {
                            #[allow(clippy::useless_conversion)]
                            let #elem_ident = #iter_elem;
+                           #[allow(clippy::let_unit_value)]
                            let _ = #call_bench_id;
                            0
                        } else {
@@ -277,6 +279,7 @@ impl Bench {
                 let call_bench_id = if self.setup.is_some() {
                     self.teardown.render_as_code(quote_spanned! {
                         bench_id.span() => {
+                            #[allow(clippy::let_unit_value)]
                             let __setup = #inner;
                             std::hint::black_box(#bench_id(__setup))
                         }
@@ -321,6 +324,7 @@ impl Bench {
                    #[inline(never)]
                    #export
                    pub fn #run_func_id() {
+                       #[allow(clippy::let_unit_value)]
                        let _ = #call_bench_id;
                    }
                 )
@@ -453,6 +457,7 @@ impl Callee<'_> {
             .map(|fn_arg| match fn_arg {
                 FnArg::Receiver(_) => Err("Methods with `self` are not allowed".to_owned()),
                 FnArg::Typed(pat_type) => match &*pat_type.pat {
+                    Pat::Tuple(tuple) => Ok(tuple.elems.first().unwrap()),
                     Pat::Ident(pat_ident) => Ok(pat_ident.ident.clone()),
                     Pat::Wild(_) => Err("Wildcard patterns in the benchmark function signature \
                                          are unsupported"
@@ -610,6 +615,7 @@ impl LibraryBenchmark {
         let call_wrapper = if self.setup.is_some() {
             self.teardown.render_as_code(quote_spanned! {
                 self.setup.expr().span() => {
+                    #[allow(clippy::let_unit_value)]
                     let __setup = #inner;
                     std::hint::black_box(#wrapper_ident(__setup))
                 }
@@ -648,9 +654,9 @@ impl LibraryBenchmark {
 
         let export_name = format!("__iai_callgrind::{callee_ident}::{run_func_id}");
         let export = if cfg!(unsafe_keyword_needed) {
-            quote!(#[unsafe(export_name = #export_name)])
+            quote_spanned!(callee.span() => #[unsafe(export_name = #export_name)])
         } else {
-            quote!(#[export_name = #export_name])
+            quote_spanned!(callee.span() => #[export_name = #export_name])
         };
 
         let func = quote! {
@@ -687,6 +693,7 @@ impl LibraryBenchmark {
                #[inline(never)]
                #export
                pub fn #run_func_id() {
+                   #[allow(clippy::let_unit_value)]
                    let _ = #call_wrapper;
                }
             }
@@ -818,22 +825,22 @@ impl LibraryBenchmarkConfig {
     fn render_as_code(&self) -> TokenStream {
         let ident = Self::ident();
         if let Some(config) = &self.deref().0 {
-            quote!(
+            quote_spanned! { config.span() =>
                 #[inline(never)]
                 pub fn #ident()
                     -> Option<iai_callgrind::__internal::InternalLibraryBenchmarkConfig>
                 {
                     Some(#config.into())
                 }
-            )
+            }
         } else {
-            quote!(
+            quote! {
                 #[inline(never)]
                 pub fn #ident()
                 -> Option<iai_callgrind::__internal::InternalLibraryBenchmarkConfig> {
                     None
                 }
-            )
+            }
         }
     }
 }
@@ -860,6 +867,7 @@ impl Teardown {
     fn render_as_code(&self, tokens: TokenStream) -> TokenStream {
         if let Some(teardown) = &self.deref().0 {
             quote_spanned! { teardown.span() => {
+                    #[allow(clippy::let_unit_value)]
                     let __result = #tokens;
                     std::hint::black_box(#teardown(__result))
                 }
@@ -872,11 +880,12 @@ impl Teardown {
 
 #[cfg(feature = "cachegrind")]
 fn create_item_fn(item_fn: &ItemFn) -> ItemFn {
-    let vis = parse_quote! { pub(super) };
+    let vis = parse_quote_spanned! { item_fn.span() => pub(super) };
     let item_fn_block = item_fn.block.clone();
-    let block = parse_quote!(
+    let block = parse_quote_spanned!( item_fn_block.span() =>
         {
             iai_callgrind::client_requests::cachegrind::start_instrumentation();
+            #[allow(clippy::let_unit_value)]
             let __r = #item_fn_block;
             iai_callgrind::client_requests::cachegrind::stop_instrumentation();
             __r
@@ -892,7 +901,7 @@ fn create_item_fn(item_fn: &ItemFn) -> ItemFn {
 
 #[cfg(not(feature = "cachegrind"))]
 fn create_item_fn(item_fn: &ItemFn) -> ItemFn {
-    let vis = parse_quote! { pub(super) };
+    let vis = parse_quote_spanned! { item_fn.span() => pub(super) };
     ItemFn {
         attrs: vec![],
         vis,
@@ -993,6 +1002,7 @@ mod tests {
             rendered_benches.push(quote!(
                 #[inline(never)]
                 pub fn #ident() {
+                    #[allow(clippy::let_unit_value)]
                     let _ = std::hint::black_box(__iai_callgrind_wrapper_mod::#callee(
                         #(std::hint::black_box(#args)),*
                     ));

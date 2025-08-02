@@ -32,14 +32,13 @@ error: unexpected end of input, expected an expression
    = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `InternalLibraryBenchmarkConfig: From<&str>` is not satisfied
- --> tests/ui/test_library_benchmark_invalid_arguments.rs:6:1
+ --> tests/ui/test_library_benchmark_invalid_arguments.rs:6:30
   |
 6 | #[library_benchmark(config = "wrong")]
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `From<&str>` is not implemented for `InternalLibraryBenchmarkConfig`
+  |                              ^^^^^^^ the trait `From<&str>` is not implemented for `InternalLibraryBenchmarkConfig`
   |
   = help: the following other types implement trait `From<T>`:
             <InternalLibraryBenchmarkConfig as From<LibraryBenchmarkConfig>>
             <InternalLibraryBenchmarkConfig as From<&LibraryBenchmarkConfig>>
             <InternalLibraryBenchmarkConfig as From<&mut LibraryBenchmarkConfig>>
   = note: required for `&str` to implement `Into<InternalLibraryBenchmarkConfig>`
-  = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
