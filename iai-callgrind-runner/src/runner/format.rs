@@ -224,13 +224,13 @@ impl BinaryBenchmarkHeader {
         let description = if command_args.is_empty() {
             format!(
                 "({}) -> {}",
-                bin_bench.args.as_ref().map_or("", String::as_str),
+                bin_bench.display.as_ref().map_or("", String::as_str),
                 path.display(),
             )
         } else {
             format!(
                 "({}) -> {} {}",
-                bin_bench.args.as_ref().map_or("", String::as_str),
+                bin_bench.display.as_ref().map_or("", String::as_str),
                 path.display(),
                 command_args
             )
@@ -408,7 +408,7 @@ impl LibraryBenchmarkHeader {
         let header = Header::new(
             &lib_bench.module_path,
             lib_bench.id.clone(),
-            lib_bench.args.clone(),
+            lib_bench.display.clone(),
             &lib_bench.output_format,
         );
 

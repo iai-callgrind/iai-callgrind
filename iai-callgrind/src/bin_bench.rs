@@ -74,7 +74,7 @@ pub struct Bench {
     /// The [`BenchmarkId`] used to uniquely identify this benchmark within a [`BinaryBenchmark`]
     pub id: BenchmarkId,
     /// All [`Command`]s
-    pub commands: Vec<Command>,
+    pub commands: Vec<__internal::InternalCommandKind>,
     /// An optional [`BinaryBenchmarkConfig`]
     ///
     /// This field stores the internal representation of the [`BinaryBenchmarkConfig`]. Use
@@ -82,9 +82,9 @@ pub struct Bench {
     /// [`BinaryBenchmarkConfig`]
     pub config: Option<__internal::InternalBinaryBenchmarkConfig>,
     /// The `setup` function to be executed before the [`Command`] is executed
-    pub setup: Option<fn()>,
+    pub setup: __internal::InternalBinAssistantKind,
     /// The `teardown` function to be executed after the [`Command`] is executed
-    pub teardown: Option<fn()>,
+    pub teardown: __internal::InternalBinAssistantKind,
 }
 
 /// [low level api](`crate::binary_benchmark_group`) only: Mirror the [`crate::binary_benchmark`]
@@ -381,8 +381,8 @@ impl Bench {
             id: id.into(),
             config: None,
             commands: vec![],
-            setup: None,
-            teardown: None,
+            setup: __internal::InternalBinAssistantKind::None,
+            teardown: __internal::InternalBinAssistantKind::None,
         }
     }
 
@@ -433,9 +433,12 @@ impl Bench {
     /// ```
     pub fn command<T>(&mut self, command: T) -> &mut Self
     where
-        T: Into<Command>,
+        T: Into<__internal::InternalCommand>,
     {
-        self.commands.push(command.into());
+        self.commands
+            .push(__internal::InternalCommandKind::Default(Box::new(
+                command.into(),
+            )));
         self
     }
 
@@ -463,10 +466,14 @@ impl Bench {
     /// ```
     pub fn commands<I, T>(&mut self, commands: T) -> &mut Self
     where
-        I: Into<Command>,
+        I: Into<__internal::InternalCommand>,
         T: IntoIterator<Item = I>,
     {
-        self.commands.extend(commands.into_iter().map(Into::into));
+        self.commands.extend(
+            commands
+                .into_iter()
+                .map(|c| __internal::InternalCommandKind::Default(Box::new(c.into()))),
+        );
         self
     }
 
@@ -507,7 +514,7 @@ impl Bench {
     ///     .bench(Bench::new("some_id").setup(bench_setup));
     /// ```
     pub fn setup(&mut self, setup: fn()) -> &mut Self {
-        self.setup = Some(setup);
+        self.setup = __internal::InternalBinAssistantKind::Default(setup);
         self
     }
 
@@ -551,7 +558,7 @@ impl Bench {
     ///     .bench(Bench::new("some_id").teardown(bench_teardown));
     /// ```
     pub fn teardown(&mut self, teardown: fn()) -> &mut Self {
-        self.teardown = Some(teardown);
+        self.teardown = __internal::InternalBinAssistantKind::Default(teardown);
         self
     }
 
@@ -638,7 +645,10 @@ impl Bench {
                     path.display()
                 )
             })?;
-            self.commands.push(command);
+            self.commands
+                .push(__internal::InternalCommandKind::Default(Box::new(
+                    command.into(),
+                )));
         }
 
         if !has_lines {
@@ -665,10 +675,8 @@ impl PartialEq for Bench {
         self.id == other.id
             && self.commands == other.commands
             && self.config == other.config
-            && (self.setup.is_some() && other.setup.is_some()
-                || self.setup.is_none() && other.setup.is_none())
-            && (self.teardown.is_some() && other.teardown.is_some()
-                || self.teardown.is_none() && other.teardown.is_none())
+            && self.setup == other.setup
+            && self.teardown == other.teardown
     }
 }
 

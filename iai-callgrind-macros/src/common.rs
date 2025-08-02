@@ -1,18 +1,26 @@
+//! spell-checker: ignore punct
+
 use std::fs::File as StdFile;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error2::{abort, emit_error};
-use quote::{format_ident, quote, quote_spanned, ToTokens, TokenStreamExt};
+use quote::{format_ident, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::Parse;
 use syn::spanned::Spanned;
 use syn::{
     parse2, parse_quote_spanned, Expr, ExprArray, ExprPath, Ident, LitStr, MetaList, MetaNameValue,
-    Token,
+    Pat, Token,
 };
 
 use crate::CargoMetadata;
+
+#[derive(Debug, Clone)]
+pub enum BenchMode {
+    Iter(Expr),
+    Args(Args),
+}
 
 /// This struct reflects the `args` parameter of the `#[bench]` attribute
 #[derive(Debug, Default, Clone)]
@@ -21,7 +29,7 @@ pub struct Args(Option<(Span, Vec<Expr>)>);
 #[derive(Debug, Clone)]
 pub struct Bench {
     pub id: Ident,
-    pub args: Args,
+    pub mode: BenchMode,
 }
 
 /// The `config` parameter of the `#[bench]` or `#[benches]` attribute
@@ -35,6 +43,9 @@ pub struct BenchesArgs(pub Option<Vec<Args>>);
 /// The `file` parameter of the `#[benches]` attribute
 #[derive(Debug, Default, Clone)]
 pub struct File(pub Option<LitStr>);
+
+#[derive(Debug, Clone, Default)]
+pub struct Iter(pub Option<Expr>);
 
 /// The `setup` parameter
 #[derive(Debug, Default, Clone)]
@@ -172,67 +183,91 @@ impl ToTokens for Args {
 }
 
 impl Bench {
+    pub fn new(id: Ident, mode: BenchMode) -> Self {
+        Self { id, mode }
+    }
+
     /// Return a vector of [`Bench`] parsing the [`File`] or [`BenchesArgs`] if present
     ///
     /// # Aborts
     ///
     /// If there are args in [`BenchesArgs`] and a [`File`] present. We can deal with only one them.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn from_benches_attribute(
+        fn_span: Span,
         id: &Ident,
         args: BenchesArgs,
         file: &File,
+        iter: &Iter,
         cargo_meta: Option<&CargoMetadata>,
         has_setup: bool,
         expected_num_args: usize,
     ) -> Vec<Self> {
-        match (&file.0, args.is_some()) {
-            (Some(literal), true) => {
+        let check_sum =
+            u8::from(file.is_some()) + u8::from(args.is_some()) + u8::from(iter.is_some());
+
+        if check_sum >= 2 {
+            abort!(
+                id,
+                "Only one parameter of `file`, `args` or `iter` can be present"
+            );
+        } else if check_sum == 0 {
+            return vec![Bench {
+                id: id.clone(),
+                mode: BenchMode::Args(Args::default()),
+            }];
+        // check_sum == 1
+        } else if let Some(literal) = file.literal() {
+            if !(expected_num_args == 1 || has_setup) {
                 abort!(
-                    literal.span(),
-                    "Only one parameter of `file` or `args` can be present"
-                );
+                    literal,
+                    "The benchmark function should take exactly one `String` argument if the file parameter is present";
+                    help = "fn benchmark_function(line: String) ..."
+                )
             }
-            (None, true) => args
+
+            let strings = file.read(cargo_meta);
+            if strings.is_empty() {
+                abort!(literal, "The provided file '{}' was empty", literal.value());
+            }
+
+            let mut benches = vec![];
+            for (index, string) in strings.iter().enumerate() {
+                let id = format_indexed_ident(id, index);
+                let expr = if string.is_empty() {
+                    parse_quote_spanned! { literal.span() => String::new() }
+                } else {
+                    parse_quote_spanned! { literal.span() => String::from(#string) }
+                };
+                let args = Args::new(literal.span(), vec![expr]);
+                benches.push(Bench::new(id, BenchMode::Args(args)));
+            }
+            return benches;
+        } else if let Some(expr) = iter.expr() {
+            if !(expected_num_args == 1 || has_setup) {
+                abort!(
+                    fn_span,
+                    "The benchmark function can only take exactly one argument if the iter parameter is present";
+                    help = "fn benchmark_function(arg: String) ...";
+                    note = "If you need more than one argument you can use a tuple as input and
+    destruct it in the function signature. Example:
+
+    #[benches::some_id(iter = vec![(1, 2)])]
+    fn benchmark_function((first, second): (u64, u64)) -> usize { ... }"
+                )
+            }
+
+            return vec![Bench::new(id.clone(), BenchMode::Iter(expr.clone()))];
+        } else {
+            return args
                 .finalize()
                 .enumerate()
                 .map(|(index, args)| {
                     args.check_num_arguments(expected_num_args, has_setup);
                     let id = format_indexed_ident(id, index);
-                    Bench { id, args }
+                    Bench::new(id, BenchMode::Args(args))
                 })
-                .collect(),
-            (Some(literal), false) => {
-                if !(expected_num_args == 1 || has_setup) {
-                    abort!(
-                        literal,
-                        "The benchmark function should take exactly one `String` argument if the file parameter is present";
-                        help = "fn benchmark_function(line: String) ..."
-                    )
-                }
-
-                let strings = file.read(cargo_meta);
-                if strings.is_empty() {
-                    abort!(literal, "The provided file '{}' was empty", literal.value());
-                }
-
-                let mut benches = vec![];
-                for (index, string) in strings.iter().enumerate() {
-                    let id = format_indexed_ident(id, index);
-                    let expr = if string.is_empty() {
-                        parse_quote_spanned! { literal.span() => String::new() }
-                    } else {
-                        parse_quote_spanned! { literal.span() => String::from(#string) }
-                    };
-                    let args = Args::new(literal.span(), vec![expr]);
-                    benches.push(Bench { id, args });
-                }
-                benches
-            }
-            // Cover the case when no arguments were present for example `#[benches::id()]`,
-            (None, false) => vec![Bench {
-                id: id.clone(),
-                args: Args::default(),
-            }],
+                .collect();
         }
     }
 }
@@ -320,6 +355,14 @@ impl BenchConfig {
 }
 
 impl File {
+    pub fn literal(&self) -> Option<&LitStr> {
+        self.0.as_ref()
+    }
+
+    pub fn is_some(&self) -> bool {
+        self.0.is_some()
+    }
+
     pub fn parse_pair(&mut self, pair: &MetaNameValue) -> syn::Result<()> {
         if self.0.is_none() {
             if let Expr::Lit(literal) = &pair.value {
@@ -382,6 +425,27 @@ impl File {
     }
 }
 
+impl Iter {
+    pub fn is_some(&self) -> bool {
+        self.0.is_some()
+    }
+
+    pub fn expr(&self) -> Option<&Expr> {
+        self.0.as_ref()
+    }
+
+    pub fn parse_pair(&mut self, pair: &MetaNameValue) {
+        if self.0.is_none() {
+            self.0 = Some(pair.value.clone());
+        } else {
+            emit_error!(
+                pair, "Duplicate argument: `iter`";
+                help = "`iter` is allowed only once"
+            );
+        }
+    }
+}
+
 impl Setup {
     pub fn parse_pair(&mut self, pair: &MetaNameValue) {
         if self.0.is_none() {
@@ -392,7 +456,7 @@ impl Setup {
                 abort!(
                     expr, "Invalid value for `setup`";
                     help = "The `setup` argument needs a path to an existing function
-                in a reachable scope";
+                    in a reachable scope";
                     note = "`setup = my_setup` or `setup = my::setup::function`"
                 );
             }
@@ -404,17 +468,22 @@ impl Setup {
         }
     }
 
-    pub fn to_string(&self, args: &Args) -> String {
+    pub fn to_string_with_args(&self, args: &Args) -> String {
         let tokens = args.to_tokens_without_black_box();
         if let Some(setup) = self.0.as_ref() {
-            quote! { #setup(#tokens) }.to_string()
+            format!("{}({tokens})", setup.to_token_stream())
         } else {
             tokens.to_string()
         }
     }
 
-    pub fn is_some(&self) -> bool {
-        self.0.is_some()
+    pub fn to_string_with_iter(&self, iter: &Expr) -> String {
+        let tokens = iter.to_token_stream();
+        if let Some(setup) = self.0.as_ref() {
+            format!("{}(nth of {tokens})", setup.to_token_stream())
+        } else {
+            format!("nth of {tokens}")
+        }
     }
 
     /// If this Setup is none and the other setup has a value update this `Setup` with that value
@@ -435,7 +504,7 @@ impl Teardown {
                 abort!(
                     expr, "Invalid value for `teardown`";
                     help = "The `teardown` argument needs a path to an existing function
-                in a reachable scope";
+                    in a reachable scope";
                     note = "`teardown = my_teardown` or `teardown = my::teardown::function`"
                 );
             }
@@ -478,5 +547,69 @@ pub fn truncate_str_utf8(string: &str, len: usize) -> &str {
         &string[..pos + c.len_utf8()]
     } else {
         &string[..0]
+    }
+}
+
+pub fn pattern_to_single_function_ident(
+    pat: &Pat,
+    elem_ident: &Ident,
+    index: usize,
+) -> Option<Pat> {
+    match pat {
+        Pat::Ident(pat_ident) => Some(Pat::Ident(syn::PatIdent {
+            attrs: pat_ident.attrs.clone(),
+            by_ref: None,
+            mutability: None,
+            ident: pat_ident.ident.clone(),
+            subpat: None,
+        })),
+        Pat::Paren(pat_paren) => {
+            pattern_to_single_function_ident(&pat_paren.pat, elem_ident, index)
+        }
+        Pat::Reference(pat_reference) => Some(Pat::Reference(syn::PatReference {
+            pat: Box::new(pattern_to_single_function_ident(
+                &pat_reference.pat,
+                elem_ident,
+                index,
+            )?),
+            ..pat_reference.clone()
+        })),
+        Pat::Slice(pat_slice) => Some(Pat::Ident(syn::PatIdent {
+            attrs: pat_slice.attrs.clone(),
+            by_ref: None,
+            mutability: None,
+            ident: format_ident!("{elem_ident}_{index}"),
+            subpat: None,
+        })),
+        Pat::Struct(pat_struct) => Some(Pat::Ident(syn::PatIdent {
+            attrs: pat_struct.attrs.clone(),
+            by_ref: None,
+            mutability: None,
+            ident: format_ident!("{elem_ident}_{index}"),
+            subpat: None,
+        })),
+        Pat::Tuple(pat_tuple) => Some(Pat::Ident(syn::PatIdent {
+            attrs: pat_tuple.attrs.clone(),
+            by_ref: None,
+            mutability: None,
+            ident: format_ident!("{elem_ident}_{index}"),
+            subpat: None,
+        })),
+        Pat::TupleStruct(pat_tuple_struct) => Some(Pat::Ident(syn::PatIdent {
+            attrs: pat_tuple_struct.attrs.clone(),
+            by_ref: None,
+            mutability: None,
+            ident: format_ident!("{elem_ident}_{index}"),
+            subpat: None,
+        })),
+        Pat::Wild(pat_wild) => Some(Pat::Ident(syn::PatIdent {
+            attrs: pat_wild.attrs.clone(),
+            by_ref: None,
+            mutability: None,
+            ident: format_ident!("{elem_ident}_{index}"),
+            subpat: None,
+        })),
+        Pat::Path(_) => Some(pat.clone()),
+        _ => None,
     }
 }

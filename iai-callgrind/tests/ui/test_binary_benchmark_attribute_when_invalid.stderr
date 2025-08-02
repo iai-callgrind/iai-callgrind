@@ -1,20 +1,34 @@
 error[E0308]: mismatched types
   --> tests/ui/test_binary_benchmark_attribute_when_invalid.rs:32:8
    |
+31 |     #[binary_benchmark]
+   |     ------------------- arguments to this enum variant are incorrect
 32 |     fn bench_binary() -> String {
    |        ^^^^^^^^^^^^ expected fn pointer, found fn item
    |
    = note: expected fn pointer `fn() -> iai_callgrind::Command`
                  found fn item `fn() -> String {test_when_wrong_return_type_in_signature::bench_binary::bench_binary}`
+note: tuple variant defined here
+  --> src/__internal/mod.rs
+   |
+   |     Default(fn() -> crate::Command),
+   |     ^^^^^^^
 
 error[E0308]: mismatched types
   --> tests/ui/test_binary_benchmark_attribute_when_invalid.rs:41:8
    |
+40 |     #[binary_benchmark]
+   |     ------------------- arguments to this enum variant are incorrect
 41 |     fn bench_binary() -> std::process::Command {
    |        ^^^^^^^^^^^^ expected fn pointer, found fn item
    |
    = note: expected fn pointer `fn() -> iai_callgrind::Command`
                  found fn item `fn() -> std::process::Command {test_when_wrong_return_type_in_signature_with_equal_name::bench_binary::bench_binary}`
+note: tuple variant defined here
+  --> src/__internal/mod.rs
+   |
+   |     Default(fn() -> crate::Command),
+   |     ^^^^^^^
 
 error[E0277]: the trait bound `InternalBinaryBenchmarkConfig: From<&str>` is not satisfied
  --> tests/ui/test_binary_benchmark_attribute_when_invalid.rs:4:5

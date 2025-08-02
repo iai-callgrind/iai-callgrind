@@ -21,24 +21,21 @@ note: function defined here
    |              ^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:28:34
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:28:10
    |
 28 | #[bench::id(args = (10), setup = setup_u64_to_string)]
-   |                                  ^^^^^^^^^^^^^^^^^^^
-   |                                  |
-   |                                  expected `u64`, found `String`
-   |                                  arguments to this function are incorrect
+   |          ^^
+   |          |
+   |          expected `u64`, found `String`
+   |          arguments to this function are incorrect
    |
-help: the return type of this call is `String` due to the type of the argument passed
-  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:28:34
-   |
-28 | #[bench::id(args = (10), setup = setup_u64_to_string)]
-   |                                  ^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
-  --> $RUST/core/src/hint.rs
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:28:10
    |
-   | pub const fn black_box<T>(dummy: T) -> T {
-   |              ^^^^^^^^^
+28 | #[bench::id(args = (10), setup = setup_u64_to_string)]
+   |          ^^
+29 | fn bench11(a: u64) {
+   |            ------
 
 error[E0308]: mismatched types
   --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:35:21
@@ -63,46 +60,34 @@ note: function defined here
    |              ^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:41:1
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:42:24
    |
-41 | #[library_benchmark]
-   | ^^^^^^^^^^^^^^^^^^^^
-   | |
-   | expected `()`, found `u64`
-   | arguments to this function are incorrect
+42 | #[bench::id(teardown = teardown_unit)]
+   |                        ^^^^^^^^^^^^^
+   |                        |
+   |                        expected `()`, found `u64`
+   |                        arguments to this function are incorrect
    |
-help: the return type of this call is `u64` due to the type of the argument passed
-  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:41:1
-   |
-41 | #[library_benchmark]
-   | ^^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
-  --> $RUST/core/src/hint.rs
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:15:4
    |
-   | pub const fn black_box<T>(dummy: T) -> T {
-   |              ^^^^^^^^^
-   = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
+15 | fn teardown_unit(_: ()) {}
+   |    ^^^^^^^^^^^^^ -----
 
 error[E0308]: mismatched types
-  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:48:1
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:49:24
    |
-48 | #[library_benchmark(teardown = teardown_u64)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | |
-   | expected `()`, found `u64`
-   | arguments to this function are incorrect
+49 | #[bench::id(teardown = teardown_unit)]
+   |                        ^^^^^^^^^^^^^
+   |                        |
+   |                        expected `()`, found `u64`
+   |                        arguments to this function are incorrect
    |
-help: the return type of this call is `u64` due to the type of the argument passed
-  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:48:1
-   |
-48 | #[library_benchmark(teardown = teardown_u64)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
-  --> $RUST/core/src/hint.rs
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:15:4
    |
-   | pub const fn black_box<T>(dummy: T) -> T {
-   |              ^^^^^^^^^
-   = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
+15 | fn teardown_unit(_: ()) {}
+   |    ^^^^^^^^^^^^^ -----
 
 error[E0308]: mismatched types
   --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:56:23
@@ -125,24 +110,23 @@ note: function defined here
    |              ^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:63:36
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:62:1
    |
-63 | #[benches::id(args = [10], setup = setup_u64_to_string)]
-   |                                    ^^^^^^^^^^^^^^^^^^^
-   |                                    |
-   |                                    expected `u64`, found `String`
-   |                                    arguments to this function are incorrect
+62 | #[library_benchmark]
+   | ^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected `u64`, found `String`
+   | arguments to this function are incorrect
    |
-help: the return type of this call is `String` due to the type of the argument passed
-  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:63:36
-   |
-63 | #[benches::id(args = [10], setup = setup_u64_to_string)]
-   |                                    ^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
-  --> $RUST/core/src/hint.rs
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:62:1
    |
-   | pub const fn black_box<T>(dummy: T) -> T {
-   |              ^^^^^^^^^
+62 | #[library_benchmark]
+   | ^^^^^^^^^^^^^^^^^^^^
+63 | #[benches::id(args = [10], setup = setup_u64_to_string)]
+64 | fn bench31(a: u64) {
+   |            ------
+   = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
   --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:70:23
@@ -165,22 +149,16 @@ note: function defined here
    |              ^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:76:1
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:77:26
    |
-76 | #[library_benchmark]
-   | ^^^^^^^^^^^^^^^^^^^^
-   | |
-   | expected `()`, found `u64`
-   | arguments to this function are incorrect
+77 | #[benches::id(teardown = teardown_unit)]
+   |                          ^^^^^^^^^^^^^
+   |                          |
+   |                          expected `()`, found `u64`
+   |                          arguments to this function are incorrect
    |
-help: the return type of this call is `u64` due to the type of the argument passed
-  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:76:1
-   |
-76 | #[library_benchmark]
-   | ^^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
-  --> $RUST/core/src/hint.rs
+  --> tests/ui/test_library_benchmark_invalid_bench_setup_and_teardown.rs:15:4
    |
-   | pub const fn black_box<T>(dummy: T) -> T {
-   |              ^^^^^^^^^
-   = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
+15 | fn teardown_unit(_: ()) {}
+   |    ^^^^^^^^^^^^^ -----
