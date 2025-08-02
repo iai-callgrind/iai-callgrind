@@ -1,0 +1,111 @@
+error: Only one parameter of `file`, `args` or `iter` can be present
+ --> tests/ui/test_libary_benchmark_invalid_iter.rs:7:16
+  |
+7 |     #[benches::some(iter = 1..=2, args = [0, 1])]
+  |                ^^^^
+
+error: Duplicate argument: `iter`
+
+         = help: `iter` is allowed only once
+
+  --> tests/ui/test_libary_benchmark_invalid_iter.rs:17:35
+   |
+17 |     #[benches::some(iter = 1..=2, iter = vec![0, 1])]
+   |                                   ^^^^^^^^^^^^^^^^^
+
+error: The benchmark function can only take exactly one argument if the iter parameter is present
+
+         = help: fn benchmark_function(arg: String) ...
+         = note: If you need more than one argument you can use a tuple as input and
+           destruct it in the function signature. Example:
+
+           #[benches::some_id(iter = vec![(1, 2)])]
+           fn benchmark_function((first, second): (u64, u64)) -> usize { ... }
+
+  --> tests/ui/test_libary_benchmark_invalid_iter.rs:28:8
+   |
+28 |     fn bench_10() -> u64 {
+   |        ^^^^^^^^
+
+error: The benchmark function can only take exactly one argument if the iter parameter is present
+
+         = help: fn benchmark_function(arg: String) ...
+         = note: If you need more than one argument you can use a tuple as input and
+           destruct it in the function signature. Example:
+
+           #[benches::some_id(iter = vec![(1, 2)])]
+           fn benchmark_function((first, second): (u64, u64)) -> usize { ... }
+
+  --> tests/ui/test_libary_benchmark_invalid_iter.rs:38:8
+   |
+38 |     fn bench_10(a: u64, b: u64) -> u64 {
+   |        ^^^^^^^^
+
+error[E0308]: mismatched types
+  --> tests/ui/test_libary_benchmark_invalid_iter.rs:46:5
+   |
+46 |     #[library_benchmark]
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `&str`, found integer
+47 |     #[benches::some(iter = 1..=2)]
+   |                ---- arguments to this function are incorrect
+   |
+note: function defined here
+  --> tests/ui/test_libary_benchmark_invalid_iter.rs:47:16
+   |
+47 |     #[benches::some(iter = 1..=2)]
+   |                ^^^^
+48 |     fn bench_10(a: &str) -> String {
+   |                 -------
+   = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> tests/ui/test_libary_benchmark_invalid_iter.rs:60:5
+   |
+60 |     #[library_benchmark]
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `u64`, found `String`
+61 |     #[benches::some(iter = 1..=2, setup = setup)]
+   |                ---- arguments to this function are incorrect
+   |
+note: function defined here
+  --> tests/ui/test_libary_benchmark_invalid_iter.rs:61:16
+   |
+61 |     #[benches::some(iter = 1..=2, setup = setup)]
+   |                ^^^^
+62 |     fn bench_10(a: u64) -> String {
+   |                 ------
+   = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0631]: type mismatch in function arguments
+  --> tests/ui/test_libary_benchmark_invalid_iter.rs:75:43
+   |
+70 |     fn setup(a: String) -> u64 {
+   |     -------------------------- found signature defined here
+...
+75 |     #[benches::some(iter = 1..=2, setup = setup)]
+   |                                           ^^^^^ expected due to this
+   |
+   = note: expected function signature `fn({integer}) -> _`
+              found function signature `fn(String) -> _`
+note: required by a bound in `Option::<T>::map`
+  --> $RUST/core/src/option.rs
+   |
+   |     pub fn map<U, F>(self, f: F) -> Option<U>
+   |            --- required by a bound in this associated function
+   |     where
+   |         F: FnOnce(T) -> U,
+   |            ^^^^^^^^^^^^^^ required by this bound in `Option::<T>::map`
+
+error[E0308]: mismatched types
+  --> tests/ui/test_libary_benchmark_invalid_iter.rs:89:46
+   |
+89 |     #[benches::some(iter = 1..=2, teardown = teardown)]
+   |                                              ^^^^^^^^
+   |                                              |
+   |                                              expected `u64`, found `String`
+   |                                              arguments to this function are incorrect
+   |
+note: function defined here
+  --> tests/ui/test_libary_benchmark_invalid_iter.rs:84:8
+   |
+84 |     fn teardown(a: u64) {
+   |        ^^^^^^^^ ------

@@ -247,6 +247,7 @@ impl Bench {
         teardown.update(other_teardown);
 
         let benches = common::Bench::from_benches_attribute(
+            item_fn.sig.ident.span(),
             id,
             args,
             &file,

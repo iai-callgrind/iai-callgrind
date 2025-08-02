@@ -192,7 +192,9 @@ impl Bench {
     /// # Aborts
     ///
     /// If there are args in [`BenchesArgs`] and a [`File`] present. We can deal with only one them.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn from_benches_attribute(
+        fn_span: Span,
         id: &Ident,
         args: BenchesArgs,
         file: &File,
@@ -244,14 +246,14 @@ impl Bench {
         } else if let Some(expr) = iter.expr() {
             if !(expected_num_args == 1 || has_setup) {
                 abort!(
-                    expr,
+                    fn_span,
                     "The benchmark function can only take exactly one argument if the iter parameter is present";
                     help = "fn benchmark_function(arg: String) ...";
                     note = "If you need more than one argument you can use a tuple as input and
-                    \ndestruct it in the function signature. Example:
-                    \n
-                    \n#[benches::some_id(iter = vec![(1, 2)])]
-                    \nfn benchmark_function((first, second): (u64, u64)) -> usize { ... }"
+    destruct it in the function signature. Example:
+
+    #[benches::some_id(iter = vec![(1, 2)])]
+    fn benchmark_function((first, second): (u64, u64)) -> usize { ... }"
                 )
             }
 
