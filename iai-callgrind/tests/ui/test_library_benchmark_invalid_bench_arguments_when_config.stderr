@@ -15,7 +15,7 @@ error: unexpected end of input, expected an expression
 
 error: Invalid argument: wrong
 
-         = help: Valid arguments are: `args`, `file`, `config`, `setup`, `teardown`
+         = help: Valid arguments are: `args`, `file`, `iter`, `config`, `setup`, `teardown`
 
   --> tests/ui/test_library_benchmark_invalid_bench_arguments_when_config.rs:16:18
    |
