@@ -198,6 +198,7 @@ impl GroupsBuilder {
             return;
         }
 
+        self.binary_benchmark_ids.clear();
         for binary_benchmark in group.binary_benchmarks {
             let module_path = module_path.join(&binary_benchmark.id.to_string());
 
