@@ -1,0 +1,10 @@
+groups:
+  - runs:
+      - args: ["--nocapture"]
+        expected:
+          stderr: expected_stderr.empty
+          stdout: expected_stdout.1
+      - args: ["--nocapture"]
+        expected:
+          stderr: expected_stderr.empty
+          stdout: expected_stdout.2

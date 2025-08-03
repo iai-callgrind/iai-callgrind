@@ -1,11 +1,40 @@
 use iai_callgrind::{
     binary_benchmark, binary_benchmark_attribute, binary_benchmark_group, main, Bench,
-    BinaryBenchmark, BinaryBenchmarkConfig, Dhat,
+    BinaryBenchmark, BinaryBenchmarkConfig, OutputFormat, Sandbox,
 };
 
 const ECHO: &str = env!("CARGO_BIN_EXE_echo");
+const FILE_EXISTS: &str = env!("CARGO_BIN_EXE_file-exists");
+
+fn create_file(path: &str) {
+    println!("Creating file '{path}'");
+    std::fs::write(path, []).unwrap();
+}
+
+fn create_files(paths: &[&str]) {
+    println!("Creating files '{}'", paths.join("', '"));
+    for path in paths {
+        create_file(path);
+    }
+}
+
+fn remove_file(path: &str) {
+    println!("Removing '{path}'");
+    std::fs::remove_file(path).unwrap();
+}
+
+fn print_files() {
+    for entry in std::fs::read_dir(".")
+        .unwrap()
+        .collect::<Result<Vec<_>, std::io::Error>>()
+        .unwrap()
+    {
+        println!("{}", entry.path().display())
+    }
+}
 
 #[binary_benchmark]
+#[benches::one(iter = vec![(1, 2)])]
 #[benches::two(iter = vec![(1, 2), (3, 4)])]
 fn bench_tuple((first, second): (u64, u64)) -> iai_callgrind::Command {
     iai_callgrind::Command::new(ECHO)
@@ -14,75 +43,69 @@ fn bench_tuple((first, second): (u64, u64)) -> iai_callgrind::Command {
         .build()
 }
 
-pub fn num_to_string(num: u64) -> String {
-    num.to_string()
-}
-
 #[binary_benchmark(
-    config = BinaryBenchmarkConfig::default()
-        .tool(Dhat::default().frames(["*::num_to_string"]))
+    config = BinaryBenchmarkConfig::default().sandbox(Sandbox::new(true))
 )]
-#[benches::single(iter = vec![1, 2])]
-#[benches::with_setup_path(iter = vec![1, 2], setup = num_to_string)]
-#[benches::with_setup(iter = vec![1, 2], setup = num_to_string(10))]
-#[benches::with_teardown_path(iter = vec![1, 2], teardown = num_to_string)]
-#[benches::with_teardown(iter = vec![1, 2], teardown = num_to_string(20))]
-#[benches::with_setup_and_teardown_both_path(
-    iter = vec![1, 2],
-    setup = num_to_string,
-    teardown = num_to_string
+#[benches::with_setup_path(iter = ["one.txt", "two.txt"], setup = create_file)]
+#[benches::with_setup(
+    iter = ["one.txt", "two.txt"],
+    setup = create_files(&["one.txt", "two.txt"])
 )]
 #[benches::with_setup_path_and_teardown(
-    iter = vec![1, 2],
-    setup = num_to_string,
-    teardown = num_to_string(30)
+    iter = ["one.txt", "two.txt"],
+    setup = create_file,
+    teardown = print_files()
+)]
+#[benches::with_setup_and_teardown_both_path(
+    iter = ["one.txt", "two.txt"],
+    setup = create_file,
+    teardown = remove_file
 )]
 #[benches::with_setup_and_teardown_path(
-    iter = vec![1, 2],
-    setup = num_to_string(10),
-    teardown = num_to_string
+    iter = ["one.txt", "two.txt"],
+    setup = create_files(&["one.txt", "two.txt"]),
+    teardown = remove_file
 )]
-#[benches::with_setup_and_teardown(
-    iter = vec![1, 2],
-    setup = num_to_string(10),
-    teardown = num_to_string(20)
-)]
-#[benches::range(iter = 1..=5)]
-#[benches::iterator(iter = vec![1, 2].into_iter().map(|n| n + 10))]
-fn bench(num: u64) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(ECHO)
-        .arg(num.to_string())
+fn bench_assists(path: &str) -> iai_callgrind::Command {
+    iai_callgrind::Command::new(FILE_EXISTS)
+        .arg(path)
+        .arg("true")
         .build()
 }
 
 binary_benchmark_group!(
     name = high_level;
-    benchmarks = bench_tuple, bench
+    benchmarks = bench_tuple, bench_assists
 );
 
 binary_benchmark_group!(
     name = low_level;
-    compare_by_id = true;
     benchmarks = |group: &mut BinaryBenchmarkGroup| {
         group
             .binary_benchmark(
-                binary_benchmark_attribute!(bench)
+                binary_benchmark_attribute!(bench_assists)
             )
             .binary_benchmark(
                 BinaryBenchmark::new("low_level_benchmark")
                     .bench(
                         Bench::new("foo")
-                            .command(iai_callgrind::Command::new(ECHO))
+                            .command(iai_callgrind::Command::new(ECHO).arg("foo"))
                     )
             )
             .binary_benchmark(
                 BinaryBenchmark::new("low_level_other")
                     .bench(
-                        Bench::new("foo")
-                            .command(iai_callgrind::Command::new(ECHO).arg("foo"))
+                        Bench::new("bar")
+                            .command(iai_callgrind::Command::new(ECHO).arg("bar"))
                     )
                 )
     }
 );
 
-main!(binary_benchmark_groups = high_level, low_level);
+main!(
+    config = BinaryBenchmarkConfig::default()
+        .output_format(OutputFormat::default()
+            .truncate_description(None)
+        );
+    binary_benchmark_groups = high_level, low_level
+);
