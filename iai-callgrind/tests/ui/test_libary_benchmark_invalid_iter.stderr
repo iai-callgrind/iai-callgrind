@@ -109,3 +109,14 @@ note: function defined here
    |
 84 |     fn teardown(a: u64) {
    |        ^^^^^^^^ ------
+
+error[E0689]: can't call method `into_iter` on ambiguous numeric type `{integer}`
+  --> tests/ui/test_libary_benchmark_invalid_iter.rs:99:28
+   |
+99 |     #[benches::some(iter = 1)]
+   |                            ^
+   |
+help: you must specify a type for this binding, like `i32`
+   |
+98 |     #[library_benchmark]: i32
+   |                         +++++

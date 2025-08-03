@@ -92,4 +92,14 @@ mod test_when_teardown_has_wrong_argument_type {
     }
 }
 
+mod test_when_not_an_iterator {
+    use super::*;
+
+    #[library_benchmark]
+    #[benches::some(iter = 1)]
+    fn bench_10(a: u64) -> String {
+        format!("foo: {a}")
+    }
+}
+
 fn main() {}
