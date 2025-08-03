@@ -655,10 +655,7 @@ impl Setup {
             Some(Expr::Path(setup)) => {
                 format!("{}({args})", setup.to_token_stream())
             }
-            Some(expr) => {
-                format!("{}", expr.to_token_stream())
-            }
-            None => args.to_string(),
+            Some(_) | None => args.to_string(),
         }
     }
 
@@ -667,10 +664,7 @@ impl Setup {
             Some(Expr::Path(setup)) => {
                 format!("{}(nth of {iter})", setup.to_token_stream())
             }
-            Some(expr) => {
-                format!("{}", expr.to_token_stream())
-            }
-            None => {
+            Some(_) | None => {
                 format!("nth of {iter}")
             }
         }
