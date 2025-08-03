@@ -232,18 +232,7 @@ impl GroupsBuilder {
 
                         let internal_bench = InternalBinaryBenchmarkBench {
                             id: Some(bench.id.into()),
-                            args: match command {
-                                InternalCommandKind::Default(_) if bench.setup.is_some() => {
-                                    Some(format!("setup with {UNKNOWN_ARGS}"))
-                                }
-                                InternalCommandKind::Default(_) => Some(UNKNOWN_ARGS.to_owned()),
-                                InternalCommandKind::Iter(_) if bench.setup.is_some() => {
-                                    Some(format!("setup with nth of {UNKNOWN_ARGS}"))
-                                }
-                                InternalCommandKind::Iter(_) => {
-                                    Some(format!("nth of {UNKNOWN_ARGS}"))
-                                }
-                            },
+                            args: None,
                             function_name: binary_benchmark.id.clone().into(),
                             command: command.clone(),
                             config: bench.config.clone(),
