@@ -943,6 +943,18 @@ pub struct CommandLineArgs {
     )]
     pub tools: Vec<ValgrindTool>,
 
+    /// TODO: DOCS
+    #[arg(
+        long = "truncate-description",
+        default_missing_value = "50",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = parse_truncate_description,
+        env = "IAI_CALLGRIND_TRUNCATE_DESCRIPTION",
+        display_order = 300
+    )]
+    pub truncate_description: Option<Option<usize>>,
+
     #[rustfmt::skip]
     /// The command-line arguments to pass through to all tools
     ///
@@ -1245,6 +1257,23 @@ fn parse_tool_metrics<T: Eq + Hash>(
     }
 
     Ok(format)
+}
+
+fn parse_truncate_description(value: &str) -> Result<Option<usize>, String> {
+    const TRUE_LITERALS: [&str; 5] = ["y", "yes", "t", "true", "on"];
+    const FALSE_LITERALS: [&str; 6] = ["n", "no", "none", "f", "false", "off"];
+
+    let lowercase = value.to_lowercase();
+
+    if TRUE_LITERALS.contains(&lowercase.as_str()) {
+        Ok(Some(50))
+    } else if FALSE_LITERALS.contains(&lowercase.as_str()) {
+        Ok(None)
+    } else if let Ok(parsed) = lowercase.parse::<usize>() {
+        Ok(Some(parsed))
+    } else {
+        Err(format!("Invalid value: {value}"))
+    }
 }
 
 #[cfg(test)]
