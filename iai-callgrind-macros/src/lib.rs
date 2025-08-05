@@ -29,6 +29,7 @@ impl CargoMetadata {
     }
 }
 
+// TODO: Update docs, also for binary benchmarks
 /// The `#[library_benchmark]` attribute lets you define a benchmark function which you can later
 /// use in the `library_benchmark_groups!` macro.
 ///
@@ -50,10 +51,11 @@ impl CargoMetadata {
 /// # }}
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod __internal {
+/// # pub enum InternalLibFunctionKind { None, Default(fn()) }
 /// # pub struct InternalMacroLibBench {
 /// #   pub id_display: Option<&'static str>,
 /// #   pub args_display: Option<&'static str>,
-/// #   pub func: fn(),
+/// #   pub func: InternalLibFunctionKind,
 /// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
 /// # }
 /// # pub struct InternalLibraryBenchmarkConfig {}
@@ -116,10 +118,11 @@ impl CargoMetadata {
 /// # }}
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod __internal {
+/// # pub enum InternalLibFunctionKind { None, Default(fn()) }
 /// # pub struct InternalMacroLibBench {
 /// #   pub id_display: Option<&'static str>,
 /// #   pub args_display: Option<&'static str>,
-/// #   pub func: fn(),
+/// #   pub func: InternalLibFunctionKind,
 /// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
 /// # }
 /// # pub struct InternalLibraryBenchmarkConfig {}
@@ -156,10 +159,11 @@ impl CargoMetadata {
 /// # }}
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod __internal {
+/// # pub enum InternalLibFunctionKind { None, Default(fn()) }
 /// # pub struct InternalMacroLibBench {
 /// #   pub id_display: Option<&'static str>,
 /// #   pub args_display: Option<&'static str>,
-/// #   pub func: fn(),
+/// #   pub func: InternalLibFunctionKind,
 /// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
 /// # }
 /// # pub struct InternalLibraryBenchmarkConfig {}
@@ -198,10 +202,11 @@ impl CargoMetadata {
 /// # pub fn stop_instrumentation() {}
 /// # }}
 /// # pub mod __internal {
+/// # pub enum InternalLibFunctionKind { None, Default(fn()) }
 /// # pub struct InternalMacroLibBench {
 /// #   pub id_display: Option<&'static str>,
 /// #   pub args_display: Option<&'static str>,
-/// #   pub func: fn(),
+/// #   pub func: InternalLibFunctionKind,
 /// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
 /// # }
 /// # pub struct InternalLibraryBenchmarkConfig {}
@@ -247,10 +252,11 @@ impl CargoMetadata {
 /// # }}
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod __internal {
+/// # pub enum InternalLibFunctionKind { None, Default(fn()) }
 /// # pub struct InternalMacroLibBench {
 /// #   pub id_display: Option<&'static str>,
 /// #   pub args_display: Option<&'static str>,
-/// #   pub func: fn(),
+/// #   pub func: InternalLibFunctionKind,
 /// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
 /// # }
 /// # pub struct InternalLibraryBenchmarkConfig {}
@@ -273,10 +279,11 @@ impl CargoMetadata {
 /// # mod iai_callgrind {
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod __internal {
+/// # pub enum InternalLibFunctionKind { None, Default(fn()) }
 /// # pub struct InternalMacroLibBench {
 /// #   pub id_display: Option<&'static str>,
 /// #   pub args_display: Option<&'static str>,
-/// #   pub func: fn(),
+/// #   pub func: InternalLibFunctionKind,
 /// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
 /// # }
 /// # pub struct InternalLibraryBenchmarkConfig {}
@@ -305,10 +312,11 @@ impl CargoMetadata {
 /// # }}
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod __internal {
+/// # pub enum InternalLibFunctionKind { None, Default(fn()) }
 /// # pub struct InternalMacroLibBench {
 /// #   pub id_display: Option<&'static str>,
 /// #   pub args_display: Option<&'static str>,
-/// #   pub func: fn(),
+/// #   pub func: InternalLibFunctionKind,
 /// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
 /// # }
 /// # pub struct InternalLibraryBenchmarkConfig {}
@@ -341,10 +349,11 @@ impl CargoMetadata {
 /// # }}
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod __internal {
+/// # pub enum InternalLibFunctionKind { None, Default(fn()) }
 /// # pub struct InternalMacroLibBench {
 /// #   pub id_display: Option<&'static str>,
 /// #   pub args_display: Option<&'static str>,
-/// #   pub func: fn(),
+/// #   pub func: InternalLibFunctionKind,
 /// #   pub config: Option<fn() -> InternalLibraryBenchmarkConfig>
 /// # }
 /// # pub struct InternalLibraryBenchmarkConfig {}
@@ -459,13 +468,16 @@ pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
 /// #     { fn from(_value: &mut BinaryBenchmarkConfig) -> Self { BinaryBenchmarkConfig {}}}
 /// # pub mod __internal {
 /// # use super::*;
+/// # use crate::iai_callgrind;
+/// # pub enum InternalBinFunctionKind { None, Default(fn() -> iai_callgrind::Command) }
+/// # pub enum InternalBinAssistantKind { None, Default(fn()) }
 /// # pub struct InternalMacroBinBench {
 /// #   pub id_display: Option<&'static str>,
 /// #   pub args_display: Option<&'static str>,
-/// #   pub func: fn() -> Command,
+/// #   pub func: InternalBinFunctionKind,
 /// #   pub config: Option<fn() -> InternalBinaryBenchmarkConfig>,
-/// #   pub setup: Option<fn()>,
-/// #   pub teardown: Option<fn()>,
+/// #   pub setup: InternalBinAssistantKind,
+/// #   pub teardown: InternalBinAssistantKind,
 /// # }
 /// # pub struct InternalBinaryBenchmarkConfig {}
 /// # impl From<&mut BinaryBenchmarkConfig> for InternalBinaryBenchmarkConfig
@@ -533,7 +545,7 @@ pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
 /// }
 /// # fn main() {
 /// # // To avoid the unused warning
-/// # let _ = (bench_foo::__BENCHES[0].func)();
+/// # let _ = (bench_foo::__BENCHES[0].func);
 /// # }
 /// ```
 #[proc_macro_attribute]

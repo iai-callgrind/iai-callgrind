@@ -16,6 +16,7 @@ use iai_callgrind::{
     Helgrind, LibraryBenchmarkConfig, Massif, Memcheck, OutputFormat,
 };
 
+#[inline(never)]
 fn setup_worst_case_array(start: i32) -> Vec<i32> {
     if start.is_negative() {
         (start..0).rev().collect()
@@ -30,7 +31,14 @@ fn setup_worst_case_array(start: i32) -> Vec<i32> {
     config = LibraryBenchmarkConfig::default()
         .tool(Dhat::default().enable(false))
 )]
-#[bench::worst_case_4000(setup_worst_case_array(4000))]
+#[bench::worst_case_4000(
+    args = (4000),
+    config = LibraryBenchmarkConfig::default()
+        .tool(Dhat::default()
+            .frames(["*::setup_worst_case_array"])
+        ),
+    setup = setup_worst_case_array
+)]
 fn bench_bubble_sort(array: Vec<i32>) -> Vec<i32> {
     black_box(bubble_sort(array))
 }

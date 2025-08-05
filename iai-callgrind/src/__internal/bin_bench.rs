@@ -3,9 +3,12 @@ use std::collections::HashSet;
 use crate::__internal::error::{Error, Errors};
 use crate::__internal::{
     InternalBinaryBenchmark, InternalBinaryBenchmarkBench, InternalBinaryBenchmarkConfig,
-    InternalBinaryBenchmarkGroup, InternalBinaryBenchmarkGroups, InternalMacroBinBench, ModulePath,
+    InternalBinaryBenchmarkGroup, InternalBinaryBenchmarkGroups, InternalCommandKind,
+    InternalMacroBinBench, ModulePath,
 };
 use crate::{BenchmarkId, ValgrindTool};
+
+const UNKNOWN_ARGS: &str = "N/A";
 
 pub type InternalMacroBinBenches = &'static [&'static (
     &'static str,
@@ -15,8 +18,10 @@ pub type InternalMacroBinBenches = &'static [&'static (
 
 #[derive(Debug)]
 pub struct GroupsBuilder {
-    groups: InternalBinaryBenchmarkGroups,
+    bench_ids: HashSet<BenchmarkId>,
+    binary_benchmark_ids: HashSet<BenchmarkId>,
     errors: Errors,
+    groups: InternalBinaryBenchmarkGroups,
 }
 
 impl GroupsBuilder {
@@ -49,6 +54,8 @@ impl GroupsBuilder {
         Self {
             groups,
             errors: Errors::default(),
+            bench_ids: HashSet::default(),
+            binary_benchmark_ids: HashSet::default(),
         }
     }
 
@@ -83,6 +90,60 @@ impl GroupsBuilder {
         self.groups.groups.push(internal_group);
     }
 
+    fn add_binary_benchmark_id(&mut self, id: &BenchmarkId, module_path: &ModulePath) -> bool {
+        self.bench_ids.clear();
+
+        if let Err(message) = id.validate() {
+            self.errors.add(Error::new(module_path, &message));
+            return false;
+        }
+
+        if !self.binary_benchmark_ids.insert(id.clone()) {
+            self.errors
+                .add(Error::new(module_path, "Duplicate binary benchmark id"));
+            return false;
+        }
+        true
+    }
+
+    fn add_command_id(
+        &mut self,
+        id: &BenchmarkId,
+        command: &InternalCommandKind,
+        module_path: &ModulePath,
+    ) -> bool {
+        if let Err(message) = id.validate() {
+            self.errors.add(Error::new(module_path, &message));
+            return false;
+        }
+
+        match command {
+            crate::__internal::InternalCommandKind::Default(_) => {
+                if !self.bench_ids.insert(id.clone()) {
+                    self.errors
+                        .add(Error::new(module_path, &format!("Duplicate id: '{id}'")));
+                    return false;
+                }
+
+                true
+            }
+            crate::__internal::InternalCommandKind::Iter(commands) => {
+                for index in 0..commands.len() {
+                    let bench_id: BenchmarkId = format!("{id}_{index}").into();
+                    if !self.bench_ids.insert(bench_id.clone()) {
+                        self.errors.add(Error::new(
+                            module_path,
+                            &format!("Duplicate id: '{bench_id}'"),
+                        ));
+                        return false;
+                    }
+                }
+
+                true
+            }
+        }
+    }
+
     /// Add a high-level api benchmark to the `group` parsing the `benches`
     fn high_level(group: &mut InternalBinaryBenchmarkGroup, benches: InternalMacroBinBenches) {
         for (function_name, get_config, macro_bin_benches) in benches {
@@ -95,7 +156,16 @@ impl GroupsBuilder {
                     id: macro_bin_bench.id_display.map(ToString::to_string),
                     args: macro_bin_bench.args_display.map(ToString::to_string),
                     function_name: (*function_name).to_owned(),
-                    command: (macro_bin_bench.func)().into(),
+                    command: match macro_bin_bench.func {
+                        crate::__internal::InternalBinFunctionKind::Iter(func) => {
+                            crate::__internal::InternalCommandKind::Iter(
+                                func().iter().map(Into::into).collect(),
+                            )
+                        }
+                        crate::__internal::InternalBinFunctionKind::Default(func) => {
+                            crate::__internal::InternalCommandKind::Default(Box::new(func().into()))
+                        }
+                    },
                     config: macro_bin_bench.config.map(|f| f()),
                     has_setup: macro_bin_bench.setup.is_some(),
                     has_teardown: macro_bin_bench.teardown.is_some(),
@@ -111,6 +181,7 @@ impl GroupsBuilder {
     /// In contrast to the high-level api, we need to check for duplicate ids, missing commands ...
     /// The errors are collected and then printed instead of returning on first error and printing
     /// errors one by one.
+    #[allow(clippy::too_many_lines)]
     fn low_level(
         &mut self,
         internal_group: &mut InternalBinaryBenchmarkGroup,
@@ -127,17 +198,11 @@ impl GroupsBuilder {
             return;
         }
 
-        let mut binary_benchmark_ids = HashSet::<BenchmarkId>::new();
+        self.binary_benchmark_ids.clear();
         for binary_benchmark in group.binary_benchmarks {
             let module_path = module_path.join(&binary_benchmark.id.to_string());
 
-            if let Err(message) = binary_benchmark.id.validate() {
-                self.errors.add(Error::new(&module_path, &message));
-                continue;
-            }
-            if !binary_benchmark_ids.insert(binary_benchmark.id.clone()) {
-                self.errors
-                    .add(Error::new(&module_path, "Duplicate binary benchmark id"));
+            if !self.add_binary_benchmark_id(&binary_benchmark.id, &module_path) {
                 continue;
             }
 
@@ -145,8 +210,6 @@ impl GroupsBuilder {
                 benches: vec![],
                 config: binary_benchmark.config,
             };
-
-            let mut bench_ids = HashSet::<BenchmarkId>::new();
 
             if binary_benchmark.benches.is_empty() {
                 self.errors.add(Error::new(
@@ -163,20 +226,15 @@ impl GroupsBuilder {
                         self.errors.add(Error::new(&module_path, "Missing command"));
                     }
                     [command] => {
-                        if let Err(message) = bench.id.validate() {
-                            self.errors.add(Error::new(&module_path, &message));
+                        if !self.add_command_id(&bench.id, command, &module_path) {
+                            continue;
                         }
-                        if !bench_ids.insert(bench.id.clone()) {
-                            self.errors.add(Error::new(
-                                &module_path,
-                                &format!("Duplicate id: '{}'", bench.id),
-                            ));
-                        }
+
                         let internal_bench = InternalBinaryBenchmarkBench {
                             id: Some(bench.id.into()),
                             args: None,
                             function_name: binary_benchmark.id.clone().into(),
-                            command: command.into(),
+                            command: command.clone(),
                             config: bench.config.clone(),
                             has_setup: bench.setup.is_some() || binary_benchmark.setup.is_some(),
                             has_teardown: bench.teardown.is_some()
@@ -186,23 +244,24 @@ impl GroupsBuilder {
                     }
                     commands => {
                         for (index, command) in commands.iter().enumerate() {
-                            let bench_id: BenchmarkId = format!("{}_{}", bench.id, index).into();
-                            if let Err(message) = bench_id.validate() {
-                                self.errors.add(Error::new(&module_path, &message));
-                                continue;
-                            }
-                            if !bench_ids.insert(bench_id.clone()) {
-                                self.errors.add(Error::new(
-                                    &module_path,
-                                    &format!("Duplicate id: '{bench_id}'"),
-                                ));
+                            let indexed_bench_id: BenchmarkId =
+                                format!("{}_{}", bench.id, index).into();
+
+                            if !self.add_command_id(&indexed_bench_id, command, &module_path) {
                                 continue;
                             }
                             let internal_bench = InternalBinaryBenchmarkBench {
-                                id: Some(bench_id.into()),
-                                args: None,
+                                id: Some(indexed_bench_id.into()),
+                                args: match command {
+                                    InternalCommandKind::Default(_) => {
+                                        Some(UNKNOWN_ARGS.to_owned())
+                                    }
+                                    InternalCommandKind::Iter(_) => {
+                                        Some(format!("nth of {UNKNOWN_ARGS}"))
+                                    }
+                                },
                                 function_name: binary_benchmark.id.to_string(),
-                                command: command.into(),
+                                command: command.clone(),
                                 config: bench.config.clone(),
                                 has_setup: bench.setup.is_some()
                                     || binary_benchmark.setup.is_some(),

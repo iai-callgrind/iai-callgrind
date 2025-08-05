@@ -19,7 +19,12 @@ fn teardown(mut data: Vec<i32>) {
     drop(other);
 }
 
-#[library_benchmark]
+#[library_benchmark(
+    config = LibraryBenchmarkConfig::default()
+        .tool(Dhat::default()
+            .frames(["*::custom_setup"])
+        )
+)]
 #[bench::with_entry_point(args = (5), setup = custom_setup, teardown = teardown)]
 #[bench::without_entry_point(
     args = (5),

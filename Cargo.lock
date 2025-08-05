@@ -711,12 +711,12 @@ dependencies = [
  "iai-callgrind-runner",
  "regex",
  "rstest",
+ "rustc_version",
  "serde",
  "serde_json",
  "serial_test",
  "strum",
  "trybuild",
- "version-compare",
 ]
 
 [[package]]
@@ -729,6 +729,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rstest",
+ "rustc_version",
  "serde",
  "serde_json",
  "syn",

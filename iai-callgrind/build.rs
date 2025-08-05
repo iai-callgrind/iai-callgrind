@@ -1,18 +1,17 @@
-// spell-checker: ignore rustified iquote iquotevalgrind
-
 //! The build script
+
+// spell-checker: ignore rustified iquote iquotevalgrind
 
 #[cfg(feature = "client_requests_defs")]
 mod imp {
     use std::borrow::Cow;
-    use std::ffi::OsString;
     use std::fmt::Display;
     use std::io::{BufRead, BufReader, Cursor};
     use std::path::PathBuf;
 
     use bindgen::{builder, Bindings};
+    use rustc_version::{version, Version};
     use strum::{EnumIter, IntoEnumIterator};
-    use version_compare::Cmp;
 
     #[derive(Debug)]
     struct Target {
@@ -51,23 +50,6 @@ mod imp {
                 triple: std::env::var("TARGET").unwrap(),
             }
         }
-    }
-
-    // Return the rust version if running rustc was successful
-    fn get_rust_version() -> Option<String> {
-        let output = std::process::Command::new(
-            std::env::var_os("RUSTC").unwrap_or_else(|| OsString::from("rustc")),
-        )
-        .arg("--version")
-        .output();
-
-        output.ok().map(|o| {
-            String::from_utf8_lossy(&o.stdout)
-                .split(' ')
-                .nth(1)
-                .expect("The rust version should be present")
-                .to_owned()
-        })
     }
 
     fn print_client_requests_support(value: &Support) {
@@ -150,6 +132,11 @@ mod imp {
         bindings
     }
 
+    // Return the rust version if running rustc was successful
+    fn get_rust_version() -> Option<Version> {
+        version().ok()
+    }
+
     pub fn main() {
         println!("cargo:rerun-if-changed=valgrind/wrapper.h");
         println!("cargo:rerun-if-changed=valgrind/native.c");
@@ -161,7 +148,7 @@ mod imp {
         // in version >= 1.80.0. Printing it when compiling with versions < 1.80 triggers a warning,
         // too. To get the best of both worlds we check against the currently active rust version.
         if let Some(rust_version) = get_rust_version() {
-            if version_compare::compare_to(rust_version, "1.80", Cmp::Ge).unwrap() {
+            if rust_version.major >= 1 && rust_version.minor >= 80 {
                 let values = Support::iter()
                     .map(|s| format!("\"{s}\""))
                     .collect::<Vec<String>>()

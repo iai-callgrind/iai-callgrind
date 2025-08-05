@@ -34,17 +34,17 @@ error: Error reading line 1 in file '$WORKSPACE/target/tests/trybuild/iai-callgr
 45 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/invalid-utf8.fix")]
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Only one parameter of `file` or `args` can be present
-  --> tests/ui/test_file_parameter_when_invalid.rs:55:29
+error: Only one parameter of `file`, `args` or `iter` can be present
+  --> tests/ui/test_file_parameter_when_invalid.rs:55:16
    |
 55 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/numbers.fix", args = [("valid_arg".to_owned()), "another".to_owned()])]
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ^^^^^
 
-error: Only one parameter of `file` or `args` can be present
-  --> tests/ui/test_file_parameter_when_invalid.rs:61:29
+error: Only one parameter of `file`, `args` or `iter` can be present
+  --> tests/ui/test_file_parameter_when_invalid.rs:61:16
    |
 61 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/numbers.fix", args = [("valid_arg".to_owned()), "another".to_owned()])]
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ^^^^^
 
 error: Invalid value for `file`
 
@@ -128,21 +128,15 @@ error[E0308]: mismatched types
   --> tests/ui/test_file_parameter_when_invalid.rs:77:29
    |
 77 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/numbers.fix")]
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                             |
-   |                             expected `u64`, found `String`
-   |                             arguments to this function are incorrect
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `u64`, found `String`
+78 |     fn bench_binary(value: u64) -> String {
+   |        ------------ arguments to this function are incorrect
    |
-help: the return type of this call is `String` due to the type of the argument passed
-  --> tests/ui/test_file_parameter_when_invalid.rs:77:29
-   |
-77 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/numbers.fix")]
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
-  --> $RUST/core/src/hint.rs
+  --> tests/ui/test_file_parameter_when_invalid.rs:78:8
    |
-   | pub const fn black_box<T>(dummy: T) -> T {
-   |              ^^^^^^^^^
+78 |     fn bench_binary(value: u64) -> String {
+   |        ^^^^^^^^^^^^ ----------
 
 error[E0308]: mismatched types
   --> tests/ui/test_file_parameter_when_invalid.rs:76:5
@@ -156,41 +150,34 @@ error[E0308]: mismatched types
    = note: this error originates in the attribute macro `binary_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
-   --> tests/ui/test_file_parameter_when_invalid.rs:139:81
+   --> tests/ui/test_file_parameter_when_invalid.rs:138:5
     |
-139 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/numbers.fix", setup = my_setup)]
-    |                                                                                 ^^^^^^^^- help: try using a conversion method: `.to_string()`
-    |                                                                                 |
-    |                                                                                 expected `String`, found `u64`
-    |                                                                                 arguments to this function are incorrect
+138 |     #[library_benchmark]
+    |     ^^^^^^^^^^^^^^^^^^^^- help: try using a conversion method: `.to_string()`
+    |     |
+    |     expected `String`, found `u64`
+    |     arguments to this function are incorrect
     |
-help: the return type of this call is `u64` due to the type of the argument passed
-   --> tests/ui/test_file_parameter_when_invalid.rs:139:81
-    |
-139 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/numbers.fix", setup = my_setup)]
-    |                                                                                 ^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
-   --> $RUST/core/src/hint.rs
+   --> tests/ui/test_file_parameter_when_invalid.rs:138:5
     |
-    | pub const fn black_box<T>(dummy: T) -> T {
-    |              ^^^^^^^^^
+138 |     #[library_benchmark]
+    |     ^^^^^^^^^^^^^^^^^^^^
+139 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/numbers.fix", setup = my_setup)]
+140 |     fn bench_library(value: String) -> u64 {
+    |                      -------------
+    = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
    --> tests/ui/test_file_parameter_when_invalid.rs:145:29
     |
 145 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/numbers.fix", setup = { my_setup("some string".to_owned()); })]
-    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |                             |
-    |                             expected `u64`, found `String`
-    |                             arguments to this function are incorrect
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `u64`, found `String`
+146 |     fn bench_binary(value: u64) -> iai_callgrind::Command {
+    |        ------------ arguments to this function are incorrect
     |
-help: the return type of this call is `String` due to the type of the argument passed
-   --> tests/ui/test_file_parameter_when_invalid.rs:145:29
-    |
-145 |     #[benches::my_id(file = "iai-callgrind/tests/fixtures/numbers.fix", setup = { my_setup("some string".to_owned()); })]
-    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `std`
 note: function defined here
-   --> $RUST/core/src/hint.rs
+   --> tests/ui/test_file_parameter_when_invalid.rs:146:8
     |
-    | pub const fn black_box<T>(dummy: T) -> T {
-    |              ^^^^^^^^^
+146 |     fn bench_binary(value: u64) -> iai_callgrind::Command {
+    |        ^^^^^^^^^^^^ ----------

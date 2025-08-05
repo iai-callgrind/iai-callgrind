@@ -1,0 +1,21 @@
+groups:
+  - rust_version: ">1.74.1"
+    runs:
+      - args: []
+        expected:
+          stdout: expected_stdout.1
+          stderr: expected_stderr.empty
+      - args: []
+        expected:
+          stdout: expected_stdout.2
+          stderr: expected_stderr.empty
+  - rust_version: "<=1.74.1"
+    runs:
+      - args: []
+        expected:
+          stdout: expected_stdout.1.msrv
+          stderr: expected_stderr.empty
+      - args: []
+        expected:
+          stdout: expected_stdout.2.msrv
+          stderr: expected_stderr.empty

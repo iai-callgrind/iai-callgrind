@@ -936,15 +936,24 @@ pub struct BinaryBenchmark {
     pub config: Option<BinaryBenchmarkConfig>,
 }
 
+/// For internal use only: Used to differentiate between the `iter` and other `#[benches]` arguments
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum CommandKind {
+    /// The default mode when `iter` was not used
+    Default(Box<Command>),
+    /// The mode when `iter` was used
+    Iter(Vec<Command>),
+}
+
 /// The model for the `#[bench]` attribute or the low level equivalent
 ///
 /// For internal use only
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BinaryBenchmarkBench {
     /// The arguments to the function
     pub args: Option<String>,
     /// The returned [`Command`]
-    pub command: Command,
+    pub command: CommandKind,
     /// The configuration at `#[bench]` or `#[benches]` level
     pub config: Option<BinaryBenchmarkConfig>,
     /// The name of the annotated function
@@ -1134,6 +1143,8 @@ pub struct LibraryBenchmarkBench {
     pub function_name: String,
     /// The id of the attribute as in `#[bench::id]`
     pub id: Option<String>,
+    /// The amount of elements in the iterator of the `#[benches::id(iter = ITERATOR)]` if present
+    pub iter_count: Option<usize>,
 }
 
 /// The model for the configuration in library benchmarks
