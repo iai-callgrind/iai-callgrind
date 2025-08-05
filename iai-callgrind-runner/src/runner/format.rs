@@ -517,7 +517,7 @@ impl OutputFormat {
         }
 
         if let Some(truncate_description) = meta.args.truncate_description {
-            self.truncate_description = truncate_description;
+            self.truncate_description = truncate_description.into();
         }
 
         if let Some(show_intermediate) = meta.args.show_intermediate {
