@@ -867,6 +867,18 @@ pub struct CommandLineArgs {
     )]
     pub separate_targets: bool,
 
+    /// TODO: DOCS
+    #[arg(
+        long = "show-grid",
+        default_missing_value = "true",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = BoolishValueParser::new(),
+        env = "IAI_CALLGRIND_SHOW_GRID",
+        display_order = 300
+    )]
+    pub show_grid: Option<bool>,
+
     #[rustfmt::skip]
     /// Show only the comparison between different benchmarks when using `compare_by_id`
     ///
