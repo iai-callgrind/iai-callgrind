@@ -152,13 +152,15 @@ pub struct CommandLineArgs {
     #[arg(short = 'Z', hide = true, required = false, num_args = 0..)]
     _unstable_options: Vec<String>,
 
+    #[rustfmt::skip]
     /// Allow ASLR (Address Space Layout Randomization)
     ///
     /// If possible, ASLR is disabled on platforms that support it (linux, freebsd) because ASLR
     /// could noise up the callgrind cache simulation results a bit. Setting this option to true
     /// runs all benchmarks with ASLR enabled.
     ///
-    /// See also <https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space>
+    /// See also
+    /// <https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space>
     #[arg(
         long = "allow-aslr",
         default_missing_value = "true",
@@ -170,6 +172,7 @@ pub struct CommandLineArgs {
     )]
     pub allow_aslr: Option<bool>,
 
+    #[rustfmt::skip]
     /// Compare against this baseline if present but do not overwrite it
     #[arg(
         long = "baseline",
@@ -876,7 +879,12 @@ pub struct CommandLineArgs {
     )]
     pub separate_targets: bool,
 
-    /// TODO: DOCS
+    #[rustfmt::skip]
+    /// Show an ascii grid in the benchmark terminal output
+    ///
+    /// A matter of taste but the guiding lines can also be helpful reading benchmark output when
+    /// running multiple tools with multiple threads and subprocesses for example by using
+    /// `--show-intermediate`.
     #[arg(
         long = "show-grid",
         default_missing_value = "true",
@@ -888,7 +896,16 @@ pub struct CommandLineArgs {
     )]
     pub show_grid: Option<bool>,
 
-    /// TODO: DOCS
+    #[rustfmt::skip]
+    /// Show intermediate metrics from parts, subprocesses, threads, ... (Default: false)
+    ///
+    /// In callgrind, threads are treated as separate units (similar to subprocesses) and the
+    /// metrics for them are dumped into an own file. Other valgrind tools usually separate the
+    /// output files only by subprocesses. Use this option, to also show the metrics of any
+    /// intermediate fragments and not just the total over all of them.
+    ///
+    /// Temporarily setting `show_intermediate` to `true` can help to find misconfigurations in
+    /// multi-thread/multi-process benchmarks.
     #[arg(
         long = "show-intermediate",
         default_missing_value = "true",
@@ -964,13 +981,32 @@ pub struct CommandLineArgs {
     )]
     pub tools: Vec<ValgrindTool>,
 
-    /// TODO: DOCS
+    #[rustfmt::skip]
+    /// Adjust, enable or disable the truncation of the description in the Iai-Callgrind output
+    ///
+    /// The default is to truncate the description to the size of 50 ascii characters. A false
+    /// value disables the truncation entirely and a value will truncate the description to the
+    /// given amount of characters excluding the ellipsis.
+    ///
+    /// To clearify which part of the output is meant by `DESCRIPTION`:
+    ///
+    /// ```text
+    /// benchmark_file::group_name::function_name id:DESCRIPTION
+    ///   Instructions:              352135|352135          (No change)
+    ///   ...
+    /// ```
+    ///
+    /// Examples:
+    ///   * --truncate-description=no (disables truncation)
+    ///   * --truncate-description=100 (set the truncation to 100 ascii chars)
+    ///   * --truncate-description (this is the default and sets the size of 50 ascii chars)
     #[arg(
         long = "truncate-description",
         default_missing_value = "50",
         num_args = 0..=1,
         require_equals = true,
         value_parser = parse_truncate_description,
+        verbatim_doc_comment,
         env = "IAI_CALLGRIND_TRUNCATE_DESCRIPTION",
         display_order = 300
     )]
