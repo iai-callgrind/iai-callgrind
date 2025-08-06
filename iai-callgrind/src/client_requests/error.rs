@@ -14,14 +14,14 @@ impl std::error::Error for ClientRequestError {}
 
 impl From<FromVecWithNulError> for ClientRequestError {
     fn from(value: FromVecWithNulError) -> Self {
-        ClientRequestError::ValgrindPrintError(value)
+        Self::ValgrindPrintError(value)
     }
 }
 
 impl Display for ClientRequestError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            ClientRequestError::ValgrindPrintError(inner) => {
+            Self::ValgrindPrintError(inner) => {
                 write!(
                     f,
                     "client requests: print error: {}: '{}'",

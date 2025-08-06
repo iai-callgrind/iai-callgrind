@@ -43,13 +43,6 @@
 //! See also [The client request
 //! mechanism](https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq)
 
-use std::ffi::CStr;
-
-use super::{
-    bindings, fatal_error, valgrind_do_client_request_expr, valgrind_do_client_request_stmt, RawFd,
-    StackId, ThreadId,
-};
-
 /// The `MempoolFlags` usable in [`create_mempool_ext`] as `flags`.
 #[allow(non_snake_case)]
 pub mod MempoolFlags {
@@ -68,6 +61,8 @@ pub mod MempoolFlags {
     /// Note: it is an error to use this flag without the [`METAPOOL`] flag.
     pub const AUTOFREE: u8 = 1;
 
+    /// The flag [`super::MempoolFlags::METAPOOL`]
+    ///
     /// The flag [`super::MempoolFlags::METAPOOL`] specifies that the pieces of memory associated
     /// with the pool using [`super::mempool_alloc`] will be used by the application as superblocks
     /// to dole out [`super::malloclike_block`] blocks using [`super::malloclike_block`].
@@ -80,6 +75,13 @@ pub mod MempoolFlags {
     /// detect overlapping memory blocks, and will abort execution (e.g. during leak search).
     pub const METAPOOL: u8 = 2;
 }
+
+use std::ffi::CStr;
+
+use super::{
+    bindings, fatal_error, valgrind_do_client_request_expr, valgrind_do_client_request_stmt, RawFd,
+    StackId, ThreadId,
+};
 
 /// Returns the number of Valgrinds this code is running under
 ///

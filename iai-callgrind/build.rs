@@ -18,8 +18,8 @@ mod imp {
         arch: String,
         env: String,
         os: String,
-        vendor: String,
         triple: String,
+        vendor: String,
     }
 
     #[derive(EnumIter, Debug, PartialEq, Eq)]

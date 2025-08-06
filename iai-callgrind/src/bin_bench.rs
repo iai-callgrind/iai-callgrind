@@ -71,8 +71,6 @@ pub struct BinaryBenchmarkGroup {
 /// `#[benches]` attribute of a [`crate::binary_benchmark`]
 #[derive(Debug, Clone)]
 pub struct Bench {
-    /// The [`BenchmarkId`] used to uniquely identify this benchmark within a [`BinaryBenchmark`]
-    pub id: BenchmarkId,
     /// All [`Command`]s
     pub commands: Vec<__internal::InternalCommandKind>,
     /// An optional [`BinaryBenchmarkConfig`]
@@ -81,6 +79,8 @@ pub struct Bench {
     /// `BinaryBenchmarkConfig::into` to generate the internal configuration from a
     /// [`BinaryBenchmarkConfig`]
     pub config: Option<__internal::InternalBinaryBenchmarkConfig>,
+    /// The [`BenchmarkId`] used to uniquely identify this benchmark within a [`BinaryBenchmark`]
+    pub id: BenchmarkId,
     /// The `setup` function to be executed before the [`Command`] is executed
     pub setup: __internal::InternalBinAssistantKind,
     /// The `teardown` function to be executed after the [`Command`] is executed
@@ -135,16 +135,16 @@ pub struct Bench {
 /// ```
 #[derive(Debug, Clone)]
 pub struct BinaryBenchmark {
+    /// All [`Bench`]es which were added to this [`BinaryBenchmark`]
+    pub benches: Vec<Bench>,
+    /// An optional [`BinaryBenchmarkConfig`] which is applied to all [`Command`]s within this
+    /// [`BinaryBenchmark`]
+    pub config: Option<__internal::InternalBinaryBenchmarkConfig>,
     /// An id which has to be unique within the same [`BinaryBenchmarkGroup`]
     ///
     /// In the high-level api this is the name of the function which is annotated by
     /// [`crate::binary_benchmark`]
     pub id: BenchmarkId,
-    /// An optional [`BinaryBenchmarkConfig`] which is applied to all [`Command`]s within this
-    /// [`BinaryBenchmark`]
-    pub config: Option<__internal::InternalBinaryBenchmarkConfig>,
-    /// All [`Bench`]es which were added to this [`BinaryBenchmark`]
-    pub benches: Vec<Bench>,
     /// The default `setup` function for all [`Bench`]es within this [`BinaryBenchmark`]. It can be
     /// overwritten in a [`Bench`]
     pub setup: Option<fn()>,
@@ -271,7 +271,7 @@ pub struct Command(__internal::InternalCommand);
 ///         .poll(Duration::from_millis(50)),
 /// );
 /// ```
-#[derive(Debug, Default, Clone, PartialEq, IntoInner, AsRef)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, IntoInner, AsRef)]
 pub struct Delay(__internal::InternalDelay);
 
 /// The `Sandbox` in which the `setup`, `teardown` and the [`Command`] are run
@@ -625,14 +625,14 @@ impl Bench {
     }
 }
 
-impl From<&mut Bench> for Bench {
-    fn from(value: &mut Bench) -> Self {
+impl From<&mut Self> for Bench {
+    fn from(value: &mut Self) -> Self {
         value.clone()
     }
 }
 
-impl From<&Bench> for Bench {
-    fn from(value: &Bench) -> Self {
+impl From<&Self> for Bench {
+    fn from(value: &Self) -> Self {
         value.clone()
     }
 }
@@ -1006,14 +1006,14 @@ impl BinaryBenchmark {
     }
 }
 
-impl From<&mut BinaryBenchmark> for BinaryBenchmark {
-    fn from(value: &mut BinaryBenchmark) -> Self {
+impl From<&mut Self> for BinaryBenchmark {
+    fn from(value: &mut Self) -> Self {
         value.clone()
     }
 }
 
-impl From<&BinaryBenchmark> for BinaryBenchmark {
-    fn from(value: &BinaryBenchmark) -> Self {
+impl From<&Self> for BinaryBenchmark {
+    fn from(value: &Self) -> Self {
         value.clone()
     }
 }
@@ -2292,14 +2292,14 @@ impl Command {
     }
 }
 
-impl From<&mut Command> for Command {
-    fn from(value: &mut Command) -> Self {
+impl From<&mut Self> for Command {
+    fn from(value: &mut Self) -> Self {
         value.clone()
     }
 }
 
-impl From<&Command> for Command {
-    fn from(value: &Command) -> Self {
+impl From<&Self> for Command {
+    fn from(value: &Self) -> Self {
         value.clone()
     }
 }
@@ -2598,7 +2598,7 @@ mod tests {
     #[case::mixed_all("auAEwer9__2xcd")]
     fn test_benchmark_id_validate(#[case] id: &str) {
         let id = BenchmarkId::new(id);
-        assert!(id.validate().is_ok());
+        id.validate().unwrap();
     }
 
     #[rstest]
