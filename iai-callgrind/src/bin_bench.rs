@@ -9,7 +9,7 @@ use std::time::Duration;
 use derive_more::AsRef;
 use iai_callgrind_macros::IntoInner;
 
-use crate::{DelayKind, Stdin, Stdio, ValgrindTool, __internal};
+use crate::{DelayKind, ExitWith, Stdin, Stdio, ValgrindTool, __internal};
 
 /// [low level api](`crate::binary_benchmark_group`) only: Create a new benchmark id
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -273,39 +273,6 @@ pub struct Command(__internal::InternalCommand);
 /// ```
 #[derive(Debug, Default, Clone, PartialEq, IntoInner, AsRef)]
 pub struct Delay(__internal::InternalDelay);
-
-// TODO: Refactor: Use api::ExitWith directly
-/// Set the expected exit status of a binary benchmark
-///
-/// Per default, the benchmarked binary is expected to succeed, but if a benchmark is expected to
-/// fail, setting this option is required.
-///
-/// # Examples
-///
-/// ```rust
-/// # use iai_callgrind::{binary_benchmark_group};
-/// # binary_benchmark_group!(
-/// #    name = my_group;
-/// #    benchmarks = |group: &mut BinaryBenchmarkGroup| {});
-/// use iai_callgrind::{main, BinaryBenchmarkConfig, ExitWith};
-///
-/// # fn main() {
-/// main!(
-///     config = BinaryBenchmarkConfig::default().exit_with(ExitWith::Code(1));
-///     binary_benchmark_groups = my_group
-/// );
-/// # }
-/// ```
-#[derive(Debug, Clone, Copy)]
-pub enum ExitWith {
-    /// Exit with success is similar to `ExitCode(0)`
-    Success,
-    /// Exit with failure is similar to setting the `ExitCode` to something different from `0`
-    /// without having to rely on a specific exit code
-    Failure,
-    /// The exact `ExitCode` of the benchmark run
-    Code(i32),
-}
 
 /// The `Sandbox` in which the `setup`, `teardown` and the [`Command`] are run
 ///
@@ -2303,7 +2270,7 @@ impl Command {
     /// # }
     /// ```
     pub fn exit_with(&mut self, exit_with: ExitWith) -> &mut Self {
-        self.0.config.exit_with = Some(exit_with.into());
+        self.0.config.exit_with = Some(exit_with);
         self
     }
 
@@ -2502,26 +2469,6 @@ where
             kind: DelayKind::DurationElapse(duration.into()),
             ..Default::default()
         })
-    }
-}
-
-impl From<ExitWith> for __internal::InternalExitWith {
-    fn from(value: ExitWith) -> Self {
-        match value {
-            ExitWith::Success => Self::Success,
-            ExitWith::Failure => Self::Failure,
-            ExitWith::Code(c) => Self::Code(c),
-        }
-    }
-}
-
-impl From<&ExitWith> for __internal::InternalExitWith {
-    fn from(value: &ExitWith) -> Self {
-        match value {
-            ExitWith::Success => Self::Success,
-            ExitWith::Failure => Self::Failure,
-            ExitWith::Code(c) => Self::Code(*c),
-        }
     }
 }
 

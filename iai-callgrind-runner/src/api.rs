@@ -758,7 +758,23 @@ pub enum EventKind {
     SpLoss2,
 }
 
-/// Set the expected exit status of a benchmarked binary
+/// Set the expected exit status of a binary benchmark
+///
+/// Per default, the benchmarked binary is expected to succeed, but if a benchmark is expected to
+/// fail, setting this option is required.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// use iai_callgrind::{main, BinaryBenchmarkConfig, ExitWith};
+///
+/// # fn main() {
+/// main!(
+///     config = BinaryBenchmarkConfig::default().exit_with(ExitWith::Code(1));
+///     binary_benchmark_groups = my_group
+/// );
+/// # }
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExitWith {
     /// Exit with success is similar to `ExitCode(0)`
