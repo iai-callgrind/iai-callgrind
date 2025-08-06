@@ -30,9 +30,9 @@ struct AssistantRenderer;
 /// The `#[benches]` attribute is also parsed into this structure.
 #[derive(Debug)]
 struct Bench {
+    config: BenchConfig,
     id: Ident,
     mode: BenchMode,
-    config: BenchConfig,
     setup: Setup,
     teardown: Teardown,
 }
@@ -43,10 +43,10 @@ struct BenchConfig(common::BenchConfig);
 /// This is the counterpart to the `#[binary_benchmark]` attribute.
 #[derive(Debug, Default)]
 struct BinaryBenchmark {
+    benches: Vec<Bench>,
     config: BinaryBenchmarkConfig,
     setup: Setup,
     teardown: Teardown,
-    benches: Vec<Bench>,
 }
 
 /// The `config` parameter of the `#[binary_benchmark]` attribute
@@ -189,7 +189,7 @@ impl Bench {
 
         args.check_num_arguments(expected_num_args, setup.is_some());
 
-        Ok(Bench {
+        Ok(Self {
             id,
             mode: BenchMode::Args(args),
             config,
@@ -257,7 +257,7 @@ impl Bench {
             expected_num_args,
         )
         .into_iter()
-        .map(|b| Bench {
+        .map(|b| Self {
             id: b.id,
             mode: b.mode.into(),
             config: config.clone(),

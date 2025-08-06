@@ -80,13 +80,13 @@ impl Args {
             let span = expr.span();
             let args = match expr {
                 Expr::Array(items) => {
-                    let mut args = parse2::<Args>(items.elems.to_token_stream())?;
+                    let mut args = parse2::<Self>(items.elems.to_token_stream())?;
                     // Set span explicitly (again) to overwrite the wrong span from parse2
                     args.set_span(span);
                     args
                 }
                 Expr::Tuple(items) => {
-                    let mut args = parse2::<Args>(items.elems.to_token_stream())?;
+                    let mut args = parse2::<Self>(items.elems.to_token_stream())?;
                     // Set span explicitly (again) to overwrite the wrong span from parse2
                     args.set_span(span);
                     args
@@ -116,7 +116,7 @@ impl Args {
     }
 
     pub fn parse_meta_list(&mut self, meta: &MetaList) -> syn::Result<()> {
-        let mut args = meta.parse_args::<Args>()?;
+        let mut args = meta.parse_args::<Self>()?;
         args.set_span(meta.tokens.span());
 
         *self = args;
@@ -212,7 +212,7 @@ impl Bench {
                 "Only one parameter of `file`, `args` or `iter` can be present"
             );
         } else if check_sum == 0 {
-            return vec![Bench {
+            return vec![Self {
                 id: id.clone(),
                 mode: BenchMode::Args(Args::default()),
             }];
@@ -240,7 +240,7 @@ impl Bench {
                     parse_quote_spanned! { literal.span() => String::from(#string) }
                 };
                 let args = Args::new(literal.span(), vec![expr]);
-                benches.push(Bench::new(id, BenchMode::Args(args)));
+                benches.push(Self::new(id, BenchMode::Args(args)));
             }
             return benches;
         } else if let Some(expr) = iter.expr() {
@@ -257,7 +257,7 @@ impl Bench {
                 )
             }
 
-            return vec![Bench::new(id.clone(), BenchMode::Iter(expr.clone()))];
+            return vec![Self::new(id.clone(), BenchMode::Iter(expr.clone()))];
         } else {
             return args
                 .finalize()
@@ -265,7 +265,7 @@ impl Bench {
                 .map(|(index, args)| {
                     args.check_num_arguments(expected_num_args, has_setup);
                     let id = format_indexed_ident(id, index);
-                    Bench::new(id, BenchMode::Args(args))
+                    Self::new(id, BenchMode::Args(args))
                 })
                 .collect();
         }
@@ -279,7 +279,7 @@ impl BenchesArgs {
 
     pub fn parse_pair(&mut self, pair: &MetaNameValue) -> syn::Result<()> {
         if self.0.is_none() {
-            *self = BenchesArgs::from_expr(&pair.value)?;
+            *self = Self::from_expr(&pair.value)?;
         } else {
             abort!(
                 pair, "Duplicate argument: `args`";

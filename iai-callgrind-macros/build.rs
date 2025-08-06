@@ -1,3 +1,5 @@
+//! The build script
+
 use rustc_version::version;
 
 fn main() {
