@@ -483,6 +483,7 @@ impl ToolConfigs {
 
     fn print_headline(&self, tool_config: &ToolConfig, output_format: &OutputFormat) {
         if output_format.is_default()
+            && !output_format.show_only_comparison
             && (self.has_multiple() || tool_config.tool != ValgrindTool::Callgrind)
         {
             let mut formatter = VerticalFormatter::new(output_format.clone());
