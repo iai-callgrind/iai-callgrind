@@ -46,7 +46,7 @@ pub enum InternalLibFunctionKind {
     Default(fn()),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InternalBinAssistantKind {
     Iter(fn(Option<usize>)),
     Default(fn()),
@@ -68,21 +68,21 @@ pub enum InternalBinFunctionKind {
 /// Used in iai-callgrind-macros to store the essential information about a library benchmark
 #[derive(Debug, Clone)]
 pub struct InternalMacroLibBench {
-    pub id_display: Option<&'static str>,
     pub args_display: Option<&'static str>,
-    pub func: InternalLibFunctionKind,
     pub config: Option<fn() -> InternalLibraryBenchmarkConfig>,
+    pub func: InternalLibFunctionKind,
+    pub id_display: Option<&'static str>,
 }
 
 /// Used in iai-callgrind-macros to store the essential information about a binary benchmark
 #[derive(Debug, Clone)]
 pub struct InternalMacroBinBench {
-    pub id_display: Option<&'static str>,
     pub args_display: Option<&'static str>,
+    pub config: Option<fn() -> InternalBinaryBenchmarkConfig>,
     pub func: InternalBinFunctionKind,
+    pub id_display: Option<&'static str>,
     pub setup: InternalBinAssistantKind,
     pub teardown: InternalBinAssistantKind,
-    pub config: Option<fn() -> InternalBinaryBenchmarkConfig>,
 }
 
 /// A small internal helper to easily create module paths like `file::group::benchmark::id`

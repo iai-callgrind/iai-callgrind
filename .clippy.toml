@@ -1,2 +1,40 @@
 msrv = "1.74.1"
+module-item-order-groupings = [
+  [
+    "macro",
+    [
+      "macro",
+    ],
+  ],
+  [
+    "modules",
+    [
+      "extern_crate",
+      "mod",
+      "foreign_mod",
+    ],
+  ],
+  [
+    "use",
+    [
+      "use",
+    ],
+  ],
+  [
+    "everything_else",
+    [
+      "global_asm",
+      "static",
+      "const",
+      "ty_alias",
+      "enum",
+      "struct",
+      "union",
+      "trait",
+      "trait_alias",
+      "impl",
+      "fn",
+    ],
+  ],
+]
 source-item-ordering = ["module", "struct", "trait"]

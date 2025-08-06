@@ -4,8 +4,8 @@ use crate::__internal::ModulePath;
 
 #[derive(Debug)]
 pub struct Error {
-    module_path: ModulePath,
     message: String,
+    module_path: ModulePath,
 }
 
 impl Error {

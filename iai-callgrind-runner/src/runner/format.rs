@@ -161,9 +161,8 @@ pub trait Formatter {
         is_default_tool: bool,
     ) -> Result<()>;
 
-    // TODO: Refactor rename to format_line
     /// Format a line in free form as is
-    fn format_free_form(&mut self, line: &str) -> Result<()>;
+    fn format_line(&mut self, line: &str) -> Result<()>;
 
     /// Format the output of a single [`ToolMetricSummary`] of a tool
     fn format_single(
@@ -1202,7 +1201,7 @@ impl Formatter for VerticalFormatter {
                 .filter(|(_, s)| *s != ToolMetricSummary::None)
             {
                 if is_multiple || *tool != ValgrindTool::Callgrind {
-                    self.format_free_form(&format!(
+                    self.format_line(&format!(
                         "{}{} {}\n",
                         self.indent_sub_header,
                         "-------".bright_black(),
@@ -1225,7 +1224,7 @@ impl Formatter for VerticalFormatter {
         &self.output_format
     }
 
-    fn format_free_form(&mut self, line: &str) -> Result<()> {
+    fn format_line(&mut self, line: &str) -> Result<()> {
         self.buffer.push_str(line);
         Ok(())
     }

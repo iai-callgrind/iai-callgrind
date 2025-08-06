@@ -33,9 +33,9 @@ struct Args(common::Args);
 /// The `#[benches]` attribute is also parsed into this structure.
 #[derive(Debug)]
 struct Bench {
+    config: BenchConfig,
     id: Ident,
     mode: BenchMode,
-    config: BenchConfig,
     setup: Setup,
     teardown: Teardown,
 }
@@ -52,10 +52,10 @@ struct Iter(Expr);
 /// This is the counterpart to the `#[library_benchmark]` attribute.
 #[derive(Debug, Default)]
 struct LibraryBenchmark {
+    benches: Vec<Bench>,
     config: LibraryBenchmarkConfig,
     setup: Setup,
     teardown: Teardown,
-    benches: Vec<Bench>,
 }
 
 /// The `config` parameter of the `#[library_benchmark]` attribute
@@ -124,7 +124,7 @@ impl Bench {
 
         args.check_num_arguments(expected_num_args, setup.is_some());
 
-        Ok(Bench {
+        Ok(Self {
             id,
             mode: BenchMode::Args(args),
             config,
@@ -192,7 +192,7 @@ impl Bench {
             expected_num_args,
         )
         .into_iter()
-        .map(|b| Bench {
+        .map(|b| Self {
             id: b.id,
             mode: b.mode.into(),
             config: config.clone(),
@@ -367,8 +367,8 @@ impl BenchConfig {
 impl From<common::BenchMode> for BenchMode {
     fn from(value: common::BenchMode) -> Self {
         match value {
-            common::BenchMode::Iter(expr) => BenchMode::Iter(Iter(expr)),
-            common::BenchMode::Args(args) => BenchMode::Args(Args(args)),
+            common::BenchMode::Iter(expr) => Self::Iter(Iter(expr)),
+            common::BenchMode::Args(args) => Self::Args(Args(args)),
         }
     }
 }
@@ -737,7 +737,7 @@ impl Parse for LibraryBenchmark {
                 }
             }
 
-            let library_benchmark = LibraryBenchmark {
+            let library_benchmark = Self {
                 config,
                 setup,
                 teardown,

@@ -61,10 +61,10 @@ pub type BlockHandle = usize;
 /// leaks), dubious, reachable and suppressed.
 #[derive(Debug, Default, PartialEq, Eq, Clone, Hash)]
 pub struct LeakCounts {
-    /// The number of bytes of memory of direct and indirect leaks
-    pub leaked: cty::c_ulong,
     /// The number of bytes of memory of dubious leaks
     pub dubious: cty::c_ulong,
+    /// The number of bytes of memory of direct and indirect leaks
+    pub leaked: cty::c_ulong,
     /// The number of bytes of memory of reachable leaks
     pub reachable: cty::c_ulong,
     /// The number of bytes of memory of suppressed leaks
