@@ -3,6 +3,31 @@ test_lib_bench_output_format::my_group::bench_without_format for_comparison:"A v
 A very long string to see if the truncation of the description is really working
 Number of primes found in the range 0 to 20000: 2262
 - end of stdout/stderr
+  ## pid: <__PID__> thread: 1 part: 1      |N/A
+  Command: <__COMMAND__>
+  Instructions:                            |N/A                  (*********)
+  L1 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
+  RAM Hits:                                |N/A                  (*********)
+  Total read+write:                        |N/A                  (*********)
+  Estimated Cycles:                        |N/A                  (*********)
+  ## pid: <__PID__> thread: 2 part: 1      |N/A
+  Command: <__COMMAND__>
+  Instructions:                            |N/A                  (*********)
+  L1 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
+  RAM Hits:                                |N/A                  (*********)
+  Total read+write:                        |N/A                  (*********)
+  Estimated Cycles:                        |N/A                  (*********)
+  ## pid: <__PID__> thread: 3 part: 1      |N/A
+  Command: <__COMMAND__>
+  Instructions:                            |N/A                  (*********)
+  L1 Hits:                                 |N/A                  (*********)
+  LL Hits:                                 |N/A                  (*********)
+  RAM Hits:                                |N/A                  (*********)
+  Total read+write:                        |N/A                  (*********)
+  Estimated Cycles:                        |N/A                  (*********)
+  ## Total
   Instructions:                            |N/A                  (*********)
   L1 Hits:                                 |N/A                  (*********)
   LL Hits:                                 |N/A                  (*********)
