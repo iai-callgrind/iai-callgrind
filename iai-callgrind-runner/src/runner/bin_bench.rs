@@ -90,13 +90,9 @@ pub struct Delay {
 struct Group {
     benches: Vec<BinBench>,
     compare_by_id: bool,
+    index: usize,
     /// The module path so far which should be `file_name::group_name`
     module_path: ModulePath,
-    /// This name is the name from the `library_benchmark_group!` macro
-    ///
-    /// Due to the way we expand the `library_benchmark_group!` macro, we can safely assume that
-    /// this name is unique.
-    name: String,
     setup: Option<Assistant>,
     teardown: Option<Assistant>,
 }
@@ -278,7 +274,7 @@ impl BinBench {
 
         let setup = has_setup.then_some(Assistant::new_bench_assistant(
             AssistantKind::Setup,
-            &group.name,
+            group.index,
             (group_index, bench_index, iter_index),
             stdin.as_ref().and_then(|s| {
                 if let Stdin::Setup(p) = s {
@@ -292,7 +288,7 @@ impl BinBench {
         ));
         let teardown = has_teardown.then_some(Assistant::new_bench_assistant(
             AssistantKind::Teardown,
-            &group.name,
+            group.index,
             (group_index, bench_index, iter_index),
             None,
             assistant_envs,
@@ -562,7 +558,8 @@ impl Groups {
         let default_tool = benchmark_groups.default_tool;
 
         let mut groups = vec![];
-        for binary_benchmark_group in benchmark_groups.groups {
+        for (main_index, binary_benchmark_group) in benchmark_groups.groups.into_iter().enumerate()
+        {
             let group_module_path = module.join(&binary_benchmark_group.id);
             let group_config = global_config
                 .clone()
@@ -572,7 +569,7 @@ impl Groups {
                 .has_setup
                 .then_some(Assistant::new_group_assistant(
                     AssistantKind::Setup,
-                    &binary_benchmark_group.id,
+                    main_index,
                     group_config.collect_envs(),
                     false,
                 ));
@@ -581,13 +578,13 @@ impl Groups {
                     .has_teardown
                     .then_some(Assistant::new_group_assistant(
                         AssistantKind::Teardown,
-                        &binary_benchmark_group.id,
+                        main_index,
                         group_config.collect_envs(),
                         false,
                     ));
 
             let mut group = Group {
-                name: binary_benchmark_group.id,
+                index: main_index,
                 module_path: group_module_path,
                 benches: vec![],
                 setup,

@@ -57,73 +57,80 @@ note: ...and refers to the function `__run_teardown` which is defined here
   = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0603]: function import `__run_setup` is private
- --> src/macros.rs
-  |
-  | ...                   $group::__run_setup(true);
-  |                               ^^^^^^^^^^^ private function import
-  |
- ::: tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
-  |
-6 |     main!(library_benchmark_groups = some_func);
-  |     ------------------------------------------- function `__run_setup` is not publicly re-exported
-  |
+   --> src/macros.rs
+    |
+    |                         $group::__run_setup,
+    |                                 ^^^^^^^^^^^ private function import
+    |
 note: the function import `__run_setup` is defined here...
- --> tests/ui/test_main_invalid_library_benchmark_groups.rs:3:5
-  |
-3 |     #[library_benchmark]
-  |     ^^^^^^^^^^^^^^^^^^^^
+   --> tests/ui/test_main_invalid_library_benchmark_groups.rs:3:5
+    |
+3   |     #[library_benchmark]
+    |     ^^^^^^^^^^^^^^^^^^^^
 note: ...and refers to the function `__run_setup` which is defined here
- --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
-  |
-6 |     main!(library_benchmark_groups = some_func);
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
+   --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
+    |
+6   |     main!(library_benchmark_groups = some_func);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider importing this function instead
+    |
+493 |                         crate::test_main_when_library_benchmark_as_group::__run_setup,
+    |                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0603]: function import `__run_teardown` is private
- --> src/macros.rs
-  |
-  | ...                   $group::__run_teardown(true);
-  |                               ^^^^^^^^^^^^^^ private function import
-  |
- ::: tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
-  |
-6 |     main!(library_benchmark_groups = some_func);
-  |     ------------------------------------------- function `__run_teardown` is not publicly re-exported
-  |
+   --> src/macros.rs
+    |
+    |                         $group::__run_teardown,
+    |                                 ^^^^^^^^^^^^^^ private function import
+    |
 note: the function import `__run_teardown` is defined here...
- --> tests/ui/test_main_invalid_library_benchmark_groups.rs:3:5
-  |
-3 |     #[library_benchmark]
-  |     ^^^^^^^^^^^^^^^^^^^^
+   --> tests/ui/test_main_invalid_library_benchmark_groups.rs:3:5
+    |
+3   |     #[library_benchmark]
+    |     ^^^^^^^^^^^^^^^^^^^^
 note: ...and refers to the function `__run_teardown` which is defined here
- --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
-  |
-6 |     main!(library_benchmark_groups = some_func);
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
+   --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
+    |
+6   |     main!(library_benchmark_groups = some_func);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider importing this function instead
+    |
+494 |                         crate::test_main_when_library_benchmark_as_group::__run_teardown,
+    |                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0603]: function import `__run` is private
- --> src/macros.rs
-  |
-  | ...                   $group::__run(group_index, bench_index, iter_index);
-  |                               ^^^^^ private function import
-  |
- ::: tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
-  |
-6 |     main!(library_benchmark_groups = some_func);
-  |     ------------------------------------------- function `__run` is not publicly re-exported
-  |
+   --> src/macros.rs
+    |
+    |                         $group::__run
+    |                                 ^^^^^ private function import
+    |
 note: the function import `__run` is defined here...
- --> tests/ui/test_main_invalid_library_benchmark_groups.rs:3:5
-  |
-3 |     #[library_benchmark]
-  |     ^^^^^^^^^^^^^^^^^^^^
+   --> tests/ui/test_main_invalid_library_benchmark_groups.rs:3:5
+    |
+3   |     #[library_benchmark]
+    |     ^^^^^^^^^^^^^^^^^^^^
 note: ...and refers to the function `__run` which is defined here
+   --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
+    |
+6   |     main!(library_benchmark_groups = some_func);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider importing this function instead
+    |
+495 |                         crate::test_main_when_library_benchmark_as_group::__run
+    |
+
+error[E0308]: mismatched types
  --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
   |
 6 |     main!(library_benchmark_groups = some_func);
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  = note: this error originates in the attribute macro `library_benchmark` which comes from the expansion of the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
+  |
+  = note: expected fn pointer `fn(usize, usize, Option<usize>)`
+                found fn item `fn() {test_main_when_library_benchmark_as_group::__run}`
+  = note: this error originates in the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
  --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
@@ -141,23 +148,6 @@ note: method defined here
   |
   |     pub fn add_group(
   |            ^^^^^^^^^
-  = note: this error originates in the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0061]: this function takes 0 arguments but 3 arguments were supplied
- --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
-  |
-6 |     main!(library_benchmark_groups = some_func);
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |     |
-  |     unexpected argument of type `usize`
-  |     unexpected argument of type `usize`
-  |     unexpected argument of type `Option<usize>`
-  |
-note: function defined here
- --> tests/ui/test_main_invalid_library_benchmark_groups.rs:6:5
-  |
-6 |     main!(library_benchmark_groups = some_func);
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   = note: this error originates in the macro `main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `InternalLibraryBenchmarkConfig: From<&str>` is not satisfied
