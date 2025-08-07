@@ -40,12 +40,16 @@ pub use iai_callgrind_runner::api::{
     ToolRegressionConfig as InternalToolRegressionConfig, Tools as InternalTools,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum InternalLibFunctionKind {
     Iter(fn(Option<usize>) -> usize),
     Default(fn()),
 }
 
+// This allow is fine as long as we don't compare the function pointers themselves. The allow for
+// `unknown_lints` is needed for the msrv.
+#[allow(unknown_lints)]
+#[allow(unpredictable_function_pointer_comparisons)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InternalBinAssistantKind {
     Iter(fn(Option<usize>)),

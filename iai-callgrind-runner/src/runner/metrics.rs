@@ -112,6 +112,10 @@ impl Metric {
     /// No difference is made between negative 0.0 and positive 0.0 os rhs value. The result is
     /// always positive 0.0.
     #[must_use]
+    // These allow rules are due to the msrv of 1.74.1 which prints a warning. In later versions the
+    // floating point comparison in the match arm are fine.
+    #[allow(renamed_and_removed_lints)]
+    #[allow(illegal_floating_point_literal_pattern)]
     pub fn div0(self, rhs: Self) -> Self {
         match (self, rhs) {
             (_, Self::Int(0) | Self::Float(0.0f64)) => Self::Float(0.0f64),

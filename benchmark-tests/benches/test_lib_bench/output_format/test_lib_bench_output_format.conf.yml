@@ -33,6 +33,21 @@ groups:
       - args: ["--tolerance=50.0", "--nocapture"]
         expected:
           stdout: expected_stdout.cli-tolerance.2
+  - runs_on: "!x86_64-unknown-freebsd"
+    runs:
+      - args: ["--show-grid", "--nocapture"]
+        expected:
+          stdout: expected_stdout.cli-show-grid
+  - runs_on: "!x86_64-unknown-freebsd"
+    runs:
+      - args: ["--show-intermediate", "--nocapture"]
+        expected:
+          stdout: expected_stdout.cli-show-intermediate
+  - runs_on: "!x86_64-unknown-freebsd"
+    runs:
+      - args: ["--truncate-description", "--nocapture"]
+        expected:
+          stdout: expected_stdout.cli-truncate-description
   - runs_on: "x86_64-unknown-freebsd"
     runs:
       - args: []

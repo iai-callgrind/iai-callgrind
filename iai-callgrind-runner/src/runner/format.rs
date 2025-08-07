@@ -511,6 +511,18 @@ impl OutputFormat {
         if let Some(show_only_comparison) = meta.args.show_only_comparison {
             self.show_only_comparison = show_only_comparison;
         }
+
+        if let Some(show_grid) = meta.args.show_grid {
+            self.show_grid = show_grid;
+        }
+
+        if let Some(truncate_description) = meta.args.truncate_description {
+            self.truncate_description = truncate_description.into();
+        }
+
+        if let Some(show_intermediate) = meta.args.show_intermediate {
+            self.show_intermediate = show_intermediate;
+        }
     }
 }
 

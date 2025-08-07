@@ -56,8 +56,8 @@ pub fn base_config() -> LibraryBenchmarkConfig {
 #[bench::for_comparison(
     "Another very long string to see if the truncation is disabled with the formatting option"
 )]
-fn bench_with_format(_a: &str) -> Vec<u64> {
-    println!("Benchmark with formatting options");
+fn bench_with_format(a: &str) -> Vec<u64> {
+    println!("{a}");
     black_box(benchmark_tests::find_primes_multi_thread(3))
 }
 
@@ -65,8 +65,8 @@ fn bench_with_format(_a: &str) -> Vec<u64> {
 #[bench::for_comparison(
     "A very long string to see if the truncation of the description is really working"
 )]
-fn bench_without_format(_a: &str) -> Vec<u64> {
-    println!("Benchmark without formatting options");
+fn bench_without_format(a: &str) -> Vec<u64> {
+    println!("{a}");
     black_box(benchmark_tests::find_primes_multi_thread(2))
 }
 
