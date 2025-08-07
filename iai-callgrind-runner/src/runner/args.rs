@@ -868,6 +868,27 @@ pub struct CommandLineArgs {
     pub separate_targets: bool,
 
     #[rustfmt::skip]
+    /// Show only the comparison between different benchmarks when using `compare_by_id`
+    ///
+    /// If you're only interested in the comparisons between different benchmarks but not the metric
+    /// differences between the self comparisons of the new and old benchmark run, use this option.
+    /// This option is only useful if `compare_by_id` is used in the `library_benchmark_group!` or
+    /// `binary_benchmark_group!`. Note, that it does not prevent any benchmarks to be run,
+    /// especially benchmarks which are not compared to another benchmark. Such benchmarks have only
+    /// the usual benchmark headline printed.
+    #[arg(
+        long = "show-only-comparison",
+        default_missing_value = "true",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = BoolishValueParser::new(),
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_SHOW_ONLY_COMPARISON",
+        display_order = 300
+    )]
+    pub show_only_comparison: Option<bool>,
+
+    #[rustfmt::skip]
     /// Show changes only when they are above the `tolerance` level
     ///
     /// If no value is specified, the default value of `0.000_009_999_999_999_999_999` is based on

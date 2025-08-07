@@ -123,6 +123,8 @@ pub struct OutputFormat {
     pub show_grid: bool,
     /// Show intermediate metrics output or just the total
     pub show_intermediate: bool,
+    /// Show only the comparison between different benchmarks when `compare_by_id` is given
+    pub show_only_comparison: bool,
     /// Don't show differences within the tolerance margin
     pub tolerance: Option<f64>,
     /// If present truncate the description to this amount of bytes
@@ -505,12 +507,17 @@ impl OutputFormat {
         if meta.args.tolerance.is_some() {
             self.tolerance = meta.args.tolerance;
         }
+
+        if let Some(show_only_comparison) = meta.args.show_only_comparison {
+            self.show_only_comparison = show_only_comparison;
+        }
     }
 }
 
 impl Default for OutputFormat {
     fn default() -> Self {
         Self {
+            show_only_comparison: false,
             kind: OutputFormatKind::default(),
             truncate_description: Some(50),
             show_intermediate: false,
@@ -1127,7 +1134,9 @@ impl Formatter for VerticalFormatter {
         data: &ProfileData,
         is_default_tool: bool,
     ) -> Result<()> {
-        if data.has_multiple() && self.output_format.show_intermediate {
+        if self.output_format.show_only_comparison {
+            // no usual data to show
+        } else if data.has_multiple() && self.output_format.show_intermediate {
             let mut first = true;
             for part in &data.parts {
                 self.format_multiple_segment_header(&part.details);

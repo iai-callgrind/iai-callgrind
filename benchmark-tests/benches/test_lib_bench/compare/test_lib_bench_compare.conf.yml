@@ -4,3 +4,8 @@ groups:
         expected:
           files: expected_files.1.yml
           stdout: expected_stdout.1
+  - runs:
+      - args: ["--show-only-comparison"]
+        expected:
+          files: expected_files.1.yml
+          stdout: expected_stdout.show-only-comparison
