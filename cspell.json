@@ -18,6 +18,7 @@
     "**/Cargo.lock",
     "*.stderr",
     "*.stdout",
+    "*.supp",
     "expected_stdout*",
     "expected_stderr*",
     "benchmark-tests/fixtures",

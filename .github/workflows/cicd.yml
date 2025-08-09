@@ -112,7 +112,7 @@ jobs:
           cargo update
       - uses: taiki-e/install-action@cargo-hack
       - uses: taiki-e/install-action@just
-      - name: Install valgrind
+      - name: Build and install valgrind
         run: sudo apt-get -y update && sudo apt-get -y install valgrind
       - name: Info
         run: |
@@ -155,6 +155,7 @@ jobs:
           # IAI_CALLGRIND_LOG: trace
           RUST_BACKTRACE: "0"
       - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
         with:
           name: iai-callgrind-benchmarks-${{ matrix.toolchain }}
           path: "target/iai"

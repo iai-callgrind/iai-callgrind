@@ -95,7 +95,9 @@ main!(
         // Looks like a bug in valgrind.
         .tool(Dhat::default())
         .tool(Memcheck::default())
-        .tool(Drd::default())
+        .tool(Drd::with_args([
+                "--suppressions=benches/test_lib_bench/threads/valgrind-suppressions.supp"
+        ]))
         .tool(Massif::default())
         .tool(Bbv::default());
     library_benchmark_groups = bench_group
