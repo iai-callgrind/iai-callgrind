@@ -212,10 +212,10 @@ impl Bench {
                 "Only one parameter of `file`, `args` or `iter` can be present"
             );
         } else if check_sum == 0 {
-            return vec![Self {
+            vec![Self {
                 id: id.clone(),
                 mode: BenchMode::Args(Args::default()),
-            }];
+            }]
         // check_sum == 1
         } else if let Some(literal) = file.literal() {
             if !(expected_num_args == 1 || has_setup) {
@@ -242,7 +242,8 @@ impl Bench {
                 let args = Args::new(literal.span(), vec![expr]);
                 benches.push(Self::new(id, BenchMode::Args(args)));
             }
-            return benches;
+
+            benches
         } else if let Some(expr) = iter.expr() {
             if !(expected_num_args == 1 || has_setup) {
                 abort!(
@@ -257,17 +258,16 @@ impl Bench {
                 )
             }
 
-            return vec![Self::new(id.clone(), BenchMode::Iter(expr.clone()))];
+            vec![Self::new(id.clone(), BenchMode::Iter(expr.clone()))]
         } else {
-            return args
-                .finalize()
+            args.finalize()
                 .enumerate()
                 .map(|(index, args)| {
                     args.check_num_arguments(expected_num_args, has_setup);
                     let id = format_indexed_ident(id, index);
                     Self::new(id, BenchMode::Args(args))
                 })
-                .collect();
+                .collect()
         }
     }
 }

@@ -53,6 +53,15 @@ pub enum NoCapture {
     Stdout,
 }
 
+/// An internal enum for the value of the --truncate-description argument
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TruncateDescription {
+    /// Truncate the description to this value
+    To(usize),
+    /// Do not truncate the description
+    None,
+}
+
 /// The command line arguments the user provided after `--` when running cargo bench
 ///
 /// These arguments are not the command line arguments passed to `iai-callgrind-runner`. We collect
@@ -143,13 +152,15 @@ pub struct CommandLineArgs {
     #[arg(short = 'Z', hide = true, required = false, num_args = 0..)]
     _unstable_options: Vec<String>,
 
+    #[rustfmt::skip]
     /// Allow ASLR (Address Space Layout Randomization)
     ///
     /// If possible, ASLR is disabled on platforms that support it (linux, freebsd) because ASLR
     /// could noise up the callgrind cache simulation results a bit. Setting this option to true
     /// runs all benchmarks with ASLR enabled.
     ///
-    /// See also <https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space>
+    /// See also
+    /// <https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space>
     #[arg(
         long = "allow-aslr",
         default_missing_value = "true",
@@ -161,6 +172,7 @@ pub struct CommandLineArgs {
     )]
     pub allow_aslr: Option<bool>,
 
+    #[rustfmt::skip]
     /// Compare against this baseline if present but do not overwrite it
     #[arg(
         long = "baseline",
@@ -868,6 +880,44 @@ pub struct CommandLineArgs {
     pub separate_targets: bool,
 
     #[rustfmt::skip]
+    /// Show an ascii grid in the benchmark terminal output
+    ///
+    /// A matter of taste but the guiding lines can also be helpful reading benchmark output when
+    /// running multiple tools with multiple threads and subprocesses for example by using
+    /// `--show-intermediate`.
+    #[arg(
+        long = "show-grid",
+        default_missing_value = "true",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = BoolishValueParser::new(),
+        env = "IAI_CALLGRIND_SHOW_GRID",
+        display_order = 300
+    )]
+    pub show_grid: Option<bool>,
+
+    #[rustfmt::skip]
+    /// Show intermediate metrics from parts, subprocesses, threads, ... (Default: false)
+    ///
+    /// In callgrind, threads are treated as separate units (similar to subprocesses) and the
+    /// metrics for them are dumped into an own file. Other valgrind tools usually separate the
+    /// output files only by subprocesses. Use this option, to also show the metrics of any
+    /// intermediate fragments and not just the total over all of them.
+    ///
+    /// Temporarily setting `show_intermediate` to `true` can help to find misconfigurations in
+    /// multi-thread/multi-process benchmarks.
+    #[arg(
+        long = "show-intermediate",
+        default_missing_value = "true",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = BoolishValueParser::new(),
+        env = "IAI_CALLGRIND_SHOW_INTERMEDIATE",
+        display_order = 300
+    )]
+    pub show_intermediate: Option<bool>,
+
+    #[rustfmt::skip]
     /// Show only the comparison between different benchmarks when using `compare_by_id`
     ///
     /// If you're only interested in the comparisons between different benchmarks but not the metric
@@ -932,6 +982,37 @@ pub struct CommandLineArgs {
     pub tools: Vec<ValgrindTool>,
 
     #[rustfmt::skip]
+    /// Adjust, enable or disable the truncation of the description in the Iai-Callgrind output
+    ///
+    /// The default is to truncate the description to the size of 50 ascii characters. A false
+    /// value disables the truncation entirely and a value will truncate the description to the
+    /// given amount of characters excluding the ellipsis.
+    ///
+    /// To clearify which part of the output is meant by `DESCRIPTION`:
+    ///
+    /// ```text
+    /// benchmark_file::group_name::function_name id:DESCRIPTION
+    ///   Instructions:              352135|352135          (No change)
+    ///   ...
+    /// ```
+    ///
+    /// Examples:
+    ///   * --truncate-description=no (disables truncation)
+    ///   * --truncate-description=100 (set the truncation to 100 ascii chars)
+    ///   * --truncate-description (this is the default and sets the size of 50 ascii chars)
+    #[arg(
+        long = "truncate-description",
+        default_missing_value = "50",
+        num_args = 0..=1,
+        require_equals = true,
+        value_parser = parse_truncate_description,
+        verbatim_doc_comment,
+        env = "IAI_CALLGRIND_TRUNCATE_DESCRIPTION",
+        display_order = 300
+    )]
+    pub truncate_description: Option<TruncateDescription>,
+
+    #[rustfmt::skip]
     /// The command-line arguments to pass through to all tools
     ///
     /// The core valgrind command-line arguments
@@ -980,6 +1061,15 @@ impl NoCapture {
             Self::Stdout => {
                 command.stdout(Stdio::inherit()).stderr(Stdio::null());
             }
+        }
+    }
+}
+
+impl From<TruncateDescription> for Option<usize> {
+    fn from(value: TruncateDescription) -> Self {
+        match value {
+            TruncateDescription::To(to) => Some(to),
+            TruncateDescription::None => None,
         }
     }
 }
@@ -1233,6 +1323,25 @@ fn parse_tool_metrics<T: Eq + Hash>(
     }
 
     Ok(format)
+}
+
+fn parse_truncate_description(value: &str) -> Result<TruncateDescription, String> {
+    // Almost the same as the BoolishValueParser but without `1` and `0` which are interpreted as
+    // values. The FALSE_LITERALS also contain `none` as special value.
+    const TRUE_LITERALS: [&str; 5] = ["y", "yes", "t", "true", "on"];
+    const FALSE_LITERALS: [&str; 6] = ["n", "no", "none", "f", "false", "off"];
+
+    let lowercase = value.to_lowercase();
+
+    if TRUE_LITERALS.contains(&lowercase.as_str()) {
+        Ok(TruncateDescription::To(50))
+    } else if FALSE_LITERALS.contains(&lowercase.as_str()) {
+        Ok(TruncateDescription::None)
+    } else if let Ok(parsed) = lowercase.parse::<usize>() {
+        Ok(TruncateDescription::To(parsed))
+    } else {
+        Err(format!("Invalid value: {value}"))
+    }
 }
 
 #[cfg(test)]
@@ -1774,5 +1883,57 @@ mod tests {
         std::env::set_var("IAI_CALLGRIND_TOLERANCE", "2.0");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(result.tolerance, Some(2.0));
+    }
+
+    #[rstest]
+    #[case::when_no_equals("--show-intermediate", true)]
+    #[case::when_true("--show-intermediate=true", true)]
+    #[case::when_false("--show-intermediate=false", false)]
+    fn test_arg_show_intermediate(#[case] input: &str, #[case] expected: bool) {
+        let result = CommandLineArgs::try_parse_from([input]).unwrap();
+        assert_eq!(result.show_intermediate, Some(expected));
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_show_intermediate_when_env() {
+        std::env::set_var("IAI_CALLGRIND_SHOW_INTERMEDIATE", "yes");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(result.show_intermediate, Some(true));
+    }
+
+    #[rstest]
+    #[case::when_no_equals("--show-grid", true)]
+    #[case::when_true("--show-grid=true", true)]
+    #[case::when_false("--show-grid=false", false)]
+    fn test_arg_show_grid(#[case] input: &str, #[case] expected: bool) {
+        let result = CommandLineArgs::try_parse_from([input]).unwrap();
+        assert_eq!(result.show_grid, Some(expected));
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_show_grid_when_env() {
+        std::env::set_var("IAI_CALLGRIND_SHOW_GRID", "yes");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(result.show_grid, Some(true));
+    }
+
+    #[rstest]
+    #[case::missing_value("--truncate-description", TruncateDescription::To(50))]
+    #[case::some_value("--truncate-description=20", TruncateDescription::To(20))]
+    #[case::when_false("--truncate-description=false", TruncateDescription::None)]
+    #[case::when_no("--truncate-description=no", TruncateDescription::None)]
+    fn test_arg_truncate_description(#[case] input: &str, #[case] expected: TruncateDescription) {
+        let result = CommandLineArgs::try_parse_from([input]).unwrap();
+        assert_eq!(result.truncate_description, Some(expected));
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_arg_truncate_description_when_env() {
+        std::env::set_var("IAI_CALLGRIND_TRUNCATE_DESCRIPTION", "no");
+        let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
+        assert_eq!(result.truncate_description, Some(TruncateDescription::None));
     }
 }

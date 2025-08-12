@@ -26,6 +26,8 @@ fn test_valgrind_reqs_when_running_on_valgrind() {
         Ok(assert) => {
             let fixture_string = if cfg!(target_os = "freebsd") {
                 common::get_fixture_as_string("valgrind-reqs-test.freebsd.stderr")
+            } else if cfg!(target_arch = "x86_64") {
+                common::get_fixture_as_string("valgrind-reqs-test.x86_64.stderr")
             } else {
                 common::get_fixture_as_string("valgrind-reqs-test.stderr")
             };

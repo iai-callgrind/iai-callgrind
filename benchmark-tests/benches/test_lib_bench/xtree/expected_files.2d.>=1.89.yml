@@ -1,0 +1,106 @@
+data:
+  - group: my_group
+    function: bench_with_memcheck_when_leak
+    id: xleak
+    expected:
+      files:
+        - memcheck.bench_with_memcheck_when_leak.xleak.log.base@default
+        - memcheck.bench_with_memcheck_when_leak.xleak.log.base@other
+        - memcheck.bench_with_memcheck_when_leak.xleak.xleak.base@default
+        - memcheck.bench_with_memcheck_when_leak.xleak.xleak.base@other
+        - summary.json
+  - group: my_group
+    function: bench_with_memcheck_when_leak
+    id: xtree_and_xleak
+    expected:
+      files:
+        - memcheck.bench_with_memcheck_when_leak.xtree_and_xleak.log.base@default
+        - memcheck.bench_with_memcheck_when_leak.xtree_and_xleak.log.base@other
+        - memcheck.bench_with_memcheck_when_leak.xtree_and_xleak.xleak.base@default
+        - memcheck.bench_with_memcheck_when_leak.xtree_and_xleak.xleak.base@other
+        - memcheck.bench_with_memcheck_when_leak.xtree_and_xleak.xtree.base@default
+        - memcheck.bench_with_memcheck_when_leak.xtree_and_xleak.xtree.base@other
+        - summary.json
+  - group: my_group
+    function: bench_with_memcheck_when_leak
+    id: xtree
+    expected:
+      files:
+        - memcheck.bench_with_memcheck_when_leak.xtree.log.base@default
+        - memcheck.bench_with_memcheck_when_leak.xtree.log.base@other
+        - memcheck.bench_with_memcheck_when_leak.xtree.xtree.base@default
+        - memcheck.bench_with_memcheck_when_leak.xtree.xtree.base@other
+        - summary.json
+  - group: my_group
+    function: bench_with_xtree_in_subprocess
+    id: memcheck_multi_process
+    expected:
+      globs:
+        - pattern: memcheck.bench_with_xtree_in_subprocess.memcheck_multi_process.*.log.base@default
+          count: 2
+        - pattern: memcheck.bench_with_xtree_in_subprocess.memcheck_multi_process.*.log.base@other
+          count: 2
+        - pattern: memcheck.bench_with_xtree_in_subprocess.memcheck_multi_process.*.xtree.base@default
+          count: 2
+        - pattern: memcheck.bench_with_xtree_in_subprocess.memcheck_multi_process.*.xtree.base@other
+          count: 2
+        - pattern: memcheck.bench_with_xtree_in_subprocess.memcheck_multi_process.*.xleak.base@default
+          count: 2
+        - pattern: memcheck.bench_with_xtree_in_subprocess.memcheck_multi_process.*.xleak.base@other
+          count: 2
+      files:
+        - summary.json
+  - group: my_group
+    function: bench_with_xtree_no_leak
+    id: helgrind
+    expected:
+      files:
+        - helgrind.bench_with_xtree_no_leak.helgrind.log.base@default
+        - helgrind.bench_with_xtree_no_leak.helgrind.log.base@other
+        - helgrind.bench_with_xtree_no_leak.helgrind.xtree.base@default
+        - helgrind.bench_with_xtree_no_leak.helgrind.xtree.base@other
+        - summary.json
+  - group: my_group
+    function: bench_with_xtree_no_leak
+    id: massif
+    expected:
+      files:
+        - massif.bench_with_xtree_no_leak.massif.log.base@default
+        - massif.bench_with_xtree_no_leak.massif.log.base@other
+        - massif.bench_with_xtree_no_leak.massif.out.base@default
+        - massif.bench_with_xtree_no_leak.massif.out.base@other
+        - massif.bench_with_xtree_no_leak.massif.xtree.base@default
+        - massif.bench_with_xtree_no_leak.massif.xtree.base@other
+        - summary.json
+  - group: my_group
+    function: bench_with_xtree_no_leak
+    id: memcheck_xleak
+    expected:
+      files:
+        - memcheck.bench_with_xtree_no_leak.memcheck_xleak.log.base@default
+        - memcheck.bench_with_xtree_no_leak.memcheck_xleak.log.base@other
+        - memcheck.bench_with_xtree_no_leak.memcheck_xleak.xleak.base@default
+        - memcheck.bench_with_xtree_no_leak.memcheck_xleak.xleak.base@other
+        - summary.json
+  - group: my_group
+    function: bench_with_xtree_no_leak
+    id: memcheck_xtree_and_xleak
+    expected:
+      files:
+        - memcheck.bench_with_xtree_no_leak.memcheck_xtree_and_xleak.log.base@default
+        - memcheck.bench_with_xtree_no_leak.memcheck_xtree_and_xleak.log.base@other
+        - memcheck.bench_with_xtree_no_leak.memcheck_xtree_and_xleak.xleak.base@default
+        - memcheck.bench_with_xtree_no_leak.memcheck_xtree_and_xleak.xleak.base@other
+        - memcheck.bench_with_xtree_no_leak.memcheck_xtree_and_xleak.xtree.base@default
+        - memcheck.bench_with_xtree_no_leak.memcheck_xtree_and_xleak.xtree.base@other
+        - summary.json
+  - group: my_group
+    function: bench_with_xtree_no_leak
+    id: memcheck_xtree
+    expected:
+      files:
+        - memcheck.bench_with_xtree_no_leak.memcheck_xtree.log.base@default
+        - memcheck.bench_with_xtree_no_leak.memcheck_xtree.log.base@other
+        - memcheck.bench_with_xtree_no_leak.memcheck_xtree.xtree.base@default
+        - memcheck.bench_with_xtree_no_leak.memcheck_xtree.xtree.base@other
+        - summary.json

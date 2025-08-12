@@ -1,3 +1,4 @@
+// spell-checker: ignore redir
 use std::borrow::Cow;
 use std::fmt::Display;
 use std::io::{stderr, BufRead, BufReader, Write};
@@ -56,6 +57,8 @@ lazy_static! {
         regex::Regex::new(r"^[ ]*Reading EXIDX entries:.*$").expect("Regex should compile");
     static ref NUMBER_RE: Regex =
         regex::Regex::new(r"[0-9]+").expect("Regex should compile");
+    static ref REDIR_RE: Regex =
+        regex::Regex::new(r"^(REDIR:)(.*)").expect("Regex should compile");
 }
 
 #[derive(Debug)]
@@ -187,7 +190,8 @@ fn memcheck_filter(bytes: &[u8], writer: &mut impl Write) {
             is_backtrace = false;
         }
 
-        let replaced = MEMCHECK_CHECKED_RE.replace_all(rest, "$1<__FILTER__>$3");
+        let replaced = REDIR_RE.replace_all(rest, "$1 <__FILTER__>");
+        let replaced = MEMCHECK_CHECKED_RE.replace_all(&replaced, "$1<__FILTER__>$3");
         let replaced = MEMCHECK_TOTAL_HEAP_USAGE_RE.replace_all(&replaced, "$1<__FILTER__>");
         let replaced =
             MEMCHECK_LEAK_SUMMARY_RE.replace_all(&replaced, "$1<__FILTER__> $4<__FILTER__> $6");

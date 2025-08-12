@@ -1,5 +1,15 @@
 Handling new value --leak-check=summary for option --leak-check=summary
-All heap blocks were freed -- no leaks are possible
+Searching for pointers to <__NUMBER__> not-freed blocks
+Checked <__FILTER__> bytes
+
+LEAK SUMMARY:
+definitely lost: <__FILTER__> bytes in <__FILTER__> blocks
+indirectly lost: <__FILTER__> bytes in <__FILTER__> blocks
+possibly lost: <__FILTER__> bytes in <__FILTER__> blocks
+still reachable: <__FILTER__> bytes in <__FILTER__> blocks
+suppressed: <__FILTER__> bytes in <__FILTER__> blocks
+Reachable blocks (those to which a pointer was found) are not shown.
+To see them, rerun with: --leak-check=full --show-leak-kinds=all
 
 First value of leaked memory: <__NUMBER__>
 Searching for pointers to <__NUMBER__> not-freed blocks
@@ -14,6 +24,8 @@ indirectly lost: <__FILTER__> bytes in <__FILTER__> blocks
 possibly lost: <__FILTER__> bytes in <__FILTER__> blocks
 still reachable: <__FILTER__> bytes in <__FILTER__> blocks
 suppressed: <__FILTER__> bytes in <__FILTER__> blocks
+Reachable blocks (those to which a pointer was found) are not shown.
+To see them, rerun with: --leak-check=full --show-leak-kinds=all
 
 First value of leaked memory: <__NUMBER__>
 Searching for pointers to <__NUMBER__> not-freed blocks
@@ -28,7 +40,10 @@ indirectly lost: <__FILTER__> bytes in <__FILTER__> blocks
 possibly lost: <__FILTER__> bytes in <__FILTER__> blocks
 still reachable: <__FILTER__> bytes in <__FILTER__> blocks
 suppressed: <__FILTER__> bytes in <__FILTER__> blocks
+Reachable blocks (those to which a pointer was found) are not shown.
+To see them, rerun with: --leak-check=full --show-leak-kinds=all
 
+REDIR: <__FILTER__>
 
 HEAP SUMMARY:
 in use at exit: <__NUMBER__> bytes in <__NUMBER__> blocks

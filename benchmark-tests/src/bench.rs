@@ -86,6 +86,8 @@ lazy_static! {
     // Iai-Callgrind result: Success. 2 completed without regressions; 0 regressed; 2 benchmarks finished in 0.296s
     static ref SUMMARY_LINE_RE: Regex =
         Regex::new(r"^(Iai-Callgrind result:.*finished in\s*)([0-9.]+)(s)$").expect("Regex should compile");
+    static ref THREAD_PANICKED: Regex =
+        Regex::new(r"^(?<start>thread '.*' )(?<pid>\([0-9]+\))?(?<end>\s*panicked at .*)$").expect("Regex should compile");
 }
 
 #[derive(Debug, Clone)]
@@ -532,13 +534,36 @@ impl BenchmarkOutput {
     fn filter_stderr(&self, stderr: &[u8]) -> String {
         let mut result = String::new();
         let mut start = false;
+        let mut first = false;
         for line in stderr.lines().map(Result::unwrap) {
             if !start {
                 if RUNNING_RE.is_match(&line) {
                     start = true;
+                    first = true;
                 }
                 continue;
+            } else if first {
+                if line.trim().is_empty() {
+                    first = false;
+                    continue;
+                }
+                first = false;
             }
+
+            let line = if let Some(caps) = THREAD_PANICKED.captures(&line) {
+                let mut new = String::with_capacity(line.len());
+                new.push_str(caps.name("start").unwrap().as_str());
+                if caps.name("pid").is_some() {
+                    new.push_str("(<__PID__>)");
+                }
+
+                new.push_str(caps.name("end").unwrap().as_str());
+
+                new
+            } else {
+                line
+            };
+
             let line = PROCESS_DID_NOT_EXIT_SUCCESSFULLY_RE.replace(&line, "$1<__PATH__>$3");
             let line = REGRESSION_SOFT_RE
                 .replace(&line, "$1<__NUM__>$3<__NUM__>$5<__PERCENT__>$7<__NUM__>$9");

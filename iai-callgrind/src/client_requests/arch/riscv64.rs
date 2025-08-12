@@ -17,7 +17,6 @@ pub fn valgrind_do_client_request_expr(
 ) -> usize {
     let args: [usize; 6] = [request as usize, arg1, arg2, arg3, arg4, arg5];
     let result;
-    // TODO: CONTINUE
     // SAFETY: These assembly instructions do nothing when not run under valgrind
     unsafe {
         asm! {

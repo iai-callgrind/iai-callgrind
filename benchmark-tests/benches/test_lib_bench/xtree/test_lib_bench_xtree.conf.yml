@@ -1,7 +1,41 @@
 groups:
   # Do not run on nightly due to memcheck reporting possibly lost bytes. Might
   # be this related to https://github.com/rust-lang/rust/issues/135608
-  - rust_version: "!=nightly"
+  - rust_version: ">=1.89"
+    runs:
+      - args: []
+        expected:
+          files: expected_files.1a.>=1.89.yml
+      - args: []
+        expected:
+          files: expected_files.1b.>=1.89.yml
+      - args: []
+        expected:
+          files: expected_files.1b.>=1.89.yml
+      - args: ["--save-baseline"]
+        expected:
+          files: expected_files.1c.>=1.89.yml
+      - args: []
+        expected:
+          files: expected_files.1c.>=1.89.yml
+  - rust_version: ">=1.89"
+    runs:
+      - args: ["--save-baseline"]
+        expected:
+          files: expected_files.2a.>=1.89.yml
+      - args: ["--save-baseline"]
+        expected:
+          files: expected_files.2a.>=1.89.yml
+      - args: ["--load-baseline", "--baseline"]
+        expected:
+          files: expected_files.2a.>=1.89.yml
+      - args: ["--save-baseline=other"]
+        expected:
+          files: expected_files.2d.>=1.89.yml
+      - args: ["--save-baseline=other"]
+        expected:
+          files: expected_files.2d.>=1.89.yml
+  - rust_version: "<1.89"
     runs:
       - args: []
         expected:
@@ -18,7 +52,7 @@ groups:
       - args: []
         expected:
           files: expected_files.1c.yml
-  - rust_version: "!=nightly"
+  - rust_version: "<1.89"
     runs:
       - args: ["--save-baseline"]
         expected:
