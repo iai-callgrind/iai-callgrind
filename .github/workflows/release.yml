@@ -25,12 +25,12 @@ jobs:
     steps:
       - name: Checkout specific tag
         if: inputs.tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.tag }}
       - name: Checkout default ref
         if: ${{ ! inputs.tag }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Get the release version from the tag
         if: inputs.tag
         run: echo "VERSION=${{ inputs.tag }}" >> $GITHUB_ENV
@@ -91,12 +91,12 @@ jobs:
     steps:
       - name: Checkout specific tag
         if: inputs.tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.tag }}
       - name: Checkout default ref
         if: ${{ ! inputs.tag }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - uses: taiki-e/install-action@cross
       - uses: dtolnay/rust-toolchain@stable
         with:
