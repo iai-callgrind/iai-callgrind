@@ -113,7 +113,7 @@ jobs:
       - uses: taiki-e/install-action@cargo-hack
       - uses: taiki-e/install-action@just
       - name: Build and install valgrind
-        run: sudo apt-get -y update && sudo apt-get -y install valgrind
+        run: ./scripts/build_and_install_valgrind.sh
       - name: Info
         run: |
           set -x
