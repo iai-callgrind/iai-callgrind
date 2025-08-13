@@ -309,13 +309,31 @@ macro_rules! main {
         }
 
         fn main() {
+            const GROUPS: &[
+                (
+                    fn(bool) -> bool,
+                    fn(bool) -> bool,
+                    fn(usize, usize, Option<usize>),
+                    fn(usize, usize, Option<usize>)
+                )
+            ] = &[
+                $(
+                    (
+                        $group::__run_setup,
+                        $group::__run_teardown,
+                        $group::__run_bench_setup,
+                        $group::__run_bench_teardown,
+                    )
+                ),*
+            ];
+
             let mut args_iter = std::env::args().skip(1);
             if args_iter
                 .next()
                 .as_ref()
                 .map_or(false, |value| value == "--iai-run")
             {
-                let mut current = args_iter.next().expect("Expecting a function type");
+                let mut current = args_iter.next().expect("At least one value should be present");
                 let next = args_iter.next();
                 match (current.as_str(), next) {
                     ("setup", None) => {
@@ -324,49 +342,48 @@ macro_rules! main {
                     ("teardown", None) => {
                         __run_teardown(true);
                     },
-                    $(
-                        (group @ stringify!($group), Some(next)) => {
-                            let current = next;
-                            let next = args_iter.next();
+                    (index, Some(next)) => {
+                        let main_index = index.parse::<usize>().expect("A valid main index should be present");
+                        let current = next;
+                        let next = args_iter.next();
 
-                            match (current.as_str(), next) {
-                                ("setup", None) => {
-                                    $group::__run_setup(true);
-                                },
-                                ("teardown", None) => {
-                                    $group::__run_teardown(true);
-                                }
-                                (key @ ("setup" | "teardown"), Some(next)) => {
-                                    let group_index = next
-                                            .parse::<usize>()
-                                            .expect("The group index should be a number");
-                                    let bench_index = args_iter
-                                            .next()
-                                            .expect("The bench index should be present")
-                                            .parse::<usize>()
-                                            .expect("The bench index should be a number");
-                                    let iter_index = args_iter
-                                        .next()
-                                        .and_then(|a| a.parse::<usize>().ok());
-                                    if key == "setup" {
-                                        $group::__run_bench_setup(
-                                            group_index,
-                                            bench_index,
-                                            iter_index
-                                        );
-                                    } else {
-                                        $group::__run_bench_teardown(
-                                            group_index,
-                                            bench_index,
-                                            iter_index
-                                        );
-                                    }
-                                }
-                                (name, _) => panic!("Invalid function '{}' in group '{}'", name, group)
+                        match (current.as_str(), next) {
+                            ("setup", None) => {
+                                (GROUPS[main_index].0)(true);
+                            },
+                            ("teardown", None) => {
+                                (GROUPS[main_index].1)(true);
                             }
+                            (key @ ("setup" | "teardown"), Some(next)) => {
+                                let group_index = next
+                                        .parse::<usize>()
+                                        .expect("The group index should be a valid number");
+                                let bench_index = args_iter
+                                        .next()
+                                        .expect("The bench index should be present")
+                                        .parse::<usize>()
+                                        .expect("The bench index should be a valid number");
+                                let iter_index = args_iter
+                                    .next()
+                                    .and_then(|a| a.parse::<usize>().ok());
+                                if key == "setup" {
+                                    (GROUPS[main_index].2)(
+                                        group_index,
+                                        bench_index,
+                                        iter_index
+                                    );
+                                } else {
+                                    (GROUPS[main_index].3)(
+                                        group_index,
+                                        bench_index,
+                                        iter_index
+                                    );
+                                }
+                            }
+                            (name, _) => panic!("Invalid function '{}' in group with index '{}'", name, main_index)
                         }
-                    )+
-                    (name, _) => panic!("function '{}' not found in this scope", name)
+                    }
+                    (name, _) => panic!("Invalid configuration with value '{}' found in this scope", name)
                 }
             } else {
                 if let Err(errors) = __run() {
@@ -464,13 +481,31 @@ macro_rules! main {
         /// with `*::__iai_callgrind_wrapper_mod::*`) since the benchmark function is sometimes
         /// inlined even if annotated with `#[inline(never)]`.
         fn main() {
+            const GROUPS: &[
+                (
+                    fn(bool) -> bool,
+                    fn(bool) -> bool,
+                    fn(usize, usize, Option<usize>)
+                )
+            ] = &[
+                $(
+                    (
+                        $group::__run_setup,
+                        $group::__run_teardown,
+                        $group::__run
+                    )
+                ),*
+            ];
+
             let mut args_iter = std::hint::black_box(std::env::args()).skip(1);
             if args_iter
                 .next()
                 .as_ref()
                 .map_or(false, |value| value == "--iai-run")
             {
-                let current = std::hint::black_box(args_iter.next().expect("Expecting a function type"));
+                let current = std::hint::black_box(
+                    args_iter.next().expect("Expecting a function type")
+                );
                 let next = std::hint::black_box(args_iter.next());
                 match current.as_str() {
                     "setup" if next.is_none() => {
@@ -479,42 +514,44 @@ macro_rules! main {
                     "teardown" if next.is_none() => {
                         __run_teardown(true);
                     },
-                    $(
-                        stringify!($group) => {
-                            match std::hint::black_box(
-                                next
-                                    .expect("An argument `setup`, `teardown` or an index should be present")
-                                    .as_str()
-                            ) {
-                                "setup" => {
-                                    $group::__run_setup(true);
-                                },
-                                "teardown" => {
-                                    $group::__run_teardown(true);
-                                }
-                                value => {
-                                    let group_index = std::hint::black_box(
-                                        value
-                                            .parse::<usize>()
-                                            .expect("Expecting a valid group index")
-                                    );
-                                    let bench_index = std::hint::black_box(
-                                        args_iter
-                                            .next()
-                                            .expect("A bench index should be present")
-                                            .parse::<usize>()
-                                            .expect("Expecting a valid bench index")
-                                    );
-                                    let iter_index = std::hint::black_box(
-                                        args_iter
-                                            .next()
-                                            .and_then(|a| a.parse::<usize>().ok())
-                                    );
-                                    $group::__run(group_index, bench_index, iter_index);
-                                }
+                    index => {
+                        let main_index = std::hint::black_box(index.parse::<usize>()
+                            .expect("The value should be a valid integer"));
+                        match std::hint::black_box(
+                            next
+                                .expect(
+                                    "An argument `setup`, `teardown` or an index should be present"
+                                )
+                                .as_str()
+                        ) {
+                            "setup" => {
+                                (GROUPS[main_index].0)(true);
+                            },
+                            "teardown" => {
+                                (GROUPS[main_index].1)(true);
+                            }
+                            value => {
+                                let group_index = std::hint::black_box(
+                                    value
+                                        .parse::<usize>()
+                                        .expect("Expecting a valid group index")
+                                );
+                                let bench_index = std::hint::black_box(
+                                    args_iter
+                                        .next()
+                                        .expect("A bench index should be present")
+                                        .parse::<usize>()
+                                        .expect("Expecting a valid bench index")
+                                );
+                                let iter_index = std::hint::black_box(
+                                    args_iter
+                                        .next()
+                                        .and_then(|a| a.parse::<usize>().ok())
+                                );
+                                (GROUPS[main_index].2)(group_index, bench_index, iter_index);
                             }
                         }
-                    )+
+                    }
                     name => panic!("function '{}' not found in this scope", name)
                 }
             } else {

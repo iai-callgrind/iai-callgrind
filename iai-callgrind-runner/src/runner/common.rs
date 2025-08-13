@@ -39,7 +39,7 @@ pub enum AssistantKind {
 #[derive(Debug, Clone)]
 pub struct Assistant {
     envs: Vec<(OsString, OsString)>,
-    group_name: Option<String>,
+    group_index: Option<usize>,
     indices: Option<(usize, usize, Option<usize>)>,
     kind: AssistantKind,
     pipe: Option<Pipe>,
@@ -93,7 +93,7 @@ impl Assistant {
     ) -> Self {
         Self {
             kind,
-            group_name: None,
+            group_index: None,
             indices: None,
             pipe: None,
             envs,
@@ -104,13 +104,13 @@ impl Assistant {
     /// The setup or teardown of a `binary_benchmark_group` or `library_benchmark_group`
     pub fn new_group_assistant(
         kind: AssistantKind,
-        group_name: &str,
+        group_index: usize,
         envs: Vec<(OsString, OsString)>,
         run_parallel: bool,
     ) -> Self {
         Self {
             kind,
-            group_name: Some(group_name.to_owned()),
+            group_index: Some(group_index),
             indices: None,
             pipe: None,
             envs,
@@ -125,7 +125,7 @@ impl Assistant {
     /// `#[library_benchmark]` and don't need to be executed via the compiled benchmark.
     pub fn new_bench_assistant(
         kind: AssistantKind,
-        group_name: &str,
+        group_index: usize,
         indices: (usize, usize, Option<usize>),
         pipe: Option<Pipe>,
         envs: Vec<(OsString, OsString)>,
@@ -133,12 +133,37 @@ impl Assistant {
     ) -> Self {
         Self {
             kind,
-            group_name: Some(group_name.to_owned()),
+            group_index: Some(group_index),
             indices: Some(indices),
             pipe,
             envs,
             run_parallel,
         }
+    }
+
+    /// The arguments for the benchmark executable
+    fn executable_args(&self) -> Vec<OsString> {
+        let mut args = vec![OsString::from("--iai-run")];
+
+        // The index of the binary or `library_benchmark_group!` in the main! macro
+        if let Some(main_index) = &self.group_index {
+            args.push(main_index.to_string().into());
+        }
+
+        args.push(self.kind.id().into());
+
+        // The `group_index` here is the index in the binary or `library_benchmark_group!`
+        if let Some((group_index, bench_index, iter_index)) = &self.indices {
+            args.extend([
+                group_index.to_string().into(),
+                bench_index.to_string().into(),
+            ]);
+            if let Some(iter_index) = iter_index {
+                args.push(iter_index.to_string().into());
+            }
+        }
+
+        args
     }
 
     /// Run the `Assistant` by calling the benchmark binary with the needed arguments
@@ -154,20 +179,7 @@ impl Assistant {
 
         let mut command = Command::new(&config.bench_bin);
         command.envs(self.envs.iter().cloned());
-        command.arg("--iai-run");
-
-        if let Some(group_name) = &self.group_name {
-            command.arg(group_name);
-        }
-
-        command.arg(&id);
-
-        if let Some((group_index, bench_index, iter_index)) = &self.indices {
-            command.args([group_index.to_string(), bench_index.to_string()]);
-            if let Some(iter_index) = iter_index {
-                command.arg(iter_index.to_string());
-            }
-        }
+        command.args(self.executable_args());
 
         nocapture.apply(&mut command);
 
