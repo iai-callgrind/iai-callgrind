@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use colored::{Color, ColoredString, Colorize};
+use either_or_both::EitherOrBoth;
 use indexmap::{indexset, IndexSet};
 
 use super::args::NoCapture;
@@ -23,7 +24,6 @@ use crate::api::{
 };
 use crate::util::{
     make_relative, to_string_signed_short, to_string_unsigned_short, truncate_str_utf8,
-    EitherOrBoth,
 };
 
 /// The width in bytes of the difference (and factor)
@@ -801,7 +801,7 @@ impl VerticalFormatter {
                 );
                 self.write_field(
                     field,
-                    &EitherOrBoth::Both(NOT_AVAILABLE, &right),
+                    &EitherOrBoth::Both(NOT_AVAILABLE, right.as_str()),
                     None,
                     false,
                 );
@@ -1071,7 +1071,7 @@ impl Formatter for VerticalFormatter {
         match metrics_summary {
             ToolMetricSummary::None => {
                 if let Some(info) = info {
-                    if let Some(new) = info.left() {
+                    if let Some(new) = info.as_ref().left() {
                         if let Some(details) = &new.details {
                             self.format_details(details);
                         }
@@ -1097,11 +1097,13 @@ impl Formatter for VerticalFormatter {
 
                 // We only check for `new` errors
                 if let Some(info) = info {
-                    if summary
-                        .diff_by_kind(&ErrorMetric::Errors)
-                        .is_some_and(|e| e.metrics.left().is_some_and(|l| *l > Metric::Int(0)))
-                    {
-                        if let Some(new) = info.left() {
+                    if summary.diff_by_kind(&ErrorMetric::Errors).is_some_and(|e| {
+                        e.metrics
+                            .as_ref()
+                            .left()
+                            .is_some_and(|l| *l > Metric::Int(0))
+                    }) {
+                        if let Some(new) = info.as_ref().left() {
                             if let Some(details) = new.details.as_ref() {
                                 self.format_details(details);
                             }
@@ -1193,7 +1195,7 @@ impl Formatter for VerticalFormatter {
             for part in &data.parts {
                 self.format_command(config, &part.details.as_ref().map(|i| &i.command));
 
-                if let Some(new) = part.details.left() {
+                if let Some(new) = part.details.as_ref().left() {
                     if let Some(details) = &new.details {
                         self.format_details(details);
                     }

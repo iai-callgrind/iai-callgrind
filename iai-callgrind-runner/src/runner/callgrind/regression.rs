@@ -97,6 +97,7 @@ impl TryFrom<api::CallgrindRegressionConfig> for CallgrindRegressionConfig {
 
 #[cfg(test)]
 mod tests {
+    use either_or_both::EitherOrBoth;
     use rstest::rstest;
     use EventKind::*;
 
@@ -104,7 +105,6 @@ mod tests {
     use crate::api::{CallgrindMetrics, Limit};
     use crate::runner::callgrind::model::Metrics;
     use crate::runner::metrics::{Metric, TypeChecker};
-    use crate::util::EitherOrBoth;
 
     fn cachesim_costs(costs: [u64; 9]) -> Metrics {
         Metrics::with_metric_kinds([

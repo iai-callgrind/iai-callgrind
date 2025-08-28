@@ -2,6 +2,8 @@
 use std::fmt::Display;
 use std::hash::Hash;
 
+use either_or_both::EitherOrBoth;
+
 use crate::api;
 use crate::runner::cachegrind::regression::CachegrindRegressionConfig;
 use crate::runner::callgrind::regression::CallgrindRegressionConfig;
@@ -9,7 +11,6 @@ use crate::runner::dhat::regression::DhatRegressionConfig;
 use crate::runner::format::print_regressions;
 use crate::runner::metrics::{Metric, MetricsSummary, Summarize};
 use crate::runner::summary::ToolRegression;
-use crate::util::EitherOrBoth;
 
 /// A short-lived utility enum used to hold the raw regressions until they can be transformed into a
 /// real [`ToolRegression`]
@@ -88,9 +89,12 @@ pub trait RegressionConfig<T: Hash + Eq + Summarize + Display + Clone> {
 
         for (metric, new_cost, limit) in
             self.get_hard_limits().iter().filter_map(|(kind, limit)| {
-                metrics_summary
-                    .diff_by_kind(kind)
-                    .and_then(|d| d.metrics.left().map(|metric| (kind, metric, limit)))
+                metrics_summary.diff_by_kind(kind).and_then(|d| {
+                    d.metrics
+                        .as_ref()
+                        .left()
+                        .map(|metric| (kind, metric, limit))
+                })
             })
         {
             if new_cost > limit {

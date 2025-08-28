@@ -32,6 +32,7 @@ clap = { version = "4", features = ["derive", "env"] }
 colored = { version = ">=2.2, <4" }
 cty = { version = "0.2" }
 derive_more = { version = ">=0.99, <3", default-features = false }
+either-or-both = { version = "0.3" }
 env_logger = { version = ">=0.7, <0.12" }
 fs_extra = { version = "1.3" }
 glob = { version = "0.3" }

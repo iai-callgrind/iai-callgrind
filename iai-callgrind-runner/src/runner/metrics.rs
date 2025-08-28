@@ -10,6 +10,7 @@ use std::ops::{Add, AddAssign, Div, Mul, Sub};
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context, Result};
+use either_or_both::EitherOrBoth;
 use indexmap::map::Iter;
 use indexmap::{indexmap, IndexMap, IndexSet};
 #[cfg(feature = "schema")]
@@ -18,7 +19,7 @@ use serde::{Deserialize, Serialize};
 
 use super::summary::Diffs;
 use crate::api::{self, CachegrindMetric, DhatMetric, ErrorMetric, EventKind};
-use crate::util::{to_string_unsigned_short, EitherOrBoth};
+use crate::util::to_string_unsigned_short;
 
 /// The metric measured by valgrind or derived from one or more other metrics
 ///
@@ -670,13 +671,13 @@ mod tests {
     use std::cmp::Ordering;
     use std::{f64, iter};
 
+    use either_or_both::EitherOrBoth;
     use pretty_assertions::assert_eq;
     use rstest::rstest;
 
     use super::*;
     use crate::api::EventKind::{self, *};
     use crate::runner::summary::Diffs;
-    use crate::util::EitherOrBoth;
 
     fn expected_metrics<I, T>(events: T) -> Metrics<EventKind>
     where
@@ -1028,7 +1029,7 @@ mod tests {
     where
         T: Into<Option<(f64, f64)>>,
     {
-        let expected = expected_metrics_diff(metrics.clone().map(Metric::Int), expected_diffs);
+        let expected = expected_metrics_diff(metrics.map(Metric::Int), expected_diffs);
         let actual = MetricsDiff::new(metrics.map(Metric::Int));
 
         assert_eq!(actual, expected);
@@ -1244,10 +1245,10 @@ mod tests {
     ) where
         V: Into<Option<(f64, f64)>> + Clone,
     {
-        use crate::util::EitherOrBoth;
+        use either_or_both::EitherOrBoth;
 
         let expected_metrics_summary =
-            metrics_summary_fixture(expected.iter().map(|(e, v)| (e.clone(), v.clone())));
+            metrics_summary_fixture(expected.iter().map(|(e, v)| (*e, v.clone())));
         let actual = match (
             (!new_metrics.is_empty()).then_some(new_metrics),
             (!old_metrics.is_empty()).then_some(old_metrics),

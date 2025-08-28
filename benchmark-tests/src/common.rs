@@ -2,9 +2,9 @@ use std::fs::File;
 use std::path::Path;
 
 use anyhow::{anyhow, Result};
+use either_or_both::EitherOrBoth;
 use iai_callgrind_runner::runner::metrics::Metric;
 use iai_callgrind_runner::runner::summary::{BenchmarkSummary, ToolMetricSummary};
-use iai_callgrind_runner::util::EitherOrBoth;
 
 #[derive(Debug)]
 pub struct Summary(pub BenchmarkSummary);

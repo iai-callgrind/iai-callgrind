@@ -10,33 +10,11 @@ use std::process::Command;
 use anyhow::{anyhow, Result};
 use log::{debug, log_enabled, trace, Level};
 use regex::Regex;
-#[cfg(feature = "schema")]
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use which::which;
 
 use crate::error::Error;
 use crate::runner::metrics::Metric;
-
-// # Developer notes
-//
-// EitherOrBoth is not considered complete in terms of possible functionality. Simply extend and add
-// new methods by need.
-
-/// Either left or right or both can be present
-///
-/// Most of the time, this enum is used to store (new, old) output, metrics, etc. Per convention
-/// left is `new` and right is `old`.
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, Eq)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub enum EitherOrBoth<T> {
-    /// Both values (`new` and `old`) are present
-    Both(T, T),
-    /// The left or `new` value
-    Left(T),
-    /// The right or `old` value
-    Right(T),
-}
 
 /// A simple glob pattern with allowed wildcard characters `*` and `?`
 ///
@@ -44,59 +22,6 @@ pub enum EitherOrBoth<T> {
 /// `--toggle-collect` (<https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options>)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Glob(String);
-
-impl<T> EitherOrBoth<T> {
-    /// Try to return the left (`new`) value
-    pub fn left(&self) -> Option<&T> {
-        match self {
-            Self::Right(_) => None,
-            Self::Both(left, _) | Self::Left(left) => Some(left),
-        }
-    }
-
-    /// Try to return the right (`old`) value
-    pub fn right(&self) -> Option<&T> {
-        match self {
-            Self::Left(_) => None,
-            Self::Right(right) | Self::Both(_, right) => Some(right),
-        }
-    }
-
-    /// Apply the function `f` to the inner value of `EitherOrBoth` and return a new `EitherOrBoth`
-    pub fn map<F, N>(self, f: F) -> EitherOrBoth<N>
-    where
-        F: Fn(T) -> N,
-    {
-        match self {
-            Self::Left(left) => EitherOrBoth::Left(f(left)),
-            Self::Right(right) => EitherOrBoth::Right(f(right)),
-            Self::Both(l, r) => EitherOrBoth::Both(f(l), f(r)),
-        }
-    }
-
-    /// Converts from `&EitherOrBoth<T>` to `EitherOrBoth<&T>`
-    pub fn as_ref(&self) -> EitherOrBoth<&T> {
-        match self {
-            Self::Left(left) => EitherOrBoth::Left(left),
-            Self::Right(right) => EitherOrBoth::Right(right),
-            Self::Both(left, right) => EitherOrBoth::Both(left, right),
-        }
-    }
-}
-
-impl<T> TryFrom<(Option<T>, Option<T>)> for EitherOrBoth<T> {
-    type Error = String;
-
-    fn try_from(value: (Option<T>, Option<T>)) -> std::result::Result<Self, Self::Error> {
-        match value {
-            (None, None) => Err("Either the left, right or both values must be present".to_owned()),
-            (None, Some(right)) => Ok(Self::Right(right)),
-            (Some(left), None) => Ok(Self::Left(left)),
-            (Some(left), Some(right)) => Ok(Self::Both(left, right)),
-        }
-    }
-}
-
 impl Glob {
     /// Create a new `Glob` pattern matcher
     pub fn new<T>(pattern: T) -> Self

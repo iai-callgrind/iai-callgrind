@@ -96,6 +96,7 @@ impl TryFrom<api::DhatRegressionConfig> for DhatRegressionConfig {
 
 #[cfg(test)]
 mod tests {
+    use either_or_both::EitherOrBoth;
     use pretty_assertions::assert_eq;
     use rstest::rstest;
     use DhatMetric::*;
@@ -103,7 +104,6 @@ mod tests {
     use super::*;
     use crate::runner::metrics::Metrics;
     use crate::runner::tool::regression::RegressionMetrics;
-    use crate::util::EitherOrBoth;
 
     fn costs_fixture(costs: [u64; 2]) -> Metrics<DhatMetric> {
         Metrics::with_metric_kinds([(TotalBytes, costs[0]), (TotalBlocks, costs[1])])
