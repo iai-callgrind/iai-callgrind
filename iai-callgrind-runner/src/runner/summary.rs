@@ -714,7 +714,7 @@ impl ProfilePart {
     pub fn from_old(old: ParserOutput) -> Self {
         let metrics_summary = ToolMetricSummary::from_old_metrics(&old.metrics);
         Self {
-            details: EitherOrBoth::Left(old.into()),
+            details: EitherOrBoth::Right(old.into()),
             metrics_summary,
         }
     }
