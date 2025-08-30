@@ -31,6 +31,13 @@ pub struct Union<'a, K, V> {
     secondary: &'a IndexMap<K, V>,
 }
 
+/// The consuming iterator over the [`Union`] returning owned data by cloning it
+pub struct UnionIterator<'a, K, V> {
+    primary_iter: indexmap::map::Iter<'a, K, V>,
+    secondary_iter: indexmap::map::Iter<'a, K, V>,
+    union: Union<'a, K, V>,
+}
+
 impl Glob {
     /// Create a new `Glob` pattern matcher
     pub fn new<T>(pattern: T) -> Self
@@ -139,27 +146,44 @@ impl<'a, K, V> Union<'a, K, V> {
 
     /// Crate a consuming iterator over this `Union`
     #[allow(clippy::should_implement_trait)]
-    pub fn into_iter(self) -> impl Iterator<Item = (K, EitherOrBoth<V>)> + use<'a, K, V>
+    pub fn into_iter(self) -> UnionIterator<'a, K, V>
     where
         K: Clone + core::hash::Hash + Eq,
         V: Clone,
     {
-        self.primary
-            .clone()
-            .into_iter()
-            .map(|(key, value)| {
-                if let Some(other_value) = self.secondary.get(&key) {
-                    (key, EitherOrBoth::Both(value, other_value.clone()))
-                } else {
-                    (key, EitherOrBoth::Left(value))
-                }
-            })
-            .chain(
-                self.secondary
-                    .iter()
-                    .filter(|(k, _)| !self.primary.contains_key(*k))
-                    .map(|(k, v)| (k.clone(), EitherOrBoth::Right(v.clone()))),
-            )
+        UnionIterator {
+            primary_iter: self.primary.iter(),
+            secondary_iter: self.secondary.iter(),
+            union: self,
+        }
+    }
+}
+
+impl<K, V> Iterator for UnionIterator<'_, K, V>
+where
+    K: Clone + core::hash::Hash + Eq,
+    V: Clone,
+{
+    type Item = (K, EitherOrBoth<V>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some((key, value)) = self.primary_iter.next() {
+            if let Some(other_value) = self.union.secondary.get(key) {
+                Some((
+                    key.clone(),
+                    EitherOrBoth::Both(value.clone(), other_value.clone()),
+                ))
+            } else {
+                Some((key.clone(), EitherOrBoth::Left(value.clone())))
+            }
+        } else if let Some((key, value)) = self
+            .secondary_iter
+            .find(|&(key, _)| !self.union.primary.contains_key(key))
+        {
+            Some((key.clone(), EitherOrBoth::Right(value.clone())))
+        } else {
+            None
+        }
     }
 }
 
@@ -429,6 +453,7 @@ pub fn yesno_to_bool(value: &str) -> Option<bool> {
 
 #[cfg(test)]
 mod tests {
+    use indexmap::indexmap;
     use rstest::rstest;
 
     use super::*;
@@ -513,6 +538,48 @@ mod tests {
     // spell-checker: enable
     fn test_glob(#[case] pattern: String, #[case] haystack: &str, #[case] expected: bool) {
         let actual = Glob(pattern).is_match(haystack);
+        assert_eq!(actual, expected);
+    }
+
+    #[rstest]
+    #[case::empty(indexmap! {}, indexmap! {}, indexmap! {})]
+    #[case::left(
+        indexmap! {0 => 1},
+        indexmap! {},
+        indexmap! {0 => EitherOrBoth::Left(1)}
+    )]
+    #[case::right(
+        indexmap! {},
+        indexmap! {1 => 2},
+        indexmap! {1 => EitherOrBoth::Right(2)}
+    )]
+    #[case::left_and_right(
+        indexmap! {0 => 1},
+        indexmap! {1 => 2},
+        indexmap! {0 => EitherOrBoth::Left(1), 1 => EitherOrBoth::Right(2)}
+    )]
+    #[case::both(
+        indexmap! {0 => 1},
+        indexmap! {0 => 2},
+        indexmap! {0 => EitherOrBoth::Both(1, 2)}
+    )]
+    #[case::both_and_left(
+        indexmap! {0 => 1, 1 => 2},
+        indexmap! {0 => 2},
+        indexmap! {0 => EitherOrBoth::Both(1, 2), 1 => EitherOrBoth::Left(2)}
+    )]
+    #[case::both_and_right(
+        indexmap! {0 => 1},
+        indexmap! {0 => 2, 1 => 2},
+        indexmap! {0 => EitherOrBoth::Both(1, 2), 1 => EitherOrBoth::Right(2)}
+    )]
+    fn test_union_iterator(
+        #[case] a: IndexMap<i32, i32>,
+        #[case] b: IndexMap<i32, i32>,
+        #[case] expected: IndexMap<i32, EitherOrBoth<i32>>,
+    ) {
+        let union: Union<'_, i32, i32> = Union::new(&a, &b);
+        let actual: IndexMap<i32, EitherOrBoth<i32>> = union.into_iter().collect();
         assert_eq!(actual, expected);
     }
 }
