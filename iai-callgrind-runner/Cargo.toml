@@ -29,6 +29,7 @@ runner = [
   "dep:colored",
   "dep:derive_more",
   "dep:env_logger",
+  "dep:either-or-both",
   "dep:glob",
   "dep:indexmap",
   "dep:inferno",
@@ -46,7 +47,7 @@ runner = [
   "dep:version-compare",
   "dep:which",
 ]
-schema = ["default", "dep:schemars"]
+schema = ["default", "dep:schemars", "either-or-both?/schema"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -63,6 +64,11 @@ clap = { workspace = true, optional = true, features = [
 ] }
 colored = { workspace = true, optional = true }
 derive_more = { workspace = true, optional = true, features = ["as_ref"] }
+either-or-both = { workspace = true, optional = true, features = [
+  "indexmap",
+  "serde",
+  "schema",
+] }
 env_logger = { workspace = true, optional = true }
 glob = { workspace = true, optional = true }
 indexmap = { workspace = true, optional = true, features = ["serde"] }

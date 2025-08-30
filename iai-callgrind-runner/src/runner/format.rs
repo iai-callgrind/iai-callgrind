@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use colored::{Color, ColoredString, Colorize};
+use either_or_both::EitherOrBoth;
 use indexmap::{indexset, IndexSet};
 
 use super::args::NoCapture;
@@ -23,7 +24,6 @@ use crate::api::{
 };
 use crate::util::{
     make_relative, to_string_signed_short, to_string_unsigned_short, truncate_str_utf8,
-    EitherOrBoth,
 };
 
 /// The width in bytes of the difference (and factor)
@@ -711,14 +711,26 @@ impl VerticalFormatter {
     {
         self.write_indent(&IndentKind::Normal);
 
-        match values {
-            EitherOrBoth::Left(left) => {
-                let left = left.as_ref();
+        let colored = values.as_ref().bimap(
+            |left| {
+                let left = left.as_ref().trim();
                 let colored = match color {
                     Some(color) => left.color(color).bold(),
                     None => left.bold(),
                 };
+                (left, colored)
+            },
+            |right| {
+                let right = right.as_ref().trim();
+                match color {
+                    Some(color) => right.color(color),
+                    None => ColoredString::from(right),
+                }
+            },
+        );
 
+        match colored {
+            EitherOrBoth::Left((left, colored)) => {
                 if left_align {
                     writeln!(self, "{field:<FIELD_WIDTH$}{colored}").unwrap();
                 } else {
@@ -730,13 +742,7 @@ impl VerticalFormatter {
                     .unwrap();
                 }
             }
-            EitherOrBoth::Right(right) => {
-                let right = right.as_ref().trim();
-                let colored = match color {
-                    Some(color) => right.color(color),
-                    None => ColoredString::from(right),
-                };
-
+            EitherOrBoth::Right(colored) => {
                 writeln!(
                     self,
                     "{field:<FIELD_WIDTH$}{}|{colored}",
@@ -744,19 +750,7 @@ impl VerticalFormatter {
                 )
                 .unwrap();
             }
-            EitherOrBoth::Both(left, right) => {
-                let left = left.as_ref().trim();
-                let right = right.as_ref().trim();
-
-                let colored_left = match color {
-                    Some(color) => left.color(color).bold(),
-                    None => left.bold(),
-                };
-                let colored_right = match color {
-                    Some(color) => right.color(color),
-                    None => ColoredString::from(right),
-                };
-
+            EitherOrBoth::Both((left, colored_left), colored_right) => {
                 if left.len() > METRIC_WIDTH {
                     writeln!(self, "{field:<FIELD_WIDTH$}{colored_left}").unwrap();
                     self.write_indent(&IndentKind::Normal);
@@ -801,7 +795,7 @@ impl VerticalFormatter {
                 );
                 self.write_field(
                     field,
-                    &EitherOrBoth::Both(NOT_AVAILABLE, &right),
+                    &EitherOrBoth::Both(NOT_AVAILABLE, right.as_str()),
                     None,
                     false,
                 );
@@ -945,21 +939,22 @@ impl VerticalFormatter {
         write!(self, "{} ", "##".yellow()).unwrap();
 
         let max_left = LEFT_WIDTH - 3;
-        match details {
-            EitherOrBoth::Left(new) => {
+        match details.as_ref().bimap(
+            |new| {
                 let left = fields(new);
                 let len = left.len();
-                let left = left.bold();
-
+                (left.bold(), len)
+            },
+            fields,
+        ) {
+            EitherOrBoth::Left((left, len)) => {
                 if len > max_left {
                     writeln!(self, "{left}\n{}|{NOT_AVAILABLE}", " ".repeat(max_left + 5)).unwrap();
                 } else {
                     writeln!(self, "{left}{}|{NOT_AVAILABLE}", " ".repeat(max_left - len)).unwrap();
                 }
             }
-            EitherOrBoth::Right(old) => {
-                let right = fields(old);
-
+            EitherOrBoth::Right(right) => {
                 writeln!(
                     self,
                     "{}{}|{right}",
@@ -968,12 +963,7 @@ impl VerticalFormatter {
                 )
                 .unwrap();
             }
-            EitherOrBoth::Both(new, old) => {
-                let left = fields(new);
-                let len = left.len();
-                let right = fields(old);
-                let left = left.bold();
-
+            EitherOrBoth::Both((left, len), right) => {
                 if len > max_left {
                     writeln!(self, "{left}\n{}|{right}", " ".repeat(max_left + 5)).unwrap();
                 } else {
@@ -984,52 +974,28 @@ impl VerticalFormatter {
     }
 
     fn format_command(&mut self, config: &Config, command: &EitherOrBoth<&String>) {
-        let paths = match command {
-            EitherOrBoth::Left(new) => {
-                if new.starts_with(&config.bench_bin.display().to_string()) {
-                    EitherOrBoth::Left(make_relative(&config.meta.project_root, &config.bench_bin))
+        let bench_bin_path = config.bench_bin.display().to_string();
+        let paths = command
+            .both_and_then(|l, r| {
+                if l == r {
+                    EitherOrBoth::Left(l)
                 } else {
-                    EitherOrBoth::Left(make_relative(&config.meta.project_root, PathBuf::from(new)))
+                    EitherOrBoth::Both(l, r)
                 }
-            }
-            EitherOrBoth::Right(old) => {
-                if old.starts_with(&config.bench_bin.display().to_string()) {
-                    EitherOrBoth::Right(make_relative(&config.meta.project_root, &config.bench_bin))
-                } else {
-                    EitherOrBoth::Right(make_relative(
-                        &config.meta.project_root,
-                        PathBuf::from(old),
-                    ))
-                }
-            }
-            EitherOrBoth::Both(new, old) if new == old => {
-                if new.starts_with(&config.bench_bin.display().to_string()) {
-                    EitherOrBoth::Left(make_relative(&config.meta.project_root, &config.bench_bin))
-                } else {
-                    EitherOrBoth::Left(make_relative(&config.meta.project_root, PathBuf::from(new)))
-                }
-            }
-            EitherOrBoth::Both(new, old) => {
-                let new_command = if new.starts_with(&config.bench_bin.display().to_string()) {
+            })
+            .map(|command| {
+                if command.starts_with(&bench_bin_path) {
                     make_relative(&config.meta.project_root, &config.bench_bin)
+                        .display()
+                        .to_string()
                 } else {
-                    make_relative(&config.meta.project_root, PathBuf::from(new))
-                };
-                let old_command = if old.starts_with(&config.bench_bin.display().to_string()) {
-                    make_relative(&config.meta.project_root, &config.bench_bin)
-                } else {
-                    make_relative(&config.meta.project_root, PathBuf::from(old))
-                };
-                EitherOrBoth::Both(new_command, old_command)
-            }
-        };
+                    make_relative(&config.meta.project_root, PathBuf::from(command))
+                        .display()
+                        .to_string()
+                }
+            });
 
-        self.write_field(
-            "Command:",
-            &paths.map(|p| p.display().to_string()),
-            Some(Color::Blue),
-            true,
-        );
+        self.write_field("Command:", &paths, Some(Color::Blue), true);
     }
 
     /// Format the tool headline shown for all tools
@@ -1071,7 +1037,7 @@ impl Formatter for VerticalFormatter {
         match metrics_summary {
             ToolMetricSummary::None => {
                 if let Some(info) = info {
-                    if let Some(new) = info.left() {
+                    if let Some(new) = info.as_ref().left() {
                         if let Some(details) = &new.details {
                             self.format_details(details);
                         }
@@ -1097,11 +1063,13 @@ impl Formatter for VerticalFormatter {
 
                 // We only check for `new` errors
                 if let Some(info) = info {
-                    if summary
-                        .diff_by_kind(&ErrorMetric::Errors)
-                        .is_some_and(|e| e.metrics.left().is_some_and(|l| *l > Metric::Int(0)))
-                    {
-                        if let Some(new) = info.left() {
+                    if summary.diff_by_kind(&ErrorMetric::Errors).is_some_and(|e| {
+                        e.metrics
+                            .as_ref()
+                            .left()
+                            .is_some_and(|l| *l > Metric::Int(0))
+                    }) {
+                        if let Some(new) = info.as_ref().left() {
                             if let Some(details) = new.details.as_ref() {
                                 self.format_details(details);
                             }
@@ -1193,7 +1161,7 @@ impl Formatter for VerticalFormatter {
             for part in &data.parts {
                 self.format_command(config, &part.details.as_ref().map(|i| &i.command));
 
-                if let Some(new) = part.details.left() {
+                if let Some(new) = part.details.as_ref().left() {
                     if let Some(details) = &new.details {
                         self.format_details(details);
                     }

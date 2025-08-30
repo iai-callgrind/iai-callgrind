@@ -8,6 +8,7 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, Context, Result};
 use derive_more::AsRef;
+use either_or_both::EitherOrBoth;
 use glob::glob;
 use itertools::Itertools;
 #[cfg(feature = "schema")]
@@ -21,7 +22,7 @@ use super::tool::parser::ParserOutput;
 use super::tool::regression::RegressionMetrics;
 use crate::api::{CachegrindMetric, DhatMetric, ErrorMetric, EventKind, ValgrindTool};
 use crate::error::Error;
-use crate::util::{factor_diff, make_absolute, percentage_diff, EitherOrBoth};
+use crate::util::{factor_diff, make_absolute, percentage_diff};
 
 /// The version of the summary json schema
 pub const SCHEMA_VERSION: &str = "6";
@@ -694,10 +695,7 @@ impl ProfilePart {
             | ToolMetricSummary::Callgrind(_) => false,
             ToolMetricSummary::ErrorTool(metrics) => metrics
                 .diff_by_kind(&ErrorMetric::Errors)
-                .is_some_and(|e| match e.metrics {
-                    EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _) => new > Metric::Int(0),
-                    EitherOrBoth::Right(_) => false,
-                }),
+                .is_some_and(|e| e.metrics.has_left_and(|new| new > Metric::Int(0))),
         }
     }
 

@@ -331,10 +331,10 @@
       "required": ["diff_pct", "factor"]
     },
     "EitherOrBoth": {
-      "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, metrics, etc. Per convention\nleft is `new` and right is `old`.",
+      "description": "Represent values that have either a `Left` or `Right` value or `Both` values",
       "oneOf": [
         {
-          "description": "Both values (`new` and `old`) are present",
+          "description": "Represents a value from both sides",
           "type": "object",
           "properties": {
             "Both": {
@@ -355,7 +355,7 @@
           "required": ["Both"]
         },
         {
-          "description": "The left or `new` value",
+          "description": "Represents a value from the left side",
           "type": "object",
           "properties": {
             "Left": {
@@ -366,7 +366,7 @@
           "required": ["Left"]
         },
         {
-          "description": "The right or `old` value",
+          "description": "Represents a value from the right side",
           "type": "object",
           "properties": {
             "Right": {
@@ -379,10 +379,10 @@
       ]
     },
     "EitherOrBoth2": {
-      "description": "Either left or right or both can be present\n\nMost of the time, this enum is used to store (new, old) output, metrics, etc. Per convention\nleft is `new` and right is `old`.",
+      "description": "Represent values that have either a `Left` or `Right` value or `Both` values",
       "oneOf": [
         {
-          "description": "Both values (`new` and `old`) are present",
+          "description": "Represents a value from both sides",
           "type": "object",
           "properties": {
             "Both": {
@@ -403,7 +403,7 @@
           "required": ["Both"]
         },
         {
-          "description": "The left or `new` value",
+          "description": "Represents a value from the left side",
           "type": "object",
           "properties": {
             "Left": {
@@ -414,7 +414,7 @@
           "required": ["Left"]
         },
         {
-          "description": "The right or `old` value",
+          "description": "Represents a value from the right side",
           "type": "object",
           "properties": {
             "Right": {

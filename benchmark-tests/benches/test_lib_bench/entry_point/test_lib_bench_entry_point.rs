@@ -62,9 +62,8 @@ fn assert_none() {
                 .diff_by_kind(&EventKind::Ir)
                 .unwrap()
                 .metrics
-                .left()
-                .unwrap();
-            *new_ir > Metric::Int(400000)
+                .unwrap_left();
+            new_ir > Metric::Int(400000)
         })
         .unwrap();
 }
@@ -85,9 +84,8 @@ fn assert_default() {
             .diff_by_kind(&EventKind::Ir)
             .unwrap()
             .metrics
-            .left()
-            .unwrap();
-        *new_ir < Metric::Int(3000)
+            .unwrap_left();
+        new_ir < Metric::Int(3000)
     };
 
     let assert = Assert::new(module_path!(), "my_group", "bench_lib", "default").unwrap();
@@ -130,9 +128,8 @@ fn assert_nested() {
             .diff_by_kind(&EventKind::Ir)
             .unwrap()
             .metrics
-            .left()
-            .unwrap();
-        *new_ir < Metric::Int(3000)
+            .unwrap_left();
+        new_ir < Metric::Int(3000)
     };
 
     let assert = Assert::new(module_path!(), "my_group", "bench_lib", "nested").unwrap();

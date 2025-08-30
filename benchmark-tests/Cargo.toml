@@ -23,6 +23,7 @@ cachegrind = ["iai-callgrind/cachegrind"]
 anyhow = { workspace = true }
 cargo_metadata = { workspace = true }
 colored = { workspace = true }
+either-or-both = { workspace = true }
 fs_extra = { workspace = true }
 glob = { workspace = true }
 iai-callgrind = { path = "../iai-callgrind", features = ["client_requests"] }

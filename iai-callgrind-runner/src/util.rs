@@ -8,35 +8,15 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{anyhow, Result};
+use either_or_both::EitherOrBoth;
+use indexmap::IndexMap;
 use log::{debug, log_enabled, trace, Level};
 use regex::Regex;
-#[cfg(feature = "schema")]
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use which::which;
 
 use crate::error::Error;
 use crate::runner::metrics::Metric;
-
-// # Developer notes
-//
-// EitherOrBoth is not considered complete in terms of possible functionality. Simply extend and add
-// new methods by need.
-
-/// Either left or right or both can be present
-///
-/// Most of the time, this enum is used to store (new, old) output, metrics, etc. Per convention
-/// left is `new` and right is `old`.
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, Eq)]
-#[cfg_attr(feature = "schema", derive(JsonSchema))]
-pub enum EitherOrBoth<T> {
-    /// Both values (`new` and `old`) are present
-    Both(T, T),
-    /// The left or `new` value
-    Left(T),
-    /// The right or `old` value
-    Right(T),
-}
 
 /// A simple glob pattern with allowed wildcard characters `*` and `?`
 ///
@@ -45,56 +25,17 @@ pub enum EitherOrBoth<T> {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Glob(String);
 
-impl<T> EitherOrBoth<T> {
-    /// Try to return the left (`new`) value
-    pub fn left(&self) -> Option<&T> {
-        match self {
-            Self::Right(_) => None,
-            Self::Both(left, _) | Self::Left(left) => Some(left),
-        }
-    }
-
-    /// Try to return the right (`old`) value
-    pub fn right(&self) -> Option<&T> {
-        match self {
-            Self::Left(_) => None,
-            Self::Right(right) | Self::Both(_, right) => Some(right),
-        }
-    }
-
-    /// Apply the function `f` to the inner value of `EitherOrBoth` and return a new `EitherOrBoth`
-    pub fn map<F, N>(self, f: F) -> EitherOrBoth<N>
-    where
-        F: Fn(T) -> N,
-    {
-        match self {
-            Self::Left(left) => EitherOrBoth::Left(f(left)),
-            Self::Right(right) => EitherOrBoth::Right(f(right)),
-            Self::Both(l, r) => EitherOrBoth::Both(f(l), f(r)),
-        }
-    }
-
-    /// Converts from `&EitherOrBoth<T>` to `EitherOrBoth<&T>`
-    pub fn as_ref(&self) -> EitherOrBoth<&T> {
-        match self {
-            Self::Left(left) => EitherOrBoth::Left(left),
-            Self::Right(right) => EitherOrBoth::Right(right),
-            Self::Both(left, right) => EitherOrBoth::Both(left, right),
-        }
-    }
+/// The union over two [`IndexMaps`][IndexMap]
+pub struct Union<'a, K, V> {
+    primary: &'a IndexMap<K, V>,
+    secondary: &'a IndexMap<K, V>,
 }
 
-impl<T> TryFrom<(Option<T>, Option<T>)> for EitherOrBoth<T> {
-    type Error = String;
-
-    fn try_from(value: (Option<T>, Option<T>)) -> std::result::Result<Self, Self::Error> {
-        match value {
-            (None, None) => Err("Either the left, right or both values must be present".to_owned()),
-            (None, Some(right)) => Ok(Self::Right(right)),
-            (Some(left), None) => Ok(Self::Left(left)),
-            (Some(left), Some(right)) => Ok(Self::Both(left, right)),
-        }
-    }
+/// The consuming iterator over the [`Union`] returning owned data by cloning it
+pub struct UnionIterator<'a, K, V> {
+    primary_iter: indexmap::map::Iter<'a, K, V>,
+    secondary_iter: indexmap::map::Iter<'a, K, V>,
+    union: Union<'a, K, V>,
 }
 
 impl Glob {
@@ -194,6 +135,55 @@ where
 {
     fn from(value: T) -> Self {
         Self(value.as_ref().to_owned())
+    }
+}
+
+impl<'a, K, V> Union<'a, K, V> {
+    /// Create a new `Union` over two [`IndexMaps`][IndexMap]
+    pub fn new(primary: &'a IndexMap<K, V>, secondary: &'a IndexMap<K, V>) -> Self {
+        Self { primary, secondary }
+    }
+
+    /// Crate a consuming iterator over this `Union`
+    #[allow(clippy::should_implement_trait)]
+    pub fn into_iter(self) -> UnionIterator<'a, K, V>
+    where
+        K: Clone + core::hash::Hash + Eq,
+        V: Clone,
+    {
+        UnionIterator {
+            primary_iter: self.primary.iter(),
+            secondary_iter: self.secondary.iter(),
+            union: self,
+        }
+    }
+}
+
+impl<K, V> Iterator for UnionIterator<'_, K, V>
+where
+    K: Clone + core::hash::Hash + Eq,
+    V: Clone,
+{
+    type Item = (K, EitherOrBoth<V>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some((key, value)) = self.primary_iter.next() {
+            if let Some(other_value) = self.union.secondary.get(key) {
+                Some((
+                    key.clone(),
+                    EitherOrBoth::Both(value.clone(), other_value.clone()),
+                ))
+            } else {
+                Some((key.clone(), EitherOrBoth::Left(value.clone())))
+            }
+        } else if let Some((key, value)) = self
+            .secondary_iter
+            .find(|&(key, _)| !self.union.primary.contains_key(key))
+        {
+            Some((key.clone(), EitherOrBoth::Right(value.clone())))
+        } else {
+            None
+        }
     }
 }
 
@@ -463,6 +453,7 @@ pub fn yesno_to_bool(value: &str) -> Option<bool> {
 
 #[cfg(test)]
 mod tests {
+    use indexmap::indexmap;
     use rstest::rstest;
 
     use super::*;
@@ -547,6 +538,48 @@ mod tests {
     // spell-checker: enable
     fn test_glob(#[case] pattern: String, #[case] haystack: &str, #[case] expected: bool) {
         let actual = Glob(pattern).is_match(haystack);
+        assert_eq!(actual, expected);
+    }
+
+    #[rstest]
+    #[case::empty(indexmap! {}, indexmap! {}, indexmap! {})]
+    #[case::left(
+        indexmap! {0 => 1},
+        indexmap! {},
+        indexmap! {0 => EitherOrBoth::Left(1)}
+    )]
+    #[case::right(
+        indexmap! {},
+        indexmap! {1 => 2},
+        indexmap! {1 => EitherOrBoth::Right(2)}
+    )]
+    #[case::left_and_right(
+        indexmap! {0 => 1},
+        indexmap! {1 => 2},
+        indexmap! {0 => EitherOrBoth::Left(1), 1 => EitherOrBoth::Right(2)}
+    )]
+    #[case::both(
+        indexmap! {0 => 1},
+        indexmap! {0 => 2},
+        indexmap! {0 => EitherOrBoth::Both(1, 2)}
+    )]
+    #[case::both_and_left(
+        indexmap! {0 => 1, 1 => 2},
+        indexmap! {0 => 2},
+        indexmap! {0 => EitherOrBoth::Both(1, 2), 1 => EitherOrBoth::Left(2)}
+    )]
+    #[case::both_and_right(
+        indexmap! {0 => 1},
+        indexmap! {0 => 2, 1 => 2},
+        indexmap! {0 => EitherOrBoth::Both(1, 2), 1 => EitherOrBoth::Right(2)}
+    )]
+    fn test_union_iterator(
+        #[case] a: IndexMap<i32, i32>,
+        #[case] b: IndexMap<i32, i32>,
+        #[case] expected: IndexMap<i32, EitherOrBoth<i32>>,
+    ) {
+        let union: Union<'_, i32, i32> = Union::new(&a, &b);
+        let actual: IndexMap<i32, EitherOrBoth<i32>> = union.into_iter().collect();
         assert_eq!(actual, expected);
     }
 }
