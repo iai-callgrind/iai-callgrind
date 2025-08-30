@@ -112,10 +112,15 @@ check-fmt-all: check-fmt check-fmt-toml check-fmt-prettier check-spelling
 lint:
     cargo +stable clippy --all-features --all-targets -- -D warnings
 
-# Run cargo deny check (Uses 'cargo-deny')
+# Run cargo deny check (Uses: 'cargo-deny')
 [group('dependencies')]
 deny +check='all':
     cargo deny check {{ if args != '' { args } else { '' } }} {{ check }}
+
+# Generate and update Cargo.lock with cargo resolver v3 fallback (Uses: 'cargo +stable')
+[group('dependencies')]
+generate-lockfile:
+    CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback cargo +stable generate-lockfile
 
 # Install git hooks (Uses: 'coreutils')
 [group('init workspace')]
