@@ -8,6 +8,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{anyhow, Result};
+use either_or_both::EitherOrBoth;
+use indexmap::IndexMap;
 use log::{debug, log_enabled, trace, Level};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -22,6 +24,13 @@ use crate::runner::metrics::Metric;
 /// `--toggle-collect` (<https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options>)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Glob(String);
+
+/// The union over two [`IndexMaps`][IndexMap]
+pub struct Union<'a, K, V> {
+    primary: &'a IndexMap<K, V>,
+    secondary: &'a IndexMap<K, V>,
+}
+
 impl Glob {
     /// Create a new `Glob` pattern matcher
     pub fn new<T>(pattern: T) -> Self
@@ -119,6 +128,38 @@ where
 {
     fn from(value: T) -> Self {
         Self(value.as_ref().to_owned())
+    }
+}
+
+impl<'a, K, V> Union<'a, K, V> {
+    /// Create a new `Union` over two [`IndexMaps`][IndexMap]
+    pub fn new(primary: &'a IndexMap<K, V>, secondary: &'a IndexMap<K, V>) -> Self {
+        Self { primary, secondary }
+    }
+
+    /// Crate a consuming iterator over this `Union`
+    #[allow(clippy::should_implement_trait)]
+    pub fn into_iter(self) -> impl Iterator<Item = (K, EitherOrBoth<V>)> + use<'a, K, V>
+    where
+        K: Clone + core::hash::Hash + Eq,
+        V: Clone,
+    {
+        self.primary
+            .clone()
+            .into_iter()
+            .map(|(key, value)| {
+                if let Some(other_value) = self.secondary.get(&key) {
+                    (key, EitherOrBoth::Both(value, other_value.clone()))
+                } else {
+                    (key, EitherOrBoth::Left(value))
+                }
+            })
+            .chain(
+                self.secondary
+                    .iter()
+                    .filter(|(k, _)| !self.primary.contains_key(*k))
+                    .map(|(k, v)| (k.clone(), EitherOrBoth::Right(v.clone()))),
+            )
     }
 }
 

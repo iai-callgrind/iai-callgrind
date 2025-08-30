@@ -695,10 +695,7 @@ impl ProfilePart {
             | ToolMetricSummary::Callgrind(_) => false,
             ToolMetricSummary::ErrorTool(metrics) => metrics
                 .diff_by_kind(&ErrorMetric::Errors)
-                .is_some_and(|e| match e.metrics {
-                    EitherOrBoth::Left(new) | EitherOrBoth::Both(new, _) => new > Metric::Int(0),
-                    EitherOrBoth::Right(_) => false,
-                }),
+                .is_some_and(|e| e.metrics.has_left_and(|new| new > Metric::Int(0))),
         }
     }
 

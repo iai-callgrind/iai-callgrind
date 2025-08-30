@@ -11,15 +11,14 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, Context, Result};
 use either_or_both::EitherOrBoth;
-use indexmap::map::Iter;
-use indexmap::{indexmap, IndexMap, IndexSet};
+use indexmap::IndexMap;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::summary::Diffs;
 use crate::api::{self, CachegrindMetric, DhatMetric, ErrorMetric, EventKind};
-use crate::util::to_string_unsigned_short;
+use crate::util::{to_string_unsigned_short, Union};
 
 /// The metric measured by valgrind or derived from one or more other metrics
 ///
@@ -301,7 +300,10 @@ impl Display for MetricKind {
     }
 }
 
-impl<K: Hash + Eq + Display + Clone> Metrics<K> {
+impl<K> Metrics<K>
+where
+    K: Hash + Eq + Display + Clone,
+{
     /// Return empty `Metrics`
     pub fn empty() -> Self {
         Self(IndexMap::new())
@@ -381,18 +383,16 @@ impl<K: Hash + Eq + Display + Clone> Metrics<K> {
         self.0.iter().map(|(k, _)| k.clone()).collect()
     }
 
-    /// Create the union set of the keys of this and another `Metrics`
+    /// Create the union map over this and another `Metrics`
     ///
-    /// The order of the keys is preserved. New keys from the `other` Metrics are appended in their
-    /// original order.
-    pub fn metric_kinds_union<'a>(&'a self, other: &'a Self) -> IndexSet<&'a K> {
-        let set = self.0.keys().collect::<IndexSet<_>>();
-        let other_set = other.0.keys().collect::<IndexSet<_>>();
-        set.union(&other_set).copied().collect()
+    /// The order of the keys and their values is preserved. New keys from the `other` Metrics are
+    /// appended in their original order.
+    pub fn union<'a>(&'a self, other: &'a Self) -> Union<'a, K, Metric> {
+        Union::new(&self.0, &other.0)
     }
 
     /// Return an iterator over the metrics in insertion order
-    pub fn iter(&self) -> Iter<'_, K, Metric> {
+    pub fn iter(&self) -> indexmap::map::Iter<'_, K, Metric> {
         self.0.iter()
     }
 
@@ -423,17 +423,34 @@ impl<K: Hash + Eq + Display + Clone> Metrics<K> {
     }
 }
 
-impl<'a, K: Hash + Eq + Display + Clone> IntoIterator for &'a Metrics<K> {
-    type Item = (&'a K, &'a Metric);
-
-    type IntoIter = Iter<'a, K, Metric>;
+impl<K> IntoIterator for Metrics<K>
+where
+    K: Hash + Eq,
+{
+    type Item = (K, Metric);
+    type IntoIter = indexmap::map::IntoIter<K, Metric>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.iter()
+        self.0.into_iter()
     }
 }
 
-impl<I, K: Hash + Eq + From<I>> FromIterator<I> for Metrics<K> {
+impl<'a, K> IntoIterator for &'a Metrics<K>
+where
+    K: Hash + Eq,
+{
+    type Item = (&'a K, &'a Metric);
+    type IntoIter = indexmap::map::Iter<'a, K, Metric>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
+impl<I, K> FromIterator<I> for Metrics<K>
+where
+    K: Hash + Eq + From<I>,
+{
     fn from_iter<T>(iter: T) -> Self
     where
         T: IntoIterator<Item = I>,
@@ -447,7 +464,7 @@ impl<I, K: Hash + Eq + From<I>> FromIterator<I> for Metrics<K> {
 }
 
 impl MetricsDiff {
-    /// Create a new `MetricsDiff` from a [`Metric`]
+    /// Create a new `MetricsDiff` from an [`EitherOrBoth<Metric>`][Metric]
     pub fn new(metrics: EitherOrBoth<Metric>) -> Self {
         if let EitherOrBoth::Both(new, old) = metrics {
             Self {
@@ -502,71 +519,37 @@ where
     ///
     /// If one of the [`Metrics`] is empty
     pub fn new(metrics: EitherOrBoth<Metrics<K>>) -> Self {
-        match metrics {
-            EitherOrBoth::Left(new) => {
-                assert!(!new.is_empty());
+        let summarized = metrics
+            .inspect(|metrics| assert!(!metrics.is_empty()))
+            .map(|metrics| {
+                let mut summarized = Cow::Owned(metrics);
+                K::summarize(&mut summarized);
+                summarized
+            });
 
-                let mut new = Cow::Owned(new);
-                K::summarize(&mut new);
+        let diffs = match summarized {
+            EitherOrBoth::Left(new) => new
+                .into_owned()
+                .into_iter()
+                .map(|(metric_kind, metric)| {
+                    (metric_kind, MetricsDiff::new(EitherOrBoth::Left(metric)))
+                })
+                .collect(),
+            EitherOrBoth::Right(old) => old
+                .into_owned()
+                .into_iter()
+                .map(|(metric_kind, metric)| {
+                    (metric_kind, MetricsDiff::new(EitherOrBoth::Right(metric)))
+                })
+                .collect(),
+            EitherOrBoth::Both(new, old) => new
+                .union(&old)
+                .into_iter()
+                .map(|(metric_kind, metric)| (metric_kind, MetricsDiff::new(metric)))
+                .collect(),
+        };
 
-                Self(
-                    new.iter()
-                        .map(|(metric_kind, metric)| {
-                            (
-                                metric_kind.clone(),
-                                MetricsDiff::new(EitherOrBoth::Left(*metric)),
-                            )
-                        })
-                        .collect::<IndexMap<_, _>>(),
-                )
-            }
-            EitherOrBoth::Right(old) => {
-                assert!(!old.is_empty());
-
-                let mut old = Cow::Owned(old);
-                K::summarize(&mut old);
-
-                Self(
-                    old.iter()
-                        .map(|(metric_kind, metric)| {
-                            (
-                                metric_kind.clone(),
-                                MetricsDiff::new(EitherOrBoth::Right(*metric)),
-                            )
-                        })
-                        .collect::<IndexMap<_, _>>(),
-                )
-            }
-            EitherOrBoth::Both(new, old) => {
-                assert!(!new.is_empty());
-                assert!(!old.is_empty());
-
-                let mut new = Cow::Owned(new);
-                K::summarize(&mut new);
-                let mut old = Cow::Owned(old);
-                K::summarize(&mut old);
-
-                let mut map = indexmap! {};
-                for metric_kind in new.metric_kinds_union(&old) {
-                    let diff = match (
-                        new.metric_by_kind(metric_kind),
-                        old.metric_by_kind(metric_kind),
-                    ) {
-                        (Some(metric), None) => MetricsDiff::new(EitherOrBoth::Left(metric)),
-                        (None, Some(metric)) => MetricsDiff::new(EitherOrBoth::Right(metric)),
-                        (Some(new), Some(old)) => MetricsDiff::new(EitherOrBoth::Both(new, old)),
-                        (None, None) => {
-                            unreachable!(
-                                "The union contains the event kinds either from new or old or \
-                                 from both"
-                            )
-                        }
-                    };
-                    map.insert(metric_kind.clone(), diff);
-                }
-                Self(map)
-            }
-        }
+        Self(diffs)
     }
 
     /// Try to return a [`MetricsDiff`] for the specified `MetricKind`
@@ -583,31 +566,11 @@ where
     ///
     /// This is the exact reverse operation to [`MetricsSummary::new`]
     pub fn extract_costs(&self) -> EitherOrBoth<Metrics<K>> {
-        let mut new_metrics: Metrics<K> = Metrics::empty();
-        let mut old_metrics: Metrics<K> = Metrics::empty();
-
-        // The diffs should not be empty
-        for (metric_kind, diff) in self.all_diffs() {
-            match diff.metrics {
-                EitherOrBoth::Left(new) => {
-                    new_metrics.insert(metric_kind.clone(), new);
-                }
-                EitherOrBoth::Right(old) => {
-                    old_metrics.insert(metric_kind.clone(), old);
-                }
-                EitherOrBoth::Both(new, old) => {
-                    new_metrics.insert(metric_kind.clone(), new);
-                    old_metrics.insert(metric_kind.clone(), old);
-                }
-            }
-        }
-
-        match (new_metrics.is_empty(), old_metrics.is_empty()) {
-            (false, false) => EitherOrBoth::Both(new_metrics, old_metrics),
-            (false, true) => EitherOrBoth::Left(new_metrics),
-            (true, false) => EitherOrBoth::Right(old_metrics),
-            (true, true) => unreachable!("A costs diff contains new or old values or both."),
-        }
+        self.0
+            .iter()
+            .map(|(metric_kind, diff)| diff.metrics.map(|metric| (metric_kind.clone(), metric)))
+            .collect::<EitherOrBoth<IndexMap<_, _>>>()
+            .map(Metrics)
     }
 
     /// Sum up another `MetricsSummary` with this one
@@ -615,23 +578,11 @@ where
     /// If a [`MetricsDiff`] is not present in this summary but in the other, it is added to this
     /// summary.
     pub fn add(&mut self, other: &Self) {
-        let other_keys = other.0.keys().cloned().collect::<IndexSet<_>>();
-        let keys = self.0.keys().cloned().collect::<IndexSet<_>>();
-        let union = keys.union(&other_keys);
-
-        for key in union {
-            match (self.diff_by_kind(key), other.diff_by_kind(key)) {
-                (None, None) => unreachable!("One key of the union set must be present"),
-                (None, Some(other_diff)) => {
-                    self.0.insert(key.clone(), other_diff.clone());
-                }
-                (Some(_), None) => {
-                    // Nothing to be done
-                }
-                (Some(this_diff), Some(other_diff)) => {
-                    let new_diff = this_diff.add(other_diff);
-                    self.0.insert(key.clone(), new_diff);
-                }
+        for (other_key, other_value) in &other.0 {
+            if let Some(value) = self.0.get_mut(other_key) {
+                *value = value.add(other_value);
+            } else {
+                self.0.insert(other_key.clone(), other_value.clone());
             }
         }
     }

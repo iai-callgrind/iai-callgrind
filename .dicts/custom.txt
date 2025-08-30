@@ -59,6 +59,7 @@ attgmaxbytes
 autofree
 behaviour
 bheisler
+bimap
 bincode
 bindgen
 binstall
