@@ -37,8 +37,8 @@ struct BaselineBenchmark {
 struct Group {
     benches: Vec<LibBench>,
     compare_by_id: bool,
+    index: usize,
     module_path: ModulePath,
-    name: String,
     setup: Option<Assistant>,
     teardown: Option<Assistant>,
 }
@@ -52,7 +52,7 @@ struct Groups(Vec<Group>);
 /// It needs an implementation of `Benchmark` to be run.
 #[derive(Debug)]
 pub struct LibBench {
-    /// The index of the benchmark in the benchmark harness
+    /// The index of the `#[bench]` in the `#[library_benchmark]`
     pub bench_index: usize,
     /// The default [`ValgrindTool`]. If not changed it is `Callgrind`.
     pub default_tool: ValgrindTool,
@@ -60,7 +60,7 @@ pub struct LibBench {
     pub display: Option<String>,
     /// The name of the annotated function
     pub function_name: String,
-    /// The index of the group in the benchmark harness
+    /// The index of the `#[library_benchmark]` in the `library_benchmark_group!`
     pub group_index: usize,
     /// The id of the benchmark as in `#[bench::id]`
     pub id: Option<String>,
@@ -203,7 +203,8 @@ impl Groups {
         let default_tool = benchmark_groups.default_tool;
 
         let mut groups = vec![];
-        for library_benchmark_group in benchmark_groups.groups {
+        for (main_index, library_benchmark_group) in benchmark_groups.groups.into_iter().enumerate()
+        {
             let group_module_path = module_path.join(&library_benchmark_group.id);
             let group_config = global_config
                 .clone()
@@ -214,7 +215,7 @@ impl Groups {
                     .has_setup
                     .then_some(Assistant::new_group_assistant(
                         AssistantKind::Setup,
-                        &library_benchmark_group.id,
+                        main_index,
                         group_config.collect_envs(),
                         false,
                     ));
@@ -223,13 +224,13 @@ impl Groups {
                     .has_teardown
                     .then_some(Assistant::new_group_assistant(
                         AssistantKind::Teardown,
-                        &library_benchmark_group.id,
+                        main_index,
                         group_config.collect_envs(),
                         false,
                     ));
 
             let mut group = Group {
-                name: library_benchmark_group.id,
+                index: main_index,
                 module_path: group_module_path,
                 benches: vec![],
                 setup,
@@ -448,18 +449,19 @@ impl LibBench {
 
     /// The arguments for the `bench_bin` to actually run the benchmark function
     fn bench_args(&self, group: &Group) -> Vec<OsString> {
+        let index_to_string = |index| format!("{index:05}");
+
         let mut args = vec![
             OsString::from("--iai-run".to_owned()),
-            OsString::from(&group.name),
-            OsString::from(self.group_index.to_string()),
-            OsString::from(self.bench_index.to_string()),
+            OsString::from(index_to_string(group.index)),
+            OsString::from(index_to_string(self.group_index)),
+            OsString::from(index_to_string(self.bench_index)),
         ];
 
         if let Some(iter_index) = self.iter_index {
-            args.push(OsString::from(iter_index.to_string()));
+            args.push(OsString::from(index_to_string(iter_index)));
         }
 
-        args.push(OsString::from(self.module_path.to_string()));
         args
     }
 
