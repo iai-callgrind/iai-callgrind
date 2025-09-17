@@ -39,6 +39,7 @@ struct Group {
     compare_by_id: bool,
     module_path: ModulePath,
     name: String,
+    num_filtered: usize,
     setup: Option<Assistant>,
     teardown: Option<Assistant>,
 }
@@ -192,8 +193,17 @@ impl Benchmark for BaselineBenchmark {
 }
 
 impl Groups {
+    fn has_benchmarks(&self) -> bool {
+        self.0.iter().any(|g| !g.benches.is_empty())
+    }
+
+    fn num_filtered(&self) -> usize {
+        self.0.iter().fold(0, |acc, group| acc + group.num_filtered)
+    }
+
     /// Create this `Groups` from a [`crate::api::LibraryBenchmark`] submitted by the benchmarking
     /// harness
+    #[allow(clippy::too_many_lines)]
     fn from_library_benchmark(
         module_path: &ModulePath,
         benchmark_groups: LibraryBenchmarkGroups,
@@ -229,14 +239,15 @@ impl Groups {
                     ));
 
             let mut group = Group {
-                name: library_benchmark_group.id,
-                module_path: group_module_path,
                 benches: vec![],
-                setup,
-                teardown,
                 compare_by_id: library_benchmark_group
                     .compare_by_id
                     .unwrap_or(defaults::COMPARE_BY_ID),
+                module_path: group_module_path,
+                name: library_benchmark_group.id,
+                num_filtered: 0,
+                setup,
+                teardown,
             };
 
             for (group_index, library_benchmark_benches) in library_benchmark_group
@@ -278,7 +289,11 @@ impl Groups {
                                         Some(iter_index),
                                         default_tool,
                                     )?;
-                                    group.benches.push(lib_bench);
+                                    if let Some(lib_bench) = lib_bench {
+                                        group.benches.push(lib_bench);
+                                    } else {
+                                        group.num_filtered += 1;
+                                    }
                                 }
                             }
                         }
@@ -295,7 +310,11 @@ impl Groups {
                             None,
                             default_tool,
                         )?;
-                        group.benches.push(lib_bench);
+                        if let Some(lib_bench) = lib_bench {
+                            group.benches.push(lib_bench);
+                        } else {
+                            group.num_filtered += 1;
+                        }
                     }
                 }
             }
@@ -367,12 +386,22 @@ impl LibBench {
         bench_index: usize,
         iter_index: Option<usize>,
         default_tool: ValgrindTool,
-    ) -> Result<Self> {
+    ) -> Result<Option<Self>> {
         let id = if let Some(iter_index) = iter_index {
             id.as_ref().map(|s| format!("{s}_{iter_index}"))
         } else {
             id
         };
+
+        if let Some(filter) = meta.args.filter.as_ref() {
+            let is_matched = match id.as_ref() {
+                Some(id) => filter.apply(module_path.join(id).as_str()),
+                None => filter.apply(module_path.as_str()),
+            };
+            if !is_matched {
+                return Ok(None);
+            }
+        }
 
         let envs = config.resolve_envs();
         let mut default_args = HashMap::new();
@@ -414,7 +443,7 @@ impl LibBench {
             Error::ConfigurationError(module_path.clone(), id.clone(), error.to_string())
         })?;
 
-        Ok(Self {
+        Ok(Some(Self {
             group_index,
             bench_index,
             iter_index,
@@ -430,7 +459,7 @@ impl LibBench {
             module_path,
             output_format,
             default_tool,
-        })
+        }))
     }
 
     /// The name of this `LibBench` consisting of the name of the benchmark function and if present,
@@ -553,6 +582,14 @@ impl Benchmark for LoadBaselineBenchmark {
 }
 
 impl Runner {
+    fn has_benchmarks(&self) -> bool {
+        self.groups.has_benchmarks()
+    }
+
+    fn num_filtered(&self) -> usize {
+        self.groups.num_filtered()
+    }
+
     /// Create a new `Runner`
     fn new(benchmark_groups: LibraryBenchmarkGroups, config: Config) -> Result<Self> {
         let setup = benchmark_groups
@@ -708,9 +745,17 @@ pub fn list(benchmark_groups: LibraryBenchmarkGroups, config: &Config) -> Result
 pub fn run(benchmark_groups: LibraryBenchmarkGroups, config: Config) -> Result<BenchmarkSummaries> {
     let runner = Runner::new(benchmark_groups, config)?;
 
-    let start = Instant::now();
-    let mut summaries = runner.run()?;
-    summaries.elapsed(start);
+    if runner.has_benchmarks() {
+        let start = Instant::now();
+        let mut summaries = runner.run()?;
+        summaries.elapsed(start);
+        summaries.num_filtered = runner.num_filtered();
 
-    Ok(summaries)
+        Ok(summaries)
+    } else {
+        Ok(BenchmarkSummaries {
+            num_filtered: runner.num_filtered(),
+            ..Default::default()
+        })
+    }
 }

@@ -7,6 +7,7 @@ use std::str::FromStr;
 use anyhow::{anyhow, Result};
 use log::{trace, warn};
 use serde::{Deserialize, Serialize};
+use simplematch::DoWild;
 
 use super::model::{Metrics, Positions};
 use crate::api::EventKind;
@@ -14,7 +15,6 @@ use crate::runner::summary::ProfileInfo;
 use crate::runner::tool::parser::ParserOutput;
 use crate::runner::tool::path::ToolOutputPath;
 use crate::runner::DEFAULT_TOGGLE;
-use crate::util::Glob;
 
 /// The properties and header data of a callgrind output file
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -46,7 +46,7 @@ pub struct CallgrindProperties {
 /// output file.
 #[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Sentinel(Glob);
+pub struct Sentinel(String);
 
 /// A callgrind specific parser trait
 pub trait CallgrindParser {
@@ -135,7 +135,7 @@ impl Sentinel {
     /// ```
     pub fn new<T>(value: T) -> Self
     where
-        T: Into<Glob>,
+        T: Into<String>,
     {
         Self(value.into())
     }
@@ -165,7 +165,7 @@ impl Sentinel {
 
     /// Return true if this `Sentinel` matches the function in the `haystack`
     pub fn matches(&self, haystack: &str) -> bool {
-        self.0.is_match(haystack)
+        self.0.as_str().dowild(haystack)
     }
 }
 

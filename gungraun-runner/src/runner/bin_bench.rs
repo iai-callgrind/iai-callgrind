@@ -97,6 +97,7 @@ struct Group {
     /// Due to the way we expand the `library_benchmark_group!` macro, we can safely assume that
     /// this name is unique.
     name: String,
+    num_filtered: usize,
     setup: Option<Assistant>,
     teardown: Option<Assistant>,
 }
@@ -222,12 +223,22 @@ impl BinBench {
         iter_index: Option<usize>,
         command: api::Command,
         default_tool: ValgrindTool,
-    ) -> Result<Self> {
+    ) -> Result<Option<Self>> {
         let id = if let Some(iter_index) = iter_index {
             id.as_ref().map(|id| format!("{id}_{iter_index}"))
         } else {
             id
         };
+
+        if let Some(filter) = meta.args.filter.as_ref() {
+            let is_matched = match id.as_ref() {
+                Some(id) => filter.apply(module_path.join(id).as_str()),
+                None => filter.apply(module_path.as_str()),
+            };
+            if !is_matched {
+                return Ok(None);
+            }
+        }
 
         let default_tool = meta
             .args
@@ -299,7 +310,7 @@ impl BinBench {
             false,
         ));
 
-        Ok(Self {
+        Ok(Some(Self {
             id,
             display,
             function_name,
@@ -321,7 +332,7 @@ impl BinBench {
             command,
             output_format,
             default_tool,
-        })
+        }))
     }
 
     fn name(&self) -> String {
@@ -552,6 +563,14 @@ impl Group {
 }
 
 impl Groups {
+    fn has_benchmarks(&self) -> bool {
+        self.0.iter().any(|g| !g.benches.is_empty())
+    }
+
+    fn num_filtered(&self) -> usize {
+        self.0.iter().fold(0, |acc, group| acc + group.num_filtered)
+    }
+
     #[allow(clippy::too_many_lines)]
     fn from_binary_benchmark(
         module: &ModulePath,
@@ -587,14 +606,15 @@ impl Groups {
                     ));
 
             let mut group = Group {
-                name: binary_benchmark_group.id,
-                module_path: group_module_path,
                 benches: vec![],
-                setup,
-                teardown,
                 compare_by_id: binary_benchmark_group
                     .compare_by_id
                     .unwrap_or(defaults::COMPARE_BY_ID),
+                module_path: group_module_path,
+                name: binary_benchmark_group.id,
+                num_filtered: 0,
+                setup,
+                teardown,
             };
 
             for (group_index, binary_benchmark_benches) in binary_benchmark_group
@@ -633,7 +653,11 @@ impl Groups {
                                 *command.clone(),
                                 default_tool,
                             )?;
-                            group.benches.push(bin_bench);
+                            if let Some(bin_bench) = bin_bench {
+                                group.benches.push(bin_bench);
+                            } else {
+                                group.num_filtered += 1;
+                            }
                         }
                         api::CommandKind::Iter(commands) => {
                             match (commands.len(), &binary_benchmark_bench.id) {
@@ -669,7 +693,11 @@ impl Groups {
                                             command.clone(),
                                             default_tool,
                                         )?;
-                                        group.benches.push(bin_bench);
+                                        if let Some(bin_bench) = bin_bench {
+                                            group.benches.push(bin_bench);
+                                        } else {
+                                            group.num_filtered += 1;
+                                        }
                                     }
                                 }
                             }
@@ -766,6 +794,14 @@ impl Benchmark for LoadBaselineBenchmark {
 }
 
 impl Runner {
+    fn has_benchmarks(&self) -> bool {
+        self.groups.has_benchmarks()
+    }
+
+    fn num_filtered(&self) -> usize {
+        self.groups.num_filtered()
+    }
+
     fn new(benchmark_groups: BinaryBenchmarkGroups, config: Config) -> Result<Self> {
         let setup = benchmark_groups
             .has_setup
@@ -919,11 +955,19 @@ pub fn list(benchmark_groups: BinaryBenchmarkGroups, config: &Config) -> Result<
 pub fn run(benchmark_groups: BinaryBenchmarkGroups, config: Config) -> Result<BenchmarkSummaries> {
     let runner = Runner::new(benchmark_groups, config)?;
 
-    let start = Instant::now();
-    let mut summaries = runner.run()?;
-    summaries.elapsed(start);
+    if runner.has_benchmarks() {
+        let start = Instant::now();
+        let mut summaries = runner.run()?;
+        summaries.elapsed(start);
+        summaries.num_filtered = runner.num_filtered();
 
-    Ok(summaries)
+        Ok(summaries)
+    } else {
+        Ok(BenchmarkSummaries {
+            num_filtered: runner.num_filtered(),
+            ..Default::default()
+        })
+    }
 }
 
 #[cfg(test)]

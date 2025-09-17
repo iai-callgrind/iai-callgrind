@@ -12,18 +12,10 @@ use either_or_both::EitherOrBoth;
 use indexmap::IndexMap;
 use log::{debug, log_enabled, trace, Level};
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 use which::which;
 
 use crate::error::Error;
 use crate::runner::metrics::Metric;
-
-/// A simple glob pattern with allowed wildcard characters `*` and `?`
-///
-/// Match patterns as they are accepted by `valgrind` command line arguments such as
-/// `--toggle-collect` (<https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options>)
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Glob(String);
 
 /// The union over two [`IndexMaps`][IndexMap]
 pub struct Union<K, V> {
@@ -36,106 +28,6 @@ pub struct UnionIterator<'a, K, V> {
     primary_iter: indexmap::map::Iter<'a, K, V>,
     secondary_iter: indexmap::map::Iter<'a, K, V>,
     union: &'a Union<K, V>,
-}
-
-impl Glob {
-    /// Create a new `Glob` pattern matcher
-    pub fn new<T>(pattern: T) -> Self
-    where
-        T: Into<String>,
-    {
-        Self(pattern.into())
-    }
-
-    /// Return true if the glob pattern matches the `haystack`
-    ///
-    /// Allowed wildcard characters are `*` to match any amount of characters and `?` to match
-    /// exactly one character.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use gungraun_runner::util::Glob;
-    ///
-    /// let glob = Glob::new("a*bc?");
-    ///
-    /// assert!(glob.is_match("abcd"));
-    /// assert!(glob.is_match("axxxxxbcd"))
-    /// ```
-    ///
-    /// # Implementation Details
-    ///
-    /// This linear-time glob algorithm originates from the article
-    /// <https://research.swtch.com/glob> written by Russ Cox.
-    ///
-    /// We only need a reduced glob matching algorithm for patterns (only `*` and `?` wildcards)
-    /// accepted by valgrind in callgrind options like `--toggle-collect`, ... After having a quick
-    /// look at the algorithm in the `valgrind` repo, it felt too complex for this task, is
-    /// recursive instead of iterative and as far as I can tell, the computation time is slower
-    /// compared to the algorithm used here. Converting the glob patterns into regex would work, but
-    /// requires an extra step, is slower and the glob patterns would inherently allow regex which
-    /// is hard to explain. Repos like <https://crates.io/crates/glob-match> are great and their
-    /// algorithm is based on the same algorithm used here. However such crates allow more globs
-    /// than required.
-    #[allow(clippy::similar_names)]
-    pub fn is_match(&self, haystack: &str) -> bool {
-        let mut p_idx = 0;
-        let mut h_idx = 0;
-
-        let mut next_p_idx = 0;
-        let mut next_h_idx = 0;
-
-        let pattern = self.0.as_bytes();
-        let haystack = haystack.as_bytes();
-
-        while p_idx < pattern.len() || h_idx < haystack.len() {
-            if p_idx < pattern.len() {
-                match pattern[p_idx] {
-                    b'?' => {
-                        if h_idx < haystack.len() {
-                            p_idx += 1;
-                            h_idx += 1;
-                            continue;
-                        }
-                    }
-                    b'*' => {
-                        next_p_idx = p_idx;
-                        next_h_idx = h_idx + 1;
-                        p_idx += 1;
-                        continue;
-                    }
-                    c => {
-                        if h_idx < haystack.len() && haystack[h_idx] == c {
-                            p_idx += 1;
-                            h_idx += 1;
-                            continue;
-                        }
-                    }
-                }
-            }
-            if 0 < next_h_idx && next_h_idx <= haystack.len() {
-                p_idx = next_p_idx;
-                h_idx = next_h_idx;
-                continue;
-            }
-            return false;
-        }
-        true
-    }
-
-    /// Return the glob as string reference
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl<T> From<T> for Glob
-where
-    T: AsRef<str>,
-{
-    fn from(value: T) -> Self {
-        Self(value.as_ref().to_owned())
-    }
 }
 
 impl<K, V> Union<K, V> {
@@ -534,33 +426,6 @@ mod tests {
         R: Into<Metric>,
     {
         assert_eq!(factor_diff(a.into(), b.into()), expected);
-    }
-
-    // spell-checker: disable
-    #[rstest]
-    #[case::both_empty("", "", true)]
-    #[case::star_match_empty("*", "", true)]
-    #[case::empty_not_match_single("", "a", false)]
-    #[case::empty_not_match_star("", "*", false)]
-    #[case::star_match_star("*", "*", true)]
-    #[case::two_star_match_star("**", "*", true)]
-    #[case::mark_match_star("?", "*", true)]
-    #[case::mark_match_char("?", "b", true)]
-    #[case::star_match_two_chars("*", "ab", true)]
-    #[case::star_match_many("*", &"abc".repeat(30), true)]
-    #[case::star_a_match_a("*a", "a", true)]
-    #[case::a_star_match_a("a*", "a", true)]
-    #[case::two_star_a_match_a("**a", "a", true)]
-    #[case::star_match_no_char_middle("a*by", "aby", true)]
-    #[case::star_match_one_char_middle("a*by", "axby", true)]
-    #[case::star_match_two_char_middle("a*by", "axzby", true)]
-    #[case::star_match_same_middle("a*by", "abyby", true)]
-    #[case::multi_star_no_match("a*by*by", "aby", false)]
-    #[case::multi_star_match("a*by*by", "abyby", true)]
-    // spell-checker: enable
-    fn test_glob(#[case] pattern: String, #[case] haystack: &str, #[case] expected: bool) {
-        let actual = Glob(pattern).is_match(haystack);
-        assert_eq!(actual, expected);
     }
 
     #[rstest]

@@ -12,18 +12,17 @@ use crate::api::EntryPoint;
 use crate::runner::tool::logfile_parser;
 use crate::runner::tool::parser::{Header, Parser, ParserOutput};
 use crate::runner::tool::path::ToolOutputPath;
-use crate::util::Glob;
 
 /// The dhat output file json parser
 pub struct JsonParser {
     entry_point: EntryPoint,
-    frames: Vec<Glob>,
+    frames: Vec<String>,
     output_path: ToolOutputPath,
 }
 
 impl JsonParser {
     /// Create a new `JsonParser`
-    pub fn new(output_path: ToolOutputPath, entry_point: EntryPoint, frames: Vec<Glob>) -> Self {
+    pub fn new(output_path: ToolOutputPath, entry_point: EntryPoint, frames: Vec<String>) -> Self {
         Self {
             entry_point,
             frames,

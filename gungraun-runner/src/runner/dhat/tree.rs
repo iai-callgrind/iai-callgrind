@@ -4,13 +4,13 @@ use std::cmp::Ordering;
 use std::ops::Add;
 
 use polonius_the_crab::{polonius, ForLt, PoloniusResult};
+use simplematch::DoWild;
 
 use super::model::{DhatData, Frame, Mode, ProgramPoint};
 use crate::api::{DhatMetric, EntryPoint};
 use crate::runner::metrics::Metrics;
 use crate::runner::summary::ToolMetrics;
 use crate::runner::DEFAULT_TOGGLE;
-use crate::util::Glob;
 
 /// The [`Data`] of each [`Node`]
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -75,7 +75,7 @@ pub struct RootTree {
 /// The trait to be implemented for a dhat prefix tree
 pub trait Tree {
     /// Create a new `Tree` from the given parameters
-    fn from_json(dhat_data: DhatData, entry_point: &EntryPoint, frames: &[Glob]) -> Self
+    fn from_json(dhat_data: DhatData, entry_point: &EntryPoint, frames: &[String]) -> Self
     where
         Self: std::marker::Sized + Default,
     {
@@ -95,7 +95,7 @@ pub trait Tree {
             for (index, frame) in dhat_data.frame_table.iter().enumerate() {
                 if let Frame::Leaf(_, func_name, _) = frame {
                     for glob in &globs {
-                        if glob.is_match(func_name) {
+                        if glob.as_str().dowild(func_name) {
                             indices.push(index);
                         }
                     }

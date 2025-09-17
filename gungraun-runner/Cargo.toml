@@ -42,6 +42,7 @@ runner = [
   "dep:serde",
   "dep:serde_json",
   "dep:shlex",
+  "dep:simplematch",
   "dep:strum",
   "dep:tempfile",
   "dep:version-compare",
@@ -85,6 +86,7 @@ schemars = { workspace = true, optional = true, features = ["indexmap2"] }
 serde = { workspace = true, features = ["derive"], optional = true }
 serde_json = { workspace = true, optional = true }
 shlex = { workspace = true, optional = true }
+simplematch = { workspace = true, optional = true }
 strum = { workspace = true, optional = true, features = ["derive"] }
 tempfile = { workspace = true, optional = true }
 version-compare = { workspace = true, optional = true }

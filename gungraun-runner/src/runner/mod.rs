@@ -248,15 +248,6 @@ pub fn run() -> Result<()> {
                 &package_name,
                 &bench_file,
             )?;
-            if meta
-                .args
-                .filter
-                .as_ref()
-                .is_some_and(|filter| !filter.apply(&meta.bench_name))
-            {
-                debug!("Benchmark '{}' is filtered out", bench_file.display());
-                return Ok(());
-            }
 
             let config = Config {
                 package_dir,
@@ -287,15 +278,6 @@ pub fn run() -> Result<()> {
                 &package_name,
                 &bench_file,
             )?;
-            if meta
-                .args
-                .filter
-                .as_ref()
-                .is_some_and(|filter| !filter.apply(&meta.bench_name))
-            {
-                debug!("Benchmark '{}' is filtered out", bench_file.display());
-                return Ok(());
-            }
 
             let config = Config {
                 package_dir,

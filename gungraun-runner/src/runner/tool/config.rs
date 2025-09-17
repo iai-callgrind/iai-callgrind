@@ -27,7 +27,6 @@ use crate::runner::summary::{
     ToolMetricSummary, ToolRegression,
 };
 use crate::runner::{cachegrind, callgrind, DEFAULT_TOGGLE};
-use crate::util::Glob;
 
 /// The tool specific flamegraph configuration
 #[derive(Debug, Clone, PartialEq)]
@@ -47,8 +46,8 @@ pub struct ToolConfig {
     pub entry_point: EntryPoint,
     /// The tool specific flamegraph configuration
     pub flamegraph_config: ToolFlamegraphConfig,
-    /// The [`Glob`] patterns used to matched a function in the call stack of a program point
-    pub frames: Vec<Glob>,
+    /// The wildcard patterns used to matched a function in the call stack of a program point
+    pub frames: Vec<String>,
     /// If true, this tool is the default tool for the benchmark run
     pub is_default: bool,
     /// If true, this tool is enabled for this benchmark
@@ -86,7 +85,7 @@ impl ToolConfig {
         flamegraph_config: ToolFlamegraphConfig,
         entry_point: EntryPoint,
         is_default: bool,
-        frames: Vec<Glob>,
+        frames: Vec<String>,
     ) -> Self {
         Self {
             args,

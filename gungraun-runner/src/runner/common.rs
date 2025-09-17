@@ -50,6 +50,8 @@ pub struct Assistant {
 /// Used to print a final summary after all benchmarks.
 #[derive(Debug, Default)]
 pub struct BenchmarkSummaries {
+    /// The amount of filtered benchmarks
+    pub num_filtered: usize,
     /// The benchmark summaries
     pub summaries: Vec<BenchmarkSummary>,
     /// The execution time of all benchmarks.

@@ -10,6 +10,7 @@ use std::str::FromStr;
 use clap::builder::BoolishValueParser;
 use clap::{ArgAction, Parser};
 use indexmap::{indexset, IndexMap, IndexSet};
+use simplematch::{DoWild, Options};
 use strum::IntoEnumIterator;
 
 use super::cachegrind::regression::CachegrindRegressionConfig;
@@ -24,6 +25,8 @@ use crate::api::{
     EventKind, RawArgs, ValgrindTool,
 };
 
+const DOWILD_OPTIONS: Options<u8> = Options::new().enable_escape(true).enable_classes(true);
+
 // Utility for complex types intended to be used during the parsing of the command-line arguments
 type Limits<T> = (IndexMap<T, f64>, IndexMap<T, Metric>);
 type ParsedMetrics<T> = Result<Vec<(T, Option<Metric>)>, String>;
@@ -37,7 +40,7 @@ type ParsedMetrics<T> = Result<Vec<(T, Option<Metric>)>, String>;
 #[derive(Debug, Clone)]
 pub enum BenchmarkFilter {
     /// The name of the benchmark
-    Name(String),
+    WildcardPattern(String),
 }
 
 /// The `NoCapture` options for the command-line argument --nocapture
@@ -85,7 +88,7 @@ instead of `true` and one of `n`, `no`, `f`, `false`, `off`, and `0` instead of
     ",
     long_about = None,
     no_binary_name = true,
-    override_usage= "cargo bench ... [BENCHNAME] -- [OPTIONS]",
+    override_usage= "cargo bench ... [FILTER] -- [OPTIONS]",
     max_term_width = 101
 )]
 pub struct CommandLineArgs {
@@ -565,10 +568,30 @@ pub struct CommandLineArgs {
     pub drd_metrics: Option<IndexSet<ErrorMetric>>,
 
     #[rustfmt::skip]
-    /// If specified, only run benches containing this string in their names
+    /// If specified, only run benchmarks matching this wildcard pattern
     ///
-    /// Note that a benchmark name might differ from the benchmark file name.
-    #[arg(name = "BENCHNAME", num_args = 0..=1, env = "GUNGRAUN_FILTER")]
+    /// The wildcard pattern can contain `*` to match any amount of characters, `?` to match a
+    /// single character and simple classes `[...]` like `[abc] `to match the characters `a` or `b`
+    /// or `c`. Character classes can contain ranges, so `[abc]` could be rewritten as `[a-c]` and
+    /// they can be negated with `[!...]` to not match the contained characters.
+    ///
+    /// This pattern matches the whole module path of benchmarks. A list of all benchmarks with
+    /// their module path as recognized by this option can be obtained by running `--list`. The
+    /// general structure of the module path of a benchmark is:
+    ///
+    /// `FILENAME::GROUP::FUNCTION::ID`
+    ///
+    /// Examples:
+    ///   * `*::my_benchmark_id` runs all benchmarks with the id `my_benchmark_id`
+    ///   * `gungraun_benchmarks::*` runs all benchmarks in the file `gungraun_benchmarks`
+    ///   * `my_file::some_group::*` runs all benchmarks in the file `my_file` and the group
+    ///     `some_group`
+    #[arg(
+        name = "FILTER",
+        num_args = 0..=1,
+        verbatim_doc_comment,
+        env = "GUNGRAUN_FILTER"
+    )]
     pub filter: Option<BenchmarkFilter>,
 
     #[rustfmt::skip]
@@ -1035,10 +1058,10 @@ pub struct CommandLineArgs {
 }
 
 impl BenchmarkFilter {
-    /// Return true if the haystack contains the filter
+    /// Return `true` if the filter matches the haystack
     pub fn apply(&self, haystack: &str) -> bool {
-        let Self::Name(name) = self;
-        haystack.contains(name)
+        let Self::WildcardPattern(pattern) = self;
+        pattern.as_str().dowild_with(haystack, DOWILD_OPTIONS)
     }
 }
 
@@ -1046,7 +1069,7 @@ impl FromStr for BenchmarkFilter {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self::Name(s.to_owned()))
+        Ok(Self::WildcardPattern(s.to_owned()))
     }
 }
 

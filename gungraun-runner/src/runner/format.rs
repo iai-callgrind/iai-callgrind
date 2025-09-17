@@ -5,6 +5,7 @@
 use std::borrow::Cow;
 use std::fmt::{Display, Write};
 use std::path::PathBuf;
+use std::time::Duration;
 
 use anyhow::Result;
 use colored::{Color, ColoredString, Colorize};
@@ -584,11 +585,9 @@ impl SummaryFormatter {
         if self.output_format_kind == OutputFormatKind::Default {
             let total_benchmarks = summaries.num_benchmarks();
             let total_time = to_string_unsigned_short(
-                summaries
-                    .total_time
-                    .expect("The total execution time should be present")
-                    .as_secs_f64(),
+                summaries.total_time.unwrap_or(Duration::ZERO).as_secs_f64(),
             );
+            let num_filtered = summaries.num_filtered;
 
             if summaries.is_regressed() {
                 println!("\nRegressions:\n");
@@ -644,14 +643,15 @@ impl SummaryFormatter {
                 let num_not_regressed = total_benchmarks - num_regressed;
                 println!(
                     "\nGungraun result: {}. {num_not_regressed} without regressions; \
-                     {num_regressed} regressed; {total_benchmarks} benchmarks finished in \
-                     {total_time:>6}s",
+                     {num_regressed} regressed; {num_filtered} filtered; {total_benchmarks} \
+                     benchmarks finished in {total_time:>6}s",
                     "Regressed".bright_red().bold(),
                 );
             } else {
                 println!(
                     "\nGungraun result: {}. {total_benchmarks} without regressions; 0 regressed; \
-                     {total_benchmarks} benchmarks finished in {total_time:>6}s",
+                     {num_filtered} filtered; {total_benchmarks} benchmarks finished in \
+                     {total_time:>6}s",
                     "Ok".green().bold(),
                 );
             }

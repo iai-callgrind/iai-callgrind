@@ -4,7 +4,6 @@ use gungraun_runner::runner::dhat::model::{DhatData, Mode};
 use gungraun_runner::runner::dhat::tree::{Data, DhatTree, Tree};
 use gungraun_runner::runner::metrics::Metrics;
 use gungraun_runner::runner::summary::ToolMetrics;
-use gungraun_runner::util::Glob;
 use pretty_assertions::assert_eq;
 
 use crate::common::Fixtures;
@@ -133,7 +132,7 @@ fn test_dhat_tree_when_entry_point_and_frames() {
 
     let path = Fixtures::get_path_of("dhat/dhat.with_entry_point.out");
     let data: DhatData = parse(&path).unwrap();
-    let actual = DhatTree::from_json(data, &EntryPoint::Default, &[Glob::new("malloc")]);
+    let actual = DhatTree::from_json(data, &EntryPoint::Default, &["malloc".to_owned()]);
 
     assert_eq!(actual, expected);
 }
@@ -161,7 +160,7 @@ fn test_dhat_tree_when_entry_point_custom_and_frames() {
     let actual = DhatTree::from_json(
         data,
         &EntryPoint::Custom("test_dhat::*".to_owned()),
-        &[Glob::new("calloc")],
+        &["calloc".to_owned()],
     );
 
     assert_eq!(actual, expected);
@@ -186,7 +185,7 @@ fn test_dhat_tree_when_no_entry_point_but_frames() {
 
     let path = Fixtures::get_path_of("dhat/dhat.with_entry_point.out");
     let data: DhatData = parse(&path).unwrap();
-    let actual = DhatTree::from_json(data, &EntryPoint::None, &[Glob::new("test_dhat::tool::*")]);
+    let actual = DhatTree::from_json(data, &EntryPoint::None, &["test_dhat::tool::*".to_owned()]);
 
     assert_eq!(actual, expected);
 }
