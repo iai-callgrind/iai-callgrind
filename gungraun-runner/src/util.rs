@@ -26,16 +26,16 @@ use crate::runner::metrics::Metric;
 pub struct Glob(String);
 
 /// The union over two [`IndexMaps`][IndexMap]
-pub struct Union<'a, K, V> {
-    primary: &'a IndexMap<K, V>,
-    secondary: &'a IndexMap<K, V>,
+pub struct Union<K, V> {
+    primary: IndexMap<K, V>,
+    secondary: IndexMap<K, V>,
 }
 
 /// The consuming iterator over the [`Union`] returning owned data by cloning it
 pub struct UnionIterator<'a, K, V> {
     primary_iter: indexmap::map::Iter<'a, K, V>,
     secondary_iter: indexmap::map::Iter<'a, K, V>,
-    union: Union<'a, K, V>,
+    union: &'a Union<K, V>,
 }
 
 impl Glob {
@@ -138,15 +138,15 @@ where
     }
 }
 
-impl<'a, K, V> Union<'a, K, V> {
+impl<K, V> Union<K, V> {
     /// Create a new `Union` over two [`IndexMaps`][IndexMap]
-    pub fn new(primary: &'a IndexMap<K, V>, secondary: &'a IndexMap<K, V>) -> Self {
+    pub fn new(primary: IndexMap<K, V>, secondary: IndexMap<K, V>) -> Self {
         Self { primary, secondary }
     }
 
     /// Crate a consuming iterator over this `Union`
     #[allow(clippy::should_implement_trait)]
-    pub fn into_iter(self) -> UnionIterator<'a, K, V>
+    pub fn into_iter(&self) -> UnionIterator<'_, K, V>
     where
         K: Clone + core::hash::Hash + Eq,
         V: Clone,
@@ -156,6 +156,28 @@ impl<'a, K, V> Union<'a, K, V> {
             secondary_iter: self.secondary.iter(),
             union: self,
         }
+    }
+
+    /// TODO: DOCS
+    pub fn collect(self) -> IndexMap<K, EitherOrBoth<V>>
+    where
+        K: core::hash::Hash + Eq,
+    {
+        let mut result: IndexMap<K, EitherOrBoth<V>> = self
+            .primary
+            .into_iter()
+            .map(|(k, v)| (k, EitherOrBoth::Left(v)))
+            .collect();
+
+        for (k, v) in self.secondary {
+            if let Some(value) = result.get_mut(&k) {
+                value.insert_right(v);
+            } else {
+                result.insert(k, EitherOrBoth::Right(v));
+            }
+        }
+
+        result
     }
 }
 
@@ -578,7 +600,7 @@ mod tests {
         #[case] b: IndexMap<i32, i32>,
         #[case] expected: IndexMap<i32, EitherOrBoth<i32>>,
     ) {
-        let union: Union<'_, i32, i32> = Union::new(&a, &b);
+        let union: Union<i32, i32> = Union::new(a, b);
         let actual: IndexMap<i32, EitherOrBoth<i32>> = union.into_iter().collect();
         assert_eq!(actual, expected);
     }

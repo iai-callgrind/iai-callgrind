@@ -387,8 +387,8 @@ where
     ///
     /// The order of the keys and their values is preserved. New keys from the `other` Metrics are
     /// appended in their original order.
-    pub fn union<'a>(&'a self, other: &'a Self) -> Union<'a, K, Metric> {
-        Union::new(&self.0, &other.0)
+    pub fn union(self, other: Self) -> Union<K, Metric> {
+        Union::new(self.0, other.0)
     }
 
     /// Return an iterator over the metrics in insertion order
@@ -543,7 +543,8 @@ where
                 })
                 .collect(),
             EitherOrBoth::Both(new, old) => new
-                .union(&old)
+                .into_owned()
+                .union(old.into_owned())
                 .into_iter()
                 .map(|(metric_kind, metric)| (metric_kind, MetricsDiff::new(metric)))
                 .collect(),
