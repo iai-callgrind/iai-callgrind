@@ -3,7 +3,7 @@
 ,"bklt":false,"bkacc":false
 ,"bu":"unit","bsu":"units","bksu":"events"
 ,"tu":"instrs","Mtu":"Minstr"
-,"cmd":"/some/path/bench-bb025b17fd65eb7d --iai-run my_group 0 2 test_dhat::my_group::dhat"
+,"cmd":"/some/path/bench-bb025b17fd65eb7d --gungraun-run my_group 0 2 test_dhat::my_group::dhat"
 ,"pid":563362
 ,"te":470900
 ,"pps":

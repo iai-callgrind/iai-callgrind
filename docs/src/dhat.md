@@ -230,7 +230,7 @@ shortened to safe some space):
 ```text
 Invocation {
   Mode:    heap
-  Command: /home/some/project/target/release/deps/lib_bench_find_primes-c304b7c3fed25785 --iai-run my_group 0 0 lib_bench_find_primes::my_group::bench_library
+  Command: /home/some/project/target/release/deps/lib_bench_find_primes-c304b7c3fed25785 --gungraun-run my_group 0 0 lib_bench_find_primes::my_group::bench_library
   PID:     212817
 }
 

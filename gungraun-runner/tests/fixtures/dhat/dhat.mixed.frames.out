@@ -3,7 +3,7 @@
 ,"bklt":true,"bkacc":true
 ,"tu":"instrs","Mtu":"Minstr"
 ,"tuth":500
-,"cmd":"/some/path/bench-bb025b17fd65eb7d --iai-run my_group 0 2 file::group::function"
+,"cmd":"/some/path/bench-bb025b17fd65eb7d --gungraun-run my_group 0 2 file::group::function"
 ,"pid":314668
 ,"te":481654
 ,"tg":313646

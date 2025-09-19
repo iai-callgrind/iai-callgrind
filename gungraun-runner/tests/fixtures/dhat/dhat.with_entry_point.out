@@ -3,7 +3,7 @@
 ,"bklt":true,"bkacc":true
 ,"tu":"instrs","Mtu":"Minstr"
 ,"tuth":500
-,"cmd":"/some/where/test_lib_bench_default_tool-d366beac75af4259 --iai-run my_group 0 2 test_dhat::my_group::dhat"
+,"cmd":"/some/where/test_lib_bench_default_tool-d366beac75af4259 --gungraun-run my_group 0 2 test_dhat::my_group::dhat"
 ,"pid":189875
 ,"te":489466
 ,"tg":324197

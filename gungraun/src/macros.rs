@@ -313,7 +313,7 @@ macro_rules! main {
             if args_iter
                 .next()
                 .as_ref()
-                .map_or(false, |value| value == "--iai-run")
+                .map_or(false, |value| value == "--gungraun-run")
             {
                 let mut current = args_iter.next().expect("Expecting a function type");
                 let next = args_iter.next();
@@ -468,7 +468,7 @@ macro_rules! main {
             if args_iter
                 .next()
                 .as_ref()
-                .map_or(false, |value| value == "--iai-run")
+                .map_or(false, |value| value == "--gungraun-run")
             {
                 let current = std::hint::black_box(args_iter.next().expect("Expecting a function type"));
                 let next = std::hint::black_box(args_iter.next());

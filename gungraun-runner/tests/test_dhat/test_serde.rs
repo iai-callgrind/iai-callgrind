@@ -17,7 +17,8 @@ fn dhat_data_fixture() -> DhatData {
         time_unit: "instrs".to_owned(),
         time_unit_m: "Minstr".to_owned(),
         time_threshold: Some(500),
-        command: "/some/path/bench-bb025b17fd65eb7d --iai-run my_group 0 2 file::group::function"
+        command: "/some/path/bench-bb025b17fd65eb7d --gungraun-run my_group 0 2 \
+                  file::group::function"
             .to_owned(),
         pid: 2,
         time_end: 500_000,

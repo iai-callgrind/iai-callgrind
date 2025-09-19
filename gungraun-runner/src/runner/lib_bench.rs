@@ -449,7 +449,7 @@ impl LibBench {
     /// The arguments for the `bench_bin` to actually run the benchmark function
     fn bench_args(&self, group: &Group) -> Vec<OsString> {
         let mut args = vec![
-            OsString::from("--iai-run".to_owned()),
+            OsString::from("--gungraun-run".to_owned()),
             OsString::from(&group.name),
             OsString::from(self.group_index.to_string()),
             OsString::from(self.bench_index.to_string()),

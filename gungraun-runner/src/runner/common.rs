@@ -154,7 +154,7 @@ impl Assistant {
 
         let mut command = Command::new(&config.bench_bin);
         command.envs(self.envs.iter().cloned());
-        command.arg("--iai-run");
+        command.arg("--gungraun-run");
 
         if let Some(group_name) = &self.group_name {
             command.arg(group_name);

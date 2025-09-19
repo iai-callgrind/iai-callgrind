@@ -2,7 +2,7 @@
 ,"mode":"copy","verb":"Copied"
 ,"bklt":false,"bkacc":false
 ,"tu":"instrs","Mtu":"Minstr"
-,"cmd":"/some/path/bench-bb025b17fd65eb7d --iai-run my_group 1 0 test_dhat::my_group::dhat"
+,"cmd":"/some/path/bench-bb025b17fd65eb7d --gungraun-run my_group 1 0 test_dhat::my_group::dhat"
 ,"pid":563349
 ,"te":479214
 ,"pps":

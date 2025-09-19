@@ -2,7 +2,7 @@
 version: 1
 creator: callgrind-3.21.0
 pid: 1828900
-cmd:  /some/project/target/release/deps/my-bin-3d69ca9f0e146ded --iai-run group 0 0 bench_file::group::library_benchmark
+cmd:  /some/project/target/release/deps/my-bin-3d69ca9f0e146ded --gungraun-run group 0 0 bench_file::group::library_benchmark
 part: 1
 
 
