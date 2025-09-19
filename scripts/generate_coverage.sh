@@ -5,12 +5,13 @@
 # Helper script to generate coverage data with grcov using the coverage profile
 # from `.cargo/config` to simplify cleanup of stale coverage data.
 
-root_dir="$(cd "$(dirname "$0")" && cd ..))" || exit 1
+cd "$(dirname "$0")" && cd .. || exit 1
 
 just_clean=0
 if [[ "$1" == "--clean" ]]; then
   just_clean=1
 fi
+
 # Valgrind sometimes exits in benchmarks with the error
 #
 # valgrind: m_debuginfo/readelf.c:718 (get_elf_symbol_info): Assertion 'in_rx' failed.

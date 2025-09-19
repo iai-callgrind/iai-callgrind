@@ -79,7 +79,7 @@ mod imp {
             builder.include("/usr/local/include");
         }
 
-        if let Ok(env) = std::env::var("IAI_CALLGRIND_CROSS_TARGET") {
+        if let Ok(env) = std::env::var("GUNGRAUN_CROSS_TARGET") {
             let path = PathBuf::from("/valgrind/target/valgrind")
                 .join(env)
                 .join("include");
@@ -101,7 +101,7 @@ mod imp {
             builder = builder.clang_arg(format!("-iquote{env}"));
         }
 
-        if let Ok(env) = std::env::var("IAI_CALLGRIND_CROSS_TARGET") {
+        if let Ok(env) = std::env::var("GUNGRAUN_CROSS_TARGET") {
             let path = PathBuf::from("/valgrind/target/valgrind")
                 .join(env)
                 .join("include");
@@ -141,7 +141,7 @@ mod imp {
         println!("cargo:rerun-if-changed=valgrind/wrapper.h");
         println!("cargo:rerun-if-changed=valgrind/native.c");
         println!("cargo:rerun-if-env-changed=IAI_CALLGRIND_VALGRIND_INCLUDE");
-        println!("cargo:rerun-if-env-changed=IAI_CALLGRIND_CROSS_TARGET");
+        println!("cargo:rerun-if-env-changed=GUNGRAUN_CROSS_TARGET");
         println!("cargo:rerun-if-env-changed=TARGET");
 
         // rustc-check-cfg is introduced in rust with version 1.80 and avoids the compiler warnings
