@@ -3,7 +3,7 @@
 members = [
   "iai-callgrind",
   "gungraun-runner",
-  "iai-callgrind-macros",
+  "gungraun-macros",
   "benchmark-tests",
   "client-request-tests",
   "schema-gen",

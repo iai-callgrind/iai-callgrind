@@ -19,10 +19,10 @@ version.workspace = true
 benchmark = [
   "gungraun-runner",
   "dep:bincode",
-  "dep:iai-callgrind-macros",
+  "dep:gungraun-macros",
   "dep:derive_more",
 ]
-cachegrind = ["iai-callgrind-macros/cachegrind", "client_requests"]
+cachegrind = ["gungraun-macros/cachegrind", "client_requests"]
 client_requests = ["client_requests_defs"]
 client_requests_defs = [
   "dep:cty",
@@ -54,15 +54,15 @@ rustdoc-args = ["--cfg", "docsrs"]
 bincode = { workspace = true, optional = true }
 cfg-if = { workspace = true, optional = true }
 cty = { workspace = true, optional = true }
-# We use the `derive_more` crate anyway in `iai-callgrind-macros`, so there's no
+# We use the `derive_more` crate anyway in `gungraun-macros`, so there's no
 # harm in using it for this small AsRef derive macro
 derive_more = { workspace = true, default-features = false, features = [
   "as_ref",
 ], optional = true }
+gungraun-macros = { path = "../gungraun-macros", version = "=0.6.1", optional = true }
 gungraun-runner = { path = "../gungraun-runner", version = "=0.16.1", default-features = false, features = [
   "api",
 ], optional = true }
-iai-callgrind-macros = { path = "../iai-callgrind-macros", version = "=0.6.1", optional = true }
 
 [dev-dependencies]
 fs_extra = { workspace = true }

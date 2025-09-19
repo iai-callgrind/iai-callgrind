@@ -14,7 +14,7 @@ fn bench_with_longer_name() -> Vec<u64> {
 }
 
 // The same here but now we annotate the function with a `#[bench]` to take another path in the
-// source code of `iai-callgrind-macros`
+// source code of `gungraun-macros`
 #[library_benchmark]
 #[bench::first(1)]
 fn bench_with_bench(value: u64) -> Vec<u64> {

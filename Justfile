@@ -388,7 +388,7 @@ book-bump old_version new_version:
     vprefix="s:v${old_version_escaped}:v{{ new_version }}:g"
     find docs/src/ -type f -iname '*.md' -exec sed -Ei -e "$links" -e "$strings" -e "$at" -e "$flag" -e "$vprefix" '{}' \;
 
-# Bump the version of iai-callgrind (and gungraun-runner, and the guide), iai-callgrind-macros or the MSRV (Uses: 'cargo', 'grep'; Depends on: book-bump)
+# Bump the version of iai-callgrind (and gungraun-runner, and the guide), gungraun-macros or the MSRV (Uses: 'cargo', 'grep'; Depends on: book-bump)
 [group('chore')]
 bump config part:
     #!/usr/bin/env -S sh -e

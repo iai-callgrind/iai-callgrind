@@ -1,4 +1,4 @@
-//! The library of iai-callgrind-macros
+//! The library of gungraun-macros
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![doc(test(attr(warn(unused))))]
@@ -43,7 +43,7 @@ impl CargoMetadata {
 /// A short introductory example on the usage including the `setup` parameter:
 ///
 /// ```rust
-/// # use iai_callgrind_macros::library_benchmark;
+/// # use gungraun_macros::library_benchmark;
 /// # mod iai_callgrind {
 /// # pub mod client_requests { pub mod cachegrind {
 /// # pub fn start_instrumentation() {}
@@ -110,7 +110,7 @@ impl CargoMetadata {
 /// `#[bench::my_id(10, 20)]`.
 ///
 /// ```rust
-/// # use iai_callgrind_macros::library_benchmark;
+/// # use gungraun_macros::library_benchmark;
 /// # mod iai_callgrind {
 /// # pub mod client_requests { pub mod cachegrind {
 /// # pub fn start_instrumentation() {}
@@ -150,7 +150,7 @@ impl CargoMetadata {
 /// */)]`) is getting suffixed with the index of the current element of the `args` array.
 ///
 /// ```rust
-/// # use iai_callgrind_macros::library_benchmark;
+/// # use gungraun_macros::library_benchmark;
 /// # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
 /// # mod iai_callgrind {
 /// # pub mod client_requests { pub mod cachegrind {
@@ -194,7 +194,7 @@ impl CargoMetadata {
 /// the benchmark function. The above `#[library_benchmark]` is pretty much the same as
 ///
 /// ```rust
-/// # use iai_callgrind_macros::library_benchmark;
+/// # use gungraun_macros::library_benchmark;
 /// # mod iai_callgrind {
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod client_requests { pub mod cachegrind {
@@ -244,7 +244,7 @@ impl CargoMetadata {
 /// then
 ///
 /// ```rust
-/// # use iai_callgrind_macros::library_benchmark;
+/// # use gungraun_macros::library_benchmark;
 /// # mod iai_callgrind {
 /// # pub mod client_requests { pub mod cachegrind {
 /// # pub fn start_instrumentation() {}
@@ -265,7 +265,7 @@ impl CargoMetadata {
 /// # mod my_lib { pub fn string_to_u64(_line: String) -> Result<u64, String> { Ok(0) } }
 /// use std::hint::black_box;
 /// #[library_benchmark]
-/// #[benches::by_file(file = "iai-callgrind-macros/fixtures/inputs")]
+/// #[benches::by_file(file = "gungraun-macros/fixtures/inputs")]
 /// fn some_bench(line: String) -> Result<u64, String> {
 ///     black_box(my_lib::string_to_u64(line))
 /// }
@@ -275,7 +275,7 @@ impl CargoMetadata {
 /// The above is roughly equivalent to the following but with the `args` parameter
 ///
 /// ```rust,ignore
-/// # use iai_callgrind_macros::library_benchmark;
+/// # use gungraun_macros::library_benchmark;
 /// # mod iai_callgrind {
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod __internal {
@@ -304,7 +304,7 @@ impl CargoMetadata {
 /// The `#[library_benchmark]` attribute as a standalone
 ///
 /// ```rust
-/// # use iai_callgrind_macros::library_benchmark;
+/// # use gungraun_macros::library_benchmark;
 /// # mod iai_callgrind {
 /// # pub mod client_requests { pub mod cachegrind {
 /// # pub fn start_instrumentation() {}
@@ -341,7 +341,7 @@ impl CargoMetadata {
 /// arguments are already wrapped in a black box and don't need to be put in a `black_box` again.
 ///
 /// ```rust
-/// # use iai_callgrind_macros::library_benchmark;
+/// # use gungraun_macros::library_benchmark;
 /// # mod iai_callgrind {
 /// # pub mod client_requests { pub mod cachegrind {
 /// # pub fn start_instrumentation() {}
@@ -442,7 +442,7 @@ pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// ```rust
 /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-/// # use iai_callgrind_macros::binary_benchmark;
+/// # use gungraun_macros::binary_benchmark;
 /// # pub mod iai_callgrind {
 /// # use std::path::PathBuf;
 /// # #[derive(Clone)]

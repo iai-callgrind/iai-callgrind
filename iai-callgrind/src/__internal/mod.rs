@@ -69,7 +69,7 @@ pub enum InternalBinFunctionKind {
     Default(fn() -> crate::Command),
 }
 
-/// Used in iai-callgrind-macros to store the essential information about a library benchmark
+/// Used in gungraun-macros to store the essential information about a library benchmark
 #[derive(Debug, Clone)]
 pub struct InternalMacroLibBench {
     pub args_display: Option<&'static str>,
@@ -78,7 +78,7 @@ pub struct InternalMacroLibBench {
     pub id_display: Option<&'static str>,
 }
 
-/// Used in iai-callgrind-macros to store the essential information about a binary benchmark
+/// Used in gungraun-macros to store the essential information about a binary benchmark
 #[derive(Debug, Clone)]
 pub struct InternalMacroBinBench {
     pub args_display: Option<&'static str>,

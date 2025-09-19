@@ -3,7 +3,7 @@
 use std::vec::Vec;
 
 use derive_more::AsRef;
-use iai_callgrind_macros::IntoInner;
+use gungraun_macros::IntoInner;
 
 use super::{
     CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DhatMetric, DhatMetrics, Direction,

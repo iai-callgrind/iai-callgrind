@@ -20,7 +20,7 @@ filename = ".github/workflows/cicd.yml"
 filename = "README.md"
 
 [[tool.bumpversion.files]]
-filename = "iai-callgrind-macros/README.md"
+filename = "gungraun-macros/README.md"
 
 [[tool.bumpversion.files]]
 filename = "gungraun-runner/README.md"

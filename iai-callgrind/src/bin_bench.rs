@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use derive_more::AsRef;
-use iai_callgrind_macros::IntoInner;
+use gungraun_macros::IntoInner;
 
 use crate::{DelayKind, ExitWith, Stdin, Stdio, ValgrindTool, __internal};
 

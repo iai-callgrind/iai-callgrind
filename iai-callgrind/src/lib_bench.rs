@@ -1,8 +1,8 @@
 use std::ffi::OsString;
 
 use derive_more::AsRef;
+use gungraun_macros::IntoInner;
 use gungraun_runner::api::ValgrindTool;
-use iai_callgrind_macros::IntoInner;
 
 use crate::__internal;
 

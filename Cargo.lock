@@ -700,6 +700,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
+name = "gungraun-macros"
+version = "0.6.1"
+dependencies = [
+ "derive_more",
+ "pretty_assertions",
+ "proc-macro-error2",
+ "proc-macro2",
+ "quote",
+ "rstest",
+ "rustc_version",
+ "serde",
+ "serde_json",
+ "syn",
+]
+
+[[package]]
 name = "gungraun-runner"
 version = "0.16.1"
 dependencies = [
@@ -773,8 +789,8 @@ dependencies = [
  "cty",
  "derive_more",
  "fs_extra",
+ "gungraun-macros",
  "gungraun-runner",
- "iai-callgrind-macros",
  "regex",
  "rstest",
  "rustc_version",
@@ -783,22 +799,6 @@ dependencies = [
  "serial_test",
  "strum",
  "trybuild",
-]
-
-[[package]]
-name = "iai-callgrind-macros"
-version = "0.6.1"
-dependencies = [
- "derive_more",
- "pretty_assertions",
- "proc-macro-error2",
- "proc-macro2",
- "quote",
- "rstest",
- "rustc_version",
- "serde",
- "serde_json",
- "syn",
 ]
 
 [[package]]
