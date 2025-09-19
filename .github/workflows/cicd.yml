@@ -158,7 +158,7 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           name: gungraun-benchmarks-${{ matrix.toolchain }}
-          path: "target/iai"
+          path: "target/gungraun"
 
   client_requests:
     needs: [format]
@@ -226,12 +226,12 @@ jobs:
             ./scripts/freebsd_print_info.sh
             ./scripts/freebsd_build_and_test.sh
       # Set `copyback` to `true` and enable for debugging.
-      # - name: Upload target/iai
+      # - name: Upload target/gungraun
       #   if: ${{ always() }}
       #   uses: actions/upload-artifact@v4
       #   with:
       #     name: freebsd-target-iai
-      #     path: target/iai
+      #     path: target/gungraun
 
   docs:
     needs: [base, client_requests]

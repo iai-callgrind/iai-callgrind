@@ -210,8 +210,8 @@ impl Benchmark {
         };
 
         Benchmark {
-            home_dir: target_dir.join("iai"),
-            dest_dir: target_dir.join("iai").join(PACKAGE).join(&bench_name),
+            home_dir: target_dir.join("gungraun"),
+            dest_dir: target_dir.join("gungraun").join(PACKAGE).join(&bench_name),
             bench_name,
             name,
             config,

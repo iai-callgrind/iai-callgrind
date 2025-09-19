@@ -128,7 +128,8 @@ fn benches_from_file(line: String) -> gungraun::Command {
 // Nothing in this example forces us to create another group for the `read-file` binary benchmarks,
 // but we would like to show the possibility of doing so. The different groups are also visible in
 // the resulting output directories of `gungraun`. Unless otherwise specified, the output files
-// are stored in the `$WORKSPACE_ROOT/target/iai/$BENCHMARK_FILE/$GROUP/$FUNCTION_NAME.$BENCH_ID`
+// are stored in the
+// `$WORKSPACE_ROOT/target/gungraun/$BENCHMARK_FILE/$GROUP/$FUNCTION_NAME.$BENCH_ID`
 // directory hierarchy. The individual groups therefore save their files in a separate directory,
 // and the benchmark output also displays the different groups in different ways. An important
 // reason for using different groups is that each group can have its own `BinaryBenchmarkConfig` via

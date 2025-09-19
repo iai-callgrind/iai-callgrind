@@ -31,7 +31,7 @@ impl Assert {
         let meta = cargo_metadata::MetadataCommand::new().exec()?;
         let target_dir = meta
             .workspace_root
-            .join("target/iai")
+            .join("target/gungraun")
             .join(package)
             .into_std_path_buf();
 

@@ -140,7 +140,7 @@ pub struct Drd(__internal::InternalTool);
 ///
 /// Callgrind flamegraphs are very similar to `callgrind_annotate` output. In contrast to
 /// `callgrind_annotate` text based output, the produced flamegraphs are svg files (located in the
-/// `target/iai` directory) which can be viewed in a browser.
+/// `target/gungraun` directory) which can be viewed in a browser.
 ///
 /// # Experimental
 ///

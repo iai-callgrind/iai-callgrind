@@ -380,7 +380,7 @@
 //! performance regressions etc.
 //!
 //! The produced flamegraph svg files are located next to the respective callgrind output file in
-//! the `target/iai` directory.
+//! the `target/gungraun` directory.
 //!
 //! [Guide]: https://gungraun.github.io/gungraun/latest/html/intro.html
 

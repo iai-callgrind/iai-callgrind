@@ -113,7 +113,7 @@ low-level but all you need to do is search for the entries which start with
 `algorithms` module. Or, using grep:
 
 ```shell
-grep '^fn=.*::bubble_sort$' target/iai/the_package/benchmark_file_name/my_group/bench_private.bigger/callgrind.bench_private.bigger.out
+grep '^fn=.*::bubble_sort$' target/gungraun/the_package/benchmark_file_name/my_group/bench_private.bigger/callgrind.bench_private.bigger.out
 ```
 
 Having found the pattern, you can eventually use `EntryPoint::Custom`.

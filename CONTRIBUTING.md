@@ -219,8 +219,8 @@ on the test configuration, benchmarks are sometimes run multiple times.
 
 ## Contact
 
-If there are any outstanding questions about contributing to iai-callgrind, they
-can be asked on the [iai-callgrind issue
+If there are any outstanding questions about contributing to gungraun, they
+can be asked on the [gungraun issue
 tracker](https://github.com/gungraun/gungraun/issues).
 
 [Guide]: https://gungraun.github.io/gungraun/

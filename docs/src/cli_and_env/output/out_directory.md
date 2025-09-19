@@ -2,14 +2,14 @@
 
 All output files of Gungraun are usually stored using the following scheme:
 
-`$WORKSPACE_ROOT/target/iai/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`
+`$WORKSPACE_ROOT/target/gungraun/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`
 
 This directory structure can partly be changed with the following options.
 
 ## Callgrind Home
 
 Per default, all benchmark output files are stored under the
-`$WORKSPACE_ROOT/target/iai` directory tree. This home directory can be changed
+`$WORKSPACE_ROOT/target/gungraun` directory tree. This home directory can be changed
 with the `IAI_CALLGRIND_HOME` environment variable or the command-line argument
 `--home`. The command-line argument overwrites the value of the environment
 variable. For example to store all files under the `/tmp/gungraun`
@@ -27,11 +27,11 @@ command-line argument or setting the environment variable
 `IAI_CALLGRIND_SEPARATE_TARGETS=yes`). The output directory structure
 changes from
 
-`target/iai/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`
+`target/gungraun/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`
 
 to
 
-`target/iai/$TARGET_TRIPLE/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`
+`target/gungraun/$TARGET_TRIPLE/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`
 
 For example, assuming the library benchmark file name is `bench_file` in the
 package `my_package`
@@ -57,9 +57,9 @@ main!(library_benchmark_groups = my_group);
 
 Without `--separate-targets`:
 
-`target/iai/my_package/bench_file/my_group/bench_bubble_sort.short`
+`target/gungraun/my_package/bench_file/my_group/bench_bubble_sort.short`
 
 and with `--separate-targets` assuming you're running the benchmark on the
 `x86_64-unknown-linux-gnu` target:
 
-`target/iai/x86_64-unknown-linux-gnu/my_package/bench_file/my_group/bench_bubble_sort.short`
+`target/gungraun/x86_64-unknown-linux-gnu/my_package/bench_file/my_group/bench_bubble_sort.short`

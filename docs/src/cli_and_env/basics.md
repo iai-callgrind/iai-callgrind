@@ -105,7 +105,7 @@ Options:
       --home <HOME>
           Specify the home directory of gungraun benchmark output files
 
-          All output files are per default stored under the `$PROJECT_ROOT/target/iai` directory.
+          All output files are per default stored under the `$PROJECT_ROOT/target/gungraun` directory.
           This option lets you customize this home directory, and it will be created if it doesn't
           exist.
 
@@ -117,13 +117,13 @@ Options:
           The default output path for files created by gungraun and valgrind during the
           benchmark is
 
-          `target/iai/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`.
+          `target/gungraun/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`.
 
           This can be problematic if you're running the benchmarks not only for a single target
           because you end up comparing the benchmark runs with the wrong targets. Setting this option
           changes the default output path to
 
-          `target/iai/$TARGET/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`
+          `target/gungraun/$TARGET/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`
 
           Although not as comfortable and strict, you could achieve a separation by target also with
           baselines and a combination of `--save-baseline=$TARGET` and `--baseline=$TARGET` if you

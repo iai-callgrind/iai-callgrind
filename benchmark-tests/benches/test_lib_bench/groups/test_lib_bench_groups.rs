@@ -194,7 +194,7 @@ library_benchmark_group!(
 // other Gungraun feature descriptions there.
 //
 // The output files of the profiling tools (DHAT, Massif, BBV) can be found next to the output files
-// of the callgrind runs in `target/iai/...`.
+// of the callgrind runs in `target/gungraun/...`.
 main!(
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()

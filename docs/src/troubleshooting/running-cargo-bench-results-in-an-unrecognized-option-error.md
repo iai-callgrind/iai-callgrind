@@ -10,7 +10,7 @@ to work you can either specify the
 benchmark with `--bench BENCHMARK`, for example
 
 ```shell
-cargo bench --bench my_iai_benchmark -- --callgrind-args="--collect-bus=yes"
+cargo bench --bench my_gungraun_benchmark -- --callgrind-args="--collect-bus=yes"
 ```
 
 or add the following to your `Cargo.toml`:

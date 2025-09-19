@@ -218,10 +218,10 @@ build-tests-hack: build-tests-hack-runner
 build-tests-hack-runner:
     cargo hack --package gungraun-runner --feature-powerset --exclude-no-default-features --exclude-features api test --no-run
 
-# Delete all iai benchmarks (Uses: 'coreutils')
+# Delete all gungraun benchmarks (Uses: 'coreutils')
 [group('clean')]
 clean:
-    rm -rf target/iai
+    rm -rf target/gungraun
 
 # Run the json summary schema generator and format the resulting file (Uses: 'cargo', 'prettier' or 'npx prettier')
 [group('summary schema')]

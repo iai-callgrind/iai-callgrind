@@ -36,7 +36,7 @@ main!(
 ```
 
 The produced flamegraph `*.svg` files are located next to the respective
-callgrind output file in the `target/iai`
+callgrind output file in the `target/gungraun`
 [directory](./cli_and_env/output/out_directory.md).
 
 ## Regular Flamegraphs

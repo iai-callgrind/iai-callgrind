@@ -72,7 +72,7 @@ and should see something like the below
 Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 2 without regressions; 0 regressed; 2 benchmarks finished in 0.49333s</code></pre>
 
 In addition, you'll find the callgrind output and the output of other valgrind
-tools in `target/iai`, if you want to investigate further with a tool like
+tools in `target/gungraun`, if you want to investigate further with a tool like
 `callgrind_annotate` etc.
 
 When running the same benchmark again, the output will report the differences

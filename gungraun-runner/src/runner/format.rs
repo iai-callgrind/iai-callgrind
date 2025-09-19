@@ -643,15 +643,15 @@ impl SummaryFormatter {
 
                 let num_not_regressed = total_benchmarks - num_regressed;
                 println!(
-                    "\nIai-Callgrind result: {}. {num_not_regressed} without regressions; \
+                    "\nGungraun result: {}. {num_not_regressed} without regressions; \
                      {num_regressed} regressed; {total_benchmarks} benchmarks finished in \
                      {total_time:>6}s",
                     "Regressed".bright_red().bold(),
                 );
             } else {
                 println!(
-                    "\nIai-Callgrind result: {}. {total_benchmarks} without regressions; 0 \
-                     regressed; {total_benchmarks} benchmarks finished in {total_time:>6}s",
+                    "\nGungraun result: {}. {total_benchmarks} without regressions; 0 regressed; \
+                     {total_benchmarks} benchmarks finished in {total_time:>6}s",
                     "Ok".green().bold(),
                 );
             }

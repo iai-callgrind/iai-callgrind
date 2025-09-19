@@ -36,13 +36,13 @@ pub struct Metadata {
     pub bench_name: String,
     /// The path to the project top-level directory
     pub project_root: PathBuf,
-    /// The absolute path of the `HOME` (per default `$WORKSPACE_ROOT/target/iai`). Plus, if
+    /// The absolute path of the `HOME` (per default `$WORKSPACE_ROOT/target/gungraun`). Plus, if
     /// configured, the target of the host like `x86_64-linux-unknown-gnu`. The final component is
     /// the `CARGO_PKG_NAME`.
     ///
     /// Examples:
-    /// * `/home/my/workspace/my-project/target/iai/my-project` or
-    /// * `/home/my/workspace/my-project/target/iai/x86_64-linux-unknown-gnu/my-project`
+    /// * `/home/my/workspace/my-project/target/gungraun/my-project` or
+    /// * `/home/my/workspace/my-project/target/gungraun/x86_64-linux-unknown-gnu/my-project`
     pub target_dir: PathBuf,
     /// The valgrind [`Cmd`]
     pub valgrind: Cmd,
@@ -106,7 +106,7 @@ impl Metadata {
                 || {
                     std::env::var_os(envs::CARGO_TARGET_DIR)
                         .map_or_else(|| meta.target_directory.into_std_path_buf(), PathBuf::from)
-                        .join("iai")
+                        .join("gungraun")
                 },
                 Clone::clone,
             );
