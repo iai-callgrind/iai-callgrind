@@ -1,4 +1,4 @@
-//! The iai-callgrind-runner library
+//! The gungraun-runner library
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![doc(test(attr(warn(unused))))]

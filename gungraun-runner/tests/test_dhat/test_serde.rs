@@ -1,5 +1,5 @@
-use iai_callgrind_runner::runner::dhat::json_parser::parse;
-use iai_callgrind_runner::runner::dhat::model::{DhatData, Frame, Mode, ProgramPoint};
+use gungraun_runner::runner::dhat::json_parser::parse;
+use gungraun_runner::runner::dhat::model::{DhatData, Frame, Mode, ProgramPoint};
 use pretty_assertions::assert_eq;
 
 use crate::common::Fixtures;

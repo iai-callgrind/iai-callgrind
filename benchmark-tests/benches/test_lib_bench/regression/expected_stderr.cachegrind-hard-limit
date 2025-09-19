@@ -1,4 +1,4 @@
-iai_callgrind_runner: Error: Misconfiguration in: test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_cachegrind
+gungraun_runner: Error: Misconfiguration in: test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_cachegrind
 Caused by:
   Invalid limits for cachegrind: Invalid hard limit for 'Ir/SingleEvent(Ir)': Expected a 'Int' but found 'Float(500000.0)'
 error: bench failed, to rerun pass `-p benchmark-tests --bench test_bench_template`

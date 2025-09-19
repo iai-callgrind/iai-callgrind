@@ -51,7 +51,7 @@ Gungraun Cons:
 * Gungraun can only be used on platforms supported by Valgrind. Notably,
   this does not include Windows.
 * Gungraun needs additional binaries, `valgrind` and the
-  `iai-callgrind-runner`. The version of the runner needs to be in sync with the
+  `gungraun-runner`. The version of the runner needs to be in sync with the
   `iai-callgrind` library. Criterion-rs is only a library and the installation
   is usually simpler.
 

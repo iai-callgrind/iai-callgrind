@@ -568,7 +568,7 @@ pub fn binary_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
 /// * `From<&Outer> for Inner` (which clones the value)
 /// * `From<&mut Outer> for Inner` (which also just clones the value)
 ///
-/// for our builder tuple structs which wrap the inner type from the iai-callgrind-runner api. So,
+/// for our builder tuple structs which wrap the inner type from the gungraun-runner api. So,
 /// our builders don't need a build method, which is just cool.
 #[proc_macro_derive(IntoInner)]
 #[proc_macro_error]

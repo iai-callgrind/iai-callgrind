@@ -1,13 +1,13 @@
 use std::hint::black_box;
 
 use benchmark_tests::assert::Assert;
+use gungraun_runner::runner::callgrind::hashmap_parser::SourcePath;
+use gungraun_runner::runner::metrics::Metric;
+use gungraun_runner::runner::summary::{BenchmarkSummary, ToolMetricSummary};
 use iai_callgrind::{
     library_benchmark, library_benchmark_group, main, Callgrind, EntryPoint, EventKind,
     FlamegraphConfig, LibraryBenchmarkConfig, ValgrindTool,
 };
-use iai_callgrind_runner::runner::callgrind::hashmap_parser::SourcePath;
-use iai_callgrind_runner::runner::metrics::Metric;
-use iai_callgrind_runner::runner::summary::{BenchmarkSummary, ToolMetricSummary};
 
 #[inline(never)]
 fn nested() -> u64 {

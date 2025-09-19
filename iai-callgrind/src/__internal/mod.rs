@@ -17,7 +17,7 @@ pub mod lib_bench;
 //
 // As an exception, enums from the runner api are usually used directly and re-exported in
 // `lib.rs`.
-pub use iai_callgrind_runner::api::{
+pub use gungraun_runner::api::{
     BinaryBenchmark as InternalBinaryBenchmark,
     BinaryBenchmarkBench as InternalBinaryBenchmarkBench,
     BinaryBenchmarkConfig as InternalBinaryBenchmarkConfig,
@@ -132,7 +132,7 @@ impl Runner {
     ) -> Self {
         const LIBRARY_VERSION: &str = "0.16.1";
 
-        let mut cmd = std::process::Command::new(exe.unwrap_or("iai-callgrind-runner"));
+        let mut cmd = std::process::Command::new(exe.unwrap_or("gungraun-runner"));
         cmd.arg(LIBRARY_VERSION);
 
         match kind {
@@ -156,7 +156,7 @@ impl Runner {
         }
     }
 
-    /// Execute `iai-callgrind-runner` exiting with the exit code of the runner if not `0`
+    /// Execute `gungraun-runner` exiting with the exit code of the runner if not `0`
     pub fn exec(mut self, encoded: Vec<u8>) -> Result<(), error::Errors> {
         let mut child = self
             .cmd
@@ -168,10 +168,10 @@ impl Runner {
                 errors.add(error::Error::new(
                     &ModulePath::new(&self.module_path),
                     &format!(
-                        "Failed to run benchmarks: {e}.\n\nIs iai-callgrind-runner installed and \
-                         iai-callgrind-runner in your $PATH?.\nYou can set the environment \
+                        "Failed to run benchmarks: {e}.\n\nIs gungraun-runner installed and \
+                         gungraun-runner in your $PATH?.\nYou can set the environment \
                          variable IAI_CALLGRIND_RUNNER to the absolute path of the \
-                         iai-callgrind-runner executable.\n\nMake sure you have followed the \
+                         gungraun-runner executable.\n\nMake sure you have followed the \
                          installation instructions in the guide:\n\
                          https://gungraun.github.io/gungraun/latest/html/installation/iai_callgrind.html",
                     ),

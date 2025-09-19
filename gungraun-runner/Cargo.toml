@@ -6,12 +6,12 @@ authors = [
   "Brook Heisler <redattack34@gmail.com>",
 ]
 categories.workspace = true
-description = "Binary package needed by the iai-callgrind library"
+description = "Binary package needed by the Gungraun library"
 edition.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 license.workspace = true
-name = "iai-callgrind-runner"
+name = "gungraun-runner"
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
@@ -99,7 +99,7 @@ serial_test = { workspace = true }
 tempfile = { workspace = true }
 
 [[bin]]
-name = "iai-callgrind-runner"
+name = "gungraun-runner"
 path = "src/main.rs"
 
 [lints.rust]

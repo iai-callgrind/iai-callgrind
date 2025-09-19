@@ -128,7 +128,7 @@ impl Sentinel {
     /// # Examples
     ///
     /// ```rust
-    /// use iai_callgrind_runner::runner::callgrind::parser::Sentinel;
+    /// use gungraun_runner::runner::callgrind::parser::Sentinel;
     ///
     /// let _ = Sentinel::new("main");
     /// let _ = Sentinel::new("main::*");

@@ -2,7 +2,7 @@
 [workspace]
 members = [
   "iai-callgrind",
-  "iai-callgrind-runner",
+  "gungraun-runner",
   "iai-callgrind-macros",
   "benchmark-tests",
   "client-request-tests",

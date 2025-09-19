@@ -13,8 +13,8 @@ Security in case of vulnerabilities.
 
 All notable changes to this project will be documented in this file.
 
-This is the combined CHANGELOG for all packages: `iai-callgrind`, `iai-callgrind-runner` and
-`iai-callgrind-macros`. `iai-callgrind` and `iai-callgrind-runner` use the same version which is the
+This is the combined CHANGELOG for all packages: `iai-callgrind`, `gungraun-runner` and
+`iai-callgrind-macros`. `iai-callgrind` and `gungraun-runner` use the same version which is the
 version used here. `iai-callgrind-macros` uses a different version number but is not a standalone
 package, so its changes are also listed here.
 

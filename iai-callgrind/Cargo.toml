@@ -17,7 +17,7 @@ version.workspace = true
 
 [features]
 benchmark = [
-  "iai-callgrind-runner",
+  "gungraun-runner",
   "dep:bincode",
   "dep:iai-callgrind-macros",
   "dep:derive_more",
@@ -36,8 +36,8 @@ client_requests_defs = [
 default = ["benchmark"]
 ui_tests = []
 # Looks like a bug to have to create a feature instead of
-# `dep:iai-callgrind-runner` in the benchmark feature directly
-iai-callgrind-runner = ["dep:iai-callgrind-runner"]
+# `dep:gungraun-runner` in the benchmark feature directly
+gungraun-runner = ["dep:gungraun-runner"]
 
 [build-dependencies]
 bindgen = { workspace = true, optional = true }
@@ -59,10 +59,10 @@ cty = { workspace = true, optional = true }
 derive_more = { workspace = true, default-features = false, features = [
   "as_ref",
 ], optional = true }
-iai-callgrind-macros = { path = "../iai-callgrind-macros", version = "=0.6.1", optional = true }
-iai-callgrind-runner = { path = "../iai-callgrind-runner", version = "=0.16.1", default-features = false, features = [
+gungraun-runner = { path = "../gungraun-runner", version = "=0.16.1", default-features = false, features = [
   "api",
 ], optional = true }
+iai-callgrind-macros = { path = "../iai-callgrind-macros", version = "=0.6.1", optional = true }
 
 [dev-dependencies]
 fs_extra = { workspace = true }

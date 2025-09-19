@@ -26,8 +26,8 @@ colored = { workspace = true }
 either-or-both = { workspace = true }
 fs_extra = { workspace = true }
 glob = { workspace = true }
+gungraun-runner = { path = "../gungraun-runner" }
 iai-callgrind = { path = "../iai-callgrind", features = ["client_requests"] }
-iai-callgrind-runner = { path = "../iai-callgrind-runner" }
 lazy_static = { workspace = true }
 minijinja = { workspace = true }
 once_cell = { workspace = true }

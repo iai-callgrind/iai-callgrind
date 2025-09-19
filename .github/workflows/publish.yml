@@ -1,4 +1,4 @@
-name: Deploy iai-callgrind and iai-callgrind-runner
+name: Deploy iai-callgrind and gungraun-runner
 on:
   push:
     tags:
@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Publish iai-callgrind-runner
-        run: cargo publish -p iai-callgrind-runner --token ${{ secrets.CRATES_GITHUB_TOKEN }}
+      - name: Publish gungraun-runner
+        run: cargo publish -p gungraun-runner --token ${{ secrets.CRATES_GITHUB_TOKEN }}
       - name: Publish iai-callgrind
         run: cargo publish -p iai-callgrind --token ${{ secrets.CRATES_GITHUB_TOKEN }}

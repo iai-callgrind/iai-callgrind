@@ -1,18 +1,18 @@
-//! The `iai-callgrind-runner` binary
+//! The `gungraun-runner` binary
 use std::io::Write;
 
 use colored::{control, Colorize};
 use env_logger::Env;
-use iai_callgrind_runner::error::Error;
-use iai_callgrind_runner::runner::envs;
+use gungraun_runner::error::Error;
+use gungraun_runner::runner::envs;
 use log::{error, warn};
 
-/// The main function of the `iai-callgrind-runner` binary
+/// The main function of the `gungraun-runner` binary
 ///
 /// We initialize the logging interface and configure the usage of colors as early as possible here.
 /// Then we're printing warnings with [`print_warnings`] and finally call the main
-/// [`iai_callgrind_runner::runner::run`] library function catching and printing
-/// [`iai_callgrind_runner::error::Error`]s.
+/// [`gungraun_runner::runner::run`] library function catching and printing
+/// [`gungraun_runner::error::Error`]s.
 fn main() {
     // Configure the colored crate to respect IAI_CALLGRIND_COLOR and CARGO_TERM_COLOR
     let iai_callgrind_color = std::env::var(envs::IAI_CALLGRIND_COLOR).ok();
@@ -58,7 +58,7 @@ fn main() {
     .init();
 
     print_warnings();
-    match iai_callgrind_runner::runner::run() {
+    match gungraun_runner::runner::run() {
         Ok(()) => {}
         Err(error) => {
             if let Some(Error::RegressionError(is_fatal)) = error.downcast_ref::<Error>() {

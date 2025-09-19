@@ -415,15 +415,15 @@ pub use common::{
 };
 #[cfg(feature = "client_requests_defs")]
 pub use cty;
-#[cfg(feature = "default")]
-pub use iai_callgrind_macros::{binary_benchmark, library_benchmark};
 // Only add enums here. Do not re-export structs from the runner api directly. See the
 // documentation in `__internal::mod` for more details.
 #[cfg(feature = "default")]
-pub use iai_callgrind_runner::api::{
+pub use gungraun_runner::api::{
     CachegrindMetric, CachegrindMetrics, CallgrindMetrics, DelayKind, DhatMetric, DhatMetrics,
     Direction, EntryPoint, ErrorMetric, EventKind, ExitWith, FlamegraphKind, Limit, Pipe, Stdin,
     Stdio, ValgrindTool,
 };
+#[cfg(feature = "default")]
+pub use iai_callgrind_macros::{binary_benchmark, library_benchmark};
 #[cfg(feature = "default")]
 pub use lib_bench::LibraryBenchmarkConfig;

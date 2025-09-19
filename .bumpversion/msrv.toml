@@ -23,7 +23,7 @@ filename = "README.md"
 filename = "iai-callgrind-macros/README.md"
 
 [[tool.bumpversion.files]]
-filename = "iai-callgrind-runner/README.md"
+filename = "gungraun-runner/README.md"
 
 [[tool.bumpversion.files]]
 filename = ".clippy.toml"

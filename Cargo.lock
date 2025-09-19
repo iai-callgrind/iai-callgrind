@@ -149,8 +149,8 @@ dependencies = [
  "either-or-both",
  "fs_extra",
  "glob",
+ "gungraun-runner",
  "iai-callgrind",
- "iai-callgrind-runner",
  "lazy_static",
  "minijinja",
  "once_cell",
@@ -700,6 +700,42 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
+name = "gungraun-runner"
+version = "0.16.1"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "cargo_metadata",
+ "clap",
+ "colored",
+ "derive_more",
+ "either-or-both",
+ "env_logger",
+ "glob",
+ "indexmap",
+ "inferno",
+ "itertools 0.14.0",
+ "lazy_static",
+ "log",
+ "polonius-the-crab",
+ "pretty_assertions",
+ "regex",
+ "rstest",
+ "sanitize-filename",
+ "schemars",
+ "serde",
+ "serde_json",
+ "serde_test",
+ "serde_yaml",
+ "serial_test",
+ "shlex",
+ "strum",
+ "tempfile",
+ "version-compare",
+ "which",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -737,8 +773,8 @@ dependencies = [
  "cty",
  "derive_more",
  "fs_extra",
+ "gungraun-runner",
  "iai-callgrind-macros",
- "iai-callgrind-runner",
  "regex",
  "rstest",
  "rustc_version",
@@ -763,42 +799,6 @@ dependencies = [
  "serde",
  "serde_json",
  "syn",
-]
-
-[[package]]
-name = "iai-callgrind-runner"
-version = "0.16.1"
-dependencies = [
- "anyhow",
- "bincode",
- "cargo_metadata",
- "clap",
- "colored",
- "derive_more",
- "either-or-both",
- "env_logger",
- "glob",
- "indexmap",
- "inferno",
- "itertools 0.14.0",
- "lazy_static",
- "log",
- "polonius-the-crab",
- "pretty_assertions",
- "regex",
- "rstest",
- "sanitize-filename",
- "schemars",
- "serde",
- "serde_json",
- "serde_test",
- "serde_yaml",
- "serial_test",
- "shlex",
- "strum",
- "tempfile",
- "version-compare",
- "which",
 ]
 
 [[package]]
@@ -1601,7 +1601,7 @@ dependencies = [
 name = "schema-gen"
 version = "0.16.1"
 dependencies = [
- "iai-callgrind-runner",
+ "gungraun-runner",
  "schemars",
  "serde_json",
 ]

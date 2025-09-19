@@ -3,7 +3,7 @@
 # Overview
 
 This is the package for system tests of the interaction of `iai-callgrind`,
-`iai-callgrind-runner` and `iai-callgrind-macros`. Most of the benchmarks in
+`gungraun-runner` and `iai-callgrind-macros`. Most of the benchmarks in
 this package can be run as usual with `cargo bench` or `just bench-test
 $BENCH_NAME`. But, to be able to intercept and validate the output (and others)
 of the `cargo bench` run of a benchmark test there is a wrapper around `cargo

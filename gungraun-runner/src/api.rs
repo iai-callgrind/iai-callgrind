@@ -107,7 +107,7 @@ pub enum CachegrindMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CachegrindMetrics, CachegrindMetric};
+    /// # pub use gungraun_runner::api::{CachegrindMetrics, CachegrindMetric};
     /// # }
     /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
     ///
@@ -127,7 +127,7 @@ pub enum CachegrindMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CachegrindMetric, CachegrindMetrics};
+    /// # pub use gungraun_runner::api::{CachegrindMetric, CachegrindMetrics};
     /// # }
     /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
     ///
@@ -147,7 +147,7 @@ pub enum CachegrindMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CachegrindMetric, CachegrindMetrics};
+    /// # pub use gungraun_runner::api::{CachegrindMetric, CachegrindMetrics};
     /// # }
     /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
     ///
@@ -166,7 +166,7 @@ pub enum CachegrindMetrics {
     ///
     /// ```
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CachegrindMetric, CachegrindMetrics};
+    /// # pub use gungraun_runner::api::{CachegrindMetric, CachegrindMetrics};
     /// # }
     /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
     ///
@@ -182,7 +182,7 @@ pub enum CachegrindMetrics {
     ///
     /// ```
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CachegrindMetric, CachegrindMetrics};
+    /// # pub use gungraun_runner::api::{CachegrindMetric, CachegrindMetrics};
     /// # }
     /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
     ///
@@ -202,7 +202,7 @@ pub enum CachegrindMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CachegrindMetric, CachegrindMetrics};
+    /// # pub use gungraun_runner::api::{CachegrindMetric, CachegrindMetrics};
     /// # }
     /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
     ///
@@ -223,7 +223,7 @@ pub enum CachegrindMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CachegrindMetric, CachegrindMetrics};
+    /// # pub use gungraun_runner::api::{CachegrindMetric, CachegrindMetrics};
     /// # }
     /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
     ///
@@ -240,7 +240,7 @@ pub enum CachegrindMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CachegrindMetric, CachegrindMetrics};
+    /// # pub use gungraun_runner::api::{CachegrindMetric, CachegrindMetrics};
     /// # }
     /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
     ///
@@ -264,7 +264,7 @@ pub enum CachegrindMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CachegrindMetric, CachegrindMetrics};
+    /// # pub use gungraun_runner::api::{CachegrindMetric, CachegrindMetrics};
     /// # }
     /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
     ///
@@ -291,7 +291,7 @@ pub enum CallgrindMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
     /// use iai_callgrind::{CallgrindMetrics, EventKind};
     ///
@@ -315,7 +315,7 @@ pub enum CallgrindMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
     /// use iai_callgrind::{CallgrindMetrics, EventKind};
     ///
@@ -335,7 +335,7 @@ pub enum CallgrindMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
     /// use iai_callgrind::{CallgrindMetrics, EventKind};
     ///
@@ -354,7 +354,7 @@ pub enum CallgrindMetrics {
     ///
     /// ```
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
     /// use iai_callgrind::{CallgrindMetrics, EventKind};
     ///
@@ -370,7 +370,7 @@ pub enum CallgrindMetrics {
     ///
     /// ```
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
     /// use iai_callgrind::{CallgrindMetrics, EventKind};
     ///
@@ -388,7 +388,7 @@ pub enum CallgrindMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
     /// use iai_callgrind::{CallgrindMetrics, EventKind};
     ///
@@ -409,7 +409,7 @@ pub enum CallgrindMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
     /// use iai_callgrind::{CallgrindMetrics, EventKind};
     ///
@@ -426,7 +426,7 @@ pub enum CallgrindMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
     /// use iai_callgrind::{CallgrindMetrics, EventKind};
     ///
@@ -442,7 +442,7 @@ pub enum CallgrindMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
     /// use iai_callgrind::{CallgrindMetrics, EventKind};
     ///
@@ -459,7 +459,7 @@ pub enum CallgrindMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
     /// use iai_callgrind::{CallgrindMetrics, EventKind};
     ///
@@ -475,7 +475,7 @@ pub enum CallgrindMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
     /// use iai_callgrind::{CallgrindMetrics, EventKind};
     ///
@@ -503,7 +503,7 @@ pub enum CallgrindMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{CallgrindMetrics, EventKind};
+    /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
     /// use iai_callgrind::{CallgrindMetrics, EventKind};
     ///
@@ -575,7 +575,7 @@ pub enum DhatMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{DhatMetrics, DhatMetric};
+    /// # pub use gungraun_runner::api::{DhatMetrics, DhatMetric};
     /// # }
     /// use iai_callgrind::{DhatMetric, DhatMetrics};
     ///
@@ -599,7 +599,7 @@ pub enum DhatMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{DhatMetrics, DhatMetric};
+    /// # pub use gungraun_runner::api::{DhatMetrics, DhatMetric};
     /// # }
     /// use iai_callgrind::{DhatMetric, DhatMetrics};
     ///
@@ -616,7 +616,7 @@ pub enum DhatMetrics {
     ///
     /// ```rust
     /// # pub mod iai_callgrind {
-    /// # pub use iai_callgrind_runner::api::{DhatMetrics, DhatMetric};
+    /// # pub use gungraun_runner::api::{DhatMetrics, DhatMetric};
     /// # }
     /// use iai_callgrind::{DhatMetric, DhatMetrics};
     ///

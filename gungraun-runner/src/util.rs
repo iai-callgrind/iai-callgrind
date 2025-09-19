@@ -55,7 +55,7 @@ impl Glob {
     /// # Examples
     ///
     /// ```rust
-    /// use iai_callgrind_runner::util::Glob;
+    /// use gungraun_runner::util::Glob;
     ///
     /// let glob = Glob::new("a*bc?");
     ///

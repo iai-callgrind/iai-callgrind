@@ -36,7 +36,7 @@ Gungraun Pros:
   was still cluttered by the initialization code, setup functions and metrics.
 
 * Changes to the library of Gungraun have almost never an influence on the
-  benchmark metrics, since the actual runner (`iai-callgrind-runner`) and thus
+  benchmark metrics, since the actual runner (`gungraun-runner`) and thus
   `99%` of the code needed to run the benchmarks is isolated from the
   benchmarks by an independent binary. In contrast to the library of Iai which
   is compiled together with the benchmarks.

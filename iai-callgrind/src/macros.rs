@@ -75,11 +75,11 @@ macro_rules! binary_benchmark_attribute {
 /// harness = false
 /// ```
 ///
-/// To be able to run any iai-callgrind benchmarks, you'll also need the `iai-callgrind-runner`
+/// To be able to run any iai-callgrind benchmarks, you'll also need the `gungraun-runner`
 /// installed with the binary somewhere in your `$PATH` for example with
 ///
 /// ```shell
-/// cargo install iai-callgrind-runner
+/// cargo install gungraun-runner
 /// ```
 ///
 /// `my_bench` has to be a rust file inside the 'benches' directory.
@@ -245,7 +245,7 @@ macro_rules! main {
             let mut this_args = std::env::args();
             let mut runner = $crate::__internal::Runner::new(
                 option_env!("IAI_CALLGRIND_RUNNER").or_else(||
-                            option_env!("CARGO_BIN_EXE_iai-callgrind-runner")
+                            option_env!("CARGO_BIN_EXE_gungraun-runner")
                 ),
                 &$crate::__internal::BenchmarkKind::BinaryBenchmark,
                 env!("CARGO_MANIFEST_DIR"),
@@ -395,7 +395,7 @@ macro_rules! main {
             let mut this_args = std::env::args();
             let mut runner = $crate::__internal::Runner::new(
                 option_env!("IAI_CALLGRIND_RUNNER").or_else(||
-                            option_env!("CARGO_BIN_EXE_iai-callgrind-runner")
+                            option_env!("CARGO_BIN_EXE_gungraun-runner")
                 ),
                 &$crate::__internal::BenchmarkKind::LibraryBenchmark,
                 env!("CARGO_MANIFEST_DIR"),

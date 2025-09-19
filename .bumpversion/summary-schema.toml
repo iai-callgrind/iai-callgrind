@@ -5,7 +5,7 @@ parse = "(?P<major>\\d+)"
 serialize = ["{major}"]
 
 [[tool.bumpversion.files]]
-filename = "iai-callgrind-runner/src/runner/summary.rs"
+filename = "gungraun-runner/src/runner/summary.rs"
 search = "const SCHEMA_VERSION: &str = \"{current_version}\";"
 replace = "const SCHEMA_VERSION: &str = \"{new_version}\";"
 

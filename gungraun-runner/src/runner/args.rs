@@ -64,7 +64,7 @@ pub enum TruncateDescription {
 
 /// The command line arguments the user provided after `--` when running cargo bench
 ///
-/// These arguments are not the command line arguments passed to `iai-callgrind-runner`. We collect
+/// These arguments are not the command line arguments passed to `gungraun-runner`. We collect
 /// the command line arguments in the `iai-callgrind::main!` macro without the binary as first
 /// argument, that's why `no_binary_name` is set to `true`.
 #[allow(clippy::partial_pub_fields, clippy::struct_excessive_bools)]

@@ -1,7 +1,7 @@
 # Gungraun
 
 Gungraun is divided into the library `iai-callgrind` and the benchmark runner
-`iai-callgrind-runner`.
+`gungraun-runner`.
 
 ## Installation of the library
 
@@ -20,56 +20,56 @@ cargo add --dev iai-callgrind@0.16.1
 
 ## Installation of the benchmark runner
 
-To be able to run the benchmarks you'll also need the `iai-callgrind-runner`
+To be able to run the benchmarks you'll also need the `gungraun-runner`
 binary installed somewhere in your `$PATH`. Otherwise, there is no need to
-interact with `iai-callgrind-runner` as it is just an implementation detail.
+interact with `gungraun-runner` as it is just an implementation detail.
 
 ### From Source
 
 ```shell
-cargo install --version 0.16.1 iai-callgrind-runner
+cargo install --version 0.16.1 gungraun-runner
 ```
 
 There's also the possibility to install the binary somewhere else and point the
 `IAI_CALLGRIND_RUNNER` environment variable to the absolute path of the
-`iai-callgrind-runner` binary like so:
+`gungraun-runner` binary like so:
 
 ```shell
-cargo install --version 0.16.1 --root /tmp iai-callgrind-runner
-IAI_CALLGRIND_RUNNER=/tmp/bin/iai-callgrind-runner cargo bench --bench my-bench
+cargo install --version 0.16.1 --root /tmp gungraun-runner
+IAI_CALLGRIND_RUNNER=/tmp/bin/gungraun-runner cargo bench --bench my-bench
 ```
 
 ### Binstall
 
-The `iai-callgrind-runner` binary is
+The `gungraun-runner` binary is
 [pre-built](https://github.com/gungraun/gungraun/releases/tag/v0.16.1)
 for most platforms supported by valgrind and easily installable with
 [binstall](https://github.com/cargo-bins/cargo-binstall)
 
 ```shell
-cargo binstall iai-callgrind-runner@0.16.1
+cargo binstall gungraun-runner@0.16.1
 ```
 
 ## Updating
 
 When updating the `iai-callgrind` library, you'll also need to update
-`iai-callgrind-runner` and vice-versa or else the benchmark runner will exit
+`gungraun-runner` and vice-versa or else the benchmark runner will exit
 with an error.
 
 ### In the Github CI
 
-Since the `iai-callgrind-runner` version must match the `iai-callgrind` library
+Since the `gungraun-runner` version must match the `iai-callgrind` library
 version it's best to automate this step in the CI. A job step in the github
 actions CI could look like this
 
 ```yaml
-- name: Install iai-callgrind-runner
+- name: Install gungraun-runner
   run: |
     version=$(cargo metadata --format-version=1 |\
       jq '.packages[] | select(.name == "iai-callgrind").version' |\
       tr -d '"'
     )
-    cargo install iai-callgrind-runner --version $version
+    cargo install gungraun-runner --version $version
 ```
 
 Or, speed up the overall installation time with `binstall` using the
@@ -77,11 +77,11 @@ Or, speed up the overall installation time with `binstall` using the
 
 ```yaml
 - uses: taiki-e/install-action@cargo-binstall
-- name: Install iai-callgrind-runner
+- name: Install gungraun-runner
   run: |
     version=$(cargo metadata --format-version=1 |\
       jq '.packages[] | select(.name == "iai-callgrind").version' |\
       tr -d '"'
     )
-    cargo binstall --no-confirm iai-callgrind-runner --version $version
+    cargo binstall --no-confirm gungraun-runner --version $version
 ```

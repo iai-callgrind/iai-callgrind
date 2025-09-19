@@ -6,9 +6,9 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 use anyhow::Result;
-use iai_callgrind_runner::api::ValgrindTool;
-use iai_callgrind_runner::runner::summary::BaselineKind;
-use iai_callgrind_runner::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
+use gungraun_runner::api::ValgrindTool;
+use gungraun_runner::runner::summary::BaselineKind;
+use gungraun_runner::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
 use pretty_assertions::assert_eq;
 use serde::{Deserialize, Serialize};
 
@@ -33,10 +33,10 @@ pub struct Version {
 impl Fixtures {
     pub fn get_path() -> PathBuf {
         let root = get_project_root();
-        if root.ends_with("iai-callgrind-runner") {
+        if root.ends_with("gungraun-runner") {
             root.join(FIXTURES_ROOT)
         } else {
-            root.join("iai-callgrind-runner").join(FIXTURES_ROOT)
+            root.join("gungraun-runner").join(FIXTURES_ROOT)
         }
     }
 
@@ -100,7 +100,7 @@ impl Fixtures {
 
 impl Runner {
     pub fn new() -> Self {
-        let path = OsString::from(env!("CARGO_BIN_EXE_iai-callgrind-runner"));
+        let path = OsString::from(env!("CARGO_BIN_EXE_gungraun-runner"));
         Self { path, args: vec![] }
     }
 

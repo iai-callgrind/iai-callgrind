@@ -23,7 +23,7 @@ args := ''
 msrv := '1.74.1'
 mdbook_version := '0.4.40'
 required_tools := 'valgrind|the essential tool
-clang|to be able to build iai-callgrind with the client-requests feature'
+clang|to be able to build Gungraun with the client-requests feature'
 cargo_tools := 'cargo-hack
 cargo-minimal-versions'
 tools := 'docker|to be able to run the client request tests
@@ -179,7 +179,7 @@ install-checks:
     [ $failed -eq 1 ] && echo "!!! A required tool was not installed !!! Aborting..."
     exit $failed
 
-# Install everything needed to start working on iai-callgrind (Depends on: install-hooks, install-toolchains, install-checks)
+# Install everything needed to start working on Gungraun (Depends on: install-hooks, install-toolchains, install-checks)
 [group('init workspace')]
 install-workspace: install-hooks install-toolchains show-tips install-checks
 
@@ -188,10 +188,10 @@ install-workspace: install-hooks install-toolchains show-tips install-checks
 build package:
     cargo build -p {{ package }} {{ if args != '' { args } else { '' } }}
 
-# Build iai-callgrind-runner (uses 'cargo')
+# Build gungraun-runner (uses 'cargo')
 [group('build')]
 build-runner:
-    just args=--release build iai-callgrind-runner
+    just args=--release build gungraun-runner
 
 # Build the documentation (Uses: 'cargo')
 [group('build')]
@@ -201,22 +201,22 @@ build-docs:
 # A thorough build of all packages with `cargo hack` and the feature powerset (Uses: 'cargo-hack')
 [group('build')]
 build-hack: build-hack-runner
-    cargo hack --workspace --feature-powerset --exclude iai-callgrind-runner build
+    cargo hack --workspace --feature-powerset --exclude gungraun-runner build
 
-# A thorough build of the iai-callgrind-runner package (Uses: 'cargo-hack')
+# A thorough build of the gungraun-runner package (Uses: 'cargo-hack')
 [group('build')]
 build-hack-runner:
-    cargo hack --package iai-callgrind-runner --feature-powerset --exclude-no-default-features --exclude-features api build
+    cargo hack --package gungraun-runner --feature-powerset --exclude-no-default-features --exclude-features api build
 
 # A build of the tests in all packages with `cargo hack` and the feature powerset (Uses: 'cargo-hack')
 [group('build')]
 build-tests-hack: build-tests-hack-runner
-    cargo hack --workspace --feature-powerset --exclude iai-callgrind-runner test --no-run
+    cargo hack --workspace --feature-powerset --exclude gungraun-runner test --no-run
 
-# A build of the tests in the iai-callgrind-runner package with `cargo hack` (Uses: 'cargo-hack')
+# A build of the tests in the gungraun-runner package with `cargo hack` (Uses: 'cargo-hack')
 [group('build')]
 build-tests-hack-runner:
-    cargo hack --package iai-callgrind-runner --feature-powerset --exclude-no-default-features --exclude-features api test --no-run
+    cargo hack --package gungraun-runner --feature-powerset --exclude-no-default-features --exclude-features api test --no-run
 
 # Delete all iai benchmarks (Uses: 'coreutils')
 [group('clean')]
@@ -232,12 +232,12 @@ schema-gen:
 # Run the json summary schema generator and diff the generated file with the latest schema file (Uses: 'diff', 'find', 'coreutils')
 [group('summary schema')]
 schema-gen-diff: schema-gen
-    diff {{ schema_path }} `find iai-callgrind-runner/schemas -iname 'summary.*.schema.json' | sort -n | tail -n 1` && rm {{ schema_path }}
+    diff {{ schema_path }} `find gungraun-runner/schemas -iname 'summary.*.schema.json' | sort -n | tail -n 1` && rm {{ schema_path }}
 
 # Run the json summary schema generator and replace the old schema file (Uses: 'coreutils')
 [group('summary schema')]
 schema-gen-move: schema-gen
-    mv {{ schema_path }} `ls -1 iai-callgrind-runner/schemas/summary.*.schema.json | sort -n | tail -n 1`
+    mv {{ schema_path }} `ls -1 gungraun-runner/schemas/summary.*.schema.json | sort -n | tail -n 1`
 
 # Run all tests in a package. (Uses: 'cargo')
 [group('test')]
@@ -281,12 +281,12 @@ reqs-test target:
 # Run a single benchmark test (Uses: 'coreutils', 'cargo')
 [group('test')]
 bench-test bench features='': build-runner
-    IAI_CALLGRIND_RUNNER=$(realpath target/release/iai-callgrind-runner) cargo bench -p benchmark-tests --bench {{ bench }} {{ if features != '' { '--features ' + features } else { '' } }} {{ if args != '' { '-- ' + args } else { '' } }}
+    IAI_CALLGRIND_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p benchmark-tests --bench {{ bench }} {{ if features != '' { '--features ' + features } else { '' } }} {{ if args != '' { '-- ' + args } else { '' } }}
 
 # Run all benchmark tests (Uses: 'coreutils', 'cargo')
 [group('test')]
 bench-test-all: build-runner
-    IAI_CALLGRIND_RUNNER=$(realpath target/release/iai-callgrind-runner) cargo bench -p benchmark-tests {{ if args != '' { '-- ' + args } else { '' } }}
+    IAI_CALLGRIND_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p benchmark-tests {{ if args != '' { '-- ' + args } else { '' } }}
 
 # Note: A single benchmark may run multiple times depending on the test
 #       configuration. See the `benchmark-tests/benches` folder.
@@ -388,7 +388,7 @@ book-bump old_version new_version:
     vprefix="s:v${old_version_escaped}:v{{ new_version }}:g"
     find docs/src/ -type f -iname '*.md' -exec sed -Ei -e "$links" -e "$strings" -e "$at" -e "$flag" -e "$vprefix" '{}' \;
 
-# Bump the version of iai-callgrind (and iai-callgrind-runner, and the guide), iai-callgrind-macros or the MSRV (Uses: 'cargo', 'grep'; Depends on: book-bump)
+# Bump the version of iai-callgrind (and gungraun-runner, and the guide), iai-callgrind-macros or the MSRV (Uses: 'cargo', 'grep'; Depends on: book-bump)
 [group('chore')]
 bump config part:
     #!/usr/bin/env -S sh -e

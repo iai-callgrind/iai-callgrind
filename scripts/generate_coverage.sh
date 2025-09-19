@@ -37,7 +37,7 @@ fi
 
 cargo +nightly build --all-features --profile coverage --all-targets
 
-IAI_CALLGRIND_RUNNER=$(realpath -e target/coverage/iai-callgrind-runner)
+IAI_CALLGRIND_RUNNER=$(realpath -e target/coverage/gungraun-runner)
 IAI_CALLGRIND_LOG=debug
 
 export IAI_CALLGRIND_RUNNER IAI_CALLGRIND_LOG

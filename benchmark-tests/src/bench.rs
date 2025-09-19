@@ -29,7 +29,7 @@ const TEMPLATE_CONTENT: &str = r#"fn main() {
     panic!("should be replaced by a rendered template");
 }
 "#;
-const SCHEMA_PATH: &str = "iai-callgrind-runner/schemas";
+const SCHEMA_PATH: &str = "gungraun-runner/schemas";
 const SCHEMA_VERSION: &str = "6";
 
 static TEMPLATE_DATA: OnceCell<HashMap<String, minijinja::Value>> = OnceCell::new();
@@ -742,9 +742,7 @@ impl BenchmarkOutput {
                     if caps_1.len() < 40 {
                         format!(
                             "{caps_1}{}{caps_3}",
-                            " ".repeat(
-                                iai_callgrind_runner::runner::format::LEFT_WIDTH - caps_1.len()
-                            )
+                            " ".repeat(gungraun_runner::runner::format::LEFT_WIDTH - caps_1.len())
                         )
                     } else {
                         format!("{caps_1} {caps_3}")
@@ -807,7 +805,7 @@ impl BenchmarkRunner {
             "IAI_CALLGRIND_RUNNER",
             self.metadata
                 .target_directory
-                .join("release/iai-callgrind-runner"),
+                .join("release/gungraun-runner"),
         );
 
         let schema: serde_json::Value = serde_json::from_reader(
@@ -823,7 +821,7 @@ impl BenchmarkRunner {
         let mut scope = json_schema::Scope::new();
         let compiled = scope.compile_and_return(schema, false).unwrap();
 
-        build_iai_callgrind_runner();
+        build_gungraun_runner();
 
         for bench in &self.metadata.benchmarks {
             let num_groups = bench.config.groups.len();
@@ -1056,10 +1054,10 @@ impl RunConfig {
     }
 }
 
-fn build_iai_callgrind_runner() {
-    print_info("Building iai-callgrind-runner");
+fn build_gungraun_runner() {
+    print_info("Building gungraun-runner");
     let status = std::process::Command::new(env!("CARGO"))
-        .args(["build", "--package", "iai-callgrind-runner", "--release"])
+        .args(["build", "--package", "gungraun-runner", "--release"])
         .status()
         .unwrap();
     assert!(status.success());
