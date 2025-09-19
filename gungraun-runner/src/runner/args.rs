@@ -167,7 +167,7 @@ pub struct CommandLineArgs {
         num_args = 0..=1,
         require_equals = true,
         value_parser = BoolishValueParser::new(),
-        env = "IAI_CALLGRIND_ALLOW_ASLR",
+        env = "GUNGRAUN_ALLOW_ASLR",
         display_order = 100
     )]
     pub allow_aslr: Option<bool>,
@@ -1516,7 +1516,7 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_allow_aslr_env() {
-        std::env::set_var("IAI_CALLGRIND_ALLOW_ASLR", "yes");
+        std::env::set_var("GUNGRAUN_ALLOW_ASLR", "yes");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(result.allow_aslr, Some(true));
     }

@@ -76,7 +76,7 @@ fn main() {
 /// Print warnings for deprecated usages of environment variables
 fn print_warnings() {
     if std::env::var("IAI_ALLOW_ASLR").is_ok() {
-        warn!("The IAI_ALLOW_ASLR environment variable changed to IAI_CALLGRIND_ALLOW_ASLR");
+        warn!("The IAI_ALLOW_ASLR environment variable changed to GUNGRAUN_ALLOW_ASLR");
     }
 
     if std::env::var("RUST_LOG").is_ok() {
@@ -85,12 +85,12 @@ fn print_warnings() {
 
     if std::env::var("IAI_CALLGRIND_REGRESSION").is_ok() {
         warn!(
-            "The IAI_CALLGRIND_REGRESSION environment variable changed to \
-             IAI_CALLGRIND_CALLGRIND_LIMITS"
+            "With version 0.17.0, the name of the environment variable `IAI_CALLGRIND_REGRESSION` \
+             has changed to `GUNGRAUN_CALLGRIND_LIMITS`."
         );
     }
 
-    for var in ["COLOR", "LOG"] {
+    for var in ["COLOR", "LOG", "ALLOW_ASLR"] {
         let old = format!("IAI_CALLGRIND_{var}");
         if std::env::var(&old).is_ok() {
             let new = format!("GUNGRAUN_{var}");

@@ -99,7 +99,7 @@ Options:
           See also
           <https://docs.kernel.org/admin-guide/sysctl/kernel.html?highlight=randomize_va_space#randomize-va-space>
 
-          [env: IAI_CALLGRIND_ALLOW_ASLR=]
+          [env: GUNGRAUN_ALLOW_ASLR=]
           [possible values: true, false]
 
       --home <HOME>
