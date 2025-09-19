@@ -31,12 +31,12 @@ cargo install --version 0.16.1 gungraun-runner
 ```
 
 There's also the possibility to install the binary somewhere else and point the
-`IAI_CALLGRIND_RUNNER` environment variable to the absolute path of the
+`GUNGRAUN_RUNNER` environment variable to the absolute path of the
 `gungraun-runner` binary like so:
 
 ```shell
 cargo install --version 0.16.1 --root /tmp gungraun-runner
-IAI_CALLGRIND_RUNNER=/tmp/bin/gungraun-runner cargo bench --bench my-bench
+GUNGRAUN_RUNNER=/tmp/bin/gungraun-runner cargo bench --bench my-bench
 ```
 
 ### Binstall

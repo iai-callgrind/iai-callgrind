@@ -185,12 +185,12 @@ or overwrite the error message fixtures:
 `just test-ui-overwrite`
 
 If you made changes in the `gungraun-runner` package, you can point the
-`IAI_CALLGRIND_RUNNER` environment variable to your modified version of the
+`GUNGRAUN_RUNNER` environment variable to your modified version of the
 `gungraun-runner` binary and run the benchmark-tests with:
 
 ```shell
 cargo build -p gungraun-runner --release
-IAI_CALLGRIND_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p benchmark-tests
+GUNGRAUN_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p benchmark-tests
 ```
 
 or with `just` in a single command:

@@ -242,9 +242,19 @@ macro_rules! main {
         binary_benchmark_groups = $( $group:ident ),+ $(,)*
     ) => {
         fn __run() -> Result<(), $crate::__internal::error::Errors> {
+            if option_env!("IAI_CALLGRIND_RUNNER").is_some() &&
+                option_env!("GUNGRAUN_RUNNER").is_none() {
+                    eprintln!(
+                        "gungraun: WARNING: With version 0.17.0, the environment variable
+                        `IAI_CALLGRIND_RUNNER` has changed to `GUNGRAUN_RUNNER`.\n The
+                        `GUNGRAUN_RUNNER` variable has to point to the absolute path of the new
+                        `gungraun-runner` executable."
+                    );
+            }
+
             let mut this_args = std::env::args();
             let mut runner = $crate::__internal::Runner::new(
-                option_env!("IAI_CALLGRIND_RUNNER").or_else(||
+                option_env!("GUNGRAUN_RUNNER").or_else(||
                             option_env!("CARGO_BIN_EXE_gungraun-runner")
                 ),
                 &$crate::__internal::BenchmarkKind::BinaryBenchmark,
@@ -382,7 +392,8 @@ macro_rules! main {
         $( teardown = $teardown:expr ; $(;)* )?
         library_benchmark_groups =
     ) => {
-        compile_error!("The library_benchmark_groups argument needs at least one `name` of a `library_benchmark_group!`");
+        compile_error!("The library_benchmark_groups argument needs at least one \
+            `name` of a `library_benchmark_group!`");
     };
     (
         $( config = $config:expr ; $(;)* )?
@@ -392,10 +403,20 @@ macro_rules! main {
     ) => {
         #[inline(never)]
         fn __run() {
+            if option_env!("IAI_CALLGRIND_RUNNER").is_some() &&
+                option_env!("GUNGRAUN_RUNNER").is_none() {
+                    eprintln!(
+                        "gungraun: WARNING: With version 0.17.0, the environment variable
+                        `IAI_CALLGRIND_RUNNER` has changed to `GUNGRAUN_RUNNER`.\n The
+                        `GUNGRAUN_RUNNER` variable has to point to the absolute path of the new
+                        `gungraun-runner` executable."
+                    );
+            }
+
             let mut this_args = std::env::args();
             let mut runner = $crate::__internal::Runner::new(
-                option_env!("IAI_CALLGRIND_RUNNER").or_else(||
-                            option_env!("CARGO_BIN_EXE_gungraun-runner")
+                option_env!("GUNGRAUN_RUNNER").or_else(||
+                    option_env!("CARGO_BIN_EXE_gungraun-runner")
                 ),
                 &$crate::__internal::BenchmarkKind::LibraryBenchmark,
                 env!("CARGO_MANIFEST_DIR"),

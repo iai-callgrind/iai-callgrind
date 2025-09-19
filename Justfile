@@ -281,12 +281,12 @@ reqs-test target:
 # Run a single benchmark test (Uses: 'coreutils', 'cargo')
 [group('test')]
 bench-test bench features='': build-runner
-    IAI_CALLGRIND_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p benchmark-tests --bench {{ bench }} {{ if features != '' { '--features ' + features } else { '' } }} {{ if args != '' { '-- ' + args } else { '' } }}
+    GUNGRAUN_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p benchmark-tests --bench {{ bench }} {{ if features != '' { '--features ' + features } else { '' } }} {{ if args != '' { '-- ' + args } else { '' } }}
 
 # Run all benchmark tests (Uses: 'coreutils', 'cargo')
 [group('test')]
 bench-test-all: build-runner
-    IAI_CALLGRIND_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p benchmark-tests {{ if args != '' { '-- ' + args } else { '' } }}
+    GUNGRAUN_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p benchmark-tests {{ if args != '' { '-- ' + args } else { '' } }}
 
 # Note: A single benchmark may run multiple times depending on the test
 #       configuration. See the `benchmark-tests/benches` folder.

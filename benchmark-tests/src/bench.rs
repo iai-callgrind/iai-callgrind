@@ -802,7 +802,7 @@ impl BenchmarkRunner {
         // info from the summary is much easier than doing it from the output.
         std::env::set_var("IAI_CALLGRIND_SAVE_SUMMARY", "json");
         std::env::set_var(
-            "IAI_CALLGRIND_RUNNER",
+            "GUNGRAUN_RUNNER",
             self.metadata
                 .target_directory
                 .join("release/gungraun-runner"),
