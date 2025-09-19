@@ -4,10 +4,10 @@
 
 The environment variables are cleared before running a library benchmark. Have a
 look into the [Configuration](./configuration.md) section if you need to change
-that behavior. Iai-Callgrind sometimes deviates from the valgrind defaults which
+that behavior. Gungraun sometimes deviates from the valgrind defaults which
 are:
 
-| Iai-Callgrind | Valgrind (v3.23) |
+| Gungraun | Valgrind (v3.23) |
 | ------------- | ---------------- |
 | `--trace-children=yes` | `--trace-children=no` |
 | `--fair-sched=try` | `--fair-sched=no` |
@@ -57,7 +57,7 @@ main!(
 # }
 ```
 
-Iai-Callgrind reports the cache hits and an estimation of cpu cycles:
+Gungraun reports the cache hits and an estimation of cpu cycles:
 
 <pre><code class="hljs"><span style="color:#0A0">test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci</span> <span style="color:#0AA">short</span><span style="color:#0AA">:</span><b><span style="color:#00A">10</span></b>
 <span style="color:#555">  </span>Instructions:                        <b>1734</b>|1734                 (<span style="color:#555">No change</span>)
@@ -67,7 +67,7 @@ Iai-Callgrind reports the cache hits and an estimation of cpu cycles:
 <span style="color:#555">  </span>Total read+write:                    <b>2362</b>|2362                 (<span style="color:#555">No change</span>)
 <span style="color:#555">  </span>Estimated Cycles:                    <b>2464</b>|2464                 (<span style="color:#555">No change</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 If you prefer cache misses over cache hits or just want both metrics displayed
 you can fully customize the [callgrind output

@@ -184,4 +184,4 @@ Number of primes found in the range 0 to 20000: 2262
   Total read+write:                        |N/A                  (*********)
   Estimated Cycles:                        |N/A                  (*********)
 
-Iai-Callgrind result: Ok. 19 without regressions; 0 regressed; 19 benchmarks finished in <__SECONDS__>s
+Gungraun result: Ok. 19 without regressions; 0 regressed; 19 benchmarks finished in <__SECONDS__>s

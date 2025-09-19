@@ -4,10 +4,10 @@
 
 As in library benchmarks, the environment variables are cleared before running a
 binary benchmark. Have a look at the [Configuration](./configuration.md) section
-if you want to change this behavior. Iai-Callgrind sometimes deviates from the
+if you want to change this behavior. Gungraun sometimes deviates from the
 valgrind defaults which are:
 
-| Iai-Callgrind | Valgrind (v3.23) |
+| Gungraun | Valgrind (v3.23) |
 | ------------- | -------- |
 | `--trace-children=yes` | `--trace-children=no` |
 | `--fair-sched=try` | `--fair-sched=no` |

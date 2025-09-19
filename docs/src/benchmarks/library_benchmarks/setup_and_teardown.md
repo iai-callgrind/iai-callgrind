@@ -13,7 +13,7 @@ In an ideal world you don't need any setup code, and you can pass arguments to
 the function as they are.
 
 But, for example if a function expects a `File` and not a `&str` with the path
-to the file you need `setup` code. Iai-Callgrind has an easy-to-use system in
+to the file you need `setup` code. Gungraun has an easy-to-use system in
 place to allow you to run any setup code before the function is executed and
 this `setup` code is not attributed to the metrics of the benchmark.
 
@@ -65,7 +65,7 @@ result in the benchmark output like below.
   Total read+write: <b>        2507946</b>|N/A             (<span style="color:#555">*********</span>)
   Estimated Cycles: <b>        2508328</b>|N/A             (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 The description in the headline contains `open_file("path/to/file")`, your setup
 function `open_file` with the value of the parameter it is called with.
@@ -153,7 +153,7 @@ main!(library_benchmark_groups = my_group);
 # }
 ```
 
-Note Iai-Callgrind captures all output per default. In order to actually see the
+Note Gungraun captures all output per default. In order to actually see the
 output of the benchmark, `setup` and `teardown` functions, it is required to run
 the benchmarks with the flag `--nocapture` or set the environment variable
 `IAI_CALLGRIND_NOCAPTURE=true`. Let's assume the above benchmark is in a file
@@ -175,7 +175,7 @@ bytes read: 25078
   Total read+write: <b>        2507946</b>|N/A             (<span style="color:#555">*********</span>)
   Estimated Cycles: <b>        2508396</b>|N/A             (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 The output of the `teardown` function is now visible in the benchmark output
 above the `- end of stdout/stderr` line.

@@ -67,7 +67,7 @@ presents you with something like the following:
   Total read+write: <b>         462200</b>|N/A             (<span style="color:#555">*********</span>)
   Estimated Cycles: <b>         604400</b>|N/A             (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 As opposed to library benchmarks, binary benchmarks have access to a [low-level
 api](./low_level.md). Here, pretty much the same as the above high-level usage

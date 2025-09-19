@@ -127,7 +127,7 @@ fn delete_file(path: &str) {
 
 #[binary_benchmark]
 // Note the missing parentheses for `setup` of the function `create_file` which
-// tells Iai-Callgrind to pass the `args` to the `setup` function AND the
+// tells Gungraun to pass the `args` to the `setup` function AND the
 // function `bench_binary`
 #[bench::foo(args = ("foo.txt"), setup = create_file)]
 // Same for `teardown`

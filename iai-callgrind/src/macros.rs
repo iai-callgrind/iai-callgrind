@@ -66,7 +66,7 @@ macro_rules! binary_benchmark_attribute {
 
 /// The `iai_callgrind::main` macro expands to a `main` function which runs all the benchmarks.
 ///
-/// Using Iai-Callgrind requires disabling the benchmark harness. This can be done like so in the
+/// Using Gungraun requires disabling the benchmark harness. This can be done like so in the
 /// `Cargo.toml` file:
 ///
 /// ```toml

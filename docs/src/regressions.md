@@ -2,9 +2,9 @@
 
 # Detecting Performance Regressions
 
-With Iai-Callgrind you can define limits for each callgrind/cachegrind event
+With Gungraun you can define limits for each callgrind/cachegrind event
 kind or dhat metric over which a performance regression can be assumed. Per
-default, Iai-Callgrind does not perform regression checks, and you have to
+default, Gungraun does not perform regression checks, and you have to
 opt-in with `Callgrind::soft_limits`, `Callgrind::hard_limits`,
 `Cachegrind::soft_limits`, ... at benchmark level in
 `LibraryBenchmarkConfig::tool` or `BinaryBenchmarkConfig::tool` or at a more
@@ -19,11 +19,11 @@ restrict the `EventKind`, ... by an absolute number.
 
 Note that [comparing baselines](./cli_and_env/baselines.md) also detects
 performance regressions. This can be useful, for example, when setting up
-Iai-Callgrind in the [CI](./installation/iai_callgrind.md#in-the-github-ci) to
+Gungraun in the [CI](./installation/iai_callgrind.md#in-the-github-ci) to
 cause a PR to fail when comparing to the main branch.
 
 Regressions are considered errors and will cause the benchmark to fail if they
-occur, and Iai-Callgrind will exit with error code `3`.
+occur, and Gungraun will exit with error code `3`.
 
 ## Defining limits on the command-line
 
@@ -176,7 +176,7 @@ following output:
 <span style="color:#555">  </span>Total read+write:                     <b>206</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                     <b>376</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.14477s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.14477s</code></pre>
 
 Let's assume there's a change in `my_lib::bubble_sort` with a negative impact on
 the performance, then running the benchmark again results in an output something
@@ -196,7 +196,7 @@ Regressions:
   <span style="color:#0A0">lib_bench_regression::my_group::bench_library</span>:
     <b>Instructions</b> (152 -> <b>264</b>): <b><span style="color:#F55">+73.6842</span></b><b><span style="color:#F55">%</span></b> exceeds limit of <span style="color:#555">+5.00000</span><span style="color:#555">%</span>
 
-Iai-Callgrind result: <b><span style="color:#F55">Regressed</span></b>. 0 without regressions; 1 regressed; 1 benchmarks finished in 0.14849s
+Gungraun result: <b><span style="color:#F55">Regressed</span></b>. 0 without regressions; 1 regressed; 1 benchmarks finished in 0.14849s
 error: bench failed, to rerun pass `-p benchmark-tests --bench lib_bench_regression`
 
 Caused by:

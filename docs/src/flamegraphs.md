@@ -66,7 +66,7 @@ Note the following only affects flamegraphs of multi-threaded/multi-process
 benchmarks and benchmarks which produce multiple parts with a total over all
 sub-metrics.
 
-Currently, Iai-Callgrind creates the flamegraphs only for the total over all
+Currently, Gungraun creates the flamegraphs only for the total over all
 threads/parts and subprocesses. This leads to complications since the call graph
 is not be fully recovered just by examining each thread/subprocess separately.
 So, the total metrics in the flamegraphs might not be the same as the total

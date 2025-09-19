@@ -191,7 +191,7 @@ library_benchmark_group!(
 // Running cachegrind instead of callgrind is also possible but requires additional steps. This is
 // best described in the guide:
 // https://iai-callgrind.github.io/iai-callgrind/latest/html/index.html. You can also find a lot of
-// other Iai-Callgrind feature descriptions there.
+// other Gungraun feature descriptions there.
 //
 // The output files of the profiling tools (DHAT, Massif, BBV) can be found next to the output files
 // of the callgrind runs in `target/iai/...`.

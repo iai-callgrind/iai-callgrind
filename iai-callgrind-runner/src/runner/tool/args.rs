@@ -1,6 +1,6 @@
 //! The module containing all elements for [`ToolArgs`]
 
-/// Module containing the Iai-Callgrind defaults for the command line arguments of all tools
+/// Module containing the Gungraun defaults for the command line arguments of all tools
 #[allow(missing_docs)]
 #[allow(clippy::arbitrary_source_item_ordering)]
 pub mod defaults {
@@ -157,7 +157,7 @@ impl ToolArgs {
                     }
                     Some((arg, _)) if is_ignored_outfile_argument(arg) => warn!(
                         "Ignoring {} argument '{arg}': Output/Log files of tools are managed by \
-                         Iai-Callgrind",
+                         Gungraun",
                         tool.id()
                     ),
                     None if matches!(arg, "-v" | "--verbose") => tool_args.verbose = true,

@@ -21,7 +21,7 @@ pub mod envs {
 
     /// The environment variable to set the color (same syntax as `CARGO_TERM_COLOR`)
     pub const IAI_CALLGRIND_COLOR: &str = "IAI_CALLGRIND_COLOR";
-    /// Set the logging output of Iai-Callgrind
+    /// Set the logging output of Gungraun
     pub const IAI_CALLGRIND_LOG: &str = "IAI_CALLGRIND_LOG";
 }
 

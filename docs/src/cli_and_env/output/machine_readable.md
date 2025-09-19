@@ -5,7 +5,7 @@ With `--output-format=default|json|pretty-json` (env:
 machine-readable json format. The json schemas fully describing the json output
 are stored here:
 
-| Iai-Callgrind version | Schema version |
+| Iai-Callgrind/Gungraun version | Schema version |
 | --- | --- |
 | >=0.9.0,<0.11.0 | [summary.v1.schema.json](https://github.com/iai-callgrind/iai-callgrind/blob/main/iai-callgrind-runner/schemas/summary.v1.schema.json) |
 | >=0.11.0,<0.14.0 | [summary.v2.schema.json](https://github.com/iai-callgrind/iai-callgrind/blob/main/iai-callgrind-runner/schemas/summary.v2.schema.json) |

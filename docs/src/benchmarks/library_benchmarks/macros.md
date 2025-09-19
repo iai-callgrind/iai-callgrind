@@ -198,7 +198,7 @@ mentioned attributes.
 
 ## The main! macro
 
-This macro is the entry point for Iai-Callgrind and creates the benchmark
+This macro is the entry point for Gungraun and creates the benchmark
 harness. It accepts the following top-level arguments in this order (separated
 by a semicolon):
 

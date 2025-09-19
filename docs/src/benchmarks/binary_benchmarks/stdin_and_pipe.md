@@ -10,7 +10,7 @@ the variants `Inherit` (the equivalent of `std::process::Stdio::inherit`),
 path/to/file`.
 
 Moreover, `iai_callgrind::Stdin` provides the `Stdin::Setup` variant specific to
-Iai-Callgrind:
+Gungraun:
 
 Applications may change their behaviour if the input or the `Stdin` of the
 `Command` is coming from a pipe as in `echo "some content" | my-foo`. To be able
@@ -46,7 +46,7 @@ Usually, `setup` then the `Command` and then `teardown` are executed
 sequentially, each waiting for the previous process to exit successfully (See
 also [Configure the exit code of the Command](./configuration/exit_code.md)). If
 the `Command::stdin` changes to `Stdin::Setup`, `setup` and the `Command` are
-executed in parallel and Iai-Callgrind waits first for the `Command` to exit,
+executed in parallel and Gungraun waits first for the `Command` to exit,
 then `setup`. After the successful exit of `setup`, `teardown` is executed.
 
 Since `setup` and `Command` are run in parallel if `Stdin::Setup` is used, it is

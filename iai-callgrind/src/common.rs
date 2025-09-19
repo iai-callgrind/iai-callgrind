@@ -147,7 +147,7 @@ pub struct Drd(__internal::InternalTool);
 /// Note the following considerations only affect flamegraphs of multi-threaded/multi-process
 /// benchmarks and benchmarks which produce multiple parts with a total over all sub-metrics.
 ///
-/// Currently, Iai-Callgrind creates the flamegraphs only for the total over all threads/parts and
+/// Currently, Gungraun creates the flamegraphs only for the total over all threads/parts and
 /// subprocesses. This leads to complications since the call graph is not be fully recovered just by
 /// examining each thread/subprocess separately. So, the total metrics in the flamegraphs might not
 /// be the same as the total metrics shown in the terminal output. If in doubt, the terminal output
@@ -249,7 +249,7 @@ pub struct Massif(__internal::InternalTool);
 #[derive(Debug, Clone, IntoInner, AsRef)]
 pub struct Memcheck(__internal::InternalTool);
 
-/// Configure the default output format of the terminal output of Iai-Callgrind
+/// Configure the default output format of the terminal output of Gungraun
 ///
 /// This configuration is only applied to the default output format (`--output-format=default`) and
 /// not to any of the json output formats like (`--output-format=json`).
@@ -646,7 +646,7 @@ impl Callgrind {
 
     /// Set or unset the entry point for a benchmark
     ///
-    /// Iai-Callgrind sets the [`--toggle-collect`] argument of callgrind to the benchmark function
+    /// Gungraun sets the [`--toggle-collect`] argument of callgrind to the benchmark function
     /// which we call [`EntryPoint::Default`]. Specifying a `--toggle-collect` argument, sets
     /// automatically `--collect-at-start=no`. This ensures that only the metrics from the benchmark
     /// itself are collected and not the `setup` or `teardown` or anything before/after the
@@ -1136,7 +1136,7 @@ impl Dhat {
     /// function.
     ///
     /// Since there is no `--toggle-collect` argument, it's possible to define additional `frames`
-    /// (the Iai-Callgrind specific DHAT equivalent of callgrind toggles) in the [`Dhat::frames`]
+    /// (the Gungraun specific DHAT equivalent of callgrind toggles) in the [`Dhat::frames`]
     /// method.
     ///
     /// The [`EntryPoint::Default`] matches the benchmark function and a [`EntryPoint::Custom`] is
@@ -1208,7 +1208,7 @@ impl Dhat {
 
     /// Add one or multiple `frames` which will be included in the benchmark metrics
     ///
-    /// `Frames` are special to Iai-Callgrind and the DHAT equivalent to callgrind toggles
+    /// `Frames` are special to Gungraun and the DHAT equivalent to callgrind toggles
     /// (`--toggle-collect`) and like `--toggle-collect` this method accepts simple glob patterns
     /// with `*` and `?` wildcards. A `Frame` describes an entry in the call stack (See the
     /// example). Sometimes the [`Dhat::entry_point`] is not enough and it is required to specify
@@ -2028,7 +2028,7 @@ impl OutputFormat {
     /// # Examples
     ///
     /// As opposed to valgrind/callgrind, `--trace-children=yes`, `--separate-threads=yes` and
-    /// `--fair-sched=try` are the defaults in Iai-Callgrind, so in the following example it's not
+    /// `--fair-sched=try` are the defaults in Gungraun, so in the following example it's not
     /// necessary to specify `--separate-threads` to track the metrics of the spawned thread.
     /// However, it is necessary to specify an additional toggle or else the metrics of the thread
     /// are all zero. We also set the [`super::EntryPoint`] to `None` to disable the default entry
@@ -2119,7 +2119,7 @@ impl OutputFormat {
     /// let output_format = OutputFormat::default().show_grid(true);
     /// ```
     ///
-    /// Below is the output of a Iai-Callgrind run with DHAT as additional tool benchmarking a
+    /// Below is the output of a Gungraun run with DHAT as additional tool benchmarking a
     /// function that executes a subprocess which itself starts multiple threads. For the benchmark
     /// run below [`OutputFormat::show_intermediate`] was also active to show the threads and
     /// subprocesses.
@@ -2229,7 +2229,7 @@ impl OutputFormat {
     /// let output_format = OutputFormat::default().tolerance(1.5);
     /// ```
     ///
-    /// Below is the output of an Iai-Callgrind run with the tolerance set.
+    /// Below is the output of an Gungraun run with the tolerance set.
     ///
     /// ```text
     /// my_benchmark::some_group::bench_with_tolerance_margin

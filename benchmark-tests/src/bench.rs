@@ -83,9 +83,9 @@ lazy_static! {
         Regex::new(r"^(##(?: \S+: \S+)+)(\s*)([|].*)$").expect("Regex should compile");
     static ref ABSOLUTE_PATH_RE: Regex =
         Regex::new(r"(\s+)([/][^/]*)+").expect("Regex should compile");
-    // Iai-Callgrind result: Success. 2 completed without regressions; 0 regressed; 2 benchmarks finished in 0.296s
+    // Gungraun result: Success. 2 completed without regressions; 0 regressed; 2 benchmarks finished in 0.296s
     static ref SUMMARY_LINE_RE: Regex =
-        Regex::new(r"^(Iai-Callgrind result:.*finished in\s*)([0-9.]+)(s)$").expect("Regex should compile");
+        Regex::new(r"^(Gungraun result:.*finished in\s*)([0-9.]+)(s)$").expect("Regex should compile");
     static ref THREAD_PANICKED: Regex =
         Regex::new(r"^(?<start>thread '.*' )(?<pid>\([0-9]+\))?(?<end>\s*panicked at .*)$").expect("Regex should compile");
 }
@@ -871,7 +871,7 @@ impl ExpectedRun {
                     summary = Some(file.clone());
                 }
             }
-            // Iai-Callgrind does not produce empty files and if so we treat it as an error
+            // Gungraun does not produce empty files and if so we treat it as an error
             assert!(
                 real_files.remove(&file),
                 "Expected file '{}' does not exist",

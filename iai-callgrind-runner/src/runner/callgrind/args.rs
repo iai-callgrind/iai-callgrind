@@ -89,7 +89,7 @@ impl Args {
                 }
                 Some((arg, _)) if is_ignored_outfile_argument(arg) => warn!(
                     "Ignoring callgrind argument '{arg}': Output/Log files of tools are managed \
-                     by Iai-Callgrind",
+                     by Gungraun",
                 ),
                 None if matches!(arg, "-v" | "--verbose") => self.verbose = true,
                 None if is_ignored_argument(arg) => {

@@ -2,11 +2,11 @@
 
 # Multi-threaded and multi-process applications
 
-The default is to run Iai-Callgrind benchmarks with `--separate-threads=yes`,
-`--trace-children=yes` switched on. This enables Iai-Callgrind to trace threads
+The default is to run Gungraun benchmarks with `--separate-threads=yes`,
+`--trace-children=yes` switched on. This enables Gungraun to trace threads
 and subprocesses, respectively. Note that `--separate-threads=yes` is not
 strictly necessary to be able to trace threads. But, if they are separated,
-Iai-Callgrind can collect and display the metrics for each thread. Due to the
+Gungraun can collect and display the metrics for each thread. Due to the
 way `callgrind` applies [data collection options] like `--toggle-collect`,
 `--collect-atstart`, ... further configuration is needed in library benchmarks.
 
@@ -168,7 +168,7 @@ terminal output:
 <span style="color:#555">  </span>Total read+write:                   <b>67233</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>86923</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 1.19222s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 1.19222s</code></pre>
 
 As you can see, the counts for the threads `2` and `3` (our spawned threads) are
 all zero.
@@ -241,7 +241,7 @@ threads are still zero:
 <span style="color:#555">  </span>Total read+write:                   <b>67312</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>86976</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 1.19222s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 1.19222s</code></pre>
 
 Just to show what would happen if the compiler does not inline the `find_primes`
 method, we temporarily annotate it with `#[inline(never)]`:
@@ -290,7 +290,7 @@ Now, running the benchmark does show the desired metrics:
 <span style="color:#555">  </span>Total read+write:                 <b>6326868</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>6357340</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 1.19222s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 1.19222s</code></pre>
 
 But, annotating functions with `#[inline(never)]` in production code is usually
 not an option and preventing the compiler from doing its job is not the
@@ -363,7 +363,7 @@ from `27372` to `404425`):
 <span style="color:#555">  </span>Total read+write:                 <b>6853187</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>7044707</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 Additionally, expect a lot of metric changes if the benchmarks itself are
 changed. However, if the metrics of the main thread are not significant compared
@@ -449,7 +449,7 @@ threads:
 <span style="color:#555">  </span>Total read+write:                 <b>6326783</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>6357217</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 Using the client request toggles is very flexible since you can put the
 `iai_callgrind::client_requests::callgrind::toggle_collect` instructions
@@ -522,7 +522,7 @@ Altogether, running the benchmark will show:
 <span style="color:#555">  </span>Total read+write:                 <b>6259550</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>6270422</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 ## Multi-process applications
 
@@ -647,7 +647,7 @@ output:
 <span style="color:#555">  </span>Total read+write:                    <b>6305</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>12697</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 As expected, the `cat` subprocess is not measured and the metrics are zero for
 the same reasons as the initial measurement of threads.
@@ -716,7 +716,7 @@ producing the desired output
 <span style="color:#555">  </span>Total read+write:                   <b>12067</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>24207</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 ### Measuring subprocesses using client requests
 
@@ -807,7 +807,7 @@ Now, running the benchmark shows
 <span style="color:#555">  </span>Total read+write:                    <b>9857</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>20973</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 As expected, the metrics for the `cat` binary are a little bit lower since we
 skipped measuring the parsing of the command-line arguments.

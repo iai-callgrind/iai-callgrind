@@ -1,4 +1,4 @@
-<h1 align="center">Iai-Callgrind</h1>
+<h1 align="center">Gungraun</h1>
 
 <div align="center">High-precision and consistent benchmarking framework/harness for Rust</div>
 
@@ -23,8 +23,8 @@
     </a>
 </div>
 
-Iai-Callgrind is a benchmarking harness that uses Callgrind to perform extremely precise
+Gungraun is a benchmarking harness that uses Callgrind to perform extremely precise
 measurements of Rust code.
 
-This package provides the proc macros needed by the [Iai-Callgrind
+This package provides the proc macros needed by the [Gungraun
 library](https://crates.io/crates/iai-callgrind). Please see there for further details.

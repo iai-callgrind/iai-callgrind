@@ -14,11 +14,11 @@ just a short summary and quote from the docs:
 > writes, and read and write patterns.
 
 The rest of this chapter is dedicated to how DHAT is integrated into
-Iai-Callgrind.
+Gungraun.
 
 ## The DHAT modes
 
-Iai-Callgrind supports all three modes `heap` (the default), `copy` and `ad-hoc`
+Gungraun supports all three modes `heap` (the default), `copy` and `ad-hoc`
 which can be changed on the [command-line](./cli_and_env/basics.md) with
 `--dhat-args=--mode=ad-hoc` or in the benchmark itself with `Dhat::args`. Note
 that `ad-hoc` mode requires [client requests](./client_requests.md) which have
@@ -46,7 +46,7 @@ output files. Callgrind has a command-line flag `--toggle-collect` to toggle
 collection on and off. DHAT doesn't have such an option, and the sanitization of
 metrics can only be realized afterwards based on the DHAT output files. However,
 this works well enough to stabilize the metrics so they exclude the metrics of
-Iai-Callgrind allocations (around 2000 - 2500 bytes) in the `main` function
+Gungraun allocations (around 2000 - 2500 bytes) in the `main` function
 needed to setup the benchmark.
 
 Note that setting an entry point or `Dhat::frames` does not alter the dhat
@@ -115,7 +115,7 @@ The above benchmark will produce the following metrics:
 <span style="color:#555">  </span>Reads bytes:                           <b>24</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Writes bytes:                          <b>36</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.55554s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.55554s</code></pre>
 
 Analyzing the DHAT data, there are a total of `12 bytes` of allocations (The
 vector: `3 * sizeof(i32)` bytes = `3 * 4` bytes) in `1` block during the setup
@@ -174,7 +174,7 @@ with error.
 It is possible to specify additional `Dhat::frames` for example when
 benchmarking multi-threaded functions. Like in callgrind, each thread/subprocess
 in DHAT is treated as a separate unit and thus requires `frames` (the
-Iai-Callgrind specific approximation of callgrind toggles) in addition to the
+Gungraun specific approximation of callgrind toggles) in addition to the
 default entry point to include the interesting ones in the measurements.
 
 By example. Suppose there's a function in the `benchmark_tests` library
@@ -221,7 +221,7 @@ Running the benchmark produces the following output:
 <span style="color:#555">  </span>Reads bytes:                          <b>776</b>|776                  (<span style="color:#555">No change</span>)
 <span style="color:#555">  </span>Writes bytes:                       <b>10329</b>|10329                (<span style="color:#555">No change</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.44534s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.44534s</code></pre>
 
 The problem here is, that the spawned thread is not included in the metrics.
 Looking at the output files of the dhat output in `dh_view.html` (heavily
@@ -352,7 +352,7 @@ Now, the metrics include the spawned thread(s):
 <span style="color:#555">  </span>Reads bytes:                        <b>26960</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Writes bytes:                       <b>36513</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.44273s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.44273s</code></pre>
 
 If we were only interested in the threads itself, then using
 `EntryPoint::Custom` would be one way to do it. Setting a custom entry point is
@@ -400,7 +400,7 @@ Running this benchmark results in:
 <span style="color:#555">  </span>Reads bytes:                        <b>26184</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Writes bytes:                       <b>26184</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.45178s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.45178s</code></pre>
 
 To verify our setup, let's compare these numbers with the data of the program
 point with the thread of the `dh_view.html` output shown above. Eventually,

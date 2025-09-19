@@ -3,8 +3,8 @@ authors = ["gamma0987"]
 language = "en"
 multilingual = false
 src = "src"
-title = "Iai-Callgrind Guide"
-description = "Iai-Callgrind, a high-precision and consistent one-shot benchmarking framework/harness for Rust"
+title = "Gungraun Guide"
+description = "Gungraun, a high-precision and consistent one-shot benchmarking framework/harness for Rust"
 
 [rust]
 edition = "2021"

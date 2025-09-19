@@ -1,11 +1,11 @@
 # Overview
 
-Iai-Callgrind can be used to benchmark the [library](./library_benchmarks.md)
+Gungraun can be used to benchmark the [library](./library_benchmarks.md)
 and [binary](./binary_benchmarks.md) of your project's crates. Library and
-binary benchmarks are treated differently by Iai-Callgrind and cannot be
+binary benchmarks are treated differently by Gungraun and cannot be
 intermixed in the same benchmark file. This is indeed a feature and helps
 keeping things organized. Having different and multiple benchmark files for
-library and binary benchmarks is no problem for Iai-Callgrind and is usually a
+library and binary benchmarks is no problem for Gungraun and is usually a
 good idea anyway. Having benchmarks for different binaries in the same
 benchmark file however is fully supported.
 

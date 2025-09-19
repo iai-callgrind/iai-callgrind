@@ -134,7 +134,7 @@ same:
 
 ## Working on the guide
 
-The main documentation of Iai-Callgrind is in the [guide][Guide]. The source
+The main documentation of Gungraun is in the [guide][Guide]. The source
 code lives in the `docs/src` subdirectory of this repo.
 
 To start working on the guide, ensure you have everything necessary installed

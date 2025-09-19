@@ -1,10 +1,10 @@
 # Valgrind Client Requests
 
-Iai-Callgrind ships with its own interface to the [Valgrind's Client Request
+Gungraun ships with its own interface to the [Valgrind's Client Request
 Mechanism](https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq).
-Iai-Callgrind's client requests have zero overhead (relative to the "C"
+Gungraun's client requests have zero overhead (relative to the "C"
 implementation of Valgrind) on many targets which are also natively supported by
-valgrind. In short, Iai-Callgrind provides a complete and performant
+valgrind. In short, Gungraun provides a complete and performant
 implementation of Valgrind Client Requests.
 
 ## Installation
@@ -18,8 +18,8 @@ iai-callgrind = { version = "0.16.1", features = ["client_requests"] }
 ```
 
 If you need the client requests in your production code, you don't want them to
-do anything when not running under valgrind with Iai-Callgrind benchmarks. You
-can achieve that by adding Iai-Callgrind with the `client_requests_defs` feature
+do anything when not running under valgrind with Gungraun benchmarks. You
+can achieve that by adding Gungraun with the `client_requests_defs` feature
 to your runtime dependencies and with the `client_requests` feature to your
 `dev-dependencies` like so:
 
@@ -38,10 +38,10 @@ compile down to nothing and don't add any overhead to your production code. It
 simply provides the "definitions", method signatures and macros without body.
 Only with the activated `client_requests` feature they will be actually
 executed. Note that the client requests do not depend on any other part of
-Iai-Callgrind, so you could even use the client requests without the rest of
-Iai-Callgrind.
+Gungraun, so you could even use the client requests without the rest of
+Gungraun.
 
-When building Iai-Callgrind with client requests, the valgrind header files must
+When building Gungraun with client requests, the valgrind header files must
 exist in your standard include path (most of the time `/usr/include`). This is
 usually the case if you've installed valgrind with your distribution's package
 manager. If not, you can point the `IAI_CALLGRIND_VALGRIND_INCLUDE` or

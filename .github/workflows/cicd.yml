@@ -167,7 +167,7 @@ jobs:
       fail-fast: false
       matrix:
         job:
-          # These are Iai-Callgrind optimized targets
+          # These are Gungraun optimized targets
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
           - os: ubuntu-latest

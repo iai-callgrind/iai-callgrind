@@ -1,6 +1,6 @@
 # Customize the output directory
 
-All output files of Iai-Callgrind are usually stored using the following scheme:
+All output files of Gungraun are usually stored using the following scheme:
 
 `$WORKSPACE_ROOT/target/iai/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`
 

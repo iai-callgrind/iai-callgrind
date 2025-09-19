@@ -1496,7 +1496,7 @@ impl BinaryBenchmarkConfig {
         self
     }
 
-    /// Configure the [`crate::OutputFormat`] of the terminal output of Iai-Callgrind
+    /// Configure the [`crate::OutputFormat`] of the terminal output of Gungraun
     ///
     /// # Examples
     ///
@@ -1669,7 +1669,7 @@ impl Command {
     /// benchmarks in a [`Sandbox`], depends on where `cargo bench` sets the current directory.
     /// Usually, it's best to use [`Path::canonicalize`] to resolve the relative path to a binary in
     /// your project's directory. In case you're running the benchmark in a [`Sandbox`], the path is
-    /// interpreted relative to the root directory of the `Sandbox`. Iai-Callgrind tries to resolve
+    /// interpreted relative to the root directory of the `Sandbox`. Gungraun tries to resolve
     /// simple names like `Command::new("echo")` searching the `$PATH`. To disambiguate between
     /// simple names and relative paths, use `./`. For example `echo` is searched in the `$PATH` and
     /// `./echo` is interpreted relative.

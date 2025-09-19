@@ -982,7 +982,7 @@ pub struct CommandLineArgs {
     pub tools: Vec<ValgrindTool>,
 
     #[rustfmt::skip]
-    /// Adjust, enable or disable the truncation of the description in the Iai-Callgrind output
+    /// Adjust, enable or disable the truncation of the description in the Gungraun output
     ///
     /// The default is to truncate the description to the size of 50 ascii characters. A false
     /// value disables the truncation entirely and a value will truncate the description to the

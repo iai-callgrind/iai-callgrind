@@ -1,11 +1,11 @@
-# Iai-Callgrind
+# Gungraun
 
-Iai-Callgrind is divided into the library `iai-callgrind` and the benchmark runner
+Gungraun is divided into the library `iai-callgrind` and the benchmark runner
 `iai-callgrind-runner`.
 
 ## Installation of the library
 
-To start with Iai-Callgrind, add the following to your `Cargo.toml` file:
+To start with Gungraun, add the following to your `Cargo.toml` file:
 
 ```toml
 [dev-dependencies]

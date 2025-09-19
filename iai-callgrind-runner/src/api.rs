@@ -806,7 +806,7 @@ pub enum FlamegraphKind {
 /// [`EventKind::Ir`] is an integer and [`EventKind::L1HitRate`] is a percentage and therefore a
 /// float.
 ///
-/// The type of the metric can be seen in the terminal output of Iai-Callgrind: Floats always
+/// The type of the metric can be seen in the terminal output of Gungraun: Floats always
 /// contain a `.` and integers do not.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum Limit {
@@ -1266,7 +1266,7 @@ pub struct Tool {
     pub raw_args: RawArgs,
     /// The configuration for regression checks of tools which perform regression checks
     pub regression_config: Option<ToolRegressionConfig>,
-    /// If true show the logging output of Valgrind (not Iai-Callgrind)
+    /// If true show the logging output of Valgrind (not Gungraun)
     pub show_log: Option<bool>,
 }
 

@@ -1,4 +1,4 @@
-//! The format of Iai-Callgrind terminal output
+//! The format of Gungraun terminal output
 //!
 //! All direct print statements should be part of this module and there should be no `println!` or
 //! similar statement in any other module of the runner.
@@ -102,7 +102,7 @@ pub struct LibraryBenchmarkHeader {
     output_format: OutputFormat,
 }
 
-/// The `OutputFormat` of the Iai-Callgrind terminal output
+/// The `OutputFormat` of the Gungraun terminal output
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputFormat {
     /// The Cachegrind metrics to show
@@ -148,7 +148,7 @@ pub struct VerticalFormatter {
     output_format: OutputFormat,
 }
 
-/// The trait for the formatter of Iai-Callgrind terminal output and metrics
+/// The trait for the formatter of Gungraun terminal output and metrics
 pub trait Formatter {
     /// Clear the buffer
     fn clear(&mut self);

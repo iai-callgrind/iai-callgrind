@@ -78,4 +78,4 @@ Regressions:
   test_bench_template::bench_group::bench_bubble_sort_hard_limits regress_dhat:
     DHAT: Total bytes (<__NUM__>): <__NUM__> exceeds limit of <__LIMIT__> by <__DIFF__>
 
-Iai-Callgrind result: Regressed. 2 without regressions; 6 regressed; 8 benchmarks finished in <__SECONDS__>s
+Gungraun result: Regressed. 2 without regressions; 6 regressed; 8 benchmarks finished in <__SECONDS__>s

@@ -2,7 +2,7 @@
 
 As in [library benchmarks](../library_benchmarks/examples.md), I'm referring
 here to the [github repository](https://github.com/iai-callgrind/iai-callgrind).
-The binary benchmarks functionality of Iai-Callgrind is tested with system tests
+The binary benchmarks functionality of Gungraun is tested with system tests
 in the private
 [benchmark-tests](https://github.com/iai-callgrind/iai-callgrind/tree/main/benchmark-tests/benches/test_lib_bench)
 package.

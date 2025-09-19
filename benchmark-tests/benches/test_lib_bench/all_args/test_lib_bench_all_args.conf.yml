@@ -2,7 +2,7 @@
 #
 # The actual functionality of these arguments is tested only basically since
 # callgrind is responsible for the functionality. However, the test verifies if
-# any of these arguments cause unexpected behaviour in Iai-Callgrind itself like
+# any of these arguments cause unexpected behaviour in Gungraun itself like
 # panics or errors. We also verify that all additional event kinds like Ge,
 # AcLoss etc. are recorded and printed.
 groups:

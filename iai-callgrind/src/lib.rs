@@ -1,10 +1,10 @@
-//! Iai-Callgrind is a benchmarking framework/harness which primarily uses [Valgrind's
+//! Gungraun is a benchmarking framework/harness which primarily uses [Valgrind's
 //! Callgrind](https://valgrind.org/docs/manual/cl-manual.html) to provide extremely accurate and
 //! consistent measurements of Rust code, making it perfectly suited to run in environments like a
-//! CI. Iai-Callgrind is flexible and despite its name it's possible to run Cachegrind or any other
+//! CI. Gungraun is flexible and despite its name it's possible to run Cachegrind or any other
 //! Valgrind tool like DHAT in addition to or instead of Callgrind.
 //!
-//! The [online guide][Guide] contains all the details to start profiling with Iai-Callgrind.
+//! The [online guide][Guide] contains all the details to start profiling with Gungraun.
 //!
 //! # Table of contents
 //! - [Characteristics](#characteristics)
@@ -25,23 +25,22 @@
 //!
 //! - __Precision__: High-precision measurements allow you to reliably detect very small
 //!   optimizations of your code
-//! - __Consistency__: Iai-Callgrind can take accurate measurements even in virtualized CI
-//!   environments
-//! - __Performance__: Since Iai-Callgrind only executes a benchmark once, it is typically a lot
-//!   faster to run than benchmarks measuring the execution and wall-clock time
-//! - __Regression__: Iai-Callgrind reports the difference between benchmark runs to make it easy to
-//!   spot detailed performance regressions and improvements.
-//! - __CPU and Cache Profiling__: Iai-Callgrind generates a Callgrind profile of your code while
+//! - __Consistency__: Gungraun can take accurate measurements even in virtualized CI environments
+//! - __Performance__: Since Gungraun only executes a benchmark once, it is typically a lot faster
+//!   to run than benchmarks measuring the execution and wall-clock time
+//! - __Regression__: Gungraun reports the difference between benchmark runs to make it easy to spot
+//!   detailed performance regressions and improvements.
+//! - __CPU and Cache Profiling__: Gungraun generates a Callgrind profile of your code while
 //!   benchmarking, so you can use Callgrind-compatible tools like
 //!   [callgrind_annotate](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.callgrind_annotate-options)
 //!   or the visualizer [kcachegrind](https://kcachegrind.github.io/html/Home.html) to analyze the
 //!   results in detail.
 //! - __Memory Profiling__: You can run other Valgrind tools like [DHAT: a dynamic heap analysis tool](https://valgrind.org/docs/manual/dh-manual.html)
 //!   and [Massif: a heap profiler](https://valgrind.org/docs/manual/ms-manual.html) with the
-//!   Iai-Callgrind benchmarking framework. Their profiles are stored next to the callgrind profiles
-//!   and are ready to be examined with analyzing tools like `dh_view.html`, `ms_print` and others.
-//! - __Visualization__: Iai-Callgrind is capable of creating regular and differential flamegraphs
-//!   from the Callgrind output format.
+//!   Gungraun benchmarking framework. Their profiles are stored next to the callgrind profiles and
+//!   are ready to be examined with analyzing tools like `dh_view.html`, `ms_print` and others.
+//! - __Visualization__: Gungraun is capable of creating regular and differential flamegraphs from
+//!   the Callgrind output format.
 //! - __Valgrind Client Requests__: Support of zero overhead [Valgrind Client Requests](https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq)
 //!   (compared to native valgrind client requests overhead) on many targets
 //! - __Stable-compatible__: Benchmark your code without installing nightly Rust
@@ -323,7 +322,7 @@
 //!
 //! ## Valgrind Tools
 //!
-//! In addition to or instead of the default Callgrind tool, you can use the Iai-Callgrind framework
+//! In addition to or instead of the default Callgrind tool, you can use the Gungraun framework
 //! to run other Valgrind profiling tools like `DHAT`, `Massif`, the experimental `BBV` and even
 //! `Cachegrind`. But, also `Memcheck`, `Helgrind` and `DRD` if you need to check memory and thread
 //! safety of benchmarked code. See the [Valgrind User

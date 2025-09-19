@@ -1,13 +1,13 @@
 # Other Valgrind Tools
 
 In addition to or instead of the default tool `Callgrind`, you can use the
-Iai-Callgrind framework to run other Valgrind profiling tools like
+Gungraun framework to run other Valgrind profiling tools like
 [`DHAT`](./dhat.md), `Massif` or even [`Cachegrind`](./cachegrind.md) and the
 experimental `BBV` but also error checking tools like `Memcheck`, `Helgrind` and
 `DRD`.
 
 Note that support for `Massif` or `BBV` is currently only basic and doesn't show
-useful stats and metrics in the terminal output of Iai-Callgrind. But, the
+useful stats and metrics in the terminal output of Gungraun. But, the
 output files are generated as usual and are ready to be examined with tools like
 `ms_print`.
 

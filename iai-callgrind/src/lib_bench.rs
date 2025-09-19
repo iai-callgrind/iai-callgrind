@@ -396,7 +396,7 @@ impl LibraryBenchmarkConfig {
         self
     }
 
-    /// Configure the [`crate::OutputFormat`] of the terminal output of Iai-Callgrind
+    /// Configure the [`crate::OutputFormat`] of the terminal output of Gungraun
     ///
     /// # Examples
     ///

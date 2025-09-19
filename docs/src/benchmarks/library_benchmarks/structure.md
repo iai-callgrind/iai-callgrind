@@ -56,7 +56,7 @@ function wrapped in a `black_box`. See the docs of
 for more information about its usage. Simply put, _all_ values and variables in
 the benchmarking function (but not in your library function) need to be wrapped
 in a `black_box` except for the input parameters (here `value`) because
-Iai-Callgrind already does that. But, it is no error to `black_box` the `value`
+Gungraun already does that. But, it is no error to `black_box` the `value`
 again.
 
 The `bench` attribute takes any expression which includes function calls. The

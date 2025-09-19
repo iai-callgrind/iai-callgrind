@@ -14,7 +14,7 @@ use crate::runner::format::Header;
 use crate::runner::tool::path::ToolOutputPath;
 use crate::util::write_all_to_stderr;
 
-/// The main Iai-Callgrind error type
+/// The main Gungraun error type
 #[derive(Debug, PartialEq, Clone, Eq)]
 pub enum Error {
     /// A error during setup of a benchmark.
