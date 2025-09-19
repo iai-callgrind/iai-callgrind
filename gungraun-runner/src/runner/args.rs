@@ -740,7 +740,7 @@ pub struct CommandLineArgs {
     ///
     /// This option is currently restricted to the `callgrind` run of benchmarks. The output of
     /// additional tool runs like DHAT, Memcheck, ... is still captured, to prevent showing the
-    /// same output of benchmarks multiple times. Use `IAI_CALLGRIND_LOG=info` to also show
+    /// same output of benchmarks multiple times. Use `GUNGRAUN_LOG=info` to also show
     /// captured and logged output.
     ///
     /// If no value is given, the default missing value is `true` and doesn't capture stdout and

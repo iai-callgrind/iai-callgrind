@@ -14,8 +14,8 @@ use log::{error, warn};
 /// [`gungraun_runner::runner::run`] library function catching and printing
 /// [`gungraun_runner::error::Error`]s.
 fn main() {
-    // Configure the colored crate to respect IAI_CALLGRIND_COLOR and CARGO_TERM_COLOR
-    let gungraun_color = std::env::var(envs::IAI_CALLGRIND_COLOR).ok();
+    // Configure the colored crate to respect GUNGRAUN_COLOR and CARGO_TERM_COLOR
+    let gungraun_color = std::env::var(envs::GUNGRAUN_COLOR).ok();
     if let Some(var) = gungraun_color
         .clone()
         .or_else(|| std::env::var(envs::CARGO_TERM_COLOR).ok())
@@ -29,13 +29,12 @@ fn main() {
         }
     }
 
-    // Configure the env_logger crate to respect IAI_CALLGRIND_COLOR and CARGO_TERM_COLOR
+    // Configure the env_logger crate to respect GUNGRAUN_COLOR and CARGO_TERM_COLOR
     env_logger::Builder::from_env(
         Env::default()
-            .filter_or(envs::IAI_CALLGRIND_LOG, "warn")
+            .filter_or(envs::GUNGRAUN_LOG, "warn")
             .write_style(
-                gungraun_color
-                    .map_or_else(|| envs::CARGO_TERM_COLOR, |_| envs::IAI_CALLGRIND_COLOR),
+                gungraun_color.map_or_else(|| envs::CARGO_TERM_COLOR, |_| envs::GUNGRAUN_COLOR),
             ),
     )
     .format(|buf, record| {
@@ -81,9 +80,7 @@ fn print_warnings() {
     }
 
     if std::env::var("RUST_LOG").is_ok() {
-        warn!(
-            "The RUST_LOG environment variable to set the log level changed to IAI_CALLGRIND_LOG"
-        );
+        warn!("The RUST_LOG environment variable to set the log level changed to GUNGRAUN_LOG");
     }
 
     if std::env::var("IAI_CALLGRIND_REGRESSION").is_ok() {
@@ -91,5 +88,18 @@ fn print_warnings() {
             "The IAI_CALLGRIND_REGRESSION environment variable changed to \
              IAI_CALLGRIND_CALLGRIND_LIMITS"
         );
+    }
+
+    for var in ["COLOR", "LOG"] {
+        let old = format!("IAI_CALLGRIND_{var}");
+        if std::env::var(&old).is_ok() {
+            let new = format!("GUNGRAUN_{var}");
+            if std::env::var(&new).is_err() {
+                warn!(
+                    "With version 0.17.0, the name of the environment variable `{old}` has \
+                     changed to `{new}`."
+                );
+            }
+        }
     }
 }

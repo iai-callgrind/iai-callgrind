@@ -20,9 +20,9 @@ pub mod envs {
     pub const CARGO_TERM_COLOR: &str = "CARGO_TERM_COLOR";
 
     /// The environment variable to set the color (same syntax as `CARGO_TERM_COLOR`)
-    pub const IAI_CALLGRIND_COLOR: &str = "IAI_CALLGRIND_COLOR";
+    pub const GUNGRAUN_COLOR: &str = "GUNGRAUN_COLOR";
     /// Set the logging output of Gungraun
-    pub const IAI_CALLGRIND_LOG: &str = "IAI_CALLGRIND_LOG";
+    pub const GUNGRAUN_LOG: &str = "GUNGRAUN_LOG";
 }
 
 pub mod format;

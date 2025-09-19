@@ -115,7 +115,7 @@ impl Runner {
     pub fn run(&self) -> RunnerOutput {
         Command::new(&self.path)
             .args(&self.args)
-            .env("IAI_CALLGRIND_COLOR", "never")
+            .env("GUNGRAUN_COLOR", "never")
             .output()
             .map(RunnerOutput)
             .unwrap()

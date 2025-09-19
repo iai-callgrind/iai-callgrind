@@ -39,9 +39,9 @@ fi
 cargo +nightly build --all-features --profile coverage --all-targets
 
 GUNGRAUN_RUNNER=$(realpath -e target/coverage/gungraun-runner)
-IAI_CALLGRIND_LOG=debug
+GUNGRAUN_LOG=debug
 
-export GUNGRAUN_RUNNER IAI_CALLGRIND_LOG
+export GUNGRAUN_RUNNER GUNGRAUN_LOG
 
 cargo +nightly test --all-features --profile coverage --no-fail-fast
 cargo +nightly bench --all-features --profile coverage --no-fail-fast

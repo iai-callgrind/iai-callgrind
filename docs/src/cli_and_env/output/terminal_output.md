@@ -8,7 +8,7 @@ Per default, all terminal output of the benchmark function, `setup` and
 ## Using the log level
 
 The most basic possibility to show any captured output, is to use
-[`IAI_CALLGRIND_LOG=info`](./logging.md). This includes a lot of other output,
+[`GUNGRAUN_LOG=info`](./logging.md). This includes a lot of other output,
 too.
 
 ## Tell Gungraun to not capture the output

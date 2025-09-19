@@ -8,9 +8,9 @@ For a complete rundown of possible arguments, execute `cargo bench --bench
 environment variable. The environment variables which don't have a corresponding
 command-line argument are:
 
-- `IAI_CALLGRIND_COLOR`: [Control the colored output of Gungraun](./output/color.md) (Default
+- `GUNGRAUN_COLOR`: [Control the colored output of Gungraun](./output/color.md) (Default
   is `auto`)
-- `IAI_CALLGRIND_LOG`: [Define the log level](./output/logging.md) (Default is `WARN`)
+- `GUNGRAUN_LOG`: [Define the log level](./output/logging.md) (Default is `WARN`)
 
 ## Exit Codes
 
@@ -155,7 +155,7 @@ Options:
 
           This option is currently restricted to the `callgrind` run of benchmarks. The output of
           additional tool runs like DHAT, Memcheck, ... is still captured, to prevent showing the
-          same output of benchmarks multiple times. Use `IAI_CALLGRIND_LOG=info` to also show
+          same output of benchmarks multiple times. Use `GUNGRAUN_LOG=info` to also show
           captured and logged output.
 
           If no value is given, the default missing value is `true` and doesn't capture stdout and

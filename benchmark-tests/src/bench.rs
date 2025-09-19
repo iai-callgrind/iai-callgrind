@@ -266,10 +266,10 @@ impl Benchmark {
         capture: bool,
     ) -> BenchmarkOutput {
         let stdio = if capture {
-            std::env::set_var("IAI_CALLGRIND_COLOR", "never");
+            std::env::set_var("GUNGRAUN_COLOR", "never");
             Stdio::piped
         } else {
-            std::env::set_var("IAI_CALLGRIND_COLOR", "auto");
+            std::env::set_var("GUNGRAUN_COLOR", "auto");
             Stdio::inherit
         };
 
