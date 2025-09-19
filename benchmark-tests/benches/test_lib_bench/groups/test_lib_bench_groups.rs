@@ -190,7 +190,7 @@ library_benchmark_group!(
 // with `LibraryBenchmarkConfig::default_tool`for example if you're just interested in running DHAT.
 // Running cachegrind instead of callgrind is also possible but requires additional steps. This is
 // best described in the guide:
-// https://iai-callgrind.github.io/iai-callgrind/latest/html/index.html. You can also find a lot of
+// https://gungraun.github.io/gungraun/latest/html/index.html. You can also find a lot of
 // other Gungraun feature descriptions there.
 //
 // The output files of the profiling tools (DHAT, Massif, BBV) can be found next to the output files

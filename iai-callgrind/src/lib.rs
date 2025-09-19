@@ -382,7 +382,7 @@
 //! The produced flamegraph svg files are located next to the respective callgrind output file in
 //! the `target/iai` directory.
 //!
-//! [Guide]: https://iai-callgrind.github.io/iai-callgrind/latest/html/intro.html
+//! [Guide]: https://gungraun.github.io/gungraun/latest/html/intro.html
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![doc(test(attr(warn(unused))))]

@@ -174,7 +174,7 @@ macro_rules! binary_benchmark_attribute {
 /// options](https://valgrind.org/docs/manual/cl-manual.html#cl-manual.options).
 ///
 /// For an in-depth description of library benchmarks and more examples see the
-/// [guide](https://iai-callgrind.github.io/iai-callgrind/latest/html/benchmarks/library_benchmarks.html).
+/// [guide](https://gungraun.github.io/gungraun/latest/html/benchmarks/library_benchmarks.html).
 ///
 /// # Binary Benchmarks
 ///
@@ -222,7 +222,7 @@ macro_rules! main {
     ) => {
         compile_error!(
             "You are using a deprecated syntax of the main! macro to set up binary benchmarks. \
-            See the README (https://github.com/iai-callgrind/iai-callgrind) and \
+            See the README (https://github.com/gungraun/gungraun) and \
             docs (https://docs.rs/iai-callgrind/latest/iai_callgrind/) for further details."
         );
         pub fn main() {}
@@ -528,7 +528,7 @@ macro_rules! main {
     ) => {
         compile_error!(
             "You are using a deprecated syntax of the main! macro to set up library benchmarks. \
-            See the README (https://github.com/iai-callgrind/iai-callgrind) and \
+            See the README (https://github.com/gungraun/gungraun) and \
             docs (https://docs.rs/iai-callgrind/latest/iai_callgrind/) for further details."
         );
         pub fn main() {}
@@ -536,7 +536,7 @@ macro_rules! main {
     ( $( $func_name:ident ),+ $(,)* ) => {
         compile_error!(
             "You are using a deprecated syntax of the main! macro to set up library benchmarks. \
-            See the README (https://github.com/iai-callgrind/iai-callgrind) and \
+            See the README (https://github.com/gungraun/gungraun) and \
             docs (https://docs.rs/iai-callgrind/latest/iai_callgrind/) for further details."
         );
         pub fn main() {}
@@ -767,7 +767,7 @@ macro_rules! binary_benchmark_group {
     ) => {
         compile_error!(
             "You are using a deprecated syntax of the binary_benchmark_group! macro to set up binary \
-            benchmarks. See the README (https://github.com/iai-callgrind/iai-callgrind), the \
+            benchmarks. See the README (https://github.com/gungraun/gungraun), the \
             CHANGELOG on the same page and docs (https://docs.rs/iai-callgrind/latest/iai_callgrind) \
             for further details."
         );
@@ -783,7 +783,7 @@ macro_rules! binary_benchmark_group {
     ) => {
         compile_error!(
             "You are using a deprecated syntax of the binary_benchmark_group! macro to set up binary \
-            benchmarks. See the README (https://github.com/iai-callgrind/iai-callgrind), the \
+            benchmarks. See the README (https://github.com/gungraun/gungraun), the \
             CHANGELOG on the same page and docs (https://docs.rs/iai-callgrind/latest/iai_callgrind) \
             for further details."
         );

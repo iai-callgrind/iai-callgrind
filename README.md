@@ -129,10 +129,10 @@ for inclusion in the work by you shall be dual licensed as in
 
 ### Links
 
-- Iai-Callgrind is [mentioned](https://youtu.be/qfknfCsICUM?t=1228) in a talk at
+- Iai-Callgrind/Gungraun is [mentioned](https://youtu.be/qfknfCsICUM?t=1228) in a talk at
   [RustNation UK](https://www.rustnationuk.com/) about [Towards Impeccable
   Rust](https://www.youtube.com/watch?v=qfknfCsICUM) by Jon Gjengset
-- Iai-Callgrind is supported by [Bencher]
+- Iai-Callgrind/Gungraun is supported by [Bencher]
 
 ### Related Projects
 

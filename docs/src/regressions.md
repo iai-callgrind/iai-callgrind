@@ -228,7 +228,7 @@ The ones known to the author of this humble guide are
 * [SpacetimeDB](https://github.com/clockworklabs/SpacetimeDB)
 
 If you know of others, please feel free to
-[add](https://github.com/iai-callgrind/iai-callgrind/blob/5bec95ee37330954916ea29e7a7dc40ca62bc454/docs/src/regressions.md)
+[add](https://github.com/gungraun/gungraun/blob/5bec95ee37330954916ea29e7a7dc40ca62bc454/docs/src/regressions.md)
 them to this list.
 
 [`EventKind`]: https://docs.rs/iai-callgrind/0.16.1/iai_callgrind/enum.EventKind.html

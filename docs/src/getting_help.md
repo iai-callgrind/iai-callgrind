@@ -1,10 +1,10 @@
 # Getting Help
 
 Reach out to us on [Github
-Discussions](https://github.com/iai-callgrind/iai-callgrind/discussions) or open
-an [Issue](https://github.com/iai-callgrind/iai-callgrind/issues) in the
+Discussions](https://github.com/gungraun/gungraun/discussions) or open
+an [Issue](https://github.com/gungraun/gungraun/issues) in the
 [Gungraun
-Repository](https://github.com/iai-callgrind/iai-callgrind). Check the
+Repository](https://github.com/gungraun/gungraun). Check the
 open and closed issues in the issue board, maybe you can already find a solution
 to your problem there.
 

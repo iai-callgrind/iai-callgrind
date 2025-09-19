@@ -42,7 +42,7 @@ IAI_CALLGRIND_RUNNER=/tmp/bin/iai-callgrind-runner cargo bench --bench my-bench
 ### Binstall
 
 The `iai-callgrind-runner` binary is
-[pre-built](https://github.com/iai-callgrind/iai-callgrind/releases/tag/v0.16.1)
+[pre-built](https://github.com/gungraun/gungraun/releases/tag/v0.16.1)
 for most platforms supported by valgrind and easily installable with
 [binstall](https://github.com/cargo-bins/cargo-binstall)
 

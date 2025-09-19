@@ -7,12 +7,12 @@ are stored here:
 
 | Iai-Callgrind/Gungraun version | Schema version |
 | --- | --- |
-| >=0.9.0,<0.11.0 | [summary.v1.schema.json](https://github.com/iai-callgrind/iai-callgrind/blob/main/iai-callgrind-runner/schemas/summary.v1.schema.json) |
-| >=0.11.0,<0.14.0 | [summary.v2.schema.json](https://github.com/iai-callgrind/iai-callgrind/blob/main/iai-callgrind-runner/schemas/summary.v2.schema.json) |
-| >=0.14.0,<0.15.0 | [summary.v3.schema.json](https://github.com/iai-callgrind/iai-callgrind/blob/main/iai-callgrind-runner/schemas/summary.v3.schema.json) |
-| >=0.15.0,<0.15.2 | [summary.v4.schema.json](https://github.com/iai-callgrind/iai-callgrind/blob/main/iai-callgrind-runner/schemas/summary.v4.schema.json) |
-| >=0.15.2,<0.16.0 | [summary.v5.schema.json](https://github.com/iai-callgrind/iai-callgrind/blob/main/iai-callgrind-runner/schemas/summary.v5.schema.json) |
-| >=0.16.0 | [summary.v6.schema.json](https://github.com/iai-callgrind/iai-callgrind/blob/main/iai-callgrind-runner/schemas/summary.v6.schema.json) |
+| >=0.9.0,<0.11.0 | [summary.v1.schema.json](https://github.com/gungraun/gungraun/blob/main/gungraun-runner/schemas/summary.v1.schema.json) |
+| >=0.11.0,<0.14.0 | [summary.v2.schema.json](https://github.com/gungraun/gungraun/blob/main/gungraun-runner/schemas/summary.v2.schema.json) |
+| >=0.14.0,<0.15.0 | [summary.v3.schema.json](https://github.com/gungraun/gungraun/blob/main/gungraun-runner/schemas/summary.v3.schema.json) |
+| >=0.15.0,<0.15.2 | [summary.v4.schema.json](https://github.com/gungraun/gungraun/blob/main/gungraun-runner/schemas/summary.v4.schema.json) |
+| >=0.15.2,<0.16.0 | [summary.v5.schema.json](https://github.com/gungraun/gungraun/blob/main/gungraun-runner/schemas/summary.v5.schema.json) |
+| >=0.16.0 | [summary.v6.schema.json](https://github.com/gungraun/gungraun/blob/main/gungraun-runner/schemas/summary.v6.schema.json) |
 
 Each line of json output (if not `pretty-json`) is a summary of a single
 benchmark, and you may want to combine all benchmarks in an array. You can do so

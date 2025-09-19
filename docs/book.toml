@@ -13,8 +13,8 @@ edition = "2021"
 build-dir = "book/0.16.1"
 
 [output.html]
-git-repository-url = "https://github.com/iai-callgrind/iai-callgrind"
-edit-url-template = "https://github.com/iai-callgrind/iai-callgrind/master/docs/{path}"
+git-repository-url = "https://github.com/gungraun/gungraun"
+edit-url-template = "https://github.com/gungraun/gungraun/master/docs/{path}"
 additional-css = ["css/my.css", "css/dropdown.css"]
 additional-js = ["js/dropdown.js"]
 site-url = "/iai-callgrind/"

@@ -63,7 +63,7 @@ functionality or have found a bug? We would love to here about it. You want to
 contribute and hack on Gungraun?
 
 Please don't hesitate to [open an
-issue](https://github.com/iai-callgrind/iai-callgrind/issues).
+issue](https://github.com/gungraun/gungraun/issues).
 
 You want to hack on this guide? The source code of this book lives in [the docs
-subdirectory](https://github.com/iai-callgrind/iai-callgrind/tree/main/docs).
+subdirectory](https://github.com/gungraun/gungraun/tree/main/docs).

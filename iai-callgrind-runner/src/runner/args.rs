@@ -233,7 +233,7 @@ pub struct CommandLineArgs {
     /// for valid metrics and group members.
     ///
     /// See the the guide
-    /// (https://iai-callgrind.github.io/iai-callgrind/latest/html/regressions.html) for all
+    /// (https://gungraun.github.io/gungraun/latest/html/regressions.html) for all
     /// details or replace the format spec in `--callgrind-limits` with the following:
     ///
     /// group ::= "@" ( "default"
@@ -337,7 +337,7 @@ pub struct CommandLineArgs {
     ///               )
     /// event ::= EventKind
     ///
-    /// See the guide (https://iai-callgrind.github.io/iai-callgrind/latest/html/regressions.html)
+    /// See the guide (https://gungraun.github.io/gungraun/latest/html/regressions.html)
     /// for more details, the docs of `CallgrindMetrics`
     /// (<https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.CallgrindMetrics.html>) and
     /// `EventKind` <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.EventKind.html> for a
@@ -455,7 +455,7 @@ pub struct CommandLineArgs {
     /// and group members.
     ///
     /// See the the guide
-    /// (https://iai-callgrind.github.io/iai-callgrind/latest/html/regressions.html) for all
+    /// (https://gungraun.github.io/gungraun/latest/html/regressions.html) for all
     /// details or replace the format spec in `--callgrind-limits` with the following:
     ///
     /// group ::= "@" ( "default" | "all" )

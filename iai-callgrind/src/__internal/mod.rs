@@ -173,7 +173,7 @@ impl Runner {
                          variable IAI_CALLGRIND_RUNNER to the absolute path of the \
                          iai-callgrind-runner executable.\n\nMake sure you have followed the \
                          installation instructions in the guide:\n\
-                         https://iai-callgrind.github.io/iai-callgrind/latest/html/installation/iai_callgrind.html",
+                         https://gungraun.github.io/gungraun/latest/html/installation/iai_callgrind.html",
                     ),
                 ));
                 errors
