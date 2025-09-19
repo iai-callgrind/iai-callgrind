@@ -90,7 +90,48 @@ fn print_warnings() {
         );
     }
 
-    for var in ["COLOR", "LOG", "ALLOW_ASLR"] {
+    for var in [
+        "ALLOW_ASLR",
+        "BASELINE",
+        "BBV_ARGS",
+        "CACHEGRIND_ARGS",
+        "CACHEGRIND_LIMITS",
+        "CACHEGRIND_METRICS",
+        "CALLGRIND_ARGS",
+        "CALLGRIND_LIMITS",
+        "CALLGRIND_METRICS",
+        "COLOR",
+        "DEFAULT_TOOL",
+        "DHAT_ARGS",
+        "DHAT_LIMITS",
+        "DHAT_METRICS",
+        "DRD_ARGS",
+        "DRD_METRICS",
+        "FILTER",
+        "HELGRIND_ARGS",
+        "HELGRIND_METRICS",
+        "HOME",
+        "LIST",
+        "LOAD_BASELINE",
+        "LOG",
+        "MASSIF_ARGS",
+        "MEMCHECK_ARGS",
+        "MEMCHECK_METRICS",
+        "NOCAPTURE",
+        "NOSUMMARY",
+        "OUTPUT_FORMAT",
+        "REGRESSION_FAIL_FAST",
+        "SAVE_BASELINE",
+        "SAVE_SUMMARY",
+        "SEPARATE_TARGETS",
+        "SHOW_GRID",
+        "SHOW_INTERMEDIATE",
+        "SHOW_ONLY_COMPARISON",
+        "TOLERANCE",
+        "TOOLS",
+        "TRUNCATE_DESCRIPTION",
+        "VALGRIND_ARGS",
+    ] {
         let old = format!("IAI_CALLGRIND_{var}");
         if std::env::var(&old).is_ok() {
             let new = format!("GUNGRAUN_{var}");

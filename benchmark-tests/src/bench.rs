@@ -800,7 +800,7 @@ impl BenchmarkRunner {
     pub fn run(&self) -> Result<(), String> {
         // We need the `summary.json` files to verify that not all costs are zero. Extracting this
         // info from the summary is much easier than doing it from the output.
-        std::env::set_var("IAI_CALLGRIND_SAVE_SUMMARY", "json");
+        std::env::set_var("GUNGRAUN_SAVE_SUMMARY", "json");
         std::env::set_var(
             "GUNGRAUN_RUNNER",
             self.metadata

@@ -20,11 +20,11 @@ each tool and their command line arguments.
 It's possible to change the default tool `Callgrind` to any other valgrind tool
 with the [command-line argument](./cli_and_env/basics.md)
 `--default-tool=<tool>` or environment variable
-`IAI_CALLGRIND_DEFAULT_TOOL=<tool>`. `<tool>` may be one of `callgrind`,
+`GUNGRAUN_DEFAULT_TOOL=<tool>`. `<tool>` may be one of `callgrind`,
 `cachegrind`, `dhat`, `massif`, `memcheck`, `helgrind`, `drd`, `exp-bbv`.
 
 Running tools in addition to the default tool can be achieved with
-`--tools=<tools>` or `IAI_CALLGRIND_TOOLS=<tools>` where `<tools>` is a
+`--tools=<tools>` or `GUNGRAUN_TOOLS=<tools>` where `<tools>` is a
 `,`-separated list of one or more of the `<tool>` above.
 
 The tool configurations can be changed in the benchmark file by specifying the

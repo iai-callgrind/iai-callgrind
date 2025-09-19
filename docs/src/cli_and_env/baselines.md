@@ -11,11 +11,11 @@ Gungraun offers such custom baselines. If you are familiar with
 [criterion.rs](https://bheisler.github.io/criterion.rs/book/user_guide/command_line_options.html#baselines),
 the following command line arguments should also be very familiar to you:
 
-- `--save-baseline=NAME` (env: `IAI_CALLGRIND_SAVE_BASELINE`): Compare against
+- `--save-baseline=NAME` (env: `GUNGRAUN_SAVE_BASELINE`): Compare against
   the `NAME` baseline if present and then overwrite it.
-- `--baseline=NAME` (env: `IAI_CALLGRIND_BASELINE`): Compare against the `NAME`
+- `--baseline=NAME` (env: `GUNGRAUN_BASELINE`): Compare against the `NAME`
   baseline without overwriting it
-- `--load-baseline=NAME` (env: `IAI_CALLGRIND_LOAD_BASELINE`): Load the `NAME`
+- `--load-baseline=NAME` (env: `GUNGRAUN_LOAD_BASELINE`): Load the `NAME`
   baseline as the `new` data set instead of creating a new one. This option
   needs also `--baseline=NAME` to be present.
 

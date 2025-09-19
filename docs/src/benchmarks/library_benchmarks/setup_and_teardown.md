@@ -52,7 +52,7 @@ benchmark. Let's assume the above benchmark is in a file
 `benches/my_benchmark.rs`, then running
 
 ```shell
-IAI_CALLGRIND_NOCAPTURE=true cargo bench
+GUNGRAUN_NOCAPTURE=true cargo bench
 ```
 
 result in the benchmark output like below.
@@ -156,11 +156,11 @@ main!(library_benchmark_groups = my_group);
 Note Gungraun captures all output per default. In order to actually see the
 output of the benchmark, `setup` and `teardown` functions, it is required to run
 the benchmarks with the flag `--nocapture` or set the environment variable
-`IAI_CALLGRIND_NOCAPTURE=true`. Let's assume the above benchmark is in a file
+`GUNGRAUN_NOCAPTURE=true`. Let's assume the above benchmark is in a file
 `benches/my_benchmark.rs`, then running
 
 ```shell
-IAI_CALLGRIND_NOCAPTURE=true cargo bench
+GUNGRAUN_NOCAPTURE=true cargo bench
 ```
 
 results in output like the below

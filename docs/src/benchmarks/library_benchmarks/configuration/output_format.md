@@ -52,7 +52,7 @@ main!(
 ```
 
 or by using the command-line argument `--callgrind-metrics=@all` or the
-environment variable `IAI_CALLGRIND_CALLGRIND_METRICS=@all`.
+environment variable `GUNGRAUN_CALLGRIND_METRICS=@all`.
 
 The Gungraun output will then show all cache metrics:
 
@@ -135,7 +135,7 @@ main!(library_benchmark_groups = my_group);
 ```
 
 or by using the command-line argument `--tolerance=0.9` (or
-`IAI_CALLGRIND_TOLERANCE=0.9`).
+`GUNGRAUN_TOLERANCE=0.9`).
 
 The second or any following Gungraun run might then show something like
 that:

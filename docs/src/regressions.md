@@ -28,9 +28,9 @@ occur, and Gungraun will exit with error code `3`.
 ## Defining limits on the command-line
 
 Limits can be defined on the command-line for the following tools with
-`--callgrind-limits` (`IAI_CALLGRIND_CALLGRIND_LIMITS`), `--cachegrind-limits`
-(`IAI_CALLGRIND_CACHEGRIND_LIMITS`)  and `--dhat-limits`
-(`IAI_CALLGRIND_DHAT_LIMITS`). Command-line limits overwrite the limits
+`--callgrind-limits` (`GUNGRAUN_CALLGRIND_LIMITS`), `--cachegrind-limits`
+(`GUNGRAUN_CACHEGRIND_LIMITS`)  and `--dhat-limits`
+(`GUNGRAUN_DHAT_LIMITS`). Command-line limits overwrite the limits
 specified in the benchmark file (see below).
 
 In order to disambiguate between soft and hard limits, soft limits have to be

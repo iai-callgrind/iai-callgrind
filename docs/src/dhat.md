@@ -59,8 +59,8 @@ and not different to any [other tool](./tools.md):
 
 Either use [command-line arguments or environment
 variables](./cli_and_env/basics.md): `--default-tool=dhat` or
-`IAI_CALLGRIND_DEFAULT_TOOL=dhat` (replaces callgrind as default tool) or
-`--tools=dhat` or `IAI_CALLGRIND_TOOLS=dhat` (runs DHAT in addition to the
+`GUNGRAUN_DEFAULT_TOOL=dhat` (replaces callgrind as default tool) or
+`--tools=dhat` or `GUNGRAUN_TOOLS=dhat` (runs DHAT in addition to the
 default tool).
 
 ## Usage in a benchmark and a small example analysis

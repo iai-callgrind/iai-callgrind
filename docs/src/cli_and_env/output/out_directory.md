@@ -10,10 +10,10 @@ This directory structure can partly be changed with the following options.
 
 Per default, all benchmark output files are stored under the
 `$WORKSPACE_ROOT/target/gungraun` directory tree. This home directory can be changed
-with the `IAI_CALLGRIND_HOME` environment variable or the command-line argument
+with the `GUNGRAUN_HOME` environment variable or the command-line argument
 `--home`. The command-line argument overwrites the value of the environment
 variable. For example to store all files under the `/tmp/gungraun`
-directory you can use `IAI_CALLGRIND_HOME=/tmp/gungraun` or `cargo bench --
+directory you can use `GUNGRAUN_HOME=/tmp/gungraun` or `cargo bench --
 --home=/tmp/gungraun`.
 
 ## Separate targets
@@ -24,7 +24,7 @@ up comparing the benchmarks with the wrong target leading to strange results.
 You can achieve this with different baselines per target, but it's much less
 painful to separate the output files by target with the `--separate-targets`
 command-line argument or setting the environment variable
-`IAI_CALLGRIND_SEPARATE_TARGETS=yes`). The output directory structure
+`GUNGRAUN_SEPARATE_TARGETS=yes`). The output directory structure
 changes from
 
 `target/gungraun/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`

@@ -179,7 +179,7 @@ pub struct CommandLineArgs {
         default_missing_value = "default",
         num_args = 0..=1,
         require_equals = true,
-        env = "IAI_CALLGRIND_BASELINE",
+        env = "GUNGRAUN_BASELINE",
         display_order = 200
     )]
     pub baseline: Option<BaselineName>,
@@ -198,7 +198,7 @@ pub struct CommandLineArgs {
         value_parser = parse_args,
         num_args = 1,
         verbatim_doc_comment,
-        env = "IAI_CALLGRIND_BBV_ARGS",
+        env = "GUNGRAUN_BBV_ARGS",
         display_order = 500
     )]
     pub bbv_args: Option<RawArgs>,
@@ -217,7 +217,7 @@ pub struct CommandLineArgs {
         value_parser = parse_args,
         num_args = 1,
         verbatim_doc_comment,
-        env = "IAI_CALLGRIND_CACHEGRIND_ARGS",
+        env = "GUNGRAUN_CACHEGRIND_ARGS",
         display_order = 500
     )]
     pub cachegrind_args: Option<RawArgs>,
@@ -256,7 +256,7 @@ pub struct CommandLineArgs {
         num_args = 1,
         verbatim_doc_comment,
         value_parser = parse_cachegrind_limits,
-        env = "IAI_CALLGRIND_CACHEGRIND_LIMITS",
+        env = "GUNGRAUN_CACHEGRIND_LIMITS",
         display_order = 600
     )]
     pub cachegrind_limits: Option<ToolRegressionConfig>,
@@ -286,7 +286,7 @@ pub struct CommandLineArgs {
         required = false,
         verbatim_doc_comment,
         value_parser = parse_cachegrind_metrics,
-        env = "IAI_CALLGRIND_CACHEGRIND_METRICS",
+        env = "GUNGRAUN_CACHEGRIND_METRICS",
         display_order = 700
     )]
     pub cachegrind_metrics: Option<IndexSet<CachegrindMetric>>,
@@ -308,7 +308,7 @@ pub struct CommandLineArgs {
         value_parser = parse_args,
         num_args = 1,
         verbatim_doc_comment,
-        env = "IAI_CALLGRIND_CALLGRIND_ARGS",
+        env = "GUNGRAUN_CALLGRIND_ARGS",
         display_order = 500
     )]
     pub callgrind_args: Option<RawArgs>,
@@ -357,7 +357,7 @@ pub struct CommandLineArgs {
         num_args = 1,
         verbatim_doc_comment,
         value_parser = parse_callgrind_limits,
-        env = "IAI_CALLGRIND_CALLGRIND_LIMITS",
+        env = "GUNGRAUN_CALLGRIND_LIMITS",
         display_order = 600
     )]
     pub callgrind_limits: Option<ToolRegressionConfig>,
@@ -392,7 +392,7 @@ pub struct CommandLineArgs {
         required = false,
         verbatim_doc_comment,
         value_parser = parse_callgrind_metrics,
-        env = "IAI_CALLGRIND_CALLGRIND_METRICS",
+        env = "GUNGRAUN_CALLGRIND_METRICS",
         display_order = 700
     )]
     pub callgrind_metrics: Option<IndexSet<EventKind>>,
@@ -421,7 +421,7 @@ pub struct CommandLineArgs {
         long = "default-tool",
         num_args = 1,
         verbatim_doc_comment,
-        env = "IAI_CALLGRIND_DEFAULT_TOOL",
+        env = "GUNGRAUN_DEFAULT_TOOL",
         display_order = 50
     )]
     pub default_tool: Option<ValgrindTool>,
@@ -439,7 +439,7 @@ pub struct CommandLineArgs {
         value_parser = parse_args,
         num_args = 1,
         verbatim_doc_comment,
-        env = "IAI_CALLGRIND_DHAT_ARGS",
+        env = "GUNGRAUN_DHAT_ARGS",
         display_order = 500
     )]
     pub dhat_args: Option<RawArgs>,
@@ -484,7 +484,7 @@ pub struct CommandLineArgs {
         num_args = 1,
         verbatim_doc_comment,
         value_parser = parse_dhat_limits,
-        env = "IAI_CALLGRIND_DHAT_LIMITS",
+        env = "GUNGRAUN_DHAT_LIMITS",
         display_order = 600
     )]
     pub dhat_limits: Option<ToolRegressionConfig>,
@@ -513,7 +513,7 @@ pub struct CommandLineArgs {
         required = false,
         verbatim_doc_comment,
         value_parser = parse_dhat_metrics,
-        env = "IAI_CALLGRIND_DHAT_METRICS",
+        env = "GUNGRAUN_DHAT_METRICS",
         display_order = 700
     )]
     pub dhat_metrics: Option<IndexSet<DhatMetric>>,
@@ -532,7 +532,7 @@ pub struct CommandLineArgs {
         value_parser = parse_args,
         num_args = 1,
         verbatim_doc_comment,
-        env = "IAI_CALLGRIND_DRD_ARGS",
+        env = "GUNGRAUN_DRD_ARGS",
         display_order = 500
     )]
     pub drd_args: Option<RawArgs>,
@@ -559,7 +559,7 @@ pub struct CommandLineArgs {
         required = false,
         verbatim_doc_comment,
         value_parser = parse_drd_metrics,
-        env = "IAI_CALLGRIND_DRD_METRICS",
+        env = "GUNGRAUN_DRD_METRICS",
         display_order = 700
     )]
     pub drd_metrics: Option<IndexSet<ErrorMetric>>,
@@ -568,7 +568,7 @@ pub struct CommandLineArgs {
     /// If specified, only run benches containing this string in their names
     ///
     /// Note that a benchmark name might differ from the benchmark file name.
-    #[arg(name = "BENCHNAME", num_args = 0..=1, env = "IAI_CALLGRIND_FILTER")]
+    #[arg(name = "BENCHNAME", num_args = 0..=1, env = "GUNGRAUN_FILTER")]
     pub filter: Option<BenchmarkFilter>,
 
     #[rustfmt::skip]
@@ -585,7 +585,7 @@ pub struct CommandLineArgs {
         value_parser = parse_args,
         num_args = 1,
         verbatim_doc_comment,
-        env = "IAI_CALLGRIND_HELGRIND_ARGS",
+        env = "GUNGRAUN_HELGRIND_ARGS",
         display_order = 500
     )]
     pub helgrind_args: Option<RawArgs>,
@@ -610,7 +610,7 @@ pub struct CommandLineArgs {
         required = false,
         verbatim_doc_comment,
         value_parser = parse_helgrind_metrics,
-        env = "IAI_CALLGRIND_HELGRIND_METRICS",
+        env = "GUNGRAUN_HELGRIND_METRICS",
         display_order = 700
     )]
     pub helgrind_metrics: Option<IndexSet<ErrorMetric>>,
@@ -624,7 +624,7 @@ pub struct CommandLineArgs {
     #[arg(
         long = "home",
         num_args = 1,
-        env = "IAI_CALLGRIND_HOME",
+        env = "GUNGRAUN_HOME",
         display_order = 100
     )]
     pub home: Option<PathBuf>,
@@ -644,7 +644,7 @@ pub struct CommandLineArgs {
         require_equals = true,
         value_parser = BoolishValueParser::new(),
         action = ArgAction::Set,
-        env = "IAI_CALLGRIND_LIST"
+        env = "GUNGRAUN_LIST"
     )]
     pub list: bool,
 
@@ -657,7 +657,7 @@ pub struct CommandLineArgs {
         num_args = 0..=1,
         require_equals = true,
         default_missing_value = "default",
-        env = "IAI_CALLGRIND_LOAD_BASELINE",
+        env = "GUNGRAUN_LOAD_BASELINE",
         display_order = 200
     )]
     pub load_baseline: Option<BaselineName>,
@@ -676,7 +676,7 @@ pub struct CommandLineArgs {
         value_parser = parse_args,
         num_args = 1,
         verbatim_doc_comment,
-        env = "IAI_CALLGRIND_MASSIF_ARGS",
+        env = "GUNGRAUN_MASSIF_ARGS",
         display_order = 500
     )]
     pub massif_args: Option<RawArgs>,
@@ -695,7 +695,7 @@ pub struct CommandLineArgs {
         value_parser = parse_args,
         num_args = 1,
         verbatim_doc_comment,
-        env = "IAI_CALLGRIND_MEMCHECK_ARGS",
+        env = "GUNGRAUN_MEMCHECK_ARGS",
         display_order = 500
     )]
     pub memcheck_args: Option<RawArgs>,
@@ -728,7 +728,7 @@ pub struct CommandLineArgs {
         required = false,
         verbatim_doc_comment,
         value_parser = parse_memcheck_metrics,
-        env = "IAI_CALLGRIND_MEMCHECK_METRICS",
+        env = "GUNGRAUN_MEMCHECK_METRICS",
         display_order = 700
     )]
     pub memcheck_metrics: Option<IndexSet<ErrorMetric>>,
@@ -756,7 +756,7 @@ pub struct CommandLineArgs {
         num_args = 0..=1,
         require_equals = true,
         value_parser = parse_nocapture,
-        env = "IAI_CALLGRIND_NOCAPTURE",
+        env = "GUNGRAUN_NOCAPTURE",
         display_order = 300
     )]
     pub nocapture: NoCapture,
@@ -776,7 +776,7 @@ pub struct CommandLineArgs {
         require_equals = true,
         value_parser = BoolishValueParser::new(),
         action = ArgAction::Set,
-        env = "IAI_CALLGRIND_NOSUMMARY",
+        env = "GUNGRAUN_NOSUMMARY",
         display_order = 300
     )]
     pub nosummary: bool,
@@ -802,7 +802,7 @@ pub struct CommandLineArgs {
         required = false,
         default_value = "default",
         num_args = 1,
-        env = "IAI_CALLGRIND_OUTPUT_FORMAT",
+        env = "GUNGRAUN_OUTPUT_FORMAT",
         display_order = 300
     )]
     pub output_format: OutputFormatKind,
@@ -817,7 +817,7 @@ pub struct CommandLineArgs {
         num_args = 0..=1,
         require_equals = true,
         value_parser = BoolishValueParser::new(),
-        env = "IAI_CALLGRIND_REGRESSION_FAIL_FAST",
+        env = "GUNGRAUN_REGRESSION_FAIL_FAST",
         display_order = 600
     )]
     pub regression_fail_fast: Option<bool>,
@@ -830,7 +830,7 @@ pub struct CommandLineArgs {
         num_args = 0..=1,
         require_equals = true,
         conflicts_with_all = &["baseline", "LOAD_BASELINE"],
-        env = "IAI_CALLGRIND_SAVE_BASELINE",
+        env = "GUNGRAUN_SAVE_BASELINE",
         display_order = 200
     )]
     pub save_baseline: Option<BaselineName>,
@@ -844,7 +844,7 @@ pub struct CommandLineArgs {
         num_args = 0..=1,
         require_equals = true,
         default_missing_value = "json",
-        env = "IAI_CALLGRIND_SAVE_SUMMARY",
+        env = "GUNGRAUN_SAVE_SUMMARY",
         display_order = 300
     )]
     pub save_summary: Option<SummaryFormat>,
@@ -874,7 +874,7 @@ pub struct CommandLineArgs {
         require_equals = true,
         value_parser = BoolishValueParser::new(),
         action = ArgAction::Set,
-        env = "IAI_CALLGRIND_SEPARATE_TARGETS",
+        env = "GUNGRAUN_SEPARATE_TARGETS",
         display_order = 100
     )]
     pub separate_targets: bool,
@@ -891,7 +891,7 @@ pub struct CommandLineArgs {
         num_args = 0..=1,
         require_equals = true,
         value_parser = BoolishValueParser::new(),
-        env = "IAI_CALLGRIND_SHOW_GRID",
+        env = "GUNGRAUN_SHOW_GRID",
         display_order = 300
     )]
     pub show_grid: Option<bool>,
@@ -912,7 +912,7 @@ pub struct CommandLineArgs {
         num_args = 0..=1,
         require_equals = true,
         value_parser = BoolishValueParser::new(),
-        env = "IAI_CALLGRIND_SHOW_INTERMEDIATE",
+        env = "GUNGRAUN_SHOW_INTERMEDIATE",
         display_order = 300
     )]
     pub show_intermediate: Option<bool>,
@@ -933,7 +933,7 @@ pub struct CommandLineArgs {
         require_equals = true,
         value_parser = BoolishValueParser::new(),
         verbatim_doc_comment,
-        env = "IAI_CALLGRIND_SHOW_ONLY_COMPARISON",
+        env = "GUNGRAUN_SHOW_ONLY_COMPARISON",
         display_order = 300
     )]
     pub show_only_comparison: Option<bool>,
@@ -956,7 +956,7 @@ pub struct CommandLineArgs {
         num_args = 0..=1,
         require_equals = true,
         verbatim_doc_comment,
-        env = "IAI_CALLGRIND_TOLERANCE",
+        env = "GUNGRAUN_TOLERANCE",
         display_order = 300
     )]
     pub tolerance: Option<f64>,
@@ -976,7 +976,7 @@ pub struct CommandLineArgs {
         num_args = 1..,
         value_delimiter = ',',
         verbatim_doc_comment,
-        env = "IAI_CALLGRIND_TOOLS",
+        env = "GUNGRAUN_TOOLS",
         display_order = 50
     )]
     pub tools: Vec<ValgrindTool>,
@@ -1007,7 +1007,7 @@ pub struct CommandLineArgs {
         require_equals = true,
         value_parser = parse_truncate_description,
         verbatim_doc_comment,
-        env = "IAI_CALLGRIND_TRUNCATE_DESCRIPTION",
+        env = "GUNGRAUN_TRUNCATE_DESCRIPTION",
         display_order = 300
     )]
     pub truncate_description: Option<TruncateDescription>,
@@ -1028,7 +1028,7 @@ pub struct CommandLineArgs {
         value_parser = parse_args,
         num_args = 1,
         verbatim_doc_comment,
-        env = "IAI_CALLGRIND_VALGRIND_ARGS",
+        env = "GUNGRAUN_VALGRIND_ARGS",
         display_order = 500
     )]
     pub valgrind_args: Option<RawArgs>,
@@ -1461,7 +1461,7 @@ mod tests {
     #[serial_test::serial]
     fn test_callgrind_args_env() {
         let test_arg = "--just-testing=yes";
-        std::env::set_var("IAI_CALLGRIND_CALLGRIND_ARGS", test_arg);
+        std::env::set_var("GUNGRAUN_CALLGRIND_ARGS", test_arg);
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(
             result.callgrind_args,
@@ -1484,7 +1484,7 @@ mod tests {
     fn test_callgrind_args_cli_takes_precedence_over_env() {
         let test_arg_yes = "--just-testing=yes";
         let test_arg_no = "--just-testing=no";
-        std::env::set_var("IAI_CALLGRIND_CALLGRIND_ARGS", test_arg_yes);
+        std::env::set_var("GUNGRAUN_CALLGRIND_ARGS", test_arg_yes);
         let result = CommandLineArgs::parse_from([format!("--callgrind-args={test_arg_no}")]);
         assert_eq!(
             result.callgrind_args,
@@ -1495,7 +1495,7 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_save_summary_env() {
-        std::env::set_var("IAI_CALLGRIND_SAVE_SUMMARY", "json");
+        std::env::set_var("GUNGRAUN_SAVE_SUMMARY", "json");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(result.save_summary, Some(SummaryFormat::Json));
     }
@@ -1537,7 +1537,7 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_separate_targets_env() {
-        std::env::set_var("IAI_CALLGRIND_SEPARATE_TARGETS", "yes");
+        std::env::set_var("GUNGRAUN_SEPARATE_TARGETS", "yes");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert!(result.separate_targets);
     }
@@ -1558,7 +1558,7 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_home_env() {
-        std::env::set_var("IAI_CALLGRIND_HOME", "/tmp/my_gungraun_home");
+        std::env::set_var("GUNGRAUN_HOME", "/tmp/my_gungraun_home");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(result.home, Some(PathBuf::from("/tmp/my_gungraun_home")));
     }
@@ -1593,7 +1593,7 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_nocapture_env() {
-        std::env::set_var("IAI_CALLGRIND_NOCAPTURE", "true");
+        std::env::set_var("GUNGRAUN_NOCAPTURE", "true");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(result.nocapture, NoCapture::True);
     }
@@ -1692,7 +1692,7 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_arg_callgrind_metrics_when_env() {
-        std::env::set_var("IAI_CALLGRIND_CALLGRIND_METRICS", "ir");
+        std::env::set_var("GUNGRAUN_CALLGRIND_METRICS", "ir");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(
             result.callgrind_metrics,
@@ -1726,7 +1726,7 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_arg_cachegrind_metrics_when_env() {
-        std::env::set_var("IAI_CALLGRIND_CACHEGRIND_METRICS", "ir");
+        std::env::set_var("GUNGRAUN_CACHEGRIND_METRICS", "ir");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(
             result.cachegrind_metrics,
@@ -1756,7 +1756,7 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_arg_dhat_metrics_when_env() {
-        std::env::set_var("IAI_CALLGRIND_DHAT_METRICS", "totalbytes");
+        std::env::set_var("GUNGRAUN_DHAT_METRICS", "totalbytes");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(
             result.dhat_metrics,
@@ -1791,7 +1791,7 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_arg_drd_metrics_when_env() {
-        std::env::set_var("IAI_CALLGRIND_DRD_METRICS", "errors");
+        std::env::set_var("GUNGRAUN_DRD_METRICS", "errors");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(
             result.drd_metrics,
@@ -1826,7 +1826,7 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_arg_memcheck_metrics_when_env() {
-        std::env::set_var("IAI_CALLGRIND_MEMCHECK_METRICS", "errors");
+        std::env::set_var("GUNGRAUN_MEMCHECK_METRICS", "errors");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(
             result.memcheck_metrics,
@@ -1861,7 +1861,7 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_arg_helgrind_metrics_when_env() {
-        std::env::set_var("IAI_CALLGRIND_HELGRIND_METRICS", "errors");
+        std::env::set_var("GUNGRAUN_HELGRIND_METRICS", "errors");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(
             result.helgrind_metrics,
@@ -1880,7 +1880,7 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_arg_tolerance_when_env() {
-        std::env::set_var("IAI_CALLGRIND_TOLERANCE", "2.0");
+        std::env::set_var("GUNGRAUN_TOLERANCE", "2.0");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(result.tolerance, Some(2.0));
     }
@@ -1897,7 +1897,7 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_arg_show_intermediate_when_env() {
-        std::env::set_var("IAI_CALLGRIND_SHOW_INTERMEDIATE", "yes");
+        std::env::set_var("GUNGRAUN_SHOW_INTERMEDIATE", "yes");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(result.show_intermediate, Some(true));
     }
@@ -1914,7 +1914,7 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_arg_show_grid_when_env() {
-        std::env::set_var("IAI_CALLGRIND_SHOW_GRID", "yes");
+        std::env::set_var("GUNGRAUN_SHOW_GRID", "yes");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(result.show_grid, Some(true));
     }
@@ -1932,7 +1932,7 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_arg_truncate_description_when_env() {
-        std::env::set_var("IAI_CALLGRIND_TRUNCATE_DESCRIPTION", "no");
+        std::env::set_var("GUNGRAUN_TRUNCATE_DESCRIPTION", "no");
         let result = CommandLineArgs::parse_from::<[_; 0], &str>([]);
         assert_eq!(result.truncate_description, Some(TruncateDescription::None));
     }

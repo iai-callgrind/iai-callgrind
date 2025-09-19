@@ -14,7 +14,7 @@ too.
 ## Tell Gungraun to not capture the output
 
 Another nicer possibility is, to tell Gungraun to not capture output with
-the `--nocapture` (env: `IAI_CALLGRIND_NOCAPTURE`) option. This is currently
+the `--nocapture` (env: `GUNGRAUN_NOCAPTURE`) option. This is currently
 restricted to the `callgrind` run to prevent showing the same output multiple
 times. So, any terminal output of [other tool runs](../../tools.md) is still
 captured.
