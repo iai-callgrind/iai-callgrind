@@ -206,15 +206,15 @@ jobs:
     needs: [format]
     runs-on: ubuntu-latest
     env:
-      IAI_CALLGRIND_VALGRIND_INCLUDE: "/usr/local/include"
-      IAI_CALLGRIND_VALGRIND_PATH: "/usr/local/bin"
+      GUNGRAUN_VALGRIND_INCLUDE: "/usr/local/include"
+      GUNGRAUN_VALGRIND_PATH: "/usr/local/bin"
     steps:
       - uses: actions/checkout@v5
       - name: Setup and run tests
         id: test
         uses: vmactions/freebsd-vm@v1
         with:
-          envs: "IAI_CALLGRIND_VALGRIND_INCLUDE IAI_CALLGRIND_VALGRIND_PATH"
+          envs: "GUNGRAUN_VALGRIND_INCLUDE GUNGRAUN_VALGRIND_PATH"
           usesh: true
           sync: rsync
           # copyback: `false` reduces run time by some minutes

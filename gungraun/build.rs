@@ -52,6 +52,26 @@ mod imp {
         }
     }
 
+    pub fn print_migration_warnings() {
+        for (old, new) in std::env::vars()
+            .filter_map(|(key, _)| {
+                (key.starts_with("IAI_CALLGRIND_") && key.ends_with("VALGRIND_INCLUDE"))
+                    .then(|| (key.clone(), key.replace("IAI_CALLGRIND_", "GUNGRAUN_")))
+            })
+            .chain([(
+                "IAI_CALLGRIND_VALGRIND_PATH".to_owned(),
+                "GUNGRAUN_VALGRIND_PATH".to_owned(),
+            )])
+        {
+            if std::env::var(&old).is_ok() && std::env::var(&new).is_err() {
+                eprintln!(
+                    "gungraun: WARNING: With version 0.17.0, the name of the environment variable \
+                     `{old}` has changed to `{new}`."
+                );
+            }
+        }
+    }
+
     fn print_client_requests_support(value: &Support) {
         println!("cargo:rustc-cfg=client_requests_support=\"{value}\"");
     }
@@ -59,10 +79,10 @@ mod imp {
     fn include_dirs(target: &Target) -> impl Iterator<Item = String> {
         [
             Cow::Owned(format!(
-                "IAI_CALLGRIND_{}_VALGRIND_INCLUDE",
+                "GUNGRAUN_{}_VALGRIND_INCLUDE",
                 target.triple.replace('-', "_").to_ascii_uppercase()
             )),
-            Cow::Borrowed("IAI_CALLGRIND_VALGRIND_INCLUDE"),
+            Cow::Borrowed("GUNGRAUN_VALGRIND_INCLUDE"),
         ]
         .into_iter()
         .filter_map(|env| std::env::var(env.as_ref()).ok())
@@ -138,9 +158,11 @@ mod imp {
     }
 
     pub fn main() {
+        print_migration_warnings();
+
         println!("cargo:rerun-if-changed=valgrind/wrapper.h");
         println!("cargo:rerun-if-changed=valgrind/native.c");
-        println!("cargo:rerun-if-env-changed=IAI_CALLGRIND_VALGRIND_INCLUDE");
+        println!("cargo:rerun-if-env-changed=GUNGRAUN_VALGRIND_INCLUDE");
         println!("cargo:rerun-if-env-changed=GUNGRAUN_CROSS_TARGET");
         println!("cargo:rerun-if-env-changed=TARGET");
 

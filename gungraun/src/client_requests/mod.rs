@@ -19,13 +19,13 @@
 //!
 //! If you encounter problems because the valgrind header files cannot be found, first ensure you
 //! have installed valgrind and your package manager's package includes the header files. If not or
-//! you use a custom build of valgrind, you can point the `IAI_CALLGRIND_VALGRIND_INCLUDE` or the
-//! `IAI_CALLGRIND_<triple>_VALGRIND_INCLUDE` environment variables to the include path where the
+//! you use a custom build of valgrind, you can point the `GUNGRAUN_VALGRIND_INCLUDE` or the
+//! `GUNGRAUN_<triple>_VALGRIND_INCLUDE` environment variables to the include path where the
 //! valgrind headers can be found. The include directive used by `gungraun` is `#include
 //! "valgrind/valgrind.h"` and is prefixed with `valgrind`. For example, if the valgrind header
 //! files reside in `/home/foo/repo/valgrind/{valgrind.h, callgrind.h, ...}`, then the environment
-//! variable has to point to `IAI_CALLGRIND_VALGRIND_INCLUDE=/home/foo/repo` and not
-//! `IAI_CALLGRIND_VALGRIND_INCLUDE=/home/foo/repo/valgrind`.
+//! variable has to point to `GUNGRAUN_VALGRIND_INCLUDE=/home/foo/repo` and not
+//! `GUNGRAUN_VALGRIND_INCLUDE=/home/foo/repo/valgrind`.
 //!
 //! Also, worth to consider is that the build of `gungraun` with client requests takes longer
 //! than the build without them.
