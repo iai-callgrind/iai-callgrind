@@ -1,28 +1,21 @@
 <!-- spell-checker: ignore fixt binstall libtest eprintln usize Gjengset -->
 <!-- markdownlint-disable MD041 MD033 -->
 
-<h1 align="center">Iai-Callgrind</h1>
+<h1 align="center">Gungraun</h1>
 
 <div align="center">High-precision and consistent benchmarking framework/harness for Rust</div>
 
-> **[!WARNING]**
-> We've outgrown our original name. **Iai‑Callgrind** is transitioning to
-> **Gungraun**. Starting with version 0.17.0, the crate will be published as
-> **Gungraun**; earlier releases remain available under the old name. Thank you
-> for your understanding — we look forward to continuing development under the new
-> name!
-
 <div align="center">
-    <a href="https://iai-callgrind.github.io/iai-callgrind">Guide</a>
+    <a href="https://gungraun.github.io/gungraun">Guide</a>
     |
     <a href="https://docs.rs/crate/iai-callgrind/">Released API Docs</a>
     |
-    <a href="https://github.com/iai-callgrind/iai-callgrind/blob/main/CHANGELOG.md">Changelog</a>
+    <a href="https://github.com/gungraun/gungraun/blob/main/CHANGELOG.md">Changelog</a>
 </div>
 <br>
 <div align="center">
-    <a href="https://github.com/iai-callgrind/iai-callgrind/actions/workflows/cicd.yml">
-        <img src="https://github.com/iai-callgrind/iai-callgrind/actions/workflows/cicd.yml/badge.svg" alt="GitHub branch checks state"/>
+    <a href="https://github.com/gungraun/gungraun/actions/workflows/cicd.yml">
+        <img src="https://github.com/gungraun/gungraun/actions/workflows/cicd.yml/badge.svg" alt="GitHub branch checks state"/>
     </a>
     <a href="https://crates.io/crates/iai-callgrind">
         <img src="https://img.shields.io/crates/v/iai-callgrind.svg" alt="Crates.io"/>
@@ -35,6 +28,12 @@
     </a>
 </div>
 
+> [!WARNING]
+> We've outgrown our original name. **Iai‑Callgrind** is currently transitioning to
+> **Gungraun**. Starting with version 0.17.0, the crate will be published as
+> **Gungraun**; earlier releases remain available under the old name. Thank you
+> for your understanding — we look forward to continuing development under the new
+> name!
 
 Iai-Callgrind is a benchmarking framework/harness which uses [Valgrind's
 Callgrind][Callgrind Manual] and other Valgrind tools like DHAT, Massif, ...
@@ -70,9 +69,9 @@ details.
 
 To get started read the [Guide] and see some introductory examples in [Quickstart
 for library
-benchmarks](https://iai-callgrind.github.io/iai-callgrind/latest/html/benchmarks/library_benchmarks/quickstart.html)
+benchmarks](https://gungraun.github.io/gungraun/latest/html/benchmarks/library_benchmarks/quickstart.html)
 or [Quickstart for binary
-benchmarks](https://iai-callgrind.github.io/iai-callgrind/latest/html/benchmarks/binary_benchmarks/quickstart.html)
+benchmarks](https://gungraun.github.io/gungraun/latest/html/benchmarks/binary_benchmarks/quickstart.html)
 
 ## Design philosophy and goals
 
@@ -89,7 +88,7 @@ default settings so you can focus more on profiling and your code!
 ## How far are we?
 
 Iai-Callgrind is in a mature development stage and is already [in
-use](https://github.com/iai-callgrind/iai-callgrind/network/dependents).
+use](https://github.com/gungraun/gungraun/network/dependents).
 Nevertheless, you may experience big changes between a minor version bump. With
 the release of `0.14.0`, almost all `Callgrind` capabilities are implemented
 including benchmarking of multi-threaded and multi-process applications. Using
@@ -122,7 +121,7 @@ You have an idea for a new feature, are missing a functionality or have found a
 bug?
 
 Please don't hesitate to [open an
-issue](https://github.com/iai-callgrind/iai-callgrind/issues).
+issue](https://github.com/gungraun/gungraun/issues).
 
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you shall be dual licensed as in
@@ -180,9 +179,9 @@ files.
 
 [Bencher]: https://bencher.dev/learn/benchmarking/rust/iai/
 
-[Guide]: https://iai-callgrind.github.io/iai-callgrind/
+[Guide]: https://gungraun.github.io/gungraun/
 
-[Comparison.iai]: https://iai-callgrind.github.io/iai-callgrind/latest/html/comparison/iai.html
+[Comparison.iai]: https://gungraun.github.io/gungraun/latest/html/comparison/iai.html
 
 [kcachegrind]: https://kcachegrind.github.io/html/Home.html
 
