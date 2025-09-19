@@ -14,8 +14,16 @@ resolver = "2"
 categories = ["development-tools::profiling", "development-tools::testing"]
 edition = "2021"
 homepage = "https://github.com/gungraun/gungraun"
-# TODO: Change iai
-keywords = ["iai", "benchmark", "callgrind", "valgrind"]
+keywords = [
+  "performance",
+  "benchmark",
+  "profiling",
+  "valgrind",
+  "callgrind",
+  "cachegrind",
+  "dhat",
+  "client-requests",
+]
 license = "Apache-2.0 OR MIT"
 repository = "https://github.com/gungraun/gungraun"
 rust-version = "1.74.1"
